@@ -1,0 +1,20 @@
+{
+  "name": "trazum",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Optimizador de prompts: reduce el coste de tus llamadas a la IA sin perder calidad.",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "npm run build -w @trazum/core && npm run build -w @trazum/cli",
+    "test": "npm run test -w @trazum/core",
+    "dev:web": "npm run dev -w @trazum/web",
+    "build:web": "npm run build -w @trazum/core && npm run build -w @trazum/web",
+    "trazum": "node packages/cli/dist/index.js"
+  }
+}
