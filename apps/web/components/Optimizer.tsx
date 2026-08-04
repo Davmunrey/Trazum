@@ -4,7 +4,58 @@ import { useEffect, useMemo, useState } from 'react';
 
 import type { ModelPricing, OptimizationResult } from '@trazum/core';
 
+import { track } from './Analytics';
 import { diffTexts } from './diff';
+
+// --------------------------------------------------------------------------
+// Historial local
+// --------------------------------------------------------------------------
+
+/**
+ * El historial vive en localStorage: privado por diseño, no toca ningún
+ * backend. Los prompts muy largos no se guardan enteros para no reventar la
+ * cuota del navegador; en ese caso la entrada informa pero no restaura.
+ */
+interface HistoryEntry {
+  id: string;
+  at: number;
+  excerpt: string;
+  /** `null` si el prompt era demasiado largo para guardarlo. */
+  prompt: string | null;
+  level: 'safe' | 'aggressive';
+  model: string;
+  callsPerMonth: number;
+  avgOutputTokens: number;
+  cacheHitRate: number;
+  batchEligible: boolean;
+  tokensBefore: number;
+  tokensAfter: number;
+  reductionPct: number;
+  monthlySavingsUsd: number;
+}
+
+const HISTORY_KEY = 'trazum:history:v1';
+const HISTORY_MAX = 20;
+const HISTORY_MAX_PROMPT_CHARS = 20_000;
+
+function loadHistory(): HistoryEntry[] {
+  try {
+    const raw = localStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as HistoryEntry[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveHistory(entries: HistoryEntry[]): void {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(entries));
+  } catch {
+    // Cuota llena o almacenamiento bloqueado: el historial es prescindible.
+  }
+}
 
 interface Metadata {
   models: ModelPricing[];
@@ -67,13 +118,55 @@ export function Optimizer() {
   const [loading, setLoading] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
 
   useEffect(() => {
     fetch('/api/optimize')
       .then((r) => r.json())
       .then(setMeta)
       .catch(() => setMeta(null));
+    setHistory(loadHistory());
   }, []);
+
+  function recordHistory(promptUsed: string, data: OptimizationResult) {
+    const entry: HistoryEntry = {
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      at: Date.now(),
+      excerpt: promptUsed.replace(/\s+/g, ' ').trim().slice(0, 90),
+      prompt: promptUsed.length <= HISTORY_MAX_PROMPT_CHARS ? promptUsed : null,
+      level,
+      model,
+      callsPerMonth,
+      avgOutputTokens,
+      cacheHitRate,
+      batchEligible,
+      tokensBefore: data.tokensBefore,
+      tokensAfter: data.tokensAfter,
+      reductionPct: data.reductionPct,
+      monthlySavingsUsd: data.savings.monthlySavingsUsd,
+    };
+    setHistory((prev) => {
+      const next = [entry, ...prev].slice(0, HISTORY_MAX);
+      saveHistory(next);
+      return next;
+    });
+  }
+
+  function restoreEntry(entry: HistoryEntry) {
+    if (entry.prompt !== null) setPrompt(entry.prompt);
+    setLevel(entry.level);
+    setModel(entry.model);
+    setCallsPerMonth(entry.callsPerMonth);
+    setAvgOutputTokens(entry.avgOutputTokens);
+    setCacheHitRate(entry.cacheHitRate);
+    setBatchEligible(entry.batchEligible);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function clearHistory() {
+    setHistory([]);
+    saveHistory([]);
+  }
 
   const diff = useMemo(
     () => (result && showDiff ? diffTexts(result.original, result.optimized) : null),
@@ -108,7 +201,17 @@ export function Optimizer() {
         setError(data.error ?? 'No se ha podido optimizar el prompt.');
         setResult(null);
       } else {
-        setResult(data as OptimizationResult);
+        const optimization = data as OptimizationResult;
+        setResult(optimization);
+        recordHistory(prompt, optimization);
+        // Métricas agregadas, nunca el contenido del prompt.
+        track('optimize', {
+          level,
+          model,
+          reduction_pct: Math.round(optimization.reductionPct),
+          tokens_before: optimization.tokensBefore,
+          llm_applied: optimization.llm?.applied ?? false,
+        });
       }
     } catch {
       setError('No se ha podido contactar con el servidor.');
@@ -296,6 +399,45 @@ export function Optimizer() {
             {loading ? 'Optimizando…' : 'Optimizar'}
           </button>
         </div>
+
+        {history.length > 0 && (
+          <div className="card">
+            <div className="toolbar">
+              <h2 style={{ margin: 0 }}>Historial</h2>
+              <button className="ghost" onClick={clearHistory}>
+                Borrar
+              </button>
+            </div>
+            <ul className="plain">
+              {history.map((entry) => (
+                <li key={entry.id} className="history-entry">
+                  <button
+                    className="history-restore"
+                    onClick={() => restoreEntry(entry)}
+                    disabled={entry.prompt === null}
+                    title={
+                      entry.prompt === null
+                        ? 'Prompt demasiado largo para guardarlo; solo se conserva el resumen.'
+                        : 'Restaurar este prompt y su escenario'
+                    }
+                  >
+                    <span className="history-excerpt">{entry.excerpt || '(sin texto)'}</span>
+                    <span className="history-meta">
+                      −{entry.reductionPct.toFixed(0)}% · {formatUsd(entry.monthlySavingsUsd)}/mes ·{' '}
+                      {new Date(entry.at).toLocaleDateString('es-ES', {
+                        day: 'numeric',
+                        month: 'short',
+                      })}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+            <p className="note">
+              El historial se guarda solo en este navegador; nada sale de tu máquina.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* ---------------- Resultados ---------------- */}

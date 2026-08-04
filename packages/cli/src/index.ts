@@ -6,6 +6,7 @@ import {
   PRICING_LAST_REVIEWED,
   RULES,
   countTokensAnthropic,
+  estimateTokens,
   formatUsd,
   listModels,
   optimize,
@@ -33,6 +34,7 @@ const HELP = `${c.bold('trazum')} — reduce el coste de tus prompts sin perder 
 
 ${c.bold('USO')}
   trazum optimize <fichero|-> [opciones]
+  trazum check <fichero|-> --max-tokens <n> [opciones]
   trazum models
   trazum rules
 
@@ -50,6 +52,15 @@ ${c.bold('OPCIONES DE optimize')}
   --json                      Vuelca el informe completo en JSON.
   -o, --out <fichero>         Escribe el prompt optimizado a un fichero.
   -h, --help                  Esta ayuda.
+
+${c.bold('OPCIONES DE check')}
+  --max-tokens <n>            Presupuesto de tokens de entrada. Obligatorio.
+  --level <safe|aggressive>   Nivel al calcular si optimizado cabría.
+  --exact-tokens              Recuento exacto (necesita ANTHROPIC_API_KEY).
+  --json                      Resultado en JSON.
+
+  Pensado para CI: sale con código 1 si el prompt supera el presupuesto,
+  así una plantilla que crece sin control rompe la build en vez de la factura.
 
 ${c.bold('LLM OPCIONAL')}
   El núcleo es determinista y gratis. Con --llm se añade una pasada de
@@ -89,6 +100,7 @@ function parseArgs(argv: string[]): Args {
     'output-tokens',
     'cache-hit-rate',
     'disable',
+    'max-tokens',
     'out',
     'o',
   ]);
@@ -416,6 +428,76 @@ async function commandOptimize(args: Args): Promise<void> {
   }
 }
 
+/**
+ * Presupuesto de tokens para CI: falla (código 1) si el prompt lo supera.
+ * Así una plantilla que crece sin control rompe la build, no la factura.
+ */
+async function commandCheck(args: Args): Promise<void> {
+  const prompt = await readInput(args.positional[0]);
+
+  const maxTokens = numberFlag(args, 'max-tokens', -1);
+  if (maxTokens < 0) {
+    throw new Error('trazum check necesita --max-tokens <n>.');
+  }
+
+  const level = (args.flags.get('level') ?? 'safe') as RuleLevel;
+  if (level !== 'safe' && level !== 'aggressive') {
+    throw new Error(`--level debe ser "safe" o "aggressive" (recibido: "${level}").`);
+  }
+
+  let count = (text: string): Promise<number> => Promise.resolve(estimateTokens(text));
+  let source: 'heuristic' | 'external' = 'heuristic';
+
+  if (args.flags.has('exact-tokens')) {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) throw new Error('--exact-tokens necesita ANTHROPIC_API_KEY en el entorno.');
+    const exact = countTokensAnthropic({ apiKey });
+    count = (text) => exact(text);
+    source = 'external';
+  }
+
+  const tokens = await count(prompt);
+  const ok = tokens <= maxTokens;
+
+  // Si se pasa del presupuesto, calcula si optimizado cabría: convierte el
+  // fallo de CI en una acción concreta en vez de un número rojo.
+  let optimizedTokens: number | null = null;
+  if (!ok) {
+    const optimized = optimize(prompt, { level }).optimized;
+    optimizedTokens = await count(optimized);
+  }
+
+  if (args.flags.has('json')) {
+    console.log(
+      JSON.stringify({
+        ok,
+        tokens,
+        maxTokens,
+        tokenSource: source,
+        optimizedTokens,
+        wouldFitOptimized: optimizedTokens !== null ? optimizedTokens <= maxTokens : null,
+      }),
+    );
+  } else if (ok) {
+    console.log(
+      `${c.green('OK')} ${tokens.toLocaleString('es-ES')} tokens dentro del presupuesto de ${maxTokens.toLocaleString('es-ES')}.`,
+    );
+  } else {
+    console.error(
+      `${c.red('FALLO')} ${tokens.toLocaleString('es-ES')} tokens supera el presupuesto de ${maxTokens.toLocaleString('es-ES')}.`,
+    );
+    if (optimizedTokens !== null) {
+      console.error(
+        optimizedTokens <= maxTokens
+          ? `  Optimizado con "trazum optimize --level ${level}" quedaría en ~${optimizedTokens.toLocaleString('es-ES')} tokens y sí cabría.`
+          : `  Ni optimizado cabe (~${optimizedTokens.toLocaleString('es-ES')} tokens): hay que recortar contenido a mano.`,
+      );
+    }
+  }
+
+  if (!ok) process.exitCode = 1;
+}
+
 // --------------------------------------------------------------------------
 
 async function main(): Promise<void> {
@@ -429,6 +511,9 @@ async function main(): Promise<void> {
   switch (args.command) {
     case 'optimize':
       await commandOptimize(args);
+      break;
+    case 'check':
+      await commandCheck(args);
       break;
     case 'models':
       commandModels();

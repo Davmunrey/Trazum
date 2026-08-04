@@ -1,7 +1,25 @@
 {
   "name": "@trazum/cli",
   "version": "0.1.0",
-  "description": "CLI de Trazum: optimiza prompts y calcula el ahorro desde la terminal.",
+  "description": "CLI de Trazum: optimiza prompts, comprueba presupuestos de tokens en CI y calcula el ahorro desde la terminal.",
+  "license": "MIT",
+  "author": "David Muñoz Rey",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Davmunrey/Trazum.git",
+    "directory": "packages/cli"
+  },
+  "keywords": [
+    "prompt",
+    "llm",
+    "tokens",
+    "cost",
+    "cli",
+    "ci"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "bin": {
     "trazum": "./dist/index.js"

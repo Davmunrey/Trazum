@@ -1,5 +1,8 @@
 # Trazum
 
+[![CI](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml)
+[![Licencia MIT](https://img.shields.io/badge/licencia-MIT-blue.svg)](LICENSE)
+
 Optimizador de prompts. Acorta lo que envías a la IA sin cambiar lo que pides, y te dice cuánto dinero supone eso al mes.
 
 El núcleo es **determinista**: las mismas reglas, el mismo resultado, coste cero al ejecutarlo. Encima hay una **pasada opcional por un LLM** para la compresión que las reglas no pueden hacer, con el proveedor que tú configures.
@@ -86,6 +89,21 @@ Para instalarlo como comando `trazum`:
 npm link -w @trazum/cli
 ```
 
+**Presupuesto de tokens en CI.** `trazum check` sale con código 1 si el prompt supera el presupuesto, así una plantilla que crece sin control rompe la build en vez de la factura:
+
+```bash
+trazum check prompts/sistema.txt --max-tokens 2000
+# FALLO 2.481 tokens supera el presupuesto de 2.000.
+#   Optimizado con "trazum optimize --level safe" quedaría en ~1.913 tokens y sí cabría.
+```
+
+En GitHub Actions:
+
+```yaml
+- run: npm ci && npm run build
+- run: node packages/cli/dist/index.js check prompts/sistema.txt --max-tokens 2000
+```
+
 ### Web
 
 ```bash
@@ -93,7 +111,33 @@ npm run build:web
 npm run dev:web        # http://localhost:3000
 ```
 
-Interfaz para pegar el prompt, ajustar el escenario de uso y ver el diff palabra a palabra, el ahorro y los avisos.
+Interfaz para pegar el prompt, ajustar el escenario de uso y ver el diff palabra a palabra, el ahorro y los avisos. Incluye historial de optimizaciones guardado solo en el navegador (nada sale de tu máquina).
+
+La API HTTP que usa la web es pública y sencilla:
+
+```bash
+# Metadatos: modelos, reglas y si hay LLM configurado en el servidor
+curl https://tu-despliegue/api/optimize
+
+# Optimizar
+curl -X POST https://tu-despliegue/api/optimize \
+  -H 'content-type: application/json' \
+  -d '{
+    "prompt": "Por favor, con el fin de ayudarme, analiza {{x}}. ¡Gracias!",
+    "level": "safe",
+    "usage": { "model": "claude-opus-5", "callsPerMonth": 20000, "avgOutputTokens": 300 }
+  }'
+```
+
+El endpoint lleva límite de peticiones (30/min por IP) y, en producción, solo acepta endpoints de LLM `https` hacia direcciones públicas (protección SSRF).
+
+### Desplegar en Vercel
+
+El repo es un monorepo npm workspaces; Vercel lo entiende sin configuración especial:
+
+1. Importa el repositorio en Vercel.
+2. **Root Directory**: `apps/web`. El resto (instalación desde la raíz del workspace, build de `@trazum/core` vía `prebuild`) es automático.
+3. Variables opcionales: `TRAZUM_LLM_*` para ofrecer la pasada por LLM sin que el usuario meta claves, `NEXT_PUBLIC_POSTHOG_KEY` para analítica.
 
 ### Librería
 
@@ -207,3 +251,17 @@ apps/web/          Next.js (App Router)
 ## Actualizar precios
 
 `packages/core/src/pricing.ts` es la única fuente de verdad. Al cambiarla, actualiza también `PRICING_LAST_REVIEWED`. La suite de tests comprueba que la tabla siga siendo coherente (salida más cara que entrada, promociones con fecha de caducidad, ventanas de contexto plausibles).
+
+## Analítica y privacidad
+
+- Los prompts **no se almacenan en ningún servidor**: la optimización es síncrona y el historial vive en localStorage del navegador.
+- La analítica (PostHog) está **apagada por defecto**. Solo se activa si el operador define `NEXT_PUBLIC_POSTHOG_KEY`, y aun así nunca envía el contenido de los prompts — solo métricas agregadas (porcentaje de recorte, nivel, modelo).
+- Las claves de LLM que se introducen en la UI se usan para esa petición y se descartan; no se registran ni persisten.
+
+## Hoja de ruta
+
+- Interfaz en inglés además de español.
+- Más reglas: recorte de ejemplos few-shot redundantes, detección de instrucciones contradictorias.
+- Análisis de prefijo estable con sugerencia de puntos de `cache_control`.
+- Acción de GitHub empaquetada para `trazum check`.
+- Publicación de `@trazum/core` y `@trazum/cli` en npm (los `package.json` ya están preparados).
