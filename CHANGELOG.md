@@ -8,12 +8,78 @@ alters nothing installable — a test, a document — still lands there rather t
 nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
-## Unreleased
+## 1.0.0
 
-**Pricing is no longer tied to the release cycle** — the third of four items on
-the 1.0.0 roadmap entry. Prices change on someone else's schedule, and until now
-correcting one meant upgrading the library, which is backwards: a stale price is
-a wrong number in a budget decision.
+**The public API is frozen.** A breaking change waits for 2.0. This is the last
+release in which anything can change shape without a major.
+
+[VERSIONING.md](VERSIONING.md) now states what that covers and, as importantly,
+what it does not — and it states the **deprecation procedure** rather than leaving
+it to be decided case by case:
+
+- `@deprecated` in the JSDoc, naming the replacement. That is the strike-through
+  in an editor, which is the only warning most people will ever see.
+- A **Deprecated** section in that release's changelog, with the migration written
+  out — the actual before-and-after, not "use the new thing".
+- Continues working for **at least two minors and six months**, whichever is
+  longer. Deprecating and removing in consecutive releases is a breaking change
+  wearing a notice.
+- Removed only in a major, whose changelog repeats the migration.
+
+A deprecated export **never starts warning at runtime**. A library that prints to
+somebody else's stderr because *we* changed our mind is a library people vendor to
+make quiet.
+
+Newly named as covered, because they were being depended on either way: the
+`--json` shape and units, the CLI's **exit codes**, `@trazum/core/node` as a real
+entry point, and the `trazum.config.json` and pricing-overlay schemas. Newly named
+as *not* covered: the prose and layout of the human reports — parse `--json`, not
+the table.
+
+### Publishable
+
+Both packages would previously have shipped something wrong. Now asserted by
+tests in `publish.test.js`, because a published package is the one artefact this
+repository cannot take back:
+
+- **A `LICENSE` file**, not just a `"license"` field. The field is metadata; the
+  tarball has to carry the terms or nobody who installs it has been given them.
+- **A README.** The npm page *is* the README, and both were empty.
+- **`engines`.** Without it npm installs silently on a Node too old to run the
+  code, and the failure surfaces as a syntax error in somebody else's build.
+- **`prepublishOnly`**, which builds and tests. `files: ["dist"]` means the
+  tarball is whatever happens to be on disk, so publishing without building would
+  have shipped the previous version's code under the new version's number —
+  completely silently, and the worst possible outcome.
+- **`src`.** Every emitted source map references `../src/*.ts` and carries no
+  inlined content, so shipping the maps without the sources gave a debugger a file
+  it could not load. That is worse than no map, which would simply step through
+  the compiled output. It also means you can read exactly what runs on your
+  prompts, which for a zero-dependency library is rather the point.
+
+Publishing itself stays manual. It is the one action here that cannot be undone
+after 72 hours.
+
+### A rule can be contributed without reading the engine
+
+New [docs/authoring-rules.md](docs/authoring-rules.md): the four-line rule
+contract, what the masking pass already guarantees (a rule cannot break code,
+URLs or placeholders because those characters are not in the string it receives),
+why **`safe` is a promise** rather than a default, and the three tests a rule
+needs — the third being the false-positive case nearly everyone skips.
+
+It also documents the ReDoS fixture **shape** that finds real bugs. Repeated
+tokens do not: both bugs found in this repository needed a prefix plus a long
+non-terminating run, and the fixtures that missed them were all repeated words.
+
+`CONTRIBUTING.md`'s security-invariant list said "four things" and had drifted to
+eight. Corrected, with the import-graph invariant and the two Actions ones added.
+
+### Pricing came off the release cycle
+
+Prices change on someone else's schedule, and until now correcting one meant
+upgrading the library — which is backwards: a stale price is a wrong number in a
+budget decision.
 
 A **pricing overlay** is a JSON file layered over the bundled catalogue:
 
@@ -58,7 +124,7 @@ and needs no setup.
   overlay can introduce a model, and the path to the overlay is a key of the very
   document being parsed — so the parser cannot know the catalogue yet. The check
   is still loud, just raised where "unknown model" can be answered truthfully.
-- Tests grow from 361 to 390.
+- Tests grow from 390 to 406, including a new `publish.test.js` suite.
 
 **Every third-party GitHub Action is now pinned to a commit SHA.** `SECURITY.md`
 listed this as a known limit; it no longer is. A tag can be moved and a branch

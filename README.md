@@ -80,7 +80,7 @@ version stands. It never returns something worse than where it started.
 ```bash
 npm install
 npm run build      # core + cli
-npm test           # 359 tests
+npm test           # 406 tests
 ```
 
 ### CLI
@@ -141,7 +141,7 @@ In GitHub Actions, use the packaged action — nothing to install:
 
 ```yaml
 - uses: actions/checkout@v7
-- uses: Davmunrey/Trazum@main
+- uses: Davmunrey/Trazum@v1.0.0
   with:
     target: prompts/system.txt
     max-tokens: 2000
@@ -158,7 +158,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v7
-  - uses: Davmunrey/Trazum@main
+  - uses: Davmunrey/Trazum@v1.0.0
     with:
       target: prompts/            # a directory uses trazum.config.json budgets
       comment: true
@@ -629,5 +629,7 @@ context windows).
 ## Roadmap and contributing
 
 [ROADMAP.md](ROADMAP.md) covers what is planned and why.
-[CONTRIBUTING.md](CONTRIBUTING.md) covers adding a rule or a language.
+[CONTRIBUTING.md](CONTRIBUTING.md) covers adding a rule or a language, and
+[docs/authoring-rules.md](docs/authoring-rules.md) is the full walkthrough for a
+rule.
 [VERSIONING.md](VERSIONING.md) covers what counts as public API.
