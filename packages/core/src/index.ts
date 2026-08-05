@@ -13,8 +13,10 @@ export {
   cheapestOfTier,
   modelFrom,
   cheapestOfTierIn,
+  multipliersFor,
 } from './pricing.js';
 export type { PricingCatalogue } from './pricing.js';
+export type { CachingMode, Capability, CostMultipliers } from './types.js';
 
 // Local price corrections, so a price change needs no library upgrade.
 export {

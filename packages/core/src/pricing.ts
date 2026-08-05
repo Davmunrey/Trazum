@@ -11,6 +11,15 @@ import type { ModelPricing } from './types.js';
 export const PRICING_LAST_REVIEWED = '2026-06-24';
 
 /** Cost multipliers relative to the input price. */
+/**
+ * The defaults, which are Anthropic's numbers.
+ *
+ * Still exported and still correct for every Anthropic model, but no longer the
+ * whole story: a model can override any of these through `multipliers`, and
+ * anything computing a cost should go through `multipliersFor` rather than
+ * reading these directly. A cache read is ~10% of input on Anthropic and ~50%
+ * on OpenAI, and using one number for both invents a saving.
+ */
 export const COST_MULTIPLIERS = {
   /** Cache write with a 5-minute TTL. */
   cacheWrite5m: 1.25,
@@ -22,93 +31,284 @@ export const COST_MULTIPLIERS = {
   batch: 0.5,
 } as const;
 
+/**
+ * The multipliers that apply to one model, defaults filled in.
+ *
+ * `batch` stays `null` when the provider has no batch API, which is different
+ * from "unspecified": the first should stop the advisory firing, the second
+ * should fall back to the default.
+ */
+export function multipliersFor(model: ModelPricing): {
+  cacheWrite5m: number;
+  cacheWrite1h: number;
+  cacheRead: number;
+  batch: number | null;
+} {
+  const m = model.multipliers ?? {};
+  return {
+    cacheWrite5m: m.cacheWrite5m ?? COST_MULTIPLIERS.cacheWrite5m,
+    cacheWrite1h: m.cacheWrite1h ?? COST_MULTIPLIERS.cacheWrite1h,
+    cacheRead: m.cacheRead ?? COST_MULTIPLIERS.cacheRead,
+    batch: m.batch === undefined ? COST_MULTIPLIERS.batch : m.batch,
+  };
+}
+
 export const MODELS: ModelPricing[] = [
   {
     id: 'claude-fable-5',
+    provider: 'anthropic',
     displayName: 'Claude Fable 5',
     inputPerMTok: 10,
     outputPerMTok: 50,
     contextWindow: 1_000_000,
     cacheMinTokens: 512,
+    capability: 'frontier',
     tier: 'frontier',
     notes: 'Highest capability. Requires 30-day data retention.',
   },
   {
     id: 'claude-mythos-5',
+    provider: 'anthropic',
     displayName: 'Claude Mythos 5',
+    recommendable: false,
     inputPerMTok: 10,
     outputPerMTok: 50,
     contextWindow: 1_000_000,
     cacheMinTokens: 512,
+    capability: 'frontier',
     tier: 'frontier',
     notes: 'Available only through Project Glasswing.',
   },
   {
     id: 'claude-opus-5',
+    provider: 'anthropic',
     displayName: 'Claude Opus 5',
     inputPerMTok: 5,
     outputPerMTok: 25,
     contextWindow: 1_000_000,
     cacheMinTokens: 512,
+    capability: 'large',
     tier: 'opus',
     notes: '512-token cache minimum: caches prompts that would miss on Opus 4.6.',
   },
   {
     id: 'claude-opus-4-8',
+    provider: 'anthropic',
     displayName: 'Claude Opus 4.8',
     inputPerMTok: 5,
     outputPerMTok: 25,
     contextWindow: 1_000_000,
     cacheMinTokens: 1024,
+    capability: 'large',
     tier: 'opus',
   },
   {
     id: 'claude-opus-4-7',
+    provider: 'anthropic',
     displayName: 'Claude Opus 4.7',
     inputPerMTok: 5,
     outputPerMTok: 25,
     contextWindow: 1_000_000,
     cacheMinTokens: 2048,
+    capability: 'large',
     tier: 'opus',
   },
   {
     id: 'claude-opus-4-6',
+    provider: 'anthropic',
     displayName: 'Claude Opus 4.6',
     inputPerMTok: 5,
     outputPerMTok: 25,
     contextWindow: 1_000_000,
     cacheMinTokens: 4096,
+    capability: 'large',
     tier: 'opus',
   },
   {
     id: 'claude-sonnet-5',
+    provider: 'anthropic',
     displayName: 'Claude Sonnet 5',
     inputPerMTok: 3,
     outputPerMTok: 15,
     contextWindow: 1_000_000,
     cacheMinTokens: 1024,
+    capability: 'mid',
     tier: 'sonnet',
     promo: { inputPerMTok: 2, outputPerMTok: 10, until: '2026-08-31' },
     notes: 'Introductory pricing of 2/10 until 2026-08-31; 3/15 afterwards.',
   },
   {
     id: 'claude-sonnet-4-6',
+    provider: 'anthropic',
     displayName: 'Claude Sonnet 4.6',
     inputPerMTok: 3,
     outputPerMTok: 15,
     contextWindow: 1_000_000,
     cacheMinTokens: 1024,
+    capability: 'mid',
     tier: 'sonnet',
   },
   {
     id: 'claude-haiku-4-5',
+    provider: 'anthropic',
     displayName: 'Claude Haiku 4.5',
     inputPerMTok: 1,
     outputPerMTok: 5,
     contextWindow: 200_000,
     cacheMinTokens: 4096,
+    capability: 'small',
     tier: 'haiku',
     notes: '200K context window and a 64K output cap, smaller than the rest.',
+  },
+
+  // ------------------------------------------------------------------------
+  // OpenAI
+  //
+  // Caching is AUTOMATIC above 1,024 tokens — there is no cache_control to set,
+  // and a cached read costs about half the input price rather than a tenth. The
+  // reordering advice is identical (a prefix is a prefix), the marker advice is
+  // not, which is why `caching` and `multipliers` exist at all.
+  // ------------------------------------------------------------------------
+  {
+    id: 'gpt-5',
+    provider: 'openai',
+    displayName: 'GPT-5',
+    inputPerMTok: 1.25,
+    outputPerMTok: 10,
+    contextWindow: 400_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    capability: 'frontier',
+    tier: 'frontier',
+    notes: 'Caching is automatic above 1,024 tokens; there is no cache_control to set.',
+  },
+  {
+    id: 'gpt-5-mini',
+    provider: 'openai',
+    displayName: 'GPT-5 mini',
+    inputPerMTok: 0.25,
+    outputPerMTok: 2,
+    contextWindow: 400_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    capability: 'mid',
+    tier: 'sonnet',
+  },
+  {
+    id: 'gpt-5-nano',
+    provider: 'openai',
+    displayName: 'GPT-5 nano',
+    inputPerMTok: 0.05,
+    outputPerMTok: 0.4,
+    contextWindow: 400_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    capability: 'small',
+    tier: 'haiku',
+  },
+
+  // ------------------------------------------------------------------------
+  // Google
+  // ------------------------------------------------------------------------
+  {
+    id: 'gemini-2.5-pro',
+    provider: 'google',
+    displayName: 'Gemini 2.5 Pro',
+    inputPerMTok: 1.25,
+    outputPerMTok: 10,
+    contextWindow: 1_048_576,
+    cacheMinTokens: 2048,
+    caching: 'explicit',
+    multipliers: { cacheRead: 0.25, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    capability: 'large',
+    tier: 'opus',
+    notes: 'Context caching is billed for storage per hour as well as per read.',
+  },
+  {
+    id: 'gemini-2.5-flash',
+    provider: 'google',
+    displayName: 'Gemini 2.5 Flash',
+    inputPerMTok: 0.3,
+    outputPerMTok: 2.5,
+    contextWindow: 1_048_576,
+    cacheMinTokens: 1024,
+    caching: 'explicit',
+    multipliers: { cacheRead: 0.25, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    capability: 'mid',
+    tier: 'sonnet',
+  },
+
+  // ------------------------------------------------------------------------
+  // Moonshot
+  // ------------------------------------------------------------------------
+  {
+    id: 'kimi-k2',
+    provider: 'moonshot',
+    displayName: 'Kimi K2',
+    inputPerMTok: 0.6,
+    outputPerMTok: 2.5,
+    contextWindow: 256_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    capability: 'mid',
+    tier: 'sonnet',
+    notes: 'No batch API: the batch advisory stays quiet rather than offering a discount you cannot buy.',
+  },
+
+  // ------------------------------------------------------------------------
+  // DeepSeek
+  // ------------------------------------------------------------------------
+  {
+    id: 'deepseek-v3',
+    provider: 'deepseek',
+    displayName: 'DeepSeek V3',
+    inputPerMTok: 0.27,
+    outputPerMTok: 1.1,
+    contextWindow: 128_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    capability: 'mid',
+    tier: 'sonnet',
+  },
+
+  // ------------------------------------------------------------------------
+  // xAI
+  // ------------------------------------------------------------------------
+  {
+    id: 'grok-4',
+    provider: 'xai',
+    displayName: 'Grok 4',
+    inputPerMTok: 3,
+    outputPerMTok: 15,
+    contextWindow: 256_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.25, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    capability: 'large',
+    tier: 'opus',
+  },
+
+  // ------------------------------------------------------------------------
+  // Mistral
+  // ------------------------------------------------------------------------
+  {
+    id: 'mistral-large-2',
+    provider: 'mistral',
+    displayName: 'Mistral Large 2',
+    inputPerMTok: 2,
+    outputPerMTok: 6,
+    contextWindow: 128_000,
+    cacheMinTokens: 0,
+    caching: 'none',
+    multipliers: { batch: 0.5 },
+    capability: 'large',
+    tier: 'opus',
+    notes: 'No prompt caching: reordering still helps readability but saves nothing here.',
   },
 ];
 
@@ -178,8 +378,20 @@ export function cheapestOfTierIn(
   catalogue: PricingCatalogue,
   tier: ModelPricing['tier'],
   on: Date = new Date(),
+  /**
+   * Restrict to one provider. Omit to search the whole catalogue, which is what
+   * this did before other providers existed — kept as the default so the
+   * signature stays additive, though the advisory always passes one: switching
+   * vendor is a migration, not a cheaper model.
+   */
+  provider?: string,
 ): ModelPricing {
-  const candidates = catalogue.models.filter((m) => m.tier === tier);
+  const candidates = catalogue.models.filter(
+    (m) =>
+      m.tier === tier &&
+      m.recommendable !== false &&
+      (provider === undefined || m.provider === provider),
+  );
   const first = candidates[0];
   if (!first) throw new Error(`No models for tier "${tier}"`);
   return candidates.reduce(
@@ -221,7 +433,7 @@ export function effectivePricing(
 
 /** Cheapest model of each capability tier, for recommendations. */
 export function cheapestOfTier(tier: ModelPricing['tier']): ModelPricing {
-  const candidates = MODELS.filter((m) => m.tier === tier);
+  const candidates = MODELS.filter((m) => m.tier === tier && m.recommendable !== false);
   const first = candidates[0];
   if (!first) throw new Error(`No models for tier "${tier}"`);
   return candidates.reduce((best, m) => (m.inputPerMTok < best.inputPerMTok ? m : best), first);

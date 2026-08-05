@@ -117,12 +117,36 @@ describe('applying an overlay', () => {
 
   it('ranks a tier on the effective price, promotion included', () => {
     const on = new Date('2026-07-01T00:00:00Z');
+    // Scoped to one provider, as the advisory does: switching vendor is a
+    // migration rather than a cheaper model, and unscoped this now finds a
+    // GPT model that costs a fifth of any Claude one.
     // Sonnet 5's introductory 2/10 beats Sonnet 4.6's 3/15 while it is live.
-    assert.equal(cheapestOfTierIn(BUNDLED_CATALOGUE, 'sonnet', on).id, 'claude-sonnet-5');
+    assert.equal(
+      cheapestOfTierIn(BUNDLED_CATALOGUE, 'sonnet', on, 'anthropic').id,
+      'claude-sonnet-5',
+    );
     // Withdraw it and the two tie on list price, so the first listed wins —
     // deterministic either way, which is the property that matters.
     const withdrawn = catalogueFromOverlay(overlay({ 'claude-sonnet-5': { promo: null } }));
-    assert.ok(['claude-sonnet-5', 'claude-sonnet-4-6'].includes(cheapestOfTierIn(withdrawn, 'sonnet', on).id));
+    assert.ok(
+      ['claude-sonnet-5', 'claude-sonnet-4-6'].includes(
+        cheapestOfTierIn(withdrawn, 'sonnet', on, 'anthropic').id,
+      ),
+    );
+  });
+
+  it('searches the whole catalogue when no provider is named', () => {
+    // The documented default, kept so the signature stayed additive. Nothing in
+    // this repository calls it that way — the advisory always names a provider —
+    // but a caller who wants "cheapest anywhere" can ask for it.
+    const on = new Date('2026-07-01T00:00:00Z');
+    const anywhere = cheapestOfTierIn(BUNDLED_CATALOGUE, 'sonnet', on);
+    const anthropic = cheapestOfTierIn(BUNDLED_CATALOGUE, 'sonnet', on, 'anthropic');
+    assert.notEqual(anywhere.provider, undefined);
+    assert.ok(
+      anywhere.inputPerMTok <= anthropic.inputPerMTok,
+      'the unscoped search should never be dearer than a scoped one',
+    );
   });
 });
 

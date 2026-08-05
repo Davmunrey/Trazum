@@ -86,13 +86,26 @@ export const es: CoreMessages = {
       detail: `El prompt optimizado ocupa ~${n(tokens)} tokens y ${modelName} admite ${n(contextWindow)}. La llamada fallará: divide el contenido o cambia a un modelo con ventana mayor.`,
     }),
 
-    promptCaching: ({ placeholder, prefixTokens, totalTokens, minTokens, modelName, hitRatePct }) => {
+    promptCaching: ({
+      placeholder,
+      prefixTokens,
+      totalTokens,
+      minTokens,
+      modelName,
+      hitRatePct,
+      readPct,
+      writePct,
+      explicit,
+    }) => {
       const scope = placeholder
         ? `El prefijo estable —lo anterior al primer marcador ${placeholder}— son ~${n(prefixTokens)} de los ${n(totalTokens)} tokens del prompt, y supera el mínimo cacheable de ${n(minTokens)} de ${modelName}.`
         : `El prompt no tiene marcadores variables, así que el prefijo cacheable es entero y supera el mínimo de ${n(minTokens)} tokens de ${modelName}.`;
+      const how = explicit
+        ? 'Coloca el marcador de caché al final del prefijo estable: cualquier byte que cambie antes del corte invalida todo lo que va detrás.'
+        : `${modelName} cachea automáticamente por encima de su mínimo, así que no hay nada que activar; pero la regla es la misma: cualquier byte que cambie antes del corte invalida todo lo que va detrás.`;
       return {
         title: 'Activa prompt caching en el prefijo estable',
-        detail: `${scope} Con una tasa de acierto del ${hitRatePct}%, la lectura de caché cuesta un 10% del precio de entrada y la escritura un 125%. Coloca cache_control al final del prefijo estable: cualquier byte que cambie antes del corte invalida todo lo que va detrás.`,
+        detail: `${scope} Con una tasa de acierto del ${hitRatePct}%, la lectura de caché cuesta un ${readPct}% del precio de entrada y la escritura un ${writePct}%. ${how}`,
       };
     },
 

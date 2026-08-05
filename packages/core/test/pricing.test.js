@@ -21,8 +21,23 @@ describe('pricing catalogue', () => {
         model.outputPerMTok > model.inputPerMTok,
         `${model.id}: output should cost more than input`,
       );
-      assert.ok(model.contextWindow >= 200_000, `${model.id} has a suspiciously small window`);
-      assert.ok(model.cacheMinTokens > 0, `${model.id} has no cache minimum`);
+      // 8K rather than 200K: the old floor was Anthropic's smallest window
+      // used as if it were a law of nature, and it rejected DeepSeek V3 and
+      // Mistral Large 2 at their real 128K. This is a typo detector — a window
+      // of 200 is a mistake, a window of 128,000 is a product.
+      assert.ok(model.contextWindow >= 8_000, `${model.id} has a suspiciously small window`);
+      // Only where caching exists. A model whose provider has no prompt caching
+      // has no minimum to clear, and demanding one would force a fictional
+      // number into the catalogue to keep a test happy.
+      if (model.caching !== 'none') {
+        assert.ok(model.cacheMinTokens > 0, `${model.id} has no cache minimum`);
+      } else {
+        assert.equal(
+          model.cacheMinTokens,
+          0,
+          `${model.id} has no caching, so its minimum should be 0 rather than a number nobody uses`,
+        );
+      }
     }
   });
 

@@ -10,6 +10,82 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+**Trazum prices models from seven providers, not one.** OpenAI, Google, Moonshot,
+DeepSeek, xAI and Mistral join Anthropic in the bundled catalogue.
+
+The data was the easy half. The hard half was that **the cost multipliers were
+global constants** — one cache-read rate, one cache-write rate, one batch
+discount for everything — and global made them quietly wrong the moment a second
+provider existed. They now live on the model, defaulting to Anthropic's values so
+nothing that worked before changes.
+
+Three of them were not inaccuracies but **savings that do not exist**, and all
+three were found by running the catalogue rather than by reading it:
+
+- **Kimi, DeepSeek and Grok have no batch API.** The global constant offered them
+  a 50% discount that cannot be bought — $139 a month in the test that caught it.
+  `batch: null` now means "there is no batch API", which is deliberately different
+  from not having said.
+- **Mistral has no prompt caching.** A zero cache minimum satisfied `0 >= 0`, so
+  the caching advisory fired and offered $100 a month of a feature that does not
+  exist. Introduced by this very change and caught before it left the branch.
+- **The batch saving was computed as `cost × discount`**, which equals the saving
+  only when the discount is exactly 0.5. Latent on Anthropic, wrong on the first
+  provider with any other rate.
+
+Gemini and Grok read cache at 25% of input against Anthropic's 10%, so the same
+prompt cannot be worth the same fraction on both. The advisory now quotes each
+provider's real rates — and **stops naming `cache_control` to people who do not
+have it**: OpenAI, Moonshot and DeepSeek cache automatically above a threshold,
+and the report says so instead of naming a parameter that does not exist for them.
+The advice to move stable content forward is identical either way, because a
+prefix is a prefix.
+
+**A cheaper model means a cheaper model, not a different supplier.** Recommendations
+are now scoped to the current provider. Dropping from Opus to Sonnet is a one-line
+change; moving to another vendor is a different API, different behaviour and a
+migration — and this advisory is already caveated as a keyword heuristic rather
+than a judgement about answer quality. Unscoped, it was telling Claude users to
+switch to `gpt-5-nano`.
+
+### Deprecated
+
+- **`ModelPricing.tier`** — replaced by **`capability`**, on a vendor-neutral scale
+  of `small | mid | large | frontier`. Anthropic's ladder used as the generic axis
+  reads as nonsense the moment the model is not Anthropic's: telling somebody on
+  Kimi that their task "looks like haiku complexity" is a label meaning something
+  other than what it says.
+
+  **Migration:** replace `model.tier` with `model.capability`, mapping
+  `haiku → small`, `sonnet → mid`, `opus → large`, `frontier → frontier`.
+  `cheapestOfTier` and `cheapestOfTierIn` still take the old names.
+
+  Per [VERSIONING.md](VERSIONING.md), `tier` keeps working unchanged for the whole
+  of 1.x and is removed in 2.0. Both fields are populated on every model and a test
+  asserts they never disagree — if they drift, half the code ranks one way and half
+  the other, and the difference is invisible until a recommendation is wrong.
+
+### Added
+
+- `multipliersFor(model)` — the cache and batch rates that apply to one model,
+  defaults filled in. Anything computing a cost should go through it rather than
+  reading `COST_MULTIPLIERS`, which remains exported and remains correct for
+  Anthropic.
+- `ModelPricing.provider`, `.caching`, `.multipliers` and `.recommendable`. The
+  last replaces a hardcoded model id inside `cheapestInTier` — a model behind a
+  private programme is real and worth pricing, but recommending a switch to
+  something the reader cannot buy wastes their time.
+- An optional `provider` argument on `cheapestOfTierIn`, so a caller who genuinely
+  wants "cheapest anywhere" can still ask.
+
+**On the prices themselves:** they are written from what was known when this
+landed, not read off each provider's page today, and `PRICING_LAST_REVIEWED` says
+when. The tests check them for coherence — output dearer than input, a plausible
+window, a cache minimum only where there is a cache — never for accuracy, which no
+test here can do. The local pricing overlay corrects any of them without upgrading
+the library.
+
+
 **Reordering for the cache is on the web.** It is the largest saving Trazum can
 make — a $0 caching saving against a $184 one on a 1,178-token support prompt —
 and it was reaching only people who had cloned the repository and built the CLI.

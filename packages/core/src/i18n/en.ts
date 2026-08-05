@@ -86,13 +86,26 @@ export const en: CoreMessages = {
       detail: `The optimised prompt is ~${n(tokens)} tokens and ${modelName} accepts ${n(contextWindow)}. The call will fail: split the content or move to a model with a larger window.`,
     }),
 
-    promptCaching: ({ placeholder, prefixTokens, totalTokens, minTokens, modelName, hitRatePct }) => {
+    promptCaching: ({
+      placeholder,
+      prefixTokens,
+      totalTokens,
+      minTokens,
+      modelName,
+      hitRatePct,
+      readPct,
+      writePct,
+      explicit,
+    }) => {
       const scope = placeholder
         ? `The stable prefix — everything before the first placeholder ${placeholder} — is ~${n(prefixTokens)} of the prompt's ${n(totalTokens)} tokens, and clears ${modelName}'s ${n(minTokens)}-token cacheable minimum.`
         : `The prompt has no variable placeholders, so the whole thing is a cacheable prefix and it clears ${modelName}'s ${n(minTokens)}-token minimum.`;
+      const how = explicit
+        ? 'Put the cache marker at the end of the stable prefix: any byte that changes before the cut invalidates everything after it.'
+        : `${modelName} caches automatically above its minimum, so there is nothing to set — but the same rule applies: any byte that changes before the cut invalidates everything after it.`;
       return {
         title: 'Turn on prompt caching for the stable prefix',
-        detail: `${scope} At a ${hitRatePct}% hit rate, a cache read costs 10% of the input price and a write costs 125%. Put cache_control at the end of the stable prefix: any byte that changes before the cut invalidates everything after it.`,
+        detail: `${scope} At a ${hitRatePct}% hit rate, a cache read costs ${readPct}% of the input price and a write costs ${writePct}%. ${how}`,
       };
     },
 
