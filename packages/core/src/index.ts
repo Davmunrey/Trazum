@@ -52,6 +52,11 @@ export type { CachePrefixAnalysis } from './cache.js';
 // guessed at — see extract.ts for why a gate cannot afford a heuristic here.
 export { extractPrompts, promptId, hasMarker, SOURCE_EXTENSIONS } from './extract.js';
 export type { ExtractedPrompt, DeclinedPrompt, ExtractionResult } from './extract.js';
+
+// Which provider a prompt is actually sent to, read from the code rather than
+// assumed — see detect.ts for why it declines when a file points two ways.
+export { detectFromSource } from './detect.js';
+export type { Detection, Evidence, EvidenceKind, DetectOptions } from './detect.js';
 export { optimize, withExactTokenCounts, DEFAULT_USAGE } from './optimize.js';
 export {
   refineWithLlm,

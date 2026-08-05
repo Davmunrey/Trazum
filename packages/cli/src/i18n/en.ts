@@ -18,6 +18,7 @@ ${bold('USAGE')}
   trazum check <file|dir|-> --max-tokens <n> [options]
   trazum eval <file> --cases <file> [options]
   trazum diff <before> <after> [options]
+  trazum where [file]
   trazum models
   trazum rules
 
@@ -86,6 +87,23 @@ ${bold('OPTIONS FOR diff')}
   costs, which advisories the edit introduced or resolved. Every figure is a
   delta and positive means worse. It reports and exits 0 unless --max-growth
   is given: deciding that growth is unacceptable is your call, not ours.
+
+${bold('trazum where')}
+  Says which provider a file's prompts are actually sent to, and how it knows —
+  an SDK import, a base URL, a quoted model id, or "model=" on a trazum:prompt
+  marker. Every answer names the line it came from.
+
+  It refuses when a file names two providers rather than picking one. Two
+  answers is not a weaker version of one answer, and picking silently is how
+  somebody budgets against the wrong provider for a month.
+
+  A base URL beats the SDK it was pointed at: Moonshot, DeepSeek, xAI and Groq
+  are all called through the OpenAI SDK with a different base_url, so treating
+  that as a contradiction would refuse to price an ordinary client.
+
+  With no file, it reports only which tool Trazum is running inside — and warns
+  when that tool bills by subscription, because a monthly saving is arithmetic
+  about tokens there, not money you get back.
 
 ${bold('CONFIG FILE')}
   ${bold('trazum.config.json')}, found by walking up from the working directory and
@@ -237,6 +255,26 @@ ${bold('EXAMPLES')}
     diffTooLarge: (lines, max) =>
       `  Diff skipped: ${lines} lines is past the ${max}-line limit, and aligning them would cost more memory than the answer is worth.`,
     wroteTo: (path) => `Optimised prompt written to ${path}`,
+  },
+
+  where: {
+    hostHeading: () => 'Running inside',
+    subscription: (host) =>
+      `${host} bills by subscription, not by the token. A monthly saving below is arithmetic about tokens, not money you get back — what you gain is context window and rate-limit headroom.`,
+    noTarget: () => 'Pass a source file to see which provider its prompts are sent to.',
+    sourceHeading: (path) => `Prompts in ${path} go to`,
+    conflict: () => 'Cannot tell: the file names more than one provider.',
+    conflictFallback: () =>
+      'Nothing was assumed. Set "usage.model" in trazum.config.json, or pass --model.',
+    nothingFound: () => 'Nothing in this file says which provider it calls.',
+    providerOnly: () => ' (provider only — nothing named a model)',
+    evidenceLine: (line, kind, detail) => `line ${line}  ${kind}: ${detail}`,
+    pricedAs: () => 'Priced as',
+    fromConfig: () => '(from trazum.config.json)',
+    fromDetection: () => '(read from the source)',
+    fromProviderDefault: (provider) =>
+      `(${provider} was read from the source; nothing named a model, so this is theirs)`,
+    fromDefault: () => '(the built-in default — nothing said otherwise)',
   },
 
   models: {

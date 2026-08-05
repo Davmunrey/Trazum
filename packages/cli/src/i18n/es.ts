@@ -12,6 +12,7 @@ ${bold('USO')}
   trazum check <fichero|dir|-> --max-tokens <n> [opciones]
   trazum eval <fichero> --cases <fichero> [opciones]
   trazum diff <antes> <después> [opciones]
+  trazum where [fichero]
   trazum models
   trazum rules
 
@@ -81,6 +82,23 @@ ${bold('OPCIONES DE diff')}
   cuánto cuesta eso, qué avisos ha introducido o resuelto la edición. Toda
   cifra es un delta y positivo significa peor. Informa y sale con 0 salvo que
   des --max-growth: decidir que crecer es inaceptable es cosa tuya, no nuestra.
+
+${bold('trazum where')}
+  Dice a qué proveedor van de verdad los prompts de un fichero, y cómo lo sabe:
+  un import del SDK, una base URL, un id de modelo entrecomillado, o "model=" en
+  un marcador trazum:prompt. Toda respuesta nombra la línea de la que sale.
+
+  Se niega cuando un fichero nombra dos proveedores en vez de elegir uno. Dos
+  respuestas no son una versión débil de una, y elegir en silencio es como
+  alguien acaba presupuestando contra el proveedor equivocado durante un mes.
+
+  Una base URL gana al SDK al que apunta: Moonshot, DeepSeek, xAI y Groq se
+  llaman con el SDK de OpenAI y otra base_url, así que tratarlo como
+  contradicción sería negarse a preciar un cliente perfectamente normal.
+
+  Sin fichero, informa solo de dentro de qué herramienta se ejecuta Trazum — y
+  avisa cuando esa herramienta cobra por suscripción, porque ahí un ahorro
+  mensual es aritmética sobre tokens, no dinero que recuperes.
 
 ${bold('FICHERO DE CONFIGURACIÓN')}
   ${bold('trazum.config.json')}, que se busca subiendo desde el directorio de trabajo
@@ -249,6 +267,26 @@ ${bold('EJEMPLOS')}
     diffTooLarge: (lines, max) =>
       `  Diff omitido: ${lines} líneas supera el límite de ${max}, y alinearlas costaría más memoria de lo que vale la respuesta.`,
     wroteTo: (path) => `Prompt optimizado escrito en ${path}`,
+  },
+
+  where: {
+    hostHeading: () => 'Ejecutándose dentro de',
+    subscription: (host) =>
+      `${host} cobra por suscripción, no por token. Un ahorro mensual de los de abajo es aritmética sobre tokens, no dinero que recuperes: lo que ganas es margen de ventana de contexto y de rate limit.`,
+    noTarget: () => 'Pasa un fichero fuente para ver a qué proveedor van sus prompts.',
+    sourceHeading: (path) => `Los prompts de ${path} van a`,
+    conflict: () => 'No se puede saber: el fichero nombra más de un proveedor.',
+    conflictFallback: () =>
+      'No se ha asumido nada. Define "usage.model" en trazum.config.json, o pasa --model.',
+    nothingFound: () => 'Nada en este fichero dice a qué proveedor llama.',
+    providerOnly: () => ' (solo el proveedor — nada nombra un modelo)',
+    evidenceLine: (line, kind, detail) => `línea ${line}  ${kind}: ${detail}`,
+    pricedAs: () => 'Se cobra como',
+    fromConfig: () => '(de trazum.config.json)',
+    fromDetection: () => '(leído del código)',
+    fromProviderDefault: (provider) =>
+      `(${provider} se ha leído del código; nada nombra un modelo, así que este es el suyo)`,
+    fromDefault: () => '(el valor por defecto — nada dijo otra cosa)',
   },
 
   models: {
