@@ -3,6 +3,31 @@
 Versioning policy: [VERSIONING.md](VERSIONING.md). Below 1.0, minor versions
 may contain breaking changes, and say so in their first line.
 
+## 0.7.0
+
+- New `reviewExamples`: the paraphrase case the deterministic detector refuses
+  to guess at. Two examples teaching the same lesson in different words score
+  around 0.54 on word overlap — close enough to two genuinely distinct examples
+  (~0.20) that catching them by similarity would mean flagging examples that
+  teach different things. Deciding that "arrived quickly" and "arrived fast"
+  demonstrate the same pattern needs a model, so this sits behind the optional
+  LLM layer, costs a call, and never runs during an ordinary `optimize()`.
+- Returns `null` below two examples, so the caller does not pay for a foregone
+  answer.
+- **The response is treated as untrusted input, because it is.** Indices are
+  range-checked against the examples that exist, self-references dropped,
+  overlapping groups collapsed so the same tokens are never counted twice, and
+  the model's stated reason truncated. A model answering with prose produces an
+  empty review — not a crash, and not a saving the prompt could not deliver.
+- A provider **error** still throws. A bad answer is the model's problem and
+  gets absorbed; a broken endpoint is the caller's configuration and hiding it
+  would waste their afternoon.
+- The CLI runs it under `--llm`, reports it as a suggestion to read rather than
+  a change made, and includes it in `--json`.
+- Shortens the GitHub Action's description to 113 characters: the Marketplace
+  rejects anything over 125, which blocked publishing.
+- Tests grow from 164 to 179.
+
 ## 0.6.0
 
 **Fixes a rule that left a broken sentence behind.** `self-check` matched

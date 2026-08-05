@@ -158,20 +158,35 @@ the same way, both found by reading its own output.
 
 ---
 
+### 0.7.0 — The paraphrase case, handed to a model
+
+The one finding the deterministic detector refuses to guess at. Two examples
+teaching the same lesson in different words score around 0.54 on word overlap,
+close enough to two genuinely distinct examples (~0.20) that catching them by
+similarity would mean flagging examples that teach different things.
+
+Deciding that "arrived quickly" and "arrived fast" demonstrate the same pattern
+needs a model, so `reviewExamples` lives behind the optional LLM layer, costs a
+call, and never runs during an ordinary `optimize()`.
+
+- Returns `null` below two examples rather than paying for a foregone answer.
+- Treats the response as untrusted input, because it is: indices are
+  range-checked against the examples that exist, self-references dropped,
+  overlapping groups collapsed so the same tokens are never counted twice, and
+  the model's reason truncated. A model answering with prose produces an empty
+  review, not a crash and not a saving the prompt could not deliver.
+- A provider **error** still throws. A bad answer is the model's problem and
+  gets absorbed; a broken endpoint is the caller's configuration and must not
+  be hidden.
+- Reports only. Nothing here edits a prompt, which is what makes it safe to be
+  relaxed about a model that answers badly — the worst outcome is a suggestion
+  you ignore.
+
+---
+
 ---
 
 ## Next
-
-### 0.7.0 — Semantic structure
-
-The pieces of structural analysis that need judgement rather than pattern
-matching. The review tooling that used to sit here shipped in 0.6.0.
-
-- **Semantically redundant examples**, via the optional LLM pass: the
-  paraphrase case the deterministic detector correctly refuses to guess at.
-- **More contradiction axes** as real prompts justify them — tone, persona,
-  refusal policy. Each new axis has to earn its place against false positives:
-  an advisory people learn to ignore is worse than no advisory.
 
 ### 0.8.0 — Measurement instead of estimation
 
@@ -220,6 +235,12 @@ edited over months.
 ## Under consideration
 
 Not scheduled. Listed so the reasoning is on the record.
+
+- **More contradiction axes** — tone, persona, refusal policy. Unscheduled
+  rather than planned, because each new axis has to earn its place against
+  false positives and I have not seen enough real prompts to know which ones
+  do. An advisory people learn to ignore is worse than no advisory, and four
+  axes that fire correctly beat seven that mostly do not.
 
 - **More locales.** The architecture supports it as of 0.3.0, and adding one is
   now a catalogue plus dictionary entries. Held back on purpose: a language

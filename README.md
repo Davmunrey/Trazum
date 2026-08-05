@@ -80,7 +80,7 @@ version stands. It never returns something worse than where it started.
 ```bash
 npm install
 npm run build      # core + cli
-npm test           # 164 tests
+npm test           # 179 tests
 ```
 
 ### CLI
@@ -291,6 +291,12 @@ console.log(withLlm.llm.applied, withLlm.llm.rejectedReason);
 An LLM candidate is **rejected** when it is empty, alters code/URLs/
 placeholders, is not shorter, or keeps under 25% of the tokens — that is a
 summary, not a compression.
+
+`--llm` also reviews your few-shot examples, in a second call, and only when
+there are at least two. This is the one thing the deterministic detector
+deliberately will not guess at: two examples teaching the same lesson in
+different words score too close to two genuinely distinct ones to separate by
+word overlap. The review reports; it never edits.
 
 ---
 

@@ -132,3 +132,9 @@ this: the optimised prompt will not have broken someone's JSON schema.
 deterministic pass is free and does most of the work. The candidate is only
 accepted if it is shorter and leaves protected content byte-identical;
 otherwise the deterministic version stands.
+
+It also reviews few-shot examples, in a second call, and only when the prompt
+has at least two. That review reports examples the model thinks teach the same
+thing — the paraphrase case word overlap cannot separate from two genuinely
+different examples. **Surface it as a suggestion, never apply it silently:** an
+example that looks redundant may be a boundary case someone added on purpose.
