@@ -223,3 +223,57 @@ describe('the CLI diff is bounded', () => {
     assert.ok(guardAt < tableAt, 'the cap is checked after the table is already allocated');
   });
 });
+
+describe('the packaged Action', () => {
+  // This is what other people run inside their own workflows, with their own
+  // tokens in scope. It has to hold at least the standard this repository
+  // holds itself to — for a while it did not.
+  const action = readFileSync(join(repoRoot, 'action.yml'), 'utf8');
+
+  it('installs without running dependency lifecycle scripts', () => {
+    // Our own CI has had --ignore-scripts from the start; the action, which is
+    // the one running on somebody else's runner, did not. That was backwards.
+    const install = /npm ci[^\n]*/.exec(action);
+    assert.ok(install, 'the action no longer installs');
+    assert.match(install[0], /--ignore-scripts/, `npm ci is missing --ignore-scripts: ${install[0]}`);
+  });
+
+  it('never interpolates an input into a shell script', () => {
+    // `${{ inputs.file }}` spliced into `run:` is the classic Actions
+    // template-injection shape. The substitution happens before bash sees it,
+    // so quoting inside the template is not a fix — the value has to arrive
+    // through the environment.
+    const runBlocks = [...action.matchAll(/run:\s*(>-|\||>)?\s*\n([\s\S]*?)(?=\n {4}- |\n[a-z]|$)/g)];
+    assert.ok(runBlocks.length > 0, 'no run blocks found — has the action changed shape?');
+
+    for (const [, , body] of runBlocks) {
+      const interpolated = body.match(/\$\{\{\s*inputs\.[^}]*\}\}/g);
+      assert.equal(
+        interpolated,
+        null,
+        `an input is interpolated straight into a shell script: ${interpolated?.join(', ')}`,
+      );
+    }
+  });
+
+  it('passes every declared input through to the CLI', () => {
+    // A declared input nobody reads is a promise the action does not keep.
+    // Scoped to the `inputs:` block — matching two-space keys across the whole
+    // file also picks up `steps:` under `runs:`.
+    const inputsBlock = action.slice(action.indexOf('\ninputs:'), action.indexOf('\nruns:'));
+    assert.ok(inputsBlock.length > 0, 'could not find the inputs block');
+    const declared = [...inputsBlock.matchAll(/^ {2}([a-z][a-z-]*):$/gm)].map((m) => m[1]);
+    assert.ok(declared.length >= 2, `only found ${declared.length} inputs — regex is wrong`);
+    for (const input of declared) {
+      const envName = input.replace(/-/g, '_').toUpperCase();
+      assert.ok(
+        action.includes(`inputs.${input}`),
+        `input "${input}" is declared but never used`,
+      );
+      assert.ok(
+        new RegExp(`TRAZUM_[A-Z_]*${envName.split('_').pop()}`).test(action),
+        `input "${input}" is declared but never reaches the CLI`,
+      );
+    }
+  });
+});
