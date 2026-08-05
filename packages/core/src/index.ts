@@ -6,11 +6,27 @@ export {
   DEFAULT_MODEL,
   COST_MULTIPLIERS,
   PRICING_LAST_REVIEWED,
+  BUNDLED_CATALOGUE,
   getModel,
   listModels,
   effectivePricing,
   cheapestOfTier,
+  modelFrom,
+  cheapestOfTierIn,
 } from './pricing.js';
+export type { PricingCatalogue } from './pricing.js';
+
+// Local price corrections, so a price change needs no library upgrade.
+export {
+  MAX_PRICING_BYTES,
+  PRICING_MODEL_KEYS,
+  PRICING_OVERLAY_KEYS,
+  PricingOverlayError,
+  applyPricingOverlay,
+  catalogueFromOverlay,
+  parsePricingOverlay,
+} from './pricing-overlay.js';
+export type { PricingOverlay } from './pricing-overlay.js';
 export { RULES, getRule } from './rules.js';
 export { segment, join, protectedTexts } from './segment.js';
 export { computeSavings, costOfCall, formatUsd, formatSignedUsd } from './savings.js';

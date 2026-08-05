@@ -10,6 +10,56 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+**Pricing is no longer tied to the release cycle** — the third of four items on
+the 1.0.0 roadmap entry. Prices change on someone else's schedule, and until now
+correcting one meant upgrading the library, which is backwards: a stale price is
+a wrong number in a budget decision.
+
+A **pricing overlay** is a JSON file layered over the bundled catalogue:
+
+```json
+{ "lastReviewed": "2027-01-15",
+  "models": { "claude-opus-5": { "inputPerMTok": 6 } } }
+```
+
+Point at it with `pricing` in `trazum.config.json` or `--pricing <file>`. The
+bundled catalogue stays the default, so Trazum is still correct out of the box
+and needs no setup.
+
+- **A separate `@trazum/pricing` package would not have solved this.** You would
+  still need to install something to get current numbers. A JSON file in your own
+  repository actually decouples it, and keeps both properties that matter: the
+  core still makes no network call, and it still has no dependencies.
+- **The catalogue is a value, not module state.** `applyPricingOverlay` returns a
+  *new* catalogue; nothing mutates. A caller who overlays prices does not change
+  what any other caller sees, which is what stops one consumer's local prices
+  leaking into another's report — and what makes it testable at all.
+- **Every report says when overlaid prices were used, and for which models.**
+  Without that, a figure from the bundled catalogue and a figure from somebody's
+  JSON file look identical. `OptimizationResult` gains `pricingSource`.
+- `lastReviewed` is **required** in an overlay, and becomes the catalogue's date.
+  An overlay of unknown age is worse than the bundled catalogue, whose age is
+  printed on every report; and claiming the bundled date over corrected prices
+  would be a lie about provenance.
+- Overriding a known model needs only the fields that changed. **Introducing a
+  model needs all of them**, because a half-defined model would price at nothing
+  and report a saving that does not exist. `"promo": null` withdraws a promotion
+  that ended early.
+- `withExactTokenCounts` **throws** if a result was priced against an overlay and
+  the same catalogue is not passed back. Silently reverting to bundled prices
+  would make the token counts and the money come from different sources, with
+  nothing in the report to show why.
+- `cheapestOfTierIn` ranks a tier on the **effective** price, so a model inside a
+  promotional window is compared at what it actually costs today.
+- Validation is as strict as the config parser's, same reasoning: a typo'd
+  `inputPerMtok` would silently price against the bundled number, and a budget
+  decision made on a price nobody applied is the whole failure being prevented.
+- `usage.model` validation **moved** from `parseConfig` to `loadConfig`. An
+  overlay can introduce a model, and the path to the overlay is a key of the very
+  document being parsed — so the parser cannot know the catalogue yet. The check
+  is still loud, just raised where "unknown model" can be answered truthfully.
+- Tests grow from 361 to 390.
+
 **Every third-party GitHub Action is now pinned to a commit SHA.** `SECURITY.md`
 listed this as a known limit; it no longer is. A tag can be moved and a branch
 moves by design, so `@v3` means "whatever that publisher pushes there next", with

@@ -101,8 +101,14 @@ describe('an invalid config is loud', () => {
     rejects({ disable: 'intensifiers' }, /must be an array/);
   });
 
-  it('rejects an unknown model', () => {
-    rejects({ usage: { model: 'gpt-9' } }, /Unknown model/);
+  it('does NOT reject an unknown model, because it cannot know yet', () => {
+    // A `pricing` overlay can introduce a model, and the path to that overlay is
+    // a key of this very document. So the parser accepts any non-empty string and
+    // `loadConfig` does the membership check once the overlay is resolved — see
+    // "an unknown model is still rejected, just later" below.
+    assert.doesNotThrow(() => parseConfig(JSON.stringify({ usage: { model: 'gpt-9' } })));
+    rejects({ usage: { model: '' } }, /non-empty string/);
+    rejects({ usage: { model: 42 } }, /non-empty string/);
   });
 
   it('rejects numbers that cannot mean what they say', () => {

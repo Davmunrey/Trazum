@@ -1,4 +1,5 @@
-import { COST_MULTIPLIERS, effectivePricing, getModel } from './pricing.js';
+import { BUNDLED_CATALOGUE, COST_MULTIPLIERS, effectivePricing, modelFrom } from './pricing.js';
+import type { PricingCatalogue } from './pricing.js';
 import type { CostBreakdown, SavingsReport, UsageProfile } from './types.js';
 
 /** Cost of a single call. */
@@ -35,8 +36,9 @@ export function computeSavings(
   tokensAfter: number,
   usage: UsageProfile,
   on: Date = new Date(),
+  pricing: PricingCatalogue = BUNDLED_CATALOGUE,
 ): SavingsReport {
-  const model = getModel(usage.model);
+  const model = modelFrom(pricing, usage.model);
   const { inputPerMTok, outputPerMTok, promoApplied } = effectivePricing(model, on);
 
   const before = costOfCall(

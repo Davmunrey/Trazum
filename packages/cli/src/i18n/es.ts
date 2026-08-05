@@ -79,6 +79,7 @@ ${bold('FICHERO DE CONFIGURACIÓN')}
     level, locale, disable, maxGrowth, extensions
     usage     { model, callsPerMonth, avgOutputTokens, cacheHitRate, batchEligible }
     budgets   { "prompts/**": 2000, "prompts/system.txt": 4000 }
+    pricing   "./prices.json"   — correcciones locales de precios, ver abajo
 
   Las opciones ganan al config; el config gana a los valores por defecto. Los
   presupuestos se resuelven con el patrón más específico que encaje — gana el
@@ -91,6 +92,24 @@ ${bold('FICHERO DE CONFIGURACIÓN')}
   un prompt que nadie ha medido.
 
   --config <fichero>          Usa este config en vez de buscar uno.
+
+${bold('PRECIOS')}
+  Los precios cambian en el calendario de otros, así que corregir uno no exige
+  actualizar Trazum. Un overlay de precios es un JSON que se superpone al
+  catálogo incluido:
+
+    { "lastReviewed": "2027-01-15",
+      "models": { "claude-opus-5": { "inputPerMTok": 6 } } }
+
+  Solo cambian los campos que nombres. Un modelo que no esté en el catálogo
+  incluido tiene que venir completo: uno definido a medias costaría cero por
+  algún lado y anunciaría un ahorro que no existe. "promo": null retira una
+  promoción.
+
+  Todo informe dice cuándo se han usado precios de overlay y qué modelos cubren:
+  una cifra del catálogo incluido y una de tu JSON son indistinguibles si no.
+
+  --pricing <fichero>         Usa este overlay, por delante del del config.
 
 ${bold('LLM OPCIONAL')}
   El núcleo es determinista y gratis. Con --llm se añade una pasada de
@@ -180,6 +199,8 @@ ${bold('EJEMPLOS')}
     beyondShortening: () => 'Además de acortar el prompt',
     perMonthSuffix: (amount) => ` ~${amount}/mes`,
     diff: () => 'Diff',
+    pricingOverlaid: (models, lastReviewed) =>
+      `Los precios de ${models} vienen de un overlay local revisado el ${lastReviewed}, no del catálogo incluido.`,
     diffTooLarge: (lines, max) =>
       `  Diff omitido: ${lines} líneas supera el límite de ${max}, y alinearlas costaría más memoria de lo que vale la respuesta.`,
     wroteTo: (path) => `Prompt optimizado escrito en ${path}`,
@@ -284,6 +305,8 @@ ${bold('EJEMPLOS')}
     truncated: () =>
       'Se ha parado antes de tiempo: el directorio supera el límite de recorrido, así que esto no es el cuadro completo.',
     footer: (source, level) => `Recuento de tokens ${source} · nivel de reglas \`${level}\``,
+    pricingOverlaid: (count, lastReviewed) =>
+      `Los precios de ${count} ${count === 1 ? 'modelo' : 'modelos'} vienen de un overlay local revisado el ${lastReviewed}.`,
     sourceEstimated: () => 'estimado, ±15%',
     sourceExact: () => 'exacto',
     measuringOptimised: () =>

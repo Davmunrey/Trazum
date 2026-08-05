@@ -2,6 +2,7 @@
 
 import type { RuleChange } from './changes.js';
 import type { Locale, RuleId } from './i18n/types.js';
+import type { PricingCatalogue } from './pricing.js';
 
 /** How aggressive the deterministic rules are allowed to be. */
 export type RuleLevel = 'safe' | 'aggressive';
@@ -154,6 +155,14 @@ export interface OptimizeOptions {
   tokenCounter?: TokenCounter;
   /** Language of the report. Defaults to English. */
   locale?: Locale;
+  /**
+   * Prices to work from. Defaults to the catalogue bundled with this release.
+   *
+   * Build one with `applyPricingOverlay` when a published price has moved: a
+   * stale price is a wrong number in a budget decision, and correcting it should
+   * not require a library upgrade.
+   */
+  pricing?: PricingCatalogue;
 }
 
 /** Counts tokens in a text. Synchronous so it can run inside the rule loop. */
@@ -176,6 +185,20 @@ export interface OptimizationResult {
   locale: Locale;
   /** How tokens were counted, so the caller knows the margin of error. */
   tokenSource: 'heuristic' | 'external';
+  /**
+   * Where the prices came from.
+   *
+   * Reported rather than assumed: once prices can be overlaid locally, a figure
+   * from the bundled catalogue and a figure from somebody's JSON file look
+   * identical, and a reader has to be able to tell which they are reading.
+   */
+  pricingSource: {
+    lastReviewed: string;
+    /** Bundled prices an overlay replaced. Empty when none did. */
+    overriddenModels: string[];
+    /** Models an overlay introduced. Empty when none did. */
+    addedModels: string[];
+  };
   /** Present only when an LLM pass ran. */
   llm?: LlmRefinement;
 }

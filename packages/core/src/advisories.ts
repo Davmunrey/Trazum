@@ -2,7 +2,8 @@ import { analyzeCachePrefix } from './cache.js';
 import { getMessages } from './i18n/index.js';
 import type { Locale } from './i18n/types.js';
 import { COMPLEX_SIGNALS, SIMPLE_SIGNALS } from './phrases.js';
-import { COST_MULTIPLIERS, MODELS, effectivePricing, getModel } from './pricing.js';
+import { BUNDLED_CATALOGUE, COST_MULTIPLIERS, effectivePricing, modelFrom } from './pricing.js';
+import type { PricingCatalogue } from './pricing.js';
 import { formatUsd } from './savings.js';
 import { analyzeExamples, findContradictions, findRestatedFormat } from './structure.js';
 import { estimateTokens } from './tokenizer.js';
@@ -45,8 +46,14 @@ const TIER_ORDER: Record<ModelPricing['tier'], number> = {
 };
 
 /** Cheapest model of a tier, using today's effective input price. */
-function cheapestInTier(tier: ModelPricing['tier'], on: Date): ModelPricing | undefined {
-  const candidates = MODELS.filter((m) => m.tier === tier && m.id !== 'claude-mythos-5');
+function cheapestInTier(
+  tier: ModelPricing['tier'],
+  on: Date,
+  pricing: PricingCatalogue,
+): ModelPricing | undefined {
+  // Mythos is excluded because it is not generally available: recommending a
+  // model the reader cannot call is worse than recommending nothing.
+  const candidates = pricing.models.filter((m) => m.tier === tier && m.id !== 'claude-mythos-5');
   if (candidates.length === 0) return undefined;
   return candidates.reduce((best, m) =>
     effectivePricing(m, on).inputPerMTok < effectivePricing(best, on).inputPerMTok ? m : best,
@@ -59,6 +66,8 @@ export interface AdvisoryOptions {
   /** Token counter, so the cache-prefix analysis matches the caller's. */
   count?: TokenCounter;
   locale?: Locale;
+  /** Prices to work from. Defaults to the catalogue bundled with this release. */
+  pricing?: PricingCatalogue;
 }
 
 /** Builds the advisories that do not modify the prompt but do move the bill. */
@@ -68,11 +77,11 @@ export function buildAdvisories(
   usage: UsageProfile,
   options: AdvisoryOptions = {},
 ): Advisory[] {
-  const { on = new Date(), count = estimateTokens, locale } = options;
+  const { on = new Date(), count = estimateTokens, locale, pricing = BUNDLED_CATALOGUE } = options;
   const t = getMessages(locale);
 
   const advisories: Advisory[] = [];
-  const model = getModel(usage.model);
+  const model = modelFrom(pricing, usage.model);
   const { inputPerMTok, outputPerMTok, promoApplied } = effectivePricing(model, on);
 
   const monthlyInputUsd =
@@ -185,7 +194,7 @@ export function buildAdvisories(
   // --- Recommended model ---
   const suggestedTier = recommendTier(optimizedPrompt, tokensAfter);
   if (TIER_ORDER[suggestedTier] < TIER_ORDER[model.tier]) {
-    const candidate = cheapestInTier(suggestedTier, on);
+    const candidate = cheapestInTier(suggestedTier, on, pricing);
     if (candidate) {
       const candidatePricing = effectivePricing(candidate, on);
       const candidateMonthly =

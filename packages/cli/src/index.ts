@@ -38,10 +38,11 @@ import {
   CONFIG_FILENAME,
   DEFAULT_EXTENSIONS,
   budgetFor,
+  catalogueFromOverlay,
   loadConfig,
   walkPrompts,
 } from '@trazum/core/node';
-import type { TrazumConfig } from '@trazum/core/node';
+import type { PricingCatalogue, TrazumConfig } from '@trazum/core/node';
 
 import { detectLocale, getCliMessages } from './i18n/index.js';
 import {
@@ -98,6 +99,7 @@ const VALUE_FLAGS = new Set([
   'locale',
   'config',
   'markdown-out',
+  'pricing',
   'out',
   'o',
 ]);
@@ -218,6 +220,20 @@ function usageFrom(args: Args, config: TrazumConfig, t: CliMessages): UsageProfi
   };
 }
 
+/**
+ * Prices for this run: `--pricing` beats the config's overlay, which beats the
+ * bundled catalogue — the same layering as every other setting.
+ */
+async function pricingFor(
+  args: Args,
+  loaded: { pricing: PricingCatalogue },
+): Promise<PricingCatalogue> {
+  const flag = stringFlag(args, 'pricing');
+  if (!flag) return loaded.pricing;
+  const raw = await readFile(flag, 'utf8');
+  return catalogueFromOverlay(raw, flag);
+}
+
 /** Rules to disable: the flag replaces the config list rather than adding to it. */
 function disabledRules(args: Args, config: TrazumConfig): RuleId[] | undefined {
   const flag = stringFlag(args, 'disable');
@@ -233,7 +249,7 @@ function disabledRules(args: Args, config: TrazumConfig): RuleId[] | undefined {
  * a threshold is set — `--max-growh 5` would have been ignored and the build
  * gone green. Silence is the wrong answer for a typo.
  */
-const GLOBAL_FLAGS = ['help', 'h', 'locale', 'json', 'config'];
+const GLOBAL_FLAGS = ['help', 'h', 'locale', 'json', 'config', 'pricing'];
 const COMMAND_FLAGS: Record<string, string[]> = {
   optimize: [
     'level', 'model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch',
@@ -408,6 +424,18 @@ function printReport(
       result.usage.batchEligible,
     )}`,
   );
+  // Said, not assumed. Once prices can be overlaid locally, a figure from the
+  // bundled catalogue and a figure from somebody's JSON file look identical, and
+  // the reader has to be able to tell which one they are about to budget against.
+  const touched = [
+    ...result.pricingSource.overriddenModels,
+    ...result.pricingSource.addedModels,
+  ];
+  if (touched.length > 0) {
+    console.log(
+      `  ${c.yellow(t.report.pricingOverlaid(touched.join(', '), result.pricingSource.lastReviewed))}`,
+    );
+  }
   console.log(
     `  ${formatUsd(savings.perMonth.before.totalUsd)} → ` +
       `${c.green(formatUsd(savings.perMonth.after.totalUsd))}   ` +
@@ -495,16 +523,16 @@ function wrap(text: string, width: number, indent: string): string {
 // Subcommands
 // --------------------------------------------------------------------------
 
-function commandModels(t: CliMessages): void {
+function commandModels(t: CliMessages, pricing: PricingCatalogue): void {
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const col = t.models.columns;
 
   console.log();
   console.log(c.bold(t.models.title()) + c.dim(t.models.unit()));
-  console.log(c.dim(t.models.reviewedOn(PRICING_LAST_REVIEWED)));
+  console.log(c.dim(t.models.reviewedOn(pricing.lastReviewed)));
   console.log();
 
-  const rows = listModels().map((m) => ({
+  const rows = pricing.models.map((m) => ({
     id: m.id,
     input: m.promo ? `${m.promo.inputPerMTok} (→${m.inputPerMTok})` : String(m.inputPerMTok),
     output: m.promo ? `${m.promo.outputPerMTok} (→${m.outputPerMTok})` : String(m.outputPerMTok),
@@ -576,6 +604,7 @@ async function readInput(source: string | undefined, t: CliMessages): Promise<st
 async function commandOptimize(
   args: Args,
   config: TrazumConfig,
+  pricing: PricingCatalogue,
   t: CliMessages,
   locale: Locale,
 ): Promise<void> {
@@ -595,6 +624,7 @@ async function commandOptimize(
     usage,
     locale,
     disableRules,
+    pricing,
   });
 
   let examplesReview: ExampleReview | null = null;
@@ -621,6 +651,7 @@ async function commandOptimize(
     result = await withExactTokenCounts(
       result,
       countTokensAnthropic({ apiKey, model: result.usage.model }),
+      pricing,
     );
   }
 
@@ -683,6 +714,7 @@ async function judgeFile(
   counter: Counter,
   level: RuleLevel,
   locale: Locale,
+  pricing: PricingCatalogue,
 ): Promise<FileVerdict> {
   const tokens = await counter.count(text);
   const maxTokens = budget?.maxTokens ?? null;
@@ -693,7 +725,7 @@ async function judgeFile(
   // directory run that is fine.
   let optimizedTokens: number | null = null;
   if (maxTokens !== null && tokens > maxTokens) {
-    optimizedTokens = await counter.count(optimize(text, { level, locale }).optimized);
+    optimizedTokens = await counter.count(optimize(text, { level, locale, pricing }).optimized);
   }
 
   return { path, tokens, maxTokens, pattern: budget?.pattern ?? null, optimizedTokens };
@@ -712,6 +744,7 @@ const isOverBudget = (v: FileVerdict): boolean => v.maxTokens !== null && v.toke
 async function commandCheck(
   args: Args,
   config: TrazumConfig,
+  pricing: PricingCatalogue,
   t: CliMessages,
   locale: Locale,
 ): Promise<void> {
@@ -725,7 +758,7 @@ async function commandCheck(
   const asDirectory = target !== undefined && target !== '-' ? await isDirectory(target) : false;
 
   if (asDirectory) {
-    await checkDirectory(target!, args, flagBudget, config, counter, level, t, locale);
+    await checkDirectory(target!, args, flagBudget, config, counter, level, t, locale, pricing);
     return;
   }
 
@@ -745,6 +778,7 @@ async function commandCheck(
     counter,
     level,
     locale,
+    pricing,
   );
   const ok = !isOverBudget(verdict);
 
@@ -845,6 +879,7 @@ async function checkDirectory(
   level: RuleLevel,
   t: CliMessages,
   locale: Locale,
+  pricing: PricingCatalogue,
 ): Promise<void> {
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const { files, truncated } = await walkPrompts(root, { extensions: config.extensions });
@@ -872,7 +907,7 @@ async function checkDirectory(
     const fromConfig = budgetFor(keyed, config.budgets);
     const budget =
       fromConfig ?? (flagBudget >= 0 ? { maxTokens: flagBudget, pattern: null } : null);
-    verdicts.push(await judgeFile(keyed, text, budget, counter, level, locale));
+    verdicts.push(await judgeFile(keyed, text, budget, counter, level, locale, pricing));
   }
 
   if (verdicts.every((v) => v.maxTokens === null)) {
@@ -1098,6 +1133,7 @@ function parseCases(raw: string): string[] {
 async function commandDiff(
   args: Args,
   config: TrazumConfig,
+  pricing: PricingCatalogue,
   t: CliMessages,
   locale: Locale,
 ): Promise<void> {
@@ -1114,6 +1150,7 @@ async function commandDiff(
     locale,
     optimizeBoth: boolFlag(args, 'optimized'),
     usage: usageFrom(args, config, t),
+    pricing,
   });
 
   await writeMarkdown(args, () =>
@@ -1232,7 +1269,9 @@ async function main(): Promise<void> {
   // flag validation so a typo is reported before any file is touched. An
   // invalid config throws here rather than quietly reverting to defaults —
   // "defaults" for a budget means "no budget", which means a green build.
-  const { config } = await loadConfig({ explicit: stringFlag(args, 'config') });
+  const loaded = await loadConfig({ explicit: stringFlag(args, 'config') });
+  const { config } = loaded;
+  const pricing = await pricingFor(args, loaded);
 
   // The config only gets to choose the locale when nothing more explicit did.
   if (config.locale && !stringFlag(args, 'locale')) {
@@ -1242,19 +1281,19 @@ async function main(): Promise<void> {
 
   switch (args.command) {
     case 'optimize':
-      await commandOptimize(args, config, t, locale);
+      await commandOptimize(args, config, pricing, t, locale);
       break;
     case 'check':
-      await commandCheck(args, config, t, locale);
+      await commandCheck(args, config, pricing, t, locale);
       break;
     case 'eval':
       await commandEval(args, config, t, locale);
       break;
     case 'diff':
-      await commandDiff(args, config, t, locale);
+      await commandDiff(args, config, pricing, t, locale);
       break;
     case 'models':
-      commandModels(t);
+      commandModels(t, pricing);
       break;
     case 'rules':
       commandRules(t, locale);

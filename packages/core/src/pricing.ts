@@ -112,16 +112,85 @@ export const MODELS: ModelPricing[] = [
   },
 ];
 
-const BY_ID = new Map(MODELS.map((m) => [m.id, m]));
-
 export const DEFAULT_MODEL = 'claude-opus-5';
 
-export function getModel(id: string): ModelPricing {
-  const model = BY_ID.get(id);
+/**
+ * A set of prices to work from.
+ *
+ * Prices change on someone else's schedule, and until 1.0 correcting one meant
+ * upgrading the library — which is backwards: a stale price is a wrong number in
+ * a budget decision, and nobody should have to take a dependency bump to fix it.
+ *
+ * So the catalogue is a **value**, not module state. The bundled one below is the
+ * default, and `applyPricingOverlay` returns a *new* catalogue with local
+ * corrections layered on. Nothing mutates: a caller who overlays prices does not
+ * change what any other caller sees, and two catalogues can exist in one process
+ * — which is what makes it testable and what stops one consumer's local prices
+ * leaking into another's report.
+ */
+export interface PricingCatalogue {
+  models: ModelPricing[];
+  byId: Map<string, ModelPricing>;
+  /** The date the prices in this catalogue were last checked. */
+  lastReviewed: string;
+  /** Ids whose bundled prices an overlay replaced. Empty for the bundled set. */
+  overriddenModels: string[];
+  /** Ids an overlay introduced that the bundled catalogue does not have. */
+  addedModels: string[];
+}
+
+function makeCatalogue(
+  models: ModelPricing[],
+  lastReviewed: string,
+  overriddenModels: string[] = [],
+  addedModels: string[] = [],
+): PricingCatalogue {
+  return {
+    models,
+    byId: new Map(models.map((m) => [m.id, m])),
+    lastReviewed,
+    overriddenModels,
+    addedModels,
+  };
+}
+
+/** The prices compiled into this release. */
+export const BUNDLED_CATALOGUE: PricingCatalogue = makeCatalogue(MODELS, PRICING_LAST_REVIEWED);
+
+/** Looks a model up in a specific catalogue. */
+export function modelFrom(catalogue: PricingCatalogue, id: string): ModelPricing {
+  const model = catalogue.byId.get(id);
   if (!model) {
-    throw new Error(`Unknown model: "${id}". Available: ${MODELS.map((m) => m.id).join(', ')}`);
+    throw new Error(
+      `Unknown model: "${id}". Available: ${catalogue.models.map((m) => m.id).join(', ')}`,
+    );
   }
   return model;
+}
+
+/**
+ * Cheapest model of a tier within a catalogue.
+ *
+ * Compared on the **effective** price, so a model in a promotional window is
+ * ranked at what it actually costs today rather than at its list price.
+ */
+export function cheapestOfTierIn(
+  catalogue: PricingCatalogue,
+  tier: ModelPricing['tier'],
+  on: Date = new Date(),
+): ModelPricing {
+  const candidates = catalogue.models.filter((m) => m.tier === tier);
+  const first = candidates[0];
+  if (!first) throw new Error(`No models for tier "${tier}"`);
+  return candidates.reduce(
+    (best, m) =>
+      effectivePricing(m, on).inputPerMTok < effectivePricing(best, on).inputPerMTok ? m : best,
+    first,
+  );
+}
+
+export function getModel(id: string): ModelPricing {
+  return modelFrom(BUNDLED_CATALOGUE, id);
 }
 
 export function listModels(): ModelPricing[] {
