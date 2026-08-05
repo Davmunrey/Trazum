@@ -10,6 +10,39 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+**On a subscription, Trazum stops printing money.** Inside Claude Code, Codex or
+Cursor you pay the same whatever your prompt costs, so a monthly figure is
+arithmetic about tokens dressed as cash — and "$184/month" told to somebody on a
+flat plan is not a rounding error, it is money that does not exist.
+
+The report now says what the saving actually buys there: tokens back per call,
+and the share of the context window they free. The window is the real currency
+inside an agent — every token the system prompt holds is one the conversation
+cannot.
+
+**Advisories whose only pitch is money are dropped too**, which the first version
+got wrong. Suppressing the price beside each title left `model-downgrade`'s detail
+reading "you would go from $843.00 to $337.20 per month" in prose underneath.
+`model-downgrade`, `batch-api`, `output-dominated` and `promo-pricing` now go
+entirely; caching, context overflow, contradictions and redundant examples stay,
+because latency, headroom and correctness are still real on a plan.
+
+The test for this is blunt on purpose — **no dollar sign anywhere in the output**.
+A softer assertion would have passed the version with money in the prose.
+
+Two escape hatches, and the reasoning behind them matters more than the flags:
+the host says where *Trazum* runs, not where the prompt goes. Somebody editing a
+production prompt inside Cursor wants the dollars, so `--cost` brings them back
+without leaving the editor, and `--tokens-only` forces the other direction
+anywhere. `--cost` wins when both are given.
+
+Also fixed before it shipped: forced with `--tokens-only` on GitHub Actions, the
+report announced that "GitHub Actions bills by subscription", which is simply
+false. It now distinguishes being told from having detected. And `unknown` billing
+is treated as `unknown` rather than as a subscription — guessing wrong there would
+hide the product's main output from most of the people using it.
+
+
 **`trazum where` — which provider a prompt is actually sent to.** Pricing seven
 providers turned the Claude default into a wrong number: a file calling OpenAI was
 billed against Claude Opus 5 without comment. This reads what the code already

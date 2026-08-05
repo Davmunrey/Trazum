@@ -52,7 +52,7 @@ import {
   loadConfig,
   walkPrompts,
 } from '@trazum/core/node';
-import type { PricingCatalogue, TrazumConfig } from '@trazum/core/node';
+import type { HostEnvironment, PricingCatalogue, TrazumConfig } from '@trazum/core/node';
 
 import { detectLocale, getCliMessages } from './i18n/index.js';
 import {
@@ -264,6 +264,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   optimize: [
     'level', 'model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch',
     'disable', 'llm', 'exact-tokens', 'diff', 'reorder', 'out', 'o',
+    'tokens-only', 'cost',
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out'],
   eval: ['cases', 'level', 'concurrency'],
@@ -379,8 +380,9 @@ function printReport(
   t: CliMessages,
   examplesReview: ExampleReview | null = null,
   reorder: ReorderResult | null = null,
+  tokensOnly = false,
+  host: HostEnvironment = { id: 'terminal', displayName: 'terminal', billing: 'unknown', evidence: null },
 ): void {
-  const { savings } = result;
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const sourceNote =
     result.tokenSource === 'heuristic'
@@ -483,6 +485,64 @@ function printReport(
     }
   }
 
+  // On a subscription there is no bill to reduce. Everything below this point
+  // would be arithmetic about tokens dressed as money, and "$184/month" told to
+  // somebody on a flat plan is wrong in the direction that matters most.
+  //
+  // What replaces it is the thing that *is* scarce there: the context window.
+  if (tokensOnly) {
+    printTokensOnly(result, host, t, n);
+  } else {
+    printMoney(result, t, n);
+  }
+
+  // On a subscription, an advisory whose entire pitch is money is not weaker
+  // advice — it is not advice. "Use a cheaper model" saves nothing on a flat
+  // plan, and its detail text quotes dollars per month, so suppressing only the
+  // price tag beside the title left the money in the sentence underneath.
+  //
+  // The rest stay: an overflowing context window still fails the call, a
+  // contradiction is still wrong, redundant examples still cost tokens, and
+  // caching still buys latency and rate-limit headroom.
+  const MONEY_ONLY = new Set([
+    'model-downgrade',
+    'batch-api',
+    'output-dominated',
+    'promo-pricing',
+    'prompt-caching-not-worth-it',
+  ]);
+  const advisories = tokensOnly
+    ? result.advisories.filter((a) => !MONEY_ONLY.has(a.id))
+    : result.advisories;
+
+  if (advisories.length > 0) {
+    console.log();
+    console.log(c.bold(t.report.beyondShortening()));
+    for (const advisory of advisories) {
+      const marker =
+        advisory.severity === 'warning'
+          ? c.yellow('!')
+          : advisory.severity === 'opportunity'
+            ? c.cyan('→')
+            : c.dim('·');
+      // The advisory itself still applies on a subscription — caching and a
+      // smaller model both buy back context and rate-limit headroom. Only the
+      // price tag is meaningless, so only the price tag goes.
+      const money =
+        !tokensOnly && advisory.estimatedMonthlyUsd !== null
+          ? c.green(t.report.perMonthSuffix(formatUsd(advisory.estimatedMonthlyUsd)))
+          : '';
+      console.log(`  ${marker} ${c.bold(advisory.title)}${money}`);
+      console.log(`    ${c.dim(wrap(advisory.detail, 76, '    '))}`);
+    }
+  }
+
+  printRest(result, showDiff, t, examplesReview, n);
+}
+
+/** The cost section, for anyone billed by the token. */
+function printMoney(result: OptimizationResult, t: CliMessages, n: (v: number) => string): void {
+  const { savings } = result;
   console.log();
   console.log(c.bold(t.report.costWith(savings.modelDisplayName)));
   console.log(
@@ -515,25 +575,63 @@ function printReport(
       ),
   );
 
-  if (result.advisories.length > 0) {
-    console.log();
-    console.log(c.bold(t.report.beyondShortening()));
-    for (const advisory of result.advisories) {
-      const marker =
-        advisory.severity === 'warning'
-          ? c.yellow('!')
-          : advisory.severity === 'opportunity'
-            ? c.cyan('→')
-            : c.dim('·');
-      const money =
-        advisory.estimatedMonthlyUsd !== null
-          ? c.green(t.report.perMonthSuffix(formatUsd(advisory.estimatedMonthlyUsd)))
-          : '';
-      console.log(`  ${marker} ${c.bold(advisory.title)}${money}`);
-      console.log(`    ${c.dim(wrap(advisory.detail, 76, '    '))}`);
-    }
-  }
+}
 
+/**
+ * What the saving buys when there is no bill: room.
+ *
+ * The context window is the scarce thing inside an agent — every token the
+ * system prompt holds is one the conversation cannot. That is a real saving and
+ * a measurable one, and it is the honest answer to "what did I gain" on a plan
+ * that costs the same either way.
+ */
+function printTokensOnly(
+  result: OptimizationResult,
+  host: HostEnvironment,
+  t: CliMessages,
+  n: (v: number) => string,
+): void {
+  const model = getModel(result.usage.model);
+  const saved = result.tokensBefore - result.tokensAfter;
+
+  console.log();
+  console.log(c.bold(t.report.tokensOnlyHeading(host.displayName)));
+  // Only claim the host bills by subscription when it does. Forced with the
+  // flag on GitHub Actions, the first version said "GitHub Actions bills by
+  // subscription", which is simply false.
+  console.log(
+    `  ${
+      host.billing === 'subscription'
+        ? t.report.tokensOnlyWhy(host.displayName)
+        : t.report.tokensOnlyAsked()
+    }`,
+  );
+  console.log();
+  console.log(`  ${c.green(t.report.tokensSaved(n(saved)))}`);
+
+  // Share of the window, which is what a saved token is actually worth here.
+  const share = (tokens: number): string =>
+    `${((tokens / model.contextWindow) * 100).toFixed(1)}%`;
+  console.log(
+    `  ${c.dim(
+      t.report.windowUse(
+        share(result.tokensBefore),
+        share(result.tokensAfter),
+        model.displayName,
+        n(model.contextWindow),
+      ),
+    )}`,
+  );
+  console.log(`  ${c.dim(t.report.tokensOnlyCost())}`);
+}
+
+function printRest(
+  result: OptimizationResult,
+  showDiff: boolean,
+  t: CliMessages,
+  examplesReview: ExampleReview | null,
+  n: (v: number) => string,
+): void {
   if (examplesReview && examplesReview.groups.length > 0) {
     console.log();
     console.log(c.bold(t.report.examplesReview()));
@@ -919,7 +1017,18 @@ async function commandOptimize(
     return;
   }
 
-  printReport(result, boolFlag(args, 'diff'), t, examplesReview, reorder);
+  // Tokens-only when the host bills by subscription: there is no bill to
+  // reduce, so a monthly figure would be arithmetic about tokens dressed as
+  // money. Either flag overrides it, because the host says where *Trazum* runs
+  // and not where the prompt goes — somebody editing a production prompt inside
+  // Cursor wants the dollars, and they should not have to leave the editor to
+  // see them.
+  const host = detectHost();
+  const tokensOnly = boolFlag(args, 'cost')
+    ? false
+    : boolFlag(args, 'tokens-only') || host.billing === 'subscription';
+
+  printReport(result, boolFlag(args, 'diff'), t, examplesReview, reorder, tokensOnly, host);
   if (outPath) {
     console.log(c.dim(t.report.wroteTo(outPath)));
     console.log();
