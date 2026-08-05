@@ -1,4 +1,4 @@
-import type { Locale } from '@trazum/core';
+import type { EvalVerdict, Locale } from '@trazum/core';
 
 /**
  * The CLI's own message catalogue.
@@ -35,6 +35,8 @@ export interface CliMessages {
     llmNotConfigured(): string;
     exactTokensNeedsKey(): string;
     checkNeedsMaxTokens(): string;
+    evalNeedsCases(): string;
+    evalNoCases(path: string): string;
     errorLabel(): string;
   };
 
@@ -82,6 +84,18 @@ export interface CliMessages {
   rules: {
     title(): string;
     disableHint(): string;
+  };
+
+  eval: {
+    nothingToCompare(): string;
+    starting(cases: number, calls: number, model: string): string;
+    heading(): string;
+    selfAgreement(pct: string): string;
+    crossAgreement(pct: string): string;
+    verdict(kind: EvalVerdict): { label: string; detail: string };
+    mostChanged(): string;
+    caseAgreement(cross: string, self: string): string;
+    callsMade(count: number): string;
   };
 
   check: {

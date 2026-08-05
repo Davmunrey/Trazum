@@ -1,6 +1,6 @@
 {
   "name": "trazum",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "description": "Prompt optimiser: cut the cost of your AI calls without losing quality.",
   "license": "MIT",

@@ -13,6 +13,7 @@ import {
   listModels,
   optimize,
   providerFromEnv,
+  evaluate,
   refineWithLlm,
   reviewExamples,
   withExactTokenCounts,
@@ -64,6 +65,8 @@ function parseArgs(argv: string[], t: CliMessages): Args {
     'cache-hit-rate',
     'disable',
     'max-tokens',
+    'cases',
+    'concurrency',
     'locale',
     'out',
     'o',
@@ -559,6 +562,109 @@ async function commandCheck(args: Args, t: CliMessages, locale: Locale): Promise
   if (!ok) process.exitCode = 1;
 }
 
+
+/**
+ * Runs both prompt versions over a set of inputs and reports whether the
+ * optimisation changed the answers.
+ *
+ * This is the only command that spends real money, and it spends it three
+ * times per case: the original twice to measure the model's own variance, the
+ * optimised once. The doubled original is what makes the answer mean anything
+ * — without it, "diverged on 3 of 10" could be better than the original
+ * manages against itself. The cost is printed before any call goes out.
+ */
+async function commandEval(args: Args, t: CliMessages, locale: Locale): Promise<void> {
+  const prompt = await readInput(args.positional[0], t);
+  const level = levelFlag(args, t);
+
+  const casesPath = stringFlag(args, 'cases');
+  if (!casesPath) throw new Error(t.errors.evalNeedsCases());
+
+  const inputs = parseCases(await readFile(casesPath, 'utf8'));
+  if (inputs.length === 0) throw new Error(t.errors.evalNoCases(casesPath));
+
+  const provider = providerFromEnv();
+  if (!provider) throw new Error(t.errors.llmNotConfigured());
+
+  const optimized = optimize(prompt, { level, locale }).optimized;
+  if (optimized === prompt) {
+    console.log(c.yellow(t.eval.nothingToCompare()));
+    return;
+  }
+
+  console.log();
+  console.log(c.dim(t.eval.starting(inputs.length, inputs.length * 3, provider.model)));
+
+  const report = await evaluate(prompt, optimized, inputs, provider, {
+    concurrency: numberFlag(args, 'concurrency', 3, t),
+  });
+
+  if (args.flags.has('json')) {
+    console.log(JSON.stringify(report, null, 2));
+    return;
+  }
+
+  const pct = (value: number): string => `${(value * 100).toFixed(0)}%`;
+  console.log();
+  console.log(c.bold(t.eval.heading()));
+  console.log(`  ${t.eval.selfAgreement(pct(report.selfAgreement))}`);
+  console.log(`  ${t.eval.crossAgreement(pct(report.crossAgreement))}`);
+  console.log();
+
+  const verdict = t.eval.verdict(report.verdict);
+  const paint =
+    report.verdict === 'diverges'
+      ? c.red
+      : report.verdict === 'inconclusive'
+        ? c.yellow
+        : c.green;
+  console.log(`  ${paint(verdict.label)}`);
+  console.log(`    ${c.dim(wrap(verdict.detail, 74, '    '))}`);
+
+  // The worst cases first: if anything broke, it is what the reader came for.
+  const worst = [...report.cases]
+    .sort((a, b) => a.crossSimilarity - b.crossSimilarity)
+    .slice(0, 3)
+    .filter((entry) => entry.crossSimilarity < 0.999);
+
+  if (worst.length > 0) {
+    console.log();
+    console.log(c.bold(t.eval.mostChanged()));
+    for (const entry of worst) {
+      console.log(`  ${c.dim(truncate(entry.input, 62))}`);
+      console.log(
+        `    ${t.eval.caseAgreement(pct(entry.crossSimilarity), pct(entry.selfSimilarity))}`,
+      );
+    }
+  }
+
+  console.log();
+  console.log(c.dim(`  ${t.eval.callsMade(report.callsMade)}`));
+  console.log();
+
+  if (report.verdict === 'diverges') process.exitCode = 1;
+}
+
+/** One case per line, or a JSON array of strings. Blank lines and # comments ignored. */
+function parseCases(raw: string): string[] {
+  const trimmed = raw.trim();
+  if (trimmed.startsWith('[')) {
+    try {
+      const parsed: unknown = JSON.parse(trimmed);
+      if (Array.isArray(parsed)) {
+        return parsed.filter((value): value is string => typeof value === 'string');
+      }
+    } catch {
+      // Fall through to line mode: a file that merely starts with "[" is more
+      // likely a prompt than a broken JSON document.
+    }
+  }
+  return trimmed
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0 && !line.startsWith('#'));
+}
+
 // --------------------------------------------------------------------------
 
 async function main(): Promise<void> {
@@ -589,6 +695,9 @@ async function main(): Promise<void> {
       break;
     case 'check':
       await commandCheck(args, t, locale);
+      break;
+    case 'eval':
+      await commandEval(args, t, locale);
       break;
     case 'models':
       commandModels(t);

@@ -80,7 +80,7 @@ version stands. It never returns something worse than where it started.
 ```bash
 npm install
 npm run build      # core + cli
-npm test           # 179 tests
+npm test           # 196 tests
 ```
 
 ### CLI
@@ -153,6 +153,38 @@ Or by hand, if you already have the repo checked out:
 - run: npm ci && npm run build
 - run: node packages/cli/dist/index.js check prompts/system.txt --max-tokens 2000
 ```
+
+### Does the shorter prompt still work?
+
+Every other number here is arithmetic. This one is not, so `trazum eval` runs
+both versions over a set of inputs and compares the answers:
+
+```bash
+trazum eval prompts/system.txt --cases cases.txt --level aggressive
+```
+
+```
+Agreement
+  100%  the original prompt with itself  ← the yardstick
+   64%  the optimised prompt with the original
+
+  Diverges
+    The model is consistent with itself and markedly less so with the rewrite,
+    so the optimisation changed what the prompt asks for.
+```
+
+**The yardstick line is the whole point.** A model asked the same question
+twice does not answer identically, so "diverged on 3 of 10 cases" means nothing
+on its own — it might be better than the original manages against itself. So
+the original runs twice per case first, and the rewrite is judged against the
+model's own variance rather than a determinism it never had.
+
+That costs three calls per case, and the count is printed before any of them
+goes out. It exits 1 on `diverges`, so it can gate a pull request. When the
+original cannot agree with itself often enough to judge anything against, it
+says `inconclusive` rather than inventing a verdict.
+
+Cases are one input per line (`#` comments ignored) or a JSON array.
 
 ### Web
 

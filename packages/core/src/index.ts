@@ -76,3 +76,7 @@ export type { RuleChange } from './changes.js';
 // Semantic review of few-shot examples (optional, costs an LLM call)
 export { reviewExamples, EXAMPLE_REVIEW_SYSTEM_PROMPT } from './review.js';
 export type { ExampleReview, ExampleRedundancy, ReviewExamplesOptions } from './review.js';
+
+// Golden-set evaluation (optional, costs three LLM calls per case)
+export { evaluate, fillPrompt, verdictFor } from './evaluate.js';
+export type { EvalCase, EvalReport, EvalVerdict, EvaluateOptions } from './evaluate.js';
