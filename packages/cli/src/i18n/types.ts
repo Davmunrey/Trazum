@@ -88,6 +88,23 @@ export interface CliMessages {
     wroteTo(path: string): string;
   };
 
+  where: {
+    hostHeading(): string;
+    subscription(host: string): string;
+    noTarget(): string;
+    sourceHeading(path: string): string;
+    conflict(): string;
+    conflictFallback(): string;
+    nothingFound(): string;
+    providerOnly(): string;
+    evidenceLine(line: number, kind: string, detail: string): string;
+    pricedAs(): string;
+    fromConfig(): string;
+    fromDetection(): string;
+    fromProviderDefault(provider: string): string;
+    fromDefault(): string;
+  };
+
   models: {
     title(): string;
     unit(): string;

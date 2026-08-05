@@ -23,6 +23,7 @@ import {
   promptId,
   hasMarker,
   SOURCE_EXTENSIONS,
+  detectFromSource,
   evaluate,
   refineWithLlm,
   reviewExamples,
@@ -47,6 +48,7 @@ import {
   DEFAULT_EXTENSIONS,
   budgetFor,
   catalogueFromOverlay,
+  detectHost,
   loadConfig,
   walkPrompts,
 } from '@trazum/core/node';
@@ -267,6 +269,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   eval: ['cases', 'level', 'concurrency'],
   diff: ['level', 'model', 'calls', 'output-tokens', 'batch', 'max-growth', 'optimized', 'markdown-out'],
   models: [],
+  where: [],
   rules: [],
 };
 
@@ -587,6 +590,134 @@ function wrap(text: string, width: number, indent: string): string {
 // --------------------------------------------------------------------------
 // Subcommands
 // --------------------------------------------------------------------------
+
+/**
+ * A provider's stand-in model, for when the code names who but not which.
+ *
+ * The same capability as the global default, so the figure is comparable with
+ * what Trazum would have printed anyway, and the cheapest at that capability so
+ * the guess errs downwards — overstating somebody's bill on a model they never
+ * chose is the worse direction to be wrong in.
+ */
+function defaultModelFor(provider: string, pricing: PricingCatalogue): string | null {
+  // Nearest capability, not an exact match. Matching exactly returned nothing
+  // for OpenAI and DeepSeek — neither has a `large` model, so the code fell
+  // through to the global default and printed "goes to openai / priced as
+  // Claude Opus 5" anyway. A ladder with different rungs is the normal case,
+  // not an edge one.
+  const RANK: Record<string, number> = { small: 0, mid: 1, large: 2, frontier: 3 };
+  const want = RANK[getModel(DEFAULT_USAGE.model).capability] ?? 2;
+
+  const candidates = pricing.models.filter(
+    (m) => m.provider === provider && m.recommendable !== false,
+  );
+
+  const best = candidates.reduce<(typeof candidates)[number] | null>((chosen, m) => {
+    if (chosen === null) return m;
+    const distance = Math.abs((RANK[m.capability] ?? 2) - want);
+    const chosenDistance = Math.abs((RANK[chosen.capability] ?? 2) - want);
+    if (distance !== chosenDistance) return distance < chosenDistance ? m : chosen;
+    // Same distance: the cheaper one, so the guess errs downwards. Overstating
+    // somebody's bill on a model they never chose is the worse way to be wrong.
+    return m.inputPerMTok < chosen.inputPerMTok ? m : chosen;
+  }, null);
+
+  return best?.id ?? null;
+}
+
+/**
+ * Says which provider a prompt is actually sent to, and how it knows.
+ *
+ * Trazum priced one vendor, so the default cost nothing. Pricing seven made it a
+ * wrong number: a file calling OpenAI was billed against Claude Opus 5 without
+ * comment. This reads what the code already says instead.
+ *
+ * Every answer names the line it came from. A detection this command cannot
+ * justify is a guess, and the number that follows from it would be a guess too.
+ */
+async function commandWhere(
+  args: Args,
+  config: TrazumConfig,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
+  const host = detectHost();
+
+  console.log();
+  console.log(c.bold(t.where.hostHeading()));
+  console.log(
+    `  ${host.displayName}${host.evidence ? c.dim(` (${host.evidence})`) : ''}`,
+  );
+  // The reason this is worth printing at all. Inside a flat plan the monthly
+  // figure Trazum computes is arithmetic about tokens, not money anybody gets
+  // back, and saying so is more useful than saying nothing.
+  if (host.billing === 'subscription') {
+    console.log(`  ${c.yellow(t.where.subscription(host.displayName))}`);
+  }
+
+  const target = args.positional[0];
+  if (target === undefined) {
+    console.log();
+    console.log(c.dim(t.where.noTarget()));
+    console.log();
+    return;
+  }
+
+  const source = await readFile(target, 'utf8');
+  const detection = detectFromSource(source, { models: pricing.models });
+
+  console.log();
+  console.log(c.bold(t.where.sourceHeading(target)));
+
+  if (detection.conflicts.length > 0) {
+    // Two answers is not a weaker version of one answer. Naming both and
+    // declining is the only honest output here.
+    console.log(`  ${c.red(t.where.conflict())}`);
+    for (const e of detection.evidence.slice(0, 4)) {
+      console.log(`    ${c.dim(t.where.evidenceLine(e.line ?? 0, e.kind, e.detail))}`);
+    }
+    console.log(`  ${c.dim(t.where.conflictFallback())}`);
+  } else if (detection.provider === null) {
+    console.log(`  ${c.dim(t.where.nothingFound())}`);
+  } else {
+    const model = detection.model ? getModel(detection.model) : null;
+    console.log(
+      `  ${detection.provider}${model ? ` · ${model.displayName}` : c.dim(t.where.providerOnly())}`,
+    );
+    for (const e of detection.evidence.slice(0, 3)) {
+      console.log(`    ${c.dim(t.where.evidenceLine(e.line ?? 0, e.kind, e.detail))}`);
+    }
+  }
+
+  // What would actually be used, which is the question behind the question.
+  // Flags beat config, config beats detection, detection beats the default —
+  // and a reader deciding whether to pass --model needs to see which won.
+  //
+  // Knowing the provider but not the model is the common case: an import names
+  // who, never which. Falling through to the built-in default there would print
+  // "goes to openai" and "priced as Claude Opus 5" three lines apart, which is
+  // the wrong number this command exists to catch, produced by the command
+  // itself. A provider's own default is a guess, but it is a guess about which
+  // of their models rather than about whose.
+  const configured = config.usage?.model;
+  const detected =
+    detection.model ??
+    (detection.provider !== null ? defaultModelFor(detection.provider, pricing) : null);
+
+  const effective = configured ?? detected ?? DEFAULT_USAGE.model;
+  const reason = configured
+    ? t.where.fromConfig()
+    : detection.model
+      ? t.where.fromDetection()
+      : detected
+        ? t.where.fromProviderDefault(detection.provider ?? '')
+        : t.where.fromDefault();
+
+  console.log();
+  console.log(c.bold(t.where.pricedAs()));
+  console.log(`  ${getModel(effective).displayName} ${c.dim(reason)}`);
+  console.log();
+}
 
 function commandModels(t: CliMessages, pricing: PricingCatalogue): void {
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
@@ -1564,6 +1695,9 @@ async function main(): Promise<void> {
       break;
     case 'models':
       commandModels(t, pricing);
+      break;
+    case 'where':
+      await commandWhere(args, config, pricing, t);
       break;
     case 'rules':
       commandRules(t, locale);

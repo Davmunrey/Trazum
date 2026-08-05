@@ -10,6 +10,49 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+**`trazum where` — which provider a prompt is actually sent to.** Pricing seven
+providers turned the Claude default into a wrong number: a file calling OpenAI was
+billed against Claude Opus 5 without comment. This reads what the code already
+says instead of assuming.
+
+Four kinds of evidence, strongest first: `model=` on a `trazum:prompt` marker, a
+quoted model id, a base URL, an SDK import. Every answer names the line it came
+from — a detection that cannot be checked is a guess, and the dollar figure that
+follows from it would be a guess too.
+
+Three things it gets right that the first version got wrong, each caught by
+running it rather than reading it:
+
+- **A base URL beats the SDK it was pointed at.** Moonshot, DeepSeek, xAI and
+  Groq are all called through the OpenAI SDK with a different `base_url` — their
+  documented usage. Treating that as a contradiction refused to price a perfectly
+  ordinary client; pricing it as OpenAI would have been wrong for a large slice of
+  everyone using this.
+- **It priced an OpenAI file as Claude.** Detection found the provider, found no
+  model, and fell through to the global default — printing "goes to openai" and
+  "priced as Claude Opus 5" three lines apart. It now uses that provider's own
+  model and says that is what happened.
+- **Nearest capability, not an exact match.** Neither OpenAI nor DeepSeek has a
+  `large` model, so matching the default's capability exactly found nothing and
+  the fallback fired anyway. A ladder with different rungs is the normal case.
+
+**It refuses when a file names two providers**, names both, and assumes nothing.
+Detection sits between config and defaults: a flag beats config, config beats
+detection, detection beats the built-in default.
+
+With no file it reports the host — Claude Code, Codex, Cursor, GitHub Actions, CI
+or a plain terminal — and **warns when that host bills by subscription**, because
+a monthly saving is arithmetic about tokens there rather than money anybody gets
+back. That is the first half of the Cursor/Claude Code question the roadmap has
+been holding: not a full report in a different unit, but no longer quoting a
+dollar figure to someone on a flat plan without saying what it is.
+
+A third quadratic line-number lookup, found by the hostile-input tests before it
+shipped — 36 seconds on a file repeating a model id. Same shape as `extract.ts`,
+written again after fixing it there; a binary-searched line index this time,
+because the matches arrive out of order and a forward-only counter cannot work.
+
+
 **The report no longer claims a Claude number for a model that is not Claude.**
 Pricing seven providers left the token estimator where it was — tuned against
 Claude's tokenizer — while `±15%` kept printing beside GPT and Kimi figures. That

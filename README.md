@@ -80,7 +80,7 @@ version stands. It never returns something worse than where it started.
 ```bash
 npm install
 npm run build      # core + cli
-npm test           # 522 tests
+npm test           # 556 tests
 ```
 
 ### CLI
@@ -754,6 +754,58 @@ a keyword heuristic — it has no business recommending that you change supplier
 bill per token, so "saves $184/month" would be false for anyone inside their plan.
 The honest saving there is context-window and rate-limit headroom, which is a
 different report rather than a row in this table.
+
+### Which provider is this prompt even going to?
+
+Since Trazum prices seven providers, defaulting to Claude became a **wrong
+number**: a file calling OpenAI was billed against Claude Opus 5 without comment.
+`trazum where` reads what the code already says.
+
+```bash
+trazum where src/prompts.ts
+```
+
+```
+Running inside
+  Claude Code (CLAUDECODE)
+  Claude Code bills by subscription, not by the token. A monthly saving below is
+  arithmetic about tokens, not money you get back — what you gain is context
+  window and rate-limit headroom.
+
+Prompts in src/prompts.ts go to
+  anthropic · Claude Sonnet 5
+    line 2  model-literal: claude-sonnet-5
+    line 1  sdk-import: @anthropic-ai/sdk
+
+Priced as
+  Claude Sonnet 5 (read from the source)
+```
+
+**Every answer names the line it came from.** A detection that cannot be checked
+is a guess, and the dollar figure that follows from it would be a guess too.
+
+Four kinds of evidence, strongest first: `model=` on a `trazum:prompt` marker,
+a quoted model id, a base URL, an SDK import. A stronger kind overrides a weaker
+one — **a base URL beats the SDK it was pointed at**, because Moonshot, DeepSeek,
+xAI and Groq are all called through the OpenAI SDK with a different `base_url`,
+and calling that a contradiction would refuse to price an ordinary client.
+
+**It refuses when a file names two providers.** Two answers is not a weaker
+version of one answer, and picking silently is how somebody budgets against the
+wrong provider for a month. Both are named and nothing is assumed.
+
+Detection sits between config and defaults in the usual layering: **a flag beats
+config, config beats detection, detection beats the built-in default.** Reading
+the code is better than assuming, and worse than being told.
+
+With no file it reports only the host — useful because that is what decides
+whether a monthly saving is money at all:
+
+| Host | Bills |
+|---|---|
+| Claude Code, Codex, Cursor | subscription — the saving is context and rate-limit headroom, not cash |
+| GitHub Actions, CI | per token |
+| VS Code, plain terminal | unknown, and it says so rather than guessing |
 
 ## Token counting
 
