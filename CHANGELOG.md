@@ -53,6 +53,21 @@ in [SECURITY.md](SECURITY.md).
   in the project is unit-tested instead of living untested in an API handler.
   It returns a reason code rather than a message, so callers localise it and
   tests assert on the decision.
+- **Fixes two ReDoS denial-of-service bugs**, both reachable from the public
+  HTTP endpoint, both found by CodeQL after the first round of ReDoS tests had
+  passed:
+  - `whitespace` — a **`safe`-level rule present since 0.1.0**. Its
+    trailing-whitespace pattern restarted at every position inside a whitespace
+    run and failed from each one when the run did not end the line: 17 seconds
+    on a 100 KB line of spaces, well inside the 400 KB the API accepts.
+    Anchored to the start of a run, it is now 3 ms at 400 KB.
+  - The few-shot label patterns added in this release ended in three adjacent
+    unbounded quantifiers, measured at O(n²) — 651 ms at 40 000 spaces, about a
+    minute at the size cap. Their quantifiers are now bounded.
+  - The ReDoS suite gained the fixture shape it was missing. The original
+    fixtures were all *repeated tokens*, which exercise the happy path over and
+    over; neither bug needed that, they needed a plausible prefix followed by a
+    long run that never completes the match.
 - New `security.test.js` enforcing four invariants on every pull request: the
   SSRF filter fails closed, the core and CLI carry zero runtime dependencies,
   `fetch` appears only in the two modules that exist to make calls, and no
