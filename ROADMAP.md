@@ -184,24 +184,37 @@ call, and never runs during an ordinary `optimize()`.
 
 ---
 
+### 0.8.0 — Measurement instead of estimation
+
+Every other number Trazum reports is arithmetic. This is the one question
+arithmetic cannot answer — does the shorter prompt still do the job? — and the
+README had been answering it with a caveat, because a rules engine genuinely
+cannot know.
+
+`trazum eval` runs both versions over a set of inputs and reports whether the
+optimisation changed the answers.
+
+**The part that makes it worth anything:** a model asked the same question
+twice does not answer identically, so "the optimised prompt diverged on 3 of 10
+cases" means nothing on its own — it might be *better* than the original
+manages against itself. So the original runs twice per case first, and that
+self-agreement is the yardstick. The rewrite is judged against the model's own
+variance, not against a determinism it never had.
+
+- Four verdicts, including `inconclusive` when the original cannot agree with
+  itself often enough to judge anything against. A confident verdict off an
+  inconsistent baseline would be worse than admitting the test does not work.
+- Three calls per case, and the count is printed before any of them goes out.
+- Exits 1 on `diverges`, so it can gate a pull request.
+- A template gets its first placeholder filled rather than the input appended:
+  appending would test a prompt nobody runs.
+
+Still open from the original entry: exact counts by default where a key is
+present, and real cache simulation from a call log.
+
 ---
 
 ## Next
-
-### 0.8.0 — Measurement instead of estimation
-
-Trazum currently reports what a prompt *should* save. The obvious next question
-from anyone about to change a production prompt is whether the shorter version
-still works — and that is not something a rules engine can answer by itself.
-
-- **Golden-set evaluation.** Point Trazum at a set of inputs and let it run
-  both prompt versions through a configured provider, reporting where outputs
-  diverge. Turns "aggressive mode might change nuances" from a caveat in the
-  README into a number.
-- **Exact counts by default** where an API key is present, with the heuristic
-  as the documented fallback.
-- **Real cache simulation**: given a call log, report the hit rate actually
-  achievable rather than one the user has to guess at.
 
 ### 0.9.0 — Fits into a workflow
 

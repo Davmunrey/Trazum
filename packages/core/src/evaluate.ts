@@ -1,0 +1,179 @@
+import { segment } from './segment.js';
+import { jaccard, normalizeForCompare } from './similarity.js';
+import type { LlmProvider } from './types.js';
+
+/**
+ * Golden-set evaluation.
+ *
+ * Everything else Trazum reports is arithmetic: tokens, prices, multiplication.
+ * This is the one question arithmetic cannot answer — does the shorter prompt
+ * still do the job? — and the README has been answering it with a caveat
+ * ("the aggressive level can change nuance; read the diff") because a rules
+ * engine genuinely cannot know.
+ *
+ * The trap here is comparing the two prompts' outputs and calling the
+ * difference a regression. A model asked the same question twice does not
+ * answer identically, so "the optimised prompt diverged on 3 of 10 cases" is
+ * meaningless on its own — it might be better than the original manages
+ * against itself.
+ *
+ * So the original is run twice per case first, and that self-agreement is the
+ * yardstick. The optimised prompt is judged against the model's own variance,
+ * not against an imaginary determinism it never had. It costs a third call per
+ * case and it is the only reason the number means anything.
+ */
+
+export interface EvalCase {
+  /** The input this case feeds the prompt. */
+  input: string;
+  /** The original prompt's two answers, used to measure its own variance. */
+  baseline: [string, string];
+  /** The optimised prompt's answer. */
+  optimized: string;
+  /** How closely the original agreed with itself (0-1). */
+  selfSimilarity: number;
+  /** How closely the optimised answer matched the original's first (0-1). */
+  crossSimilarity: number;
+}
+
+export type EvalVerdict = 'indistinguishable' | 'within-noise' | 'diverges' | 'inconclusive';
+
+export interface EvalReport {
+  provider: string;
+  model: string;
+  cases: EvalCase[];
+  /** Mean agreement of the original prompt with itself. The yardstick. */
+  selfAgreement: number;
+  /** Mean agreement between the original and the optimised prompt. */
+  crossAgreement: number;
+  verdict: EvalVerdict;
+  /** Total provider calls made, so the cost is never a surprise. */
+  callsMade: number;
+}
+
+export interface EvaluateOptions {
+  /**
+   * How many cases to run at once. Kept low by default: this hammers someone
+   * else's endpoint, and a rate limit tripped halfway through wastes every
+   * call already paid for.
+   */
+  concurrency?: number;
+}
+
+/**
+ * Builds the prompt for one case.
+ *
+ * A template gets its first placeholder filled; anything else gets the input
+ * appended. Substituting is the honest reading of a prompt written with
+ * `{{query}}` — appending would test a prompt nobody runs.
+ */
+export function fillPrompt(prompt: string, input: string): string {
+  const placeholder = segment(prompt).find(
+    (s) => s.kind === 'protected' && s.protection === 'placeholder',
+  );
+  if (!placeholder) return `${prompt.trimEnd()}\n\n${input}`;
+  return prompt.replace(placeholder.text, input);
+}
+
+/** Agreement between two answers, 0-1. */
+function agreement(a: string, b: string): number {
+  const left = normalizeForCompare(a);
+  const right = normalizeForCompare(b);
+  if (left === right) return 1;
+  return jaccard(left, right);
+}
+
+const mean = (values: number[]): number =>
+  values.length === 0 ? 0 : values.reduce((sum, v) => sum + v, 0) / values.length;
+
+/**
+ * Turns the two agreement figures into a verdict.
+ *
+ * The comparison is always relative. An optimised prompt agreeing with the
+ * original 0.85 of the time looks alarming until you see the original agrees
+ * with itself 0.86 — at which point the optimisation changed nothing the model
+ * was not already doing on its own.
+ *
+ * `inconclusive` exists because a model that is wildly inconsistent with itself
+ * cannot be used to judge anything. Reporting a confident verdict off that
+ * would be worse than admitting the test does not work here.
+ */
+export function verdictFor(selfAgreement: number, crossAgreement: number): EvalVerdict {
+  if (crossAgreement >= 0.999) return 'indistinguishable';
+  if (selfAgreement < 0.5) return 'inconclusive';
+  // Within a small margin of the model's own noise floor, the difference is
+  // not attributable to the prompt.
+  if (crossAgreement >= selfAgreement - 0.05) return 'within-noise';
+  return 'diverges';
+}
+
+/** Runs `tasks` with a bounded number in flight, preserving order. */
+async function pooled<T>(tasks: Array<() => Promise<T>>, limit: number): Promise<T[]> {
+  const results = new Array<T>(tasks.length);
+  let next = 0;
+
+  const workers = Array.from({ length: Math.min(limit, tasks.length) }, async () => {
+    for (;;) {
+      const index = next++;
+      if (index >= tasks.length) return;
+      results[index] = await tasks[index]!();
+    }
+  });
+
+  await Promise.all(workers);
+  return results;
+}
+
+/**
+ * Runs both prompt versions over a set of inputs and reports whether the
+ * optimisation changed the answers.
+ *
+ * Costs **three provider calls per case**: the original twice, the optimised
+ * once. The doubled original is what makes the result interpretable, and
+ * `callsMade` reports the total so the bill is never a surprise.
+ */
+export async function evaluate(
+  originalPrompt: string,
+  optimizedPrompt: string,
+  inputs: readonly string[],
+  provider: LlmProvider,
+  options: EvaluateOptions = {},
+): Promise<EvalReport> {
+  const concurrency = Math.max(1, options.concurrency ?? 3);
+
+  const run = (prompt: string, input: string): Promise<string> =>
+    provider.complete({ system: fillPrompt(prompt, input), user: input });
+
+  const cases = await pooled(
+    inputs.map((input) => async (): Promise<EvalCase> => {
+      // Sequential within a case: the two baseline runs exist to measure the
+      // model's variance, and issuing them together invites a provider to
+      // serve one from a cache and report a variance of zero.
+      const baselineA = await run(originalPrompt, input);
+      const baselineB = await run(originalPrompt, input);
+      const optimized = await run(optimizedPrompt, input);
+
+      return {
+        input,
+        baseline: [baselineA, baselineB],
+        optimized,
+        selfSimilarity: agreement(baselineA, baselineB),
+        crossSimilarity: agreement(baselineA, optimized),
+      };
+    }),
+    concurrency,
+  );
+
+  const selfAgreement = mean(cases.map((c) => c.selfSimilarity));
+  const crossAgreement = mean(cases.map((c) => c.crossSimilarity));
+
+  return {
+    provider: provider.name,
+    model: provider.model,
+    cases,
+    selfAgreement,
+    crossAgreement,
+    verdict: verdictFor(selfAgreement, crossAgreement),
+    callsMade: cases.length * 3,
+  };
+}

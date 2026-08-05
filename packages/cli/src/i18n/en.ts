@@ -80,6 +80,8 @@ ${bold('EXAMPLES')}
       'or TRAZUM_LLM_PROVIDER=anthropic with TRAZUM_LLM_API_KEY.',
     exactTokensNeedsKey: () => '--exact-tokens needs ANTHROPIC_API_KEY in the environment.',
     checkNeedsMaxTokens: () => 'trazum check needs --max-tokens <n>.',
+    evalNeedsCases: () => 'trazum eval needs --cases <file>.',
+    evalNoCases: (path) => `No cases found in "${path}".`,
     errorLabel: () => 'Error',
   },
 
@@ -132,6 +134,42 @@ ${bold('EXAMPLES')}
   rules: {
     title: () => 'Available rules',
     disableHint: () => '  Turn off the ones you do not want with --disable id1,id2',
+  },
+
+
+  eval: {
+    nothingToCompare: () =>
+      'The rules changed nothing in this prompt, so there is nothing to compare. Try --level aggressive.',
+    starting: (cases, calls, model) =>
+      `Running ${cases} cases through ${model}: ${calls} calls (the original twice per case, to measure its own variance, and the optimised once).`,
+    heading: () => 'Agreement',
+    selfAgreement: (pct) => `${pct}  the original prompt with itself  ${'\u2190'} the yardstick`,
+    crossAgreement: (pct) => `${pct}  the optimised prompt with the original`,
+    verdict: (kind) =>
+      ({
+        indistinguishable: {
+          label: 'Indistinguishable',
+          detail: 'Every answer matched. On this set the optimisation changed nothing.',
+        },
+        'within-noise': {
+          label: 'Within the model own noise',
+          detail:
+            'The optimised prompt disagrees with the original about as often as the original disagrees with itself, so the difference is not attributable to the rewrite. Widen the set before trusting this.',
+        },
+        diverges: {
+          label: 'Diverges',
+          detail:
+            'The model is consistent with itself and markedly less so with the rewrite, so the optimisation changed what the prompt asks for. Read the cases below and the diff before shipping this.',
+        },
+        inconclusive: {
+          label: 'Inconclusive',
+          detail:
+            'The original prompt does not agree with itself often enough to judge anything against. Lower the temperature, or the task may simply be too open-ended for this test.',
+        },
+      })[kind],
+    mostChanged: () => 'Cases that changed most',
+    caseAgreement: (cross, self) => `${cross} agreement with the original (which self-agreed ${self})`,
+    callsMade: (count) => `${count} provider calls made.`,
   },
 
   check: {

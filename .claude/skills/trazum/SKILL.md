@@ -55,6 +55,25 @@ enough:
 node packages/cli/dist/index.js check prompts/system.txt --max-tokens 2000
 ```
 
+## Checking the shorter prompt still works
+
+```bash
+node packages/cli/dist/index.js eval prompt.txt --cases cases.txt --level aggressive
+```
+
+Runs both versions over a set of inputs. **Costs three provider calls per
+case** and needs `TRAZUM_LLM_*` configured, so never run it without saying so
+first.
+
+Read the verdict, not the raw percentage. The original is run twice per case to
+measure the model's own variance, and that self-agreement is the yardstick — a
+64% match with the original is fine if the original only self-agrees 66%, and
+alarming if it self-agrees 100%. `inconclusive` means the baseline was too
+noisy to judge anything; report that honestly rather than picking the nearest
+verdict.
+
+Exits 1 on `diverges`.
+
 ## From code
 
 ```ts

@@ -3,6 +3,38 @@
 Versioning policy: [VERSIONING.md](VERSIONING.md). Below 1.0, minor versions
 may contain breaking changes, and say so in their first line.
 
+## 0.8.0
+
+New `trazum eval` command and `evaluate()` API: run both prompt versions over a
+set of inputs and report whether the optimisation changed the answers. Every
+other number Trazum reports is arithmetic; this is the one question arithmetic
+cannot answer.
+
+**The design decision that makes it worth anything.** A model asked the same
+question twice does not answer identically, so "the optimised prompt diverged
+on 3 of 10 cases" means nothing on its own — it might be better than the
+original manages against itself. The original therefore runs **twice** per case
+first, and that self-agreement is the yardstick the rewrite is judged against.
+It costs a third call per case and it is the only reason the verdict means
+anything.
+
+- Four verdicts: `indistinguishable`, `within-noise`, `diverges`, and
+  `inconclusive` — the last for when the original cannot agree with itself
+  often enough to judge anything against. A confident verdict off an
+  inconsistent baseline would be worse than admitting the test does not work.
+- Exits 1 on `diverges`, so it can gate a pull request the same way
+  `trazum check` gates a token budget.
+- Prints the call count before spending anything.
+- A template gets its first placeholder filled rather than the input appended:
+  appending would test a prompt nobody runs.
+- Cases come from a file, one per line (`#` comments and blanks ignored) or a
+  JSON array. A file that merely starts with `[` falls back to line mode rather
+  than erroring.
+- Bounded concurrency, default 3. The baseline pair stays sequential within a
+  case: issuing both at once invites a provider to serve one from cache and
+  report a variance of zero.
+- Tests grow from 179 to 196.
+
 ## 0.7.0
 
 - New `reviewExamples`: the paraphrase case the deterministic detector refuses

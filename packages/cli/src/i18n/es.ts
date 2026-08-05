@@ -76,6 +76,8 @@ ${bold('EJEMPLOS')}
       'o TRAZUM_LLM_PROVIDER=anthropic con TRAZUM_LLM_API_KEY.',
     exactTokensNeedsKey: () => '--exact-tokens necesita ANTHROPIC_API_KEY en el entorno.',
     checkNeedsMaxTokens: () => 'trazum check necesita --max-tokens <n>.',
+    evalNeedsCases: () => 'trazum eval necesita --cases <fichero>.',
+    evalNoCases: (path) => `No se ha encontrado ningún caso en "${path}".`,
     errorLabel: () => 'Error',
   },
 
@@ -130,6 +132,42 @@ ${bold('EJEMPLOS')}
   rules: {
     title: () => 'Reglas disponibles',
     disableHint: () => '  Desactiva las que no quieras con --disable id1,id2',
+  },
+
+
+  eval: {
+    nothingToCompare: () =>
+      'Las reglas no han cambiado nada en este prompt, así que no hay nada que comparar. Prueba con --level aggressive.',
+    starting: (cases, calls, model) =>
+      `Ejecutando ${cases} casos con ${model}: ${calls} llamadas (el original dos veces por caso, para medir su propia varianza, y el optimizado una).`,
+    heading: () => 'Coincidencia',
+    selfAgreement: (pct) => `${pct}  del prompt original consigo mismo  ${'\u2190'} la vara de medir`,
+    crossAgreement: (pct) => `${pct}  del prompt optimizado con el original`,
+    verdict: (kind) =>
+      ({
+        indistinguishable: {
+          label: 'Indistinguible',
+          detail: 'Todas las respuestas coinciden. Sobre este conjunto, la optimización no ha cambiado nada.',
+        },
+        'within-noise': {
+          label: 'Dentro del propio ruido del modelo',
+          detail:
+            'El prompt optimizado discrepa del original más o menos tanto como el original discrepa de sí mismo, así que la diferencia no es atribuible a la reescritura. Amplía el conjunto antes de fiarte.',
+        },
+        diverges: {
+          label: 'Diverge',
+          detail:
+            'El modelo es consistente consigo mismo y bastante menos con la reescritura, así que la optimización ha cambiado lo que pide el prompt. Lee los casos de abajo y el diff antes de subir esto.',
+        },
+        inconclusive: {
+          label: 'No concluyente',
+          detail:
+            'El prompt original no coincide consigo mismo lo suficiente como para juzgar nada contra él. Baja la temperatura, o puede que la tarea sea demasiado abierta para esta prueba.',
+        },
+      })[kind],
+    mostChanged: () => 'Casos que más han cambiado',
+    caseAgreement: (cross, self) => `${cross} de coincidencia con el original (que consigo mismo dio ${self})`,
+    callsMade: (count) => `${count} llamadas al proveedor.`,
   },
 
   check: {
