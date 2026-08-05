@@ -10,6 +10,23 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+**The README recommended a tag that did not exist.** `Davmunrey/Trazum@v1.0.0`
+was the copy-pasteable Actions example for a whole release, and no such tag was
+ever pushed — so anyone following the quickstart got a workflow that could not
+resolve its own action.
+
+It was also the wrong *shape*. [SECURITY.md](SECURITY.md) says every third-party
+action is pinned to a commit SHA because a tag is a movable pointer, and
+`security.test.js` enforces that on every workflow in this repository. The README
+was telling readers to do the thing the project refuses to do itself.
+
+Both examples now pin to a commit SHA with the `# 1.1.0` comment Dependabot reads,
+and a new test extends the SHA-pin rule from *what this repository runs* to *what
+it tells other people to run* — the docs had drifted for a release with nothing
+checking. The test fails on the old README, which is the only evidence that it
+checks anything.
+
+
 **`trazum optimize --reorder` moves the stable instructions in front of the
 placeholder.** Since 0.2.0 the `cache-prefix-reorder` advisory has pointed at the
 largest saving Trazum knows about and no command could take it. Prompt caching is

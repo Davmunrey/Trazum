@@ -80,7 +80,7 @@ version stands. It never returns something worse than where it started.
 ```bash
 npm install
 npm run build      # core + cli
-npm test           # 450 tests
+npm test           # 452 tests
 ```
 
 ### CLI
@@ -141,11 +141,17 @@ In GitHub Actions, use the packaged action — nothing to install:
 
 ```yaml
 - uses: actions/checkout@v7
-- uses: Davmunrey/Trazum@v1.0.0
+- uses: Davmunrey/Trazum@5024e60972a4b6c33706997ea775ae7131dea7a5  # 1.1.0
   with:
     target: prompts/system.txt
     max-tokens: 2000
 ```
+
+**Pinned to a commit SHA, not a tag** — the same rule
+[SECURITY.md](SECURITY.md) states and `security.test.js` enforces on every
+third-party action in this repository. A tag is a mutable pointer: whoever can
+move `v1` can change what runs in your workflow with your token. The `# 1.1.0`
+comment is what Dependabot reads to offer you the bump.
 
 **The report lands in the run summary automatically** — every run, pass or fail,
 with no token and no permissions. To also post it as a pull request comment that
@@ -158,7 +164,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v7
-  - uses: Davmunrey/Trazum@v1.0.0
+  - uses: Davmunrey/Trazum@5024e60972a4b6c33706997ea775ae7131dea7a5  # 1.1.0
     with:
       target: prompts/            # a directory uses trazum.config.json budgets
       comment: true
