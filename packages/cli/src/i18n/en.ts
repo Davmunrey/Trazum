@@ -232,6 +232,12 @@ ${bold('EXAMPLES')}
       `${calls} calls/month · ${outputTokens} output tokens per call${batch ? ' · Batch API' : ''}`,
     perMonthSaving: (saving, pct) => `saving ${saving}/month (${pct}%)`,
     beyondShortening: () => 'Beyond shortening the prompt',
+    biggestLever: () => 'Start here:',
+    biggestLeverDetail: (title, amount, times) =>
+      // The title keeps its case: lowercasing it turned "Claude Opus 5" into
+      // "claude opus 5", which is a product name mangled to fit a sentence.
+      `"${title}" — ${amount}/month` +
+      (times !== null && times >= 2 ? `, ${times}× what the rules saved.` : '.'),
     perMonthSuffix: (amount) => ` ~${amount}/month`,
     diff: () => 'Diff',
     tokensOnlyHeading: (host) => `What this buys on ${host}`,

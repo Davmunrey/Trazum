@@ -235,6 +235,12 @@ ${bold('EJEMPLOS')}
       }`,
     perMonthSaving: (saving, pct) => `ahorro ${saving}/mes (${pct}%)`,
     beyondShortening: () => 'Además de acortar el prompt',
+    biggestLever: () => 'Empieza por aquí:',
+    biggestLeverDetail: (title, amount, times) =>
+      // El título conserva sus mayúsculas: pasarlo a minúsculas convertía
+      // "Claude Opus 5" en "claude opus 5", un nombre de producto destrozado.
+      `"${title}" — ${amount}/mes` +
+      (times !== null && times >= 2 ? `, ${times}× lo que han ahorrado las reglas.` : '.'),
     perMonthSuffix: (amount) => ` ~${amount}/mes`,
     diff: () => 'Diff',
     tokensOnlyHeading: (host) => `Qué ganas con esto en ${host}`,

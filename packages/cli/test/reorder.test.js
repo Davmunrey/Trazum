@@ -174,12 +174,23 @@ describe('trazum optimize --reorder', () => {
     // Haiku's minimum is higher than Opus's. A prompt worth rearranging for one
     // is not necessarily worth it for the other, and the report must not claim
     // a saving the model would not give.
-    const root = await project({ 'p.txt': 'Agent.\n\nInput: {{x}}\n\nBe brief and polite.\n' });
+    const source = 'Agent.\n\nInput: {{x}}\n\nBe brief and polite.\n';
+    const root = await project({ 'p.txt': source });
     const { out } = run(
       ['optimize', 'p.txt', '--reorder', '--model', 'claude-haiku-4-5', '-o', 'out.txt'],
       root,
     );
-    assert.match(out, /Nothing could safely move\./);
+
+    // Asserted on the behaviour rather than on the words. This used to match
+    // "Nothing could safely move." — a heading, a blank line and a shrug, which
+    // the report no longer prints when there is neither a move nor a refusal to
+    // report. A test pinned to a line that says nothing keeps that line alive.
+    assert.doesNotMatch(out, /Reordered for caching/);
+    const written = await readFile(join(root, 'out.txt'), 'utf8');
+    assert.ok(
+      written.indexOf('{{x}}') < written.indexOf('Be brief'),
+      'the prompt was rearranged below the model cache minimum',
+    );
   });
 
   it('stops the cache-prefix advisory from asking for what it already did', async () => {

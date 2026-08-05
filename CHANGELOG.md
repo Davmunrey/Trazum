@@ -10,6 +10,35 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+**The report reads like a report.** Twelve releases added sections to it and
+nobody had looked at the whole thing at once. Printed end to end, three problems
+were obvious:
+
+- **The amounts were unreadable as a set.** Four advisories worth $506, $422,
+  $170 and nothing, each with its figure trailing the end of a different-length
+  title. They exist to be compared, and comparing them meant hunting for four
+  numbers in four sentences. The amount now has a column of its own, right
+  aligned, with the detail indented to the title so the prose forms one block
+  instead of stepping around the numbers.
+- **Nothing said what to do first.** The rules saved $1.25 and the top advisory
+  was worth $506 — a 405× difference the reader had to notice for themselves. A
+  closing line names it: `Start here: "This task may not need Claude Opus 5" —
+  $505.80/month, 405× what the rules saved.`
+- **`--reorder` printed a heading, a blank line and a shrug** when there was
+  nothing to move and nothing refused. The token count above had already said
+  nothing changed. That block now appears only when there is a move or a refusal
+  to report.
+
+Two things caught by looking at the output rather than the diff: the closing line
+lowercased the advisory title, turning "Claude Opus 5" into "claude opus 5" — a
+product name mangled to fit a sentence — and it was the one line in the report
+not wrapped to the common width, so it ran off a narrow terminal.
+
+A test that matched `Nothing could safely move.` was rewritten to assert the
+behaviour instead: that the prompt came back unrearranged. A test pinned to a
+line that says nothing is what keeps that line alive.
+
+
 **On a subscription, Trazum stops printing money.** Inside Claude Code, Codex or
 Cursor you pay the same whatever your prompt costs, so a monthly figure is
 arithmetic about tokens dressed as cash — and "$184/month" told to somebody on a

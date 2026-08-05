@@ -70,6 +70,8 @@ export interface CliMessages {
     usageLine(calls: string, outputTokens: number, batch: boolean): string;
     perMonthSaving(saving: string, pct: string): string;
     beyondShortening(): string;
+    biggestLever(): string;
+    biggestLeverDetail(title: string, amount: string, times: number | null): string;
     perMonthSuffix(amount: string): string;
     diff(): string;
     tokensOnlyHeading(host: string): string;
