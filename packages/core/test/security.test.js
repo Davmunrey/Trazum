@@ -199,3 +199,27 @@ describe('ReDoS resistance', () => {
     });
   }
 });
+
+describe('the CLI diff is bounded', () => {
+  it('declines a diff too large to align rather than allocating for it', () => {
+    // The alignment table is quadratic in lines. At 6,000 lines it is 36
+    // million cells and roughly 288 MB before anything else runs, so a large
+    // file passed to --diff could take the process down.
+    //
+    // Asserted against the source rather than by allocating 288 MB in a test:
+    // the guard is a constant and a comparison, and reproducing the failure
+    // would mean reintroducing it.
+    const cli = readFileSync(join(repoRoot, 'packages/cli/src/index.ts'), 'utf8');
+
+    assert.match(cli, /const MAX_DIFF_LINES = \d+/, 'the diff line cap is gone');
+    const cap = Number(/const MAX_DIFF_LINES = (\d+)/.exec(cli)[1]);
+    assert.ok(cap > 0 && cap <= 5000, `cap of ${cap} lines is too high to be a bound`);
+
+    // The cap has to be checked before the table is built, not after.
+    const renderDiff = cli.slice(cli.indexOf('function renderDiff'));
+    const guardAt = renderDiff.indexOf('MAX_DIFF_LINES');
+    const tableAt = renderDiff.indexOf('lcsTable(');
+    assert.ok(guardAt !== -1, 'renderDiff no longer checks the cap');
+    assert.ok(guardAt < tableAt, 'the cap is checked after the table is already allocated');
+  });
+});
