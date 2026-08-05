@@ -10,6 +10,32 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+**The report no longer claims a Claude number for a model that is not Claude.**
+Pricing seven providers left the token estimator where it was — tuned against
+Claude's tokenizer — while `±15%` kept printing beside GPT and Kimi figures. That
+band was never measured for those families, and stating it was a precision claim
+nobody had earned:
+
+```
+1,021 → 1,020   -0.1% (estimated — the counter is calibrated on Claude, not GPT-5)
+```
+
+Anthropic models still show `±15%`, where the band is at least the claim it was
+written for. `--exact-tokens` remains the answer for figures you can budget from.
+
+Documents the multi-provider work that shipped alongside it: a table in the README
+of what actually differs between providers — cache read rates, cache minimums,
+whether caching starts automatically, and which providers have no batch API or no
+caching at all — plus the two things deliberately left out and why.
+
+The `Tokenizer per model family` entry under `Under consideration` is heavier than
+it was, and says so. And the error-band entry now explains **once** that it will
+keep being renumbered by anything that ships before it, rather than re-justifying
+the move each time: it is the only item on the roadmap whose completion is not
+ours to schedule, and holding shippable work behind it would be the wrong trade
+every time.
+
+
 **Trazum prices models from seven providers, not one.** OpenAI, Google, Moonshot,
 DeepSeek, xAI and Mistral join Anthropic in the bundled catalogue.
 

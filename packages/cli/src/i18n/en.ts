@@ -184,7 +184,10 @@ ${bold('EXAMPLES')}
 
   report: {
     inputTokens: () => 'Input tokens',
-    estimated: () => ' (estimated, ±15%)',
+    estimated: (offFamily) =>
+      offFamily === null
+        ? ' (estimated, ±15%)'
+        : ` (estimated — the counter is calibrated on Claude, not ${offFamily})`,
     exactCount: () => ' (exact count)',
     rulesApplied: () => 'Rules applied',
     nothingToTrim: () => '  No rule found anything to trim.',
