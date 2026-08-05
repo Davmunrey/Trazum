@@ -55,6 +55,32 @@ enough:
 node packages/cli/dist/index.js check prompts/system.txt --max-tokens 2000
 ```
 
+Given a **directory** it checks every prompt inside against the `budgets`
+patterns in `trazum.config.json` — use this when the user asks about a folder of
+prompts rather than running the command once per file:
+
+```bash
+node packages/cli/dist/index.js check prompts/
+```
+
+Rows marked `(no budget)` are real findings, not noise: that file is not covered
+by any pattern, so nothing is watching it. Mention them. If the command errors
+with *"No budget covers anything"*, the fix is a `budgets` entry or
+`--max-tokens` — do not present that error as "the prompts are fine".
+
+## The config file
+
+`trazum.config.json`, found by walking up from the working directory. Keys:
+`level`, `locale`, `disable`, `usage`, `budgets`, `maxGrowth`, `extensions`.
+
+Flags beat the config; the config beats the defaults. When suggesting a setting a
+project will reuse, put it in the config rather than repeating flags in every CI
+step. A boolean the config turned on comes off with `--no-batch`.
+
+An unknown key is a hard error with a suggestion — if the user hits one, the fix
+is the spelling, not a workaround. Do not advise deleting the config to get past
+it.
+
 ## Checking the shorter prompt still works
 
 ```bash

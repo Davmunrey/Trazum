@@ -144,6 +144,49 @@ describe('the core does not reach the network on its own', () => {
   });
 });
 
+describe('the core does not touch the filesystem on its own', () => {
+  it('only the modules that exist to read files mention fs', () => {
+    // The web app exposes optimize() over HTTP with a prompt from the request
+    // body. If any module on that path grew a file read, a path in a prompt
+    // would become a file the server hands back — path traversal, reachable by
+    // anyone who can reach the API. The config loader and the directory walk
+    // are the two modules that legitimately read from disk; both are CLI-only.
+    const allowed = new Set(['config.ts', 'walk.ts']);
+    const srcDir = join(repoRoot, 'packages/core/src');
+
+    const offenders = [];
+    const walk = (dir, prefix = '') => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const path = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(path, `${prefix}${entry.name}/`);
+          continue;
+        }
+        if (!entry.name.endsWith('.ts')) continue;
+        if (allowed.has(entry.name)) continue;
+        if (/\bnode:fs\b|require\(['"]fs['"]\)/.test(readFileSync(path, 'utf8'))) {
+          offenders.push(`${prefix}${entry.name}`);
+        }
+      }
+    };
+    walk(srcDir);
+
+    assert.deepEqual(
+      offenders,
+      [],
+      `filesystem access appeared outside ${[...allowed].join(', ')}: ${offenders.join(', ')}`,
+    );
+  });
+
+  it('the directory walk refuses to follow a symlink', () => {
+    // Pinned in the source as well as behaviourally: dropping this check would
+    // turn "check the prompts folder" into reading whatever a link points at,
+    // and a link loop into a hang.
+    const source = readFileSync(join(repoRoot, 'packages/core/src/walk.ts'), 'utf8');
+    assert.match(source, /isSymbolicLink\(\)/);
+  });
+});
+
 describe('ReDoS resistance', () => {
   /**
    * Trazum is a regex engine pointed at untrusted text, reachable over HTTP.

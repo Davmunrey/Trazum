@@ -1,11 +1,15 @@
 #!/usr/bin/env node
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, stat, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 
 import {
+  CONFIG_FILENAME,
+  DEFAULT_EXTENSIONS,
   DEFAULT_USAGE,
   LOCALES,
   PRICING_LAST_REVIEWED,
   RULES,
+  budgetFor,
   comparePrompts,
   countTokensAnthropic,
   getModel,
@@ -14,11 +18,14 @@ import {
   formatSignedUsd,
   getMessages,
   listModels,
+  loadConfig,
+  nearestName,
   optimize,
   providerFromEnv,
   evaluate,
   refineWithLlm,
   reviewExamples,
+  walkPrompts,
   withExactTokenCounts,
 } from '@trazum/core';
 import type {
@@ -28,6 +35,7 @@ import type {
   OptimizationResult,
   RuleId,
   RuleLevel,
+  TrazumConfig,
   UsageProfile,
 } from '@trazum/core';
 
@@ -56,26 +64,37 @@ interface Args {
   command: string;
   positional: string[];
   flags: Map<string, string | boolean>;
+  /**
+   * How a flag was spelled, when that differs from the key it is stored under.
+   *
+   * Only `--no-x` differs today, and it exists so an error quotes what was
+   * actually typed. Telling somebody "unknown option --nonsense" when they
+   * wrote `--no-nonsense` sends them looking for a flag they never used.
+   */
+  asTyped: Map<string, string>;
 }
+
+const VALUE_FLAGS = new Set([
+  'level',
+  'model',
+  'calls',
+  'output-tokens',
+  'cache-hit-rate',
+  'disable',
+  'max-tokens',
+  'cases',
+  'concurrency',
+  'max-growth',
+  'locale',
+  'config',
+  'out',
+  'o',
+]);
 
 function parseArgs(argv: string[], t: CliMessages): Args {
   const flags = new Map<string, string | boolean>();
+  const asTyped = new Map<string, string>();
   const positional: string[] = [];
-  const takesValue = new Set([
-    'level',
-    'model',
-    'calls',
-    'output-tokens',
-    'cache-hit-rate',
-    'disable',
-    'max-tokens',
-    'cases',
-    'concurrency',
-    'max-growth',
-    'locale',
-    'out',
-    'o',
-  ]);
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
@@ -83,17 +102,41 @@ function parseArgs(argv: string[], t: CliMessages): Args {
       positional.push(arg);
       continue;
     }
-    const name = arg.replace(/^--?/, '');
-    if (takesValue.has(name)) {
-      const value = argv[++i];
-      if (value === undefined) throw new Error(t.errors.optionNeedsValue(name));
-      flags.set(name === 'o' ? 'out' : name, value);
+    const typed = arg.replace(/^--?/, '');
+    let name = typed;
+
+    // `--no-batch` stores `batch: false`. This exists because a config file can
+    // switch a boolean on, and a setting that cannot be switched back off from
+    // the command line is one you have to edit the repository to escape.
+    let value: string | boolean = true;
+    if (name.startsWith('no-') && !VALUE_FLAGS.has(name)) {
+      name = name.slice(3);
+      value = false;
+      asTyped.set(name, typed);
+    }
+
+    if (VALUE_FLAGS.has(name)) {
+      if (value === false) throw new Error(t.errors.cannotNegate(name));
+      const given = argv[++i];
+      if (given === undefined) throw new Error(t.errors.optionNeedsValue(name));
+      flags.set(name === 'o' ? 'out' : name, given);
     } else {
-      flags.set(name, true);
+      flags.set(name, value);
     }
   }
 
-  return { command: positional[0] ?? '', positional: positional.slice(1), flags };
+  return { command: positional[0] ?? '', positional: positional.slice(1), flags, asTyped };
+}
+
+/**
+ * Reads a boolean flag, honouring `--no-` and a project default.
+ *
+ * `flags.has(name)` is the wrong test once negation exists: `--no-batch` stores
+ * the key with the value `false`, and `has` would report it as set.
+ */
+function boolFlag(args: Args, name: string, fallback = false): boolean {
+  const raw = args.flags.get(name);
+  return typeof raw === 'boolean' ? raw : fallback;
 }
 
 /**
@@ -121,14 +164,57 @@ function numberFlag(args: Args, name: string, fallback: number, t: CliMessages):
   return value;
 }
 
-function levelFlag(args: Args, t: CliMessages): RuleLevel {
-  const level = (args.flags.get('level') ?? 'safe') as RuleLevel;
+/**
+ * Resolves the rule level: flag, then config, then `safe`.
+ *
+ * The layering order is the same for every setting in this file — the command
+ * line beats the project, and the project beats the built-in default. A config
+ * file that could override an explicit flag would make the flag a suggestion.
+ */
+function levelFlag(args: Args, config: TrazumConfig, t: CliMessages): RuleLevel {
+  const level = (args.flags.get('level') ?? config.level ?? 'safe') as RuleLevel;
   if (level !== 'safe' && level !== 'aggressive') {
     throw new Error(t.errors.badLevel(String(level)));
   }
   return level;
 }
 
+/** Usage profile from flags over config over the built-in defaults. */
+function usageFrom(args: Args, config: TrazumConfig, t: CliMessages): UsageProfile {
+  const fromConfig = config.usage ?? {};
+  const model = stringFlag(args, 'model') ?? fromConfig.model ?? DEFAULT_USAGE.model;
+  return {
+    model,
+    callsPerMonth: numberFlag(
+      args,
+      'calls',
+      fromConfig.callsPerMonth ?? DEFAULT_USAGE.callsPerMonth,
+      t,
+    ),
+    avgOutputTokens: numberFlag(
+      args,
+      'output-tokens',
+      fromConfig.avgOutputTokens ?? DEFAULT_USAGE.avgOutputTokens,
+      t,
+    ),
+    cacheHitRate: numberFlag(
+      args,
+      'cache-hit-rate',
+      fromConfig.cacheHitRate ?? DEFAULT_USAGE.cacheHitRate,
+      t,
+    ),
+    batchEligible: boolFlag(args, 'batch', fromConfig.batchEligible ?? false),
+  };
+}
+
+/** Rules to disable: the flag replaces the config list rather than adding to it. */
+function disabledRules(args: Args, config: TrazumConfig): RuleId[] | undefined {
+  const flag = stringFlag(args, 'disable');
+  if (flag !== undefined) {
+    return flag.split(',').map((id) => id.trim()).filter(Boolean) as RuleId[];
+  }
+  return config.disable;
+}
 
 /**
  * Flags each command accepts. An unrecognised flag used to be accepted
@@ -136,7 +222,7 @@ function levelFlag(args: Args, t: CliMessages): RuleLevel {
  * a threshold is set — `--max-growh 5` would have been ignored and the build
  * gone green. Silence is the wrong answer for a typo.
  */
-const GLOBAL_FLAGS = ['help', 'h', 'locale', 'json'];
+const GLOBAL_FLAGS = ['help', 'h', 'locale', 'json', 'config'];
 const COMMAND_FLAGS: Record<string, string[]> = {
   optimize: [
     'level', 'model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch',
@@ -149,47 +235,23 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   rules: [],
 };
 
-/** Edit distance, capped: only used to suggest a near-miss on a typo. */
-function editDistance(a: string, b: string): number {
-  if (Math.abs(a.length - b.length) > 3) return 99;
-  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
-  for (let i = 1; i <= a.length; i++) {
-    const row = [i];
-    for (let j = 1; j <= b.length; j++) {
-      row[j] = Math.min(
-        prev[j]! + 1,
-        row[j - 1]! + 1,
-        prev[j - 1]! + (a[i - 1] === b[j - 1] ? 0 : 1),
-      );
-    }
-    prev = row;
-  }
-  return prev[b.length]!;
-}
-
 function rejectUnknownFlags(args: Args, t: CliMessages): void {
   const known = COMMAND_FLAGS[args.command];
   if (!known) return;
   const allowed = [...known, ...GLOBAL_FLAGS];
 
   for (const name of args.flags.keys()) {
-    // `out` is stored under its long name even when given as `-o`.
+    // `out` is stored under its long name even when given as `-o`, and a
+    // negated boolean under its base name, so both validate against the list.
     if (allowed.includes(name)) continue;
 
-    const nearest = allowed
-      .map((candidate) => ({ candidate, distance: editDistance(name, candidate) }))
-      .sort((x, y) => x.distance - y.distance)[0];
-
-    // The tolerance scales with the length of what was typed. A fixed budget
-    // of three edits is a typo on `--max-tokens` and a different word entirely
-    // on `--llm`, which suggested "did you mean --help?" — a wrong guess is
-    // worse than the full list, because it sends the reader off to check it.
-    const tolerance = Math.min(3, Math.max(1, Math.floor(name.length / 3)));
-
+    // Quoted as typed, so `--no-nonsense` is not reported as `--nonsense`.
+    const spelled = args.asTyped.get(name) ?? name;
+    const nearest = nearestName(name, allowed);
     throw new Error(
-      nearest && nearest.distance <= tolerance
-        ? t.errors.unknownFlagDidYouMean(name, nearest.candidate)
-        : t.errors.unknownFlag(name, allowed.slice().sort().join(', ')),
+      nearest
+        ? t.errors.unknownFlagDidYouMean(spelled, nearest)
+        : t.errors.unknownFlag(spelled, allowed.slice().sort().join(', ')),
     );
   }
 }
@@ -500,24 +562,17 @@ async function readInput(source: string | undefined, t: CliMessages): Promise<st
   return readFile(source, 'utf8');
 }
 
-async function commandOptimize(args: Args, t: CliMessages, locale: Locale): Promise<void> {
+async function commandOptimize(
+  args: Args,
+  config: TrazumConfig,
+  t: CliMessages,
+  locale: Locale,
+): Promise<void> {
   const prompt = await readInput(args.positional[0], t);
-  const level = levelFlag(args, t);
+  const level = levelFlag(args, config, t);
+  const usage = usageFrom(args, config, t);
 
-  const model = stringFlag(args, 'model');
-  const usage: Partial<UsageProfile> = {
-    ...(model ? { model } : {}),
-    callsPerMonth: numberFlag(args, 'calls', DEFAULT_USAGE.callsPerMonth, t),
-    avgOutputTokens: numberFlag(args, 'output-tokens', DEFAULT_USAGE.avgOutputTokens, t),
-    cacheHitRate: numberFlag(args, 'cache-hit-rate', DEFAULT_USAGE.cacheHitRate, t),
-    batchEligible: args.flags.has('batch'),
-  };
-
-  const disableRaw = stringFlag(args, 'disable');
-  const disableRules = (disableRaw ?? '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const disableRules = disabledRules(args, config) ?? [];
   for (const id of disableRules) {
     if (!RULES.some((r) => r.id === id)) {
       throw new Error(t.errors.unknownRuleInDisable(id));
@@ -528,12 +583,12 @@ async function commandOptimize(args: Args, t: CliMessages, locale: Locale): Prom
     level,
     usage,
     locale,
-    disableRules: disableRules as RuleId[],
+    disableRules,
   });
 
   let examplesReview: ExampleReview | null = null;
 
-  if (args.flags.has('llm')) {
+  if (boolFlag(args, 'llm')) {
     const provider = providerFromEnv();
     if (!provider) {
       throw new Error(t.errors.llmNotConfigured());
@@ -547,7 +602,7 @@ async function commandOptimize(args: Args, t: CliMessages, locale: Locale): Prom
     examplesReview = await reviewExamples(result.optimized, provider);
   }
 
-  if (args.flags.has('exact-tokens')) {
+  if (boolFlag(args, 'exact-tokens')) {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
       throw new Error(t.errors.exactTokensNeedsKey());
@@ -563,7 +618,7 @@ async function commandOptimize(args: Args, t: CliMessages, locale: Locale): Prom
     await writeFile(outPath, result.optimized, 'utf8');
   }
 
-  if (args.flags.has('json')) {
+  if (boolFlag(args, 'json')) {
     console.log(
       JSON.stringify(examplesReview ? { ...result, examplesReview } : result, null, 2),
     );
@@ -576,75 +631,281 @@ async function commandOptimize(args: Args, t: CliMessages, locale: Locale): Prom
     return;
   }
 
-  printReport(result, args.flags.has('diff'), t, examplesReview);
+  printReport(result, boolFlag(args, 'diff'), t, examplesReview);
   if (outPath) {
     console.log(c.dim(t.report.wroteTo(outPath)));
     console.log();
   }
 }
 
+/** A token counter, plus where its numbers came from. */
+interface Counter {
+  count: (text: string) => Promise<number>;
+  source: 'heuristic' | 'external';
+}
+
+function counterFor(args: Args, t: CliMessages): Counter {
+  if (!boolFlag(args, 'exact-tokens')) {
+    return { count: (text) => Promise.resolve(estimateTokens(text)), source: 'heuristic' };
+  }
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) throw new Error(t.errors.exactTokensNeedsKey());
+  const exact = countTokensAnthropic({ apiKey });
+  return { count: (text) => exact(text), source: 'external' };
+}
+
+interface FileVerdict {
+  path: string;
+  tokens: number;
+  /** null when no budget covers this file. */
+  maxTokens: number | null;
+  /** The config pattern the budget came from, so a surprise can be traced. */
+  pattern: string | null;
+  /** null unless the file is over budget and we worked out the alternative. */
+  optimizedTokens: number | null;
+}
+
+async function judgeFile(
+  path: string,
+  text: string,
+  budget: { maxTokens: number; pattern: string | null } | null,
+  counter: Counter,
+  level: RuleLevel,
+  locale: Locale,
+): Promise<FileVerdict> {
+  const tokens = await counter.count(text);
+  const maxTokens = budget?.maxTokens ?? null;
+
+  // Over budget: work out whether optimising would be enough, so the CI failure
+  // carries a concrete next step instead of just a red number. Only for the
+  // files that failed — optimising all of them would triple the work of a
+  // directory run that is fine.
+  let optimizedTokens: number | null = null;
+  if (maxTokens !== null && tokens > maxTokens) {
+    optimizedTokens = await counter.count(optimize(text, { level, locale }).optimized);
+  }
+
+  return { path, tokens, maxTokens, pattern: budget?.pattern ?? null, optimizedTokens };
+}
+
+const isOverBudget = (v: FileVerdict): boolean => v.maxTokens !== null && v.tokens > v.maxTokens;
+
 /**
- * Token budget for CI: fails (exit code 1) when the prompt busts it, so a
+ * Token budget for CI: fails (exit code 1) when a prompt busts its budget, so a
  * template that grows unchecked breaks the build, not the bill.
+ *
+ * Given a directory it checks every prompt inside it against the budgets in
+ * `trazum.config.json`, which is what makes a repository of prompts governable
+ * as a whole rather than one CI step per file.
  */
-async function commandCheck(args: Args, t: CliMessages, locale: Locale): Promise<void> {
-  const prompt = await readInput(args.positional[0], t);
+async function commandCheck(
+  args: Args,
+  config: TrazumConfig,
+  t: CliMessages,
+  locale: Locale,
+): Promise<void> {
+  const target = args.positional[0];
+  const level = levelFlag(args, config, t);
+  const counter = counterFor(args, t);
+
+  // A flag beats the config, as everywhere else. -1 means "not given".
+  const flagBudget = numberFlag(args, 'max-tokens', -1, t);
+
+  const asDirectory = target !== undefined && target !== '-' ? await isDirectory(target) : false;
+
+  if (asDirectory) {
+    await checkDirectory(target!, args, flagBudget, config, counter, level, t, locale);
+    return;
+  }
+
+  const prompt = await readInput(target, t);
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
 
-  const maxTokens = numberFlag(args, 'max-tokens', -1, t);
-  if (maxTokens < 0) {
-    throw new Error(t.errors.checkNeedsMaxTokens());
-  }
+  // A single file falls back to the config budget for its own path, so
+  // `trazum check prompts/system.txt` works with no flag once budgets exist.
+  const configBudget = target ? budgetFor(target, config.budgets) : null;
+  const maxTokens = flagBudget >= 0 ? flagBudget : (configBudget?.maxTokens ?? -1);
+  if (maxTokens < 0) throw new Error(t.errors.checkNeedsMaxTokens());
 
-  const level = levelFlag(args, t);
+  const verdict = await judgeFile(
+    target ?? '-',
+    prompt,
+    { maxTokens, pattern: flagBudget >= 0 ? null : (configBudget?.pattern ?? null) },
+    counter,
+    level,
+    locale,
+  );
+  const ok = !isOverBudget(verdict);
 
-  let count = (text: string): Promise<number> => Promise.resolve(estimateTokens(text));
-  let source: 'heuristic' | 'external' = 'heuristic';
-
-  if (args.flags.has('exact-tokens')) {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) throw new Error(t.errors.exactTokensNeedsKey());
-    const exact = countTokensAnthropic({ apiKey });
-    count = (text) => exact(text);
-    source = 'external';
-  }
-
-  const tokens = await count(prompt);
-  const ok = tokens <= maxTokens;
-
-  // Over budget: work out whether optimising would be enough, so the CI
-  // failure carries a concrete next step instead of just a red number.
-  let optimizedTokens: number | null = null;
-  if (!ok) {
-    const optimized = optimize(prompt, { level, locale }).optimized;
-    optimizedTokens = await count(optimized);
-  }
-
-  if (args.flags.has('json')) {
+  if (boolFlag(args, 'json')) {
     console.log(
       JSON.stringify({
         ok,
-        tokens,
+        tokens: verdict.tokens,
         maxTokens,
-        tokenSource: source,
-        optimizedTokens,
-        wouldFitOptimized: optimizedTokens !== null ? optimizedTokens <= maxTokens : null,
+        budgetPattern: verdict.pattern,
+        tokenSource: counter.source,
+        optimizedTokens: verdict.optimizedTokens,
+        wouldFitOptimized:
+          verdict.optimizedTokens !== null ? verdict.optimizedTokens <= maxTokens : null,
       }),
     );
   } else if (ok) {
-    console.log(`${c.green(t.check.okLabel())} ${t.check.ok(n(tokens), n(maxTokens))}`);
+    console.log(`${c.green(t.check.okLabel())} ${t.check.ok(n(verdict.tokens), n(maxTokens))}`);
   } else {
-    console.error(`${c.red(t.check.failedLabel())} ${t.check.failed(n(tokens), n(maxTokens))}`);
-    if (optimizedTokens !== null) {
+    console.error(
+      `${c.red(t.check.failedLabel())} ${t.check.failed(n(verdict.tokens), n(maxTokens))}`,
+    );
+    if (verdict.optimizedTokens !== null) {
       console.error(
-        optimizedTokens <= maxTokens
-          ? t.check.wouldFit(level, n(optimizedTokens))
-          : t.check.stillTooBig(n(optimizedTokens)),
+        verdict.optimizedTokens <= maxTokens
+          ? t.check.wouldFit(level, n(verdict.optimizedTokens))
+          : t.check.stillTooBig(n(verdict.optimizedTokens)),
       );
     }
   }
 
   if (!ok) process.exitCode = 1;
+}
+
+async function isDirectory(path: string): Promise<boolean> {
+  return stat(path)
+    .then((info) => info.isDirectory())
+    .catch(() => false);
+}
+
+/**
+ * Checks every prompt under a directory.
+ *
+ * Two decisions worth naming. **A file with no budget is listed, not hidden**:
+ * silently skipping it would let a prompt sit outside every pattern for months
+ * while the report says everything is fine. And **finding no budget at all is
+ * an error**, because "checked 40 files, 0 failures" from a run that measured
+ * nothing is the most misleading output this tool could produce.
+ */
+async function checkDirectory(
+  root: string,
+  args: Args,
+  flagBudget: number,
+  config: TrazumConfig,
+  counter: Counter,
+  level: RuleLevel,
+  t: CliMessages,
+  locale: Locale,
+): Promise<void> {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const { files, truncated } = await walkPrompts(root, { extensions: config.extensions });
+
+  if (files.length === 0) {
+    const extensions = (config.extensions ?? DEFAULT_EXTENSIONS).join(' ');
+    throw new Error(t.errors.noPromptsFound(root, extensions));
+  }
+
+  const verdicts: FileVerdict[] = [];
+  for (const relativePath of files) {
+    const text = await readFile(join(root, relativePath), 'utf8');
+    // Budgets are keyed on paths as written in the repository, so a pattern like
+    // `prompts/**` has to be matched against the path including the root the
+    // user passed — not against the name relative to it.
+    const keyed = joinPosix(root, relativePath);
+    const fromConfig = budgetFor(keyed, config.budgets);
+    const budget =
+      fromConfig ?? (flagBudget >= 0 ? { maxTokens: flagBudget, pattern: null } : null);
+    verdicts.push(await judgeFile(keyed, text, budget, counter, level, locale));
+  }
+
+  if (verdicts.every((v) => v.maxTokens === null)) {
+    throw new Error(t.errors.noBudgetsApply(root, CONFIG_FILENAME));
+  }
+
+  const failures = verdicts.filter(isOverBudget);
+
+  if (boolFlag(args, 'json')) {
+    console.log(
+      JSON.stringify(
+        {
+          ok: failures.length === 0,
+          root,
+          tokenSource: counter.source,
+          truncated,
+          files: verdicts.map((v) => ({
+            path: v.path,
+            tokens: v.tokens,
+            maxTokens: v.maxTokens,
+            budgetPattern: v.pattern,
+            ok: !isOverBudget(v),
+            optimizedTokens: v.optimizedTokens,
+            wouldFitOptimized:
+              v.optimizedTokens !== null && v.maxTokens !== null
+                ? v.optimizedTokens <= v.maxTokens
+                : null,
+          })),
+        },
+        null,
+        2,
+      ),
+    );
+    if (failures.length > 0) process.exitCode = 1;
+    return;
+  }
+
+  // Every column is sized from the whole set before anything is printed, so the
+  // paths line up down the page whatever the locale calls OK and FAILED, and
+  // whether or not a row has a budget. A ragged table is one nobody scans.
+  const labelWidth = Math.max(t.check.okLabel().length, t.check.failedLabel().length) + 2;
+  const tokenWidth = Math.max(...verdicts.map((v) => n(v.tokens).length));
+  const budgetWidth = Math.max(
+    0,
+    ...verdicts.map((v) => (v.maxTokens === null ? 0 : n(v.maxTokens).length)),
+  );
+
+  console.log();
+  console.log(c.bold(t.check.directoryHeading(root, verdicts.length)));
+  console.log();
+
+  for (const verdict of verdicts) {
+    const tokens = n(verdict.tokens).padStart(tokenWidth);
+
+    if (verdict.maxTokens === null) {
+      // Blanks where " / <budget>" would be, so the path column does not shift.
+      console.log(
+        `  ${c.dim('—'.padEnd(labelWidth))}${tokens}${' '.repeat(3 + budgetWidth)}   ` +
+          `${verdict.path} ${c.dim(t.check.noBudget())}`,
+      );
+      continue;
+    }
+
+    const over = isOverBudget(verdict);
+    const plain = over ? t.check.failedLabel() : t.check.okLabel();
+    const label = (over ? c.red(plain) : c.green(plain)) + ' '.repeat(labelWidth - plain.length);
+    const budget = n(verdict.maxTokens).padEnd(budgetWidth);
+    console.log(`  ${label}${tokens} / ${budget}   ${verdict.path}`);
+
+    if (over && verdict.optimizedTokens !== null) {
+      console.log(
+        `  ${' '.repeat(labelWidth)}${c.dim(
+          verdict.optimizedTokens <= verdict.maxTokens
+            ? t.check.wouldFit(level, n(verdict.optimizedTokens))
+            : t.check.stillTooBig(n(verdict.optimizedTokens)),
+        )}`,
+      );
+    }
+  }
+
+  console.log();
+  const summary = t.check.directorySummary(failures.length, verdicts.length);
+  console.log(`  ${failures.length > 0 ? c.red(summary) : c.green(summary)}`);
+  if (truncated) console.log(`  ${c.yellow(t.check.walkTruncated())}`);
+  console.log();
+
+  if (failures.length > 0) process.exitCode = 1;
+}
+
+/** Joins two path fragments for display and glob matching, always with `/`. */
+function joinPosix(root: string, relativePath: string): string {
+  const trimmed = root.replace(/[\\/]+$/, '').replace(/\\/g, '/');
+  if (trimmed === '' || trimmed === '.') return relativePath;
+  return `${trimmed}/${relativePath}`;
 }
 
 
@@ -658,9 +919,14 @@ async function commandCheck(args: Args, t: CliMessages, locale: Locale): Promise
  * — without it, "diverged on 3 of 10" could be better than the original
  * manages against itself. The cost is printed before any call goes out.
  */
-async function commandEval(args: Args, t: CliMessages, locale: Locale): Promise<void> {
+async function commandEval(
+  args: Args,
+  config: TrazumConfig,
+  t: CliMessages,
+  locale: Locale,
+): Promise<void> {
   const prompt = await readInput(args.positional[0], t);
-  const level = levelFlag(args, t);
+  const level = levelFlag(args, config, t);
 
   const casesPath = stringFlag(args, 'cases');
   if (!casesPath) throw new Error(t.errors.evalNeedsCases());
@@ -684,7 +950,7 @@ async function commandEval(args: Args, t: CliMessages, locale: Locale): Promise<
     concurrency: numberFlag(args, 'concurrency', 3, t),
   });
 
-  if (args.flags.has('json')) {
+  if (boolFlag(args, 'json')) {
     console.log(JSON.stringify(report, null, 2));
     return;
   }
@@ -757,7 +1023,12 @@ function parseCases(raw: string): string[] {
  * for, because a tool that fails a build nobody armed gets removed from the
  * pipeline rather than fixed.
  */
-async function commandDiff(args: Args, t: CliMessages, locale: Locale): Promise<void> {
+async function commandDiff(
+  args: Args,
+  config: TrazumConfig,
+  t: CliMessages,
+  locale: Locale,
+): Promise<void> {
   const [beforePath, afterPath] = args.positional;
   if (!beforePath || !afterPath) throw new Error(t.errors.diffNeedsTwoFiles());
 
@@ -766,37 +1037,30 @@ async function commandDiff(args: Args, t: CliMessages, locale: Locale): Promise<
     readInput(afterPath, t),
   ]);
 
-  const model = stringFlag(args, 'model');
   const comparison = comparePrompts(before, after, {
-    level: levelFlag(args, t),
+    level: levelFlag(args, config, t),
     locale,
-    optimizeBoth: args.flags.has('optimized'),
-    usage: {
-      ...(model ? { model } : {}),
-      callsPerMonth: numberFlag(args, 'calls', DEFAULT_USAGE.callsPerMonth, t),
-      avgOutputTokens: numberFlag(args, 'output-tokens', DEFAULT_USAGE.avgOutputTokens, t),
-      batchEligible: args.flags.has('batch'),
-    },
+    optimizeBoth: boolFlag(args, 'optimized'),
+    usage: usageFrom(args, config, t),
   });
 
-  if (args.flags.has('json')) {
+  if (boolFlag(args, 'json')) {
     console.log(JSON.stringify(comparison, null, 2));
   } else {
-    printComparison(comparison, beforePath, afterPath, args.flags.has('optimized'), t);
+    printComparison(comparison, beforePath, afterPath, boolFlag(args, 'optimized'), t);
   }
 
-  // The gate is opt-in. Without --max-growth this command reports and exits 0
-  // even on a prompt that doubled: deciding that growth is unacceptable is the
-  // repository's call, not ours.
-  const limit = args.flags.get('max-growth');
-  if (typeof limit === 'string') {
-    const maxGrowth = numberFlag(args, 'max-growth', 0, t);
-    if (comparison.tokenDelta > maxGrowth) {
-      console.error(
-        `\n${c.red(t.diff.overLimit(comparison.tokenDelta, maxGrowth))}`,
-      );
-      process.exitCode = 1;
-    }
+  // The gate stays opt-in, and a config file counts as opting in: a repository
+  // that wrote down `"maxGrowth": 25` has armed it as deliberately as a flag
+  // would. What has not changed is that *absent* both, growth alone exits 0.
+  const limit =
+    typeof args.flags.get('max-growth') === 'string'
+      ? numberFlag(args, 'max-growth', 0, t)
+      : config.maxGrowth;
+
+  if (limit !== undefined && comparison.tokenDelta > limit) {
+    console.error(`\n${c.red(t.diff.overLimit(comparison.tokenDelta, limit))}`);
+    process.exitCode = 1;
   }
 }
 
@@ -859,11 +1123,11 @@ function printComparison(
 
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
-  const locale = localeFromArgv(argv);
-  const t = getCliMessages(locale);
+  let locale = localeFromArgv(argv);
+  let t = getCliMessages(locale);
   const args = parseArgs(argv, t);
 
-  if (args.flags.has('help') || args.flags.has('h') || !args.command) {
+  if (boolFlag(args, 'help') || boolFlag(args, 'h') || !args.command) {
     console.log(
       t.help(
         {
@@ -881,18 +1145,30 @@ async function main(): Promise<void> {
 
   rejectUnknownFlags(args, t);
 
+  // Loaded before dispatch so every command sees the same settings, and after
+  // flag validation so a typo is reported before any file is touched. An
+  // invalid config throws here rather than quietly reverting to defaults —
+  // "defaults" for a budget means "no budget", which means a green build.
+  const { config } = await loadConfig({ explicit: stringFlag(args, 'config') });
+
+  // The config only gets to choose the locale when nothing more explicit did.
+  if (config.locale && !stringFlag(args, 'locale')) {
+    locale = detectLocale(undefined, process.env, config.locale);
+    t = getCliMessages(locale);
+  }
+
   switch (args.command) {
     case 'optimize':
-      await commandOptimize(args, t, locale);
+      await commandOptimize(args, config, t, locale);
       break;
     case 'check':
-      await commandCheck(args, t, locale);
+      await commandCheck(args, config, t, locale);
       break;
     case 'eval':
-      await commandEval(args, t, locale);
+      await commandEval(args, config, t, locale);
       break;
     case 'diff':
-      await commandDiff(args, t, locale);
+      await commandDiff(args, config, t, locale);
       break;
     case 'models':
       commandModels(t);

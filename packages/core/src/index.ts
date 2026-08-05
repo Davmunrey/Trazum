@@ -89,3 +89,27 @@ export type {
   RuleDelta,
   AdvisoryDelta,
 } from './compare.js';
+
+// Project-level configuration
+export {
+  CONFIG_FILENAME,
+  CONFIG_KEYS,
+  CONFIG_USAGE_KEYS,
+  ConfigError,
+  DEFAULT_EXTENSIONS,
+  MAX_CONFIG_BYTES,
+  MAX_CONFIG_SEARCH_DEPTH,
+  budgetFor,
+  loadConfig,
+  parseConfig,
+} from './config.js';
+export type {
+  LoadConfigOptions,
+  LoadedConfig,
+  ResolvedBudget,
+  TrazumConfig,
+} from './config.js';
+export { matchGlob, mostSpecificMatch, specificity } from './glob.js';
+export { MAX_WALK_DEPTH, MAX_WALK_FILES, walkPrompts } from './walk.js';
+export type { WalkOptions, WalkResult } from './walk.js';
+export { editDistance, nearestName } from './nearest.js';

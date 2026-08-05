@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { describe, it } from 'node:test';
 
-import { LOCALES } from '@trazum/core';
+import { CONFIG_KEYS, CONFIG_USAGE_KEYS, LOCALES } from '@trazum/core';
 
 import { detectLocale, en, es, getCliMessages } from '../dist/i18n/index.js';
 
@@ -106,7 +106,7 @@ describe('catalogue parity', () => {
   it('every required flag is documented in every locale', () => {
     // A required flag missing from the help is a command that fails on first
     // use with an error the reader cannot act on.
-    const REQUIRED_FLAGS = ['--max-tokens', '--cases', '--max-growth'];
+    const REQUIRED_FLAGS = ['--max-tokens', '--cases', '--max-growth', '--config'];
     const defaults = {
       model: 'claude-opus-5',
       callsPerMonth: 1000,
@@ -120,6 +120,30 @@ describe('catalogue parity', () => {
       for (const flag of REQUIRED_FLAGS) {
         assert.ok(help.includes(flag), `${locale}: help does not document ${flag}`);
       }
+    }
+  });
+
+  it('every config key is documented in every locale', () => {
+    // Derived from the schema, not listed here. A hardcoded copy is how `eval`
+    // came to be fully implemented and completely undiscoverable — the parity
+    // test passed the whole time.
+    const defaults = {
+      model: 'claude-opus-5',
+      callsPerMonth: 1000,
+      avgOutputTokens: 500,
+      cacheHitRate: 0.9,
+      locales: LOCALES,
+    };
+
+    for (const locale of LOCALES) {
+      const help = getCliMessages(locale).help(defaults, (s) => s);
+      for (const key of [...CONFIG_KEYS, ...CONFIG_USAGE_KEYS]) {
+        assert.ok(help.includes(key), `${locale}: help never mentions the config key "${key}"`);
+      }
+      assert.ok(
+        help.includes('trazum.config.json'),
+        `${locale}: help does not name the config file`,
+      );
     }
   });
 
@@ -153,6 +177,9 @@ describe('catalogue parity', () => {
         llmNotConfigured: [],
         exactTokensNeedsKey: [],
         checkNeedsMaxTokens: [],
+        cannotNegate: ['max-tokens'],
+        noPromptsFound: ['prompts/', '.txt .md'],
+        noBudgetsApply: ['prompts/', 'trazum.config.json'],
         errorLabel: [],
       },
       report: {
@@ -182,6 +209,10 @@ describe('catalogue parity', () => {
         failed: ['30', '20'],
         wouldFit: ['safe', '15'],
         stillTooBig: ['25'],
+        directoryHeading: ['prompts/', 3],
+        directorySummary: [1, 3],
+        noBudget: [],
+        walkTruncated: [],
       },
     };
 

@@ -15,7 +15,7 @@ export const en: CliMessages = {
 
 ${bold('USAGE')}
   trazum optimize <file|-> [options]
-  trazum check <file|-> --max-tokens <n> [options]
+  trazum check <file|dir|-> --max-tokens <n> [options]
   trazum eval <file> --cases <file> [options]
   trazum diff <before> <after> [options]
   trazum models
@@ -38,13 +38,20 @@ ${bold('OPTIONS FOR optimize')}
   -h, --help                  This help.
 
 ${bold('OPTIONS FOR check')}
-  --max-tokens <n>            Input token budget. Required.
+  --max-tokens <n>            Input token budget. Required unless a config budget covers the file.
   --level <safe|aggressive>   Level used to work out whether the optimised prompt would fit.
   --exact-tokens              Exact count (needs ANTHROPIC_API_KEY).
   --json                      Result as JSON.
 
   Built for CI: exits with code 1 when the prompt busts the budget, so a
   template that grows unchecked breaks the build instead of the bill.
+
+  Given a directory it checks every prompt inside it against the "budgets"
+  patterns in ${bold('trazum.config.json')} — one CI step for a whole repository of
+  prompts. A file no pattern covers is listed as unbudgeted rather than
+  skipped quietly, and a run where nothing at all was budgeted is an error:
+  "0 failures" from a check that measured nothing is the most misleading
+  thing this tool could tell you.
 
 ${bold('OPTIONS FOR eval')}
   --cases <file>              Inputs to test, one per line or a JSON array. Required.
@@ -71,6 +78,24 @@ ${bold('OPTIONS FOR diff')}
   delta and positive means worse. It reports and exits 0 unless --max-growth
   is given: deciding that growth is unacceptable is your call, not ours.
 
+${bold('CONFIG FILE')}
+  ${bold('trazum.config.json')}, found by walking up from the working directory and
+  stopping at the repository root. Every key is optional:
+
+    level, locale, disable, maxGrowth, extensions
+    usage     { model, callsPerMonth, avgOutputTokens, cacheHitRate, batchEligible }
+    budgets   { "prompts/**": 2000, "prompts/system.txt": 4000 }
+
+  Flags beat the config; the config beats the defaults. Budgets resolve to the
+  most specific matching pattern — most literal characters wins. A boolean the
+  config switched on comes back off with --no-<flag>, e.g. --no-batch.
+
+  A config that will not validate is an error, including an unknown key. A
+  lenient parser would silently restore defaults, and for a budget the default
+  is "no budget" — a green build for a prompt nobody measured.
+
+  --config <file>             Use this config instead of searching for one.
+
 ${bold('OPTIONAL LLM')}
   The core is deterministic and free. --llm adds a semantic compression pass
   using whichever provider you configure by environment:
@@ -84,14 +109,18 @@ ${bold('OPTIONAL LLM')}
   and template placeholders untouched.
 
 ${bold('LANGUAGE')}
-  The report language follows --locale, then TRAZUM_LOCALE, then LANG. It
-  changes the report only: the same prompt always optimises the same way.
+  The report language follows --locale, then TRAZUM_LOCALE, then LANG, and last
+  the config file — so a project can set the language its CI logs read in
+  without overriding the language of whoever is at the keyboard. It changes the
+  report only: the same prompt always optimises the same way.
 
 ${bold('EXAMPLES')}
   trazum optimize prompt.txt --calls 50000 --diff
   cat prompt.md | trazum optimize - --level aggressive --json
   trazum optimize prompt.txt --llm -o prompt.optimised.txt
   trazum eval prompt.txt --cases cases.txt --level aggressive
+  trazum diff prompts/system.txt prompts/system.new.txt --max-growth 10
+  trazum check prompts/
 `,
 
   errors: {
@@ -115,6 +144,12 @@ ${bold('EXAMPLES')}
     unknownFlagDidYouMean: (name, suggestion) =>
       `Unknown option --${name}. Did you mean --${suggestion}?`,
     diffNeedsTwoFiles: () => 'trazum diff needs two files: trazum diff <before> <after>.',
+    cannotNegate: (name) => `--no-${name} makes no sense: --${name} takes a value.`,
+    noPromptsFound: (directory, extensions) =>
+      `No prompt files under "${directory}". Looked for: ${extensions}.`,
+    noBudgetsApply: (directory, configFile) =>
+      `No budget covers anything under "${directory}". Add one to ${configFile} under "budgets", or pass --max-tokens. ` +
+      'Reporting "0 failures" for files nobody measured would be worse than this error.',
     errorLabel: () => 'Error',
   },
 
@@ -231,5 +266,14 @@ ${bold('EXAMPLES')}
       `  Optimised with "trazum optimize --level ${level}" it would land at ~${optimizedTokens} tokens and fit.`,
     stillTooBig: (optimizedTokens) =>
       `  Even optimised it does not fit (~${optimizedTokens} tokens): content has to be cut by hand.`,
+    directoryHeading: (directory, files) =>
+      `${directory} — ${files} ${files === 1 ? 'prompt' : 'prompts'}`,
+    directorySummary: (failures, files) =>
+      failures === 0
+        ? `All ${files} within budget.`
+        : `${failures} of ${files} over budget.`,
+    noBudget: () => '(no budget)',
+    walkTruncated: () =>
+      'Stopped early: the directory is larger than the walk limit, so this is not the whole picture.',
   },
 };

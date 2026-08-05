@@ -1,0 +1,16 @@
+{
+  "level": "safe",
+  "usage": {
+    "model": "claude-opus-5",
+    "callsPerMonth": 50000,
+    "avgOutputTokens": 300,
+    "cacheHitRate": 0.9,
+    "batchEligible": false
+  },
+  "budgets": {
+    "prompts/**": 2000,
+    "prompts/system.txt": 4000
+  },
+  "maxGrowth": 100,
+  "extensions": [".txt", ".md"]
+}

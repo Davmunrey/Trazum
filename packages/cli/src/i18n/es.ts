@@ -9,7 +9,7 @@ export const es: CliMessages = {
 
 ${bold('USO')}
   trazum optimize <fichero|-> [opciones]
-  trazum check <fichero|-> --max-tokens <n> [opciones]
+  trazum check <fichero|dir|-> --max-tokens <n> [opciones]
   trazum eval <fichero> --cases <fichero> [opciones]
   trazum diff <antes> <después> [opciones]
   trazum models
@@ -32,13 +32,20 @@ ${bold('OPCIONES DE optimize')}
   -h, --help                  Esta ayuda.
 
 ${bold('OPCIONES DE check')}
-  --max-tokens <n>            Presupuesto de tokens de entrada. Obligatorio.
+  --max-tokens <n>            Presupuesto de tokens de entrada. Obligatorio salvo que el config cubra el fichero.
   --level <safe|aggressive>   Nivel al calcular si el prompt optimizado cabría.
   --exact-tokens              Recuento exacto (necesita ANTHROPIC_API_KEY).
   --json                      Resultado en JSON.
 
   Pensado para CI: sale con código 1 si el prompt supera el presupuesto,
   así una plantilla que crece sin control rompe la build en vez de la factura.
+
+  Si le das un directorio, comprueba todos los prompts que hay dentro contra
+  los patrones de "budgets" de ${bold('trazum.config.json')} — un solo paso de CI para
+  todo un repositorio de prompts. Un fichero que ningún patrón cubre sale
+  listado como sin presupuesto, no omitido en silencio, y una ejecución en la
+  que no se ha presupuestado nada es un error: "0 fallos" de una comprobación
+  que no ha medido nada es lo más engañoso que podría decirte.
 
 ${bold('OPCIONES DE eval')}
   --cases <fichero>           Entradas a probar, una por línea o array JSON. Obligatorio.
@@ -65,6 +72,26 @@ ${bold('OPCIONES DE diff')}
   cifra es un delta y positivo significa peor. Informa y sale con 0 salvo que
   des --max-growth: decidir que crecer es inaceptable es cosa tuya, no nuestra.
 
+${bold('FICHERO DE CONFIGURACIÓN')}
+  ${bold('trazum.config.json')}, que se busca subiendo desde el directorio de trabajo
+  y parando en la raíz del repositorio. Todas las claves son opcionales:
+
+    level, locale, disable, maxGrowth, extensions
+    usage     { model, callsPerMonth, avgOutputTokens, cacheHitRate, batchEligible }
+    budgets   { "prompts/**": 2000, "prompts/system.txt": 4000 }
+
+  Las opciones ganan al config; el config gana a los valores por defecto. Los
+  presupuestos se resuelven con el patrón más específico que encaje — gana el
+  que tenga más caracteres literales. Un booleano que el config haya activado se
+  desactiva con --no-<opción>, por ejemplo --no-batch.
+
+  Un config que no valide es un error, incluida una clave desconocida. Un
+  parser permisivo restauraría los valores por defecto en silencio, y para un
+  presupuesto el valor por defecto es "sin presupuesto": una build en verde de
+  un prompt que nadie ha medido.
+
+  --config <fichero>          Usa este config en vez de buscar uno.
+
 ${bold('LLM OPCIONAL')}
   El núcleo es determinista y gratis. Con --llm se añade una pasada de
   compresión semántica usando el proveedor que configures por entorno:
@@ -78,7 +105,9 @@ ${bold('LLM OPCIONAL')}
   el código, las URLs y los marcadores de plantilla.
 
 ${bold('IDIOMA')}
-  El idioma del informe sale de --locale, luego TRAZUM_LOCALE, luego LANG.
+  El idioma del informe sale de --locale, luego TRAZUM_LOCALE, luego LANG, y por
+  último del fichero de configuración — así un proyecto puede fijar el idioma en
+  el que se leen sus logs de CI sin pisar el idioma de quien está al teclado.
   Solo cambia el informe: el mismo prompt se optimiza siempre igual.
 
 ${bold('EJEMPLOS')}
@@ -86,6 +115,8 @@ ${bold('EJEMPLOS')}
   cat prompt.md | trazum optimize - --level aggressive --json
   trazum optimize prompt.txt --llm -o prompt.optimizado.txt
   trazum eval prompt.txt --cases casos.txt --level aggressive
+  trazum diff prompts/system.txt prompts/system.new.txt --max-growth 10
+  trazum check prompts/
 `,
 
   errors: {
@@ -112,6 +143,12 @@ ${bold('EJEMPLOS')}
       `Opción desconocida --${name}. ¿Querías decir --${suggestion}?`,
     diffNeedsTwoFiles: () =>
       'trazum diff necesita dos ficheros: trazum diff <antes> <después>.',
+    cannotNegate: (name) => `--no-${name} no tiene sentido: --${name} lleva un valor.`,
+    noPromptsFound: (directory, extensions) =>
+      `No hay ficheros de prompt en "${directory}". Se han buscado: ${extensions}.`,
+    noBudgetsApply: (directory, configFile) =>
+      `Ningún presupuesto cubre nada dentro de "${directory}". Añade uno en ${configFile}, en "budgets", o pasa --max-tokens. ` +
+      'Decir "0 fallos" de unos ficheros que nadie ha medido sería peor que este error.',
     errorLabel: () => 'Error',
   },
 
@@ -230,5 +267,14 @@ ${bold('EJEMPLOS')}
       `  Optimizado con "trazum optimize --level ${level}" quedaría en ~${optimizedTokens} tokens y sí cabría.`,
     stillTooBig: (optimizedTokens) =>
       `  Ni optimizado cabe (~${optimizedTokens} tokens): hay que recortar contenido a mano.`,
+    directoryHeading: (directory, files) =>
+      `${directory} — ${files} ${files === 1 ? 'prompt' : 'prompts'}`,
+    directorySummary: (failures, files) =>
+      failures === 0
+        ? `Los ${files} dentro de presupuesto.`
+        : `${failures} de ${files} por encima del presupuesto.`,
+    noBudget: () => '(sin presupuesto)',
+    walkTruncated: () =>
+      'Se ha parado antes de tiempo: el directorio supera el límite de recorrido, así que esto no es el cuadro completo.',
   },
 };

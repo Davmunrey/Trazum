@@ -3,6 +3,63 @@
 Versioning policy: [VERSIONING.md](VERSIONING.md). Below 1.0, minor versions
 may contain breaking changes, and say so in their first line.
 
+## 0.10.0
+
+`trazum.config.json` and directory mode. Two of the three items left over from
+0.9.0; PR comment mode for the Action is still open.
+
+**`trazum check prompts/`** checks every prompt under a directory against
+per-pattern budgets from the config file — one CI step for a repository of
+prompts rather than one step per file.
+
+**The config parser refuses anything it cannot validate, including an unknown
+key.** That is the design, not strictness for its own sake: a lenient parser
+restores defaults silently, and for a budget the default is *no budget* — a
+green build for a prompt nobody measured. Same reasoning as `--max-growh` being
+rejected rather than ignored in 0.9.0.
+
+- `trazum.config.json`: `level`, `locale`, `disable`, `usage`, `budgets`,
+  `maxGrowth`, `extensions`. Found by walking up from the working directory and
+  stopping at the repository root, so a subdirectory inherits the project's
+  settings and nothing above the checkout is ever read. `--config <file>` skips
+  the search.
+- **Flags beat the config; the config beats the defaults.** A config able to
+  override an explicit flag would make every flag a suggestion.
+- New `--no-<flag>` for booleans, so a setting the config switched on is not one
+  you have to edit the repository to escape. `--no-max-tokens` is refused rather
+  than silently accepted, and an unknown `--no-x` is quoted the way it was typed
+  instead of as `--x`.
+- Budgets resolve to the most specific matching pattern, with "specific" given a
+  stated definition — most literal characters wins, longest pattern breaks a
+  tie. Pattern order in the file never matters. The JSON report names the
+  pattern each budget came from.
+- A file no pattern covers is listed as `(no budget)`, not skipped; and a run
+  where nothing at all was budgeted is an error. "Checked 40 files, 0 failures"
+  from a run that measured nothing is the most misleading output this tool could
+  produce.
+- `maxGrowth` in the config arms the `diff` gate exactly as the flag does.
+  Absent both, growth alone still exits 0.
+- `locale` in the config is outranked by the environment — the only setting
+  where that is true. A repository choosing the language of its CI logs should
+  not choose the language of a contributor's terminal.
+- New glob matcher, written as a segment-wise dynamic program rather than a
+  regex translation. `**` compiled to `(?:[^/]*\/)*` is the nested-quantifier
+  shape that backtracks exponentially, and these patterns come from a file in
+  the repository — on a pull request, from whoever opened it. Bounded in pattern
+  and path length, with a time-budget test over the shapes that break the regex
+  version.
+- The directory walk **does not follow symlinks**, caps depth and file count,
+  and reports when a cap stopped it early. A link to `/etc` would turn "check
+  the prompts folder" into printing token counts for files outside the project;
+  a link loop would turn it into a hang.
+- New security invariant: only `config.ts` and `walk.ts` may touch the
+  filesystem. The web app exposes `optimize()` over HTTP with a prompt from the
+  request body, so a file read appearing on that path would be path traversal
+  reachable by anyone who can reach the API.
+- `editDistance` moves into core as `nearestName` and is now shared between the
+  unknown-flag and unknown-key suggestions rather than duplicated.
+- Tests grow from 228 to 298.
+
 ## 0.9.0
 
 New `trazum diff` command and `comparePrompts()` API: compare two versions of a
