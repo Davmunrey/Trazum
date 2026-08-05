@@ -1,0 +1,12 @@
+Reconcile the ledger below and report any line that does not balance.
+
+2026-01-03  INV-100482  EUR 1,284.50  VAT 21%   net 1,061.57  ref 4400012938
+2026-01-07  INV-100483  EUR   942.00  VAT 21%   net   778.51  ref 4400012941
+2026-01-11  INV-100484  EUR 3,117.25  VAT 10%   net 2,833.86  ref 4400012955
+2026-01-14  CRN-000217  EUR  -412.80  VAT 21%   net  -341.16  ref 4400012960
+2026-01-19  INV-100485  EUR 8,004.00  VAT 21%   net 6,614.88  ref 4400012977
+2026-01-22  INV-100486  EUR    77.99  VAT  4%   net    74.99  ref 4400012981
+2026-01-28  INV-100487  EUR 15,240.10 VAT 21%   net 12,595.12 ref 4400012994
+
+Totals to verify: gross 28,253.04, net 23,617.77, VAT 4,635.27.
+Tolerance: 0.02 EUR per line, 0.05 EUR on the totals.

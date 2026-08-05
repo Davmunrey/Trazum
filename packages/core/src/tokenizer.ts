@@ -2,9 +2,20 @@
  * Dependency-free token estimator.
  *
  * This is NOT a real tokenizer: it is a heuristic calibrated per character
- * class. On ordinary text (English/Spanish, markdown, code) the typical error
- * sits around ±15%. That is plenty for comparing two versions of the same
- * prompt, which is what this tool does, but do NOT bill anyone from it.
+ * class. It is built to keep the typical error on ordinary text
+ * (English/Spanish, markdown, code) inside ±15%, which is plenty for comparing
+ * two versions of the same prompt — but do NOT bill anyone from it.
+ *
+ * **That band is a design target that has not been measured.** It is printed on
+ * every report and every dollar figure descends from it, and until
+ * `scripts/measure-token-band.mjs` has been run against the official counting
+ * endpoint, nothing in this repository establishes that it holds. It is stated
+ * as one number for all text, which is a further assumption: the branches below
+ * treat CJK, digits and punctuation quite differently from words, and there is
+ * no reason those should land on the same accuracy.
+ *
+ * `test/token-band.test.js` asserts the band per text type as soon as the ground
+ * truth exists. Until then it says so rather than passing quietly.
  *
  * For exact numbers use `countTokensAnthropic` (the official token-counting
  * endpoint, which is free) or pass your own `TokenCounter`.

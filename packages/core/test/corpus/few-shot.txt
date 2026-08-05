@@ -1,0 +1,33 @@
+Classify each support message into exactly one category.
+
+Categories: payment, delivery, returns, account, other
+
+Input: My card was declined but the money left my account.
+Output: payment
+
+Input: The tracking page has said "out for delivery" for three days.
+Output: delivery
+
+Input: I want to send back the lamp, it arrived with a cracked shade.
+Output: returns
+
+Input: I cannot log in, the reset email never arrives.
+Output: account
+
+Input: Do you ship to the Canary Islands?
+Output: other
+
+Input: I was charged twice for order 88214.
+Output: payment
+
+Input: The parcel was left with a neighbour who is now on holiday.
+Output: delivery
+
+Input: Can I exchange the blue one for the grey one instead of a refund?
+Output: returns
+
+Input: How do I change the email address on my account?
+Output: account
+
+Input: Is the walnut finish real wood or veneer?
+Output: other

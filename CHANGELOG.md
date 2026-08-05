@@ -10,6 +10,44 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+**The ±15% error band now has a corpus, a harness and a test.** It is printed on
+every report, appears in both READMEs, in the estimator's own doc comment and in
+`VERSIONING.md` as part of the frozen API — and `estimateTokens` was tested for
+exactly three things: zero on empty input, monotonic growth, and never returning
+`NaN`. Nothing measured its accuracy, and every dollar figure Trazum prints
+descends from it.
+
+Eight corpus samples, chosen to exercise the branches the estimator actually has:
+prose in English and Spanish, Japanese and Chinese, code with fenced blocks,
+few-shot Input/Output pairs, a punctuation-heavy Markdown table, and dense
+numerics. `scripts/measure-token-band.mjs` (`npm run measure:tokens`) counts them
+against the official endpoint and subtracts the message envelope, so the figures
+describe the text rather than the request around it.
+
+`token-band.test.js` asserts the band per sample. Three deliberate choices in it:
+
+- **It does not pass quietly while unmeasured** — it skips out loud and names the
+  command. "0 failures" from a check that measured nothing is the most misleading
+  thing this suite could report, which is the same reasoning that makes `check`
+  treat an unbudgeted run as an error rather than a pass.
+- **It requires the docs to admit the band is unverified** until ground truth
+  exists, so `±15%` cannot harden from a design target into a fact nobody
+  established. `tokenizer.ts` and the README now say so.
+- **It carries a digest of the corpus**, because a fixture describing text that
+  has since been edited passes while describing something else.
+
+Both paths were exercised before committing: a synthetic fixture confirmed the
+band assertions fire per type with an actionable message, and that editing the
+corpus afterwards fails on the digest. **The synthetic fixture was then deleted** —
+fabricated numbers are exactly what this test exists to prevent, and committing
+them to make a suite look green would be the same failure wearing a lab coat.
+
+**Needs the maintainer once:** `ANTHROPIC_API_KEY=... npm run measure:tokens`. The
+endpoint is free and does not run the model. Commit what it writes and the
+assertions go live; if the bands differ materially by type, the reports stop
+printing one number for all text.
+
+
 **A tag now publishes the release.** Publishing is the one action in this
 repository that cannot be undone — npm allows unpublishing for 72 hours and then
 the version number is spent for good — and until now it was also entirely manual.
