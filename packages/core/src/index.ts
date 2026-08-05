@@ -45,6 +45,11 @@ export type {
   ReorderedBlock,
 } from './reorder.js';
 export type { CachePrefixAnalysis } from './cache.js';
+
+// Prompts embedded in source files, found by an explicit marker rather than
+// guessed at — see extract.ts for why a gate cannot afford a heuristic here.
+export { extractPrompts, promptId, hasMarker, SOURCE_EXTENSIONS } from './extract.js';
+export type { ExtractedPrompt, DeclinedPrompt, ExtractionResult } from './extract.js';
 export { optimize, withExactTokenCounts, DEFAULT_USAGE } from './optimize.js';
 export {
   refineWithLlm,

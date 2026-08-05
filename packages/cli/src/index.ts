@@ -19,6 +19,10 @@ import {
   optimize,
   providerFromEnv,
   reorderForCache,
+  extractPrompts,
+  promptId,
+  hasMarker,
+  SOURCE_EXTENSIONS,
   evaluate,
   refineWithLlm,
   reviewExamples,
@@ -28,6 +32,8 @@ import type {
   ExampleReview,
   PromptComparison,
   ReorderResult,
+  ExtractedPrompt,
+  DeclinedPrompt,
   Locale,
   OptimizationResult,
   RuleId,
@@ -863,6 +869,25 @@ async function commandCheck(
   const maxTokens = flagBudget >= 0 ? flagBudget : (configBudget?.maxTokens ?? -1);
   if (maxTokens < 0) throw new Error(t.errors.checkNeedsMaxTokens());
 
+  // A source file carrying markers is not one prompt, it is several. Budgeting
+  // the whole file would measure the code around them, which is not what the
+  // author asked to govern.
+  const embedded = target && target !== '-' && hasMarker(prompt) ? extractPrompts(prompt) : null;
+  if (embedded !== null && (embedded.prompts.length > 0 || embedded.declined.length > 0)) {
+    await checkEmbedded(
+      target!,
+      embedded,
+      { maxTokens, pattern: flagBudget >= 0 ? null : (configBudget?.pattern ?? null) },
+      args,
+      counter,
+      level,
+      t,
+      locale,
+      pricing,
+    );
+    return;
+  }
+
   const verdict = await judgeFile(
     target ?? '-',
     prompt,
@@ -962,6 +987,99 @@ async function writeMarkdown(args: Args, render: () => string): Promise<void> {
  * an error**, because "checked 40 files, 0 failures" from a run that measured
  * nothing is the most misleading output this tool could produce.
  */
+/**
+ * Budgets each prompt marked inside a source file.
+ *
+ * The budget applies per prompt, not to the file: a file holding four prompts is
+ * four things to govern, and summing them would fail a build because somebody
+ * added a fifth short one.
+ *
+ * Declined markers are reported before the verdicts and are **a failure**, not a
+ * note. The author marked a prompt to have it governed; if Trazum cannot read it
+ * then it is not governed, and a green build saying otherwise is the same lie as
+ * "0 failures" from a run that measured nothing.
+ */
+async function checkEmbedded(
+  path: string,
+  extraction: { prompts: ExtractedPrompt[]; declined: DeclinedPrompt[] },
+  budget: { maxTokens: number; pattern: string | null },
+  args: Args,
+  counter: Counter,
+  level: RuleLevel,
+  t: CliMessages,
+  locale: Locale,
+  pricing: PricingCatalogue,
+): Promise<void> {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+
+  const verdicts: FileVerdict[] = [];
+  for (const prompt of extraction.prompts) {
+    verdicts.push(
+      await judgeFile(promptId(path, prompt), prompt.text, budget, counter, level, locale, pricing),
+    );
+  }
+
+  const failures = verdicts.filter(isOverBudget);
+  const ok = failures.length === 0 && extraction.declined.length === 0;
+
+  await writeMarkdown(args, () =>
+    renderCheckMarkdown({
+      target: path,
+      verdicts,
+      level,
+      tokenSource: counter.source,
+      truncated: false,
+      t,
+    }),
+  );
+
+  if (boolFlag(args, 'json')) {
+    console.log(
+      JSON.stringify(
+        {
+          ok,
+          target: path,
+          embedded: true,
+          prompts: verdicts.map((v) => ({
+            id: v.path,
+            tokens: v.tokens,
+            maxTokens: v.maxTokens,
+            ok: !isOverBudget(v),
+          })),
+          declined: extraction.declined,
+        },
+        null,
+        2,
+      ),
+    );
+    if (!ok) process.exitCode = 1;
+    return;
+  }
+
+  console.log();
+  console.log(c.bold(t.check.embeddedHeading(path, extraction.prompts.length)));
+
+  for (const verdict of verdicts) {
+    const over = isOverBudget(verdict);
+    const label = over ? c.red(t.check.failedLabel()) : c.green(t.check.okLabel());
+    console.log(
+      `  ${label} ${verdict.path} — ${n(verdict.tokens)}` +
+        (verdict.maxTokens === null ? '' : ` / ${n(verdict.maxTokens)}`),
+    );
+  }
+
+  if (extraction.declined.length > 0) {
+    console.log();
+    console.log(c.red(t.check.declinedHeading(extraction.declined.length)));
+    for (const declined of extraction.declined) {
+      console.log(`  ${c.dim(t.check.declinedAt(declined.line, declined.detail))}`);
+    }
+  }
+
+  console.log();
+  if (!ok) process.exitCode = 1;
+}
+
 async function checkDirectory(
   root: string,
   args: Args,
@@ -974,11 +1092,15 @@ async function checkDirectory(
   pricing: PricingCatalogue,
 ): Promise<void> {
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
-  const { files, truncated } = await walkPrompts(root, { extensions: config.extensions });
+  // Source files are walked alongside prompt files rather than opted into.
+  // Requiring config to discover a marker somebody just wrote is how `eval` came
+  // to be fully implemented and completely undiscoverable; an unmarked source
+  // file costs one `includes()` and is dropped.
+  const extensions = config.extensions ?? [...DEFAULT_EXTENSIONS, ...SOURCE_EXTENSIONS];
+  const { files, truncated } = await walkPrompts(root, { extensions });
 
   if (files.length === 0) {
-    const extensions = (config.extensions ?? DEFAULT_EXTENSIONS).join(' ');
-    throw new Error(t.errors.noPromptsFound(root, extensions));
+    throw new Error(t.errors.noPromptsFound(root, extensions.join(' ')));
   }
 
   // --exact-tokens over a directory is one API round trip per file, and another
@@ -990,6 +1112,8 @@ async function checkDirectory(
   }
 
   const verdicts: FileVerdict[] = [];
+  const declined: Array<{ path: string; line: number; detail: string }> = [];
+
   for (const relativePath of files) {
     const text = await readFile(join(root, relativePath), 'utf8');
     // Budgets are keyed on paths as written in the repository, so a pattern like
@@ -999,7 +1123,30 @@ async function checkDirectory(
     const fromConfig = budgetFor(keyed, config.budgets);
     const budget =
       fromConfig ?? (flagBudget >= 0 ? { maxTokens: flagBudget, pattern: null } : null);
+
+    const isSource = SOURCE_EXTENSIONS.some((ext) => relativePath.toLowerCase().endsWith(ext));
+    if (isSource) {
+      // A source file is only a prompt file if it says so. One that does not is
+      // dropped silently — it was never something the author asked to govern,
+      // and listing it as unbudgeted would bury the files that are.
+      if (!hasMarker(text)) continue;
+      const extraction = extractPrompts(text);
+      for (const prompt of extraction.prompts) {
+        const id = promptId(keyed, prompt);
+        const own = budgetFor(id, config.budgets) ?? budget;
+        verdicts.push(await judgeFile(id, prompt.text, own, counter, level, locale, pricing));
+      }
+      for (const entry of extraction.declined) {
+        declined.push({ path: keyed, line: entry.line, detail: entry.detail });
+      }
+      continue;
+    }
+
     verdicts.push(await judgeFile(keyed, text, budget, counter, level, locale, pricing));
+  }
+
+  if (verdicts.length === 0 && declined.length === 0) {
+    throw new Error(t.errors.noPromptsFound(root, extensions.join(' ')));
   }
 
   if (verdicts.every((v) => v.maxTokens === null)) {
@@ -1023,10 +1170,11 @@ async function checkDirectory(
     console.log(
       JSON.stringify(
         {
-          ok: failures.length === 0,
+          ok: failures.length === 0 && declined.length === 0,
           root,
           tokenSource: counter.source,
           truncated,
+          declined,
           files: verdicts.map((v) => ({
             path: v.path,
             tokens: v.tokens,
@@ -1044,7 +1192,7 @@ async function checkDirectory(
         2,
       ),
     );
-    if (failures.length > 0) process.exitCode = 1;
+    if (failures.length > 0 || declined.length > 0) process.exitCode = 1;
     return;
   }
 
@@ -1091,13 +1239,26 @@ async function checkDirectory(
     }
   }
 
+  // A marker Trazum could not read is a failure, not a footnote. The author
+  // marked that prompt to have it governed; it is not being governed, and a
+  // green summary alongside would be the same lie as "0 failures" from a run
+  // that measured nothing.
+  if (declined.length > 0) {
+    console.log();
+    console.log(c.red(t.check.declinedHeading(declined.length)));
+    for (const entry of declined) {
+      console.log(`  ${c.dim(`${entry.path} ${t.check.declinedAt(entry.line, entry.detail)}`)}`);
+    }
+  }
+
   console.log();
   const summary = t.check.directorySummary(failures.length, verdicts.length);
-  console.log(`  ${failures.length > 0 ? c.red(summary) : c.green(summary)}`);
+  const bad = failures.length > 0 || declined.length > 0;
+  console.log(`  ${bad ? c.red(summary) : c.green(summary)}`);
   if (truncated) console.log(`  ${c.yellow(t.check.walkTruncated())}`);
   console.log();
 
-  if (failures.length > 0) process.exitCode = 1;
+  if (bad) process.exitCode = 1;
 }
 
 /** Joins two path fragments for display and glob matching, always with `/`. */

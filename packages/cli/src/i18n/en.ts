@@ -358,6 +358,11 @@ ${bold('EXAMPLES')}
 
   check: {
     okLabel: () => 'OK',
+    embeddedHeading: (path, count) =>
+      `${path} — ${count} marked ${count === 1 ? 'prompt' : 'prompts'}`,
+    declinedHeading: (count) =>
+      `${count} ${count === 1 ? 'marker' : 'markers'} could not be read:`,
+    declinedAt: (line, detail) => `line ${line}: ${detail}`,
     failedLabel: () => 'FAILED',
     ok: (tokens, budget) => `${tokens} tokens, within the budget of ${budget}.`,
     failed: (tokens, budget) => `${tokens} tokens busts the budget of ${budget}.`,

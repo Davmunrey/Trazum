@@ -548,30 +548,61 @@ front of it.
 
 ### 1.4.0 — Prompts where they actually live
 
-`check` and `diff` read `.txt`, `.md`, `.prompt` and `.tmpl`. Real prompts live in
-TypeScript template literals, Python strings and YAML, so adopting Trazum today
-means first refactoring them out into files — a change to somebody's application
-as the price of admission.
+`check` read `.txt`, `.md`, `.prompt` and `.tmpl`. Real prompts live in TypeScript
+template literals, Python strings and YAML, so adopting Trazum meant first
+refactoring them out into standalone files — a change to somebody's application as
+the price of admission, and the largest barrier to adoption the tool had.
 
-Zero runtime dependencies rules out an AST parser, which leaves one approach:
+A marker comment is now enough:
 
-- An explicit marker comment — `// trazum:prompt` — and then the following
-  template literal, taken by delimiter matching. Bounded, parser-free and
-  unambiguous. **Guessing which string in a file is a prompt** would produce false
-  positives in something used as a gate, and that is not a trade worth making.
-- The masking pass already handles interpolation correctly: `${x}` in a template
-  literal is exactly the placeholder shape `segment.ts` protects, so an embedded
-  prompt gets the same cache-prefix analysis as a `{{x}}` template. Not a special
-  case to build — one that already works.
-- Honest limit, to document rather than paper over: a prompt assembled from
-  concatenated pieces cannot be read this way, and Trazum should decline instead of
-  guessing.
+```ts
+// trazum:prompt support-system
+export const SUPPORT = `You are a support agent.
 
-Folded in here rather than earlier: the **Action's `diff` against the base
-branch**, deferred from 0.11.0. Before source extraction it would only diff
-standalone files, which `trazum diff` already handles by hand. After it, diffing an
-embedded prompt against its base version is the actual reviewer workflow. Needs
-`fetch-depth: 0` and a documented recipe, not a new input.
+Customer message: ${message}`;
+```
+
+**It reads a marker rather than guessing**, which is the decision in this release.
+Inferring which string in a file is a prompt is a heuristic, and a heuristic
+inside a command used as a CI gate fails builds over log lines and SQL. One line
+of comment buys never being wrong about what was picked up. `//`, `#`, `--` and
+`<!-- -->` cover the languages prompts live in.
+
+**Interpolation was not a special case to build — it was one that already worked.**
+`${x}` is exactly the shape `segment.ts` protects, so an embedded prompt gets the
+same cache-prefix analysis, the same rule protection and the same `--reorder`
+treatment as a `{{x}}` template, with no second code path to drift.
+
+Three decisions worth recording:
+
+- **Each prompt is budgeted on its own.** A file holding four prompts is four
+  things to govern, and summing them would fail a build because somebody added a
+  fifth short one — while counting imports and export keywords as tokens the
+  model never sees.
+- **The id is path-prefixed** (`src/prompts.ts#support-system`, or
+  `src/prompts.ts:12` for a bare marker), so the existing `budgets` globs cover
+  embedded prompts without the config learning a new syntax.
+- **Source files are scanned without being opted into.** Requiring config to
+  discover a marker somebody just wrote is how `eval` came to be fully implemented
+  and completely undiscoverable. An unmarked source file costs one `includes()`
+  and is dropped silently — it was never something the author asked to govern, and
+  listing it as unbudgeted would bury the files that are.
+
+**The honest limit, documented rather than papered over:** a prompt assembled by
+concatenation cannot be read this way, because its text does not exist until it
+runs. Trazum declines it, names the line, and **fails the build** — the author
+marked that prompt to have it governed, and it is not being governed. A green
+build alongside would be the same lie as "0 failures" from a run that measured
+nothing.
+
+Scanned character by character rather than with a regex, and the hostile-input
+tests earned their place immediately: the obvious line-number lookup was quadratic
+in the number of markers, 15.5 seconds on a file holding 20,000 of them. Caught
+before it shipped rather than after, which is a first this week.
+
+**Still to come in this line:** `diff` against the base branch for an embedded
+prompt, which was deferred from 0.11.0 and is the reviewer workflow this unlocks.
+`check` is the gate and came first.
 
 ### 1.5.0 — The front door catches up
 

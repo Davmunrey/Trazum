@@ -80,7 +80,7 @@ version stands. It never returns something worse than where it started.
 ```bash
 npm install
 npm run build      # core + cli
-npm test           # 468 tests
+npm test           # 506 tests
 ```
 
 ### CLI
@@ -263,6 +263,67 @@ deletion is visible in the diff; a rearrangement you were never told about is no
 the move is visible rather than hidden behind the deletions. With `--json` the
 whole decision is in `reorder`, refusals included. `check` does not accept the
 flag: it is a gate, and a gate does not rewrite.
+
+### Prompts where they actually live
+
+`check` reads `.txt`, `.md`, `.prompt` and `.tmpl`. Real prompts live in
+TypeScript template literals and Python strings, so adopting Trazum used to mean
+refactoring them out into files first — a change to your application as the price
+of admission.
+
+Mark one and it is governed where it sits:
+
+```ts
+// trazum:prompt support-system
+export const SUPPORT = `You are a support agent for Acme.
+
+Always answer in the customer's language.
+
+Customer message: ${message}`;
+```
+
+```bash
+trazum check src/ --max-tokens 2000
+```
+
+```
+src/prompts.ts#support-system   43 / 2,000   OK
+src/prompts.ts#classifier       23 / 2,000   OK
+```
+
+**It reads a marker, it does not guess.** Guessing which string in a file is a
+prompt is a heuristic, and a heuristic inside a CI gate fails builds over log
+messages. One line of comment buys never being wrong about what it picked up. The
+marker works in `//`, `#`, `--` and `<!-- -->` comments, so TypeScript, Python,
+SQL and YAML are all covered.
+
+**`${x}` needs no special handling** — it is exactly the placeholder shape the
+masking pass already protects, so an embedded prompt gets the same cache-prefix
+analysis, the same protection from the rules and the same `--reorder` treatment
+as a `{{x}}` template.
+
+**Each prompt is budgeted on its own**, not summed into the file: a file holding
+four prompts is four things to govern, and the code around them is not tokens the
+model will ever see. The id is path-prefixed (`src/prompts.ts#support-system`, or
+`src/prompts.ts:12` when the marker is bare) so existing `budgets` globs cover
+embedded prompts without learning a new syntax — `src/**` matches, and so does the
+full id if you want to budget one prompt tightly.
+
+Source files are scanned automatically alongside prompt files; one with no marker
+is skipped silently, because it was never something you asked to govern.
+
+**The honest limit.** A prompt assembled by concatenation cannot be read this way:
+
+```ts
+// trazum:prompt assembled
+const P = `You are ${role}.` + rules.join('
+');
+```
+
+Its text does not exist until it runs. Trazum declines it, names the line, and
+**fails the build** — you marked that prompt to have it governed, and it is not
+being governed. A green build saying otherwise would be the same lie as "0
+failures" from a run that measured nothing.
 
 ### Does the shorter prompt still work?
 
