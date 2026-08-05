@@ -115,7 +115,12 @@ const whitespaceRule: Rule = {
     let hits = 0;
     let out = text;
 
-    out = out.replace(/[^\S\n]+$/gm, () => {
+    // The lookbehind is load-bearing, not decoration. Without it the engine
+    // restarts this match at every position inside a whitespace run, and when
+    // the run does not end the line it fails from each one — quadratic, and
+    // 17 seconds on a 100 KB line of spaces that the HTTP API happily accepts.
+    // Anchoring to the start of a run means each run is tried exactly once.
+    out = out.replace(/(?<![^\S\n])[^\S\n]+$/gm, () => {
       hits++;
       return '';
     });

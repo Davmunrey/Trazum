@@ -169,6 +169,22 @@ describe('ReDoS resistance', () => {
     ['nested quantifier bait', `respond ${'x '.repeat(5_000)}in english`],
     ['example header flood', `Input: ${'word '.repeat(40_000)}`],
     ['mixed adversarial', `${'{{a}} '.repeat(5_000)}${'<b> '.repeat(5_000)}${'`c` '.repeat(5_000)}`],
+
+    // The shape this suite originally missed, and CodeQL caught: a *single
+    // line* that starts like a label and then runs on in whitespace without
+    // ever reaching the terminator the pattern needs. Every line-oriented
+    // regex has to fail across the whole run, which was quadratic until the
+    // label quantifiers were bounded — 651ms at 40k spaces, about a minute at
+    // the 400 KB cap the HTTP API accepts.
+    //
+    // The lesson generalises: the earlier fixtures were all *repeated tokens*,
+    // which exercise the happy path repeatedly rather than making a match fail
+    // as late and as often as possible. New fixtures should be a plausible
+    // prefix followed by a long run that never completes the match.
+    ['label prefix, unterminated whitespace run', `example${' '.repeat(200_000)}`],
+    ['field prefix, unterminated whitespace run', `Output${' '.repeat(200_000)}`],
+    ['many unterminated label lines', `${`input${' '.repeat(2_000)}\n`.repeat(100)}`],
+    ['fence prefix, unterminated', `${' '.repeat(100_000)}\`\`\``],
   ];
 
   for (const [name, input] of pathological) {
