@@ -303,18 +303,47 @@ Still open, and moved to 0.11.0 rather than dropped: PR comment mode.
 
 ---
 
-## Next
-
 ### 0.11.0 — Reporting where the review happens
 
-The gate works. What it cannot do is put the answer where the conversation is.
+The gate worked. What it could not do was put the answer where the conversation
+is: a reviewer had to open the job log to find out what an edit cost.
 
-- **PR comment mode** for the GitHub Action: post the budget result and the
-  `diff` delta as a comment, updated in place on each push rather than appended,
-  so a pull request carries the current numbers instead of a history of them.
-- **A machine-readable summary** written to `$GITHUB_STEP_SUMMARY`, so the
-  numbers survive even where a comment would be unwelcome or the token is
-  read-only.
+`trazum check` and `trazum diff` grow `--markdown-out <file>`; the Action writes
+that file to the run summary and, optionally, posts it as a pull request comment
+that replaces its own previous one.
+
+**Three bugs 0.10.0 left in the Action, all the same shape.** Config support
+shipped in the CLI while `action.yml` kept passing `--level safe` and
+`--locale en` unconditionally — and since the CLI layers flags over config over
+defaults, an always-present flag meant the project's own values were never read.
+`max-tokens` being required meant config budgets were unreachable through the
+Action; `file` being required meant neither directory mode nor `diff` was
+exposed. Every optional flag is now passed only when given. **A default that
+silently overrides a project's own setting is worse than no default.**
+
+- **The step summary is not behind an input.** It needs no token, no permission
+  and no pull request. The comment is opt-in because it needs all three.
+- **Commenting can never fail the build.** No pull request, a read-only token on
+  a fork, an unreachable API: each records a notice and carries on, because the
+  report already reached the summary. A tool that turns "could not comment" into
+  a red build gets deleted rather than configured.
+- **Found by the marker, not the author.** `gh pr comment --edit-last` matches by
+  author, so any other step commenting as the same bot would have had its comment
+  overwritten.
+- **Green collapses, red does not.** A green table that stays green on every push
+  is the thing a maintainer learns to skip — and then they skip the red one too.
+- **`pull_request_target` is asserted absent.** It is the natural wrong turn the
+  moment somebody discovers a fork PR cannot comment, and it runs a writable
+  token against code the contributor controls.
+- The verdict counts only what was measured, not what was listed.
+
+Deferred rather than dropped: a `diff` against the base branch needs
+`fetch-depth: 0` and a second checkout, which is a documented recipe rather than
+an input.
+
+---
+
+## Next
 
 ### 1.0.0 — A stable contract
 

@@ -8,12 +8,83 @@ alters nothing installable — a test, a document — still lands there rather t
 nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
-## Unreleased
+## 0.11.0
+
+**Breaking, for the GitHub Action only:** `file` and `max-tokens` are no longer
+required inputs. `file` still works and is now a deprecated alias for `target`;
+rename it when convenient, and the Action warns when it sees the old name.
+Nothing in the library or CLI changed shape. Migration: `file:` → `target:`.
+
+The reports now land where the review happens. `trazum check` and `trazum diff`
+grow a `--markdown-out <file>`, and the Action writes that file to
+`$GITHUB_STEP_SUMMARY` and — optionally — posts it as a pull request comment
+that **replaces its own previous one** rather than adding another.
+
+**Three bugs 0.10.0 introduced in the Action, all the same shape.** Config
+support shipped in the CLI while `action.yml` kept passing `--level safe` and
+`--locale en` unconditionally. The CLI layers flags over config over defaults,
+so an always-present flag meant a project's own `level` and `locale` were never
+read; `max-tokens: required: true` meant config budgets were unreachable; and
+`file: required: true` meant neither directory mode nor `diff` was exposed at
+all. Every optional flag is now added only when it was actually given. **A
+default that silently overrides a project's own setting is worse than no
+default.**
+
+- **`--markdown-out`** on `check` and `diff`. Written before anything sets an
+  exit code, so a report exists precisely when it is needed. A failure to write
+  is reported and swallowed: a full disk must not turn a passing check into a
+  failing build.
+- **The step summary is not behind an input.** It needs no token, no permission
+  and no pull request, and has no failure mode worth a switch.
+- **The reporting steps carry `if: always()`.** A composite action skips the rest
+  of its steps once one fails, so without it the summary would appear only on
+  runs nobody needs a report for. The budget verdict is re-raised in a final
+  step, and a *missing* outcome counts as failure — a check that never reached
+  its own last line is not a green build.
+- **`comment: true`** posts the report, found by an invisible marker in the body
+  rather than by author. `gh pr comment --edit-last` matches by author, so any
+  other step in the job commenting as `github-actions[bot]` would have had its
+  comment overwritten. `comment-key` separates two runs that report on different
+  things in the same pull request.
+- **A green report is collapsed inside `<details>`; a failing one is not.** A
+  green table that stays green on every push is the thing a maintainer learns to
+  skip — and once they skip it, they skip the red one too.
+- **Commenting can never fail the build.** No pull request, a read-only token on
+  a fork, comments disabled, an unreachable API: each records a notice and
+  carries on, because the report already reached the step summary. A tool that
+  turns "could not comment" into a red build gets deleted from the pipeline
+  rather than configured. A 401/403 says so in one line and says explicitly *not*
+  to reach for `pull_request_target`, which runs a writable token against code
+  the contributor controls.
+- The poster lives in `action/post-comment.mjs`, outside the workspaces and in
+  plain ESM with no dependencies. It needed no security invariant relaxed —
+  editing one for convenience is not a reason.
+- **Table cells are `<code>` with HTML entities, not backtick spans.** The
+  obvious version — wrap in backticks, escape `|` as `\|`, widen the fence past
+  the longest backtick run — did not handle a backslash, which CodeQL caught:
+  given `a\|b.txt` it emitted `` `a\\|b.txt` ``, and whether that survives
+  depends on whether the row splitter reads `\\|` as an escaped pipe or as an
+  escaped backslash followed by a live one. It happens to work in cmark-gfm.
+  An escaper whose correctness rests on that is not an escaper. With entities
+  there is **no `|` in the output at all**, so no scanner can split the row;
+  backticks inside `<code>` are literal, so the fence arithmetic disappears; and
+  a backslash needs no treatment. Three hazard classes collapse into one rule.
+  Paths come from a repository, and on a pull request from whoever opened it.
+- The check verdict counts **only what was measured**. "All 3 prompts are within
+  budget" over a set where one had no budget claims something nobody
+  established.
+- New security invariants: every `${{ }}` in `action.yml` must be a *bare* env
+  assignment or a condition; the reporting steps must carry `if: always()`; the
+  comment step must be unable to fail the job; and a missing outcome must default
+  to failure. The old "every input reaches the CLI" assertion was a usefulness
+  check dressed as a security one, and it broke the moment an input legitimately
+  gated a step instead of being forwarded — replaced by the positional rule,
+  which is what actually matters.
+- Tests grow from 303 to 359, including a new `action/test` suite wired into
+  `npm test`.
 
 **A security guardrail was ineffective, and is now enforced with positive
-controls.** No shipped code changed, so there is no version bump — this is a
-test and a document — but it is the kind of thing that should never be findable
-only in the commit history.
+controls.** Carried over from the previous unreleased entry.
 
 The test asserting *"inputs reach the Action's shell through the environment,
 never interpolated into `run:`"* did not do that. Two independent causes: its

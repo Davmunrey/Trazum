@@ -80,7 +80,7 @@ version stands. It never returns something worse than where it started.
 ```bash
 npm install
 npm run build      # core + cli
-npm test           # 301 tests
+npm test           # 359 tests
 ```
 
 ### CLI
@@ -143,9 +143,43 @@ In GitHub Actions, use the packaged action — nothing to install:
 - uses: actions/checkout@v7
 - uses: Davmunrey/Trazum@main
   with:
-    file: prompts/system.txt
+    target: prompts/system.txt
     max-tokens: 2000
 ```
+
+**The report lands in the run summary automatically** — every run, pass or fail,
+with no token and no permissions. To also post it as a pull request comment that
+replaces its own previous one:
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: write     # the action cannot grant itself this
+
+steps:
+  - uses: actions/checkout@v7
+  - uses: Davmunrey/Trazum@main
+    with:
+      target: prompts/            # a directory uses trazum.config.json budgets
+      comment: true
+      github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+**Commenting can never fail your build.** No pull request, comments disabled, or
+a read-only token — each prints a notice and carries on, because the report has
+already reached the run summary. That matters on **pull requests from forks**,
+where `GITHUB_TOKEN` is read-only by design and the comment simply will not post.
+
+If you go looking for a way around that, the answer you will find is
+`pull_request_target`. **Don't.** It runs with a writable token against the base
+repository while checking out code the contributor controls, which turns "we
+wanted to comment on a PR" into arbitrary code execution with your secrets. The
+run summary is there precisely so you do not need it. Trazum asserts in CI that
+it uses `pull_request_target` nowhere.
+
+A passing report is collapsed; a failing one is not. A green table that stays
+green on every push is the thing you learn to skip — and then you skip the red
+one too.
 
 Or by hand, if you already have the repo checked out:
 
@@ -217,6 +251,11 @@ tool could tell you.
 
 It does not follow symlinks, caps how deep and how wide it walks, and says so
 when a cap stopped it early.
+
+`--markdown-out <file>` writes the same report as GitHub-flavoured markdown, for
+a step summary or a PR comment. `check` and `diff` both take it, it is written
+before any exit code is set, and a failure to write it is reported rather than
+turned into a failing build.
 
 ### Project defaults: `trazum.config.json`
 

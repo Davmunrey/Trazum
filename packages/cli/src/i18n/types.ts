@@ -116,6 +116,46 @@ export interface CliMessages {
     overLimit(delta: number, max: number): string;
   };
 
+  /**
+   * Copy for the markdown reports written by `--markdown-out`.
+   *
+   * A separate section rather than reuse of `check`/`diff`, because the terminal
+   * and a pull request are read differently: the terminal reader ran the
+   * command and knows what they asked for, the pull-request reader arrived at a
+   * comment with no context and needs the sign convention spelled out.
+   */
+  markdown: {
+    checkHeading(target: string): string;
+    diffHeading(before: string, after: string): string;
+    columnFile(): string;
+    columnTokens(): string;
+    columnBudget(): string;
+    columnMetric(): string;
+    columnChange(): string;
+    allWithin(budgeted: number): string;
+    overBudget(failures: number, budgeted: number): string;
+    noBudget(): string;
+    unbudgetedNote(count: number): string;
+    whatWouldHelp(): string;
+    wouldFit(level: string, optimizedTokens: string): string;
+    stillTooBig(optimizedTokens: string): string;
+    truncated(): string;
+    footer(source: string, level: string): string;
+    sourceEstimated(): string;
+    sourceExact(): string;
+    measuringOptimised(): string;
+    metricTokens(before: string, after: string): string;
+    metricMonthly(calls: string, model: string): string;
+    deltaConvention(): string;
+    advisoriesAppeared(): string;
+    advisoriesResolved(): string;
+    rulesNewlyFiring(): string;
+    rulesNoLongerFiring(): string;
+    collapsedNote(): string;
+    trimNotice(): string;
+    commentTitle(): string;
+  };
+
   check: {
     okLabel(): string;
     failedLabel(): string;

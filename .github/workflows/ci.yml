@@ -70,7 +70,7 @@ jobs:
       - name: The action passes with a generous budget
         uses: ./
         with:
-          file: ${{ matrix.sample }}
+          target: ${{ matrix.sample }}
           max-tokens: 5000
 
       - name: The action fails with an impossible budget
@@ -78,7 +78,7 @@ jobs:
         uses: ./
         continue-on-error: true
         with:
-          file: ${{ matrix.sample }}
+          target: ${{ matrix.sample }}
           max-tokens: 10
 
       - name: Verify the failure was detected
@@ -86,3 +86,106 @@ jobs:
         run: |
           echo "The action should have failed with max-tokens=10"
           exit 1
+
+      # A failing run has to leave a report behind, which is the whole point of
+      # the reporting steps carrying `if: always()`. Checked by reading the file
+      # the action writes, since $GITHUB_STEP_SUMMARY is not readable back.
+      # Placed here on purpose: a later passing run overwrites the same path.
+      - name: A failing run still writes a report
+        run: |
+          report="$RUNNER_TEMP/trazum-report.md"
+          if [ ! -s "$report" ]; then
+            echo "No report was written by the failing run"
+            exit 1
+          fi
+          echo "--- report from the failing run ---"
+          cat "$report"
+          grep -q 'over budget' "$report" || { echo "missing the verdict"; exit 1; }
+
+      # The deprecated input still works. Renaming it would otherwise break every
+      # workflow already using this action, which is not a thing to discover from
+      # someone else's red build.
+      - name: The deprecated 'file' input still works
+        uses: ./
+        with:
+          file: ${{ matrix.sample }}
+          max-tokens: 5000
+
+  action-directory-mode:
+    name: GitHub Action directory mode
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+
+      # Built in the workspace, because that is what the action's target is
+      # relative to. A config budget has to be reachable through the action with
+      # no max-tokens at all, and the config's own `level` has to survive:
+      # passing `--level safe` unconditionally is what made it dead in 0.10.0.
+      - name: Build a small repository of prompts
+        run: |
+          mkdir -p fixture/prompts
+          cp examples/sample-prompt.en.txt fixture/prompts/big.txt
+          printf 'Classify the ticket.\n' > fixture/prompts/small.txt
+          printf 'Loose note, deliberately outside every pattern.\n' > fixture/loose.txt
+          cat > fixture/generous.json <<'JSON'
+          { "level": "aggressive", "budgets": { "fixture/prompts/**": 5000 } }
+          JSON
+          cat > fixture/tight.json <<'JSON'
+          { "budgets": { "fixture/prompts/**": 10 } }
+          JSON
+
+      - name: A directory passes on config budgets alone, with no max-tokens
+        uses: ./
+        with:
+          target: fixture/prompts
+          config: fixture/generous.json
+
+      - name: A busted config budget fails the build
+        id: tight
+        uses: ./
+        continue-on-error: true
+        with:
+          target: fixture/prompts
+          config: fixture/tight.json
+
+      - name: Verify the tight budget failed
+        if: steps.tight.outcome != 'failure'
+        run: |
+          echo "The action should have failed against a 10-token budget"
+          exit 1
+
+      # An unbudgeted prompt has to appear in the report rather than be skipped
+      # quietly, and a failing run has to leave a report at all.
+      - name: The report names the failure and the unbudgeted file
+        run: |
+          report="$RUNNER_TEMP/trazum-report.md"
+          if [ ! -s "$report" ]; then
+            echo "No report was written by the failing run"
+            exit 1
+          fi
+          echo "--- report ---"
+          cat "$report"
+          grep -q 'over budget' "$report" || { echo "missing the verdict"; exit 1; }
+
+      - name: A run over the whole fixture lists the unbudgeted file
+        uses: ./
+        with:
+          target: fixture
+          config: fixture/generous.json
+
+      - name: Verify the unbudgeted note is present
+        run: |
+          report="$RUNNER_TEMP/trazum-report.md"
+          cat "$report"
+          grep -q 'loose.txt' "$report" || { echo "the loose prompt is missing"; exit 1; }
+          grep -q 'not covered by any budget' "$report" || {
+            echo "an unbudgeted prompt was not called out"; exit 1; }

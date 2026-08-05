@@ -258,6 +258,51 @@ ${bold('EJEMPLOS')}
       `Ha crecido ${delta} tokens, por encima del límite de ${max}.`,
   },
 
+  markdown: {
+    checkHeading: (target) => `Trazum — presupuestos de tokens en ${target}`,
+    diffHeading: (before, after) => `Trazum — ${before} → ${after}`,
+    columnFile: () => 'Prompt',
+    columnTokens: () => 'Tokens',
+    columnBudget: () => 'Presupuesto',
+    columnMetric: () => 'Métrica',
+    columnChange: () => 'Cambio',
+    allWithin: (budgeted) =>
+      budgeted === 1
+        ? 'El prompt está dentro de presupuesto.'
+        : `Los ${budgeted} prompts con presupuesto están dentro de presupuesto.`,
+    overBudget: (failures, budgeted) => `${failures} de ${budgeted} por encima del presupuesto`,
+    noBudget: () => '—',
+    unbudgetedNote: (count) =>
+      count === 1
+        ? 'Hay 1 prompt que ningún patrón de presupuesto cubre, así que nadie lo está vigilando.'
+        : `Hay ${count} prompts que ningún patrón de presupuesto cubre, así que nadie los está vigilando.`,
+    whatWouldHelp: () => 'Qué ayudaría',
+    wouldFit: (level, optimizedTokens) =>
+      `optimizar con \`${level}\` lo dejaría en ~${optimizedTokens} tokens, y sí cabría`,
+    stillTooBig: (optimizedTokens) =>
+      `ni optimizado cabe (~${optimizedTokens} tokens): hay que recortar contenido a mano`,
+    truncated: () =>
+      'Se ha parado antes de tiempo: el directorio supera el límite de recorrido, así que esto no es el cuadro completo.',
+    footer: (source, level) => `Recuento de tokens ${source} · nivel de reglas \`${level}\``,
+    sourceEstimated: () => 'estimado, ±15%',
+    sourceExact: () => 'exacto',
+    measuringOptimised: () =>
+      'Se mide lo que dejarían las reglas, no lo que está escrito en el fichero.',
+    metricTokens: (before, after) => `Tokens de entrada (${before} → ${after})`,
+    metricMonthly: (calls, model) => `Coste al mes con ${calls} llamadas y ${model}`,
+    deltaConvention: () =>
+      'Toda cifra es un delta: después menos antes, así que <strong>positivo significa peor</strong>. ' +
+      'Es lo contrario que en el resto de Trazum, donde toda cifra es un ahorro.',
+    advisoriesAppeared: () => 'Problemas que ha introducido esta edición',
+    advisoriesResolved: () => 'Problemas que ha resuelto esta edición',
+    rulesNewlyFiring: () => 'Reglas que ahora encuentran algo',
+    rulesNoLongerFiring: () => 'Reglas que ya no encuentran nada',
+    collapsedNote: () => 'nada por encima del presupuesto, despliega para ver las cifras',
+    trimNotice: () =>
+      '_Recortado para que quepa en un comentario. El informe completo está en el resumen de la ejecución._',
+    commentTitle: () => 'Trazum',
+  },
+
   check: {
     okLabel: () => 'OK',
     failedLabel: () => 'FALLO',

@@ -47,6 +47,18 @@ dangerous thing in this repository.
 | A dependency hook running on someone else's runner | The packaged Action installs with `--ignore-scripts` too | `action.yml`, asserted in `security.test.js` |
 | Actions template injection | **Nothing** is interpolated into a `run:` body — no input, no `github.*` value, no step output. Values reach the shell through `env:` | `action.yml`, asserted in `security.test.js` |
 
+**Known limit: marker squatting.** The Action finds its own pull-request comment
+by an invisible marker in the body. A contributor can post a comment starting
+with that marker, and a later run will edit it — under their name. No privilege
+is gained and the numbers shown are still Trazum's, so this is documented rather
+than closed. A Bot author is preferred when several comments carry the marker,
+which makes the planted one lose whenever a genuine Trazum comment exists.
+
+**Known limit: no coverage of the real GitHub API.** The comment poster is tested
+in-process against a fake `fetch`, which covers the logic and every refusal path
+but never proves a request GitHub would accept. A pull request from a fork could
+not exercise the real API anyway — `GITHUB_TOKEN` is read-only there by design.
+
 **An assertion is only worth what it can catch.** The template-injection row
 above used to be enforced by a test that recognised `${{ inputs.* }}` inside a
 `run:` block, and it turned out to see neither a single-line `run:` nor any value
