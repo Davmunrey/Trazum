@@ -79,25 +79,23 @@ nothing should.
   so a compromised action publisher could change what runs. Pinning is the
   stronger position; see the checklist below.
 
-- **Three open high-severity advisories in the web app's dependency tree**, in
-  `postcss` and `sharp`, both transitive through Next.js 15. They do not block
-  CI, and here is the reasoning rather than a shrug:
+- **The web app's dependency tree is clean, but note how it got there.** Next
+  15 carried three high-severity advisories in `postcss` and `sharp`. The fix
+  was `next@16`, a major, and it was deliberately kept out of the security
+  release rather than folded in because a scanner went red.
 
-  | | |
-  |---|---|
-  | What people install | `@trazum/core` and `@trazum/cli`, which have **zero** dependencies and are audited at `--audit-level=low`. Neither is affected. |
-  | `postcss` | Runs at **build time** over CSS written in this repository. The advisories need attacker-controlled CSS input; supplying that requires write access, at which point postcss is not the problem. |
-  | `sharp` | Next's image optimiser. This app has no `next/image` usage and accepts no uploads, so it is never invoked. |
-  | The fix | `next@16`, a major upgrade. |
+  Two things are worth remembering from that episode:
 
-  A major framework upgrade belongs in its own pull request with its own
-  testing, not folded into an unrelated change because a scanner went red. It
-  is tracked on the roadmap. `npm audit` still runs on every pull request and
-  prints the full report — the advisories are visible, just not gating.
+  npm `overrides` did not work. npm 10 does not apply root overrides to a
+  workspace's transitive dependencies, so the major really was the only route.
 
-  We tried forcing patched versions with npm `overrides` first; npm 10 does not
-  apply root overrides to a workspace's transitive dependencies, and leaving
-  config that silently does nothing is worse than not having it.
+  More importantly: **bumping the direct dependency was not enough.** Dependabot
+  raised `next` to 16 but left the vulnerable `postcss` and `sharp` pinned in
+  the lockfile, so the advisories survived the upgrade that was supposed to fix
+  them. The blocking audit did not catch it, because that gate is scoped to the
+  published packages. If you upgrade a framework to clear an advisory, re-run
+  `npm audit` over the whole tree afterwards and confirm the *transitive*
+  versions moved — a green direct dependency proves nothing about them.
 
 ---
 
@@ -119,8 +117,20 @@ Some of this cannot be committed to a file — it lives in repository settings.
 
 1. **Import the ruleset.** Settings → Rules → Rulesets → New ruleset → Import,
    and select `.github/rulesets/main-branch.json`. It requires a pull request
-   with one code-owner approval, passing checks, linear history, and blocks
-   force-pushes and deletion of the default branch.
+   with passing checks and linear history, and blocks force-pushes and deletion
+   of the default branch.
+
+   **It asks for zero approvals, deliberately.** The first version required
+   one, and that deadlocked the repository: GitHub does not let you approve
+   your own pull request, and with a single maintainer there is nobody else to
+   ask. Worth being clear about what was lost — nothing. An outside
+   contributor cannot merge regardless, because merging needs write access; the
+   approval rule only ever constrained the maintainers, and an approval you
+   give yourself is not review. The gate that does real work here is the
+   required status checks, which no one can talk their way past.
+
+   Raise it back to `1` the day a second maintainer has write access. Until
+   then it would be theatre with a deadlock attached.
 2. **Code security → Dependency graph**, then add an Actions **variable**
    `DEPENDENCY_REVIEW = enabled` (Settings → Secrets and variables → Actions →
    Variables).

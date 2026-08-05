@@ -174,6 +174,14 @@ export const es: CoreMessages = {
         'Un ejemplo few-shot se paga a sí mismo enseñando algo nuevo; dos que demuestran el mismo patrón lo enseñan una vez. ' +
         'Léelos antes de borrar: un ejemplo que parece redundante puede estar mostrando un caso límite a propósito.',
     }),
+
+    restatedOutputFormat: ({ restatedCount, totalCount, restatedTokens, keyList }) => ({
+      title: 'El formato de salida está especificado dos veces',
+      detail:
+        `La prosa describe ${restatedCount} de los ${totalCount} campos que tu esquema ya define (${keyList}), y cuesta unos ${n(restatedTokens)} tokens en cada llamada. ` +
+        'El bloque de código es la versión que merece la pena conservar: no es ambiguo y Trazum nunca lo toca. ' +
+        'Comprueba que ambos dicen lo mismo antes de borrar ninguno: cuando un prompt dice una cosa en prosa y otra en el esquema, lo que suele haberse quedado obsoleto es la prosa.',
+    }),
   },
 
   contradictionAxes: {

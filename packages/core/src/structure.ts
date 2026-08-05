@@ -402,3 +402,144 @@ export function analyzeExamples(prompt: string, count: TokenCounter): ExampleAna
     redundantTokens: redundant.reduce((sum, r) => sum + r.tokens, 0),
   };
 }
+
+// --------------------------------------------------------------------------
+// Output formats stated twice
+// --------------------------------------------------------------------------
+
+/**
+ * A prompt that shows its output schema in a code block, and then describes
+ * the same fields again in prose, is paying for the schema twice.
+ *
+ * The block is the version that survives: it is unambiguous, and the
+ * protection pass already guarantees Trazum will not touch it. The prose
+ * restatement is what can go — but only a human can tell a restatement from a
+ * clarification that happens to name the same fields, so this reports and does
+ * not cut.
+ */
+export interface RestatedFormat {
+  /** Top-level keys found in the fenced schema. */
+  keys: string[];
+  /** Those keys that are also named in the prose outside the block. */
+  restatedKeys: string[];
+  /** Tokens held by the prose sentences that restate them. */
+  restatedTokens: number;
+}
+
+/** Fenced blocks, with their info string. */
+function fencedBlocks(prompt: string): Array<{ lang: string; body: string }> {
+  const blocks: Array<{ lang: string; body: string }> = [];
+  const fence = /^([ \t]{0,3})(`{3,}|~{3,})([^\n]*)\n([\s\S]*?)^\1\2[ \t]*$/gm;
+  let match: RegExpExecArray | null;
+  while ((match = fence.exec(prompt)) !== null) {
+    blocks.push({ lang: (match[3] ?? '').trim().toLowerCase(), body: match[4] ?? '' });
+  }
+  return blocks;
+}
+
+/**
+ * Top-level keys of a JSON-ish block.
+ *
+ * Deliberately a scan rather than `JSON.parse`: schemas in prompts are
+ * routinely illustrative — trailing commas, `...`, comments, a placeholder
+ * where a value goes — and refusing to read those would skip exactly the
+ * prompts worth checking. Only keys at nesting depth 1 count, so a nested
+ * field name cannot be mistaken for a top-level one.
+ */
+function topLevelKeys(body: string): string[] {
+  const keys: string[] = [];
+  let depth = 0;
+  let inString = false;
+  let quote = '';
+  let current = '';
+
+  for (let i = 0; i < body.length; i++) {
+    const ch = body[i]!;
+
+    if (inString) {
+      if (ch === '\\') {
+        current += body[i + 1] ?? '';
+        i++;
+        continue;
+      }
+      if (ch === quote) {
+        inString = false;
+        // A string is a key only when the next non-space character is a colon.
+        const rest = body.slice(i + 1);
+        const colon = /^\s*:/.test(rest);
+        if (colon && depth === 1 && current) keys.push(current);
+        current = '';
+        continue;
+      }
+      current += ch;
+      continue;
+    }
+
+    if (ch === '"' || ch === "'") {
+      inString = true;
+      quote = ch;
+      current = '';
+      continue;
+    }
+    if (ch === '{' || ch === '[') depth++;
+    else if (ch === '}' || ch === ']') depth--;
+  }
+
+  return [...new Set(keys)];
+}
+
+/** Minimum keys that must be restated before this is worth reporting. */
+const RESTATED_KEY_MINIMUM = 3;
+
+/**
+ * Finds an output schema that the prose repeats.
+ *
+ * The threshold is deliberately blunt: naming one or two fields in prose is
+ * ordinary ("set `escalate` to true when the customer asks for a human"), and
+ * flagging that would make the advisory noise. Three or more, and the prose is
+ * walking the schema.
+ */
+export function findRestatedFormat(prompt: string, count: TokenCounter): RestatedFormat | null {
+  const blocks = fencedBlocks(prompt);
+  const keys = [
+    ...new Set(
+      blocks
+        .filter((b) => b.lang === '' || /json|jsonc|json5|yaml|yml/.test(b.lang))
+        .flatMap((b) => topLevelKeys(b.body)),
+    ),
+  ].filter((k) => k.length >= 3);
+
+  if (keys.length < RESTATED_KEY_MINIMUM) return null;
+
+  // Prose only: the schema naming its own keys is not a restatement.
+  const prose = analysableText(prompt);
+  const proseSentences = sentences(prose);
+
+  const restatedKeys = new Set<string>();
+  const guiltySentences = new Set<number>();
+
+  proseSentences.forEach((sentence, index) => {
+    for (const key of keys) {
+      // Word boundary that also survives snake_case and kebab-case names.
+      const pattern = new RegExp(`(?<![\\p{L}\\p{N}_-])${escapeRegExp(key)}(?![\\p{L}\\p{N}_-])`, 'iu');
+      if (pattern.test(sentence)) {
+        restatedKeys.add(key);
+        guiltySentences.add(index);
+      }
+    }
+  });
+
+  if (restatedKeys.size < RESTATED_KEY_MINIMUM) return null;
+
+  const restatedTokens = count([...guiltySentences].map((i) => proseSentences[i]).join(' '));
+
+  return {
+    keys,
+    restatedKeys: [...restatedKeys],
+    restatedTokens,
+  };
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}

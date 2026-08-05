@@ -48,7 +48,12 @@ export {
 export type { CoreMessages, Locale, LocalizedMessage, RuleCopy, RuleId } from './i18n/index.js';
 
 // Structural analysis
-export { analyzeExamples, findContradictions, findExamples } from './structure.js';
+export {
+  analyzeExamples,
+  findContradictions,
+  findExamples,
+  findRestatedFormat,
+} from './structure.js';
 export type {
   Contradiction,
   ContradictionAxis,
@@ -56,6 +61,7 @@ export type {
   ExampleAnalysis,
   ExampleBlock,
   RedundantExample,
+  RestatedFormat,
 } from './structure.js';
 export { jaccard, normalizeForCompare } from './similarity.js';
 

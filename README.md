@@ -44,8 +44,9 @@ what usually saves more than shortening ever will:
 | Context window | If the prompt does not fit, the call is going to fail. |
 | Contradictory instructions | "Answer in English" three paragraphs above "reply in the customer's own language". The model has to pick one, and which one can change between calls — a correctness problem that also costs tokens twice. |
 | Redundant examples | Few-shot examples that are near-copies of an earlier one, and what they cost per month. |
+| Output format stated twice | A schema shown in a code block and then walked again in prose. The block is the version worth keeping. |
 
-The last two are **advisory only**. A contradiction has a right answer that only
+The last three are **advisory only**. A contradiction has a right answer that only
 the author knows, and an example that looks redundant may be demonstrating a
 boundary case on purpose. Trazum points; it does not cut.
 
@@ -66,7 +67,7 @@ version stands. It never returns something worse than where it started.
 ```bash
 npm install
 npm run build      # core + cli
-npm test           # 94 tests
+npm test           # 145 tests
 ```
 
 ### CLI
@@ -126,7 +127,7 @@ trazum check prompts/system.txt --max-tokens 2000
 In GitHub Actions, use the packaged action — nothing to install:
 
 ```yaml
-- uses: actions/checkout@v4
+- uses: actions/checkout@v7
 - uses: Davmunrey/Trazum@main
   with:
     file: prompts/system.txt

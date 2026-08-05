@@ -3,6 +3,38 @@
 Versioning policy: [VERSIONING.md](VERSIONING.md). Below 1.0, minor versions
 may contain breaking changes, and say so in their first line.
 
+## 0.5.0
+
+A third structural finding, same posture as the first two: it reports, it does
+not cut.
+
+- New `restated-output-format` advisory. A prompt that shows its schema in a
+  code block and then walks the same fields in prose is paying for the schema
+  twice; the block is the version worth keeping, since it is unambiguous and
+  the protection pass guarantees Trazum never edits it. Priced per month.
+- Reads *illustrative* schemas, not only valid JSON. Prompts routinely contain
+  trailing commas, `...` and `<placeholders>`, and refusing to parse those
+  would skip exactly the prompts worth checking — so key extraction is a
+  depth-aware scan rather than `JSON.parse`.
+- Only top-level keys count, so a nested field name cannot be mistaken for one.
+- Three restated fields minimum. Naming one or two in prose is ordinary
+  clarification ("set `escalate` to true when the customer asks for a human")
+  and flagging it would turn the advisory into noise.
+- New public API: `findRestatedFormat`, and the `RestatedFormat` type.
+- Tests grow from 138 to 145.
+
+### Dependencies
+
+- `next` 15 → 16, which is what finally cleared the three high-severity
+  `postcss` and `sharp` advisories. Bumping the direct dependency was not
+  enough on its own: the lockfile kept the vulnerable transitives, and the
+  blocking audit is scoped to the published packages so it never saw them.
+  `npm audit` over the whole tree now reports 0 vulnerabilities. The lesson is
+  recorded in `SECURITY.md`.
+- `actions/checkout` and `actions/setup-node` 4 → 7, clearing the Node 20
+  deprecation warning every run was printing.
+- `actions/dependency-review-action` 4 → 5.
+
 ## 0.4.0
 
 Structural analysis: findings that live in the *relationship* between two

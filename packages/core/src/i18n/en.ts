@@ -174,6 +174,14 @@ export const en: CoreMessages = {
         'Few-shot examples earn their cost by teaching something new; two that demonstrate the same pattern teach it once. ' +
         'Read them before deleting: an example that looks redundant may be showing a boundary case on purpose.',
     }),
+
+    restatedOutputFormat: ({ restatedCount, totalCount, restatedTokens, keyList }) => ({
+      title: 'The output format is specified twice',
+      detail:
+        `The prose describes ${restatedCount} of the ${totalCount} fields your schema already defines (${keyList}), costing about ${n(restatedTokens)} tokens on every call. ` +
+        'The code block is the version worth keeping: it is unambiguous, and Trazum never edits it. ' +
+        'Check the two agree before deleting either — when a prompt says one thing in prose and another in its schema, the prose is usually the one that went stale.',
+    }),
   },
 
   contradictionAxes: {
