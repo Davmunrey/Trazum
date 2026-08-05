@@ -131,7 +131,7 @@ export function optimize(prompt: string, options: OptimizeOptions = {}): Optimiz
 
   const usage: UsageProfile = { ...DEFAULT_USAGE, ...options.usage };
   const savings = computeSavings(tokensBefore, tokensAfter, usage);
-  const advisories = buildAdvisories(optimized, tokensAfter, usage);
+  const advisories = buildAdvisories(optimized, tokensAfter, usage, new Date(), count);
 
   return {
     original: prompt,

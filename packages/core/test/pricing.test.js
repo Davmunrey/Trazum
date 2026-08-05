@@ -2,9 +2,11 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
+  analyzeCachePrefix,
   computeSavings,
   costOfCall,
   effectivePricing,
+  estimateTokens,
   getModel,
   listModels,
   optimize,
@@ -89,6 +91,53 @@ describe('avisos', () => {
     const caching = result.advisories.find((a) => a.id === 'prompt-caching');
     assert.ok(caching, 'debería proponer caching');
     assert.ok(caching.estimatedMonthlyUsd > 0);
+  });
+
+  it('con marcadores, el ahorro de caching se calcula solo sobre el prefijo estable', () => {
+    const stable = 'Instrucción jurídica estable y detallada del sistema. '.repeat(120);
+    const conMarcador = `${stable}\n\nConsulta del cliente: {{consulta}}\n\n${'Contexto extra variable. '.repeat(120)}`;
+    const sinMarcador = optimize(stable, { usage: baseUsage });
+    const plantilla = optimize(conMarcador, { usage: baseUsage });
+
+    const cachingPlantilla = plantilla.advisories.find((a) => a.id === 'prompt-caching');
+    const cachingCompleto = sinMarcador.advisories.find((a) => a.id === 'prompt-caching');
+    assert.ok(cachingPlantilla && cachingCompleto);
+    // La plantilla es mucho más larga, pero su ahorro cacheable debe rondar el
+    // del prompt estable solo, no el de la plantilla entera.
+    assert.ok(
+      cachingPlantilla.estimatedMonthlyUsd < cachingCompleto.estimatedMonthlyUsd * 1.3,
+      `${cachingPlantilla.estimatedMonthlyUsd} debería ser ~${cachingCompleto.estimatedMonthlyUsd}`,
+    );
+    assert.match(cachingPlantilla.detail, /marcador/);
+  });
+
+  it('avisa cuando hay mucho contenido estable después del primer marcador', () => {
+    const prompt = `Responde a: {{consulta}}\n\n${'Instrucción estable que debería ir antes del marcador. '.repeat(150)}`;
+    const result = optimize(prompt, { usage: baseUsage });
+    const reorder = result.advisories.find((a) => a.id === 'cache-prefix-reorder');
+    assert.ok(reorder, 'debería sugerir reordenar la plantilla');
+    assert.ok(reorder.estimatedMonthlyUsd > 0);
+  });
+
+  it('no sugiere reordenar si no hay marcadores', () => {
+    const result = optimize('Texto estable. '.repeat(300), { usage: baseUsage });
+    assert.ok(!result.advisories.some((a) => a.id === 'cache-prefix-reorder'));
+  });
+
+  it('analyzeCachePrefix mide el prefijo hasta el primer marcador', () => {
+    const analysis = analyzeCachePrefix(
+      'Instrucciones fijas del sistema. {{entrada}} Más texto fijo posterior.',
+      estimateTokens,
+    );
+    assert.equal(analysis.firstPlaceholder, '{{entrada}}');
+    assert.ok(analysis.stablePrefixTokens > 0);
+    assert.ok(analysis.stablePrefixTokens < analysis.totalTokens);
+    assert.ok(analysis.staticTokensAfter > 0);
+
+    const sinMarcadores = analyzeCachePrefix('Texto sin variables de plantilla.', estimateTokens);
+    assert.equal(sinMarcadores.firstPlaceholder, null);
+    assert.equal(sinMarcadores.stablePrefixTokens, sinMarcadores.totalTokens);
+    assert.equal(sinMarcadores.staticTokensAfter, 0);
   });
 
   it('avisa cuando el prompt no llega al mínimo cacheable', () => {

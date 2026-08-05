@@ -34,3 +34,34 @@ jobs:
 
       - name: Compilar la web
         run: npm run build:web
+
+  action-selftest:
+    name: Self-test de la GitHub Action
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: La acción pasa con presupuesto holgado
+        uses: ./
+        with:
+          file: examples/prompt-ejemplo.txt
+          max-tokens: 5000
+
+      - name: La acción falla con presupuesto imposible
+        id: over-budget
+        uses: ./
+        continue-on-error: true
+        with:
+          file: examples/prompt-ejemplo.txt
+          max-tokens: 10
+
+      - name: Verificar que el fallo se detectó
+        if: steps.over-budget.outcome != 'failure'
+        run: |
+          echo "La acción debería haber fallado con max-tokens=10"
+          exit 1

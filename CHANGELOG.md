@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.0
+
+- Análisis del prefijo cacheable (`analyzeCachePrefix`): el aviso de prompt
+  caching calcula el ahorro sobre el prefijo estable real —lo anterior al
+  primer marcador de plantilla— en vez de sobre el prompt entero, que en una
+  plantilla nunca se cachea completo.
+- Nuevo aviso `cache-prefix-reorder`: detecta instrucciones estables situadas
+  después del primer marcador variable (que hoy no se cachean nunca) y estima
+  el ahorro de moverlas delante.
+- GitHub Action empaquetada (`Davmunrey/Trazum@main`) para `trazum check`:
+  presupuesto de tokens en CI sin instalar nada, con self-test en el propio CI
+  del repositorio.
+
 ## 0.1.0
 
 Primera versión.
