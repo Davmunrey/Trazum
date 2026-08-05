@@ -35,5 +35,14 @@ export type {
 } from './llm.js';
 
 // Internationalisation
-export { DEFAULT_LOCALE, LOCALES, getMessages, isLocale, resolveLocale, en, es } from './i18n/index.js';
-export type { CoreMessages, LocalizedMessage, RuleCopy } from './i18n/index.js';
+export {
+  DEFAULT_LOCALE,
+  LOCALES,
+  getMessages,
+  isLocale,
+  matchLocale,
+  resolveLocale,
+  en,
+  es,
+} from './i18n/index.js';
+export type { CoreMessages, Locale, LocalizedMessage, RuleCopy, RuleId } from './i18n/index.js';

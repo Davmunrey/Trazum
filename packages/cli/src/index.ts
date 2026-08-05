@@ -3,21 +3,26 @@ import { readFile, writeFile } from 'node:fs/promises';
 
 import {
   DEFAULT_USAGE,
+  LOCALES,
   PRICING_LAST_REVIEWED,
   RULES,
   countTokensAnthropic,
   estimateTokens,
   formatUsd,
+  getMessages,
   listModels,
   optimize,
   providerFromEnv,
   refineWithLlm,
   withExactTokenCounts,
 } from '@trazum/core';
-import type { OptimizationResult, RuleLevel, UsageProfile } from '@trazum/core';
+import type { Locale, OptimizationResult, RuleId, RuleLevel, UsageProfile } from '@trazum/core';
+
+import { detectLocale, getCliMessages } from './i18n/index.js';
+import type { CliMessages } from './i18n/index.js';
 
 // --------------------------------------------------------------------------
-// Presentación
+// Presentation
 // --------------------------------------------------------------------------
 
 const useColor = process.stdout.isTTY && !process.env.NO_COLOR;
@@ -30,58 +35,8 @@ const c = {
   cyan: (s: string) => (useColor ? `\u001b[36m${s}\u001b[39m` : s),
 };
 
-const HELP = `${c.bold('trazum')} — reduce el coste de tus prompts sin perder lo que piden.
-
-${c.bold('USO')}
-  trazum optimize <fichero|-> [opciones]
-  trazum check <fichero|-> --max-tokens <n> [opciones]
-  trazum models
-  trazum rules
-
-${c.bold('OPCIONES DE optimize')}
-  --level <safe|aggressive>   Agresividad de las reglas. Por defecto: safe.
-  --model <id>                Modelo para calcular el coste. Por defecto: ${DEFAULT_USAGE.model}.
-  --calls <n>                 Llamadas al mes. Por defecto: ${DEFAULT_USAGE.callsPerMonth}.
-  --output-tokens <n>         Tokens de salida medios. Por defecto: ${DEFAULT_USAGE.avgOutputTokens}.
-  --cache-hit-rate <0-1>      Tasa de acierto de caché estimada. Por defecto: ${DEFAULT_USAGE.cacheHitRate}.
-  --batch                     El trabajo tolera latencia (Batch API, 50% menos).
-  --disable <id,id>           Desactiva reglas concretas (ver "trazum rules").
-  --llm                       Añade una pasada por el LLM configurado por entorno.
-  --exact-tokens              Cuenta tokens con la API oficial en vez de la heurística.
-  --diff                      Muestra el diff línea a línea.
-  --json                      Vuelca el informe completo en JSON.
-  -o, --out <fichero>         Escribe el prompt optimizado a un fichero.
-  -h, --help                  Esta ayuda.
-
-${c.bold('OPCIONES DE check')}
-  --max-tokens <n>            Presupuesto de tokens de entrada. Obligatorio.
-  --level <safe|aggressive>   Nivel al calcular si optimizado cabría.
-  --exact-tokens              Recuento exacto (necesita ANTHROPIC_API_KEY).
-  --json                      Resultado en JSON.
-
-  Pensado para CI: sale con código 1 si el prompt supera el presupuesto,
-  así una plantilla que crece sin control rompe la build en vez de la factura.
-
-${c.bold('LLM OPCIONAL')}
-  El núcleo es determinista y gratis. Con --llm se añade una pasada de
-  compresión semántica usando el proveedor que configures por entorno:
-
-    TRAZUM_LLM_PROVIDER   openai | anthropic          (por defecto: openai)
-    TRAZUM_LLM_BASE_URL   https://tu-llm/v1
-    TRAZUM_LLM_API_KEY    tu clave
-    TRAZUM_LLM_MODEL      identificador del modelo
-
-  El resultado del LLM solo se acepta si es más corto y conserva intacto
-  el código, las URLs y los marcadores de plantilla.
-
-${c.bold('EJEMPLOS')}
-  trazum optimize prompt.txt --calls 50000 --diff
-  cat prompt.md | trazum optimize - --level aggressive --json
-  trazum optimize prompt.txt --llm -o prompt.optimizado.txt
-`;
-
 // --------------------------------------------------------------------------
-// Parseo de argumentos
+// Argument parsing
 // --------------------------------------------------------------------------
 
 interface Args {
@@ -90,7 +45,7 @@ interface Args {
   flags: Map<string, string | boolean>;
 }
 
-function parseArgs(argv: string[]): Args {
+function parseArgs(argv: string[], t: CliMessages): Args {
   const flags = new Map<string, string | boolean>();
   const positional: string[] = [];
   const takesValue = new Set([
@@ -101,6 +56,7 @@ function parseArgs(argv: string[]): Args {
     'cache-hit-rate',
     'disable',
     'max-tokens',
+    'locale',
     'out',
     'o',
   ]);
@@ -114,7 +70,7 @@ function parseArgs(argv: string[]): Args {
     const name = arg.replace(/^--?/, '');
     if (takesValue.has(name)) {
       const value = argv[++i];
-      if (value === undefined) throw new Error(`La opción --${name} necesita un valor.`);
+      if (value === undefined) throw new Error(t.errors.optionNeedsValue(name));
       flags.set(name === 'o' ? 'out' : name, value);
     } else {
       flags.set(name, true);
@@ -124,28 +80,52 @@ function parseArgs(argv: string[]): Args {
   return { command: positional[0] ?? '', positional: positional.slice(1), flags };
 }
 
-function numberFlag(args: Args, name: string, fallback: number): number {
+/**
+ * Reads `--locale` before the rest of the parsing, so even a parse error is
+ * reported in the language the user asked for.
+ */
+function localeFromArgv(argv: string[]): Locale {
+  const index = argv.indexOf('--locale');
+  const flag = index >= 0 ? argv[index + 1] : undefined;
+  return detectLocale(flag);
+}
+
+function stringFlag(args: Args, name: string): string | undefined {
+  const raw = args.flags.get(name);
+  return typeof raw === 'string' ? raw : undefined;
+}
+
+function numberFlag(args: Args, name: string, fallback: number, t: CliMessages): number {
   const raw = args.flags.get(name);
   if (raw === undefined || typeof raw === 'boolean') return fallback;
   const value = Number(raw);
   if (!Number.isFinite(value) || value < 0) {
-    throw new Error(`--${name} debe ser un número no negativo (recibido: "${raw}").`);
+    throw new Error(t.errors.mustBeNonNegative(name, raw));
   }
   return value;
 }
 
+function levelFlag(args: Args, t: CliMessages): RuleLevel {
+  const level = (args.flags.get('level') ?? 'safe') as RuleLevel;
+  if (level !== 'safe' && level !== 'aggressive') {
+    throw new Error(t.errors.badLevel(String(level)));
+  }
+  return level;
+}
+
 // --------------------------------------------------------------------------
-// Diff línea a línea
+// Line-by-line diff
 // --------------------------------------------------------------------------
 
-/** Subsecuencia común más larga, para alinear las dos versiones. */
+/** Longest common subsequence, used to align the two versions. */
 function lcsTable(a: string[], b: string[]): number[][] {
   const table: number[][] = Array.from({ length: a.length + 1 }, () =>
     new Array<number>(b.length + 1).fill(0),
   );
   for (let i = a.length - 1; i >= 0; i--) {
     for (let j = b.length - 1; j >= 0; j--) {
-      table[i]![j] = a[i] === b[j] ? table[i + 1]![j + 1]! + 1 : Math.max(table[i + 1]![j]!, table[i]![j + 1]!);
+      table[i]![j] =
+        a[i] === b[j] ? table[i + 1]![j + 1]! + 1 : Math.max(table[i + 1]![j]!, table[i]![j + 1]!);
     }
   }
   return table;
@@ -179,68 +159,80 @@ function renderDiff(before: string, after: string): string {
 }
 
 // --------------------------------------------------------------------------
-// Informe
+// Report
 // --------------------------------------------------------------------------
 
-function printReport(result: OptimizationResult, showDiff: boolean): void {
+function printReport(result: OptimizationResult, showDiff: boolean, t: CliMessages): void {
   const { savings } = result;
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const sourceNote =
-    result.tokenSource === 'heuristic'
-      ? c.dim(' (estimado, ±15%)')
-      : c.dim(' (recuento exacto)');
+    result.tokenSource === 'heuristic' ? c.dim(t.report.estimated()) : c.dim(t.report.exactCount());
 
   console.log();
-  console.log(c.bold('Tokens de entrada'));
+  console.log(c.bold(t.report.inputTokens()));
   console.log(
-    `  ${result.tokensBefore.toLocaleString('es-ES')} → ${c.green(
-      result.tokensAfter.toLocaleString('es-ES'),
-    )}   ${c.bold(`-${result.reductionPct.toFixed(1)}%`)}${sourceNote}`,
+    `  ${n(result.tokensBefore)} → ${c.green(n(result.tokensAfter))}   ${c.bold(
+      `-${result.reductionPct.toFixed(1)}%`,
+    )}${sourceNote}`,
   );
 
   if (result.rules.length > 0) {
     console.log();
-    console.log(c.bold('Reglas aplicadas'));
+    console.log(c.bold(t.report.rulesApplied()));
     for (const rule of result.rules) {
-      const tag = rule.level === 'aggressive' ? c.yellow('[agresiva]') : c.dim('[segura]');
-      console.log(
-        `  ${tag} ${rule.title} ${c.dim(`(${rule.hits}×, ~${rule.tokensSaved} tokens)`)}`,
-      );
+      const tag =
+        rule.level === 'aggressive'
+          ? c.yellow(t.report.levelAggressive())
+          : c.dim(t.report.levelSafe());
+      console.log(`  ${tag} ${rule.title} ${c.dim(t.report.ruleHits(rule.hits, rule.tokensSaved))}`);
     }
   } else {
     console.log();
-    console.log(c.dim('  Ninguna regla ha encontrado nada que recortar.'));
+    console.log(c.dim(t.report.nothingToTrim()));
   }
 
   if (result.llm) {
     console.log();
-    console.log(c.bold('Pasada por LLM'));
+    console.log(c.bold(t.report.llmPass()));
     if (result.llm.applied) {
       console.log(
-        `  ${c.green('aplicada')} vía ${result.llm.provider}/${result.llm.model}: ` +
-          `${result.llm.tokensBefore} → ${result.llm.tokensAfter} tokens`,
+        `  ${c.green(
+          t.report.llmApplied(
+            result.llm.provider,
+            result.llm.model,
+            result.llm.tokensBefore,
+            result.llm.tokensAfter,
+          ),
+        )}`,
       );
     } else {
-      console.log(`  ${c.yellow('descartada')}: ${result.llm.rejectedReason}`);
+      console.log(`  ${c.yellow(t.report.llmRejected(result.llm.rejectedReason ?? ''))}`);
     }
   }
 
   console.log();
-  console.log(c.bold(`Coste con ${savings.modelDisplayName}`));
+  console.log(c.bold(t.report.costWith(savings.modelDisplayName)));
   console.log(
-    `  ${result.usage.callsPerMonth.toLocaleString('es-ES')} llamadas/mes · ` +
-      `${result.usage.avgOutputTokens} tokens de salida por llamada` +
-      (result.usage.batchEligible ? ' · Batch API' : ''),
+    `  ${t.report.usageLine(
+      n(result.usage.callsPerMonth),
+      result.usage.avgOutputTokens,
+      result.usage.batchEligible,
+    )}`,
   );
   console.log(
-    `  ${formatUsd(savings.perMonth.before.totalUsd)}/mes → ` +
-      `${c.green(formatUsd(savings.perMonth.after.totalUsd))}/mes   ` +
-      c.bold(`ahorro ${formatUsd(savings.monthlySavingsUsd)}/mes`) +
-      c.dim(` (${savings.monthlySavingsPct.toFixed(1)}%)`),
+    `  ${formatUsd(savings.perMonth.before.totalUsd)} → ` +
+      `${c.green(formatUsd(savings.perMonth.after.totalUsd))}   ` +
+      c.bold(
+        t.report.perMonthSaving(
+          formatUsd(savings.monthlySavingsUsd),
+          savings.monthlySavingsPct.toFixed(1),
+        ),
+      ),
   );
 
   if (result.advisories.length > 0) {
     console.log();
-    console.log(c.bold('Además de acortar el prompt'));
+    console.log(c.bold(t.report.beyondShortening()));
     for (const advisory of result.advisories) {
       const marker =
         advisory.severity === 'warning'
@@ -250,7 +242,7 @@ function printReport(result: OptimizationResult, showDiff: boolean): void {
             : c.dim('·');
       const money =
         advisory.estimatedMonthlyUsd !== null
-          ? c.green(` ~${formatUsd(advisory.estimatedMonthlyUsd)}/mes`)
+          ? c.green(t.report.perMonthSuffix(formatUsd(advisory.estimatedMonthlyUsd)))
           : '';
       console.log(`  ${marker} ${c.bold(advisory.title)}${money}`);
       console.log(`    ${c.dim(wrap(advisory.detail, 76, '    '))}`);
@@ -259,14 +251,14 @@ function printReport(result: OptimizationResult, showDiff: boolean): void {
 
   if (showDiff) {
     console.log();
-    console.log(c.bold('Diff'));
+    console.log(c.bold(t.report.diff()));
     console.log(renderDiff(result.original, result.optimized));
   }
 
   console.log();
 }
 
-/** Ajusta un párrafo a un ancho dado. */
+/** Wraps a paragraph to a given width. */
 function wrap(text: string, width: number, indent: string): string {
   const words = text.split(/\s+/);
   const lines: string[] = [];
@@ -284,67 +276,78 @@ function wrap(text: string, width: number, indent: string): string {
 }
 
 // --------------------------------------------------------------------------
-// Subcomandos
+// Subcommands
 // --------------------------------------------------------------------------
 
-function commandModels(): void {
+function commandModels(t: CliMessages): void {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const col = t.models.columns;
+
   console.log();
-  console.log(c.bold('Modelos y precios') + c.dim(`  (USD por millón de tokens)`));
-  console.log(c.dim(`  Tabla revisada el ${PRICING_LAST_REVIEWED}. Verifica antes de presupuestar.`));
+  console.log(c.bold(t.models.title()) + c.dim(t.models.unit()));
+  console.log(c.dim(t.models.reviewedOn(PRICING_LAST_REVIEWED)));
   console.log();
+
   const rows = listModels().map((m) => ({
     id: m.id,
-    entrada: m.promo ? `${m.promo.inputPerMTok} (→${m.inputPerMTok})` : String(m.inputPerMTok),
-    salida: m.promo ? `${m.promo.outputPerMTok} (→${m.outputPerMTok})` : String(m.outputPerMTok),
-    contexto: `${(m.contextWindow / 1000).toLocaleString('es-ES')}K`,
-    caché: m.cacheMinTokens.toLocaleString('es-ES'),
+    input: m.promo ? `${m.promo.inputPerMTok} (→${m.inputPerMTok})` : String(m.inputPerMTok),
+    output: m.promo ? `${m.promo.outputPerMTok} (→${m.outputPerMTok})` : String(m.outputPerMTok),
+    context: `${n(m.contextWindow / 1000)}K`,
+    cache: n(m.cacheMinTokens),
   }));
   const widths = {
-    id: Math.max(...rows.map((r) => r.id.length), 'modelo'.length),
-    entrada: Math.max(...rows.map((r) => r.entrada.length), 'entrada'.length),
-    salida: Math.max(...rows.map((r) => r.salida.length), 'salida'.length),
-    contexto: Math.max(...rows.map((r) => r.contexto.length), 'contexto'.length),
-    caché: Math.max(...rows.map((r) => r.caché.length), 'mín. caché'.length),
+    id: Math.max(...rows.map((r) => r.id.length), col.model.length),
+    input: Math.max(...rows.map((r) => r.input.length), col.input.length),
+    output: Math.max(...rows.map((r) => r.output.length), col.output.length),
+    context: Math.max(...rows.map((r) => r.context.length), col.context.length),
+    cache: Math.max(...rows.map((r) => r.cache.length), col.cacheMin.length),
   };
+
   console.log(
     c.bold(
-      `  ${'modelo'.padEnd(widths.id)}  ${'entrada'.padStart(widths.entrada)}  ` +
-        `${'salida'.padStart(widths.salida)}  ${'contexto'.padStart(widths.contexto)}  ` +
-        `${'mín. caché'.padStart(widths.caché)}`,
+      `  ${col.model.padEnd(widths.id)}  ${col.input.padStart(widths.input)}  ` +
+        `${col.output.padStart(widths.output)}  ${col.context.padStart(widths.context)}  ` +
+        `${col.cacheMin.padStart(widths.cache)}`,
     ),
   );
   for (const row of rows) {
     console.log(
-      `  ${row.id.padEnd(widths.id)}  ${row.entrada.padStart(widths.entrada)}  ` +
-        `${row.salida.padStart(widths.salida)}  ${row.contexto.padStart(widths.contexto)}  ` +
-        `${row.caché.padStart(widths.caché)}`,
+      `  ${row.id.padEnd(widths.id)}  ${row.input.padStart(widths.input)}  ` +
+        `${row.output.padStart(widths.output)}  ${row.context.padStart(widths.context)}  ` +
+        `${row.cache.padStart(widths.cache)}`,
     );
   }
+
   console.log();
-  console.log(c.dim('  Los precios entre paréntesis son el precio tras acabar la promoción.'));
-  console.log(
-    c.dim('  Caché: leer cuesta el 10% de la entrada; escribir, el 125% (5 min) o 200% (1 h).'),
-  );
-  console.log(c.dim('  Batch API: 50% de descuento sobre entrada y salida.'));
+  console.log(c.dim(t.models.promoNote()));
+  console.log(c.dim(t.models.cacheNote()));
+  console.log(c.dim(t.models.batchNote()));
   console.log();
 }
 
-function commandRules(): void {
+function commandRules(t: CliMessages, locale: Locale): void {
+  // Rule copy lives in the core catalogue, so `trazum rules` and the report
+  // never drift apart.
+  const copy = getMessages(locale).rules;
+
   console.log();
-  console.log(c.bold('Reglas disponibles'));
-  console.log(c.dim('  Desactiva las que no quieras con --disable id1,id2'));
+  console.log(c.bold(t.rules.title()));
+  console.log(c.dim(t.rules.disableHint()));
   console.log();
   for (const rule of RULES) {
-    const tag = rule.level === 'aggressive' ? c.yellow('[agresiva]') : c.dim('[segura]  ');
-    console.log(`  ${tag} ${c.bold(rule.id)} — ${rule.title}`);
-    console.log(`    ${c.dim(wrap(rule.rationale, 74, '    '))}`);
+    const tag =
+      rule.level === 'aggressive'
+        ? c.yellow(t.report.levelAggressive())
+        : c.dim(t.report.levelSafe());
+    console.log(`  ${tag} ${c.bold(rule.id)} — ${copy[rule.id].title}`);
+    console.log(`    ${c.dim(wrap(copy[rule.id].rationale, 74, '    '))}`);
     console.log();
   }
 }
 
-async function readInput(source: string | undefined): Promise<string> {
+async function readInput(source: string | undefined, t: CliMessages): Promise<string> {
   if (!source) {
-    throw new Error('Falta el fichero de entrada. Usa "-" para leer de la entrada estándar.');
+    throw new Error(t.errors.missingInputFile());
   }
   if (source === '-') {
     const chunks: Buffer[] = [];
@@ -354,50 +357,49 @@ async function readInput(source: string | undefined): Promise<string> {
   return readFile(source, 'utf8');
 }
 
-async function commandOptimize(args: Args): Promise<void> {
-  const prompt = await readInput(args.positional[0]);
+async function commandOptimize(args: Args, t: CliMessages, locale: Locale): Promise<void> {
+  const prompt = await readInput(args.positional[0], t);
+  const level = levelFlag(args, t);
 
-  const level = (args.flags.get('level') ?? 'safe') as RuleLevel;
-  if (level !== 'safe' && level !== 'aggressive') {
-    throw new Error(`--level debe ser "safe" o "aggressive" (recibido: "${level}").`);
-  }
-
-  const modelFlag = args.flags.get('model');
+  const model = stringFlag(args, 'model');
   const usage: Partial<UsageProfile> = {
-    ...(typeof modelFlag === 'string' ? { model: modelFlag } : {}),
-    callsPerMonth: numberFlag(args, 'calls', DEFAULT_USAGE.callsPerMonth),
-    avgOutputTokens: numberFlag(args, 'output-tokens', DEFAULT_USAGE.avgOutputTokens),
-    cacheHitRate: numberFlag(args, 'cache-hit-rate', DEFAULT_USAGE.cacheHitRate),
+    ...(model ? { model } : {}),
+    callsPerMonth: numberFlag(args, 'calls', DEFAULT_USAGE.callsPerMonth, t),
+    avgOutputTokens: numberFlag(args, 'output-tokens', DEFAULT_USAGE.avgOutputTokens, t),
+    cacheHitRate: numberFlag(args, 'cache-hit-rate', DEFAULT_USAGE.cacheHitRate, t),
     batchEligible: args.flags.has('batch'),
   };
 
-  const disableRaw = args.flags.get('disable');
-  const disableRules =
-    typeof disableRaw === 'string' ? disableRaw.split(',').map((s) => s.trim()).filter(Boolean) : [];
+  const disableRaw = stringFlag(args, 'disable');
+  const disableRules = (disableRaw ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
   for (const id of disableRules) {
     if (!RULES.some((r) => r.id === id)) {
-      throw new Error(`Regla desconocida en --disable: "${id}". Lista completa: trazum rules`);
+      throw new Error(t.errors.unknownRuleInDisable(id));
     }
   }
 
-  let result = optimize(prompt, { level, usage, disableRules });
+  let result = optimize(prompt, {
+    level,
+    usage,
+    locale,
+    disableRules: disableRules as RuleId[],
+  });
 
   if (args.flags.has('llm')) {
     const provider = providerFromEnv();
     if (!provider) {
-      throw new Error(
-        'Has pedido --llm pero no hay proveedor configurado.\n' +
-          'Define TRAZUM_LLM_BASE_URL y TRAZUM_LLM_MODEL (endpoint compatible con OpenAI),\n' +
-          'o TRAZUM_LLM_PROVIDER=anthropic con TRAZUM_LLM_API_KEY.',
-      );
+      throw new Error(t.errors.llmNotConfigured());
     }
-    result = await refineWithLlm(result, provider);
+    result = await refineWithLlm(result, provider, { locale });
   }
 
   if (args.flags.has('exact-tokens')) {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
-      throw new Error('--exact-tokens necesita ANTHROPIC_API_KEY en el entorno.');
+      throw new Error(t.errors.exactTokensNeedsKey());
     }
     result = await withExactTokenCounts(
       result,
@@ -405,8 +407,8 @@ async function commandOptimize(args: Args): Promise<void> {
     );
   }
 
-  const outPath = args.flags.get('out');
-  if (typeof outPath === 'string') {
+  const outPath = stringFlag(args, 'out');
+  if (outPath) {
     await writeFile(outPath, result.optimized, 'utf8');
   }
 
@@ -415,42 +417,40 @@ async function commandOptimize(args: Args): Promise<void> {
     return;
   }
 
-  if (!process.stdout.isTTY && typeof outPath !== 'string') {
-    // Redirigido a un fichero o a otro proceso: solo el prompt, sin adornos.
+  if (!process.stdout.isTTY && !outPath) {
+    // Redirected to a file or another process: the prompt alone, no chrome.
     process.stdout.write(result.optimized);
     return;
   }
 
-  printReport(result, args.flags.has('diff'));
-  if (typeof outPath === 'string') {
-    console.log(c.dim(`Prompt optimizado escrito en ${outPath}`));
+  printReport(result, args.flags.has('diff'), t);
+  if (outPath) {
+    console.log(c.dim(t.report.wroteTo(outPath)));
     console.log();
   }
 }
 
 /**
- * Presupuesto de tokens para CI: falla (código 1) si el prompt lo supera.
- * Así una plantilla que crece sin control rompe la build, no la factura.
+ * Token budget for CI: fails (exit code 1) when the prompt busts it, so a
+ * template that grows unchecked breaks the build, not the bill.
  */
-async function commandCheck(args: Args): Promise<void> {
-  const prompt = await readInput(args.positional[0]);
+async function commandCheck(args: Args, t: CliMessages, locale: Locale): Promise<void> {
+  const prompt = await readInput(args.positional[0], t);
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
 
-  const maxTokens = numberFlag(args, 'max-tokens', -1);
+  const maxTokens = numberFlag(args, 'max-tokens', -1, t);
   if (maxTokens < 0) {
-    throw new Error('trazum check necesita --max-tokens <n>.');
+    throw new Error(t.errors.checkNeedsMaxTokens());
   }
 
-  const level = (args.flags.get('level') ?? 'safe') as RuleLevel;
-  if (level !== 'safe' && level !== 'aggressive') {
-    throw new Error(`--level debe ser "safe" o "aggressive" (recibido: "${level}").`);
-  }
+  const level = levelFlag(args, t);
 
   let count = (text: string): Promise<number> => Promise.resolve(estimateTokens(text));
   let source: 'heuristic' | 'external' = 'heuristic';
 
   if (args.flags.has('exact-tokens')) {
     const apiKey = process.env.ANTHROPIC_API_KEY;
-    if (!apiKey) throw new Error('--exact-tokens necesita ANTHROPIC_API_KEY en el entorno.');
+    if (!apiKey) throw new Error(t.errors.exactTokensNeedsKey());
     const exact = countTokensAnthropic({ apiKey });
     count = (text) => exact(text);
     source = 'external';
@@ -459,11 +459,11 @@ async function commandCheck(args: Args): Promise<void> {
   const tokens = await count(prompt);
   const ok = tokens <= maxTokens;
 
-  // Si se pasa del presupuesto, calcula si optimizado cabría: convierte el
-  // fallo de CI en una acción concreta en vez de un número rojo.
+  // Over budget: work out whether optimising would be enough, so the CI
+  // failure carries a concrete next step instead of just a red number.
   let optimizedTokens: number | null = null;
   if (!ok) {
-    const optimized = optimize(prompt, { level }).optimized;
+    const optimized = optimize(prompt, { level, locale }).optimized;
     optimizedTokens = await count(optimized);
   }
 
@@ -479,18 +479,14 @@ async function commandCheck(args: Args): Promise<void> {
       }),
     );
   } else if (ok) {
-    console.log(
-      `${c.green('OK')} ${tokens.toLocaleString('es-ES')} tokens dentro del presupuesto de ${maxTokens.toLocaleString('es-ES')}.`,
-    );
+    console.log(`${c.green(t.check.okLabel())} ${t.check.ok(n(tokens), n(maxTokens))}`);
   } else {
-    console.error(
-      `${c.red('FALLO')} ${tokens.toLocaleString('es-ES')} tokens supera el presupuesto de ${maxTokens.toLocaleString('es-ES')}.`,
-    );
+    console.error(`${c.red(t.check.failedLabel())} ${t.check.failed(n(tokens), n(maxTokens))}`);
     if (optimizedTokens !== null) {
       console.error(
         optimizedTokens <= maxTokens
-          ? `  Optimizado con "trazum optimize --level ${level}" quedaría en ~${optimizedTokens.toLocaleString('es-ES')} tokens y sí cabría.`
-          : `  Ni optimizado cabe (~${optimizedTokens.toLocaleString('es-ES')} tokens): hay que recortar contenido a mano.`,
+          ? t.check.wouldFit(level, n(optimizedTokens))
+          : t.check.stillTooBig(n(optimizedTokens)),
       );
     }
   }
@@ -501,33 +497,48 @@ async function commandCheck(args: Args): Promise<void> {
 // --------------------------------------------------------------------------
 
 async function main(): Promise<void> {
-  const args = parseArgs(process.argv.slice(2));
+  const argv = process.argv.slice(2);
+  const locale = localeFromArgv(argv);
+  const t = getCliMessages(locale);
+  const args = parseArgs(argv, t);
 
   if (args.flags.has('help') || args.flags.has('h') || !args.command) {
-    console.log(HELP);
+    console.log(
+      t.help(
+        {
+          model: DEFAULT_USAGE.model,
+          callsPerMonth: DEFAULT_USAGE.callsPerMonth,
+          avgOutputTokens: DEFAULT_USAGE.avgOutputTokens,
+          cacheHitRate: DEFAULT_USAGE.cacheHitRate,
+          locales: LOCALES,
+        },
+        c.bold,
+      ),
+    );
     return;
   }
 
   switch (args.command) {
     case 'optimize':
-      await commandOptimize(args);
+      await commandOptimize(args, t, locale);
       break;
     case 'check':
-      await commandCheck(args);
+      await commandCheck(args, t, locale);
       break;
     case 'models':
-      commandModels();
+      commandModels(t);
       break;
     case 'rules':
-      commandRules();
+      commandRules(t, locale);
       break;
     default:
-      throw new Error(`Comando desconocido: "${args.command}". Prueba con "trazum --help".`);
+      throw new Error(t.errors.unknownCommand(args.command));
   }
 }
 
 main().catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error);
-  console.error(`\n${c.red('Error')}: ${message}\n`);
+  const t = getCliMessages(localeFromArgv(process.argv.slice(2)));
+  console.error(`\n${c.red(t.errors.errorLabel())}: ${message}\n`);
   process.exitCode = 1;
 });
