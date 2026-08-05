@@ -1,0 +1,17 @@
+Return the answer as a Markdown table. No prose before or after it.
+
+| Field | Type | Required? | Notes |
+|-------|------|-----------|-------|
+| `order_id` | string | yes | Format: `ACM-` + 6 digits (e.g. `ACM-004218`) |
+| `status` | enum | yes | `pending` \| `paid` \| `shipped` \| `returned` |
+| `total_eur` | number | yes | Two decimals; never negative |
+| `placed_at` | ISO-8601 | yes | e.g. `2026-03-14T09:21:00Z` |
+| `notes` | string | no | Max 280 chars; strip `<`, `>`, `&` |
+
+Rules:
+1. If `status` == `returned`, then `total_eur` MUST be `0.00` — *not* the original.
+2. Dates: UTC only. "14/03/2026", "03-14-26", and "March 14th" are all invalid.
+3. Escape pipes inside cells (`a\|b`), or the table breaks.
+4. Empty optional field => `—` (em dash), never `null`, `N/A`, or `""`.
+
+**Do not** add columns. **Do not** reorder rows. **Do not** "improve" the header.

@@ -80,7 +80,7 @@ version stands. It never returns something worse than where it started.
 ```bash
 npm install
 npm run build      # core + cli
-npm test           # 465 tests
+npm test           # 468 tests
 ```
 
 ### CLI
@@ -646,9 +646,29 @@ word overlap. The review reports; it never edits.
 ## Token counting
 
 By default Trazum uses a **dependency-free heuristic estimator**: it classifies
-by character type (words, numbers, punctuation, CJK, emoji). On ordinary prose
-the typical error is around ±15%. It is built for comparing two versions of the
-same prompt, which is what it is used for.
+by character type (words, numbers, punctuation, CJK, emoji). It targets ±15% on
+ordinary prose, and it is built for comparing two versions of the same prompt,
+which is what it is used for.
+
+**That band is a design target, not yet a measurement.** It is printed on every
+report and every dollar figure descends from it, and nothing in this repository
+establishes that it holds — the estimator's only accuracy-adjacent tests were
+zero-on-empty, monotonic growth, and not-`NaN`. It is also stated as one number
+for all text, which is a second assumption: the estimator treats CJK, digits and
+punctuation quite differently from words, and there is no reason those should
+land on the same accuracy.
+
+A corpus covering those types is committed, along with the harness that measures
+it against the official counting endpoint:
+
+```bash
+ANTHROPIC_API_KEY=... npm run measure:tokens
+```
+
+`token-band.test.js` asserts the band per text type as soon as that ground truth
+exists, and refuses to pass quietly until then. It also carries a digest of the
+corpus, so numbers describing text that has since been edited fail rather than
+mislead.
 
 For exact numbers, the official counting endpoint does not charge tokens:
 

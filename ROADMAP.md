@@ -505,31 +505,46 @@ sends.
 Three releases are queued behind the automation that just shipped, and this is the
 first of them.
 
-`±15%` is printed on every report, appears twice in the README and in the
-tokenizer's own doc comment, and **nothing asserts it**. `estimateTokens` is
-tested for three things: zero on empty input, monotonic growth, and never
-returning `NaN`. Every dollar figure Trazum prints descends from a number no test
-has ever checked.
+`±15%` is printed on every report, appears in both READMEs, in the estimator's own
+doc comment and in `VERSIONING.md` as part of the frozen API. Every dollar figure
+Trazum prints descends from it — and `estimateTokens` was tested for exactly three
+things: zero on empty input, monotonic growth, and never returning `NaN`. Nothing
+measured its accuracy.
 
-The security suite in this repository opens by saying a promise nobody checks is a
-promise that expires. This is that promise, holding up the product's central
-claim.
+It is also **one number for all text**, which is a second assumption. The
+estimator is calibrated per character class and treats CJK, digits and punctuation
+quite differently from words; there is no reason those should land on the same
+accuracy. If the real error on Japanese is 40%, every figure for a Japanese prompt
+is wrong while the report says ±15%.
 
-It is also **one number for all text**, which is unlikely to be true. The only CJK
-test asserts a Japanese string does not produce `NaN`. If the real error there is
-60%, every figure for a Japanese prompt is wrong while the report says ±15%.
+**In place now:** a committed corpus of eight samples covering prose (English and
+Spanish), CJK (Japanese and Chinese), code, few-shot blocks, punctuation-heavy
+tables and dense numerics; `scripts/measure-token-band.mjs`, which measures them
+against the official counting endpoint and subtracts the message envelope so the
+figures describe the text; and `token-band.test.js`, which asserts the band per
+sample as soon as the ground truth exists.
 
-- A committed corpus with known exact counts, spanning the types where the
-  estimator plausibly differs: English prose, code-heavy prompts, CJK, heavy
-  punctuation, few-shot blocks.
-- A test asserting the estimator stays inside its published band, per type.
-- **Publish the band per text type** if the measurement says they differ, and say
-  so on the report for a prompt whose type is materially worse — rather than
-  printing a band that does not apply to it.
+Three things that test does deliberately:
 
-**Needs the maintainer once:** ground truth comes from the official counting API,
-so the corpus figures have to be generated with a key and committed as fixtures.
-The corpus and harness do not need one.
+- **It does not pass quietly while unmeasured.** "0 failures" from a check that
+  measured nothing is the most misleading thing a suite can report — the same
+  reasoning that makes `trazum check` treat an unbudgeted run as an error. It
+  skips out loud and names the command.
+- **It requires the documentation to admit the band is unverified** until ground
+  truth exists, so `±15%` cannot quietly harden from an estimate into a fact
+  nobody established.
+- **It carries a digest of the corpus.** Numbers describing text that has since
+  been edited pass while describing something else, which is worse than no
+  numbers at all.
+
+**Needs the maintainer once:** `ANTHROPIC_API_KEY=... npm run measure:tokens`.
+The counting endpoint is free and does not run the model, so it costs nothing
+beyond the round trips. Commit what it writes and the assertions go live.
+
+**Then, and only then, the decision this release exists for:** if the bands differ
+materially by type — which the CJK case suggests they will — the report stops
+printing one number for all text and says the band that applies to the prompt in
+front of it.
 
 ### 1.4.0 — Prompts where they actually live
 

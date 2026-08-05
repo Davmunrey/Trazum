@@ -157,6 +157,19 @@ migration.
 
 Run `npm run verify` before pushing and read its exit code, not its output.
 
+## Measuring the token band
+
+`±15%` is a design target that nothing establishes. The corpus and harness are
+committed; the measurement needs a key and one command:
+
+```bash
+ANTHROPIC_API_KEY=... npm run measure:tokens
+```
+
+The counting endpoint is free and does not run the model. Commit what it writes.
+Re-run it whenever `packages/core/test/corpus/` changes — the fixture carries a
+digest and the test fails rather than describing text that has moved on.
+
 ## Releasing
 
 Maintainers only, and documented separately because getting it wrong is the one
