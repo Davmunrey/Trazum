@@ -141,6 +141,12 @@ describe('catalogue parity', () => {
         redundantTokens: 180,
         topSimilarityPct: 88,
       },
+      restatedOutputFormat: {
+        restatedCount: 3,
+        totalCount: 4,
+        restatedTokens: 46,
+        keyList: '`category`, `reply`, `escalate`',
+      },
     };
 
     for (const locale of LOCALES) {

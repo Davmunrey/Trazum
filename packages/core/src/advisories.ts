@@ -4,7 +4,7 @@ import type { Locale } from './i18n/types.js';
 import { COMPLEX_SIGNALS, SIMPLE_SIGNALS } from './phrases.js';
 import { COST_MULTIPLIERS, MODELS, effectivePricing, getModel } from './pricing.js';
 import { formatUsd } from './savings.js';
-import { analyzeExamples, findContradictions } from './structure.js';
+import { analyzeExamples, findContradictions, findRestatedFormat } from './structure.js';
 import { estimateTokens } from './tokenizer.js';
 import type { Advisory, ModelPricing, TokenCounter, UsageProfile } from './types.js';
 
@@ -261,6 +261,26 @@ export function buildAdvisories(
         totalCount: examples.examples.length,
         redundantTokens: examples.redundantTokens,
         topSimilarityPct: Math.round(topSimilarity * 100),
+      }),
+      estimatedMonthlyUsd: saving > 0 ? saving : null,
+    });
+  }
+
+  // --- Output format written out twice ---
+  const restated = findRestatedFormat(optimizedPrompt, count);
+  if (restated) {
+    const saving =
+      tokensAfter > 0
+        ? monthlyInputUsd * Math.min(1, restated.restatedTokens / tokensAfter)
+        : 0;
+    advisories.push({
+      id: 'restated-output-format',
+      severity: 'opportunity',
+      ...t.advisories.restatedOutputFormat({
+        restatedCount: restated.restatedKeys.length,
+        totalCount: restated.keys.length,
+        restatedTokens: restated.restatedTokens,
+        keyList: restated.restatedKeys.map((k) => `\`${k}\``).join(', '),
       }),
       estimatedMonthlyUsd: saving > 0 ? saving : null,
     });

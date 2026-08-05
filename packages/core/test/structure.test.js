@@ -6,6 +6,7 @@ import {
   estimateTokens,
   findContradictions,
   findExamples,
+  findRestatedFormat,
   optimize,
 } from '../dist/index.js';
 
@@ -197,6 +198,120 @@ describe('few-shot examples', () => {
       'Output: positive',
     ].join('\n');
     assert.equal(analyzeExamples(prompt, estimateTokens).redundant.length, 0);
+  });
+});
+
+describe('output formats stated twice', () => {
+  const SCHEMA = [
+    '```json',
+    '{',
+    '  "category": "payment | shipping | refund",',
+    '  "reply": "text for the customer",',
+    '  "escalate": false',
+    '}',
+    '```',
+  ].join('\n');
+
+  it('flags prose that walks the schema it already shows', () => {
+    const prompt = [
+      'Classify the support ticket.',
+      '',
+      'Return JSON with a category field holding the ticket type, a reply field',
+      'with the text for the customer, and an escalate field set to true when a',
+      'human is needed.',
+      '',
+      SCHEMA,
+    ].join('\n');
+
+    const found = findRestatedFormat(prompt, estimateTokens);
+    assert.ok(found);
+    assert.deepEqual(found.keys.sort(), ['category', 'escalate', 'reply']);
+    assert.equal(found.restatedKeys.length, 3);
+    assert.ok(found.restatedTokens > 0);
+  });
+
+  it('ignores prose that mentions one field in passing', () => {
+    // "set escalate to true when..." is ordinary clarification, not a
+    // restatement. Flagging it would make the advisory noise.
+    const prompt = [
+      'Classify the support ticket.',
+      '',
+      SCHEMA,
+      '',
+      'Set escalate to true only when the customer explicitly asks for a human.',
+    ].join('\n');
+    assert.equal(findRestatedFormat(prompt, estimateTokens), null);
+  });
+
+  it('does not count the schema naming its own keys', () => {
+    assert.equal(findRestatedFormat(`Classify the ticket.\n\n${SCHEMA}`, estimateTokens), null);
+  });
+
+  it('needs a schema with enough fields to be worth reporting', () => {
+    const twoFields = [
+      'Return a category field and a reply field.',
+      '',
+      '```json',
+      '{ "category": "x", "reply": "y" }',
+      '```',
+    ].join('\n');
+    assert.equal(findRestatedFormat(twoFields, estimateTokens), null);
+  });
+
+  it('reads only top-level keys, not nested ones', () => {
+    const nested = [
+      '```json',
+      '{ "result": { "category": "x", "reply": "y", "escalate": false } }',
+      '```',
+      '',
+      'Describe the category, the reply and whether to escalate.',
+    ].join('\n');
+    // Only `result` is top level, so there is nothing to restate.
+    assert.equal(findRestatedFormat(nested, estimateTokens), null);
+  });
+
+  it('tolerates a schema that is illustrative rather than valid JSON', () => {
+    // Prompts routinely show trailing commas, ellipses and placeholders.
+    // Refusing to read those would skip the prompts most worth checking.
+    const loose = [
+      '```json',
+      '{',
+      '  "category": <one of: payment, shipping, refund>,',
+      '  "reply": "...",',
+      '  "escalate": true|false,',
+      '  ...',
+      '}',
+      '```',
+      '',
+      'Fill category with the ticket type, reply with the customer text, and',
+      'escalate when a human is needed.',
+    ].join('\n');
+
+    const found = findRestatedFormat(loose, estimateTokens);
+    assert.ok(found, 'an illustrative schema should still be read');
+    assert.equal(found.restatedKeys.length, 3);
+  });
+
+  it('surfaces as a priced advisory', () => {
+    const prompt = [
+      'Classify the ticket.',
+      'Return a category field, a reply field and an escalate field.',
+      '',
+      SCHEMA,
+    ].join('\n');
+    const result = optimize(prompt, {
+      usage: {
+        model: 'claude-opus-5',
+        callsPerMonth: 50_000,
+        avgOutputTokens: 300,
+        cacheHitRate: 0.9,
+        batchEligible: false,
+      },
+    });
+    const advisory = result.advisories.find((a) => a.id === 'restated-output-format');
+    assert.ok(advisory);
+    assert.equal(advisory.severity, 'opportunity');
+    assert.ok(advisory.estimatedMonthlyUsd > 0);
   });
 });
 

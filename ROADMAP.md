@@ -103,7 +103,7 @@ close enough to two genuinely distinct examples (~0.20) that catching them
 would mean flagging examples that teach different things. Recognising that
 "arrived quickly" and "arrived fast" teach the same lesson needs a model, not
 word-set overlap. That belongs to the optional LLM pass, and is listed under
-0.5.0 rather than pretended to here.
+0.6.0 rather than pretended to here.
 
 **Shipped alongside it:** the security pass that took the repository open
 source — four SSRF filter bypasses, two ReDoS denial-of-service bugs (one in a
@@ -111,26 +111,41 @@ source — four SSRF filter bypasses, two ReDoS denial-of-service bugs (one in a
 upgrade that finally cleared the `postcss`/`sharp` advisories. See
 [SECURITY.md](SECURITY.md).
 
+### 0.5.0 — Output formats stated twice
+
+Third structural finding, same posture as the first two: it reports, it does
+not cut. A prompt that shows its schema in a code block and then walks the same
+fields in prose is paying for the schema twice, and the block is the version
+worth keeping — it is unambiguous, and the protection pass already guarantees
+Trazum will never edit it.
+
+- New `restated-output-format` advisory, priced per month.
+- Reads illustrative schemas, not just valid JSON. Prompts routinely show
+  trailing commas, `...` and `<placeholders>`; refusing to parse those would
+  skip exactly the prompts worth checking.
+- Only top-level keys count, so a nested field name cannot be mistaken for one.
+- Three restated fields minimum. Naming one or two in prose is ordinary
+  clarification — "set `escalate` to true when the customer asks for a human" —
+  and flagging it would turn the advisory into noise.
+
 ---
 
 ## Next
 
-### 0.5.0 — Semantic structure, and reviewing what changed
+### 0.6.0 — Semantic structure, and reviewing what changed
 
 The pieces of structural analysis that need judgement rather than pattern
-matching, plus the review tooling the 0.4.0 advisories make necessary.
+matching, plus the review tooling the 0.4.0 and 0.5.0 advisories make necessary.
 
 - **Semantically redundant examples**, via the optional LLM pass: the
   paraphrase case the deterministic detector correctly refuses to guess at.
-- **Restated output formats.** A JSON schema given both as prose and as a code
-  block only needs the block.
 - **Rule-level diffing in the report**, so an aggressive run can be reviewed
   rule by rule instead of all at once.
 - **More contradiction axes** as real prompts justify them — tone, persona,
   refusal policy. Each new axis has to earn its place against false positives:
   an advisory people learn to ignore is worse than no advisory.
 
-### 0.6.0 — Measurement instead of estimation
+### 0.7.0 — Measurement instead of estimation
 
 Trazum currently reports what a prompt *should* save. The obvious next question
 from anyone about to change a production prompt is whether the shorter version
@@ -145,7 +160,7 @@ still works — and that is not something a rules engine can answer by itself.
 - **Real cache simulation**: given a call log, report the hit rate actually
   achievable rather than one the user has to guess at.
 
-### 0.7.0 — Fits into a workflow
+### 0.8.0 — Fits into a workflow
 
 Optimising once is a demo. The value is in a prompt staying lean as it is
 edited over months.
@@ -183,7 +198,7 @@ Not scheduled. Listed so the reasoning is on the record.
   needs a maintainer who actually reads it, and a stale translation is worse
   than an honest fallback to English.
 - **Editor extension.** Live token cost while writing a prompt is the right
-  place for this to live. Waiting on 0.7.0's config file so it has something to
+  place for this to live. Waiting on 0.8.0's config file so it has something to
   read.
 - **Tokenizer per model family.** The heuristic compares two versions of the
   same prompt well, which is what it is for. A real tokenizer would improve

@@ -1,6 +1,6 @@
 {
   "name": "@trazum/web",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -10,7 +10,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@trazum/core": "0.4.0",
+    "@trazum/core": "0.5.0",
     "next": "^16.2.12",
     "posthog-js": "^1.200.0",
     "react": "^19.0.0",

@@ -124,6 +124,14 @@ export interface RedundantExamplesParams {
   topSimilarityPct: number;
 }
 
+export interface RestatedOutputFormatParams {
+  restatedCount: number;
+  totalCount: number;
+  restatedTokens: number;
+  /** The restated field names, already formatted for display. */
+  keyList: string;
+}
+
 /** Reasons the optional LLM pass can reject a candidate. */
 export interface LlmMessages {
   emptyResponse(): string;
@@ -151,6 +159,7 @@ export interface CoreMessages {
     promoPricing(p: PromoPricingParams): LocalizedMessage;
     contradictoryInstructions(p: ContradictoryInstructionsParams): LocalizedMessage;
     redundantExamples(p: RedundantExamplesParams): LocalizedMessage;
+    restatedOutputFormat(p: RestatedOutputFormatParams): LocalizedMessage;
   };
   /** Names of the axes two instructions can disagree on. */
   contradictionAxes: Record<ContradictionAxisId, string>;
