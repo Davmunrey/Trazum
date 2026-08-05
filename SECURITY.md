@@ -43,9 +43,23 @@ dangerous thing in this repository.
 | Memory exhaustion | 400 KB prompt cap, 30 requests/minute per IP | `apps/web/app/api/optimize/route.ts` |
 | A vulnerable dependency arriving in a PR | Dependency review blocks moderate and above | `.github/workflows/security.yml` |
 | Injected code in a contribution | CodeQL with `security-extended` | `.github/workflows/security.yml` |
-| A workflow being used to exfiltrate secrets | `permissions: contents: read` by default, `--ignore-scripts` on install, no `pull_request_target` | `.github/workflows/` |
+| A workflow being used to exfiltrate secrets | `permissions: contents: read` by default, `--ignore-scripts` on install, no `pull_request_target` — the last one now asserted | `.github/workflows/`, `security.test.js` |
 | A dependency hook running on someone else's runner | The packaged Action installs with `--ignore-scripts` too | `action.yml`, asserted in `security.test.js` |
-| Actions template injection | Inputs reach the Action's shell through the environment, never interpolated into `run:` | `action.yml`, asserted in `security.test.js` |
+| Actions template injection | **Nothing** is interpolated into a `run:` body — no input, no `github.*` value, no step output. Values reach the shell through `env:` | `action.yml`, asserted in `security.test.js` |
+
+**An assertion is only worth what it can catch.** The template-injection row
+above used to be enforced by a test that recognised `${{ inputs.* }}` inside a
+`run:` block, and it turned out to see neither a single-line `run:` nor any value
+other than an input — which meant it was blind to `github.event.pull_request.title`,
+the one an outside contributor actually controls. It reported green on both. The
+scanner now refuses **any** interpolation into a `run:` body regardless of source,
+and it ships with positive controls: five mutated copies of `action.yml` that the
+test asserts it flags. A security test with no proof it can fail is a test that
+passes.
+
+Where a control is a source-text assertion rather than a behavioural one, it says
+so in the test. Those catch a regression in this repository; they do not prove a
+property of a fork.
 
 ### Deliberate design decisions
 

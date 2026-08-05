@@ -395,21 +395,113 @@ describe('the packaged Action', () => {
     assert.match(install[0], /--ignore-scripts/, `npm ci is missing --ignore-scripts: ${install[0]}`);
   });
 
-  it('never interpolates an input into a shell script', () => {
-    // `${{ inputs.file }}` spliced into `run:` is the classic Actions
-    // template-injection shape. The substitution happens before bash sees it,
-    // so quoting inside the template is not a fix — the value has to arrive
-    // through the environment.
-    const runBlocks = [...action.matchAll(/run:\s*(>-|\||>)?\s*\n([\s\S]*?)(?=\n {4}- |\n[a-z]|$)/g)];
-    assert.ok(runBlocks.length > 0, 'no run blocks found — has the action changed shape?');
+  /**
+   * Every `${{ }}` interpolated into a shell script, whatever it interpolates.
+   *
+   * The previous version of this looked for `${{ inputs.* }}` inside a body it
+   * matched with `/run:\s*(>-|\||>)?\s*\n([\s\S]*?)…/`, and it was ineffective
+   * in two ways that only became visible when a feature needed the shapes it
+   * missed:
+   *
+   * 1. The newline in that pattern is not optional, so `run: echo "${{ ... }}"`
+   *    on one line was never recognised as a run block at all.
+   * 2. Searching only for `inputs.` ignores every other interpolable value, and
+   *    the dangerous ones are elsewhere: `github.event.pull_request.title`,
+   *    `...body`, and `github.head_ref` are written by whoever opened the pull
+   *    request. `inputs.*` is workflow-authored and the *safest* of the set.
+   *
+   * So the rule is now positional and source-blind: **nothing may be
+   * interpolated into a `run:` body, ever.** A value's provenance is not
+   * something a regex can judge, and a step that derives an input from a PR
+   * title turns a "safe" source into an unsafe one without touching this file.
+   *
+   * Note the harm does not depend on the token being writable: substitution
+   * happens before bash parses, so the payload executes on the caller's runner
+   * with whatever secrets that job has in scope.
+   */
+  const interpolationsInRunBlocks = (yaml) => {
+    const lines = yaml.split('\n');
+    const found = [];
 
-    for (const [, , body] of runBlocks) {
-      const interpolated = body.match(/\$\{\{\s*inputs\.[^}]*\}\}/g);
-      assert.equal(
-        interpolated,
-        null,
-        `an input is interpolated straight into a shell script: ${interpolated?.join(', ')}`,
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const match = /^(\s*)(?:- )?run:(.*)$/.exec(line);
+      if (!match) continue;
+
+      const [, indent, inline] = match;
+      // `run: echo hi` — the body is on this line. This is the form the old
+      // pattern could not see.
+      if (inline.trim() !== '' && !/^\s*(\||>-?|>\+?)\s*$/.test(inline)) {
+        if (inline.includes('${{')) found.push(`line ${i + 1}: ${line.trim()}`);
+        continue;
+      }
+
+      // A block scalar: the body is every following line indented past the key.
+      for (let j = i + 1; j < lines.length; j++) {
+        const body = lines[j];
+        if (body.trim() === '') continue;
+        const bodyIndent = /^\s*/.exec(body)[0].length;
+        if (bodyIndent <= indent.length) break;
+        if (body.includes('${{')) found.push(`line ${j + 1}: ${body.trim()}`);
+      }
+    }
+    return found;
+  };
+
+  it('never interpolates anything into a shell script', () => {
+    assert.match(action, /\brun:/, 'no run blocks found — has the action changed shape?');
+    assert.deepEqual(
+      interpolationsInRunBlocks(action),
+      [],
+      'a template expression is interpolated straight into a shell script. ' +
+        'Pass it through env: instead — substitution happens before bash parses, ' +
+        'so quoting inside the template is not a fix.',
+    );
+  });
+
+  it('the interpolation scanner actually catches what it claims to', () => {
+    // Positive controls, because the version this replaced passed for two years
+    // of shapes it could not see. A security test with no proof it can fail is
+    // a test that passes.
+    const mutants = [
+      ['single-line run with an input', '    - name: X\n      shell: bash\n      run: echo "${{ inputs.file }}"'],
+      ['block run with a PR title', '    - name: X\n      shell: bash\n      run: |\n        echo "${{ github.event.pull_request.title }}"'],
+      ['block run with an input', '    - name: X\n      shell: bash\n      run: |\n        echo "${{ inputs.max-tokens }}"'],
+      ['folded run with head_ref', '    - name: X\n      shell: bash\n      run: >-\n        echo "${{ github.head_ref }}"'],
+      ['a step output threaded through', '    - name: X\n      shell: bash\n      run: echo "${{ steps.meta.outputs.title }}"'],
+    ];
+
+    for (const [name, snippet] of mutants) {
+      assert.ok(
+        interpolationsInRunBlocks(`${action}\n${snippet}\n`).length > 0,
+        `the scanner does not catch: ${name}`,
       );
+    }
+
+    // And a negative control: the explanatory YAML comments in action.yml quote
+    // `${{ inputs.file }}` in prose. Flagging those would make the test fail
+    // when somebody documents the reasoning.
+    assert.deepEqual(
+      interpolationsInRunBlocks(action),
+      [],
+      'the scanner is flagging the comments that explain why the rule exists',
+    );
+  });
+
+  it('no workflow or the action uses pull_request_target', () => {
+    // The event a reviewer reaches for when a fork PR cannot post a comment. It
+    // runs with a writable token against the BASE repository while checking out
+    // code the contributor controls, which is how "we just wanted to comment on
+    // the PR" becomes arbitrary code execution with the repository's secrets.
+    // If 0.11.0 ever needs it, that needs arguing in a pull request, not a
+    // quiet addition.
+    const workflows = readdirSync(join(repoRoot, '.github/workflows'))
+      .filter((name) => name.endsWith('.yml') || name.endsWith('.yaml'))
+      .map((name) => [name, readFileSync(join(repoRoot, '.github/workflows', name), 'utf8')]);
+
+    assert.ok(workflows.length > 0, 'no workflows found — has the layout changed?');
+    for (const [name, source] of [...workflows, ['action.yml', action]]) {
+      assert.doesNotMatch(source, /pull_request_target/, `${name} uses pull_request_target`);
     }
   });
 
