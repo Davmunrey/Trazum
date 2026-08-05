@@ -39,9 +39,15 @@ Three refusals, each a mistake with no correction afterwards, and each with a te
 and the other order leaves a window where installing the CLI fails.
 
 **Still needs the maintainer once:** the `@trazum` scope does not exist on npm, so
-it has to be created and this repository configured as a trusted publisher. Until
-then a tag push runs every check and fails at the publish step — which is the right
-failure, having published nothing.
+it has to be created and this repository configured as a trusted publisher.
+[docs/releasing.md](docs/releasing.md) is new and has the exact fields, the
+cutting-a-release checklist, and what to do when a release goes wrong — including
+the field that is easy to get wrong: npm's *Environment* must read `release`, or
+the OIDC claims do not match and the publish is rejected with an error about the
+token rather than about the mismatch.
+
+Until it is done a tag push runs every check and fails at the publish step — which
+is the right failure, having published nothing.
 
 **Issue templates, so a tester has somewhere to land.** `.github/` had CODEOWNERS,
 Dependabot and workflows but no way for anyone to report anything. Two forms: a

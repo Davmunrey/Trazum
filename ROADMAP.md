@@ -480,9 +480,15 @@ does not exist yet.
 
 **Still needs the maintainer, once.** The `@trazum` scope does not exist on npm
 (`@trazum/core` returns 404), so it has to be created and this repository
-configured as a trusted publisher for both packages. Nothing to paste into
-secrets and nothing to rotate — but until it is done, a tag push will run every
-check and then fail at the publish step. That is the right failure: it fails
+configured as a trusted publisher for both packages.
+[docs/releasing.md](docs/releasing.md) has the exact fields, including the one
+that is easy to get wrong: npm's *Environment* must read `release`, because the
+workflow declares it and the OIDC token carries the claim — leave it blank and
+the publish is rejected with an error about the token rather than about the
+mismatch.
+
+Nothing to paste into secrets and nothing to rotate. Until it is done a tag push
+runs every check and then fails at the publish step, which is the right failure:
 loudly, having published nothing.
 
 ---
