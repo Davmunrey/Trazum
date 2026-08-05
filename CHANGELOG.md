@@ -10,6 +10,50 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+**Reordering for the cache is on the web.** It is the largest saving Trazum can
+make — a $0 caching saving against a $184 one on a 1,178-token support prompt —
+and it was reaching only people who had cloned the repository and built the CLI.
+The web is the front door; the biggest thing the product does should not require
+a terminal to find.
+
+Opt-in over HTTP for the same reason it is opt-in on the command line, and the
+reason is stated in the route rather than left in the diff: every other
+transformation the endpoint performs deletes text whose absence is local, and this
+one *moves* text, where order carries meaning. Nothing about it is less safe here
+— the same deterministic core, nothing sent anywhere, the prompt returned
+byte-identical when it cannot act — but "the browser did it quietly" is not
+something this endpoint should be able to do.
+
+- **Honoured only on a literal `true`.** A string, a number and `null` are all
+  ignored: the body is untrusted, and a truthy check would let `"false"` rearrange
+  somebody's prompt.
+- **`original` stays what the caller sent**, so the diff the browser draws shows
+  the move instead of hiding it behind the deletions.
+- **Refusals come back in the response** and render whether or not anything moved.
+  The panel is deliberately not styled like the green savings box — that is a
+  saving to enjoy, this is a change to review — and it sits above the money so the
+  number is read after the caveat rather than instead of it.
+
+Verified against the running server rather than the module underneath it: the
+endpoint moves and reports, omits `reorder` entirely when it was not asked for,
+returns the prompt byte-identical with both refusals named when it declines, and
+ignores a non-`true` value three ways. The checkbox and its warning render in both
+locales.
+
+`ROADMAP.md` records what is deliberately **not** coming to the web — the pricing
+overlay, config-aware defaults and budgets — with the reasoning, rather than
+leaving three unexplained gaps. A textarea for pasting prices into somebody else's
+server is not the overlay feature wearing a different hat; it is a worse one, with
+no review and no provenance.
+
+The queue was renumbered so `Released` runs unbroken: embedded prompts became
+1.3.0 and the web 1.4.0, and **the error band moved to last**. Its corpus, harness
+and test all shipped; the measurement needs the official counting endpoint and a
+key, so it is the only entry whose completion is not ours to schedule. Holding two
+releases that could ship behind one that cannot would have been the wrong trade,
+and the file says so rather than renumbering quietly.
+
+
 **`check` now reads prompts embedded in source files.** It read `.txt`, `.md`,
 `.prompt` and `.tmpl`; real prompts live in TypeScript template literals and
 Python strings, so adopting Trazum meant refactoring them into standalone files

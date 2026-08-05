@@ -510,6 +510,10 @@ An interface for pasting a prompt, tuning the usage scenario, and reading the
 word-by-word diff, the saving and the advisories. Includes optimisation history
 stored only in the browser — nothing leaves your machine.
 
+**Reordering for the cache is available here too**, behind a checkbox rather than
+a level, with the same warning the CLI prints and the same refusals reported. It
+is the largest saving Trazum can make, and it should not need a terminal to find.
+
 The HTTP API behind it is public and small:
 
 ```bash
@@ -523,9 +527,16 @@ curl -X POST https://your-deployment/api/optimize \
     "prompt": "Please, in order to help me, analyse {{x}}. Thanks!",
     "level": "safe",
     "locale": "en",
+    "reorder": false,
     "usage": { "model": "claude-opus-5", "callsPerMonth": 20000, "avgOutputTokens": 300 }
   }'
 ```
+
+`reorder` is honoured only on a literal `true` — a string or a number is ignored,
+because the body is untrusted and a truthy check would let `"false"` rearrange
+somebody's prompt. When it is set, the response carries a `reorder` object with
+what moved and what was declined, and `original` stays the text you sent so a diff
+shows the move rather than hiding it behind the deletions.
 
 The endpoint is rate limited (30/min per IP) and, in production, only accepts
 `https` LLM endpoints pointing at public addresses (SSRF protection).

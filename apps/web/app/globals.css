@@ -266,6 +266,67 @@ button.ghost:hover {
   font-size: 14px;
 }
 
+/*
+ * The rearrangement panel.
+ *
+ * Deliberately not styled like `.money`: the green box is a saving to enjoy,
+ * this is a change to review. It sits above the money for the same reason, so
+ * the number is read after the caveat rather than instead of it.
+ */
+.reorder {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-top: 14px;
+}
+
+.reorder .reorder-headline {
+  font-weight: 600;
+  font-size: 15px;
+}
+
+.reorder .caption {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin-top: 2px;
+}
+
+.reorder .reorder-review {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--warn);
+}
+
+.reorder-declined {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.reorder-declined li + li {
+  margin-top: 4px;
+}
+
+.checkbox .hint {
+  display: block;
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.4;
+  margin-top: 2px;
+}
+
+/* The label wraps two lines now, so the box has to sit at the top of them. */
+.checkbox:has(.hint) {
+  align-items: flex-start;
+}
+
+.checkbox:has(.hint) input {
+  margin-top: 3px;
+}
+
 .money {
   background: var(--good-soft);
   border: 1px solid var(--border);

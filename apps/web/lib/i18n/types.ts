@@ -45,6 +45,8 @@ export interface WebMessages {
     batchLabel: string;
     optimize: string;
     optimizing: string;
+    reorderLabel: string;
+    reorderHint: string;
   };
 
   llm: {
@@ -97,6 +99,13 @@ export interface WebMessages {
     badgeAggressive: string;
     advisoriesHeading: string;
     advisoryPerMonth(amount: string): string;
+    reorderMoved(blocks: number, tokens: string): string;
+    reorderPrefix(before: string, after: string): string;
+    reorderNothing: string;
+    reorderReview: string;
+    reorderDeclinedRef(phrase: string, excerpt: string): string;
+    reorderDeclinedAfter(excerpt: string): string;
+    reorderDeclinedMore(count: number): string;
   };
 
   errors: {

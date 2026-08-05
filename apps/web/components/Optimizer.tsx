@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import type { Locale, ModelPricing, OptimizationResult } from '@trazum/core';
+import type { Locale, ModelPricing, OptimizationResult, ReorderResult } from '@trazum/core';
 
 import { track } from './Analytics';
 import { diffTexts } from './diff';
@@ -130,10 +130,17 @@ function formatUsd(value: number): string {
   return `$${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 }
 
+/** One line of a declined block, short enough to sit in a list. */
+function excerpt(text: string, max = 48): string {
+  const clean = text.trim().replace(/\s+/g, ' ');
+  return clean.length <= max ? clean : `${clean.slice(0, max - 1)}\u2026`;
+}
+
 export function Optimizer({ locale, t }: { locale: Locale; t: WebMessages }) {
   const [meta, setMeta] = useState<Metadata | null>(null);
   const [prompt, setPrompt] = useState(EXAMPLES[locale]);
   const [level, setLevel] = useState<'safe' | 'aggressive'>('safe');
+  const [reorder, setReorder] = useState(false);
   const [model, setModel] = useState('claude-opus-5');
   const [callsPerMonth, setCallsPerMonth] = useState(10000);
   const [avgOutputTokens, setAvgOutputTokens] = useState(500);
@@ -147,6 +154,7 @@ export function Optimizer({ locale, t }: { locale: Locale; t: WebMessages }) {
   const [llmApiKey, setLlmApiKey] = useState('');
 
   const [result, setResult] = useState<OptimizationResult | null>(null);
+  const [reorderResult, setReorderResult] = useState<ReorderResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
@@ -229,6 +237,7 @@ export function Optimizer({ locale, t }: { locale: Locale; t: WebMessages }) {
           prompt,
           level,
           locale,
+          reorder,
           usage: { model, callsPerMonth, avgOutputTokens, cacheHitRate, batchEligible },
           llm: llmEnabled
             ? {
@@ -245,9 +254,11 @@ export function Optimizer({ locale, t }: { locale: Locale; t: WebMessages }) {
       if (!response.ok) {
         setError(data.error ?? t.errors.requestFailed);
         setResult(null);
+        setReorderResult(null);
       } else {
-        const optimization = data as OptimizationResult;
+        const optimization = data as OptimizationResult & { reorder?: ReorderResult };
         setResult(optimization);
+        setReorderResult(optimization.reorder ?? null);
         recordHistory(prompt, optimization);
         // Aggregate metrics, never the content of the prompt.
         track('optimize', {
@@ -257,11 +268,13 @@ export function Optimizer({ locale, t }: { locale: Locale; t: WebMessages }) {
           reduction_pct: Math.round(optimization.reductionPct),
           tokens_before: optimization.tokensBefore,
           llm_applied: optimization.llm?.applied ?? false,
+          reordered: optimization.reorder?.moved.length ?? 0,
         });
       }
     } catch {
       setError(t.errors.unreachable);
       setResult(null);
+      setReorderResult(null);
     } finally {
       setLoading(false);
     }
@@ -313,6 +326,27 @@ export function Optimizer({ locale, t }: { locale: Locale; t: WebMessages }) {
                 <option value="aggressive">{t.input.levelAggressive}</option>
               </select>
             </div>
+          </div>
+
+          {/*
+            Its own row rather than a third dropdown beside the level, because it
+            is not a level. Every other control here changes how hard the rules
+            push at deleting text; this one moves text, and the label has to say
+            so before the checkbox is ticked rather than after.
+          */}
+          <div className="row" style={{ marginTop: 12 }}>
+            <label className="checkbox" htmlFor="reorder">
+              <input
+                id="reorder"
+                type="checkbox"
+                checked={reorder}
+                onChange={(e) => setReorder(e.target.checked)}
+              />
+              <span>
+                {t.input.reorderLabel}
+                <small className="hint">{t.input.reorderHint}</small>
+              </span>
+            </label>
           </div>
 
           <div className="row" style={{ marginTop: 12 }}>
@@ -490,6 +524,57 @@ export function Optimizer({ locale, t }: { locale: Locale; t: WebMessages }) {
                   {t.results.inputTokens(n(result.tokensBefore), n(result.tokensAfter))}
                 </span>
               </div>
+
+              {/*
+                Above the money, because the rearrangement is the bigger change
+                and the one the reader has to make a judgement about — a saving
+                they accept without reading is not a saving they chose.
+              */}
+              {reorderResult && (
+                <div className="reorder">
+                  {reorderResult.moved.length > 0 ? (
+                    <>
+                      <div className="reorder-headline">
+                        {t.results.reorderMoved(
+                          reorderResult.moved.length,
+                          n(reorderResult.tokensMoved),
+                        )}
+                      </div>
+                      <div className="caption">
+                        {t.results.reorderPrefix(
+                          n(reorderResult.prefixTokensBefore),
+                          n(reorderResult.prefixTokensAfter),
+                        )}
+                      </div>
+                      <div className="reorder-review">{t.results.reorderReview}</div>
+                    </>
+                  ) : (
+                    <div className="reorder-headline">{t.results.reorderNothing}</div>
+                  )}
+
+                  {/*
+                    Refusals are shown whether or not anything moved. "No saving
+                    here" and "there was a saving and it was not safe to take"
+                    are different answers, and only the second is actionable.
+                  */}
+                  {reorderResult.declined.length > 0 && (
+                    <ul className="reorder-declined">
+                      {reorderResult.declined.slice(0, 3).map((d, i) => (
+                        <li key={i}>
+                          {d.reason === 'backward-reference'
+                            ? t.results.reorderDeclinedRef(d.phrase ?? '', excerpt(d.text))
+                            : t.results.reorderDeclinedAfter(excerpt(d.text))}
+                        </li>
+                      ))}
+                      {reorderResult.declined.length > 3 && (
+                        <li className="more">
+                          {t.results.reorderDeclinedMore(reorderResult.declined.length - 3)}
+                        </li>
+                      )}
+                    </ul>
+                  )}
+                </div>
+              )}
 
               <div className="money">
                 <div className="amount">
