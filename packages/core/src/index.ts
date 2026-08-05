@@ -58,3 +58,7 @@ export type {
   RedundantExample,
 } from './structure.js';
 export { jaccard, normalizeForCompare } from './similarity.js';
+
+// Endpoint validation for the pluggable LLM layer
+export { isPrivateHost, validateLlmEndpoint } from './net.js';
+export type { EndpointRejection, ValidateEndpointOptions } from './net.js';

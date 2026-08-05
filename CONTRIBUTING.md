@@ -74,6 +74,35 @@ that will get deleted.
 The one exception is asserting that a locale produces *different* text from
 another, which is testing the mechanism rather than the wording.
 
+## Security invariants
+
+Four things are enforced by tests in `packages/core/test/security.test.js`. If
+your change trips one, that is the test working — read the failure before
+adjusting it.
+
+1. **The core and the CLI have no runtime dependencies.** They process
+   untrusted text; every dependency is unreviewed code running on someone's
+   prompts. If you genuinely need one, argue for it in the pull request and
+   change the test deliberately.
+2. **`optimize()` never touches the network.** `fetch` is permitted only in
+   `llm.ts` and `tokenizer.ts`, the two modules that exist to make calls.
+3. **No catastrophic backtracking.** A rule is a regex pointed at attacker-
+   controlled text on a public endpoint. Avoid nested unbounded quantifiers
+   (`(\w+)+`, `(a|a)*`); bound your repetitions. The ReDoS suite runs
+   pathological inputs against a time budget.
+4. **The SSRF filter only loosens with an explicit flag.** `validateLlmEndpoint`
+   fails closed. Never derive `allowInsecure` from anything in a request.
+
+Two more that are conventions rather than tests:
+
+- **Never use `pull_request_target`** in a workflow. It runs with a writable
+  token and repository secrets against the contributor's code.
+- **Never log a prompt or an API key.** Prompts are not stored anywhere, and
+  keys are used once and dropped.
+
+See [SECURITY.md](SECURITY.md) for the reasoning, and for how to report a
+vulnerability privately.
+
 ## Pull requests
 
 Say what changed and why, and be explicit about anything you did not do.

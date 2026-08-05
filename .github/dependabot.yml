@@ -1,0 +1,25 @@
+version: 2
+
+updates:
+  # The core and the CLI have no runtime dependencies on purpose, so this
+  # mostly covers the web app and the TypeScript toolchain.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # One pull request for routine patches rather than five, so real
+      # security bumps stay visible instead of drowning in noise.
+      routine:
+        patterns: ['*']
+        update-types: ['minor', 'patch']
+    labels: ['dependencies']
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    labels: ['dependencies', 'ci']

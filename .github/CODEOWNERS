@@ -1,0 +1,16 @@
+# Every change needs a review from the owner. Paired with a ruleset that
+# requires code-owner approval, this is what stops a pull request from merging
+# itself.
+*                           @Davmunrey
+
+# Security-critical surfaces, called out so a reviewer knows to slow down:
+#
+#  net.ts        the SSRF filter — the only thing standing between a public
+#                deployment and the internal network
+#  llm.ts        outbound requests and the checks that accept an LLM candidate
+#  route.ts      the public HTTP surface: rate limiting, size caps, key handling
+#  .github/      anything that runs in CI, with CI's permissions
+/packages/core/src/net.ts   @Davmunrey
+/packages/core/src/llm.ts   @Davmunrey
+/apps/web/app/api/          @Davmunrey
+/.github/                   @Davmunrey

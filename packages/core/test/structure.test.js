@@ -129,6 +129,32 @@ describe('few-shot examples', () => {
     assert.equal(findExamples(prompt, estimateTokens).length, 2);
   });
 
+  it('stops the last example where the prose resumes', () => {
+    // Regression: the final block ran to the end of the prompt and absorbed
+    // every instruction after it, inflating its length until its similarity to
+    // the others fell below any sensible threshold — so the block most likely
+    // to be a duplicate was the one that never got reported.
+    const prompt = [
+      'Example 1:',
+      'Input: Order 4471 has not arrived and the tracking page is empty.',
+      'Output: {"category": "shipping"}',
+      '',
+      'Example 2:',
+      'Input: Order 8892 has not arrived and the tracking page is empty.',
+      'Output: {"category": "shipping"}',
+      '',
+      'Check the catalogue at https://api.example.com/v1/catalogue',
+      '',
+      'Always keep a formal tone with the end user.',
+    ].join('\n');
+
+    const blocks = findExamples(prompt, estimateTokens);
+    assert.equal(blocks.length, 2);
+    assert.ok(!blocks[1].text.includes('catalogue'), 'trailing prose leaked into the example');
+    assert.ok(!blocks[1].text.includes('formal tone'));
+    assert.equal(analyzeExamples(prompt, estimateTokens).redundant.length, 1);
+  });
+
   it('finds no examples in a prompt that has none', () => {
     assert.deepEqual(findExamples('Summarise this text. Be brief.', estimateTokens), []);
   });

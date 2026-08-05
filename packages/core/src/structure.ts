@@ -303,7 +303,33 @@ function splitOnHeader(lines: readonly string[], header: RegExp): string[] {
     if (current) current.push(line);
   }
 
-  return blocks.map((block) => block.join('\n').trim()).filter(Boolean);
+  return blocks.map((block) => trimToExample(block.join('\n'))).filter(Boolean);
+}
+
+/**
+ * Cuts a block off where the example stops and ordinary prose resumes.
+ *
+ * Without this the final example runs to the end of the prompt and absorbs
+ * every instruction that follows it, which inflates its length and drags its
+ * similarity to the others below any sensible threshold — so the one block
+ * most likely to be a duplicate is the one that never gets reported.
+ *
+ * A paragraph belongs to the example while it still contains a labelled field;
+ * the first that does not ends the block.
+ */
+function trimToExample(block: string): string {
+  const paragraphs = block.split(/\n\s*\n/);
+  const kept = [paragraphs[0] ?? ''];
+
+  for (const paragraph of paragraphs.slice(1)) {
+    const isExampleContent = paragraph
+      .split('\n')
+      .some((line) => EXAMPLE_FIELD_LINE.test(line));
+    if (!isExampleContent) break;
+    kept.push(paragraph);
+  }
+
+  return kept.join('\n\n').trim();
 }
 
 /** Splits the prompt into labelled example blocks. */

@@ -36,6 +36,36 @@ wrong on its own. Both are advisory — Trazum points, it does not cut.
   it, the same guarantee `RuleId` gives rules.
 - Tests grow from 75 to 94.
 
+### Security
+
+Hardening for an open repository taking outside contributions. Full reasoning
+in [SECURITY.md](SECURITY.md).
+
+- **Fixes four SSRF filter bypasses.** The web app's private-host blocklist
+  allowed `https://[::ffff:169.254.169.254]` — the IPv4-mapped IPv6 form of the
+  cloud metadata address, which Node normalises to `[::ffff:a9fe:a9fe]` and the
+  old patterns did not match. Also allowed: a trailing-dot hostname
+  (`localhost.`), the carrier-grade NAT range (`100.64.0.0/10`), and
+  credentials embedded in the URL, which would have been forwarded to whatever
+  the host resolved to and written into any log recording the endpoint.
+- The filter moved from the Next.js route into `@trazum/core` as
+  `validateLlmEndpoint` / `isPrivateHost`, so the most security-sensitive code
+  in the project is unit-tested instead of living untested in an API handler.
+  It returns a reason code rather than a message, so callers localise it and
+  tests assert on the decision.
+- New `security.test.js` enforcing four invariants on every pull request: the
+  SSRF filter fails closed, the core and CLI carry zero runtime dependencies,
+  `fetch` appears only in the two modules that exist to make calls, and no
+  regex exhibits catastrophic backtracking under pathological input.
+- Workflows run with `permissions: contents: read` by default,
+  `npm ci --ignore-scripts`, and `persist-credentials: false`.
+- Added CodeQL (`security-extended`), dependency review, a weekly `npm audit`,
+  Dependabot, `CODEOWNERS`, and an importable branch ruleset at
+  `.github/rulesets/main-branch.json`.
+- `SECURITY.md` documents the threat model, private reporting, the settings an
+  admin still has to switch on, and the limits that are not covered — DNS
+  rebinding, per-instance rate limiting, and actions pinned to tags.
+
 ## 0.3.0
 
 **Breaking.** `buildAdvisories()` takes an options object instead of trailing
