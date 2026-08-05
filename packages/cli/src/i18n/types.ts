@@ -127,5 +127,6 @@ export interface CliMessages {
     directorySummary(failures: number, files: number): string;
     noBudget(): string;
     walkTruncated(): string;
+    exactCountsCost(files: number): string;
   };
 }

@@ -275,5 +275,7 @@ ${bold('EXAMPLES')}
     noBudget: () => '(no budget)',
     walkTruncated: () =>
       'Stopped early: the directory is larger than the walk limit, so this is not the whole picture.',
+    exactCountsCost: (files) =>
+      `Counting ${files} ${files === 1 ? 'file' : 'files'} through the API, one call each. This takes a moment.`,
   },
 };

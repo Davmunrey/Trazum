@@ -805,6 +805,14 @@ async function checkDirectory(
     throw new Error(t.errors.noPromptsFound(root, extensions));
   }
 
+  // --exact-tokens over a directory is one API round trip per file, and another
+  // for each file that fails. `eval` prints its call count before spending
+  // anything for the same reason: a command that looks hung gets killed, and
+  // then nobody trusts it again.
+  if (counter.source === 'external' && !boolFlag(args, 'json')) {
+    console.log(c.dim(t.check.exactCountsCost(files.length)));
+  }
+
   const verdicts: FileVerdict[] = [];
   for (const relativePath of files) {
     const text = await readFile(join(root, relativePath), 'utf8');

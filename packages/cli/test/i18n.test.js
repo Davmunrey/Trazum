@@ -213,6 +213,7 @@ describe('catalogue parity', () => {
         directorySummary: [1, 3],
         noBudget: [],
         walkTruncated: [],
+        exactCountsCost: [3],
       },
     };
 

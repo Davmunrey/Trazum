@@ -276,5 +276,7 @@ ${bold('EJEMPLOS')}
     noBudget: () => '(sin presupuesto)',
     walkTruncated: () =>
       'Se ha parado antes de tiempo: el directorio supera el límite de recorrido, así que esto no es el cuadro completo.',
+    exactCountsCost: (files) =>
+      `Contando ${files} ${files === 1 ? 'fichero' : 'ficheros'} con la API, una llamada por cada uno. Esto tarda un momento.`,
   },
 };
