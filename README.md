@@ -80,7 +80,7 @@ version stands. It never returns something worse than where it started.
 ```bash
 npm install
 npm run build      # core + cli
-npm test           # 196 tests
+npm test           # 228 tests
 ```
 
 ### CLI
@@ -186,6 +186,54 @@ says `inconclusive` rather than inventing a verdict.
 
 Cases are one input per line (`#` comments ignored) or a JSON array.
 
+### Did this edit make it worse?
+
+`optimize` answers "how much fat is in this prompt". `diff` answers the
+question a pull request actually raises:
+
+```bash
+trazum diff prompts/system.txt prompts/system.new.txt --calls 50000
+```
+
+```
+prompts/system.txt → prompts/system.new.txt
+
+  20 → 57 tokens   +37 (+185%)
+  +$9.25/month at 50,000 calls with Claude Opus 5
+
+  New problems
+    ! contradictory-instructions
+```
+
+**Read the signs carefully — they are the opposite of everywhere else here.**
+Every other figure Trazum prints is a *saving*: before minus after, positive is
+good. Every figure `diff` prints is a *delta*: after minus before, positive is
+**bad**. That is deliberate, it is stated in the one place it applies, and the
+negation happens exactly once in the code so the two conventions cannot leak
+into each other.
+
+It reports what the edit *broke*, not just what it cost — advisories that
+appeared, rules that started firing — and the same in reverse when the edit
+improved things.
+
+It measures **the text as written**, not what the rules would leave. A pull
+request changed the file on disk, so the file on disk is what you are being
+asked about; optimising both sides first would hide a prompt that doubled in
+length but happened to double in courtesy. `--optimized` switches the figures
+to the post-rules text if you already run Trazum in your pipeline.
+
+**The gate is opt-in.** Growth alone exits 0. `--max-growth 10` is what makes a
+prompt that grew more than 10% exit 1:
+
+```bash
+trazum diff old.txt new.txt --max-growth 10
+```
+
+A tool that fails a build nobody armed gets removed from the pipeline rather
+than fixed. And `--max-growh` is rejected with *"Did you mean --max-growth?"*
+rather than ignored — a silently-swallowed gate flag means CI green while you
+believe a limit is set.
+
 ### Web
 
 ```bash
@@ -247,6 +295,21 @@ const result = optimize(prompt, {
 
 console.log(result.optimized);
 console.log(result.savings.monthlySavingsUsd);
+```
+
+`comparePrompts` is the API behind `trazum diff`. Note the sign: everything it
+returns is `after - before`, so **positive means worse** — the opposite of
+`result.savings`, and the reason it lives in its own module.
+
+```ts
+import { comparePrompts, formatSignedUsd } from '@trazum/core';
+
+const change = comparePrompts(oldPrompt, newPrompt, { usage });
+
+change.tokenDelta;                      //  +37   (grew)
+formatSignedUsd(change.monthlyDeltaUsd) //  "+$9.25"
+change.advisories.appeared;             //  ['contradictory-instructions']
+change.rules.noLongerFiring;            //  what the edit cleaned up
 ```
 
 ---

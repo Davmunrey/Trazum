@@ -1,0 +1,6 @@
+Please classify the support ticket into a category.
+
+Answer in English.
+Respond in the customer's own language.
+
+It is important to note that you should be very careful here. Thank you!

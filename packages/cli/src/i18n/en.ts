@@ -17,6 +17,7 @@ ${bold('USAGE')}
   trazum optimize <file|-> [options]
   trazum check <file|-> --max-tokens <n> [options]
   trazum eval <file> --cases <file> [options]
+  trazum diff <before> <after> [options]
   trazum models
   trazum rules
 
@@ -56,6 +57,19 @@ ${bold('OPTIONS FOR eval')}
   original twice, to measure the model's own run-to-run variance, and the
   optimised once. That baseline is the yardstick — without it, a divergence
   figure means nothing. Exits with code 1 when the answers genuinely diverge.
+
+${bold('OPTIONS FOR diff')}
+  --max-growth <n>            Fail if the prompt grew by more than n tokens.
+  --optimized                 Measure what the rules would leave, not what is written.
+  --level <safe|aggressive>   Level used for the rule and advisory findings.
+  --model <id>                Model used to price the change.
+  --calls <n>                 Calls per month, for the cost figure.
+  --json                      Result as JSON.
+
+  Compares two versions of a prompt: how the token count moved, what that
+  costs, which advisories the edit introduced or resolved. Every figure is a
+  delta and positive means worse. It reports and exits 0 unless --max-growth
+  is given: deciding that growth is unacceptable is your call, not ours.
 
 ${bold('OPTIONAL LLM')}
   The core is deterministic and free. --llm adds a semantic compression pass
@@ -100,6 +114,7 @@ ${bold('EXAMPLES')}
       `Unknown option --${name}. This command accepts: ${allowed}.`,
     unknownFlagDidYouMean: (name, suggestion) =>
       `Unknown option --${name}. Did you mean --${suggestion}?`,
+    diffNeedsTwoFiles: () => 'trazum diff needs two files: trazum diff <before> <after>.',
     errorLabel: () => 'Error',
   },
 
@@ -190,6 +205,21 @@ ${bold('EXAMPLES')}
     mostChanged: () => 'Cases that changed most',
     caseAgreement: (cross, self) => `${cross} agreement with the original (which self-agreed ${self})`,
     callsMade: (count) => `${count} provider calls made.`,
+  },
+
+
+  diff: {
+    heading: (before, after) => `${before} → ${after}`,
+    measuringOptimised: () =>
+      'Measuring what the rules would leave, not what is written.',
+    monthly: (delta, calls, model) =>
+      `${delta}/month at ${calls} calls with ${model}`,
+    advisoriesAppeared: () => 'New problems',
+    advisoriesResolved: () => 'Resolved',
+    rulesNewlyFiring: () => 'Rules that now find something:',
+    rulesNoLongerFiring: () => 'Rules that no longer find anything:',
+    overLimit: (delta, max) =>
+      `Grew by ${delta} tokens, past the limit of ${max}.`,
   },
 
   check: {

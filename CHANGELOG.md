@@ -3,6 +3,40 @@
 Versioning policy: [VERSIONING.md](VERSIONING.md). Below 1.0, minor versions
 may contain breaking changes, and say so in their first line.
 
+## 0.9.0
+
+New `trazum diff` command and `comparePrompts()` API: compare two versions of a
+prompt and report what the edit cost. `optimize()` answers "how much fat is in
+this prompt"; this answers the question a pull request actually raises —
+somebody edited this, did it get worse?
+
+**The design decision that keeps it honest.** Every other figure Trazum prints
+is a *saving*: before minus after, positive is good. Every figure here is a
+*delta*: after minus before, positive is **bad**. Mixing those two conventions
+in one report is the easiest way to make a cost tool lie, so the comparison
+lives in its own module, nothing in it is named a saving, and the negation
+happens exactly once, at the boundary.
+
+- Reports what the edit broke, not only what it cost: advisories that appeared
+  and rules that started firing, plus the same in reverse when the edit
+  improved things.
+- Measures the text **as written** by default, not what the rules would leave.
+  A pull request changed the file on disk, so the file on disk is what the
+  reviewer is being asked about — otherwise a prompt that doubled in length but
+  happened to double in courtesy would report no change. `--optimized` switches
+  the figures to the post-rules text.
+- **The gate is opt-in.** Growth alone exits 0; `--max-growth 10` is what makes
+  it exit 1. A tool that fails a build nobody armed gets removed from the
+  pipeline rather than fixed.
+- `--max-growh` is rejected with "Did you mean --max-growth?" rather than
+  ignored — a silently-swallowed gate flag means CI green while the author
+  believes a limit is set.
+- New `formatSignedUsd()`: `+$9.25` and `-$9.25`, because `formatUsd` renders a
+  negative as `$-9.25`, which reads as a typo. Negative zero is collapsed, so a
+  change that did not happen is never shown with a direction.
+- `deltaPct` is 0 rather than `Infinity` when the original was empty.
+- Tests grow from 196 to 228.
+
 ## 0.8.0
 
 New `trazum eval` command and `evaluate()` API: run both prompt versions over a

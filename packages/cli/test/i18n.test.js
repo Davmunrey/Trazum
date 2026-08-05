@@ -83,7 +83,7 @@ describe('catalogue parity', () => {
     // Regression: `eval` shipped fully implemented and completely
     // undiscoverable — the only way to find it was reading the changelog. A
     // command the help does not mention may as well not exist.
-    const COMMANDS = ['optimize', 'check', 'eval', 'models', 'rules'];
+    const COMMANDS = ['optimize', 'check', 'eval', 'diff', 'models', 'rules'];
     const defaults = {
       model: 'claude-opus-5',
       callsPerMonth: 1000,
@@ -106,7 +106,7 @@ describe('catalogue parity', () => {
   it('every required flag is documented in every locale', () => {
     // A required flag missing from the help is a command that fails on first
     // use with an error the reader cannot act on.
-    const REQUIRED_FLAGS = ['--max-tokens', '--cases'];
+    const REQUIRED_FLAGS = ['--max-tokens', '--cases', '--max-growth'];
     const defaults = {
       model: 'claude-opus-5',
       callsPerMonth: 1000,
@@ -249,5 +249,57 @@ describe('the CLI rejects what it does not understand', () => {
       run(['check', 'README.md', '--max-tokens', '5', '--nope', '--locale', 'es']),
       /Opción desconocida/,
     );
+  });
+});
+
+describe('trazum diff', () => {
+  const CLI = new URL('../dist/index.js', import.meta.url).pathname;
+
+  function run(args) {
+    const r = spawnSync(process.execPath, [CLI, ...args], {
+      encoding: 'utf8',
+      env: { ...process.env, NO_COLOR: '1' },
+    });
+    return { out: `${r.stdout}${r.stderr}`, code: r.status };
+  }
+
+  const BEFORE = new URL('./fixtures/diff-before.txt', import.meta.url).pathname;
+  const AFTER = new URL('./fixtures/diff-after.txt', import.meta.url).pathname;
+
+  it('the gate is opt-in', () => {
+    // A tool that fails a build nobody armed gets removed from the pipeline
+    // rather than fixed.
+    assert.equal(run(['diff', BEFORE, AFTER]).code, 0, 'growth alone must not fail the build');
+  });
+
+  it('fails only when a limit was asked for and passed', () => {
+    assert.equal(run(['diff', BEFORE, AFTER, '--max-growth', '5']).code, 1);
+    assert.equal(run(['diff', BEFORE, AFTER, '--max-growth', '500']).code, 0);
+  });
+
+  it('needs both sides', () => {
+    assert.match(run(['diff', BEFORE]).out, /needs two files/);
+  });
+
+  it('catches the typo the gate depends on', () => {
+    // `--max-growh 5` silently ignored would mean CI green while the author
+    // believes a limit is set. This is the scenario the flag check exists for.
+    assert.match(run(['diff', BEFORE, AFTER, '--max-growh', '5']).out, /Did you mean --max-growth/);
+  });
+
+  it('reports the delta with its sign', () => {
+    const { out } = run(['diff', BEFORE, AFTER, '--calls', '50000']);
+    assert.match(out, /\+\d+ \(\+\d+%\)/, `no signed delta in: ${out}`);
+    assert.match(out, /\+\$/, 'the cost delta should carry an explicit sign');
+  });
+
+  it('names what the edit broke', () => {
+    assert.match(run(['diff', BEFORE, AFTER]).out, /contradictory-instructions/);
+  });
+
+  it('reports resolution when run the other way round', () => {
+    const { out } = run(['diff', AFTER, BEFORE]);
+    assert.match(out, /contradictory-instructions/);
+    assert.match(out, /-\d+ \(-\d+%\)/, 'a shrinking prompt should show a negative delta');
   });
 });
