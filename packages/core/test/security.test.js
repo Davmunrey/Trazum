@@ -144,6 +144,163 @@ describe('the core does not reach the network on its own', () => {
   });
 });
 
+describe('the core does not touch the filesystem on its own', () => {
+  const srcDir = join(repoRoot, 'packages/core/src');
+
+  /**
+   * Source with comments removed.
+   *
+   * Every assertion below reads source text, and twice now the pattern matched
+   * the comment explaining the invariant rather than a violation of it. A test
+   * that fails when you document the reasoning teaches people to stop
+   * documenting the reasoning.
+   */
+  const codeOf = (file) =>
+    readFileSync(file, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^[ \t]*\/\/.*$/gm, '');
+
+  it('only the modules that exist to read files mention fs', () => {
+    // The web app exposes optimize() over HTTP with a prompt from the request
+    // body. If any module on that path grew a file read, a path in a prompt
+    // would become a file the server hands back — path traversal, reachable by
+    // anyone who can reach the API. The config loader and the directory walk
+    // are the two modules that legitimately read from disk; both are CLI-only.
+    const allowed = new Set(['config.ts', 'walk.ts']);
+
+    const offenders = [];
+    const walk = (dir, prefix = '') => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const path = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(path, `${prefix}${entry.name}/`);
+          continue;
+        }
+        if (!entry.name.endsWith('.ts')) continue;
+        if (allowed.has(entry.name)) continue;
+        // Import statements only. Matching any mention of "node:fs" caught the
+        // comments explaining why the boundary exists — a test that fails when
+        // you document it teaches people to stop documenting it.
+        const source = codeOf(path);
+        if (/\bfrom\s+['"]node:fs(?:\/[^'"]*)?['"]|\brequire\(['"](?:node:)?fs['"]\)/.test(source)) {
+          offenders.push(`${prefix}${entry.name}`);
+        }
+      }
+    };
+    walk(srcDir);
+
+    assert.deepEqual(
+      offenders,
+      [],
+      `filesystem access appeared outside ${[...allowed].join(', ')}: ${offenders.join(', ')}`,
+    );
+  });
+
+  it('nothing reachable from the main entry point imports a Node builtin', () => {
+    // The test above says which *files* may read the disk. It does not say they
+    // are unreachable from the browser, and the first version of this shipped
+    // exactly that gap: config.ts was allowed AND re-exported from index.ts, so
+    // `next build` failed with "the chunking context does not support external
+    // modules (request: node:fs/promises)". A module allow-list is not a
+    // boundary; the import graph is. This walks it.
+    //
+    // Every `node:` builtin, not only fs: `node:path` would have broken the web
+    // build in exactly the same way, and only did not because it got caught
+    // before the second push.
+    const FS = /\bfrom\s+['"]node:[^'"]+['"]/;
+    const IMPORTS = /\bfrom\s+['"](\.[^'"]*)['"]/g;
+
+    const resolve = (specifier, fromFile) => {
+      const base = join(fromFile, '..', specifier).replace(/\.js$/, '');
+      for (const candidate of [`${base}.ts`, join(base, 'index.ts')]) {
+        try {
+          readFileSync(candidate, 'utf8');
+          return candidate;
+        } catch {
+          /* try the next shape */
+        }
+      }
+      return null;
+    };
+
+    const seen = new Set();
+    const offenders = [];
+    const visit = (file, chain) => {
+      if (seen.has(file)) return;
+      seen.add(file);
+      const source = codeOf(file);
+      if (FS.test(source)) {
+        offenders.push([...chain, file].map((f) => f.slice(srcDir.length + 1)).join(' → '));
+        return;
+      }
+      for (const [, specifier] of source.matchAll(IMPORTS)) {
+        const next = resolve(specifier, file);
+        if (next) visit(next, [...chain, file]);
+      }
+    };
+    visit(join(srcDir, 'index.ts'), []);
+
+    assert.deepEqual(
+      offenders,
+      [],
+      `a Node builtin is reachable from the browser-safe entry point:\n  ${offenders.join('\n  ')}`,
+    );
+  });
+
+  it('the node-only entry point is where the filesystem lives', () => {
+    // The other half of the boundary: if this stopped reaching node:fs, the
+    // split above would be passing for the wrong reason — nothing left to split.
+    const seen = new Set();
+    let reachesFs = false;
+    const visit = (file) => {
+      if (seen.has(file) || reachesFs) return;
+      seen.add(file);
+      const source = codeOf(file);
+      if (/\bfrom\s+['"]node:fs(?:\/promises)?['"]/.test(source)) {
+        reachesFs = true;
+        return;
+      }
+      for (const [, specifier] of source.matchAll(/\bfrom\s+['"](\.[^'"]*)['"]/g)) {
+        const base = join(file, '..', specifier).replace(/\.js$/, '');
+        for (const candidate of [`${base}.ts`, join(base, 'index.ts')]) {
+          try {
+            readFileSync(candidate, 'utf8');
+            visit(candidate);
+            break;
+          } catch {
+            /* try the next shape */
+          }
+        }
+      }
+    };
+    visit(join(srcDir, 'node.ts'));
+    assert.ok(reachesFs, 'node.ts no longer reaches the filesystem — has the split gone stale?');
+  });
+
+  it('the directory walk refuses to follow a symlink', () => {
+    // Pinned in the source as well as behaviourally: dropping this check would
+    // turn "check the prompts folder" into reading whatever a link points at,
+    // and a link loop into a hang.
+    const source = codeOf(join(srcDir, 'walk.ts'));
+    assert.match(source, /isSymbolicLink\(\)/);
+  });
+
+  it('the config file is measured and read through one handle', () => {
+    // CodeQL flagged the stat-then-readFile version as a race, and it was one:
+    // resolving the path twice means what gets read is not necessarily what got
+    // measured, so a symlink swapped in between the two calls defeats the size
+    // limit. One open, then everything asked of the handle.
+    const code = codeOf(join(srcDir, 'config.ts'));
+    assert.match(code, /handle\.stat\(\)/);
+    assert.match(code, /handle\.readFile\(/);
+    assert.doesNotMatch(
+      code,
+      /\breadFile\(\s*path\b|\bstat\(\s*path\b/,
+      'reading or measuring by path again reopens the race this was written to close',
+    );
+  });
+});
+
 describe('ReDoS resistance', () => {
   /**
    * Trazum is a regex engine pointed at untrusted text, reachable over HTTP.

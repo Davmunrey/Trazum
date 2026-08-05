@@ -1,6 +1,6 @@
 {
   "name": "@trazum/core",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "description": "Prompt optimiser core: deterministic rules, token counting, pricing and savings analysis.",
   "license": "MIT",
   "author": "David Muñoz Rey",
@@ -28,6 +28,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./node": {
+      "types": "./dist/node.d.ts",
+      "default": "./dist/node.js"
     }
   },
   "files": [

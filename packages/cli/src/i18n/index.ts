@@ -13,7 +13,13 @@ export function getCliMessages(locale: Locale = DEFAULT_LOCALE): CliMessages {
 
 /**
  * Locale for this run, most explicit source first:
- * the `--locale` flag, then `TRAZUM_LOCALE`, then the usual POSIX variables.
+ * the `--locale` flag, then `TRAZUM_LOCALE`, then the usual POSIX variables,
+ * and last the project config file.
+ *
+ * **The config comes last on purpose.** A repository stating `"locale": "es"`
+ * is choosing the language its CI logs read in, where `LANG` is usually unset
+ * or `C`; a contributor whose machine says otherwise should still get their own
+ * language. So the project sets the floor and the person at the keyboard wins.
  *
  * An unrecognised value falls back to English rather than failing: the point
  * of the tool is to optimise the prompt, and the language of the report is
@@ -22,8 +28,9 @@ export function getCliMessages(locale: Locale = DEFAULT_LOCALE): CliMessages {
 export function detectLocale(
   flag: string | undefined,
   env: Record<string, string | undefined> = process.env,
+  configLocale?: string,
 ): Locale {
-  const candidates = [flag, env.TRAZUM_LOCALE, env.LC_ALL, env.LC_MESSAGES, env.LANG];
+  const candidates = [flag, env.TRAZUM_LOCALE, env.LC_ALL, env.LC_MESSAGES, env.LANG, configLocale];
   for (const candidate of candidates) {
     // An unrecognised value does not stop the search: `LANG=fr_FR.UTF-8` with
     // `TRAZUM_LOCALE` unset should still reach the default rather than being

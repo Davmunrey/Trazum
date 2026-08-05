@@ -20,12 +20,26 @@ Two deliberate exceptions:
 
 ```bash
 npm install
-npm run build      # core + cli
-npm test           # core test suite
-npm run build:web  # the Next.js app
+npm run verify     # everything CI runs, in the order CI runs it
 ```
 
 Node 22. No global installs needed.
+
+`verify` is the one command worth remembering — it is build, tests, typecheck
+across all three workspaces, and the web build. **Run it before pushing, and
+read its exit code rather than its output.** The web build in particular fails on
+things nothing else notices: `@trazum/core` is bundled for the browser, so one
+`node:fs` import anywhere in its import graph breaks it, and neither the tests
+nor `tsc` will tell you.
+
+The pieces individually, if you want a faster loop:
+
+```bash
+npm run build      # core + cli
+npm test           # core + cli test suites
+npm run typecheck  # all three workspaces
+npm run build:web  # the Next.js app
+```
 
 ## Adding a rule
 

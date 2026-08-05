@@ -80,7 +80,7 @@ version stands. It never returns something worse than where it started.
 ```bash
 npm install
 npm run build      # core + cli
-npm test           # 228 tests
+npm test           # 301 tests
 ```
 
 ### CLI
@@ -185,6 +185,95 @@ original cannot agree with itself often enough to judge anything against, it
 says `inconclusive` rather than inventing a verdict.
 
 Cases are one input per line (`#` comments ignored) or a JSON array.
+
+### A whole repository of prompts
+
+Point `check` at a directory and it governs all of them in one CI step, using
+per-pattern budgets from `trazum.config.json`:
+
+```bash
+trazum check prompts/
+```
+
+```
+prompts/ — 5 prompts
+
+  OK      14 / 20   prompts/classify.txt
+  OK      15 / 20   prompts/extract.txt
+  OK       8 / 20   prompts/nested/notes.md
+  OK       7 / 20   prompts/notes.md
+  FAILED  30 / 15   prompts/system.txt
+            Even optimised it does not fit (~20 tokens): content has to be cut by hand.
+
+  1 of 5 over budget.
+```
+
+Two things it deliberately will not do quietly. **A file no pattern covers is
+listed as `(no budget)`**, not skipped — otherwise a prompt can sit outside
+every pattern for months while the report says everything is fine. And **a run
+where nothing at all was budgeted is an error**, because "checked 40 files, 0
+failures" from a run that measured nothing is the most misleading thing this
+tool could tell you.
+
+It does not follow symlinks, caps how deep and how wide it walks, and says so
+when a cap stopped it early.
+
+### Project defaults: `trazum.config.json`
+
+Every key is optional. Found by walking up from the working directory and
+stopping at the repository root, so a subdirectory inherits the project's
+settings.
+
+```json
+{
+  "level": "safe",
+  "usage": {
+    "model": "claude-opus-5",
+    "callsPerMonth": 50000,
+    "avgOutputTokens": 300,
+    "cacheHitRate": 0.9,
+    "batchEligible": false
+  },
+  "budgets": {
+    "prompts/**": 2000,
+    "prompts/system.txt": 4000
+  },
+  "maxGrowth": 100,
+  "extensions": [".txt", ".md"],
+  "disable": ["intensifiers"],
+  "locale": "en"
+}
+```
+
+**Flags beat the config; the config beats the defaults.** A config that could
+override an explicit flag would make every flag a suggestion. A boolean the
+config switched on comes back off with `--no-batch`, so a setting written into
+the repository is not one you have to edit the repository to escape.
+
+Budgets resolve to the **most specific matching pattern**, and "specific" has a
+stated definition rather than a felt one: most literal characters wins, longest
+pattern breaks a tie. So `prompts/system.txt` beats `prompts/*.txt` beats
+`prompts/**` beats `**`. The JSON report names the pattern each budget came
+from — a file failing against a budget you cannot locate is a bug report, not a
+fix. Pattern order in the file never matters.
+
+**An invalid config is a hard error, including an unknown key:**
+
+```
+Error: trazum.config.json: unknown key "budgts" — did you mean "budgets"?
+```
+
+That is the whole design of the parser. A lenient one would restore defaults
+silently, and for a budget the default is *no budget* — a green build for a
+prompt nobody measured. Same reasoning as `--max-growh` being rejected rather
+than ignored.
+
+`maxGrowth` in the config arms the `diff` gate exactly as the flag does: a
+repository that wrote the number down has opted in as deliberately as somebody
+typing it. Absent both, growth alone still exits 0.
+
+`--config <file>` skips the search. `locale` is the one setting the environment
+outranks — see [Languages](#languages).
 
 ### Did this edit make it worse?
 
@@ -312,6 +401,22 @@ change.advisories.appeared;             //  ['contradictory-instructions']
 change.rules.noLongerFiring;            //  what the edit cleaned up
 ```
 
+**Two entry points.** `@trazum/core` is browser-safe and imports no Node
+builtins — that is enforced by a test that walks the import graph, not by
+convention, because the web app bundles it and one `node:fs` import anywhere in
+that graph fails the build. Anything that reads the filesystem lives on
+`@trazum/core/node`:
+
+```ts
+import { loadConfig, walkPrompts } from '@trazum/core/node';
+
+const { config, path } = await loadConfig();   // null path = none found
+const { files, truncated } = await walkPrompts('prompts/');
+```
+
+`parseConfig` and `budgetFor` are pure functions of their arguments, so they sit
+on both.
+
 ---
 
 ## Languages
@@ -328,8 +433,15 @@ TRAZUM_LOCALE=es trazum optimize prompt.txt # environment
 ```
 
 The CLI resolves `--locale`, then `TRAZUM_LOCALE`, then `LC_ALL`/`LC_MESSAGES`/
-`LANG`. The web app negotiates `Accept-Language` on the server and offers a
-switcher that remembers your choice. The library takes `locale` directly.
+`LANG`, and last `locale` in `trazum.config.json`. The web app negotiates
+`Accept-Language` on the server and offers a switcher that remembers your
+choice. The library takes `locale` directly.
+
+**The config comes last on purpose**, and it is the one setting where it does. A
+repository writing `"locale": "es"` is choosing the language its CI logs read
+in, where `LANG` is usually unset or `C`. A contributor whose own machine says
+otherwise should still get their own language. The project sets the floor; the
+person at the keyboard wins.
 
 Two things are deliberately not localised: **USD amounts** stay formatted as
 `en-US`, because they come from a US price list and a report shared across a

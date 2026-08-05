@@ -253,19 +253,68 @@ than dropped: PR comment mode, directory mode, and `trazum.config.json`.
 
 ---
 
-## Next
-
 ### 0.10.0 — Governed as a repository
 
 `diff` made a single prompt reviewable. This makes a directory of them
-governable, and stops every project from re-typing the same flags.
+governable, and stops every project from re-typing the same four flags in every
+CI step — the one place they get out of step is the place the numbers stop
+meaning anything.
 
-- **`trazum.config.json`**: project-level defaults for level, model, usage
-  profile, disabled rules and budgets. Flags keep overriding it.
-- **Directory mode**: `trazum check prompts/` with a per-file budget from that
-  config, so a repository of prompts is governed as a whole.
+`trazum.config.json` carries the project's defaults; `trazum check prompts/`
+checks every prompt under a directory against per-pattern budgets from it.
+
+**The config parser refuses anything it cannot validate, including an unknown
+key.** A lenient parser restores defaults silently, and for a budget the default
+is *no budget* — a green build for a prompt nobody measured. This is the same
+argument as 0.8.0's unknown-flag check and 0.9.0's `--max-growh`, and it is the
+third time it has been the right call.
+
+- Flags beat the config; the config beats the defaults. A config able to
+  override an explicit flag would make every flag a suggestion. `--no-<flag>`
+  exists so a boolean the config switched on is not one you have to edit the
+  repository to escape.
+- Budgets resolve to the most specific matching pattern, and "specific" is
+  *defined* — most literal characters wins — rather than left to be inferred. A
+  budget resolved from the wrong pattern is a number nobody can debug, so the
+  report names the pattern it came from.
+- A file no pattern covers is listed, not skipped. A run where nothing at all
+  was budgeted is an error. "Checked 40 files, 0 failures" from a run that
+  measured nothing is the most misleading thing this tool could say.
+- The glob matcher is a segment-wise dynamic program, not a regex translation:
+  `**` compiled to `(?:[^/]*\/)*` is exactly the nested quantifier that
+  backtracks exponentially, and on a pull request these patterns come from
+  whoever opened it.
+- The directory walk does not follow symlinks, bounds depth and width, and says
+  when a bound stopped it early. The config file is measured and read through a
+  single handle, so the size limit cannot be defeated by swapping the file
+  between the check and the read.
+- **`@trazum/core` gains a second entry point.** Everything that reads the
+  filesystem moved to `@trazum/core/node`, and a test now walks the import graph
+  to prove no Node builtin is reachable from the browser-safe one. The first
+  attempt at this had only a file allow-list, which passed while the same file
+  was re-exported from the main entry point — a file allow-list is not a
+  boundary. It matters past the build: the web app hands `optimize()` a prompt
+  from a request body, so a file read reachable from there is path traversal.
+- `locale` is the one config key the environment outranks: a repository choosing
+  the language of its CI logs should not choose the language of a contributor's
+  terminal.
+
+Still open, and moved to 0.11.0 rather than dropped: PR comment mode.
+
+---
+
+## Next
+
+### 0.11.0 — Reporting where the review happens
+
+The gate works. What it cannot do is put the answer where the conversation is.
+
 - **PR comment mode** for the GitHub Action: post the budget result and the
-  `diff` delta rather than only failing the build.
+  `diff` delta as a comment, updated in place on each push rather than appended,
+  so a pull request carries the current numbers instead of a history of them.
+- **A machine-readable summary** written to `$GITHUB_STEP_SUMMARY`, so the
+  numbers survive even where a comment would be unwelcome or the token is
+  read-only.
 
 ### 1.0.0 — A stable contract
 
@@ -297,8 +346,10 @@ Not scheduled. Listed so the reasoning is on the record.
   needs a maintainer who actually reads it, and a stale translation is worse
   than an honest fallback to English.
 - **Editor extension.** Live token cost while writing a prompt is the right
-  place for this to live. Waiting on 0.10.0's config file so it has something
-  to read.
+  place for this to live. Unblocked as of 0.10.0 — it now has a config file and
+  a budget per path to read — and still unscheduled, because an extension is a
+  distribution commitment (a marketplace listing, an update cadence) rather than
+  a feature.
 - **Tokenizer per model family.** The heuristic compares two versions of the
   same prompt well, which is what it is for. A real tokenizer would improve
   absolute figures at the cost of the dependency-free promise — worth doing

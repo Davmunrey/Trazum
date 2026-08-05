@@ -40,6 +40,9 @@ export interface CliMessages {
     evalNeedsCases(): string;
     evalNoCases(path: string): string;
     diffNeedsTwoFiles(): string;
+    cannotNegate(name: string): string;
+    noPromptsFound(directory: string, extensions: string): string;
+    noBudgetsApply(directory: string, configFile: string): string;
     errorLabel(): string;
   };
 
@@ -120,5 +123,10 @@ export interface CliMessages {
     failed(tokens: string, budget: string): string;
     wouldFit(level: string, optimizedTokens: string): string;
     stillTooBig(optimizedTokens: string): string;
+    directoryHeading(directory: string, files: number): string;
+    directorySummary(failures: number, files: number): string;
+    noBudget(): string;
+    walkTruncated(): string;
+    exactCountsCost(files: number): string;
   };
 }
