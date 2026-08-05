@@ -72,3 +72,7 @@ export type { EndpointRejection, ValidateEndpointOptions } from './net.js';
 // Per-rule change extraction
 export { extractChanges, DEFAULT_CHANGE_LIMIT } from './changes.js';
 export type { RuleChange } from './changes.js';
+
+// Semantic review of few-shot examples (optional, costs an LLM call)
+export { reviewExamples, EXAMPLE_REVIEW_SYSTEM_PROMPT } from './review.js';
+export type { ExampleReview, ExampleRedundancy, ReviewExamplesOptions } from './review.js';

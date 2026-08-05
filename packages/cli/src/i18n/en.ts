@@ -94,6 +94,11 @@ ${bold('EXAMPLES')}
     ruleHits: (hits, tokensSaved) => `(${hits}×, ~${tokensSaved} tokens)`,
     moreChanges: (count) => `+${count} more not shown`,
     llmPass: () => 'LLM pass',
+    examplesReview: () => 'Examples the model considers redundant',
+    examplesReviewNote: (provider, model, count) =>
+      `${count} examples reviewed by ${provider}/${model}. A suggestion to read, not a change made.`,
+    exampleRedundant: (redundant, keep) =>
+      `Example ${redundant.map((i) => i + 1).join(', ')} repeats example ${keep + 1}`,
     llmApplied: (provider, model, before, after) =>
       `applied via ${provider}/${model}: ${before} → ${after} tokens`,
     llmRejected: (reason) => `rejected: ${reason}`,

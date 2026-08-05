@@ -1,7 +1,7 @@
 name: 'Trazum Check'
-description: >-
-  Token budget for prompts: fails the build when a prompt busts the given
-  maximum, and tells you whether optimising it would fit.
+# Kept under 125 characters: the Marketplace rejects anything longer, and it
+# is the one line most people read before deciding to try this.
+description: 'Token budget for prompts. Fails the build when a prompt busts its maximum, and says whether optimising would fit.'
 author: 'David Muñoz Rey'
 branding:
   icon: 'scissors'

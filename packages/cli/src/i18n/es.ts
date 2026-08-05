@@ -90,6 +90,11 @@ ${bold('EJEMPLOS')}
     ruleHits: (hits, tokensSaved) => `(${hits}×, ~${tokensSaved} tokens)`,
     moreChanges: (count) => `+${count} más sin mostrar`,
     llmPass: () => 'Pasada por LLM',
+    examplesReview: () => 'Ejemplos que el modelo considera redundantes',
+    examplesReviewNote: (provider, model, count) =>
+      `${count} ejemplos revisados por ${provider}/${model}. Es una sugerencia que leer, no un cambio hecho.`,
+    exampleRedundant: (redundant, keep) =>
+      `El ejemplo ${redundant.map((i) => i + 1).join(', ')} repite el ejemplo ${keep + 1}`,
     llmApplied: (provider, model, before, after) =>
       `aplicada vía ${provider}/${model}: ${before} → ${after} tokens`,
     llmRejected: (reason) => `descartada: ${reason}`,

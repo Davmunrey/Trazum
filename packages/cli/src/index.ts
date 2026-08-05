@@ -14,9 +14,17 @@ import {
   optimize,
   providerFromEnv,
   refineWithLlm,
+  reviewExamples,
   withExactTokenCounts,
 } from '@trazum/core';
-import type { Locale, OptimizationResult, RuleId, RuleLevel, UsageProfile } from '@trazum/core';
+import type {
+  ExampleReview,
+  Locale,
+  OptimizationResult,
+  RuleId,
+  RuleLevel,
+  UsageProfile,
+} from '@trazum/core';
 
 import { detectLocale, getCliMessages } from './i18n/index.js';
 import type { CliMessages } from './i18n/index.js';
@@ -162,7 +170,12 @@ function renderDiff(before: string, after: string): string {
 // Report
 // --------------------------------------------------------------------------
 
-function printReport(result: OptimizationResult, showDiff: boolean, t: CliMessages): void {
+function printReport(
+  result: OptimizationResult,
+  showDiff: boolean,
+  t: CliMessages,
+  examplesReview: ExampleReview | null = null,
+): void {
   const { savings } = result;
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const sourceNote =
@@ -261,6 +274,27 @@ function printReport(result: OptimizationResult, showDiff: boolean, t: CliMessag
           : '';
       console.log(`  ${marker} ${c.bold(advisory.title)}${money}`);
       console.log(`    ${c.dim(wrap(advisory.detail, 76, '    '))}`);
+    }
+  }
+
+  if (examplesReview && examplesReview.groups.length > 0) {
+    console.log();
+    console.log(c.bold(t.report.examplesReview()));
+    console.log(
+      c.dim(
+        `  ${t.report.examplesReviewNote(
+          examplesReview.provider,
+          examplesReview.model,
+          examplesReview.exampleCount,
+        )}`,
+      ),
+    );
+    for (const group of examplesReview.groups) {
+      console.log(
+        `  ${c.yellow(t.report.exampleRedundant(group.redundant, group.keep))}` +
+          c.dim(` (~${group.tokens} tokens)`),
+      );
+      if (group.reason) console.log(`    ${c.dim(group.reason)}`);
     }
   }
 
@@ -409,12 +443,20 @@ async function commandOptimize(args: Args, t: CliMessages, locale: Locale): Prom
     disableRules: disableRules as RuleId[],
   });
 
+  let examplesReview: ExampleReview | null = null;
+
   if (args.flags.has('llm')) {
     const provider = providerFromEnv();
     if (!provider) {
       throw new Error(t.errors.llmNotConfigured());
     }
     result = await refineWithLlm(result, provider, { locale });
+
+    // A second call, and only when there is something for it to judge:
+    // `reviewExamples` returns null below two examples rather than paying for
+    // a foregone answer. This is the paraphrase case the deterministic
+    // detector refuses to guess at.
+    examplesReview = await reviewExamples(result.optimized, provider);
   }
 
   if (args.flags.has('exact-tokens')) {
@@ -434,7 +476,9 @@ async function commandOptimize(args: Args, t: CliMessages, locale: Locale): Prom
   }
 
   if (args.flags.has('json')) {
-    console.log(JSON.stringify(result, null, 2));
+    console.log(
+      JSON.stringify(examplesReview ? { ...result, examplesReview } : result, null, 2),
+    );
     return;
   }
 
@@ -444,7 +488,7 @@ async function commandOptimize(args: Args, t: CliMessages, locale: Locale): Prom
     return;
   }
 
-  printReport(result, args.flags.has('diff'), t);
+  printReport(result, args.flags.has('diff'), t, examplesReview);
   if (outPath) {
     console.log(c.dim(t.report.wroteTo(outPath)));
     console.log();

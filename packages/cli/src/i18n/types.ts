@@ -49,6 +49,9 @@ export interface CliMessages {
     ruleHits(hits: number, tokensSaved: number): string;
     moreChanges(count: number): string;
     llmPass(): string;
+    examplesReview(): string;
+    examplesReviewNote(provider: string, model: string, count: number): string;
+    exampleRedundant(redundant: number[], keep: number): string;
     llmApplied(provider: string, model: string, before: number, after: number): string;
     llmRejected(reason: string): string;
     costWith(modelName: string): string;
