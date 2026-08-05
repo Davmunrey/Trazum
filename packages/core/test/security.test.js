@@ -611,6 +611,39 @@ describe('the packaged Action', () => {
     assert.deepEqual(missing, [], `a pinned action has no version comment:\n  ${missing.join('\n  ')}`);
   });
 
+  it('the docs recommend a SHA pin too, not a tag', () => {
+    // The rule above governs what this repository runs. This one governs what it
+    // *tells other people to run*, which had drifted: the README recommended
+    // `Davmunrey/Trazum@v1.0.0` for a whole release — a tag that did not exist,
+    // so the copy-pasteable example 404'd, and a tag at all, which is the exact
+    // movable ref SECURITY.md warns against. Nothing was checking.
+    const SHA_PIN = /^Davmunrey\/Trazum@[0-9a-f]{40}$/;
+    const bad = [];
+
+    for (const name of ['README.md', 'SECURITY.md', 'CONTRIBUTING.md', 'docs/authoring-rules.md']) {
+      let source;
+      try {
+        source = readFileSync(join(repoRoot, name), 'utf8');
+      } catch {
+        continue;
+      }
+      for (const line of source.split('\n')) {
+        // Only `uses:` lines are instructions to run something. Prose naming a
+        // version, and the changelog's record of what past releases did, are not.
+        const ref = /^\s*(?:- )?uses:\s*(Davmunrey\/Trazum\S*)/.exec(line);
+        if (!ref) continue;
+        if (!SHA_PIN.test(ref[1])) bad.push(`${name}: ${ref[1]}`);
+        else if (!/#\s*v?\d/.test(line)) bad.push(`${name}: ${ref[1]} (no version comment)`);
+      }
+    }
+
+    assert.deepEqual(
+      bad,
+      [],
+      `the docs tell readers to use a movable or unlabelled ref:\n  ${bad.join('\n  ')}`,
+    );
+  });
+
   it('no workflow or the action uses pull_request_target', () => {
     // The event a reviewer reaches for when a fork PR cannot post a comment. It
     // runs with a writable token against the BASE repository while checking out
