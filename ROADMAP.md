@@ -124,6 +124,15 @@ matching, plus the review tooling the 0.4.0 advisories make necessary.
   refusal policy. Each new axis has to earn its place against false positives:
   an advisory people learn to ignore is worse than no advisory.
 
+### Next.js 16 upgrade
+
+Not a feature, and listed because it is owed. The web app's dependency tree
+carries three high-severity advisories in `postcss` and `sharp`, both
+transitive through Next 15. Neither is reachable here — one is build-time over
+our own CSS, the other is an image optimiser this app never calls — and the fix
+is a major upgrade. It gets its own pull request and its own testing rather
+than riding along with unrelated work. See [SECURITY.md](SECURITY.md).
+
 ### 0.6.0 — Measurement instead of estimation
 
 Trazum currently reports what a prompt *should* save. The obvious next question
