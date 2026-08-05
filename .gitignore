@@ -6,3 +6,15 @@ out/
 .env
 .env.local
 .DS_Store
+
+# Third-party agent skills installed with `npx skills add` (taste-skill,
+# impeccable, emilkowalski/skills). Local design tooling, not part of the
+# product: ~3.9 MB of code that the installer itself warns "runs with full
+# agent permissions", which does not belong in a repository whose stated
+# posture is zero runtime dependencies. Anyone who wants them runs one command.
+/.agents/
+/.claude/skills/*
+!/.claude/skills/trazum/
+
+# Lockfile for third-party agent skills; see .gitignore
+skills-lock.json

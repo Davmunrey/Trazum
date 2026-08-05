@@ -322,22 +322,49 @@ ul.plain li + li {
   color: var(--warn);
 }
 
+/* Severity reads from a dot on the title's baseline rather than a coloured
+   stripe down the side. The stripe is the single most recognisable tell of a
+   generated interface, and it spent a full 3px gutter saying what a 6px dot
+   says without claiming the eye first. */
 .advisory {
-  border-left: 3px solid var(--border);
-  padding-left: 12px;
+  padding-left: 18px;
+  position: relative;
 }
 
-.advisory.opportunity {
-  border-left-color: var(--accent);
+.advisory + .advisory {
+  margin-top: 14px;
 }
 
-.advisory.warning {
-  border-left-color: var(--warn);
+.advisory::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  /* Optically centred on the title's cap height, not its line box. */
+  top: 7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-dim);
+}
+
+.advisory.opportunity::before {
+  background: var(--accent);
+}
+
+.advisory.warning::before {
+  background: var(--warn);
+}
+
+/* The one finding that is a defect rather than a saving earns the extra
+   weight: everything else on this list is optional, this one is not. */
+.advisory.warning .title {
+  color: var(--warn);
 }
 
 .advisory .title {
   font-weight: 600;
   font-size: 14px;
+  line-height: 1.45;
 }
 
 .advisory .est {
