@@ -70,28 +70,61 @@ with a second one.
 - Catalogue-parity tests, so a locale cannot silently go stale.
 - Sample prompts per language, both exercised by the action self-test.
 
+### 0.4.0 — Reading structure, not just phrases
+
+Every rule until now matched a phrase. The waste this release goes after is a
+*relationship* between two places in the prompt — neither of which is wrong on
+its own, which is exactly why a dictionary cannot see it.
+
+Both findings are advisory. A contradiction has a right answer only the author
+knows, and an example that looks redundant may be demonstrating a boundary case
+on purpose. Trazum points; it does not cut.
+
+- **Contradictory instructions.** "Answer in English" three paragraphs above
+  "reply in the customer's own language" is a correctness bug that also costs
+  tokens twice. Four axes are checked: response language, output format,
+  response length, and whether to show the reasoning. Reported as a *warning*,
+  not an opportunity — it carries no dollar figure because being wrong has no
+  price tag.
+- **Redundant few-shot examples.** Examples that are near-copies of an earlier
+  one, priced per month. See the honest limit below.
+- **Advisory ordering by severity.** Sorting purely on money buried an
+  overflowing context window underneath a $2 saving. Warnings now come first.
+- **Bug found while building this:** the `duplicate-lines` rule was deleting
+  the shared `Output:` line from a second few-shot example, leaving it with an
+  input and no output. Two examples mapping different inputs to the same answer
+  is often the reason both are there. Labelled example fields are now exempt
+  from deduplication.
+
+**What the example detector does not do.** It finds near-copies — measured at
+~0.89 similarity for a copy-paste with one field changed, ~0.80 for a lightly
+edited one — and deliberately stops short of paraphrases, which score ~0.54,
+close enough to two genuinely distinct examples (~0.20) that catching them
+would mean flagging examples that teach different things. Recognising that
+"arrived quickly" and "arrived fast" teach the same lesson needs a model, not
+word-set overlap. That belongs to the optional LLM pass, and is listed under
+0.5.0 rather than pretended to here.
+
 ---
 
 ## Next
 
-### 0.4.0 — Rules that read structure, not just phrases
+### 0.5.0 — Semantic structure, and reviewing what changed
 
-Today every rule is a phrase or a paragraph match. The biggest remaining waste
-in real prompts is structural, and invisible to a dictionary.
+The pieces of structural analysis that need judgement rather than pattern
+matching, plus the review tooling the 0.4.0 advisories make necessary.
 
-- **Redundant few-shot examples.** Long prompts accumulate examples that teach
-  the same thing. Cluster them by the pattern they demonstrate and flag the
-  ones carrying no new information. Advisory-only at first: dropping an example
-  is a judgement call, so Trazum should point rather than cut.
-- **Contradictory instructions.** "Answer in English" three paragraphs above
-  "always reply in the customer's language" is a correctness bug that costs
-  tokens twice. Detect direct conflicts and surface them.
+- **Semantically redundant examples**, via the optional LLM pass: the
+  paraphrase case the deterministic detector correctly refuses to guess at.
 - **Restated output formats.** A JSON schema given both as prose and as a code
   block only needs the block.
 - **Rule-level diffing in the report**, so an aggressive run can be reviewed
   rule by rule instead of all at once.
+- **More contradiction axes** as real prompts justify them — tone, persona,
+  refusal policy. Each new axis has to earn its place against false positives:
+  an advisory people learn to ignore is worse than no advisory.
 
-### 0.5.0 — Measurement instead of estimation
+### 0.6.0 — Measurement instead of estimation
 
 Trazum currently reports what a prompt *should* save. The obvious next question
 from anyone about to change a production prompt is whether the shorter version
@@ -106,7 +139,7 @@ still works — and that is not something a rules engine can answer by itself.
 - **Real cache simulation**: given a call log, report the hit rate actually
   achievable rather than one the user has to guess at.
 
-### 0.6.0 — Fits into a workflow
+### 0.7.0 — Fits into a workflow
 
 Optimising once is a demo. The value is in a prompt staying lean as it is
 edited over months.
@@ -144,7 +177,7 @@ Not scheduled. Listed so the reasoning is on the record.
   needs a maintainer who actually reads it, and a stale translation is worse
   than an honest fallback to English.
 - **Editor extension.** Live token cost while writing a prompt is the right
-  place for this to live. Waiting on 0.6.0's config file so it has something to
+  place for this to live. Waiting on 0.7.0's config file so it has something to
   read.
 - **Tokenizer per model family.** The heuristic compares two versions of the
   same prompt well, which is what it is for. A real tokenizer would improve

@@ -42,6 +42,18 @@ what usually saves more than shortening ever will:
 | Output-dominated cost | If you pay more for the answer than for the prompt, shortening the prompt has a ceiling. |
 | Promotional pricing | Warns when you are budgeting with an introductory price that expires. |
 | Context window | If the prompt does not fit, the call is going to fail. |
+| Contradictory instructions | "Answer in English" three paragraphs above "reply in the customer's own language". The model has to pick one, and which one can change between calls — a correctness problem that also costs tokens twice. |
+| Redundant examples | Few-shot examples that are near-copies of an earlier one, and what they cost per month. |
+
+The last two are **advisory only**. A contradiction has a right answer that only
+the author knows, and an example that looks redundant may be demonstrating a
+boundary case on purpose. Trazum points; it does not cut.
+
+The example detector finds near-copies — the way few-shot blocks actually grow,
+by copy-paste-and-tweak. It deliberately does not flag *paraphrases*: the same
+lesson in different words scores close enough to two genuinely distinct
+examples that catching it would mean flagging examples that teach different
+things. That case needs a model, and is on the roadmap for the LLM pass.
 
 **4. Optionally, runs it past an LLM.** The result is only accepted if it is
 shorter and leaves protected content byte-identical. Otherwise the deterministic
@@ -54,7 +66,7 @@ version stands. It never returns something worse than where it started.
 ```bash
 npm install
 npm run build      # core + cli
-npm test           # 75 tests
+npm test           # 94 tests
 ```
 
 ### CLI
@@ -321,6 +333,8 @@ packages/core/     dependency-free library (rules, tokens, pricing, LLM)
   src/rules.ts       deterministic rules engine
   src/phrases.ts     phrase dictionaries (data, multilingual)
   src/pricing.ts     model and pricing catalogue
+  src/structure.ts   contradictions and repeated few-shot examples
+  src/similarity.ts  shared near-duplicate scoring
   src/advisories.ts  caching, batch, model and context advisories
   src/llm.ts         pluggable providers and safety checks
   src/i18n/          message catalogues (report language)

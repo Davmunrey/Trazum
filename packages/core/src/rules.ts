@@ -8,6 +8,8 @@ import {
   SHOUTED_WORDS,
   VERBOSE_PHRASES,
 } from './phrases.js';
+import { jaccard, normalizeForCompare } from './similarity.js';
+import { EXAMPLE_FIELD_LINE } from './structure.js';
 import type { RuleId } from './i18n/types.js';
 import type { Rule } from './types.js';
 
@@ -212,16 +214,6 @@ const emphasisRule: Rule = {
   },
 };
 
-/** Normalises a line or paragraph for duplicate comparison. */
-function normalizeForCompare(text: string): string {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim();
-}
-
 const duplicateLinesRule: Rule = {
   id: 'duplicate-lines',
   level: 'safe',
@@ -233,7 +225,10 @@ const duplicateLinesRule: Rule = {
 
     for (const line of lines) {
       const normalized = normalizeForCompare(line);
-      if (normalized.length >= 25) {
+      // A labelled example field is data, not repetition: two examples sharing
+      // an output line show that two inputs map to the same answer. Dropping
+      // the second leaves that example with no output.
+      if (normalized.length >= 25 && !EXAMPLE_FIELD_LINE.test(line)) {
         if (seen.has(normalized)) {
           hits++;
           continue;
@@ -273,16 +268,6 @@ const duplicateBlocksRule: Rule = {
     return { text: kept.join('\n\n'), hits };
   },
 };
-
-/** Jaccard similarity over word sets. */
-function jaccard(a: string, b: string): number {
-  const setA = new Set(a.split(' ').filter(Boolean));
-  const setB = new Set(b.split(' ').filter(Boolean));
-  if (setA.size === 0 || setB.size === 0) return 0;
-  let intersection = 0;
-  for (const word of setA) if (setB.has(word)) intersection++;
-  return intersection / (setA.size + setB.size - intersection);
-}
 
 const nearDuplicateBlocksRule: Rule = {
   id: 'near-duplicate-blocks',

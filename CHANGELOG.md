@@ -3,6 +3,39 @@
 Versioning policy: [VERSIONING.md](VERSIONING.md). Below 1.0, minor versions
 may contain breaking changes, and say so in their first line.
 
+## 0.4.0
+
+Structural analysis: findings that live in the *relationship* between two
+places in a prompt, which no phrase dictionary can see because neither place is
+wrong on its own. Both are advisory — Trazum points, it does not cut.
+
+- **Fixes a corruption bug in `duplicate-lines`.** The rule was deleting the
+  shared `Output:` line from a second few-shot example, leaving it with an
+  input and no output. Two examples mapping different inputs to the same answer
+  is often exactly why both are there. Labelled example fields (`Input:`,
+  `Output:`, `Q:`, `A:`, and Spanish equivalents) are now exempt from
+  line deduplication. This affected the `safe` level, so it could silently
+  damage a prompt anyone ran through Trazum.
+- New `contradictory-instructions` advisory across four axes: response
+  language, output format, response length, and whether to show the reasoning.
+  Reported as a **warning** with both conflicting sentences quoted. It carries
+  no dollar figure — being wrong has no price tag.
+- New `redundant-examples` advisory: few-shot examples that are near-copies of
+  an earlier one, with the tokens they cost per month. It detects copy-paste
+  accumulation (~0.89 similarity for a copied example with one field changed),
+  and deliberately **not** paraphrases (~0.54), which sit too close to
+  genuinely distinct examples (~0.20) to separate without a model.
+- **Advisories now sort by severity before money.** Sorting purely on the
+  dollar figure buried an overflowing context window — and now a contradiction
+  — underneath a saving of a few dollars.
+- New public API: `findContradictions`, `analyzeExamples`, `findExamples`, and
+  the `jaccard` / `normalizeForCompare` similarity helpers, which moved to a
+  shared module so the duplicate rules and the structural analysis cannot
+  disagree about what "near-duplicate" means.
+- Adding a contradiction axis now fails to compile until every catalogue names
+  it, the same guarantee `RuleId` gives rules.
+- Tests grow from 75 to 94.
+
 ## 0.3.0
 
 **Breaking.** `buildAdvisories()` takes an options object instead of trailing

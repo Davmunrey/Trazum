@@ -43,7 +43,9 @@ export type AdvisoryId =
   | 'batch-api'
   | 'model-downgrade'
   | 'output-dominated'
-  | 'promo-pricing';
+  | 'promo-pricing'
+  | 'contradictory-instructions'
+  | 'redundant-examples';
 
 /** A recommendation that does NOT modify the prompt, only informs. */
 export interface Advisory {

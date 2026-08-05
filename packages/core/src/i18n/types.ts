@@ -105,6 +105,25 @@ export interface PromoPricingParams {
   listOutput: number;
 }
 
+export interface ContradictoryInstructionsParams {
+  /** Human-readable name of the axis the two instructions disagree on. */
+  axis: string;
+  firstValue: string;
+  firstSnippet: string;
+  secondValue: string;
+  secondSnippet: string;
+  /** How many other axes also disagree, beyond this one. */
+  otherCount: number;
+}
+
+export interface RedundantExamplesParams {
+  redundantCount: number;
+  totalCount: number;
+  redundantTokens: number;
+  /** Similarity of the closest pair, 0-100. */
+  topSimilarityPct: number;
+}
+
 /** Reasons the optional LLM pass can reject a candidate. */
 export interface LlmMessages {
   emptyResponse(): string;
@@ -130,5 +149,19 @@ export interface CoreMessages {
     modelDowngrade(p: ModelDowngradeParams): LocalizedMessage;
     outputDominated(p: OutputDominatedParams): LocalizedMessage;
     promoPricing(p: PromoPricingParams): LocalizedMessage;
+    contradictoryInstructions(p: ContradictoryInstructionsParams): LocalizedMessage;
+    redundantExamples(p: RedundantExamplesParams): LocalizedMessage;
   };
+  /** Names of the axes two instructions can disagree on. */
+  contradictionAxes: Record<ContradictionAxisId, string>;
 }
+
+/**
+ * Kept in step with `ContradictionAxis` in `structure.ts`. Declared here so a
+ * new axis fails to compile until every catalogue names it.
+ */
+export type ContradictionAxisId =
+  | 'response-language'
+  | 'output-format'
+  | 'response-length'
+  | 'reasoning-visibility';
