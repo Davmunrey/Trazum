@@ -29,6 +29,11 @@ ${bold('OPTIONS FOR optimize')}
   --cache-hit-rate <0-1>      Estimated cache hit rate. Default: ${d.cacheHitRate}.
   --batch                     The work tolerates latency (Batch API, 50% off).
   --disable <id,id>           Turn off specific rules (see "trazum rules").
+  --reorder                   Move stable instructions ahead of the first placeholder,
+                              so prompt caching can reach them. This MOVES text rather
+                              than deleting it: read the diff and decide whether the
+                              order mattered. Refuses on any block that refers
+                              backwards ("the text above"), and says which phrase.
   --llm                       Add a pass through the LLM configured by environment.
   --exact-tokens              Count tokens with the official API instead of the heuristic.
   --diff                      Show the line-by-line diff.
@@ -42,6 +47,8 @@ ${bold('OPTIONS FOR check')}
   --level <safe|aggressive>   Level used to work out whether the optimised prompt would fit.
   --exact-tokens              Exact count (needs ANTHROPIC_API_KEY).
   --json                      Result as JSON.
+  --markdown-out <file>       Also write the report as Markdown, for a CI job summary
+                              or a pull request comment.
 
   Built for CI: exits with code 1 when the prompt busts the budget, so a
   template that grows unchecked breaks the build instead of the bill.
@@ -72,6 +79,8 @@ ${bold('OPTIONS FOR diff')}
   --model <id>                Model used to price the change.
   --calls <n>                 Calls per month, for the cost figure.
   --json                      Result as JSON.
+  --markdown-out <file>       Also write the report as Markdown, for a CI job summary
+                              or a pull request comment.
 
   Compares two versions of a prompt: how the token count moved, what that
   costs, which advisories the edit introduced or resolved. Every figure is a
@@ -136,6 +145,7 @@ ${bold('LANGUAGE')}
 ${bold('EXAMPLES')}
   trazum optimize prompt.txt --calls 50000 --diff
   cat prompt.md | trazum optimize - --level aggressive --json
+  trazum optimize prompt.txt --reorder --diff
   trazum optimize prompt.txt --llm -o prompt.optimised.txt
   trazum eval prompt.txt --cases cases.txt --level aggressive
   trazum diff prompts/system.txt prompts/system.new.txt --max-growth 10
@@ -200,6 +210,18 @@ ${bold('EXAMPLES')}
     diff: () => 'Diff',
     pricingOverlaid: (models, lastReviewed) =>
       `Prices for ${models} came from a local overlay reviewed ${lastReviewed}, not from the bundled catalogue.`,
+    reorderHeading: () => 'Reordered for caching',
+    reorderMoved: (blocks, tokens) =>
+      `Moved ${blocks} ${blocks === 1 ? 'block' : 'blocks'} (~${tokens} tokens) ahead of the first placeholder.`,
+    reorderPrefix: (before, after) => `Cacheable prefix ${before} → ${after} tokens.`,
+    reorderDeclined: (count) =>
+      `Left ${count} ${count === 1 ? 'block' : 'blocks'} where they were:`,
+    reorderDeclinedRef: (phrase, excerpt) => `refers back ("${phrase}"): ${excerpt}`,
+    reorderDeclinedAfter: (excerpt) => `after a block that had to stay: ${excerpt}`,
+    reorderDeclinedMore: (count) => `…and ${count} more, in the output file.`,
+    reorderNothing: () => 'Nothing could safely move.',
+    reorderReview: () =>
+      'Read the diff: this moved text rather than deleting it, so the question is whether the order mattered.',
     diffTooLarge: (lines, max) =>
       `  Diff skipped: ${lines} lines is past the ${max}-line limit, and aligning them would cost more memory than the answer is worth.`,
     wroteTo: (path) => `Optimised prompt written to ${path}`,

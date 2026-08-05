@@ -36,7 +36,7 @@ what usually saves more than shortening ever will:
 | Advisory | Why it matters |
 |---|---|
 | Prompt caching | Reading from cache costs 10% of input. The saving is computed over the **real stable prefix**: in a template with `{{placeholders}}`, only what precedes the first one is cached — not the whole prompt. |
-| Reorder the template | Stable instructions sitting *after* the first variable placeholder never cache today. Trazum finds them and prices moving them in front. |
+| Reorder the template | Stable instructions sitting *after* the first variable placeholder never cache today. Trazum prices moving them in front — and with `--reorder`, [does it](#reordering-for-the-cache-reorder). |
 | Batch API | 50% off input and output when the work tolerates latency. |
 | Cheaper model | Complexity heuristic: if the task looks simple, what dropping a tier would save. |
 | Output-dominated cost | If you pay more for the answer than for the prompt, shortening the prompt has a ceiling. |
@@ -80,7 +80,7 @@ version stands. It never returns something worse than where it started.
 ```bash
 npm install
 npm run build      # core + cli
-npm test           # 406 tests
+npm test           # 450 tests
 ```
 
 ### CLI
@@ -187,6 +187,71 @@ Or by hand, if you already have the repo checked out:
 - run: npm ci && npm run build
 - run: node packages/cli/dist/index.js check prompts/system.txt --max-tokens 2000
 ```
+
+### Reordering for the cache: `--reorder`
+
+Trimming a prompt saves a few percent of its tokens. Moving its stable
+instructions in front of the first placeholder changes the price of nearly all of
+them, because prompt caching is a **byte-for-byte prefix match** — everything
+after the first `{{placeholder}}` is re-read at full price on every call.
+
+On a 1,178-token support prompt: **14 tokens cacheable as written, 1,174 after
+rearranging the same content.** At 50,000 calls a month on Opus, that is the
+difference between a $0 caching saving and a $184 one. No rule can compete with
+it, and until now Trazum could only point at it.
+
+```bash
+trazum optimize prompts/support.txt --reorder --diff --calls 50000
+```
+
+```
+Reordered for caching
+  Moved 1 block (~1,001 tokens) ahead of the first placeholder.
+  Cacheable prefix 11 → 1,016 tokens.
+  Read the diff: this moved text rather than deleting it, so the question is
+  whether the order mattered.
+```
+
+**It is opt-in, and deliberately not part of `aggressive`.** Every other
+transformation here deletes text whose absence is local. This one moves text, and
+order carries meaning: *"Summarise the text above"* is correct where it sits and
+nonsense in front of the text it points at. `aggressive` promises "read the diff";
+this asks a different question, so it cannot ride in on a level.
+
+So the design is mostly about what it **refuses**:
+
+- **A block that refers backwards stays put — and so does everything after it.**
+  `above`, `below`, `the following`, `previous`, `earlier` and their Spanish
+  equivalents pin a block. Moving a later block past a pinned one would change
+  their order relative to each other, which is the same class of harm.
+- **Only whole blocks move.** Blocks are separated by blank lines, so a sentence
+  is never severed from the paragraph that qualifies it, and the placeholder's own
+  line travels with it (`Customer message: {{message}}` is one unit).
+- **Nothing moves without a reason to.** No placeholder means the prompt already
+  caches in full. Below the model's cacheable minimum the rearrangement buys
+  nothing, and a diff that buys nothing is worse than no diff.
+
+When it refuses, **the prompt comes back byte-identical** and the report says
+which phrase stopped it:
+
+```
+Reordered for caching
+  Nothing could safely move.
+  Left 2 blocks where they were:
+    refers back ("above"): Summarise the text above in one sentence.
+    after a block that had to stay: Always answer in English.
+```
+
+That distinction is the point of reporting refusals at all: *"no saving here"* and
+*"there was a saving and it was not safe to take"* are different answers, and only
+the second one is actionable. The backward-reference list is deliberately
+generous — a false positive costs a saving that was available, a false negative
+silently changes what the prompt asks for.
+
+`--diff` compares against **what you wrote**, not against the rearrangement, so
+the move is visible rather than hidden behind the deletions. With `--json` the
+whole decision is in `reorder`, refusals included. `check` does not accept the
+flag: it is a gate, and a gate does not rewrite.
 
 ### Does the shorter prompt still work?
 
@@ -423,6 +488,22 @@ const result = optimize(prompt, {
 
 console.log(result.optimized);
 console.log(result.savings.monthlySavingsUsd);
+```
+
+`reorderForCache` is the API behind `--reorder`. It returns the original text
+unchanged when nothing can safely move, and always reports what it declined and
+why — a saving Trazum chose not to take is one the caller cannot evaluate:
+
+```ts
+import { reorderForCache } from '@trazum/core';
+
+const r = reorderForCache(prompt, { minTokens: 1024 });  // the model's cache minimum
+
+r.text;                 // the rearrangement, or `prompt` byte-for-byte
+r.tokensMoved;          // moved out of paid-every-call into the prefix
+r.prefixTokensBefore;   // 14
+r.prefixTokensAfter;    // 1174
+r.declined;             // [{ reason: 'backward-reference', phrase: 'above', text }]
 ```
 
 `comparePrompts` is the API behind `trazum diff`. Note the sign: everything it

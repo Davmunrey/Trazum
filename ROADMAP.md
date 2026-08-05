@@ -383,6 +383,61 @@ one action in this repository that cannot be undone after 72 hours.
 
 ---
 
+### 1.1.0 — Doing the thing it had only been pricing
+
+Every rule in Trazum trims a few percent of a prompt's tokens. Since 0.2.0 the
+`cache-prefix-reorder` advisory has pointed at something an order of magnitude
+larger — stable instructions sitting *after* the first placeholder, which prompt
+caching therefore re-reads at full price on every call — and no command could act
+on it. Measured on a 1,178-token support prompt: **14 tokens cacheable as written,
+1,174 after rearranging the same content**, which at 50,000 calls a month on Opus
+is the difference between a $0 caching saving and a $184 one.
+
+`trazum optimize --reorder` now performs the rearrangement, and
+`reorderForCache` is exported for callers who want the decision without the CLI.
+
+**It is opt-in, and not part of `aggressive`** — the design decision in this
+release. Every other transformation here deletes text whose absence is local.
+This one *moves* text, and order carries meaning: "Summarise the text above" is
+correct where it sits and nonsense in front of the text it points at. `aggressive`
+promises "read the diff"; this asks whether the order mattered, which is a
+different question and cannot ride in on a level.
+
+So most of the module is about what it refuses:
+
+- **A block containing a backward reference stays put, and so does everything
+  after it.** Moving a later block past a pinned one changes their order relative
+  to each other, which is the same class of harm. The phrase list is deliberately
+  generous in both locales: a false positive costs a saving that was available, a
+  false negative silently changes what the prompt asks for.
+- **Only whole blank-line-separated blocks move**, so a sentence is never severed
+  from the paragraph that qualifies it, and the placeholder's own line travels
+  with it.
+- **Nothing moves without a placeholder**, or below the model's cacheable
+  minimum. A rearrangement that buys nothing is a diff for its own sake.
+
+A refusal returns the prompt **byte-identical** and says which phrase caused it,
+because "no saving here" and "there was a saving and it was not safe to take" are
+different answers and only the second is actionable. `--diff` compares against
+what the author wrote rather than against the rearrangement, so the move is not
+hidden behind the deletions. `check` does not accept the flag: it is a gate, and a
+gate does not rewrite.
+
+Three things found by testing rather than by reading, all fixed here. A
+placeholder on the first line produced a leading blank line. A CRLF prompt came
+back with mixed line endings — which in a byte-for-byte prefix match is a changed
+price, and in a repository is a diff on every line nobody asked for. And two of
+the new module's own patterns were **quadratic**: 31 seconds on a 200 KB prompt,
+inside what the HTTP API accepts. The ReDoS suite drives `optimize`, which never
+reaches this code, so nothing covered it — a fixture list only asks the questions
+it encodes. It has ten fixtures of its own now.
+
+The same lesson applied to the help: `--reorder` shipped accepted and absent from
+`--help`, and so had `--markdown-out` since 0.11.0. The parity test named four
+*required* flags by hand; it now derives the list from what the binary accepts.
+
+---
+
 ## Next
 
 1.0 froze the API. It did not finish the product, and it left two things this
@@ -390,7 +445,14 @@ file should say out loud: the central accuracy claim has never been measured, an
 Trazum governs prompt *files* rather than the prompts an application actually
 sends.
 
-### 1.1.0 — Releasing without remembering
+**Why release automation is no longer first.** It was 1.1.0 until the entry itself
+made clear it cannot ship: publishing needs the `@trazum` scope to exist on npm,
+and that is the maintainer's to create. Rather than hold the queue behind a
+prerequisite outside the repository, the release that could ship shipped. The
+ordering below is still a commitment; this file owes an explanation when it
+changes, and that is the explanation.
+
+### 1.2.0 — Releasing without remembering
 
 Three releases are queued behind this one, and each currently needs a human to
 remember to build, tag, verify the tarball and publish. Automating the mechanism
@@ -405,7 +467,7 @@ before using it three times is worth doing first.
   rest of the repository already takes. Provenance attestation comes free with it,
   so a consumer can verify a tarball came from this repository and this commit.
 - It must **refuse to publish a version that does not match the tag**. A tag
-  reading `v1.2.0` against manifests reading `1.1.0` is the one mistake that
+  reading `v1.4.0` against manifests reading `1.3.0` is the one mistake that
   cannot be corrected after 72 hours.
 - `publish.test.js` is the gate, reused rather than duplicated.
 
@@ -414,7 +476,7 @@ before using it three times is worth doing first.
 configured as a trusted publisher. Nothing to paste into secrets, nothing to
 rotate.
 
-### 1.2.0 — The error band, measured
+### 1.3.0 — The error band, measured
 
 `±15%` is printed on every report, appears twice in the README and in the
 tokenizer's own doc comment, and **nothing asserts it**. `estimateTokens` is
@@ -442,7 +504,7 @@ test asserts a Japanese string does not produce `NaN`. If the real error there i
 so the corpus figures have to be generated with a key and committed as fixtures.
 The corpus and harness do not need one.
 
-### 1.3.0 — Prompts where they actually live
+### 1.4.0 — Prompts where they actually live
 
 `check` and `diff` read `.txt`, `.md`, `.prompt` and `.tmpl`. Real prompts live in
 TypeScript template literals, Python strings and YAML, so adopting Trazum today
@@ -469,7 +531,7 @@ standalone files, which `trazum diff` already handles by hand. After it, diffing
 embedded prompt against its base version is the actual reviewer workflow. Needs
 `fetch-depth: 0` and a documented recipe, not a new input.
 
-### 1.4.0 — The front door catches up
+### 1.5.0 — The front door catches up
 
 The web app is five releases behind: it optimises, and that is all. No diff view,
 no budgets, no pricing overlay, no awareness of a config file. Anyone who arrives
@@ -506,7 +568,7 @@ Not scheduled. Listed so the reasoning is on the record.
   absolute figures at the cost of the dependency-free promise — worth doing
   only as an optional package.
 
-  **Unscheduled pending 1.2.0, and that ordering is the point.** Measuring the
+  **Unscheduled pending 1.3.0, and that ordering is the point.** Measuring the
   error band is what decides whether this is needed at all: within 5% on prose and
   the dependency is not worth taking; 40% out on CJK and it is. Deciding now would
   be deciding without the one number that settles it.
