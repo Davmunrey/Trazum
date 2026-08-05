@@ -225,6 +225,21 @@ ${bold('EJEMPLOS')}
     reorderDeclinedRef: (phrase, excerpt) => `hace referencia hacia atrás ("${phrase}"): ${excerpt}`,
     reorderDeclinedAfter: (excerpt) => `va después de un bloque que tenía que quedarse: ${excerpt}`,
     reorderDeclinedMore: (count) => `…y ${count} más, en el fichero de salida.`,
+    reorderPiped: (moved, tokens, declined) => {
+      const head =
+        moved === 0
+          ? 'no se ha podido mover nada con seguridad'
+          : `se ${
+              moved === 1 ? 'ha movido 1 bloque' : `han movido ${moved} bloques`
+            } (~${tokens} tokens) al prefijo cacheable`;
+      const tail =
+        declined === 0
+          ? ''
+          : `; ${
+              declined === 1 ? 'se ha dejado 1 bloque' : `se han dejado ${declined} bloques`
+            } en su sitio`;
+      return `trazum: ${head}${tail}. Ejecuta sin redirigir la salida para ver los motivos.`;
+    },
     reorderNothing: () => 'No se ha podido mover nada con seguridad.',
     reorderReview: () =>
       'Lee el diff: esto ha movido texto en vez de borrarlo, así que la pregunta es si el orden importaba.',

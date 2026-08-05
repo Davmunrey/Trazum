@@ -219,6 +219,15 @@ ${bold('EXAMPLES')}
     reorderDeclinedRef: (phrase, excerpt) => `refers back ("${phrase}"): ${excerpt}`,
     reorderDeclinedAfter: (excerpt) => `after a block that had to stay: ${excerpt}`,
     reorderDeclinedMore: (count) => `…and ${count} more, in the output file.`,
+    reorderPiped: (moved, tokens, declined) => {
+      const head =
+        moved === 0
+          ? 'nothing could safely move'
+          : `moved ${moved} ${moved === 1 ? 'block' : 'blocks'} (~${tokens} tokens) into the cacheable prefix`;
+      const tail =
+        declined === 0 ? '' : `; ${declined} ${declined === 1 ? 'block' : 'blocks'} left in place`;
+      return `trazum: ${head}${tail}. Run without redirecting output for the reasons.`;
+    },
     reorderNothing: () => 'Nothing could safely move.',
     reorderReview: () =>
       'Read the diff: this moved text rather than deleting it, so the question is whether the order mattered.',

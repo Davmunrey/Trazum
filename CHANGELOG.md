@@ -10,6 +10,29 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+**A piped `--reorder` said nothing about what it had done.** Redirecting the
+output takes the "prompt and nothing else" path, which is right for every other
+transformation — they delete, and the diff shows it. This one moves text, and
+piping it made both the move and the refusals invisible. That is precisely what
+the module promises not to do: *"a saving Trazum chose not to take is one the
+author cannot evaluate."*
+
+One line now goes to **stderr**, so stdout still carries the prompt and nothing
+else:
+
+```
+trazum: moved 1 block (~1,001 tokens) into the cacheable prefix. Run without redirecting output for the reasons.
+trazum: nothing could safely move; 2 blocks left in place. Run without redirecting output for the reasons.
+```
+
+**The version comment added yesterday named a version that does not exist.** The
+README's SHA pin read `# 1.1.0` against manifests reading `1.0.0` — no such tag,
+no such package. The test written to stop exactly this class of drift only
+required `#\s*v?\d`, so it passed. It now compares the comment against
+`package.json`, and fails on the string it was shipped with. A test that admits
+only the shape of an answer will accept a wrong one.
+
+
 **The README recommended a tag that did not exist.** `Davmunrey/Trazum@v1.0.0`
 was the copy-pasteable Actions example for a whole release, and no such tag was
 ever pushed — so anyone following the quickstart got a workflow that could not

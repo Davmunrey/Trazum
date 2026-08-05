@@ -618,6 +618,7 @@ describe('the packaged Action', () => {
     // so the copy-pasteable example 404'd, and a tag at all, which is the exact
     // movable ref SECURITY.md warns against. Nothing was checking.
     const SHA_PIN = /^Davmunrey\/Trazum@[0-9a-f]{40}$/;
+    const VERSION = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')).version;
     const bad = [];
 
     for (const name of ['README.md', 'SECURITY.md', 'CONTRIBUTING.md', 'docs/authoring-rules.md']) {
@@ -632,8 +633,19 @@ describe('the packaged Action', () => {
         // version, and the changelog's record of what past releases did, are not.
         const ref = /^\s*(?:- )?uses:\s*(Davmunrey\/Trazum\S*)/.exec(line);
         if (!ref) continue;
-        if (!SHA_PIN.test(ref[1])) bad.push(`${name}: ${ref[1]}`);
-        else if (!/#\s*v?\d/.test(line)) bad.push(`${name}: ${ref[1]} (no version comment)`);
+        if (!SHA_PIN.test(ref[1])) {
+          bad.push(`${name}: ${ref[1]}`);
+          continue;
+        }
+        // The comment has to name a version that exists, not one we hope to
+        // release. The first pass at this test only asked for `#\s*v?\d`, and
+        // the fix it was written to guard shipped saying `# 1.1.0` against
+        // manifests reading 1.0.0 — a version with no tag and no package.
+        const comment = /#\s*v?(\d+\.\d+\.\d+)/.exec(line);
+        if (!comment) bad.push(`${name}: ${ref[1]} (no version comment)`);
+        else if (comment[1] !== VERSION) {
+          bad.push(`${name}: comment says ${comment[1]}, the manifests say ${VERSION}`);
+        }
       }
     }
 
