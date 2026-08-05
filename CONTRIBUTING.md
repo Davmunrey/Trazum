@@ -156,3 +156,9 @@ If it breaks the API, that entry goes first in its version and carries the
 migration.
 
 Run `npm run verify` before pushing and read its exit code, not its output.
+
+## Releasing
+
+Maintainers only, and documented separately because getting it wrong is the one
+mistake here with no correction: [docs/releasing.md](docs/releasing.md). A tag
+matching `v*.*.*` publishes; everything else is a dry run.

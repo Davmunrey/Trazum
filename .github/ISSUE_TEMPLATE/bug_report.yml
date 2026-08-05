@@ -1,0 +1,105 @@
+name: Bug report
+description: Trazum did something wrong, or did not do something it says it does.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Please write in English** — [CONTRIBUTING.md](../blob/main/CONTRIBUTING.md)
+        explains why: English is the source of truth every locale is translated from.
+
+        **Do not paste a real prompt if it contains anything private.** Trazum runs
+        entirely on your machine and never sends a prompt anywhere; an issue is a
+        public web page and does. A reduced version that still reproduces the
+        problem is worth more here than the real one anyway.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What Trazum did, and what you expected instead.
+      placeholder: |
+        `trazum optimize --reorder` moved a block that refers to the text above it,
+        so the rearranged prompt no longer makes sense.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: The prompt, and the command
+      description: >
+        The smallest prompt that still shows the problem, and the exact command.
+        This is the single most useful field: a report with a reproduction is
+        usually fixed the same day, and one without usually is not fixed at all.
+      render: text
+      placeholder: |
+        $ cat prompt.txt
+        You are an agent.
+
+        Customer message: {{message}}
+
+        Summarise the text above.
+
+        $ trazum optimize prompt.txt --reorder
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: What Trazum printed
+      description: >
+        The whole report, not just the line that looks wrong — the surrounding
+        figures are often what identifies the cause. Run with `NO_COLOR=1` if you
+        are pasting from a terminal.
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: >
+        `git rev-parse --short HEAD` if you cloned the repository, or the version
+        from `package.json`. There is no published npm package yet.
+      placeholder: 588f9e7 (or 1.0.0)
+    validations:
+      required: true
+
+  - type: input
+    id: node
+    attributes:
+      label: Node version and platform
+      description: The output of `node --version`, and your operating system.
+      placeholder: v22.11.0 on macOS 15
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Where
+      multiple: true
+      options:
+        - CLI (trazum optimize / check / diff / eval)
+        - GitHub Action
+        - Library (@trazum/core)
+        - Web app
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: >
+            The prompt above contains nothing private — no customer data, no keys,
+            no internal hostnames.
+          required: true
+        - label: >
+            I ran `npm run verify` on a clean clone and it passed, so this is not a
+            broken build on my machine.
+          required: false

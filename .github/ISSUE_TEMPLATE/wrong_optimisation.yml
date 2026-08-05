@@ -1,0 +1,89 @@
+name: A rule changed what my prompt asks for
+description: Trazum shortened or rearranged a prompt and the meaning moved with it.
+labels: [bug, correctness]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **This is the report that matters most.** Trazum's whole claim is one
+        sentence: *it reduces what an AI call costs without changing what the prompt
+        asks for.* A rule that saves tokens and quietly changes the meaning is not a
+        smaller version of a good outcome — it is the failure the product exists to
+        avoid, and it will be treated as more urgent than anything else here.
+
+        Please write in English, and **do not paste a real prompt if it contains
+        anything private** — an issue is a public page.
+
+  - type: input
+    id: rule
+    attributes:
+      label: Which rule
+      description: >
+        The report names every rule that fired, with its id. If it was `--reorder`
+        rather than a rule, write `reorder`. If you are not sure, leave it blank and
+        the before/after below will identify it.
+      placeholder: verbose-phrases
+    validations:
+      required: false
+
+  - type: textarea
+    id: before
+    attributes:
+      label: Before
+      description: The prompt as you wrote it, reduced to the part that shows the problem.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: after
+    attributes:
+      label: After
+      description: What Trazum produced.
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: meaning
+    attributes:
+      label: What the meaning change is
+      description: >
+        In your words: what did the original ask for that the rewrite does not?
+        Be specific about the behaviour that would differ — "the model no longer
+        knows to ask for the order number first" tells us more than "it reads worse".
+      placeholder: >
+        The original pinned the answer to the customer's own language. The rewrite
+        dropped "in the customer's language", so it now answers in whatever language
+        the instructions are written in.
+    validations:
+      required: true
+
+  - type: input
+    id: level
+    attributes:
+      label: Level
+      description: >
+        `safe` or `aggressive`. This changes the severity: `safe` promises no
+        semantic risk at all, so a meaning change there is a broken promise rather
+        than a judgement call. `aggressive` asks you to read the diff — but it still
+        should not change what the prompt asks for.
+      placeholder: safe
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      placeholder: 588f9e7 (or 1.0.0)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: The prompt above contains nothing private.
+          required: true

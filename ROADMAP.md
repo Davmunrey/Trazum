@@ -440,6 +440,59 @@ The same lesson applied to the help: `--reorder` shipped accepted and absent fro
 
 ---
 
+### 1.2.0 — Releasing without remembering
+
+Publishing is the one action in this repository that cannot be undone: npm allows
+unpublishing for 72 hours and then the version number is spent for good. Until now
+it was also entirely manual — build, tag, check the tarball, publish, remember all
+of it in the right order.
+
+A tag matching `v*.*.*` now runs the release: full `verify`, a report of exactly
+what each tarball would contain, then both packages.
+
+**Trusted publishing over a stored token**, which is the decision in this release
+rather than an implementation detail. A long-lived `NPM_TOKEN` would be the
+highest-value credential this project holds, sitting in repository secrets
+permanently for something used a few times a year — and unlike every other secret
+here, a leak is not recoverable by rotation alone, because whatever was published
+under it stays published. OIDC needs `id-token: write` on the job and stores
+nothing. A test asserts no workflow reaches for a publish token at all.
+
+**Provenance comes free with OIDC**, so a consumer can verify a tarball was built
+from this repository, at this commit, by this workflow.
+
+Three refusals, each one a mistake that cannot be corrected afterwards:
+
+- **The tag and the manifests must agree.** A tag reading `v1.4.0` against
+  manifests reading `1.3.0` publishes 1.3.0 under a release note for 1.4.0.
+  `publish.test.js` already asserts every manifest carries the *same* version;
+  the workflow checks that the shared version is the tagged one.
+- **`verify` runs before anything is published**, and it is the same `verify` a
+  pull request runs. A release gate that checks less than the pull-request gate
+  lets through exactly what the tag was for. A test asserts the ordering.
+- **`workflow_dispatch` is dry-run only.** Every publish step is gated on a tag,
+  because a publish reachable without one is a release with no version to check
+  against. A test asserts the gate on each step.
+
+`@trazum/core` publishes first: the CLI depends on it at an exact version, so the
+other order leaves a window where installing the CLI fails on a dependency that
+does not exist yet.
+
+**Still needs the maintainer, once.** The `@trazum` scope does not exist on npm
+(`@trazum/core` returns 404), so it has to be created and this repository
+configured as a trusted publisher for both packages.
+[docs/releasing.md](docs/releasing.md) has the exact fields, including the one
+that is easy to get wrong: npm's *Environment* must read `release`, because the
+workflow declares it and the OIDC token carries the claim — leave it blank and
+the publish is rejected with an error about the token rather than about the
+mismatch.
+
+Nothing to paste into secrets and nothing to rotate. Until it is done a tag push
+runs every check and then fails at the publish step, which is the right failure:
+loudly, having published nothing.
+
+---
+
 ## Next
 
 1.0 froze the API. It did not finish the product, and it left two things this
@@ -447,38 +500,10 @@ file should say out loud: the central accuracy claim has never been measured, an
 Trazum governs prompt *files* rather than the prompts an application actually
 sends.
 
-**Why release automation is no longer first.** It was 1.1.0 until the entry itself
-made clear it cannot ship: publishing needs the `@trazum` scope to exist on npm,
-and that is the maintainer's to create. Rather than hold the queue behind a
-prerequisite outside the repository, the release that could ship shipped. The
-ordering below is still a commitment; this file owes an explanation when it
-changes, and that is the explanation.
-
-### 1.2.0 — Releasing without remembering
-
-Three releases are queued behind this one, and each currently needs a human to
-remember to build, tag, verify the tarball and publish. Automating the mechanism
-before using it three times is worth doing first.
-
-- A tag-triggered workflow: build, full `verify`, assert the tarball contents,
-  publish both packages.
-- **npm trusted publishing (OIDC), not an `NPM_TOKEN` secret.** A long-lived
-  publish token would be the highest-value credential this project holds, sitting
-  in repository secrets permanently for something used a few times a year. OIDC
-  needs `id-token: write` on the job and stores nothing — which is the posture the
-  rest of the repository already takes. Provenance attestation comes free with it,
-  so a consumer can verify a tarball came from this repository and this commit.
-- It must **refuse to publish a version that does not match the tag**. A tag
-  reading `v1.4.0` against manifests reading `1.3.0` is the one mistake that
-  cannot be corrected after 72 hours.
-- `publish.test.js` is the gate, reused rather than duplicated.
-
-**Needs the maintainer once:** the `@trazum` scope does not exist on npm yet
-(`@trazum/core` currently 404s), so it has to be created and this repository
-configured as a trusted publisher. Nothing to paste into secrets, nothing to
-rotate.
-
 ### 1.3.0 — The error band, measured
+
+Three releases are queued behind the automation that just shipped, and this is the
+first of them.
 
 `±15%` is printed on every report, appears twice in the README and in the
 tokenizer's own doc comment, and **nothing asserts it**. `estimateTokens` is
