@@ -1,0 +1,45 @@
+{
+  "name": "@trazum/core",
+  "version": "0.1.0",
+  "description": "Núcleo del optimizador de prompts: reglas deterministas, recuento de tokens, precios y cálculo de ahorro.",
+  "license": "MIT",
+  "author": "David Muñoz Rey",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Davmunrey/Trazum.git",
+    "directory": "packages/core"
+  },
+  "keywords": [
+    "prompt",
+    "llm",
+    "tokens",
+    "cost",
+    "optimizer",
+    "claude",
+    "openai"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test test/*.test.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}
