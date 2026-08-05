@@ -52,13 +52,30 @@ rejected rather than ignored in 0.9.0.
   and reports when a cap stopped it early. A link to `/etc` would turn "check
   the prompts folder" into printing token counts for files outside the project;
   a link loop would turn it into a hang.
-- New security invariant: only `config.ts` and `walk.ts` may touch the
-  filesystem. The web app exposes `optimize()` over HTTP with a prompt from the
-  request body, so a file read appearing on that path would be path traversal
-  reachable by anyone who can reach the API.
+- **New entry point, `@trazum/core/node`**, holding everything that reads the
+  filesystem: `loadConfig` and `walkPrompts`. The main entry point stays free of
+  Node builtins, which it has to be — `apps/web` bundles it for the browser, and
+  a single `node:fs` import anywhere in that graph fails the build outright. The
+  pure halves (`parseConfig`, `budgetFor`, the types and key lists) are on both.
+- Two new security invariants. The first names which modules may read the disk;
+  the second **walks the import graph from the main entry point** and fails if
+  any Node builtin is reachable from it. The first version of this change shipped
+  with only the module allow-list, which passed while `config.ts` was also
+  re-exported from `index.ts` — a file allow-list is not a boundary, the import
+  graph is. That matters beyond the build: the web app hands `optimize()` a
+  prompt straight from a request body, so a file read reachable from that entry
+  point would be path traversal available to anyone who can reach the API.
+- The config file is measured and read through **one file handle**. Calling
+  `stat(path)` and then `readFile(path)` resolves the name twice, so what gets
+  read is not necessarily what got measured, and a symlink swapped in between
+  defeats the size limit. Found by CodeQL.
+- Budget patterns are checked for absoluteness with an explicit pattern rather
+  than `path.isAbsolute`, which is platform-dependent: on Linux it reads
+  `C:\prompts` as relative, so a Windows-shaped pattern would pass validation on
+  a Linux CI runner and then match nothing.
 - `editDistance` moves into core as `nearestName` and is now shared between the
   unknown-flag and unknown-key suggestions rather than duplicated.
-- Tests grow from 228 to 298.
+- Tests grow from 228 to 301.
 
 ## 0.9.0
 

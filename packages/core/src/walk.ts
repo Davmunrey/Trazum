@@ -1,7 +1,7 @@
 import { readdir } from 'node:fs/promises';
 import { extname, join, relative, sep } from 'node:path';
 
-import { DEFAULT_EXTENSIONS } from './config.js';
+import { DEFAULT_EXTENSIONS } from './config-schema.js';
 
 /**
  * Finding the prompt files under a directory.

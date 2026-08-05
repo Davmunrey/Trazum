@@ -80,7 +80,7 @@ version stands. It never returns something worse than where it started.
 ```bash
 npm install
 npm run build      # core + cli
-npm test           # 298 tests
+npm test           # 301 tests
 ```
 
 ### CLI
@@ -400,6 +400,22 @@ formatSignedUsd(change.monthlyDeltaUsd) //  "+$9.25"
 change.advisories.appeared;             //  ['contradictory-instructions']
 change.rules.noLongerFiring;            //  what the edit cleaned up
 ```
+
+**Two entry points.** `@trazum/core` is browser-safe and imports no Node
+builtins — that is enforced by a test that walks the import graph, not by
+convention, because the web app bundles it and one `node:fs` import anywhere in
+that graph fails the build. Anything that reads the filesystem lives on
+`@trazum/core/node`:
+
+```ts
+import { loadConfig, walkPrompts } from '@trazum/core/node';
+
+const { config, path } = await loadConfig();   // null path = none found
+const { files, truncated } = await walkPrompts('prompts/');
+```
+
+`parseConfig` and `budgetFor` are pure functions of their arguments, so they sit
+on both.
 
 ---
 

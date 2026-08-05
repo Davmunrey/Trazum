@@ -285,7 +285,16 @@ third time it has been the right call.
   backtracks exponentially, and on a pull request these patterns come from
   whoever opened it.
 - The directory walk does not follow symlinks, bounds depth and width, and says
-  when a bound stopped it early.
+  when a bound stopped it early. The config file is measured and read through a
+  single handle, so the size limit cannot be defeated by swapping the file
+  between the check and the read.
+- **`@trazum/core` gains a second entry point.** Everything that reads the
+  filesystem moved to `@trazum/core/node`, and a test now walks the import graph
+  to prove no Node builtin is reachable from the browser-safe one. The first
+  attempt at this had only a file allow-list, which passed while the same file
+  was re-exported from the main entry point — a file allow-list is not a
+  boundary. It matters past the build: the web app hands `optimize()` a prompt
+  from a request body, so a file read reachable from there is path traversal.
 - `locale` is the one config key the environment outranks: a repository choosing
   the language of its CI logs should not choose the language of a contributor's
   terminal.

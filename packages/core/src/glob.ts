@@ -125,7 +125,11 @@ export function matchGlob(pattern: string, path: string): boolean {
  */
 export function specificity(pattern: string): number {
   const literals = pattern.replace(/[*?]/g, '').length;
-  return literals * 1000 + pattern.length;
+  // The multiplier has to exceed every possible tie-breaker value, or the
+  // primary rule stops holding: at a multiplier of 1,000 a pattern with one
+  // literal and 1,024 characters scores the same as one with two literals and
+  // 24, and the stated "more literals wins" quietly becomes a coin toss.
+  return literals * (MAX_PATTERN_LENGTH + 1) + pattern.length;
 }
 
 /**

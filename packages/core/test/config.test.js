@@ -11,7 +11,7 @@ import {
   loadConfig,
   parseConfig,
   walkPrompts,
-} from '../dist/index.js';
+} from '../dist/node.js';
 
 const scratch = () => mkdtemp(join(tmpdir(), 'trazum-config-'));
 

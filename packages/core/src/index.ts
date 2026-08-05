@@ -90,7 +90,15 @@ export type {
   AdvisoryDelta,
 } from './compare.js';
 
-// Project-level configuration
+// Glob matching for config budget patterns. Pure, so it belongs here; the
+// config loader and directory walk that use it read the filesystem and live in
+// "@trazum/core/node" instead — see node.ts for why that split is structural.
+export { matchGlob, mostSpecificMatch, specificity } from './glob.js';
+export { editDistance, nearestName } from './nearest.js';
+
+// The config *schema*, without the loader: validation is a pure function of a
+// string, so it belongs on the browser-safe entry point. `loadConfig`, which
+// actually opens the file, is only in "@trazum/core/node".
 export {
   CONFIG_FILENAME,
   CONFIG_KEYS,
@@ -100,16 +108,6 @@ export {
   MAX_CONFIG_BYTES,
   MAX_CONFIG_SEARCH_DEPTH,
   budgetFor,
-  loadConfig,
   parseConfig,
-} from './config.js';
-export type {
-  LoadConfigOptions,
-  LoadedConfig,
-  ResolvedBudget,
-  TrazumConfig,
-} from './config.js';
-export { matchGlob, mostSpecificMatch, specificity } from './glob.js';
-export { MAX_WALK_DEPTH, MAX_WALK_FILES, walkPrompts } from './walk.js';
-export type { WalkOptions, WalkResult } from './walk.js';
-export { editDistance, nearestName } from './nearest.js';
+} from './config-schema.js';
+export type { ResolvedBudget, TrazumConfig } from './config-schema.js';

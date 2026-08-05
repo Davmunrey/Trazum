@@ -3,13 +3,10 @@ import { readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import {
-  CONFIG_FILENAME,
-  DEFAULT_EXTENSIONS,
   DEFAULT_USAGE,
   LOCALES,
   PRICING_LAST_REVIEWED,
   RULES,
-  budgetFor,
   comparePrompts,
   countTokensAnthropic,
   getModel,
@@ -18,14 +15,12 @@ import {
   formatSignedUsd,
   getMessages,
   listModels,
-  loadConfig,
   nearestName,
   optimize,
   providerFromEnv,
   evaluate,
   refineWithLlm,
   reviewExamples,
-  walkPrompts,
   withExactTokenCounts,
 } from '@trazum/core';
 import type {
@@ -35,9 +30,18 @@ import type {
   OptimizationResult,
   RuleId,
   RuleLevel,
-  TrazumConfig,
   UsageProfile,
 } from '@trazum/core';
+// Everything that reads the filesystem, on its own entry point so the web
+// bundle cannot reach it. See packages/core/src/node.ts.
+import {
+  CONFIG_FILENAME,
+  DEFAULT_EXTENSIONS,
+  budgetFor,
+  loadConfig,
+  walkPrompts,
+} from '@trazum/core/node';
+import type { TrazumConfig } from '@trazum/core/node';
 
 import { detectLocale, getCliMessages } from './i18n/index.js';
 import type { CliMessages } from './i18n/index.js';
