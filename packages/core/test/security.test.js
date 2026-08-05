@@ -521,6 +521,56 @@ describe('the packaged Action', () => {
     assert.match(comment, /\|\| true/, 'the comment step must not be able to fail the job');
   });
 
+  it('every third-party action is pinned to a commit SHA', () => {
+    // A tag can be moved and a branch moves by design, so `@v3` means "whatever
+    // that publisher pushes there next" — with our token and our secrets in
+    // scope. `actions/dependency-review-action@v5` was the sharpest case: its
+    // majors are published as *branches*, not tags.
+    //
+    // Pinning only freezes you if nothing bumps it, and .github/dependabot.yml
+    // has a github-actions ecosystem entry that does. The `# vN` comment is what
+    // Dependabot reads to know which line it is looking at.
+    const SHA = /^[0-9a-f]{40}$/;
+    const unpinned = [];
+
+    for (const name of readdirSync(join(repoRoot, '.github/workflows'))) {
+      if (!/\.ya?ml$/.test(name)) continue;
+      const source = readFileSync(join(repoRoot, '.github/workflows', name), 'utf8');
+
+      for (const [, ref] of source.matchAll(/^\s*(?:- )?uses:\s*(\S+)/gm)) {
+        // `./` is this repository's own action, checked out at the tested commit.
+        if (ref.startsWith('./')) continue;
+        const version = ref.split('@')[1];
+        if (!version || !SHA.test(version)) unpinned.push(`${name}: ${ref}`);
+      }
+    }
+
+    assert.deepEqual(
+      unpinned,
+      [],
+      `an action is referenced by a movable ref rather than a commit:\n  ${unpinned.join('\n  ')}`,
+    );
+  });
+
+  it('every pinned action says which version it is', () => {
+    // The SHA is the security property; the trailing `# vN` is what makes the
+    // file readable and what Dependabot matches on. A pin with no comment is a
+    // line nobody can review and nothing will ever update.
+    const missing = [];
+
+    for (const name of readdirSync(join(repoRoot, '.github/workflows'))) {
+      if (!/\.ya?ml$/.test(name)) continue;
+      const source = readFileSync(join(repoRoot, '.github/workflows', name), 'utf8');
+
+      for (const line of source.split('\n')) {
+        if (!/^\s*(?:- )?uses:\s*\S+@[0-9a-f]{40}/.test(line)) continue;
+        if (!/#\s*v?\d/.test(line)) missing.push(`${name}: ${line.trim()}`);
+      }
+    }
+
+    assert.deepEqual(missing, [], `a pinned action has no version comment:\n  ${missing.join('\n  ')}`);
+  });
+
   it('no workflow or the action uses pull_request_target', () => {
     // The event a reviewer reaches for when a fork PR cannot post a comment. It
     // runs with a writable token against the BASE repository while checking out
