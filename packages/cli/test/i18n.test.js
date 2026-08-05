@@ -63,6 +63,50 @@ describe('catalogue parity', () => {
     assert.deepEqual(Object.keys(es.models.columns).sort(), Object.keys(en.models.columns).sort());
   });
 
+  it('every command appears in the help, in every locale', () => {
+    // Regression: `eval` shipped fully implemented and completely
+    // undiscoverable — the only way to find it was reading the changelog. A
+    // command the help does not mention may as well not exist.
+    const COMMANDS = ['optimize', 'check', 'eval', 'models', 'rules'];
+    const defaults = {
+      model: 'claude-opus-5',
+      callsPerMonth: 1000,
+      avgOutputTokens: 500,
+      cacheHitRate: 0.9,
+      locales: LOCALES,
+    };
+
+    for (const locale of LOCALES) {
+      const help = getCliMessages(locale).help(defaults, (s) => s);
+      for (const command of COMMANDS) {
+        assert.ok(
+          help.includes(`trazum ${command}`),
+          `${locale}: help never mentions "trazum ${command}"`,
+        );
+      }
+    }
+  });
+
+  it('every required flag is documented in every locale', () => {
+    // A required flag missing from the help is a command that fails on first
+    // use with an error the reader cannot act on.
+    const REQUIRED_FLAGS = ['--max-tokens', '--cases'];
+    const defaults = {
+      model: 'claude-opus-5',
+      callsPerMonth: 1000,
+      avgOutputTokens: 500,
+      cacheHitRate: 0.9,
+      locales: LOCALES,
+    };
+
+    for (const locale of LOCALES) {
+      const help = getCliMessages(locale).help(defaults, (s) => s);
+      for (const flag of REQUIRED_FLAGS) {
+        assert.ok(help.includes(flag), `${locale}: help does not document ${flag}`);
+      }
+    }
+  });
+
   it('every catalogue renders a non-empty help screen', () => {
     const defaults = {
       model: 'claude-opus-5',

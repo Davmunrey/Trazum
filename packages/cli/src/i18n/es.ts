@@ -10,6 +10,7 @@ export const es: CliMessages = {
 ${bold('USO')}
   trazum optimize <fichero|-> [opciones]
   trazum check <fichero|-> --max-tokens <n> [opciones]
+  trazum eval <fichero> --cases <fichero> [opciones]
   trazum models
   trazum rules
 
@@ -38,6 +39,18 @@ ${bold('OPCIONES DE check')}
   Pensado para CI: sale con código 1 si el prompt supera el presupuesto,
   así una plantilla que crece sin control rompe la build en vez de la factura.
 
+${bold('OPCIONES DE eval')}
+  --cases <fichero>           Entradas a probar, una por línea o array JSON. Obligatorio.
+  --level <safe|aggressive>   Nivel con el que optimizar antes de comparar.
+  --concurrency <n>           Casos en paralelo. Por defecto: 3.
+  --json                      Resultado en JSON.
+
+  Ejecuta las dos versiones del prompt sobre tus casos y dice si la
+  optimización ha cambiado las respuestas. Cuesta TRES llamadas por caso: el
+  original dos veces, para medir la varianza propia del modelo, y el optimizado
+  una. Esa base es la vara de medir: sin ella, un porcentaje de divergencia no
+  significa nada. Sale con código 1 cuando las respuestas divergen de verdad.
+
 ${bold('LLM OPCIONAL')}
   El núcleo es determinista y gratis. Con --llm se añade una pasada de
   compresión semántica usando el proveedor que configures por entorno:
@@ -58,6 +71,7 @@ ${bold('EJEMPLOS')}
   trazum optimize prompt.txt --calls 50000 --diff
   cat prompt.md | trazum optimize - --level aggressive --json
   trazum optimize prompt.txt --llm -o prompt.optimizado.txt
+  trazum eval prompt.txt --cases casos.txt --level aggressive
 `,
 
   errors: {
