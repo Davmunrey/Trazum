@@ -34,35 +34,50 @@ function tableRows(markdown) {
 
 describe('escaping a table cell', () => {
   // Paths come from a repository, and on a pull request that means from whoever
-  // opened it. Each of these is a legal filename.
-  it('escapes a pipe, which would otherwise end the cell', () => {
-    assert.equal(mdCell('a|b.txt'), '`a\\|b.txt`');
+  // opened it. Every value here is a legal POSIX filename.
+  it('emits no pipe character at all, so the row cannot split', () => {
+    // The property that replaces reasoning about the row splitter's backslash
+    // handling: there is nothing for it to split on.
+    for (const hostile of ['a|b.txt', 'a\\|b.txt', 'a\\\\|b.txt', '|||', 'a\\b|c.txt']) {
+      assert.doesNotMatch(mdCell(hostile), /\|/, `a raw pipe survived for ${hostile}`);
+    }
   });
 
-  it('fences past the longest run of backticks', () => {
-    assert.equal(mdCell('a`b.txt'), '``a`b.txt``');
-    assert.equal(mdCell('a``b.txt'), '```a``b.txt```');
+  it('leaves a backslash alone, because it now needs no escaping', () => {
+    // CodeQL flagged the previous version for exactly this: it escaped `|` and
+    // not `\`, so `a\|b` came out as `a\\|b` and its fate depended on how the
+    // splitter reads a backslash pair.
+    assert.equal(mdCell('a\\b.txt'), '<code>a\\b.txt</code>');
+    assert.equal(mdCell('a\\|b.txt'), '<code>a\\&#124;b.txt</code>');
   });
 
-  it('pads when the value starts or ends with a backtick', () => {
-    // GFM strips one leading and trailing space back off, so this round-trips.
-    assert.equal(mdCell('`x'), '`` `x ``');
-    assert.equal(mdCell('x`'), '`` x` ``');
+  it('treats a backtick as an ordinary character', () => {
+    // Inside <code> it is literal, so there is no fence to widen.
+    assert.equal(mdCell('a`b.txt'), '<code>a`b.txt</code>');
+    assert.equal(mdCell('```'), '<code>```</code>');
+    assert.equal(mdCell('`x'), '<code>`x</code>');
+  });
+
+  it('encodes the HTML metacharacters, ampersand first', () => {
+    assert.equal(mdCell('<b>&amp;'), '<code>&lt;b&gt;&amp;amp;</code>');
+    assert.equal(mdCell('a&b'), '<code>a&amp;b</code>');
+    // Double-encoding would render the literal text "&#124;" for a plain pipe.
+    assert.equal(mdCell('a|b'), '<code>a&#124;b</code>');
   });
 
   it('flattens anything vertical, which would end the row', () => {
-    assert.equal(mdCell('a\nb'), '`a b`');
-    assert.equal(mdCell('a\r\nb'), '`a b`');
-    assert.equal(mdCell('a\tb'), '`a b`');
+    assert.equal(mdCell('a\nb'), '<code>a b</code>');
+    assert.equal(mdCell('a\r\nb'), '<code>a b</code>');
+    assert.equal(mdCell('a\tb'), '<code>a b</code>');
   });
 
   it('keeps a hostile filename inside one cell', () => {
-    const hostile = 'prompts/a|b`c``d\ne.txt';
+    const hostile = 'prompts/a|b`c``d\\|e\nf<g>&h.txt';
     const row = tableRows(`| x | ${mdCell(hostile)} | 1 |`)[0];
     assert.equal(row.length, 3, `the filename broke the row: ${row.join(' // ')}`);
   });
 
-  it('is empty for an empty value rather than an empty code span', () => {
+  it('is empty for an empty value rather than an empty element', () => {
     assert.equal(mdCell(''), '');
     assert.equal(mdCell('   '), '');
   });

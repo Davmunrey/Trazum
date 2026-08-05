@@ -59,11 +59,17 @@ default.**
 - The poster lives in `action/post-comment.mjs`, outside the workspaces and in
   plain ESM with no dependencies. It needed no security invariant relaxed —
   editing one for convenience is not a reason.
-- **Table cells are escaped for three separate hazards**: a `|` ends the cell
-  even inside a code span, a backtick ends the span so the fence has to be
-  longer than the longest run in the value, and a newline ends the row. Paths
-  come from a repository, and on a pull request that means from whoever opened
-  it; `prompts/a|b``c.txt` is a legal filename.
+- **Table cells are `<code>` with HTML entities, not backtick spans.** The
+  obvious version — wrap in backticks, escape `|` as `\|`, widen the fence past
+  the longest backtick run — did not handle a backslash, which CodeQL caught:
+  given `a\|b.txt` it emitted `` `a\\|b.txt` ``, and whether that survives
+  depends on whether the row splitter reads `\\|` as an escaped pipe or as an
+  escaped backslash followed by a live one. It happens to work in cmark-gfm.
+  An escaper whose correctness rests on that is not an escaper. With entities
+  there is **no `|` in the output at all**, so no scanner can split the row;
+  backticks inside `<code>` are literal, so the fence arithmetic disappears; and
+  a backslash needs no treatment. Three hazard classes collapse into one rule.
+  Paths come from a repository, and on a pull request from whoever opened it.
 - The check verdict counts **only what was measured**. "All 3 prompts are within
   budget" over a set where one had no budget claims something nobody
   established.
@@ -74,7 +80,7 @@ default.**
   check dressed as a security one, and it broke the moment an input legitimately
   gated a step instead of being forwarded — replaced by the positional rule,
   which is what actually matters.
-- Tests grow from 303 to 358, including a new `action/test` suite wired into
+- Tests grow from 303 to 359, including a new `action/test` suite wired into
   `npm test`.
 
 **A security guardrail was ineffective, and is now enforced with positive

@@ -25,29 +25,40 @@ export const MAX_SUMMARY_CHARS = 900_000;
 /**
  * A value fit to sit in a table cell.
  *
- * Three separate hazards, all of which turn a report into a broken table or a
- * lie about a filename:
- *
- * - A `|` ends the cell. It has to be escaped **even inside a code span** — GFM
- *   splits the row on pipes before it looks for spans.
- * - A backtick ends the code span, so the fence has to be longer than the
- *   longest run of backticks in the value.
- * - A newline ends the row. Anything vertical becomes a single space.
- *
  * Paths come from a repository, and on a pull request that means from whoever
- * opened it. `prompts/a|b\`\`.txt` is a legal filename.
+ * opened it. `prompts/a|b``c\|d.txt` is a legal POSIX filename, and each of
+ * those characters breaks a markdown table in its own way.
+ *
+ * **This emits `<code>` with HTML entities rather than a backtick span, and the
+ * reason is that the entity version has no failure mode to reason about.** The
+ * first version did the obvious thing — wrap in backticks, escape `|` as `\|`,
+ * widen the fence past the longest backtick run — and CodeQL was right to flag
+ * it: it did not handle a backslash. Given `a\|b.txt` it emitted `` `a\\|b.txt` ``,
+ * and whether that survives depends on whether the row splitter reads `\\|` as
+ * an escaped pipe or as an escaped backslash followed by a live one. It happens
+ * to work in cmark-gfm today. An escaper whose correctness rests on that is not
+ * an escaper.
+ *
+ * With entities there is **no `|` character in the output at all**, so the row
+ * cannot split under any scanner; backticks inside `<code>` are literal, so the
+ * fence arithmetic disappears; and a backslash needs no treatment. Three hazard
+ * classes collapse into one rule: encode `&`, `<`, `>` and `|`.
+ *
+ * Newlines still have to go — anything vertical ends the row — so they become a
+ * single space.
  */
 export function mdCell(value: string): string {
   const flat = value.replace(/[\r\n\t]+/g, ' ').trim();
   if (flat === '') return '';
 
-  const longestRun = Math.max(0, ...[...flat.matchAll(/`+/g)].map((m) => m[0].length));
-  const fence = '`'.repeat(longestRun + 1);
-  // A code span whose content starts or ends with a backtick needs padding
-  // spaces, which GFM then strips back off.
-  const pad = flat.startsWith('`') || flat.endsWith('`') ? ' ' : '';
+  const encoded = flat
+    // `&` first, or it would double-encode the entities added below.
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\|/g, '&#124;');
 
-  return `${fence}${pad}${flat.replace(/\|/g, '\\|')}${pad}${fence}`;
+  return `<code>${encoded}</code>`;
 }
 
 /**
