@@ -148,5 +148,50 @@ export const en: CoreMessages = {
       title: 'You are costing this with promotional pricing',
       detail: `${modelName} has introductory pricing of ${promoInput}/${promoOutput} per million tokens until ${until}. After that date it moves to ${listInput}/${listOutput}: your bill goes up even if you change nothing.`,
     }),
+
+    contradictoryInstructions: ({
+      axis,
+      firstValue,
+      firstSnippet,
+      secondValue,
+      secondSnippet,
+      otherCount,
+    }) => ({
+      title: `Two instructions disagree about ${axis}`,
+      detail:
+        `One says ${firstValue} ("${firstSnippet}") and another says ${secondValue} ("${secondSnippet}"). ` +
+        'The model has to pick one, and which one it picks can change between calls — so this is a correctness problem before it is a cost one. ' +
+        'Deleting the instruction you did not mean also shortens the prompt.' +
+        (otherCount > 0
+          ? ` ${otherCount} other ${otherCount === 1 ? 'pair' : 'pairs'} of instructions disagree too.`
+          : ''),
+    }),
+
+    redundantExamples: ({ redundantCount, totalCount, redundantTokens, topSimilarityPct }) => ({
+      title: `${redundantCount} of ${totalCount} examples repeat an earlier one`,
+      detail:
+        `They share ${topSimilarityPct}% or more of their wording with an example that comes before them, and account for about ${n(redundantTokens)} tokens paid for on every call. ` +
+        'Few-shot examples earn their cost by teaching something new; two that demonstrate the same pattern teach it once. ' +
+        'Read them before deleting: an example that looks redundant may be showing a boundary case on purpose.',
+    }),
+  },
+
+  contradictionAxes: {
+    'response-language': 'the language of the answer',
+    'output-format': 'the output format',
+    'response-length': 'how long the answer should be',
+    'reasoning-visibility': 'whether to show the reasoning',
+  },
+
+  contradictionValues: {
+    'fixed-language': 'always the same language',
+    'mirror-language': "the reader's own language",
+    'format-json': 'JSON',
+    'format-markdown': 'Markdown',
+    'format-plain-text': 'plain text',
+    'length-brief': 'keep it brief',
+    'length-detailed': 'go into detail',
+    'reasoning-shown': 'show the reasoning',
+    'reasoning-hidden': 'hide the reasoning',
   },
 };

@@ -79,6 +79,14 @@ describe('catalogue parity', () => {
     assert.deepEqual(Object.keys(es.rules).sort(), Object.keys(en.rules).sort());
     assert.deepEqual(Object.keys(es.advisories).sort(), Object.keys(en.advisories).sort());
     assert.deepEqual(Object.keys(es.llm).sort(), Object.keys(en.llm).sort());
+    assert.deepEqual(
+      Object.keys(es.contradictionAxes).sort(),
+      Object.keys(en.contradictionAxes).sort(),
+    );
+    assert.deepEqual(
+      Object.keys(es.contradictionValues).sort(),
+      Object.keys(en.contradictionValues).sort(),
+    );
   });
 
   it('every advisory renders a non-empty title and detail in every locale', () => {
@@ -119,6 +127,20 @@ describe('catalogue parity', () => {
         listInput: 3,
         listOutput: 15,
       },
+      contradictoryInstructions: {
+        axis: 'the language of the answer',
+        firstValue: 'a fixed language',
+        firstSnippet: 'Always answer in English.',
+        secondValue: "the user's language",
+        secondSnippet: 'Respond in the user language.',
+        otherCount: 1,
+      },
+      redundantExamples: {
+        redundantCount: 2,
+        totalCount: 5,
+        redundantTokens: 180,
+        topSimilarityPct: 88,
+      },
     };
 
     for (const locale of LOCALES) {
@@ -129,6 +151,33 @@ describe('catalogue parity', () => {
         assert.ok(message.detail.trim().length > 0, `${locale}/${key}: empty detail`);
       }
     }
+  });
+
+  it('every contradiction axis and value is named in every locale', () => {
+    for (const locale of LOCALES) {
+      const t = getMessages(locale);
+      for (const [axis, name] of Object.entries(t.contradictionAxes)) {
+        assert.ok(name.trim().length > 0, `${locale} does not name axis "${axis}"`);
+      }
+      for (const [value, name] of Object.entries(t.contradictionValues)) {
+        assert.ok(name.trim().length > 0, `${locale} does not name value "${value}"`);
+      }
+    }
+  });
+
+  it('the contradiction advisory names both sides in the requested locale', () => {
+    // Regression: the axis values were English string literals in the
+    // detector, so a Spanish report read "Una dice a fixed language".
+    const prompt = 'Always answer in English.\n\nRespond in the user language.';
+    const spanish = optimize(prompt, { locale: 'es' }).advisories.find(
+      (a) => a.id === 'contradictory-instructions',
+    );
+    assert.ok(spanish);
+    assert.ok(
+      !/a fixed language|the user's language/.test(spanish.detail),
+      `English value names leaked into the Spanish report: ${spanish.detail}`,
+    );
+    assert.match(spanish.detail, /siempre el mismo idioma/);
   });
 
   it('every LLM rejection reason renders in every locale', () => {

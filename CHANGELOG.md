@@ -3,6 +3,84 @@
 Versioning policy: [VERSIONING.md](VERSIONING.md). Below 1.0, minor versions
 may contain breaking changes, and say so in their first line.
 
+## 0.4.0
+
+Structural analysis: findings that live in the *relationship* between two
+places in a prompt, which no phrase dictionary can see because neither place is
+wrong on its own. Both are advisory — Trazum points, it does not cut.
+
+- **Fixes a corruption bug in `duplicate-lines`.** The rule was deleting the
+  shared `Output:` line from a second few-shot example, leaving it with an
+  input and no output. Two examples mapping different inputs to the same answer
+  is often exactly why both are there. Labelled example fields (`Input:`,
+  `Output:`, `Q:`, `A:`, and Spanish equivalents) are now exempt from
+  line deduplication. This affected the `safe` level, so it could silently
+  damage a prompt anyone ran through Trazum.
+- New `contradictory-instructions` advisory across four axes: response
+  language, output format, response length, and whether to show the reasoning.
+  Reported as a **warning** with both conflicting sentences quoted. It carries
+  no dollar figure — being wrong has no price tag.
+- New `redundant-examples` advisory: few-shot examples that are near-copies of
+  an earlier one, with the tokens they cost per month. It detects copy-paste
+  accumulation (~0.89 similarity for a copied example with one field changed),
+  and deliberately **not** paraphrases (~0.54), which sit too close to
+  genuinely distinct examples (~0.20) to separate without a model.
+- **Advisories now sort by severity before money.** Sorting purely on the
+  dollar figure buried an overflowing context window — and now a contradiction
+  — underneath a saving of a few dollars.
+- New public API: `findContradictions`, `analyzeExamples`, `findExamples`, and
+  the `jaccard` / `normalizeForCompare` similarity helpers, which moved to a
+  shared module so the duplicate rules and the structural analysis cannot
+  disagree about what "near-duplicate" means.
+- Adding a contradiction axis now fails to compile until every catalogue names
+  it, the same guarantee `RuleId` gives rules.
+- Tests grow from 75 to 94.
+
+### Security
+
+Hardening for an open repository taking outside contributions. Full reasoning
+in [SECURITY.md](SECURITY.md).
+
+- **Fixes four SSRF filter bypasses.** The web app's private-host blocklist
+  allowed `https://[::ffff:169.254.169.254]` — the IPv4-mapped IPv6 form of the
+  cloud metadata address, which Node normalises to `[::ffff:a9fe:a9fe]` and the
+  old patterns did not match. Also allowed: a trailing-dot hostname
+  (`localhost.`), the carrier-grade NAT range (`100.64.0.0/10`), and
+  credentials embedded in the URL, which would have been forwarded to whatever
+  the host resolved to and written into any log recording the endpoint.
+- The filter moved from the Next.js route into `@trazum/core` as
+  `validateLlmEndpoint` / `isPrivateHost`, so the most security-sensitive code
+  in the project is unit-tested instead of living untested in an API handler.
+  It returns a reason code rather than a message, so callers localise it and
+  tests assert on the decision.
+- **Fixes two ReDoS denial-of-service bugs**, both reachable from the public
+  HTTP endpoint, both found by CodeQL after the first round of ReDoS tests had
+  passed:
+  - `whitespace` — a **`safe`-level rule present since 0.1.0**. Its
+    trailing-whitespace pattern restarted at every position inside a whitespace
+    run and failed from each one when the run did not end the line: 17 seconds
+    on a 100 KB line of spaces, well inside the 400 KB the API accepts.
+    Anchored to the start of a run, it is now 3 ms at 400 KB.
+  - The few-shot label patterns added in this release ended in three adjacent
+    unbounded quantifiers, measured at O(n²) — 651 ms at 40 000 spaces, about a
+    minute at the size cap. Their quantifiers are now bounded.
+  - The ReDoS suite gained the fixture shape it was missing. The original
+    fixtures were all *repeated tokens*, which exercise the happy path over and
+    over; neither bug needed that, they needed a plausible prefix followed by a
+    long run that never completes the match.
+- New `security.test.js` enforcing four invariants on every pull request: the
+  SSRF filter fails closed, the core and CLI carry zero runtime dependencies,
+  `fetch` appears only in the two modules that exist to make calls, and no
+  regex exhibits catastrophic backtracking under pathological input.
+- Workflows run with `permissions: contents: read` by default,
+  `npm ci --ignore-scripts`, and `persist-credentials: false`.
+- Added CodeQL (`security-extended`), dependency review, a weekly `npm audit`,
+  Dependabot, `CODEOWNERS`, and an importable branch ruleset at
+  `.github/rulesets/main-branch.json`.
+- `SECURITY.md` documents the threat model, private reporting, the settings an
+  admin still has to switch on, and the limits that are not covered — DNS
+  rebinding, per-instance rate limiting, and actions pinned to tags.
+
 ## 0.3.0
 
 **Breaking.** `buildAdvisories()` takes an options object instead of trailing

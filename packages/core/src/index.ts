@@ -46,3 +46,19 @@ export {
   es,
 } from './i18n/index.js';
 export type { CoreMessages, Locale, LocalizedMessage, RuleCopy, RuleId } from './i18n/index.js';
+
+// Structural analysis
+export { analyzeExamples, findContradictions, findExamples } from './structure.js';
+export type {
+  Contradiction,
+  ContradictionAxis,
+  ContradictionSide,
+  ExampleAnalysis,
+  ExampleBlock,
+  RedundantExample,
+} from './structure.js';
+export { jaccard, normalizeForCompare } from './similarity.js';
+
+// Endpoint validation for the pluggable LLM layer
+export { isPrivateHost, validateLlmEndpoint } from './net.js';
+export type { EndpointRejection, ValidateEndpointOptions } from './net.js';

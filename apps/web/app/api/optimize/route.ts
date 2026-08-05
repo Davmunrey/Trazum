@@ -9,6 +9,7 @@ import {
   providerFromEnv,
   refineWithLlm,
   resolveLocale,
+  validateLlmEndpoint,
 } from '@trazum/core';
 import type { Locale, LlmProvider, RuleId, RuleLevel, UsageProfile } from '@trazum/core';
 
@@ -60,43 +61,33 @@ function rateLimited(request: Request): boolean {
 // SSRF protection
 // --------------------------------------------------------------------------
 
-const PRIVATE_HOST_PATTERNS: RegExp[] = [
-  /^localhost$/i,
-  /^127\./,
-  /^0\./,
-  /^10\./,
-  /^172\.(1[6-9]|2\d|3[01])\./,
-  /^192\.168\./,
-  /^169\.254\./, // cloud metadata (AWS/GCP/Azure)
-  /^\[?::1\]?$/,
-  /^\[?f[cd][0-9a-f]{2}:/i, // IPv6 ULA
-  /^\[?fe80:/i, // IPv6 link-local
-  /\.internal$/i,
-  /\.local$/i,
-];
-
 /**
  * The endpoint accepts an LLM URL chosen by the client. Without this filter
  * anyone could use the deployed server to reach the internal network or the
- * cloud metadata service (SSRF). In development http and local hosts are
- * allowed so you can test against an LLM on your own machine.
+ * cloud metadata service (SSRF).
+ *
+ * The decision itself lives in `@trazum/core`, where it is unit-tested; this
+ * only turns the reason code into a sentence in the reader's language. In
+ * development http and local hosts are allowed so you can test against an LLM
+ * on your own machine — note that this is keyed off the build-time NODE_ENV
+ * and never off anything in the request.
  */
 function validateBaseUrl(raw: string, t: WebMessages): string | null {
-  let url: URL;
-  try {
-    url = new URL(raw);
-  } catch {
-    return t.api.invalidEndpointUrl;
-  }
+  const rejection = validateLlmEndpoint(raw, {
+    allowInsecure: process.env.NODE_ENV === 'development',
+  });
 
-  const dev = process.env.NODE_ENV === 'development';
-  if (url.protocol !== 'https:' && !(dev && url.protocol === 'http:')) {
-    return t.api.endpointMustBeHttps;
+  switch (rejection) {
+    case null:
+      return null;
+    case 'invalid-url':
+    case 'credentials-in-url':
+      return t.api.invalidEndpointUrl;
+    case 'insecure-scheme':
+      return t.api.endpointMustBeHttps;
+    case 'private-host':
+      return t.api.endpointMustBePublic;
   }
-  if (!dev && PRIVATE_HOST_PATTERNS.some((re) => re.test(url.hostname))) {
-    return t.api.endpointMustBePublic;
-  }
-  return null;
 }
 
 interface RequestBody {

@@ -148,5 +148,50 @@ export const es: CoreMessages = {
       title: 'Estás calculando con precio promocional',
       detail: `${modelName} tiene precio de lanzamiento ${promoInput}/${promoOutput} por millón de tokens hasta el ${until}. A partir de esa fecha pasa a ${listInput}/${listOutput}: tu factura subirá aunque no cambies nada.`,
     }),
+
+    contradictoryInstructions: ({
+      axis,
+      firstValue,
+      firstSnippet,
+      secondValue,
+      secondSnippet,
+      otherCount,
+    }) => ({
+      title: `Dos instrucciones se contradicen sobre ${axis}`,
+      detail:
+        `Una dice ${firstValue} ("${firstSnippet}") y otra dice ${secondValue} ("${secondSnippet}"). ` +
+        'El modelo tiene que elegir una, y cuál elige puede cambiar entre llamadas: esto es un problema de corrección antes que de coste. ' +
+        'Borrar la instrucción que no querías además acorta el prompt.' +
+        (otherCount > 0
+          ? ` Hay ${otherCount} ${otherCount === 1 ? 'pareja más' : 'parejas más'} de instrucciones que se contradicen.`
+          : ''),
+    }),
+
+    redundantExamples: ({ redundantCount, totalCount, redundantTokens, topSimilarityPct }) => ({
+      title: `${redundantCount} de ${totalCount} ejemplos repiten uno anterior`,
+      detail:
+        `Comparten el ${topSimilarityPct}% o más de su redacción con un ejemplo previo y suponen unos ${n(redundantTokens)} tokens que pagas en cada llamada. ` +
+        'Un ejemplo few-shot se paga a sí mismo enseñando algo nuevo; dos que demuestran el mismo patrón lo enseñan una vez. ' +
+        'Léelos antes de borrar: un ejemplo que parece redundante puede estar mostrando un caso límite a propósito.',
+    }),
+  },
+
+  contradictionAxes: {
+    'response-language': 'el idioma de la respuesta',
+    'output-format': 'el formato de salida',
+    'response-length': 'la longitud de la respuesta',
+    'reasoning-visibility': 'si mostrar el razonamiento',
+  },
+
+  contradictionValues: {
+    'fixed-language': 'siempre el mismo idioma',
+    'mirror-language': 'el idioma de quien escribe',
+    'format-json': 'JSON',
+    'format-markdown': 'Markdown',
+    'format-plain-text': 'texto plano',
+    'length-brief': 'que sea breve',
+    'length-detailed': 'que entre en detalle',
+    'reasoning-shown': 'mostrar el razonamiento',
+    'reasoning-hidden': 'ocultar el razonamiento',
   },
 };

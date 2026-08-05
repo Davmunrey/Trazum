@@ -4,6 +4,7 @@ import type { Locale } from './i18n/types.js';
 import { COMPLEX_SIGNALS, SIMPLE_SIGNALS } from './phrases.js';
 import { COST_MULTIPLIERS, MODELS, effectivePricing, getModel } from './pricing.js';
 import { formatUsd } from './savings.js';
+import { analyzeExamples, findContradictions } from './structure.js';
 import { estimateTokens } from './tokenizer.js';
 import type { Advisory, ModelPricing, TokenCounter, UsageProfile } from './types.js';
 
@@ -223,6 +224,48 @@ export function buildAdvisories(
     });
   }
 
+  // --- Instructions that fight each other ---
+  // Not a saving: a contradiction is a correctness problem that happens to
+  // cost tokens, so it carries no dollar figure and sorts on severity instead.
+  const contradictions = findContradictions(optimizedPrompt);
+  const worst = contradictions[0];
+  if (worst) {
+    advisories.push({
+      id: 'contradictory-instructions',
+      severity: 'warning',
+      ...t.advisories.contradictoryInstructions({
+        axis: t.contradictionAxes[worst.axis],
+        firstValue: t.contradictionValues[worst.a.value],
+        firstSnippet: worst.a.snippet,
+        secondValue: t.contradictionValues[worst.b.value],
+        secondSnippet: worst.b.snippet,
+        otherCount: contradictions.length - 1,
+      }),
+      estimatedMonthlyUsd: null,
+    });
+  }
+
+  // --- Few-shot examples that repeat each other ---
+  const examples = analyzeExamples(optimizedPrompt, count);
+  if (examples.redundant.length > 0 && examples.redundantTokens > 0) {
+    const saving =
+      tokensAfter > 0
+        ? monthlyInputUsd * Math.min(1, examples.redundantTokens / tokensAfter)
+        : 0;
+    const topSimilarity = Math.max(...examples.redundant.map((r) => r.similarity));
+    advisories.push({
+      id: 'redundant-examples',
+      severity: 'opportunity',
+      ...t.advisories.redundantExamples({
+        redundantCount: examples.redundant.length,
+        totalCount: examples.examples.length,
+        redundantTokens: examples.redundantTokens,
+        topSimilarityPct: Math.round(topSimilarity * 100),
+      }),
+      estimatedMonthlyUsd: saving > 0 ? saving : null,
+    });
+  }
+
   if (promoApplied && model.promo) {
     advisories.push({
       id: 'promo-pricing',
@@ -239,5 +282,19 @@ export function buildAdvisories(
     });
   }
 
-  return advisories.sort((a, b) => (b.estimatedMonthlyUsd ?? 0) - (a.estimatedMonthlyUsd ?? 0));
+  // Warnings first, then by money. Sorting purely on the dollar figure buried
+  // things that are wrong — an overflowing context window, two instructions
+  // that contradict each other — underneath a saving of a few dollars, because
+  // being wrong carries no price tag.
+  const SEVERITY_ORDER: Record<Advisory['severity'], number> = {
+    warning: 0,
+    opportunity: 1,
+    info: 2,
+  };
+
+  return advisories.sort(
+    (a, b) =>
+      SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity] ||
+      (b.estimatedMonthlyUsd ?? 0) - (a.estimatedMonthlyUsd ?? 0),
+  );
 }
