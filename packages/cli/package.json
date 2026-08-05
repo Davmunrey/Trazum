@@ -1,9 +1,9 @@
 {
   "name": "@trazum/cli",
-  "version": "0.11.0",
+  "version": "1.0.0",
   "description": "Trazum CLI: optimise prompts, enforce token budgets in CI and price the savings from your terminal.",
   "license": "MIT",
-  "author": "David Muñoz Rey",
+  "author": "David Mu\u00f1oz Rey",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Davmunrey/Trazum.git",
@@ -25,18 +25,25 @@
     "trazum": "./dist/index.js"
   },
   "files": [
-    "dist"
+    "dist",
+    "src",
+    "LICENSE",
+    "README.md"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json && chmod +x dist/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "npm run build && node --test test/*.test.js"
+    "test": "npm run build && node --test test/*.test.js",
+    "prepublishOnly": "npm run build && npm test"
   },
   "dependencies": {
-    "@trazum/core": "0.11.0"
+    "@trazum/core": "1.0.0"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",
     "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

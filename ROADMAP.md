@@ -343,20 +343,52 @@ an input.
 
 ---
 
-## Next
-
 ### 1.0.0 — A stable contract
 
 1.0 means the API stops moving, not that the feature list is finished.
 
-- Public API frozen under semantic versioning, with a documented deprecation
-  policy.
-- `@trazum/core` and `@trazum/cli` published to npm (the manifests are already
-  prepared).
-- Pricing data separated from the release cycle, so a price change does not
-  require a library upgrade.
-- Documented rule-authoring guide, so rules can be contributed without reading
-  the engine.
+**The public API is frozen** and a breaking change waits for 2.0 —
+[VERSIONING.md](VERSIONING.md) now says exactly what that covers, including the
+`--json` shape, the exit codes, and the config and overlay schemas. It also
+states the deprecation procedure rather than leaving it to be decided case by
+case: `@deprecated` in the JSDoc, a **Deprecated** changelog section with the
+migration written out, at least two minors and six months of continued working,
+removal only in a major. A deprecated export never starts warning at runtime — a
+library that prints to somebody else's stderr because *we* changed our mind is a
+library people vendor to make quiet.
+
+**Pricing came off the release cycle.** A price is correctable from your own
+repository with a JSON overlay, so a stale bundled price is an inconvenience
+rather than a wrong budget. A separate `@trazum/pricing` package would not have
+achieved that — you would still have to install something. Every report says
+which models came from an overlay and when it was reviewed, because otherwise a
+bundled figure and one from your file are indistinguishable.
+
+**A rule can be contributed without reading the engine.**
+[docs/authoring-rules.md](docs/authoring-rules.md) is the walkthrough: the
+contract, what the masking pass already guarantees, why `safe` is a promise
+rather than a default, and the ReDoS fixture *shape* that finds real bugs —
+repeated tokens do not, which is how two shipped in 0.1.0.
+
+**The packages are publishable, and what would ship is asserted.** Both carry a
+`LICENSE` file rather than only a licence field, a real README (the npm page *is*
+the README), `engines`, and `prepublishOnly` — without which `npm publish` would
+happily ship the previous version's `dist` under the new version's number,
+silently. `src` is shipped too, because every source map points at `../src/*.ts`
+with no inlined content: shipping maps without the sources gives a debugger a
+file it cannot load, which is worse than no map at all.
+
+Still open, and deliberately so: publishing to npm is a manual step. It is the
+one action in this repository that cannot be undone after 72 hours.
+
+---
+
+## Next
+
+Nothing scheduled. 1.0 is a floor, not a finish line — see **Under
+consideration** below for what is on the list and why none of it is dated.
+
+---
 
 ---
 

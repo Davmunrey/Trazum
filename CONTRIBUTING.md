@@ -43,18 +43,27 @@ npm run build:web  # the Next.js app
 
 ## Adding a rule
 
+Full walkthrough: **[docs/authoring-rules.md](docs/authoring-rules.md)**. It is
+written so you do not have to read the engine.
+
+The short version:
+
 1. Add its id to the `RuleId` union in `packages/core/src/i18n/types.ts`.
 2. Implement it in `packages/core/src/rules.ts`. A rule takes masked text and
    returns `{ text, hits }`. It never sees protected content, so it cannot
    break code, URLs or placeholders.
 3. Add its copy to **every** catalogue in `packages/core/src/i18n/`. The build
    fails until you do — that is the point of the typed union.
-4. Add a test. The bar is a case that would have passed before your rule and
-   now demonstrably does not, plus one that shows the rule leaving a
-   lookalike alone.
+4. Add three tests: it fires; it leaves a lookalike alone; `hits` is right.
 
-Put a rule at `aggressive` if removing its target could change what the prompt
-asks for. When unsure, `aggressive` is the right answer: `safe` is a promise.
+Two things the guide argues at length and are worth knowing up front:
+
+- Put a rule at `aggressive` if removing its target could change what the prompt
+  asks for. When unsure, `aggressive` is the right answer: **`safe` is a
+  promise**, and it is the level people run unattended in CI.
+- **No two adjacent unbounded quantifiers.** Trazum is a regex engine pointed at
+  someone else's text and reachable over HTTP, so catastrophic backtracking is a
+  denial-of-service bug. Two shipped in 0.1.0, one in a `safe` rule.
 
 ## Adding a locale
 
@@ -73,10 +82,16 @@ string exists but not that it is right.
 
 ## Changing prices
 
-`packages/core/src/pricing.ts` is the single source of truth. Update
-`PRICING_LAST_REVIEWED` in the same commit, and cite where the numbers came
-from in the commit message. Pricing changes ship as patch releases — see
+`packages/core/src/pricing.ts` is the bundled catalogue. Update
+`PRICING_LAST_REVIEWED` in the same commit, and cite where the numbers came from
+in the commit message. Pricing changes ship as patch releases — see
 [VERSIONING.md](VERSIONING.md).
+
+**Nobody has to wait for that release.** A user can correct a price from their own
+repository with a pricing overlay, which is why the bundled numbers are not part
+of the frozen API and the overlay schema is. If you are fixing a price because
+somebody reported a wrong figure, tell them about `--pricing` as well — it
+unblocks them today.
 
 ## Tests
 
@@ -90,29 +105,39 @@ another, which is testing the mechanism rather than the wording.
 
 ## Security invariants
 
-Four things are enforced by tests in `packages/core/test/security.test.js`. If
-your change trips one, that is the test working — read the failure before
-adjusting it.
+These are enforced by tests in `packages/core/test/security.test.js`. If your
+change trips one, that is the test working — read the failure before adjusting it.
 
-1. **The core and the CLI have no runtime dependencies.** They process
-   untrusted text; every dependency is unreviewed code running on someone's
-   prompts. If you genuinely need one, argue for it in the pull request and
-   change the test deliberately.
+1. **The core and the CLI have no runtime dependencies.** They process untrusted
+   text; every dependency is unreviewed code running on someone's prompts. If you
+   genuinely need one, argue for it in the pull request and change the test
+   deliberately.
 2. **`optimize()` never touches the network.** `fetch` is permitted only in
    `llm.ts` and `tokenizer.ts`, the two modules that exist to make calls.
-3. **No catastrophic backtracking.** A rule is a regex pointed at attacker-
-   controlled text on a public endpoint. Avoid nested unbounded quantifiers
-   (`(\w+)+`, `(a|a)*`); bound your repetitions. The ReDoS suite runs
-   pathological inputs against a time budget.
-4. **The SSRF filter only loosens with an explicit flag.** `validateLlmEndpoint`
+3. **`@trazum/core` imports no Node builtins.** Enforced by walking the import
+   graph from the entry point, not by an allow-list of files — a file allow-list
+   passed while the same file was re-exported from `index.ts` and the web build
+   broke. Filesystem code belongs on `@trazum/core/node`.
+4. **No catastrophic backtracking.** A rule is a regex pointed at
+   attacker-controlled text on a public endpoint. Avoid nested unbounded
+   quantifiers (`(\w+)+`, `(a|a)*`); bound your repetitions. The ReDoS suite runs
+   pathological inputs against a time budget — and see
+   [docs/authoring-rules.md](docs/authoring-rules.md) for the fixture *shape*
+   that actually finds these, because repeated tokens do not.
+5. **The SSRF filter only loosens with an explicit flag.** `validateLlmEndpoint`
    fails closed. Never derive `allowInsecure` from anything in a request.
+6. **Nothing is interpolated into a `run:` body in `action.yml`** — no input, no
+   `github.*` value, no step output. Values reach the shell through `env:`. The
+   scanner ships with five positive controls, because the version before it
+   reported green on two of the three shapes that matter.
+7. **Every third-party action is pinned to a commit SHA** with a `# vN` comment
+   Dependabot bumps. A tag can be moved and a branch moves by design.
+8. **No workflow uses `pull_request_target`.** It runs with a writable token and
+   repository secrets against the contributor's code, and it is the natural wrong
+   turn the moment somebody finds a fork PR cannot comment.
 
-Two more that are conventions rather than tests:
-
-- **Never use `pull_request_target`** in a workflow. It runs with a writable
-  token and repository secrets against the contributor's code.
-- **Never log a prompt or an API key.** Prompts are not stored anywhere, and
-  keys are used once and dropped.
+One more that is a convention rather than a test: **never log a prompt or an API
+key.** Prompts are not stored anywhere, and keys are used once and dropped.
 
 See [SECURITY.md](SECURITY.md) for the reasoning, and for how to report a
 vulnerability privately.
