@@ -574,6 +574,30 @@ export function Optimizer({ locale, t }: { locale: Locale; t: WebMessages }) {
                         <span style={{ color: 'var(--text-dim)' }}>
                           {t.results.ruleHits(rule.hits, rule.tokensSaved)}
                         </span>
+                        {/* What the rule actually did. Shown for the
+                            aggressive level because that is the one whose
+                            advice is "read the diff", and a diff of
+                            everything at once is not something anyone reads. */}
+                        {rule.level === 'aggressive' && rule.changes.length > 0 && (
+                          <ul className="rule-changes">
+                            {rule.changes.map((change, index) => (
+                              <li key={index}>
+                                <span className="was">{change.before}</span>
+                                <span className="arrow">→</span>
+                                {change.after ? (
+                                  <span className="now">{change.after}</span>
+                                ) : (
+                                  <span className="gone">—</span>
+                                )}
+                              </li>
+                            ))}
+                            {rule.hits > rule.changes.length && (
+                              <li className="more">
+                                {t.results.moreChanges(rule.hits - rule.changes.length)}
+                              </li>
+                            )}
+                          </ul>
+                        )}
                       </span>
                     </li>
                   ))}

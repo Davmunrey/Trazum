@@ -520,3 +520,55 @@ footer.foot {
   border-top: 1px solid var(--border);
   padding-top: 14px;
 }
+
+/* What each aggressive rule actually changed. Indented under the rule rather
+   than in its own panel: it is evidence for the line above it, not a section. */
+.rule-changes {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  font-size: 12.5px;
+  font-family: var(--mono);
+}
+
+.rule-changes li {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 1px 0;
+  /* Long snippets truncate rather than wrapping: the point is to scan the
+     list, and a wrapped entry reads as two changes. */
+  min-width: 0;
+}
+
+.rule-changes .was,
+.rule-changes .now {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Matches the word diff's own colours, so a removal reads the same whichever
+   view you are in. */
+.rule-changes .was {
+  color: var(--accent);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+  max-width: 22ch;
+}
+
+.rule-changes .now {
+  color: var(--good);
+  max-width: 16ch;
+}
+
+.rule-changes .arrow,
+.rule-changes .gone {
+  color: var(--text-dim);
+  flex: none;
+}
+
+.rule-changes .more {
+  color: var(--text-dim);
+  font-family: inherit;
+}

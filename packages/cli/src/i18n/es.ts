@@ -88,6 +88,7 @@ ${bold('EJEMPLOS')}
     levelAggressive: () => '[agresiva]',
     levelSafe: () => '[segura]',
     ruleHits: (hits, tokensSaved) => `(${hits}×, ~${tokensSaved} tokens)`,
+    moreChanges: (count) => `+${count} más sin mostrar`,
     llmPass: () => 'Pasada por LLM',
     llmApplied: (provider, model, before, after) =>
       `aplicada vía ${provider}/${model}: ${before} → ${after} tokens`,

@@ -185,6 +185,21 @@ function printReport(result: OptimizationResult, showDiff: boolean, t: CliMessag
           ? c.yellow(t.report.levelAggressive())
           : c.dim(t.report.levelSafe());
       console.log(`  ${tag} ${rule.title} ${c.dim(t.report.ruleHits(rule.hits, rule.tokensSaved))}`);
+
+      // What the rule actually did. Shown under the aggressive level by
+      // default because that is the one whose advice is "read the diff", and
+      // a diff of everything at once is not something anyone reads.
+      const showChanges = showDiff || rule.level === 'aggressive';
+      if (showChanges) {
+        for (const change of rule.changes) {
+          const from = c.red(truncate(change.before, 46));
+          const to = change.after ? c.green(truncate(change.after, 30)) : c.dim('—');
+          console.log(`      ${from} ${c.dim('→')} ${to}`);
+        }
+        if (rule.hits > rule.changes.length && rule.changes.length > 0) {
+          console.log(c.dim(`      ${t.report.moreChanges(rule.hits - rule.changes.length)}`));
+        }
+      }
     }
   } else {
     console.log();
@@ -256,6 +271,12 @@ function printReport(result: OptimizationResult, showDiff: boolean, t: CliMessag
   }
 
   console.log();
+}
+
+/** Shortens a snippet for the change list, keeping it on one line. */
+function truncate(text: string, max: number): string {
+  const clean = text.replace(/\s+/g, ' ').trim();
+  return clean.length <= max ? clean : `${clean.slice(0, max - 1)}\u2026`;
 }
 
 /** Wraps a paragraph to a given width. */

@@ -88,6 +88,7 @@ export const es: WebMessages = {
       'El prompt es demasiado largo para calcular el diff en el navegador. Usa la CLI con ',
     rulesHeading: 'Reglas aplicadas',
     ruleHits: (hits, tokensSaved) => `(${hits}×, ~${tokensSaved} tokens)`,
+    moreChanges: (count) => `+${count} más sin mostrar`,
     badgeSafe: 'segura',
     badgeAggressive: 'agresiva',
     advisoriesHeading: 'Además de acortar el prompt',

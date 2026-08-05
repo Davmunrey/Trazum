@@ -88,6 +88,7 @@ export const en: WebMessages = {
     diffTooLong: 'The prompt is too long to diff in the browser. Use the CLI with ',
     rulesHeading: 'Rules applied',
     ruleHits: (hits, tokensSaved) => `(${hits}×, ~${tokensSaved} tokens)`,
+    moreChanges: (count) => `+${count} more not shown`,
     badgeSafe: 'safe',
     badgeAggressive: 'aggressive',
     advisoriesHeading: 'Beyond shortening the prompt',

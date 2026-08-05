@@ -47,6 +47,7 @@ export interface CliMessages {
     levelAggressive(): string;
     levelSafe(): string;
     ruleHits(hits: number, tokensSaved: number): string;
+    moreChanges(count: number): string;
     llmPass(): string;
     llmApplied(provider: string, model: string, before: number, after: number): string;
     llmRejected(reason: string): string;

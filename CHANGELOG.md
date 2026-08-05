@@ -3,6 +3,38 @@
 Versioning policy: [VERSIONING.md](VERSIONING.md). Below 1.0, minor versions
 may contain breaking changes, and say so in their first line.
 
+## 0.6.0
+
+**Fixes a rule that left a broken sentence behind.** `self-check` matched
+"double-check your answer before responding" but not the subject and modal in
+front of it, so `"You MUST double-check your answer before responding."` became
+`"You must."` — a sentence that says nothing, in place of one that said
+something. Whatever can open one of these instructions is now listed ahead of
+the bare form, in both languages.
+
+That bug had been there since the rule shipped. It surfaced within a minute of
+the feature below existing, which is the argument for the feature.
+
+- `RuleResult.changes`: each rule now reports a short list of what it actually
+  changed, as before/after pairs. `hits` still carries the true total.
+  `aggressive` has always come with the advice "read the diff", and the diff
+  was one undifferentiated block for every rule at once — not review, a wall of
+  text with a warning attached. Now an aggressive run is judged rule by rule,
+  and a single rule you disagree with is disabled with `--disable` instead of
+  abandoning the level that saves the most.
+- Empty rather than truncated when a change is too large to summarise. An empty
+  list reads as "nothing to show here"; a truncated one would read as "this is
+  all that happened", which would be a lie.
+- Bounded by construction, like everything else that touches untrusted text:
+  the common prefix and suffix are trimmed in linear time, and anything still
+  too large is skipped rather than diffed. Covered by the same adversarial
+  fixtures as the ReDoS suite.
+- Shown in the CLI and the web app for aggressive rules, and for every rule
+  under `--diff`.
+- New public API: `extractChanges`, `DEFAULT_CHANGE_LIMIT`, and the
+  `RuleChange` type.
+- Tests grow from 145 to 164.
+
 ## 0.5.0
 
 A third structural finding, same posture as the first two: it reports, it does
