@@ -399,7 +399,12 @@ function printReport(
 
   // Before the rules, because the rearrangement is the bigger change and the
   // one the reader has to make a judgement about.
-  if (reorder !== null) {
+  //
+  // Only when there is something to say. "Nothing could safely move" with no
+  // refusals underneath is a heading, a blank line and a shrug — the reader
+  // asked for a rearrangement, there was none available, and the token count
+  // above already told them nothing changed.
+  if (reorder !== null && (reorder.moved.length > 0 || reorder.declined.length > 0)) {
     console.log();
     console.log(c.bold(t.report.reorderHeading()));
     if (reorder.moved.length === 0) {
@@ -518,6 +523,22 @@ function printReport(
   if (advisories.length > 0) {
     console.log();
     console.log(c.bold(t.report.beyondShortening()));
+
+    // The amount goes in a column of its own rather than trailing the title.
+    // Four advisories worth $506, $422, $170 and nothing are meant to be
+    // compared, and comparing them meant reading to the end of four different
+    // sentences to find where the numbers were.
+    //
+    // The advisory itself still applies on a subscription — caching and a
+    // smaller model both buy back context and rate-limit headroom. Only the
+    // price tag is meaningless, so only the price tag goes.
+    const amountOf = (a: (typeof advisories)[number]): string =>
+      !tokensOnly && a.estimatedMonthlyUsd !== null ? formatUsd(a.estimatedMonthlyUsd) : '';
+    const width = Math.max(0, ...advisories.map((a) => amountOf(a).length));
+    // Indent the wrapped detail to the start of the title, so the prose forms
+    // one block instead of stepping around the numbers.
+    const gutter = ' '.repeat(4 + (width > 0 ? width + 2 : 0));
+
     for (const advisory of advisories) {
       const marker =
         advisory.severity === 'warning'
@@ -525,15 +546,28 @@ function printReport(
           : advisory.severity === 'opportunity'
             ? c.cyan('→')
             : c.dim('·');
-      // The advisory itself still applies on a subscription — caching and a
-      // smaller model both buy back context and rate-limit headroom. Only the
-      // price tag is meaningless, so only the price tag goes.
-      const money =
-        !tokensOnly && advisory.estimatedMonthlyUsd !== null
-          ? c.green(t.report.perMonthSuffix(formatUsd(advisory.estimatedMonthlyUsd)))
-          : '';
-      console.log(`  ${marker} ${c.bold(advisory.title)}${money}`);
-      console.log(`    ${c.dim(wrap(advisory.detail, 76, '    '))}`);
+      const amount = amountOf(advisory);
+      const column = width > 0 ? `${c.green(amount.padStart(width))}  ` : '';
+      console.log(`  ${marker} ${column}${c.bold(advisory.title)}`);
+      console.log(`${gutter}${c.dim(wrap(advisory.detail, 78 - gutter.length, gutter))}`);
+    }
+
+    // What to do first. The rules trimmed $1.25 and the top advisory is worth
+    // $506; leaving the reader to notice that by comparing four numbers in four
+    // sentences is how the most valuable line in the report gets skipped.
+    const best = advisories.find((a) => (a.estimatedMonthlyUsd ?? 0) > 0);
+    if (!tokensOnly && best?.estimatedMonthlyUsd) {
+      const ruleSaving = result.savings.monthlySavingsUsd;
+      const line = t.report.biggestLeverDetail(
+        best.title,
+        formatUsd(best.estimatedMonthlyUsd),
+        ruleSaving > 0 ? Math.round(best.estimatedMonthlyUsd / ruleSaving) : null,
+      );
+      console.log();
+      // Wrapped to the same width as everything else. An unwrapped closing line
+      // is the one that runs off a narrow terminal, and it is the line most
+      // worth reading.
+      console.log(`  ${c.bold(t.report.biggestLever())} ${c.dim(wrap(line, 62, '  '))}`);
     }
   }
 
