@@ -383,8 +383,8 @@ pre.diff {
   word-break: break-word;
 }
 
-/* Fondo tenue en añadidos y borrados: sin él, un "AB" pegado se lee como
-   una sola palabra y el diff deja de entenderse. */
+/* Faint background on additions and deletions: without it an adjacent "AB"
+   reads as a single word and the diff stops being legible. */
 .diff-add {
   color: var(--good);
   background: var(--good-soft);

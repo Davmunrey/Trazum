@@ -1,7 +1,7 @@
 name: 'Trazum Check'
 description: >-
-  Presupuesto de tokens para prompts: falla la build si un prompt supera el
-  máximo indicado, y te dice si optimizado cabría.
+  Token budget for prompts: fails the build when a prompt busts the given
+  maximum, and tells you whether optimising it would fit.
 author: 'David Muñoz Rey'
 branding:
   icon: 'scissors'
@@ -9,30 +9,35 @@ branding:
 
 inputs:
   file:
-    description: 'Ruta del fichero de prompt a comprobar, relativa al workspace.'
+    description: 'Path to the prompt file to check, relative to the workspace.'
     required: true
   max-tokens:
-    description: 'Presupuesto máximo de tokens de entrada.'
+    description: 'Maximum input token budget.'
     required: true
   level:
-    description: 'Nivel de reglas al calcular si optimizado cabría: safe o aggressive.'
+    description: 'Rule level used to work out whether the optimised prompt would fit: safe or aggressive.'
     required: false
     default: 'safe'
+  locale:
+    description: 'Language of the report: en or es. Defaults to English.'
+    required: false
+    default: 'en'
 
 runs:
   using: 'composite'
   steps:
-    - name: Compilar Trazum
+    - name: Build Trazum
       shell: bash
       working-directory: ${{ github.action_path }}
       run: |
         npm ci --no-audit --no-fund
         npm run build
 
-    - name: Comprobar presupuesto
+    - name: Check the budget
       shell: bash
       run: >-
         node "${{ github.action_path }}/packages/cli/dist/index.js" check
         "${{ inputs.file }}"
         --max-tokens "${{ inputs.max-tokens }}"
         --level "${{ inputs.level }}"
+        --locale "${{ inputs.locale }}"
