@@ -413,8 +413,10 @@ So most of the module is about what it refuses:
 - **Only whole blank-line-separated blocks move**, so a sentence is never severed
   from the paragraph that qualifies it, and the placeholder's own line travels
   with it.
-- **Nothing moves without a placeholder**, or below the model's cacheable
-  minimum. A rearrangement that buys nothing is a diff for its own sake.
+- **Nothing moves without a placeholder**, or unless the resulting prefix clears
+  the model's cacheable minimum. A rearrangement that buys nothing is a diff for
+  its own sake — and the bar is on the prefix rather than on the amount moved,
+  because a head that already caches gains from any block that joins it.
 
 A refusal returns the prompt **byte-identical** and says which phrase caused it,
 because "no saving here" and "there was a saving and it was not safe to take" are

@@ -72,6 +72,13 @@ been missing rather than by a report:
   now has ten fixtures of its own, each sized so the old pattern is well past the
   budget rather than near it.
 
+The cacheable-minimum bar is on the **resulting prefix**, not on the amount moved
+— `minPrefixTokens`, not `minTokens`. Those are different questions, and asking
+the second one refused a real saving: a prompt whose 1,265-token head already
+cached gained nothing from 359 stranded tokens, because 359 is below Opus's
+512-token minimum. It reported "nothing could safely move", which is not what
+happened.
+
 The declined list in the report is capped at three lines and now says how many it
 did not print. A report that shows three of nine reads as "three".
 

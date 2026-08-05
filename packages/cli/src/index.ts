@@ -672,9 +672,10 @@ async function commandOptimize(
   // order carries meaning. `aggressive` promises "read the diff"; this needs
   // "decide whether the order mattered", which is a different question.
   const reorder = boolFlag(args, 'reorder') ? reorderForCache(original, {
-    // Below the model's cache minimum the rearrangement buys nothing, so there
-    // is no reason to hand the author a diff for it.
-    minTokens: getModel(usage.model).cacheMinTokens,
+    // A prefix below the model's cacheable minimum caches nothing at all, so a
+    // rearrangement that does not get it over the line buys nothing and there is
+    // no reason to hand the author a diff for it.
+    minPrefixTokens: getModel(usage.model).cacheMinTokens,
   }) : null;
   const prompt = reorder?.text ?? original;
 

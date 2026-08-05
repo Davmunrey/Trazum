@@ -497,7 +497,7 @@ why — a saving Trazum chose not to take is one the caller cannot evaluate:
 ```ts
 import { reorderForCache } from '@trazum/core';
 
-const r = reorderForCache(prompt, { minTokens: 1024 });  // the model's cache minimum
+const r = reorderForCache(prompt, { minPrefixTokens: 1024 });  // the model's minimum
 
 r.text;                 // the rearrangement, or `prompt` byte-for-byte
 r.tokensMoved;          // moved out of paid-every-call into the prefix
@@ -505,6 +505,11 @@ r.prefixTokensBefore;   // 14
 r.prefixTokensAfter;    // 1174
 r.declined;             // [{ reason: 'backward-reference', phrase: 'above', text }]
 ```
+
+`minPrefixTokens` is a bar on the **resulting prefix**, not on the amount moved.
+A prefix below the model's minimum caches nothing at all, so a rearrangement that
+does not clear it buys nothing — but a head that already clears it gains from any
+block that joins it, however small.
 
 `comparePrompts` is the API behind `trazum diff`. Note the sign: everything it
 returns is `after - before`, so **positive means worse** — the opposite of

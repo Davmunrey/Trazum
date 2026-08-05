@@ -164,13 +164,31 @@ Never invent a price.`;
     }
   });
 
-  it('declines below a minimum worth the rearrangement', () => {
-    // A caller who knows the model's cache minimum can say "not worth it", and
-    // then the prompt comes back untouched rather than churned for nothing.
+  it('declines when the prefix still would not reach the cacheable minimum', () => {
+    // A prefix below the model's minimum caches nothing at all, so a
+    // rearrangement that does not clear it buys nothing and the prompt comes
+    // back untouched rather than churned for a diff worth zero.
     const prompt = `Agent.\n\nInput: {{x}}\n\nBe brief.`;
-    const r = reorderForCache(prompt, { minTokens: 500 });
+    const r = reorderForCache(prompt, { minPrefixTokens: 500 });
     assert.equal(r.text, prompt);
     assert.equal(r.moved.length, 0);
+  });
+
+  it('does not refuse a small move onto a prefix that already caches', () => {
+    // The bar is the resulting prefix, not the amount moved. A head that
+    // already clears the minimum gains from any block that joins it, and
+    // checking the wrong quantity refuses a real saving while reporting that
+    // nothing could move — which is not what happened.
+    const head = Array.from(
+      { length: 60 },
+      (_, i) => `- Policy ${i + 1}: confirm the order identifier before quoting anything.`,
+    ).join('\n');
+    const prompt = `${head}\n\nCustomer message: {{message}}\n\n- Never promise a delivery date.`;
+
+    const r = reorderForCache(prompt, { minPrefixTokens: 512 });
+    assert.ok(r.prefixTokensBefore > 512, 'the fixture no longer starts above the minimum');
+    assert.equal(r.moved.length, 1, 'a block that would have joined a caching prefix was refused');
+    assert.ok(r.prefixTokensAfter > r.prefixTokensBefore);
   });
 
   it('reports refusals even when nothing moved', () => {

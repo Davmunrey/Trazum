@@ -28,9 +28,9 @@ import type { TokenCounter } from './types.js';
  *    order relative to each other, which is the same class of harm.
  * 2. **Only whole blocks move.** Blocks are separated by blank lines, so a
  *    sentence is never severed from the paragraph that qualifies it.
- * 3. **Nothing moves if the prompt has no placeholder**, or if the movable
- *    content would not clear the model's cache minimum anyway — a rearrangement
- *    that buys nothing is a diff for its own sake.
+ * 3. **Nothing moves if the prompt has no placeholder**, or if the resulting
+ *    prefix would not clear the model's cacheable minimum anyway — a
+ *    rearrangement that buys nothing is a diff for its own sake.
  */
 
 export interface ReorderedBlock {
@@ -130,10 +130,16 @@ function backwardReference(text: string): string | undefined {
 export interface ReorderOptions {
   count?: TokenCounter;
   /**
-   * Do not bother rearranging for less than this many tokens. Defaults to 0 —
-   * the caller knows the model's cache minimum and this module does not.
+   * Do not rearrange unless the prefix ends up at least this long. Defaults to
+   * 0 — the caller knows the model's cacheable minimum and this module does not.
+   *
+   * The bar is on the **resulting prefix**, not on the amount moved. Those are
+   * different questions, and asking the second one refuses a real saving: a
+   * prompt whose head already clears the minimum gains from any block that joins
+   * it, however small. Asking "did 200 tokens move?" answers "no" and reports
+   * that nothing could move, which is not what happened.
    */
-  minTokens?: number;
+  minPrefixTokens?: number;
 }
 
 /**
@@ -145,7 +151,7 @@ export interface ReorderOptions {
  */
 export function reorderForCache(prompt: string, options: ReorderOptions = {}): ReorderResult {
   const count = options.count ?? estimateTokens;
-  const minTokens = options.minTokens ?? 0;
+  const minPrefixTokens = options.minPrefixTokens ?? 0;
 
   const unchanged = (): ReorderResult => {
     const prefix = firstPlaceholderOffset(prompt);
@@ -207,7 +213,9 @@ export function reorderForCache(prompt: string, options: ReorderOptions = {}): R
   }
 
   const tokensMoved = moved.reduce((sum, b) => sum + b.tokens, 0);
-  if (moved.length === 0 || tokensMoved < minTokens) {
+  // Against the prefix this would produce, not against the amount moved. A head
+  // that already clears the minimum gains from any block that joins it.
+  if (moved.length === 0 || prefixTokensBefore + tokensMoved < minPrefixTokens) {
     // Report the refusals even when nothing moved: "no saving here" and "there
     // was a saving and it was not safe to take" are different answers.
     return { ...unchanged(), declined };
