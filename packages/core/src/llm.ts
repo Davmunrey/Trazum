@@ -114,7 +114,7 @@ export async function refineWithLlm(
 
   const finalTokensBefore = result.tokensBefore;
   const savings = computeSavings(finalTokensBefore, tokensAfter, result.usage);
-  const advisories = buildAdvisories(candidate, tokensAfter, result.usage);
+  const advisories = buildAdvisories(candidate, tokensAfter, result.usage, new Date(), count);
 
   return {
     ...result,

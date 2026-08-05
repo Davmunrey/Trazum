@@ -1,6 +1,8 @@
+import { analyzeCachePrefix } from './cache.js';
 import { COST_MULTIPLIERS, MODELS, effectivePricing, getModel } from './pricing.js';
 import { formatUsd } from './savings.js';
-import type { Advisory, ModelPricing, UsageProfile } from './types.js';
+import { estimateTokens } from './tokenizer.js';
+import type { Advisory, ModelPricing, TokenCounter, UsageProfile } from './types.js';
 
 const COMPLEX_SIGNALS = [
   'analiza',
@@ -106,6 +108,7 @@ export function buildAdvisories(
   tokensAfter: number,
   usage: UsageProfile,
   on: Date = new Date(),
+  count: TokenCounter = estimateTokens,
 ): Advisory[] {
   const advisories: Advisory[] = [];
   const model = getModel(usage.model);
@@ -131,17 +134,27 @@ export function buildAdvisories(
   }
 
   // --- Prompt caching ---
+  // El caching es coincidencia de prefijo: en una plantilla con marcadores,
+  // solo se cachea lo anterior al primer marcador. Calcular el ahorro sobre el
+  // prompt entero sería mentir en cuanto {{x}} cambie de valor entre llamadas.
+  const cache = analyzeCachePrefix(optimizedPrompt, count);
   if (usage.callsPerMonth > 1) {
-    if (tokensAfter >= model.cacheMinTokens) {
-      const h = Math.min(Math.max(usage.cacheHitRate, 0), 1);
-      const factor = (1 - h) * COST_MULTIPLIERS.cacheWrite5m + h * COST_MULTIPLIERS.cacheRead;
-      const saving = monthlyInputUsd * (1 - factor);
+    const prefixShare = tokensAfter > 0 ? cache.stablePrefixTokens / tokensAfter : 0;
+    const monthlyPrefixUsd = monthlyInputUsd * Math.min(1, prefixShare);
+    const h = Math.min(Math.max(usage.cacheHitRate, 0), 1);
+    const factor = (1 - h) * COST_MULTIPLIERS.cacheWrite5m + h * COST_MULTIPLIERS.cacheRead;
+
+    if (cache.stablePrefixTokens >= model.cacheMinTokens) {
+      const saving = monthlyPrefixUsd * (1 - factor);
       if (saving > 0) {
+        const scope = cache.firstPlaceholder
+          ? `El prefijo estable —lo anterior al primer marcador ${cache.firstPlaceholder}— son ~${cache.stablePrefixTokens.toLocaleString('es-ES')} de los ${tokensAfter.toLocaleString('es-ES')} tokens del prompt, y supera el mínimo cacheable de ${model.cacheMinTokens.toLocaleString('es-ES')} de ${model.displayName}.`
+          : `El prompt no tiene marcadores variables, así que el prefijo cacheable es entero y supera el mínimo de ${model.cacheMinTokens.toLocaleString('es-ES')} tokens de ${model.displayName}.`;
         advisories.push({
           id: 'prompt-caching',
           severity: 'opportunity',
           title: 'Activa prompt caching en el prefijo estable',
-          detail: `El prompt supera el mínimo cacheable de ${model.cacheMinTokens.toLocaleString('es-ES')} tokens de ${model.displayName}. Con una tasa de acierto del ${Math.round(h * 100)}%, la lectura de caché cuesta un 10% del precio de entrada y la escritura un 125%. Coloca el contenido estable primero y el variable después del último punto de caché: cualquier byte que cambie antes del corte invalida todo lo que va detrás.`,
+          detail: `${scope} Con una tasa de acierto del ${Math.round(h * 100)}%, la lectura de caché cuesta un 10% del precio de entrada y la escritura un 125%. Coloca cache_control al final del prefijo estable: cualquier byte que cambie antes del corte invalida todo lo que va detrás.`,
           estimatedMonthlyUsd: saving,
         });
       } else {
@@ -154,16 +167,37 @@ export function buildAdvisories(
         });
       }
     } else {
+      const reason = cache.firstPlaceholder
+        ? `aquí el primer marcador variable (${cache.firstPlaceholder}) aparece a los ~${cache.stablePrefixTokens.toLocaleString('es-ES')} tokens y solo lo anterior puede cachearse`
+        : `este prompt tiene ~${tokensAfter.toLocaleString('es-ES')}`;
       advisories.push({
         id: 'below-cache-minimum',
         severity: 'info',
         title: 'Por debajo del mínimo cacheable',
         detail:
-          `${model.displayName} necesita al menos ${model.cacheMinTokens.toLocaleString('es-ES')} tokens de prefijo para cachear; este prompt tiene ~${tokensAfter.toLocaleString('es-ES')}. Marcar cache_control no dará error, simplemente no cacheará.` +
+          `${model.displayName} necesita al menos ${model.cacheMinTokens.toLocaleString('es-ES')} tokens de prefijo para cachear; ${reason}. Marcar cache_control no dará error, simplemente no cacheará.` +
           (model.cacheMinTokens > 512
             ? ' Claude Opus 5 baja ese mínimo a 512 tokens, así que prompts cortos que aquí no cachean, allí sí.'
             : ''),
         estimatedMonthlyUsd: null,
+      });
+    }
+
+    // Contenido estable colocado DESPUÉS del primer marcador: hoy no se
+    // cachea, pero moverlo delante lo haría cacheable.
+    if (
+      cache.firstPlaceholder &&
+      cache.staticTokensAfter >= 200 &&
+      cache.staticTokensAfter >= tokensAfter * 0.3
+    ) {
+      const movableShare = tokensAfter > 0 ? cache.staticTokensAfter / tokensAfter : 0;
+      const saving = monthlyInputUsd * movableShare * Math.max(0, 1 - factor);
+      advisories.push({
+        id: 'cache-prefix-reorder',
+        severity: 'opportunity',
+        title: 'Mueve las instrucciones estables antes del primer marcador',
+        detail: `Unos ~${cache.staticTokensAfter.toLocaleString('es-ES')} tokens de contenido estable (el ${Math.round(movableShare * 100)}% del prompt) están después del primer marcador variable ${cache.firstPlaceholder}, así que hoy no se cachean nunca. Reordena la plantilla —instrucciones y contexto fijos primero, marcadores al final— y ese contenido pasa a leerse de caché al 10% del precio. Revisa que la reordenación no cambie el sentido del prompt.`,
+        estimatedMonthlyUsd: saving > 0 ? saving : null,
       });
     }
   }

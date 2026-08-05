@@ -15,6 +15,8 @@ export { RULES, getRule } from './rules.js';
 export { segment, join, protectedTexts } from './segment.js';
 export { computeSavings, costOfCall, formatUsd } from './savings.js';
 export { buildAdvisories, recommendTier } from './advisories.js';
+export { analyzeCachePrefix } from './cache.js';
+export type { CachePrefixAnalysis } from './cache.js';
 export { optimize, withExactTokenCounts, DEFAULT_USAGE } from './optimize.js';
 export {
   refineWithLlm,

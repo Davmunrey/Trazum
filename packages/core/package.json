@@ -1,6 +1,6 @@
 {
   "name": "@trazum/core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Núcleo del optimizador de prompts: reglas deterministas, recuento de tokens, precios y cálculo de ahorro.",
   "license": "MIT",
   "author": "David Muñoz Rey",

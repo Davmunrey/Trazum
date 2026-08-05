@@ -26,7 +26,8 @@ El núcleo es **determinista**: las mismas reglas, el mismo resultado, coste cer
 
 | Aviso | Por qué importa |
 |---|---|
-| Prompt caching | Leer de caché cuesta el 10% de la entrada. Con buena reutilización es el mayor ahorro disponible. |
+| Prompt caching | Leer de caché cuesta el 10% de la entrada. El ahorro se calcula sobre el **prefijo estable real**: en una plantilla con `{{marcadores}}` solo se cachea lo anterior al primer marcador, no el prompt entero. |
+| Reordenar la plantilla | Si hay instrucciones estables *después* del primer marcador variable, hoy no se cachean nunca. Trazum lo detecta y estima cuánto ahorrarías moviéndolas delante. |
 | Batch API | 50% de descuento sobre entrada y salida si el trabajo tolera latencia. |
 | Modelo más barato | Heurística de complejidad: si la tarea parece simple, cuánto ahorrarías bajando de nivel. |
 | Coste dominado por la salida | Si pagas más por la respuesta que por el prompt, acortar el prompt tiene techo. |
@@ -97,7 +98,17 @@ trazum check prompts/sistema.txt --max-tokens 2000
 #   Optimizado con "trazum optimize --level safe" quedaría en ~1.913 tokens y sí cabría.
 ```
 
-En GitHub Actions:
+En GitHub Actions puedes usar la acción empaquetada, sin instalar nada:
+
+```yaml
+- uses: actions/checkout@v4
+- uses: Davmunrey/Trazum@main
+  with:
+    file: prompts/sistema.txt
+    max-tokens: 2000
+```
+
+O a mano, si ya tienes el repo montado:
 
 ```yaml
 - run: npm ci && npm run build
@@ -262,6 +273,4 @@ apps/web/          Next.js (App Router)
 
 - Interfaz en inglés además de español.
 - Más reglas: recorte de ejemplos few-shot redundantes, detección de instrucciones contradictorias.
-- Análisis de prefijo estable con sugerencia de puntos de `cache_control`.
-- Acción de GitHub empaquetada para `trazum check`.
 - Publicación de `@trazum/core` y `@trazum/cli` en npm (los `package.json` ya están preparados).
