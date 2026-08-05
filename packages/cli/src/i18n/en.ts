@@ -16,6 +16,7 @@ export const en: CliMessages = {
 ${bold('USAGE')}
   trazum optimize <file|-> [options]
   trazum check <file|-> --max-tokens <n> [options]
+  trazum eval <file> --cases <file> [options]
   trazum models
   trazum rules
 
@@ -44,6 +45,18 @@ ${bold('OPTIONS FOR check')}
   Built for CI: exits with code 1 when the prompt busts the budget, so a
   template that grows unchecked breaks the build instead of the bill.
 
+${bold('OPTIONS FOR eval')}
+  --cases <file>              Inputs to test, one per line or a JSON array. Required.
+  --level <safe|aggressive>   Level to optimise with before comparing.
+  --concurrency <n>           Cases in flight at once. Default: 3.
+  --json                      Result as JSON.
+
+  Runs both prompt versions over your cases and reports whether the
+  optimisation changed the answers. Costs THREE provider calls per case: the
+  original twice, to measure the model's own run-to-run variance, and the
+  optimised once. That baseline is the yardstick — without it, a divergence
+  figure means nothing. Exits with code 1 when the answers genuinely diverge.
+
 ${bold('OPTIONAL LLM')}
   The core is deterministic and free. --llm adds a semantic compression pass
   using whichever provider you configure by environment:
@@ -64,6 +77,7 @@ ${bold('EXAMPLES')}
   trazum optimize prompt.txt --calls 50000 --diff
   cat prompt.md | trazum optimize - --level aggressive --json
   trazum optimize prompt.txt --llm -o prompt.optimised.txt
+  trazum eval prompt.txt --cases cases.txt --level aggressive
 `,
 
   errors: {
