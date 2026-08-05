@@ -68,6 +68,23 @@ by any pattern, so nothing is watching it. Mention them. If the command errors
 with *"No budget covers anything"*, the fix is a `budgets` entry or
 `--max-tokens` — do not present that error as "the prompts are fine".
 
+## Reporting into a pull request
+
+`--markdown-out <file>` on `check` or `diff` writes the same report as
+GitHub-flavoured markdown. Use it when the user wants the numbers somewhere other
+than a terminal.
+
+The packaged Action writes that file to the run summary on every run, and posts
+it as a PR comment with `comment: true` plus `github-token` and
+`pull-requests: write` on the caller's workflow. **The Action cannot grant itself
+that permission** — if the user's comment is not appearing, check their
+`permissions:` block first.
+
+On a pull request from a fork the token is read-only and the comment will not
+post. That is expected. **Never suggest `pull_request_target` as the fix** — it
+runs a writable token against code the contributor controls. The run summary is
+the answer.
+
 ## The config file
 
 `trazum.config.json`, found by walking up from the working directory. Keys:

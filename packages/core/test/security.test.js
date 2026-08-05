@@ -488,6 +488,39 @@ describe('the packaged Action', () => {
     );
   });
 
+  it('the reporting steps run even when the check fails', () => {
+    // A composite action skips the rest of its steps once one fails, so without
+    // `if: always()` the summary and the comment would appear only on a passing
+    // run — exactly the runs nobody needs a report for.
+    const steps = action.split(/\n {4}- name: /).slice(1);
+    const reporting = steps.filter((step) =>
+      /run summary|Comment on the pull request|budget verdict/.test(step),
+    );
+    assert.equal(reporting.length, 3, 'the reporting steps changed shape');
+    for (const step of reporting) {
+      assert.match(step, /if: always\(\)/, `a reporting step lost always(): ${step.split('\n')[0]}`);
+    }
+  });
+
+  it('the budget verdict is raised, and a missing outcome counts as failure', () => {
+    // The check step deliberately does not end the job, so something has to. If
+    // that step never reached its own last line, treating the absent value as a
+    // pass would turn a crash into a green build.
+    const verdict = action.slice(action.indexOf('Report the budget verdict'));
+    assert.match(verdict, /TRAZUM_OUTCOME:-1/, 'a missing outcome must default to failure');
+    assert.match(verdict, /exit 1/);
+  });
+
+  it('the comment step cannot fail the build', () => {
+    // The report has already reached the run summary by then. A red build for
+    // "could not comment" gets the action deleted rather than configured.
+    const comment = action.slice(
+      action.indexOf('Comment on the pull request'),
+      action.indexOf('Report the budget verdict'),
+    );
+    assert.match(comment, /\|\| true/, 'the comment step must not be able to fail the job');
+  });
+
   it('no workflow or the action uses pull_request_target', () => {
     // The event a reviewer reaches for when a fork PR cannot post a comment. It
     // runs with a writable token against the BASE repository while checking out
@@ -514,15 +547,39 @@ describe('the packaged Action', () => {
     const declared = [...inputsBlock.matchAll(/^ {2}([a-z][a-z-]*):$/gm)].map((m) => m[1]);
     assert.ok(declared.length >= 2, `only found ${declared.length} inputs — regex is wrong`);
     for (const input of declared) {
-      const envName = input.replace(/-/g, '_').toUpperCase();
       assert.ok(
         action.includes(`inputs.${input}`),
         `input "${input}" is declared but never used`,
       );
-      assert.ok(
-        new RegExp(`TRAZUM_[A-Z_]*${envName.split('_').pop()}`).test(action),
-        `input "${input}" is declared but never reaches the CLI`,
-      );
     }
+  });
+
+  it('every input reference sits in an env: assignment or a condition', () => {
+    // The stronger version of what this test used to check. It asserted that each
+    // input reached a `TRAZUM_*` variable, which was a usefulness check dressed
+    // as a security one — and it broke the moment an input legitimately gated a
+    // step (`comment`) instead of being forwarded to the CLI.
+    //
+    // What actually matters is the *position*: an input may be assigned to an
+    // environment variable, or tested in an `if:`, and nowhere else. Anywhere
+    // else means a value being spliced into something that interprets it.
+    const lines = action.split('\n');
+    const misplaced = [];
+
+    lines.forEach((line, index) => {
+      if (!line.includes('${{')) return;
+      if (/^\s*#/.test(line)) return; // a YAML comment explaining the rule
+      const allowed =
+        /^\s*[A-Za-z_][A-Za-z0-9_]*:\s*\$\{\{[^}]*\}\}\s*$/.test(line) || // ENV: ${{ ... }}
+        /^\s*if:\s/.test(line) ||
+        /^\s*working-directory:\s/.test(line);
+      if (!allowed) misplaced.push(`line ${index + 1}: ${line.trim()}`);
+    });
+
+    assert.deepEqual(
+      misplaced,
+      [],
+      `a template expression sits somewhere it could be interpreted:\n  ${misplaced.join('\n  ')}`,
+    );
   });
 });

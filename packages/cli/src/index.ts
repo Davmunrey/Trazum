@@ -44,6 +44,12 @@ import {
 import type { TrazumConfig } from '@trazum/core/node';
 
 import { detectLocale, getCliMessages } from './i18n/index.js';
+import {
+  MAX_SUMMARY_CHARS,
+  fitWithin,
+  renderCheckMarkdown,
+  renderDiffMarkdown,
+} from './markdown.js';
 import type { CliMessages } from './i18n/index.js';
 
 // --------------------------------------------------------------------------
@@ -91,6 +97,7 @@ const VALUE_FLAGS = new Set([
   'max-growth',
   'locale',
   'config',
+  'markdown-out',
   'out',
   'o',
 ]);
@@ -232,9 +239,9 @@ const COMMAND_FLAGS: Record<string, string[]> = {
     'level', 'model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch',
     'disable', 'llm', 'exact-tokens', 'diff', 'out', 'o',
   ],
-  check: ['max-tokens', 'level', 'exact-tokens'],
+  check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out'],
   eval: ['cases', 'level', 'concurrency'],
-  diff: ['level', 'model', 'calls', 'output-tokens', 'batch', 'max-growth', 'optimized'],
+  diff: ['level', 'model', 'calls', 'output-tokens', 'batch', 'max-growth', 'optimized', 'markdown-out'],
   models: [],
   rules: [],
 };
@@ -741,6 +748,19 @@ async function commandCheck(
   );
   const ok = !isOverBudget(verdict);
 
+  // Written before anything can exit, and independently of --json, because the
+  // whole point of the file is to survive a run that failed.
+  await writeMarkdown(args, () =>
+    renderCheckMarkdown({
+      target: target ?? '-',
+      verdicts: [verdict],
+      level,
+      tokenSource: counter.source,
+      truncated: false,
+      t,
+    }),
+  );
+
   if (boolFlag(args, 'json')) {
     console.log(
       JSON.stringify({
@@ -776,6 +796,35 @@ async function isDirectory(path: string): Promise<boolean> {
   return stat(path)
     .then((info) => info.isDirectory())
     .catch(() => false);
+}
+
+/**
+ * Writes the markdown report, if one was asked for.
+ *
+ * Takes a thunk so a run without `--markdown-out` never pays to render it, and
+ * is called before any `process.exitCode` is set: a report that only appears
+ * when the check passed is a report nobody needs.
+ *
+ * A failure to write is reported and swallowed. The exit code belongs to the
+ * budget, not to the reporting — a full disk on a CI runner must not turn a
+ * passing check into a failing build, and it must certainly not turn a failing
+ * one into a confusing one.
+ */
+async function writeMarkdown(args: Args, render: () => string): Promise<void> {
+  const path = stringFlag(args, 'markdown-out');
+  if (!path) return;
+
+  try {
+    const body = fitWithin(
+      render(),
+      MAX_SUMMARY_CHARS,
+      '\n_Trimmed: the report is larger than a step summary can hold._',
+    );
+    await writeFile(path, `${body}\n`, 'utf8');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(c.yellow(`Could not write ${path}: ${message}`));
+  }
 }
 
 /**
@@ -831,6 +880,17 @@ async function checkDirectory(
   }
 
   const failures = verdicts.filter(isOverBudget);
+
+  await writeMarkdown(args, () =>
+    renderCheckMarkdown({
+      target: root,
+      verdicts,
+      level,
+      tokenSource: counter.source,
+      truncated,
+      t,
+    }),
+  );
 
   if (boolFlag(args, 'json')) {
     console.log(
@@ -1055,6 +1115,17 @@ async function commandDiff(
     optimizeBoth: boolFlag(args, 'optimized'),
     usage: usageFrom(args, config, t),
   });
+
+  await writeMarkdown(args, () =>
+    renderDiffMarkdown({
+      comparison,
+      beforePath,
+      afterPath,
+      optimized: boolFlag(args, 'optimized'),
+      locale,
+      t,
+    }),
+  );
 
   if (boolFlag(args, 'json')) {
     console.log(JSON.stringify(comparison, null, 2));

@@ -8,20 +8,35 @@ branding:
   color: 'orange'
 
 inputs:
+  target:
+    description: 'Prompt file or directory to check, relative to the workspace. A directory uses the budgets in trazum.config.json.'
+    required: false
   file:
-    description: 'Path to the prompt file to check, relative to the workspace.'
-    required: true
+    description: 'Deprecated alias for target, kept so existing workflows keep working. Prefer target.'
+    required: false
   max-tokens:
-    description: 'Maximum input token budget.'
-    required: true
+    description: 'Maximum input token budget. Optional when trazum.config.json carries a budget covering the target.'
+    required: false
+  config:
+    description: 'Path to a trazum.config.json. Defaults to searching upward from the workspace.'
+    required: false
   level:
-    description: 'Rule level used to work out whether the optimised prompt would fit: safe or aggressive.'
+    description: 'Rule level used to work out whether the optimised prompt would fit: safe or aggressive. Defaults to the config file, then safe.'
     required: false
-    default: 'safe'
   locale:
-    description: 'Language of the report: en or es. Defaults to English.'
+    description: 'Language of the report: en or es. Defaults to the config file, then English.'
     required: false
-    default: 'en'
+  comment:
+    description: 'Post the report as a pull request comment, replacing the previous one. Needs github-token and pull-requests write.'
+    required: false
+    default: 'false'
+  comment-key:
+    description: 'Distinguishes comments from two runs reporting on different things in the same pull request.'
+    required: false
+    default: 'default'
+  github-token:
+    description: 'Token used to post the comment. Only read when comment is true.'
+    required: false
 
 runs:
   using: 'composite'
@@ -38,22 +53,106 @@ runs:
         npm run build
 
     - name: Check the budget
+      id: check
       shell: bash
       # Inputs go through the environment rather than being interpolated into
       # the script. `${{ inputs.file }}` spliced into `run:` is the classic
       # Actions template-injection shape: the value is workflow-authored today,
       # but one step that derives it from a pull request title or branch name
       # turns it into shell. Quoting inside the template is not a fix — the
-      # substitution happens before bash ever sees it.
+      # substitution happens before bash ever sees it. Asserted in
+      # packages/core/test/security.test.js, with positive controls.
       env:
+        TRAZUM_TARGET: ${{ inputs.target }}
         TRAZUM_FILE: ${{ inputs.file }}
         TRAZUM_MAX_TOKENS: ${{ inputs.max-tokens }}
+        TRAZUM_CONFIG: ${{ inputs.config }}
         TRAZUM_LEVEL: ${{ inputs.level }}
         TRAZUM_REPORT_LOCALE: ${{ inputs.locale }}
         TRAZUM_ACTION_PATH: ${{ github.action_path }}
-      run: >-
-        node "$TRAZUM_ACTION_PATH/packages/cli/dist/index.js" check
-        "$TRAZUM_FILE"
-        --max-tokens "$TRAZUM_MAX_TOKENS"
-        --level "$TRAZUM_LEVEL"
-        --locale "$TRAZUM_REPORT_LOCALE"
+      # Every optional flag is added only when it was actually given. Passing
+      # `--level safe` unconditionally is what made a config file's `level` and
+      # `locale` unreachable through this action in 0.10.0: the CLI layers flags
+      # over config over defaults, so an always-present flag means the config's
+      # value is never read. A default that silently overrides a project's own
+      # setting is worse than no default at all.
+      #
+      # The check is allowed to fail without ending the job here, so the report
+      # still reaches the summary and the comment. The verdict is re-raised in the
+      # last step, so a busted budget still fails the build.
+      run: |
+        set -uo pipefail
+
+        target="${TRAZUM_TARGET:-$TRAZUM_FILE}"
+        if [ -z "$target" ]; then
+          echo "::error title=Trazum::Set the 'target' input to the prompt file or directory to check."
+          echo "outcome=1" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        if [ -n "$TRAZUM_FILE" ] && [ -z "$TRAZUM_TARGET" ]; then
+          echo "::warning title=Trazum::The 'file' input is deprecated; rename it to 'target'."
+        fi
+
+        args=(check "$target")
+        [ -n "$TRAZUM_MAX_TOKENS" ] && args+=(--max-tokens "$TRAZUM_MAX_TOKENS")
+        [ -n "$TRAZUM_CONFIG" ] && args+=(--config "$TRAZUM_CONFIG")
+        [ -n "$TRAZUM_LEVEL" ] && args+=(--level "$TRAZUM_LEVEL")
+        [ -n "$TRAZUM_REPORT_LOCALE" ] && args+=(--locale "$TRAZUM_REPORT_LOCALE")
+        args+=(--markdown-out "$RUNNER_TEMP/trazum-report.md")
+
+        node "$TRAZUM_ACTION_PATH/packages/cli/dist/index.js" "${args[@]}"
+        echo "outcome=$?" >> "$GITHUB_OUTPUT"
+
+    - name: Add the report to the run summary
+      shell: bash
+      # always(), because the step above can exit non-zero and a composite action
+      # skips the rest of its steps on failure. A summary that only appears when
+      # the check passed is a summary nobody needs.
+      #
+      # Not behind an input, either: writing a step summary needs no token, no
+      # permission and no pull request, and has no failure mode worth a switch.
+      if: always()
+      run: |
+        report="$RUNNER_TEMP/trazum-report.md"
+        if [ -s "$report" ]; then
+          cat "$report" >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+        fi
+        exit 0
+
+    - name: Comment on the pull request
+      shell: bash
+      if: always() && inputs.comment == 'true'
+      env:
+        TRAZUM_GITHUB_TOKEN: ${{ inputs.github-token }}
+        TRAZUM_MARKER_KEY: ${{ inputs.comment-key }}
+        TRAZUM_REPORT_LOCALE: ${{ inputs.locale }}
+        TRAZUM_OUTCOME: ${{ steps.check.outputs.outcome }}
+        TRAZUM_ACTION_PATH: ${{ github.action_path }}
+      # Never fails the build: no pull request, a read-only token on a fork, or
+      # comments disabled all print a notice and exit 0. The report has already
+      # reached the run summary by this point, so nothing is lost either way.
+      #
+      # The report path is built from $RUNNER_TEMP in the shell rather than from
+      # ${{ runner.temp }} in an env value, so every template expression in this
+      # file is a *bare* assignment or a condition. That is a rule a reader can
+      # check at a glance, and one a test can assert without a judgement call
+      # about which suffixes are safe.
+      run: |
+        TRAZUM_BODY_PATH="$RUNNER_TEMP/trazum-report.md" \
+          node "$TRAZUM_ACTION_PATH/action/post-comment.mjs" || true
+
+    - name: Report the budget verdict
+      shell: bash
+      # The exit code belongs to the budget and nothing else. Raised here rather
+      # than in the check step so the reporting above always runs — and raised
+      # unconditionally so a busted budget still fails the build. A missing
+      # outcome is treated as a failure: the check step not reaching its own
+      # last line means something went wrong that nobody should call green.
+      if: always()
+      env:
+        TRAZUM_OUTCOME: ${{ steps.check.outputs.outcome }}
+      run: |
+        if [ "${TRAZUM_OUTCOME:-1}" != "0" ]; then
+          echo "::error title=Trazum::A prompt busts its token budget, or the check could not run. See the run summary."
+          exit 1
+        fi

@@ -257,6 +257,51 @@ ${bold('EXAMPLES')}
       `Grew by ${delta} tokens, past the limit of ${max}.`,
   },
 
+  markdown: {
+    checkHeading: (target) => `Trazum — token budgets for ${target}`,
+    diffHeading: (before, after) => `Trazum — ${before} → ${after}`,
+    columnFile: () => 'Prompt',
+    columnTokens: () => 'Tokens',
+    columnBudget: () => 'Budget',
+    columnMetric: () => 'Metric',
+    columnChange: () => 'Change',
+    allWithin: (budgeted) =>
+      budgeted === 1
+        ? 'The prompt is within budget.'
+        : `All ${budgeted} budgeted prompts are within budget.`,
+    overBudget: (failures, budgeted) => `${failures} of ${budgeted} over budget`,
+    noBudget: () => '—',
+    unbudgetedNote: (count) =>
+      count === 1
+        ? '1 prompt is not covered by any budget pattern, so nothing is watching it.'
+        : `${count} prompts are not covered by any budget pattern, so nothing is watching them.`,
+    whatWouldHelp: () => 'What would help',
+    wouldFit: (level, optimizedTokens) =>
+      `optimising at \`${level}\` would land at ~${optimizedTokens} tokens, which fits`,
+    stillTooBig: (optimizedTokens) =>
+      `even optimised it does not fit (~${optimizedTokens} tokens): content has to be cut by hand`,
+    truncated: () =>
+      'Stopped early: the directory is larger than the walk limit, so this is not the whole picture.',
+    footer: (source, level) => `Token counts ${source} · rule level \`${level}\``,
+    sourceEstimated: () => 'estimated, ±15%',
+    sourceExact: () => 'counted exactly',
+    measuringOptimised: () =>
+      'Measuring what the rules would leave, not what is written in the file.',
+    metricTokens: (before, after) => `Input tokens (${before} → ${after})`,
+    metricMonthly: (calls, model) => `Cost per month at ${calls} calls with ${model}`,
+    deltaConvention: () =>
+      'Every figure is a delta: after minus before, so <strong>positive means worse</strong>. ' +
+      'This is the opposite of the rest of Trazum, where every figure is a saving.',
+    advisoriesAppeared: () => 'Problems this edit introduced',
+    advisoriesResolved: () => 'Problems this edit resolved',
+    rulesNewlyFiring: () => 'Rules that now find something',
+    rulesNoLongerFiring: () => 'Rules that no longer find anything',
+    collapsedNote: () => 'nothing over budget, expand for the numbers',
+    trimNotice: () =>
+      '_Trimmed to fit a comment. The full report is in the workflow run summary._',
+    commentTitle: () => 'Trazum',
+  },
+
   check: {
     okLabel: () => 'OK',
     failedLabel: () => 'FAILED',
