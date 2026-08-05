@@ -385,10 +385,100 @@ one action in this repository that cannot be undone after 72 hours.
 
 ## Next
 
-Nothing scheduled. 1.0 is a floor, not a finish line — see **Under
-consideration** below for what is on the list and why none of it is dated.
+1.0 froze the API. It did not finish the product, and it left two things this
+file should say out loud: the central accuracy claim has never been measured, and
+Trazum governs prompt *files* rather than the prompts an application actually
+sends.
 
----
+### 1.1.0 — Releasing without remembering
+
+Three releases are queued behind this one, and each currently needs a human to
+remember to build, tag, verify the tarball and publish. Automating the mechanism
+before using it three times is worth doing first.
+
+- A tag-triggered workflow: build, full `verify`, assert the tarball contents,
+  publish both packages.
+- **npm trusted publishing (OIDC), not an `NPM_TOKEN` secret.** A long-lived
+  publish token would be the highest-value credential this project holds, sitting
+  in repository secrets permanently for something used a few times a year. OIDC
+  needs `id-token: write` on the job and stores nothing — which is the posture the
+  rest of the repository already takes. Provenance attestation comes free with it,
+  so a consumer can verify a tarball came from this repository and this commit.
+- It must **refuse to publish a version that does not match the tag**. A tag
+  reading `v1.2.0` against manifests reading `1.1.0` is the one mistake that
+  cannot be corrected after 72 hours.
+- `publish.test.js` is the gate, reused rather than duplicated.
+
+**Needs the maintainer once:** the `@trazum` scope does not exist on npm yet
+(`@trazum/core` currently 404s), so it has to be created and this repository
+configured as a trusted publisher. Nothing to paste into secrets, nothing to
+rotate.
+
+### 1.2.0 — The error band, measured
+
+`±15%` is printed on every report, appears twice in the README and in the
+tokenizer's own doc comment, and **nothing asserts it**. `estimateTokens` is
+tested for three things: zero on empty input, monotonic growth, and never
+returning `NaN`. Every dollar figure Trazum prints descends from a number no test
+has ever checked.
+
+The security suite in this repository opens by saying a promise nobody checks is a
+promise that expires. This is that promise, holding up the product's central
+claim.
+
+It is also **one number for all text**, which is unlikely to be true. The only CJK
+test asserts a Japanese string does not produce `NaN`. If the real error there is
+60%, every figure for a Japanese prompt is wrong while the report says ±15%.
+
+- A committed corpus with known exact counts, spanning the types where the
+  estimator plausibly differs: English prose, code-heavy prompts, CJK, heavy
+  punctuation, few-shot blocks.
+- A test asserting the estimator stays inside its published band, per type.
+- **Publish the band per text type** if the measurement says they differ, and say
+  so on the report for a prompt whose type is materially worse — rather than
+  printing a band that does not apply to it.
+
+**Needs the maintainer once:** ground truth comes from the official counting API,
+so the corpus figures have to be generated with a key and committed as fixtures.
+The corpus and harness do not need one.
+
+### 1.3.0 — Prompts where they actually live
+
+`check` and `diff` read `.txt`, `.md`, `.prompt` and `.tmpl`. Real prompts live in
+TypeScript template literals, Python strings and YAML, so adopting Trazum today
+means first refactoring them out into files — a change to somebody's application
+as the price of admission.
+
+Zero runtime dependencies rules out an AST parser, which leaves one approach:
+
+- An explicit marker comment — `// trazum:prompt` — and then the following
+  template literal, taken by delimiter matching. Bounded, parser-free and
+  unambiguous. **Guessing which string in a file is a prompt** would produce false
+  positives in something used as a gate, and that is not a trade worth making.
+- The masking pass already handles interpolation correctly: `${x}` in a template
+  literal is exactly the placeholder shape `segment.ts` protects, so an embedded
+  prompt gets the same cache-prefix analysis as a `{{x}}` template. Not a special
+  case to build — one that already works.
+- Honest limit, to document rather than paper over: a prompt assembled from
+  concatenated pieces cannot be read this way, and Trazum should decline instead of
+  guessing.
+
+Folded in here rather than earlier: the **Action's `diff` against the base
+branch**, deferred from 0.11.0. Before source extraction it would only diff
+standalone files, which `trazum diff` already handles by hand. After it, diffing an
+embedded prompt against its base version is the actual reviewer workflow. Needs
+`fetch-depth: 0` and a documented recipe, not a new input.
+
+### 1.4.0 — The front door catches up
+
+The web app is five releases behind: it optimises, and that is all. No diff view,
+no budgets, no pricing overlay, no awareness of a config file. Anyone who arrives
+through the web sees a 0.1.0 product and judges the rest of it on that.
+
+Scheduled rather than parked, because the gap costs adoption even though it costs
+nobody money. Last, because it changes how the product **looks** rather than
+whether its numbers are **right** — and that ordering should be visible here
+rather than argued about later.
 
 ---
 
@@ -415,6 +505,11 @@ Not scheduled. Listed so the reasoning is on the record.
   same prompt well, which is what it is for. A real tokenizer would improve
   absolute figures at the cost of the dependency-free promise — worth doing
   only as an optional package.
+
+  **Unscheduled pending 1.2.0, and that ordering is the point.** Measuring the
+  error band is what decides whether this is needed at all: within 5% on prose and
+  the dependency is not worth taking; 40% out on CJK and it is. Deciding now would
+  be deciding without the one number that settles it.
 - **Prompt library.** Storing prompts is a different product, and one that
   would mean sending them to a server. Trazum's privacy story is that it never
   does.

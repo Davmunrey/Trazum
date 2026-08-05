@@ -8,6 +8,37 @@ alters nothing installable — a test, a document — still lands there rather t
 nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
+## Unreleased
+
+**A post-1.0 roadmap.** `Next` was empty after 1.0.0 — honest, since every planned
+item had shipped, but the file's stated purpose is that "the ordering is a
+commitment", and it was committing to nothing.
+
+Four entries, and two of them exist because writing the roadmap turned up things
+worth saying out loud:
+
+- **1.1.0 — Releasing without remembering.** A tag-triggered workflow, using npm
+  trusted publishing rather than a stored `NPM_TOKEN`: a long-lived publish token
+  would be the highest-value credential this project holds, sitting in secrets
+  permanently for something used a few times a year. It must refuse to publish a
+  version that does not match the tag.
+- **1.2.0 — The error band, measured.** `±15%` is printed on every report and
+  asserted nowhere. `estimateTokens` is tested for zero-on-empty, monotonic growth
+  and not-`NaN`; nothing checks its accuracy, and every dollar figure descends from
+  it. It is also one number for all text, which the CJK case suggests is not true.
+- **1.3.0 — Prompts where they actually live.** Trazum reads `.txt`/`.md`/
+  `.prompt`/`.tmpl`, so prompts embedded in TypeScript or Python require
+  refactoring an application before Trazum can be adopted at all.
+- **1.4.0 — The front door catches up.** The web app optimises and nothing else,
+  five releases behind the CLI. Last on purpose: it changes how the product looks
+  rather than whether its numbers are right.
+
+The `Tokenizer per model family` entry under `Under consideration` now says it is
+pending 1.2.0 rather than reading as a pure dependency-cost decision. Measuring the
+band is what settles whether a real tokenizer is needed.
+
+Also fixes a doubled `---` left in `ROADMAP.md` by the 1.0.0 edit.
+
 ## 1.0.0
 
 **The public API is frozen.** A breaking change waits for 2.0. This is the last
