@@ -6,9 +6,12 @@ import {
   LOCALES,
   PRICING_LAST_REVIEWED,
   RULES,
+  comparePrompts,
   countTokensAnthropic,
+  getModel,
   estimateTokens,
   formatUsd,
+  formatSignedUsd,
   getMessages,
   listModels,
   optimize,
@@ -20,6 +23,7 @@ import {
 } from '@trazum/core';
 import type {
   ExampleReview,
+  PromptComparison,
   Locale,
   OptimizationResult,
   RuleId,
@@ -67,6 +71,7 @@ function parseArgs(argv: string[], t: CliMessages): Args {
     'max-tokens',
     'cases',
     'concurrency',
+    'max-growth',
     'locale',
     'out',
     'o',
@@ -139,6 +144,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   ],
   check: ['max-tokens', 'level', 'exact-tokens'],
   eval: ['cases', 'level', 'concurrency'],
+  diff: ['level', 'model', 'calls', 'output-tokens', 'batch', 'max-growth', 'optimized'],
   models: [],
   rules: [],
 };
@@ -744,6 +750,111 @@ function parseCases(raw: string): string[] {
     .filter((line) => line.length > 0 && !line.startsWith('#'));
 }
 
+
+/**
+ * Compares two versions of a prompt. Built for a pull request: it reports by
+ * default and only fails the build when a growth limit was explicitly asked
+ * for, because a tool that fails a build nobody armed gets removed from the
+ * pipeline rather than fixed.
+ */
+async function commandDiff(args: Args, t: CliMessages, locale: Locale): Promise<void> {
+  const [beforePath, afterPath] = args.positional;
+  if (!beforePath || !afterPath) throw new Error(t.errors.diffNeedsTwoFiles());
+
+  const [before, after] = await Promise.all([
+    readInput(beforePath, t),
+    readInput(afterPath, t),
+  ]);
+
+  const model = stringFlag(args, 'model');
+  const comparison = comparePrompts(before, after, {
+    level: levelFlag(args, t),
+    locale,
+    optimizeBoth: args.flags.has('optimized'),
+    usage: {
+      ...(model ? { model } : {}),
+      callsPerMonth: numberFlag(args, 'calls', DEFAULT_USAGE.callsPerMonth, t),
+      avgOutputTokens: numberFlag(args, 'output-tokens', DEFAULT_USAGE.avgOutputTokens, t),
+      batchEligible: args.flags.has('batch'),
+    },
+  });
+
+  if (args.flags.has('json')) {
+    console.log(JSON.stringify(comparison, null, 2));
+  } else {
+    printComparison(comparison, beforePath, afterPath, args.flags.has('optimized'), t);
+  }
+
+  // The gate is opt-in. Without --max-growth this command reports and exits 0
+  // even on a prompt that doubled: deciding that growth is unacceptable is the
+  // repository's call, not ours.
+  const limit = args.flags.get('max-growth');
+  if (typeof limit === 'string') {
+    const maxGrowth = numberFlag(args, 'max-growth', 0, t);
+    if (comparison.tokenDelta > maxGrowth) {
+      console.error(
+        `\n${c.red(t.diff.overLimit(comparison.tokenDelta, maxGrowth))}`,
+      );
+      process.exitCode = 1;
+    }
+  }
+}
+
+function printComparison(
+  comparison: PromptComparison,
+  beforePath: string,
+  afterPath: string,
+  optimized: boolean,
+  t: CliMessages,
+): void {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const grew = comparison.tokenDelta > 0;
+  const paint = grew ? c.red : comparison.tokenDelta < 0 ? c.green : c.dim;
+  const signed = (value: number): string => `${value > 0 ? '+' : ''}${n(value)}`;
+
+  console.log();
+  console.log(c.bold(t.diff.heading(beforePath, afterPath)));
+  if (optimized) console.log(c.dim(`  ${t.diff.measuringOptimised()}`));
+  console.log();
+  console.log(
+    `  ${n(comparison.tokensBefore)} → ${n(comparison.tokensAfter)} tokens   ` +
+      paint(`${signed(comparison.tokenDelta)} (${signed(Math.round(comparison.deltaPct))}%)`),
+  );
+  console.log(
+    `  ${t.diff.monthly(
+      formatSignedUsd(comparison.monthlyDeltaUsd),
+      n(comparison.usage.callsPerMonth),
+      getModel(comparison.usage.model).displayName,
+    )}`,
+  );
+
+  const { rules, advisories } = comparison;
+  const copy = getMessages(t.locale).rules;
+
+  if (advisories.appeared.length > 0) {
+    console.log();
+    console.log(c.yellow(`  ${t.diff.advisoriesAppeared()}`));
+    for (const id of advisories.appeared) console.log(`    ! ${id}`);
+  }
+  if (advisories.resolved.length > 0) {
+    console.log();
+    console.log(c.green(`  ${t.diff.advisoriesResolved()}`));
+    for (const id of advisories.resolved) console.log(`    ✓ ${id}`);
+  }
+  if (rules.newlyFiring.length > 0) {
+    console.log();
+    console.log(`  ${t.diff.rulesNewlyFiring()}`);
+    for (const id of rules.newlyFiring) console.log(`    ${c.dim(copy[id].title)}`);
+  }
+  if (rules.noLongerFiring.length > 0) {
+    console.log();
+    console.log(`  ${t.diff.rulesNoLongerFiring()}`);
+    for (const id of rules.noLongerFiring) console.log(`    ${c.dim(copy[id].title)}`);
+  }
+
+  console.log();
+}
+
 // --------------------------------------------------------------------------
 
 async function main(): Promise<void> {
@@ -779,6 +890,9 @@ async function main(): Promise<void> {
       break;
     case 'eval':
       await commandEval(args, t, locale);
+      break;
+    case 'diff':
+      await commandDiff(args, t, locale);
       break;
     case 'models':
       commandModels(t);

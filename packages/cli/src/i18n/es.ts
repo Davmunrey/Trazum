@@ -11,6 +11,7 @@ ${bold('USO')}
   trazum optimize <fichero|-> [opciones]
   trazum check <fichero|-> --max-tokens <n> [opciones]
   trazum eval <fichero> --cases <fichero> [opciones]
+  trazum diff <antes> <después> [opciones]
   trazum models
   trazum rules
 
@@ -50,6 +51,19 @@ ${bold('OPCIONES DE eval')}
   original dos veces, para medir la varianza propia del modelo, y el optimizado
   una. Esa base es la vara de medir: sin ella, un porcentaje de divergencia no
   significa nada. Sale con código 1 cuando las respuestas divergen de verdad.
+
+${bold('OPCIONES DE diff')}
+  --max-growth <n>            Falla si el prompt ha crecido más de n tokens.
+  --optimized                 Mide lo que dejarían las reglas, no lo escrito.
+  --level <safe|aggressive>   Nivel para las reglas y los avisos.
+  --model <id>                Modelo con el que calcular el coste.
+  --calls <n>                 Llamadas al mes, para la cifra de coste.
+  --json                      Resultado en JSON.
+
+  Compara dos versiones de un prompt: cómo se ha movido el recuento de tokens,
+  cuánto cuesta eso, qué avisos ha introducido o resuelto la edición. Toda
+  cifra es un delta y positivo significa peor. Informa y sale con 0 salvo que
+  des --max-growth: decidir que crecer es inaceptable es cosa tuya, no nuestra.
 
 ${bold('LLM OPCIONAL')}
   El núcleo es determinista y gratis. Con --llm se añade una pasada de
@@ -96,6 +110,8 @@ ${bold('EJEMPLOS')}
       `Opción desconocida --${name}. Este comando acepta: ${allowed}.`,
     unknownFlagDidYouMean: (name, suggestion) =>
       `Opción desconocida --${name}. ¿Querías decir --${suggestion}?`,
+    diffNeedsTwoFiles: () =>
+      'trazum diff necesita dos ficheros: trazum diff <antes> <después>.',
     errorLabel: () => 'Error',
   },
 
@@ -188,6 +204,21 @@ ${bold('EJEMPLOS')}
     mostChanged: () => 'Casos que más han cambiado',
     caseAgreement: (cross, self) => `${cross} de coincidencia con el original (que consigo mismo dio ${self})`,
     callsMade: (count) => `${count} llamadas al proveedor.`,
+  },
+
+
+  diff: {
+    heading: (before, after) => `${before} → ${after}`,
+    measuringOptimised: () =>
+      'Midiendo lo que dejarían las reglas, no lo que está escrito.',
+    monthly: (delta, calls, model) =>
+      `${delta}/mes con ${calls} llamadas y ${model}`,
+    advisoriesAppeared: () => 'Problemas nuevos',
+    advisoriesResolved: () => 'Resueltos',
+    rulesNewlyFiring: () => 'Reglas que ahora encuentran algo:',
+    rulesNoLongerFiring: () => 'Reglas que ya no encuentran nada:',
+    overLimit: (delta, max) =>
+      `Ha crecido ${delta} tokens, por encima del límite de ${max}.`,
   },
 
   check: {

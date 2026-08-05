@@ -13,7 +13,7 @@ export {
 } from './pricing.js';
 export { RULES, getRule } from './rules.js';
 export { segment, join, protectedTexts } from './segment.js';
-export { computeSavings, costOfCall, formatUsd } from './savings.js';
+export { computeSavings, costOfCall, formatUsd, formatSignedUsd } from './savings.js';
 export { buildAdvisories, recommendTier } from './advisories.js';
 export type { AdvisoryOptions } from './advisories.js';
 export { analyzeCachePrefix } from './cache.js';
@@ -80,3 +80,12 @@ export type { ExampleReview, ExampleRedundancy, ReviewExamplesOptions } from './
 // Golden-set evaluation (optional, costs three LLM calls per case)
 export { evaluate, fillPrompt, verdictFor } from './evaluate.js';
 export type { EvalCase, EvalReport, EvalVerdict, EvaluateOptions } from './evaluate.js';
+
+// Comparing two prompt versions
+export { comparePrompts } from './compare.js';
+export type {
+  PromptComparison,
+  CompareOptions,
+  RuleDelta,
+  AdvisoryDelta,
+} from './compare.js';

@@ -74,6 +74,33 @@ verdict.
 
 Exits 1 on `diverges`.
 
+## Reviewing an edit to a prompt
+
+When someone has changed a prompt and wants to know whether the change is fine
+— a pull request, a "does this look right?", a before/after in the
+conversation — this is the command, not `optimize`:
+
+```bash
+node packages/cli/dist/index.js diff old.txt new.txt --calls 50000
+```
+
+**Every number it prints is `after - before`, so positive means worse.** That
+is the opposite of every other Trazum output, where positive is a saving. Do
+not describe a `+37` token delta as a saving of 37 tokens.
+
+It reports what the edit broke, not only what it cost: advisories that appeared
+and rules that started firing, and the same in reverse when the edit improved
+things. Lead with a new `contradictory-instructions` over any token figure — a
+correctness regression matters more than the cost of it.
+
+It measures the text **as written**, which is what a reviewer is being asked
+about. Pass `--optimized` only if the user already runs Trazum in their
+pipeline and cares about what actually reaches the model.
+
+Exits 0 on growth alone. It exits 1 only when `--max-growth <pct>` was given
+and exceeded, so suggest that flag when the user wants CI to block a regression
+— without it, nothing fails.
+
 ## From code
 
 ```ts

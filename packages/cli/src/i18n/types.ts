@@ -39,6 +39,7 @@ export interface CliMessages {
     checkNeedsMaxTokens(): string;
     evalNeedsCases(): string;
     evalNoCases(path: string): string;
+    diffNeedsTwoFiles(): string;
     errorLabel(): string;
   };
 
@@ -99,6 +100,17 @@ export interface CliMessages {
     mostChanged(): string;
     caseAgreement(cross: string, self: string): string;
     callsMade(count: number): string;
+  };
+
+  diff: {
+    heading(before: string, after: string): string;
+    measuringOptimised(): string;
+    monthly(delta: string, calls: string, model: string): string;
+    advisoriesAppeared(): string;
+    advisoriesResolved(): string;
+    rulesNewlyFiring(): string;
+    rulesNoLongerFiring(): string;
+    overLimit(delta: number, max: number): string;
   };
 
   check: {

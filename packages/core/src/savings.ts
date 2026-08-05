@@ -84,3 +84,17 @@ export function formatUsd(value: number): string {
   if (abs < 1000) return `$${value.toFixed(2)}`;
   return `$${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 }
+
+/**
+ * Formats a USD amount that can legitimately be negative, with an explicit
+ * sign.
+ *
+ * `formatUsd` renders a negative as `$-30.80`, which reads as a typo. In a
+ * comparison every cost line can go either way and the sign carries the whole
+ * meaning, so it goes in front of the currency where a reader expects it.
+ */
+export function formatSignedUsd(value: number): string {
+  if (value === 0) return '$0';
+  const rendered = formatUsd(Math.abs(value));
+  return value > 0 ? `+${rendered}` : `-${rendered}`;
+}

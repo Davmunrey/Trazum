@@ -214,21 +214,58 @@ present, and real cache simulation from a call log.
 
 ---
 
-## Next
-
 ### 0.9.0 — Fits into a workflow
 
 Optimising once is a demo. The value is in a prompt staying lean as it is
-edited over months.
+edited over months, by people who never read this README.
 
-- **`trazum diff`**: compare two prompt versions and report the token and cost
-  delta — for pull requests.
-- **PR comment mode** for the GitHub Action: post the budget result and the
-  delta rather than only failing the build.
-- **Directory mode**: `trazum check prompts/` with a per-file budget from a
-  config file, so a repository of prompts is governed as a whole.
+`trazum diff old.txt new.txt` answers the question a pull request actually
+raises — *somebody edited this; did it get worse?* — in tokens, in dollars per
+month, and in what the edit broke.
+
+**The sign convention is the design decision here.** Every other figure Trazum
+prints is a *saving*: before minus after, positive is good. Every figure `diff`
+prints is a *delta*: after minus before, positive is **bad**. Mixing those two
+conventions in one report is the easiest way to make a cost tool lie, so the
+comparison lives in its own module, nothing in it is called a saving, and the
+negation happens exactly once, at the boundary.
+
+- Reports what the edit *broke*, not only what it cost: advisories that
+  appeared, rules that started firing, and the same in reverse when the edit
+  improved things.
+- Measures the text **as written** by default, not what the rules would leave.
+  A pull request changed the file on disk, so the file on disk is what the
+  reviewer is being asked about — otherwise a prompt that doubled in length but
+  happened to double in courtesy would show as no change at all.
+  `--optimized` switches the figures to the post-rules text for a team that
+  already runs Trazum in its pipeline.
+- **The gate is opt-in.** Growth alone never fails a build; `--max-growth 10`
+  does. A tool that fails a build nobody armed gets removed from the pipeline
+  rather than fixed.
+- `--max-growh` is rejected with *"Did you mean --max-growth?"* rather than
+  ignored. A silently-swallowed gate flag means CI green while the author
+  believes a limit is set — which is the failure mode this whole command
+  exists to prevent.
+- Signed currency throughout: `+$9.25`, not `$-9.25`, and never `-$0`.
+
+Still open from the entry as originally written, and moved to 0.10.0 rather
+than dropped: PR comment mode, directory mode, and `trazum.config.json`.
+
+---
+
+## Next
+
+### 0.10.0 — Governed as a repository
+
+`diff` made a single prompt reviewable. This makes a directory of them
+governable, and stops every project from re-typing the same flags.
+
 - **`trazum.config.json`**: project-level defaults for level, model, usage
   profile, disabled rules and budgets. Flags keep overriding it.
+- **Directory mode**: `trazum check prompts/` with a per-file budget from that
+  config, so a repository of prompts is governed as a whole.
+- **PR comment mode** for the GitHub Action: post the budget result and the
+  `diff` delta rather than only failing the build.
 
 ### 1.0.0 — A stable contract
 
@@ -260,8 +297,8 @@ Not scheduled. Listed so the reasoning is on the record.
   needs a maintainer who actually reads it, and a stale translation is worse
   than an honest fallback to English.
 - **Editor extension.** Live token cost while writing a prompt is the right
-  place for this to live. Waiting on 0.9.0's config file so it has something to
-  read.
+  place for this to live. Waiting on 0.10.0's config file so it has something
+  to read.
 - **Tokenizer per model family.** The heuristic compares two versions of the
   same prompt well, which is what it is for. A real tokenizer would improve
   absolute figures at the cost of the dependency-free promise — worth doing
