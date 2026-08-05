@@ -67,9 +67,64 @@ export interface Advisory {
 }
 
 /** Price of a model, in USD per million tokens. */
+/**
+ * How a provider prices caching and batching.
+ *
+ * These were global constants until models from other providers arrived, and
+ * being global made them quietly wrong: a cache read costs about 10% of the
+ * input price on Anthropic and about 50% on OpenAI. One number for both would
+ * have overstated an OpenAI caching saving fivefold — an invented saving, which
+ * is the one thing this tool must never print.
+ *
+ * Every field is optional and falls back to the Anthropic values, so a model
+ * added without them prices exactly as it did before.
+ */
+export interface CostMultipliers {
+  /** Cache read as a fraction of the input price. */
+  cacheRead?: number;
+  /** Cache write with the short TTL, as a multiple of the input price. */
+  cacheWrite5m?: number;
+  /** Cache write with the long TTL, where the provider offers one. */
+  cacheWrite1h?: number;
+  /**
+   * Batch discount, or `null` where the provider has no batch API. `null` and
+   * `undefined` mean different things here: "there is no batch API" versus
+   * "nobody has said", and only the first should stop the advisory firing.
+   */
+  batch?: number | null;
+}
+
+/**
+ * How prompt caching is turned on.
+ *
+ * The advice to move stable content into the prefix is the same everywhere,
+ * because prefix caching is prefix caching. What differs is whether you have to
+ * ask for it: telling an OpenAI user to "set cache_control" names a parameter
+ * that does not exist for them.
+ */
+export type CachingMode =
+  /** The caller marks the prefix, e.g. Anthropic's `cache_control`. */
+  | 'explicit'
+  /** The provider caches long-enough prefixes with no marker. */
+  | 'automatic'
+  /** No prompt caching at all. */
+  | 'none';
+
+/**
+ * Capability, without a vendor's ladder in the name.
+ *
+ * `tier` used Anthropic's own names as the generic axis, which reads as nonsense
+ * the moment the model is not Anthropic's — telling somebody on Kimi that their
+ * task "looks like haiku complexity" is a label that means something other than
+ * what it says.
+ */
+export type Capability = 'small' | 'mid' | 'large' | 'frontier';
+
 export interface ModelPricing {
   id: string;
   displayName: string;
+  /** Who sells it. Used to group the model list and to explain caching. */
+  provider?: string;
   /** USD per 1M input tokens. */
   inputPerMTok: number;
   /** USD per 1M output tokens. */
@@ -78,7 +133,25 @@ export interface ModelPricing {
   contextWindow: number;
   /** Minimum tokens before prompt caching actually caches. */
   cacheMinTokens: number;
-  /** Capability tier, used to recommend a model. */
+  /** How caching is enabled. Defaults to `explicit`. */
+  caching?: CachingMode;
+  /** Provider-specific cache and batch pricing. Defaults to Anthropic's. */
+  multipliers?: CostMultipliers;
+  /**
+   * Whether to offer this model as a cheaper alternative.
+   *
+   * Defaults to true. A model behind a private programme or a waitlist is real
+   * and worth pricing, but recommending a switch to something the reader cannot
+   * buy is advice that wastes their time.
+   */
+  recommendable?: boolean;
+  /** Capability, on a vendor-neutral scale. */
+  capability: Capability;
+  /**
+   * @deprecated Use `capability`. Anthropic's ladder used as a generic axis
+   * stopped making sense once other providers were priced. Kept in step with
+   * `capability` for the whole of 1.x and removed in 2.0 — see VERSIONING.md.
+   */
   tier: 'haiku' | 'sonnet' | 'opus' | 'frontier';
   /** Promotional pricing, when one is running. */
   promo?: {

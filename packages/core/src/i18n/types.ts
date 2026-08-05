@@ -65,6 +65,19 @@ export interface PromptCachingParams {
   modelName: string;
   /** Cache hit rate as a whole percentage. */
   hitRatePct: number;
+  /** Cache read price as a percentage of the input price, for this provider. */
+  readPct: number;
+  /** Cache write price as a percentage of the input price, for this provider. */
+  writePct: number;
+  /**
+   * Whether the caller has to mark the prefix.
+   *
+   * Telling somebody on OpenAI to "set cache_control" names a parameter that
+   * does not exist for them: their caching is automatic above a threshold. The
+   * advice to move stable content forward is identical either way — a prefix is
+   * a prefix — but the instruction that follows it is not.
+   */
+  explicit: boolean;
 }
 
 export interface BelowCacheMinimumParams {

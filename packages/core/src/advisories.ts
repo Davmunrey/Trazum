@@ -2,7 +2,7 @@ import { analyzeCachePrefix } from './cache.js';
 import { getMessages } from './i18n/index.js';
 import type { Locale } from './i18n/types.js';
 import { COMPLEX_SIGNALS, SIMPLE_SIGNALS } from './phrases.js';
-import { BUNDLED_CATALOGUE, COST_MULTIPLIERS, effectivePricing, modelFrom } from './pricing.js';
+import { BUNDLED_CATALOGUE, effectivePricing, modelFrom, multipliersFor } from './pricing.js';
 import type { PricingCatalogue } from './pricing.js';
 import { formatUsd } from './savings.js';
 import { analyzeExamples, findContradictions, findRestatedFormat } from './structure.js';
@@ -45,15 +45,33 @@ const TIER_ORDER: Record<ModelPricing['tier'], number> = {
   frontier: 3,
 };
 
-/** Cheapest model of a tier, using today's effective input price. */
+/**
+ * Cheapest model of a capability tier, using today's effective input price.
+ *
+ * **Within the same provider**, which is a product decision rather than an
+ * implementation detail. Dropping from Opus to Sonnet is a one-line change;
+ * moving to another vendor is a different API, different behaviour and a
+ * migration. This advisory is already caveated as a keyword heuristic rather
+ * than a judgement about answer quality, and a keyword heuristic has no business
+ * recommending that somebody change supplier.
+ *
+ * A model with no provider recorded only matches others with none, so an overlay
+ * that adds a bare model cannot pull a switch out of thin air.
+ */
 function cheapestInTier(
   tier: ModelPricing['tier'],
   on: Date,
   pricing: PricingCatalogue,
+  provider: string | undefined,
 ): ModelPricing | undefined {
-  // Mythos is excluded because it is not generally available: recommending a
-  // model the reader cannot call is worse than recommending nothing.
-  const candidates = pricing.models.filter((m) => m.tier === tier && m.id !== 'claude-mythos-5');
+  const candidates = pricing.models.filter(
+    (m) =>
+      m.tier === tier &&
+      m.provider === provider &&
+      // Not generally available: recommending a model the reader cannot call is
+      // worse than recommending nothing.
+      m.recommendable !== false,
+  );
   if (candidates.length === 0) return undefined;
   return candidates.reduce((best, m) =>
     effectivePricing(m, on).inputPerMTok < effectivePricing(best, on).inputPerMTok ? m : best,
@@ -83,14 +101,16 @@ export function buildAdvisories(
   const advisories: Advisory[] = [];
   const model = modelFrom(pricing, usage.model);
   const { inputPerMTok, outputPerMTok, promoApplied } = effectivePricing(model, on);
+  // Per model, not global. A cache read is ~10% of input on Anthropic and about
+  // half on OpenAI; one constant for both overstates an OpenAI caching saving
+  // fivefold, which is an invented saving rather than an imprecise one.
+  const rates = multipliersFor(model);
+  const batchFactor = usage.batchEligible ? (rates.batch ?? 1) : 1;
 
   const monthlyInputUsd =
-    (tokensAfter / 1_000_000) * inputPerMTok * usage.callsPerMonth * (usage.batchEligible ? 0.5 : 1);
+    (tokensAfter / 1_000_000) * inputPerMTok * usage.callsPerMonth * batchFactor;
   const monthlyOutputUsd =
-    (usage.avgOutputTokens / 1_000_000) *
-    outputPerMTok *
-    usage.callsPerMonth *
-    (usage.batchEligible ? 0.5 : 1);
+    (usage.avgOutputTokens / 1_000_000) * outputPerMTok * usage.callsPerMonth * batchFactor;
 
   // --- Context window ---
   if (tokensAfter > model.contextWindow) {
@@ -111,12 +131,15 @@ export function buildAdvisories(
   // precedes the first placeholder is cached. Costing the whole prompt would
   // be a lie the moment {{x}} takes a different value between calls.
   const cache = analyzeCachePrefix(optimizedPrompt, count);
-  if (usage.callsPerMonth > 1) {
+  // A provider with no prompt caching gets no caching advice. Without this the
+  // zero minimum satisfies `0 >= 0` and Trazum offers a saving that cannot be
+  // bought at any price — the exact failure that moving the multipliers onto the
+  // model was meant to prevent, reintroduced one field along.
+  if (usage.callsPerMonth > 1 && model.caching !== 'none') {
     const prefixShare = tokensAfter > 0 ? cache.stablePrefixTokens / tokensAfter : 0;
     const monthlyPrefixUsd = monthlyInputUsd * Math.min(1, prefixShare);
     const hitRate = Math.min(Math.max(usage.cacheHitRate, 0), 1);
-    const factor =
-      (1 - hitRate) * COST_MULTIPLIERS.cacheWrite5m + hitRate * COST_MULTIPLIERS.cacheRead;
+    const factor = (1 - hitRate) * rates.cacheWrite5m + hitRate * rates.cacheRead;
 
     if (cache.stablePrefixTokens >= model.cacheMinTokens) {
       const saving = monthlyPrefixUsd * (1 - factor);
@@ -131,6 +154,9 @@ export function buildAdvisories(
             minTokens: model.cacheMinTokens,
             modelName: model.displayName,
             hitRatePct: Math.round(hitRate * 100),
+            readPct: Math.round(rates.cacheRead * 100),
+            writePct: Math.round(rates.cacheWrite5m * 100),
+            explicit: (model.caching ?? 'explicit') === 'explicit',
           }),
           estimatedMonthlyUsd: saving,
         });
@@ -181,8 +207,11 @@ export function buildAdvisories(
   }
 
   // --- Batch API ---
-  if (!usage.batchEligible && usage.callsPerMonth > 1) {
-    const saving = (monthlyInputUsd + monthlyOutputUsd) * COST_MULTIPLIERS.batch;
+  // `rates.batch === null` means the provider has no batch API at all, which is
+  // different from not having said: advising a discount that cannot be bought
+  // is worse than staying quiet.
+  if (!usage.batchEligible && usage.callsPerMonth > 1 && rates.batch !== null) {
+    const saving = (monthlyInputUsd + monthlyOutputUsd) * (1 - rates.batch);
     advisories.push({
       id: 'batch-api',
       severity: 'opportunity',
@@ -194,7 +223,7 @@ export function buildAdvisories(
   // --- Recommended model ---
   const suggestedTier = recommendTier(optimizedPrompt, tokensAfter);
   if (TIER_ORDER[suggestedTier] < TIER_ORDER[model.tier]) {
-    const candidate = cheapestInTier(suggestedTier, on, pricing);
+    const candidate = cheapestInTier(suggestedTier, on, pricing, model.provider);
     if (candidate) {
       const candidatePricing = effectivePricing(candidate, on);
       const candidateMonthly =

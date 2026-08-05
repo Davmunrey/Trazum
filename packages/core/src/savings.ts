@@ -1,16 +1,30 @@
-import { BUNDLED_CATALOGUE, COST_MULTIPLIERS, effectivePricing, modelFrom } from './pricing.js';
+import {
+  BUNDLED_CATALOGUE,
+  COST_MULTIPLIERS,
+  effectivePricing,
+  modelFrom,
+  multipliersFor,
+} from './pricing.js';
 import type { PricingCatalogue } from './pricing.js';
 import type { CostBreakdown, SavingsReport, UsageProfile } from './types.js';
 
-/** Cost of a single call. */
+/**
+ * Cost of a single call.
+ *
+ * `batchDiscount` defaults to Anthropic's 50% rather than being read from the
+ * model, because this function takes prices rather than a model. Callers that
+ * have the model — which is all of them inside this package — pass its own,
+ * and a provider with no batch API passes 1.
+ */
 export function costOfCall(
   inputTokens: number,
   outputTokens: number,
   inputPerMTok: number,
   outputPerMTok: number,
   batch: boolean,
+  batchDiscount: number = COST_MULTIPLIERS.batch,
 ): CostBreakdown {
-  const discount = batch ? COST_MULTIPLIERS.batch : 1;
+  const discount = batch ? batchDiscount : 1;
   const inputUsd = (inputTokens / 1_000_000) * inputPerMTok * discount;
   const outputUsd = (outputTokens / 1_000_000) * outputPerMTok * discount;
   return { inputUsd, outputUsd, totalUsd: inputUsd + outputUsd };
@@ -40,6 +54,9 @@ export function computeSavings(
 ): SavingsReport {
   const model = modelFrom(pricing, usage.model);
   const { inputPerMTok, outputPerMTok, promoApplied } = effectivePricing(model, on);
+  // A provider with no batch API gets no discount even when the caller ticked
+  // the box: `batchEligible` describes the work, not what the provider sells.
+  const batchDiscount = multipliersFor(model).batch ?? 1;
 
   const before = costOfCall(
     tokensBefore,
@@ -47,6 +64,7 @@ export function computeSavings(
     inputPerMTok,
     outputPerMTok,
     usage.batchEligible,
+    batchDiscount,
   );
   const after = costOfCall(
     tokensAfter,
@@ -54,6 +72,7 @@ export function computeSavings(
     inputPerMTok,
     outputPerMTok,
     usage.batchEligible,
+    batchDiscount,
   );
 
   const monthBefore = scale(before, usage.callsPerMonth);
