@@ -53,7 +53,22 @@ describe('catalogue parity', () => {
   });
 
   it('all catalogues expose the same keys', () => {
-    const sections = ['errors', 'report', 'models', 'rules', 'check'];
+    // Derived, not listed. The hardcoded version silently stopped covering
+    // `eval` the moment that section was added — the parity test passed while
+    // an entire section could have gone untranslated.
+    const sections = Object.entries(en)
+      .filter(([, value]) => value !== null && typeof value === 'object')
+      .map(([key]) => key);
+
+    assert.ok(sections.length >= 5, 'the catalogue lost sections');
+    assert.deepEqual(
+      sections.sort(),
+      Object.entries(es)
+        .filter(([, value]) => value !== null && typeof value === 'object')
+        .map(([key]) => key)
+        .sort(),
+      'the two catalogues do not even have the same sections',
+    );
     for (const section of sections) {
       assert.deepEqual(
         Object.keys(es[section]).sort(),

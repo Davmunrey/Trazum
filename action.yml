@@ -29,15 +29,31 @@ runs:
     - name: Build Trazum
       shell: bash
       working-directory: ${{ github.action_path }}
+      # --ignore-scripts stops a dependency's lifecycle hook running arbitrary
+      # code inside someone else's workflow. This repository's own CI has had
+      # it from the start; the action, which is what other people run, did not.
+      # That was backwards.
       run: |
-        npm ci --no-audit --no-fund
+        npm ci --no-audit --no-fund --ignore-scripts
         npm run build
 
     - name: Check the budget
       shell: bash
+      # Inputs go through the environment rather than being interpolated into
+      # the script. `${{ inputs.file }}` spliced into `run:` is the classic
+      # Actions template-injection shape: the value is workflow-authored today,
+      # but one step that derives it from a pull request title or branch name
+      # turns it into shell. Quoting inside the template is not a fix — the
+      # substitution happens before bash ever sees it.
+      env:
+        TRAZUM_FILE: ${{ inputs.file }}
+        TRAZUM_MAX_TOKENS: ${{ inputs.max-tokens }}
+        TRAZUM_LEVEL: ${{ inputs.level }}
+        TRAZUM_REPORT_LOCALE: ${{ inputs.locale }}
+        TRAZUM_ACTION_PATH: ${{ github.action_path }}
       run: >-
-        node "${{ github.action_path }}/packages/cli/dist/index.js" check
-        "${{ inputs.file }}"
-        --max-tokens "${{ inputs.max-tokens }}"
-        --level "${{ inputs.level }}"
-        --locale "${{ inputs.locale }}"
+        node "$TRAZUM_ACTION_PATH/packages/cli/dist/index.js" check
+        "$TRAZUM_FILE"
+        --max-tokens "$TRAZUM_MAX_TOKENS"
+        --level "$TRAZUM_LEVEL"
+        --locale "$TRAZUM_REPORT_LOCALE"

@@ -44,6 +44,8 @@ dangerous thing in this repository.
 | A vulnerable dependency arriving in a PR | Dependency review blocks moderate and above | `.github/workflows/security.yml` |
 | Injected code in a contribution | CodeQL with `security-extended` | `.github/workflows/security.yml` |
 | A workflow being used to exfiltrate secrets | `permissions: contents: read` by default, `--ignore-scripts` on install, no `pull_request_target` | `.github/workflows/` |
+| A dependency hook running on someone else's runner | The packaged Action installs with `--ignore-scripts` too | `action.yml`, asserted in `security.test.js` |
+| Actions template injection | Inputs reach the Action's shell through the environment, never interpolated into `run:` | `action.yml`, asserted in `security.test.js` |
 
 ### Deliberate design decisions
 
