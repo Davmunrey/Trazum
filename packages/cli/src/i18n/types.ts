@@ -172,6 +172,9 @@ export interface CliMessages {
   check: {
     okLabel(): string;
     failedLabel(): string;
+    embeddedHeading(path: string, count: number): string;
+    declinedHeading(count: number): string;
+    declinedAt(line: number, detail: string): string;
     ok(tokens: string, budget: string): string;
     failed(tokens: string, budget: string): string;
     wouldFit(level: string, optimizedTokens: string): string;

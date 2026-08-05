@@ -370,6 +370,11 @@ ${bold('EJEMPLOS')}
 
   check: {
     okLabel: () => 'OK',
+    embeddedHeading: (path, count) =>
+      `${path} — ${count} ${count === 1 ? 'prompt marcado' : 'prompts marcados'}`,
+    declinedHeading: (count) =>
+      `No se ${count === 1 ? 'ha podido leer 1 marcador' : `han podido leer ${count} marcadores`}:`,
+    declinedAt: (line, detail) => `línea ${line}: ${detail}`,
     failedLabel: () => 'FALLO',
     ok: (tokens, budget) => `${tokens} tokens dentro del presupuesto de ${budget}.`,
     failed: (tokens, budget) => `${tokens} tokens supera el presupuesto de ${budget}.`,

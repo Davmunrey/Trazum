@@ -10,6 +10,60 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+**`check` now reads prompts embedded in source files.** It read `.txt`, `.md`,
+`.prompt` and `.tmpl`; real prompts live in TypeScript template literals and
+Python strings, so adopting Trazum meant refactoring them into standalone files
+first — the largest barrier to adoption the tool had.
+
+```ts
+// trazum:prompt support-system
+export const SUPPORT = `You are a support agent.
+
+Customer message: ${message}`;
+```
+
+**It reads a marker rather than guessing.** Inferring which string in a file is a
+prompt is a heuristic, and a heuristic inside a CI gate fails builds over log
+lines and SQL queries. `//`, `#`, `--` and `<!-- -->` cover the languages prompts
+live in.
+
+`${x}` needed no handling at all: it is exactly the shape `segment.ts` already
+protects, so an embedded prompt gets the same cache-prefix analysis, rule
+protection and `--reorder` treatment as a `{{x}}` template, with no second code
+path to drift.
+
+- **Each prompt is budgeted on its own**, not summed into the file. Four prompts
+  in a file are four things to govern, and the imports around them are not tokens
+  the model will see.
+- **The id is path-prefixed** — `src/prompts.ts#support-system`, or
+  `src/prompts.ts:12` for a bare marker — so existing `budgets` globs cover
+  embedded prompts without new syntax.
+- **Source files are scanned without being opted into.** Requiring config to
+  discover a marker somebody just wrote is how `eval` came to be fully implemented
+  and completely undiscoverable. An unmarked source file is dropped silently.
+
+**A marker Trazum cannot read fails the build.** A prompt assembled by
+concatenation has no text until it runs; Trazum declines it and names the line
+rather than governing the fragment it can see. The author marked that prompt to
+have it governed, and a green build saying otherwise is the same lie as "0
+failures" from a run that measured nothing.
+
+Scanned character by character rather than with a regex, and the hostile-input
+tests earned their place immediately: the obvious line-number lookup was quadratic
+in the number of markers — 15.5 seconds on a file holding 20,000. Caught before it
+shipped rather than after.
+
+One more found in review, by CodeQL: `<!-- trazum:prompt greeting--!>` produced the
+name `greeting--!>`, because `--!>` is the *comment end bang* the HTML parser also
+accepts and only `-->` was being stripped. Fixed for both terminators, and the
+class closed behind it — a name is now constrained to an identifier charset rather
+than "whatever is left on the line", falling back to the `file:line` id when it is
+not one. The name is printed in reports and matched against budget patterns; it
+should never have been arbitrary text.
+
+`diff` for embedded prompts is still to come; `check` is the gate and came first.
+
+
 **The ±15% error band now has a corpus, a harness and a test.** It is printed on
 every report, appears in both READMEs, in the estimator's own doc comment and in
 `VERSIONING.md` as part of the frozen API — and `estimateTokens` was tested for
