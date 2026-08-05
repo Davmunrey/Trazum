@@ -80,7 +80,7 @@ version stands. It never returns something worse than where it started.
 ```bash
 npm install
 npm run build      # core + cli
-npm test           # 455 tests
+npm test           # 463 tests
 ```
 
 ### CLI
