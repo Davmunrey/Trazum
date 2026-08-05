@@ -1,110 +1,126 @@
-/** Tipos públicos de @trazum/core. */
+/** Public types of @trazum/core. */
 
-/** Nivel de agresividad de las reglas deterministas. */
+import type { Locale, RuleId } from './i18n/types.js';
+
+/** How aggressive the deterministic rules are allowed to be. */
 export type RuleLevel = 'safe' | 'aggressive';
 
-/** Una regla determinista aplicada al texto mutable del prompt. */
+/**
+ * A deterministic rule applied to the mutable text of a prompt.
+ *
+ * The rule carries no copy of its own: its title and rationale live in the
+ * locale catalogues, keyed by `id`. That is what lets the same rule report
+ * itself in any language.
+ */
 export interface Rule {
-  id: string;
-  /** Título corto en español, para mostrar en informes. */
-  title: string;
-  /** Qué hace y por qué es seguro. */
-  rationale: string;
+  id: RuleId;
   level: RuleLevel;
-  /** Devuelve el texto transformado y cuántas veces se aplicó. */
+  /** Returns the transformed text and how many times the rule applied. */
   apply(text: string): { text: string; hits: number };
 }
 
-/** Resultado de una regla tras ejecutarse sobre el prompt completo. */
+/** A rule after it has run, with its copy already resolved for a locale. */
 export interface RuleResult {
-  id: string;
+  id: RuleId;
   title: string;
   rationale: string;
   level: RuleLevel;
   hits: number;
-  /** Tokens ahorrados atribuibles a esta regla (estimados). */
+  /** Tokens saved attributable to this rule (estimated). */
   tokensSaved: number;
 }
 
-/** Severidad de un aviso: cuanto mayor, más dinero suele haber en juego. */
+/** Severity of an advisory: the higher it is, the more money is usually at stake. */
 export type AdvisorySeverity = 'info' | 'opportunity' | 'warning';
 
-/** Recomendación que NO modifica el prompt, solo informa. */
+/** Every advisory the core can emit. */
+export type AdvisoryId =
+  | 'context-overflow'
+  | 'prompt-caching'
+  | 'prompt-caching-not-worth-it'
+  | 'below-cache-minimum'
+  | 'cache-prefix-reorder'
+  | 'batch-api'
+  | 'model-downgrade'
+  | 'output-dominated'
+  | 'promo-pricing';
+
+/** A recommendation that does NOT modify the prompt, only informs. */
 export interface Advisory {
-  id: string;
+  id: AdvisoryId;
   severity: AdvisorySeverity;
   title: string;
   detail: string;
-  /** Ahorro mensual estimado en USD si se aplica. `null` si no es cuantificable. */
+  /** Estimated monthly saving in USD if applied. `null` when not quantifiable. */
   estimatedMonthlyUsd: number | null;
 }
 
-/** Precio de un modelo, en USD por millón de tokens. */
+/** Price of a model, in USD per million tokens. */
 export interface ModelPricing {
   id: string;
   displayName: string;
-  /** USD por 1M tokens de entrada. */
+  /** USD per 1M input tokens. */
   inputPerMTok: number;
-  /** USD por 1M tokens de salida. */
+  /** USD per 1M output tokens. */
   outputPerMTok: number;
-  /** Ventana de contexto en tokens. */
+  /** Context window in tokens. */
   contextWindow: number;
-  /** Tokens mínimos para que el prompt caching llegue a cachear. */
+  /** Minimum tokens before prompt caching actually caches. */
   cacheMinTokens: number;
-  /** Familia, para recomendar modelo por capacidad. */
+  /** Capability tier, used to recommend a model. */
   tier: 'haiku' | 'sonnet' | 'opus' | 'frontier';
-  /** Precio promocional activo, si lo hay. */
+  /** Promotional pricing, when one is running. */
   promo?: {
     inputPerMTok: number;
     outputPerMTok: number;
-    /** Fecha ISO (incluida) hasta la que aplica el precio promocional. */
+    /** ISO date (inclusive) the promotional price applies until. */
     until: string;
   };
-  /** Notas relevantes para el cálculo de coste. */
+  /** Notes relevant to cost calculation. */
   notes?: string;
 }
 
-/** Escenario de uso para calcular el ahorro en dinero. */
+/** Usage scenario used to turn token savings into money. */
 export interface UsageProfile {
-  /** Modelo sobre el que se calcula el coste. */
+  /** Model the cost is computed against. */
   model: string;
-  /** Llamadas al mes con este prompt. */
+  /** Calls per month using this prompt. */
   callsPerMonth: number;
-  /** Tokens de salida medios por llamada. */
+  /** Average output tokens per call. */
   avgOutputTokens: number;
   /**
-   * Fracción de llamadas que reutilizarían el prefijo cacheado (0-1).
-   * Solo se usa en el aviso de prompt caching.
+   * Fraction of calls that would reuse the cached prefix (0-1).
+   * Only used by the prompt caching advisory.
    */
   cacheHitRate: number;
-  /** Si el trabajo tolera latencia, la Batch API cuesta la mitad. */
+  /** If the work tolerates latency, the Batch API costs half. */
   batchEligible: boolean;
 }
 
-/** Coste desglosado de un escenario. */
+/** Itemised cost of a scenario. */
 export interface CostBreakdown {
   inputUsd: number;
   outputUsd: number;
   totalUsd: number;
 }
 
-/** Comparativa de coste antes/después. */
+/** Before/after cost comparison. */
 export interface SavingsReport {
   model: string;
   modelDisplayName: string;
-  /** Si se está aplicando un precio promocional vigente. */
+  /** Whether a promotional price is currently being applied. */
   promoApplied: boolean;
   perCall: { before: CostBreakdown; after: CostBreakdown };
   perMonth: { before: CostBreakdown; after: CostBreakdown };
   monthlySavingsUsd: number;
-  /** Porcentaje de ahorro sobre el coste total mensual (0-100). */
+  /** Percentage saved against the total monthly cost (0-100). */
   monthlySavingsPct: number;
 }
 
-/** Segmento del prompt: el protegido nunca se modifica. */
+/** A slice of the prompt: protected slices are never modified. */
 export interface Segment {
   kind: 'mutable' | 'protected';
-  /** Qué tipo de contenido protegido es (para diagnóstico). */
+  /** What kind of protected content this is (for diagnostics). */
   protection?: ProtectionKind;
   text: string;
 }
@@ -116,44 +132,48 @@ export type ProtectionKind =
   | 'placeholder'
   | 'xml-tag';
 
-/** Opciones de optimización. */
+/** Optimisation options. */
 export interface OptimizeOptions {
-  /** `safe` (por defecto) solo aplica reglas sin riesgo semántico. */
+  /** `safe` (the default) only applies rules with no semantic risk. */
   level?: RuleLevel;
-  /** Reglas a desactivar por id. */
-  disableRules?: string[];
-  /** Perfil de uso para cuantificar el ahorro. */
+  /** Rule ids to disable. */
+  disableRules?: RuleId[];
+  /** Usage profile used to quantify the saving. */
   usage?: Partial<UsageProfile>;
-  /** Contador de tokens alternativo (p. ej. la API real de recuento). */
+  /** Alternative token counter (e.g. the real token-counting API). */
   tokenCounter?: TokenCounter;
+  /** Language of the report. Defaults to English. */
+  locale?: Locale;
 }
 
-/** Cuenta tokens de un texto. Sincrónico para poder usarse en el bucle de reglas. */
+/** Counts tokens in a text. Synchronous so it can run inside the rule loop. */
 export type TokenCounter = (text: string) => number;
 
-/** Resultado completo de una optimización. */
+/** Full result of an optimisation. */
 export interface OptimizationResult {
   original: string;
   optimized: string;
   tokensBefore: number;
   tokensAfter: number;
   tokensSaved: number;
-  /** Porcentaje de reducción de tokens de entrada (0-100). */
+  /** Percentage reduction of input tokens (0-100). */
   reductionPct: number;
   rules: RuleResult[];
   advisories: Advisory[];
   savings: SavingsReport;
   usage: UsageProfile;
-  /** Cómo se contaron los tokens, para que el usuario sepa el margen de error. */
+  /** Locale the report was rendered in. */
+  locale: Locale;
+  /** How tokens were counted, so the caller knows the margin of error. */
   tokenSource: 'heuristic' | 'external';
-  /** Presente solo si se pasó por una pasada de LLM. */
+  /** Present only when an LLM pass ran. */
   llm?: LlmRefinement;
 }
 
-/** Resultado de la pasada opcional por un LLM. */
+/** Result of the optional LLM pass. */
 export interface LlmRefinement {
   applied: boolean;
-  /** Motivo por el que no se aplicó, si `applied` es false. */
+  /** Why it was not applied, when `applied` is false. */
   rejectedReason?: string;
   provider: string;
   model: string;
@@ -162,11 +182,13 @@ export interface LlmRefinement {
   tokensAfter: number;
 }
 
-/** Proveedor de LLM enchufable: aquí encaja el modelo de n0 o cualquier otro. */
+/** Pluggable LLM provider: this is where your own model plugs in. */
 export interface LlmProvider {
-  /** Nombre legible, aparece en el informe. */
+  /** Human-readable name, shown in the report. */
   name: string;
-  /** Identificador del modelo usado. */
+  /** Identifier of the model used. */
   model: string;
   complete(input: { system: string; user: string }): Promise<string>;
 }
+
+export type { Locale, RuleId };

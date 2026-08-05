@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // El núcleo se publica como ESM con tipos; Next lo transpila junto a la app.
+  // The core ships as ESM with types; Next transpiles it alongside the app.
   transpilePackages: ['@trazum/core'],
 };
 

@@ -3,12 +3,12 @@
 import { useEffect } from 'react';
 
 /**
- * Analítica opcional, apagada por defecto.
+ * Optional analytics, off by default.
  *
- * Solo se activa si el operador define NEXT_PUBLIC_POSTHOG_KEY al compilar.
- * Sin clave no se carga ni un byte de posthog-js (el import es dinámico), no
- * se contacta con ningún servidor y `track` es un no-op. Nunca se envía el
- * contenido de los prompts: solo métricas agregadas (recorte %, nivel, modelo).
+ * Only switches on when the operator sets NEXT_PUBLIC_POSTHOG_KEY at build
+ * time. Without a key not one byte of posthog-js is loaded (the import is
+ * dynamic), no server is contacted and `track` is a no-op. Prompt content is
+ * never sent: aggregate metrics only (reduction %, level, model, locale).
  */
 
 const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
@@ -19,7 +19,7 @@ export function track(event: string, properties?: Record<string, unknown>): void
   import('posthog-js')
     .then(({ default: posthog }) => posthog.capture(event, properties))
     .catch(() => {
-      // La analítica jamás debe romper la aplicación.
+      // Analytics must never break the application.
     });
 }
 

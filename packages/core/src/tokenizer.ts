@@ -1,20 +1,20 @@
 /**
- * Estimador de tokens sin dependencias.
+ * Dependency-free token estimator.
  *
- * NO es un tokenizador real: es una heurística calibrada por tipo de carácter.
- * En texto normal (español/inglés, markdown, código) el error típico está en el
- * entorno del ±15%. Sirve de sobra para comparar dos versiones del mismo prompt,
- * que es lo que hace esta herramienta, pero NO lo uses para facturar.
+ * This is NOT a real tokenizer: it is a heuristic calibrated per character
+ * class. On ordinary text (English/Spanish, markdown, code) the typical error
+ * sits around ±15%. That is plenty for comparing two versions of the same
+ * prompt, which is what this tool does, but do NOT bill anyone from it.
  *
- * Para números exactos usa `countTokensAnthropic` (endpoint oficial de recuento,
- * que es gratuito) o pasa tu propio `TokenCounter`.
+ * For exact numbers use `countTokensAnthropic` (the official token-counting
+ * endpoint, which is free) or pass your own `TokenCounter`.
  */
 
 const CJK = /[぀-ヿ㐀-䶿一-鿿가-힯]/;
 const LETTER = /[A-Za-zÀ-ɏͰ-ϿЀ-ӿ]/;
 const DIGIT = /[0-9]/;
 
-/** Longitud efectiva de una palabra: los caracteres no ASCII se parten más. */
+/** Effective word length: non-ASCII characters split into more tokens. */
 function effectiveLength(word: string): number {
   let len = 0;
   for (const ch of word) len += ch.charCodeAt(0) > 127 ? 2 : 1;
@@ -22,16 +22,16 @@ function effectiveLength(word: string): number {
 }
 
 /**
- * Estima cuántos tokens ocupa `text`.
+ * Estimates how many tokens `text` occupies.
  *
- * Reglas por tipo de carácter:
- * - palabras: ~4 caracteres efectivos por token (mínimo 1)
- * - números: ~3 dígitos por token
- * - puntuación: ~2 signos por token
- * - saltos de línea: ~1 token cada 2 saltos consecutivos
- * - CJK: 1 token por carácter
- * - emoji y símbolos fuera del BMP: 2 tokens
- * - espacios: 0 (se absorben en el token siguiente)
+ * Rules per character class:
+ * - words: ~4 effective characters per token (minimum 1)
+ * - numbers: ~3 digits per token
+ * - punctuation: ~2 marks per token
+ * - newlines: ~1 token per 2 consecutive newlines
+ * - CJK: 1 token per character
+ * - emoji and symbols outside the BMP: 2 tokens
+ * - spaces: 0 (absorbed into the following token)
  */
 export function estimateTokens(text: string): number {
   if (!text) return 0;
@@ -88,14 +88,14 @@ export function estimateTokens(text: string): number {
       continue;
     }
 
-    // Fuera del BMP (emoji, símbolos raros): suelen costar 2+ tokens.
+    // Outside the BMP (emoji, unusual symbols): usually 2+ tokens.
     if (ch.codePointAt(0)! > 0xffff) {
       total += 2;
       i++;
       continue;
     }
 
-    // Puntuación y símbolos ASCII.
+    // ASCII punctuation and symbols.
     let n = 0;
     while (
       i < chars.length &&
@@ -112,7 +112,7 @@ export function estimateTokens(text: string): number {
       i++;
     }
     if (n === 0) {
-      // Carácter no clasificado: cuenta como 1 y avanza para no bloquear el bucle.
+      // Unclassified character: count it as 1 and advance so the loop cannot stall.
       total += 1;
       i++;
     } else {
@@ -123,20 +123,20 @@ export function estimateTokens(text: string): number {
   return total;
 }
 
-/** Contador de tokens asíncrono, para fuentes remotas. */
+/** Asynchronous token counter, for remote sources. */
 export type AsyncTokenCounter = (text: string) => Promise<number>;
 
 export interface AnthropicCounterOptions {
   apiKey: string;
-  /** Modelo contra el que contar. El recuento es específico del modelo. */
+  /** Model to count against. Token counts are model-specific. */
   model?: string;
   baseUrl?: string;
   fetchImpl?: typeof fetch;
 }
 
 /**
- * Contador exacto usando el endpoint oficial `/v1/messages/count_tokens`.
- * El endpoint no cobra tokens, así que puedes usarlo libremente para medir.
+ * Exact counter using the official `/v1/messages/count_tokens` endpoint.
+ * The endpoint does not bill tokens, so you can use it freely to measure.
  */
 export function countTokensAnthropic(options: AnthropicCounterOptions): AsyncTokenCounter {
   const {
@@ -158,7 +158,7 @@ export function countTokensAnthropic(options: AnthropicCounterOptions): AsyncTok
       body: JSON.stringify({ model, messages: [{ role: 'user', content: text }] }),
     });
     if (!res.ok) {
-      throw new Error(`count_tokens falló (${res.status}): ${await res.text()}`);
+      throw new Error(`count_tokens failed (${res.status}): ${await res.text()}`);
     }
     const data = (await res.json()) as { input_tokens: number };
     return data.input_tokens;

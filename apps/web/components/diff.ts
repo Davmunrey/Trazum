@@ -3,20 +3,20 @@ export interface DiffPart {
   text: string;
 }
 
-/** Límite de piezas por lado: por encima, la tabla de LCS no compensa. */
+/** Cap on pieces per side: beyond this the LCS table stops being worth it. */
 const MAX_PIECES = 1500;
 
-/** Trocea en palabras conservando los espacios, para que el diff sea legible. */
+/** Splits into words while keeping the whitespace, so the diff stays readable. */
 function toWords(text: string): string[] {
   return text.match(/\s+|[^\s]+/g) ?? [];
 }
 
 /**
- * Diff por palabras basado en la subsecuencia común más larga.
+ * Word-level diff based on the longest common subsequence.
  *
- * Si el texto es demasiado grande cae a un diff por líneas, y si aun así no
- * cabe, devuelve `null` para que la UI muestre el prompt sin diff en vez de
- * bloquear la pestaña.
+ * If the text is too large it falls back to a line diff, and if that still
+ * does not fit it returns `null` so the UI shows the prompt without a diff
+ * rather than locking up the tab.
  */
 export function diffTexts(before: string, after: string): DiffPart[] | null {
   let a = toWords(before);

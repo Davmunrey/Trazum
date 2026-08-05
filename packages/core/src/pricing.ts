@@ -1,24 +1,24 @@
 import type { ModelPricing } from './types.js';
 
 /**
- * Catálogo de modelos y precios (USD por millón de tokens).
+ * Model and pricing catalogue (USD per million tokens).
  *
- * Fuente: documentación oficial de la Claude API. Los precios cambian: revisa
- * `PRICING_LAST_REVIEWED` y actualiza este fichero antes de tomar decisiones de
- * presupuesto. Los precios de Amazon Bedrock y Vertex AI los fija cada partner
- * y NO son los de esta tabla.
+ * Source: official Claude API documentation. Prices change: check
+ * `PRICING_LAST_REVIEWED` and update this file before making budget decisions.
+ * Amazon Bedrock and Vertex AI pricing is set by each partner and is NOT the
+ * pricing in this table.
  */
 export const PRICING_LAST_REVIEWED = '2026-06-24';
 
-/** Multiplicadores de coste sobre el precio de entrada. */
+/** Cost multipliers relative to the input price. */
 export const COST_MULTIPLIERS = {
-  /** Escritura de caché con TTL de 5 minutos. */
+  /** Cache write with a 5-minute TTL. */
   cacheWrite5m: 1.25,
-  /** Escritura de caché con TTL de 1 hora. */
+  /** Cache write with a 1-hour TTL. */
   cacheWrite1h: 2.0,
-  /** Lectura de caché: ~10% del precio de entrada. */
+  /** Cache read: ~10% of the input price. */
   cacheRead: 0.1,
-  /** Batch API: 50% de descuento sobre entrada y salida. */
+  /** Batch API: 50% discount on input and output. */
   batch: 0.5,
 } as const;
 
@@ -31,7 +31,7 @@ export const MODELS: ModelPricing[] = [
     contextWindow: 1_000_000,
     cacheMinTokens: 512,
     tier: 'frontier',
-    notes: 'Máxima capacidad. Requiere retención de datos de 30 días.',
+    notes: 'Highest capability. Requires 30-day data retention.',
   },
   {
     id: 'claude-mythos-5',
@@ -41,7 +41,7 @@ export const MODELS: ModelPricing[] = [
     contextWindow: 1_000_000,
     cacheMinTokens: 512,
     tier: 'frontier',
-    notes: 'Solo disponible dentro de Project Glasswing.',
+    notes: 'Available only through Project Glasswing.',
   },
   {
     id: 'claude-opus-5',
@@ -51,7 +51,7 @@ export const MODELS: ModelPricing[] = [
     contextWindow: 1_000_000,
     cacheMinTokens: 512,
     tier: 'opus',
-    notes: 'Mínimo de caché de 512 tokens: cachea prompts que en Opus 4.6 no cacheaban.',
+    notes: '512-token cache minimum: caches prompts that would miss on Opus 4.6.',
   },
   {
     id: 'claude-opus-4-8',
@@ -89,7 +89,7 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 1024,
     tier: 'sonnet',
     promo: { inputPerMTok: 2, outputPerMTok: 10, until: '2026-08-31' },
-    notes: 'Precio de lanzamiento 2/10 hasta el 31-08-2026; después 3/15.',
+    notes: 'Introductory pricing of 2/10 until 2026-08-31; 3/15 afterwards.',
   },
   {
     id: 'claude-sonnet-4-6',
@@ -108,7 +108,7 @@ export const MODELS: ModelPricing[] = [
     contextWindow: 200_000,
     cacheMinTokens: 4096,
     tier: 'haiku',
-    notes: 'Ventana de 200K y salida máxima de 64K, menor que el resto.',
+    notes: '200K context window and a 64K output cap, smaller than the rest.',
   },
 ];
 
@@ -119,9 +119,7 @@ export const DEFAULT_MODEL = 'claude-opus-5';
 export function getModel(id: string): ModelPricing {
   const model = BY_ID.get(id);
   if (!model) {
-    throw new Error(
-      `Modelo desconocido: "${id}". Disponibles: ${MODELS.map((m) => m.id).join(', ')}`,
-    );
+    throw new Error(`Unknown model: "${id}". Available: ${MODELS.map((m) => m.id).join(', ')}`);
   }
   return model;
 }
@@ -130,7 +128,7 @@ export function listModels(): ModelPricing[] {
   return [...MODELS];
 }
 
-/** Precio efectivo en una fecha dada, aplicando promociones vigentes. */
+/** Effective price on a given date, applying any live promotion. */
 export function effectivePricing(
   model: ModelPricing,
   on: Date = new Date(),
@@ -152,10 +150,10 @@ export function effectivePricing(
   };
 }
 
-/** El modelo más barato de cada nivel de capacidad, para recomendaciones. */
+/** Cheapest model of each capability tier, for recommendations. */
 export function cheapestOfTier(tier: ModelPricing['tier']): ModelPricing {
   const candidates = MODELS.filter((m) => m.tier === tier);
   const first = candidates[0];
-  if (!first) throw new Error(`Sin modelos para el nivel "${tier}"`);
+  if (!first) throw new Error(`No models for tier "${tier}"`);
   return candidates.reduce((best, m) => (m.inputPerMTok < best.inputPerMTok ? m : best), first);
 }

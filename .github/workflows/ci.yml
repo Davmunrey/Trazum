@@ -10,7 +10,7 @@ env:
 
 jobs:
   test:
-    name: Build y tests
+    name: Build and tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,24 +20,29 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Instalar dependencias
+      - name: Install dependencies
         run: npm ci
 
-      - name: Compilar librería y CLI
+      - name: Build library and CLI
         run: npm run build
 
-      - name: Tests del núcleo
+      - name: Core tests
         run: npm test
 
-      - name: Typecheck de la web
+      - name: Typecheck the web app
         run: npm run typecheck -w @trazum/web
 
-      - name: Compilar la web
+      - name: Build the web app
         run: npm run build:web
 
   action-selftest:
-    name: Self-test de la GitHub Action
+    name: GitHub Action self-test
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Both sample prompts, so the action is exercised against each
+        # language's dictionary rather than only one.
+        sample: ['examples/sample-prompt.en.txt', 'examples/sample-prompt.es.txt']
     steps:
       - uses: actions/checkout@v4
 
@@ -46,22 +51,22 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: La acción pasa con presupuesto holgado
+      - name: The action passes with a generous budget
         uses: ./
         with:
-          file: examples/prompt-ejemplo.txt
+          file: ${{ matrix.sample }}
           max-tokens: 5000
 
-      - name: La acción falla con presupuesto imposible
+      - name: The action fails with an impossible budget
         id: over-budget
         uses: ./
         continue-on-error: true
         with:
-          file: examples/prompt-ejemplo.txt
+          file: ${{ matrix.sample }}
           max-tokens: 10
 
-      - name: Verificar que el fallo se detectó
+      - name: Verify the failure was detected
         if: steps.over-budget.outcome != 'failure'
         run: |
-          echo "La acción debería haber fallado con max-tokens=10"
+          echo "The action should have failed with max-tokens=10"
           exit 1

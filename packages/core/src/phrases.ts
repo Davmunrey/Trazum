@@ -1,46 +1,22 @@
 /**
- * Diccionarios de frases. Español e inglés, porque los prompts reales mezclan
- * los dos. Cada entrada se ha elegido porque la sustitución conserva el
- * significado; si una sustitución puede cambiar lo que pide el prompt, va en
- * nivel `aggressive` o directamente no está.
+ * Phrase dictionaries.
+ *
+ * These lists are DATA, not user interface: they are the vocabulary Trazum
+ * looks for inside the prompts it optimises. Real prompts mix languages, so
+ * the dictionaries deliberately cover English and Spanish at the same time and
+ * a single prompt can trigger entries from both.
+ *
+ * Adding a language here means adding entries to these lists — it is unrelated
+ * to the report language, which lives in `src/i18n/`.
+ *
+ * Every entry earns its place by preserving meaning. Anything whose removal
+ * could change what the prompt asks for belongs in the `aggressive` level, or
+ * does not belong here at all.
  */
 
-/** Frases largas y su equivalente corto. */
+/** Long phrases and their shorter equivalent. */
 export const VERBOSE_PHRASES: ReadonlyArray<readonly [string, string]> = [
-  // Español
-  ['con el fin de', 'para'],
-  ['con el objetivo de', 'para'],
-  ['con el propósito de', 'para'],
-  ['a fin de', 'para'],
-  ['debido al hecho de que', 'porque'],
-  ['dado el hecho de que', 'porque'],
-  ['por el hecho de que', 'porque'],
-  ['en el caso de que', 'si'],
-  ['en caso de que', 'si'],
-  ['en el momento en que', 'cuando'],
-  ['una gran cantidad de', 'muchos'],
-  ['un gran número de', 'muchos'],
-  ['la mayor parte de', 'la mayoría de'],
-  ['hacer uso de', 'usar'],
-  ['llevar a cabo', 'realizar'],
-  ['en relación con', 'sobre'],
-  ['con respecto a', 'sobre'],
-  ['a pesar de que', 'aunque'],
-  ['así como también', 'y'],
-  ['todos y cada uno de los', 'todos los'],
-  ['cada uno de los', 'cada'],
-  ['en este momento', 'ahora'],
-  ['en la actualidad', 'ahora'],
-  ['hoy en día', 'hoy'],
-  ['de forma regular', 'regularmente'],
-  ['en todo momento', 'siempre'],
-  ['tiene la capacidad de', 'puede'],
-  ['es capaz de', 'puede'],
-  ['con anterioridad a', 'antes de'],
-  ['con posterioridad a', 'después de'],
-  ['un número suficiente de', 'suficientes'],
-
-  // Inglés
+  // English
   ['in order to', 'to'],
   ['for the purpose of', 'to'],
   ['due to the fact that', 'because'],
@@ -72,18 +48,44 @@ export const VERBOSE_PHRASES: ReadonlyArray<readonly [string, string]> = [
   ['on a regular basis', 'regularly'],
   ['a sufficient number of', 'enough'],
   ['in the process of', ''],
+
+  // Spanish
+  ['con el fin de', 'para'],
+  ['con el objetivo de', 'para'],
+  ['con el propósito de', 'para'],
+  ['a fin de', 'para'],
+  ['debido al hecho de que', 'porque'],
+  ['dado el hecho de que', 'porque'],
+  ['por el hecho de que', 'porque'],
+  ['en el caso de que', 'si'],
+  ['en caso de que', 'si'],
+  ['en el momento en que', 'cuando'],
+  ['una gran cantidad de', 'muchos'],
+  ['un gran número de', 'muchos'],
+  ['la mayor parte de', 'la mayoría de'],
+  ['hacer uso de', 'usar'],
+  ['llevar a cabo', 'realizar'],
+  ['en relación con', 'sobre'],
+  ['con respecto a', 'sobre'],
+  ['a pesar de que', 'aunque'],
+  ['así como también', 'y'],
+  ['todos y cada uno de los', 'todos los'],
+  ['cada uno de los', 'cada'],
+  ['en este momento', 'ahora'],
+  ['en la actualidad', 'ahora'],
+  ['hoy en día', 'hoy'],
+  ['de forma regular', 'regularmente'],
+  ['en todo momento', 'siempre'],
+  ['tiene la capacidad de', 'puede'],
+  ['es capaz de', 'puede'],
+  ['con anterioridad a', 'antes de'],
+  ['con posterioridad a', 'después de'],
+  ['un número suficiente de', 'suficientes'],
 ];
 
-/** Cortesía: no aporta nada al modelo y ocupa tokens en cada llamada. */
+/** Courtesy: adds nothing for the model and costs tokens on every call. */
 export const POLITENESS: readonly string[] = [
-  'por favor',
-  'muchas gracias',
-  'gracias de antemano',
-  'te lo agradezco',
-  'te agradecería',
-  'si eres tan amable',
-  'si no te importa',
-  'gracias',
+  // English
   'please',
   'thanks in advance',
   'thank you very much',
@@ -93,22 +95,21 @@ export const POLITENESS: readonly string[] = [
   "if you don't mind",
   'if you would be so kind',
   'much appreciated',
+
+  // Spanish
+  'por favor',
+  'muchas gracias',
+  'gracias de antemano',
+  'te lo agradezco',
+  'te agradecería',
+  'si eres tan amable',
+  'si no te importa',
+  'gracias',
 ];
 
-/** Muletillas y rodeos sin contenido. */
+/** Filler and throat-clearing with no content. */
 export const FILLER: readonly string[] = [
-  'básicamente',
-  'basicamente',
-  'en realidad',
-  'como ya sabes',
-  'como sabrás',
-  'cabe destacar que',
-  'cabe mencionar que',
-  'es importante destacar que',
-  'es importante mencionar que',
-  'vale la pena mencionar que',
-  'por así decirlo',
-  'dicho esto',
+  // English
   'basically',
   'essentially',
   'as you know',
@@ -121,17 +122,25 @@ export const FILLER: readonly string[] = [
   'in essence',
   'at the end of the day',
   'as a matter of fact',
+
+  // Spanish
+  'básicamente',
+  'basicamente',
+  'en realidad',
+  'como ya sabes',
+  'como sabrás',
+  'cabe destacar que',
+  'cabe mencionar que',
+  'es importante destacar que',
+  'es importante mencionar que',
+  'vale la pena mencionar que',
+  'por así decirlo',
+  'dicho esto',
 ];
 
-/** Intensificadores: rara vez cambian la tarea, casi siempre suman tokens. */
+/** Intensifiers: they rarely change the task and almost always add tokens. */
 export const INTENSIFIERS: readonly string[] = [
-  'muy',
-  'realmente',
-  'sumamente',
-  'extremadamente',
-  'increíblemente',
-  'absolutamente',
-  'totalmente',
+  // English
   'very',
   'really',
   'extremely',
@@ -139,47 +148,51 @@ export const INTENSIFIERS: readonly string[] = [
   'absolutely',
   'totally',
   'quite',
+
+  // Spanish
+  'muy',
+  'realmente',
+  'sumamente',
+  'extremadamente',
+  'increíblemente',
+  'absolutamente',
+  'totalmente',
 ];
 
-/** Coletillas de duda que debilitan la instrucción sin aportar información. */
+/** Hedges that weaken the instruction without adding information. */
 export const HEDGES: readonly string[] = [
-  'creo que',
-  'me parece que',
-  'diría que',
-  'en mi opinión',
+  // English
   'i think',
   'i believe',
   'it seems that',
   'in my opinion',
   'arguably',
+
+  // Spanish
+  'creo que',
+  'me parece que',
+  'diría que',
+  'en mi opinión',
 ];
 
 /**
- * Instrucciones de auto-verificación.
+ * Self-verification instructions.
  *
- * En los modelos actuales estas frases provocan verificación de más: el modelo
- * ya verifica su trabajo por defecto, y pedírselo explícitamente dispara pasos
- * extra que se pagan en tokens de salida. Nivel `aggressive` porque en algunos
- * flujos la verificación explícita sí se quiere.
+ * On current models these trigger over-verification: the model already checks
+ * its own work, and asking explicitly fires extra steps paid for in output
+ * tokens. Aggressive level because some workflows do want explicit
+ * verification.
+ *
+ * The full forms come first on purpose: removing only the core phrase would
+ * leave a dangling fragment such as "Before answering." — worse than leaving
+ * the sentence alone.
  */
 export const SELF_CHECK: readonly string[] = [
-  // Formas completas primero: si solo se quita el núcleo, queda un fragmento
-  // suelto del tipo "Antes de contestar." que es peor que no tocar nada.
-  'verifica tu respuesta antes de contestar',
-  'verifica tu respuesta antes de responder',
-  'revisa tu respuesta antes de contestar',
-  'revisa tu respuesta antes de responder',
-  'comprueba tu trabajo antes de responder',
+  // English — full forms first
   'double-check your answer before responding',
   'double check your answer before responding',
   'double-check your work before responding',
   'verify your answer before responding',
-  'verifica tu respuesta',
-  'revisa tu respuesta',
-  'comprueba tu trabajo',
-  'revisa dos veces',
-  'vuelve a comprobarlo',
-  'asegúrate de revisar tu trabajo',
   'double-check your answer',
   'double check your answer',
   'double-check your work',
@@ -187,10 +200,24 @@ export const SELF_CHECK: readonly string[] = [
   'verify your answer',
   're-verify before responding',
   'check your work twice',
+
+  // Spanish — full forms first
+  'verifica tu respuesta antes de contestar',
+  'verifica tu respuesta antes de responder',
+  'revisa tu respuesta antes de contestar',
+  'revisa tu respuesta antes de responder',
+  'comprueba tu trabajo antes de responder',
+  'verifica tu respuesta',
+  'revisa tu respuesta',
+  'comprueba tu trabajo',
+  'revisa dos veces',
+  'vuelve a comprobarlo',
+  'asegúrate de revisar tu trabajo',
 ];
 
-/** Palabras que se gritan en mayúsculas y que en minúscula cuestan menos tokens. */
+/** Words shouted in capitals that cost fewer tokens in lowercase. */
 export const SHOUTED_WORDS: readonly string[] = [
+  // English
   'MUST',
   'NEVER',
   'ALWAYS',
@@ -200,6 +227,8 @@ export const SHOUTED_WORDS: readonly string[] = [
   'MANDATORY',
   'SHOULD',
   'DO NOT',
+
+  // Spanish
   'DEBES',
   'NUNCA',
   'SIEMPRE',
@@ -209,12 +238,15 @@ export const SHOUTED_WORDS: readonly string[] = [
   'CRÍTICO',
 ];
 
-/** Prefijos de énfasis al principio de línea. */
+/** Emphasis prefixes at the start of a line. */
 export const EMPHASIS_PREFIXES: readonly string[] = [
+  // English
   'CRITICAL',
   'IMPORTANT',
   'WARNING',
   'NOTE',
+
+  // Spanish
   'ATENCIÓN',
   'ATENCION',
   'IMPORTANTE',
@@ -222,4 +254,69 @@ export const EMPHASIS_PREFIXES: readonly string[] = [
   'CRITICO',
   'AVISO',
   'NOTA',
+];
+
+/**
+ * Vocabulary suggesting the task needs a more capable model.
+ * Multilingual for the same reason as the dictionaries above.
+ */
+export const COMPLEX_SIGNALS: readonly string[] = [
+  // English
+  'analyze',
+  'reason',
+  'prove',
+  'design',
+  'architecture',
+  'refactor',
+  'debug',
+  'agent',
+  'tool use',
+  'multi-step',
+  'step by step',
+  'strategy',
+  'investigate',
+  'audit',
+  'migrate',
+
+  // Spanish
+  'analiza',
+  'razona',
+  'demuestra',
+  'diseña',
+  'arquitectura',
+  'refactoriza',
+  'depura',
+  'optimiza',
+  'estrategia',
+  'agente',
+  'herramienta',
+  'paso a paso',
+  'investiga',
+  'audita',
+  'migra',
+];
+
+/** Vocabulary suggesting a cheaper model would do. */
+export const SIMPLE_SIGNALS: readonly string[] = [
+  // English
+  'classify',
+  'translate',
+  'extract',
+  'summarize',
+  'label',
+  'sentiment',
+  'format as',
+  'yes or no',
+  'tag the',
+
+  // Spanish
+  'clasifica',
+  'traduce',
+  'extrae',
+  'resume',
+  'etiqueta',
+  'sentimiento',
+  'formatea',
+  'corrige la ortografía',
+  'sí o no',
 ];

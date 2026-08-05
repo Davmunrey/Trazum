@@ -3,7 +3,7 @@ import { describe, it } from 'node:test';
 
 import { optimize, refineWithLlm, providerFromEnv } from '../dist/index.js';
 
-/** Proveedor falso: devuelve lo que le digamos, sin salir a la red. */
+/** Fake provider: returns whatever we tell it to, without touching the network. */
 function fakeProvider(reply) {
   return {
     name: 'fake',
@@ -14,94 +14,101 @@ function fakeProvider(reply) {
   };
 }
 
-const PROMPT = 'Por favor analiza el fichero {{ruta}} y consulta https://docs.ejemplo.com/guia.';
+const PROMPT = 'Please analyse the file {{path}} and read https://docs.example.com/guide.';
 
-describe('pasada opcional por LLM', () => {
-  it('acepta un candidato más corto que conserva lo protegido', async () => {
+describe('optional LLM pass', () => {
+  it('accepts a shorter candidate that keeps the protected content', async () => {
     const base = optimize(PROMPT);
-    const shorter = 'Analiza {{ruta}} según https://docs.ejemplo.com/guia.';
+    const shorter = 'Analyse {{path}} per https://docs.example.com/guide.';
     const result = await refineWithLlm(base, fakeProvider(shorter));
 
     assert.equal(result.llm.applied, true);
     assert.equal(result.optimized, shorter);
     assert.ok(result.tokensAfter < base.tokensAfter);
-    // El ahorro se recalcula contra el prompt original, no contra el intermedio.
+    // The saving is recomputed against the original prompt, not the intermediate one.
     assert.equal(result.tokensSaved, base.tokensBefore - result.tokensAfter);
   });
 
-  it('descarta el candidato si altera un marcador de plantilla', async () => {
+  it('rejects a candidate that alters a template placeholder', async () => {
     const base = optimize(PROMPT);
-    const broken = 'Analiza {{la_ruta}} según https://docs.ejemplo.com/guia.';
+    const broken = 'Analyse {{the_path}} per https://docs.example.com/guide.';
     const result = await refineWithLlm(base, fakeProvider(broken));
 
     assert.equal(result.llm.applied, false);
-    assert.match(result.llm.rejectedReason, /protegido/);
+    assert.match(result.llm.rejectedReason, /protected/i);
     assert.equal(result.optimized, base.optimized);
   });
 
-  it('descarta el candidato si altera una URL', async () => {
+  it('rejects a candidate that alters a URL', async () => {
     const base = optimize(PROMPT);
-    const broken = 'Analiza {{ruta}} según https://docs.ejemplo.com/otra-guia.';
+    const broken = 'Analyse {{path}} per https://docs.example.com/other-guide.';
     const result = await refineWithLlm(base, fakeProvider(broken));
 
     assert.equal(result.llm.applied, false);
     assert.equal(result.optimized, base.optimized);
   });
 
-  it('descarta el candidato si no es más corto', async () => {
+  it('rejects a candidate that is not shorter', async () => {
     const base = optimize(PROMPT);
-    const longer = `${base.optimized} Y además añade una explicación detallada al final del todo.`;
+    const longer = `${base.optimized} And also add a detailed explanation at the very end.`;
     const result = await refineWithLlm(base, fakeProvider(longer));
 
     assert.equal(result.llm.applied, false);
-    assert.match(result.llm.rejectedReason, /no es más corto/);
+    assert.match(result.llm.rejectedReason, /not shorter/i);
   });
 
-  it('descarta un resumen disfrazado de compresión', async () => {
-    const largo = `Analiza {{ruta}} en https://docs.ejemplo.com/guia. ${'Detalle relevante del requisito. '.repeat(40)}`;
-    const base = optimize(largo);
-    const resumen = 'Analiza {{ruta}} en https://docs.ejemplo.com/guia.';
-    const result = await refineWithLlm(base, fakeProvider(resumen));
+  it('rejects a summary dressed up as compression', async () => {
+    const long = `Analyse {{path}} at https://docs.example.com/guide. ${'Relevant detail of the requirement. '.repeat(40)}`;
+    const base = optimize(long);
+    const summary = 'Analyse {{path}} at https://docs.example.com/guide.';
+    const result = await refineWithLlm(base, fakeProvider(summary));
 
     assert.equal(result.llm.applied, false);
-    assert.match(result.llm.rejectedReason, /resumen/);
+    assert.match(result.llm.rejectedReason, /summar/i);
   });
 
-  it('descarta respuestas vacías', async () => {
+  it('rejects empty responses', async () => {
     const base = optimize(PROMPT);
     const result = await refineWithLlm(base, fakeProvider('   '));
     assert.equal(result.llm.applied, false);
-    assert.match(result.llm.rejectedReason, /vacía/);
+    assert.match(result.llm.rejectedReason, /empty/i);
   });
 
-  it('quita las vallas de código si el modelo envuelve la respuesta', async () => {
+  it('strips code fences when the model wraps its answer', async () => {
     const base = optimize(PROMPT);
-    const wrapped = '```\nAnaliza {{ruta}} según https://docs.ejemplo.com/guia.\n```';
+    const wrapped = '```\nAnalyse {{path}} per https://docs.example.com/guide.\n```';
     const result = await refineWithLlm(base, fakeProvider(wrapped));
 
     assert.equal(result.llm.applied, true);
     assert.ok(!result.optimized.startsWith('```'));
   });
+
+  it('reports the rejection in the requested locale', async () => {
+    const base = optimize(PROMPT, { locale: 'es' });
+    const result = await refineWithLlm(base, fakeProvider('   '));
+    assert.equal(result.llm.applied, false);
+    assert.match(result.llm.rejectedReason, /vacía/i);
+  });
 });
 
-describe('configuración por entorno', () => {
-  it('devuelve null si falta configuración, sin lanzar', () => {
+describe('configuration from the environment', () => {
+  it('returns null when configuration is missing, instead of throwing', () => {
     assert.equal(providerFromEnv({}), null);
     assert.equal(providerFromEnv({ TRAZUM_LLM_BASE_URL: 'https://x' }), null);
     assert.equal(providerFromEnv({ TRAZUM_LLM_PROVIDER: 'anthropic' }), null);
   });
 
-  it('construye un proveedor compatible con OpenAI', () => {
+  it('builds an OpenAI-compatible provider', () => {
     const provider = providerFromEnv({
-      TRAZUM_LLM_BASE_URL: 'https://llm.interno/v1',
-      TRAZUM_LLM_MODEL: 'mi-modelo',
+      TRAZUM_LLM_BASE_URL: 'https://llm.internal/v1',
+      TRAZUM_LLM_MODEL: 'my-model',
       TRAZUM_LLM_API_KEY: 'k',
     });
     assert.ok(provider);
-    assert.equal(provider.model, 'mi-modelo');
+    assert.equal(provider.model, 'my-model');
   });
 
-  it('construye un proveedor de Anthropic', () => {
+  it('builds an Anthropic provider', () => {
     const provider = providerFromEnv({
       TRAZUM_LLM_PROVIDER: 'anthropic',
       TRAZUM_LLM_API_KEY: 'k',

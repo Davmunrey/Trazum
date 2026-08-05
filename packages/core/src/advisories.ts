@@ -1,62 +1,11 @@
 import { analyzeCachePrefix } from './cache.js';
+import { getMessages } from './i18n/index.js';
+import type { Locale } from './i18n/types.js';
+import { COMPLEX_SIGNALS, SIMPLE_SIGNALS } from './phrases.js';
 import { COST_MULTIPLIERS, MODELS, effectivePricing, getModel } from './pricing.js';
 import { formatUsd } from './savings.js';
 import { estimateTokens } from './tokenizer.js';
 import type { Advisory, ModelPricing, TokenCounter, UsageProfile } from './types.js';
-
-const COMPLEX_SIGNALS = [
-  'analiza',
-  'razona',
-  'demuestra',
-  'diseña',
-  'arquitectura',
-  'refactoriza',
-  'depura',
-  'optimiza',
-  'estrategia',
-  'agente',
-  'herramienta',
-  'paso a paso',
-  'investiga',
-  'audita',
-  'migra',
-  'analyze',
-  'reason',
-  'prove',
-  'design',
-  'architecture',
-  'refactor',
-  'debug',
-  'agent',
-  'tool use',
-  'multi-step',
-  'step by step',
-  'strategy',
-  'investigate',
-  'audit',
-  'migrate',
-];
-
-const SIMPLE_SIGNALS = [
-  'clasifica',
-  'traduce',
-  'extrae',
-  'resume',
-  'etiqueta',
-  'sentimiento',
-  'formatea',
-  'corrige la ortografía',
-  'sí o no',
-  'classify',
-  'translate',
-  'extract',
-  'summarize',
-  'label',
-  'sentiment',
-  'format as',
-  'yes or no',
-  'tag the',
-];
 
 function countSignals(haystack: string, signals: readonly string[]): number {
   let count = 0;
@@ -65,15 +14,16 @@ function countSignals(haystack: string, signals: readonly string[]): number {
 }
 
 /**
- * Estima el nivel de capacidad que necesita el prompt.
+ * Estimates the capability tier the prompt needs.
  *
- * Es una heurística por palabras clave y tamaño, no un juicio sobre la calidad
- * de la respuesta. Trátala como una hipótesis a validar con tus propias
- * evaluaciones antes de bajar de modelo en producción.
+ * This is a keyword-and-size heuristic, not a judgement about answer quality.
+ * Treat it as a hypothesis to validate with your own evaluations before
+ * moving down a tier in production.
  */
 export function recommendTier(prompt: string, tokens: number): ModelPricing['tier'] {
   const haystack = prompt.toLowerCase();
-  let score = countSignals(haystack, COMPLEX_SIGNALS) * 2 - countSignals(haystack, SIMPLE_SIGNALS) * 2;
+  let score =
+    countSignals(haystack, COMPLEX_SIGNALS) * 2 - countSignals(haystack, SIMPLE_SIGNALS) * 2;
 
   if (tokens > 4000) score += 2;
   else if (tokens > 1500) score += 1;
@@ -93,7 +43,7 @@ const TIER_ORDER: Record<ModelPricing['tier'], number> = {
   frontier: 3,
 };
 
-/** Modelo más barato de un nivel, mirando el precio de entrada vigente hoy. */
+/** Cheapest model of a tier, using today's effective input price. */
 function cheapestInTier(tier: ModelPricing['tier'], on: Date): ModelPricing | undefined {
   const candidates = MODELS.filter((m) => m.tier === tier && m.id !== 'claude-mythos-5');
   if (candidates.length === 0) return undefined;
@@ -102,14 +52,24 @@ function cheapestInTier(tier: ModelPricing['tier'], on: Date): ModelPricing | un
   );
 }
 
-/** Genera los avisos que no modifican el prompt pero sí la factura. */
+export interface AdvisoryOptions {
+  /** Reference date, used to decide whether a promotional price is live. */
+  on?: Date;
+  /** Token counter, so the cache-prefix analysis matches the caller's. */
+  count?: TokenCounter;
+  locale?: Locale;
+}
+
+/** Builds the advisories that do not modify the prompt but do move the bill. */
 export function buildAdvisories(
   optimizedPrompt: string,
   tokensAfter: number,
   usage: UsageProfile,
-  on: Date = new Date(),
-  count: TokenCounter = estimateTokens,
+  options: AdvisoryOptions = {},
 ): Advisory[] {
+  const { on = new Date(), count = estimateTokens, locale } = options;
+  const t = getMessages(locale);
+
   const advisories: Advisory[] = [];
   const model = getModel(usage.model);
   const { inputPerMTok, outputPerMTok, promoApplied } = effectivePricing(model, on);
@@ -122,69 +82,74 @@ export function buildAdvisories(
     usage.callsPerMonth *
     (usage.batchEligible ? 0.5 : 1);
 
-  // --- Ventana de contexto ---
+  // --- Context window ---
   if (tokensAfter > model.contextWindow) {
     advisories.push({
       id: 'context-overflow',
       severity: 'warning',
-      title: 'El prompt no cabe en la ventana de contexto',
-      detail: `El prompt optimizado ocupa ~${tokensAfter.toLocaleString('es-ES')} tokens y ${model.displayName} admite ${model.contextWindow.toLocaleString('es-ES')}. La llamada fallará: divide el contenido o cambia a un modelo con ventana mayor.`,
+      ...t.advisories.contextOverflow({
+        tokens: tokensAfter,
+        modelName: model.displayName,
+        contextWindow: model.contextWindow,
+      }),
       estimatedMonthlyUsd: null,
     });
   }
 
   // --- Prompt caching ---
-  // El caching es coincidencia de prefijo: en una plantilla con marcadores,
-  // solo se cachea lo anterior al primer marcador. Calcular el ahorro sobre el
-  // prompt entero sería mentir en cuanto {{x}} cambie de valor entre llamadas.
+  // Caching is a prefix match: in a template with placeholders, only what
+  // precedes the first placeholder is cached. Costing the whole prompt would
+  // be a lie the moment {{x}} takes a different value between calls.
   const cache = analyzeCachePrefix(optimizedPrompt, count);
   if (usage.callsPerMonth > 1) {
     const prefixShare = tokensAfter > 0 ? cache.stablePrefixTokens / tokensAfter : 0;
     const monthlyPrefixUsd = monthlyInputUsd * Math.min(1, prefixShare);
-    const h = Math.min(Math.max(usage.cacheHitRate, 0), 1);
-    const factor = (1 - h) * COST_MULTIPLIERS.cacheWrite5m + h * COST_MULTIPLIERS.cacheRead;
+    const hitRate = Math.min(Math.max(usage.cacheHitRate, 0), 1);
+    const factor =
+      (1 - hitRate) * COST_MULTIPLIERS.cacheWrite5m + hitRate * COST_MULTIPLIERS.cacheRead;
 
     if (cache.stablePrefixTokens >= model.cacheMinTokens) {
       const saving = monthlyPrefixUsd * (1 - factor);
       if (saving > 0) {
-        const scope = cache.firstPlaceholder
-          ? `El prefijo estable —lo anterior al primer marcador ${cache.firstPlaceholder}— son ~${cache.stablePrefixTokens.toLocaleString('es-ES')} de los ${tokensAfter.toLocaleString('es-ES')} tokens del prompt, y supera el mínimo cacheable de ${model.cacheMinTokens.toLocaleString('es-ES')} de ${model.displayName}.`
-          : `El prompt no tiene marcadores variables, así que el prefijo cacheable es entero y supera el mínimo de ${model.cacheMinTokens.toLocaleString('es-ES')} tokens de ${model.displayName}.`;
         advisories.push({
           id: 'prompt-caching',
           severity: 'opportunity',
-          title: 'Activa prompt caching en el prefijo estable',
-          detail: `${scope} Con una tasa de acierto del ${Math.round(h * 100)}%, la lectura de caché cuesta un 10% del precio de entrada y la escritura un 125%. Coloca cache_control al final del prefijo estable: cualquier byte que cambie antes del corte invalida todo lo que va detrás.`,
+          ...t.advisories.promptCaching({
+            placeholder: cache.firstPlaceholder,
+            prefixTokens: cache.stablePrefixTokens,
+            totalTokens: tokensAfter,
+            minTokens: model.cacheMinTokens,
+            modelName: model.displayName,
+            hitRatePct: Math.round(hitRate * 100),
+          }),
           estimatedMonthlyUsd: saving,
         });
       } else {
         advisories.push({
           id: 'prompt-caching-not-worth-it',
           severity: 'info',
-          title: 'Con esa tasa de acierto, la caché no compensa',
-          detail: `Escribir en caché cuesta un 125% del precio de entrada y leer un 10%. Por debajo de un ~28% de aciertos pagas más de lo que ahorras. Sube la reutilización del prefijo o deja la caché desactivada.`,
+          ...t.advisories.promptCachingNotWorthIt(),
           estimatedMonthlyUsd: null,
         });
       }
     } else {
-      const reason = cache.firstPlaceholder
-        ? `aquí el primer marcador variable (${cache.firstPlaceholder}) aparece a los ~${cache.stablePrefixTokens.toLocaleString('es-ES')} tokens y solo lo anterior puede cachearse`
-        : `este prompt tiene ~${tokensAfter.toLocaleString('es-ES')}`;
       advisories.push({
         id: 'below-cache-minimum',
         severity: 'info',
-        title: 'Por debajo del mínimo cacheable',
-        detail:
-          `${model.displayName} necesita al menos ${model.cacheMinTokens.toLocaleString('es-ES')} tokens de prefijo para cachear; ${reason}. Marcar cache_control no dará error, simplemente no cacheará.` +
-          (model.cacheMinTokens > 512
-            ? ' Claude Opus 5 baja ese mínimo a 512 tokens, así que prompts cortos que aquí no cachean, allí sí.'
-            : ''),
+        ...t.advisories.belowCacheMinimum({
+          modelName: model.displayName,
+          minTokens: model.cacheMinTokens,
+          placeholder: cache.firstPlaceholder,
+          prefixTokens: cache.stablePrefixTokens,
+          totalTokens: tokensAfter,
+          mentionLowerMinimum: model.cacheMinTokens > 512,
+        }),
         estimatedMonthlyUsd: null,
       });
     }
 
-    // Contenido estable colocado DESPUÉS del primer marcador: hoy no se
-    // cachea, pero moverlo delante lo haría cacheable.
+    // Stable content placed AFTER the first placeholder: never cached today,
+    // but moving it in front would make it cacheable.
     if (
       cache.firstPlaceholder &&
       cache.staticTokensAfter >= 200 &&
@@ -195,8 +160,11 @@ export function buildAdvisories(
       advisories.push({
         id: 'cache-prefix-reorder',
         severity: 'opportunity',
-        title: 'Mueve las instrucciones estables antes del primer marcador',
-        detail: `Unos ~${cache.staticTokensAfter.toLocaleString('es-ES')} tokens de contenido estable (el ${Math.round(movableShare * 100)}% del prompt) están después del primer marcador variable ${cache.firstPlaceholder}, así que hoy no se cachean nunca. Reordena la plantilla —instrucciones y contexto fijos primero, marcadores al final— y ese contenido pasa a leerse de caché al 10% del precio. Revisa que la reordenación no cambie el sentido del prompt.`,
+        ...t.advisories.cachePrefixReorder({
+          staticTokensAfter: cache.staticTokensAfter,
+          sharePct: Math.round(movableShare * 100),
+          placeholder: cache.firstPlaceholder,
+        }),
         estimatedMonthlyUsd: saving > 0 ? saving : null,
       });
     }
@@ -208,14 +176,12 @@ export function buildAdvisories(
     advisories.push({
       id: 'batch-api',
       severity: 'opportunity',
-      title: 'Si el trabajo tolera latencia, usa la Batch API',
-      detail:
-        'La Batch API aplica un 50% de descuento sobre entrada y salida. La mayoría de lotes terminan en menos de una hora, con un máximo de 24. Sirve para clasificación masiva, enriquecimiento de datos o evaluaciones: cualquier cosa que no responda a un usuario en tiempo real.',
+      ...t.advisories.batchApi(),
       estimatedMonthlyUsd: saving,
     });
   }
 
-  // --- Modelo recomendado ---
+  // --- Recommended model ---
   const suggestedTier = recommendTier(optimizedPrompt, tokensAfter);
   if (TIER_ORDER[suggestedTier] < TIER_ORDER[model.tier]) {
     const candidate = cheapestInTier(suggestedTier, on);
@@ -231,21 +197,28 @@ export function buildAdvisories(
         advisories.push({
           id: 'model-downgrade',
           severity: 'opportunity',
-          title: `Esta tarea quizá no necesite ${model.displayName}`,
-          detail: `Por longitud y vocabulario, el prompt parece de complejidad "${suggestedTier}". Con ${candidate.displayName} pasarías de ${formatUsd(monthlyInputUsd + monthlyOutputUsd)} a ${formatUsd(candidateMonthly)} al mes. Es una heurística por palabras clave, no un juicio de calidad: mide la diferencia con tus propias evaluaciones antes de cambiar en producción.`,
+          ...t.advisories.modelDowngrade({
+            modelName: model.displayName,
+            tier: suggestedTier,
+            candidateName: candidate.displayName,
+            currentUsd: formatUsd(monthlyInputUsd + monthlyOutputUsd),
+            candidateUsd: formatUsd(candidateMonthly),
+          }),
           estimatedMonthlyUsd: saving,
         });
       }
     }
   }
 
-  // --- Dónde está realmente el dinero ---
+  // --- Where the money actually is ---
   if (monthlyOutputUsd > monthlyInputUsd * 2 && usage.avgOutputTokens > 0) {
     advisories.push({
       id: 'output-dominated',
       severity: 'info',
-      title: 'Tu coste está en la salida, no en el prompt',
-      detail: `La salida supone ${formatUsd(monthlyOutputUsd)} al mes frente a ${formatUsd(monthlyInputUsd)} de entrada. Acortar el prompt tiene un techo bajo aquí. Los dos controles que mueven la aguja son el parámetro effort (bájalo si la tarea no es intensiva en razonamiento) y pedir respuestas concisas de forma explícita.`,
+      ...t.advisories.outputDominated({
+        outputUsd: formatUsd(monthlyOutputUsd),
+        inputUsd: formatUsd(monthlyInputUsd),
+      }),
       estimatedMonthlyUsd: null,
     });
   }
@@ -254,8 +227,14 @@ export function buildAdvisories(
     advisories.push({
       id: 'promo-pricing',
       severity: 'warning',
-      title: 'Estás calculando con precio promocional',
-      detail: `${model.displayName} tiene precio de lanzamiento ${model.promo.inputPerMTok}/${model.promo.outputPerMTok} por millón de tokens hasta el ${model.promo.until}. A partir de esa fecha pasa a ${model.inputPerMTok}/${model.outputPerMTok}: tu factura subirá aunque no cambies nada.`,
+      ...t.advisories.promoPricing({
+        modelName: model.displayName,
+        promoInput: model.promo.inputPerMTok,
+        promoOutput: model.promo.outputPerMTok,
+        until: model.promo.until,
+        listInput: model.inputPerMTok,
+        listOutput: model.outputPerMTok,
+      }),
       estimatedMonthlyUsd: null,
     });
   }
