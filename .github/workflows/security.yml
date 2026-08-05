@@ -44,7 +44,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/dependency-review-action@v4
+      - uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: moderate
           # Copyleft licences would change the terms of a repository that
