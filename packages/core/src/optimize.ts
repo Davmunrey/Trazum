@@ -1,4 +1,5 @@
 import { buildAdvisories } from './advisories.js';
+import { extractChanges } from './changes.js';
 import { DEFAULT_LOCALE, getMessages } from './i18n/index.js';
 import type { Locale, RuleId } from './i18n/types.js';
 import { DEFAULT_MODEL } from './pricing.js';
@@ -106,7 +107,8 @@ export function optimize(prompt: string, options: OptimizeOptions = {}): Optimiz
     if (disabled.has(rule.id)) continue;
     if (rule.level === 'aggressive' && level !== 'aggressive') continue;
 
-    const before = count(unmask(current, vault));
+    const currentUnmasked = unmask(current, vault);
+    const before = count(currentUnmasked);
     const { text: candidate, hits } = rule.apply(current);
     if (hits === 0 || candidate === current) continue;
 
@@ -118,6 +120,9 @@ export function optimize(prompt: string, options: OptimizeOptions = {}): Optimiz
     if (lostProtected) continue;
 
     const after = count(candidateUnmasked);
+    // Captured against the unmasked text on both sides, so the snippets read
+    // as the author wrote them rather than showing private-use markers.
+    const changes = extractChanges(currentUnmasked, candidateUnmasked);
     current = candidate;
     const copy = t.rules[rule.id];
     ruleResults.push({
@@ -127,6 +132,7 @@ export function optimize(prompt: string, options: OptimizeOptions = {}): Optimiz
       level: rule.level,
       hits,
       tokensSaved: Math.max(0, before - after),
+      changes,
     });
   }
 

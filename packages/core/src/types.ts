@@ -1,5 +1,6 @@
 /** Public types of @trazum/core. */
 
+import type { RuleChange } from './changes.js';
 import type { Locale, RuleId } from './i18n/types.js';
 
 /** How aggressive the deterministic rules are allowed to be. */
@@ -28,6 +29,12 @@ export interface RuleResult {
   hits: number;
   /** Tokens saved attributable to this rule (estimated). */
   tokensSaved: number;
+  /**
+   * A sample of what this rule actually changed, so an aggressive run can be
+   * reviewed rule by rule. Capped — `hits` carries the true total — and empty
+   * when the change was too large to summarise usefully.
+   */
+  changes: RuleChange[];
 }
 
 /** Severity of an advisory: the higher it is, the more money is usually at stake. */

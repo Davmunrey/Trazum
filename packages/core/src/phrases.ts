@@ -186,9 +186,35 @@ export const HEDGES: readonly string[] = [
  * The full forms come first on purpose: removing only the core phrase would
  * leave a dangling fragment such as "Before answering." — worse than leaving
  * the sentence alone.
+ *
+ * That includes whatever introduces the instruction. "You MUST double-check
+ * your answer before responding" reduced to "You must." for exactly this
+ * reason: the phrase matched, the subject and modal in front of it did not,
+ * and what survived was a sentence that says nothing. Anything that can open
+ * one of these instructions belongs in the list, ahead of the bare form.
  */
 export const SELF_CHECK: readonly string[] = [
-  // English — full forms first
+  // English — openers first, so the whole instruction goes rather than
+  // leaving the subject and modal stranded in front of the removal.
+  'you must double-check your answer before responding',
+  'you must double check your answer before responding',
+  'you should double-check your answer before responding',
+  'you must verify your answer before responding',
+  'you should verify your answer before responding',
+  'always double-check your answer before responding',
+  'always verify your answer before responding',
+  'be sure to double-check your answer before responding',
+  'make sure to double-check your answer before responding',
+  'make sure to verify your answer before responding',
+  'you must double-check your answer',
+  'you should double-check your answer',
+  'you must verify your answer',
+  'you should verify your answer',
+  'always double-check your work',
+  'be sure to double-check your work',
+  'make sure to check your work',
+
+  // English — bare forms
   'double-check your answer before responding',
   'double check your answer before responding',
   'double-check your work before responding',
@@ -201,7 +227,17 @@ export const SELF_CHECK: readonly string[] = [
   're-verify before responding',
   'check your work twice',
 
-  // Spanish — full forms first
+  // Spanish — openers first, same reason as above
+  'debes verificar tu respuesta antes de contestar',
+  'debes verificar tu respuesta antes de responder',
+  'debes revisar tu respuesta antes de contestar',
+  'siempre verifica tu respuesta antes de contestar',
+  'asegúrate de verificar tu respuesta antes de contestar',
+  'asegúrate de revisar tu respuesta',
+  'debes verificar tu respuesta',
+  'debes revisar tu respuesta',
+
+  // Spanish — bare forms
   'verifica tu respuesta antes de contestar',
   'verifica tu respuesta antes de responder',
   'revisa tu respuesta antes de contestar',

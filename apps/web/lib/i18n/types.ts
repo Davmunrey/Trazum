@@ -92,6 +92,7 @@ export interface WebMessages {
     diffTooLong: string;
     rulesHeading: string;
     ruleHits(hits: number, tokensSaved: number): string;
+    moreChanges(count: number): string;
     badgeSafe: string;
     badgeAggressive: string;
     advisoriesHeading: string;

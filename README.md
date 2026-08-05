@@ -56,6 +56,19 @@ lesson in different words scores close enough to two genuinely distinct
 examples that catching it would mean flagging examples that teach different
 things. That case needs a model, and is on the roadmap for the LLM pass.
 
+**Reviewing an aggressive run.** Every rule reports what it actually changed,
+so the level that saves the most is judged rule by rule rather than as one wall
+of diff — and a single rule you disagree with comes off with `--disable`:
+
+```
+  [aggressive] Intensifiers (3×, ~6 tokens)
+      VERY → —
+      extremely → —
+      quite → —
+  [aggressive] Self-verification instructions (1×, ~17 tokens)
+      You should double-check your answer before re… → —
+```
+
 **4. Optionally, runs it past an LLM.** The result is only accepted if it is
 shorter and leaves protected content byte-identical. Otherwise the deterministic
 version stands. It never returns something worse than where it started.
@@ -67,7 +80,7 @@ version stands. It never returns something worse than where it started.
 ```bash
 npm install
 npm run build      # core + cli
-npm test           # 145 tests
+npm test           # 164 tests
 ```
 
 ### CLI

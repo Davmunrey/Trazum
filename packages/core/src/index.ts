@@ -68,3 +68,7 @@ export { jaccard, normalizeForCompare } from './similarity.js';
 // Endpoint validation for the pluggable LLM layer
 export { isPrivateHost, validateLlmEndpoint } from './net.js';
 export type { EndpointRejection, ValidateEndpointOptions } from './net.js';
+
+// Per-rule change extraction
+export { extractChanges, DEFAULT_CHANGE_LIMIT } from './changes.js';
+export type { RuleChange } from './changes.js';

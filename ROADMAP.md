@@ -103,7 +103,7 @@ close enough to two genuinely distinct examples (~0.20) that catching them
 would mean flagging examples that teach different things. Recognising that
 "arrived quickly" and "arrived fast" teach the same lesson needs a model, not
 word-set overlap. That belongs to the optional LLM pass, and is listed under
-0.6.0 rather than pretended to here.
+0.7.0 rather than pretended to here.
 
 **Shipped alongside it:** the security pass that took the repository open
 source — four SSRF filter bypasses, two ReDoS denial-of-service bugs (one in a
@@ -128,24 +128,52 @@ Trazum will never edit it.
   clarification — "set `escalate` to true when the customer asks for a human" —
   and flagging it would turn the advisory into noise.
 
+### 0.6.0 — The aggressive level, made reviewable
+
+`aggressive` has always come with the advice "read the diff", and the diff was
+one undifferentiated block for every rule at once. That is not review, it is a
+wall of text with a warning attached — so in practice nobody ran the level that
+saves the most.
+
+Each rule now carries a short list of what it actually changed, so an
+aggressive run is judged rule by rule and a single rule you disagree with is
+disabled with `--disable`, instead of abandoning the whole level.
+
+- `RuleResult.changes`: capped before/after pairs, with `hits` carrying the
+  true total. Empty rather than truncated when the change is too large to
+  summarise — an empty list reads as "nothing to show", a truncated one would
+  read as "this is all that happened".
+- Bounded by construction, like everything else that touches untrusted text:
+  common prefix and suffix are trimmed in linear time, and anything still too
+  large is skipped rather than diffed.
+- Shown in the CLI and the web app for aggressive rules, and for every rule
+  under `--diff`.
+
+**It earned its keep immediately.** The first run surfaced a rule leaving
+`"You MUST double-check your answer before responding."` as `"You must."` — the
+phrase matched, the subject and modal in front of it did not, and the sentence
+that survived said nothing. Fixed by listing what can open one of these
+instructions ahead of the bare form. Two display bugs in the diff itself went
+the same way, both found by reading its own output.
+
+---
+
 ---
 
 ## Next
 
-### 0.6.0 — Semantic structure, and reviewing what changed
+### 0.7.0 — Semantic structure
 
 The pieces of structural analysis that need judgement rather than pattern
-matching, plus the review tooling the 0.4.0 and 0.5.0 advisories make necessary.
+matching. The review tooling that used to sit here shipped in 0.6.0.
 
 - **Semantically redundant examples**, via the optional LLM pass: the
   paraphrase case the deterministic detector correctly refuses to guess at.
-- **Rule-level diffing in the report**, so an aggressive run can be reviewed
-  rule by rule instead of all at once.
 - **More contradiction axes** as real prompts justify them — tone, persona,
   refusal policy. Each new axis has to earn its place against false positives:
   an advisory people learn to ignore is worse than no advisory.
 
-### 0.7.0 — Measurement instead of estimation
+### 0.8.0 — Measurement instead of estimation
 
 Trazum currently reports what a prompt *should* save. The obvious next question
 from anyone about to change a production prompt is whether the shorter version
@@ -160,7 +188,7 @@ still works — and that is not something a rules engine can answer by itself.
 - **Real cache simulation**: given a call log, report the hit rate actually
   achievable rather than one the user has to guess at.
 
-### 0.8.0 — Fits into a workflow
+### 0.9.0 — Fits into a workflow
 
 Optimising once is a demo. The value is in a prompt staying lean as it is
 edited over months.
@@ -198,7 +226,7 @@ Not scheduled. Listed so the reasoning is on the record.
   needs a maintainer who actually reads it, and a stale translation is worse
   than an honest fallback to English.
 - **Editor extension.** Live token cost while writing a prompt is the right
-  place for this to live. Waiting on 0.8.0's config file so it has something to
+  place for this to live. Waiting on 0.9.0's config file so it has something to
   read.
 - **Tokenizer per model family.** The heuristic compares two versions of the
   same prompt well, which is what it is for. A real tokenizer would improve
