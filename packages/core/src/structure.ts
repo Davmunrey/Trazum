@@ -216,6 +216,27 @@ export function findContradictions(prompt: string): Contradiction[] {
 // --------------------------------------------------------------------------
 
 /**
+ * The two halves of an example label, as bounded fragments.
+ *
+ * Every quantifier here has an upper bound, and that is load-bearing rather
+ * than tidiness. The previous form ended `\s*\d*\s*[:.)]` — three adjacent
+ * unbounded quantifiers over overlapping character classes. On a line like
+ * `example` followed by 40 000 spaces and no terminator, the engine has to try
+ * every way of splitting that whitespace between the two `\s*` groups before
+ * it can fail: measured O(n²), 651 ms at 40 000 spaces, roughly a minute at
+ * the API's 400 KB cap — a denial of service in one request.
+ *
+ * Bounding turns the split count into a constant. A label reading
+ * `Example 12:` never needs more than a few spaces or six digits, so nothing
+ * real is lost.
+ *
+ * `[ \t]` rather than `\s` because these are matched per line, where `\s`
+ * matching newlines is wrong anyway.
+ */
+const LABEL_PREFIX = String.raw`^[ \t]{0,16}(?:#{1,6}[ \t]{0,4})?(?:[-*][ \t]{0,4})?`;
+const LABEL_SUFFIX = String.raw`[ \t]{0,4}\d{0,6}[ \t]{0,4}[:.)]`;
+
+/**
  * Header styles that open a new example, most explicit first.
  *
  * Tiered rather than combined because they nest: a prompt using "Example 1:"
@@ -228,9 +249,9 @@ export function findContradictions(prompt: string): Contradiction[] {
  * fire on prompts containing no examples at all.
  */
 const EXAMPLE_HEADER_TIERS: readonly RegExp[] = [
-  /^\s*(?:#{1,6}\s*)?(?:[-*]\s*)?(?:example|ejemplo)\s*\d*\s*[:.)]/i,
-  /^\s*(?:#{1,6}\s*)?(?:[-*]\s*)?(?:input|entrada)\s*\d*\s*[:.)]/i,
-  /^\s*(?:#{1,6}\s*)?(?:[-*]\s*)?(?:user|usuario|q)\s*\d*\s*[:.)]/i,
+  new RegExp(`${LABEL_PREFIX}(?:example|ejemplo)${LABEL_SUFFIX}`, 'i'),
+  new RegExp(`${LABEL_PREFIX}(?:input|entrada)${LABEL_SUFFIX}`, 'i'),
+  new RegExp(`${LABEL_PREFIX}(?:user|usuario|q)${LABEL_SUFFIX}`, 'i'),
 ];
 
 /**
@@ -242,8 +263,10 @@ const EXAMPLE_HEADER_TIERS: readonly RegExp[] = [
  * those lines leaves an example with no output at all — worse than the
  * repetition it removed.
  */
-export const EXAMPLE_FIELD_LINE =
-  /^\s*(?:#{1,6}\s*)?(?:[-*]\s*)?(?:input|output|entrada|salida|example|ejemplo|user|usuario|assistant|asistente|q|a|question|answer|pregunta|respuesta)\s*\d*\s*[:.)]/i;
+export const EXAMPLE_FIELD_LINE = new RegExp(
+  `${LABEL_PREFIX}(?:input|output|entrada|salida|example|ejemplo|user|usuario|assistant|asistente|q|a|question|answer|pregunta|respuesta)${LABEL_SUFFIX}`,
+  'i',
+);
 
 export interface ExampleBlock {
   text: string;
