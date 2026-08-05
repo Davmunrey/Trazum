@@ -20,7 +20,7 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
@@ -58,7 +58,7 @@ jobs:
         # language's dictionary rather than only one.
         sample: ['examples/sample-prompt.en.txt', 'examples/sample-prompt.es.txt']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           persist-credentials: false
 
