@@ -45,6 +45,7 @@ dangerous thing in this repository.
 | Injected code in a contribution | CodeQL with `security-extended` | `.github/workflows/security.yml` |
 | A workflow being used to exfiltrate secrets | `permissions: contents: read` by default, `--ignore-scripts` on install, no `pull_request_target` — the last one now asserted | `.github/workflows/`, `security.test.js` |
 | A dependency hook running on someone else's runner | The packaged Action installs with `--ignore-scripts` too | `action.yml`, asserted in `security.test.js` |
+| A moved action tag changing what runs | Every third-party action is pinned to a commit SHA, with a `# vN` comment Dependabot bumps | `.github/workflows/`, asserted in `security.test.js` |
 | Actions template injection | **Nothing** is interpolated into a `run:` body — no input, no `github.*` value, no step output. Values reach the shell through `env:` | `action.yml`, asserted in `security.test.js` |
 
 **Known limit: marker squatting.** The Action finds its own pull-request comment
@@ -103,9 +104,6 @@ nothing should.
 - **Rate limiting is per instance, in memory.** On serverless each instance
   keeps its own counter, so the real limit is looser than 30/minute. It is a
   barrier against accidental abuse, not a quota.
-- **GitHub Actions are pinned to tags, not commit SHAs.** A tag can be moved,
-  so a compromised action publisher could change what runs. Pinning is the
-  stronger position; see the checklist below.
 
 - **The web app's dependency tree is clean, but note how it got there.** Next
   15 carried three high-severity advisories in `postcss` and `sharp`. The fix

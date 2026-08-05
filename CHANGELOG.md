@@ -8,6 +8,24 @@ alters nothing installable — a test, a document — still lands there rather t
 nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
+## Unreleased
+
+**Every third-party GitHub Action is now pinned to a commit SHA.** `SECURITY.md`
+listed this as a known limit; it no longer is. A tag can be moved and a branch
+moves by design, so `@v3` means "whatever that publisher pushes there next", with
+the caller's token and secrets in scope.
+
+- The sharpest case was `actions/dependency-review-action@v5`, whose majors are
+  published as **branches** rather than tags — a reference that is *designed* to
+  move. (Worth recording: I first read the tag list and concluded `@v5` did not
+  resolve at all. It does — `refs/heads/v5` — and the branch is the point.)
+- Pinning only freezes a version if nothing bumps it. `.github/dependabot.yml`
+  already has a `github-actions` entry, and the trailing `# vN` comment is what
+  it matches on.
+- Two new invariants: every `uses:` outside this repository must be a 40-character
+  commit SHA, and every pin must carry a version comment. A pin with no comment
+  is a line nobody can review and nothing will ever update.
+
 ## 0.11.0
 
 **Breaking, for the GitHub Action only:** `file` and `max-tokens` are no longer
