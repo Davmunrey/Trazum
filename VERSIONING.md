@@ -44,13 +44,30 @@ This means a patch can change the numbers in your report. That is the intended
 behaviour — reporting a price that is no longer real is the worse failure — but
 it is why the field exists and why the reports show it.
 
-## Releasing
+## Merging, and then releasing
 
-1. Update `CHANGELOG.md`. Breaking changes go first, with the migration.
+Every merge to `main` gets a `CHANGELOG.md` entry — under the version it is
+going out in, or under **`Unreleased`** if no release is being cut. That
+includes changes to nothing installable: a test, a document, a workflow. The
+changelog is the record of what happened to this repository, and a merged commit
+with no entry is a change only `git log` remembers.
+
+`Unreleased` is not a version. It is where work waits, and cutting a release
+means giving that work a number.
+
+To release:
+
+1. Fold `Unreleased` into a new version heading, or leave anything genuinely
+   not-shipping-yet behind. Breaking changes go first, with the migration.
 2. Bump the version in every manifest, including the `@trazum/core` dependency
    pinned by `@trazum/cli` and `@trazum/web`.
-3. `npm run build && npm test` must be green, and the web app must build.
+3. `npm run verify` must be green — build, tests, typecheck across all three
+   workspaces, and the web build. The web build in particular catches things
+   nothing else does: `@trazum/core` is bundled for the browser, so one
+   `node:fs` import anywhere in its import graph breaks it while `tsc` and the
+   tests stay happy.
 4. Tag `v<version>`.
+5. Move the matching `ROADMAP.md` entry from `Next` to `Released`.
 
 The four manifests are kept in lockstep deliberately: the packages are
 developed together, and a version skew between the core and the CLI has no

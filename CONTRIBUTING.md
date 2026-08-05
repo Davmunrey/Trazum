@@ -120,5 +120,14 @@ vulnerability privately.
 ## Pull requests
 
 Say what changed and why, and be explicit about anything you did not do.
-If a change is user-visible, add a `CHANGELOG.md` entry; if it breaks the API,
-that entry goes first and carries the migration.
+
+Add a `CHANGELOG.md` entry under `Unreleased`. Not only for user-visible
+changes — for a test or a document too. This paragraph used to say "if a change
+is user-visible", and the result was a fix to a broken security guardrail
+sitting in `main` recorded nowhere but the commit history. If a change was worth
+merging it was worth a line.
+
+If it breaks the API, that entry goes first in its version and carries the
+migration.
+
+Run `npm run verify` before pushing and read its exit code, not its output.

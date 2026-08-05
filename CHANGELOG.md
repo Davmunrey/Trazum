@@ -3,6 +3,52 @@
 Versioning policy: [VERSIONING.md](VERSIONING.md). Below 1.0, minor versions
 may contain breaking changes, and say so in their first line.
 
+`Unreleased` holds what is merged into `main` but not yet tagged. A change that
+alters nothing installable — a test, a document — still lands there rather than
+nowhere: the changelog is the record of what happened to this repository, and a
+merged commit with no entry is a change only `git log` remembers.
+
+## Unreleased
+
+**A security guardrail was ineffective, and is now enforced with positive
+controls.** No shipped code changed, so there is no version bump — this is a
+test and a document — but it is the kind of thing that should never be findable
+only in the commit history.
+
+The test asserting *"inputs reach the Action's shell through the environment,
+never interpolated into `run:`"* did not do that. Two independent causes: its
+`run:` body pattern required a newline after the optional block indicator, so a
+single-line `run:` was never recognised as a run block at all; and it searched
+that body only for `${{ inputs.* }}`, which is the *safest* value in the set
+because it is workflow-authored. The dangerous ones were outside what it looked
+at entirely — `github.event.pull_request.title`, `...body` and
+`github.head_ref` are written by whoever opened the pull request.
+
+- `action.yml` itself was never vulnerable, and still is not: every input goes
+  through `env:`, no `run:` body interpolates anything. What was broken was the
+  guardrail meant to keep it that way, and `SECURITY.md` claimed more than the
+  test asserted. Both are corrected.
+- The rule is now **positional and source-blind**: nothing may be interpolated
+  into a `run:` body, ever. Provenance is not something a regex can judge, and a
+  step that derives an input from a PR title turns a "safe" source unsafe
+  without touching the file the test inspects.
+- The harm never depended on the token being writable. Substitution happens
+  before bash parses, so the payload runs on the caller's runner with whatever
+  secrets that job has in scope.
+- **Five positive controls** the scanner must flag, plus a negative control:
+  `action.yml` quotes an expression inside a prose comment explaining the rule,
+  and a test that fails when you document the reasoning teaches people to stop
+  documenting it. The version this replaced had no positive control, which is
+  exactly why it passed for every shape it could not see.
+- Also asserts that no workflow and not `action.yml` uses
+  `pull_request_target` — the event a reviewer reaches for the moment they find
+  a fork PR cannot post a comment, and the one that runs a writable token
+  against contributor-controlled code. 0.11.0's natural wrong turn now needs
+  arguing in a pull request rather than arriving quietly.
+- Found while designing 0.11.0, which would have been written in exactly the two
+  shapes the test could not see.
+- Tests grow from 301 to 303.
+
 ## 0.10.0
 
 `trazum.config.json` and directory mode. Two of the three items left over from
