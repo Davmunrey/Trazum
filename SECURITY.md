@@ -117,8 +117,20 @@ Some of this cannot be committed to a file — it lives in repository settings.
 
 1. **Import the ruleset.** Settings → Rules → Rulesets → New ruleset → Import,
    and select `.github/rulesets/main-branch.json`. It requires a pull request
-   with one code-owner approval, passing checks, linear history, and blocks
-   force-pushes and deletion of the default branch.
+   with passing checks and linear history, and blocks force-pushes and deletion
+   of the default branch.
+
+   **It asks for zero approvals, deliberately.** The first version required
+   one, and that deadlocked the repository: GitHub does not let you approve
+   your own pull request, and with a single maintainer there is nobody else to
+   ask. Worth being clear about what was lost — nothing. An outside
+   contributor cannot merge regardless, because merging needs write access; the
+   approval rule only ever constrained the maintainers, and an approval you
+   give yourself is not review. The gate that does real work here is the
+   required status checks, which no one can talk their way past.
+
+   Raise it back to `1` the day a second maintainer has write access. Until
+   then it would be theatre with a deadlock attached.
 2. **Code security → Dependency graph**, then add an Actions **variable**
    `DEPENDENCY_REVIEW = enabled` (Settings → Secrets and variables → Actions →
    Variables).
