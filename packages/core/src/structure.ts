@@ -1,6 +1,6 @@
 import { segment } from './segment.js';
 import { jaccard, normalizeForCompare } from './similarity.js';
-import type { ContradictionAxisId } from './i18n/types.js';
+import type { ContradictionAxisId, ContradictionValueId } from './i18n/types.js';
 import type { TokenCounter } from './types.js';
 
 /**
@@ -28,7 +28,7 @@ export type ContradictionAxis = ContradictionAxisId;
 
 export interface ContradictionSide {
   /** Which end of the axis this instruction sits on. */
-  value: string;
+  value: ContradictionValueId;
   /** The sentence it was found in, trimmed for display. */
   snippet: string;
 }
@@ -41,7 +41,7 @@ export interface Contradiction {
 
 interface AxisDefinition {
   axis: ContradictionAxis;
-  values: ReadonlyArray<readonly [value: string, pattern: RegExp]>;
+  values: ReadonlyArray<readonly [value: ContradictionValueId, pattern: RegExp]>;
 }
 
 /**
@@ -58,14 +58,14 @@ const AXES: readonly AxisDefinition[] = [
     axis: 'response-language',
     values: [
       [
-        'a fixed language',
+        'fixed-language',
         new RegExp(
           String.raw`\b${RESPOND}\b[^.!?\n]{0,40}?\bin\s+(?:english|spanish|french|german|italian|portuguese|ingl[ée]s|espa[nñ]ol|franc[ée]s|alem[áa]n)\b|\b${RESPOND}\b[^.!?\n]{0,40}?\ben\s+(?:ingl[ée]s|espa[nñ]ol|franc[ée]s|alem[áa]n)\b`,
           'i',
         ),
       ],
       [
-        "the user's language",
+        'mirror-language',
         new RegExp(
           // The qualifier slot ("own", "native", "preferred") is what makes
           // this survive real prompts: "the customer's own language" is at
@@ -80,21 +80,21 @@ const AXES: readonly AxisDefinition[] = [
     axis: 'output-format',
     values: [
       [
-        'JSON',
+        'format-json',
         new RegExp(
           String.raw`\b(?:${RESPOND}|return|format|devuelve|formatea)\b[^.!?\n]{0,40}?\b(?:as|in|with|using|only|en|como)\s+(?:valid\s+|solo\s+|válido\s+)?json\b|\bonly\s+json\b|\bsolo\s+json\b`,
           'i',
         ),
       ],
       [
-        'Markdown',
+        'format-markdown',
         new RegExp(
           String.raw`\b(?:${RESPOND}|return|format|devuelve|formatea)\b[^.!?\n]{0,40}?\b(?:as|in|with|using|en|como)\s+markdown\b|\buse\s+markdown\b|\busa\s+markdown\b`,
           'i',
         ),
       ],
       [
-        'plain text',
+        'format-plain-text',
         new RegExp(
           String.raw`\bplain\s+text\b|\bno\s+markdown\b|\bwithout\s+markdown\b|\btexto\s+plano\b|\bsin\s+markdown\b`,
           'i',
@@ -106,14 +106,14 @@ const AXES: readonly AxisDefinition[] = [
     axis: 'response-length',
     values: [
       [
-        'brief',
+        'length-brief',
         new RegExp(
           String.raw`\b(?:be\s+(?:brief|concise|succinct|terse)|keep\s+it\s+(?:short|brief)|as\s+short\s+as\s+possible|in\s+(?:one|a\s+single)\s+sentence|s[ée]\s+(?:breve|conciso)|de\s+forma\s+(?:breve|concisa)|brevemente)\b`,
           'i',
         ),
       ],
       [
-        'detailed',
+        'length-detailed',
         new RegExp(
           String.raw`\b(?:be\s+(?:detailed|comprehensive|thorough|exhaustive)|in\s+(?:great\s+)?depth|as\s+much\s+detail\s+as\s+possible|s[ée]\s+(?:exhaustivo|detallado)|de\s+forma\s+(?:detallada|exhaustiva)|con\s+todo\s+detalle|detalladamente)\b`,
           'i',
@@ -125,14 +125,14 @@ const AXES: readonly AxisDefinition[] = [
     axis: 'reasoning-visibility',
     values: [
       [
-        'show the reasoning',
+        'reasoning-shown',
         new RegExp(
           String.raw`\b(?:explain\s+your\s+(?:reasoning|answer|thinking)|show\s+your\s+(?:work|reasoning|thinking)|think\s+step[\s-]by[\s-]step|justify\s+your\s+answer|explica\s+tu\s+razonamiento|razona\s+paso\s+a\s+paso|justifica\s+tu\s+respuesta)\b`,
           'i',
         ),
       ],
       [
-        'hide the reasoning',
+        'reasoning-hidden',
         new RegExp(
           String.raw`\b(?:no\s+(?:explanation|commentary|preamble)|without\s+(?:explanation|commentary)|do\s+not\s+explain|don'?t\s+explain|no\s+expliques|sin\s+(?:explicaciones|comentarios)|sin\s+preámbulo)\b`,
           'i',
@@ -185,7 +185,7 @@ export function findContradictions(prompt: string): Contradiction[] {
   const lines = sentences(analysableText(prompt));
 
   for (const { axis, values } of AXES) {
-    const hits = new Map<string, { snippet: string; sentence: number }>();
+    const hits = new Map<ContradictionValueId, { snippet: string; sentence: number }>();
 
     lines.forEach((sentence, index) => {
       for (const [value, pattern] of values) {

@@ -182,4 +182,16 @@ export const en: CoreMessages = {
     'response-length': 'how long the answer should be',
     'reasoning-visibility': 'whether to show the reasoning',
   },
+
+  contradictionValues: {
+    'fixed-language': 'always the same language',
+    'mirror-language': "the reader's own language",
+    'format-json': 'JSON',
+    'format-markdown': 'Markdown',
+    'format-plain-text': 'plain text',
+    'length-brief': 'keep it brief',
+    'length-detailed': 'go into detail',
+    'reasoning-shown': 'show the reasoning',
+    'reasoning-hidden': 'hide the reasoning',
+  },
 };

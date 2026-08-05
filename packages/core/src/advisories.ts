@@ -235,9 +235,9 @@ export function buildAdvisories(
       severity: 'warning',
       ...t.advisories.contradictoryInstructions({
         axis: t.contradictionAxes[worst.axis],
-        firstValue: worst.a.value,
+        firstValue: t.contradictionValues[worst.a.value],
         firstSnippet: worst.a.snippet,
-        secondValue: worst.b.value,
+        secondValue: t.contradictionValues[worst.b.value],
         secondSnippet: worst.b.snippet,
         otherCount: contradictions.length - 1,
       }),

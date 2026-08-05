@@ -154,6 +154,8 @@ export interface CoreMessages {
   };
   /** Names of the axes two instructions can disagree on. */
   contradictionAxes: Record<ContradictionAxisId, string>;
+  /** Names of each end of those axes, as they read inside the advisory. */
+  contradictionValues: Record<ContradictionValueId, string>;
 }
 
 /**
@@ -165,3 +167,20 @@ export type ContradictionAxisId =
   | 'output-format'
   | 'response-length'
   | 'reasoning-visibility';
+
+/**
+ * The two ends of each axis. Identifiers rather than prose for the same reason
+ * the axes are: the advisory names both sides in its sentence, so leaving them
+ * as English strings in the detector would print English inside a Spanish
+ * report.
+ */
+export type ContradictionValueId =
+  | 'fixed-language'
+  | 'mirror-language'
+  | 'format-json'
+  | 'format-markdown'
+  | 'format-plain-text'
+  | 'length-brief'
+  | 'length-detailed'
+  | 'reasoning-shown'
+  | 'reasoning-hidden';

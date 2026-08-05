@@ -83,6 +83,10 @@ describe('catalogue parity', () => {
       Object.keys(es.contradictionAxes).sort(),
       Object.keys(en.contradictionAxes).sort(),
     );
+    assert.deepEqual(
+      Object.keys(es.contradictionValues).sort(),
+      Object.keys(en.contradictionValues).sort(),
+    );
   });
 
   it('every advisory renders a non-empty title and detail in every locale', () => {
@@ -149,12 +153,31 @@ describe('catalogue parity', () => {
     }
   });
 
-  it('every contradiction axis is named in every locale', () => {
+  it('every contradiction axis and value is named in every locale', () => {
     for (const locale of LOCALES) {
-      for (const [axis, name] of Object.entries(getMessages(locale).contradictionAxes)) {
+      const t = getMessages(locale);
+      for (const [axis, name] of Object.entries(t.contradictionAxes)) {
         assert.ok(name.trim().length > 0, `${locale} does not name axis "${axis}"`);
       }
+      for (const [value, name] of Object.entries(t.contradictionValues)) {
+        assert.ok(name.trim().length > 0, `${locale} does not name value "${value}"`);
+      }
     }
+  });
+
+  it('the contradiction advisory names both sides in the requested locale', () => {
+    // Regression: the axis values were English string literals in the
+    // detector, so a Spanish report read "Una dice a fixed language".
+    const prompt = 'Always answer in English.\n\nRespond in the user language.';
+    const spanish = optimize(prompt, { locale: 'es' }).advisories.find(
+      (a) => a.id === 'contradictory-instructions',
+    );
+    assert.ok(spanish);
+    assert.ok(
+      !/a fixed language|the user's language/.test(spanish.detail),
+      `English value names leaked into the Spanish report: ${spanish.detail}`,
+    );
+    assert.match(spanish.detail, /siempre el mismo idioma/);
   });
 
   it('every LLM rejection reason renders in every locale', () => {
