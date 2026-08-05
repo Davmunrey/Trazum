@@ -33,6 +33,17 @@ export { computeSavings, costOfCall, formatUsd, formatSignedUsd } from './saving
 export { buildAdvisories, recommendTier } from './advisories.js';
 export type { AdvisoryOptions } from './advisories.js';
 export { analyzeCachePrefix } from './cache.js';
+
+// Rearranging a prompt so its stable instructions sit in the cacheable prefix.
+// The largest saving Trazum knows about, and the most dangerous transformation
+// here — see reorder.ts for what it refuses to move and why.
+export { reorderForCache } from './reorder.js';
+export type {
+  DeclinedBlock,
+  ReorderOptions,
+  ReorderResult,
+  ReorderedBlock,
+} from './reorder.js';
 export type { CachePrefixAnalysis } from './cache.js';
 export { optimize, withExactTokenCounts, DEFAULT_USAGE } from './optimize.js';
 export {

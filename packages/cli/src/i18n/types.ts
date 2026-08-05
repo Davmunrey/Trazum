@@ -69,6 +69,15 @@ export interface CliMessages {
     perMonthSuffix(amount: string): string;
     diff(): string;
     diffTooLarge(lines: number, max: number): string;
+    reorderHeading(): string;
+    reorderMoved(blocks: number, tokens: string): string;
+    reorderPrefix(before: string, after: string): string;
+    reorderDeclined(count: number): string;
+    reorderDeclinedRef(phrase: string, excerpt: string): string;
+    reorderDeclinedAfter(excerpt: string): string;
+    reorderDeclinedMore(count: number): string;
+    reorderNothing(): string;
+    reorderReview(): string;
     pricingOverlaid(models: string, lastReviewed: string): string;
     wroteTo(path: string): string;
   };

@@ -23,6 +23,12 @@ ${bold('OPCIONES DE optimize')}
   --cache-hit-rate <0-1>      Tasa de acierto de caché estimada. Por defecto: ${d.cacheHitRate}.
   --batch                     El trabajo tolera latencia (Batch API, 50% menos).
   --disable <id,id>           Desactiva reglas concretas (ver "trazum rules").
+  --reorder                   Mueve las instrucciones estables delante del primer
+                              marcador, para que la caché de prompts las alcance. Esto
+                              MUEVE texto en vez de borrarlo: lee el diff y decide si
+                              el orden importaba. Se niega con cualquier bloque que
+                              haga referencia hacia atrás ("el texto anterior"), y
+                              dice qué frase lo ha impedido.
   --llm                       Añade una pasada por el LLM configurado por entorno.
   --exact-tokens              Cuenta tokens con la API oficial en vez de la heurística.
   --diff                      Muestra el diff línea a línea.
@@ -36,6 +42,8 @@ ${bold('OPCIONES DE check')}
   --level <safe|aggressive>   Nivel al calcular si el prompt optimizado cabría.
   --exact-tokens              Recuento exacto (necesita ANTHROPIC_API_KEY).
   --json                      Resultado en JSON.
+  --markdown-out <fichero>    Escribe además el informe en Markdown, para el resumen
+                              de un job de CI o un comentario de pull request.
 
   Pensado para CI: sale con código 1 si el prompt supera el presupuesto,
   así una plantilla que crece sin control rompe la build en vez de la factura.
@@ -66,6 +74,8 @@ ${bold('OPCIONES DE diff')}
   --model <id>                Modelo con el que calcular el coste.
   --calls <n>                 Llamadas al mes, para la cifra de coste.
   --json                      Resultado en JSON.
+  --markdown-out <fichero>    Escribe además el informe en Markdown, para el resumen
+                              de un job de CI o un comentario de pull request.
 
   Compara dos versiones de un prompt: cómo se ha movido el recuento de tokens,
   cuánto cuesta eso, qué avisos ha introducido o resuelto la edición. Toda
@@ -132,6 +142,7 @@ ${bold('IDIOMA')}
 ${bold('EJEMPLOS')}
   trazum optimize prompt.txt --calls 50000 --diff
   cat prompt.md | trazum optimize - --level aggressive --json
+  trazum optimize prompt.txt --reorder --diff
   trazum optimize prompt.txt --llm -o prompt.optimizado.txt
   trazum eval prompt.txt --cases casos.txt --level aggressive
   trazum diff prompts/system.txt prompts/system.new.txt --max-growth 10
@@ -201,6 +212,22 @@ ${bold('EJEMPLOS')}
     diff: () => 'Diff',
     pricingOverlaid: (models, lastReviewed) =>
       `Los precios de ${models} vienen de un overlay local revisado el ${lastReviewed}, no del catálogo incluido.`,
+    reorderHeading: () => 'Reordenado para la caché',
+    reorderMoved: (blocks, tokens) =>
+      `Se ${
+        blocks === 1 ? 'ha movido 1 bloque' : `han movido ${blocks} bloques`
+      } (~${tokens} tokens) delante del primer marcador.`,
+    reorderPrefix: (before, after) => `Prefijo cacheable ${before} → ${after} tokens.`,
+    reorderDeclined: (count) =>
+      `Se ${
+        count === 1 ? 'ha dejado 1 bloque donde estaba' : `han dejado ${count} bloques donde estaban`
+      }:`,
+    reorderDeclinedRef: (phrase, excerpt) => `hace referencia hacia atrás ("${phrase}"): ${excerpt}`,
+    reorderDeclinedAfter: (excerpt) => `va después de un bloque que tenía que quedarse: ${excerpt}`,
+    reorderDeclinedMore: (count) => `…y ${count} más, en el fichero de salida.`,
+    reorderNothing: () => 'No se ha podido mover nada con seguridad.',
+    reorderReview: () =>
+      'Lee el diff: esto ha movido texto en vez de borrarlo, así que la pregunta es si el orden importaba.',
     diffTooLarge: (lines, max) =>
       `  Diff omitido: ${lines} líneas supera el límite de ${max}, y alinearlas costaría más memoria de lo que vale la respuesta.`,
     wroteTo: (path) => `Prompt optimizado escrito en ${path}`,

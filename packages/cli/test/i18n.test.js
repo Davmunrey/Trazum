@@ -103,10 +103,14 @@ describe('catalogue parity', () => {
     }
   });
 
-  it('every required flag is documented in every locale', () => {
-    // A required flag missing from the help is a command that fails on first
-    // use with an error the reader cannot act on.
-    const REQUIRED_FLAGS = ['--max-tokens', '--cases', '--max-growth', '--config'];
+  it('every flag the CLI accepts is documented in every locale', () => {
+    // Derived from what the binary actually accepts, not from a list kept here.
+    // A hardcoded list is how `--reorder` shipped fully implemented and absent
+    // from `--help`: the old version of this test named four *required* flags
+    // and passed the whole time. The rejection message for an unknown flag
+    // prints the real allow-list for that command, so it is the list.
+    const CLI = new URL('../dist/index.js', import.meta.url).pathname;
+    const COMMANDS = ['optimize', 'check', 'eval', 'diff'];
     const defaults = {
       model: 'claude-opus-5',
       callsPerMonth: 1000,
@@ -115,10 +119,26 @@ describe('catalogue parity', () => {
       locales: LOCALES,
     };
 
+    const accepted = new Set();
+    for (const command of COMMANDS) {
+      const { stdout, stderr } = spawnSync(
+        process.execPath,
+        [CLI, command, 'README.md', '--definitely-not-a-flag'],
+        { encoding: 'utf8', env: { ...process.env, NO_COLOR: '1' } },
+      );
+      const list = /This command accepts: (.+?)\.?$/m.exec(`${stdout}${stderr}`);
+      assert.ok(list, `${command}: could not read the accepted-flag list`);
+      for (const name of list[1].split(', ')) accepted.add(name.trim());
+    }
+
+    // Single letters are aliases of a long name that carries the description.
+    const documented = [...accepted].filter((name) => name.length > 1);
+    assert.ok(documented.includes('reorder'), 'the derivation stopped finding flags');
+
     for (const locale of LOCALES) {
       const help = getCliMessages(locale).help(defaults, (s) => s);
-      for (const flag of REQUIRED_FLAGS) {
-        assert.ok(help.includes(flag), `${locale}: help does not document ${flag}`);
+      for (const flag of documented) {
+        assert.ok(help.includes(`--${flag}`), `${locale}: help does not document --${flag}`);
       }
     }
   });

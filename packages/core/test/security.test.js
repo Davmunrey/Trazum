@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 
-import { isPrivateHost, optimize, validateLlmEndpoint } from '../dist/index.js';
+import { isPrivateHost, optimize, reorderForCache, validateLlmEndpoint } from '../dist/index.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..', '..', '..');
@@ -348,6 +348,46 @@ describe('ReDoS resistance', () => {
     it(`survives ${name}`, () => {
       const started = Date.now();
       optimize(input, { level: 'aggressive' });
+      const elapsed = Date.now() - started;
+      assert.ok(
+        elapsed < BUDGET_MS,
+        `took ${elapsed}ms on ${input.length} chars — suspect catastrophic backtracking in a recently added pattern`,
+      );
+    });
+  }
+
+  /**
+   * `reorderForCache` is not reached by `optimize`, so none of the fixtures
+   * above touch it — and it shipped with two quadratic patterns that this suite
+   * would have caught the moment it was pointed at them.
+   *
+   * Both were mine, both looked innocuous, and both are the same shape the
+   * comment above describes: a long run that makes a match fail as late and as
+   * often as possible. `split(/(?<=\n)(?=\s*\n)/)` re-consumed the whole run
+   * at every position inside it (3.3s on 60 KB of newlines), and `/\s*$/` on a
+   * prompt holding a long whitespace run that does *not* end in one took 31
+   * seconds at 200 KB — inside the 400 KB the HTTP API accepts.
+   */
+  const reorderPathological = [
+    // Sized so the old pattern is well past the budget rather than near it: at
+    // 60k newlines it took 3.5s, which a 5s cliff detector would have waved
+    // through. Quadratic means the fixture, not the budget, has to be honest.
+    ['blank-line storm', `A.\n\n{{x}}${'\n'.repeat(120_000)}`],
+    ['near-blank line storm', `A.\n\n{{x}}${'\n \n'.repeat(60_000)}`],
+    ['CRLF storm', `A.\r\n\r\n{{x}}${'\r\n'.repeat(60_000)}`],
+    ['whitespace run, prompt does not end in one', `${' '.repeat(200_000)}\n\n{{x}}\n\nBe brief.`],
+    ['whitespace run after the placeholder', `A.\n\n{{x}}\n\n${' '.repeat(200_000)}`],
+    ['block prefix, unterminated whitespace run', `A.\n\n{{x}}\n\nrule${' '.repeat(200_000)}`],
+    ['tab and space run', `A.\n\n{{x}}\n\n${' \t'.repeat(100_000)}`],
+    ['one block per blank line', `A.\n\n{{x}}\n\n${'Be brief.\n\n'.repeat(20_000)}`],
+    ['unclosed placeholders', '{{'.repeat(30_000)],
+    ['backward reference in every block', `A.\n\n{{x}}\n\n${'See above.\n\n'.repeat(20_000)}`],
+  ];
+
+  for (const [name, input] of reorderPathological) {
+    it(`reorderForCache survives ${name}`, () => {
+      const started = Date.now();
+      reorderForCache(input);
       const elapsed = Date.now() - started;
       assert.ok(
         elapsed < BUDGET_MS,

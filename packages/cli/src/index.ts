@@ -18,6 +18,7 @@ import {
   nearestName,
   optimize,
   providerFromEnv,
+  reorderForCache,
   evaluate,
   refineWithLlm,
   reviewExamples,
@@ -26,6 +27,7 @@ import {
 import type {
   ExampleReview,
   PromptComparison,
+  ReorderResult,
   Locale,
   OptimizationResult,
   RuleId,
@@ -253,7 +255,7 @@ const GLOBAL_FLAGS = ['help', 'h', 'locale', 'json', 'config', 'pricing'];
 const COMMAND_FLAGS: Record<string, string[]> = {
   optimize: [
     'level', 'model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch',
-    'disable', 'llm', 'exact-tokens', 'diff', 'out', 'o',
+    'disable', 'llm', 'exact-tokens', 'diff', 'reorder', 'out', 'o',
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out'],
   eval: ['cases', 'level', 'concurrency'],
@@ -352,6 +354,7 @@ function printReport(
   showDiff: boolean,
   t: CliMessages,
   examplesReview: ExampleReview | null = null,
+  reorder: ReorderResult | null = null,
 ): void {
   const { savings } = result;
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
@@ -365,6 +368,45 @@ function printReport(
       `-${result.reductionPct.toFixed(1)}%`,
     )}${sourceNote}`,
   );
+
+  // Before the rules, because the rearrangement is the bigger change and the
+  // one the reader has to make a judgement about.
+  if (reorder !== null) {
+    console.log();
+    console.log(c.bold(t.report.reorderHeading()));
+    if (reorder.moved.length === 0) {
+      console.log(`  ${c.dim(t.report.reorderNothing())}`);
+    } else {
+      console.log(`  ${t.report.reorderMoved(reorder.moved.length, n(reorder.tokensMoved))}`);
+      console.log(
+        `  ${c.green(
+          t.report.reorderPrefix(n(reorder.prefixTokensBefore), n(reorder.prefixTokensAfter)),
+        )}`,
+      );
+    }
+    // Refusals are reported even when the move succeeded: a saving Trazum chose
+    // not to take is one the author cannot evaluate unless they are told.
+    if (reorder.declined.length > 0) {
+      console.log(`  ${c.dim(t.report.reorderDeclined(reorder.declined.length))}`);
+      const SHOWN = 3;
+      for (const d of reorder.declined.slice(0, SHOWN)) {
+        const excerpt = truncate(d.text.trim().replace(/\s+/g, ' '), 48);
+        console.log(
+          `    ${c.dim(
+            d.reason === 'backward-reference'
+              ? t.report.reorderDeclinedRef(d.phrase ?? '', excerpt)
+              : t.report.reorderDeclinedAfter(excerpt),
+          )}`,
+        );
+      }
+      // Say that the list was cut. A report that shows three of nine reads as
+      // "three" unless it admits otherwise.
+      if (reorder.declined.length > SHOWN) {
+        console.log(`    ${c.dim(t.report.reorderDeclinedMore(reorder.declined.length - SHOWN))}`);
+      }
+    }
+    if (reorder.moved.length > 0) console.log(`  ${c.yellow(t.report.reorderReview())}`);
+  }
 
   if (result.rules.length > 0) {
     console.log();
@@ -608,7 +650,7 @@ async function commandOptimize(
   t: CliMessages,
   locale: Locale,
 ): Promise<void> {
-  const prompt = await readInput(args.positional[0], t);
+  const original = await readInput(args.positional[0], t);
   const level = levelFlag(args, config, t);
   const usage = usageFrom(args, config, t);
 
@@ -619,6 +661,24 @@ async function commandOptimize(
     }
   }
 
+  // Reordering runs BEFORE the rules, and is opt-in.
+  //
+  // Before, because a rule that deletes a sentence changes which blocks exist;
+  // reordering first means the rearrangement is decided on the prompt the author
+  // wrote, which is the one they will review it against.
+  //
+  // Opt-in, and not part of `aggressive`, because every other transformation
+  // here deletes text whose absence is local while this one moves text, and
+  // order carries meaning. `aggressive` promises "read the diff"; this needs
+  // "decide whether the order mattered", which is a different question.
+  const reorder = boolFlag(args, 'reorder') ? reorderForCache(original, {
+    // A prefix below the model's cacheable minimum caches nothing at all, so a
+    // rearrangement that does not get it over the line buys nothing and there is
+    // no reason to hand the author a diff for it.
+    minPrefixTokens: getModel(usage.model).cacheMinTokens,
+  }) : null;
+  const prompt = reorder?.text ?? original;
+
   let result = optimize(prompt, {
     level,
     usage,
@@ -626,6 +686,13 @@ async function commandOptimize(
     disableRules,
     pricing,
   });
+
+  // The diff has to show the move. Optimising the reordered text means
+  // `result.original` is the rearrangement, so a diff against it would show only
+  // the deletions — and hide the one change the report just told you to review.
+  if (reorder !== null && reorder.moved.length > 0) {
+    result = { ...result, original };
+  }
 
   let examplesReview: ExampleReview | null = null;
 
@@ -661,8 +728,19 @@ async function commandOptimize(
   }
 
   if (boolFlag(args, 'json')) {
+    // `reorder` goes in whenever the flag was passed, including when nothing
+    // moved. A consumer reading `optimized` is reading text the author did not
+    // write in that order, and it must not have to infer that from the diff.
     console.log(
-      JSON.stringify(examplesReview ? { ...result, examplesReview } : result, null, 2),
+      JSON.stringify(
+        {
+          ...result,
+          ...(examplesReview ? { examplesReview } : {}),
+          ...(reorder ? { reorder } : {}),
+        },
+        null,
+        2,
+      ),
     );
     return;
   }
@@ -673,7 +751,7 @@ async function commandOptimize(
     return;
   }
 
-  printReport(result, boolFlag(args, 'diff'), t, examplesReview);
+  printReport(result, boolFlag(args, 'diff'), t, examplesReview, reorder);
   if (outPath) {
     console.log(c.dim(t.report.wroteTo(outPath)));
     console.log();

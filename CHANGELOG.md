@@ -10,6 +10,85 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+**`trazum optimize --reorder` moves the stable instructions in front of the
+placeholder.** Since 0.2.0 the `cache-prefix-reorder` advisory has pointed at the
+largest saving Trazum knows about and no command could take it. Prompt caching is
+a byte-for-byte prefix match, so everything after the first `{{placeholder}}` is
+re-read at full price on every call. Measured on a 1,178-token support prompt: 14
+tokens cacheable as written, 1,174 after rearranging the same content — the
+difference between a $0 caching saving and a $184 one at 50,000 calls a month on
+Opus.
+
+**Opt-in, and deliberately not part of `aggressive`.** Every other transformation
+deletes text whose absence is local. This one moves text, and order carries
+meaning: "Summarise the text above" is correct where it sits and nonsense in front
+of the text it points at. `aggressive` promises "read the diff"; this asks whether
+the order mattered, which is a different question.
+
+What it refuses, which is most of the module:
+
+- A block containing a backward reference (`above`, `the following`, `anterior`, …)
+  stays put — **and so does everything after it**, because moving a later block
+  past a pinned one changes their order relative to each other. The phrase list is
+  generous in both locales on purpose: a false positive costs a saving that was
+  available, a false negative silently changes what the prompt asks for.
+- Only whole blank-line-separated blocks move, so a sentence is never severed from
+  the paragraph that qualifies it and the placeholder's own line travels with it.
+- Nothing moves without a placeholder, or below the model's cacheable minimum.
+
+A refusal returns the prompt **byte-identical** and names the phrase responsible:
+"no saving here" and "there was a saving and it was not safe to take" are
+different answers, and only the second one is actionable. `--diff` compares
+against what you wrote rather than against the rearrangement, so the move is not
+hidden behind the deletions; `--json` carries the whole decision under `reorder`,
+refusals included. `check` rejects the flag — it is a gate, and a gate does not
+rewrite. `reorderForCache` is exported from `@trazum/core` for callers who want
+the decision without the CLI.
+
+### Fixed
+
+Two defects in the rejoined seams, both found by writing the fixtures that had
+been missing rather than by a report:
+
+- A placeholder on the **first line** left the rearranged prompt opening with a
+  blank line. With no head for the moved blocks to sit after, the usual leading
+  gap put whitespace at byte zero — which changes the cache prefix for nothing.
+- A **CRLF** prompt came back with mixed line endings, because the seams were
+  rejoined with bare newlines regardless of what the author used. In a
+  byte-for-byte prefix match a changed byte is a changed price, and in a
+  repository it is a diff on every line nobody asked for. The prompt's own line
+  ending is now preserved, as is whatever it ended with — collapsing runs of blank
+  lines remains the whitespace rule's job, not this one's.
+
+- **Two quadratic patterns** in the new module, found by pointing the existing
+  ReDoS suite at it rather than by reading it. `split(/(?<=\n)(?=\s*\n)/)`
+  re-consumed a run of blank lines at every position inside it — 13.9s on 120 KB
+  of newlines — and `/\s*$/` on a prompt holding a long whitespace run that does
+  *not* end in one took **31 seconds at 200 KB**, inside the 400 KB the HTTP API
+  accepts. Both are now a linear scan and a `trimEnd`.
+
+  The suite drives `optimize`, which never reaches `reorderForCache`, so nothing
+  covered it: a fixture list only asks the questions it encodes. `reorderForCache`
+  now has ten fixtures of its own, each sized so the old pattern is well past the
+  budget rather than near it.
+
+The cacheable-minimum bar is on the **resulting prefix**, not on the amount moved
+— `minPrefixTokens`, not `minTokens`. Those are different questions, and asking
+the second one refused a real saving: a prompt whose 1,265-token head already
+cached gained nothing from 359 stranded tokens, because 359 is below Opus's
+512-token minimum. It reported "nothing could safely move", which is not what
+happened.
+
+The declined list in the report is capped at three lines and now says how many it
+did not print. A report that shows three of nine reads as "three".
+
+`--reorder` and `--markdown-out` were both **accepted and undocumented** — absent
+from `--help` in either locale. The parity test named four *required* flags and
+passed the whole time; it now derives the list from what the binary actually
+accepts, by reading the allow-list the CLI prints when it rejects an unknown flag.
+`--markdown-out` had been undocumented since 0.11.0.
+
+
 **A post-1.0 roadmap.** `Next` was empty after 1.0.0 — honest, since every planned
 item had shipped, but the file's stated purpose is that "the ordering is a
 commitment", and it was committing to nothing.
@@ -17,25 +96,32 @@ commitment", and it was committing to nothing.
 Four entries, and two of them exist because writing the roadmap turned up things
 worth saying out loud:
 
-- **1.1.0 — Releasing without remembering.** A tag-triggered workflow, using npm
+- **1.2.0 — Releasing without remembering.** A tag-triggered workflow, using npm
   trusted publishing rather than a stored `NPM_TOKEN`: a long-lived publish token
   would be the highest-value credential this project holds, sitting in secrets
   permanently for something used a few times a year. It must refuse to publish a
   version that does not match the tag.
-- **1.2.0 — The error band, measured.** `±15%` is printed on every report and
+- **1.3.0 — The error band, measured.** `±15%` is printed on every report and
   asserted nowhere. `estimateTokens` is tested for zero-on-empty, monotonic growth
   and not-`NaN`; nothing checks its accuracy, and every dollar figure descends from
   it. It is also one number for all text, which the CJK case suggests is not true.
-- **1.3.0 — Prompts where they actually live.** Trazum reads `.txt`/`.md`/
+- **1.4.0 — Prompts where they actually live.** Trazum reads `.txt`/`.md`/
   `.prompt`/`.tmpl`, so prompts embedded in TypeScript or Python require
   refactoring an application before Trazum can be adopted at all.
-- **1.4.0 — The front door catches up.** The web app optimises and nothing else,
+- **1.5.0 — The front door catches up.** The web app optimises and nothing else,
   five releases behind the CLI. Last on purpose: it changes how the product looks
   rather than whether its numbers are right.
 
+Release automation was written as 1.1.0 and is now 1.2.0, because writing the entry
+established that it **cannot ship**: publishing needs the `@trazum` scope to exist
+on npm, which is the maintainer's to create. Holding the queue behind a
+prerequisite outside the repository would have been worse than reordering it, and
+`ROADMAP.md` says so in the file rather than only here — the ordering is a
+commitment, so a change to it owes a reason.
+
 The `Tokenizer per model family` entry under `Under consideration` now says it is
-pending 1.2.0 rather than reading as a pure dependency-cost decision. Measuring the
-band is what settles whether a real tokenizer is needed.
+pending the error-band measurement rather than reading as a pure dependency-cost
+decision. Measuring the band is what settles whether a real tokenizer is needed.
 
 Also fixes a doubled `---` left in `ROADMAP.md` by the 1.0.0 edit.
 

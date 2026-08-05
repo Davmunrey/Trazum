@@ -356,3 +356,63 @@ export const SIMPLE_SIGNALS: readonly string[] = [
   'corrige la ortografía',
   'sí o no',
 ];
+
+/**
+ * Phrases that refer *backwards* to something earlier in the prompt.
+ *
+ * These are what makes reordering unsafe. "Summarise the text above" is correct
+ * where it sits and nonsense if moved in front of the text it points at, so a
+ * block containing one of these must stay where it is — and so must everything
+ * after it, because moving a later block past a pinned one changes their order
+ * relative to each other.
+ *
+ * Deliberately generous. A false positive costs a saving that was available; a
+ * false negative silently changes what the prompt asks for, which is the one
+ * thing this project will not trade for tokens.
+ */
+export const BACKWARD_REFERENCES: readonly string[] = [
+  // English
+  'above',
+  'below',
+  'the following',
+  'as follows',
+  'previous',
+  'previously',
+  'earlier',
+  'aforementioned',
+  'that said',
+  'given this',
+  'given the above',
+  'based on this',
+  'based on the above',
+  'from the text',
+  'in the text',
+  'the text provided',
+  'the input above',
+  'the message above',
+  'this input',
+  'this message',
+  'this text',
+  'these examples',
+  'the examples above',
+  // Spanish
+  'arriba',
+  'anterior',
+  'anteriormente',
+  'antes',
+  'a continuación',
+  'lo siguiente',
+  'lo anterior',
+  'mencionado',
+  'dicho esto',
+  'segun lo anterior',
+  'según lo anterior',
+  'del texto',
+  'en el texto',
+  'el texto anterior',
+  'el mensaje anterior',
+  'este texto',
+  'este mensaje',
+  'esta entrada',
+  'estos ejemplos',
+];
