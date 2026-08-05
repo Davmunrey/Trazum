@@ -121,11 +121,16 @@ Some of this cannot be committed to a file — it lives in repository settings.
    and select `.github/rulesets/main-branch.json`. It requires a pull request
    with one code-owner approval, passing checks, linear history, and blocks
    force-pushes and deletion of the default branch.
-2. **Code security → Dependency graph.** The dependency-review job cannot run
-   without it — it fails with "not supported on this repository" rather than
-   reporting no findings, so it is currently marked `continue-on-error`. Turn
-   the setting on, then delete that line from
-   `.github/workflows/security.yml` so the job can block again.
+2. **Code security → Dependency graph**, then add an Actions **variable**
+   `DEPENDENCY_REVIEW = enabled` (Settings → Secrets and variables → Actions →
+   Variables).
+
+   The dependency-review job is skipped until both are done, on purpose.
+   Without the setting the action errors with "not supported on this
+   repository" rather than reporting no findings, and the alternatives were a
+   check that is permanently red — which teaches people to ignore red — or one
+   that is permanently green while doing nothing. Once the variable is set it
+   gates for real, with nothing softening it.
 3. **Actions → General → Fork pull request workflows**: set approval to
    *Require approval for all external contributors*. Without it, a first-time
    contributor's workflow changes run automatically.

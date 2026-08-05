@@ -31,18 +31,25 @@ jobs:
 
       - uses: github/codeql-action/analyze@v3
 
+  # Dormant until Dependency graph is switched on in repository settings.
+  #
+  # Without that setting the action does not report "no findings" — it errors
+  # out with "not supported on this repository", and no pull request can enable
+  # it for itself. The two honest states are a check that is permanently red,
+  # which teaches people to ignore red, or one that is permanently green while
+  # doing nothing, which is worse. So it is skipped instead, visibly, until
+  # someone opts in:
+  #
+  #   Settings -> Security -> enable Dependency graph
+  #   Settings -> Secrets and variables -> Actions -> Variables ->
+  #     DEPENDENCY_REVIEW = enabled
+  #
+  # From then on it gates for real, with no continue-on-error softening it.
   dependency-review:
     name: Dependency review
     # Only meaningful on a pull request: it diffs the manifest against the base.
-    if: github.event_name == 'pull_request'
+    if: github.event_name == 'pull_request' && vars.DEPENDENCY_REVIEW == 'enabled'
     runs-on: ubuntu-latest
-    # The action errors out entirely — not "no findings", but "not supported" —
-    # until Dependency graph is switched on in repository settings, which no
-    # pull request can do for itself. Non-blocking so a repo setting cannot
-    # wedge every PR shut; the job still runs and turns red on real findings
-    # once the setting is on, at which point drop this line. Tracked in the
-    # admin checklist in SECURITY.md.
-    continue-on-error: true
     permissions:
       contents: read
       pull-requests: read
