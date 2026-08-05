@@ -10,6 +10,31 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+**Property tests for `reorderForCache`, over 400 generated prompts.** The
+hand-written fixtures each ask one question about one prompt, and a fixture list
+only asks the questions it encodes — which is how two quadratic patterns, a CRLF
+bug and a leading-blank-line bug all shipped in the same module and were caught
+one at a time afterwards.
+
+Eight properties, checked across every generated case: content is conserved (no
+word deleted or invented), a refusal returns the prompt byte-identical, a move
+always grows the prefix and the figure reported matches what the advisories'
+analyser computes, moved blocks keep their relative order, backward references
+and placeholder blocks never move, the transformation is idempotent, the author's
+line ending survives, and the prompt neither opens with a blank line nor ends
+differently from how it was given.
+
+Generation is seeded rather than random, so a failure names a case you can
+reproduce by reading the seed out of the message.
+
+All eight pass. Three failed on first run and all three were the *assertions*
+being wrong rather than the code: `indexOf` from zero finds the first copy of a
+repeated block, so a duplicate read as an out-of-order move; the generator emitted
+mixed line endings and then asked whether endings were preserved; and a moved
+block legitimately brings its own indentation to the front when the placeholder
+sits on the first line. Each is now written to ask what it meant to ask.
+
+
 **A piped `--reorder` said nothing about what it had done.** Redirecting the
 output takes the "prompt and nothing else" path, which is right for every other
 transformation — they delete, and the diff shows it. This one moves text, and
