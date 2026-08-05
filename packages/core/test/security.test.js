@@ -656,6 +656,64 @@ describe('the packaged Action', () => {
     );
   });
 
+  it('publishing needs no stored credential', () => {
+    // The design decision in the release workflow, and the reason it uses npm
+    // trusted publishing. A long-lived NPM_TOKEN would be the highest-value
+    // credential this project holds, sitting in repository secrets permanently
+    // for something used a few times a year — and unlike every other secret
+    // here, a leak of it is not recoverable by rotation alone: whatever was
+    // published under it stays published.
+    const offenders = [];
+
+    for (const name of readdirSync(join(repoRoot, '.github/workflows'))) {
+      if (!/\.ya?ml$/.test(name)) continue;
+      // Comments stripped, for the third time in this file: the release
+      // workflow's own comment explains why there is no NPM_TOKEN, and matching
+      // that would fail the test for documenting the reasoning behind it.
+      const source = readFileSync(join(repoRoot, '.github/workflows', name), 'utf8')
+        .replace(/^\s*#.*$/gm, '')
+        .replace(/\s#.*$/gm, '');
+      if (/NPM_TOKEN|NODE_AUTH_TOKEN|npm_[A-Za-z0-9]/.test(source)) offenders.push(name);
+    }
+
+    assert.deepEqual(
+      offenders,
+      [],
+      `a workflow reaches for a publish token instead of OIDC:\n  ${offenders.join('\n  ')}`,
+    );
+  });
+
+  it('the release workflow cannot publish a version the tag does not name', () => {
+    // A tag reading v1.2.0 against manifests reading 1.1.0 publishes 1.1.0 under
+    // a release note for 1.2.0. npm allows unpublishing for 72 hours and then
+    // the number is spent, so this is the one mistake with no correction.
+    const release = readFileSync(join(repoRoot, '.github/workflows/release.yml'), 'utf8');
+
+    assert.match(release, /id-token:\s*write/, 'OIDC is not requested, so publishing cannot work');
+    assert.match(release, /GITHUB_REF_NAME/, 'nothing reads the tag');
+    assert.match(release, /--provenance/, 'published without provenance, which OIDC gives free');
+
+    // Every publish step gated on a tag. A publish reachable from
+    // workflow_dispatch would be a release with no tag to check against.
+    const steps = release.split(/^      - /m).filter((s) => /run:\s*npm publish/.test(s));
+    assert.ok(steps.length >= 2, 'both packages should have a publish step');
+    for (const step of steps) {
+      assert.match(
+        step,
+        /if:\s*startsWith\(github\.ref, 'refs\/tags\/'\)/,
+        `a publish step is not gated on a tag:\n${step.slice(0, 200)}`,
+      );
+    }
+
+    // The gate has to run the same checks the pull-request gate does. A release
+    // that verifies less than a PR lets through exactly what the tag was for.
+    assert.match(release, /npm run verify/, 'the release does not run the full verify');
+    assert.ok(
+      release.indexOf('npm run verify') < release.indexOf('npm publish'),
+      'verify runs after publish, which is not a gate',
+    );
+  });
+
   it('no workflow or the action uses pull_request_target', () => {
     // The event a reviewer reaches for when a fork PR cannot post a comment. It
     // runs with a writable token against the BASE repository while checking out

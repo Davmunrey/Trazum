@@ -10,6 +10,53 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+**A tag now publishes the release.** Publishing is the one action in this
+repository that cannot be undone — npm allows unpublishing for 72 hours and then
+the version number is spent for good — and until now it was also entirely manual.
+A tag matching `v*.*.*` runs full `verify`, reports exactly what each tarball
+would contain, and then publishes both packages.
+
+**Trusted publishing (OIDC), not a stored `NPM_TOKEN`.** That is the decision in
+this change rather than an implementation detail. A long-lived publish token would
+be the highest-value credential the project holds, sitting in secrets permanently
+for something used a few times a year — and unlike every other secret here, a leak
+is not recoverable by rotation alone, because whatever was published under it
+stays published. OIDC needs `id-token: write` and stores nothing. Provenance comes
+free with it, so a consumer can verify a tarball was built from this repository at
+this commit.
+
+Three refusals, each a mistake with no correction afterwards, and each with a test:
+
+- **The tag and the manifests must agree.** `publish.test.js` already asserts
+  every manifest carries the same version; the workflow checks that the shared
+  version is the tagged one.
+- **`verify` runs before anything is published**, and it is the same `verify` a
+  pull request runs. A release gate that checks less than the pull-request gate
+  lets through exactly what the tag was for.
+- **`workflow_dispatch` is dry-run only** — every publish step is gated on a tag.
+
+`@trazum/core` publishes first, because the CLI depends on it at an exact version
+and the other order leaves a window where installing the CLI fails.
+
+**Still needs the maintainer once:** the `@trazum` scope does not exist on npm, so
+it has to be created and this repository configured as a trusted publisher. Until
+then a tag push runs every check and fails at the publish step — which is the right
+failure, having published nothing.
+
+**Issue templates, so a tester has somewhere to land.** `.github/` had CODEOWNERS,
+Dependabot and workflows but no way for anyone to report anything. Two forms: a
+bug report, and *"a rule changed what my prompt asks for"* — the second one
+separate and labelled `correctness`, because Trazum's entire claim is one sentence
+and a rule that saves tokens while quietly changing the meaning is the failure the
+product exists to prevent, not a smaller version of a good outcome.
+
+Both forms ask for a reproduction and both warn, before anything else, not to
+paste a prompt containing anything private: Trazum runs entirely on your machine
+and never sends a prompt anywhere, but an issue is a public web page. Security
+reports are routed to a private advisory rather than an issue, and blank issues
+stay enabled — the reports nobody anticipated are usually the interesting ones.
+
+
 **Property tests for `reorderForCache`, over 400 generated prompts.** The
 hand-written fixtures each ask one question about one prompt, and a fixture list
 only asks the questions it encodes — which is how two quadratic patterns, a CRLF
