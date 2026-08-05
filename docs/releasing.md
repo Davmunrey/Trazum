@@ -17,7 +17,17 @@ The scope does not exist yet: `npm view @trazum/core` returns 404. Create it at
 [npmjs.com/org/create](https://www.npmjs.com/org/create), or by publishing under
 it once by hand — but the point of this workflow is that nobody has to.
 
-### 2. Configure this repository as a trusted publisher
+### 2. Create the `release` environment
+
+Repository *Settings → Environments → New environment*, named exactly `release`.
+Twenty seconds, and no configuration needed inside it.
+
+Do this rather than relying on the workflow to bring it into existence. It is
+also where a required reviewer goes if you ever want publishing to need a second
+pair of eyes — the environment gate runs before the job starts, so an approval
+there blocks the publish rather than interrupting it halfway.
+
+### 3. Configure this repository as a trusted publisher
 
 For **each** of `@trazum/core` and `@trazum/cli`, on the package's npm settings
 page under *Publishing access → Trusted publisher*, enter exactly:
@@ -36,11 +46,6 @@ claim. If npm's configuration leaves the environment blank while the token
 asserts one, the claims do not match and the publish is rejected — with an error
 about the token rather than about the mismatch, which is a confusing hour if you
 do not know to look for it.
-
-The `release` environment does not need to exist beforehand; GitHub creates it
-the first time the workflow runs. It is worth visiting afterwards, because it is
-where a required reviewer can be added if you ever want publishing to need a
-second pair of eyes.
 
 There is **no token to paste and none to rotate.** That is the whole design: a
 long-lived `NPM_TOKEN` would be the highest-value credential this project holds,
