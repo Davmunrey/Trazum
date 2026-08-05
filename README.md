@@ -80,7 +80,7 @@ version stands. It never returns something worse than where it started.
 ```bash
 npm install
 npm run build      # core + cli
-npm test           # 509 tests
+npm test           # 522 tests
 ```
 
 ### CLI
@@ -715,6 +715,46 @@ word overlap. The review reports; it never edits.
 
 ---
 
+## Every model you pay for by the token
+
+Trazum prices Anthropic, OpenAI, Google, Moonshot, DeepSeek, xAI and Mistral:
+
+```bash
+trazum optimize prompt.txt --model gpt-5 --calls 50000
+trazum optimize prompt.txt --model kimi-k2
+trazum models                      # the whole table, with each provider's terms
+```
+
+Everything that reads the prompt is provider-agnostic already — the rules, the
+protection pass, `--reorder`, the contradiction and example detectors all operate
+on text. What differs is the money, and **that is not one set of numbers**:
+
+| | |
+|---|---|
+| Cache read | 10% of input on Anthropic, OpenAI and Moonshot; **25%** on Google and xAI |
+| Cache write | 125% of input on Anthropic; 100% elsewhere |
+| Cache minimum | 512 on Anthropic, 1,024 on OpenAI and Moonshot, 2,048 on Gemini Pro |
+| How caching starts | You mark the prefix on Anthropic and Google; it is **automatic** on OpenAI, Moonshot and DeepSeek |
+| Batch API | 50% on Anthropic, OpenAI, Google and Mistral; **none at all** on Moonshot, DeepSeek and xAI |
+| Prompt caching | **None at all** on Mistral |
+
+Those last two rows are why the multipliers had to move onto the model. As global
+constants they offered a batch discount to providers that do not sell one and a
+caching saving to a model that has no cache — invented savings, which is the one
+thing this tool must not print. A provider with no batch API now gets no batch
+advisory, and no discount even if you tick the box: `batchEligible` describes the
+work, not what the provider sells.
+
+**A cheaper model means a cheaper model, not a different supplier.** The downgrade
+advisory only ever suggests models from the provider you are already on. Dropping
+a tier is a one-line change; switching vendor is a migration, and this advisory is
+a keyword heuristic — it has no business recommending that you change supplier.
+
+**Not covered: Cursor, Claude Code, Codex and other subscriptions.** They do not
+bill per token, so "saves $184/month" would be false for anyone inside their plan.
+The honest saving there is context-window and rate-limit headroom, which is a
+different report rather than a row in this table.
+
 ## Token counting
 
 By default Trazum uses a **dependency-free heuristic estimator**: it classifies
@@ -722,7 +762,18 @@ by character type (words, numbers, punctuation, CJK, emoji). It targets ±15% on
 ordinary prose, and it is built for comparing two versions of the same prompt,
 which is what it is used for.
 
-**That band is a design target, not yet a measurement.** It is printed on every
+**The band is a Claude number.** The estimator is tuned against Claude's
+tokenizer, and other families tokenize differently. When you price against a
+non-Anthropic model the report says so instead of printing a band that was never
+measured for it:
+
+```
+1,021 → 1,020   -0.1% (estimated — the counter is calibrated on Claude, not GPT-5)
+```
+
+Use `--exact-tokens` for figures you can budget from.
+
+**And even for Claude, that band is a design target rather than a measurement.** It is printed on every
 report and every dollar figure descends from it, and nothing in this repository
 establishes that it holds — the estimator's only accuracy-adjacent tests were
 zero-on-empty, monotonic growth, and not-`NaN`. It is also stated as one number

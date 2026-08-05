@@ -184,7 +184,10 @@ ${bold('EJEMPLOS')}
 
   report: {
     inputTokens: () => 'Tokens de entrada',
-    estimated: () => ' (estimado, ±15%)',
+    estimated: (offFamily) =>
+      offFamily === null
+        ? ' (estimado, ±15%)'
+        : ` (estimado — el contador está calibrado sobre Claude, no sobre ${offFamily})`,
     exactCount: () => ' (recuento exacto)',
     rulesApplied: () => 'Reglas aplicadas',
     nothingToTrim: () => '  Ninguna regla ha encontrado nada que recortar.',

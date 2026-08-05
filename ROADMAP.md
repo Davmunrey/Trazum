@@ -602,16 +602,71 @@ delta — is the one CLI capability with a real browser shape that is not here y
 
 ---
 
+### 1.5.0 — Every model you pay for by the token
+
+Trazum priced one vendor. Everything that reads a prompt was already
+provider-agnostic — the rules, the protection pass, `--reorder`, the structural
+detectors all operate on text — so the gap was never the analysis. It was the
+money, and the money was written as if there were one supplier.
+
+OpenAI, Google, Moonshot, DeepSeek, xAI and Mistral join the catalogue. **The
+data was the easy half.**
+
+The cost multipliers were global constants, and global made them quietly wrong
+the moment a second provider existed. Moved onto the model, defaulting to
+Anthropic's values so nothing that worked before changes. Three of them were not
+inaccuracies but **savings that do not exist**, and all three were found by
+running the catalogue rather than reading it:
+
+- **Kimi, DeepSeek and Grok have no batch API**, and were being offered a 50%
+  discount nobody sells them. `batch: null` now means "there is none", which is
+  deliberately different from not having said.
+- **Mistral has no prompt caching.** A zero minimum satisfied `0 >= 0`, so the
+  advisory offered $100 a month of a feature that does not exist — a bug this
+  release introduced and caught before it left the branch.
+- **The batch saving was `cost × discount`**, which equals the saving only when
+  the discount is exactly 0.5. Latent on Anthropic, wrong on the first provider
+  with any other rate.
+
+The caching advisory now quotes each provider's rates and **stops naming
+`cache_control` to people who do not have it** — OpenAI, Moonshot and DeepSeek
+cache automatically above a threshold. The advice to move stable content forward
+is identical either way, because a prefix is a prefix; the instruction after it is
+not.
+
+**A cheaper model means a cheaper model, not a different supplier.** Downgrade
+recommendations are scoped to the current provider. Unscoped they told Claude
+users to switch to `gpt-5-nano` — on a keyword heuristic already caveated as no
+judgement about answer quality, which has no business recommending a change of
+vendor.
+
+`tier` is deprecated in favour of `capability`, on a vendor-neutral scale.
+Anthropic's ladder as the generic axis stops making sense the moment the model is
+not Anthropic's. Full procedure per [VERSIONING.md](VERSIONING.md); both fields
+stay populated for all of 1.x and a test asserts they never disagree.
+
+**The estimator is still a Claude estimator**, and the report now says so rather
+than printing a ±15% band nobody measured for GPT or Kimi. Which makes the
+tokenizer question under `Under consideration` heavier than it was.
+
+---
+
 ## Next
 
-### 1.5.0 — The error band, measured
+### 1.6.0 — The error band, measured
 
-**Why this slipped from 1.3.0 to last.** The corpus, the harness and the test all
-shipped in that release; the *measurement* cannot happen inside this repository,
-because ground truth needs the official counting endpoint and a key. Rather than
-hold two releases that could ship behind one that cannot, the queue moved and this
-entry stayed open. It is the only item here whose completion is not ours to
-schedule, and the file owes that explanation rather than a silent renumber.
+**Why this entry keeps moving.** The corpus, the harness and the test shipped in
+what was then 1.3.0; the *measurement* cannot happen inside this repository,
+because ground truth needs the official counting endpoint and a key. It has been
+renumbered twice now, and it will be renumbered again by anything that ships
+before it — this is the only item on the roadmap whose completion is not ours to
+schedule, and holding shippable work behind it would be the wrong trade every
+time. Recorded here once rather than re-explained at each move.
+
+It is also **more urgent than it was**. 1.5.0 priced seven providers against an
+estimator tuned for one, so the band is now unmeasured across families as well as
+across text types. The report says which tokenizer it was calibrated on instead of
+claiming a number, which is honest and is not the same as knowing.
 
 `±15%` is printed on every report, appears in both READMEs, in the estimator's own
 doc comment and in `VERSIONING.md` as part of the frozen API. Every dollar figure
@@ -678,9 +733,15 @@ Not scheduled. Listed so the reasoning is on the record.
   absolute figures at the cost of the dependency-free promise — worth doing
   only as an optional package.
 
-  **Unscheduled pending 1.3.0, and that ordering is the point.** Measuring the
-  error band is what decides whether this is needed at all: within 5% on prose and
-  the dependency is not worth taking; 40% out on CJK and it is. Deciding now would
+  **Still unscheduled, still pending the error band, and now weightier.** Pricing
+  seven providers made this the question it always was in miniature: the estimator
+  is tuned against Claude's tokenizer, and a GPT or Kimi figure carries whatever
+  error that mismatch produces. Nobody has measured it, so the report stops
+  claiming ±15% for those models and says which tokenizer it was calibrated on
+  instead — honest, and no substitute for knowing.
+
+  Measuring the band is what decides whether the dependency is worth taking:
+  within 5% across families and it is not; 40% out and it is. Deciding now would
   be deciding without the one number that settles it.
 - **Prompt library.** Storing prompts is a different product, and one that
   would mean sending them to a server. Trazum's privacy story is that it never

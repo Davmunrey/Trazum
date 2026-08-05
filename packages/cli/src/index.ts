@@ -355,6 +355,21 @@ function renderDiff(before: string, after: string, t: CliMessages): string {
 // Report
 // --------------------------------------------------------------------------
 
+/**
+ * The provider's name when the estimator was not calibrated for it.
+ *
+ * `estimateTokens` is a heuristic tuned against Claude's tokenizer, and the
+ * ±15% band descends from that. Printing the same band beside a GPT or Kimi
+ * figure states a precision nobody has measured for that family — and since the
+ * catalogue grew past Anthropic, that is most of it. Returns null when the model
+ * is Anthropic's, where the band is at least the claim it was written for.
+ */
+function offFamilyName(modelId: string): string | null {
+  const provider = getModel(modelId).provider;
+  if (provider === undefined || provider === 'anthropic') return null;
+  return getModel(modelId).displayName;
+}
+
 function printReport(
   result: OptimizationResult,
   showDiff: boolean,
@@ -365,7 +380,9 @@ function printReport(
   const { savings } = result;
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const sourceNote =
-    result.tokenSource === 'heuristic' ? c.dim(t.report.estimated()) : c.dim(t.report.exactCount());
+    result.tokenSource === 'heuristic'
+      ? c.dim(t.report.estimated(offFamilyName(result.usage.model)))
+      : c.dim(t.report.exactCount());
 
   console.log();
   console.log(c.bold(t.report.inputTokens()));

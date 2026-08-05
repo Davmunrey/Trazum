@@ -48,7 +48,11 @@ export interface CliMessages {
 
   report: {
     inputTokens(): string;
-    estimated(): string;
+    /**
+   * @param offFamily Provider name when the model is not the family the
+   * estimator was calibrated on, otherwise null.
+   */
+    estimated(offFamily: string | null): string;
     exactCount(): string;
     rulesApplied(): string;
     nothingToTrim(): string;
