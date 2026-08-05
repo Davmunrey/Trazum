@@ -1,4 +1,3 @@
-import type { Rule } from './types.js';
 import {
   EMPHASIS_PREFIXES,
   FILLER,
@@ -9,47 +8,49 @@ import {
   SHOUTED_WORDS,
   VERBOSE_PHRASES,
 } from './phrases.js';
+import type { RuleId } from './i18n/types.js';
+import type { Rule } from './types.js';
 
-/** Escapa un literal para meterlo en una expresión regular. */
+/** Escapes a literal so it can go inside a regular expression. */
 function escapeRe(literal: string): string {
   return literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**
- * Construye un regex con fronteras de palabra que entienden acentos.
- * `\b` en JavaScript solo conoce ASCII, así que "de" emparejaría dentro de
- * "ánde". Con lookarounds sobre \p{L} eso no pasa.
+ * Builds a regex with accent-aware word boundaries.
+ * JavaScript's `\b` only knows ASCII, so "de" would match inside "ánde".
+ * Lookarounds over \p{L} avoid that.
  */
 function phraseRegex(phrase: string, flags = 'giu'): RegExp {
   const body = escapeRe(phrase).replace(/\s+/g, '\\s+');
   return new RegExp(`(?<![\\p{L}\\p{N}_])${body}(?![\\p{L}\\p{N}_])`, flags);
 }
 
-/** Limpia los restos que deja borrar una frase: espacios y puntuación suelta. */
+/** Cleans up what deleting a phrase leaves behind: spaces and orphan punctuation. */
 function tidyAfterRemoval(text: string): string {
   return (
     text
-      // Espacios múltiples dentro de una línea (no toca la sangría inicial).
+      // Repeated spaces inside a line (leading indentation untouched).
       .replace(/([^\n\S])[^\S\n]+/g, '$1')
-      // Coma o punto y coma pegados a un espacio previo.
+      // Comma or semicolon left with a space in front of it.
       .replace(/[^\S\n]+([,;:.!?])/g, '$1')
-      // Comas duplicadas por el borrado.
+      // Commas duplicated by the removal.
       .replace(/,(\s*,)+/g, ',')
-      // Signo de puntuación al inicio de línea.
+      // Punctuation left at the start of a line.
       .replace(/^[^\S\n]*[,;:]\s*/gm, '')
-      // Apertura de exclamación o interrogación que se quedó sin contenido.
+      // Spanish opening exclamation/question mark left with no content.
       .replace(/[¡¿]+(?=[^\S\n]*(?:[!?.,;:]|$))/gm, '')
-      // Puntuación final duplicada al juntarse dos fragmentos ("contestar.!").
+      // Duplicated sentence-final punctuation when two fragments join ("answer.!").
       .replace(/([.!?])[^\S\n]*[.!?]+/g, '$1')
-      // Línea que se ha quedado solo con signos de puntuación.
+      // A line left holding nothing but punctuation.
       .replace(/^[^\S\n]*[.,;:!?¡¿]+[^\S\n]*$/gm, '')
-      // Un único espacio al inicio de línea: es residuo del borrado, no sangría.
+      // A single leading space is removal residue, not indentation.
       .replace(/^[^\S\n](?=\S)/gm, '')
-      // Espacios al final de línea.
+      // Trailing spaces.
       .replace(/[^\S\n]+$/gm, '')
-      // Vuelve a poner mayúscula si el borrado dejó la frase empezando en minúscula.
-      // Cuenta como inicio de frase: el principio del texto, tras puntuación
-      // fuerte, y el comienzo de un párrafo nuevo.
+      // Restore the capital when the removal left a sentence starting lowercase.
+      // Sentence starts: beginning of the text, after strong punctuation, and
+      // the start of a new paragraph.
       .replace(
         /(^|[.!?]\s+|\n\n[^\S\n]*)(\p{Ll})/gu,
         (_m, pre: string, ch: string) => pre + ch.toUpperCase(),
@@ -58,35 +59,28 @@ function tidyAfterRemoval(text: string): string {
 }
 
 /**
- * Regex de borrado: además de la frase, se come las comas que la delimitaban.
- * Sin esto, quitar un inciso como "si no te importa," deja "y, la clasifiques".
+ * Deletion regex: on top of the phrase, it swallows the commas that delimited
+ * it. Without this, removing an aside such as "if you don't mind," leaves
+ * "and, classify it".
  */
 function dropRegex(phrase: string): RegExp {
   const body = escapeRe(phrase).replace(/\s+/g, '\\s+');
-  // La comprobación de frontera va DESPUÉS de la coma opcional: si fuera antes,
-  // la "y" de "y, si no te importa," la haría fallar y la coma se quedaría.
+  // The boundary check goes AFTER the optional comma: in front of it, the "y"
+  // of "y, si no te importa," would fail the match and the comma would stay.
   return new RegExp(
     `(?:,[^\\S\\n]*)?(?<![\\p{L}\\p{N}_])${body}[^\\S\\n]*,?(?![\\p{L}\\p{N}_])`,
     'giu',
   );
 }
 
-/** Regla que elimina un conjunto de frases. */
-function dropRule(
-  id: string,
-  title: string,
-  rationale: string,
-  level: Rule['level'],
-  phrases: readonly string[],
-): Rule {
-  // De más larga a más corta, para que "muchas gracias" gane a "gracias".
+/** A rule that deletes a set of phrases. */
+function dropRule(id: RuleId, level: Rule['level'], phrases: readonly string[]): Rule {
+  // Longest first, so "thank you very much" wins over "thanks".
   const sorted = [...phrases].sort((a, b) => b.length - a.length);
   const regexes = sorted.map((p) => dropRegex(p));
 
   return {
     id,
-    title,
-    rationale,
     level,
     apply(text) {
       let hits = 0;
@@ -102,7 +96,7 @@ function dropRule(
   };
 }
 
-/** Conserva la mayúscula inicial del original al sustituir. */
+/** Keeps the original leading capital when substituting. */
 function matchCase(original: string, replacement: string): string {
   if (!replacement) return replacement;
   const firstChar = original[0];
@@ -114,9 +108,6 @@ function matchCase(original: string, replacement: string): string {
 
 const whitespaceRule: Rule = {
   id: 'whitespace',
-  title: 'Espacios y líneas en blanco sobrantes',
-  rationale:
-    'Quita espacios al final de línea, colapsa espacios repetidos dentro de la línea y reduce las líneas en blanco consecutivas a una. Respeta la sangría inicial para no romper listas ni markdown anidado.',
   level: 'safe',
   apply(text) {
     let hits = 0;
@@ -126,7 +117,7 @@ const whitespaceRule: Rule = {
       hits++;
       return '';
     });
-    // Colapsa espacios repetidos solo después del primer carácter no-espacio.
+    // Collapse repeated spaces only after the first non-space character.
     out = out.replace(/(\S)[^\S\n]{2,}/g, (_m, ch: string) => {
       hits++;
       return `${ch} `;
@@ -146,25 +137,22 @@ const whitespaceRule: Rule = {
 
 const decorationRule: Rule = {
   id: 'decoration',
-  title: 'Separadores decorativos',
-  rationale:
-    'Elimina líneas hechas solo de caracteres repetidos (====, ----, ****) y las secuencias de signos de exclamación. No aportan estructura que el modelo aproveche y cuestan tokens en cada llamada.',
   level: 'safe',
   apply(text) {
     let hits = 0;
     let out = text;
 
-    // Línea entera de 8 o más caracteres decorativos idénticos.
+    // A whole line of 8 or more identical decorative characters.
     out = out.replace(/^[^\S\n]*([=\-_*~#])\1{7,}[^\S\n]*$/gm, () => {
       hits++;
       return '';
     });
-    // Signos de exclamación o interrogación repetidos, incluidos los de apertura.
+    // Repeated exclamation or question marks, opening ones included.
     out = out.replace(/([!?¡¿])\1{1,}/g, (_m, ch: string) => {
       hits++;
       return ch;
     });
-    // Limpia las líneas vacías que acaba de dejar el borrado.
+    // Clean up the blank lines the deletion just left behind.
     if (hits > 0) out = out.replace(/\n{3,}/g, '\n\n');
 
     return { text: out, hits };
@@ -173,14 +161,11 @@ const decorationRule: Rule = {
 
 const verbosePhrasesRule: Rule = {
   id: 'verbose-phrases',
-  title: 'Perífrasis largas',
-  rationale:
-    'Sustituye construcciones largas por su equivalente corto ("con el fin de" → "para", "in order to" → "to"). El significado es idéntico; solo cambia el número de tokens.',
   level: 'safe',
   apply(text) {
     let hits = 0;
     let out = text;
-    // De más larga a más corta para que gane la sustitución más específica.
+    // Longest first so the most specific substitution wins.
     const entries = [...VERBOSE_PHRASES].sort((a, b) => b[0].length - a[0].length);
     for (const [from, to] of entries) {
       const re = phraseRegex(from);
@@ -193,51 +178,14 @@ const verbosePhrasesRule: Rule = {
   },
 };
 
-const politenessRule = dropRule(
-  'politeness',
-  'Fórmulas de cortesía',
-  'Quita "por favor", "gracias", "please", "kindly"... El modelo no responde mejor por pedírselo con cortesía, y cada fórmula se paga en todas las llamadas.',
-  'safe',
-  POLITENESS,
-);
-
-const fillerRule = dropRule(
-  'filler',
-  'Muletillas y rodeos',
-  'Elimina arranques vacíos como "básicamente", "cabe destacar que" o "it is important to note that", que no aportan instrucción.',
-  'safe',
-  FILLER,
-);
-
-const intensifiersRule = dropRule(
-  'intensifiers',
-  'Intensificadores',
-  'Quita "muy", "realmente", "extremely"... Rara vez cambian la tarea. Nivel agresivo porque en algún prompt concreto el matiz sí importa.',
-  'aggressive',
-  INTENSIFIERS,
-);
-
-const hedgesRule = dropRule(
-  'hedges',
-  'Coletillas de duda',
-  'Elimina "creo que", "I think", "en mi opinión". En una instrucción debilitan la orden sin añadir información.',
-  'aggressive',
-  HEDGES,
-);
-
-const selfCheckRule = dropRule(
-  'self-check',
-  'Instrucciones de auto-verificación',
-  'Quita "verifica tu respuesta", "double-check your work". Los modelos actuales ya verifican su trabajo; pedirlo explícitamente dispara pasos extra que se pagan en tokens de salida. Desactívala si tu flujo depende de esa verificación.',
-  'aggressive',
-  SELF_CHECK,
-);
+const politenessRule = dropRule('politeness', 'safe', POLITENESS);
+const fillerRule = dropRule('filler', 'safe', FILLER);
+const intensifiersRule = dropRule('intensifiers', 'aggressive', INTENSIFIERS);
+const hedgesRule = dropRule('hedges', 'aggressive', HEDGES);
+const selfCheckRule = dropRule('self-check', 'aggressive', SELF_CHECK);
 
 const emphasisRule: Rule = {
   id: 'emphasis',
-  title: 'Énfasis en mayúsculas',
-  rationale:
-    'Pasa a minúscula palabras gritadas (MUST, NUNCA, CRITICAL) y quita prefijos tipo "IMPORTANTE:". Las mayúsculas se parten en más tokens que las minúsculas, y en los modelos actuales el énfasis excesivo hace que la instrucción se dispare de más.',
   level: 'aggressive',
   apply(text) {
     let hits = 0;
@@ -252,19 +200,19 @@ const emphasisRule: Rule = {
     }
 
     for (const word of SHOUTED_WORDS) {
-      const re = phraseRegex(word, 'gu'); // sensible a mayúsculas: solo la versión gritada
+      const re = phraseRegex(word, 'gu'); // case-sensitive: only the shouted form
       out = out.replace(re, (match) => {
         hits++;
         return match.toLowerCase();
       });
     }
 
-    // Quitar "IMPORTANTE:" deja la frase empezando en minúscula: se recapitaliza.
+    // Dropping "IMPORTANT:" leaves the sentence starting lowercase: recapitalise.
     return { text: hits > 0 ? tidyAfterRemoval(out) : out, hits };
   },
 };
 
-/** Normaliza una línea o párrafo para comparar duplicados. */
+/** Normalises a line or paragraph for duplicate comparison. */
 function normalizeForCompare(text: string): string {
   return text
     .toLowerCase()
@@ -276,9 +224,6 @@ function normalizeForCompare(text: string): string {
 
 const duplicateLinesRule: Rule = {
   id: 'duplicate-lines',
-  title: 'Líneas repetidas',
-  rationale:
-    'Elimina líneas que ya aparecen idénticas antes en el prompt (ignorando mayúsculas, acentos y puntuación). Solo actúa sobre líneas de 25 caracteres o más, para no tocar viñetas ni separadores legítimos.',
   level: 'safe',
   apply(text) {
     const lines = text.split('\n');
@@ -306,9 +251,6 @@ const duplicateLinesRule: Rule = {
 
 const duplicateBlocksRule: Rule = {
   id: 'duplicate-blocks',
-  title: 'Párrafos repetidos',
-  rationale:
-    'Elimina párrafos enteros que ya aparecen antes en el prompt. Es habitual al montar prompts por concatenación de plantillas: el mismo bloque de instrucciones entra dos veces y se paga dos veces.',
   level: 'safe',
   apply(text) {
     const blocks = text.split(/\n{2,}/);
@@ -332,7 +274,7 @@ const duplicateBlocksRule: Rule = {
   },
 };
 
-/** Similitud de Jaccard sobre conjuntos de palabras. */
+/** Jaccard similarity over word sets. */
 function jaccard(a: string, b: string): number {
   const setA = new Set(a.split(' ').filter(Boolean));
   const setB = new Set(b.split(' ').filter(Boolean));
@@ -344,9 +286,6 @@ function jaccard(a: string, b: string): number {
 
 const nearDuplicateBlocksRule: Rule = {
   id: 'near-duplicate-blocks',
-  title: 'Párrafos casi idénticos',
-  rationale:
-    'Elimina párrafos con un 92% o más de palabras en común con otro anterior. Detecta instrucciones reformuladas que dicen lo mismo dos veces. Nivel agresivo: revisa el diff, porque el 8% que difiere puede ser justo el matiz que te importa.',
   level: 'aggressive',
   apply(text) {
     const blocks = text.split(/\n{2,}/);
@@ -371,13 +310,13 @@ const nearDuplicateBlocksRule: Rule = {
   },
 };
 
-/** Todas las reglas, en el orden en que deben ejecutarse. */
+/** Every rule, in the order they must run. */
 export const RULES: readonly Rule[] = [
-  // Primero las que borran bloques enteros: así el resto trabaja sobre menos texto.
+  // Whole-block deletions first, so the rest works over less text.
   duplicateBlocksRule,
   nearDuplicateBlocksRule,
   duplicateLinesRule,
-  // Luego las de frase.
+  // Then the phrase-level rules.
   verbosePhrasesRule,
   politenessRule,
   fillerRule,
@@ -385,7 +324,7 @@ export const RULES: readonly Rule[] = [
   intensifiersRule,
   selfCheckRule,
   emphasisRule,
-  // Y por último la limpieza tipográfica, que recoge lo que dejaron las demás.
+  // And finally typographic cleanup, which picks up what the others left.
   decorationRule,
   whitespaceRule,
 ];

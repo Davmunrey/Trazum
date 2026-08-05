@@ -1,43 +1,47 @@
 import { buildAdvisories } from './advisories.js';
+import { getMessages } from './i18n/index.js';
+import type { Locale } from './i18n/types.js';
 import { computeSavings } from './savings.js';
 import { segment } from './segment.js';
 import { estimateTokens } from './tokenizer.js';
 import type { LlmProvider, OptimizationResult, TokenCounter } from './types.js';
 
 /**
- * Capa de LLM opcional.
+ * Optional LLM layer.
  *
- * El núcleo determinista ya hace el trabajo sin coste. Esta pasada añade la
- * compresión semántica que las reglas no pueden hacer (reescribir una frase
- * entera, fusionar dos instrucciones que dicen lo mismo con otras palabras),
- * y por eso cuesta una llamada.
+ * The deterministic core already does the work at zero cost. This pass adds
+ * the semantic compression rules cannot do — rewriting a whole sentence,
+ * merging two instructions that say the same thing in different words — and
+ * that is why it costs one call.
  *
- * El proveedor es enchufable a propósito: aquí encaja el modelo que tengáis en
- * n0, un endpoint compatible con OpenAI, la Claude API o cualquier otra cosa
- * detrás de `customProvider`.
+ * The provider is pluggable on purpose: your own hosted model, an
+ * OpenAI-compatible endpoint, the Claude API or anything else behind
+ * `customProvider`.
  */
 
-export const REFINER_SYSTEM_PROMPT = `Reescribes prompts para que cuesten menos tokens sin cambiar lo que piden.
+export const REFINER_SYSTEM_PROMPT = `You rewrite prompts so they cost fewer tokens without changing what they ask for.
 
-Reglas:
-- Conserva exactamente la misma tarea, restricciones, formato de salida y criterios de éxito.
-- Copia literalmente, sin tocar ni un carácter: bloques de código, URLs, marcadores de plantilla ({{x}}, \${x}, {x}) y etiquetas XML/HTML.
-- No resumas ni elimines requisitos. Si dudas de si algo es un requisito, consérvalo.
-- Elimina redundancia, rodeos y repeticiones. Une instrucciones duplicadas.
-- Mantén el idioma original del prompt.
-- Devuelve ÚNICAMENTE el prompt reescrito. Sin explicaciones, sin comentarios, sin vallas de código envolviendo la respuesta.`;
+Rules:
+- Preserve exactly the same task, constraints, output format and success criteria.
+- Copy verbatim, without changing a single character: code blocks, URLs, template placeholders ({{x}}, \${x}, {x}) and XML/HTML tags.
+- Do not summarise and do not drop requirements. When in doubt about whether something is a requirement, keep it.
+- Remove redundancy, padding and repetition. Merge duplicated instructions.
+- Keep the original language of the prompt.
+- Return ONLY the rewritten prompt. No explanations, no commentary, no code fences wrapping the answer.`;
 
 export interface RefineOptions {
   /**
-   * Fracción mínima de tokens que debe conservar el resultado (0-1).
-   * Por debajo de este umbral se asume que el modelo ha resumido en vez de
-   * comprimir, y el candidato se descarta. Por defecto 0.25.
+   * Minimum fraction of tokens the result must keep (0-1). Below this
+   * threshold the model is assumed to have summarised rather than compressed,
+   * and the candidate is rejected. Defaults to 0.25.
    */
   minRetainRatio?: number;
   tokenCounter?: TokenCounter;
+  /** Language of the rejection reason. Defaults to the result's locale. */
+  locale?: Locale;
 }
 
-/** Quita vallas de código si el modelo ha envuelto la respuesta pese a pedírselo. */
+/** Strips code fences if the model wrapped its answer despite being asked not to. */
 function stripCodeFence(text: string): string {
   const trimmed = text.trim();
   const match = /^(?:```|~~~)[a-zA-Z]*\n([\s\S]*?)\n?(?:```|~~~)$/.exec(trimmed);
@@ -45,12 +49,12 @@ function stripCodeFence(text: string): string {
 }
 
 /**
- * Pasa el prompt ya optimizado por el LLM y acepta el resultado solo si supera
- * las comprobaciones de seguridad.
+ * Runs the already-optimised prompt through the LLM and accepts the result
+ * only if it passes the safety checks.
  *
- * Nunca devuelve un prompt peor que el determinista: si el candidato pierde
- * contenido protegido, crece en tokens o se queda corto de forma sospechosa,
- * se descarta y se mantiene el resultado anterior.
+ * It never returns a prompt worse than the deterministic one: if the candidate
+ * loses protected content, grows in tokens or shrinks suspiciously, it is
+ * discarded and the previous result stands.
  */
 export async function refineWithLlm(
   result: OptimizationResult,
@@ -59,6 +63,8 @@ export async function refineWithLlm(
 ): Promise<OptimizationResult> {
   const count = options.tokenCounter ?? estimateTokens;
   const minRetainRatio = options.minRetainRatio ?? 0.25;
+  const locale = options.locale ?? result.locale;
+  const t = getMessages(locale);
 
   const raw = await provider.complete({
     system: REFINER_SYSTEM_PROMPT,
@@ -82,10 +88,10 @@ export async function refineWithLlm(
   });
 
   if (!candidate.trim()) {
-    return reject('El modelo devolvió una respuesta vacía.');
+    return reject(t.llm.emptyResponse());
   }
 
-  // El contenido protegido tiene que seguir ahí, carácter por carácter.
+  // Protected content has to still be there, character for character.
   const mustSurvive = [
     ...new Set(
       segment(result.optimized)
@@ -95,26 +101,20 @@ export async function refineWithLlm(
   ];
   const lost = mustSurvive.filter((text) => !candidate.includes(text));
   if (lost.length > 0) {
-    return reject(
-      `El modelo alteró ${lost.length} fragmento(s) protegido(s) (código, URL o marcador de plantilla). Descartado para no romper el prompt.`,
-    );
+    return reject(t.llm.protectedContentAltered(lost.length));
   }
 
   if (tokensAfter >= tokensBefore) {
-    return reject(
-      `El resultado no es más corto (${tokensAfter} vs ${tokensBefore} tokens). Se mantiene la versión determinista.`,
-    );
+    return reject(t.llm.notShorter(tokensAfter, tokensBefore));
   }
 
   if (tokensAfter < tokensBefore * minRetainRatio) {
-    return reject(
-      `El resultado conserva solo el ${Math.round((tokensAfter / tokensBefore) * 100)}% de los tokens. Eso parece un resumen, no una compresión: revísalo a mano antes de usarlo.`,
-    );
+    return reject(t.llm.suspiciousShrink(Math.round((tokensAfter / tokensBefore) * 100)));
   }
 
   const finalTokensBefore = result.tokensBefore;
   const savings = computeSavings(finalTokensBefore, tokensAfter, result.usage);
-  const advisories = buildAdvisories(candidate, tokensAfter, result.usage, new Date(), count);
+  const advisories = buildAdvisories(candidate, tokensAfter, result.usage, { count, locale });
 
   return {
     ...result,
@@ -130,26 +130,25 @@ export async function refineWithLlm(
 }
 
 // --------------------------------------------------------------------------
-// Proveedores incluidos
+// Bundled providers
 // --------------------------------------------------------------------------
 
 export interface OpenAiCompatibleOptions {
-  /** URL base, sin `/chat/completions`. Ej: `https://llm.n0.dev/v1` */
+  /** Base URL, without `/chat/completions`. E.g. `https://llm.example.com/v1` */
   baseUrl: string;
   apiKey?: string;
   model: string;
-  /** Cabeceras extra, por si tu gateway pide alguna propia. */
+  /** Extra headers, in case your gateway requires its own. */
   headers?: Record<string, string>;
-  /** Nombre que aparecerá en el informe. */
+  /** Name shown in the report. */
   name?: string;
   maxTokens?: number;
   fetchImpl?: typeof fetch;
 }
 
 /**
- * Cualquier endpoint que hable el formato `/chat/completions` de OpenAI.
- * Cubre vLLM, Ollama, OpenRouter, LM Studio, Together y la mayoría de gateways
- * internos, incluido el que tengáis montado en n0 si expone ese formato.
+ * Any endpoint speaking OpenAI's `/chat/completions` format. Covers vLLM,
+ * Ollama, OpenRouter, LM Studio, Together and most internal gateways.
  */
 export function openAiCompatible(options: OpenAiCompatibleOptions): LlmProvider {
   const {
@@ -183,14 +182,14 @@ export function openAiCompatible(options: OpenAiCompatibleOptions): LlmProvider 
         }),
       });
       if (!res.ok) {
-        throw new Error(`El proveedor "${name}" respondió ${res.status}: ${await res.text()}`);
+        throw new Error(`Provider "${name}" responded ${res.status}: ${await res.text()}`);
       }
       const data = (await res.json()) as {
         choices?: Array<{ message?: { content?: string } }>;
       };
       const content = data.choices?.[0]?.message?.content;
       if (typeof content !== 'string') {
-        throw new Error(`Respuesta inesperada de "${name}": no se encontró choices[0].message.content`);
+        throw new Error(`Unexpected response from "${name}": choices[0].message.content not found`);
       }
       return content;
     },
@@ -205,7 +204,7 @@ export interface AnthropicProviderOptions {
   fetchImpl?: typeof fetch;
 }
 
-/** Claude API directa, vía `/v1/messages`. */
+/** The Claude API directly, via `/v1/messages`. */
 export function anthropicProvider(options: AnthropicProviderOptions): LlmProvider {
   const {
     apiKey,
@@ -234,18 +233,18 @@ export function anthropicProvider(options: AnthropicProviderOptions): LlmProvide
         }),
       });
       if (!res.ok) {
-        throw new Error(`La Claude API respondió ${res.status}: ${await res.text()}`);
+        throw new Error(`The Claude API responded ${res.status}: ${await res.text()}`);
       }
       const data = (await res.json()) as {
         content?: Array<{ type: string; text?: string }>;
         stop_reason?: string;
       };
       if (data.stop_reason === 'refusal') {
-        throw new Error('La Claude API rechazó la petición (stop_reason: refusal).');
+        throw new Error('The Claude API declined the request (stop_reason: refusal).');
       }
       const text = data.content?.find((b) => b.type === 'text')?.text;
       if (typeof text !== 'string') {
-        throw new Error('Respuesta inesperada de la Claude API: sin bloque de texto.');
+        throw new Error('Unexpected response from the Claude API: no text block.');
       }
       return text;
     },
@@ -255,17 +254,17 @@ export function anthropicProvider(options: AnthropicProviderOptions): LlmProvide
 export interface CustomProviderOptions {
   name: string;
   model: string;
-  /** Construye la petición HTTP a partir del prompt del sistema y el usuario. */
+  /** Builds the HTTP request from the system and user prompts. */
   request(input: { system: string; user: string }): { url: string; init: RequestInit };
-  /** Extrae el texto del cuerpo de la respuesta ya parseado. */
+  /** Extracts the text from the already-parsed response body. */
   extract(body: unknown): string;
   fetchImpl?: typeof fetch;
 }
 
 /**
- * Escotilla de escape: si tu endpoint no habla ninguno de los formatos
- * anteriores, defines aquí cómo se construye la petición y cómo se lee la
- * respuesta, y todo lo demás sigue funcionando igual.
+ * Escape hatch: if your endpoint speaks none of the formats above, you define
+ * how the request is built and how the response is read, and everything else
+ * keeps working the same.
  */
 export function customProvider(options: CustomProviderOptions): LlmProvider {
   const { name, model, request, extract, fetchImpl = fetch } = options;
@@ -276,7 +275,7 @@ export function customProvider(options: CustomProviderOptions): LlmProvider {
       const { url, init } = request(input);
       const res = await fetchImpl(url, init);
       if (!res.ok) {
-        throw new Error(`El proveedor "${name}" respondió ${res.status}: ${await res.text()}`);
+        throw new Error(`Provider "${name}" responded ${res.status}: ${await res.text()}`);
       }
       return extract(await res.json());
     },
@@ -284,17 +283,19 @@ export function customProvider(options: CustomProviderOptions): LlmProvider {
 }
 
 /**
- * Construye un proveedor a partir de variables de entorno.
+ * Builds a provider from environment variables.
  *
- *   TRAZUM_LLM_PROVIDER  openai | anthropic   (por defecto: openai)
- *   TRAZUM_LLM_BASE_URL  URL base del endpoint
- *   TRAZUM_LLM_API_KEY   clave, si hace falta
- *   TRAZUM_LLM_MODEL     identificador del modelo
+ *   TRAZUM_LLM_PROVIDER  openai | anthropic   (default: openai)
+ *   TRAZUM_LLM_BASE_URL  base URL of the endpoint
+ *   TRAZUM_LLM_API_KEY   key, when one is needed
+ *   TRAZUM_LLM_MODEL     model identifier
  *
- * Devuelve `null` si no hay configuración suficiente, para que la herramienta
- * siga funcionando en modo determinista sin dar error.
+ * Returns `null` when the configuration is incomplete, so the tool keeps
+ * working in deterministic mode instead of failing.
  */
-export function providerFromEnv(env: Record<string, string | undefined> = process.env): LlmProvider | null {
+export function providerFromEnv(
+  env: Record<string, string | undefined> = process.env,
+): LlmProvider | null {
   const kind = (env.TRAZUM_LLM_PROVIDER ?? 'openai').toLowerCase();
   const apiKey = env.TRAZUM_LLM_API_KEY;
   const model = env.TRAZUM_LLM_MODEL;
@@ -302,7 +303,11 @@ export function providerFromEnv(env: Record<string, string | undefined> = proces
 
   if (kind === 'anthropic') {
     if (!apiKey) return null;
-    return anthropicProvider({ apiKey, ...(model ? { model } : {}), ...(baseUrl ? { baseUrl } : {}) });
+    return anthropicProvider({
+      apiKey,
+      ...(model ? { model } : {}),
+      ...(baseUrl ? { baseUrl } : {}),
+    });
   }
 
   if (!baseUrl || !model) return null;

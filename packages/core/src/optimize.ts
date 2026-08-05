@@ -1,4 +1,6 @@
 import { buildAdvisories } from './advisories.js';
+import { DEFAULT_LOCALE, getMessages } from './i18n/index.js';
+import type { Locale, RuleId } from './i18n/types.js';
 import { DEFAULT_MODEL } from './pricing.js';
 import { RULES } from './rules.js';
 import { computeSavings } from './savings.js';
@@ -17,7 +19,7 @@ import type {
 const MASK_OPEN = '\uE000';
 const MASK_CLOSE = '\uE001';
 const MASK_BASE = 0xe100;
-/** Slots del área de uso privado disponibles para máscaras. */
+/** Private-use-area slots available for masks. */
 const MASK_CAPACITY = 0xf8ff - MASK_BASE;
 
 export const DEFAULT_USAGE: UsageProfile = {
@@ -30,14 +32,14 @@ export const DEFAULT_USAGE: UsageProfile = {
 
 interface Masked {
   text: string;
-  /** Texto original de cada segmento protegido, indexado por su máscara. */
+  /** Original text of each protected segment, indexed by its mask. */
   vault: string[];
 }
 
 /**
- * Sustituye cada segmento protegido por un marcador de 3 caracteres del área
- * de uso privado Unicode. Las reglas trabajan sobre el texto enmascarado, así
- * que ninguna puede tocar código, URLs ni marcadores de plantilla.
+ * Replaces every protected segment with a 3-character marker from the Unicode
+ * private use area. The rules work on the masked text, so none of them can
+ * touch code, URLs or template placeholders.
  */
 function mask(segments: Segment[]): Masked {
   const vault: string[] = [];
@@ -49,8 +51,8 @@ function mask(segments: Segment[]): Masked {
       continue;
     }
     if (vault.length >= MASK_CAPACITY) {
-      // Prompt con miles de bloques protegidos: se deja tal cual antes de
-      // arriesgar una colisión de máscaras.
+      // A prompt with thousands of protected blocks is left as-is rather than
+      // risking a mask collision.
       text += seg.text;
       continue;
     }
@@ -62,7 +64,7 @@ function mask(segments: Segment[]): Masked {
   return { text, vault };
 }
 
-/** Restituye el contenido protegido. */
+/** Puts the protected content back. */
 function unmask(text: string, vault: string[]): string {
   return text.replace(
     new RegExp(`${MASK_OPEN}([\\s\\S])${MASK_CLOSE}`, 'g'),
@@ -74,21 +76,23 @@ function unmask(text: string, vault: string[]): string {
   );
 }
 
-/** Textos protegidos distintos que deben seguir presentes tras optimizar. */
+/** Distinct protected texts that must still be present after optimising. */
 function distinctProtected(segments: Segment[]): string[] {
   return [...new Set(segments.filter((s) => s.kind === 'protected').map((s) => s.text))];
 }
 
 /**
- * Optimiza un prompt aplicando reglas deterministas.
+ * Optimises a prompt by applying deterministic rules.
  *
- * El resultado es reproducible: la misma entrada da siempre la misma salida y
- * ejecutarlo no cuesta nada. La pasada opcional por un LLM va aparte, en
+ * The result is reproducible: the same input always yields the same output and
+ * running it costs nothing. The optional LLM pass lives separately, in
  * `refineWithLlm`.
  */
 export function optimize(prompt: string, options: OptimizeOptions = {}): OptimizationResult {
   const level = options.level ?? 'safe';
-  const disabled = new Set(options.disableRules ?? []);
+  const locale: Locale = options.locale ?? DEFAULT_LOCALE;
+  const t = getMessages(locale);
+  const disabled = new Set<RuleId>(options.disableRules ?? []);
   const count: TokenCounter = options.tokenCounter ?? estimateTokens;
 
   const segments = segment(prompt);
@@ -108,17 +112,18 @@ export function optimize(prompt: string, options: OptimizeOptions = {}): Optimiz
 
     const candidateUnmasked = unmask(candidate, vault);
 
-    // Red de seguridad: si una regla ha hecho desaparecer contenido protegido,
-    // se descarta esa regla en lugar de devolver un prompt roto.
+    // Safety net: if a rule made protected content disappear, that rule is
+    // dropped rather than returning a broken prompt.
     const lostProtected = mustSurvive.some((text) => !candidateUnmasked.includes(text));
     if (lostProtected) continue;
 
     const after = count(candidateUnmasked);
     current = candidate;
+    const copy = t.rules[rule.id];
     ruleResults.push({
       id: rule.id,
-      title: rule.title,
-      rationale: rule.rationale,
+      title: copy.title,
+      rationale: copy.rationale,
       level: rule.level,
       hits,
       tokensSaved: Math.max(0, before - after),
@@ -131,7 +136,7 @@ export function optimize(prompt: string, options: OptimizeOptions = {}): Optimiz
 
   const usage: UsageProfile = { ...DEFAULT_USAGE, ...options.usage };
   const savings = computeSavings(tokensBefore, tokensAfter, usage);
-  const advisories = buildAdvisories(optimized, tokensAfter, usage, new Date(), count);
+  const advisories = buildAdvisories(optimized, tokensAfter, usage, { count, locale });
 
   return {
     original: prompt,
@@ -144,17 +149,18 @@ export function optimize(prompt: string, options: OptimizeOptions = {}): Optimiz
     advisories,
     savings,
     usage,
+    locale,
     tokenSource: options.tokenCounter ? 'external' : 'heuristic',
   };
 }
 
 /**
- * Recalcula el informe con un contador de tokens exacto (p. ej. el endpoint
- * oficial de recuento).
+ * Recomputes the report with an exact token counter (e.g. the official
+ * token-counting endpoint).
  *
- * Solo se recalculan las cifras globales y el ahorro. El reparto de tokens por
- * regla se queda en la estimación heurística: pedir un recuento remoto por cada
- * regla multiplicaría las llamadas sin cambiar ninguna decisión.
+ * Only the headline numbers and the saving are recomputed. Per-rule token
+ * attribution stays on the heuristic estimate: asking a remote counter once
+ * per rule would multiply the calls without changing any decision.
  */
 export async function withExactTokenCounts(
   result: OptimizationResult,
@@ -166,7 +172,9 @@ export async function withExactTokenCounts(
   ]);
 
   const savings = computeSavings(tokensBefore, tokensAfter, result.usage);
-  const advisories = buildAdvisories(result.optimized, tokensAfter, result.usage);
+  const advisories = buildAdvisories(result.optimized, tokensAfter, result.usage, {
+    locale: result.locale,
+  });
 
   return {
     ...result,
@@ -180,5 +188,5 @@ export async function withExactTokenCounts(
   };
 }
 
-/** Reexporta utilidades internas útiles para quien extienda la librería. */
+/** Re-exports of internals useful to anyone extending the library. */
 export { join, mask as maskProtected, segment, unmask as unmaskProtected };

@@ -15,6 +15,7 @@ export { RULES, getRule } from './rules.js';
 export { segment, join, protectedTexts } from './segment.js';
 export { computeSavings, costOfCall, formatUsd } from './savings.js';
 export { buildAdvisories, recommendTier } from './advisories.js';
+export type { AdvisoryOptions } from './advisories.js';
 export { analyzeCachePrefix } from './cache.js';
 export type { CachePrefixAnalysis } from './cache.js';
 export { optimize, withExactTokenCounts, DEFAULT_USAGE } from './optimize.js';
@@ -32,3 +33,7 @@ export type {
   AnthropicProviderOptions,
   CustomProviderOptions,
 } from './llm.js';
+
+// Internationalisation
+export { DEFAULT_LOCALE, LOCALES, getMessages, isLocale, resolveLocale, en, es } from './i18n/index.js';
+export type { CoreMessages, LocalizedMessage, RuleCopy } from './i18n/index.js';

@@ -1,7 +1,7 @@
 import { COST_MULTIPLIERS, effectivePricing, getModel } from './pricing.js';
 import type { CostBreakdown, SavingsReport, UsageProfile } from './types.js';
 
-/** Coste de una llamada suelta. */
+/** Cost of a single call. */
 export function costOfCall(
   inputTokens: number,
   outputTokens: number,
@@ -24,12 +24,11 @@ function scale(cost: CostBreakdown, factor: number): CostBreakdown {
 }
 
 /**
- * Compara el coste antes y después de optimizar.
+ * Compares cost before and after optimising.
  *
- * Importante: los tokens de salida se mantienen constantes en el cálculo. Un
- * prompt más corto suele producir respuestas algo más cortas, pero eso depende
- * de la tarea y no se puede prometer, así que el ahorro que ves aquí viene
- * exclusivamente de los tokens de entrada.
+ * Important: output tokens are held constant. A shorter prompt often produces
+ * somewhat shorter answers, but that depends on the task and cannot be
+ * promised, so the saving reported here comes exclusively from input tokens.
  */
 export function computeSavings(
   tokensBefore: number,
@@ -71,7 +70,12 @@ export function computeSavings(
   };
 }
 
-/** Formatea un importe en USD con la precisión adecuada a su magnitud. */
+/**
+ * Formats a USD amount with precision suited to its magnitude.
+ * Currency formatting stays in `en-US` on purpose: these are US dollar prices
+ * from a US price list, and showing them the same way everywhere avoids
+ * confusion when a report is shared across locales.
+ */
 export function formatUsd(value: number): string {
   if (value === 0) return '$0';
   const abs = Math.abs(value);

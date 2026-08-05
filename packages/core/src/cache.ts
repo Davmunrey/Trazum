@@ -2,25 +2,25 @@ import { segment } from './segment.js';
 import type { TokenCounter } from './types.js';
 
 /**
- * Análisis del prefijo cacheable.
+ * Cacheable-prefix analysis.
  *
- * El prompt caching es una coincidencia de prefijo byte a byte: en cuanto un
- * marcador de plantilla ({{usuario}}, ${consulta}...) se rellena con un valor
- * distinto, todo lo que va detrás deja de cachearse. Así que el prefijo
- * cacheable real de una plantilla NO es el prompt entero, sino lo que hay
- * antes del primer marcador variable.
+ * Prompt caching is a byte-for-byte prefix match, so as soon as a template
+ * placeholder ({{user}}, ${query}...) is filled with a different value,
+ * everything after it stops being cached. The real cacheable prefix of a
+ * template is therefore NOT the whole prompt, but whatever precedes the first
+ * variable placeholder.
  */
 export interface CachePrefixAnalysis {
-  /** Tokens totales del prompt. */
+  /** Total tokens in the prompt. */
   totalTokens: number;
-  /** Tokens antes del primer marcador variable. Sin marcadores, el total. */
+  /** Tokens before the first variable placeholder. With no placeholders, the total. */
   stablePrefixTokens: number;
-  /** Texto del primer marcador variable, o `null` si no hay ninguno. */
+  /** Text of the first variable placeholder, or `null` when there is none. */
   firstPlaceholder: string | null;
   /**
-   * Tokens de contenido que NO es marcador situados después del primer
-   * marcador: instrucciones estables que hoy no se cachean y que, si se
-   * mueven antes del primer marcador, sí se cachearían.
+   * Tokens of NON-placeholder content sitting after the first placeholder:
+   * stable instructions that are not cached today and that would be cached if
+   * moved ahead of the first placeholder.
    */
   staticTokensAfter: number;
 }
