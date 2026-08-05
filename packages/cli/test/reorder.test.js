@@ -207,6 +207,47 @@ describe('trazum optimize --reorder', () => {
     assert.match(out, /Unknown option --reorder/);
   });
 
+  it('does not go silent when the report is piped away', async () => {
+    // The pipe contract is "the prompt and nothing else" on stdout, which for
+    // every other transformation is right: they delete, and the diff shows it.
+    // This one moves text. Piping it made both the move and the refusals
+    // invisible, which is the one thing the module promises not to do.
+    const root = await project({ 'p.txt': STRANDED });
+    const result = spawnSync(process.execPath, [CLI, 'optimize', 'p.txt', '--reorder'], {
+      encoding: 'utf8',
+      cwd: root,
+      env: { ...process.env, NO_COLOR: '1', LANG: '', LC_ALL: '', TRAZUM_LOCALE: '' },
+    });
+
+    assert.match(result.stderr, /moved 1 block \(~[\d,]+ tokens\) into the cacheable prefix/);
+    // stdout stays the prompt alone — the notice must not reach the pipe.
+    assert.doesNotMatch(result.stdout, /trazum:/);
+    assert.ok(
+      result.stdout.indexOf('Rule 1') < result.stdout.indexOf('{{message}}'),
+      'the piped prompt was not the reordered one',
+    );
+  });
+
+  it('names the refusals on stderr too, not just the moves', async () => {
+    const root = await project({ 'p.txt': PINNED });
+    const result = spawnSync(process.execPath, [CLI, 'optimize', 'p.txt', '--reorder'], {
+      encoding: 'utf8',
+      cwd: root,
+      env: { ...process.env, NO_COLOR: '1', LANG: '', LC_ALL: '', TRAZUM_LOCALE: '' },
+    });
+    assert.match(result.stderr, /nothing could safely move; 2 blocks left in place/);
+  });
+
+  it('stays quiet on the pipe when --reorder was not asked for', async () => {
+    const root = await project({ 'p.txt': STRANDED });
+    const result = spawnSync(process.execPath, [CLI, 'optimize', 'p.txt'], {
+      encoding: 'utf8',
+      cwd: root,
+      env: { ...process.env, NO_COLOR: '1', LANG: '', LC_ALL: '', TRAZUM_LOCALE: '' },
+    });
+    assert.equal(result.stderr, '', 'a plain piped run printed something to stderr');
+  });
+
   it('says the same things in Spanish', async () => {
     const root = await project({ 'p.txt': PINNED });
     const { out } = run(['optimize', 'p.txt', '--reorder', '--locale', 'es', '-o', 'out.txt'], root);

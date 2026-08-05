@@ -80,7 +80,7 @@ version stands. It never returns something worse than where it started.
 ```bash
 npm install
 npm run build      # core + cli
-npm test           # 452 tests
+npm test           # 455 tests
 ```
 
 ### CLI
@@ -141,7 +141,7 @@ In GitHub Actions, use the packaged action — nothing to install:
 
 ```yaml
 - uses: actions/checkout@v7
-- uses: Davmunrey/Trazum@5024e60972a4b6c33706997ea775ae7131dea7a5  # 1.1.0
+- uses: Davmunrey/Trazum@588f9e7d8658fc0aa061800ed59f779987bfb5c7  # 1.0.0
   with:
     target: prompts/system.txt
     max-tokens: 2000
@@ -150,8 +150,9 @@ In GitHub Actions, use the packaged action — nothing to install:
 **Pinned to a commit SHA, not a tag** — the same rule
 [SECURITY.md](SECURITY.md) states and `security.test.js` enforces on every
 third-party action in this repository. A tag is a mutable pointer: whoever can
-move `v1` can change what runs in your workflow with your token. The `# 1.1.0`
-comment is what Dependabot reads to offer you the bump.
+move `v1` can change what runs in your workflow with your token. The `# 1.0.0`
+comment names the version at that commit, and is what Dependabot reads to offer
+you the bump.
 
 **The report lands in the run summary automatically** — every run, pass or fail,
 with no token and no permissions. To also post it as a pull request comment that
@@ -164,7 +165,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v7
-  - uses: Davmunrey/Trazum@5024e60972a4b6c33706997ea775ae7131dea7a5  # 1.1.0
+  - uses: Davmunrey/Trazum@588f9e7d8658fc0aa061800ed59f779987bfb5c7  # 1.0.0
     with:
       target: prompts/            # a directory uses trazum.config.json budgets
       comment: true
@@ -253,6 +254,10 @@ That distinction is the point of reporting refusals at all: *"no saving here"* a
 the second one is actionable. The backward-reference list is deliberately
 generous — a false positive costs a saving that was available, a false negative
 silently changes what the prompt asks for.
+
+Redirect the output and stdout stays the prompt alone, as it does for every
+command — but the move and the refusals go to **stderr** rather than vanishing. A
+deletion is visible in the diff; a rearrangement you were never told about is not.
 
 `--diff` compares against **what you wrote**, not against the rearrangement, so
 the move is visible rather than hidden behind the deletions. With `--json` the

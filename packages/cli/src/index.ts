@@ -748,6 +748,20 @@ async function commandOptimize(
   if (!process.stdout.isTTY && !outPath) {
     // Redirected to a file or another process: the prompt alone, no chrome.
     process.stdout.write(result.optimized);
+    // Except that a rearrangement is not chrome. Everything else this command
+    // does is a deletion the diff will show; `--reorder` moves text, and piping
+    // it made both the move and the refusals invisible — which is the one thing
+    // this module promises not to do. One line, on stderr, so the pipe carries
+    // the prompt and nothing else.
+    if (reorder !== null) {
+      console.error(
+        t.report.reorderPiped(
+          reorder.moved.length,
+          reorder.tokensMoved.toLocaleString(t.numberLocale),
+          reorder.declined.length,
+        ),
+      );
+    }
     return;
   }
 
