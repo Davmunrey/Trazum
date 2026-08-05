@@ -1,7 +1,7 @@
 import { mostSpecificMatch } from './glob.js';
+import type { PricingCatalogue } from './pricing.js';
 import { isLocale } from './i18n/index.js';
 import { nearestName } from './nearest.js';
-import { getModel } from './pricing.js';
 import { RULES } from './rules.js';
 import type { Locale } from './i18n/index.js';
 import type { RuleId, RuleLevel, UsageProfile } from './types.js';
@@ -51,6 +51,13 @@ export interface TrazumConfig {
   maxGrowth?: number;
   /** File extensions directory mode treats as prompts. */
   extensions?: string[];
+  /**
+   * Path to a pricing overlay, relative to the config file.
+   *
+   * Lets a project correct a published price without upgrading the library. The
+   * bundled catalogue stays the default; this only layers on top.
+   */
+  pricing?: string;
 }
 
 /**
@@ -66,6 +73,7 @@ export const CONFIG_KEYS = [
   'budgets',
   'maxGrowth',
   'extensions',
+  'pricing',
 ] as const;
 
 export const CONFIG_USAGE_KEYS = [
@@ -134,12 +142,14 @@ function parseUsage(raw: unknown, source: string): Partial<UsageProfile> {
   const usage: Partial<UsageProfile> = {};
 
   if (raw.model !== undefined) {
-    if (typeof raw.model !== 'string') {
-      throw new ConfigError('"usage.model" must be a string', source);
+    if (typeof raw.model !== 'string' || raw.model.trim() === '') {
+      throw new ConfigError('"usage.model" must be a non-empty string', source);
     }
-    // getModel throws with the full list of ids, which is more useful here than
-    // anything this function could add.
-    getModel(raw.model);
+    // Deliberately NOT checked against the catalogue here. A `pricing` overlay can
+    // introduce a model, and the path to that overlay is a key of this very
+    // document — so the parser cannot know the catalogue yet. The membership check
+    // happens in `loadConfig`, once the overlay has been resolved, which is the
+    // only place with enough information to be right about it.
     usage.model = raw.model;
   }
   if (raw.callsPerMonth !== undefined) {
@@ -208,6 +218,33 @@ function parseBudgets(raw: unknown, source: string): Record<string, number> {
 }
 
 /**
+ * Checks a config's `usage.model` against a resolved catalogue.
+ *
+ * Separate from `parseConfig` because it needs the catalogue, and the catalogue
+ * may be defined by the very document being parsed — `pricing` is a config key.
+ * `loadConfig` calls this once the overlay is in hand, so a typo'd model is still
+ * a loud error, just one raised at the point where "unknown model" can be
+ * answered truthfully.
+ */
+export function validateConfigModel(
+  config: TrazumConfig,
+  catalogue: PricingCatalogue,
+  source: string,
+): void {
+  const model = config.usage?.model;
+  if (model === undefined || catalogue.byId.has(model)) return;
+
+  const ids = catalogue.models.map((m) => m.id);
+  const nearest = nearestName(model, ids);
+  throw new ConfigError(
+    nearest
+      ? `"usage.model" names no such model: "${model}" — did you mean "${nearest}"?`
+      : `"usage.model" names no such model: "${model}". Available: ${ids.join(', ')}`,
+    source,
+  );
+}
+
+/**
  * Validates a config document.
  *
  * `source` names the file in every error, because a config error found while
@@ -268,6 +305,19 @@ export function parseConfig(raw: string, source = CONFIG_FILENAME): TrazumConfig
 
   if (document.maxGrowth !== undefined) {
     config.maxGrowth = requireNonNegativeNumber(document.maxGrowth, 'maxGrowth', source);
+  }
+
+  if (document.pricing !== undefined) {
+    if (typeof document.pricing !== 'string' || document.pricing.trim() === '') {
+      throw new ConfigError('"pricing" must be a path to a pricing overlay file', source);
+    }
+    if (IS_ABSOLUTE.test(document.pricing) || document.pricing.includes('..')) {
+      throw new ConfigError(
+        `"pricing" must be a relative path inside the project (got "${document.pricing}")`,
+        source,
+      );
+    }
+    config.pricing = document.pricing;
   }
 
   if (document.extensions !== undefined) {

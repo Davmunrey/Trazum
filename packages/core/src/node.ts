@@ -30,8 +30,22 @@ export {
   MAX_CONFIG_SEARCH_DEPTH,
   budgetFor,
   parseConfig,
+  validateConfigModel,
 } from './config-schema.js';
 export type { ResolvedBudget, TrazumConfig } from './config-schema.js';
+
+// Local price corrections. Pure, so also on the main entry point; re-exported
+// here so the CLI has one import for everything it needs to resolve a run.
+export {
+  MAX_PRICING_BYTES,
+  PricingOverlayError,
+  applyPricingOverlay,
+  catalogueFromOverlay,
+  parsePricingOverlay,
+} from './pricing-overlay.js';
+export type { PricingOverlay } from './pricing-overlay.js';
+export { BUNDLED_CATALOGUE } from './pricing.js';
+export type { PricingCatalogue } from './pricing.js';
 
 export { MAX_WALK_DEPTH, MAX_WALK_FILES, walkPrompts } from './walk.js';
 export type { WalkOptions, WalkResult } from './walk.js';

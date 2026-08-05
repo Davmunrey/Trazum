@@ -2,7 +2,8 @@ import { buildAdvisories } from './advisories.js';
 import { extractChanges } from './changes.js';
 import { DEFAULT_LOCALE, getMessages } from './i18n/index.js';
 import type { Locale, RuleId } from './i18n/types.js';
-import { DEFAULT_MODEL } from './pricing.js';
+import { BUNDLED_CATALOGUE, DEFAULT_MODEL } from './pricing.js';
+import type { PricingCatalogue } from './pricing.js';
 import { RULES } from './rules.js';
 import { computeSavings } from './savings.js';
 import { join, segment } from './segment.js';
@@ -141,8 +142,9 @@ export function optimize(prompt: string, options: OptimizeOptions = {}): Optimiz
   const tokensAfter = count(optimized);
 
   const usage: UsageProfile = { ...DEFAULT_USAGE, ...options.usage };
-  const savings = computeSavings(tokensBefore, tokensAfter, usage);
-  const advisories = buildAdvisories(optimized, tokensAfter, usage, { count, locale });
+  const pricing = options.pricing ?? BUNDLED_CATALOGUE;
+  const savings = computeSavings(tokensBefore, tokensAfter, usage, new Date(), pricing);
+  const advisories = buildAdvisories(optimized, tokensAfter, usage, { count, locale, pricing });
 
   return {
     original: prompt,
@@ -157,6 +159,11 @@ export function optimize(prompt: string, options: OptimizeOptions = {}): Optimiz
     usage,
     locale,
     tokenSource: options.tokenCounter ? 'external' : 'heuristic',
+    pricingSource: {
+      lastReviewed: pricing.lastReviewed,
+      overriddenModels: pricing.overriddenModels,
+      addedModels: pricing.addedModels,
+    },
   };
 }
 
@@ -171,15 +178,33 @@ export function optimize(prompt: string, options: OptimizeOptions = {}): Optimiz
 export async function withExactTokenCounts(
   result: OptimizationResult,
   counter: AsyncTokenCounter,
+  pricing: PricingCatalogue = BUNDLED_CATALOGUE,
 ): Promise<OptimizationResult> {
+  // A result priced against an overlay cannot be recomputed against the bundled
+  // catalogue: the token counts would come from one source and the money from
+  // another, and the report would disagree with itself with nothing to show why.
+  // Throwing is the only honest option — silently reverting to bundled prices is
+  // the exact failure the overlay exists to prevent.
+  const overlaid =
+    result.pricingSource.overriddenModels.length > 0 ||
+    result.pricingSource.addedModels.length > 0;
+  if (overlaid && pricing === BUNDLED_CATALOGUE) {
+    throw new Error(
+      'This result was priced against a pricing overlay, so withExactTokenCounts ' +
+        'needs the same catalogue passed as its third argument. Recomputing against ' +
+        'the bundled prices would make the token counts and the costs disagree.',
+    );
+  }
+
   const [tokensBefore, tokensAfter] = await Promise.all([
     counter(result.original),
     counter(result.optimized),
   ]);
 
-  const savings = computeSavings(tokensBefore, tokensAfter, result.usage);
+  const savings = computeSavings(tokensBefore, tokensAfter, result.usage, new Date(), pricing);
   const advisories = buildAdvisories(result.optimized, tokensAfter, result.usage, {
     locale: result.locale,
+    pricing,
   });
 
   return {
@@ -191,6 +216,11 @@ export async function withExactTokenCounts(
     savings,
     advisories,
     tokenSource: 'external',
+    pricingSource: {
+      lastReviewed: pricing.lastReviewed,
+      overriddenModels: pricing.overriddenModels,
+      addedModels: pricing.addedModels,
+    },
   };
 }
 

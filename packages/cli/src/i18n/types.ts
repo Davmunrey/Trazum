@@ -69,6 +69,7 @@ export interface CliMessages {
     perMonthSuffix(amount: string): string;
     diff(): string;
     diffTooLarge(lines: number, max: number): string;
+    pricingOverlaid(models: string, lastReviewed: string): string;
     wroteTo(path: string): string;
   };
 
@@ -141,6 +142,7 @@ export interface CliMessages {
     stillTooBig(optimizedTokens: string): string;
     truncated(): string;
     footer(source: string, level: string): string;
+    pricingOverlaid(count: number, lastReviewed: string): string;
     sourceEstimated(): string;
     sourceExact(): string;
     measuringOptimised(): string;

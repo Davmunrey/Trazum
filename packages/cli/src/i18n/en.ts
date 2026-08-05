@@ -85,6 +85,7 @@ ${bold('CONFIG FILE')}
     level, locale, disable, maxGrowth, extensions
     usage     { model, callsPerMonth, avgOutputTokens, cacheHitRate, batchEligible }
     budgets   { "prompts/**": 2000, "prompts/system.txt": 4000 }
+    pricing   "./prices.json"   — local price corrections, see below
 
   Flags beat the config; the config beats the defaults. Budgets resolve to the
   most specific matching pattern — most literal characters wins. A boolean the
@@ -95,6 +96,24 @@ ${bold('CONFIG FILE')}
   is "no budget" — a green build for a prompt nobody measured.
 
   --config <file>             Use this config instead of searching for one.
+
+${bold('PRICES')}
+  Prices change on someone else's schedule, so correcting one does not require
+  upgrading Trazum. A pricing overlay is a JSON file layered over the bundled
+  catalogue:
+
+    { "lastReviewed": "2027-01-15",
+      "models": { "claude-opus-5": { "inputPerMTok": 6 } } }
+
+  Only the fields you name change. A model the bundled catalogue does not have
+  must be complete, because a half-defined model would price at nothing and
+  report a saving that is not there. "promo": null withdraws a promotion.
+
+  Every report says when overlaid prices were used and which models they cover:
+  a figure from the bundled catalogue and a figure from your JSON file otherwise
+  look identical.
+
+  --pricing <file>            Use this overlay, ahead of the config's own.
 
 ${bold('OPTIONAL LLM')}
   The core is deterministic and free. --llm adds a semantic compression pass
@@ -179,6 +198,8 @@ ${bold('EXAMPLES')}
     beyondShortening: () => 'Beyond shortening the prompt',
     perMonthSuffix: (amount) => ` ~${amount}/month`,
     diff: () => 'Diff',
+    pricingOverlaid: (models, lastReviewed) =>
+      `Prices for ${models} came from a local overlay reviewed ${lastReviewed}, not from the bundled catalogue.`,
     diffTooLarge: (lines, max) =>
       `  Diff skipped: ${lines} lines is past the ${max}-line limit, and aligning them would cost more memory than the answer is worth.`,
     wroteTo: (path) => `Optimised prompt written to ${path}`,
@@ -283,6 +304,8 @@ ${bold('EXAMPLES')}
     truncated: () =>
       'Stopped early: the directory is larger than the walk limit, so this is not the whole picture.',
     footer: (source, level) => `Token counts ${source} · rule level \`${level}\``,
+    pricingOverlaid: (count, lastReviewed) =>
+      `Prices for ${count} ${count === 1 ? 'model' : 'models'} came from a local overlay reviewed ${lastReviewed}.`,
     sourceEstimated: () => 'estimated, ±15%',
     sourceExact: () => 'counted exactly',
     measuringOptimised: () =>
