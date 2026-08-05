@@ -80,7 +80,7 @@ version stands. It never returns something worse than where it started.
 ```bash
 npm install
 npm run build      # core + cli
-npm test           # 556 tests
+npm test           # 568 tests
 ```
 
 ### CLI
@@ -806,6 +806,37 @@ whether a monthly saving is money at all:
 | Claude Code, Codex, Cursor | subscription — the saving is context and rate-limit headroom, not cash |
 | GitHub Actions, CI | per token |
 | VS Code, plain terminal | unknown, and it says so rather than guessing |
+
+### On a subscription, there is no bill to reduce
+
+Inside Claude Code, Codex or Cursor you pay the same whatever your prompt costs.
+A monthly figure there is arithmetic about tokens dressed as money, so Trazum
+stops printing one and reports what is actually scarce:
+
+```
+What this buys on Claude Code
+  Claude Code bills by subscription, so there is no bill to reduce and no
+  monthly figure to print.
+
+  1,001 tokens back, every call.
+  Context window: 12.4% → 2.1% of Claude Opus 5's 1,000,000 tokens — room the
+  conversation gets instead.
+  Pass --cost if this prompt is bound for a metered API.
+```
+
+The context window is the real currency in an agent: every token the system
+prompt holds is one the conversation cannot.
+
+**Advisories whose only pitch is money go too.** "Use a cheaper model" is not
+weaker advice on a flat plan — it is not advice. `model-downgrade`, `batch-api`,
+`output-dominated` and `promo-pricing` are dropped; caching, context overflow,
+contradictions and redundant examples stay, because latency, headroom and
+correctness are still real.
+
+**The escape hatch matters.** The host says where *Trazum* runs, not where your
+prompt goes — somebody editing a production prompt inside Cursor wants the
+dollars, and `--cost` gives them back without leaving the editor. `--tokens-only`
+forces the other direction anywhere.
 
 ## Token counting
 

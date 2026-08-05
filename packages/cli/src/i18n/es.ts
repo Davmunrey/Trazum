@@ -32,6 +32,12 @@ ${bold('OPCIONES DE optimize')}
                               dice qué frase lo ha impedido.
   --llm                       Añade una pasada por el LLM configurado por entorno.
   --exact-tokens              Cuenta tokens con la API oficial en vez de la heurística.
+  --tokens-only               Informa del ahorro de tokens y de ningún importe. Es
+                              lo que hace por defecto dentro de Claude Code, Codex
+                              o Cursor, donde una suscripción significa que no hay
+                              factura que reducir.
+  --cost                      Muestra el dinero también ahí: el host dice dónde se
+                              ejecuta Trazum, no a dónde va tu prompt.
   --diff                      Muestra el diff línea a línea.
   --json                      Vuelca el informe completo en JSON.
   --locale <${d.locales.join('|')}>            Idioma del informe. Por defecto: el del sistema.
@@ -231,6 +237,14 @@ ${bold('EJEMPLOS')}
     beyondShortening: () => 'Además de acortar el prompt',
     perMonthSuffix: (amount) => ` ~${amount}/mes`,
     diff: () => 'Diff',
+    tokensOnlyHeading: (host) => `Qué ganas con esto en ${host}`,
+    tokensOnlyWhy: (host) =>
+      `${host} cobra por suscripción, así que no hay factura que reducir ni cifra mensual que imprimir.`,
+    tokensOnlyAsked: () => 'Costes ocultos porque has pedido solo tokens.',
+    tokensSaved: (tokens) => `${tokens} tokens de vuelta, en cada llamada.`,
+    windowUse: (before, after, model, window) =>
+      `Ventana de contexto: ${before} → ${after} de los ${window} tokens de ${model} — sitio que se lleva la conversación.`,
+    tokensOnlyCost: () => 'Usa --cost si este prompt va a una API de pago por uso.',
     pricingOverlaid: (models, lastReviewed) =>
       `Los precios de ${models} vienen de un overlay local revisado el ${lastReviewed}, no del catálogo incluido.`,
     reorderHeading: () => 'Reordenado para la caché',

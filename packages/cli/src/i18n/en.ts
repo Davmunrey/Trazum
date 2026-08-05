@@ -37,6 +37,11 @@ ${bold('OPTIONS FOR optimize')}
                               backwards ("the text above"), and says which phrase.
   --llm                       Add a pass through the LLM configured by environment.
   --exact-tokens              Count tokens with the official API instead of the heuristic.
+  --tokens-only               Report the token saving and no money at all. The
+                              default inside Claude Code, Codex or Cursor, where
+                              a subscription means there is no bill to reduce.
+  --cost                      Show the money even there — the host says where
+                              Trazum runs, not where your prompt goes.
   --diff                      Show the line-by-line diff.
   --json                      Dump the full report as JSON.
   --locale <${d.locales.join('|')}>            Language of the report. Default: the system language.
@@ -229,6 +234,14 @@ ${bold('EXAMPLES')}
     beyondShortening: () => 'Beyond shortening the prompt',
     perMonthSuffix: (amount) => ` ~${amount}/month`,
     diff: () => 'Diff',
+    tokensOnlyHeading: (host) => `What this buys on ${host}`,
+    tokensOnlyWhy: (host) =>
+      `${host} bills by subscription, so there is no bill to reduce and no monthly figure to print.`,
+    tokensOnlyAsked: () => 'Costs hidden because you asked for tokens only.',
+    tokensSaved: (tokens) => `${tokens} tokens back, every call.`,
+    windowUse: (before, after, model, window) =>
+      `Context window: ${before} → ${after} of ${model}'s ${window} tokens — room the conversation gets instead.`,
+    tokensOnlyCost: () => 'Pass --cost if this prompt is bound for a metered API.',
     pricingOverlaid: (models, lastReviewed) =>
       `Prices for ${models} came from a local overlay reviewed ${lastReviewed}, not from the bundled catalogue.`,
     reorderHeading: () => 'Reordered for caching',

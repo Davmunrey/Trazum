@@ -72,6 +72,12 @@ export interface CliMessages {
     beyondShortening(): string;
     perMonthSuffix(amount: string): string;
     diff(): string;
+    tokensOnlyHeading(host: string): string;
+    tokensOnlyWhy(host: string): string;
+    tokensOnlyAsked(): string;
+    tokensSaved(tokens: string): string;
+    windowUse(before: string, after: string, model: string, window: string): string;
+    tokensOnlyCost(): string;
     diffTooLarge(lines: number, max: number): string;
     reorderHeading(): string;
     reorderMoved(blocks: number, tokens: string): string;
