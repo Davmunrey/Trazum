@@ -3,7 +3,7 @@
   "version": "0.5.0",
   "description": "Trazum CLI: optimise prompts, enforce token budgets in CI and price the savings from your terminal.",
   "license": "MIT",
-  "author": "David Mu\u00f1oz Rey",
+  "author": "David Muñoz Rey",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Davmunrey/Trazum.git",
@@ -36,7 +36,7 @@
     "@trazum/core": "0.5.0"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
-    "typescript": "^5.7.0"
+    "@types/node": "^26.1.2",
+    "typescript": "^7.0.2"
   }
 }
