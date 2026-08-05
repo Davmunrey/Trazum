@@ -92,6 +92,10 @@ ${bold('EJEMPLOS')}
     checkNeedsMaxTokens: () => 'trazum check necesita --max-tokens <n>.',
     evalNeedsCases: () => 'trazum eval necesita --cases <fichero>.',
     evalNoCases: (path) => `No se ha encontrado ningún caso en "${path}".`,
+    unknownFlag: (name, allowed) =>
+      `Opción desconocida --${name}. Este comando acepta: ${allowed}.`,
+    unknownFlagDidYouMean: (name, suggestion) =>
+      `Opción desconocida --${name}. ¿Querías decir --${suggestion}?`,
     errorLabel: () => 'Error',
   },
 
@@ -123,6 +127,8 @@ ${bold('EJEMPLOS')}
     beyondShortening: () => 'Además de acortar el prompt',
     perMonthSuffix: (amount) => ` ~${amount}/mes`,
     diff: () => 'Diff',
+    diffTooLarge: (lines, max) =>
+      `  Diff omitido: ${lines} líneas supera el límite de ${max}, y alinearlas costaría más memoria de lo que vale la respuesta.`,
     wroteTo: (path) => `Prompt optimizado escrito en ${path}`,
   },
 

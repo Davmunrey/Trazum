@@ -124,9 +124,83 @@ function levelFlag(args: Args, t: CliMessages): RuleLevel {
   return level;
 }
 
+
+/**
+ * Flags each command accepts. An unrecognised flag used to be accepted
+ * silently, which on a gate command means CI passing while the author believes
+ * a threshold is set — `--max-growh 5` would have been ignored and the build
+ * gone green. Silence is the wrong answer for a typo.
+ */
+const GLOBAL_FLAGS = ['help', 'h', 'locale', 'json'];
+const COMMAND_FLAGS: Record<string, string[]> = {
+  optimize: [
+    'level', 'model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch',
+    'disable', 'llm', 'exact-tokens', 'diff', 'out', 'o',
+  ],
+  check: ['max-tokens', 'level', 'exact-tokens'],
+  eval: ['cases', 'level', 'concurrency'],
+  models: [],
+  rules: [],
+};
+
+/** Edit distance, capped: only used to suggest a near-miss on a typo. */
+function editDistance(a: string, b: string): number {
+  if (Math.abs(a.length - b.length) > 3) return 99;
+  let prev = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const row = [i];
+    for (let j = 1; j <= b.length; j++) {
+      row[j] = Math.min(
+        prev[j]! + 1,
+        row[j - 1]! + 1,
+        prev[j - 1]! + (a[i - 1] === b[j - 1] ? 0 : 1),
+      );
+    }
+    prev = row;
+  }
+  return prev[b.length]!;
+}
+
+function rejectUnknownFlags(args: Args, t: CliMessages): void {
+  const known = COMMAND_FLAGS[args.command];
+  if (!known) return;
+  const allowed = [...known, ...GLOBAL_FLAGS];
+
+  for (const name of args.flags.keys()) {
+    // `out` is stored under its long name even when given as `-o`.
+    if (allowed.includes(name)) continue;
+
+    const nearest = allowed
+      .map((candidate) => ({ candidate, distance: editDistance(name, candidate) }))
+      .sort((x, y) => x.distance - y.distance)[0];
+
+    // The tolerance scales with the length of what was typed. A fixed budget
+    // of three edits is a typo on `--max-tokens` and a different word entirely
+    // on `--llm`, which suggested "did you mean --help?" — a wrong guess is
+    // worse than the full list, because it sends the reader off to check it.
+    const tolerance = Math.min(3, Math.max(1, Math.floor(name.length / 3)));
+
+    throw new Error(
+      nearest && nearest.distance <= tolerance
+        ? t.errors.unknownFlagDidYouMean(name, nearest.candidate)
+        : t.errors.unknownFlag(name, allowed.slice().sort().join(', ')),
+    );
+  }
+}
+
 // --------------------------------------------------------------------------
 // Line-by-line diff
 // --------------------------------------------------------------------------
+
+/**
+ * Largest diff this will attempt, in lines per side.
+ *
+ * The alignment table is quadratic: at 6,000 lines it is 36 million cells and
+ * roughly 288 MB before anything else runs. There is no prompt worth reading a
+ * 6,000-line diff of, so past this the diff is declined rather than the process
+ * being taken down by someone passing a large file.
+ */
+const MAX_DIFF_LINES = 2500;
 
 /** Longest common subsequence, used to align the two versions. */
 function lcsTable(a: string[], b: string[]): number[][] {
@@ -142,9 +216,14 @@ function lcsTable(a: string[], b: string[]): number[][] {
   return table;
 }
 
-function renderDiff(before: string, after: string): string {
+function renderDiff(before: string, after: string, t: CliMessages): string {
   const a = before.split('\n');
   const b = after.split('\n');
+
+  if (a.length > MAX_DIFF_LINES || b.length > MAX_DIFF_LINES) {
+    return c.dim(t.report.diffTooLarge(Math.max(a.length, b.length), MAX_DIFF_LINES));
+  }
+
   const table = lcsTable(a, b);
   const lines: string[] = [];
 
@@ -304,7 +383,7 @@ function printReport(
   if (showDiff) {
     console.log();
     console.log(c.bold(t.report.diff()));
-    console.log(renderDiff(result.original, result.optimized));
+    console.log(renderDiff(result.original, result.optimized, t));
   }
 
   console.log();
@@ -688,6 +767,8 @@ async function main(): Promise<void> {
     );
     return;
   }
+
+  rejectUnknownFlags(args, t);
 
   switch (args.command) {
     case 'optimize':

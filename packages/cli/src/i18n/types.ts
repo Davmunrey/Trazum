@@ -31,6 +31,8 @@ export interface CliMessages {
     badLevel(received: string): string;
     unknownRuleInDisable(id: string): string;
     unknownCommand(command: string): string;
+    unknownFlag(name: string, allowed: string): string;
+    unknownFlagDidYouMean(name: string, suggestion: string): string;
     missingInputFile(): string;
     llmNotConfigured(): string;
     exactTokensNeedsKey(): string;
@@ -62,6 +64,7 @@ export interface CliMessages {
     beyondShortening(): string;
     perMonthSuffix(amount: string): string;
     diff(): string;
+    diffTooLarge(lines: number, max: number): string;
     wroteTo(path: string): string;
   };
 

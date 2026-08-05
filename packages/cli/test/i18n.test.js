@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { describe, it } from 'node:test';
 
 import { LOCALES } from '@trazum/core';
@@ -181,5 +182,57 @@ describe('catalogue parity', () => {
         }
       }
     }
+  });
+});
+
+describe('the CLI rejects what it does not understand', () => {
+  // These are behavioural, driven through the built binary, because the bug
+  // they guard against was invisible from the inside: an unknown flag parsed
+  // fine, was stored, and was simply never read.
+  const CLI = new URL('../dist/index.js', import.meta.url).pathname;
+
+  function run(args) {
+    const result = spawnSync(process.execPath, [CLI, ...args], {
+      encoding: 'utf8',
+      env: { ...process.env, NO_COLOR: '1' },
+    });
+    return `${result.stdout}${result.stderr}`;
+  }
+
+  it('rejects an unknown flag instead of ignoring it', () => {
+    // On a gate command, silently ignoring a flag means CI passing while the
+    // author believes a threshold is set.
+    const output = run(['check', 'README.md', '--max-tokens', '5', '--not-a-flag']);
+    assert.match(output, /Unknown option --not-a-flag/);
+  });
+
+  it('suggests the intended flag on a near miss', () => {
+    assert.match(run(['check', 'README.md', '--max-token', '5']), /Did you mean --max-tokens/);
+    assert.match(run(['eval', 'README.md', '--case', 'x']), /Did you mean --cases/);
+  });
+
+  it('does not guess when nothing is close', () => {
+    // `--llm` is three edits from `--help`, which a fixed budget accepted and
+    // then confidently suggested. A wrong guess is worse than the full list:
+    // it sends the reader off to check it.
+    const output = run(['check', 'README.md', '--max-tokens', '5', '--llm']);
+    assert.match(output, /Unknown option --llm/);
+    assert.doesNotMatch(output, /Did you mean/);
+  });
+
+  it('rejects a flag that belongs to a different command', () => {
+    assert.match(run(['check', 'README.md', '--max-tokens', '5', '--batch']), /Unknown option --batch/);
+  });
+
+  it('still accepts every flag it documents', () => {
+    const output = run(['optimize', 'README.md', '--level', 'aggressive', '--calls', '10', '--json']);
+    assert.doesNotMatch(output, /Unknown option/);
+  });
+
+  it('reports the rejection in the requested locale', () => {
+    assert.match(
+      run(['check', 'README.md', '--max-tokens', '5', '--nope', '--locale', 'es']),
+      /Opción desconocida/,
+    );
   });
 });
