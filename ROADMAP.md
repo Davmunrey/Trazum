@@ -493,60 +493,7 @@ loudly, having published nothing.
 
 ---
 
-## Next
-
-1.0 froze the API. It did not finish the product, and it left two things this
-file should say out loud: the central accuracy claim has never been measured, and
-Trazum governs prompt *files* rather than the prompts an application actually
-sends.
-
-### 1.3.0 — The error band, measured
-
-Three releases are queued behind the automation that just shipped, and this is the
-first of them.
-
-`±15%` is printed on every report, appears in both READMEs, in the estimator's own
-doc comment and in `VERSIONING.md` as part of the frozen API. Every dollar figure
-Trazum prints descends from it — and `estimateTokens` was tested for exactly three
-things: zero on empty input, monotonic growth, and never returning `NaN`. Nothing
-measured its accuracy.
-
-It is also **one number for all text**, which is a second assumption. The
-estimator is calibrated per character class and treats CJK, digits and punctuation
-quite differently from words; there is no reason those should land on the same
-accuracy. If the real error on Japanese is 40%, every figure for a Japanese prompt
-is wrong while the report says ±15%.
-
-**In place now:** a committed corpus of eight samples covering prose (English and
-Spanish), CJK (Japanese and Chinese), code, few-shot blocks, punctuation-heavy
-tables and dense numerics; `scripts/measure-token-band.mjs`, which measures them
-against the official counting endpoint and subtracts the message envelope so the
-figures describe the text; and `token-band.test.js`, which asserts the band per
-sample as soon as the ground truth exists.
-
-Three things that test does deliberately:
-
-- **It does not pass quietly while unmeasured.** "0 failures" from a check that
-  measured nothing is the most misleading thing a suite can report — the same
-  reasoning that makes `trazum check` treat an unbudgeted run as an error. It
-  skips out loud and names the command.
-- **It requires the documentation to admit the band is unverified** until ground
-  truth exists, so `±15%` cannot quietly harden from an estimate into a fact
-  nobody established.
-- **It carries a digest of the corpus.** Numbers describing text that has since
-  been edited pass while describing something else, which is worse than no
-  numbers at all.
-
-**Needs the maintainer once:** `ANTHROPIC_API_KEY=... npm run measure:tokens`.
-The counting endpoint is free and does not run the model, so it costs nothing
-beyond the round trips. Commit what it writes and the assertions go live.
-
-**Then, and only then, the decision this release exists for:** if the bands differ
-materially by type — which the CJK case suggests they will — the report stops
-printing one number for all text and says the band that applies to the prompt in
-front of it.
-
-### 1.4.0 — Prompts where they actually live
+### 1.3.0 — Prompts where they actually live
 
 `check` read `.txt`, `.md`, `.prompt` and `.tmpl`. Real prompts live in TypeScript
 template literals, Python strings and YAML, so adopting Trazum meant first
@@ -604,18 +551,108 @@ before it shipped rather than after, which is a first this week.
 prompt, which was deferred from 0.11.0 and is the reviewer workflow this unlocks.
 `check` is the gate and came first.
 
-### 1.5.0 — The front door catches up
+### 1.4.0 — The front door catches up
 
-The web app is five releases behind: it optimises, and that is all. No diff view,
-no budgets, no pricing overlay, no awareness of a config file. Anyone who arrives
-through the web sees a 0.1.0 product and judges the rest of it on that.
+Anyone arriving through the web judged the whole product on a page that could
+optimise and little else. That gap cost adoption even though it cost nobody money
+directly, which is why it was scheduled rather than parked — and why it came last
+of the four: it changes how the product *looks* rather than whether its numbers
+are *right*.
 
-Scheduled rather than parked, because the gap costs adoption even though it costs
-nobody money. Last, because it changes how the product **looks** rather than
-whether its numbers are **right** — and that ordering should be visible here
-rather than argued about later.
+**`--reorder` is now on the web**, which is the substance of this release. It is
+the largest saving Trazum can make and it was reaching only people who had cloned
+a repository and built a CLI. On a 1,178-token support prompt the difference is
+between a $0 caching saving and a $184 one.
+
+Opt-in over HTTP for the same reason it is opt-in on the command line, and the
+reason is stated in the route rather than left in the diff: every other
+transformation this endpoint performs deletes text whose absence is local, and
+this one *moves* text, where order carries meaning. Nothing about it is less safe
+here — the same deterministic core, nothing sent anywhere, the prompt returned
+byte-identical when it cannot act — but *"the browser did it quietly"* is not
+something this endpoint should ever be able to do.
+
+Three details that follow from that:
+
+- **The flag is honoured only on a literal `true`.** A string, a number and
+  `null` are all ignored, because the body is untrusted and a truthy check would
+  let `"false"` rearrange somebody's prompt.
+- **`original` stays what the caller sent**, so the diff the browser draws shows
+  the move instead of hiding it behind the deletions.
+- **Refusals ride back in the response** and render whether or not anything moved.
+  The panel is deliberately not styled like the green savings box: that one is a
+  saving to enjoy, this is a change to review. It sits above the money so the
+  number is read after the caveat rather than instead of it.
+
+**What is deliberately not coming to the web**, recorded here rather than left as
+an unexplained gap:
+
+- **The pricing overlay** is a JSON file in your repository, corrected by you and
+  reviewed in your pull requests. A textarea for pasting prices into somebody
+  else's server is not that feature wearing a different hat — it is a worse one,
+  with no review and no provenance. The web already says which prices it used and
+  when they were reviewed; that is the honest version.
+- **Config-aware defaults** need a `trazum.config.json`, and a browser has no
+  repository to find one in.
+- **Budgets** are a gate, and a gate belongs where it can fail a build. A
+  pass/fail badge in a browser says nothing the token count beside it does not.
+
+**Still open:** `comparePrompts` — paste two versions of a prompt and see the
+delta — is the one CLI capability with a real browser shape that is not here yet.
 
 ---
+
+## Next
+
+### 1.5.0 — The error band, measured
+
+**Why this slipped from 1.3.0 to last.** The corpus, the harness and the test all
+shipped in that release; the *measurement* cannot happen inside this repository,
+because ground truth needs the official counting endpoint and a key. Rather than
+hold two releases that could ship behind one that cannot, the queue moved and this
+entry stayed open. It is the only item here whose completion is not ours to
+schedule, and the file owes that explanation rather than a silent renumber.
+
+`±15%` is printed on every report, appears in both READMEs, in the estimator's own
+doc comment and in `VERSIONING.md` as part of the frozen API. Every dollar figure
+Trazum prints descends from it — and `estimateTokens` was tested for exactly three
+things: zero on empty input, monotonic growth, and never returning `NaN`. Nothing
+measured its accuracy.
+
+It is also **one number for all text**, which is a second assumption. The
+estimator is calibrated per character class and treats CJK, digits and punctuation
+quite differently from words; there is no reason those should land on the same
+accuracy. If the real error on Japanese is 40%, every figure for a Japanese prompt
+is wrong while the report says ±15%.
+
+**In place now:** a committed corpus of eight samples covering prose (English and
+Spanish), CJK (Japanese and Chinese), code, few-shot blocks, punctuation-heavy
+tables and dense numerics; `scripts/measure-token-band.mjs`, which measures them
+against the official counting endpoint and subtracts the message envelope so the
+figures describe the text; and `token-band.test.js`, which asserts the band per
+sample as soon as the ground truth exists.
+
+Three things that test does deliberately:
+
+- **It does not pass quietly while unmeasured.** "0 failures" from a check that
+  measured nothing is the most misleading thing a suite can report — the same
+  reasoning that makes `trazum check` treat an unbudgeted run as an error. It
+  skips out loud and names the command.
+- **It requires the documentation to admit the band is unverified** until ground
+  truth exists, so `±15%` cannot quietly harden from an estimate into a fact
+  nobody established.
+- **It carries a digest of the corpus.** Numbers describing text that has since
+  been edited pass while describing something else, which is worse than no
+  numbers at all.
+
+**Needs the maintainer once:** `ANTHROPIC_API_KEY=... npm run measure:tokens`.
+The counting endpoint is free and does not run the model, so it costs nothing
+beyond the round trips. Commit what it writes and the assertions go live.
+
+**Then, and only then, the decision this release exists for:** if the bands differ
+materially by type — which the CJK case suggests they will — the report stops
+printing one number for all text and says the band that applies to the prompt in
+front of it.
 
 ## Under consideration
 

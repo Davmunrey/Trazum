@@ -36,6 +36,9 @@ export const en: WebMessages = {
     cacheHitRate: 'Cache hit rate',
     batchLabel: 'The work tolerates latency (Batch API, 50% off)',
     optimize: 'Optimise',
+    reorderLabel: 'Reorder for caching',
+    reorderHint:
+      'Moves stable instructions in front of the first placeholder so prompt caching can reach them. This moves text rather than deleting it — read the diff and decide whether the order mattered.',
     optimizing: 'Optimising…',
   },
 
@@ -93,6 +96,15 @@ export const en: WebMessages = {
     badgeAggressive: 'aggressive',
     advisoriesHeading: 'Beyond shortening the prompt',
     advisoryPerMonth: (amount) => `~${amount}/month`,
+    reorderMoved: (blocks, tokens) =>
+      `Moved ${blocks} ${blocks === 1 ? 'block' : 'blocks'} (~${tokens} tokens) ahead of the first placeholder.`,
+    reorderPrefix: (before, after) => `Cacheable prefix ${before} → ${after} tokens.`,
+    reorderNothing: 'Nothing could safely move.',
+    reorderReview:
+      'Read the diff: this moved text rather than deleting it, so the question is whether the order mattered.',
+    reorderDeclinedRef: (phrase, excerpt) => `refers back ("${phrase}"): ${excerpt}`,
+    reorderDeclinedAfter: (excerpt) => `after a block that had to stay: ${excerpt}`,
+    reorderDeclinedMore: (count) => `…and ${count} more.`,
   },
 
   errors: {

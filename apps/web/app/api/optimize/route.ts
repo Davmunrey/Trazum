@@ -3,15 +3,24 @@ import { NextResponse } from 'next/server';
 import {
   RULES,
   anthropicProvider,
+  getModel,
   listModels,
   openAiCompatible,
   optimize,
   providerFromEnv,
   refineWithLlm,
+  reorderForCache,
   resolveLocale,
   validateLlmEndpoint,
 } from '@trazum/core';
-import type { Locale, LlmProvider, RuleId, RuleLevel, UsageProfile } from '@trazum/core';
+import type {
+  Locale,
+  LlmProvider,
+  ReorderResult,
+  RuleId,
+  RuleLevel,
+  UsageProfile,
+} from '@trazum/core';
 
 import { getWebMessages } from '../../../lib/i18n';
 import type { WebMessages } from '../../../lib/i18n';
@@ -96,6 +105,21 @@ interface RequestBody {
   locale?: unknown;
   usage?: Partial<UsageProfile>;
   disableRules?: unknown;
+  /**
+   * Rearrange the prompt so its stable instructions reach the cacheable prefix.
+   *
+   * Opt-in over HTTP for the same reason it is opt-in on the command line, and
+   * the reason is worth stating rather than leaving in the diff: every other
+   * transformation this endpoint performs deletes text whose absence is local,
+   * and this one *moves* text, where order carries meaning. The caller has to
+   * ask, and the response carries what was declined so they can judge it.
+   *
+   * Nothing about it is less safe here than in the CLI — it runs on the same
+   * deterministic core, sends nothing anywhere, and returns the prompt
+   * byte-identical when it cannot act — but "the browser did it quietly" is not
+   * a thing this endpoint should ever be able to do.
+   */
+  reorder?: unknown;
   llm?: {
     enabled?: boolean;
     provider?: string;
@@ -189,12 +213,28 @@ export async function POST(request: Request) {
   }
 
   try {
-    let result = optimize(prompt, {
+    // Before the rules, as in the CLI: the rearrangement is decided on the
+    // prompt the author wrote, which is the one they will review it against.
+    const reorder: ReorderResult | null =
+      body.reorder === true
+        ? reorderForCache(prompt, {
+            minPrefixTokens: getModel(usage.model ?? '').cacheMinTokens,
+          })
+        : null;
+
+    let result = optimize(reorder?.text ?? prompt, {
       level,
       usage,
       locale,
       disableRules: disableRules as RuleId[],
     });
+
+    // The diff the browser draws compares `original` with `optimized`. Leaving
+    // `original` as the rearrangement would show only the deletions and hide
+    // the one change the caller has to make a judgement about.
+    if (reorder !== null && reorder.moved.length > 0) {
+      result = { ...result, original: prompt };
+    }
 
     if (body.llm?.enabled) {
       if (body.llm.baseUrl) {
@@ -208,7 +248,10 @@ export async function POST(request: Request) {
       result = await refineWithLlm(result, provider, { locale });
     }
 
-    return NextResponse.json(result);
+    // `reorder` goes in whenever it was asked for, including when nothing
+    // moved: a caller reading `optimized` is reading text in an order the author
+    // did not write, and must not have to infer that from the diff.
+    return NextResponse.json(reorder === null ? result : { ...result, reorder });
   } catch (error) {
     const message = error instanceof Error ? error.message : t.api.unexpected;
     // The failure usually comes from the external LLM, not from our code.
