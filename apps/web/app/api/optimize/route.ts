@@ -8,22 +8,26 @@ import {
   optimize,
   providerFromEnv,
   refineWithLlm,
+  resolveLocale,
 } from '@trazum/core';
-import type { LlmProvider, RuleLevel, UsageProfile } from '@trazum/core';
+import type { Locale, LlmProvider, RuleId, RuleLevel, UsageProfile } from '@trazum/core';
+
+import { getWebMessages } from '../../../lib/i18n';
+import type { WebMessages } from '../../../lib/i18n';
 
 export const runtime = 'nodejs';
 
-/** Tope de tamaño: evita que una pestaña abierta tumbe el proceso. */
+/** Size cap: stops an open tab from taking the process down. */
 const MAX_PROMPT_CHARS = 400_000;
 
 // --------------------------------------------------------------------------
-// Límite de peticiones
+// Rate limiting
 // --------------------------------------------------------------------------
 
 /**
- * Ventana deslizante en memoria por IP. En serverless cada instancia lleva su
- * propio contador, así que el límite real puede ser algo más laxo: es una
- * barrera contra abuso accidental, no una cuota de facturación.
+ * In-memory sliding window per IP. On serverless each instance keeps its own
+ * counter, so the real limit can be somewhat looser: this is a barrier against
+ * accidental abuse, not a billing quota.
  */
 const RATE_WINDOW_MS = 60_000;
 const RATE_MAX_REQUESTS = 30;
@@ -38,7 +42,7 @@ function rateLimited(request: Request): boolean {
   const bucket = rateBuckets.get(ip);
 
   if (!bucket || now >= bucket.resetAt) {
-    // Aprovecha para purgar entradas caducadas y que el mapa no crezca sin fin.
+    // Take the chance to purge expired entries so the map cannot grow forever.
     if (rateBuckets.size > 10_000) {
       for (const [key, value] of rateBuckets) {
         if (now >= value.resetAt) rateBuckets.delete(key);
@@ -53,7 +57,7 @@ function rateLimited(request: Request): boolean {
 }
 
 // --------------------------------------------------------------------------
-// Protección SSRF
+// SSRF protection
 // --------------------------------------------------------------------------
 
 const PRIVATE_HOST_PATTERNS: RegExp[] = [
@@ -63,34 +67,34 @@ const PRIVATE_HOST_PATTERNS: RegExp[] = [
   /^10\./,
   /^172\.(1[6-9]|2\d|3[01])\./,
   /^192\.168\./,
-  /^169\.254\./, // metadatos de nube (AWS/GCP/Azure)
+  /^169\.254\./, // cloud metadata (AWS/GCP/Azure)
   /^\[?::1\]?$/,
-  /^\[?f[cd][0-9a-f]{2}:/i, // ULA IPv6
-  /^\[?fe80:/i, // link-local IPv6
+  /^\[?f[cd][0-9a-f]{2}:/i, // IPv6 ULA
+  /^\[?fe80:/i, // IPv6 link-local
   /\.internal$/i,
   /\.local$/i,
 ];
 
 /**
- * El endpoint acepta una URL de LLM elegida por el cliente. Sin este filtro,
- * cualquiera podría usar el servidor desplegado para hacer peticiones a la
- * red interna o a los metadatos de la nube (SSRF). En desarrollo se permite
- * http y hosts locales para poder probar contra un LLM en tu máquina.
+ * The endpoint accepts an LLM URL chosen by the client. Without this filter
+ * anyone could use the deployed server to reach the internal network or the
+ * cloud metadata service (SSRF). In development http and local hosts are
+ * allowed so you can test against an LLM on your own machine.
  */
-function validateBaseUrl(raw: string): string | null {
+function validateBaseUrl(raw: string, t: WebMessages): string | null {
   let url: URL;
   try {
     url = new URL(raw);
   } catch {
-    return 'La URL del endpoint no es válida.';
+    return t.api.invalidEndpointUrl;
   }
 
   const dev = process.env.NODE_ENV === 'development';
   if (url.protocol !== 'https:' && !(dev && url.protocol === 'http:')) {
-    return 'El endpoint del LLM debe usar https.';
+    return t.api.endpointMustBeHttps;
   }
   if (!dev && PRIVATE_HOST_PATTERNS.some((re) => re.test(url.hostname))) {
-    return 'El endpoint del LLM no puede apuntar a una dirección interna.';
+    return t.api.endpointMustBePublic;
   }
   return null;
 }
@@ -98,6 +102,7 @@ function validateBaseUrl(raw: string): string | null {
 interface RequestBody {
   prompt?: unknown;
   level?: unknown;
+  locale?: unknown;
   usage?: Partial<UsageProfile>;
   disableRules?: unknown;
   llm?: {
@@ -114,11 +119,22 @@ function badRequest(message: string) {
 }
 
 /**
- * Construye el proveedor de LLM para esta petición.
+ * Locale for this request: what the caller asked for, falling back to the
+ * browser's `Accept-Language`. Applies to the report and to this route's own
+ * error messages, so a failure never arrives in a language the caller did not
+ * choose.
+ */
+function localeOf(request: Request, body?: RequestBody): Locale {
+  const requested = typeof body?.locale === 'string' ? body.locale : null;
+  return resolveLocale(requested ?? request.headers.get('accept-language'));
+}
+
+/**
+ * Builds the LLM provider for this request.
  *
- * Prioridad: lo que venga en el cuerpo (permite probar endpoints desde la UI),
- * y si no, la configuración del servidor por variables de entorno. Las claves
- * que llegan en el cuerpo se usan y se descartan: no se registran ni se guardan.
+ * Priority: whatever comes in the body (so endpoints can be tried from the
+ * UI), otherwise the server's environment configuration. Keys arriving in the
+ * body are used and discarded: never logged, never stored.
  */
 function buildProvider(config: NonNullable<RequestBody['llm']>): LlmProvider | null {
   const { provider, baseUrl, model, apiKey } = config;
@@ -145,27 +161,27 @@ function buildProvider(config: NonNullable<RequestBody['llm']>): LlmProvider | n
 
 export async function POST(request: Request) {
   if (rateLimited(request)) {
-    return NextResponse.json(
-      { error: 'Demasiadas peticiones. Espera un minuto y vuelve a intentarlo.' },
-      { status: 429 },
-    );
+    // No body has been read yet, so the header is all we have to go on.
+    const t = getWebMessages(localeOf(request));
+    return NextResponse.json({ error: t.api.rateLimited }, { status: 429 });
   }
 
   let body: RequestBody;
   try {
     body = (await request.json()) as RequestBody;
   } catch {
-    return badRequest('El cuerpo de la petición no es JSON válido.');
+    return badRequest(getWebMessages(localeOf(request)).api.invalidJson);
   }
+
+  const locale = localeOf(request, body);
+  const t = getWebMessages(locale);
 
   const { prompt } = body;
   if (typeof prompt !== 'string' || !prompt.trim()) {
-    return badRequest('Falta el prompt.');
+    return badRequest(t.api.missingPrompt);
   }
   if (prompt.length > MAX_PROMPT_CHARS) {
-    return badRequest(
-      `El prompt supera el límite de ${MAX_PROMPT_CHARS.toLocaleString('es-ES')} caracteres.`,
-    );
+    return badRequest(t.api.promptTooLong(MAX_PROMPT_CHARS.toLocaleString(t.numberLocale)));
   }
 
   const level: RuleLevel = body.level === 'aggressive' ? 'aggressive' : 'safe';
@@ -174,48 +190,45 @@ export async function POST(request: Request) {
     ? body.disableRules.filter((id): id is string => typeof id === 'string')
     : [];
   const unknownRule = disableRules.find((id) => !RULES.some((r) => r.id === id));
-  if (unknownRule) return badRequest(`Regla desconocida: "${unknownRule}".`);
+  if (unknownRule) return badRequest(t.api.unknownRule(unknownRule));
 
   const usage = body.usage ?? {};
   if (usage.model && !listModels().some((m) => m.id === usage.model)) {
-    return badRequest(`Modelo desconocido: "${usage.model}".`);
+    return badRequest(t.api.unknownModel(usage.model));
   }
 
   try {
-    let result = optimize(prompt, { level, usage, disableRules });
+    let result = optimize(prompt, {
+      level,
+      usage,
+      locale,
+      disableRules: disableRules as RuleId[],
+    });
 
     if (body.llm?.enabled) {
       if (body.llm.baseUrl) {
-        const urlError = validateBaseUrl(body.llm.baseUrl);
+        const urlError = validateBaseUrl(body.llm.baseUrl, t);
         if (urlError) return badRequest(urlError);
       }
       const provider = buildProvider(body.llm);
       if (!provider) {
-        return badRequest(
-          'Has activado la pasada por LLM pero no hay proveedor configurado. Rellena endpoint y modelo, o define TRAZUM_LLM_BASE_URL y TRAZUM_LLM_MODEL en el servidor.',
-        );
+        return badRequest(t.api.llmNotConfigured);
       }
-      result = await refineWithLlm(result, provider);
+      result = await refineWithLlm(result, provider, { locale });
     }
 
     return NextResponse.json(result);
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Error inesperado.';
-    // El fallo suele venir del LLM externo, no de nuestro código.
+    const message = error instanceof Error ? error.message : t.api.unexpected;
+    // The failure usually comes from the external LLM, not from our code.
     return NextResponse.json({ error: message }, { status: 502 });
   }
 }
 
-/** Metadatos que la UI necesita para pintar los desplegables. */
+/** Metadata the UI needs to render its dropdowns. */
 export async function GET() {
   return NextResponse.json({
     models: listModels(),
-    rules: RULES.map((r) => ({
-      id: r.id,
-      title: r.title,
-      rationale: r.rationale,
-      level: r.level,
-    })),
     llmConfiguredOnServer: providerFromEnv() !== null,
   });
 }

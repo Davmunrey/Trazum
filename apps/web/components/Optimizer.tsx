@@ -2,25 +2,26 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import type { ModelPricing, OptimizationResult } from '@trazum/core';
+import type { Locale, ModelPricing, OptimizationResult } from '@trazum/core';
 
 import { track } from './Analytics';
 import { diffTexts } from './diff';
+import type { WebMessages } from '../lib/i18n';
 
 // --------------------------------------------------------------------------
-// Historial local
+// Local history
 // --------------------------------------------------------------------------
 
 /**
- * El historial vive en localStorage: privado por diseño, no toca ningún
- * backend. Los prompts muy largos no se guardan enteros para no reventar la
- * cuota del navegador; en ese caso la entrada informa pero no restaura.
+ * History lives in localStorage: private by design, it never touches a
+ * backend. Very long prompts are not stored in full so we do not blow the
+ * browser's quota; in that case the entry still reports, but cannot restore.
  */
 interface HistoryEntry {
   id: string;
   at: number;
   excerpt: string;
-  /** `null` si el prompt era demasiado largo para guardarlo. */
+  /** `null` when the prompt was too long to store. */
   prompt: string | null;
   level: 'safe' | 'aggressive';
   model: string;
@@ -53,17 +54,48 @@ function saveHistory(entries: HistoryEntry[]): void {
   try {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(entries));
   } catch {
-    // Cuota llena o almacenamiento bloqueado: el historial es prescindible.
+    // Quota full or storage blocked: history is expendable.
   }
 }
 
 interface Metadata {
   models: ModelPricing[];
-  rules: Array<{ id: string; title: string; rationale: string; level: string }>;
   llmConfiguredOnServer: boolean;
 }
 
-const EXAMPLE = `Eres un asistente experto en atención al cliente.
+/**
+ * Starter prompts, one per locale.
+ *
+ * Each is written in its own language on purpose: the point of the example is
+ * to show the rules firing, and the phrase dictionaries are per-language.
+ */
+const EXAMPLES: Record<Locale, string> = {
+  en: `You are an expert customer support assistant.
+
+IMPORTANT: You MUST always answer in English.
+
+Please, in order to help the user, I basically need you to analyse the query arriving in {{query}} and, if you don't mind, classify it into one of the categories.
+
+================================================
+
+It is important to note that you have to be very careful when classifying.
+
+Always answer in English and keep a formal tone with the end user.
+
+Check the catalogue at https://api.example.com/v1/catalogue?full=true
+
+Use this function as-is:
+
+\`\`\`python
+def classify(text):
+    return   model.predict(text)   # do not touch the indentation
+\`\`\`
+
+Always answer in English and keep a formal tone with the end user.
+
+Please double-check your answer before responding. Thank you very much!`,
+
+  es: `Eres un asistente experto en atención al cliente.
 
 IMPORTANTE: DEBES responder SIEMPRE en español.
 
@@ -86,7 +118,8 @@ def clasificar(texto):
 
 Responde siempre en español y usa un tono formal con el usuario final.
 
-Por favor verifica tu respuesta antes de contestar. ¡¡¡Muchas gracias!!!`;
+Por favor verifica tu respuesta antes de contestar. ¡¡¡Muchas gracias!!!`,
+};
 
 function formatUsd(value: number): string {
   if (value === 0) return '$0';
@@ -97,9 +130,9 @@ function formatUsd(value: number): string {
   return `$${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 }
 
-export function Optimizer() {
+export function Optimizer({ locale, t }: { locale: Locale; t: WebMessages }) {
   const [meta, setMeta] = useState<Metadata | null>(null);
-  const [prompt, setPrompt] = useState(EXAMPLE);
+  const [prompt, setPrompt] = useState(EXAMPLES[locale]);
   const [level, setLevel] = useState<'safe' | 'aggressive'>('safe');
   const [model, setModel] = useState('claude-opus-5');
   const [callsPerMonth, setCallsPerMonth] = useState(10000);
@@ -120,6 +153,8 @@ export function Optimizer() {
   const [copied, setCopied] = useState(false);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
 
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+
   useEffect(() => {
     fetch('/api/optimize')
       .then((r) => r.json())
@@ -127,6 +162,15 @@ export function Optimizer() {
       .catch(() => setMeta(null));
     setHistory(loadHistory());
   }, []);
+
+  // Switching language swaps the starter prompt, but never a prompt the reader
+  // has actually written: losing someone's text to a language toggle would be
+  // unforgivable.
+  useEffect(() => {
+    setPrompt((current) =>
+      Object.values(EXAMPLES).includes(current) ? EXAMPLES[locale] : current,
+    );
+  }, [locale]);
 
   function recordHistory(promptUsed: string, data: OptimizationResult) {
     const entry: HistoryEntry = {
@@ -184,6 +228,7 @@ export function Optimizer() {
         body: JSON.stringify({
           prompt,
           level,
+          locale,
           usage: { model, callsPerMonth, avgOutputTokens, cacheHitRate, batchEligible },
           llm: llmEnabled
             ? {
@@ -198,23 +243,24 @@ export function Optimizer() {
       });
       const data = await response.json();
       if (!response.ok) {
-        setError(data.error ?? 'No se ha podido optimizar el prompt.');
+        setError(data.error ?? t.errors.requestFailed);
         setResult(null);
       } else {
         const optimization = data as OptimizationResult;
         setResult(optimization);
         recordHistory(prompt, optimization);
-        // Métricas agregadas, nunca el contenido del prompt.
+        // Aggregate metrics, never the content of the prompt.
         track('optimize', {
           level,
           model,
+          locale,
           reduction_pct: Math.round(optimization.reductionPct),
           tokens_before: optimization.tokensBefore,
           llm_applied: optimization.llm?.applied ?? false,
         });
       }
     } catch {
-      setError('No se ha podido contactar con el servidor.');
+      setError(t.errors.unreachable);
       setResult(null);
     } finally {
       setLoading(false);
@@ -230,24 +276,24 @@ export function Optimizer() {
 
   return (
     <div className="grid">
-      {/* ---------------- Entrada ---------------- */}
+      {/* ---------------- Input ---------------- */}
       <div>
         <div className="card">
-          <h2>Prompt</h2>
+          <h2>{t.input.promptHeading}</h2>
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             spellCheck={false}
-            aria-label="Prompt a optimizar"
+            aria-label={t.input.promptAriaLabel}
           />
         </div>
 
         <div className="card">
-          <h2>Escenario de uso</h2>
+          <h2>{t.input.scenarioHeading}</h2>
 
           <div className="row">
             <div className="field">
-              <label htmlFor="model">Modelo</label>
+              <label htmlFor="model">{t.input.model}</label>
               <select id="model" value={model} onChange={(e) => setModel(e.target.value)}>
                 {(meta?.models ?? []).map((m) => (
                   <option key={m.id} value={m.id}>
@@ -257,21 +303,21 @@ export function Optimizer() {
               </select>
             </div>
             <div className="field">
-              <label htmlFor="level">Nivel de las reglas</label>
+              <label htmlFor="level">{t.input.ruleLevel}</label>
               <select
                 id="level"
                 value={level}
                 onChange={(e) => setLevel(e.target.value as 'safe' | 'aggressive')}
               >
-                <option value="safe">Seguro</option>
-                <option value="aggressive">Agresivo</option>
+                <option value="safe">{t.input.levelSafe}</option>
+                <option value="aggressive">{t.input.levelAggressive}</option>
               </select>
             </div>
           </div>
 
           <div className="row" style={{ marginTop: 12 }}>
             <div className="field">
-              <label htmlFor="calls">Llamadas al mes</label>
+              <label htmlFor="calls">{t.input.callsPerMonth}</label>
               <input
                 id="calls"
                 type="number"
@@ -281,7 +327,7 @@ export function Optimizer() {
               />
             </div>
             <div className="field">
-              <label htmlFor="out">Tokens de salida medios</label>
+              <label htmlFor="out">{t.input.avgOutputTokens}</label>
               <input
                 id="out"
                 type="number"
@@ -291,7 +337,7 @@ export function Optimizer() {
               />
             </div>
             <div className="field">
-              <label htmlFor="hit">Acierto de caché</label>
+              <label htmlFor="hit">{t.input.cacheHitRate}</label>
               <input
                 id="hit"
                 type="number"
@@ -312,11 +358,11 @@ export function Optimizer() {
               checked={batchEligible}
               onChange={(e) => setBatchEligible(e.target.checked)}
             />
-            El trabajo tolera latencia (Batch API, 50% de descuento)
+            {t.input.batchLabel}
           </label>
 
           <details className="settings" style={{ marginTop: 16 }}>
-            <summary>Pasada opcional por un LLM</summary>
+            <summary>{t.llm.summary}</summary>
             <div>
               <label className="checkbox">
                 <input
@@ -324,88 +370,77 @@ export function Optimizer() {
                   checked={llmEnabled}
                   onChange={(e) => setLlmEnabled(e.target.checked)}
                 />
-                Añadir compresión semántica con un LLM
+                {t.llm.enable}
               </label>
 
               {llmEnabled && (
                 <>
                   <div className="field" style={{ marginTop: 12 }}>
-                    <label htmlFor="llmProvider">Formato del endpoint</label>
+                    <label htmlFor="llmProvider">{t.llm.endpointFormat}</label>
                     <select
                       id="llmProvider"
                       value={llmProvider}
                       onChange={(e) => setLlmProvider(e.target.value)}
                     >
-                      <option value="openai">Compatible con OpenAI (/chat/completions)</option>
-                      <option value="anthropic">Claude API (/v1/messages)</option>
+                      <option value="openai">{t.llm.formatOpenAi}</option>
+                      <option value="anthropic">{t.llm.formatAnthropic}</option>
                     </select>
                   </div>
 
                   {llmProvider === 'openai' && (
                     <div className="field">
-                      <label htmlFor="llmBaseUrl">URL base</label>
+                      <label htmlFor="llmBaseUrl">{t.llm.baseUrl}</label>
                       <input
                         id="llmBaseUrl"
                         value={llmBaseUrl}
                         onChange={(e) => setLlmBaseUrl(e.target.value)}
-                        placeholder="https://tu-llm.n0.dev/v1"
+                        placeholder={t.llm.baseUrlPlaceholder}
                       />
                     </div>
                   )}
 
                   <div className="field">
-                    <label htmlFor="llmModel">Modelo</label>
+                    <label htmlFor="llmModel">{t.llm.model}</label>
                     <input
                       id="llmModel"
                       value={llmModel}
                       onChange={(e) => setLlmModel(e.target.value)}
-                      placeholder="identificador del modelo"
+                      placeholder={t.llm.modelPlaceholder}
                     />
                   </div>
 
                   <div className="field">
-                    <label htmlFor="llmApiKey">Clave de API</label>
+                    <label htmlFor="llmApiKey">{t.llm.apiKey}</label>
                     <input
                       id="llmApiKey"
                       type="password"
                       value={llmApiKey}
                       onChange={(e) => setLlmApiKey(e.target.value)}
                       placeholder={
-                        meta?.llmConfiguredOnServer
-                          ? 'configurada en el servidor — déjalo vacío'
-                          : 'tu clave'
+                        meta?.llmConfiguredOnServer ? t.llm.apiKeyOnServer : t.llm.apiKeyPlaceholder
                       }
                       autoComplete="off"
                     />
                   </div>
 
-                  <p className="note">
-                    La clave viaja a este servidor para hacer la llamada y se descarta al terminar:
-                    no se guarda ni se registra. Si prefieres no escribirla aquí, define{' '}
-                    <code>TRAZUM_LLM_BASE_URL</code>, <code>TRAZUM_LLM_MODEL</code> y{' '}
-                    <code>TRAZUM_LLM_API_KEY</code> en el servidor y deja los campos vacíos.
-                  </p>
-                  <p className="note">
-                    El resultado del LLM solo se acepta si es más corto y conserva intactos el
-                    código, las URLs y los marcadores de plantilla. Si no, se descarta y te quedas
-                    con la versión determinista.
-                  </p>
+                  <p className="note">{t.llm.keyNote}</p>
+                  <p className="note">{t.llm.safetyNote}</p>
                 </>
               )}
             </div>
           </details>
 
           <button className="primary" onClick={run} disabled={loading || !prompt.trim()}>
-            {loading ? 'Optimizando…' : 'Optimizar'}
+            {loading ? t.input.optimizing : t.input.optimize}
           </button>
         </div>
 
         {history.length > 0 && (
           <div className="card">
             <div className="toolbar">
-              <h2 style={{ margin: 0 }}>Historial</h2>
+              <h2 style={{ margin: 0 }}>{t.history.heading}</h2>
               <button className="ghost" onClick={clearHistory}>
-                Borrar
+                {t.history.clear}
               </button>
             </div>
             <ul className="plain">
@@ -415,16 +450,13 @@ export function Optimizer() {
                     className="history-restore"
                     onClick={() => restoreEntry(entry)}
                     disabled={entry.prompt === null}
-                    title={
-                      entry.prompt === null
-                        ? 'Prompt demasiado largo para guardarlo; solo se conserva el resumen.'
-                        : 'Restaurar este prompt y su escenario'
-                    }
+                    title={entry.prompt === null ? t.history.tooLongTitle : t.history.restoreTitle}
                   >
-                    <span className="history-excerpt">{entry.excerpt || '(sin texto)'}</span>
+                    <span className="history-excerpt">{entry.excerpt || t.history.noText}</span>
                     <span className="history-meta">
-                      −{entry.reductionPct.toFixed(0)}% · {formatUsd(entry.monthlySavingsUsd)}/mes ·{' '}
-                      {new Date(entry.at).toLocaleDateString('es-ES', {
+                      −{entry.reductionPct.toFixed(0)}% ·{' '}
+                      {t.history.perMonth(formatUsd(entry.monthlySavingsUsd))} ·{' '}
+                      {new Date(entry.at).toLocaleDateString(t.numberLocale, {
                         day: 'numeric',
                         month: 'short',
                       })}
@@ -433,55 +465,57 @@ export function Optimizer() {
                 </li>
               ))}
             </ul>
-            <p className="note">
-              El historial se guarda solo en este navegador; nada sale de tu máquina.
-            </p>
+            <p className="note">{t.history.privacyNote}</p>
           </div>
         )}
       </div>
 
-      {/* ---------------- Resultados ---------------- */}
+      {/* ---------------- Results ---------------- */}
       <div>
         {error && <div className="card error">{error}</div>}
 
         {!result && !error && (
           <div className="card">
-            <p className="empty">
-              Pega tu prompt y pulsa <strong>Optimizar</strong> para ver qué sobra y cuánto cuesta.
-            </p>
+            <p className="empty">{t.results.empty}</p>
           </div>
         )}
 
         {result && (
           <>
             <div className="card">
-              <h2>Resultado</h2>
+              <h2>{t.results.heading}</h2>
               <div className="headline">
                 <span className="pct">−{result.reductionPct.toFixed(1)}%</span>
                 <span className="tokens">
-                  {result.tokensBefore.toLocaleString('es-ES')} →{' '}
-                  {result.tokensAfter.toLocaleString('es-ES')} tokens de entrada
+                  {t.results.inputTokens(n(result.tokensBefore), n(result.tokensAfter))}
                 </span>
               </div>
 
               <div className="money">
                 <div className="amount">
-                  {formatUsd(result.savings.monthlySavingsUsd)} / mes
+                  {t.results.perMonth(formatUsd(result.savings.monthlySavingsUsd))}
                 </div>
                 <div className="caption">
-                  {formatUsd(result.savings.perMonth.before.totalUsd)} →{' '}
-                  {formatUsd(result.savings.perMonth.after.totalUsd)} con{' '}
-                  {result.savings.modelDisplayName}, {result.usage.callsPerMonth.toLocaleString('es-ES')}{' '}
-                  llamadas/mes
-                  {result.savings.promoApplied ? ' (precio de lanzamiento)' : ''}
+                  {t.results.costCaption(
+                    formatUsd(result.savings.perMonth.before.totalUsd),
+                    formatUsd(result.savings.perMonth.after.totalUsd),
+                    result.savings.modelDisplayName,
+                    n(result.usage.callsPerMonth),
+                  )}
+                  {result.savings.promoApplied ? t.results.promoSuffix : ''}
                 </div>
               </div>
 
               {result.llm && (
                 <p className="note">
                   {result.llm.applied
-                    ? `Pasada por ${result.llm.provider}/${result.llm.model} aplicada: ${result.llm.tokensBefore} → ${result.llm.tokensAfter} tokens.`
-                    : `Pasada por LLM descartada: ${result.llm.rejectedReason}`}
+                    ? t.results.llmApplied(
+                        result.llm.provider,
+                        result.llm.model,
+                        result.llm.tokensBefore,
+                        result.llm.tokensAfter,
+                      )
+                    : t.results.llmRejected(result.llm.rejectedReason ?? '')}
                 </p>
               )}
             </div>
@@ -489,14 +523,14 @@ export function Optimizer() {
             <div className="card">
               <div className="toolbar">
                 <h2 style={{ margin: 0 }}>
-                  {showDiff ? 'Qué ha cambiado' : 'Prompt optimizado'}
+                  {showDiff ? t.results.diffHeading : t.results.optimizedHeading}
                 </h2>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button className="ghost" onClick={() => setShowDiff((v) => !v)}>
-                    {showDiff ? 'Ver resultado' : 'Ver diff'}
+                    {showDiff ? t.results.showResult : t.results.showDiff}
                   </button>
                   <button className="ghost" onClick={copyOptimized}>
-                    {copied ? 'Copiado' : 'Copiar'}
+                    {copied ? t.results.copied : t.results.copy}
                   </button>
                 </div>
               </div>
@@ -505,15 +539,18 @@ export function Optimizer() {
                 diff ? (
                   <pre className="diff">
                     {diff.map((part, index) => (
-                      <span key={index} className={`diff-${part.type === 'same' ? 'same' : part.type}`}>
+                      <span
+                        key={index}
+                        className={`diff-${part.type === 'same' ? 'same' : part.type}`}
+                      >
                         {part.text}
                       </span>
                     ))}
                   </pre>
                 ) : (
                   <p className="note">
-                    El prompt es demasiado largo para calcular el diff en el navegador. Usa la CLI
-                    con <code>--diff</code>.
+                    {t.results.diffTooLong}
+                    <code>--diff</code>.
                   </p>
                 )
               ) : (
@@ -523,17 +560,19 @@ export function Optimizer() {
 
             {result.rules.length > 0 && (
               <div className="card">
-                <h2>Reglas aplicadas</h2>
+                <h2>{t.results.rulesHeading}</h2>
                 <ul className="plain">
                   {result.rules.map((rule) => (
                     <li key={rule.id} className="rule">
                       <span className={`badge ${rule.level}`}>
-                        {rule.level === 'aggressive' ? 'agresiva' : 'segura'}
+                        {rule.level === 'aggressive'
+                          ? t.results.badgeAggressive
+                          : t.results.badgeSafe}
                       </span>
                       <span>
                         {rule.title}{' '}
                         <span style={{ color: 'var(--text-dim)' }}>
-                          ({rule.hits}×, ~{rule.tokensSaved} tokens)
+                          {t.results.ruleHits(rule.hits, rule.tokensSaved)}
                         </span>
                       </span>
                     </li>
@@ -544,7 +583,7 @@ export function Optimizer() {
 
             {result.advisories.length > 0 && (
               <div className="card">
-                <h2>Además de acortar el prompt</h2>
+                <h2>{t.results.advisoriesHeading}</h2>
                 <ul className="plain">
                   {result.advisories.map((advisory) => (
                     <li key={advisory.id} className={`advisory ${advisory.severity}`}>
@@ -552,7 +591,7 @@ export function Optimizer() {
                         {advisory.title}
                         {advisory.estimatedMonthlyUsd !== null && (
                           <span className="est">
-                            ~{formatUsd(advisory.estimatedMonthlyUsd)}/mes
+                            {t.results.advisoryPerMonth(formatUsd(advisory.estimatedMonthlyUsd))}
                           </span>
                         )}
                       </div>

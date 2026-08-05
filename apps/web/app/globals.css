@@ -76,6 +76,42 @@ header.masthead .tag {
   font-size: 14px;
 }
 
+/* Pushed to the far end of the masthead so it reads as a page-level control
+   rather than part of the title. */
+.locale-switch {
+  margin-left: auto;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.locale-switch button {
+  border: 0;
+  background: none;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.locale-switch button:hover {
+  color: var(--text);
+}
+
+.locale-switch button.active {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.locale-switch button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 .lede {
   color: var(--text-dim);
   margin: 0 0 26px;
