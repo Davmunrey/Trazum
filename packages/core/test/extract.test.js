@@ -121,6 +121,38 @@ const B = \`Prompt two.\`;
     }
   });
 
+  it('closes an HTML marker both ways the parser accepts', () => {
+    // `--!>` is the "comment end bang" the HTML parser also treats as a close.
+    // Stripping only `-->` put the terminator in the name — `greeting--!>` —
+    // which CodeQL found and which is wrong output rather than a mere lint.
+    for (const marker of [
+      '<!-- trazum:prompt greeting -->',
+      '<!-- trazum:prompt greeting-->',
+      '<!-- trazum:prompt greeting --!>',
+      '<!-- trazum:prompt greeting--!>',
+    ]) {
+      const { prompts } = extractPrompts(`${marker}\n<x>\`Be brief.\`</x>`);
+      assert.equal(prompts.length, 1, `${marker}: nothing extracted`);
+      assert.equal(prompts[0].name, 'greeting', `${marker}: wrong name`);
+    }
+  });
+
+  it('falls back to the line id when the name is not an identifier', () => {
+    // A name is an identifier: it is printed in reports and matched against
+    // budget patterns. Letting it be whatever is left on the line is how the
+    // terminator above got in, so the charset is the fix for the class rather
+    // than for the one case.
+    const { prompts } = extractPrompts('// trazum:prompt my/weird*name\nconst P = `Be brief.`;');
+    assert.equal(prompts.length, 1, 'a usable prompt was thrown away over its name');
+    assert.equal(prompts[0].name, undefined);
+    assert.equal(promptId('f.ts', prompts[0]), 'f.ts:1');
+  });
+
+  it('accepts the punctuation a real name uses', () => {
+    const { prompts } = extractPrompts('// trazum:prompt ok-name_1.2\nconst P = `Be brief.`;');
+    assert.equal(prompts[0].name, 'ok-name_1.2');
+  });
+
   it('hands the extracted text to optimize unchanged', () => {
     // The point of the whole module: an embedded prompt gets exactly what a
     // standalone one gets, with no second code path to drift.

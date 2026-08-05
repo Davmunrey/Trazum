@@ -67,6 +67,29 @@ const MARKERS = ['//', '#', '--', '<!--'];
 const TAG = 'trazum:prompt';
 
 /**
+ * Both ways an HTML comment can close.
+ *
+ * `--!>` is the "comment end bang" the HTML parser also accepts, and stripping
+ * only `-->` put it in the name: `<!-- trazum:prompt greeting--!>` produced the
+ * name `greeting--!>`. Found by CodeQL, which is the second time this week a
+ * pattern has been right about the case in front of it and wrong about the one
+ * beside it.
+ */
+const COMMENT_CLOSE = /--!?>\s*$/;
+
+/**
+ * What a name may be.
+ *
+ * An identifier charset rather than "whatever is left on the line". The name
+ * flows into `promptId`, which is printed in reports and matched against the
+ * budget patterns in `trazum.config.json` — a name is an identifier, and letting
+ * it be arbitrary text is how a stray terminator became part of one above. A
+ * candidate that does not fit falls back to the `file:line` form, which always
+ * works.
+ */
+const NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
+/**
  * How far past the marker a literal may start.
  *
  * A prompt is expected on the next line or two — `const SYSTEM = \`` and the
@@ -213,7 +236,8 @@ export function extractPrompts(source: string): ExtractionResult {
     // The rest of the marker line is an optional name: `trazum:prompt greeting`.
     const lineEnd = source.indexOf('\n', at);
     const rest = source.slice(cursor, lineEnd === -1 ? source.length : lineEnd);
-    const name = rest.replace(/-->\s*$/, '').trim().split(/\s+/)[0] || undefined;
+    const candidate = rest.replace(COMMENT_CLOSE, '').trim().split(/\s+/)[0] ?? '';
+    const name = NAME.test(candidate) ? candidate : undefined;
 
     // Scan forward for the opening delimiter, bounded so a marker cannot adopt
     // a string much further down the file.

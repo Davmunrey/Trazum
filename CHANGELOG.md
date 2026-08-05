@@ -53,6 +53,14 @@ tests earned their place immediately: the obvious line-number lookup was quadrat
 in the number of markers — 15.5 seconds on a file holding 20,000. Caught before it
 shipped rather than after.
 
+One more found in review, by CodeQL: `<!-- trazum:prompt greeting--!>` produced the
+name `greeting--!>`, because `--!>` is the *comment end bang* the HTML parser also
+accepts and only `-->` was being stripped. Fixed for both terminators, and the
+class closed behind it — a name is now constrained to an identifier charset rather
+than "whatever is left on the line", falling back to the `file:line` id when it is
+not one. The name is printed in reports and matched against budget patterns; it
+should never have been arbitrary text.
+
 `diff` for embedded prompts is still to come; `check` is the gate and came first.
 
 
