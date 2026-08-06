@@ -1,6 +1,8 @@
 export * from './types.js';
 export { estimateTokens, countTokensAnthropic } from './tokenizer.js';
 export { countSentences, profilePrompt } from './profile.js';
+export { toPromptfoo } from './promptfoo.js';
+export type { PromptfooExport, PromptfooOptions, PromptfooWarning } from './promptfoo.js';
 export type { ProfileOptions, PromptProfile } from './profile.js';
 export { SUGGEST_SYSTEM_PROMPT, applyRewrites, rejectionText, suggestRewrites } from './suggest.js';
 export type {

@@ -368,6 +368,36 @@ says `inconclusive` rather than inventing a verdict.
 
 Cases are one input per line (`#` comments ignored) or a JSON array.
 
+#### Handing the run to your own harness
+
+Agreement is the question Trazum is qualified to ask. It is not the question a
+team needs answered before shipping — *theirs* is whether the classifier still
+hits 94%, whether the JSON still parses, whether the refusal rate moved. Those
+are assertions about your task, and Trazum has no business inventing them.
+
+```bash
+trazum eval prompts/system.txt --cases cases.txt --export promptfoo -o suite.json
+```
+
+That writes a [promptfoo](https://www.promptfoo.dev) suite in which **the only
+variable is the prompt** — both versions, every case already wired to the right
+template variable, the same provider on both sides — and leaves
+`defaultTest.assert` for you.
+
+It makes **no API call and needs no key**: the whole point is to hand the run
+over. It also warns about the things that would quietly make the run
+meaningless — a `${x}` placeholder promptfoo will not substitute, a prompt with
+three placeholders and one value per case, a provider it had to guess an id for.
+
+The one assertion it seeds is `is-json`, and only when the prompt shows a fenced
+JSON block. That is not an opinion about your task: the prompt already demands
+it.
+
+It emits JSON rather than YAML, which promptfoo reads just as happily. This
+package has no dependencies and is not acquiring a YAML emitter; a hand-rolled
+one is a quoting bug waiting for the first prompt containing a colon, a tab, or
+a line ending in a space.
+
 ### A whole repository of prompts
 
 Point `check` at a directory and it governs all of them in one CI step, using

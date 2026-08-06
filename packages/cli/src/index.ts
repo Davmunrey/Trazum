@@ -13,6 +13,7 @@ import {
   applyRewrites,
   computeSavings,
   profilePrompt,
+  toPromptfoo,
   estimateTokens,
   formatUsd,
   formatSignedUsd,
@@ -123,6 +124,7 @@ const VALUE_FLAGS = new Set([
   'cases',
   'concurrency',
   'max-growth',
+  'export',
   'limit',
   'locale',
   'config',
@@ -305,7 +307,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
     'tokens-only', 'cost', 'prompt', 'suggest', 'apply-suggestions',
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out'],
-  eval: ['cases', 'level', 'concurrency'],
+  eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   diff: ['level', 'model', 'calls', 'output-tokens', 'batch', 'max-growth', 'optimized', 'markdown-out'],
   models: [],
   rank: ['level', 'model', 'calls', 'output-tokens', 'batch', 'disable', 'prompt'],
@@ -1830,6 +1832,15 @@ async function commandEval(
   const inputs = parseCases(await readFile(casesPath, 'utf8'));
   if (inputs.length === 0) throw new Error(t.errors.evalNoCases(casesPath));
 
+  // Export short-circuits before the provider is even looked up. Writing a
+  // suite for somebody else's harness must not require a key or spend a call:
+  // the whole point is to hand the run over.
+  const exportTo = stringFlag(args, 'export');
+  if (exportTo !== undefined) {
+    await exportEvalSuite(exportTo, prompt, inputs, { args, config, level, locale, t });
+    return;
+  }
+
   const provider = providerFromEnv();
   if (!provider) throw new Error(t.errors.llmNotConfigured());
 
@@ -1893,6 +1904,70 @@ async function commandEval(
 }
 
 /** One case per line, or a JSON array of strings. Blank lines and # comments ignored. */
+/**
+ * Writes a before/after suite for an external harness.
+ *
+ * `trazum eval` measures semantic agreement, which is the question Trazum is
+ * qualified to ask and not the one a team needs answered before shipping.
+ * Theirs is whether the classifier still hits 94% — an assertion about their
+ * task, which this tool has no business inventing. So the suite is handed over
+ * with both prompts and every case wired up, and the assertions left blank on
+ * purpose.
+ */
+async function exportEvalSuite(
+  format: string,
+  prompt: string,
+  inputs: string[],
+  context: {
+    args: Args;
+    config: TrazumConfig;
+    level: RuleLevel;
+    locale: Locale;
+    t: CliMessages;
+  },
+): Promise<void> {
+  const { args, config, level, locale, t } = context;
+
+  if (format !== 'promptfoo') {
+    throw new Error(t.errors.unknownExportFormat(format, 'promptfoo'));
+  }
+
+  const optimized = optimize(prompt, { level, locale }).optimized;
+  if (optimized === prompt) {
+    // Two identical prompts is a suite that can only ever report "no change",
+    // and an hour of somebody's API budget to find that out.
+    console.log(c.yellow(t.eval.nothingToCompare()));
+    return;
+  }
+
+  const usage = usageFrom(args, config, t);
+  const { config: suite, warnings } = toPromptfoo(prompt, optimized, inputs, {
+    model: usage.model,
+    level,
+  });
+  const body = `${JSON.stringify(suite, null, 2)}\n`;
+
+  const outPath = stringFlag(args, 'out');
+  if (outPath) {
+    await writeFile(outPath, body, 'utf8');
+  } else {
+    process.stdout.write(body);
+  }
+
+  // Warnings to stderr, so a redirected suite is the suite alone — and so they
+  // are still seen when it is.
+  if (warnings.length > 0) {
+    console.error();
+    console.error(t.eval.exportWarnings(warnings.length));
+    for (const warning of warnings) console.error(`  ${warning.detail}`);
+  }
+  if (outPath) {
+    console.error();
+    const seeded = (suite as { defaultTest?: { assert?: unknown[] } }).defaultTest?.assert?.length ?? 0;
+    console.error(t.eval.exportWrote(outPath, inputs.length, seeded));
+  }
+}
+
 function parseCases(raw: string): string[] {
   const trimmed = raw.trim();
   if (trimmed.startsWith('[')) {

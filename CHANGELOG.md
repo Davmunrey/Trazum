@@ -12,6 +12,44 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`trazum eval --export promptfoo` — hand the run to your own harness.**
+
+Agreement is the question Trazum is qualified to ask, and it is not the question
+a team needs answered before shipping. Theirs is whether the classifier still
+hits 94%, whether the JSON still parses, whether the refusal rate moved — and
+those are assertions about their task, which this tool has no business
+inventing.
+
+So it builds the part it *can* get right: a suite in which the only variable is
+the prompt, with both versions, every case bound to the correct template
+variable, and the same provider on both sides. `defaultTest.assert` is left for
+the team.
+
+It makes **no API call and needs no key** — the whole point is to hand the run
+over — and it warns about the things that would quietly make a run meaningless:
+a `${x}` placeholder promptfoo will not substitute, a prompt with three
+placeholders and one value per case, a provider whose id had to be guessed.
+
+The only assertion seeded is `is-json`, and only when the prompt shows a fenced
+JSON block. That is not an opinion about the task; the prompt already demands it.
+
+JSON rather than YAML, which promptfoo reads just as happily. This package has
+no dependencies and is not acquiring a YAML emitter, and a hand-rolled one is a
+quoting bug waiting for the first prompt with a colon, a tab, or a line ending
+in a space.
+
+### Fixed
+
+The JSON detection used `findRestatedFormat`, which was the wrong question
+wearing a convenient shape: that function answers "is this prompt wasting tokens
+restating its own schema?", so a prompt demanding JSON *cleanly* got no
+assertion while a wasteful one did — exactly backwards. It now looks for a
+fenced block tagged `json`, or an untagged one that parses as JSON, and the
+report says how many assertions were seeded rather than claiming "no assertions"
+unconditionally.
+
+### Added
+
 **`trazum rank <dir>` — which of these prompts to fix first.**
 
 The obvious shape for this was a complexity score out of a hundred, and it is
