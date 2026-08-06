@@ -12,9 +12,21 @@ ${bold('USO')}
   trazum check <fichero|dir|-> --max-tokens <n> [opciones]
   trazum eval <fichero> --cases <fichero> [opciones]
   trazum diff <antes> <después> [opciones]
+  trazum blame <fichero> [opciones]
   trazum where [fichero]
   trazum models
   trazum rules
+
+${bold('OPCIONES DE blame')}
+  --limit <n>                 Revisiones a recorrer. Por defecto: 20, máximo 500.
+  --prompt <nombre>           Sigue un prompt marcado dentro de un fichero fuente,
+                              para que refactorizar los imports no cuente como
+                              crecimiento del prompt.
+  --model, --calls,           Calcula el coste del movimiento, igual que optimize.
+  --output-tokens, --batch
+  --json                      El historial como datos.
+
+  Después de "--" las rutas se toman literales: trazum blame -- --nombre-raro.txt
 
 ${bold('OPCIONES DE optimize')}
   --level <safe|aggressive>   Agresividad de las reglas. Por defecto: safe.
@@ -332,6 +344,32 @@ ${bold('EJEMPLOS')}
     cacheNote: () =>
       '  Caché: leer cuesta el 10% de la entrada; escribir, el 125% (5 min) o 200% (1 h).',
     batchNote: () => '  Batch API: 50% de descuento sobre entrada y salida.',
+  },
+
+  blame: {
+    heading: (path, revisions) =>
+      `${path} — ${revisions} ${revisions === 1 ? 'revisión' : 'revisiones'}`,
+    notARepository: () =>
+      'blame lee el historial de un fichero desde git, y este directorio no está dentro de un repositorio.',
+    outsideRepository: (path) =>
+      `${path} está fuera del repositorio, así que no hay historial que leer.`,
+    noHistory: (path) => `git no tiene commits que toquen ${path}.`,
+    gitMissing: () => 'git no está en el PATH, y blame no tiene de dónde leer el historial.',
+    columns: { when: 'Fecha', tokens: 'Tokens', change: 'Cambio', who: 'Autor', commit: 'Commit' },
+    net: (first, last, delta, pct) =>
+      `Neto en este historial: ${first} → ${last} tokens (${delta}, ${pct}).`,
+    netCost: (amount, model, calls) =>
+      `Ese movimiento son ${amount} al mes en ${model} con ${calls} llamadas.`,
+    biggestRise: () => 'Mayor subida en un solo commit',
+    biggestRiseDetail: (tokens, author, subject, sha) =>
+      `+${tokens} tokens — ${author}, "${subject}" (${sha})`,
+    addedAt: () => 'añadido',
+    goneAt: () => 'no existía',
+    truncated: (shown) =>
+      `Mostrando las ${shown} más recientes. Usa --limit para ver más.`,
+    followedRename: (from) => `Se ha seguido un renombrado: las revisiones anteriores son ${from}.`,
+    estimateNote: () =>
+      'Los recuentos son estimaciones (±15%). Lo que importa es la tendencia, no las cifras absolutas.',
   },
 
   rules: {

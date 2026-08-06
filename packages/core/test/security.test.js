@@ -1004,3 +1004,124 @@ describe('SSRF: a caller selects an endpoint, it does not name one', () => {
     assert.equal(resolveEndpoint('https://api.openai.com/admin', allowed), null);
   });
 });
+
+describe('the one module that runs another program', () => {
+  /**
+   * `packages/cli/src/git.ts` exists so that shelling out happens in exactly
+   * one place, under rules a reviewer can check in one sitting. These assert
+   * the rules rather than trusting the comment that states them.
+   *
+   * The rest of this file is about what a *prompt* can do to Trazum. This is
+   * about what a *filename* can: git has options that run programs, and a path
+   * reaching git without a `--` in front of it is not a path.
+   */
+  const gitModule = join(repoRoot, 'packages/cli/src/git.ts');
+
+  const codeOf = (file) =>
+    readFileSync(file, 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^[ \t]*\/\/.*$/gm, '');
+
+  it('is the only file in the repository that spawns a process', () => {
+    // The invariant that makes the rest of this suite worth writing. A second
+    // caller elsewhere would get none of these guarantees, and nothing would
+    // say so.
+    const offenders = [];
+    const walk = (dir, prefix) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name === '.next') {
+          continue;
+        }
+        const path = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(path, `${prefix}${entry.name}/`);
+          continue;
+        }
+        if (!/\.(ts|tsx|mjs|js)$/.test(entry.name)) continue;
+        if (path === gitModule) continue;
+        if (/\bfrom\s+['"]node:child_process['"]/.test(codeOf(path))) {
+          offenders.push(`${prefix}${entry.name}`);
+        }
+      }
+    };
+    for (const root of ['packages/core/src', 'packages/cli/src', 'apps/web']) {
+      walk(join(repoRoot, root), `${root}/`);
+    }
+
+    assert.deepEqual(
+      offenders,
+      [],
+      `child_process appeared outside git.ts: ${offenders.join(', ')}`,
+    );
+  });
+
+  it('never lets a shell interpret anything', () => {
+    const code = codeOf(gitModule);
+    assert.match(code, /shell:\s*false/, 'the spawn does not state shell: false');
+    assert.doesNotMatch(code, /shell:\s*true/);
+    assert.doesNotMatch(code, /\bexec(Sync)?\s*\(/, 'exec runs its argument through a shell');
+  });
+
+  it('puts every path after a `--` separator', () => {
+    // Each `git(...)` call that takes a repoPath must have '--' before it. A
+    // file called `--upload-pack=…` is otherwise an instruction.
+    const code = codeOf(gitModule);
+    const calls = code.match(/git\(\s*\[[\s\S]*?\]/g) ?? [];
+    assert.ok(calls.length >= 3, `only found ${calls.length} git calls — has the shape changed?`);
+
+    const withPath = calls.filter((call) => /repoPath/.test(call));
+    assert.ok(withPath.length > 0, 'no call passes a path any more');
+
+    for (const call of withPath) {
+      // Two legitimate shapes, and this test exists because the difference is
+      // easy to miss:
+      //
+      //   git log ... -- <path>        the path is its own argument, so it
+      //                                needs the separator or git reads it as
+      //                                an option.
+      //   git show <sha>:<path>        one argument, and `--` does not apply.
+      //                                Safe only because the sha is validated
+      //                                as 40 hex first, which fixes what the
+      //                                argument starts with. Without that
+      //                                check this branch would be the hole.
+      const separated =
+        call.indexOf("'--'") !== -1 && call.indexOf("'--'") < call.indexOf('repoPath');
+      const gluedToCheckedSha = /\$\{sha\}:\$\{repoPath\}/.test(call);
+
+      assert.ok(
+        separated || gluedToCheckedSha,
+        `a path reaches git without a separator in front of it:\n${call}`,
+      );
+    }
+
+    // And the second shape is only safe while the check is there, so it is
+    // asserted here too rather than left to the test below.
+    if (withPath.some((call) => /\$\{sha\}:\$\{repoPath\}/.test(call))) {
+      assert.match(
+        code,
+        /if \(!SHA\.test\(sha\)\) return null;[\s\S]{0,200}\$\{sha\}:\$\{repoPath\}/,
+        'the sha:path form is used without validating the sha immediately before it',
+      );
+    }
+  });
+
+  it('validates an object name before gluing it to a path', () => {
+    // `git show <sha>:<path>` is one argument. Without the check, the "sha"
+    // half decides what the argument starts with.
+    const code = codeOf(gitModule);
+    assert.match(code, /SHA\s*=\s*\/\^\[0-9a-f\]\{40\}\$\//);
+    assert.match(code, /if \(!SHA\.test\(sha\)\) return null;/);
+  });
+
+  it('bounds time and memory, so a hostile repository cannot hang the CLI', () => {
+    const code = codeOf(gitModule);
+    assert.match(code, /timeout:\s*TIMEOUT_MS/);
+    assert.match(code, /maxBuffer:\s*MAX_BUFFER/);
+  });
+
+  it('does not let git prompt for credentials', () => {
+    // A `git show` that stops to ask for a password is a CLI that hangs with no
+    // output, in CI, for ever.
+    assert.match(codeOf(gitModule), /GIT_TERMINAL_PROMPT: '0'/);
+  });
+});

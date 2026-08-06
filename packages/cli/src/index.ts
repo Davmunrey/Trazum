@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFile, stat, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, resolve as resolvePath } from 'node:path';
 
 import {
   DEFAULT_USAGE,
@@ -10,6 +10,7 @@ import {
   comparePrompts,
   countTokensAnthropic,
   getModel,
+  computeSavings,
   estimateTokens,
   formatUsd,
   formatSignedUsd,
@@ -54,6 +55,15 @@ import {
 } from '@trazum/core/node';
 import type { HostEnvironment, PricingCatalogue, TrazumConfig } from '@trazum/core/node';
 
+import {
+  contentAt,
+  gitAvailable,
+  namesByRevision,
+  pathInRepository,
+  repositoryRoot,
+  revisionsFor,
+} from './git.js';
+import type { Revision } from './git.js';
 import { detectLocale, getCliMessages } from './i18n/index.js';
 import {
   MAX_SUMMARY_CHARS,
@@ -106,6 +116,7 @@ const VALUE_FLAGS = new Set([
   'cases',
   'concurrency',
   'max-growth',
+  'limit',
   'locale',
   'config',
   'markdown-out',
@@ -122,6 +133,14 @@ function parseArgs(argv: string[], t: CliMessages): Args {
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i]!;
+    // The POSIX escape: everything after `--` is a path, whatever it looks
+    // like. Without it there is no way to name a file called `-x.txt` or
+    // `--output=…` on the command line at all — the parser sees a flag and
+    // refuses before the path reaches the code that knows what to do with it.
+    if (arg === '--') {
+      positional.push(...argv.slice(i + 1));
+      break;
+    }
     if (!arg.startsWith('-') || arg === '-') {
       positional.push(arg);
       continue;
@@ -284,6 +303,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   models: [],
   where: [],
   rules: [],
+  blame: ['limit', 'model', 'calls', 'output-tokens', 'batch', 'prompt'],
 };
 
 function rejectUnknownFlags(args: Args, t: CliMessages): void {
@@ -1891,6 +1911,284 @@ function printComparison(
 
 // --------------------------------------------------------------------------
 
+// --------------------------------------------------------------------------
+// blame
+// --------------------------------------------------------------------------
+
+/**
+ * How many revisions to walk unless told otherwise.
+ *
+ * Each one is a `git show` and a token count, so this is a wall-clock budget as
+ * much as a display choice. Twenty is enough to see a trend and fast enough to
+ * feel instant on a normal file.
+ */
+const BLAME_DEFAULT_LIMIT = 20;
+const BLAME_MAX_LIMIT = 500;
+
+interface BlameRow {
+  revision: Revision;
+  /** `null` when the file did not exist at that commit, or held no marked prompt. */
+  tokens: number | null;
+  /** Tokens added since the previous (older) revision. `null` for the first. */
+  delta: number | null;
+  /** The name the file had at that commit, when it differs from today's. */
+  name: string | null;
+}
+
+/**
+ * `trazum blame <file>` — what happened to this prompt's cost, and who did it.
+ *
+ * Git already knows who changed a prompt and when. What it does not know is
+ * that a three-line addition to a system prompt at 50,000 calls a month is a
+ * bill, not a diff. This walks the file's history, counts the tokens at each
+ * commit, and puts the two facts on the same line.
+ *
+ * Reads history and nothing else: no writes, no network, and the one place that
+ * runs git is `git.ts`, which is written as if it were the whole attack surface.
+ */
+async function commandBlame(
+  args: Args,
+  config: TrazumConfig,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
+  const target = args.positional[0];
+  if (!target) throw new Error(t.errors.missingInputFile());
+
+  const cwd = process.cwd();
+  const root = repositoryRoot(cwd);
+  if (root === null) {
+    // Two failures with the same symptom, and the distinction is the whole of
+    // the fix: install git, or run this somewhere else.
+    throw new Error(gitAvailable(cwd) ? t.blame.notARepository() : t.blame.gitMissing());
+  }
+
+  const repoPath = pathInRepository(root, resolvePath(cwd, target));
+  if (repoPath === null) throw new Error(t.blame.outsideRepository(target));
+
+  const limit = Math.min(
+    Math.max(1, Math.floor(numberFlag(args, 'limit', BLAME_DEFAULT_LIMIT, t))),
+    BLAME_MAX_LIMIT,
+  );
+  // One extra, so the oldest shown revision still has something to be a change
+  // *from*. Without it the first row reports "added" for a file that existed.
+  const revisions = revisionsFor(repoPath, { cwd: root, max: limit + 1 });
+  if (revisions.length === 0) throw new Error(t.blame.noHistory(repoPath));
+
+  const wanted = stringFlag(args, 'prompt');
+
+  /**
+   * Tokens in the prompt at a commit.
+   *
+   * A source file is measured through the same marker extraction `optimize`
+   * uses, so `blame src/prompts.ts --prompt support` tracks the prompt rather
+   * than the file around it — otherwise every refactor of the imports would
+   * read as prompt growth.
+   */
+  const names = namesByRevision(repoPath, root, limit + 1);
+  const tokensAt = (revision: Revision): { tokens: number | null; name: string | null } => {
+    // The name at *that* commit, which is not today's name once a rename is in
+    // the history. Reading with today's name returned "did not exist" for every
+    // revision before the move.
+    const name = names.get(revision.sha) ?? null;
+    const path = name ?? repoPath;
+    const text = contentAt(revision.sha, path, root);
+    if (text === null) return { tokens: null, name: null };
+
+    const source = sourceFileOf(path, text, pricing, wanted);
+    return {
+      tokens: estimateTokens(source ? source.text : text),
+      name: name !== null && name !== repoPath ? name : null,
+    };
+  };
+
+  // Oldest first while computing, so a delta is against the revision before it.
+  const measured = revisions
+    .slice()
+    .reverse()
+    .map((revision) => ({ revision, ...tokensAt(revision) }));
+
+  const rows: BlameRow[] = measured.map((entry, index) => {
+    const previous = index > 0 ? measured[index - 1]!.tokens : null;
+    return {
+      revision: entry.revision,
+      tokens: entry.tokens,
+      delta: entry.tokens !== null && previous !== null ? entry.tokens - previous : null,
+      name: entry.name,
+    };
+  });
+
+  // Drop the extra oldest revision now that it has served as a baseline, and
+  // put the newest first: this is a history, and histories are read backwards.
+  const shown = rows.slice(revisions.length > limit ? 1 : 0).reverse();
+  printBlame(shown, { repoPath, args, config, pricing, t, truncated: revisions.length > limit });
+}
+
+/**
+ * The report.
+ *
+ * A table, newest first, and then the two things the table alone does not say:
+ * what the whole history added up to in money, and which single commit did the
+ * most damage. "Tokens grew 40%" is a fact; "+310 tokens, Dana, 'add escalation
+ * rules'" is something somebody can go and look at.
+ */
+function printBlame(
+  rows: BlameRow[],
+  context: {
+    repoPath: string;
+    args: Args;
+    config: TrazumConfig;
+    pricing: PricingCatalogue;
+    t: CliMessages;
+    truncated: boolean;
+  },
+): void {
+  const { repoPath, args, config, pricing, t, truncated } = context;
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+
+  const measured = rows.filter((r): r is BlameRow & { tokens: number } => r.tokens !== null);
+  const newest = measured[0];
+  const oldest = measured[measured.length - 1];
+
+  if (boolFlag(args, 'json')) {
+    console.log(
+      JSON.stringify(
+        {
+          path: repoPath,
+          truncated,
+          revisions: rows.map((row) => ({
+            sha: row.revision.sha,
+            author: row.revision.author,
+            date: row.revision.date,
+            subject: row.revision.subject,
+            tokens: row.tokens,
+            delta: row.delta,
+            ...(row.name ? { path: row.name } : {}),
+          })),
+        },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+
+  console.log(`\n${c.bold(t.blame.heading(repoPath, rows.length))}\n`);
+
+  const cols = t.blame.columns;
+  const widths = {
+    when: Math.max(cols.when.length, 10),
+    tokens: Math.max(cols.tokens.length, ...rows.map((r) => (r.tokens === null ? t.blame.goneAt().length : n(r.tokens).length))),
+    change: Math.max(cols.change.length, 7),
+    who: Math.min(20, Math.max(cols.who.length, ...rows.map((r) => r.revision.author.length))),
+  };
+
+  console.log(
+    c.dim(
+      [
+        cols.when.padEnd(widths.when),
+        cols.tokens.padStart(widths.tokens),
+        cols.change.padStart(widths.change),
+        cols.who.padEnd(widths.who),
+        cols.commit,
+      ].join('  '),
+    ),
+  );
+
+  for (const row of rows) {
+    const when = row.revision.date.slice(0, 10);
+    const tokens = row.tokens === null ? c.dim(t.blame.goneAt()) : n(row.tokens);
+    // A rise is the thing worth seeing, so it is the thing that gets colour.
+    // A fall is good news and does not need to shout.
+    const change =
+      row.delta === null
+        ? c.dim(row.tokens === null ? '' : t.blame.addedAt())
+        : row.delta > 0
+          ? c.red(`+${n(row.delta)}`)
+          : row.delta < 0
+            ? c.green(n(row.delta))
+            : c.dim('·');
+
+    const rawTokens = row.tokens === null ? t.blame.goneAt() : n(row.tokens);
+    const rawChange =
+      row.delta === null
+        ? row.tokens === null
+          ? ''
+          : t.blame.addedAt()
+        : row.delta > 0
+          ? `+${n(row.delta)}`
+          : row.delta < 0
+            ? n(row.delta)
+            : '·';
+
+    console.log(
+      [
+        when.padEnd(widths.when),
+        // Padded on the raw text, coloured after: an ANSI escape has length
+        // and padEnd would count it, so every coloured cell would come out
+        // short by exactly the width of the escape sequence.
+        ' '.repeat(Math.max(0, widths.tokens - rawTokens.length)) + tokens,
+        ' '.repeat(Math.max(0, widths.change - rawChange.length)) + change,
+        truncate(row.revision.author, widths.who).padEnd(widths.who),
+        c.dim(`${row.revision.shortSha}  ${truncate(row.revision.subject, 48)}`),
+      ].join('  '),
+    );
+  }
+
+  if (truncated) console.log(`\n${c.dim(t.blame.truncated(rows.length))}`);
+
+  const renamed = rows.find((row) => row.name !== null);
+  if (renamed?.name) console.log(c.dim(t.blame.followedRename(renamed.name)));
+
+  if (newest && oldest && newest !== oldest) {
+    const delta = newest.tokens - oldest.tokens;
+    const pct = oldest.tokens === 0 ? '—' : `${delta >= 0 ? '+' : ''}${((delta / oldest.tokens) * 100).toFixed(0)}%`;
+    console.log(
+      `\n${t.blame.net(n(oldest.tokens), n(newest.tokens), `${delta >= 0 ? '+' : ''}${n(delta)}`, pct)}`,
+    );
+
+    // What the movement costs, priced through the same usage profile every
+    // other command uses — so `--calls` and `--model` mean here what they mean
+    // in `optimize`, and a figure from one is comparable with the other.
+    const usage = usageFrom(args, config, t);
+    const model = pricing.models.find((m) => m.id === usage.model);
+    if (model && delta !== 0) {
+      // Oldest as "before" and newest as "after", so a prompt that grew reports
+      // a negative saving — which is the honest word for it. The sign is turned
+      // into a `+`/`−` on the money below rather than left for the reader.
+      const savings = computeSavings(oldest.tokens, newest.tokens, usage, new Date(), pricing);
+      const monthly = -savings.monthlySavingsUsd;
+      console.log(
+        c.dim(
+          t.blame.netCost(
+            `${monthly >= 0 ? '+' : '−'}${formatUsd(Math.abs(monthly))}`,
+            model.displayName,
+            n(usage.callsPerMonth),
+          ),
+        ),
+      );
+    }
+  }
+
+  // The single worst commit, which is the question the command is really for.
+  const worst = rows
+    .filter((row): row is BlameRow & { delta: number } => row.delta !== null && row.delta > 0)
+    .sort((a, b) => b.delta - a.delta)[0];
+  if (worst) {
+    console.log(`\n${c.bold(t.blame.biggestRise())}`);
+    console.log(
+      `  ${t.blame.biggestRiseDetail(
+        n(worst.delta),
+        worst.revision.author,
+        truncate(worst.revision.subject, 60),
+        worst.revision.shortSha,
+      )}`,
+    );
+  }
+
+  console.log(`\n${c.dim(t.blame.estimateNote())}\n`);
+}
+
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   let locale = localeFromArgv(argv);
@@ -1950,6 +2248,9 @@ async function main(): Promise<void> {
       break;
     case 'rules':
       commandRules(t, locale);
+      break;
+    case 'blame':
+      await commandBlame(args, config, pricing, t);
       break;
     default:
       throw new Error(t.errors.unknownCommand(args.command));

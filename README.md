@@ -462,6 +462,57 @@ typing it. Absent both, growth alone still exits 0.
 `--config <file>` skips the search. `locale` is the one setting the environment
 outranks — see [Languages](#languages).
 
+### Who made this prompt expensive: `trazum blame`
+
+`diff` compares two versions you have in front of you. `blame` asks the question
+a bill raises months later — **when did this get expensive, and what change did
+it?**
+
+```bash
+trazum blame prompts/support.txt --calls 50000
+```
+
+```
+prompts/support.txt — 12 revisions
+
+Date        Tokens   Change  Author       Commit
+2026-08-04   1,204     +310  Dana         9f2ac71  add escalation rules
+2026-07-29     894      +47  Sam          31be0d0  clarify the tone
+2026-07-11     847     +402  Dana         5c1d8e2  paste in the refund policy
+2026-06-02     445    added  Sam          a0417bb  first pass
+
+Net across this history: 445 → 1,204 tokens (+759, +171%).
+That movement is +$1,138.50 a month on Claude Opus 5 at 50,000 calls.
+
+Biggest single increase
+  +402 tokens — Dana, "paste in the refund policy" (5c1d8e2)
+```
+
+Git already knows who changed a prompt and when. What it does not know is that
+three lines added to a system prompt at 50,000 calls a month is a bill rather
+than a diff. This puts both facts on the same line.
+
+`--prompt <name>` tracks one marked prompt inside a source file, so refactoring
+the imports around it is not counted as the prompt growing. Renames are
+followed, because a cost history that restarts the day somebody tidied the
+directory is telling you the wrong story. `--limit` walks further back (20 by
+default, 500 at most — each revision is a `git show` and a token count).
+`--json` gives the same history as data.
+
+It reads history and nothing else: no writes, no network. Running git at all is
+new for this project, so it happens in exactly one module,
+[`git.ts`](packages/cli/src/git.ts), written as though it were the whole attack
+surface — no shell, every path after a `--` separator so a file called
+`--upload-pack=…` stays a filename, object names validated as 40 hex digits
+before they are glued to anything, and a bounded timeout and buffer. Those rules
+are asserted in `security.test.js` rather than promised in a comment.
+
+Paths are taken literally after `--`, for the files whose names are the problem:
+
+```bash
+trazum blame -- --odd-name.txt
+```
+
 ### Did this edit make it worse?
 
 `optimize` answers "how much fat is in this prompt". `diff` answers the

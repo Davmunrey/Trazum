@@ -10,6 +10,45 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+**`trazum blame <file>` — when this prompt got expensive, and what change did it.**
+
+Git already knows who edited a prompt and when. What it does not know is that
+three lines added to a system prompt at 50,000 calls a month is a bill rather
+than a diff. `blame` walks the file's history, counts the tokens at each commit,
+and puts both facts on one line — with the net movement priced through the same
+usage profile `optimize` uses, and the single worst commit named.
+
+`--prompt` tracks one marked prompt inside a source file, so refactoring the
+imports is not read as the prompt growing. Renames are followed. `--limit`,
+`--json`, and the pricing flags behave as everywhere else.
+
+This is the first thing in the repository that runs another program, so it
+happens in one module written as though it were the whole attack surface: no
+shell, every path after a `--` separator, object names validated as 40 hex
+digits before being glued to anything, bounded timeout and buffer, and no
+credential prompting. Six invariants in `security.test.js` assert all of that,
+each checked against a mutant — including that `git.ts` stays the *only* file
+importing `node:child_process`.
+
+**Every command now honours `--` as the end of options.** Without it there was
+no way to name a file called `-x.txt` or `--output=…` on the command line at
+all; the parser saw a flag and refused before the path reached anything.
+
+### Fixed
+
+Two bugs found while building the above, both by running it:
+
+- **A renamed prompt reported no history before the rename.** `nameAt` asked
+  `git log --follow --max-count=1 <sha> -- <today's name>`, which returns nothing
+  for commits where that name did not exist — so every revision before a move
+  showed "not present" while the data sat there under the old name. One `git log`
+  for the whole history now pairs each commit with the path it touched.
+- **`--limit` was ignored.** It was accepted by the command's flag list but never
+  added to `VALUE_FLAGS`, so `--limit 6` parsed as a boolean and the count was
+  the next positional argument. It silently walked the default 20 every time.
+
 ### Security
 
 **`--reorder` had no safety at all outside English and Spanish.** Not a missing

@@ -18,9 +18,20 @@ ${bold('USAGE')}
   trazum check <file|dir|-> --max-tokens <n> [options]
   trazum eval <file> --cases <file> [options]
   trazum diff <before> <after> [options]
+  trazum blame <file> [options]
   trazum where [file]
   trazum models
   trazum rules
+
+${bold('OPTIONS FOR blame')}
+  --limit <n>                 Revisions to walk. Default: 20, maximum 500.
+  --prompt <name>             Track one marked prompt inside a source file, so a
+                              refactor of the imports is not read as growth.
+  --model, --calls,           Price the movement, exactly as in optimize.
+  --output-tokens, --batch
+  --json                      The history as data.
+
+  Paths are taken literally after "--": trazum blame -- --odd-name.txt
 
 ${bold('OPTIONS FOR optimize')}
   --level <safe|aggressive>   How hard the rules push. Default: safe.
@@ -319,6 +330,32 @@ ${bold('EXAMPLES')}
     cacheNote: () =>
       '  Cache: reading costs 10% of input; writing, 125% (5 min) or 200% (1 h).',
     batchNote: () => '  Batch API: 50% off input and output.',
+  },
+
+  blame: {
+    heading: (path, revisions) =>
+      `${path} — ${revisions} ${revisions === 1 ? 'revision' : 'revisions'}`,
+    notARepository: () =>
+      'blame reads a file\'s history from git, and this directory is not inside a repository.',
+    outsideRepository: (path) =>
+      `${path} is outside the repository, so there is no history to read.`,
+    noHistory: (path) => `git has no commits touching ${path}.`,
+    gitMissing: () => 'git is not on PATH, and blame has nothing to read the history from.',
+    columns: { when: 'Date', tokens: 'Tokens', change: 'Change', who: 'Author', commit: 'Commit' },
+    net: (first, last, delta, pct) =>
+      `Net across this history: ${first} → ${last} tokens (${delta}, ${pct}).`,
+    netCost: (amount, model, calls) =>
+      `That movement is ${amount} a month on ${model} at ${calls} calls.`,
+    biggestRise: () => 'Biggest single increase',
+    biggestRiseDetail: (tokens, author, subject, sha) =>
+      `+${tokens} tokens — ${author}, "${subject}" (${sha})`,
+    addedAt: () => 'added',
+    goneAt: () => 'not present',
+    truncated: (shown) =>
+      `Showing the most recent ${shown}. Pass --limit for more.`,
+    followedRename: (from) => `Followed a rename: earlier revisions are ${from}.`,
+    estimateNote: () =>
+      'Token counts are estimates (±15%). The trend is the point; the absolute figures are not.',
   },
 
   rules: {
