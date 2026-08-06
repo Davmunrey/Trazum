@@ -1,5 +1,6 @@
 import { buildAdvisories } from './advisories.js';
 import { getMessages } from './i18n/index.js';
+import { validateLlmEndpoint } from './net.js';
 import type { Locale } from './i18n/types.js';
 import { computeSavings } from './savings.js';
 import { segment } from './segment.js';
@@ -144,6 +145,42 @@ export interface OpenAiCompatibleOptions {
   name?: string;
   maxTokens?: number;
   fetchImpl?: typeof fetch;
+  /**
+   * Allow http and private hosts — localhost, the RFC1918 ranges, the cloud
+   * metadata address.
+   *
+   * **Only when the operator chose the URL.** That is the whole distinction. An
+   * endpoint from `TRAZUM_LLM_BASE_URL` is somebody configuring their own
+   * machine, and pointing it at `http://localhost:11434` for Ollama is the
+   * documented normal case. An endpoint arriving in an HTTP request body is a
+   * stranger naming a host for this server to fetch, which is server-side
+   * request forgery whatever else it is called.
+   */
+  allowInsecure?: boolean;
+}
+
+/**
+ * Refuses an endpoint this provider must not be pointed at.
+ *
+ * At construction rather than at call time, so a provider that can never work
+ * does not exist to be handed around.
+ *
+ * The web route already validates a body-supplied URL before it gets here, and
+ * that stays — it turns the reason code into a sentence in the reader's
+ * language. This is the second lock, at the boundary. `openAiCompatible` is an
+ * exported library function, so "the caller checks" is a promise about every
+ * future caller, including ones outside this repository. CodeQL was right to
+ * call the unguarded fetch server-side request forgery: the filter existed and
+ * SECURITY.md called it "the only thing standing between a public deployment and
+ * the internal network", but it was enforced one level too far out.
+ */
+function refuseUnsafeEndpoint(baseUrl: string, allowInsecure: boolean, name: string): void {
+  const rejection = validateLlmEndpoint(baseUrl, { allowInsecure });
+  if (rejection === null) return;
+  throw new Error(
+    `Provider "${name}" cannot use ${baseUrl}: ${rejection}. ` +
+      'Pass allowInsecure only for an endpoint you configured yourself.',
+  );
 }
 
 /**
@@ -159,7 +196,10 @@ export function openAiCompatible(options: OpenAiCompatibleOptions): LlmProvider 
     name = 'openai-compatible',
     maxTokens = 8192,
     fetchImpl = fetch,
+    allowInsecure = false,
   } = options;
+
+  refuseUnsafeEndpoint(baseUrl, allowInsecure, name);
 
   return {
     name,
@@ -202,6 +242,8 @@ export interface AnthropicProviderOptions {
   baseUrl?: string;
   maxTokens?: number;
   fetchImpl?: typeof fetch;
+  /** See `OpenAiCompatibleOptions.allowInsecure`: only when you chose the URL. */
+  allowInsecure?: boolean;
 }
 
 /** The Claude API directly, via `/v1/messages`. */
@@ -212,7 +254,12 @@ export function anthropicProvider(options: AnthropicProviderOptions): LlmProvide
     baseUrl = 'https://api.anthropic.com',
     maxTokens = 8192,
     fetchImpl = fetch,
+    allowInsecure = false,
   } = options;
+
+  // The same door, one along. This one has a safe default, which is exactly why
+  // it is easy to forget that the option overriding it is a network target.
+  refuseUnsafeEndpoint(baseUrl, allowInsecure, 'anthropic');
 
   return {
     name: 'anthropic',
@@ -301,10 +348,15 @@ export function providerFromEnv(
   const model = env.TRAZUM_LLM_MODEL;
   const baseUrl = env.TRAZUM_LLM_BASE_URL;
 
+  // Trusted because it came from the environment: the operator configuring
+  // their own machine, not a stranger naming a host for this server to fetch.
+  // `http://localhost:11434` for Ollama is the normal case here, and the
+  // documentation promises it works.
   if (kind === 'anthropic') {
     if (!apiKey) return null;
     return anthropicProvider({
       apiKey,
+      allowInsecure: true,
       ...(model ? { model } : {}),
       ...(baseUrl ? { baseUrl } : {}),
     });
@@ -313,6 +365,7 @@ export function providerFromEnv(
   if (!baseUrl || !model) return null;
   return openAiCompatible({
     baseUrl,
+    allowInsecure: true,
     model,
     ...(apiKey ? { apiKey } : {}),
     name: env.TRAZUM_LLM_NAME ?? 'llm',

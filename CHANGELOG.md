@@ -10,6 +10,55 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Security
+
+**The SSRF filter was one level too far out.** `openAiCompatible` fetches whatever
+`baseUrl` it is handed, with no validation of its own. The web route validated a
+body-supplied URL before calling it, and that was the only thing standing between
+a public deployment and the internal network — which `SECURITY.md` claims as a
+property of the filter, not of one caller remembering to use it.
+
+`openAiCompatible` and `anthropicProvider` now validate their own endpoint at
+construction, so a provider that can never safely work does not exist to be
+handed around. `openAiCompatible` is an exported library function: "the caller
+checks" is a promise about every future caller, including ones outside this
+repository.
+
+The distinction that makes this safe without breaking anything is **who chose the
+URL**:
+
+- From `TRAZUM_LLM_BASE_URL` — the operator configuring their own machine.
+  `providerFromEnv` passes `allowInsecure: true`, because `http://localhost:11434`
+  for Ollama is the documented normal case and refusing it would break every
+  local setup.
+- From an HTTP request body — a stranger naming a host for this server to fetch.
+  Validated, and now twice: the route still turns the reason code into a sentence
+  in the reader's language.
+
+Verified by hand across the shapes that matter: the cloud metadata address, plain
+localhost, an RFC1918 address and credentials in the URL are all refused; a public
+https endpoint and an operator-configured Ollama both work.
+
+**`measure-token-band.mjs` followed symlinks.** The script posts corpus file
+contents to the counting endpoint — that is its job, and CodeQL flagging the
+file-to-network flow describes the job rather than a bug. What it made worth
+checking was the edge: `readdir` plus `readFile` follows a symlink, and the corpus
+is a test-fixture folder people drop things into. One named
+`few-shot.txt -> ~/.aws/credentials` would have been posted to an API without a
+word. `walkPrompts` has skipped symlinks since it was written; this script had
+simply never been held to the same rule.
+
+It now refuses a symlink by name and prints every file it is about to send before
+sending any of them. The repository tells people not to paste a private prompt
+into a public issue; posting one to an API deserves the same warning, and consent
+has to be informed to be consent.
+
+**Both alerts had been open on `main` for hours** without appearing on any pull
+request. The CodeQL check on a PR reports *new* alerts in the changed code, so a
+finding on `main` stays green on every subsequent PR — worth knowing about the
+tooling, not just about these two.
+
+
 **The report reads like a report.** Twelve releases added sections to it and
 nobody had looked at the whole thing at once. Printed end to end, three problems
 were obvious:
