@@ -10,6 +10,51 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Changed
+
+**The web app is rebuilt on shadcn/ui, wearing Trazum's own palette.**
+
+The components are shadcn's — Radix underneath, so the model and level pickers
+are properly keyboard-navigable and the toggles announce themselves, which the
+bare `<select>` and `<input type="checkbox">` never did. The colours are the ones
+that were already here: `--primary` derives from `--terracotta`, `--background`
+from `--paper`, and so on down. Taking shadcn's neutrals would have made this
+look like every other application assembled from the same registry, and the
+whole point of theming through CSS variables is that you do not have to.
+
+Two changes are not cosmetic. The result and the diff are **tabs** rather than a
+toggle button whose label named the state you were not in — that button was read
+backwards about half the time. And the endpoint field is the picker the previous
+release made it, now rendered as one.
+
+Animation comes from react-bits' `CountUp`, `AnimatedContent` and `ShinyText`,
+rebuilt on `requestAnimationFrame` and CSS keyframes: upstream builds them on
+`motion`, and one animated integer is not worth a 50 KB dependency in a project
+whose published packages have none. `prefers-reduced-motion` switches all of it
+off in one rule rather than component by component.
+
+### Fixed
+
+**Two bugs in that rework that compiled, typechecked, and were wrong.** Both were
+found by opening the page, not by reading the diff.
+
+The results summary rendered *blank*. `AnimatedContent` waited for an
+`IntersectionObserver`, and a reader who scrolls down to reach the Optimise
+button gets their result mounted above the viewport — so the observer reported
+"not intersecting" and a 214px card sat there at zero opacity. Content that
+appears in response to an action is not scroll-triggered content; it animates on
+mount now, and waiting for the viewport is opt-in.
+
+The Copy and Clear buttons each fell onto their own row. `CardHeader` is a grid,
+so the `flex-row justify-between` on it merged in and did nothing — the two
+utilities are in different groups, so nothing overrode anything and the class
+list read as though it should have worked. They use shadcn's `CardAction` slot,
+which is what the grid has a rule for.
+
+`apps/web` has tests for the first time, and they encode exactly these two: a
+component whose default hides content, and a layout override that is silently
+ignored. Both were checked against a mutant that reintroduces the bug.
+
 ### Fixed
 
 **The alert gate raced the analysis it reads, and failed the merge that fixed
