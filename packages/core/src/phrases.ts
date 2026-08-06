@@ -358,7 +358,7 @@ export const SIMPLE_SIGNALS: readonly string[] = [
 ];
 
 /**
- * Phrases that refer *backwards* to something earlier in the prompt.
+ * Phrases that refer *backwards* to something earlier in the prompt, by language.
  *
  * These are what makes reordering unsafe. "Summarise the text above" is correct
  * where it sits and nonsense if moved in front of the text it points at, so a
@@ -369,50 +369,271 @@ export const SIMPLE_SIGNALS: readonly string[] = [
  * Deliberately generous. A false positive costs a saving that was available; a
  * false negative silently changes what the prompt asks for, which is the one
  * thing this project will not trade for tokens.
+ *
+ * **Grouped by language rather than kept as one flat list, because the flat list
+ * hid a hole.** It held English and Spanish and was applied to every prompt, so
+ * a French, German or Japanese author ran `--reorder` with no protection at all:
+ * every refusal this module is built on silently did not apply to them, and
+ * "Résumez le texte ci-dessus" was hoisted above the text and reported as a
+ * saving. A list per language makes the coverage a thing you can look at, and
+ * lets `UNCOVERED_SCRIPTS` below refuse what is still missing rather than
+ * pretending.
+ *
+ * Every language is matched against every prompt. Language detection would be
+ * one more thing to get wrong, and the cost of checking a French prompt for
+ * German phrases is a missed saving, which is the direction this module errs in
+ * anyway.
  */
-export const BACKWARD_REFERENCES: readonly string[] = [
-  // English
-  'above',
-  'below',
-  'the following',
-  'as follows',
-  'previous',
-  'previously',
-  'earlier',
-  'aforementioned',
-  'that said',
-  'given this',
-  'given the above',
-  'based on this',
-  'based on the above',
-  'from the text',
-  'in the text',
-  'the text provided',
-  'the input above',
-  'the message above',
-  'this input',
-  'this message',
-  'this text',
-  'these examples',
-  'the examples above',
-  // Spanish
-  'arriba',
-  'anterior',
-  'anteriormente',
-  'antes',
-  'a continuación',
-  'lo siguiente',
-  'lo anterior',
-  'mencionado',
-  'dicho esto',
-  'segun lo anterior',
-  'según lo anterior',
-  'del texto',
-  'en el texto',
-  'el texto anterior',
-  'el mensaje anterior',
-  'este texto',
-  'este mensaje',
-  'esta entrada',
-  'estos ejemplos',
+export interface BackwardReferenceSet {
+  /**
+   * Whether a match must sit on a word boundary.
+   *
+   * True for anything written with spaces, so "aboveboard" does not pin a block.
+   * False for Japanese and Chinese, which have no word boundaries at all — the
+   * boundary test asks whether the neighbouring character is a letter, and in
+   * 上記のテキスト it always is, so a boundary-matched CJK phrase would never
+   * fire. A list that cannot match is worse than no list: it reads like cover.
+   */
+  wordBoundaries: boolean;
+  phrases: readonly string[];
+}
+
+export const BACKWARD_REFERENCES_BY_LANGUAGE: Readonly<Record<string, BackwardReferenceSet>> = {
+  en: {
+    wordBoundaries: true,
+    phrases: [
+      'above',
+      'below',
+      'the following',
+      'as follows',
+      'previous',
+      'previously',
+      'earlier',
+      'aforementioned',
+      'that said',
+      'given this',
+      'given the above',
+      'based on this',
+      'based on the above',
+      'from the text',
+      'in the text',
+      'the text provided',
+      'the input above',
+      'the message above',
+      'this input',
+      'this message',
+      'this text',
+      'these examples',
+      'the examples above',
+    ],
+  },
+
+  es: {
+    wordBoundaries: true,
+    phrases: [
+      'arriba',
+      'anterior',
+      'anteriormente',
+      'antes',
+      'a continuación',
+      'lo siguiente',
+      'lo anterior',
+      'mencionado',
+      'dicho esto',
+      'segun lo anterior',
+      'según lo anterior',
+      'del texto',
+      'en el texto',
+      'el texto anterior',
+      'el mensaje anterior',
+      'este texto',
+      'este mensaje',
+      'esta entrada',
+      'estos ejemplos',
+    ],
+  },
+
+  fr: {
+    wordBoundaries: true,
+    phrases: [
+      'ci-dessus',
+      'ci-dessous',
+      'précédent',
+      'précédente',
+      'précédemment',
+      'susmentionné',
+      'mentionné',
+      'plus haut',
+      'suivant',
+      'ce qui suit',
+      'cela dit',
+      'à partir de ce',
+      'du texte',
+      'dans le texte',
+      'le texte ci-dessus',
+      'le message ci-dessus',
+      'ce texte',
+      'ce message',
+      'cette entrée',
+      'ces exemples',
+    ],
+  },
+
+  de: {
+    wordBoundaries: true,
+    phrases: [
+      'oben',
+      'unten',
+      'obige',
+      'obigen',
+      'obenstehend',
+      'vorherige',
+      'vorherigen',
+      'vorher',
+      'zuvor',
+      'genannt',
+      'oben genannten',
+      'folgendes',
+      'wie folgt',
+      'aus dem text',
+      'im text',
+      'der obige text',
+      'diese eingabe',
+      'dieser text',
+      'diese nachricht',
+      'diese beispiele',
+    ],
+  },
+
+  pt: {
+    wordBoundaries: true,
+    phrases: [
+      'acima',
+      'abaixo',
+      'anterior',
+      'anteriormente',
+      'antes',
+      'mencionado',
+      'supracitado',
+      'a seguir',
+      'o seguinte',
+      'dito isto',
+      'do texto',
+      'no texto',
+      'o texto acima',
+      'a mensagem acima',
+      'este texto',
+      'esta mensagem',
+      'esta entrada',
+      'estes exemplos',
+    ],
+  },
+
+  it: {
+    wordBoundaries: true,
+    phrases: [
+      'sopra',
+      'sotto',
+      'precedente',
+      'precedentemente',
+      'in precedenza',
+      'suddetto',
+      'menzionato',
+      'quanto segue',
+      'come segue',
+      'detto questo',
+      'dal testo',
+      'nel testo',
+      'il testo sopra',
+      'il messaggio sopra',
+      'questo testo',
+      'questo messaggio',
+      'questi esempi',
+    ],
+  },
+
+  nl: {
+    wordBoundaries: true,
+    phrases: [
+      'hierboven',
+      'hieronder',
+      'bovenstaande',
+      'vorige',
+      'eerder',
+      'genoemde',
+      'het volgende',
+      'als volgt',
+      'uit de tekst',
+      'in de tekst',
+      'deze tekst',
+      'dit bericht',
+      'deze invoer',
+      'deze voorbeelden',
+    ],
+  },
+
+  ja: {
+    // No word boundaries: see `wordBoundaries` above.
+    wordBoundaries: false,
+    phrases: [
+      '上記',
+      '下記',
+      '前述',
+      '先ほど',
+      '以上の',
+      '上のテキスト',
+      'このテキスト',
+      'このメッセージ',
+      'この入力',
+      'これらの例',
+      '次のとおり',
+    ],
+  },
+
+  zh: {
+    wordBoundaries: false,
+    phrases: [
+      '上述',
+      '上面',
+      '前面',
+      '以上',
+      '前述',
+      '如下',
+      '下面',
+      '上文',
+      '该文本',
+      '这段文本',
+      '这条消息',
+      '这些示例',
+    ],
+  },
+};
+
+/**
+ * Every phrase, flattened. Kept for callers that only need the words.
+ */
+export const BACKWARD_REFERENCES: readonly string[] = Object.values(
+  BACKWARD_REFERENCES_BY_LANGUAGE,
+).flatMap((set) => set.phrases);
+
+/**
+ * Scripts this module has no backward-reference phrases for.
+ *
+ * The point of naming them is that the alternative is what used to happen:
+ * rearranging a Russian or Arabic prompt with nothing to stop it, and calling
+ * the result a saving. `reorderForCache` refuses when it sees one of these,
+ * which turns a silent hazard into a message somebody can act on — and into a
+ * short list of pull requests, since adding a language is adding an array.
+ *
+ * Matched on the script, not the language: the question is not "which language
+ * is this" but "is there any chance my phrase lists apply to it".
+ */
+export const UNCOVERED_SCRIPTS: ReadonlyArray<{ name: string; pattern: RegExp }> = [
+  { name: 'Cyrillic', pattern: /\p{Script=Cyrillic}/u },
+  { name: 'Arabic', pattern: /\p{Script=Arabic}/u },
+  { name: 'Hebrew', pattern: /\p{Script=Hebrew}/u },
+  { name: 'Hangul', pattern: /\p{Script=Hangul}/u },
+  { name: 'Devanagari', pattern: /\p{Script=Devanagari}/u },
+  { name: 'Thai', pattern: /\p{Script=Thai}/u },
+  { name: 'Greek', pattern: /\p{Script=Greek}/u },
 ];

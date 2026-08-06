@@ -6,6 +6,16 @@ import {
   estimateTokens,
   reorderForCache,
 } from '../dist/index.js';
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+// Straight from the module rather than the public entry point: the coverage
+// table is an implementation detail, and these tests are about keeping it
+// honest, not about promising it to anyone.
+import { BACKWARD_REFERENCES_BY_LANGUAGE, UNCOVERED_SCRIPTS } from '../dist/phrases.js';
+
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
 /**
  * Reordering is the largest saving Trazum can make and the only transformation
@@ -271,5 +281,183 @@ Input: {{x}}
     const prompt = `Agent.\n\nInput: {{x}}\n\nSee https://example.com/a?b=c&d=e for the catalogue.`;
     const r = reorderForCache(prompt);
     assert.match(r.text, /https:\/\/example\.com\/a\?b=c&d=e/);
+  });
+});
+
+describe('the refusals apply to every language, not just the two', () => {
+  /**
+   * The hole this suite was blind to for its whole existence.
+   *
+   * `BACKWARD_REFERENCES` held English and Spanish and was applied to every
+   * prompt, so a French, German, Portuguese, Italian, Dutch, Japanese or
+   * Chinese author ran `--reorder` with none of the protection this module is
+   * built out of. Every test above passed. They only ever asked the question in
+   * two languages.
+   *
+   * Each fixture below is the same shape: an instruction that points backwards,
+   * sitting after the placeholder, where moving it would produce nonsense.
+   */
+  const PINNED = {
+    fr: 'Vous êtes un agent.\n\nMessage : {{message}}\n\nRésumez le texte ci-dessus en une phrase.\n',
+    de: 'Du bist ein Agent.\n\nNachricht: {{message}}\n\nFasse den Text oben in einem Satz zusammen.\n',
+    pt: 'Você é um agente.\n\nMensagem: {{message}}\n\nResuma o texto acima numa frase.\n',
+    it: 'Sei un agente.\n\nMessaggio: {{message}}\n\nRiassumi il testo sopra in una frase.\n',
+    nl: 'Je bent een agent.\n\nBericht: {{message}}\n\nVat de tekst hierboven samen in één zin.\n',
+    ja: 'あなたはエージェントです。\n\nメッセージ: {{message}}\n\n上記のテキストを一文で要約してください。\n',
+    zh: '你是一个客服。\n\n消息：{{message}}\n\n请用一句话总结上述文本。\n',
+  };
+
+  for (const [language, prompt] of Object.entries(PINNED)) {
+    it(`will not hoist a backward reference written in ${language}`, () => {
+      const result = reorderForCache(prompt);
+
+      assert.equal(result.moved.length, 0, `a ${language} backward reference was moved`);
+      assert.equal(result.text, prompt, 'the prompt came back changed');
+      assert.equal(result.declined[0]?.reason, 'backward-reference');
+      assert.ok(result.declined[0]?.phrase, 'the refusal does not name the phrase it found');
+    });
+  }
+
+  it('still moves what is genuinely safe in those languages', () => {
+    // The other half. A guard that refuses everything is not a guard, it is an
+    // off switch, and these tests would pass just as well with one.
+    const safe =
+      'Vous êtes un agent du service client.\n\nMessage : {{message}}\n\n' +
+      'Répondez toujours en français.\n\nGardez un ton formel.\n';
+    const result = reorderForCache(safe);
+
+    assert.equal(result.moved.length, 2, 'nothing moved in a French prompt with no reference');
+    assert.ok(result.text.indexOf('Répondez toujours') < result.text.indexOf('{{message}}'));
+  });
+
+  it('matches CJK without word boundaries, which would never fire', () => {
+    // 上記 sits between two kanji. The boundary test asks whether the
+    // neighbouring character is a letter, and in Japanese it always is — so a
+    // boundary-matched CJK list reads like cover and provides none.
+    const result = reorderForCache(PINNED.ja);
+    assert.equal(result.declined[0]?.phrase, '上記');
+  });
+
+  it('does not let a Latin phrase match inside a longer word', () => {
+    // The other direction, still true: word boundaries stay on for languages
+    // that have them.
+    const prompt = 'Agent.\n\nInput: {{x}}\n\nKeep everything aboveboard and be brief.\n';
+    const result = reorderForCache(prompt);
+    assert.equal(result.moved.length, 1, '"aboveboard" pinned a block');
+  });
+});
+
+describe('a script with no phrase list is refused, not guessed at', () => {
+  /**
+   * The fourth refusal. Adding seven languages does not cover Russian, Arabic,
+   * Hebrew, Korean, Hindi, Thai or Greek — and the previous behaviour for those
+   * was to rearrange freely and report a saving, because there was nothing to
+   * recognise a backward reference with. Refusing is the honest answer until
+   * somebody adds the array.
+   */
+  const RUSSIAN =
+    'Вы агент поддержки.\n\nСообщение: {{message}}\n\nВсегда отвечайте по-русски.\n';
+
+  it('moves nothing and says which script stopped it', () => {
+    const result = reorderForCache(RUSSIAN);
+
+    assert.equal(result.moved.length, 0);
+    assert.equal(result.text, RUSSIAN, 'the prompt was rearranged anyway');
+    assert.equal(result.declined[0]?.reason, 'uncovered-script');
+    assert.equal(result.declined[0]?.script, 'Cyrillic');
+  });
+
+  it('refuses on a single foreign instruction inside an English prompt', () => {
+    // The dangerous case rather than the obvious one: a prompt that is mostly
+    // English with one instruction Trazum cannot read is exactly where a missed
+    // reference does damage.
+    const mixed =
+      'You are a support agent.\n\nMessage: {{message}}\n\nAlways answer in English.\n\n' +
+      'Подведите итог текста выше.\n';
+    const result = reorderForCache(mixed);
+
+    assert.equal(result.moved.length, 0);
+    assert.equal(result.declined[0]?.reason, 'uncovered-script');
+  });
+
+  it('leaves covered prompts alone', () => {
+    // The negative control. If the script check were too eager — matching, say,
+    // an accented Latin character — it would switch reordering off for most of
+    // Europe and every test above would still pass.
+    const french =
+      'Vous êtes un agent.\n\nMessage : {{message}}\n\nRépondez toujours en français.\n';
+    const result = reorderForCache(french);
+    assert.equal(
+      result.declined.find((d) => d.reason === 'uncovered-script'),
+      undefined,
+      'French was treated as an uncovered script',
+    );
+    assert.equal(result.moved.length, 1);
+  });
+});
+
+describe('the documented coverage is the actual coverage', () => {
+  it('README names every language the phrase table has, and no others', () => {
+    // The claim in the README is a promise to somebody deciding whether Trazum
+    // is safe for their prompts. A language added to the table and not to the
+    // documentation is a capability nobody finds; one documented and not added
+    // is the exact failure this whole change is about, restated in prose.
+    const names = {
+      en: 'English',
+      es: 'Spanish',
+      fr: 'French',
+      de: 'German',
+      pt: 'Portuguese',
+      it: 'Italian',
+      nl: 'Dutch',
+      ja: 'Japanese',
+      zh: 'Chinese',
+    };
+    const readme = readFileSync(join(repoRoot, 'README.md'), 'utf8');
+    const documented = readme.slice(
+      readme.indexOf('A block that refers backwards stays put'),
+      readme.indexOf('Only whole blocks move'),
+    );
+    assert.ok(documented.length > 0, 'the refusal list has moved in the README');
+
+    for (const code of Object.keys(BACKWARD_REFERENCES_BY_LANGUAGE)) {
+      const name = names[code];
+      assert.ok(name, `phrases.ts has a language "${code}" this test does not know about`);
+      assert.ok(documented.includes(name), `${name} is in phrases.ts but not in the README`);
+    }
+    for (const [code, name] of Object.entries(names)) {
+      if (documented.includes(name)) {
+        assert.ok(
+          BACKWARD_REFERENCES_BY_LANGUAGE[code],
+          `the README promises ${name} and phrases.ts has no list for it`,
+        );
+      }
+    }
+  });
+
+  it('every phrase list is lowercase, since matching lowercases the prompt', () => {
+    // A capitalised entry can never match. It would sit in the list looking like
+    // coverage and provide none, which is the failure mode this file exists to
+    // stop being possible.
+    const wrong = [];
+    for (const [code, set] of Object.entries(BACKWARD_REFERENCES_BY_LANGUAGE)) {
+      for (const phrase of set.phrases) {
+        if (phrase !== phrase.toLowerCase()) wrong.push(`${code}: ${phrase}`);
+      }
+    }
+    assert.deepEqual(wrong, [], `these phrases can never match:\n  ${wrong.join('\n  ')}`);
+  });
+
+  it('no uncovered script overlaps a language that is covered', () => {
+    // If a covered language's phrases used a script on the uncovered list, that
+    // language would be refused outright and its phrases would be dead code.
+    const offenders = [];
+    for (const [code, set] of Object.entries(BACKWARD_REFERENCES_BY_LANGUAGE)) {
+      for (const phrase of set.phrases) {
+        const hit = UNCOVERED_SCRIPTS.find((s) => s.pattern.test(phrase));
+        if (hit) offenders.push(`${code}: "${phrase}" is ${hit.name}`);
+      }
+    }
+    assert.deepEqual(offenders, [], offenders.join('; '));
   });
 });

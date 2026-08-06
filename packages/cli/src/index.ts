@@ -438,9 +438,11 @@ function printReport(
         const excerpt = truncate(d.text.trim().replace(/\s+/g, ' '), 48);
         console.log(
           `    ${c.dim(
-            d.reason === 'backward-reference'
-              ? t.report.reorderDeclinedRef(d.phrase ?? '', excerpt)
-              : t.report.reorderDeclinedAfter(excerpt),
+            d.reason === 'uncovered-script'
+              ? t.report.reorderDeclinedScript(d.script ?? '')
+              : d.reason === 'backward-reference'
+                ? t.report.reorderDeclinedRef(d.phrase ?? '', excerpt)
+                : t.report.reorderDeclinedAfter(excerpt),
           )}`,
         );
       }

@@ -246,7 +246,9 @@ ${bold('EXAMPLES')}
     tokensOnlyWhy: (host) =>
       `${host} bills by subscription, so there is no bill to reduce and no monthly figure to print.`,
     tokensOnlyAsked: () => 'Costs hidden because you asked for tokens only.',
-    tokensSaved: (tokens) => `${tokens} tokens back, every call.`,
+    // `tokens` arrives already formatted for the locale, so the singular is
+    // decided on the string rather than on a number that is no longer here.
+    tokensSaved: (tokens) => `${tokens} token${tokens === '1' ? '' : 's'} back, every call.`,
     windowUse: (before, after, model, window) =>
       `Context window: ${before} → ${after} of ${model}'s ${window} tokens — room the conversation gets instead.`,
     tokensOnlyCost: () => 'Pass --cost if this prompt is bound for a metered API.',
@@ -257,9 +259,13 @@ ${bold('EXAMPLES')}
       `Moved ${blocks} ${blocks === 1 ? 'block' : 'blocks'} (~${tokens} tokens) ahead of the first placeholder.`,
     reorderPrefix: (before, after) => `Cacheable prefix ${before} → ${after} tokens.`,
     reorderDeclined: (count) =>
-      `Left ${count} ${count === 1 ? 'block' : 'blocks'} where they were:`,
+      count === 1 ? 'Left 1 block where it was:' : `Left ${count} blocks where they were:`,
     reorderDeclinedRef: (phrase, excerpt) => `refers back ("${phrase}"): ${excerpt}`,
     reorderDeclinedAfter: (excerpt) => `after a block that had to stay: ${excerpt}`,
+    reorderDeclinedScript: (script) =>
+      `this prompt is written in ${script}, and Trazum has no backward-reference phrases ` +
+      `for it. It cannot tell "summarise the text above" from an instruction that is safe ` +
+      `to move, so it moved nothing. Adding a language is adding an array to phrases.ts.`,
     reorderDeclinedMore: (count) => `…and ${count} more, in the output file.`,
     reorderPiped: (moved, tokens, declined) => {
       const head =

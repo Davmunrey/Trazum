@@ -696,9 +696,11 @@ export function Optimizer({ locale, t }: { locale: Locale; t: WebMessages }) {
                         <ul className="m-0 mt-2.5 list-none p-0 text-[13px] text-muted-foreground">
                           {reorderResult.declined.slice(0, 3).map((d, i) => (
                             <li key={i} className="mt-1 first:mt-0">
-                              {d.reason === 'backward-reference'
-                                ? t.results.reorderDeclinedRef(d.phrase ?? '', excerpt(d.text))
-                                : t.results.reorderDeclinedAfter(excerpt(d.text))}
+                              {d.reason === 'uncovered-script'
+                                ? t.results.reorderDeclinedScript(d.script ?? '')
+                                : d.reason === 'backward-reference'
+                                  ? t.results.reorderDeclinedRef(d.phrase ?? '', excerpt(d.text))
+                                  : t.results.reorderDeclinedAfter(excerpt(d.text))}
                             </li>
                           ))}
                           {reorderResult.declined.length > 3 && (

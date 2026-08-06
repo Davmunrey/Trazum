@@ -1,4 +1,4 @@
-import { BACKWARD_REFERENCES } from './phrases.js';
+import { BACKWARD_REFERENCES_BY_LANGUAGE, UNCOVERED_SCRIPTS } from './phrases.js';
 import { segment } from './segment.js';
 import { estimateTokens } from './tokenizer.js';
 import type { TokenCounter } from './types.js';
@@ -44,9 +44,11 @@ export interface DeclinedBlock {
    * Why it stayed. `backward-reference` names the phrase found; `after-pinned`
    * means an earlier block was pinned and moving this one would reorder the two.
    */
-  reason: 'backward-reference' | 'after-pinned';
+  reason: 'backward-reference' | 'after-pinned' | 'uncovered-script';
   /** The phrase that pinned it, for `backward-reference`. */
   phrase?: string;
+  /** The script with no phrase list, for `uncovered-script`. */
+  script?: string;
 }
 
 export interface ReorderResult {
@@ -111,20 +113,51 @@ const hasPlaceholder = (text: string): boolean =>
 /**
  * The backward reference in a block, if any.
  *
- * Word-boundary matched so "aboveboard" does not pin a block, and lowercased on
- * both sides because a prompt written in title case is still a prompt.
+ * Lowercased on both sides because a prompt written in title case is still a
+ * prompt. Word-boundary matched for languages written with spaces, so
+ * "aboveboard" does not pin a block — and *not* for Japanese and Chinese, where
+ * the neighbouring character is always a letter and a boundary-matched phrase
+ * could never fire.
+ *
+ * Every language's list runs against every prompt. Detecting the language first
+ * would be one more thing to get wrong, and the cost of testing a French prompt
+ * against German phrases is a saving not taken, which is the direction this
+ * module errs in on purpose.
  */
 function backwardReference(text: string): string | undefined {
   const haystack = text.toLowerCase();
-  for (const phrase of BACKWARD_REFERENCES) {
-    const index = haystack.indexOf(phrase);
-    if (index === -1) continue;
-    const before = haystack[index - 1];
-    const after = haystack[index + phrase.length];
-    const boundary = (c: string | undefined): boolean => c === undefined || !/[\p{L}\p{N}]/u.test(c);
-    if (boundary(before) && boundary(after)) return phrase;
+  const boundary = (c: string | undefined): boolean =>
+    c === undefined || !/[\p{L}\p{N}]/u.test(c);
+
+  for (const set of Object.values(BACKWARD_REFERENCES_BY_LANGUAGE)) {
+    for (const phrase of set.phrases) {
+      const index = haystack.indexOf(phrase);
+      if (index === -1) continue;
+      if (!set.wordBoundaries) return phrase;
+      if (boundary(haystack[index - 1]) && boundary(haystack[index + phrase.length])) {
+        return phrase;
+      }
+    }
   }
   return undefined;
+}
+
+/**
+ * A script the phrase lists do not cover, if the prompt is written in one.
+ *
+ * The fourth refusal, and the one that exists because of what the other three
+ * were quietly not doing. Every safety argument in this module rests on
+ * recognising a backward reference, and for a Russian, Arabic or Korean prompt
+ * there was nothing to recognise it with — so `--reorder` rearranged freely and
+ * called it a saving. Refusing is the honest answer until the list exists.
+ *
+ * Deliberately triggered by a *single* character rather than by the prompt being
+ * mostly that script. A prompt in English with one Cyrillic instruction in it is
+ * exactly the case where a missed reference does damage, and the cost of being
+ * wrong here is a saving the author can still take by hand.
+ */
+function uncoveredScript(text: string): string | undefined {
+  return UNCOVERED_SCRIPTS.find((script) => script.pattern.test(text))?.name;
 }
 
 export interface ReorderOptions {
@@ -168,6 +201,17 @@ export function reorderForCache(prompt: string, options: ReorderOptions = {}): R
 
   const offset = firstPlaceholderOffset(prompt);
   if (offset === null) return unchanged();
+
+  // Before anything else: if the prompt is written in a script whose backward
+  // references this module cannot recognise, none of the refusals below mean
+  // anything. Nothing moves, and the report says which script and why.
+  const script = uncoveredScript(prompt);
+  if (script !== undefined) {
+    return {
+      ...unchanged(),
+      declined: [{ text: prompt.slice(offset), reason: 'uncovered-script', script }],
+    };
+  }
 
   // The placeholder's own line stays with the content after it: "Customer
   // message: {{message}}" is one unit, and splitting it would strand the label.
