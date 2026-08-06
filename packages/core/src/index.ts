@@ -1,5 +1,12 @@
 export * from './types.js';
 export { estimateTokens, countTokensAnthropic } from './tokenizer.js';
+export { SUGGEST_SYSTEM_PROMPT, applyRewrites, rejectionText, suggestRewrites } from './suggest.js';
+export type {
+  RejectedReason,
+  RewriteSuggestion,
+  SuggestOptions,
+  SuggestResult,
+} from './suggest.js';
 export type { AsyncTokenCounter, AnthropicCounterOptions } from './tokenizer.js';
 export {
   MODELS,

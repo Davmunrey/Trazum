@@ -80,6 +80,16 @@ export const en: CoreMessages = {
       `The result keeps only ${retainedPct}% of the tokens. That looks like a summary rather than compression: review it by hand before using it.`,
   },
 
+  suggest: {
+    'not-found': () =>
+      'the quoted phrase is not in the prompt — the model paraphrased what it was copying',
+    'touches-protected': () =>
+      'it would edit code, a URL, a placeholder or a tag, which are copied verbatim',
+    'introduces-protected': () => 'the replacement adds a placeholder or URL that was not there',
+    'no-saving': () => 'it is no shorter than what it replaces',
+    overlaps: () => 'it shares text with a suggestion already accepted',
+  },
+
   advisories: {
     contextOverflow: ({ tokens, modelName, contextWindow }) => ({
       title: 'The prompt does not fit in the context window',

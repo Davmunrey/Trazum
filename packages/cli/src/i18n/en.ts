@@ -41,6 +41,12 @@ ${bold('OPTIONS FOR optimize')}
   --cache-hit-rate <0-1>      Estimated cache hit rate. Default: ${d.cacheHitRate}.
   --batch                     The work tolerates latency (Batch API, 50% off).
   --disable <id,id>           Turn off specific rules (see "trazum rules").
+  --suggest                   Ask the LLM for phrase-level rewrites and list them
+                              with what each saves. Changes nothing on its own —
+                              every proposal is checked against your prompt first
+                              and dropped if it does not survive.
+  --apply-suggestions         Take them. Only with --suggest; alone it is an error
+                              rather than a flag that runs and does nothing.
   --reorder                   Move stable instructions ahead of the first placeholder,
                               so prompt caching can reach them. This MOVES text rather
                               than deleting it: read the diff and decide whether the
@@ -196,6 +202,9 @@ ${bold('EXAMPLES')}
     unknownRuleInDisable: (id) => `Unknown rule in --disable: "${id}". Full list: trazum rules`,
     unknownCommand: (command) => `Unknown command: "${command}". Try "trazum --help".`,
     missingInputFile: () => 'Missing input file. Use "-" to read from standard input.',
+    applyNeedsSuggest: () =>
+      '--apply-suggestions has nothing to apply without --suggest. On its own it would have '
+      + 'run silently and changed nothing, which is not an answer.',
     llmNotConfigured: () =>
       'You asked for --llm but no provider is configured.\n' +
       'Set TRAZUM_LLM_BASE_URL and TRAZUM_LLM_MODEL (OpenAI-compatible endpoint),\n' +
@@ -288,6 +297,17 @@ ${bold('EXAMPLES')}
       return `trazum: ${head}${tail}. Run without redirecting output for the reasons.`;
     },
     reorderNothing: () => 'Nothing could safely move.',
+    suggestHeading: () => 'Suggested rewrites',
+    suggestOffered: (count, tokens) =>
+      `${count} ${count === 1 ? 'phrase' : 'phrases'} could say the same in ~${tokens} fewer tokens:`,
+    suggestApplied: (count, tokens) =>
+      `Applied ${count} ${count === 1 ? 'rewrite' : 'rewrites'} (~${tokens} tokens). Read the diff.`,
+    suggestNothing: (provider, model) =>
+      `${provider} (${model}) found nothing worth rewriting that the rules had not already taken.`,
+    suggestRejected: (count) =>
+      `${count} ${count === 1 ? 'proposal' : 'proposals'} did not survive checking against your prompt.`,
+    suggestRemoved: () => '(removed)',
+    suggestHowToApply: () => 'Nothing was changed. Add --apply-suggestions to take them.',
     reorderReview: () =>
       'Read the diff: this moved text rather than deleting it, so the question is whether the order mattered.',
     diffTooLarge: (lines, max) =>
