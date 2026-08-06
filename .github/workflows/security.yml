@@ -98,3 +98,53 @@ jobs:
       - name: Report application advisories
         if: always()
         run: npm audit || true
+
+  # ------------------------------------------------------------------------
+  # The gap the other jobs leave.
+  #
+  # CodeQL's pull-request check reports *new alerts in the code that pull
+  # request changed*. A finding already open on `main` is not new, so every
+  # later pull request goes green beside it — which is exactly what happened
+  # here: eleven consecutive green runs while a critical SSRF alert sat open.
+  #
+  # Green on a pull request is not green on the repository, and nobody should
+  # have to remember to open the Code scanning page to learn the difference.
+  # ------------------------------------------------------------------------
+  open-alerts:
+    name: No open alerts on main
+    runs-on: ubuntu-latest
+    # Only on main and on the weekly run. On a pull request this would report
+    # the base branch's state, failing somebody's unrelated work for a finding
+    # they did not introduce and cannot fix from their branch.
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      # Read-only: the job reports, it never resolves or dismisses anything.
+      security-events: read
+    steps:
+      - name: Fail if main carries an open high-severity alert
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          # `severity` is the query's own rating; `security_severity_level` is
+          # the CVSS-style one that "Critical" in the UI comes from. Reading
+          # only the first would have let today's critical through as "error".
+          alerts=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/code-scanning/alerts?state=open&ref=refs/heads/main&per_page=100" \
+            --jq '[.[] | select((.rule.security_severity_level // "") == "critical"
+                             or (.rule.security_severity_level // "") == "high")]')
+
+          count=$(echo "$alerts" | jq 'length')
+          if [ "$count" -eq 0 ]; then
+            echo "No open critical or high alerts on main."
+            exit 0
+          fi
+
+          echo "::error::main has $count open high-severity code-scanning alert(s)."
+          echo "$alerts" | jq -r '.[] | "  #\(.number) \(.rule.security_severity_level | ascii_upcase)  \(.rule.id)\n      \(.most_recent_instance.location.path):\(.most_recent_instance.location.start_line)"'
+          echo
+          echo "Fix them, or dismiss with a reason at:"
+          echo "  https://github.com/${GITHUB_REPOSITORY}/security/code-scanning?query=is%3Aopen"
+          exit 1

@@ -10,6 +10,38 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Security
+
+**A job now fails the build when `main` carries an open critical or high alert.**
+
+CodeQL's pull-request check reports *new alerts in the code that pull request
+changed*. A finding already open on `main` is not new, so every later pull
+request goes green beside it — which is exactly what happened: **eleven
+consecutive green runs with a critical SSRF alert open the whole time**, found
+only because somebody opened the Code scanning page and looked.
+
+Green on a pull request is not green on the repository, and nobody should have to
+remember the difference.
+
+Four decisions in the job worth stating:
+
+- **It reads `security_severity_level`, not `severity`.** The first is the
+  CVSS-style rating the UI shows as "Critical"; the second is the query's own,
+  where today's critical was merely `error`. Reading only the second would have
+  let it through.
+- **`security-events: read`.** A job that could dismiss an alert is a job that
+  could dismiss the alert it was written to surface.
+- **Skipped on pull requests.** There it would report the base branch's state and
+  fail somebody's unrelated work for a finding they cannot fix from their branch.
+- **It can actually fail.** The `jq` filter was checked against a realistic
+  payload — one critical, one medium, one with no severity field at all — before
+  it was committed. A gate that cannot fail is worse than no gate, because it
+  looks like coverage.
+
+`SECURITY.md` gains the row, and two tests assert the job still asks the right
+question and stays read-only.
+
+
 **`optimize` pointed at a source file used to rewrite your code.** Handed
 `src/prompts.ts` it optimised the *whole file* — imports, `const client = new
 OpenAI();`, all of it — counted 83 tokens of code the model would never see, and
