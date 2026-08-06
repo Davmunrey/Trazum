@@ -747,6 +747,52 @@ describe('the packaged Action', () => {
     assert.match(job, /exit 1/, 'the job cannot fail');
   });
 
+  it('the alert gate waits for the analysis it reads', () => {
+    // It did not, and the first merge that fixed both alerts failed because of
+    // it. The two jobs started together, the gate finished in one second, and
+    // CodeQL uploaded a full minute later — so the gate judged the merge
+    // against the state of the commit before it and printed line numbers that
+    // no longer existed. A gate racing its own input is not a gate; worse, a
+    // red build for a fix that worked is how people learn to re-run until
+    // green.
+    const security = readFileSync(join(repoRoot, '.github/workflows/security.yml'), 'utf8');
+
+    /**
+     * The job with its YAML comments removed.
+     *
+     * The first version of this test asserted `/needs:\s*codeql/` against the
+     * raw text and passed with the dependency deleted, because the comment
+     * explaining the dependency says `needs: codeql` in prose. That is the
+     * fourth time in this repository a test has matched the sentence describing
+     * an invariant instead of the invariant, and it is the reason for the
+     * mutant below: a rule that is only asserted positively cannot tell you
+     * whether it can fail.
+     */
+    const jobOf = (yaml) =>
+      yaml
+        .slice(yaml.indexOf('open-alerts:'))
+        .split('\n')
+        .filter((line) => !/^\s*#/.test(line))
+        .join('\n');
+
+    assert.match(jobOf(security), /^\s*needs:\s*codeql\s*$/m, 'the gate can run before the analysis it reads');
+
+    // The mutant: the same assertion has to fail with the line taken out.
+    const withoutNeeds = security.replace(/^\s*needs:\s*codeql\s*$/m, '');
+    assert.doesNotMatch(
+      jobOf(withoutNeeds),
+      /^\s*needs:\s*codeql\s*$/m,
+      'the assertion passes without the dependency — it is matching prose again',
+    );
+
+    // Ordering is necessary and not sufficient: the alert index settles after
+    // the upload returns. The job checks that every row it is about to report
+    // belongs to the commit being built, rather than trusting the timing.
+    const code = jobOf(security);
+    assert.match(code, /most_recent_instance\.commit_sha/, 'the gate does not check freshness');
+    assert.match(code, /GITHUB_SHA/);
+  });
+
   it('the alert gate reports and never resolves', () => {
     // Read-only on purpose: a job that could dismiss an alert is a job that
     // could dismiss the alert it was written to surface.

@@ -117,6 +117,12 @@ jobs:
     # the base branch's state, failing somebody's unrelated work for a finding
     # they did not introduce and cannot fix from their branch.
     if: github.event_name != 'pull_request'
+    # The gate reads alert state; `codeql` is what produces it. Without this the
+    # two started together and the gate finished in one second, a full minute
+    # before the analysis uploaded — so the merge that fixed both alerts was
+    # judged against the state of the commit before it, and failed citing line
+    # numbers that no longer existed. A gate racing its own input is not a gate.
+    needs: codeql
     permissions:
       contents: read
       # Read-only: the job reports, it never resolves or dismisses anything.
@@ -131,10 +137,36 @@ jobs:
           # `severity` is the query's own rating; `security_severity_level` is
           # the CVSS-style one that "Critical" in the UI comes from. Reading
           # only the first would have let today's critical through as "error".
-          alerts=$(gh api \
-            "repos/${GITHUB_REPOSITORY}/code-scanning/alerts?state=open&ref=refs/heads/main&per_page=100" \
-            --jq '[.[] | select((.rule.security_severity_level // "") == "critical"
-                             or (.rule.security_severity_level // "") == "high")]')
+          query='[.[] | select((.rule.security_severity_level // "") == "critical"
+                            or (.rule.security_severity_level // "") == "high")]'
+          endpoint="repos/${GITHUB_REPOSITORY}/code-scanning/alerts?state=open&ref=refs/heads/main&per_page=100"
+
+          # `needs: codeql` means the analysis has uploaded, but the alert index
+          # settles a moment later. An alert still open on this commit carries
+          # this commit's SHA on its most recent instance; one carrying an older
+          # SHA is a row that has not been reconciled yet, and reporting it would
+          # name a finding at a line that may no longer exist.
+          fresh=false
+          for attempt in 1 2 3 4 5 6; do
+            alerts=$(gh api "$endpoint" --jq "$query")
+            stale=$(echo "$alerts" | jq --arg sha "$GITHUB_SHA" \
+              '[.[] | select(.most_recent_instance.commit_sha != $sha)] | length')
+            if [ "$stale" -eq 0 ]; then
+              fresh=true
+              break
+            fi
+            echo "Alert index has not caught up with ${GITHUB_SHA} yet ($stale row(s)); attempt ${attempt}/6."
+            sleep 15
+          done
+
+          # Fail rather than pass, because a gate that cannot read the current
+          # state has no business reporting green. With `needs` above this
+          # should not happen; if it starts happening, the loop is too short and
+          # that is worth knowing rather than papering over.
+          if [ "$fresh" != true ]; then
+            echo "::error::Could not read alert state for ${GITHUB_SHA} after 90s of retries."
+            exit 1
+          fi
 
           count=$(echo "$alerts" | jq 'length')
           if [ "$count" -eq 0 ]; then

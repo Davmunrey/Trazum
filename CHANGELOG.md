@@ -10,6 +10,26 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**The alert gate raced the analysis it reads, and failed the merge that fixed
+both alerts.** `open-alerts` and `codeql` started together: the gate finished one
+second in, CodeQL uploaded a minute later, so the gate judged the merge against
+the state of the commit before it and reported two findings at line numbers that
+no longer existed. A red build for a fix that worked is how people learn to
+re-run until green.
+
+It now runs `needs: codeql`, and — because the alert index settles after the
+upload returns — checks that every row it is about to report carries the SHA
+being built, retrying for up to 90 seconds and failing rather than passing if it
+cannot read current state. A gate that cannot see the present has no business
+reporting green.
+
+The test for it caught nothing at first: `/needs:\s*codeql/` matched the comment
+explaining the dependency. Fourth time in this repository. It strips YAML
+comments now and asserts against a mutant with the line deleted, so "can this
+assertion fail?" is answered rather than assumed.
+
 ### Security
 
 **CodeQL reopened the SSRF alert on the fix below, and it was right a third
