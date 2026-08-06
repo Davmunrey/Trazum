@@ -12,6 +12,34 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Security
 
+**The alert gate found two things on its first real run**, which is the argument
+for it in one sentence. Both were invisible to every pull-request check.
+
+**The SSRF fix did not close the alert, and CodeQL was right.** Validating at
+construction checked `baseUrl` and then fetched
+`` `${baseUrl.replace(/\/$/, '')}/chat/completions` `` — two different
+expressions, so the thing checked was never the thing used and nothing on the
+path from option to fetch was a barrier. A later edit could have moved the check
+without anything noticing.
+
+The validator now **returns the value to use** rather than approving one, and the
+fetch uses what it returned. Re-parsing normalises it too:
+`https://host/v1/../../admin` passed as a string and resolved to `/admin` on the
+wire; it is resolved before the request now.
+
+**And a time-of-check to time-of-use race I introduced an hour earlier.** The
+symlink guard was `lstat` then `readFile`, which resolves the name twice — CodeQL
+opened it as high severity. It is now a single `open` with `O_NOFOLLOW`: one
+syscall, and the handle is the file that was checked.
+
+This repository had already been caught by the identical `stat`-then-read pattern
+in the config reader and fixed it the same way. I wrote it again anyway, which is
+the more useful half of the finding: the guard against a class does not live in
+anybody's memory.
+
+
+### Security
+
 **A job now fails the build when `main` carries an open critical or high alert.**
 
 CodeQL's pull-request check reports *new alerts in the code that pull request

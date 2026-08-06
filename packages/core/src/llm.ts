@@ -174,13 +174,27 @@ export interface OpenAiCompatibleOptions {
  * SECURITY.md called it "the only thing standing between a public deployment and
  * the internal network", but it was enforced one level too far out.
  */
-function refuseUnsafeEndpoint(baseUrl: string, allowInsecure: boolean, name: string): void {
+function checkedEndpoint(baseUrl: string, allowInsecure: boolean, name: string): string {
   const rejection = validateLlmEndpoint(baseUrl, { allowInsecure });
-  if (rejection === null) return;
-  throw new Error(
-    `Provider "${name}" cannot use ${baseUrl}: ${rejection}. ` +
-      'Pass allowInsecure only for an endpoint you configured yourself.',
-  );
+  if (rejection !== null) {
+    throw new Error(
+      `Provider "${name}" cannot use ${baseUrl}: ${rejection}. ` +
+        'Pass allowInsecure only for an endpoint you configured yourself.',
+    );
+  }
+
+  // Returns the value to use rather than just approving one.
+  //
+  // The first attempt validated `baseUrl` and then fetched
+  // `` `${baseUrl.replace(/\/$/, '')}/chat/completions` `` — two different
+  // expressions, so the thing checked was never the thing used. CodeQL kept the
+  // alert open and was right to: nothing on the path from the option to the
+  // fetch was a barrier, and a later edit could have moved the check without
+  // anything noticing.
+  //
+  // Re-parsing also normalises what gets sent. `https://host/v1/../../admin`
+  // passed validation as a string and resolved somewhere else on the wire.
+  return new URL(baseUrl).toString().replace(/\/$/, '');
 }
 
 /**
@@ -199,13 +213,13 @@ export function openAiCompatible(options: OpenAiCompatibleOptions): LlmProvider 
     allowInsecure = false,
   } = options;
 
-  refuseUnsafeEndpoint(baseUrl, allowInsecure, name);
+  const endpoint = checkedEndpoint(baseUrl, allowInsecure, name);
 
   return {
     name,
     model,
     async complete({ system, user }) {
-      const res = await fetchImpl(`${baseUrl.replace(/\/$/, '')}/chat/completions`, {
+      const res = await fetchImpl(`${endpoint}/chat/completions`, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
@@ -259,13 +273,13 @@ export function anthropicProvider(options: AnthropicProviderOptions): LlmProvide
 
   // The same door, one along. This one has a safe default, which is exactly why
   // it is easy to forget that the option overriding it is a network target.
-  refuseUnsafeEndpoint(baseUrl, allowInsecure, 'anthropic');
+  const endpoint = checkedEndpoint(baseUrl, allowInsecure, 'anthropic');
 
   return {
     name: 'anthropic',
     model,
     async complete({ system, user }) {
-      const res = await fetchImpl(`${baseUrl.replace(/\/$/, '')}/v1/messages`, {
+      const res = await fetchImpl(`${endpoint}/v1/messages`, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
