@@ -38,6 +38,8 @@ ${bold('OPCIONES DE optimize')}
                               factura que reducir.
   --cost                      Muestra el dinero también ahí: el host dice dónde se
                               ejecuta Trazum, no a dónde va tu prompt.
+  --prompt <nombre>           Qué prompt marcado optimizar, cuando un fichero
+                              fuente tiene más de uno. Ver "trazum where".
   --diff                      Muestra el diff línea a línea.
   --json                      Vuelca el informe completo en JSON.
   --locale <${d.locales.join('|')}>            Idioma del informe. Por defecto: el del sistema.

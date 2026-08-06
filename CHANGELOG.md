@@ -10,6 +10,39 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+**`optimize` pointed at a source file used to rewrite your code.** Handed
+`src/prompts.ts` it optimised the *whole file* — imports, `const client = new
+OpenAI();`, all of it — counted 83 tokens of code the model would never see, and
+priced it against Claude Opus 5 on a file that plainly imports `openai`.
+
+Then the capitalisation rule turned `import OpenAI` into **`Import OpenAI`**,
+which does not compile, and `-o` wrote it back over the file. That is the worst
+behaviour this repository has shipped, and it was the default.
+
+It now reads the marked prompt and leaves the file alone — 43 tokens instead of
+83, and the output is the prompt rather than mangled TypeScript.
+
+**It refuses rather than guessing**, in three places:
+
+- **An unmarked source file.** Optimising TypeScript as prose does not produce a
+  worse prompt, it produces broken code. The refusal names the marker syntax, so
+  it costs the reader one comment.
+- **A file holding several marked prompts** — it lists them and asks for
+  `--prompt`. Optimising "the first one" silently is how the wrong prompt gets
+  rewritten.
+- **A marker it cannot read**, naming the line and the reason.
+
+**Detection now feeds the price**, closing the gap `trazum where` opened: an
+import names who and never which, so the provider's stand-in model is used and
+the report says GPT-5 rather than Claude. The layering is unchanged and now has
+one more rung — a flag beats config, config beats detection, detection beats the
+built-in default. Reading the code is better than assuming, and worse than being
+told.
+
+`--prompt <name>` is new. A plain `.txt` prompt and stdin go through exactly as
+before, which is asserted rather than assumed.
+
+
 ### Security
 
 **The SSRF filter was one level too far out.** `openAiCompatible` fetches whatever
