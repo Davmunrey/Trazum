@@ -46,6 +46,7 @@ dangerous thing in this repository.
 | A workflow being used to exfiltrate secrets | `permissions: contents: read` by default, `--ignore-scripts` on install, no `pull_request_target` — the last one now asserted | `.github/workflows/`, `security.test.js` |
 | A dependency hook running on someone else's runner | The packaged Action installs with `--ignore-scripts` too | `action.yml`, asserted in `security.test.js` |
 | A moved action tag changing what runs | Every third-party action is pinned to a commit SHA, with a `# vN` comment Dependabot bumps | `.github/workflows/`, asserted in `security.test.js` |
+| A finding that goes green because it is not *new* | CodeQL's pull-request check only reports alerts in changed code, so a job fails the build while `main` carries an open critical or high alert | `.github/workflows/security.yml`, asserted in `security.test.js` |
 | Actions template injection | **Nothing** is interpolated into a `run:` body — no input, no `github.*` value, no step output. Values reach the shell through `env:` | `action.yml`, asserted in `security.test.js` |
 
 **Known limit: marker squatting.** The Action finds its own pull-request comment

@@ -714,6 +714,46 @@ describe('the packaged Action', () => {
     );
   });
 
+  it('a finding already on main fails a build, not only a new one', () => {
+    // The gap the rest of this suite could not see. CodeQL's pull-request
+    // check reports *new* alerts in the code that pull request changed, so a
+    // finding already open on `main` is not new and every later pull request
+    // goes green beside it. Eleven consecutive green runs happened that way,
+    // with a critical SSRF alert open the whole time.
+    const security = readFileSync(join(repoRoot, '.github/workflows/security.yml'), 'utf8');
+    const job = security.slice(security.indexOf('open-alerts:'));
+
+    assert.ok(job.length > 0, 'the open-alerts job is gone');
+    assert.match(job, /code-scanning\/alerts\?state=open/, 'it no longer asks for open alerts');
+    assert.match(job, /refs\/heads\/main/, 'it no longer asks about main');
+
+    // Both severity fields. `severity` is the query's own rating and
+    // `security_severity_level` is the CVSS-style one the UI shows as
+    // "Critical" — reading only the first would have let today's critical
+    // through as a mere "error".
+    assert.match(job, /security_severity_level/, 'it reads the wrong severity field');
+    assert.match(job, /critical/);
+    assert.match(job, /high/);
+
+    // It has to be able to fail. A gate that cannot is worse than none,
+    // because it looks like coverage.
+    assert.match(job, /exit 1/, 'the job cannot fail');
+  });
+
+  it('the alert gate reports and never resolves', () => {
+    // Read-only on purpose: a job that could dismiss an alert is a job that
+    // could dismiss the alert it was written to surface.
+    const security = readFileSync(join(repoRoot, '.github/workflows/security.yml'), 'utf8');
+    const job = security.slice(security.indexOf('open-alerts:'));
+
+    assert.match(job, /security-events: read/);
+    assert.doesNotMatch(job, /security-events: write/, 'the alert gate can write to alerts');
+
+    // Skipped on pull requests, where it would report the base branch's state
+    // and fail somebody's unrelated work for a finding they cannot fix.
+    assert.match(job, /if: github\.event_name != 'pull_request'/);
+  });
+
   it('no workflow or the action uses pull_request_target', () => {
     // The event a reviewer reaches for when a fork PR cannot post a comment. It
     // runs with a writable token against the BASE repository while checking out
