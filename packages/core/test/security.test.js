@@ -4,7 +4,14 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 
-import { isPrivateHost, optimize, reorderForCache, validateLlmEndpoint } from '../dist/index.js';
+import {
+  allowedEndpoints,
+  isPrivateHost,
+  optimize,
+  reorderForCache,
+  resolveEndpoint,
+  validateLlmEndpoint,
+} from '../dist/index.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..', '..', '..');
@@ -814,5 +821,140 @@ describe('the packaged Action', () => {
       [],
       `a template expression sits somewhere it could be interpreted:\n  ${misplaced.join('\n  ')}`,
     );
+  });
+});
+
+describe('every source file is reviewable as a diff', () => {
+  /**
+   * A NUL byte anywhere in the first 8,000 bytes makes git call the file
+   * binary, and a binary file has no diff: `git show` prints `Bin 7652 ->
+   * 7654 bytes` and a pull request renders it as "this file cannot be
+   * displayed". Nothing warns you. The file still builds, still runs, still
+   * passes every other test here.
+   *
+   * `scripts/measure-token-band.mjs` was that file for three commits, one of
+   * which fixed a security finding in it, and none of which any reviewer could
+   * read. It reached that state honestly: a raw NUL as a hash field separator,
+   * typed into a template literal instead of written `\0`.
+   *
+   * The point of this repository's other invariants is that somebody can check
+   * the code. This is the one that makes checking possible at all.
+   */
+  const ROOTS = ['packages/core/src', 'packages/cli/src', 'scripts'];
+  const EXTENSIONS = ['.ts', '.js', '.mjs', '.cjs', '.json', '.yml', '.yaml', '.md'];
+
+  const sourceFiles = () => {
+    const found = [];
+    const walk = (dir, prefix) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name === 'node_modules' || entry.name === 'dist') continue;
+        const path = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(path, `${prefix}${entry.name}/`);
+          continue;
+        }
+        if (!EXTENSIONS.some((ext) => entry.name.endsWith(ext))) continue;
+        found.push([`${prefix}${entry.name}`, path]);
+      }
+    };
+    for (const root of ROOTS) walk(join(repoRoot, root), `${root}/`);
+    return found;
+  };
+
+  it('holds no raw NUL byte, which is what turns a source file binary', () => {
+    const files = sourceFiles();
+    // The walk itself is the part that rots: a moved directory turns this into
+    // a test of nothing, and it would still pass.
+    assert.ok(files.length > 40, `only ${files.length} source files found — the walk is wrong`);
+
+    const binary = files
+      .filter(([, path]) => readFileSync(path).includes(0))
+      .map(([name]) => name);
+
+    assert.deepEqual(
+      binary,
+      [],
+      `git will treat these as binary and show no diff: ${binary.join(', ')}. ` +
+        'Write the byte as \\0 in a string literal instead of embedding it.',
+    );
+  });
+});
+
+describe('SSRF: a caller selects an endpoint, it does not name one', () => {
+  /**
+   * The alert that would not close, at its actual source.
+   *
+   * `validateLlmEndpoint` guards the *shape* of a URL, and the web route was
+   * treating that as sufficient: take `baseUrl` from the request body, check
+   * it, fetch it. It never could have been sufficient. The host filter reads a
+   * name, and a name the attacker registered resolves wherever they point it —
+   * `https://fine.example.com` with an A record of 169.254.169.254 walks past
+   * every pattern in this file. Closing that needs the resolved address pinned
+   * at the socket, which `fetch` does not expose.
+   *
+   * So the body stopped naming hosts. It picks from a list the operator wrote,
+   * and what gets fetched is the list's entry.
+   */
+  const LIST = { TRAZUM_ALLOWED_LLM_ENDPOINTS: 'https://api.openai.com/v1, https://api.deepseek.com' };
+
+  it('offers nothing at all by default', () => {
+    // The important one. A deployment that never heard of this variable cannot
+    // be pointed anywhere by anybody.
+    assert.deepEqual(allowedEndpoints({}), []);
+    assert.deepEqual(allowedEndpoints({ TRAZUM_ALLOWED_LLM_ENDPOINTS: '' }), []);
+    assert.equal(resolveEndpoint('https://api.openai.com/v1', []), null);
+  });
+
+  it('reads a comma-separated list and normalises it', () => {
+    assert.deepEqual(allowedEndpoints(LIST), [
+      'https://api.openai.com/v1',
+      'https://api.deepseek.com',
+    ]);
+  });
+
+  it('drops an entry the operator should not have written', () => {
+    // Trusted to choose, not immune from pasting the metadata address into a
+    // list that then serves every anonymous caller.
+    assert.deepEqual(
+      allowedEndpoints({
+        TRAZUM_ALLOWED_LLM_ENDPOINTS:
+          'https://169.254.169.254, http://llm.example.com, not-a-url, https://ok.example.com/v1',
+      }),
+      ['https://ok.example.com/v1'],
+    );
+  });
+
+  it('returns the listed value, not the requested one', () => {
+    // This is the entire point of the function and the reason the alert closes:
+    // the string that arrived over HTTP is compared and then dropped on the
+    // floor. Nothing derived from it reaches fetch.
+    const allowed = allowedEndpoints(LIST);
+    const requested = 'HTTPS://API.OPENAI.COM/v1/';
+    const resolved = resolveEndpoint(requested, allowed);
+
+    assert.equal(resolved, 'https://api.openai.com/v1');
+    assert.ok(allowed.includes(resolved), 'the resolved value did not come off the list');
+    assert.notEqual(resolved, requested);
+  });
+
+  it('refuses a host that is merely public', () => {
+    // The old check would have passed every one of these: valid https, public
+    // host, no credentials. "Public" is not "fine to fetch for a stranger".
+    const allowed = allowedEndpoints(LIST);
+    for (const url of [
+      'https://attacker.example.com/v1',
+      'https://api.openai.com.attacker.example.com/v1',
+      'https://api.openai.com@attacker.example.com/v1',
+    ]) {
+      assert.equal(resolveEndpoint(url, allowed), null, `${url} was allowed through`);
+    }
+  });
+
+  it('refuses a path on a host that is on the list', () => {
+    // Being allowed to reach api.openai.com is not being allowed to reach any
+    // path on it. The entry is an endpoint, not a domain.
+    const allowed = allowedEndpoints(LIST);
+    assert.equal(resolveEndpoint('https://api.openai.com/v1/../../internal', allowed), null);
+    assert.equal(resolveEndpoint('https://api.openai.com/admin', allowed), null);
   });
 });

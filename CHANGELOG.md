@@ -12,6 +12,77 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Security
 
+**CodeQL reopened the SSRF alert on the fix below, and it was right a third
+time.** Both earlier attempts hardened the wrong layer. The taint does not start
+at `TRAZUM_LLM_BASE_URL`, which an operator sets on their own machine — it starts
+at `POST /api/optimize`, whose body carried a `baseUrl` that the deployed server
+would then fetch. That is server-side request forgery by construction, and no
+amount of validating the string fixes it: the host filter reads a *name*, and a
+name an attacker registered resolves wherever they choose.
+
+**So the request body no longer names an endpoint. It selects one.**
+`TRAZUM_ALLOWED_LLM_ENDPOINTS` is a comma-separated list the operator writes, and
+the value that reaches `fetch` is the entry from that list — the string that
+arrived over HTTP is compared and then dropped. The list is empty by default, so
+a deployment that has not thought about this cannot be pointed anywhere at all.
+Nobody loses the capability: `TRAZUM_LLM_BASE_URL` and the CLI still go anywhere
+you like. What changed is who is allowed to choose. The web UI's free-text field
+is now a picker over what the server actually accepts, because offering a text
+box that always answers 400 is worse than offering nothing.
+
+**A redirect walked past the entire host filter, and had all along.** Every check
+in `net.ts` reads the URL the caller named, and `fetch` follows redirects by
+default — so an endpoint that passed validation could answer
+`302 Location: http://169.254.169.254/latest/meta-data/` and the request went
+there anyway, `authorization` header included. One HTTP response, and the whole
+filter was decorative. Every server-side call now carries `redirect: 'error'`,
+plus `credentials: 'omit'` and `referrerPolicy: 'no-referrer'`. This one mattered
+for the CLI as much as for the deployed app, which is why it is fixed in the
+provider rather than in the route.
+
+**And a third door nobody had looked at.** `countTokensAnthropic` takes a
+`baseUrl` and sends an `x-api-key` to it, with no validation whatsoever. Both
+providers had been hardened twice over while this sat open, because it is called
+a counter rather than a provider. It goes through the same gate now.
+
+### Security
+
+**The alert gate found two things on its first real run**, which is the argument
+for it in one sentence. Both were invisible to every pull-request check.
+
+**The SSRF fix did not close the alert, and CodeQL was right.** Validating at
+construction checked `baseUrl` and then fetched
+`` `${baseUrl.replace(/\/$/, '')}/chat/completions` `` — two different
+expressions, so the thing checked was never the thing used and nothing on the
+path from option to fetch was a barrier. A later edit could have moved the check
+without anything noticing.
+
+The validator now **returns the value to use** rather than approving one, and the
+fetch uses what it returned. Re-parsing normalises it too:
+`https://host/v1/../../admin` passed as a string and resolved to `/admin` on the
+wire; it is resolved before the request now.
+
+**And a time-of-check to time-of-use race I introduced an hour earlier.** The
+symlink guard was `lstat` then `readFile`, which resolves the name twice — CodeQL
+opened it as high severity. It is now a single `open` with `O_NOFOLLOW`: one
+syscall, and the handle is the file that was checked.
+
+This repository had already been caught by the identical `stat`-then-read pattern
+in the config reader and fixed it the same way. I wrote it again anyway, which is
+the more useful half of the finding: the guard against a class does not live in
+anybody's memory.
+
+**A third thing turned up while fixing those two: one file had no diff.**
+`scripts/measure-token-band.mjs` used a raw NUL byte as a hash field separator,
+which is enough for git to call the file binary. Its three commits — including
+the one that fixed the SSRF finding above — rendered as
+`Bin 7652 -> 7654 bytes`, and nothing anywhere warned that a security fix had
+gone through unreadable. The byte is now written `\0`, which produces the same
+digest, and a test refuses a raw NUL in any source file: the other invariants
+here all assume somebody can read the code.
+
+### Security
+
 **A job now fails the build when `main` carries an open critical or high alert.**
 
 CodeQL's pull-request check reports *new alerts in the code that pull request
