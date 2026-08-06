@@ -249,7 +249,8 @@ ${bold('EJEMPLOS')}
     tokensOnlyWhy: (host) =>
       `${host} cobra por suscripción, así que no hay factura que reducir ni cifra mensual que imprimir.`,
     tokensOnlyAsked: () => 'Costes ocultos porque has pedido solo tokens.',
-    tokensSaved: (tokens) => `${tokens} tokens de vuelta, en cada llamada.`,
+    tokensSaved: (tokens) =>
+      `${tokens} token${tokens === '1' ? '' : 's'} de vuelta, en cada llamada.`,
     windowUse: (before, after, model, window) =>
       `Ventana de contexto: ${before} → ${after} de los ${window} tokens de ${model} — sitio que se lleva la conversación.`,
     tokensOnlyCost: () => 'Usa --cost si este prompt va a una API de pago por uso.',
@@ -267,6 +268,11 @@ ${bold('EJEMPLOS')}
       }:`,
     reorderDeclinedRef: (phrase, excerpt) => `hace referencia hacia atrás ("${phrase}"): ${excerpt}`,
     reorderDeclinedAfter: (excerpt) => `va después de un bloque que tenía que quedarse: ${excerpt}`,
+    reorderDeclinedScript: (script) =>
+      `este prompt está escrito en ${script}, y Trazum no tiene frases de referencia hacia ` +
+      `atrás para ese alfabeto. No puede distinguir "resume el texto de arriba" de una ` +
+      `instrucción que sí se puede mover, así que no ha movido nada. Añadir un idioma es ` +
+      `añadir un array a phrases.ts.`,
     reorderDeclinedMore: (count) => `…y ${count} más, en el fichero de salida.`,
     reorderPiped: (moved, tokens, declined) => {
       const head =

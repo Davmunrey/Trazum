@@ -107,6 +107,7 @@ export interface WebMessages {
     reorderReview: string;
     reorderDeclinedRef(phrase: string, excerpt: string): string;
     reorderDeclinedAfter(excerpt: string): string;
+    reorderDeclinedScript(script: string): string;
     reorderDeclinedMore(count: number): string;
   };
 

@@ -87,6 +87,7 @@ export interface CliMessages {
     reorderDeclined(count: number): string;
     reorderDeclinedRef(phrase: string, excerpt: string): string;
     reorderDeclinedAfter(excerpt: string): string;
+    reorderDeclinedScript(script: string): string;
     reorderDeclinedMore(count: number): string;
     /** One line to stderr when a redirect suppresses the report. */
     reorderPiped(moved: number, tokens: string, declined: number): string;

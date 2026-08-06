@@ -110,6 +110,10 @@ export const es: WebMessages = {
       'Lee el diff: esto ha movido texto en vez de borrarlo, así que la pregunta es si el orden importaba.',
     reorderDeclinedRef: (phrase, excerpt) => `hace referencia hacia atrás ("${phrase}"): ${excerpt}`,
     reorderDeclinedAfter: (excerpt) => `va después de un bloque que tenía que quedarse: ${excerpt}`,
+    reorderDeclinedScript: (script) =>
+      `este prompt está escrito en ${script}, y Trazum no tiene frases de referencia hacia ` +
+      `atrás para ese alfabeto: no puede distinguir una instrucción que se puede mover de ` +
+      `una que apunta hacia atrás, así que no ha movido nada.`,
     reorderDeclinedMore: (count) => `…y ${count} más.`,
   },
 

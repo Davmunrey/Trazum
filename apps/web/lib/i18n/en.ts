@@ -108,6 +108,10 @@ export const en: WebMessages = {
       'Read the diff: this moved text rather than deleting it, so the question is whether the order mattered.',
     reorderDeclinedRef: (phrase, excerpt) => `refers back ("${phrase}"): ${excerpt}`,
     reorderDeclinedAfter: (excerpt) => `after a block that had to stay: ${excerpt}`,
+    reorderDeclinedScript: (script) =>
+      `this prompt is written in ${script}, and Trazum has no backward-reference phrases ` +
+      `for it — it cannot tell an instruction that is safe to move from one that points ` +
+      `backwards, so it moved nothing.`,
     reorderDeclinedMore: (count) => `…and ${count} more.`,
   },
 

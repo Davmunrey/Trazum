@@ -228,9 +228,17 @@ this asks a different question, so it cannot ride in on a level.
 So the design is mostly about what it **refuses**:
 
 - **A block that refers backwards stays put — and so does everything after it.**
-  `above`, `below`, `the following`, `previous`, `earlier` and their Spanish
-  equivalents pin a block. Moving a later block past a pinned one would change
+  `above`, `below`, `the following`, `previous`, `earlier` and their equivalents
+  in **English, Spanish, French, German, Portuguese, Italian, Dutch, Japanese and
+  Chinese** pin a block. Moving a later block past a pinned one would change
   their order relative to each other, which is the same class of harm.
+- **A prompt in a script with no phrase list is not rearranged at all.** Cyrillic,
+  Arabic, Hebrew, Hangul, Devanagari, Thai and Greek: nothing moves, and the
+  report says which script and why. Every refusal here rests on recognising a
+  backward reference, and where Trazum cannot recognise one it has no business
+  guessing — a single such instruction inside an otherwise English prompt is
+  enough to stop it. Adding a language is adding an array to
+  [`phrases.ts`](packages/core/src/phrases.ts).
 - **Only whole blocks move.** Blocks are separated by blank lines, so a sentence
   is never severed from the paragraph that qualifies it, and the placeholder's own
   line travels with it (`Customer message: {{message}}` is one unit).
@@ -253,7 +261,10 @@ That distinction is the point of reporting refusals at all: *"no saving here"* a
 *"there was a saving and it was not safe to take"* are different answers, and only
 the second one is actionable. The backward-reference list is deliberately
 generous — a false positive costs a saving that was available, a false negative
-silently changes what the prompt asks for.
+silently changes what the prompt asks for. Every language's phrases are matched
+against every prompt rather than detecting the language first: detection is one
+more thing to get wrong, and the cost of checking a French prompt for German
+phrases is a saving not taken, which is the direction this errs in anyway.
 
 Redirect the output and stdout stays the prompt alone, as it does for every
 command — but the move and the refusals go to **stderr** rather than vanishing. A

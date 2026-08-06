@@ -10,6 +10,41 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Security
+
+**`--reorder` had no safety at all outside English and Spanish.** Not a missing
+feature — a silent failure.
+
+`BACKWARD_REFERENCES` was one flat list of English and Spanish phrases, applied
+to every prompt. The module's own documentation says its entire design is about
+what it refuses; for a French, German, Portuguese, Italian, Dutch, Japanese or
+Chinese author it refused nothing. "Résumez le texte ci-dessus" was hoisted above
+the text it points at and reported as a saving. Every test in the suite passed,
+because every test asked the question in the two languages that worked.
+
+Seven more languages now, grouped per language so the coverage is a thing you can
+look at rather than infer. Japanese and Chinese match without word boundaries —
+the boundary test asks whether the neighbouring character is a letter, and in
+上記のテキスト it always is, so a boundary-matched CJK list would have read like
+cover and provided none.
+
+**And a fourth refusal, for the scripts still missing.** Cyrillic, Arabic,
+Hebrew, Hangul, Devanagari, Thai and Greek: nothing moves, and the report names
+the script and says why. A single such instruction inside an otherwise English
+prompt is enough to stop it — that is the case where a missed reference does
+damage, and the cost of being wrong is a saving the author can still take by
+hand. Adding a language is adding an array.
+
+Three tests keep this honest rather than trusting it: the README's list of
+languages must match the table, no phrase may be capitalised (it could never
+match), and no covered language's phrases may use an uncovered script. All were
+checked against mutants.
+
+### Fixed
+
+Two pluralisation slips in the reorder report, both visible in the output above:
+"1 tokens back, every call" and "Left 1 block where they were".
+
 ### Changed
 
 **The web app is rebuilt on shadcn/ui, wearing Trazum's own palette.**
