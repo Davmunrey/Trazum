@@ -17,12 +17,23 @@ ${bold('USAGE')}
   trazum optimize <file|-> [options]
   trazum check <file|dir|-> --max-tokens <n> [options]
   trazum eval <file> --cases <file> [options]
+  trazum eval <file> --cases <file> --export promptfoo -o suite.json
   trazum diff <before> <after> [options]
   trazum rank <dir> [options]
   trazum blame <file> [options]
   trazum where [file]
   trazum models
   trazum rules
+
+${bold('OPTIONS FOR eval')}
+  --cases <file>              One input per line, or a JSON array. Required.
+  --level <safe|aggressive>   Which rewrite to judge. Default: safe.
+  --concurrency <n>           Calls in flight at once. Default: 3.
+  --export promptfoo          Write a promptfoo suite instead of running anything:
+                              both prompts, every case, no API key needed and no
+                              call made. The assertions are yours — this exists
+                              for the question agreement cannot answer.
+  -o, --out <file>            Where to write it. Defaults to stdout.
 
 ${bold('OPTIONS FOR rank')}
   --level <safe|aggressive>   Which rules to count as recoverable. Default: safe.
@@ -223,6 +234,8 @@ ${bold('EXAMPLES')}
     exactTokensNeedsKey: () => '--exact-tokens needs ANTHROPIC_API_KEY in the environment.',
     checkNeedsMaxTokens: () => 'trazum check needs --max-tokens <n>.',
     evalNeedsCases: () => 'trazum eval needs --cases <file>.',
+    unknownExportFormat: (received, allowed) =>
+      `Unknown export format "${received}". Available: ${allowed}.`,
     evalNoCases: (path) => `No cases found in "${path}".`,
     unknownFlag: (name, allowed) =>
       `Unknown option --${name}. This command accepts: ${allowed}.`,
@@ -450,6 +463,12 @@ ${bold('EXAMPLES')}
       })[kind],
     mostChanged: () => 'Cases that changed most',
     caseAgreement: (cross, self) => `${cross} agreement with the original (which self-agreed ${self})`,
+    exportWarnings: (count) =>
+      `${count} ${count === 1 ? 'thing' : 'things'} to know before you trust the run:`,
+    exportWrote: (path, cases, assertions) =>
+      `Wrote ${path}: two prompts, ${cases} ${cases === 1 ? 'case' : 'cases'}, ` +
+      `${assertions === 0 ? 'no assertions' : `${assertions} assertion${assertions === 1 ? '' : 's'} (the prompt asks for JSON)`}. ` +
+      `Add yours, then run: npx promptfoo eval -c ${path}`,
     callsMade: (count) => `${count} provider calls made.`,
   },
 

@@ -11,12 +11,24 @@ ${bold('USO')}
   trazum optimize <fichero|-> [opciones]
   trazum check <fichero|dir|-> --max-tokens <n> [opciones]
   trazum eval <fichero> --cases <fichero> [opciones]
+  trazum eval <fichero> --cases <fichero> --export promptfoo -o suite.json
   trazum diff <antes> <después> [opciones]
   trazum rank <dir> [opciones]
   trazum blame <fichero> [opciones]
   trazum where [fichero]
   trazum models
   trazum rules
+
+${bold('OPCIONES DE eval')}
+  --cases <fichero>           Una entrada por línea, o un array JSON. Obligatorio.
+  --level <safe|aggressive>   Qué reescritura juzgar. Por defecto: safe.
+  --concurrency <n>           Llamadas simultáneas. Por defecto: 3.
+  --export promptfoo          Escribe una suite de promptfoo en vez de ejecutar
+                              nada: los dos prompts, todos los casos, sin clave
+                              de API y sin gastar ninguna llamada. Las aserciones
+                              son tuyas: esto existe para la pregunta que la
+                              concordancia no puede contestar.
+  -o, --out <fichero>         Dónde escribirla. Por defecto, stdout.
 
 ${bold('OPCIONES DE rank')}
   --level <safe|aggressive>   Qué reglas cuentan como recuperables. Por defecto: safe.
@@ -224,6 +236,8 @@ ${bold('EJEMPLOS')}
     exactTokensNeedsKey: () => '--exact-tokens necesita ANTHROPIC_API_KEY en el entorno.',
     checkNeedsMaxTokens: () => 'trazum check necesita --max-tokens <n>.',
     evalNeedsCases: () => 'trazum eval necesita --cases <fichero>.',
+    unknownExportFormat: (received, allowed) =>
+      `Formato de exportación desconocido "${received}". Disponibles: ${allowed}.`,
     evalNoCases: (path) => `No se ha encontrado ningún caso en "${path}".`,
     unknownFlag: (name, allowed) =>
       `Opción desconocida --${name}. Este comando acepta: ${allowed}.`,
@@ -464,6 +478,12 @@ ${bold('EJEMPLOS')}
       })[kind],
     mostChanged: () => 'Casos que más han cambiado',
     caseAgreement: (cross, self) => `${cross} de coincidencia con el original (que consigo mismo dio ${self})`,
+    exportWarnings: (count) =>
+      `${count} ${count === 1 ? 'cosa' : 'cosas'} que saber antes de fiarte de la ejecución:`,
+    exportWrote: (path, cases, assertions) =>
+      `Escrito ${path}: dos prompts, ${cases} ${cases === 1 ? 'caso' : 'casos'}, ` +
+      `${assertions === 0 ? 'sin aserciones' : `${assertions} aserción${assertions === 1 ? '' : 'es'} (el prompt pide JSON)`}. ` +
+      `Añade las tuyas y ejecuta: npx promptfoo eval -c ${path}`,
     callsMade: (count) => `${count} llamadas al proveedor.`,
   },
 

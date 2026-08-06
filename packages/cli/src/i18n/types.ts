@@ -40,6 +40,7 @@ export interface CliMessages {
     checkNeedsMaxTokens(): string;
     evalNeedsCases(): string;
     evalNoCases(path: string): string;
+    unknownExportFormat(received: string, allowed: string): string;
     diffNeedsTwoFiles(): string;
     cannotNegate(name: string): string;
     noPromptsFound(directory: string, extensions: string): string;
@@ -192,6 +193,8 @@ export interface CliMessages {
     mostChanged(): string;
     caseAgreement(cross: string, self: string): string;
     callsMade(count: number): string;
+    exportWarnings(count: number): string;
+    exportWrote(path: string, cases: number, assertions: number): string;
   };
 
   diff: {
