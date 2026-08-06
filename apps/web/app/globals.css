@@ -1,635 +1,184 @@
+@import 'tailwindcss';
+
+/*
+ * Trazum's palette, wearing shadcn's variable names.
+ *
+ * shadcn components are written against `--primary`, `--muted`, `--border` and
+ * so on. Rather than take its default neutrals — which would make this look
+ * like every other application built from the same registry — the palette that
+ * was already here is mapped onto those names. The components are shadcn's;
+ * the colours are Trazum's, and nothing had to be forked to get both.
+ *
+ * The source of truth stays the semantic pair below (`--paper`, `--ink`,
+ * `--terracotta`…). The shadcn aliases derive from it, so changing the identity
+ * is still one edit in one place.
+ */
 :root {
-  --bg: #fbfbfa;
-  --surface: #ffffff;
-  --surface-2: #f4f4f2;
-  --border: #e3e2de;
-  --text: #1b1b19;
-  --text-dim: #6b6a65;
-  --accent: #b0522f;
-  --accent-soft: #f6ece7;
+  /* The identity. Warm paper, terracotta, ink. */
+  --paper: #fbfbfa;
+  --paper-raised: #ffffff;
+  --paper-sunken: #f4f4f2;
+  --rule: #e3e2de;
+  --ink: #1b1b19;
+  --ink-soft: #6b6a65;
+  --terracotta: #b0522f;
+  --terracotta-wash: #f6ece7;
   --good: #2f6f4e;
-  --good-soft: #e8f2ec;
+  --good-wash: #e8f2ec;
   --warn: #8a6320;
-  --warn-soft: #f8f0dd;
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  --radius: 10px;
-}
+  --warn-wash: #f8f0dd;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #16161a;
-    --surface: #1d1d22;
-    --surface-2: #26262c;
-    --border: #33333b;
-    --text: #eceaf0;
-    --text-dim: #9d9caa;
-    --accent: #e08a63;
-    --accent-soft: #2e211b;
-    --good: #6fc99a;
-    --good-soft: #1b2a22;
-    --warn: #d6ad63;
-    --warn-soft: #2a2417;
-  }
-}
+  --radius: 0.625rem;
 
-* {
-  box-sizing: border-box;
-}
-
-html,
-body {
-  margin: 0;
-  padding: 0;
-}
-
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  font-size: 15px;
-  line-height: 1.55;
-  -webkit-font-smoothing: antialiased;
-}
-
-.shell {
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 28px 20px 64px;
-}
-
-header.masthead {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 12px;
-  margin-bottom: 6px;
-}
-
-header.masthead h1 {
-  font-size: 26px;
-  margin: 0;
-  letter-spacing: -0.02em;
-}
-
-header.masthead .tag {
-  color: var(--text-dim);
-  font-size: 14px;
-}
-
-/* Pushed to the far end of the masthead so it reads as a page-level control
-   rather than part of the title. */
-.locale-switch {
-  margin-left: auto;
-  display: flex;
-  gap: 2px;
-  padding: 2px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-}
-
-.locale-switch button {
-  border: 0;
-  background: none;
-  color: var(--text-dim);
-  font: inherit;
-  font-size: 13px;
-  padding: 4px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.locale-switch button:hover {
-  color: var(--text);
-}
-
-.locale-switch button.active {
-  background: var(--surface-2);
-  color: var(--text);
-}
-
-.locale-switch button:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 1px;
-}
-
-.lede {
-  color: var(--text-dim);
-  margin: 0 0 26px;
-  max-width: 62ch;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 20px;
-  align-items: start;
-}
-
-@media (max-width: 900px) {
-  .grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
-}
-
-.card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 18px;
-}
-
-.card + .card {
-  margin-top: 18px;
-}
-
-.card h2 {
-  font-size: 13px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--text-dim);
-  margin: 0 0 14px;
-  font-weight: 600;
-}
-
-textarea,
-input,
-select {
-  width: 100%;
-  background: var(--surface-2);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 11px;
-  font-size: 14px;
-  font-family: inherit;
-}
-
-textarea {
-  font-family: var(--mono);
-  font-size: 13px;
-  line-height: 1.6;
-  min-height: 320px;
-  resize: vertical;
-}
-
-input:focus,
-select:focus,
-textarea:focus {
-  outline: 2px solid var(--accent);
-  outline-offset: -1px;
-}
-
-label {
-  display: block;
-  font-size: 12px;
-  color: var(--text-dim);
-  margin-bottom: 5px;
-  font-weight: 500;
-}
-
-.field + .field {
-  margin-top: 12px;
-}
-
-.row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 12px;
-}
-
-.checkbox {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: var(--text);
-  cursor: pointer;
-}
-
-.checkbox input {
-  width: auto;
-  margin: 0;
-  accent-color: var(--accent);
-}
-
-button.primary {
-  width: 100%;
-  margin-top: 16px;
-  background: var(--accent);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 12px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-button.primary:disabled {
-  opacity: 0.55;
-  cursor: not-allowed;
-}
-
-button.ghost {
-  background: transparent;
-  color: var(--text-dim);
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  padding: 5px 10px;
-  font-size: 12px;
-  cursor: pointer;
-  width: auto;
-}
-
-button.ghost:hover {
-  color: var(--text);
-}
-
-.headline {
-  display: flex;
-  align-items: baseline;
-  gap: 14px;
-  flex-wrap: wrap;
-  margin-bottom: 4px;
-}
-
-.headline .pct {
-  font-size: 40px;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  color: var(--good);
-  line-height: 1;
-}
-
-.headline .tokens {
-  color: var(--text-dim);
-  font-size: 14px;
+  /* The shadcn contract, derived. */
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: var(--paper-raised);
+  --card-foreground: var(--ink);
+  --popover: var(--paper-raised);
+  --popover-foreground: var(--ink);
+  --primary: var(--terracotta);
+  --primary-foreground: #ffffff;
+  --secondary: var(--paper-sunken);
+  --secondary-foreground: var(--ink);
+  --muted: var(--paper-sunken);
+  --muted-foreground: var(--ink-soft);
+  /* shadcn's `accent` is the hover wash, not the brand colour. Naming it
+     `accent` and reaching for terracotta here would tint every hover state. */
+  --accent: var(--paper-sunken);
+  --accent-foreground: var(--ink);
+  --destructive: #a3341f;
+  --border: var(--rule);
+  --input: var(--rule);
+  --ring: var(--terracotta);
 }
 
 /*
- * The rearrangement panel.
- *
- * Deliberately not styled like `.money`: the green box is a saving to enjoy,
- * this is a change to review. It sits above the money for the same reason, so
- * the number is read after the caveat rather than instead of it.
+ * Dark stays on `prefers-color-scheme`, which is what the app has always used
+ * and what Tailwind's `dark:` variant reads by default. No toggle, no
+ * class-on-html, no flash of the wrong theme on first paint.
  */
-.reorder {
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--accent);
-  border-radius: 8px;
-  padding: 12px 14px;
-  margin-top: 14px;
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #16161a;
+    --paper-raised: #1d1d22;
+    --paper-sunken: #26262c;
+    --rule: #33333b;
+    --ink: #eceaf0;
+    --ink-soft: #9d9caa;
+    --terracotta: #e08a63;
+    --terracotta-wash: #2e211b;
+    --good: #6fc99a;
+    --good-wash: #1b2a22;
+    --warn: #d6ad63;
+    --warn-wash: #2a2417;
+
+    --primary-foreground: #16161a;
+    --destructive: #e08a63;
+  }
 }
 
-.reorder .reorder-headline {
-  font-weight: 600;
-  font-size: 15px;
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Trazum's own semantics, available as utilities: a saving is green, a
+     caveat is amber, and a deletion is terracotta wherever it appears. */
+  --color-good: var(--good);
+  --color-good-wash: var(--good-wash);
+  --color-warn: var(--warn);
+  --color-warn-wash: var(--warn-wash);
+  --color-terracotta: var(--terracotta);
+  --color-terracotta-wash: var(--terracotta-wash);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
 }
 
-.reorder .caption {
-  color: var(--text-dim);
-  font-size: 13px;
-  margin-top: 2px;
+/*
+ * The sheen used by `ShinyText`, as a keyframe rather than a frame loop.
+ * Silenced automatically by the reduced-motion block at the end of this file.
+ */
+@keyframes trazum-sheen {
+  from {
+    background-position: 150% center;
+  }
+  to {
+    background-position: -50% center;
+  }
 }
 
-.reorder .reorder-review {
-  margin-top: 8px;
-  font-size: 13px;
-  color: var(--warn);
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
 }
 
-.reorder-declined {
-  list-style: none;
-  margin: 10px 0 0;
-  padding: 0;
-  font-size: 13px;
-  color: var(--text-dim);
+/*
+ * What Tailwind cannot express as a utility, or should not.
+ *
+ * The word diff is the clearest case: three classes applied from JavaScript to
+ * hundreds of spans. Utilities on each one would triple the markup for no
+ * reader's benefit, and the colours have to match the rule-change list below
+ * exactly — a removal is terracotta in both views, or the two views disagree.
+ */
+@layer components {
+  /* Faint background on additions and deletions: without it an adjacent "AB"
+     reads as a single word and the diff stops being legible. */
+  .diff-add {
+    @apply rounded-[3px] bg-good-wash px-0.5 py-px text-good;
+  }
+
+  .diff-del {
+    @apply rounded-[3px] bg-terracotta-wash px-0.5 py-px text-terracotta line-through decoration-1;
+  }
+
+  .diff-same {
+    @apply text-muted-foreground;
+  }
 }
 
-.reorder-declined li + li {
-  margin-top: 4px;
-}
-
-.checkbox .hint {
-  display: block;
-  color: var(--text-dim);
-  font-size: 12px;
-  line-height: 1.4;
-  margin-top: 2px;
-}
-
-/* The label wraps two lines now, so the box has to sit at the top of them. */
-.checkbox:has(.hint) {
-  align-items: flex-start;
-}
-
-.checkbox:has(.hint) input {
-  margin-top: 3px;
-}
-
-.money {
-  background: var(--good-soft);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px 14px;
-  margin-top: 14px;
-}
-
-.money .amount {
-  font-size: 22px;
-  font-weight: 700;
-  color: var(--good);
-}
-
-.money .caption {
-  color: var(--text-dim);
-  font-size: 13px;
-}
-
-ul.plain {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-
-ul.plain li + li {
-  margin-top: 10px;
-}
-
-.rule {
-  display: flex;
-  gap: 9px;
-  align-items: baseline;
-  font-size: 14px;
-}
-
-.badge {
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  padding: 2px 6px;
-  border-radius: 5px;
-  font-weight: 700;
-  white-space: nowrap;
-}
-
-.badge.safe {
-  background: var(--surface-2);
-  color: var(--text-dim);
-}
-
-.badge.aggressive {
-  background: var(--warn-soft);
-  color: var(--warn);
-}
-
-/* Severity reads from a dot on the title's baseline rather than a coloured
-   stripe down the side. The stripe is the single most recognisable tell of a
-   generated interface, and it spent a full 3px gutter saying what a 6px dot
-   says without claiming the eye first. */
-.advisory {
-  padding-left: 18px;
-  position: relative;
-}
-
-.advisory + .advisory {
-  margin-top: 14px;
-}
-
-.advisory::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  /* Optically centred on the title's cap height, not its line box. */
-  top: 7px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--text-dim);
-}
-
-.advisory.opportunity::before {
-  background: var(--accent);
-}
-
-.advisory.warning::before {
-  background: var(--warn);
-}
-
-/* The one finding that is a defect rather than a saving earns the extra
-   weight: everything else on this list is optional, this one is not. */
-.advisory.warning .title {
-  color: var(--warn);
-}
-
-.advisory .title {
-  font-weight: 600;
-  font-size: 14px;
-  line-height: 1.45;
-}
-
-.advisory .est {
-  color: var(--good);
-  font-weight: 700;
-  font-size: 13px;
-  margin-left: 6px;
-}
-
-.advisory .detail {
-  color: var(--text-dim);
-  font-size: 13px;
-  margin-top: 2px;
-}
-
-pre.output {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 13px;
-  font-family: var(--mono);
-  font-size: 12.5px;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-word;
-  margin: 0;
-  max-height: 460px;
-  overflow: auto;
-}
-
-pre.diff {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 13px;
-  font-family: var(--mono);
-  font-size: 12.5px;
-  line-height: 1.55;
-  margin: 0;
-  max-height: 460px;
-  overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-/* Faint background on additions and deletions: without it an adjacent "AB"
-   reads as a single word and the diff stops being legible. */
-.diff-add {
-  color: var(--good);
-  background: var(--good-soft);
-  border-radius: 3px;
-  padding: 1px 2px;
-}
-
-.diff-del {
-  color: var(--accent);
-  background: var(--accent-soft);
-  border-radius: 3px;
-  padding: 1px 2px;
-  text-decoration: line-through;
-  text-decoration-thickness: 1px;
-}
-
-.diff-same {
-  color: var(--text-dim);
-}
-
-.toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.error {
-  background: var(--warn-soft);
-  border: 1px solid var(--warn);
-  color: var(--warn);
-  border-radius: 8px;
-  padding: 11px 13px;
-  font-size: 14px;
-}
-
-.note {
-  color: var(--text-dim);
-  font-size: 12.5px;
-  margin-top: 10px;
-}
-
-details.settings summary {
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--text-dim);
-  user-select: none;
-}
-
-details.settings summary:hover {
-  color: var(--text);
-}
-
-details.settings > div {
-  margin-top: 12px;
-}
-
-.empty {
-  color: var(--text-dim);
-  font-size: 14px;
-  text-align: center;
-  padding: 48px 20px;
-}
-
-.history-restore {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  width: 100%;
-  text-align: left;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 9px 11px;
-  cursor: pointer;
-  color: var(--text);
-  font-family: inherit;
-  font-size: 13px;
-}
-
-.history-restore:hover:not(:disabled) {
-  border-color: var(--accent);
-}
-
-.history-restore:disabled {
-  cursor: default;
-  opacity: 0.7;
-}
-
-.history-excerpt {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.history-meta {
-  color: var(--text-dim);
-  font-size: 12px;
-}
-
-footer.foot {
-  margin-top: 30px;
-  color: var(--text-dim);
-  font-size: 12.5px;
-  border-top: 1px solid var(--border);
-  padding-top: 14px;
-}
-
-/* What each aggressive rule actually changed. Indented under the rule rather
-   than in its own panel: it is evidence for the line above it, not a section. */
-.rule-changes {
-  list-style: none;
-  margin: 6px 0 0;
-  padding: 0;
-  font-size: 12.5px;
-  font-family: var(--mono);
-}
-
-.rule-changes li {
-  display: flex;
-  align-items: baseline;
-  gap: 7px;
-  padding: 1px 0;
-  /* Long snippets truncate rather than wrapping: the point is to scan the
-     list, and a wrapped entry reads as two changes. */
-  min-width: 0;
-}
-
-.rule-changes .was,
-.rule-changes .now {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* Matches the word diff's own colours, so a removal reads the same whichever
-   view you are in. */
-.rule-changes .was {
-  color: var(--accent);
-  text-decoration: line-through;
-  text-decoration-thickness: 1px;
-  max-width: 22ch;
-}
-
-.rule-changes .now {
-  color: var(--good);
-  max-width: 16ch;
-}
-
-.rule-changes .arrow,
-.rule-changes .gone {
-  color: var(--text-dim);
-  flex: none;
-}
-
-.rule-changes .more {
-  color: var(--text-dim);
-  font-family: inherit;
+/*
+ * Reduced motion is honoured globally rather than per-component.
+ *
+ * Everything animated in this app is decoration — a number counting up, a
+ * panel easing in. None of it carries information, so switching it off costs
+ * the reader nothing, and leaving it on for somebody who asked the operating
+ * system not to animate things is not a trade-off worth making.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
