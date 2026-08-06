@@ -816,3 +816,59 @@ describe('the packaged Action', () => {
     );
   });
 });
+
+describe('every source file is reviewable as a diff', () => {
+  /**
+   * A NUL byte anywhere in the first 8,000 bytes makes git call the file
+   * binary, and a binary file has no diff: `git show` prints `Bin 7652 ->
+   * 7654 bytes` and a pull request renders it as "this file cannot be
+   * displayed". Nothing warns you. The file still builds, still runs, still
+   * passes every other test here.
+   *
+   * `scripts/measure-token-band.mjs` was that file for three commits, one of
+   * which fixed a security finding in it, and none of which any reviewer could
+   * read. It reached that state honestly: a raw NUL as a hash field separator,
+   * typed into a template literal instead of written `\0`.
+   *
+   * The point of this repository's other invariants is that somebody can check
+   * the code. This is the one that makes checking possible at all.
+   */
+  const ROOTS = ['packages/core/src', 'packages/cli/src', 'scripts'];
+  const EXTENSIONS = ['.ts', '.js', '.mjs', '.cjs', '.json', '.yml', '.yaml', '.md'];
+
+  const sourceFiles = () => {
+    const found = [];
+    const walk = (dir, prefix) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name === 'node_modules' || entry.name === 'dist') continue;
+        const path = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(path, `${prefix}${entry.name}/`);
+          continue;
+        }
+        if (!EXTENSIONS.some((ext) => entry.name.endsWith(ext))) continue;
+        found.push([`${prefix}${entry.name}`, path]);
+      }
+    };
+    for (const root of ROOTS) walk(join(repoRoot, root), `${root}/`);
+    return found;
+  };
+
+  it('holds no raw NUL byte, which is what turns a source file binary', () => {
+    const files = sourceFiles();
+    // The walk itself is the part that rots: a moved directory turns this into
+    // a test of nothing, and it would still pass.
+    assert.ok(files.length > 40, `only ${files.length} source files found — the walk is wrong`);
+
+    const binary = files
+      .filter(([, path]) => readFileSync(path).includes(0))
+      .map(([name]) => name);
+
+    assert.deepEqual(
+      binary,
+      [],
+      `git will treat these as binary and show no diff: ${binary.join(', ')}. ` +
+        'Write the byte as \\0 in a string literal instead of embedding it.',
+    );
+  });
+});

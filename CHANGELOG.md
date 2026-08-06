@@ -37,6 +37,14 @@ in the config reader and fixed it the same way. I wrote it again anyway, which i
 the more useful half of the finding: the guard against a class does not live in
 anybody's memory.
 
+**A third thing turned up while fixing those two: one file had no diff.**
+`scripts/measure-token-band.mjs` used a raw NUL byte as a hash field separator,
+which is enough for git to call the file binary. Its three commits — including
+the one that fixed the SSRF finding above — rendered as
+`Bin 7652 -> 7654 bytes`, and nothing anywhere warned that a security fix had
+gone through unreadable. The byte is now written `\0`, which produces the same
+digest, and a test refuses a raw NUL in any source file: the other invariants
+here all assume somebody can read the code.
 
 ### Security
 
