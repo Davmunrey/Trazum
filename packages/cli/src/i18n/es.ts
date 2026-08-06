@@ -12,10 +12,21 @@ ${bold('USO')}
   trazum check <fichero|dir|-> --max-tokens <n> [opciones]
   trazum eval <fichero> --cases <fichero> [opciones]
   trazum diff <antes> <después> [opciones]
+  trazum rank <dir> [opciones]
   trazum blame <fichero> [opciones]
   trazum where [fichero]
   trazum models
   trazum rules
+
+${bold('OPCIONES DE rank')}
+  --level <safe|aggressive>   Qué reglas cuentan como recuperables. Por defecto: safe.
+  --model, --calls,           Calcula el coste de los tokens recuperables, como
+  --output-tokens, --batch    en optimize.
+  --prompt <nombre>           Qué prompt marcado tomar de cada fichero de código.
+  --json                      El ranking como datos.
+
+  No hay puntuación. Los prompts se ordenan por lo que las reglas recuperarían
+  de verdad, midiéndolo al ejecutarlas; las demás columnas explican esa posición.
 
 ${bold('OPCIONES DE blame')}
   --limit <n>                 Revisiones a recorrer. Por defecto: 20, máximo 500.
@@ -364,6 +375,29 @@ ${bold('EJEMPLOS')}
     cacheNote: () =>
       '  Caché: leer cuesta el 10% de la entrada; escribir, el 125% (5 min) o 200% (1 h).',
     batchNote: () => '  Batch API: 50% de descuento sobre entrada y salida.',
+  },
+
+  rank: {
+    heading: (root, count) =>
+      `${count} ${count === 1 ? 'prompt' : 'prompts'} en ${root}, primero los más recuperables`,
+    subheading: (model, calls) => `Calculado con ${model} y ${calls} llamadas al mes.`,
+    columns: {
+      recoverable: 'Recupera',
+      tokensBack: 'Tokens',
+      tokens: 'Tamaño',
+      density: 'Tok/fra',
+      notes: 'Prompt',
+    },
+    noteExamples: (count, tokens) => `${count} ejemplos, ~${tokens} tokens`,
+    noteFormat: (tokens) => `~${tokens} tokens repitiendo el formato de salida`,
+    noteProtected: (pct) => `el ${pct}% es código o URLs, que no se pueden recortar`,
+    skipped: (count) =>
+      `Se ${count === 1 ? 'ha omitido' : 'han omitido'} ${count} fichero${count === 1 ? '' : 's'} de código sin marcador `
+      + '`// trazum:prompt`: sus prompts no están en este ranking.',
+    densityNote: () =>
+      'Tok/fra son tokens por frase: verbosidad independiente de la longitud. No hay puntuación: cada columna es una medida que puedes comprobar contra el fichero.',
+    recoverableNote: () =>
+      'Recupera es lo que quitarían las reglas deterministas en este nivel, valorado con el perfil de uso, con el número de tokens al lado: ahorrar un token son veinticinco céntimos y ningún trabajo que merezca la pena. Se obtiene ejecutando las reglas, no con una fórmula.',
   },
 
   blame: {

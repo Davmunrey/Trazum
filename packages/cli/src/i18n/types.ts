@@ -143,6 +143,25 @@ export interface CliMessages {
     disableHint(): string;
   };
 
+  /** `trazum rank` — which prompts to fix first, and why. */
+  rank: {
+    heading(root: string, count: number): string;
+    subheading(model: string, calls: string): string;
+    columns: {
+      recoverable: string;
+      tokensBack: string;
+      tokens: string;
+      density: string;
+      notes: string;
+    };
+    noteExamples(count: number, tokens: string): string;
+    noteFormat(tokens: string): string;
+    noteProtected(pct: number): string;
+    skipped(count: number): string;
+    densityNote(): string;
+    recoverableNote(): string;
+  };
+
   /** `trazum blame` — how a prompt's cost moved over its git history. */
   blame: {
     heading(path: string, revisions: number): string;

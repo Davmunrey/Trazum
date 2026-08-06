@@ -12,6 +12,7 @@ import {
   getModel,
   applyRewrites,
   computeSavings,
+  profilePrompt,
   estimateTokens,
   formatUsd,
   formatSignedUsd,
@@ -43,6 +44,7 @@ import type {
   OptimizationResult,
   RuleId,
   RejectedReason,
+  PromptProfile,
   RuleLevel,
   SuggestResult,
   UsageProfile,
@@ -306,6 +308,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   eval: ['cases', 'level', 'concurrency'],
   diff: ['level', 'model', 'calls', 'output-tokens', 'batch', 'max-growth', 'optimized', 'markdown-out'],
   models: [],
+  rank: ['level', 'model', 'calls', 'output-tokens', 'batch', 'disable', 'prompt'],
   where: [],
   rules: [],
   blame: ['limit', 'model', 'calls', 'output-tokens', 'batch', 'prompt'],
@@ -2305,6 +2308,207 @@ function printBlame(
   console.log(`\n${c.dim(t.blame.estimateNote())}\n`);
 }
 
+// --------------------------------------------------------------------------
+// rank
+// --------------------------------------------------------------------------
+
+interface RankedPrompt {
+  path: string;
+  profile: PromptProfile;
+  /** Tokens the deterministic rules would take, at the level asked for. */
+  recoverable: number;
+  /** What those tokens cost per month under the usage profile. */
+  recoverableUsd: number;
+  /** Set when the file is source and its marked prompt was measured. */
+  promptName: string | null;
+}
+
+/**
+ * `trazum rank <dir>` — which of these prompts to fix first.
+ *
+ * The obvious design is a complexity score out of a hundred, and it is the
+ * wrong one. A number nobody can reproduce by hand cannot be argued with, and
+ * the weights that combine four measurements into one get tuned until the
+ * ranking looks right — which is fitting the metric to the answer.
+ *
+ * So this sorts on the one quantity that is not a matter of opinion: **what
+ * optimising each prompt would actually save**, obtained by running the rules
+ * rather than by evaluating a formula. The structural measurements are printed
+ * beside it as the *explanation* — "1,204 tokens across 8 sentences" says why a
+ * prompt is worth looking at, and the recoverable figure says whether it is
+ * worth looking at before the other thirty-nine.
+ */
+async function commandRank(
+  args: Args,
+  config: TrazumConfig,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+  locale: Locale,
+): Promise<void> {
+  const root = args.positional[0] ?? '.';
+  const level = levelFlag(args, config, t);
+  const usage = usageFrom(args, config, t);
+
+  const extensions = config.extensions ?? [...DEFAULT_EXTENSIONS, ...SOURCE_EXTENSIONS];
+  const { files, truncated } = await walkPrompts(root, { extensions });
+  if (files.length === 0) {
+    throw new Error(t.errors.noPromptsFound(root, extensions.join(' ')));
+  }
+
+  const ranked: RankedPrompt[] = [];
+  let skipped = 0;
+
+  for (const file of files) {
+    const raw = await readFile(join(root, file), 'utf8');
+
+    // A source file contributes its marked prompt, or nothing. Ranking
+    // `src/prompts.ts` by the size of its imports would put the wrong file at
+    // the top of a list whose whole job is to point somewhere.
+    //
+    // `sourceFileOf` *throws* for a source file with no marker, which is the
+    // right answer for `optimize` — you named that file, and optimising it
+    // would rewrite your code. It is the wrong answer here: one unmarked `.ts`
+    // in a repository would abort the ranking of the other thirty-nine. Caught,
+    // counted, and reported at the end rather than swallowed.
+    let source: { text: string; model?: string } | null;
+    try {
+      source = sourceFileOf(file, raw, pricing, stringFlag(args, 'prompt'));
+    } catch {
+      skipped++;
+      continue;
+    }
+    if (source === null && SOURCE_EXTENSIONS.some((ext) => file.toLowerCase().endsWith(ext))) {
+      skipped++;
+      continue;
+    }
+    const text = source ? source.text : raw;
+    if (text.trim() === '') continue;
+
+    const result = optimize(text, { level, locale, usage, pricing, disableRules: disabledRules(args, config) });
+    ranked.push({
+      path: file,
+      profile: profilePrompt(text),
+      recoverable: result.tokensSaved,
+      recoverableUsd: result.savings.monthlySavingsUsd,
+      promptName: source ? (stringFlag(args, 'prompt') ?? null) : null,
+    });
+  }
+
+  if (ranked.length === 0) {
+    throw new Error(t.errors.noPromptsFound(root, extensions.join(' ')));
+  }
+
+  ranked.sort((a, b) => b.recoverableUsd - a.recoverableUsd || b.recoverable - a.recoverable);
+  printRank(ranked, { root, args, usage, pricing, t, truncated, skipped });
+}
+
+/**
+ * The ranking, and the numbers that explain it.
+ *
+ * Every column is a measurement with a definition in `profile.ts`, printed with
+ * its units. There is deliberately no total, no grade and no index: the reader
+ * is meant to look down the first column, pick a file, and know why.
+ */
+function printRank(
+  ranked: RankedPrompt[],
+  context: {
+    root: string;
+    args: Args;
+    usage: UsageProfile;
+    pricing: PricingCatalogue;
+    t: CliMessages;
+    truncated: boolean;
+    skipped: number;
+  },
+): void {
+  const { root, args, usage, pricing, t, truncated, skipped } = context;
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+
+  if (boolFlag(args, 'json')) {
+    console.log(
+      JSON.stringify(
+        {
+          root,
+          truncated,
+          skippedSourceFiles: skipped,
+          usage,
+          prompts: ranked.map((entry) => ({
+            path: entry.path,
+            ...entry.profile,
+            recoverableTokens: entry.recoverable,
+            recoverableUsdPerMonth: entry.recoverableUsd,
+          })),
+        },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+
+  const model = pricing.models.find((m) => m.id === usage.model);
+  console.log(`\n${c.bold(t.rank.heading(root, ranked.length))}`);
+  console.log(
+    c.dim(t.rank.subheading(model?.displayName ?? usage.model, n(usage.callsPerMonth))),
+  );
+  console.log();
+
+  const cols = t.rank.columns;
+  const widths = {
+    save: Math.max(cols.recoverable.length, ...ranked.map((r) => formatUsd(r.recoverableUsd).length)),
+    back: Math.max(cols.tokensBack.length, ...ranked.map((r) => n(r.recoverable).length)),
+    tokens: Math.max(cols.tokens.length, ...ranked.map((r) => n(r.profile.tokens).length)),
+    density: Math.max(cols.density.length, 6),
+  };
+
+  console.log(
+    c.dim(
+      [
+        cols.recoverable.padStart(widths.save),
+        cols.tokensBack.padStart(widths.back),
+        cols.tokens.padStart(widths.tokens),
+        cols.density.padStart(widths.density),
+        cols.notes,
+      ].join('  '),
+    ),
+  );
+
+  for (const entry of ranked) {
+    const { profile } = entry;
+    const notes: string[] = [];
+    if (profile.examples > 0) notes.push(t.rank.noteExamples(profile.examples, n(profile.exampleTokens)));
+    if (profile.formatTokens > 0) notes.push(t.rank.noteFormat(n(profile.formatTokens)));
+    // Only when it is a large enough share to change the answer: "3% of this
+    // is code" is true of nearly everything and tells nobody anything.
+    const protectedShare = profile.tokens === 0 ? 0 : profile.protectedTokens / profile.tokens;
+    if (protectedShare >= 0.25) notes.push(t.rank.noteProtected(Math.round(protectedShare * 100)));
+
+    // Money *and* tokens, side by side, and that is the fix for a real
+    // misreading. Four prompts showed "$0.25" and looked like four equivalent
+    // jobs; three of them recovered a single token, which at 50,000 calls is
+    // twenty-five cents and no work worth doing. Rather than invent a threshold
+    // — any cutoff here would be a number nobody could check — the count is
+    // printed beside the money. "1" is self-evidently nothing and "36" is
+    // self-evidently something, with no judgement of ours in between.
+    console.log(
+      [
+        formatUsd(entry.recoverableUsd).padStart(widths.save),
+        n(entry.recoverable).padStart(widths.back),
+        n(profile.tokens).padStart(widths.tokens),
+        profile.tokensPerSentence.toFixed(1).padStart(widths.density),
+        `${entry.path}${notes.length > 0 ? c.dim(`  — ${notes.join(', ')}`) : ''}`,
+      ].join('  '),
+    );
+  }
+
+  if (truncated) console.log(`\n${c.dim(t.check.walkTruncated())}`);
+  // Named rather than silent: a repository where most prompts live in code
+  // would otherwise show a short list and look complete.
+  if (skipped > 0) console.log(`\n${c.dim(t.rank.skipped(skipped))}`);
+  console.log(`\n${c.dim(t.rank.densityNote())}`);
+  console.log(`${c.dim(t.rank.recoverableNote())}\n`);
+}
+
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   let locale = localeFromArgv(argv);
@@ -2364,6 +2568,9 @@ async function main(): Promise<void> {
       break;
     case 'rules':
       commandRules(t, locale);
+      break;
+    case 'rank':
+      await commandRank(args, config, pricing, t, locale);
       break;
     case 'blame':
       await commandBlame(args, config, pricing, t);
