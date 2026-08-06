@@ -517,6 +517,54 @@ told what Trazum knew for free.
 On its own it is an error rather than a no-op, for the same reason a misspelled
 flag is: a flag that runs silently and changes nothing is not an answer.
 
+### Which prompt to fix first: `trazum rank`
+
+Forty prompts in a repository, an afternoon to spend. Which one?
+
+```bash
+trazum rank prompts/ --calls 50000
+```
+
+```
+4 prompts under prompts/, most recoverable first
+Priced on Claude Opus 5 at 50,000 calls a month.
+
+Recover  Tokens  Size  Tok/sen  Prompt
+  $9.00      36   129     21.5  padded.txt
+$0.2500       1   115     38.3  code-heavy.txt  — 83% is code or URLs, which cannot be trimmed
+$0.2500       1   110      7.9  examples.txt  — 4 examples, ~90 tokens
+$0.2500       1    35      7.0  dense.txt
+```
+
+**There is no complexity score, and that is deliberate.** A number out of a
+hundred cannot be reproduced by hand, so it cannot be argued with — and the
+weights that combine four measurements into one get tuned until the ranking
+looks right, which is fitting the metric to the answer.
+
+So the ordering is the one quantity that is not a matter of opinion: **what
+optimising each prompt would actually recover**, obtained by running the
+deterministic rules, not by evaluating a formula. The other columns explain that
+position rather than producing it:
+
+- **Tokens** — what comes back, printed beside the money on purpose. Three of
+  the rows above recover a single token, which at 50,000 calls is twenty-five
+  cents and no work worth doing. Rather than invent a cutoff nobody could check,
+  the count sits next to the figure: `1` is self-evidently nothing.
+- **Size** — the whole prompt.
+- **Tok/sen** — tokens per sentence: verbosity independent of length, so a
+  padded short prompt and a padded long one look alike. A sentence is a span
+  ending in `.!?。！？` or a line that ends without punctuation, counted outside
+  code and URLs.
+- **Notes** — few-shot examples and what they cost, a restated output format,
+  and the share of the prompt that is protected content. That last one matters:
+  a prompt that is 83% code has far less headroom than its size suggests, and a
+  ranking that hid it would send you to spend an afternoon on a file that cannot
+  move.
+
+Source files contribute their marked prompt, never the code around them. One
+with no `// trazum:prompt` marker is skipped and counted, so a repository whose
+prompts mostly live in code does not show a short list and look complete.
+
 ### Who made this prompt expensive: `trazum blame`
 
 `diff` compares two versions you have in front of you. `blame` asks the question

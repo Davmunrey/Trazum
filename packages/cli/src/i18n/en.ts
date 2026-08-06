@@ -18,10 +18,21 @@ ${bold('USAGE')}
   trazum check <file|dir|-> --max-tokens <n> [options]
   trazum eval <file> --cases <file> [options]
   trazum diff <before> <after> [options]
+  trazum rank <dir> [options]
   trazum blame <file> [options]
   trazum where [file]
   trazum models
   trazum rules
+
+${bold('OPTIONS FOR rank')}
+  --level <safe|aggressive>   Which rules to count as recoverable. Default: safe.
+  --model, --calls,           Price the recoverable tokens, as in optimize.
+  --output-tokens, --batch
+  --prompt <name>             Which marked prompt to take from each source file.
+  --json                      The ranking as data.
+
+  There is no score. Prompts are ordered by what the rules would actually
+  recover, measured by running them; the other columns explain that position.
 
 ${bold('OPTIONS FOR blame')}
   --limit <n>                 Revisions to walk. Default: 20, maximum 500.
@@ -350,6 +361,29 @@ ${bold('EXAMPLES')}
     cacheNote: () =>
       '  Cache: reading costs 10% of input; writing, 125% (5 min) or 200% (1 h).',
     batchNote: () => '  Batch API: 50% off input and output.',
+  },
+
+  rank: {
+    heading: (root, count) =>
+      `${count} ${count === 1 ? 'prompt' : 'prompts'} under ${root}, most recoverable first`,
+    subheading: (model, calls) => `Priced on ${model} at ${calls} calls a month.`,
+    columns: {
+      recoverable: 'Recover',
+      tokensBack: 'Tokens',
+      tokens: 'Size',
+      density: 'Tok/sen',
+      notes: 'Prompt',
+    },
+    noteExamples: (count, tokens) => `${count} examples, ~${tokens} tokens`,
+    noteFormat: (tokens) => `~${tokens} tokens restating the output format`,
+    noteProtected: (pct) => `${pct}% is code or URLs, which cannot be trimmed`,
+    skipped: (count) =>
+      `Skipped ${count} source ${count === 1 ? 'file' : 'files'} with no \`// trazum:prompt\` marker — `
+      + 'their prompts are not in this ranking.',
+    densityNote: () =>
+      'Tok/sen is tokens per sentence: verbosity independent of length. There is no score — every column is a measurement you can check against the file.',
+    recoverableNote: () =>
+      'Recover is what the deterministic rules would take at this level, priced by the usage profile, with the token count beside it — a saving of one token is twenty-five cents and no work worth doing. It is measured by running the rules, not by a formula.',
   },
 
   blame: {

@@ -12,6 +12,48 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`trazum rank <dir>` — which of these prompts to fix first.**
+
+The obvious shape for this was a complexity score out of a hundred, and it is
+the wrong shape. A number nobody can reproduce by hand cannot be argued with,
+and the weights that turn four measurements into one get tuned until the ranking
+looks right — which is fitting the metric to the answer.
+
+So the ordering is the one quantity that is not a matter of opinion: **what
+optimising each prompt would actually recover**, obtained by running the
+deterministic rules rather than evaluating a formula. The structural
+measurements are printed beside it as the *explanation* — tokens per sentence
+(verbosity independent of length), few-shot examples and what they cost, a
+restated output format, and the share of the prompt that is protected content.
+
+That last one earns its place: a prompt that is 83% code has far less headroom
+than its size suggests, and a ranking that hid it would send somebody to spend
+an afternoon on a file that cannot move.
+
+Source files contribute their marked prompt, never the code around them. One
+with no marker is skipped **and counted**, so a repository whose prompts mostly
+live in code does not show a short list and look complete.
+
+Two tests hold the line against a score reappearing: `PromptProfile` may not
+grow a field whose name contains "score", "rating", "grade", "index" or
+"complexity", and neither may the ranking's JSON.
+
+### Fixed
+
+Two problems in that work, both visible only by running it:
+
+- **A single unmarked source file aborted the whole ranking.** `sourceFileOf`
+  throws for a source file with no `// trazum:prompt` marker, which is right for
+  `optimize` — you named that file, and optimising it would rewrite your code —
+  and wrong for a command walking a directory. One stray `.ts` killed the other
+  thirty-nine.
+- **Four prompts showed `$0.25` and looked like four equivalent jobs.** Three of
+  them recovered a single token, which at 50,000 calls is twenty-five cents. The
+  arithmetic was right and the presentation was not. Rather than invent a
+  threshold nobody could check, the token count is printed beside the money.
+
+### Added
+
 **`optimize --suggest` — rewrites proposed one phrase at a time.**
 
 `--llm` hands the model the whole prompt and takes the whole answer back, which
