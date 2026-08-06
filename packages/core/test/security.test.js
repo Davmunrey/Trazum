@@ -4,7 +4,14 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 
-import { isPrivateHost, optimize, reorderForCache, validateLlmEndpoint } from '../dist/index.js';
+import {
+  allowedEndpoints,
+  isPrivateHost,
+  optimize,
+  reorderForCache,
+  resolveEndpoint,
+  validateLlmEndpoint,
+} from '../dist/index.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..', '..', '..');
@@ -870,5 +877,84 @@ describe('every source file is reviewable as a diff', () => {
       `git will treat these as binary and show no diff: ${binary.join(', ')}. ` +
         'Write the byte as \\0 in a string literal instead of embedding it.',
     );
+  });
+});
+
+describe('SSRF: a caller selects an endpoint, it does not name one', () => {
+  /**
+   * The alert that would not close, at its actual source.
+   *
+   * `validateLlmEndpoint` guards the *shape* of a URL, and the web route was
+   * treating that as sufficient: take `baseUrl` from the request body, check
+   * it, fetch it. It never could have been sufficient. The host filter reads a
+   * name, and a name the attacker registered resolves wherever they point it —
+   * `https://fine.example.com` with an A record of 169.254.169.254 walks past
+   * every pattern in this file. Closing that needs the resolved address pinned
+   * at the socket, which `fetch` does not expose.
+   *
+   * So the body stopped naming hosts. It picks from a list the operator wrote,
+   * and what gets fetched is the list's entry.
+   */
+  const LIST = { TRAZUM_ALLOWED_LLM_ENDPOINTS: 'https://api.openai.com/v1, https://api.deepseek.com' };
+
+  it('offers nothing at all by default', () => {
+    // The important one. A deployment that never heard of this variable cannot
+    // be pointed anywhere by anybody.
+    assert.deepEqual(allowedEndpoints({}), []);
+    assert.deepEqual(allowedEndpoints({ TRAZUM_ALLOWED_LLM_ENDPOINTS: '' }), []);
+    assert.equal(resolveEndpoint('https://api.openai.com/v1', []), null);
+  });
+
+  it('reads a comma-separated list and normalises it', () => {
+    assert.deepEqual(allowedEndpoints(LIST), [
+      'https://api.openai.com/v1',
+      'https://api.deepseek.com',
+    ]);
+  });
+
+  it('drops an entry the operator should not have written', () => {
+    // Trusted to choose, not immune from pasting the metadata address into a
+    // list that then serves every anonymous caller.
+    assert.deepEqual(
+      allowedEndpoints({
+        TRAZUM_ALLOWED_LLM_ENDPOINTS:
+          'https://169.254.169.254, http://llm.example.com, not-a-url, https://ok.example.com/v1',
+      }),
+      ['https://ok.example.com/v1'],
+    );
+  });
+
+  it('returns the listed value, not the requested one', () => {
+    // This is the entire point of the function and the reason the alert closes:
+    // the string that arrived over HTTP is compared and then dropped on the
+    // floor. Nothing derived from it reaches fetch.
+    const allowed = allowedEndpoints(LIST);
+    const requested = 'HTTPS://API.OPENAI.COM/v1/';
+    const resolved = resolveEndpoint(requested, allowed);
+
+    assert.equal(resolved, 'https://api.openai.com/v1');
+    assert.ok(allowed.includes(resolved), 'the resolved value did not come off the list');
+    assert.notEqual(resolved, requested);
+  });
+
+  it('refuses a host that is merely public', () => {
+    // The old check would have passed every one of these: valid https, public
+    // host, no credentials. "Public" is not "fine to fetch for a stranger".
+    const allowed = allowedEndpoints(LIST);
+    for (const url of [
+      'https://attacker.example.com/v1',
+      'https://api.openai.com.attacker.example.com/v1',
+      'https://api.openai.com@attacker.example.com/v1',
+    ]) {
+      assert.equal(resolveEndpoint(url, allowed), null, `${url} was allowed through`);
+    }
+  });
+
+  it('refuses a path on a host that is on the list', () => {
+    // Being allowed to reach api.openai.com is not being allowed to reach any
+    // path on it. The entry is an endpoint, not a domain.
+    const allowed = allowedEndpoints(LIST);
+    assert.equal(resolveEndpoint('https://api.openai.com/v1/../../internal', allowed), null);
+    assert.equal(resolveEndpoint('https://api.openai.com/admin', allowed), null);
   });
 });

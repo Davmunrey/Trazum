@@ -49,6 +49,10 @@ export const es: WebMessages = {
     formatAnthropic: 'Claude API (/v1/messages)',
     baseUrl: 'URL base',
     baseUrlPlaceholder: 'https://tu-llm.ejemplo.com/v1',
+    baseUrlServerDefault: 'el endpoint del propio servidor',
+    baseUrlNotOffered:
+      'Este servidor solo llama al LLM que configuró su operador. Ejecuta Trazum tú mismo — la '
+      + 'CLI, o tu propio despliegue — para apuntarlo al endpoint que quieras.',
     model: 'Modelo',
     modelPlaceholder: 'identificador del modelo',
     apiKey: 'Clave de API',
@@ -124,6 +128,12 @@ export const es: WebMessages = {
     invalidEndpointUrl: 'La URL del endpoint no es válida.',
     endpointMustBeHttps: 'El endpoint del LLM debe usar https.',
     endpointMustBePublic: 'El endpoint del LLM no puede apuntar a una dirección interna.',
+    endpointNotOffered:
+      'Este servidor no llama a endpoints elegidos por quien hace la petición. Usa el LLM que '
+      + 'configuró su operador, o ninguno. Para permitir elegir, define '
+      + 'TRAZUM_ALLOWED_LLM_ENDPOINTS en el servidor.',
+    endpointNotAllowed: (allowed: readonly string[]) =>
+      `Ese endpoint no es uno de los que ofrece este servidor. Permitidos: ${allowed.join(', ')}.`,
     llmNotConfigured:
       'Has activado la pasada por LLM pero no hay proveedor configurado. Rellena endpoint y modelo, o define TRAZUM_LLM_BASE_URL y TRAZUM_LLM_MODEL en el servidor.',
     unexpected: 'Error inesperado.',

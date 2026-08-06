@@ -12,6 +12,41 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Security
 
+**CodeQL reopened the SSRF alert on the fix below, and it was right a third
+time.** Both earlier attempts hardened the wrong layer. The taint does not start
+at `TRAZUM_LLM_BASE_URL`, which an operator sets on their own machine — it starts
+at `POST /api/optimize`, whose body carried a `baseUrl` that the deployed server
+would then fetch. That is server-side request forgery by construction, and no
+amount of validating the string fixes it: the host filter reads a *name*, and a
+name an attacker registered resolves wherever they choose.
+
+**So the request body no longer names an endpoint. It selects one.**
+`TRAZUM_ALLOWED_LLM_ENDPOINTS` is a comma-separated list the operator writes, and
+the value that reaches `fetch` is the entry from that list — the string that
+arrived over HTTP is compared and then dropped. The list is empty by default, so
+a deployment that has not thought about this cannot be pointed anywhere at all.
+Nobody loses the capability: `TRAZUM_LLM_BASE_URL` and the CLI still go anywhere
+you like. What changed is who is allowed to choose. The web UI's free-text field
+is now a picker over what the server actually accepts, because offering a text
+box that always answers 400 is worse than offering nothing.
+
+**A redirect walked past the entire host filter, and had all along.** Every check
+in `net.ts` reads the URL the caller named, and `fetch` follows redirects by
+default — so an endpoint that passed validation could answer
+`302 Location: http://169.254.169.254/latest/meta-data/` and the request went
+there anyway, `authorization` header included. One HTTP response, and the whole
+filter was decorative. Every server-side call now carries `redirect: 'error'`,
+plus `credentials: 'omit'` and `referrerPolicy: 'no-referrer'`. This one mattered
+for the CLI as much as for the deployed app, which is why it is fixed in the
+provider rather than in the route.
+
+**And a third door nobody had looked at.** `countTokensAnthropic` takes a
+`baseUrl` and sends an `x-api-key` to it, with no validation whatsoever. Both
+providers had been hardened twice over while this sat open, because it is called
+a counter rather than a provider. It goes through the same gate now.
+
+### Security
+
 **The alert gate found two things on its first real run**, which is the argument
 for it in one sentence. Both were invisible to every pull-request check.
 

@@ -61,6 +61,13 @@ function saveHistory(entries: HistoryEntry[]): void {
 interface Metadata {
   models: ModelPricing[];
   llmConfiguredOnServer: boolean;
+  /**
+   * Endpoints this deployment is willing to call, from the server's
+   * `TRAZUM_ALLOWED_LLM_ENDPOINTS`. Empty by default, and the field below
+   * becomes a picker over exactly this list rather than free text: the server
+   * refuses anything else, so offering a text box would only invite a 400.
+   */
+  allowedEndpoints?: readonly string[];
 }
 
 /**
@@ -152,6 +159,7 @@ export function Optimizer({ locale, t }: { locale: Locale; t: WebMessages }) {
   const [llmBaseUrl, setLlmBaseUrl] = useState('');
   const [llmModel, setLlmModel] = useState('');
   const [llmApiKey, setLlmApiKey] = useState('');
+  const endpointChoices = meta?.allowedEndpoints ?? [];
 
   const [result, setResult] = useState<OptimizationResult | null>(null);
   const [reorderResult, setReorderResult] = useState<ReorderResult | null>(null);
@@ -421,17 +429,26 @@ export function Optimizer({ locale, t }: { locale: Locale; t: WebMessages }) {
                     </select>
                   </div>
 
-                  {llmProvider === 'openai' && (
-                    <div className="field">
-                      <label htmlFor="llmBaseUrl">{t.llm.baseUrl}</label>
-                      <input
-                        id="llmBaseUrl"
-                        value={llmBaseUrl}
-                        onChange={(e) => setLlmBaseUrl(e.target.value)}
-                        placeholder={t.llm.baseUrlPlaceholder}
-                      />
-                    </div>
-                  )}
+                  {llmProvider === 'openai' &&
+                    (endpointChoices.length > 0 ? (
+                      <div className="field">
+                        <label htmlFor="llmBaseUrl">{t.llm.baseUrl}</label>
+                        <select
+                          id="llmBaseUrl"
+                          value={llmBaseUrl}
+                          onChange={(e) => setLlmBaseUrl(e.target.value)}
+                        >
+                          <option value="">{t.llm.baseUrlServerDefault}</option>
+                          {endpointChoices.map((url) => (
+                            <option key={url} value={url}>
+                              {url}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <p className="note">{t.llm.baseUrlNotOffered}</p>
+                    ))}
 
                   <div className="field">
                     <label htmlFor="llmModel">{t.llm.model}</label>

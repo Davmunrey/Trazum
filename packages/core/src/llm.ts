@@ -1,6 +1,6 @@
 import { buildAdvisories } from './advisories.js';
 import { getMessages } from './i18n/index.js';
-import { validateLlmEndpoint } from './net.js';
+import { SAFE_FETCH_INIT, checkedEndpoint } from './net.js';
 import type { Locale } from './i18n/types.js';
 import { computeSavings } from './savings.js';
 import { segment } from './segment.js';
@@ -160,7 +160,8 @@ export interface OpenAiCompatibleOptions {
 }
 
 /**
- * Refuses an endpoint this provider must not be pointed at.
+ * The endpoint check lives in `net.ts`, beside the validator and beside the
+ * `fetch` options every server-side call here carries.
  *
  * At construction rather than at call time, so a provider that can never work
  * does not exist to be handed around.
@@ -169,33 +170,8 @@ export interface OpenAiCompatibleOptions {
  * that stays — it turns the reason code into a sentence in the reader's
  * language. This is the second lock, at the boundary. `openAiCompatible` is an
  * exported library function, so "the caller checks" is a promise about every
- * future caller, including ones outside this repository. CodeQL was right to
- * call the unguarded fetch server-side request forgery: the filter existed and
- * SECURITY.md called it "the only thing standing between a public deployment and
- * the internal network", but it was enforced one level too far out.
+ * future caller, including ones outside this repository.
  */
-function checkedEndpoint(baseUrl: string, allowInsecure: boolean, name: string): string {
-  const rejection = validateLlmEndpoint(baseUrl, { allowInsecure });
-  if (rejection !== null) {
-    throw new Error(
-      `Provider "${name}" cannot use ${baseUrl}: ${rejection}. ` +
-        'Pass allowInsecure only for an endpoint you configured yourself.',
-    );
-  }
-
-  // Returns the value to use rather than just approving one.
-  //
-  // The first attempt validated `baseUrl` and then fetched
-  // `` `${baseUrl.replace(/\/$/, '')}/chat/completions` `` — two different
-  // expressions, so the thing checked was never the thing used. CodeQL kept the
-  // alert open and was right to: nothing on the path from the option to the
-  // fetch was a barrier, and a later edit could have moved the check without
-  // anything noticing.
-  //
-  // Re-parsing also normalises what gets sent. `https://host/v1/../../admin`
-  // passed validation as a string and resolved somewhere else on the wire.
-  return new URL(baseUrl).toString().replace(/\/$/, '');
-}
 
 /**
  * Any endpoint speaking OpenAI's `/chat/completions` format. Covers vLLM,
@@ -213,13 +189,14 @@ export function openAiCompatible(options: OpenAiCompatibleOptions): LlmProvider 
     allowInsecure = false,
   } = options;
 
-  const endpoint = checkedEndpoint(baseUrl, allowInsecure, name);
+  const endpoint = checkedEndpoint(baseUrl, { allowInsecure, name });
 
   return {
     name,
     model,
     async complete({ system, user }) {
       const res = await fetchImpl(`${endpoint}/chat/completions`, {
+        ...SAFE_FETCH_INIT,
         method: 'POST',
         headers: {
           'content-type': 'application/json',
@@ -273,13 +250,14 @@ export function anthropicProvider(options: AnthropicProviderOptions): LlmProvide
 
   // The same door, one along. This one has a safe default, which is exactly why
   // it is easy to forget that the option overriding it is a network target.
-  const endpoint = checkedEndpoint(baseUrl, allowInsecure, 'anthropic');
+  const endpoint = checkedEndpoint(baseUrl, { allowInsecure, name: 'anthropic' });
 
   return {
     name: 'anthropic',
     model,
     async complete({ system, user }) {
       const res = await fetchImpl(`${endpoint}/v1/messages`, {
+        ...SAFE_FETCH_INIT,
         method: 'POST',
         headers: {
           'content-type': 'application/json',
@@ -334,7 +312,11 @@ export function customProvider(options: CustomProviderOptions): LlmProvider {
     model,
     async complete(input) {
       const { url, init } = request(input);
-      const res = await fetchImpl(url, init);
+      // The caller built this request themselves, so the URL is theirs to choose
+      // — but the redirect default is not something they opted into, and it is
+      // the one that turns any endpoint into a hop. Overridable, since a custom
+      // provider may genuinely need to follow one.
+      const res = await fetchImpl(url, { ...SAFE_FETCH_INIT, ...init });
       if (!res.ok) {
         throw new Error(`Provider "${name}" responded ${res.status}: ${await res.text()}`);
       }

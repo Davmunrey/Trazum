@@ -538,8 +538,17 @@ somebody's prompt. When it is set, the response carries a `reorder` object with
 what moved and what was declined, and `original` stays the text you sent so a diff
 shows the move rather than hiding it behind the deletions.
 
-The endpoint is rate limited (30/min per IP) and, in production, only accepts
-`https` LLM endpoints pointing at public addresses (SSRF protection).
+The endpoint is rate limited (30/min per IP). It will not fetch an LLM endpoint
+a caller names: a request may only **select** one from
+`TRAZUM_ALLOWED_LLM_ENDPOINTS`, a comma-separated list the operator sets on the
+server, and what gets fetched is the entry from that list. The list is empty by
+default, so out of the box a deployment calls only the LLM its own environment
+configured (`TRAZUM_LLM_BASE_URL`) — or none at all. `GET /api/optimize` returns
+the list so the UI offers exactly what the server will accept.
+
+That is stricter than filtering the URL, and deliberately so: the filter reads a
+hostname, and a hostname an attacker registered can resolve wherever they like.
+See [SECURITY.md](SECURITY.md) for the full reasoning.
 
 ### Deploying to Vercel
 
@@ -673,6 +682,15 @@ TRAZUM_LLM_PROVIDER=openai               # openai (default) | anthropic
 TRAZUM_LLM_BASE_URL=https://your-llm/v1  # without /chat/completions
 TRAZUM_LLM_MODEL=model-name
 TRAZUM_LLM_API_KEY=...
+```
+
+Deploying the web app for other people to use? One more, and only if you want
+visitors to be able to pick:
+
+```bash
+# Comma-separated. Empty by default, which means the server calls only the
+# endpoint above. A request can select from this list; it can never name a host.
+TRAZUM_ALLOWED_LLM_ENDPOINTS=https://api.openai.com/v1,https://api.deepseek.com
 ```
 
 That is enough for `--llm` in the CLI and the checkbox in the web app. The

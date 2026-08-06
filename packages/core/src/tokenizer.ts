@@ -21,6 +21,8 @@
  * endpoint, which is free) or pass your own `TokenCounter`.
  */
 
+import { SAFE_FETCH_INIT, checkedEndpoint } from './net.js';
+
 const CJK = /[぀-ヿ㐀-䶿一-鿿가-힯]/;
 const LETTER = /[A-Za-zÀ-ɏͰ-ϿЀ-ӿ]/;
 const DIGIT = /[0-9]/;
@@ -143,11 +145,18 @@ export interface AnthropicCounterOptions {
   model?: string;
   baseUrl?: string;
   fetchImpl?: typeof fetch;
+  /** See `OpenAiCompatibleOptions.allowInsecure`: only when you chose the URL. */
+  allowInsecure?: boolean;
 }
 
 /**
  * Exact counter using the official `/v1/messages/count_tokens` endpoint.
  * The endpoint does not bill tokens, so you can use it freely to measure.
+ *
+ * The third door, and the one nobody had looked at: this takes a `baseUrl` and
+ * sends an `x-api-key` to it. Both providers were hardened at the boundary and
+ * this was left with no check at all, because it is called a counter rather
+ * than a provider. It goes through the same gate now.
  */
 export function countTokensAnthropic(options: AnthropicCounterOptions): AsyncTokenCounter {
   const {
@@ -155,11 +164,15 @@ export function countTokensAnthropic(options: AnthropicCounterOptions): AsyncTok
     model = 'claude-opus-5',
     baseUrl = 'https://api.anthropic.com',
     fetchImpl = fetch,
+    allowInsecure = false,
   } = options;
+
+  const endpoint = checkedEndpoint(baseUrl, { allowInsecure, name: 'anthropic-count-tokens' });
 
   return async (text: string): Promise<number> => {
     if (!text.trim()) return 0;
-    const res = await fetchImpl(`${baseUrl}/v1/messages/count_tokens`, {
+    const res = await fetchImpl(`${endpoint}/v1/messages/count_tokens`, {
+      ...SAFE_FETCH_INIT,
       method: 'POST',
       headers: {
         'content-type': 'application/json',

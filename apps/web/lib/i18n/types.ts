@@ -57,6 +57,8 @@ export interface WebMessages {
     formatAnthropic: string;
     baseUrl: string;
     baseUrlPlaceholder: string;
+    baseUrlServerDefault: string;
+    baseUrlNotOffered: string;
     model: string;
     modelPlaceholder: string;
     apiKey: string;
@@ -123,6 +125,8 @@ export interface WebMessages {
     invalidEndpointUrl: string;
     endpointMustBeHttps: string;
     endpointMustBePublic: string;
+    endpointNotOffered: string;
+    endpointNotAllowed(allowed: readonly string[]): string;
     llmNotConfigured: string;
     unexpected: string;
   };

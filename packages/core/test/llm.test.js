@@ -1,7 +1,15 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { optimize, refineWithLlm, providerFromEnv } from '../dist/index.js';
+import {
+  anthropicProvider,
+  countTokensAnthropic,
+  customProvider,
+  openAiCompatible,
+  optimize,
+  providerFromEnv,
+  refineWithLlm,
+} from '../dist/index.js';
 
 /** Fake provider: returns whatever we tell it to, without touching the network. */
 function fakeProvider(reply) {
@@ -115,5 +123,121 @@ describe('configuration from the environment', () => {
     });
     assert.ok(provider);
     assert.equal(provider.name, 'anthropic');
+  });
+});
+
+describe('the request itself, not just the URL it was aimed at', () => {
+  /**
+   * Every check above this line reads the URL the caller named. None of them
+   * survive a redirect, and `fetch` follows redirects by default.
+   *
+   * So the whole host filter — the metadata address, the RFC1918 ranges, the
+   * `.internal` suffix, all of it — could be walked past by any endpoint that
+   * passed validation and then answered
+   * `302 Location: http://169.254.169.254/latest/meta-data/`. One HTTP
+   * response. The `authorization` header goes along for the ride.
+   *
+   * This applies to the CLI pointed at a compromised gateway exactly as much
+   * as to the deployed app, which is why it is fixed in the provider rather
+   * than in the route.
+   */
+  const captureInit = () => {
+    const seen = [];
+    const fetchImpl = async (url, init) => {
+      seen.push({ url, init });
+      return {
+        ok: true,
+        async json() {
+          return { choices: [{ message: { content: 'short' } }], content: [{ type: 'text', text: 'short' }], input_tokens: 1 };
+        },
+      };
+    };
+    return { seen, fetchImpl };
+  };
+
+  it('refuses to follow a redirect on an OpenAI-compatible call', async () => {
+    const { seen, fetchImpl } = captureInit();
+    const provider = openAiCompatible({
+      baseUrl: 'https://llm.example.com/v1',
+      model: 'm',
+      apiKey: 'k',
+      fetchImpl,
+    });
+    await provider.complete({ system: 's', user: 'u' });
+
+    assert.equal(seen[0].init.redirect, 'error');
+  });
+
+  it('refuses to follow one on the Claude call either', async () => {
+    const { seen, fetchImpl } = captureInit();
+    const provider = anthropicProvider({ apiKey: 'k', fetchImpl });
+    await provider.complete({ system: 's', user: 'u' });
+
+    assert.equal(seen[0].init.redirect, 'error');
+  });
+
+  it('and on the token counter, which sends the key to the same kind of host', async () => {
+    const { seen, fetchImpl } = captureInit();
+    await countTokensAnthropic({ apiKey: 'k', fetchImpl })('hello');
+
+    assert.equal(seen[0].init.redirect, 'error');
+  });
+
+  it('sends no cookies and no referrer to an endpoint the caller named', async () => {
+    const { seen, fetchImpl } = captureInit();
+    const provider = openAiCompatible({
+      baseUrl: 'https://llm.example.com/v1',
+      model: 'm',
+      fetchImpl,
+    });
+    await provider.complete({ system: 's', user: 'u' });
+
+    assert.equal(seen[0].init.credentials, 'omit');
+    assert.equal(seen[0].init.referrerPolicy, 'no-referrer');
+  });
+
+  it('lets a custom provider override the redirect, since it built the request', async () => {
+    // The escape hatch exists for endpoints that speak nothing standard, and
+    // one of those may genuinely need to follow a hop. It gets the safe default
+    // without being trapped by it.
+    const { seen, fetchImpl } = captureInit();
+    const provider = customProvider({
+      name: 'c',
+      model: 'm',
+      request: () => ({ url: 'https://x.example.com', init: { redirect: 'follow' } }),
+      extract: () => 'x',
+      fetchImpl,
+    });
+    await provider.complete({ system: 's', user: 'u' });
+
+    assert.equal(seen[0].init.redirect, 'follow');
+  });
+});
+
+describe('the token counter goes through the same door as the providers', () => {
+  it('refuses a private host, having previously accepted anything', () => {
+    // It takes a baseUrl and sends an x-api-key to it. Both providers were
+    // hardened and this was left open, because it is called a counter.
+    assert.throws(
+      () => countTokensAnthropic({ apiKey: 'k', baseUrl: 'https://169.254.169.254' }),
+      /private-host/,
+    );
+  });
+
+  it('refuses http, and says which option would allow it', () => {
+    assert.throws(
+      () => countTokensAnthropic({ apiKey: 'k', baseUrl: 'http://llm.example.com' }),
+      /insecure-scheme[\s\S]*allowInsecure/,
+    );
+  });
+
+  it('still allows a local endpoint the operator chose', () => {
+    assert.ok(
+      countTokensAnthropic({
+        apiKey: 'k',
+        baseUrl: 'http://localhost:11434',
+        allowInsecure: true,
+      }),
+    );
   });
 });

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 
 import {
   RULES,
+  allowedEndpoints,
   anthropicProvider,
   getModel,
   listModels,
@@ -10,6 +11,7 @@ import {
   providerFromEnv,
   refineWithLlm,
   reorderForCache,
+  resolveEndpoint,
   resolveLocale,
   validateLlmEndpoint,
 } from '@trazum/core';
@@ -71,32 +73,45 @@ function rateLimited(request: Request): boolean {
 // --------------------------------------------------------------------------
 
 /**
- * The endpoint accepts an LLM URL chosen by the client. Without this filter
- * anyone could use the deployed server to reach the internal network or the
- * cloud metadata service (SSRF).
+ * Turns a caller-supplied endpoint into one this deployment allows.
  *
- * The decision itself lives in `@trazum/core`, where it is unit-tested; this
- * only turns the reason code into a sentence in the reader's language. In
- * development http and local hosts are allowed so you can test against an LLM
- * on your own machine — note that this is keyed off the build-time NODE_ENV
- * and never off anything in the request.
+ * This used to validate the string and then pass the string on, which is the
+ * same check-then-use seam that kept the CodeQL alert open inside the core: the
+ * value that reached `fetch` was never the value that was checked. Worse, the
+ * check could not have been sufficient anyway — the host filter reads a name,
+ * and a name an attacker controls can resolve wherever they like.
+ *
+ * So the body no longer names a host. `resolveEndpoint` compares it to
+ * `TRAZUM_ALLOWED_LLM_ENDPOINTS` and returns **the operator's entry**, which is
+ * what gets fetched. When the list is empty — the default — there is nothing to
+ * select and the server only ever calls what its own environment configured.
+ *
+ * `validateLlmEndpoint` still runs on the way in, purely so the refusal names
+ * the actual problem in the reader's language instead of "not on the list".
  */
-function validateBaseUrl(raw: string, t: WebMessages): string | null {
+function resolveRequestedEndpoint(raw: string, t: WebMessages): { url: string } | { error: string } {
   const rejection = validateLlmEndpoint(raw, {
     allowInsecure: process.env.NODE_ENV === 'development',
   });
 
   switch (rejection) {
-    case null:
-      return null;
     case 'invalid-url':
     case 'credentials-in-url':
-      return t.api.invalidEndpointUrl;
+      return { error: t.api.invalidEndpointUrl };
     case 'insecure-scheme':
-      return t.api.endpointMustBeHttps;
+      return { error: t.api.endpointMustBeHttps };
     case 'private-host':
-      return t.api.endpointMustBePublic;
+      return { error: t.api.endpointMustBePublic };
   }
+
+  const allowed = allowedEndpoints(process.env);
+  const listed = resolveEndpoint(raw, allowed);
+  if (listed === null) {
+    return {
+      error: allowed.length === 0 ? t.api.endpointNotOffered : t.api.endpointNotAllowed(allowed),
+    };
+  }
+  return { url: listed };
 }
 
 interface RequestBody {
@@ -151,8 +166,20 @@ function localeOf(request: Request, body?: RequestBody): Locale {
  * UI), otherwise the server's environment configuration. Keys arriving in the
  * body are used and discarded: never logged, never stored.
  */
-function buildProvider(config: NonNullable<RequestBody['llm']>): LlmProvider | null {
-  const { provider, baseUrl, model, apiKey } = config;
+function buildProvider(
+  config: NonNullable<RequestBody['llm']>,
+  /**
+   * The endpoint to use, already resolved to an entry the operator listed.
+   *
+   * Taken as an argument rather than read back off `config` on purpose. Reading
+   * `config.baseUrl` here is what made the caller's validation decorative: the
+   * checked expression and the used expression were different, one function
+   * apart. Now the only endpoint this function can reach is one that came off
+   * the allowlist.
+   */
+  endpoint: string | null,
+): LlmProvider | null {
+  const { provider, model, apiKey } = config;
 
   if (provider === 'anthropic') {
     const key = apiKey || process.env.TRAZUM_LLM_API_KEY || process.env.ANTHROPIC_API_KEY;
@@ -160,9 +187,9 @@ function buildProvider(config: NonNullable<RequestBody['llm']>): LlmProvider | n
     return anthropicProvider({ apiKey: key, ...(model ? { model } : {}) });
   }
 
-  if (baseUrl && model) {
+  if (endpoint && model) {
     return openAiCompatible({
-      baseUrl,
+      baseUrl: endpoint,
       model,
       ...(apiKey || process.env.TRAZUM_LLM_API_KEY
         ? { apiKey: apiKey || process.env.TRAZUM_LLM_API_KEY! }
@@ -237,11 +264,13 @@ export async function POST(request: Request) {
     }
 
     if (body.llm?.enabled) {
+      let endpoint: string | null = null;
       if (body.llm.baseUrl) {
-        const urlError = validateBaseUrl(body.llm.baseUrl, t);
-        if (urlError) return badRequest(urlError);
+        const resolved = resolveRequestedEndpoint(body.llm.baseUrl, t);
+        if ('error' in resolved) return badRequest(resolved.error);
+        endpoint = resolved.url;
       }
-      const provider = buildProvider(body.llm);
+      const provider = buildProvider(body.llm, endpoint);
       if (!provider) {
         return badRequest(t.api.llmNotConfigured);
       }
@@ -264,5 +293,8 @@ export async function GET() {
   return NextResponse.json({
     models: listModels(),
     llmConfiguredOnServer: providerFromEnv() !== null,
+    // What the UI is allowed to offer. Empty is the default and the honest
+    // answer: this server will not fetch an endpoint a visitor names.
+    allowedEndpoints: allowedEndpoints(process.env),
   });
 }

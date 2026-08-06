@@ -28,15 +28,25 @@ a denial of service in the regex engine, or a future contribution quietly
 adding a dependency that reads the prompts it is handed.
 
 **A deployed web instance** is a different matter. It is a public HTTP endpoint
-that accepts arbitrary text and, optionally, **a URL it will then fetch**. That
-last part is a server-side request forgery primitive, and it is the single most
-dangerous thing in this repository.
+that accepts arbitrary text and, until recently, **a URL it would then fetch**.
+That last part is a server-side request forgery primitive, and it was the single
+most dangerous thing in this repository.
+
+It no longer accepts one. A request can select an endpoint from
+`TRAZUM_ALLOWED_LLM_ENDPOINTS` — a list the operator writes — and the value that
+reaches `fetch` is the entry from that list, not the string that arrived over
+HTTP. The list is empty unless you set it, so a deployment that has not thought
+about this cannot be pointed anywhere at all. Anyone running Trazum for
+themselves still points it wherever they like, through `TRAZUM_LLM_BASE_URL` or
+the CLI; what changed is who is allowed to choose.
 
 ### The controls, and what each is actually for
 
 | Risk | Control | Enforced by |
 |---|---|---|
-| SSRF into the internal network or cloud metadata | Scheme, credential and private-host filter on any caller-supplied endpoint | `packages/core/src/net.ts`, 20 tests in `security.test.js` |
+| SSRF: a caller aiming this server at a host of their choosing | A request may **select** an endpoint the operator listed in `TRAZUM_ALLOWED_LLM_ENDPOINTS`, never name one. The list is empty by default | `packages/core/src/net.ts`, `security.test.js` |
+| SSRF into the internal network or cloud metadata | Scheme, credential and private-host filter on every endpoint, wherever it came from | `packages/core/src/net.ts`, `security.test.js` |
+| A validated endpoint redirecting the request somewhere else | `redirect: 'error'` on every server-side call, so a `302` to the metadata service fails instead of being followed | `packages/core/src/net.ts`, `security.test.js` |
 | ReDoS from a crafted prompt | Time budget over pathological inputs on every pull request | `security.test.js` |
 | A dependency that reads your prompts | The core and the CLI carry **zero** runtime dependencies, asserted in CI | `security.test.js` |
 | `optimize()` quietly phoning home | `fetch` is only permitted in the two modules whose job is to make calls | `security.test.js` |
@@ -102,6 +112,13 @@ nothing should.
   egress layer: if you deploy this somewhere with an internal network worth
   reaching, put it behind an egress allowlist and do not rely on this filter
   alone.
+
+  This limit is the reason the endpoint allowlist exists. A filter that reads a
+  name cannot be made sufficient against an attacker who owns the name, so on
+  the one path where the attacker supplies the string — an HTTP request body —
+  the string is no longer what gets fetched. For `TRAZUM_LLM_BASE_URL` and the
+  CLI the filter is still all there is, and there it is enough: the person who
+  typed the URL is the person being protected.
 - **Rate limiting is per instance, in memory.** On serverless each instance
   keeps its own counter, so the real limit is looser than 30/minute. It is a
   barrier against accidental abuse, not a quota.
