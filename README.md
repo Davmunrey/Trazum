@@ -80,7 +80,7 @@ version stands. It never returns something worse than where it started.
 ```bash
 npm install
 npm run build      # core + cli
-npm test           # 568 tests
+npm test           # 580 tests
 ```
 
 ### CLI
@@ -754,6 +754,23 @@ a keyword heuristic — it has no business recommending that you change supplier
 bill per token, so "saves $184/month" would be false for anyone inside their plan.
 The honest saving there is context-window and rate-limit headroom, which is a
 different report rather than a row in this table.
+
+### Optimising a prompt that lives in code
+
+```bash
+trazum optimize src/prompts.ts --prompt support --diff
+```
+
+It reads the marked prompt and leaves the file alone. **Pointed at an unmarked
+source file it refuses**, because optimising TypeScript as if it were prose does
+not produce a worse prompt — it produces broken code, and `-o` would write that
+back over your file. When a file holds several marked prompts it asks which one
+rather than taking the first.
+
+The model comes from the code too, so a file calling OpenAI is priced against
+OpenAI. `--model` and `trazum.config.json` still win: flags beat config, config
+beats detection, detection beats a built-in default that has no idea which
+provider you use.
 
 ### Which provider is this prompt even going to?
 

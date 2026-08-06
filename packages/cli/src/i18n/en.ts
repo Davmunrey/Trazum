@@ -42,6 +42,8 @@ ${bold('OPTIONS FOR optimize')}
                               a subscription means there is no bill to reduce.
   --cost                      Show the money even there — the host says where
                               Trazum runs, not where your prompt goes.
+  --prompt <name>             Which marked prompt to optimise, when a source file
+                              holds more than one. See "trazum where".
   --diff                      Show the line-by-line diff.
   --json                      Dump the full report as JSON.
   --locale <${d.locales.join('|')}>            Language of the report. Default: the system language.

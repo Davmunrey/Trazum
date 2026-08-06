@@ -110,6 +110,7 @@ const VALUE_FLAGS = new Set([
   'config',
   'markdown-out',
   'pricing',
+  'prompt',
   'out',
   'o',
 ]);
@@ -202,10 +203,21 @@ function levelFlag(args: Args, config: TrazumConfig, t: CliMessages): RuleLevel 
   return level;
 }
 
-/** Usage profile from flags over config over the built-in defaults. */
-function usageFrom(args: Args, config: TrazumConfig, t: CliMessages): UsageProfile {
+/**
+ * Usage profile from flags over config over detection over the built-in default.
+ *
+ * `detected` is what the source file said — an SDK import, a base URL, a quoted
+ * model id. It beats the default because reading the code is better than
+ * assuming, and loses to config because being told is better than reading.
+ */
+function usageFrom(
+  args: Args,
+  config: TrazumConfig,
+  t: CliMessages,
+  detected?: string,
+): UsageProfile {
   const fromConfig = config.usage ?? {};
-  const model = stringFlag(args, 'model') ?? fromConfig.model ?? DEFAULT_USAGE.model;
+  const model = stringFlag(args, 'model') ?? fromConfig.model ?? detected ?? DEFAULT_USAGE.model;
   return {
     model,
     callsPerMonth: numberFlag(
@@ -264,7 +276,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   optimize: [
     'level', 'model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch',
     'disable', 'llm', 'exact-tokens', 'diff', 'reorder', 'out', 'o',
-    'tokens-only', 'cost',
+    'tokens-only', 'cost', 'prompt',
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out'],
   eval: ['cases', 'level', 'concurrency'],
@@ -758,6 +770,79 @@ function defaultModelFor(provider: string, pricing: PricingCatalogue): string | 
 }
 
 /**
+ * Reads a source file as the prompts it holds, rather than as one big prompt.
+ *
+ * Returns null for anything that is not a source file, which is the ordinary
+ * case: a `.txt` or `.md` prompt goes through untouched.
+ *
+ * For a source file it **refuses rather than guesses**. Optimising TypeScript
+ * as if it were prose does not produce a worse prompt, it produces broken code
+ * — `import OpenAI` came back as `Import OpenAI` from the capitalisation rule —
+ * and `-o` would write that over the file. A refusal with the marker syntax in
+ * it costs the reader one comment; the alternative cost them a compile.
+ */
+function sourceFileOf(
+  target: string,
+  raw: string,
+  pricing: PricingCatalogue,
+  wanted: string | undefined,
+): { text: string; model?: string } | null {
+  const isSource = SOURCE_EXTENSIONS.some((ext) => target.toLowerCase().endsWith(ext));
+  if (!isSource) return null;
+
+  // The catalogue in effect rather than the bundled one: an overlay can add a
+  // model, and a detection that cannot see it would fall back for no reason.
+  const detection = detectFromSource(raw, { models: pricing.models });
+  // An import names who, never which — so a file that plainly calls OpenAI was
+  // still being priced against Claude Opus 5. The provider's own stand-in is a
+  // guess about which of their models rather than about whose, which is the
+  // difference that matters. `trazum where` says which it picked and why.
+  const model =
+    detection.model ??
+    (detection.provider !== null ? (defaultModelFor(detection.provider, pricing) ?? undefined) : undefined);
+
+  if (!hasMarker(raw)) {
+    throw new Error(t_sourceNeedsMarker(target));
+  }
+
+  const { prompts, declined } = extractPrompts(raw);
+  if (prompts.length === 0) {
+    const why = declined[0];
+    throw new Error(
+      why
+        ? `${target}: the marker on line ${why.line} could not be read — ${why.detail}`
+        : `${target}: nothing was extracted from the markers in this file.`,
+    );
+  }
+
+  // One prompt is unambiguous. Several need naming, because optimising "the
+  // first one" silently is how the wrong prompt ends up rewritten.
+  const chosen =
+    wanted !== undefined
+      ? prompts.find((p) => p.name === wanted || promptId(target, p) === wanted)
+      : prompts.length === 1
+        ? prompts[0]
+        : undefined;
+
+  if (!chosen) {
+    const names = prompts.map((p) => promptId(target, p)).join('\n  ');
+    throw new Error(
+      wanted !== undefined
+        ? `${target} has no marked prompt called "${wanted}". It holds:\n  ${names}`
+        : `${target} holds ${prompts.length} marked prompts. Name one with --prompt:\n  ${names}`,
+    );
+  }
+
+  return { text: chosen.text, ...(model ? { model } : {}) };
+}
+
+/** Kept as a function so the sentence is in one place rather than two. */
+const t_sourceNeedsMarker = (target: string): string =>
+  `${target} looks like source, not a prompt. Optimising it would rewrite your code — ` +
+  'mark the prompt with a `// trazum:prompt` comment above the literal, or pass the ' +
+  'prompt itself in a .txt file.';
+
+/**
  * Says which provider a prompt is actually sent to, and how it knows.
  *
  * Trazum priced one vendor, so the default cost nothing. Pricing seven made it a
@@ -936,9 +1021,28 @@ async function commandOptimize(
   t: CliMessages,
   locale: Locale,
 ): Promise<void> {
-  const original = await readInput(args.positional[0], t);
+  const target = args.positional[0];
+  const raw = await readInput(target, t);
   const level = levelFlag(args, config, t);
-  const usage = usageFrom(args, config, t);
+
+  // A source file is not a prompt.
+  //
+  // Handed `src/prompts.ts`, this used to optimise the whole file — imports,
+  // `const client = new OpenAI();`, all of it — count the code as tokens the
+  // model would pay for, and then **rewrite the source**: the capitalisation
+  // rule turned `import OpenAI` into `Import OpenAI`, which does not compile.
+  // Writing that back over somebody's file is the worst thing in this
+  // repository's history, and it was the default behaviour.
+  const source =
+    target !== undefined && target !== '-'
+      ? sourceFileOf(target, raw, pricing, stringFlag(args, 'prompt'))
+      : null;
+  const original = source ? source.text : raw;
+
+  // Detection sits between config and defaults, as everywhere: a flag beats
+  // config, config beats what the code says, and what the code says beats a
+  // built-in default that has no idea which provider you use.
+  const usage = usageFrom(args, config, t, source?.model);
 
   const disableRules = disabledRules(args, config) ?? [];
   for (const id of disableRules) {
