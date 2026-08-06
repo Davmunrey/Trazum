@@ -135,6 +135,26 @@ export interface CliMessages {
     disableHint(): string;
   };
 
+  /** `trazum blame` — how a prompt's cost moved over its git history. */
+  blame: {
+    heading(path: string, revisions: number): string;
+    notARepository(): string;
+    outsideRepository(path: string): string;
+    noHistory(path: string): string;
+    gitMissing(): string;
+    columns: { when: string; tokens: string; change: string; who: string; commit: string };
+    /** The line under the table: net movement across the whole history. */
+    net(first: string, last: string, delta: string, pct: string): string;
+    netCost(amount: string, model: string, calls: string): string;
+    biggestRise(): string;
+    biggestRiseDetail(tokens: string, author: string, subject: string, sha: string): string;
+    addedAt(): string;
+    goneAt(): string;
+    truncated(shown: number): string;
+    followedRename(from: string): string;
+    estimateNote(): string;
+  };
+
   eval: {
     nothingToCompare(): string;
     starting(cases: number, calls: number, model: string): string;
