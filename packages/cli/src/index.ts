@@ -10,6 +10,7 @@ import {
   comparePrompts,
   countTokensAnthropic,
   getModel,
+  applyRewrites,
   computeSavings,
   estimateTokens,
   formatUsd,
@@ -27,6 +28,8 @@ import {
   detectFromSource,
   evaluate,
   refineWithLlm,
+  rejectionText,
+  suggestRewrites,
   reviewExamples,
   withExactTokenCounts,
 } from '@trazum/core';
@@ -39,7 +42,9 @@ import type {
   Locale,
   OptimizationResult,
   RuleId,
+  RejectedReason,
   RuleLevel,
+  SuggestResult,
   UsageProfile,
 } from '@trazum/core';
 // Everything that reads the filesystem, on its own entry point so the web
@@ -295,7 +300,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   optimize: [
     'level', 'model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch',
     'disable', 'llm', 'exact-tokens', 'diff', 'reorder', 'out', 'o',
-    'tokens-only', 'cost', 'prompt',
+    'tokens-only', 'cost', 'prompt', 'suggest', 'apply-suggestions',
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out'],
   eval: ['cases', 'level', 'concurrency'],
@@ -414,6 +419,7 @@ function printReport(
   reorder: ReorderResult | null = null,
   tokensOnly = false,
   host: HostEnvironment = { id: 'terminal', displayName: 'terminal', billing: 'unknown', evidence: null },
+  suggestions: { result: SuggestResult; applied: boolean; locale: Locale } | null = null,
 ): void {
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const sourceNote =
@@ -605,6 +611,7 @@ function printReport(
     }
   }
 
+  printSuggestions(suggestions, t, n);
   printRest(result, showDiff, t, examplesReview, n);
 }
 
@@ -691,6 +698,67 @@ function printTokensOnly(
     )}`,
   );
   console.log(`  ${c.dim(t.report.tokensOnlyCost())}`);
+}
+
+/**
+ * The proposed rewrites.
+ *
+ * A list, not a diff, because that is the shape of the decision: each line is
+ * one phrase and its replacement, and the reader is answering "yes" or "no" to
+ * that phrase rather than to a rewritten prompt.
+ *
+ * Rejections are summarised rather than listed one by one. "Four proposals did
+ * not survive checking" is the useful fact; which four is noise unless you are
+ * debugging the model, and `--json` has them for when you are.
+ */
+function printSuggestions(
+  suggestions: { result: SuggestResult; applied: boolean; locale: Locale } | null,
+  t: CliMessages,
+  n: (value: number) => string,
+): void {
+  if (!suggestions) return;
+  const { result, applied, locale } = suggestions;
+
+  if (result.suggestions.length === 0) {
+    // Say so. A silent absence reads as "the flag did nothing".
+    console.log(`\n${c.bold(t.report.suggestHeading())}`);
+    console.log(`  ${c.dim(t.report.suggestNothing(result.provider, result.model))}`);
+    if (result.rejected.length > 0) {
+      console.log(`  ${c.dim(t.report.suggestRejected(result.rejected.length))}`);
+    }
+    return;
+  }
+
+  const total = result.suggestions.reduce((sum, s) => sum + s.tokensSaved, 0);
+  console.log(`\n${c.bold(t.report.suggestHeading())}`);
+  console.log(
+    `  ${c.dim(
+      applied
+        ? t.report.suggestApplied(result.suggestions.length, n(total))
+        : t.report.suggestOffered(result.suggestions.length, n(total)),
+    )}`,
+  );
+
+  for (const s of result.suggestions) {
+    const after = s.after === '' ? c.dim(t.report.suggestRemoved()) : c.green(truncate(s.after, 40));
+    const times = s.offsets.length > 1 ? c.dim(` ×${s.offsets.length}`) : '';
+    console.log(
+      `    ${c.red(truncate(s.before, 44))} ${c.dim('→')} ${after}` +
+        `  ${c.dim(`~${n(s.tokensSaved)}`)}${times}`,
+    );
+  }
+
+  if (result.rejected.length > 0) {
+    console.log(`  ${c.dim(t.report.suggestRejected(result.rejected.length))}`);
+    // The most common reason, named. Four rejections all saying "the model
+    // paraphrased what it quoted" is a fact about the model worth knowing.
+    const counts = new Map<string, number>();
+    for (const r of result.rejected) counts.set(r.reason, (counts.get(r.reason) ?? 0) + 1);
+    const [reason] = [...counts.entries()].sort((a, b) => b[1] - a[1])[0]!;
+    console.log(`    ${c.dim(rejectionText(reason as RejectedReason, locale))}`);
+  }
+
+  if (!applied) console.log(`  ${c.dim(t.report.suggestHowToApply())}`);
 }
 
 function printRest(
@@ -1107,6 +1175,45 @@ async function commandOptimize(
   }
 
   let examplesReview: ExampleReview | null = null;
+  let suggestions: SuggestResult | null = null;
+
+  // A flag that quietly does nothing is the same failure as a typo'd flag being
+  // accepted, which this CLI already refuses.
+  if (boolFlag(args, 'apply-suggestions') && !boolFlag(args, 'suggest')) {
+    throw new Error(t.errors.applyNeedsSuggest());
+  }
+
+  if (boolFlag(args, 'suggest')) {
+    const provider = providerFromEnv();
+    if (!provider) throw new Error(t.errors.llmNotConfigured());
+
+    // On the deterministic result rather than the text as written: the rules
+    // have already taken the easy wins, and asking the model to find them again
+    // spends a call to be told what Trazum knew for free.
+    suggestions = await suggestRewrites(result.optimized, provider, { locale });
+
+    // Opt in twice, deliberately. Listing is safe — nothing changes and the
+    // author reads eight one-line proposals. Applying is a model editing their
+    // prompt, which is the same class of act as `--reorder` and gets the same
+    // treatment: it does not happen because you asked to look.
+    if (boolFlag(args, 'apply-suggestions') && suggestions.suggestions.length > 0) {
+      const rewritten = applyRewrites(result.optimized, suggestions.suggestions);
+      result = {
+        ...result,
+        optimized: rewritten,
+        tokensAfter: estimateTokens(rewritten),
+      };
+      result = {
+        ...result,
+        tokensSaved: result.tokensBefore - result.tokensAfter,
+        reductionPct:
+          result.tokensBefore > 0
+            ? ((result.tokensBefore - result.tokensAfter) / result.tokensBefore) * 100
+            : 0,
+        savings: computeSavings(result.tokensBefore, result.tokensAfter, result.usage, new Date(), pricing),
+      };
+    }
+  }
 
   if (boolFlag(args, 'llm')) {
     const provider = providerFromEnv();
@@ -1149,6 +1256,11 @@ async function commandOptimize(
           ...result,
           ...(examplesReview ? { examplesReview } : {}),
           ...(reorder ? { reorder } : {}),
+          // Present whenever --suggest was passed, applied or not: a consumer
+          // needs to tell "nothing was proposed" from "proposals are waiting".
+          ...(suggestions
+            ? { suggestions: { ...suggestions, applied: boolFlag(args, 'apply-suggestions') } }
+            : {}),
         },
         null,
         2,
@@ -1188,7 +1300,11 @@ async function commandOptimize(
     ? false
     : boolFlag(args, 'tokens-only') || host.billing === 'subscription';
 
-  printReport(result, boolFlag(args, 'diff'), t, examplesReview, reorder, tokensOnly, host);
+  printReport(result, boolFlag(args, 'diff'), t, examplesReview, reorder, tokensOnly, host,
+    suggestions
+      ? { result: suggestions, applied: boolFlag(args, 'apply-suggestions'), locale }
+      : null,
+  );
   if (outPath) {
     console.log(c.dim(t.report.wroteTo(outPath)));
     console.log();

@@ -153,6 +153,15 @@ export interface LlmMessages {
   suspiciousShrink(retainedPct: number): string;
 }
 
+/** Why a proposed rewrite did not survive checking against the prompt. */
+export interface SuggestMessages {
+  'not-found'(): string;
+  'touches-protected'(): string;
+  'introduces-protected'(): string;
+  'no-saving'(): string;
+  overlaps(): string;
+}
+
 /** Everything the core needs to speak one language. */
 export interface CoreMessages {
   locale: Locale;
@@ -160,6 +169,7 @@ export interface CoreMessages {
   numberLocale: string;
   rules: Record<RuleId, RuleCopy>;
   llm: LlmMessages;
+  suggest: SuggestMessages;
   advisories: {
     contextOverflow(p: ContextOverflowParams): LocalizedMessage;
     promptCaching(p: PromptCachingParams): LocalizedMessage;

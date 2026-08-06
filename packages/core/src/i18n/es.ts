@@ -80,6 +80,16 @@ export const es: CoreMessages = {
       `El resultado conserva solo el ${retainedPct}% de los tokens. Eso parece un resumen, no una compresión: revísalo a mano antes de usarlo.`,
   },
 
+  suggest: {
+    'not-found': () =>
+      'la frase citada no está en el prompt — el modelo parafraseó lo que estaba copiando',
+    'touches-protected': () =>
+      'editaría código, una URL, un marcador o una etiqueta, que se copian literalmente',
+    'introduces-protected': () => 'el reemplazo añade un marcador o una URL que no estaba',
+    'no-saving': () => 'no es más corto que lo que reemplaza',
+    overlaps: () => 'comparte texto con una sugerencia ya aceptada',
+  },
+
   advisories: {
     contextOverflow: ({ tokens, modelName, contextWindow }) => ({
       title: 'El prompt no cabe en la ventana de contexto',

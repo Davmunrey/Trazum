@@ -12,6 +12,42 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`optimize --suggest` — rewrites proposed one phrase at a time.**
+
+`--llm` hands the model the whole prompt and takes the whole answer back, which
+is all-or-nothing in both directions: a result that fails one safety check
+leaves the author with nothing, and one that passes is a wholesale rewrite they
+must read end to end before trusting. `--suggest` asks which exact phrases say
+something in more words than they need, and returns a list small enough to judge
+on sight — `You should always make sure to → Always`.
+
+The model proposes; the prompt decides. Every suggestion is checked against the
+text before it is shown and dropped rather than reconciled: `before` must appear
+byte for byte (a model asked to quote will tidy the punctuation as it goes), it
+must not touch code, URLs, placeholders or tags, `after` must not introduce any,
+it must actually save tokens, and overlapping suggestions are refused because
+applying both produces text neither described. A phrase occurring several times
+is rewritten everywhere it appears *outside* protected content rather than the
+whole suggestion being refused for one occurrence in a code block.
+
+Nothing is applied unless asked. `--apply-suggestions` takes them and the
+headline figures move with the change; on its own it is an error rather than a
+no-op, for the same reason a misspelled flag is.
+
+The model is asked about the **optimised** prompt, not the one as written —
+re-finding what the rules already took spends a call to be told what Trazum knew
+for free.
+
+### Fixed
+
+The first version of the CLI test for this deadlocked and had to be killed by
+the timeout. It drove the binary with `spawnSync`, which blocks the test
+process's event loop, so the fake LLM server living in that process could never
+answer the child it was waiting on. A fake server in the test process only works
+if the test process is free to run.
+
+### Added
+
 **`trazum blame <file>` — when this prompt got expensive, and what change did it.**
 
 Git already knows who edited a prompt and when. What it does not know is that

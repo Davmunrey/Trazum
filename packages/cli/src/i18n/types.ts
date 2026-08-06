@@ -35,6 +35,7 @@ export interface CliMessages {
     unknownFlagDidYouMean(name: string, suggestion: string): string;
     missingInputFile(): string;
     llmNotConfigured(): string;
+    applyNeedsSuggest(): string;
     exactTokensNeedsKey(): string;
     checkNeedsMaxTokens(): string;
     evalNeedsCases(): string;
@@ -93,6 +94,13 @@ export interface CliMessages {
     reorderPiped(moved: number, tokens: string, declined: number): string;
     reorderNothing(): string;
     reorderReview(): string;
+    suggestHeading(): string;
+    suggestOffered(count: number, tokens: string): string;
+    suggestApplied(count: number, tokens: string): string;
+    suggestNothing(provider: string, model: string): string;
+    suggestRejected(count: number): string;
+    suggestRemoved(): string;
+    suggestHowToApply(): string;
     pricingOverlaid(models: string, lastReviewed: string): string;
     wroteTo(path: string): string;
   };

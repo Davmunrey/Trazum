@@ -36,6 +36,12 @@ ${bold('OPCIONES DE optimize')}
   --cache-hit-rate <0-1>      Tasa de acierto de caché estimada. Por defecto: ${d.cacheHitRate}.
   --batch                     El trabajo tolera latencia (Batch API, 50% menos).
   --disable <id,id>           Desactiva reglas concretas (ver "trazum rules").
+  --suggest                   Pide al LLM reescrituras a nivel de frase y las lista
+                              con lo que ahorra cada una. Por sí solo no cambia
+                              nada: cada propuesta se comprueba contra tu prompt y
+                              se descarta si no sobrevive.
+  --apply-suggestions         Las aplica. Solo con --suggest; a secas es un error,
+                              no un flag que se ejecuta sin hacer nada.
   --reorder                   Mueve las instrucciones estables delante del primer
                               marcador, para que la caché de prompts las alcance. Esto
                               MUEVE texto en vez de borrarlo: lee el diff y decide si
@@ -197,6 +203,9 @@ ${bold('EJEMPLOS')}
     unknownCommand: (command) => `Comando desconocido: "${command}". Prueba con "trazum --help".`,
     missingInputFile: () =>
       'Falta el fichero de entrada. Usa "-" para leer de la entrada estándar.',
+    applyNeedsSuggest: () =>
+      '--apply-suggestions no tiene nada que aplicar sin --suggest. Por su cuenta habría '
+      + 'funcionado en silencio sin cambiar nada, y eso no es una respuesta.',
     llmNotConfigured: () =>
       'Has pedido --llm pero no hay proveedor configurado.\n' +
       'Define TRAZUM_LLM_BASE_URL y TRAZUM_LLM_MODEL (endpoint compatible con OpenAI),\n' +
@@ -302,6 +311,17 @@ ${bold('EJEMPLOS')}
       return `trazum: ${head}${tail}. Ejecuta sin redirigir la salida para ver los motivos.`;
     },
     reorderNothing: () => 'No se ha podido mover nada con seguridad.',
+    suggestHeading: () => 'Reescrituras sugeridas',
+    suggestOffered: (count, tokens) =>
+      `${count} ${count === 1 ? 'frase podría decir' : 'frases podrían decir'} lo mismo con ~${tokens} tokens menos:`,
+    suggestApplied: (count, tokens) =>
+      `Aplicadas ${count} ${count === 1 ? 'reescritura' : 'reescrituras'} (~${tokens} tokens). Lee el diff.`,
+    suggestNothing: (provider, model) =>
+      `${provider} (${model}) no ha encontrado nada que reescribir que las reglas no hubieran cogido ya.`,
+    suggestRejected: (count) =>
+      `${count} ${count === 1 ? 'propuesta no ha superado' : 'propuestas no han superado'} la comprobación contra tu prompt.`,
+    suggestRemoved: () => '(eliminado)',
+    suggestHowToApply: () => 'No se ha cambiado nada. Añade --apply-suggestions para aplicarlas.',
     reorderReview: () =>
       'Lee el diff: esto ha movido texto en vez de borrarlo, así que la pregunta es si el orden importaba.',
     diffTooLarge: (lines, max) =>

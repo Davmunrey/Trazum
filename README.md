@@ -462,6 +462,61 @@ typing it. Absent both, growth alone still exits 0.
 `--config <file>` skips the search. `locale` is the one setting the environment
 outranks — see [Languages](#languages).
 
+### Rewrites the rules cannot do: `--suggest`
+
+`--llm` hands the model your whole prompt and takes the whole answer back. That
+is all-or-nothing in both directions: when the result fails a safety check you
+get **nothing**, and when it passes you get a wholesale rewrite you have to read
+end to end before you can trust it.
+
+`--suggest` asks a different question — *which exact phrases say something in
+more words than they need?* — and the answer is a list you can judge on sight:
+
+```bash
+trazum optimize prompts/support.txt --suggest
+```
+
+```
+Suggested rewrites
+  3 phrases could say the same in ~24 fewer tokens:
+    You should always make sure to → Always            ~6
+    It is important to note that → (removed)           ~7 ×2
+    in order to be able to → to                        ~5
+  2 proposals did not survive checking against your prompt.
+    the quoted phrase is not in the prompt — the model paraphrased what it was copying
+  Nothing was changed. Add --apply-suggestions to take them.
+```
+
+Nothing is applied unless you ask. Eight surviving suggestions out of ten is a
+useful result; a wholesale rewrite that fails one check is not.
+
+**The model proposes; the prompt decides.** Every suggestion is checked against
+your text before it is shown, and dropped rather than reconciled:
+
+- **`before` must appear byte for byte.** A model asked to quote will sometimes
+  tidy the punctuation as it goes, and the resulting suggestion is about text
+  that does not exist.
+- **It must not touch protected content.** Code, URLs, placeholders and tags are
+  copied verbatim everywhere else in this project, and here too.
+- **`after` must not introduce any.** A replacement that adds a `{{placeholder}}`
+  is proposing new semantics, not shorter phrasing.
+- **It must actually save tokens.** A rephrasing that costs the same is a change
+  of style, and this is not a style guide.
+- **Overlapping suggestions are dropped.** Applying two edits that share
+  characters produces text neither of them described.
+
+A phrase that occurs several times is rewritten everywhere it appears *outside*
+protected content — the `×2` above — rather than the whole suggestion being
+refused because one occurrence sits in a code block.
+
+The model is asked about the **optimised** prompt, not the one you wrote:
+re-finding what the deterministic rules already took would spend a call to be
+told what Trazum knew for free.
+
+`--apply-suggestions` takes them, and the headline figures move with the change.
+On its own it is an error rather than a no-op, for the same reason a misspelled
+flag is: a flag that runs silently and changes nothing is not an answer.
+
 ### Who made this prompt expensive: `trazum blame`
 
 `diff` compares two versions you have in front of you. `blame` asks the question
