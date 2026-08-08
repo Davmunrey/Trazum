@@ -54,6 +54,8 @@ ${bold('OPTIONS FOR doctor')}
   --model, --calls,           Price the findings, as in optimize.
   --output-tokens, --batch
   --prompt <name>             Which marked prompt to take from each source file.
+  --otlp-out <file>           Write the survey as OpenTelemetry metrics (OTLP/HTTP
+                              JSON). Trazum writes the file; your pipeline sends it.
   --json                      The survey as data.
 
   Surveys a whole workspace: which prompts nothing is watching, which are already

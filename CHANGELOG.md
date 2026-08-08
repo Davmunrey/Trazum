@@ -10,6 +10,35 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+**`trazum doctor --otlp-out <file>` — the survey as OpenTelemetry metrics.** Five
+gauges: tokens per prompt, over-budget per prompt, the unbudgeted count, and each
+advisory's monthly figure and prompt count. The model and call volume are resource
+attributes, because a dollar figure whose scenario is not recorded beside it is a
+number nobody can check later.
+
+**Trazum writes the payload; it does not send it.** Pushing to a collector means
+holding an endpoint and a credential, and this project has twice shipped an SSRF where
+a URL reached `fetch` without being the URL that was checked. A file has no such
+failure mode, and the pipeline that already holds the credential can post it.
+
+No `@opentelemetry/*` dependency: the JSON encoding is a documented wire format and
+this package has none. Two of its rules fail *silently* — a collector does not reject a
+malformed payload, it charts it wrong — so both are pinned:
+
+- **64-bit integers are JSON strings.** `timeUnixNano` and `asInt` are `int64`; a
+  collector reading `1786000000000000000` as a double loses the last digits of every
+  timestamp it stores.
+- **Money is `asDouble`.** `asInt` would report `$4,912.40` as `4912`, and nothing
+  downstream would look wrong.
+
+`toOtlpMetrics` takes the timestamp as a parameter rather than calling `Date.now()`,
+for the reason `computeSavings` takes a `Date`: a function that reads the clock can
+only be asserted for shape, and here the timestamps are half the payload. Eleven core
+tests, four CLI tests, five mutants — each of the two encoding rules, the millisecond
+conversion, empty series, and unbudgeted prompts reported as within budget.
+
 ### Fixed
 
 **A test file was binary, and the guard against exactly that did not look in test

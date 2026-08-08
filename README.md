@@ -513,6 +513,32 @@ request from a fork they are written by whoever opened it — and they land in a
 table maintainers read. Paths and shas are `<code>`; names and subjects are not,
 because a person's name typeset as a code span is a different kind of wrong.
 
+### Charting it: `doctor --otlp-out`
+
+```bash
+trazum doctor --otlp-out metrics.json
+curl -X POST -H 'content-type: application/json' \
+     --data-binary @metrics.json "$OTLP_ENDPOINT/v1/metrics"
+```
+
+Five gauges — tokens per prompt, over-budget per prompt, the unbudgeted count, and
+each advisory's monthly figure and prompt count — with the model and call volume as
+resource attributes, because a dollar figure whose scenario is not stored beside it
+is a number nobody can check three months later.
+
+**Trazum writes the payload; it does not send it.** That is a decision. Pushing to a
+collector means holding an endpoint and a credential, and this project has twice
+shipped an SSRF where a URL reached `fetch` without being the URL that was checked.
+A command that writes a file has no such failure mode, and the pipeline that already
+holds your collector credential can post it in one line.
+
+No `@opentelemetry/*` dependency either: the JSON encoding is a documented wire
+format and this package has no runtime dependencies. Two rules in it fail silently
+and are pinned by tests — **64-bit integers are JSON strings** (a collector reading
+`timeUnixNano` as a double loses the last digits of every timestamp), and **money is
+`asDouble`** (`asInt` would report `$4,912.40` as `4912`, and the chart would look
+perfectly reasonable).
+
 ### A whole library, before and after: `diff --all`
 
 ```bash
