@@ -12,6 +12,41 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**A pre-commit hook, at `scripts/pre-commit`.** `ln -s ../../scripts/pre-commit
+.git/hooks/pre-commit` and a commit whose own prompts are over budget is refused
+before it reaches CI.
+
+**It asks `trazum doctor --json` rather than running `trazum check prompts/`,** and
+that is the design rather than an implementation detail. `check` exits 1 when
+anything under a directory is over budget — right for CI, wrong for a hook, because
+it would refuse a commit that touches one file over a different prompt somebody else
+committed last month. A hook that fails for reasons outside the commit is a hook
+people learn to pass `--no-verify` to, and then it is worse than no hook, because it
+taught them the habit too. So the hook intersects `doctor`'s over-budget list with
+the files actually staged.
+
+It gets out of the way rather than guessing: nothing staged, no Trazum installed, no
+prompts found, an unreadable config — none of those are a budget failure, so none of
+them block a commit. Each says so once and exits 0.
+
+Two defects found by running it, both of the same kind — a message that promises
+something it does not deliver:
+
+- **It announced a list of over-budget prompts and printed nothing under it.** The
+  detail line matched path, tokens and budget on one line, and `doctor --json`
+  pretty-prints. It blocked the right commit and said nothing useful about why. It
+  names the paths now and points at the command for the figures, rather than parsing
+  multi-line JSON in `sh`.
+- **The scope guard latched open on an empty array.** `"overBudget": []` closes on
+  the line that opens it, so `inside = 1` stayed set for the rest of the document and
+  a `path` key in any later section blocked the commit — the exact bug the scoping was
+  added to prevent. Ten tests, four mutants, including one that puts each defect back.
+
+Stated in the README because it is real: Trazum reads the working tree, not the staged
+blobs, so a prompt staged and then edited further is judged on the newer text.
+
+### Added
+
 **`trazum doctor [dir]` — the survey before the gate.** Which prompts nothing is
 watching, which are already over budget, and what every advisory adds up to across
 the whole workspace.
