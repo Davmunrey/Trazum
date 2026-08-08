@@ -36,6 +36,12 @@ parse as CommonJS" and is being reparsed — a fair warning, and one worth fixin
 rather than muting with `--disable-warning`, since every config in that directory
 was already `.mjs`. Build, typecheck and both suites verified after.
 
+The CI step that runs them is renamed from **"Core and CLI tests" to "Tests (core,
+CLI, web, Action)"**, which is what `npm test` at the root has been doing for a
+while. A step labelled for two of the four suites invites a reader of a green build
+to think the other two are unchecked, and invites somebody adding a suite to write
+a step that already exists.
+
 ### Fixed
 
 **`applySuggestions` on its own returned `200` and applied nothing.**
