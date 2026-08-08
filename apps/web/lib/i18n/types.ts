@@ -1,4 +1,4 @@
-import type { Locale } from '@trazum/core';
+import type { AdvisoryId, Locale } from '@trazum/core';
 
 /**
  * The web app's message dictionary.
@@ -82,6 +82,35 @@ export interface WebMessages {
     privacyNote: string;
   };
 
+  /** The Compare tab: what an edit did to a prompt. */
+  compare: {
+    tab: string;
+    optimiseTab: string;
+    lede: string;
+    beforeLabel: string;
+    beforeHint: string;
+    afterLabel: string;
+    afterHint: string;
+    optimizeBoth: string;
+    optimizeBothHint: string;
+    submit: string;
+    working: string;
+    /** The sign convention, stated before any number is shown. */
+    convention: string;
+    tokens(before: string, after: string): string;
+    delta(delta: string, pct: string): string;
+    monthly(amount: string, calls: string, model: string): string;
+    perCall(amount: string): string;
+    unchanged: string;
+    advisoriesAppeared: string;
+    advisoriesResolved: string;
+    rulesNewlyFiring: string;
+    rulesNoLongerFiring: string;
+    measuringOptimised: string;
+    /** Human labels for advisory ids, which have no static title in the core. */
+    advisoryLabel: Record<AdvisoryId, string>;
+  };
+
   results: {
     empty: string;
     heading: string;
@@ -130,6 +159,8 @@ export interface WebMessages {
     rateLimited: string;
     invalidJson: string;
     missingPrompt: string;
+    missingBefore: string;
+    missingAfter: string;
     promptTooLong(limit: string): string;
     unknownRule(id: string): string;
     unknownModel(id: string): string;

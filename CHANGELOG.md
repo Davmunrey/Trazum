@@ -10,7 +10,69 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**A blame test threw away the evidence when it failed.** `shows the most recent N`
+was the only test in `blame.test.js` that checked neither the exit code nor passed
+the command's output into an assertion, so when it failed once on CI the entire
+report was `0 !== 3` — which is what "the table has no rows" looks like whether the
+history was short, the path was rejected, or git never answered. The output was
+right there in the variable, unused.
+
+It carries the output now, and asserts the exit code first. Verified by forcing the
+failure: the report goes from `0 !== 3` to `Error: git has no commits touching
+p.txt.`
+
+**This is not a fix for that failure.** It has never reproduced here — 26 runs
+including under 8× CPU load — and the identical commit passed in the same CI minute
+on the other event, so it is intermittent and its cause is still unknown. What
+changed is that the next occurrence will say something.
+
 ### Added
+
+**`comparePrompts` reaches the web app, as a Compare tab and `POST /api/compare`.**
+Two versions of a prompt, the token delta, what it costs, and which advisories and
+rules the edit introduced or resolved.
+
+The whole hazard of this surface is a **sign**. Everywhere else in Trazum a
+positive number is money you get back; here every figure is `after - before`, so
+positive means the edit made things worse. Getting that backwards throws nothing,
+fails no typecheck, and tells somebody their prompt got cheaper on the commit that
+doubled its cost. So the convention is stated **above** the figures rather than
+beside them — a reader arriving from the Optimise tab has the opposite expectation
+already loaded, and a caveat under the number is a caveat read after the
+conclusion — and most of the new tests assert a direction rather than a value,
+including the swapped-pair case that a `Math.abs` mutant walks straight through
+otherwise.
+
+`optimizeBoth` is off by default and the default is the interesting half: the edit
+changed the text as written, so the text as written is what the reader is being
+asked about. Trimming both sides first hides a prompt that doubled in length and
+happened to double in courtesy. Honoured only on a literal `true`, like every other
+boolean these routes take. A missing `before` and a missing `after` are told apart,
+because one message for two fields leaves the caller guessing.
+
+**The usage scenario is now owned once, by the page.** It sits beside the locale in
+`App`, for the same reason and with the same shape: both tabs price their answers
+through it, and setting 50,000 calls on one while reading 10,000 on the other would
+make the two answers incomparable while looking like they were about one workload.
+`Optimizer` reads it from a prop and writes back through it; the history panel
+restores all five fields in one update rather than five, because five setters on
+shared state is five renders and, in between, four scenarios that are nobody's.
+
+**And `formatUsd` stops being defined twice.** The web app had a copy that was
+byte-identical to the one `@trazum/core` exports, for as long as it existed. The
+core also had the `formatSignedUsd` that Compare needed.
+
+Nine mutants. Two are worth naming. One test asserted the *absence* of local
+scenario state in `Optimizer`, and a mutant renaming the local to `callsPerMonth2`
+satisfied every pattern looking for `const [callsPerMonth,` while the two tabs went
+back to disagreeing — a test that enumerates ways to be wrong is always one rename
+behind, so it asserts the positive property now: every field read from
+`scenario.usage`, every setter delegating to `scenario.set`. The other is that the
+sharing *behaviour* cannot be seen from source at all, and was verified by driving
+the built page in a headless browser: set the calls on Compare, read them back on
+Optimise, and the reverse.
 
 **`rank` and `blame` take `--markdown-out`.** The flag existed on `check` and
 `diff`, which meant the two commands that answer *which of these forty prompts is

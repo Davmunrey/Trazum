@@ -10,9 +10,12 @@ import type {
   SuggestResult,
 } from '@trazum/core';
 
+import { formatUsd } from '@trazum/core';
+
 import { track } from './Analytics';
 import { diffTexts } from './diff';
 import type { WebMessages } from '../lib/i18n';
+import type { Scenario } from '../lib/scenario';
 
 import { Check, ChevronDown, Copy, Trash2 } from 'lucide-react';
 
@@ -157,33 +160,36 @@ Responde siempre en español y usa un tono formal con el usuario final.
 Por favor verifica tu respuesta antes de contestar. ¡¡¡Muchas gracias!!!`,
 };
 
-function formatUsd(value: number): string {
-  if (value === 0) return '$0';
-  const abs = Math.abs(value);
-  if (abs < 0.01) return `$${value.toFixed(5)}`;
-  if (abs < 1) return `$${value.toFixed(4)}`;
-  if (abs < 1000) return `$${value.toFixed(2)}`;
-  return `$${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
-}
-
 /** One line of a declined block, short enough to sit in a list. */
 function excerpt(text: string, max = 48): string {
   const clean = text.trim().replace(/\s+/g, ' ');
   return clean.length <= max ? clean : `${clean.slice(0, max - 1)}\u2026`;
 }
 
-export function Optimizer({ locale, t }: { locale: Locale; t: WebMessages }) {
+export function Optimizer({
+  locale,
+  t,
+  scenario,
+}: {
+  locale: Locale;
+  t: WebMessages;
+  scenario: Scenario;
+}) {
   const [meta, setMeta] = useState<Metadata | null>(null);
   const [prompt, setPrompt] = useState(EXAMPLES[locale]);
   const [level, setLevel] = useState<'safe' | 'aggressive'>('safe');
   const [reorder, setReorder] = useState(false);
   const [suggest, setSuggest] = useState(false);
   const [applySuggestions, setApplySuggestions] = useState(false);
-  const [model, setModel] = useState('claude-opus-5');
-  const [callsPerMonth, setCallsPerMonth] = useState(10000);
-  const [avgOutputTokens, setAvgOutputTokens] = useState(500);
-  const [cacheHitRate, setCacheHitRate] = useState(0.9);
-  const [batchEligible, setBatchEligible] = useState(false);
+  // Owned by `App`, not here: the Compare tab prices its answer through the same
+  // scenario, and two tabs disagreeing about the call volume would make their
+  // answers incomparable while looking like they were about one workload.
+  const { model, callsPerMonth, avgOutputTokens, cacheHitRate, batchEligible } = scenario.usage;
+  const setModel = (value: string) => scenario.set('model', value);
+  const setCallsPerMonth = (value: number) => scenario.set('callsPerMonth', value);
+  const setAvgOutputTokens = (value: number) => scenario.set('avgOutputTokens', value);
+  const setCacheHitRate = (value: number) => scenario.set('cacheHitRate', value);
+  const setBatchEligible = (value: boolean) => scenario.set('batchEligible', value);
 
   const [llmEnabled, setLlmEnabled] = useState(false);
   const [llmProvider, setLlmProvider] = useState('openai');
@@ -247,11 +253,15 @@ export function Optimizer({ locale, t }: { locale: Locale; t: WebMessages }) {
   function restoreEntry(entry: HistoryEntry) {
     if (entry.prompt !== null) setPrompt(entry.prompt);
     setLevel(entry.level);
-    setModel(entry.model);
-    setCallsPerMonth(entry.callsPerMonth);
-    setAvgOutputTokens(entry.avgOutputTokens);
-    setCacheHitRate(entry.cacheHitRate);
-    setBatchEligible(entry.batchEligible);
+    // One update rather than five: five setters on shared state is five renders
+    // and, in between them, four scenarios that are nobody's.
+    scenario.restore({
+      model: entry.model,
+      callsPerMonth: entry.callsPerMonth,
+      avgOutputTokens: entry.avgOutputTokens,
+      cacheHitRate: entry.cacheHitRate,
+      batchEligible: entry.batchEligible,
+    });
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 

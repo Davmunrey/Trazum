@@ -717,6 +717,22 @@ stored only in the browser — nothing leaves your machine.
 a level, with the same warning the CLI prints and the same refusals reported. It
 is the largest saving Trazum can make, and it should not need a terminal to find.
 
+**And there is a Compare tab.** Two versions of a prompt, and what the edit did:
+the token delta, what it costs per month, and which advisories and rules it
+introduced or resolved. Every figure is `after - before`, so **positive means
+worse** — the opposite of the rest of Trazum — and the page says so above the
+numbers rather than beside them, because a reader arriving from Optimise has the
+opposite convention already loaded.
+
+`Compare what the rules would leave` is off by default and the default is the
+interesting half: your edit changed the text as written, so the text as written is
+what you are being asked about. Trimming both sides first hides a prompt that
+doubled in length and happened to double in courtesy.
+
+The usage scenario is shared between the two tabs. Setting 50,000 calls on one and
+reading 10,000 on the other would make their answers incomparable while looking
+like they were about the same workload.
+
 **So are phrase-level rewrites.** Two switches: one asks the model for
 suggestions, the second takes them. They are listed above the saving, one line
 each — `You should always make sure to → Always  ~4 ×2` — with a count of how
@@ -765,7 +781,30 @@ same failure as a misspelled field being accepted — and the endpoint already
 refuses those for `disableRules` and `usage.model`. The refusal comes before any
 call to the model, so a malformed request never costs one.
 
-The endpoint is rate limited (30/min per IP). It will not fetch an LLM endpoint
+```bash
+# Compare two versions: what did this edit cost?
+curl -X POST https://your-deployment/api/compare \
+  -H 'content-type: application/json' \
+  -d '{
+    "before": "Classify {{x}}. Answer with the category only.",
+    "after": "Please kindly classify {{x}}. Thank you!",
+    "optimizeBoth": false,
+    "usage": { "model": "claude-opus-5", "callsPerMonth": 50000 }
+  }'
+```
+
+`POST /api/compare` answers a different question from `/api/optimize`, which is
+why it is a different route. **Every figure it returns is `after - before`, so
+positive means worse.** `tokenDelta`, `deltaPct`, `monthlyDeltaUsd` and
+`perCallDeltaUsd` all follow that convention; `rules` come back with titles and
+`advisories` as ids. `optimizeBoth` is honoured only on a literal `true`, and a
+missing `before` and a missing `after` are told apart — one message for two fields
+leaves the caller guessing.
+
+Both endpoints are rate limited (30/min per IP), with a bucket each: sharing one
+would let a burst of comparisons spend somebody else's optimise budget.
+
+`/api/optimize` will not fetch an LLM endpoint
 a caller names: a request may only **select** one from
 `TRAZUM_ALLOWED_LLM_ENDPOINTS`, a comma-separated list the operator sets on the
 server, and what gets fetched is the entry from that list. The list is empty by

@@ -207,3 +207,111 @@ describe('the browser cannot build a request the API refuses', () => {
     assert.match(source, /if \(!next\) setApplySuggestions\(false\)/);
   });
 });
+
+describe('the Compare tab inverts the sign convention, and says so first', () => {
+  /**
+   * The one hazard this tab carries.
+   *
+   * Everywhere else in this application a positive number is money you get back.
+   * On Compare every figure is `after - before`, so positive means the edit made
+   * things worse — and a reader arriving from the Optimise tab has the opposite
+   * expectation already loaded. A caveat placed under the figure is a caveat read
+   * after the conclusion.
+   */
+  it('states the convention above the first number in the source', () => {
+    const source = codeOf('components/Comparer.tsx');
+    const convention = source.indexOf('t.compare.convention');
+    const firstFigure = source.indexOf('t.compare.delta(');
+
+    assert.notEqual(convention, -1, 'the sign convention is not rendered at all');
+    assert.notEqual(firstFigure, -1, 'the token delta is not rendered');
+    assert.ok(
+      convention < firstFigure,
+      'the sign convention renders after the figure it applies to',
+    );
+  });
+
+  it('never renders a delta without a sign', () => {
+    // `40 tokens` is unreadable in either direction. The helper forces a `+` on
+    // positives; negatives carry their own.
+    const source = codeOf('components/Comparer.tsx');
+    assert.match(source, /const signed = .*value > 0 \? '\+' : ''/);
+    assert.match(source, /formatSignedUsd/, 'money is formatted without an explicit sign');
+  });
+
+  it('gives growth the warning colour and shrinkage the good one', () => {
+    // The asymmetry is deliberate and worth pinning: growth is what somebody has
+    // to act on. Swapping these would congratulate a reader on a regression.
+    const source = codeOf('components/Comparer.tsx');
+    assert.match(
+      source,
+      /delta > 0 \? 'text-terracotta' : delta < 0 \? 'text-good'/,
+      'the tone of a delta no longer follows its direction',
+    );
+  });
+
+  it('keeps both tabs mounted, so a result survives a switch', () => {
+    // Radix unmounts inactive tab content by default, which would discard a
+    // comparison somebody is still reading the moment they glanced at Optimise.
+    const source = codeOf('components/App.tsx');
+    const mounts = source.match(/<TabsContent[^>]*>/g) ?? [];
+    assert.equal(mounts.length, 2, 'expected two tabs');
+    for (const tag of mounts) {
+      assert.match(tag, /forceMount/, `TabsContent without forceMount: ${tag}`);
+      assert.match(tag, /data-\[state=inactive\]:hidden/, `forceMount without hiding: ${tag}`);
+    }
+  });
+
+  it('owns the usage scenario once for the whole page', () => {
+    /**
+     * Two tabs with their own copy would price their answers through different
+     * workloads while looking like they were about one, which is worse than
+     * either being wrong alone.
+     *
+     * Asserted as the positive property — every field is read from
+     * `scenario.usage` and every setter delegates to `scenario.set` — rather
+     * than as "there is no local state here". The negative version was written
+     * first and a mutant walked straight through it: renaming the local to
+     * `callsPerMonth2` satisfied every pattern looking for `const [callsPerMonth,`
+     * while the two tabs went back to disagreeing. A test that enumerates ways to
+     * be wrong will always be one rename behind.
+     *
+     * The behaviour itself — set 50,000 calls on Compare, read it on Optimise —
+     * cannot be seen from source at all, and was verified by driving the built
+     * page in a browser.
+     */
+    const app = codeOf('components/App.tsx');
+    assert.match(app, /const scenario = useScenario\(\)/);
+    assert.match(app, /scenario=\{scenario\}[\s\S]{0,400}scenario=\{scenario\}/, 'only one tab is given the scenario');
+
+    const optimizer = codeOf('components/Optimizer.tsx');
+    const FIELDS = ['model', 'callsPerMonth', 'avgOutputTokens', 'cacheHitRate', 'batchEligible'];
+
+    // Read from the shared object, in one destructuring.
+    const destructured = optimizer.match(/const \{([^}]*)\} = scenario\.usage;/);
+    assert.ok(destructured, 'Optimizer does not read the scenario it was handed');
+    for (const field of FIELDS) {
+      assert.ok(destructured[1].includes(field), `${field} is not read from scenario.usage`);
+    }
+
+    // And written back through it, so nothing can be updated locally and lost.
+    for (const field of FIELDS) {
+      assert.match(
+        optimizer,
+        new RegExp(`scenario\\.set\\('${field}'`),
+        `${field} is not written back through the shared scenario`,
+      );
+    }
+  });
+
+  it('does not keep a second copy of formatUsd', () => {
+    // It was byte-identical to the core's for as long as it existed here.
+    const optimizer = codeOf('components/Optimizer.tsx');
+    assert.equal(
+      /function formatUsd/.test(optimizer),
+      false,
+      'formatUsd is defined here as well as in @trazum/core',
+    );
+    assert.match(optimizer, /import \{ formatUsd \} from '@trazum\/core'/);
+  });
+});

@@ -84,6 +84,52 @@ export const en: WebMessages = {
     privacyNote: 'History is stored in this browser only; nothing leaves your machine.',
   },
 
+  compare: {
+    tab: 'Compare',
+    optimiseTab: 'Optimise',
+    lede:
+      'Two versions of the same prompt. What the edit did to the token count, what '
+      + 'that costs, and which problems it introduced or resolved.',
+    beforeLabel: 'Before',
+    beforeHint: 'The version you are replacing.',
+    afterLabel: 'After',
+    afterHint: 'The version you are proposing.',
+    optimizeBoth: 'Compare what the rules would leave',
+    optimizeBothHint:
+      'Off by default, on purpose. Your edit changed the text as written, so the text '
+      + 'as written is what you are being asked about. Trimming both sides first hides '
+      + 'a prompt that doubled in length and happened to double in courtesy.',
+    submit: 'Compare',
+    working: 'Comparing…',
+    convention:
+      'Every figure below is after minus before, so positive means worse. That is the '
+      + 'opposite of the rest of Trazum, where every figure is a saving.',
+    tokens: (before, after) => `${before} → ${after} input tokens`,
+    delta: (delta, pct) => `${delta} tokens (${pct})`,
+    monthly: (amount, calls, model) => `${amount} a month at ${calls} calls with ${model}`,
+    perCall: (amount) => `${amount} per call`,
+    unchanged: 'The token count did not move.',
+    advisoriesAppeared: 'Problems this edit introduced',
+    advisoriesResolved: 'Problems this edit resolved',
+    rulesNewlyFiring: 'Rules that now find something',
+    rulesNoLongerFiring: 'Rules that no longer find anything',
+    measuringOptimised: 'Measuring what the rules would leave, not what is written.',
+    advisoryLabel: {
+      'context-overflow': 'The prompt does not fit the context window',
+      'prompt-caching': 'Prompt caching would pay for itself',
+      'prompt-caching-not-worth-it': 'Prompt caching would cost more than it saves',
+      'below-cache-minimum': 'Too short to cache on this model',
+      'cache-prefix-reorder': 'Stable instructions sit after the first placeholder',
+      'batch-api': 'The batch API applies to this workload',
+      'model-downgrade': 'A cheaper model in the same family may do',
+      'output-dominated': 'The cost is in the output, not the prompt',
+      'promo-pricing': 'The price used here is promotional',
+      'contradictory-instructions': 'Two instructions contradict each other',
+      'redundant-examples': 'Some examples repeat what others already show',
+      'restated-output-format': 'The output format is stated more than once',
+    },
+  },
+
   results: {
     empty: 'Paste your prompt and press Optimise to see what can go and what it costs.',
     heading: 'Result',
@@ -143,6 +189,8 @@ export const en: WebMessages = {
     rateLimited: 'Too many requests. Wait a minute and try again.',
     invalidJson: 'The request body is not valid JSON.',
     missingPrompt: 'The prompt is missing.',
+    missingBefore: 'The "before" version is missing.',
+    missingAfter: 'The "after" version is missing.',
     promptTooLong: (limit) => `The prompt exceeds the limit of ${limit} characters.`,
     unknownRule: (id) => `Unknown rule: "${id}".`,
     unknownModel: (id) => `Unknown model: "${id}".`,

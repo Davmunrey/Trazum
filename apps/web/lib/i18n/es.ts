@@ -83,6 +83,52 @@ export const es: WebMessages = {
     privacyNote: 'El historial se guarda solo en este navegador; nada sale de tu máquina.',
   },
 
+  compare: {
+    tab: 'Comparar',
+    optimiseTab: 'Optimizar',
+    lede:
+      'Dos versiones del mismo prompt. Qué le hizo la edición al número de tokens, '
+      + 'cuánto cuesta y qué problemas introdujo o resolvió.',
+    beforeLabel: 'Antes',
+    beforeHint: 'La versión que vas a sustituir.',
+    afterLabel: 'Después',
+    afterHint: 'La versión que propones.',
+    optimizeBoth: 'Comparar lo que dejarían las reglas',
+    optimizeBothHint:
+      'Desactivado por defecto, a propósito. Tu edición cambió el texto tal cual está, '
+      + 'y es ese texto sobre el que se te pregunta. Recortar primero los dos lados '
+      + 'oculta un prompt que duplicó su longitud y resultó duplicar su cortesía.',
+    submit: 'Comparar',
+    working: 'Comparando…',
+    convention:
+      'Todas las cifras de abajo son después menos antes, así que positivo significa '
+      + 'peor. Es lo contrario que en el resto de Trazum, donde toda cifra es un ahorro.',
+    tokens: (before, after) => `${before} → ${after} tokens de entrada`,
+    delta: (delta, pct) => `${delta} tokens (${pct})`,
+    monthly: (amount, calls, model) => `${amount} al mes con ${calls} llamadas en ${model}`,
+    perCall: (amount) => `${amount} por llamada`,
+    unchanged: 'El número de tokens no se ha movido.',
+    advisoriesAppeared: 'Problemas que introdujo esta edición',
+    advisoriesResolved: 'Problemas que resolvió esta edición',
+    rulesNewlyFiring: 'Reglas que ahora encuentran algo',
+    rulesNoLongerFiring: 'Reglas que ya no encuentran nada',
+    measuringOptimised: 'Se mide lo que dejarían las reglas, no lo que está escrito.',
+    advisoryLabel: {
+      'context-overflow': 'El prompt no cabe en la ventana de contexto',
+      'prompt-caching': 'La caché de prompts se pagaría sola',
+      'prompt-caching-not-worth-it': 'La caché de prompts costaría más de lo que ahorra',
+      'below-cache-minimum': 'Demasiado corto para cachear en este modelo',
+      'cache-prefix-reorder': 'Hay instrucciones estables tras el primer placeholder',
+      'batch-api': 'La API por lotes aplica a esta carga',
+      'model-downgrade': 'Puede bastar un modelo más barato de la misma familia',
+      'output-dominated': 'El coste está en la salida, no en el prompt',
+      'promo-pricing': 'El precio usado aquí es promocional',
+      'contradictory-instructions': 'Dos instrucciones se contradicen',
+      'redundant-examples': 'Algunos ejemplos repiten lo que ya muestran otros',
+      'restated-output-format': 'El formato de salida se repite más de una vez',
+    },
+  },
+
   results: {
     empty: 'Pega tu prompt y pulsa Optimizar para ver qué sobra y cuánto cuesta.',
     heading: 'Resultado',
@@ -145,6 +191,8 @@ export const es: WebMessages = {
     rateLimited: 'Demasiadas peticiones. Espera un minuto y vuelve a intentarlo.',
     invalidJson: 'El cuerpo de la petición no es JSON válido.',
     missingPrompt: 'Falta el prompt.',
+    missingBefore: 'Falta la versión "antes".',
+    missingAfter: 'Falta la versión "después".',
     promptTooLong: (limit) => `El prompt supera el límite de ${limit} caracteres.`,
     unknownRule: (id) => `Regla desconocida: "${id}".`,
     unknownModel: (id) => `Modelo desconocido: "${id}".`,
