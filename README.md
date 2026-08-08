@@ -217,6 +217,34 @@ In GitHub Actions, use the packaged action — nothing to install:
     max-tokens: 2000
 ```
 
+**One-click fixes, as suggestions.** `suggest-fixes: true` posts the optimised
+prompt as a GitHub *suggested change*, which a reviewer applies with one button:
+
+```yaml
+permissions:
+  contents: read
+  pull-requests: write
+with:
+  target: prompts/
+  suggest-fixes: true
+  github-token: ${{ secrets.GITHUB_TOKEN }}
+```
+
+**A suggestion, not a commit, and that is deliberate.** Committing the fix would need
+`contents: write` on your workflow, and [SECURITY.md](SECURITY.md) documents
+`contents: read` with no `pull_request_target`. Widening that is your decision, not
+something an action should help itself to for convenience — and a suggestion lands in
+the same place with the same one click, needing only the `pull-requests: write` the
+comment mode already uses. You stay the one who commits.
+
+Two limits, stated because both are real. It uses the **safe** level only: the
+aggressive level is defensible when a human is reading the diff it produced, and a
+one-click apply is not that moment. And a suggestion can only anchor to lines **in the
+pull request's diff**, while the rules operate on a whole prompt — so a pull request
+that edits three lines of a forty-line prompt gets a notice explaining why there is no
+suggestion, rather than a partial rewrite that means something different from what the
+rules produced.
+
 **Pinned to a commit SHA, not a tag** — the same rule
 [SECURITY.md](SECURITY.md) states and `security.test.js` enforces on every
 third-party action in this repository. A tag is a mutable pointer: whoever can

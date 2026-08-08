@@ -12,6 +12,43 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`suggest-fixes: true` on the Action — the optimised prompt as a GitHub suggested
+change**, applied with one button.
+
+**A suggestion, not a commit.** The obvious build commits the fix to the pull request
+branch, which needs `contents: write` on the workflow of everybody who installs this
+action, against a `SECURITY.md` that documents `contents: read`, no
+`pull_request_target`, and has a test asserting it. Widening that is a decision for the
+people running the workflow. A `suggestion` block needs only the `pull-requests: write`
+the comment mode already requires, lands in the same place with the same one click, and
+leaves the maintainer as the one who commits.
+
+Safe level only — the aggressive level is defensible when a human reads the diff it
+produced, and a one-click apply is not that moment; asserted by a test that also refuses
+to let the level come from the environment. Never fails the build: no pull request, a
+read-only fork token, an oversized prompt or a partly-changed file are all notices.
+
+Two defects found by running it, both invisible to reading:
+
+- **It would have suggested deleting the trailing newline of every prompt in the pull
+  request.** `optimize` returns text with no trailing newline *even when no rule fires*
+  — `"Classify {{t}}.\n"` comes back as `"Classify {{t}}."` with `rules: []` — so a
+  plain `optimized !== original` is true for virtually every file on disk. The
+  comparison now ignores the terminator, and the suggestion omits it, because inside a
+  fence the lines *are* the replacement lines.
+- **Every anchor was one line past the end of the file.** `"abc\n".split("\n")` has
+  length 2, so `line` pointed at a phantom last line and GitHub would have answered 422
+  — on essentially every file, quietly, as a declined API call.
+
+One test fixture was wrong too: 600 identical padded paragraphs collapse to 42
+characters, because the duplicate-blocks rule removes them all, so the size guard never
+fired. Distinct paragraphs now.
+
+23 tests, five mutants — both defects above, a hunk parser that requires the optional
+comma, suggesting on a partial diff, and the aggressive level.
+
+### Added
+
 **`trazum doctor --otlp-out <file>` — the survey as OpenTelemetry metrics.** Five
 gauges: tokens per prompt, over-budget per prompt, the unbudgeted count, and each
 advisory's monthly figure and prompt count. The model and call volume are resource
