@@ -34,8 +34,12 @@ inputs:
     description: 'Distinguishes comments from two runs reporting on different things in the same pull request.'
     required: false
     default: 'default'
+  suggest-fixes:
+    description: 'Post the optimised prompt as a GitHub suggested change, applied with one button. Needs github-token and pull-requests write. Safe level only. A suggestion can only anchor to lines in the diff, so a prompt only partly changed by the pull request gets a notice instead.'
+    required: false
+    default: 'false'
   github-token:
-    description: 'Token used to post the comment. Only read when comment is true.'
+    description: 'Token used to post the comment and any suggestions. Only read when comment or suggest-fixes is true.'
     required: false
 
 runs:
@@ -156,3 +160,19 @@ runs:
           echo "::error title=Trazum::A prompt busts its token budget, or the check could not run. See the run summary."
           exit 1
         fi
+
+    - name: Suggest the optimised prompts
+      shell: bash
+      if: always() && inputs.suggest-fixes == 'true'
+      env:
+        TRAZUM_GITHUB_TOKEN: ${{ inputs.github-token }}
+        TRAZUM_ACTION_PATH: ${{ github.action_path }}
+      # Never fails the build, exactly like the comment step: no pull request, a
+      # read-only token on a fork, or the API declining are all notices. The budget
+      # verdict is raised separately and is the only thing that can turn this red.
+      #
+      # It posts *suggestions*, not commits. A commit would need `contents: write`
+      # on this workflow, and SECURITY.md documents `contents: read` — widening that
+      # is the caller's decision, not this action's convenience.
+      run: |
+        node "$TRAZUM_ACTION_PATH/action/suggest-fixes.mjs" || true
