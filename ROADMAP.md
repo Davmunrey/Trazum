@@ -383,6 +383,25 @@ one action in this repository that cannot be undone after 72 hours.
 
 ---
 
+## Merged into `main`, not yet released
+
+**Nothing below has a tag or a version on npm.** These were written as release
+milestones and filed under "Released", which was not true of any of them: there
+is no git tag in this repository, the `@trazum` scope does not exist yet, and
+[CHANGELOG.md](CHANGELOG.md) — which is the truthful record — holds every one of
+them under a single `Unreleased`.
+
+The numbering is kept because the ordering is the useful part: it says what
+landed in what sequence and why. But **the first publish collapses all of it into
+one version**, so these are milestones rather than releases, and the numbers below
+will not appear on npm.
+
+Two things are needed before any of it ships, and both belong to the maintainer:
+create the `@trazum` scope and the `release` environment with its trusted
+publisher (see [docs/releasing.md](docs/releasing.md)), and run
+`ANTHROPIC_API_KEY=... npm run measure:tokens` so the ±15% band printed on every
+report stops being an unmeasured design target.
+
 ### 1.1.0 — Doing the thing it had only been pricing
 
 Every rule in Trazum trims a few percent of a prompt's tokens. Since 0.2.0 the
@@ -651,9 +670,67 @@ tokenizer question under `Under consideration` heavier than it was.
 
 ---
 
+### 1.6.0 — Which prompt, whose change, and whose assertions
+
+Five commands from one observation: Trazum could tell you a prompt was expensive
+and could not tell you *which* prompt, *who* made it expensive, or whether the
+shorter one still did your job.
+
+**`trazum rank <dir>`** orders a directory by what optimising each prompt would
+actually recover — measured by running the rules, not by evaluating a formula.
+The obvious design was a complexity score out of a hundred, and it was rejected
+on purpose: a number nobody can reproduce by hand cannot be argued with, and the
+weights that combine four measurements into one get tuned until the ranking looks
+right, which is fitting the metric to the answer. The measurements are printed
+beside the ordering as its explanation, each with a definition you can check
+against the file. Two tests forbid a `score`, `rating`, `grade`, `index` or
+`complexity` field appearing later.
+
+**`trazum blame <file>`** walks a prompt's git history and puts two facts on one
+line: who changed it, and what that change cost. Git knows the first; it does not
+know that three lines added to a system prompt at 50,000 calls a month is a bill
+rather than a diff. This is the first thing here that runs another program, so it
+happens in one module written as if it were the whole attack surface — no shell,
+every path after a `--` separator, object names validated as 40 hex digits before
+being glued to one, bounded time and memory. Six invariants assert that, and one
+of them asserts that module stays the only importer of `node:child_process`.
+
+**`optimize --suggest`** replaces an all-or-nothing LLM pass with phrase-level
+proposals. `--llm` hands the model the whole prompt and takes the whole answer
+back, so a result failing one safety check leaves the author with nothing.
+Suggestions degrade instead: eight surviving out of ten is useful. The model
+proposes and the prompt decides — `before` must appear byte for byte, must not
+touch protected content, must actually save tokens, and overlapping edits are
+refused because applying both produces text neither described.
+
+**`eval --export promptfoo`** hands the run to somebody else's harness. Agreement
+is the question Trazum is qualified to ask and not the one a team needs answered
+before shipping; theirs is whether the classifier still hits 94%. So the suite is
+built with both prompts, every case bound to the right variable and the same
+provider on both sides — and the assertions are left blank, because they are
+assertions about a task this tool knows nothing about.
+
+**And `--reorder` had no safety at all outside English and Spanish.** Not a
+missing feature: the phrase list was one flat English/Spanish array applied to
+every prompt, so a French, German, Portuguese, Italian, Dutch, Japanese or
+Chinese author ran it with none of the refusals the module is built out of.
+"Résumez le texte ci-dessus" was hoisted above the text it points at and reported
+as a saving — and every test passed throughout, because every test asked the
+question in the two languages that worked. Seven languages added; CJK matches
+without word boundaries, since the boundary test can never fire there. A fourth
+refusal covers the scripts still missing — Cyrillic, Arabic, Hebrew, Hangul,
+Devanagari, Thai, Greek — where nothing moves and the report names the script.
+
+Alongside: the web app rebuilt on shadcn/ui keeping Trazum's own palette, the
+SSRF closed at its real source (the request body now *selects* an endpoint the
+operator listed rather than naming one), and the alert gate fixed after it was
+caught racing the analysis it reads.
+
+---
+
 ## Next
 
-### 1.6.0 — The error band, measured
+### 1.7.0 — The error band, measured
 
 **Why this entry keeps moving.** The corpus, the harness and the test shipped in
 what was then 1.3.0; the *measurement* cannot happen inside this repository,
@@ -746,6 +823,13 @@ Not scheduled. Listed so the reasoning is on the record.
 - **Prompt library.** Storing prompts is a different product, and one that
   would mean sending them to a server. Trazum's privacy story is that it never
   does.
+- **Cost alerting.** A bot that watches a prompt's monthly estimate and speaks up
+  when it crosses a threshold, or when caching effectiveness drops. Attractive,
+  and unscheduled for the same reason as the two above: it needs somewhere to run
+  and something to remember — a service holding other teams' prompt metrics on a
+  schedule. `check --max-tokens` in CI already covers the threshold case for
+  anyone content to have the answer arrive on a pull request instead of in Slack,
+  which is most of the value for none of the surface area.
 
 ---
 

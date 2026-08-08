@@ -10,6 +10,36 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**ROADMAP.md filed five versions under "Released" that were never released.**
+
+There is no git tag in this repository, the `@trazum` scope does not exist, and
+this file — which states at the top that `Unreleased` means merged-but-untagged —
+holds every one of 1.1.0 through 1.5.0 right here. Two documents, one of them
+wrong, and nothing checking either against the other.
+
+It matters beyond tidiness: "Released" is what somebody reads before deciding
+whether they can install this. The discipline in this repository is not claiming
+what has not been checked, and this was the least-checked claim in it.
+
+Those milestones now sit under **Merged into `main`, not yet released**, which
+says what is true: the ordering is a useful record, the numbers will not appear on
+npm, and the first publish collapses all of it into one version. The two things
+needed before any of it ships are named there, and both belong to the maintainer.
+
+Three tests keep the record honest from here — every version the roadmap calls
+released must have a changelog entry, nothing under "not yet released" may already
+be released, and the manifests must carry the newest version the changelog has
+actually cut. All three were checked against mutants; the first reproduces the
+original bug by name.
+
+Also on the roadmap: an entry for the five commands merged today, and **cost
+alerting** added to `Under consideration` with the reason it is not scheduled — it
+needs a service holding other teams' prompt metrics on a schedule, and `check
+--max-tokens` in CI already covers the threshold case for anyone content to have
+the answer arrive on a pull request instead of in Slack.
+
 ### Added
 
 **`trazum eval --export promptfoo` — hand the run to your own harness.**
