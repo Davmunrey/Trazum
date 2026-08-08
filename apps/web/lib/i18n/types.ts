@@ -59,6 +59,10 @@ export interface WebMessages {
     baseUrlPlaceholder: string;
     baseUrlServerDefault: string;
     baseUrlNotOffered: string;
+    suggest: string;
+    suggestHint: string;
+    applySuggestions: string;
+    applySuggestionsHint: string;
     model: string;
     modelPlaceholder: string;
     apiKey: string;
@@ -108,6 +112,12 @@ export interface WebMessages {
     reorderDeclinedRef(phrase: string, excerpt: string): string;
     reorderDeclinedAfter(excerpt: string): string;
     reorderDeclinedScript(script: string): string;
+    suggestOffered(count: number, tokens: string): string;
+    suggestApplied(count: number, tokens: string): string;
+    suggestNothing(provider: string, model: string): string;
+    suggestRejected(count: number): string;
+    suggestRemoved: string;
+    suggestNotApplied: string;
     reorderDeclinedMore(count: number): string;
   };
 
@@ -128,6 +138,7 @@ export interface WebMessages {
     endpointMustBePublic: string;
     endpointNotOffered: string;
     endpointNotAllowed(allowed: readonly string[]): string;
+    applyNeedsSuggest: string;
     llmNotConfigured: string;
     unexpected: string;
   };

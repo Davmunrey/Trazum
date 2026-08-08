@@ -9,7 +9,11 @@ import {
   openAiCompatible,
   optimize,
   providerFromEnv,
+  applyRewrites,
+  computeSavings,
+  estimateTokens,
   refineWithLlm,
+  suggestRewrites,
   reorderForCache,
   resolveEndpoint,
   resolveLocale,
@@ -17,6 +21,7 @@ import {
 } from '@trazum/core';
 import type {
   Locale,
+  SuggestResult,
   LlmProvider,
   ReorderResult,
   RuleId,
@@ -135,6 +140,22 @@ interface RequestBody {
    * a thing this endpoint should ever be able to do.
    */
   reorder?: unknown;
+  /**
+   * Ask the LLM for phrase-level rewrites and return them without applying any.
+   *
+   * Separate from `llm.enabled` because they are different questions: that one
+   * rewrites the whole prompt, this one proposes phrases you can accept
+   * individually. Asking for both is allowed and runs two calls.
+   */
+  suggest?: unknown;
+  /**
+   * Apply the suggestions. Honoured only on a literal `true`, like `reorder`.
+   *
+   * A truthy check would let `"false"` rewrite somebody's prompt, and this
+   * rewrite comes from a model — which makes it the last thing that should
+   * happen because a string was non-empty.
+   */
+  applySuggestions?: unknown;
   llm?: {
     enabled?: boolean;
     provider?: string;
@@ -239,6 +260,24 @@ export async function POST(request: Request) {
     return badRequest(t.api.unknownModel(usage.model));
   }
 
+  /**
+   * `applySuggestions` on its own is a request that cannot be honoured.
+   *
+   * Found by sending it: the response came back `200`, with a full report, no
+   * `suggestions` key and the prompt untouched — the one thing the caller asked
+   * for silently did not happen. That is the same failure as a misspelled field,
+   * which this route already refuses for `disableRules` and `usage.model`, and
+   * the CLI already refuses for the matching pair of flags. There was no reason
+   * for the HTTP surface to be the lenient one.
+   *
+   * Only a literal `true` is refused, because only a literal `true` would have
+   * been honoured. `applySuggestions: "false"` is declined either way, so it
+   * asks for nothing and gets nothing — which is what it says.
+   */
+  if (body.applySuggestions === true && body.suggest !== true) {
+    return badRequest(t.api.applyNeedsSuggest);
+  }
+
   try {
     // Before the rules, as in the CLI: the rearrangement is decided on the
     // prompt the author wrote, which is the one they will review it against.
@@ -263,24 +302,66 @@ export async function POST(request: Request) {
       result = { ...result, original: prompt };
     }
 
-    if (body.llm?.enabled) {
+    let suggestions: SuggestResult | null = null;
+    const applySuggestions = body.applySuggestions === true;
+
+    if (body.llm?.enabled || body.suggest === true) {
       let endpoint: string | null = null;
-      if (body.llm.baseUrl) {
+      if (body.llm?.baseUrl) {
         const resolved = resolveRequestedEndpoint(body.llm.baseUrl, t);
         if ('error' in resolved) return badRequest(resolved.error);
         endpoint = resolved.url;
       }
-      const provider = buildProvider(body.llm, endpoint);
+      const provider = buildProvider(body.llm ?? {}, endpoint);
       if (!provider) {
         return badRequest(t.api.llmNotConfigured);
       }
-      result = await refineWithLlm(result, provider, { locale });
+
+      // Suggestions first, on the deterministic result. Running them after
+      // `refineWithLlm` would ask the model about its own rewrite, which is a
+      // different and much less useful question.
+      if (body.suggest === true) {
+        suggestions = await suggestRewrites(result.optimized, provider, { locale });
+
+        // Applied only on a literal `true`, like `reorder`. The body is
+        // untrusted and a truthy check would let `"false"` rewrite somebody's
+        // prompt — and this rewrite comes from a model, which makes it the last
+        // thing that should happen because a string was non-empty.
+        if (applySuggestions && suggestions.suggestions.length > 0) {
+          const rewritten = applyRewrites(result.optimized, suggestions.suggestions);
+          result = {
+            ...result,
+            optimized: rewritten,
+            tokensAfter: estimateTokens(rewritten),
+          };
+          result = {
+            ...result,
+            tokensSaved: result.tokensBefore - result.tokensAfter,
+            reductionPct:
+              result.tokensBefore > 0
+                ? ((result.tokensBefore - result.tokensAfter) / result.tokensBefore) * 100
+                : 0,
+            savings: computeSavings(result.tokensBefore, result.tokensAfter, result.usage),
+          };
+        }
+      }
+
+      if (body.llm?.enabled) {
+        result = await refineWithLlm(result, provider, { locale });
+      }
     }
 
     // `reorder` goes in whenever it was asked for, including when nothing
     // moved: a caller reading `optimized` is reading text in an order the author
     // did not write, and must not have to infer that from the diff.
-    return NextResponse.json(reorder === null ? result : { ...result, reorder });
+    return NextResponse.json({
+      ...result,
+      ...(reorder === null ? {} : { reorder }),
+      // Present whenever suggestions were asked for, applied or not: a caller
+      // must be able to tell "nothing was proposed" from "proposals are
+      // waiting", and whether the text it is holding was rewritten.
+      ...(suggestions === null ? {} : { suggestions: { ...suggestions, applied: applySuggestions } }),
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : t.api.unexpected;
     // The failure usually comes from the external LLM, not from our code.

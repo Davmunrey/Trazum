@@ -10,6 +10,59 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+**`--suggest` is on the web too**, as two switches: one asks the model for
+phrase-level rewrites, the second takes them. Turning the first off clears the
+second, and the request derives the pair rather than sending both — a switch out
+of step would otherwise produce a `400` for a combination nobody chose.
+
+The proposals sit **above the saving**, one line each, with a count of what the
+checks threw out. Same placement and the same reason as the reordering notice: a
+figure read before its caveat is a figure nobody agreed to.
+
+**And the web suite calls the route handler for real.** Every test in `apps/web`
+until now read source and asserted on the text of it, which was honest about the
+two rendering bugs it was written for and could not have seen the one below.
+`test/api.test.mjs` sends requests: `next/server` is redirected to the platform's
+own `Response.json` through a stable `module.register` hook — not
+`--experimental-test-module-mocks`, because a suite should not depend on a flag a
+Node minor can rename — and the core, the rules and both catalogues are the real
+modules. Eight tests, four mutants, each killed by the one test meant for it.
+
+`apps/web/package.json` declares `"type": "module"` as part of this. Loading a
+`.ts` route from plain Node otherwise warns on every run that the file "doesn't
+parse as CommonJS" and is being reparsed — a fair warning, and one worth fixing
+rather than muting with `--disable-warning`, since every config in that directory
+was already `.mjs`. Build, typecheck and both suites verified after.
+
+The CI step that runs them is renamed from **"Core and CLI tests" to "Tests (core,
+CLI, web, Action)"**, which is what `npm test` at the root has been doing for a
+while. A step labelled for two of the four suites invites a reader of a green build
+to think the other two are unchecked, and invites somebody adding a suite to write
+a step that already exists.
+
+### Fixed
+
+**`applySuggestions` on its own returned `200` and applied nothing.**
+
+Found by sending it, not by reading the diff. The response came back with a
+complete report, no `suggestions` key, and the prompt untouched — the one thing the
+caller asked for silently did not happen. Nothing about the source looked wrong:
+the field parsed, the literal-`true` guard around it was correct, and the branch
+that would have used it was simply never entered.
+
+That is the same failure as a misspelled field being accepted, which this endpoint
+already refuses for `disableRules` and `usage.model`, and which the CLI already
+refuses for the matching pair of flags — *"a flag that quietly does nothing is the
+same failure as a typo'd flag being accepted"*. There was no reason for the HTTP
+surface to be the lenient one. It is a `400` now, refused **before** any call to
+the model, so a malformed request never costs one.
+
+Only a literal `true` is refused, because only a literal `true` would have been
+honoured: `applySuggestions: "false"` asks for nothing and gets nothing, which is
+what it says.
+
 ### Security
 
 **The trimming rules only trimmed in two languages, and the report did not say so.**

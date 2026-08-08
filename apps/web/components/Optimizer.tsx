@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import type { Locale, ModelPricing, OptimizationResult, ReorderResult } from '@trazum/core';
+import type {
+  Locale,
+  ModelPricing,
+  OptimizationResult,
+  ReorderResult,
+  SuggestResult,
+} from '@trazum/core';
 
 import { track } from './Analytics';
 import { diffTexts } from './diff';
@@ -171,6 +177,8 @@ export function Optimizer({ locale, t }: { locale: Locale; t: WebMessages }) {
   const [prompt, setPrompt] = useState(EXAMPLES[locale]);
   const [level, setLevel] = useState<'safe' | 'aggressive'>('safe');
   const [reorder, setReorder] = useState(false);
+  const [suggest, setSuggest] = useState(false);
+  const [applySuggestions, setApplySuggestions] = useState(false);
   const [model, setModel] = useState('claude-opus-5');
   const [callsPerMonth, setCallsPerMonth] = useState(10000);
   const [avgOutputTokens, setAvgOutputTokens] = useState(500);
@@ -186,6 +194,7 @@ export function Optimizer({ locale, t }: { locale: Locale; t: WebMessages }) {
 
   const [result, setResult] = useState<OptimizationResult | null>(null);
   const [reorderResult, setReorderResult] = useState<ReorderResult | null>(null);
+  const [suggestions, setSuggestions] = useState<(SuggestResult & { applied: boolean }) | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showDiff, setShowDiff] = useState(false);
@@ -269,6 +278,17 @@ export function Optimizer({ locale, t }: { locale: Locale; t: WebMessages }) {
           level,
           locale,
           reorder,
+          suggest,
+          /*
+            Derived rather than passed through. The API refuses
+            `applySuggestions` without `suggest` — on its own it would return a
+            report and silently apply nothing — and the toggle below already
+            clears itself when `suggest` goes off. That clearing is the UI being
+            honest about its own state; this is the request being correct
+            whatever the state turns out to be, which is a different guarantee
+            and the one that survives somebody editing the handler.
+          */
+          applySuggestions: suggest && applySuggestions,
           usage: { model, callsPerMonth, avgOutputTokens, cacheHitRate, batchEligible },
           llm: llmEnabled
             ? {
@@ -286,10 +306,15 @@ export function Optimizer({ locale, t }: { locale: Locale; t: WebMessages }) {
         setError(data.error ?? t.errors.requestFailed);
         setResult(null);
         setReorderResult(null);
+        setSuggestions(null);
       } else {
-        const optimization = data as OptimizationResult & { reorder?: ReorderResult };
+        const optimization = data as OptimizationResult & {
+          reorder?: ReorderResult;
+          suggestions?: SuggestResult & { applied: boolean };
+        };
         setResult(optimization);
         setReorderResult(optimization.reorder ?? null);
+        setSuggestions(optimization.suggestions ?? null);
         recordHistory(prompt, optimization);
         // Aggregate metrics, never the content of the prompt.
         track('optimize', {
@@ -306,6 +331,7 @@ export function Optimizer({ locale, t }: { locale: Locale; t: WebMessages }) {
       setError(t.errors.unreachable);
       setResult(null);
       setReorderResult(null);
+      setSuggestions(null);
     } finally {
       setLoading(false);
     }
@@ -479,6 +505,50 @@ export function Optimizer({ locale, t }: { locale: Locale; t: WebMessages }) {
                     {t.llm.enable}
                   </Label>
                 </div>
+
+                {/*
+                  A separate question from the one above, not a refinement of it.
+                  `llm.enabled` rewrites the whole prompt and you accept or
+                  discard the lot; this proposes phrases you judge one at a time.
+                */}
+                <div className="flex items-start gap-3">
+                  <Switch
+                    id="suggest"
+                    checked={suggest}
+                    onCheckedChange={(next) => {
+                      setSuggest(next);
+                      // Turning the question off cannot leave the answer armed.
+                      if (!next) setApplySuggestions(false);
+                    }}
+                    className="mt-0.5"
+                  />
+                  <Label htmlFor="suggest" className="grid cursor-pointer gap-0.5 font-normal">
+                    <span className="text-sm text-foreground">{t.llm.suggest}</span>
+                    <span className="text-xs leading-snug text-muted-foreground">
+                      {t.llm.suggestHint}
+                    </span>
+                  </Label>
+                </div>
+
+                {suggest && (
+                  <div className="flex items-start gap-3 pl-9">
+                    <Switch
+                      id="applySuggestions"
+                      checked={applySuggestions}
+                      onCheckedChange={setApplySuggestions}
+                      className="mt-0.5"
+                    />
+                    <Label
+                      htmlFor="applySuggestions"
+                      className="grid cursor-pointer gap-0.5 font-normal"
+                    >
+                      <span className="text-sm text-foreground">{t.llm.applySuggestions}</span>
+                      <span className="text-xs leading-snug text-muted-foreground">
+                        {t.llm.applySuggestionsHint}
+                      </span>
+                    </Label>
+                  </div>
+                )}
 
                 {llmEnabled && (
                   <>
@@ -709,6 +779,72 @@ export function Optimizer({ locale, t }: { locale: Locale; t: WebMessages }) {
                             </li>
                           )}
                         </ul>
+                      )}
+                    </div>
+                  )}
+
+                  {/*
+                    Above the money, like the rearrangement and for the same
+                    reason: these are changes to judge, and a saving read before
+                    the caveat is a saving nobody chose.
+                  */}
+                  {suggestions && (
+                    <div className="mt-3.5 rounded-lg border border-l-[3px] border-l-primary px-3.5 py-3">
+                      {suggestions.suggestions.length > 0 ? (
+                        <>
+                          <div className="text-[15px] font-semibold">
+                            {suggestions.applied
+                              ? t.results.suggestApplied(
+                                  suggestions.suggestions.length,
+                                  n(suggestions.suggestions.reduce((sum, x) => sum + x.tokensSaved, 0)),
+                                )
+                              : t.results.suggestOffered(
+                                  suggestions.suggestions.length,
+                                  n(suggestions.suggestions.reduce((sum, x) => sum + x.tokensSaved, 0)),
+                                )}
+                          </div>
+                          <ul className="m-0 mt-2 list-none p-0 font-mono text-[12.5px]">
+                            {suggestions.suggestions.map((s, i) => (
+                              <li key={i} className="flex min-w-0 items-baseline gap-[7px] py-px">
+                                <span className="max-w-[26ch] truncate text-terracotta line-through decoration-1">
+                                  {s.before}
+                                </span>
+                                <span className="flex-none text-muted-foreground">→</span>
+                                {s.after === '' ? (
+                                  <span className="flex-none text-muted-foreground">
+                                    {t.results.suggestRemoved}
+                                  </span>
+                                ) : (
+                                  <span className="max-w-[20ch] truncate text-good">{s.after}</span>
+                                )}
+                                <span className="flex-none text-muted-foreground">
+                                  ~{n(s.tokensSaved)}
+                                  {s.offsets.length > 1 ? ` ×${s.offsets.length}` : ''}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                          {!suggestions.applied && (
+                            <div className="mt-2 text-[13px] text-warn">
+                              {t.results.suggestNotApplied}
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="text-[15px] font-semibold">
+                          {t.results.suggestNothing(suggestions.provider, suggestions.model)}
+                        </div>
+                      )}
+
+                      {/*
+                        Refusals summarised, not listed. "Four did not survive" is
+                        the useful fact; which four is noise unless you are
+                        debugging the model, and the JSON has them for then.
+                      */}
+                      {suggestions.rejected.length > 0 && (
+                        <div className="mt-2 text-[13px] text-muted-foreground">
+                          {t.results.suggestRejected(suggestions.rejected.length)}
+                        </div>
                       )}
                     </div>
                   )}

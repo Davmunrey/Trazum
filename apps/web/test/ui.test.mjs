@@ -178,3 +178,32 @@ describe('CountUp does not lie about the number', () => {
     assert.match(source, /useState\(to\)/, 'CountUp server-renders its starting value');
   });
 });
+
+describe('the browser cannot build a request the API refuses', () => {
+  /**
+   * `applySuggestions` without `suggest` is a `400` — it would otherwise return a
+   * full report and silently apply nothing, which is how the defect was found in
+   * the first place. The panel keeps the two switches in step by clearing the
+   * second when the first goes off, and that is worth having: the visible state
+   * should be the real state.
+   *
+   * It is not what makes the request correct, though. A handler is one edit away
+   * from losing a line, and the failure would be a `400` in production for a
+   * combination the user never chose. The request derives the value instead, so
+   * the invariant does not depend on remembering.
+   */
+  it('applySuggestions is derived from suggest, not sent independently', () => {
+    const source = codeOf('components/Optimizer.tsx');
+    assert.match(
+      source,
+      /applySuggestions:\s*suggest\s*&&\s*applySuggestions/,
+      'the request passes applySuggestions straight through — with suggest off the ' +
+        'API will refuse it',
+    );
+  });
+
+  it('and the switch still clears itself, so the panel is not lying', () => {
+    const source = codeOf('components/Optimizer.tsx');
+    assert.match(source, /if \(!next\) setApplySuggestions\(false\)/);
+  });
+});

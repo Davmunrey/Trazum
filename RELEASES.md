@@ -51,7 +51,9 @@ Nine commands now, up from four.
   nothing, pass it and you got a wholesale rewrite to read end to end. Now it
   proposes phrases — `You should always make sure to → Always` — and each one is
   checked against your prompt before you see it. Eight surviving out of ten is a
-  useful morning. A wholesale rewrite that failed one check never was.
+  useful morning. A wholesale rewrite that failed one check never was. On the web
+  as two switches, with the proposals listed above the saving rather than under
+  it.
 - **`eval --export promptfoo` — your assertions, not ours.** `trazum eval`
   measures whether the model still says the same thing, which is the question
   Trazum is qualified to ask and emphatically not the one you need answered
@@ -141,6 +143,12 @@ Nine commands now, up from four.
   was there under the old name; the report said there was none.
 - **`--limit` was silently ignored** — accepted by the command, never registered
   as taking a value, so every run walked the default 20 and said nothing.
+- **`applySuggestions` on its own returned a `200` and applied nothing.** A full
+  report, no error, the prompt untouched, and the one thing the caller asked for
+  had quietly not happened. The source looked right — the field parsed, the guard
+  around it was correct, and the branch that would have used it was never
+  entered. It took sending the request. A `400` now, refused before any call to
+  the model, so a malformed request never costs one.
 - **Two quadratic passes.** One took 13.9 seconds on a large prompt; the other
   took **31**. Both found by hostile-input tests rather than by reading.
 - **The results panel in the web app rendered blank.** It waited for an
