@@ -27,7 +27,15 @@ jobs:
     runs-on: ubuntu-latest
     environment: release
     permissions:
-      contents: read
+      # Write, and only because `gh release create` needs it to attach a body to
+      # the tag. Worth stating plainly since it is a widening: this job now has
+      # the token to push to the repository, where before it could only read.
+      #
+      # Nothing here uses it for anything else. The checkout is
+      # `persist-credentials: false`, so the git remote in the working tree has
+      # no token to reuse, and the only step touching the API is the one that
+      # creates the release from a file already in the commit.
+      contents: write
       # The whole point of the design: this is what npm trusted publishing
       # exchanges for a short-lived credential. There is no NPM_TOKEN in this
       # repository's secrets, because a long-lived publish token would be the
@@ -94,6 +102,31 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         run: npm publish -w @trazum/cli --provenance --access public
 
+      # The release body comes from RELEASES.md, which was written and reviewed in
+      # a pull request. Before this, publishing to npm created no GitHub release
+      # at all: the tag existed and the page behind it was empty, so anyone
+      # arriving from a "what changed?" link got a file list.
+      #
+      # `release-notes.mjs` exits non-zero when the version has no section, so a
+      # release whose notes were never written fails here rather than shipping
+      # with a blank page. `publish.test.js` refuses the same thing earlier, at
+      # the point of commit; this is the backstop for a tag pushed by hand.
+      - name: Publish the GitHub release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          node scripts/release-notes.mjs "${GITHUB_REF_NAME#v}" > /tmp/release-notes.md
+          gh release create "$GITHUB_REF_NAME" \
+            --title "$GITHUB_REF_NAME" \
+            --notes-file /tmp/release-notes.md \
+            --verify-tag
+
+      # Checked on every run, tag or not, so a missing section is caught by the
+      # dry run rather than discovered while releasing.
       - name: Dry run finished
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-        run: echo "Dry run — no tag, nothing published."
+        run: |
+          node scripts/release-notes.mjs "$(node -p "require('./package.json').version")" > /dev/null
+          echo "Dry run — no tag, nothing published. Release notes present."

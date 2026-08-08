@@ -10,6 +10,37 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+**[RELEASES.md](RELEASES.md) — release notes for people**, and the workflow now
+publishes a GitHub release from them.
+
+Until now, tagging published to npm and created **no GitHub release at all**. The
+tag existed, the page behind it was empty, and anyone following a "what changed?"
+link arrived at a file list. This changelog is thorough and it is not what you
+hand somebody who has forty seconds — it is the maintainer's record, written for
+whoever has to understand a decision two years from now.
+
+`scripts/release-notes.mjs` extracts one version's section, and the release job
+pipes it into `gh release create`. Writing the notes in a pull request beats
+typing them into a web form at the moment of releasing, which is the moment least
+suited to writing anything carefully.
+
+Five tests make the file load-bearing rather than decorative: the version in the
+manifests must have a section, the newest section must be the pending release or
+the current version, the file must say nothing is published while nothing is
+published — the exact claim ROADMAP.md got wrong — and the extractor must return
+one section and fail loudly for a version it has never heard of. All checked
+against mutants, including one that makes the extractor swallow the next release's
+notes.
+
+The release job's `contents` permission widens from `read` to `write`, which
+`gh release create` requires. Stated rather than slipped in: that job now holds a
+token that can push to the repository. The checkout is still
+`persist-credentials: false`, so the working tree's remote has no token to reuse,
+and the only step touching the API creates a release from a file already in the
+commit.
+
 ### Fixed
 
 **ROADMAP.md filed five versions under "Released" that were never released.**
