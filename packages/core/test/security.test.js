@@ -886,14 +886,43 @@ describe('every source file is reviewable as a diff', () => {
    * The point of this repository's other invariants is that somebody can check
    * the code. This is the one that makes checking possible at all.
    */
-  const ROOTS = ['packages/core/src', 'packages/cli/src', 'scripts'];
-  const EXTENSIONS = ['.ts', '.js', '.mjs', '.cjs', '.json', '.yml', '.yaml', '.md'];
+  /**
+   * Everything a reviewer reads, not just what ships.
+   *
+   * This walked each package's `src` and `scripts` only, and the defect it was written
+   * to prevent came back one directory outside its reach:
+   * `packages/core/test/reorder-properties.test.js` joined a token bag on a **raw
+   * NUL** — the same mistake as `measure-token-band.mjs`, typed as a literal byte
+   * instead of `\0`. git called that file binary, so any change to those property
+   * tests would have rendered as `Bin 8385 -> 8386 bytes`, and this guard sat green
+   * beside it for as long as it existed.
+   *
+   * A test directory is exactly where it matters most. Tests are the argument that
+   * the code is right; a test nobody can read in a diff is an assertion taken on
+   * trust, which is what this repository spends its time refusing to do.
+   */
+  const ROOTS = [
+    'packages/core/src',
+    'packages/core/test',
+    'packages/cli/src',
+    'packages/cli/test',
+    'apps/web/app',
+    'apps/web/components',
+    'apps/web/lib',
+    'apps/web/test',
+    'action',
+    'scripts',
+    '.github',
+  ];
+  const EXTENSIONS = [
+    '.ts', '.tsx', '.js', '.mjs', '.cjs', '.json', '.yml', '.yaml', '.md', '.css',
+  ];
 
   const sourceFiles = () => {
     const found = [];
     const walk = (dir, prefix) => {
       for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        if (entry.name === 'node_modules' || entry.name === 'dist') continue;
+        if (['node_modules', 'dist', '.next', 'fixtures'].includes(entry.name)) continue;
         const path = join(dir, entry.name);
         if (entry.isDirectory()) {
           walk(path, `${prefix}${entry.name}/`);
@@ -911,7 +940,7 @@ describe('every source file is reviewable as a diff', () => {
     const files = sourceFiles();
     // The walk itself is the part that rots: a moved directory turns this into
     // a test of nothing, and it would still pass.
-    assert.ok(files.length > 40, `only ${files.length} source files found — the walk is wrong`);
+    assert.ok(files.length > 100, `only ${files.length} files found — the walk is wrong`);
 
     const binary = files
       .filter(([, path]) => readFileSync(path).includes(0))

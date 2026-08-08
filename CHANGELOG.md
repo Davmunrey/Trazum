@@ -10,6 +10,39 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**A test file was binary, and the guard against exactly that did not look in test
+directories.**
+
+`packages/core/test/reorder-properties.test.js` joined a token bag on a **raw NUL**:
+
+```js
+const bag = (text) => text.split(/\s+/).filter(Boolean).sort().join('<NUL>');
+```
+
+One byte, typed as a literal instead of `\0`. git calls such a file binary, so every
+change to those 400-prompt property tests rendered as `Bin 8385 -> 8386 bytes` and no
+reviewer could read a line of it.
+
+This is the same defect as `scripts/measure-token-band.mjs`, which spent three commits
+unreviewable — one of them fixing a security finding *in that file*. The guard written
+afterwards, `every source file is reviewable as a diff`, walked
+`packages/core/src`, `packages/cli/src` and `scripts`. The relapse landed in
+`packages/core/test`, one directory outside its reach, and the guard sat green beside
+it for as long as it existed.
+
+**A test directory is where it matters most.** Tests are the argument that the code is
+right; a test nobody can read in a diff is an assertion taken on trust, which is the
+thing this repository spends its effort refusing to do.
+
+The walk now covers both packages' `src` and `test`, `apps/web`, `action`, `scripts`
+and `.github`, and the staleness floor rises from 40 files to 100 so a future
+re-narrowing fails loudly instead of passing over less. Verified by putting the byte
+back: the widened guard names the file, the old roots do not.
+
+Repo-wide scan afterwards: 341 text files, one NUL, now zero.
+
 ### Added
 
 **`trazum diff --all <before> <after>` — a whole prompt library at once.** `diff`
