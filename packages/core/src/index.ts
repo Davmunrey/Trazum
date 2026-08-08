@@ -3,6 +3,8 @@ export { estimateTokens, countTokensAnthropic } from './tokenizer.js';
 export { countSentences, profilePrompt } from './profile.js';
 export { PHRASE_LANGUAGES } from './phrases.js';
 export { toPromptfoo } from './promptfoo.js';
+export { toOtlpMetrics } from './otlp.js';
+export type { OtlpAttribute, OtlpDataPoint, OtlpInput, OtlpMetric, OtlpPayload } from './otlp.js';
 export type { PromptfooExport, PromptfooOptions, PromptfooWarning } from './promptfoo.js';
 export type { ProfileOptions, PromptProfile } from './profile.js';
 export { SUGGEST_SYSTEM_PROMPT, applyRewrites, rejectionText, suggestRewrites } from './suggest.js';

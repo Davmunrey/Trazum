@@ -49,6 +49,9 @@ ${bold('OPCIONES DE doctor')}
   --model, --calls,           Calcula el coste de los hallazgos, igual que optimize.
   --output-tokens, --batch
   --prompt <nombre>           Qué prompt marcado tomar de cada fichero de código.
+  --otlp-out <fichero>        Escribe el reconocimiento como métricas OpenTelemetry
+                              (JSON OTLP/HTTP). Trazum escribe el fichero; tu
+                              pipeline lo envía.
   --json                      El reconocimiento como datos.
 
   Revisa un workspace completo: qué prompts no vigila nada, cuáles ya se pasan del

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
@@ -232,3 +233,52 @@ describe('a survey, not a gate', () => {
     assert.match(out, /trazum check es la puerta/);
   });
 });
+
+describe('doctor --otlp-out', () => {
+  it('writes a payload a collector can read', async () => {
+    const root = await project({ 'prompts/a.txt': PADDED }, { usage: USAGE, budgets: { 'prompts/**': 2000 } });
+    const out = join(root, 'metrics.json');
+    assert.equal(run(['.', '--otlp-out', out], root).code, 0);
+
+    const payload = JSON.parse(await readFile(out, 'utf8'));
+    const metrics = payload.resourceMetrics[0].scopeMetrics[0].metrics;
+    assert.ok(metrics.length > 0);
+    assert.ok(metrics.some((m) => m.name === 'trazum.prompt.tokens'));
+
+    // The encoding rule, checked end to end rather than only in the unit tests:
+    // the CLI is what actually stringifies this.
+    for (const metric of metrics) {
+      for (const point of metric.gauge.dataPoints) {
+        assert.equal(typeof point.timeUnixNano, 'string');
+        if ('asInt' in point) assert.equal(typeof point.asInt, 'string');
+      }
+    }
+  });
+
+  it('writes it even with --json, because the file is a separate destination', async () => {
+    const root = await project({ 'prompts/a.txt': PADDED }, { usage: USAGE });
+    const out = join(root, 'metrics.json');
+    const result = run(['.', '--json', '--otlp-out', out], root);
+
+    assert.equal(result.code, 0);
+    JSON.parse(result.stdout);
+    JSON.parse(await readFile(out, 'utf8'));
+  });
+
+  it('does not fail the survey when the file cannot be written', async () => {
+    // A full disk on a metrics runner must not turn a survey into a failure. The
+    // survey is what somebody asked for; the metrics are a copy of it.
+    const root = await project({ 'prompts/a.txt': PADDED }, { usage: USAGE });
+    const result = run(['.', '--otlp-out', join(root, 'prompts/a.txt', 'nope.json')], root);
+
+    assert.equal(result.code, 0);
+    assert.match(result.out, /Could not write/);
+  });
+
+  it('writes nothing without the flag', async () => {
+    const root = await project({ 'prompts/a.txt': PADDED }, { usage: USAGE });
+    assert.equal(run(['.'], root).code, 0);
+    assert.equal(existsSync(join(root, 'metrics.json')), false);
+  });
+});
+

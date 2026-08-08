@@ -22,6 +22,7 @@ import {
   listModels,
   nearestName,
   optimize,
+  toOtlpMetrics,
   providerFromEnv,
   reorderForCache,
   extractPrompts,
@@ -133,6 +134,7 @@ const VALUE_FLAGS = new Set([
   'locale',
   'config',
   'markdown-out',
+  'otlp-out',
   'pricing',
   'prompt',
   'out',
@@ -318,7 +320,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   where: [],
   rules: [],
   blame: ['limit', 'model', 'calls', 'output-tokens', 'batch', 'prompt', 'markdown-out'],
-  doctor: ['level', 'model', 'calls', 'output-tokens', 'batch', 'disable', 'prompt'],
+  doctor: ['level', 'model', 'calls', 'output-tokens', 'batch', 'disable', 'prompt', 'otlp-out'],
 };
 
 function rejectUnknownFlags(args: Args, t: CliMessages): void {
@@ -1530,6 +1532,26 @@ async function writeMarkdown(args: Args, render: () => string): Promise<void> {
       '\n_Trimmed: the report is larger than a step summary can hold._',
     );
     await writeFile(path, `${body}\n`, 'utf8');
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(c.yellow(`Could not write ${path}: ${message}`));
+  }
+}
+
+/**
+ * Writes the OTLP payload, if one was asked for.
+ *
+ * Same shape and same posture as `writeMarkdown`: a thunk so a run without the
+ * flag never pays to build it, and a write failure is reported and swallowed. A
+ * full disk on a metrics runner must not turn a survey into a failure — the
+ * survey is the thing somebody asked for, and the metrics are a copy of it.
+ */
+async function writeOtlp(args: Args, build: () => unknown): Promise<void> {
+  const path = stringFlag(args, 'otlp-out');
+  if (!path) return;
+
+  try {
+    await writeFile(path, `${JSON.stringify(build(), null, 2)}\n`, 'utf8');
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(c.yellow(`Could not write ${path}: ${message}`));
@@ -2885,6 +2907,26 @@ async function commandDoctor(
   // worthless — `context-overflow` means the call fails — so it sorts by how many
   // prompts raised it rather than falling to the bottom as a zero.
   findings.sort((a, b) => (b.monthlyUsd ?? 0) - (a.monthlyUsd ?? 0) || b.prompts - a.prompts);
+
+  // Before the print, like every other file this repository writes: a report that
+  // only appears when the terminal output was also wanted is a report a scheduled
+  // job cannot rely on.
+  await writeOtlp(args, () =>
+    toOtlpMetrics(
+      {
+        prompts: seen.map((d) => ({
+          path: d.path,
+          tokens: d.tokens,
+          overBudget: d.budget !== null && d.tokens > d.budget.maxTokens,
+          budgeted: d.budget !== null,
+        })),
+        findings: findings.map((f) => ({ id: f.id, prompts: f.prompts, monthlyUsd: f.monthlyUsd })),
+        model: usage.model,
+        callsPerMonth: usage.callsPerMonth,
+      },
+      Date.now(),
+    ),
+  );
 
   printDoctor(
     { root, seen, unbudgeted, overBudget, findings, skipped, truncated },
