@@ -262,6 +262,56 @@ describe('a count written in prose is a claim like any other', () => {
     }
   });
 
+  it('the command count in the README is the number of commands', () => {
+    /**
+     * The third count to drift, caught while adding the tenth command.
+     *
+     * `doctor` landed and the README went on saying "nine commands" in two places
+     * and "the other eight" in a third — the same failure as the 580 tests and the
+     * thirteen rules, in a file that had just been corrected for both. Correcting a
+     * count without checking it only resets the clock.
+     */
+    const readme = readFileSync(join(repoRoot, 'README.md'), 'utf8');
+    const cli = readFileSync(join(repoRoot, 'packages/cli/src/index.ts'), 'utf8');
+    const block = cli.slice(
+      cli.indexOf('const COMMAND_FLAGS'),
+      cli.indexOf('};', cli.indexOf('const COMMAND_FLAGS')),
+    );
+    const commands = [...block.matchAll(/^ {2}([a-z]+):/gm)].map((m) => m[1]);
+    assert.ok(commands.length > 5, 'COMMAND_FLAGS could not be parsed — has it moved?');
+
+    // Two different claims share the shape `<number> commands`. "ten commands" is
+    // the whole set; "the other nine commands" is the set minus `optimize`, and is
+    // correct prose. Reading both as the total made this test fail on a sentence
+    // that was right — a guard that cries wolf gets deleted, so it distinguishes
+    // them rather than banning the phrasing.
+    for (const match of readme.matchAll(/\b(other )?([a-z]+) commands\b/g)) {
+      const claimed = NUMBERS[match[2]];
+      if (claimed === undefined) continue; // "these commands", "the other commands"
+      const expected = match[1] ? commands.length - 1 : commands.length;
+      assert.equal(
+        claimed,
+        expected,
+        `README says "${match[0]}" — expected ${expected} of ${commands.length}: ${commands.join(', ')}`,
+      );
+    }
+  });
+
+  it('every command is mentioned in the README', () => {
+    // A command nobody documented is a command nobody runs.
+    const readme = readFileSync(join(repoRoot, 'README.md'), 'utf8');
+    const cli = readFileSync(join(repoRoot, 'packages/cli/src/index.ts'), 'utf8');
+    const block = cli.slice(
+      cli.indexOf('const COMMAND_FLAGS'),
+      cli.indexOf('};', cli.indexOf('const COMMAND_FLAGS')),
+    );
+    const missing = [...block.matchAll(/^ {2}([a-z]+):/gm)]
+      .map((m) => m[1])
+      .filter((id) => !readme.includes(`trazum ${id}`) && !readme.includes(`\`${id}`));
+
+    assert.deepEqual(missing, [], `undocumented commands: ${missing.join(', ')}`);
+  });
+
   it('the README states no test total, because nothing here can check one', () => {
     const readme = readFileSync(join(repoRoot, 'README.md'), 'utf8');
     const claim = readme.match(/#\s*(\d[\d,]*)\s+tests/);

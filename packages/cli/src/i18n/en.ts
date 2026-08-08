@@ -19,6 +19,7 @@ ${bold('USAGE')}
   trazum eval <file> --cases <file> [options]
   trazum eval <file> --cases <file> --export promptfoo -o suite.json
   trazum diff <before> <after> [options]
+  trazum diff --all <dir> <dir> [options]
   trazum rank <dir> [options]
   trazum doctor [dir] [options]
   trazum blame <file> [options]
@@ -140,6 +141,12 @@ ${bold('OPTIONS FOR eval')}
 
 ${bold('OPTIONS FOR diff')}
   --max-growth <n>            Fail if the prompt grew by more than n tokens.
+  --all                       Compare two directories of prompts, paired by relative
+                              path. Prompts on only one side are named, never
+                              counted: a deletion is a question, not a saving.
+                              --max-growth then applies per prompt, not to the
+                              total, so one prompt doubling cannot hide behind
+                              another shrinking.
   --optimized                 Measure what the rules would leave, not what is written.
   --level <safe|aggressive>   Level used for the rule and advisory findings.
   --model <id>                Model used to price the change.
@@ -550,6 +557,18 @@ ${bold('EXAMPLES')}
     rulesNoLongerFiring: () => 'Rules that no longer find anything:',
     overLimit: (delta, max) =>
       `Grew by ${delta} tokens, past the limit of ${max}.`,
+    someOverLimit: (count, max) =>
+      `${count} ${count === 1 ? 'prompt grew' : 'prompts grew'} past the per-prompt limit of ${max} tokens:`,
+    allSubheading: (prompts) =>
+      `${prompts} ${prompts === 1 ? 'prompt' : 'prompts'} on both sides.`,
+    allTotal: (delta, prompts) =>
+      `${delta} tokens across ${prompts} ${prompts === 1 ? 'prompt' : 'prompts'}`,
+    signConvention: () =>
+      'Every figure is after minus before, so positive means worse — the opposite of the rest of Trazum.',
+    onlyBefore: () => 'only before',
+    onlyAfter: () => 'only after ',
+    onlyOneSideNote: () =>
+      'Not counted in the totals. A prompt that vanished is a question, not a saving.',
   },
 
   markdown: {

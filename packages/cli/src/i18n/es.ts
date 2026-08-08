@@ -13,6 +13,7 @@ ${bold('USO')}
   trazum eval <fichero> --cases <fichero> [opciones]
   trazum eval <fichero> --cases <fichero> --export promptfoo -o suite.json
   trazum diff <antes> <después> [opciones]
+  trazum diff --all <dir> <dir> [opciones]
   trazum rank <dir> [opciones]
   trazum doctor [dir] [opciones]
   trazum blame <fichero> [opciones]
@@ -138,6 +139,11 @@ ${bold('OPCIONES DE eval')}
 
 ${bold('OPCIONES DE diff')}
   --max-growth <n>            Falla si el prompt ha crecido más de n tokens.
+  --all                       Compara dos directorios de prompts, emparejados por
+                              ruta relativa. Los prompts que solo están en un lado
+                              se nombran, nunca se cuentan: una eliminación es una
+                              pregunta, no un ahorro. --max-growth se aplica
+                              entonces por prompt, no al total.
   --optimized                 Mide lo que dejarían las reglas, no lo escrito.
   --level <safe|aggressive>   Nivel para las reglas y los avisos.
   --model <id>                Modelo con el que calcular el coste.
@@ -561,6 +567,17 @@ ${bold('EJEMPLOS')}
     rulesNoLongerFiring: () => 'Reglas que ya no encuentran nada:',
     overLimit: (delta, max) =>
       `Ha crecido ${delta} tokens, por encima del límite de ${max}.`,
+    someOverLimit: (count, max) =>
+      `${count} prompt${count === 1 ? '' : 's'} por encima del límite por prompt de ${max} tokens:`,
+    allSubheading: (prompts) => `${prompts} prompt${prompts === 1 ? '' : 's'} en ambos lados.`,
+    allTotal: (delta, prompts) =>
+      `${delta} tokens en ${prompts} prompt${prompts === 1 ? '' : 's'}`,
+    signConvention: () =>
+      'Toda cifra es después menos antes, así que positivo significa peor — lo contrario que en el resto de Trazum.',
+    onlyBefore: () => 'solo antes ',
+    onlyAfter: () => 'solo después',
+    onlyOneSideNote: () =>
+      'No entran en los totales. Un prompt que desaparece es una pregunta, no un ahorro.',
   },
 
   markdown: {
