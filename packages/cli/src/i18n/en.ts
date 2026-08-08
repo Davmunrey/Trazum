@@ -260,6 +260,13 @@ ${bold('EXAMPLES')}
     exactCount: () => ' (exact count)',
     rulesApplied: () => 'Rules applied',
     nothingToTrim: () => '  No rule found anything to trim.',
+    // Printed only when nothing fired, which is exactly when the reader would
+    // otherwise conclude their prompt is already efficient. Stated rather than
+    // detected: guessing the prompt's language is one more thing to get wrong,
+    // and naming the coverage cannot be wrong.
+    dictionaryCoverage: (languages) =>
+      `  The phrase dictionaries cover ${languages}. A prompt in another language `
+      + 'is not necessarily efficient — it may just be one Trazum cannot read yet.',
     levelAggressive: () => '[aggressive]',
     levelSafe: () => '[safe]',
     ruleHits: (hits, tokensSaved) => `(${hits}×, ~${tokensSaved} tokens)`,
@@ -423,6 +430,17 @@ ${bold('EXAMPLES')}
     followedRename: (from) => `Followed a rename: earlier revisions are ${from}.`,
     estimateNote: () =>
       'Token counts are estimates (±15%). The trend is the point; the absolute figures are not.',
+  },
+
+  languages: {
+    and: 'and',
+    en: 'English',
+    es: 'Spanish',
+    fr: 'French',
+    de: 'German',
+    pt: 'Portuguese',
+    it: 'Italian',
+    nl: 'Dutch',
   },
 
   rules: {

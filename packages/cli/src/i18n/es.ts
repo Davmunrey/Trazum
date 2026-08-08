@@ -263,6 +263,10 @@ ${bold('EJEMPLOS')}
     exactCount: () => ' (recuento exacto)',
     rulesApplied: () => 'Reglas aplicadas',
     nothingToTrim: () => '  Ninguna regla ha encontrado nada que recortar.',
+    dictionaryCoverage: (languages) =>
+      `  Los diccionarios de frases cubren ${languages}. Un prompt en otro idioma `
+      + 'no es necesariamente eficiente: puede ser simplemente uno que Trazum '
+      + 'todavía no sabe leer.',
     levelAggressive: () => '[agresiva]',
     levelSafe: () => '[segura]',
     ruleHits: (hits, tokensSaved) => `(${hits}×, ~${tokensSaved} tokens)`,
@@ -438,6 +442,17 @@ ${bold('EJEMPLOS')}
     followedRename: (from) => `Se ha seguido un renombrado: las revisiones anteriores son ${from}.`,
     estimateNote: () =>
       'Los recuentos son estimaciones (±15%). Lo que importa es la tendencia, no las cifras absolutas.',
+  },
+
+  languages: {
+    and: 'y',
+    en: 'inglés',
+    es: 'español',
+    fr: 'francés',
+    de: 'alemán',
+    pt: 'portugués',
+    it: 'italiano',
+    nl: 'neerlandés',
   },
 
   rules: {

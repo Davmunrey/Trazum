@@ -10,6 +10,54 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Security
+
+**The trimming rules only trimmed in two languages, and the report did not say so.**
+
+`--reorder` was fixed to refuse safely in nine languages. The rules that actually
+cut tokens still had dictionaries for English and Spanish alone, so:
+
+```
+en   22 →  11   2 rules
+es   25 →  14   2 rules
+fr   25 →  25   0 rules     ← nothing
+de   20 →  20   0 rules     ← nothing
+```
+
+A French or German author ran Trazum, read `No rule found anything to trim`, and
+took it to mean their prompt was already efficient. It meant Trazum could not read
+it. Same defect `--reorder` had, one layer over: the tool knew something it was
+not telling anybody.
+
+Two fixes, in that order. **The report now names its coverage** whenever no rule
+fires — stated rather than detected, because guessing a prompt's language is one
+more thing to get wrong and naming the coverage cannot be. And **French, German,
+Portuguese, Italian and Dutch** join the six dictionaries, so the trimming and the
+reordering finally cover the same set of Latin-script languages.
+
+### Fixed
+
+**A dictionary translated word by word changed meaning.** The first pass at those
+five languages shipped `muito`, `molto` and `heel` as intensifiers. All three are
+also quantifiers, and `INTENSIFIERS` is dropped outright at the aggressive level:
+
+```
+Hai molto tempo per rispondere.   →   Hai tempo per rispondere.
+```
+
+"You have much time" became "you have time". Spanish had this right all along —
+`muy` is on the list and `mucho` deliberately is not — and translating word for
+word instead of by role lost the distinction. Found by running the five languages
+through the rules, not by reading the list.
+
+Both halves are now tested. One suite keeps those three words out and asserts the
+quantifier sentences come back byte-identical. The other counts entries per
+language per dictionary, because the behavioural test passes on whatever the
+fixture happens to contain — which is exactly how a two-language hole survived a
+full suite for this long. Portuguese and Italian dropping to a single firing rule
+the moment `molto` came off the list is what surfaced the need for it: the
+fixtures had been carrying the claim.
+
 ### Added
 
 **[RELEASES.md](RELEASES.md) — release notes for people**, and the workflow now

@@ -14,6 +14,21 @@
  * does not belong here at all.
  */
 
+/**
+ * Languages the trimming dictionaries below actually cover.
+ *
+ * Exported because the report has to be able to say so. Until this existed,
+ * a French or German prompt came back with `No rule found anything to trim` —
+ * which reads as "your prompt is already efficient" and meant "I do not speak
+ * your language". Same class of mistake as the one `--reorder` had: the tool
+ * knew something it was not telling the reader.
+ *
+ * `phrases.test.js` asserts this list matches the languages the dictionaries are
+ * actually grouped under, so adding a dictionary without listing it — or listing
+ * one without the entries — fails rather than misleads.
+ */
+export const PHRASE_LANGUAGES: readonly string[] = ['en', 'es', 'fr', 'de', 'pt', 'it', 'nl'];
+
 /** Long phrases and their shorter equivalent. */
 export const VERBOSE_PHRASES: ReadonlyArray<readonly [string, string]> = [
   // English
@@ -81,6 +96,80 @@ export const VERBOSE_PHRASES: ReadonlyArray<readonly [string, string]> = [
   ['con anterioridad a', 'antes de'],
   ['con posterioridad a', 'después de'],
   ['un número suficiente de', 'suficientes'],
+
+  // French
+  ['afin de', 'pour'],
+  ['dans le but de', 'pour'],
+  ['en vue de', 'pour'],
+  ['du fait que', 'car'],
+  ['étant donné que', 'car'],
+  ['dans le cas où', 'si'],
+  ["à l'heure actuelle", 'maintenant'],
+  ['dans un avenir proche', 'bientôt'],
+  ['un grand nombre de', 'beaucoup de'],
+  ['la majorité des', 'la plupart des'],
+  ['faire usage de', 'utiliser'],
+  ['en ce qui concerne', 'sur'],
+  ['par rapport à', 'sur'],
+  ['est en mesure de', 'peut'],
+  ['il est nécessaire de', 'il faut'],
+
+  // German
+  ['um zu können', 'um zu'],
+  ['zu dem Zweck', 'um'],
+  ['aufgrund der Tatsache, dass', 'weil'],
+  ['aus dem Grund, dass', 'weil'],
+  ['in dem Fall, dass', 'wenn'],
+  ['zum jetzigen Zeitpunkt', 'jetzt'],
+  ['in naher Zukunft', 'bald'],
+  ['eine große Anzahl von', 'viele'],
+  ['die Mehrheit der', 'die meisten'],
+  ['Gebrauch machen von', 'nutzen'],
+  ['in Bezug auf', 'zu'],
+  ['ist in der Lage zu', 'kann'],
+  ['es ist notwendig, dass', 'es muss'],
+
+  // Portuguese
+  ['a fim de', 'para'],
+  ['com o objetivo de', 'para'],
+  ['devido ao fato de que', 'porque'],
+  ['no caso de que', 'se'],
+  ['neste momento', 'agora'],
+  ['num futuro próximo', 'em breve'],
+  ['um grande número de', 'muitos'],
+  ['a maioria dos', 'a maior parte dos'],
+  ['fazer uso de', 'usar'],
+  ['no que se refere a', 'sobre'],
+  ['em relação a', 'sobre'],
+  ['é capaz de', 'pode'],
+  ['é necessário que', 'deve'],
+
+  // Italian
+  ['al fine di', 'per'],
+  ['con lo scopo di', 'per'],
+  ['a causa del fatto che', 'perché'],
+  ['nel caso in cui', 'se'],
+  ['in questo momento', 'ora'],
+  ['nel prossimo futuro', 'presto'],
+  ['un gran numero di', 'molti'],
+  ['la maggior parte dei', 'la maggioranza dei'],
+  ['fare uso di', 'usare'],
+  ['per quanto riguarda', 'su'],
+  ['in relazione a', 'su'],
+  ['è in grado di', 'può'],
+  ['è necessario che', 'deve'],
+
+  // Dutch
+  ['met het doel om', 'om'],
+  ['vanwege het feit dat', 'omdat'],
+  ['in het geval dat', 'als'],
+  ['op dit moment', 'nu'],
+  ['in de nabije toekomst', 'binnenkort'],
+  ['een groot aantal', 'veel'],
+  ['de meerderheid van', 'de meeste'],
+  ['gebruik maken van', 'gebruiken'],
+  ['met betrekking tot', 'over'],
+  ['is in staat om', 'kan'],
 ];
 
 /** Courtesy: adds nothing for the model and costs tokens on every call. */
@@ -105,6 +194,47 @@ export const POLITENESS: readonly string[] = [
   'si eres tan amable',
   'si no te importa',
   'gracias',
+
+  // French
+  "s'il vous plaît",
+  "s'il te plaît",
+  'merci beaucoup',
+  'merci d\'avance',
+  'merci',
+  'je vous remercie',
+  'si cela ne vous dérange pas',
+
+  // German
+  'bitte',
+  'vielen Dank',
+  'danke im Voraus',
+  'danke',
+  'ich danke Ihnen',
+  'wenn es Ihnen nichts ausmacht',
+
+  // Portuguese
+  'por gentileza',
+  'muito obrigado',
+  'muito obrigada',
+  'obrigado',
+  'obrigada',
+  'agradeço desde já',
+
+  // Italian
+  'per favore',
+  'per cortesia',
+  'grazie mille',
+  'grazie in anticipo',
+  'grazie',
+  'ti ringrazio',
+
+  // Dutch
+  'alsjeblieft',
+  'alstublieft',
+  'hartelijk dank',
+  'bedankt',
+  'dank je',
+  'dank u',
 ];
 
 /** Filler and throat-clearing with no content. */
@@ -136,9 +266,61 @@ export const FILLER: readonly string[] = [
   'vale la pena mencionar que',
   'por así decirlo',
   'dicho esto',
+
+  // French
+  'il est important de noter que',
+  'il convient de noter que',
+  'il faut noter que',
+  'comme vous le savez',
+  'essentiellement',
+  'fondamentalement',
+  'en fait',
+
+  // German
+  'es ist wichtig zu beachten, dass',
+  'es sei darauf hingewiesen, dass',
+  'wie Sie wissen',
+  'im Grunde',
+  'im Wesentlichen',
+  'eigentlich',
+
+  // Portuguese
+  'é importante notar que',
+  'vale a pena notar que',
+  'como você sabe',
+  'basicamente',
+  'essencialmente',
+
+  // Italian
+  'è importante notare che',
+  'vale la pena notare che',
+  'come sai',
+  'fondamentalmente',
+  'essenzialmente',
+
+  // Dutch
+  'het is belangrijk om op te merken dat',
+  'zoals je weet',
+  'eigenlijk',
+  'in principe',
 ];
 
 /** Intensifiers: they rarely change the task and almost always add tokens. */
+/**
+ * Words that add emphasis and nothing else, so dropping one cannot change what
+ * the prompt asks for.
+ *
+ * **A quantifier is not an intensifier**, and the distinction is not visible in
+ * a dictionary translated word by word. Spanish gets `muy` and deliberately not
+ * `mucho`; the first draft of the other five languages did not keep that line
+ * and shipped `muito`, `molto` and `heel`, each of which does both jobs:
+ *
+ *     Hai molto tempo per rispondere.   →   Hai tempo per rispondere.
+ *
+ * "You have much time" became "you have time". Caught by running the five
+ * languages through the rules rather than by reading the list, and pinned by a
+ * test that keeps those three words out.
+ */
 export const INTENSIFIERS: readonly string[] = [
   // English
   'very',
@@ -157,6 +339,38 @@ export const INTENSIFIERS: readonly string[] = [
   'increíblemente',
   'absolutamente',
   'totalmente',
+
+  // French
+  'très',
+  'vraiment',
+  'extrêmement',
+  'absolument',
+  'tout à fait',
+
+  // German
+  'sehr',
+  'wirklich',
+  'äußerst',
+  'absolut',
+  'völlig',
+
+  // Portuguese
+  'realmente',
+  'extremamente',
+  'absolutamente',
+  'totalmente',
+
+  // Italian
+  'davvero',
+  'estremamente',
+  'assolutamente',
+  'totalmente',
+
+  // Dutch
+  'zeer',
+  'echt',
+  'uiterst',
+  'absoluut',
 ];
 
 /** Hedges that weaken the instruction without adding information. */
@@ -173,6 +387,35 @@ export const HEDGES: readonly string[] = [
   'me parece que',
   'diría que',
   'en mi opinión',
+
+  // French
+  'peut-être',
+  'probablement',
+  'en quelque sorte',
+  'je pense que',
+
+  // German
+  'vielleicht',
+  'wahrscheinlich',
+  'irgendwie',
+  'ich denke, dass',
+
+  // Portuguese
+  'talvez',
+  'provavelmente',
+  'de certa forma',
+  'eu acho que',
+
+  // Italian
+  'forse',
+  'probabilmente',
+  'in un certo senso',
+  'penso che',
+
+  // Dutch
+  'misschien',
+  'waarschijnlijk',
+  'ik denk dat',
 ];
 
 /**
@@ -249,6 +492,35 @@ export const SELF_CHECK: readonly string[] = [
   'revisa dos veces',
   'vuelve a comprobarlo',
   'asegúrate de revisar tu trabajo',
+
+  // French
+  'vérifiez votre réponse avant de répondre',
+  'relisez votre réponse',
+  'assurez-vous que votre réponse est correcte',
+  'réfléchissez étape par étape avant de répondre',
+
+  // German
+  'überprüfen Sie Ihre Antwort, bevor Sie antworten',
+  'lesen Sie Ihre Antwort noch einmal',
+  'stellen Sie sicher, dass Ihre Antwort korrekt ist',
+  'denken Sie Schritt für Schritt nach',
+
+  // Portuguese
+  'verifique sua resposta antes de responder',
+  'releia sua resposta',
+  'certifique-se de que sua resposta está correta',
+  'pense passo a passo antes de responder',
+
+  // Italian
+  'verifica la tua risposta prima di rispondere',
+  'rileggi la tua risposta',
+  'assicurati che la tua risposta sia corretta',
+  'pensa passo per passo prima di rispondere',
+
+  // Dutch
+  'controleer je antwoord voordat je antwoordt',
+  'lees je antwoord nog eens',
+  'denk stap voor stap na',
 ];
 
 /** Words shouted in capitals that cost fewer tokens in lowercase. */
