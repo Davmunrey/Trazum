@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 
+import { RULES } from '../dist/index.js';
+
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..', '..', '..');
 
@@ -202,6 +204,71 @@ describe('the record agrees with itself', () => {
       manifestOf('.').version,
       newest,
       'the manifests and the changelog disagree about what the last release was',
+    );
+  });
+});
+
+describe('a count written in prose is a claim like any other', () => {
+  /**
+   * Two of them had drifted, silently, because nothing compared them to the code.
+   *
+   * `RELEASES.md` said **thirteen** deterministic rules where there are twelve,
+   * and listed "restated output formats" among what they cut — which is an
+   * advisory that is deliberately never cut, so the sentence was wrong twice. The
+   * README, separately, advertised **580** tests while the real figure had reached
+   * 798.
+   *
+   * The README's number is gone: a total across four suites cannot be checked
+   * from here without running all four, and a number nobody maintains is worse
+   * than no number. The rule count is one property away and is checked.
+   *
+   * Written as words rather than digits in that file, so this reads words.
+   */
+  const NUMBERS = {
+    one: 1, two: 2, three: 3, four: 4, five: 5, six: 6,
+    seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
+    thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16,
+  };
+
+  it('the rule count in RELEASES.md is the number of rules', () => {
+    const releases = readFileSync(join(repoRoot, 'RELEASES.md'), 'utf8');
+    const claim = releases.match(/\*\*([A-Za-z]+) deterministic rules\*\*/);
+
+    assert.ok(claim, 'RELEASES.md no longer states a rule count — if it never does again, delete this test');
+    const claimed = NUMBERS[claim[1].toLowerCase()];
+    assert.ok(claimed !== undefined, `"${claim[1]}" is not a number this test knows`);
+    assert.equal(
+      claimed,
+      RULES.length,
+      `RELEASES.md claims ${claim[1]} (${claimed}) deterministic rules; there are ${RULES.length}`,
+    );
+  });
+
+  it('and no advisory is described as something the rules cut', () => {
+    // The other half of that sentence. `restated-output-format` is advisory only
+    // — the schema and the prose walking through it are both defensible, and
+    // which to keep is the author's call — so listing it as a cut is a promise
+    // Trazum deliberately does not keep.
+    const releases = readFileSync(join(repoRoot, 'RELEASES.md'), 'utf8');
+    const sentence = releases.match(/\*\*[A-Za-z]+ deterministic rules\*\*[^.]*\./);
+    assert.ok(sentence, 'the rule sentence has moved');
+
+    for (const phrase of ['restated output format', 'contradictor', 'redundant example']) {
+      assert.equal(
+        sentence[0].toLowerCase().includes(phrase),
+        false,
+        `"${phrase}" is advisory only and is listed among what the rules cut`,
+      );
+    }
+  });
+
+  it('the README states no test total, because nothing here can check one', () => {
+    const readme = readFileSync(join(repoRoot, 'README.md'), 'utf8');
+    const claim = readme.match(/#\s*(\d[\d,]*)\s+tests/);
+    assert.equal(
+      claim,
+      null,
+      `README.md advertises "${claim?.[1]}" tests again — that number drifted from 580 to 798 unnoticed`,
     );
   });
 });
