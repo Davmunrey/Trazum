@@ -1,4 +1,4 @@
-import type { EvalVerdict, Locale } from '@trazum/core';
+import type { EvalVerdict, Locale, RuleLevel } from '@trazum/core';
 
 /**
  * The CLI's own message catalogue.
@@ -224,6 +224,10 @@ export interface CliMessages {
   markdown: {
     checkHeading(target: string): string;
     diffHeading(before: string, after: string): string;
+    rankHeading(root: string, count: number): string;
+    blameHeading(path: string): string;
+    /** The level the recoverable figures were measured at. */
+    rankLevel(level: RuleLevel): string;
     columnFile(): string;
     columnTokens(): string;
     columnBudget(): string;

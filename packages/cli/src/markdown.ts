@@ -1,6 +1,7 @@
 import type { CliMessages } from './i18n/index.js';
-import type { Locale, PromptComparison, RuleLevel } from '@trazum/core';
-import { formatSignedUsd, getMessages, getModel } from '@trazum/core';
+import type { Revision } from './git.js';
+import type { Locale, PromptComparison, PromptProfile, RuleLevel } from '@trazum/core';
+import { formatSignedUsd, formatUsd, getMessages, getModel } from '@trazum/core';
 
 /**
  * Markdown for the places a pull request is actually read.
@@ -79,6 +80,44 @@ export function mdText(value: string): string {
     .replace(/[\r\n]+/g, ' ')
     .replace(/([\\`*_~[\]<>|])/g, '\\$1')
     .trim();
+}
+
+/**
+ * Untrusted **prose** in a table cell.
+ *
+ * `mdCell` is for values that are code — a path, a sha — and it says so by
+ * wrapping them in `<code>`. A commit subject and an author's name are neither.
+ * Rendering `<code>David Muñoz Rey</code>` in a table typesets somebody's name as
+ * a code span, and `<code>fix: the rules only trimmed in two languages</code>`
+ * does the same to a sentence. Both were wrong in the first draft of the blame
+ * report, and only visible once it was rendered.
+ *
+ * The safety is `mdCell`'s, unchanged, for the same reason: **entities, so there
+ * is no `|` in the output at all** and the row cannot split under any scanner.
+ * `mdText`'s backslash escaping is complete and would also survive a cell, but it
+ * puts the correctness on a reader's ability to see that `\\\|` is an escaped
+ * backslash followed by an escaped pipe. Nothing here should need that.
+ *
+ * Then the inline-markdown set on top, which `mdCell` does not need because
+ * backticks make its content literal. A subject reading `fix *everything*` would
+ * otherwise arrive in italics, and two backticks in one would open a code span —
+ * cosmetic rather than dangerous, and still not what the author wrote.
+ */
+export function mdTextCell(value: string): string {
+  const flat = value.replace(/[\r\n\t]+/g, ' ').trim();
+  if (flat === '') return '';
+
+  return (
+    flat
+      // `&` first, or it would double-encode the entities added below.
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/\|/g, '&#124;')
+      // Applied last, and deliberately not including `|`, `<` or `>`: those are
+      // already entities by this point and have no character left to escape.
+      .replace(/([\\`*_~[\]])/g, '\\$1')
+  );
 }
 
 /** Truncates a body to fit, saying so rather than trailing off. */
@@ -326,4 +365,233 @@ export function commentMarker(key: string): string {
     .replace(/-+$/, '');
   const usable = /[A-Za-z0-9]/.test(safe) ? safe : 'default';
   return `<!-- trazum-report:${usable} -->`;
+}
+
+export interface RankMarkdownRow {
+  path: string;
+  profile: PromptProfile;
+  /** Tokens the deterministic rules would take, at the level asked for. */
+  recoverable: number;
+  /** What those tokens cost per month under the usage profile. */
+  recoverableUsd: number;
+}
+
+export interface RankMarkdownInput {
+  /** The directory the run was pointed at. */
+  root: string;
+  ranked: readonly RankMarkdownRow[];
+  level: RuleLevel;
+  modelDisplayName: string;
+  callsPerMonth: number;
+  /** True when a walk limit stopped the run early. */
+  truncated: boolean;
+  /** Source files with no marker, skipped rather than aborting the run. */
+  skipped: number;
+  t: CliMessages;
+}
+
+/**
+ * The ranking as markdown.
+ *
+ * Every string but the heading comes from `t.rank`, the same object the terminal
+ * report reads. That is not tidiness — a second copy of "there is no score" is a
+ * second thing to keep true, and the first time somebody softens one of these
+ * sentences they will soften the copy they happened to be looking at.
+ *
+ * **Money and tokens stay in adjacent columns**, as in the terminal, and for the
+ * reason the terminal has them: four prompts reading `$0.25` looked like four
+ * equivalent jobs when three of them recovered a single token. A pull request
+ * comment is where that misreading would do the most damage, because nobody
+ * reading one has the file open.
+ */
+export function renderRankMarkdown(input: RankMarkdownInput): string {
+  const { root, ranked, level, modelDisplayName, callsPerMonth, truncated, skipped, t } = input;
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const cols = t.rank.columns;
+
+  const lines: string[] = [];
+  lines.push(`### ${t.markdown.rankHeading(mdCell(root), ranked.length)}`);
+  lines.push('');
+  lines.push(t.rank.subheading(mdText(modelDisplayName), n(callsPerMonth)));
+  lines.push('');
+  lines.push(
+    `| ${cols.recoverable} | ${cols.tokensBack} | ${cols.tokens} | ${cols.density} | ${cols.notes} |`,
+  );
+  lines.push('|--:|--:|--:|--:|---|');
+
+  for (const entry of ranked) {
+    const { profile } = entry;
+    const notes: string[] = [];
+    if (profile.examples > 0) {
+      notes.push(t.rank.noteExamples(profile.examples, n(profile.exampleTokens)));
+    }
+    if (profile.formatTokens > 0) notes.push(t.rank.noteFormat(n(profile.formatTokens)));
+    const protectedShare = profile.tokens === 0 ? 0 : profile.protectedTokens / profile.tokens;
+    if (protectedShare >= 0.25) notes.push(t.rank.noteProtected(Math.round(protectedShare * 100)));
+
+    // The path is `<code>`; the notes are prose in the same cell. Two escapers
+    // in one cell because they are two kinds of value, and `mdCell` on a whole
+    // sentence would entity-encode punctuation nobody needs encoded.
+    const note = notes.length > 0 ? ` — ${mdTextCell(notes.join(', '))}` : '';
+    lines.push(
+      `| ${formatUsd(entry.recoverableUsd)} | ${n(entry.recoverable)} | ${n(profile.tokens)} | `
+      + `${profile.tokensPerSentence.toFixed(1)} | ${mdCell(entry.path)}${note} |`,
+    );
+  }
+
+  lines.push('');
+
+  if (truncated) {
+    lines.push('> [!WARNING]');
+    lines.push(`> ${t.check.walkTruncated()}`);
+    lines.push('');
+  }
+
+  // Named rather than silent, exactly as in the terminal: a repository where
+  // most prompts live in code would otherwise show a short list and read as the
+  // whole picture.
+  if (skipped > 0) {
+    lines.push(t.rank.skipped(skipped));
+    lines.push('');
+  }
+
+  lines.push(`<sub>${mdText(t.rank.densityNote())}</sub>`);
+  lines.push('');
+  lines.push(`<sub>${mdText(t.rank.recoverableNote())} ${t.markdown.rankLevel(level)}</sub>`);
+
+  return lines.join('\n');
+}
+
+export interface BlameMarkdownRow {
+  revision: Revision;
+  /** `null` when the file did not exist at that commit, or held no marked prompt. */
+  tokens: number | null;
+  /** Tokens added since the previous (older) revision. `null` for the first. */
+  delta: number | null;
+  /** The name the file had at that commit, when it differs from today's. */
+  name: string | null;
+}
+
+export interface BlameMarkdownInput {
+  repoPath: string;
+  rows: readonly BlameMarkdownRow[];
+  truncated: boolean;
+  /** The priced movement across the history, when a model was resolved. */
+  netCost: { amount: string; modelDisplayName: string; callsPerMonth: number } | null;
+  t: CliMessages;
+}
+
+/**
+ * The token history as markdown.
+ *
+ * A rise is bold and a fall is not, which is the same asymmetry the terminal
+ * makes with colour: growth is the thing somebody has to act on, and a report
+ * that shouts equally about both trains the reader to ignore it.
+ *
+ * **Author and subject are the least trusted values this repository renders.**
+ * They come from commit metadata, which on a pull request from a fork is written
+ * by whoever opened it, and they land in a table on a page maintainers read. Both
+ * go through `mdCell`, which emits entities rather than escapes — so there is no
+ * `|` in the output to split a row and no backtick arithmetic to get wrong.
+ */
+export function renderBlameMarkdown(input: BlameMarkdownInput): string {
+  const { repoPath, rows, truncated, netCost, t } = input;
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const cols = t.blame.columns;
+
+  const measured = rows.filter((r): r is BlameMarkdownRow & { tokens: number } => r.tokens !== null);
+  const newest = measured[0];
+  const oldest = measured[measured.length - 1];
+
+  const lines: string[] = [];
+  lines.push(`### ${t.markdown.blameHeading(mdCell(repoPath))}`);
+  lines.push('');
+  lines.push(`| ${cols.when} | ${cols.tokens} | ${cols.change} | ${cols.who} | ${cols.commit} |`);
+  lines.push('|---|--:|--:|---|---|');
+
+  for (const row of rows) {
+    const tokens = row.tokens === null ? t.blame.goneAt() : n(row.tokens);
+    const change =
+      row.delta === null
+        ? row.tokens === null
+          ? ''
+          : t.blame.addedAt()
+        : row.delta > 0
+          ? `**+${n(row.delta)}**`
+          : row.delta < 0
+            ? n(row.delta)
+            : '·';
+
+    lines.push(
+      `| ${row.revision.date.slice(0, 10)} | ${tokens} | ${change} | `
+      + `${mdTextCell(row.revision.author)} | ${mdCell(row.revision.shortSha)} `
+      + `${mdTextCell(row.revision.subject)} |`,
+    );
+  }
+
+  lines.push('');
+
+  if (truncated) {
+    lines.push(t.blame.truncated(rows.length));
+    lines.push('');
+  }
+
+  const renamed = rows.find((row) => row.name !== null);
+  if (renamed?.name) {
+    lines.push(t.blame.followedRename(mdCell(renamed.name)));
+    lines.push('');
+  }
+
+  if (newest && oldest && newest !== oldest) {
+    const delta = newest.tokens - oldest.tokens;
+    const pct =
+      oldest.tokens === 0
+        ? '—'
+        : `${delta >= 0 ? '+' : ''}${((delta / oldest.tokens) * 100).toFixed(0)}%`;
+    lines.push(
+      `**${t.blame.net(
+        n(oldest.tokens),
+        n(newest.tokens),
+        `${delta >= 0 ? '+' : ''}${n(delta)}`,
+        pct,
+      )}**`,
+    );
+    lines.push('');
+
+    // Priced by the caller, which owns the usage profile. Recomputing it here
+    // would give a comment and a job log two chances to disagree about the same
+    // history.
+    if (netCost !== null) {
+      lines.push(
+        t.blame.netCost(
+          netCost.amount,
+          mdText(netCost.modelDisplayName),
+          n(netCost.callsPerMonth),
+        ),
+      );
+      lines.push('');
+    }
+  }
+
+  // The single worst commit, which is the question the command is really for.
+  const worst = rows
+    .filter((row): row is BlameMarkdownRow & { delta: number } => row.delta !== null && row.delta > 0)
+    .sort((a, b) => b.delta - a.delta)[0];
+  if (worst) {
+    lines.push(`#### ${t.blame.biggestRise()}`);
+    lines.push('');
+    lines.push(
+      `- ${t.blame.biggestRiseDetail(
+        n(worst.delta),
+        mdTextCell(worst.revision.author),
+        mdTextCell(worst.revision.subject),
+        mdCell(worst.revision.shortSha),
+      )}`,
+    );
+    lines.push('');
+  }
+
+  lines.push(`<sub>${mdText(t.blame.estimateNote())}</sub>`);
+
+  return lines.join('\n');
 }

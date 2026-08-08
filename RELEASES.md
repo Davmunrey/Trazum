@@ -46,6 +46,10 @@ Nine commands now, up from four.
   three lines added to a system prompt at 50,000 calls a month is a bill rather
   than a diff. Now both facts are on the same line, with the single worst commit
   named.
+- **Both of them post to pull requests.** `--markdown-out` was on `check` and
+  `diff` only, so the two commands that answer *which prompt is worth an
+  afternoon* and *who made this one expensive* could not put their answers where
+  those decisions get made. They can now.
 - **`optimize --suggest` — rewrites you can judge one at a time.** The LLM pass
   used to be all-or-nothing in both directions: fail one safety check and you got
   nothing, pass it and you got a wholesale rewrite to read end to end. Now it

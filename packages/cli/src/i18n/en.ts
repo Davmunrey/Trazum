@@ -40,6 +40,8 @@ ${bold('OPTIONS FOR rank')}
   --model, --calls,           Price the recoverable tokens, as in optimize.
   --output-tokens, --batch
   --prompt <name>             Which marked prompt to take from each source file.
+  --markdown-out <file>       Also write the ranking as Markdown, for a CI job
+                              summary or a pull request comment.
   --json                      The ranking as data.
 
   There is no score. Prompts are ordered by what the rules would actually
@@ -51,6 +53,8 @@ ${bold('OPTIONS FOR blame')}
                               refactor of the imports is not read as growth.
   --model, --calls,           Price the movement, exactly as in optimize.
   --output-tokens, --batch
+  --markdown-out <file>       Also write the history as Markdown, for a CI job
+                              summary or a pull request comment.
   --json                      The history as data.
 
   Paths are taken literally after "--": trazum blame -- --odd-name.txt
@@ -508,6 +512,10 @@ ${bold('EXAMPLES')}
   markdown: {
     checkHeading: (target) => `Trazum — token budgets for ${target}`,
     diffHeading: (before, after) => `Trazum — ${before} → ${after}`,
+    rankHeading: (root, count) =>
+      `Trazum — what to fix first in ${root} (${count} ${count === 1 ? "prompt" : "prompts"})`,
+    blameHeading: (path) => `Trazum — token history for ${path}`,
+    rankLevel: (level) => `Measured at rule level \`${level}\`.`,
     columnFile: () => 'Prompt',
     columnTokens: () => 'Tokens',
     columnBudget: () => 'Budget',

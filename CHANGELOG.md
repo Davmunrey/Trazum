@@ -12,6 +12,39 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`rank` and `blame` take `--markdown-out`.** The flag existed on `check` and
+`diff`, which meant the two commands that answer *which of these forty prompts is
+worth an afternoon* and *who made this one expensive* could not put their answers
+where those decisions get made. Both now render a table for a job summary or a
+pull request comment, written before any exit code is set and independently of
+`--json` — the file's job is to survive the run.
+
+Every string but the heading comes from the same `t.rank` / `t.blame` objects the
+terminal report reads. Not tidiness: a second copy of "there is no score" is a
+second thing to keep true, and whoever eventually softens one of those sentences
+will soften the copy they happened to be looking at. `blame`'s priced movement
+moved into a shared `netCostOf` for the same reason — two copies of that
+arithmetic is precisely how a comment and a job log start disagreeing about one
+history.
+
+**A third escaper, `mdTextCell`, for untrusted prose in a table cell.** `mdCell`
+is safe and announces "this is code" by wrapping in `<code>`; the first draft of
+the blame report used it for the author and the subject, so the table typeset a
+person's name as a code span and an English sentence with it. Correct, and plainly
+wrong the moment it was rendered. The new one keeps `mdCell`'s entity encoding —
+no `|` in the output at all, so the row cannot split — and adds the inline-markdown
+set, which `mdCell` never needed because backticks make its content literal.
+
+This is the least trusted input in the repository: on a pull request from a fork,
+the commit subject is written by whoever opened it, and it lands in a table
+maintainers read. Verified by building a repository with `grow | </table><script>`
+as a commit message and asserting every row still has five cells.
+
+Five mutants, each killed. One of them was killed only by a fixture coincidence —
+reverting to `mdCell` kept the table intact and failed just the hostile test,
+because `&#124;` happened to differ — so a test that asks the actual typographic
+question went in beside it.
+
 **`--suggest` is on the web too**, as two switches: one asks the model for
 phrase-level rewrites, the second takes them. Turning the first off clears the
 second, and the request derives the pair rather than sending both — a switch out

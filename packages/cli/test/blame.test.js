@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
@@ -277,5 +277,69 @@ describe('--limit and --json', () => {
     const root = await repo([['first', { 'p.txt': SHORT }]]);
     const { code, out } = run(['p.txt', '--limit', 'lots'], root);
     assert.notEqual(code, 0, out);
+  });
+});
+
+describe('blame --markdown-out', () => {
+  it('writes a history a pull request can render', async () => {
+    const root = await repo([
+      ['first', { 'p.txt': SHORT }],
+      ['grow it', { 'p.txt': LONG }],
+    ]);
+    const out = join(root, 'report.md');
+    assert.equal(run(['p.txt', '--markdown-out', out], root).code, 0);
+
+    const md = await readFile(out, 'utf8');
+    assert.match(md, /^### Trazum — token history for/m);
+    assert.match(md, /\| Date \| Tokens \| Change \|/);
+    // A rise is what somebody has to act on, so it is what gets the weight.
+    assert.match(md, /\*\*\+\d+\*\*/);
+    assert.match(md, /Biggest single increase/);
+  });
+
+  it('carries the same priced movement the terminal printed', async () => {
+    // One arithmetic, two destinations. Two copies is how a comment and a job
+    // log start disagreeing about the same history.
+    const root = await repo([
+      ['first', { 'p.txt': SHORT }],
+      ['grow it', { 'p.txt': LONG }],
+    ]);
+    const out = join(root, 'report.md');
+    const terminal = run(['p.txt', '--calls', '50000', '--markdown-out', out], root);
+    const md = await readFile(out, 'utf8');
+
+    const money = /([+\u2212]\$[\d.,]+) a month/;
+    const fromTerminal = terminal.stdout.match(money);
+    const fromMarkdown = md.match(money);
+    assert.ok(fromTerminal, `no priced movement in the terminal report:\n${terminal.out}`);
+    assert.ok(fromMarkdown, `no priced movement in the markdown report:\n${md}`);
+    assert.equal(fromMarkdown[1], fromTerminal[1]);
+  });
+
+  it('does not put a commit subject anywhere it could break the table', async () => {
+    // The subject is written by whoever opened the pull request.
+    const root = await repo([
+      ['first', { 'p.txt': SHORT }],
+      ['grow | </table><script>x</script> \\', { 'p.txt': LONG }],
+    ]);
+    const out = join(root, 'report.md');
+    assert.equal(run(['p.txt', '--markdown-out', out], root).code, 0);
+
+    const md = await readFile(out, 'utf8');
+    const rows = md
+      .split('\n')
+      .filter((line) => line.startsWith('|'))
+      .map((line) => line.slice(1, -1).split(/(?<!\\)\|/).length);
+    assert.equal(new Set(rows).size, 1, `ragged table: ${rows.join(', ')}`);
+    assert.equal(md.includes('<script>'), false);
+    assert.match(md, /&lt;\/table&gt;/);
+  });
+
+  it('does not fail the run when the file cannot be written', async () => {
+    const root = await repo([['first', { 'p.txt': SHORT }]]);
+    const result = run(['p.txt', '--markdown-out', join(root, 'p.txt', 'nope.md')], root);
+
+    assert.equal(result.code, 0);
+    assert.match(result.out, /Could not write/);
   });
 });
