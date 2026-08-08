@@ -131,3 +131,76 @@ describe('what npm would publish', () => {
     );
   });
 });
+
+describe('the record agrees with itself', () => {
+  /**
+   * ROADMAP.md filed five versions under "Released" that were never released.
+   *
+   * No git tag existed, the `@trazum` scope did not exist, and CHANGELOG.md —
+   * which states at the top that `Unreleased` means merged-but-untagged — held
+   * every one of them under `Unreleased`. Two documents, one of them wrong, and
+   * nothing checking either against the other.
+   *
+   * It matters beyond tidiness: "Released" is what somebody reads before
+   * deciding whether they can install this. The discipline in this repository is
+   * not claiming what has not been checked, and this was the least-checked claim
+   * in it.
+   */
+  const roadmap = readFileSync(join(repoRoot, 'ROADMAP.md'), 'utf8');
+  const changelog = readFileSync(join(repoRoot, 'CHANGELOG.md'), 'utf8');
+
+  /** Version headings under one `##` section of the roadmap. */
+  const versionsUnder = (heading) => {
+    const start = roadmap.indexOf(`\n## ${heading}`);
+    if (start === -1) return null;
+    const rest = roadmap.slice(start + 1);
+    const end = rest.indexOf('\n## ');
+    const body = end === -1 ? rest : rest.slice(0, end);
+    return [...body.matchAll(/^### (\d+\.\d+\.\d+)/gm)].map((m) => m[1]);
+  };
+
+  const releasedInChangelog = [
+    ...changelog.matchAll(/^## (\d+\.\d+\.\d+)/gm),
+  ].map((m) => m[1]);
+
+  it('every version the roadmap calls released has a changelog entry', () => {
+    const claimed = versionsUnder('Released');
+    assert.ok(claimed, 'the roadmap has no "Released" section any more');
+    assert.ok(claimed.length > 0, 'the "Released" section lists no versions');
+
+    const unbacked = claimed.filter((version) => !releasedInChangelog.includes(version));
+    assert.deepEqual(
+      unbacked,
+      [],
+      `ROADMAP.md calls these released and CHANGELOG.md has not: ${unbacked.join(', ')}`,
+    );
+  });
+
+  it('and nothing merged-but-unreleased is claimed as released', () => {
+    // The other direction, so moving an entry between the two sections cannot
+    // silently promote it.
+    const merged = versionsUnder('Merged into `main`, not yet released') ?? [];
+    assert.ok(merged.length > 0, 'the merged-not-released section lists no versions');
+
+    const wrong = merged.filter((version) => releasedInChangelog.includes(version));
+    assert.deepEqual(
+      wrong,
+      [],
+      `these sit under "not yet released" but CHANGELOG.md has released them: ${wrong.join(', ')}`,
+    );
+  });
+
+  it('the manifests carry the newest version the changelog has released', () => {
+    // 1.0.0 in every manifest was *correct*: the changelog's newest release is
+    // 1.0.0 and everything since is unreleased. Asserted so it stays true in
+    // both directions — a publish bumps the manifests and cuts a changelog
+    // section, or it does neither.
+    const newest = releasedInChangelog[0];
+    assert.ok(newest, 'the changelog has no released version at all');
+    assert.equal(
+      manifestOf('.').version,
+      newest,
+      'the manifests and the changelog disagree about what the last release was',
+    );
+  });
+});
