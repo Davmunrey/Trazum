@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -202,5 +203,131 @@ describe('the record agrees with itself', () => {
       newest,
       'the manifests and the changelog disagree about what the last release was',
     );
+  });
+});
+
+describe('a release cannot ship without notes', () => {
+  /**
+   * `RELEASES.md` is the human-facing counterpart to the changelog, and the
+   * release workflow builds the GitHub release body from it.
+   *
+   * Before that, publishing to npm created **no GitHub release at all**: the tag
+   * existed, the page behind it was empty, and anyone following a "what changed?"
+   * link arrived at a file list. Writing the notes in a pull request and letting
+   * the workflow read them beats typing them into a web form at the moment of
+   * releasing, which is the moment least suited to writing anything carefully.
+   *
+   * These tests are what make the file load-bearing rather than decorative.
+   */
+  const releases = readFileSync(join(repoRoot, 'RELEASES.md'), 'utf8');
+  const sections = [...releases.matchAll(/^## (\S+)/gm)].map((m) => m[1]);
+
+  it('the version in the manifests has a section', () => {
+    // The check that matters: a version can be tagged only once somebody has
+    // said, in prose, what is in it.
+    const version = manifestOf('.').version;
+    assert.ok(
+      sections.includes(version),
+      `RELEASES.md has no "## ${version}" section — write the notes before tagging`,
+    );
+  });
+
+  it('the newest section is either the pending release or the current version', () => {
+    // Nothing is published yet, so the top section is `Unreleased`. Once a
+    // version ships it becomes that version, and the next unreleased work opens
+    // a new `Unreleased` above it. Anything else means the file drifted from
+    // what is actually installable.
+    const newest = sections[0];
+    const version = manifestOf('.').version;
+    assert.ok(
+      newest === 'Unreleased' || newest === version,
+      `the newest section is "${newest}", which is neither Unreleased nor ${version}`,
+    );
+  });
+
+  it('states that nothing is published, while nothing is published', () => {
+    // The claim this repository got wrong once already, in ROADMAP.md. A file
+    // whose whole job is announcing releases is the likeliest place to imply one
+    // happened.
+    const changelog = readFileSync(join(repoRoot, 'CHANGELOG.md'), 'utf8');
+    const released = [...changelog.matchAll(/^## (\d+\.\d+\.\d+)/gm)].map((m) => m[1]);
+    const somethingIsPublished = released.includes(manifestOf('.').version) && sections[0] !== 'Unreleased';
+
+    if (!somethingIsPublished) {
+      assert.match(
+        releases,
+        /Nothing has been published yet/,
+        'RELEASES.md no longer says that nothing is published, and nothing is published',
+      );
+    }
+  });
+
+  it('the extractor returns that section and nothing after it', () => {
+    // The workflow pipes this into `gh release create`. A bug that swallows the
+    // next section publishes one release under another release's notes.
+    const version = manifestOf('.').version;
+    const result = spawnSync(process.execPath, [join(repoRoot, 'scripts/release-notes.mjs'), version], {
+      encoding: 'utf8',
+    });
+
+    assert.equal(result.status, 0, result.stderr);
+    // `startsWith`, not a regex built from the version. Doing the latter here
+    // is what CodeQL flagged in the script, and repeating it in the test that
+    // guards the script would have been funny in the wrong way.
+    assert.ok(
+      result.stdout.startsWith(`## ${version}`),
+      `the notes do not start with the version heading: ${result.stdout.slice(0, 60)}`,
+    );
+    assert.equal(
+      (result.stdout.match(/^## /gm) ?? []).length,
+      1,
+      'the extracted notes contain more than one release',
+    );
+  });
+
+  it('and fails loudly for a version it has never heard of', () => {
+    const result = spawnSync(process.execPath, [join(repoRoot, 'scripts/release-notes.mjs'), '9.9.9'], {
+      encoding: 'utf8',
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /no section for 9\.9\.9/);
+    assert.equal(result.stdout, '', 'it printed something as well as failing');
+  });
+
+  it('treats the argument as a version, never as a pattern', () => {
+    /**
+     * The first version of the extractor built a regex out of `process.argv[2]`,
+     * and CodeQL raised three alerts that were all correct: regex injection, and
+     * incomplete escaping twice over. `(a+)+$` was a ReDoS pattern handed
+     * straight to a matcher, and `(((((` threw before the file was read.
+     *
+     * The fix was to stop treating a version number as a pattern at all.
+     *
+     * What this test pins is the *property*, not that choice: these payloads are
+     * rejected, produce no output, and never reach a matcher. A correctly escaped
+     * regex would satisfy all three, and I checked — reintroducing one with a
+     * complete escape keeps this test green. That is the right outcome rather
+     * than a gap: a complete escape is safe, and a test that failed on it would
+     * be enforcing my preference instead of the requirement.
+     *
+     * Empty stdout is the assertion doing the real work. The release step
+     * redirects this into a file and publishes it, so exiting non-zero while
+     * having already written something is how a blank release ships anyway.
+     */
+    for (const argument of ['(((((', '(a+)+$', '.*', '1.0.0\\', '1.0.0 --notes-file /etc/passwd']) {
+      const result = spawnSync(
+        process.execPath,
+        [join(repoRoot, 'scripts/release-notes.mjs'), argument],
+        { encoding: 'utf8', timeout: 5000 },
+      );
+
+      assert.notEqual(result.status, 0, `"${argument}" was accepted`);
+      assert.equal(result.stdout, '', `"${argument}" produced output`);
+      assert.doesNotMatch(
+        result.stderr,
+        /Invalid regular expression|SyntaxError/,
+        `"${argument}" still reaches a regex`,
+      );
+    }
   });
 });
