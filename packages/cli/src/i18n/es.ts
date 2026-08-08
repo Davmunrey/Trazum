@@ -14,6 +14,7 @@ ${bold('USO')}
   trazum eval <fichero> --cases <fichero> --export promptfoo -o suite.json
   trazum diff <antes> <después> [opciones]
   trazum rank <dir> [opciones]
+  trazum doctor [dir] [opciones]
   trazum blame <fichero> [opciones]
   trazum where [fichero]
   trazum models
@@ -41,6 +42,20 @@ ${bold('OPCIONES DE rank')}
 
   No hay puntuación. Los prompts se ordenan por lo que las reglas recuperarían
   de verdad, midiéndolo al ejecutarlas; las demás columnas explican esa posición.
+
+${bold('OPCIONES DE doctor')}
+  --level <safe|aggressive>   Qué reglas contar. Por defecto: safe.
+  --model, --calls,           Calcula el coste de los hallazgos, igual que optimize.
+  --output-tokens, --batch
+  --prompt <nombre>           Qué prompt marcado tomar de cada fichero de código.
+  --json                      El reconocimiento como datos.
+
+  Revisa un workspace completo: qué prompts no vigila nada, cuáles ya se pasan del
+  presupuesto y cuánto suman los avisos en todos ellos. Cada hallazgo es un aviso
+  que trazum optimize da en ese prompt por separado, así que cualquier línea se
+  puede comprobar contra un solo fichero. No hay puntuación.
+
+  Sale con 0 aunque encuentre cosas. trazum check es la puerta.
 
 ${bold('OPCIONES DE blame')}
   --limit <n>                 Revisiones a recorrer. Por defecto: 20, máximo 500.
@@ -464,6 +479,33 @@ ${bold('EJEMPLOS')}
     disableHint: () => '  Desactiva las que no quieras con --disable id1,id2',
   },
 
+
+  doctor: {
+    heading: (root, prompts) => `${root} — ${prompts} prompt${prompts === 1 ? '' : 's'}`,
+    subheading: (model, calls) => `Con precios de ${model} y ${calls} llamadas al mes.`,
+    pricesReviewed: (date) => `Precios revisados el ${date}.`,
+    budgetsHeading: () => 'Presupuestos',
+    everyPromptBudgeted: (count) =>
+      count === 1
+        ? 'El prompt tiene presupuesto y está dentro.'
+        : `Los ${count} prompts tienen presupuesto y están dentro.`,
+    unbudgeted: (count, total) =>
+      `${count} de ${total} prompt${count === 1 ? '' : 's'} sin presupuesto, así que nada los vigila`,
+    overBudget: (count) =>
+      count === 1
+        ? '1 prompt ya se pasa de su presupuesto — trazum check fallaría con él'
+        : `${count} prompts ya se pasan de su presupuesto — trazum check fallaría con ellos`,
+    andMore: (count) => `y ${count} más`,
+    findingsHeading: () => 'Qué merecería la pena arreglar',
+    acrossPrompts: (count) => `${count} prompt${count === 1 ? '' : 's'}`,
+    findingsNote: () =>
+      'Cada línea es el mismo aviso que trazum optimize da en esos prompts, sumado. '
+      + 'Ejecútalo sobre cualquiera de ellos para ver la cifra por separado.',
+    notAGate: () =>
+      'Nada de esto hace fallar un build. trazum check es la puerta; esto es el '
+      + 'reconocimiento — la recomendación de modelo es una heurística de palabras clave, '
+      + 'y un build que dependa de una enseña a repetir hasta que salga verde.',
+  },
 
   eval: {
     nothingToCompare: () =>

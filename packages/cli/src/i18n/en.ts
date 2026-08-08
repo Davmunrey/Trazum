@@ -20,6 +20,7 @@ ${bold('USAGE')}
   trazum eval <file> --cases <file> --export promptfoo -o suite.json
   trazum diff <before> <after> [options]
   trazum rank <dir> [options]
+  trazum doctor [dir] [options]
   trazum blame <file> [options]
   trazum where [file]
   trazum models
@@ -46,6 +47,20 @@ ${bold('OPTIONS FOR rank')}
 
   There is no score. Prompts are ordered by what the rules would actually
   recover, measured by running them; the other columns explain that position.
+
+${bold('OPTIONS FOR doctor')}
+  --level <safe|aggressive>   Which rules to count. Default: safe.
+  --model, --calls,           Price the findings, as in optimize.
+  --output-tokens, --batch
+  --prompt <name>             Which marked prompt to take from each source file.
+  --json                      The survey as data.
+
+  Surveys a whole workspace: which prompts nothing is watching, which are already
+  over budget, and what the advisories add up to across all of them. Every finding
+  is one trazum optimize raises on that prompt on its own, so any line can be
+  checked against a single file. There is no score.
+
+  It exits 0 even when it finds things. trazum check is the gate.
 
 ${bold('OPTIONS FOR blame')}
   --limit <n>                 Revisions to walk. Default: 20, maximum 500.
@@ -452,6 +467,34 @@ ${bold('EXAMPLES')}
     disableHint: () => '  Turn off the ones you do not want with --disable id1,id2',
   },
 
+
+  doctor: {
+    heading: (root, prompts) =>
+      `${root} — ${prompts} ${prompts === 1 ? 'prompt' : 'prompts'}`,
+    subheading: (model, calls) => `Priced on ${model} at ${calls} calls a month.`,
+    pricesReviewed: (date) => `Prices reviewed ${date}.`,
+    budgetsHeading: () => 'Budgets',
+    everyPromptBudgeted: (count) =>
+      count === 1
+        ? 'The prompt has a budget and is inside it.'
+        : `All ${count} prompts have a budget and are inside it.`,
+    unbudgeted: (count, total) =>
+      `${count} of ${total} ${count === 1 ? 'prompt has' : 'prompts have'} no budget, so nothing is watching ${count === 1 ? 'it' : 'them'}`,
+    overBudget: (count) =>
+      count === 1
+        ? '1 prompt is already over its budget — trazum check would fail on it'
+        : `${count} prompts are already over their budget — trazum check would fail on them`,
+    andMore: (count) => `and ${count} more`,
+    findingsHeading: () => 'What it would be worth fixing',
+    acrossPrompts: (count) => `${count} ${count === 1 ? 'prompt' : 'prompts'}`,
+    findingsNote: () =>
+      'Each line is the same advisory trazum optimize raises on those prompts, summed. '
+      + 'Run it on any one of them to see the figure on its own.',
+    notAGate: () =>
+      'Nothing here fails a build. trazum check is the gate; this is the survey — the '
+      + 'model recommendation is a keyword heuristic, and a build gated on one teaches '
+      + 'people to re-run until green.',
+  },
 
   eval: {
     nothingToCompare: () =>

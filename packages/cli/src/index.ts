@@ -37,6 +37,7 @@ import {
   withExactTokenCounts,
 } from '@trazum/core';
 import type {
+  Advisory,
   ExampleReview,
   PromptComparison,
   ReorderResult,
@@ -62,7 +63,7 @@ import {
   loadConfig,
   walkPrompts,
 } from '@trazum/core/node';
-import type { HostEnvironment, PricingCatalogue, TrazumConfig } from '@trazum/core/node';
+import type { HostEnvironment, PricingCatalogue, ResolvedBudget, TrazumConfig } from '@trazum/core/node';
 
 import {
   contentAt,
@@ -317,6 +318,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   where: [],
   rules: [],
   blame: ['limit', 'model', 'calls', 'output-tokens', 'batch', 'prompt', 'markdown-out'],
+  doctor: ['level', 'model', 'calls', 'output-tokens', 'batch', 'disable', 'prompt'],
 };
 
 function rejectUnknownFlags(args: Args, t: CliMessages): void {
@@ -2134,6 +2136,15 @@ function printComparison(
  * much as a display choice. Twenty is enough to see a trend and fast enough to
  * feel instant on a normal file.
  */
+/**
+ * How many unbudgeted paths `doctor` names before summarising the rest.
+ *
+ * Capped and *counted*: a survey that prints forty paths buries the finding it
+ * was meant to deliver, and one that silently shows the first eight claims there
+ * were eight.
+ */
+const DOCTOR_LIST_LIMIT = 8;
+
 const BLAME_DEFAULT_LIMIT = 20;
 const BLAME_MAX_LIMIT = 500;
 
@@ -2717,6 +2728,9 @@ async function main(): Promise<void> {
     case 'rules':
       commandRules(t, locale);
       break;
+    case 'doctor':
+      await commandDoctor(args, config, pricing, t, locale);
+      return;
     case 'rank':
       await commandRank(args, config, pricing, t, locale);
       break;
@@ -2734,3 +2748,244 @@ main().catch((error: unknown) => {
   console.error(`\n${c.red(t.errors.errorLabel())}: ${message}\n`);
   process.exitCode = 1;
 });
+
+// --------------------------------------------------------------------------
+// doctor
+// --------------------------------------------------------------------------
+
+/** One prompt, as `doctor` sees it. */
+interface Diagnosis {
+  path: string;
+  tokens: number;
+  /** The budget that applies, or null when no pattern matches. */
+  budget: ResolvedBudget | null;
+  advisories: readonly Advisory[];
+}
+
+/** An advisory rolled up across every prompt that raised it. */
+interface Finding {
+  id: string;
+  title: string;
+  prompts: number;
+  /** Summed monthly figure, or null when no prompt attached money to it. */
+  monthlyUsd: number | null;
+}
+
+/**
+ * `trazum doctor [dir]` — the survey before the gate.
+ *
+ * Every other command answers a question about one prompt, or ranks prompts
+ * against each other. This one answers "what is wrong with this repository", and
+ * it does so **without inventing a single new judgement**.
+ *
+ * That is the design constraint worth stating, because the obvious way to build
+ * this command is the wrong one. A health check invites a score, a grade, a
+ * traffic light — numbers assembled from weights nobody can reproduce, which get
+ * quietly tuned until the output looks right. `rank` already refused that. So
+ * every finding here is an advisory that `optimize` would raise on that prompt on
+ * its own, summed: the "37 prompts only need a cheaper model" line is 37 copies of
+ * the `model-downgrade` advisory, each reproducible by running `trazum optimize`
+ * on the file named. Nothing is computed here that cannot be checked there.
+ *
+ * **It exits 0 even when it finds things.** `trazum check` is the gate and fails
+ * builds; this is the survey. The model recommendation is a keyword heuristic, and
+ * gating a build on a keyword heuristic is how people learn to re-run until green
+ * — which costs more than the tool ever saves.
+ *
+ * Deliberately not included: anything needing a model. "Prompts that exceed their
+ * own `--suggest` recommendations" would mean an LLM call per prompt, and `doctor`
+ * is the command you run on forty files before you have decided to spend anything.
+ */
+async function commandDoctor(
+  args: Args,
+  config: TrazumConfig,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+  locale: Locale,
+): Promise<void> {
+  const root = args.positional[0] ?? '.';
+  const level = levelFlag(args, config, t);
+  const usage = usageFrom(args, config, t);
+
+  const extensions = config.extensions ?? [...DEFAULT_EXTENSIONS, ...SOURCE_EXTENSIONS];
+  const { files, truncated } = await walkPrompts(root, { extensions });
+  if (files.length === 0) {
+    throw new Error(t.errors.noPromptsFound(root, extensions.join(' ')));
+  }
+
+  const seen: Diagnosis[] = [];
+  let skipped = 0;
+
+  for (const file of files) {
+    const raw = await readFile(join(root, file), 'utf8');
+
+    // Same contract as `rank`: a source file contributes its marked prompt or
+    // nothing, and an unmarked one is counted rather than allowed to abort a
+    // survey of the other thirty-nine.
+    let source: { text: string; model?: string } | null;
+    try {
+      source = sourceFileOf(file, raw, pricing, stringFlag(args, 'prompt'));
+    } catch {
+      skipped++;
+      continue;
+    }
+    if (source === null && SOURCE_EXTENSIONS.some((ext) => file.toLowerCase().endsWith(ext))) {
+      skipped++;
+      continue;
+    }
+    const text = source ? source.text : raw;
+    if (text.trim() === '') continue;
+
+    const result = optimize(text, {
+      level,
+      locale,
+      usage,
+      pricing,
+      disableRules: disabledRules(args, config),
+    });
+
+    seen.push({
+      path: file,
+      // As written, not as optimised: a budget governs the file on disk, and this
+      // is the number `check` would compare against it.
+      tokens: result.tokensBefore,
+      budget: budgetFor(file, config.budgets),
+      advisories: result.advisories,
+    });
+  }
+
+  if (seen.length === 0) {
+    throw new Error(t.errors.noPromptsFound(root, extensions.join(' ')));
+  }
+
+  const unbudgeted = seen.filter((d) => d.budget === null);
+  const overBudget = seen.filter((d) => d.budget !== null && d.tokens > d.budget.maxTokens);
+
+  /** Advisories rolled up by id, worst money first. */
+  const findings: Finding[] = [];
+  for (const diagnosis of seen) {
+    for (const advisory of diagnosis.advisories) {
+      let finding = findings.find((f) => f.id === advisory.id);
+      if (!finding) {
+        finding = { id: advisory.id, title: advisory.title, prompts: 0, monthlyUsd: null };
+        findings.push(finding);
+      }
+      finding.prompts++;
+      if (advisory.estimatedMonthlyUsd !== null) {
+        finding.monthlyUsd = (finding.monthlyUsd ?? 0) + advisory.estimatedMonthlyUsd;
+      }
+    }
+  }
+  // Money first, then breadth. An advisory with no figure attached is not
+  // worthless — `context-overflow` means the call fails — so it sorts by how many
+  // prompts raised it rather than falling to the bottom as a zero.
+  findings.sort((a, b) => (b.monthlyUsd ?? 0) - (a.monthlyUsd ?? 0) || b.prompts - a.prompts);
+
+  printDoctor(
+    { root, seen, unbudgeted, overBudget, findings, skipped, truncated },
+    { args, usage, pricing, t },
+  );
+}
+
+function printDoctor(
+  report: {
+    root: string;
+    seen: readonly Diagnosis[];
+    unbudgeted: readonly Diagnosis[];
+    overBudget: readonly Diagnosis[];
+    findings: readonly Finding[];
+    skipped: number;
+    truncated: boolean;
+  },
+  context: { args: Args; usage: UsageProfile; pricing: PricingCatalogue; t: CliMessages },
+): void {
+  const { root, seen, unbudgeted, overBudget, findings, skipped, truncated } = report;
+  const { args, usage, pricing, t } = context;
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+
+  if (boolFlag(args, 'json')) {
+    console.log(
+      JSON.stringify(
+        {
+          root,
+          prompts: seen.length,
+          skippedSourceFiles: skipped,
+          truncated,
+          usage,
+          pricingLastReviewed: pricing.lastReviewed,
+          unbudgeted: unbudgeted.map((d) => d.path),
+          overBudget: overBudget.map((d) => ({
+            path: d.path,
+            tokens: d.tokens,
+            maxTokens: d.budget!.maxTokens,
+            pattern: d.budget!.pattern,
+          })),
+          findings: findings.map((f) => ({
+            id: f.id,
+            prompts: f.prompts,
+            estimatedMonthlyUsd: f.monthlyUsd,
+          })),
+        },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+
+  const model = pricing.models.find((m) => m.id === usage.model);
+  console.log(`\n${c.bold(t.doctor.heading(root, seen.length))}`);
+  console.log(
+    c.dim(t.doctor.subheading(model?.displayName ?? usage.model, n(usage.callsPerMonth))),
+  );
+  console.log(c.dim(t.doctor.pricesReviewed(pricing.lastReviewed)));
+
+  // Budgets first. Everything below is money; this is whether anything is
+  // watching at all, and an unwatched prompt is how the money got there.
+  console.log(`\n${c.bold(t.doctor.budgetsHeading())}`);
+  if (unbudgeted.length === 0 && overBudget.length === 0) {
+    console.log(`  ${c.green('✓')} ${t.doctor.everyPromptBudgeted(seen.length)}`);
+  }
+  if (overBudget.length > 0) {
+    console.log(`  ${c.red('✗')} ${t.doctor.overBudget(overBudget.length)}`);
+    for (const d of overBudget) {
+      console.log(
+        `      ${d.path}  ${c.red(`${n(d.tokens)} / ${n(d.budget!.maxTokens)}`)}  ${c.dim(`(${d.budget!.pattern})`)}`,
+      );
+    }
+  }
+  if (unbudgeted.length > 0) {
+    console.log(`  ${c.yellow('!')} ${t.doctor.unbudgeted(unbudgeted.length, seen.length)}`);
+    for (const d of unbudgeted.slice(0, DOCTOR_LIST_LIMIT)) {
+      console.log(`      ${c.dim(d.path)}`);
+    }
+    if (unbudgeted.length > DOCTOR_LIST_LIMIT) {
+      console.log(`      ${c.dim(t.doctor.andMore(unbudgeted.length - DOCTOR_LIST_LIMIT))}`);
+    }
+  }
+
+  if (findings.length > 0) {
+    console.log(`\n${c.bold(t.doctor.findingsHeading())}`);
+    const width = Math.max(
+      ...findings.map((f) => (f.monthlyUsd === null ? 1 : formatUsd(f.monthlyUsd).length)),
+    );
+    for (const finding of findings) {
+      const money =
+        finding.monthlyUsd === null
+          ? ' '.repeat(width + 1)
+          : c.green(`~${formatUsd(finding.monthlyUsd).padStart(width)}`);
+      console.log(
+        `  ${money}  ${finding.title}  ${c.dim(t.doctor.acrossPrompts(finding.prompts))}`,
+      );
+    }
+    console.log(`\n  ${c.dim(t.doctor.findingsNote())}`);
+  }
+
+  if (skipped > 0) console.log(`\n${c.dim(t.rank.skipped(skipped))}`);
+  if (truncated) console.log(`\n${c.dim(t.check.walkTruncated())}`);
+
+  // Stated at the end, where somebody deciding what to do with the output is
+  // looking. A survey that exits 1 becomes a gate, and a gate on a keyword
+  // heuristic teaches people to re-run until green.
+  console.log(`\n${c.dim(t.doctor.notAGate())}\n`);
+}

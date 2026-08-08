@@ -87,6 +87,7 @@ prompt, *whose* change made it so, or whether the shorter version still works:
 |---|---|
 | `optimize` | what can come out of this prompt, and what that is worth per month |
 | `rank <dir>` | which of these forty prompts is worth an afternoon |
+| `doctor [dir]` | what is wrong with this whole workspace, and what fixing it is worth |
 | `blame <file>` | who made this prompt expensive, and in which commit |
 | `diff <a> <b>` | did this edit make it worse — every figure `after - before` |
 | `check --max-tokens` | does it fit a budget; exits 1 when it does not, so CI catches it |
@@ -140,6 +141,7 @@ Beyond shortening the prompt
 The other eight commands, each with its own section below:
 
 ```bash
+trazum doctor                        # survey the whole workspace
 trazum rank prompts/                 # which one to fix first
 trazum blame prompts/system.txt      # who made it expensive, and when
 trazum diff old.txt new.txt          # what this edit cost
@@ -477,6 +479,60 @@ and a commit subject are the least trusted strings Trazum renders — on a pull
 request from a fork they are written by whoever opened it — and they land in a
 table maintainers read. Paths and shas are `<code>`; names and subjects are not,
 because a person's name typeset as a code span is a different kind of wrong.
+
+### The whole workspace at once: `trazum doctor`
+
+```bash
+trazum doctor
+```
+
+```
+. — 16 prompts
+Priced on Claude Opus 5 at 50,000 calls a month.
+Prices reviewed 2026-06-24.
+
+Budgets
+  ✗ 1 prompt is already over its budget — trazum check would fail on it
+      prompts/big.txt  560 / 120  (prompts/**)
+  ! 12 of 16 prompts have no budget, so nothing is watching them
+      other/p1.txt
+      ...
+      and 4 more
+
+What it would be worth fixing
+  ~$4,912  This task may not need Claude Opus 5  16 prompts
+  ~$3,070  If the work tolerates latency, use the Batch API  16 prompts
+  ~$53.77  Move the stable instructions ahead of the first placeholder  1 prompt
+           Below the cacheable minimum  16 prompts
+           Your cost is in the output, not the prompt  16 prompts
+```
+
+**There is no score, and that is the whole design.** A health check invites one —
+a number out of a hundred, a grade, a traffic light — and a number assembled from
+weights nobody can reproduce gets quietly tuned until the output looks right.
+`rank` refused it for the same reason.
+
+So `doctor` invents nothing. **Every line is an advisory `trazum optimize` raises
+on those prompts on its own, summed**, which means any figure here can be checked
+against a single file — and there is a test that adds up the individual runs and
+requires the total to match to the last float. "16 prompts only need a cheaper
+model" is sixteen copies of one advisory, each with a file name you can go and
+look at.
+
+Two things it reports that no other command does: **which prompts no budget
+pattern matches**, because an unwatched prompt is how the money got there in the
+first place, and **which are already over budget** — before a red build tells you,
+which is too late to think about it.
+
+**It exits 0 even when it finds things.** `trazum check` is the gate. The model
+recommendation is a keyword heuristic, and a build gated on a keyword heuristic
+teaches people to re-run until it goes green, which costs more than the tool ever
+saves.
+
+It is offline and free, like the rules. Nothing here calls a model — which is why
+it deliberately does *not* check prompts against their own `--suggest`
+recommendations: that would be an LLM call per prompt, and `doctor` is the command
+you run across forty files before deciding to spend anything.
 
 ### Project defaults: `trazum.config.json`
 
