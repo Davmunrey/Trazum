@@ -10,6 +10,36 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+**`trazum doctor [dir]` — the survey before the gate.** Which prompts nothing is
+watching, which are already over budget, and what every advisory adds up to across
+the whole workspace.
+
+**There is no score, and that is the design.** A health check invites one, and a
+number assembled from weights nobody can reproduce gets quietly tuned until the
+output looks right — `rank` refused it for the same reason. So `doctor` invents no
+judgement at all: every finding is an advisory `optimize` raises on that prompt on
+its own, summed, so any figure can be checked against a single file. A test adds up
+the individual runs and requires the total to match, which it does to the last
+float. "16 prompts only need a cheaper model" is sixteen copies of one advisory,
+each with a file name beside it.
+
+Two things it reports that nothing else did: **prompts no budget pattern matches**,
+because an unwatched prompt is how the cost got there, and **prompts already over
+budget** — before a red build says so, which is too late to think about it.
+
+**It exits 0 even when it finds things.** `trazum check` is the gate. The model
+recommendation is a keyword heuristic, and gating a build on a keyword heuristic
+teaches people to re-run until green, which costs more than the tool ever saves.
+
+Offline and free, like the rules. It deliberately does not check prompts against
+their own `--suggest` recommendations: that is an LLM call per prompt, and this is
+the command you run over forty files before deciding to spend anything. Four
+mutants, each killed — averaging instead of summing, dropping the advisories that
+carry no figure, printing the whole unbudgeted list instead of capping and counting
+it, and exiting 1 on a finding.
+
 ### Fixed
 
 **The README described a tool that only shortens prompts, and two counts in the

@@ -188,6 +188,22 @@ export interface CliMessages {
     estimateNote(): string;
   };
 
+  /** `trazum doctor` — the survey across a whole workspace. */
+  doctor: {
+    heading(root: string, prompts: number): string;
+    subheading(model: string, calls: string): string;
+    pricesReviewed(date: string): string;
+    budgetsHeading(): string;
+    everyPromptBudgeted(count: number): string;
+    unbudgeted(count: number, total: number): string;
+    overBudget(count: number): string;
+    andMore(count: number): string;
+    findingsHeading(): string;
+    acrossPrompts(count: number): string;
+    findingsNote(): string;
+    notAGate(): string;
+  };
+
   eval: {
     nothingToCompare(): string;
     starting(cases: number, calls: number, model: string): string;
