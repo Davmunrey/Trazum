@@ -174,6 +174,38 @@ trazum check prompts/system.txt --max-tokens 2000
 #   Optimised with "trazum optimize --level safe" it would land at ~1,913 tokens and fit.
 ```
 
+**Before it reaches CI: a pre-commit hook.**
+
+```bash
+ln -s ../../scripts/pre-commit .git/hooks/pre-commit
+```
+
+```
+trazum: these prompts are over their token budget:
+  prompts/system.txt
+
+  trazum doctor .          shows how far over, and what it costs
+  Shorten them, raise the budget in trazum.config.json, or commit with --no-verify.
+```
+
+**It blocks only on prompts your commit actually touches**, and that is the whole
+reason it asks `trazum doctor --json` rather than running `trazum check prompts/`.
+`check` exits 1 when anything under that directory is over budget — right for CI,
+wrong for a hook, because it would refuse a commit that touches one file over a
+*different* prompt somebody else committed last month. A hook that fails for
+reasons outside the commit is a hook people learn to pass `--no-verify` to, and
+then it is worse than no hook at all, because it also taught them the habit.
+
+`TRAZUM_HOOK=0` disables it; `TRAZUM` overrides the command it runs. It gets out of
+the way rather than guessing: nothing staged, no Trazum installed, no prompts, an
+unreadable config — none of those are a budget failure, so none of them block a
+commit. Each one says so once and exits 0.
+
+**One limitation, because it is real:** Trazum reads the working tree, not the
+staged blobs. `git add` a prompt and then edit it further and the hook judges the
+newer text. It cannot let through a commit whose staged prompt is over budget, but
+it can stop one whose staged prompt is fine and whose unstaged edit is not.
+
 In GitHub Actions, use the packaged action — nothing to install:
 
 ```yaml

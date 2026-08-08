@@ -1,0 +1,107 @@
+#!/bin/sh
+# Blocks a commit whose own prompts are over budget.
+#
+# Install:
+#     ln -s ../../scripts/pre-commit .git/hooks/pre-commit
+#
+# Skip once:  git commit --no-verify
+# Skip always: TRAZUM_HOOK=0
+#
+# ---------------------------------------------------------------------------
+# Why this asks `trazum doctor` rather than `trazum check`
+#
+# `trazum check prompts/` exits 1 when anything under that directory is over
+# budget — which is correct for CI and wrong for a hook. It would block a commit
+# that touches one file because a *different* prompt, committed by somebody else
+# last month, is over its budget. A hook that fails for reasons outside the commit
+# is a hook people learn to pass `--no-verify` to, and then it is worse than not
+# having one, because it also taught them the habit.
+#
+# `doctor --json` reports every over-budget prompt with its path and exits 0
+# regardless. So this intersects that list with the files actually being
+# committed, and blocks only on the intersection.
+#
+# Known limitation, stated because it is real: Trazum reads the working tree, not
+# the staged blobs. `git add` a file and then edit it further and the hook judges
+# the newer text. It cannot pass a commit whose staged prompt is over budget, but
+# it can fail one whose staged prompt is fine and whose unstaged edit is not.
+# ---------------------------------------------------------------------------
+
+set -eu
+
+[ "${TRAZUM_HOOK:-1}" = "0" ] && exit 0
+
+# Added, Copied, Modified. A deletion cannot bust a budget.
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+[ -z "$staged" ] && exit 0
+
+# The command to run. A repository that vendors Trazum as a workspace uses the
+# built CLI; anything else expects it on PATH.
+if [ -n "${TRAZUM:-}" ]; then
+  set -- $TRAZUM
+elif [ -x "packages/cli/dist/index.js" ] || [ -f "packages/cli/dist/index.js" ]; then
+  set -- node packages/cli/dist/index.js
+elif command -v trazum >/dev/null 2>&1; then
+  set -- trazum
+else
+  echo "trazum: not on PATH and no built CLI found — skipping the prompt budget check." >&2
+  echo "  Install it, or set TRAZUM to the command, or TRAZUM_HOOK=0 to silence this." >&2
+  exit 0
+fi
+
+# Not `|| exit 1`: a survey that cannot run is not a budget failure. No prompts
+# found, no config, an unreadable overlay — none of those are a reason to refuse
+# somebody's commit, and all of them are reported by running the command by hand.
+report=$("$@" doctor . --json 2>/dev/null) || {
+  echo "trazum: could not survey this repository — skipping the prompt budget check." >&2
+  echo "  Run '$* doctor .' to see why." >&2
+  exit 0
+}
+
+# The over-budget paths, read only from inside the "overBudget" array.
+#
+# Scoped with awk rather than grepped out of the whole document, and that is not
+# fussiness: a bare `sed -n 's/.*"path".*/…/p'` happens to work today because
+# `overBudget` is the only place `doctor` emits a `path` key. It would start
+# blocking commits on the wrong files the moment another section gained one, and
+# the failure would look like a Trazum bug rather than a hook bug.
+over=$(printf '%s\n' "$report" | awk '
+  # An empty array closes on the line that opens it. Treating `"overBudget": []`
+  # as an opening left the scope latched for the rest of the document, so a
+  # `path` in any later section blocked the commit — which is the exact bug the
+  # scoping was added to prevent.
+  /"overBudget": \[/ { inside = ($0 !~ /\]/); next }
+  inside && /^  []}]/ { inside = 0; next }
+  inside && /"path":/ {
+    line = $0
+    sub(/^[^"]*"path": *"/, "", line)
+    sub(/".*$/, "", line)
+    print line
+  }
+')
+[ -z "$over" ] && exit 0
+
+blocked=""
+for path in $over; do
+  for candidate in $staged; do
+    [ "$path" = "$candidate" ] && blocked="$blocked $path"
+  done
+done
+
+[ -z "$blocked" ] && exit 0
+
+echo "" >&2
+echo "trazum: these prompts are over their token budget:" >&2
+# The paths, from the list already computed. The first version tried to print
+# "560 / 120" beside each one by matching path, tokens and maxTokens on a single
+# line — which `doctor --json` never emits, because it pretty-prints. So the hook
+# announced a list and printed nothing under it. Naming the files is the hook's
+# job; the figures are one command away and that command is named below.
+for path in $blocked; do
+  echo "  $path" >&2
+done
+echo "" >&2
+echo "  $* doctor .          shows how far over, and what it costs" >&2
+echo "  Shorten them, raise the budget in trazum.config.json, or commit with --no-verify." >&2
+echo "" >&2
+exit 1
