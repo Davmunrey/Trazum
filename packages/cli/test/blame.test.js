@@ -82,7 +82,7 @@ describe('it reports what the prompt cost at each commit', () => {
 
     assert.equal(code, 0);
     const lines = rowsOf(out);
-    assert.equal(lines.length, 2);
+    assert.equal(lines.length, 2, out);
     assert.match(lines[0], /grow it/, 'the newest revision is not first');
     assert.match(lines[1], /first/);
     assert.match(lines[0], /\+\d+/, 'the growth is not reported as a change');
@@ -218,7 +218,7 @@ describe('it follows the prompt, not the file around it', () => {
     assert.equal(code, 0, out);
     // The prompt did not change, so the second revision must report no change.
     const rows = rowsOf(out);
-    assert.equal(rows.length, 2);
+    assert.equal(rows.length, 2, out);
     assert.doesNotMatch(rows[0], /\+\d/, 'imports were counted as prompt growth');
   });
 
@@ -246,10 +246,25 @@ describe('--limit and --json', () => {
       { 'p.txt': `${SHORT}${'more text. '.repeat(i)}\n` },
     ]);
     const root = await repo(commits);
-    const { out } = run(['p.txt', '--limit', '3'], root);
+    const { out, code } = run(['p.txt', '--limit', '3'], root);
 
+    /**
+     * The exit code first, with the output as the message.
+     *
+     * This test failed once on CI and could not be diagnosed, because it was the
+     * only one in this file that checked neither. `blame` prints its reason to
+     * stderr and `run` collects it, so the evidence was there and thrown away:
+     * all the report said was `0 !== 3`, which is what "the table has no rows"
+     * looks like whether the history was short, the path was rejected, or git
+     * never answered.
+     *
+     * Not a fix for that failure — it has never reproduced here, in 26 runs
+     * including under load, and the same commit passed in the same CI minute on
+     * another event. It is what makes the next occurrence say something.
+     */
+    assert.equal(code, 0, out);
     const rows = rowsOf(out);
-    assert.equal(rows.length, 3);
+    assert.equal(rows.length, 3, out);
     assert.match(out, /Showing the most recent 3/);
     // And the oldest shown row still has a change, because the revision before
     // it was measured as a baseline rather than dropped.

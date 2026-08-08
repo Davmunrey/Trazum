@@ -10,6 +10,24 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**A blame test threw away the evidence when it failed.** `shows the most recent N`
+was the only test in `blame.test.js` that checked neither the exit code nor passed
+the command's output into an assertion, so when it failed once on CI the entire
+report was `0 !== 3` — which is what "the table has no rows" looks like whether the
+history was short, the path was rejected, or git never answered. The output was
+right there in the variable, unused.
+
+It carries the output now, and asserts the exit code first. Verified by forcing the
+failure: the report goes from `0 !== 3` to `Error: git has no commits touching
+p.txt.`
+
+**This is not a fix for that failure.** It has never reproduced here — 26 runs
+including under 8× CPU load — and the identical commit passed in the same CI minute
+on the other event, so it is intermittent and its cause is still unknown. What
+changed is that the next occurrence will say something.
+
 ### Added
 
 **`comparePrompts` reaches the web app, as a Compare tab and `POST /api/compare`.**
