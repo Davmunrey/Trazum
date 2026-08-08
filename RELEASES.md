@@ -75,6 +75,12 @@ Nine commands now, up from four.
   TypeScript instead of asking you to keep a copy in a `.txt` file that drifts.
 - **Nine providers' prices, not one.** OpenAI, Google, Moonshot, DeepSeek, xAI
   and Mistral join Anthropic. The data was the easy half — see Fixed.
+- **A Compare tab on the web — "what did this edit cost?"** Paste the old version
+  and the new one and get the token delta, the monthly figure, and which problems
+  the edit introduced or resolved. Every number is *after minus before*, so
+  **positive means worse**, which is the opposite of everywhere else in Trazum —
+  and the page says so above the figures rather than beside them, because somebody
+  arriving from the other tab has the opposite convention already loaded.
 - **`trazum diff`, `trazum eval`, directory mode, `trazum.config.json`, a GitHub
   Action** that comments on pull requests, and a **web app** rebuilt on
   shadcn/ui that kept its own palette rather than adopting the one every other
