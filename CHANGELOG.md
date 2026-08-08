@@ -12,6 +12,37 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`trazum diff --all <before> <after>` — a whole prompt library at once.** `diff`
+answered the question for one prompt; a team refactoring forty of them wants it
+answered forty times and totalled, and running the command by hand loses the total,
+which is the figure the decision turns on.
+
+**A prompt on only one side is named, never counted.** A refactor that deletes a
+prompt and one that renames it look identical from a token count, so folding the
+deletion into the total would report a library getting cheaper when a file went
+missing. They are listed under `only before` / `only after` and excluded from the
+totals, with a line saying why.
+
+**`--max-growth` applies per prompt, not to the total** — the rule `check` already
+states about budgets. In the worked example the total is `+3` and `--max-growth 10`
+still fails, because one prompt grew 14 while another shrank 11. A gate on the total
+would pass that, and the prompt that doubled is the one somebody has to look at.
+
+Sorted worst first, the sign convention stated above the first figure, and the totals
+asserted to equal the sum of the per-prompt figures they claim to total. Four mutants,
+each killed: deletions folded into the totals, the gate moved to the total, the
+convention moved below the figures, and the list sorted best-first.
+
+**The command count in the README drifted again while this was being written.** Adding
+`doctor` made "nine commands" wrong in two places, in a file corrected two commits
+earlier for exactly this. `publish.test.js` now checks it against `COMMAND_FLAGS`, and
+checks that every command is mentioned in the README at all — a command nobody
+documented is a command nobody runs. The guard distinguishes "ten commands" from "the
+other nine commands", because the second is correct prose and a guard that cries wolf
+gets deleted.
+
+### Added
+
 **A pre-commit hook, at `scripts/pre-commit`.** `ln -s ../../scripts/pre-commit
 .git/hooks/pre-commit` and a commit whose own prompts are over budget is refused
 before it reaches CI.

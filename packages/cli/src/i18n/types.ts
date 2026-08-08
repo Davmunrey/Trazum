@@ -227,6 +227,14 @@ export interface CliMessages {
     rulesNewlyFiring(): string;
     rulesNoLongerFiring(): string;
     overLimit(delta: number, max: number): string;
+    /** `--all`: the same gate, per prompt rather than on the total. */
+    someOverLimit(count: number, max: number): string;
+    allSubheading(prompts: number): string;
+    allTotal(delta: string, prompts: number): string;
+    signConvention(): string;
+    onlyBefore(): string;
+    onlyAfter(): string;
+    onlyOneSideNote(): string;
   };
 
   /**

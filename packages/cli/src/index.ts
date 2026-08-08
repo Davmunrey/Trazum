@@ -312,7 +312,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
-  diff: ['level', 'model', 'calls', 'output-tokens', 'batch', 'max-growth', 'optimized', 'markdown-out'],
+  diff: ['level', 'model', 'calls', 'output-tokens', 'batch', 'max-growth', 'optimized', 'markdown-out', 'all', 'prompt'],
   models: [],
   rank: ['level', 'model', 'calls', 'output-tokens', 'batch', 'disable', 'prompt', 'markdown-out'],
   where: [],
@@ -2024,6 +2024,11 @@ async function commandDiff(
   const [beforePath, afterPath] = args.positional;
   if (!beforePath || !afterPath) throw new Error(t.errors.diffNeedsTwoFiles());
 
+  if (boolFlag(args, 'all')) {
+    await diffDirectories(beforePath, afterPath, args, config, pricing, t, locale);
+    return;
+  }
+
   const [before, after] = await Promise.all([
     readInput(beforePath, t),
     readInput(afterPath, t),
@@ -2988,4 +2993,217 @@ function printDoctor(
   // looking. A survey that exits 1 becomes a gate, and a gate on a keyword
   // heuristic teaches people to re-run until green.
   console.log(`\n${c.dim(t.doctor.notAGate())}\n`);
+}
+
+/** One prompt that exists on both sides, and what the edit did to it. */
+interface PairedDiff {
+  path: string;
+  comparison: PromptComparison;
+}
+
+/**
+ * `trazum diff --all <before> <after>` — a whole prompt library, before and after.
+ *
+ * `diff` answers the question for one prompt. A team refactoring forty of them
+ * wants the same question answered forty times and totalled, and running the
+ * command forty times by hand loses the total — which is the figure the decision
+ * actually turns on.
+ *
+ * **Prompts that exist on only one side are named, not silently skipped.** A
+ * refactor that deletes a prompt and a refactor that renames one look identical
+ * from a token count, and both are things a reviewer has to know about. Reporting
+ * only the pairs would let a deletion read as a saving.
+ *
+ * `--max-growth` applies **per prompt**, not to the total, which follows the rule
+ * `check` already states about budgets: a library is forty things to govern, and
+ * summing them would pass a refactor that quietly doubled one prompt because
+ * another shrank.
+ */
+async function diffDirectories(
+  beforeRoot: string,
+  afterRoot: string,
+  args: Args,
+  config: TrazumConfig,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+  locale: Locale,
+): Promise<void> {
+  const level = levelFlag(args, config, t);
+  const usage = usageFrom(args, config, t);
+  const optimizeBoth = boolFlag(args, 'optimized');
+  const extensions = config.extensions ?? [...DEFAULT_EXTENSIONS, ...SOURCE_EXTENSIONS];
+
+  const [beforeWalk, afterWalk] = await Promise.all([
+    walkPrompts(beforeRoot, { extensions }),
+    walkPrompts(afterRoot, { extensions }),
+  ]);
+  if (beforeWalk.files.length === 0 && afterWalk.files.length === 0) {
+    throw new Error(t.errors.noPromptsFound(`${beforeRoot}, ${afterRoot}`, extensions.join(' ')));
+  }
+
+  const beforeFiles = new Set(beforeWalk.files);
+  const afterFiles = new Set(afterWalk.files);
+
+  /** The prompt at a path, or null when the file holds no marked prompt. */
+  const textAt = async (root: string, file: string): Promise<string | null> => {
+    const raw = await readFile(join(root, file), 'utf8');
+    let source: { text: string; model?: string } | null;
+    try {
+      source = sourceFileOf(file, raw, pricing, stringFlag(args, 'prompt'));
+    } catch {
+      return null;
+    }
+    if (source === null && SOURCE_EXTENSIONS.some((ext) => file.toLowerCase().endsWith(ext))) {
+      return null;
+    }
+    return source ? source.text : raw;
+  };
+
+  const pairs: PairedDiff[] = [];
+  let skipped = 0;
+
+  for (const file of [...beforeFiles].filter((f) => afterFiles.has(f)).sort()) {
+    const [before, after] = await Promise.all([textAt(beforeRoot, file), textAt(afterRoot, file)]);
+    if (before === null || after === null) {
+      skipped++;
+      continue;
+    }
+    pairs.push({
+      path: file,
+      comparison: comparePrompts(before, after, { level, locale, optimizeBoth, usage, pricing }),
+    });
+  }
+
+  const removed = [...beforeFiles].filter((f) => !afterFiles.has(f)).sort();
+  const added = [...afterFiles].filter((f) => !beforeFiles.has(f)).sort();
+
+  if (pairs.length === 0 && removed.length === 0 && added.length === 0) {
+    throw new Error(t.errors.noPromptsFound(`${beforeRoot}, ${afterRoot}`, extensions.join(' ')));
+  }
+
+  // Worst first: a reviewer reads the top of this list and stops.
+  pairs.sort((a, b) => b.comparison.tokenDelta - a.comparison.tokenDelta);
+
+  printDirectoryDiff(
+    { beforeRoot, afterRoot, pairs, removed, added, skipped, optimizeBoth },
+    { args, usage, pricing, t },
+  );
+
+  const limit =
+    typeof args.flags.get('max-growth') === 'string'
+      ? numberFlag(args, 'max-growth', 0, t)
+      : config.maxGrowth;
+
+  if (limit !== undefined) {
+    // Per prompt, not on the total. Summing would pass a refactor that doubled one
+    // prompt because another happened to shrink — and the prompt that doubled is
+    // the one somebody has to look at.
+    const over = pairs.filter((p) => p.comparison.tokenDelta > limit);
+    if (over.length > 0) {
+      console.error(`\n${c.red(t.diff.someOverLimit(over.length, limit))}`);
+      for (const p of over) {
+        console.error(`  ${p.path}  ${c.red(`+${p.comparison.tokenDelta}`)}`);
+      }
+      process.exitCode = 1;
+    }
+  }
+}
+
+function printDirectoryDiff(
+  report: {
+    beforeRoot: string;
+    afterRoot: string;
+    pairs: readonly PairedDiff[];
+    removed: readonly string[];
+    added: readonly string[];
+    skipped: number;
+    optimizeBoth: boolean;
+  },
+  context: { args: Args; usage: UsageProfile; pricing: PricingCatalogue; t: CliMessages },
+): void {
+  const { beforeRoot, afterRoot, pairs, removed, added, skipped, optimizeBoth } = report;
+  const { args, usage, pricing, t } = context;
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+
+  const totalTokens = pairs.reduce((sum, p) => sum + p.comparison.tokenDelta, 0);
+  const totalMonthly = pairs.reduce((sum, p) => sum + p.comparison.monthlyDeltaUsd, 0);
+
+  if (boolFlag(args, 'json')) {
+    console.log(
+      JSON.stringify(
+        {
+          before: beforeRoot,
+          after: afterRoot,
+          optimized: optimizeBoth,
+          usage,
+          totals: { tokenDelta: totalTokens, monthlyDeltaUsd: totalMonthly, prompts: pairs.length },
+          prompts: pairs.map((p) => ({
+            path: p.path,
+            tokensBefore: p.comparison.tokensBefore,
+            tokensAfter: p.comparison.tokensAfter,
+            tokenDelta: p.comparison.tokenDelta,
+            monthlyDeltaUsd: p.comparison.monthlyDeltaUsd,
+          })),
+          removed,
+          added,
+          skippedSourceFiles: skipped,
+        },
+        null,
+        2,
+      ),
+    );
+    return;
+  }
+
+  const model = pricing.models.find((m) => m.id === usage.model);
+  console.log(`\n${c.bold(t.diff.heading(beforeRoot, afterRoot))}`);
+  console.log(c.dim(t.diff.allSubheading(pairs.length)));
+  if (optimizeBoth) console.log(c.dim(t.diff.measuringOptimised()));
+
+  // The convention, before any number. Every figure here is after minus before,
+  // which is the opposite of the rest of Trazum, and a reader arriving from
+  // `optimize` has the other one loaded.
+  console.log(`\n${c.dim(t.diff.signConvention())}`);
+
+  if (pairs.length > 0) {
+    console.log();
+    const width = Math.max(...pairs.map((p) => signedTokens(p.comparison.tokenDelta, n).length));
+    for (const pair of pairs) {
+      const delta = pair.comparison.tokenDelta;
+      const text = signedTokens(delta, n).padStart(width);
+      const paint = delta > 0 ? c.red : delta < 0 ? c.green : c.dim;
+      console.log(`  ${paint(text)}  ${pair.path}`);
+    }
+  }
+
+  if (removed.length > 0 || added.length > 0) {
+    // Named rather than folded into the totals. A prompt that vanished is not a
+    // saving of its whole token count; it is a question.
+    console.log();
+    for (const path of removed) console.log(`  ${c.dim(t.diff.onlyBefore())}  ${path}`);
+    for (const path of added) console.log(`  ${c.dim(t.diff.onlyAfter())}  ${path}`);
+    console.log(`  ${c.dim(t.diff.onlyOneSideNote())}`);
+  }
+
+  if (skipped > 0) console.log(`\n${c.dim(t.rank.skipped(skipped))}`);
+
+  if (pairs.length > 0) {
+    const paint = totalTokens > 0 ? c.red : totalTokens < 0 ? c.green : c.dim;
+    console.log(`\n${c.bold(t.diff.allTotal(signedTokens(totalTokens, n), pairs.length))}`);
+    console.log(
+      paint(
+        t.diff.monthly(
+          formatSignedUsd(totalMonthly),
+          n(usage.callsPerMonth),
+          model?.displayName ?? usage.model,
+        ),
+      ),
+    );
+  }
+  console.log();
+}
+
+/** A token delta with its sign, always. A bare `40` is unreadable either way. */
+function signedTokens(delta: number, n: (value: number) => string): string {
+  return `${delta > 0 ? '+' : ''}${n(delta)}`;
 }

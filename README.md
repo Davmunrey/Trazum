@@ -16,7 +16,7 @@ whichever provider you configure.
                     └──────┬───────┘   no dependencies, browser-safe
              ┌─────────────┼─────────────┐
        @trazum/cli    @trazum/web    action/
-       nine commands  Next.js        comments on pull requests
+       ten commands   Next.js        comments on pull requests
 ```
 
 ---
@@ -79,7 +79,7 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of nine commands, and the others
+is the smallest thing here. `optimize` is one of ten commands, and the others
 exist because knowing a prompt is wasteful is not the same as knowing *which*
 prompt, *whose* change made it so, or whether the shorter version still works:
 
@@ -90,6 +90,7 @@ prompt, *whose* change made it so, or whether the shorter version still works:
 | `doctor [dir]` | what is wrong with this whole workspace, and what fixing it is worth |
 | `blame <file>` | who made this prompt expensive, and in which commit |
 | `diff <a> <b>` | did this edit make it worse — every figure `after - before` |
+| `diff --all <d> <d>` | the same question across a whole prompt library |
 | `check --max-tokens` | does it fit a budget; exits 1 when it does not, so CI catches it |
 | `eval --cases` | does the shorter prompt still get the same answers |
 | `where [file]` | which provider this file's prompts are actually sent to, and how it knows |
@@ -138,7 +139,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other eight commands, each with its own section below:
+The other nine commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -511,6 +512,43 @@ and a commit subject are the least trusted strings Trazum renders — on a pull
 request from a fork they are written by whoever opened it — and they land in a
 table maintainers read. Paths and shas are `<code>`; names and subjects are not,
 because a person's name typeset as a code span is a different kind of wrong.
+
+### A whole library, before and after: `diff --all`
+
+```bash
+trazum diff --all prompts-before/ prompts-after/ --calls 50000
+```
+
+```
+old → new
+3 prompts on both sides.
+
+Every figure is after minus before, so positive means worse — the opposite of the rest of Trazum.
+
+  +14  a.txt
+    0  c.txt
+  -11  b.txt
+
+  only before  gone.txt
+  only after   fresh.txt
+  Not counted in the totals. A prompt that vanished is a question, not a saving.
+
++3 tokens across 3 prompts
++$0.7500/month at 50,000 calls with Claude Opus 5
+```
+
+Two decisions worth naming, because both are the kind that mislead quietly.
+
+**A prompt on only one side is named, never counted.** A refactor that deletes a
+prompt and one that renames it look identical from a token count. Folding the
+deletion into the total would report a library getting cheaper when what actually
+happened is that a file went missing and somebody has to say whether that was
+deliberate.
+
+**`--max-growth` applies per prompt, not to the total** — the same rule `check`
+states about budgets. In the run above the total is `+3`, and `--max-growth 10`
+still fails, because `a.txt` grew by 14 while `b.txt` shrank by 11. A gate on the
+total would pass that and the prompt that doubled would ship unlooked-at.
 
 ### The whole workspace at once: `trazum doctor`
 
