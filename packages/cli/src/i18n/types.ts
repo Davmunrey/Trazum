@@ -58,6 +58,8 @@ export interface CliMessages {
     exactCount(): string;
     rulesApplied(): string;
     nothingToTrim(): string;
+    /** The languages the phrase dictionaries cover, printed when nothing fired. */
+    dictionaryCoverage(languages: string): string;
     levelAggressive(): string;
     levelSafe(): string;
     ruleHits(hits: number, tokensSaved: number): string;
@@ -138,6 +140,9 @@ export interface CliMessages {
     cacheNote(): string;
     batchNote(): string;
   };
+
+  /** Language names for the coverage note, plus the conjunction that joins them. */
+  languages: Record<string, string> & { and: string };
 
   rules: {
     title(): string;

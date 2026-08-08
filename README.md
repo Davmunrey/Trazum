@@ -833,11 +833,48 @@ on both.
 
 ## Languages
 
-Trazum reports in English by default and ships Spanish as a second locale.
+Two things that sound like one and are not: **the language of the report**, and
+**the language of the prompt**.
+
+### The report
+
+English by default, Spanish as a second locale.
 
 **The locale changes the report, never the optimisation.** The same prompt in
 any locale produces the same optimised prompt, the same token counts and the
 same advisory ids — only the prose differs. That is enforced by tests.
+
+### The prompt
+
+The trimming dictionaries cover **English, Spanish, French, German, Portuguese,
+Italian and Dutch**. `--reorder`'s backward-reference lists cover those plus
+**Japanese and Chinese**, and refuse outright on Cyrillic, Arabic, Hebrew,
+Hangul, Devanagari, Thai and Greek.
+
+When no rule fires, the report says which languages it covers:
+
+```
+No rule found anything to trim.
+The phrase dictionaries cover English, Spanish, French, German, Portuguese,
+Italian and Dutch. A prompt in another language is not necessarily efficient —
+it may just be one Trazum cannot read yet.
+```
+
+That line exists because for a long time it was missing, and a French prompt came
+back with "No rule found anything to trim" — which reads as *your prompt is
+already efficient* and meant *I do not speak your language*. Stated rather than
+detected: guessing a prompt's language is one more thing to get wrong, and naming
+the coverage cannot be.
+
+**Adding a language is adding entries to
+[`phrases.ts`](packages/core/src/phrases.ts)**, and one rule about doing it: a
+dictionary translated word by word looks complete and changes meaning. Spanish
+has `muy` and deliberately not `mucho`. The first pass at the other five lost that
+distinction and shipped `muito`, `molto` and `heel` — each an intensifier *and* a
+quantifier, so `Hai molto tempo per rispondere` became `Hai tempo per
+rispondere`: "you have much time" turned into "you have time". A test keeps those
+three out, and another counts entries per language per dictionary, because a
+behavioural test passes on whatever the fixture happens to contain.
 
 ```bash
 trazum optimize prompt.txt --locale es      # flag

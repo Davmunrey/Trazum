@@ -14,6 +14,7 @@ import {
   computeSavings,
   profilePrompt,
   toPromptfoo,
+  PHRASE_LANGUAGES,
   estimateTokens,
   formatUsd,
   formatSignedUsd,
@@ -416,6 +417,18 @@ function offFamilyName(modelId: string): string | null {
   return getModel(modelId).displayName;
 }
 
+/**
+ * Language codes as names, in the reader's language.
+ *
+ * Built from `PHRASE_LANGUAGES` rather than written out, so a language added to
+ * the dictionaries appears here without anybody remembering to edit a sentence.
+ */
+function languageNames(codes: readonly string[], t: CliMessages): string {
+  const names = codes.map((code) => t.languages[code] ?? code);
+  if (names.length <= 1) return names[0] ?? '';
+  return `${names.slice(0, -1).join(', ')} ${t.languages.and} ${names[names.length - 1]}`;
+}
+
 function printReport(
   result: OptimizationResult,
   showDiff: boolean,
@@ -514,6 +527,9 @@ function printReport(
   } else {
     console.log();
     console.log(c.dim(t.report.nothingToTrim()));
+    // Which languages the dictionaries actually cover. Only here, because this
+    // is the one branch where silence reads as "your prompt is already clean".
+    console.log(c.dim(t.report.dictionaryCoverage(languageNames(PHRASE_LANGUAGES, t))));
   }
 
   if (result.llm) {
