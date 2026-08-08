@@ -35,6 +35,8 @@ ${bold('OPCIONES DE rank')}
   --model, --calls,           Calcula el coste de los tokens recuperables, como
   --output-tokens, --batch    en optimize.
   --prompt <nombre>           Qué prompt marcado tomar de cada fichero de código.
+  --markdown-out <fichero>    Escribe además el ranking en Markdown, para el
+                              resumen de un job de CI o un comentario de PR.
   --json                      El ranking como datos.
 
   No hay puntuación. Los prompts se ordenan por lo que las reglas recuperarían
@@ -47,6 +49,8 @@ ${bold('OPCIONES DE blame')}
                               crecimiento del prompt.
   --model, --calls,           Calcula el coste del movimiento, igual que optimize.
   --output-tokens, --batch
+  --markdown-out <fichero>    Escribe además el historial en Markdown, para el
+                              resumen de un job de CI o un comentario de PR.
   --json                      El historial como datos.
 
   Después de "--" las rutas se toman literales: trazum blame -- --nombre-raro.txt
@@ -520,6 +524,10 @@ ${bold('EJEMPLOS')}
   markdown: {
     checkHeading: (target) => `Trazum — presupuestos de tokens en ${target}`,
     diffHeading: (before, after) => `Trazum — ${before} → ${after}`,
+    rankHeading: (root, count) =>
+      `Trazum — qué arreglar primero en ${root} (${count} ${count === 1 ? "prompt" : "prompts"})`,
+    blameHeading: (path) => `Trazum — historial de tokens de ${path}`,
+    rankLevel: (level) => `Medido al nivel de reglas \`${level}\`.`,
     columnFile: () => 'Prompt',
     columnTokens: () => 'Tokens',
     columnBudget: () => 'Presupuesto',

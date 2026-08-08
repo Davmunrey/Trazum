@@ -77,8 +77,10 @@ import { detectLocale, getCliMessages } from './i18n/index.js';
 import {
   MAX_SUMMARY_CHARS,
   fitWithin,
+  renderBlameMarkdown,
   renderCheckMarkdown,
   renderDiffMarkdown,
+  renderRankMarkdown,
 } from './markdown.js';
 import type { CliMessages } from './i18n/index.js';
 
@@ -311,10 +313,10 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   diff: ['level', 'model', 'calls', 'output-tokens', 'batch', 'max-growth', 'optimized', 'markdown-out'],
   models: [],
-  rank: ['level', 'model', 'calls', 'output-tokens', 'batch', 'disable', 'prompt'],
+  rank: ['level', 'model', 'calls', 'output-tokens', 'batch', 'disable', 'prompt', 'markdown-out'],
   where: [],
   rules: [],
-  blame: ['limit', 'model', 'calls', 'output-tokens', 'batch', 'prompt'],
+  blame: ['limit', 'model', 'calls', 'output-tokens', 'batch', 'prompt', 'markdown-out'],
 };
 
 function rejectUnknownFlags(args: Args, t: CliMessages): void {
@@ -2231,7 +2233,56 @@ async function commandBlame(
   // Drop the extra oldest revision now that it has served as a baseline, and
   // put the newest first: this is a history, and histories are read backwards.
   const shown = rows.slice(revisions.length > limit ? 1 : 0).reverse();
-  printBlame(shown, { repoPath, args, config, pricing, t, truncated: revisions.length > limit });
+  const truncatedHistory = revisions.length > limit;
+
+  await writeMarkdown(args, () =>
+    renderBlameMarkdown({
+      repoPath,
+      rows: shown,
+      truncated: truncatedHistory,
+      netCost: netCostOf(shown, args, config, pricing, t),
+      t,
+    }),
+  );
+
+  printBlame(shown, { repoPath, args, config, pricing, t, truncated: truncatedHistory });
+}
+
+/**
+ * What the movement across a history costs per month, or `null`.
+ *
+ * Extracted so the terminal report and the markdown report read one number
+ * rather than each computing it. The file's own doc comment claims a discrepancy
+ * between a pull-request comment and the job log is "impossible by construction";
+ * two copies of this arithmetic is exactly how that claim stops being true.
+ *
+ * Oldest as "before" and newest as "after", so a prompt that grew reports a
+ * negative saving — which is the honest word for it. The sign becomes a `+`/`−`
+ * on the money here rather than being left for the reader.
+ */
+function netCostOf(
+  rows: readonly BlameRow[],
+  args: Args,
+  config: TrazumConfig,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): { amount: string; modelDisplayName: string; callsPerMonth: number } | null {
+  const measured = rows.filter((r): r is BlameRow & { tokens: number } => r.tokens !== null);
+  const newest = measured[0];
+  const oldest = measured[measured.length - 1];
+  if (!newest || !oldest || newest === oldest || newest.tokens === oldest.tokens) return null;
+
+  const usage = usageFrom(args, config, t);
+  const model = pricing.models.find((m) => m.id === usage.model);
+  if (!model) return null;
+
+  const savings = computeSavings(oldest.tokens, newest.tokens, usage, new Date(), pricing);
+  const monthly = -savings.monthlySavingsUsd;
+  return {
+    amount: `${monthly >= 0 ? '+' : '\u2212'}${formatUsd(Math.abs(monthly))}`,
+    modelDisplayName: model.displayName,
+    callsPerMonth: usage.callsPerMonth,
+  };
 }
 
 /**
@@ -2359,23 +2410,12 @@ function printBlame(
 
     // What the movement costs, priced through the same usage profile every
     // other command uses — so `--calls` and `--model` mean here what they mean
-    // in `optimize`, and a figure from one is comparable with the other.
-    const usage = usageFrom(args, config, t);
-    const model = pricing.models.find((m) => m.id === usage.model);
-    if (model && delta !== 0) {
-      // Oldest as "before" and newest as "after", so a prompt that grew reports
-      // a negative saving — which is the honest word for it. The sign is turned
-      // into a `+`/`−` on the money below rather than left for the reader.
-      const savings = computeSavings(oldest.tokens, newest.tokens, usage, new Date(), pricing);
-      const monthly = -savings.monthlySavingsUsd;
+    // in `optimize`, and a figure from one is comparable with the other. Shared
+    // with the markdown renderer, so the comment and the log cannot disagree.
+    const cost = netCostOf(rows, args, config, pricing, t);
+    if (cost) {
       console.log(
-        c.dim(
-          t.blame.netCost(
-            `${monthly >= 0 ? '+' : '−'}${formatUsd(Math.abs(monthly))}`,
-            model.displayName,
-            n(usage.callsPerMonth),
-          ),
-        ),
+        c.dim(t.blame.netCost(cost.amount, cost.modelDisplayName, n(cost.callsPerMonth))),
       );
     }
   }
@@ -2490,6 +2530,23 @@ async function commandRank(
   }
 
   ranked.sort((a, b) => b.recoverableUsd - a.recoverableUsd || b.recoverable - a.recoverable);
+
+  // Before the print and independently of --json, as in `check`: the file's whole
+  // job is to survive the run, and a report that only appears on the happy path
+  // is a report nobody can rely on.
+  await writeMarkdown(args, () =>
+    renderRankMarkdown({
+      root,
+      ranked,
+      level,
+      modelDisplayName: pricing.models.find((m) => m.id === usage.model)?.displayName ?? usage.model,
+      callsPerMonth: usage.callsPerMonth,
+      truncated,
+      skipped,
+      t,
+    }),
+  );
+
   printRank(ranked, { root, args, usage, pricing, t, truncated, skipped });
 }
 

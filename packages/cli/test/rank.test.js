@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
@@ -196,5 +196,47 @@ describe('what it measures, and what it skips', () => {
   it('defaults to the current directory', async () => {
     const root = await project({ 'padded.txt': PADDED });
     assert.equal(run([], root).code, 0);
+  });
+});
+
+describe('rank --markdown-out', () => {
+  /**
+   * The flag existed on `check` and `diff` and not here, which meant the one
+   * command that answers "which of these forty prompts is worth an afternoon"
+   * could not put its answer where the afternoon gets decided.
+   */
+  it('writes a table a pull request can render', async () => {
+    const root = await project({ 'padded.txt': PADDED, 'dense.txt': DENSE });
+    const out = join(root, 'report.md');
+    assert.equal(run(['.', '--markdown-out', out], root).code, 0);
+
+    const md = await readFile(out, 'utf8');
+    assert.match(md, /^### Trazum — what to fix first/m);
+    assert.match(md, /\| Recover \| Tokens \|/);
+    assert.match(md, /padded\.txt/);
+    // The claim the terminal report makes, carried over rather than dropped.
+    assert.match(md, /There is no score/);
+  });
+
+  it('writes it even with --json, because the file is a separate destination', async () => {
+    // Matches `check`: the report's whole job is to survive the run, and one
+    // that only appears when the output format happened to be human is not that.
+    const root = await project({ 'padded.txt': PADDED });
+    const out = join(root, 'report.md');
+    const result = run(['.', '--json', '--markdown-out', out], root);
+
+    assert.equal(result.code, 0);
+    JSON.parse(result.stdout);
+    assert.match(await readFile(out, 'utf8'), /Trazum/);
+  });
+
+  it('does not fail the run when the file cannot be written', async () => {
+    // A full disk on a CI runner must not turn a working command into a broken
+    // one. The path below is inside a file, so the write cannot succeed.
+    const root = await project({ 'padded.txt': PADDED });
+    const result = run(['.', '--markdown-out', join(root, 'padded.txt', 'nope.md')], root);
+
+    assert.equal(result.code, 0);
+    assert.match(result.out, /Could not write/);
   });
 });

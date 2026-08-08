@@ -431,9 +431,17 @@ It does not follow symlinks, caps how deep and how wide it walks, and says so
 when a cap stopped it early.
 
 `--markdown-out <file>` writes the same report as GitHub-flavoured markdown, for
-a step summary or a PR comment. `check` and `diff` both take it, it is written
-before any exit code is set, and a failure to write it is reported rather than
-turned into a failing build.
+a step summary or a PR comment. `check`, `diff`, `rank` and `blame` all take it,
+it is written before any exit code is set and independently of `--json`, and a
+failure to write it is reported rather than turned into a failing build.
+
+Every value that reaches a table cell is escaped by encoding `&`, `<`, `>` and
+`|` as entities, so **there is no `|` character in the output at all** and a row
+cannot split under any scanner. That matters most for `blame`: an author's name
+and a commit subject are the least trusted strings Trazum renders — on a pull
+request from a fork they are written by whoever opened it — and they land in a
+table maintainers read. Paths and shas are `<code>`; names and subjects are not,
+because a person's name typeset as a code span is a different kind of wrong.
 
 ### Project defaults: `trazum.config.json`
 
