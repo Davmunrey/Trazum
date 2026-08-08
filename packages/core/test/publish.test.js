@@ -271,7 +271,13 @@ describe('a release cannot ship without notes', () => {
     });
 
     assert.equal(result.status, 0, result.stderr);
-    assert.match(result.stdout, new RegExp(`^## ${version.replace(/\./g, '\\.')}`));
+    // `startsWith`, not a regex built from the version. Doing the latter here
+    // is what CodeQL flagged in the script, and repeating it in the test that
+    // guards the script would have been funny in the wrong way.
+    assert.ok(
+      result.stdout.startsWith(`## ${version}`),
+      `the notes do not start with the version heading: ${result.stdout.slice(0, 60)}`,
+    );
     assert.equal(
       (result.stdout.match(/^## /gm) ?? []).length,
       1,
@@ -285,5 +291,43 @@ describe('a release cannot ship without notes', () => {
     });
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /no section for 9\.9\.9/);
+    assert.equal(result.stdout, '', 'it printed something as well as failing');
+  });
+
+  it('treats the argument as a version, never as a pattern', () => {
+    /**
+     * The first version of the extractor built a regex out of `process.argv[2]`,
+     * and CodeQL raised three alerts that were all correct: regex injection, and
+     * incomplete escaping twice over. `(a+)+$` was a ReDoS pattern handed
+     * straight to a matcher, and `(((((` threw before the file was read.
+     *
+     * The fix was to stop treating a version number as a pattern at all.
+     *
+     * What this test pins is the *property*, not that choice: these payloads are
+     * rejected, produce no output, and never reach a matcher. A correctly escaped
+     * regex would satisfy all three, and I checked — reintroducing one with a
+     * complete escape keeps this test green. That is the right outcome rather
+     * than a gap: a complete escape is safe, and a test that failed on it would
+     * be enforcing my preference instead of the requirement.
+     *
+     * Empty stdout is the assertion doing the real work. The release step
+     * redirects this into a file and publishes it, so exiting non-zero while
+     * having already written something is how a blank release ships anyway.
+     */
+    for (const argument of ['(((((', '(a+)+$', '.*', '1.0.0\\', '1.0.0 --notes-file /etc/passwd']) {
+      const result = spawnSync(
+        process.execPath,
+        [join(repoRoot, 'scripts/release-notes.mjs'), argument],
+        { encoding: 'utf8', timeout: 5000 },
+      );
+
+      assert.notEqual(result.status, 0, `"${argument}" was accepted`);
+      assert.equal(result.stdout, '', `"${argument}" produced output`);
+      assert.doesNotMatch(
+        result.stderr,
+        /Invalid regular expression|SyntaxError/,
+        `"${argument}" still reaches a regex`,
+      );
+    }
   });
 });

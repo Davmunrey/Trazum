@@ -28,25 +28,56 @@ if (!version) {
   process.exit(2);
 }
 
+// Nothing below treats this as a pattern, so this is not a safety check — it is
+// so `release-notes.mjs "1.0.0 --notes-file /etc/passwd"` fails with a sentence
+// instead of reporting that the notes are missing.
+if (!/^[0-9A-Za-z][0-9A-Za-z.\-+]*$/.test(version)) {
+  console.error(`"${version}" is not a version number.`);
+  process.exit(2);
+}
+
 const releases = readFileSync(join(repoRoot, 'RELEASES.md'), 'utf8');
 
 /**
  * The heading for a version, and everything until the next one.
  *
- * Headings look like `## 1.0.0 — "A stable contract"`, so the version is matched
- * with a boundary after it: without one, `1.0.0` would also match `1.0.10`.
+ * Compared as strings, line by line, rather than by building a pattern from the
+ * argument. The first version did
+ * `new RegExp('^## ' + version.replace(/\./g, '\\.'))`, and CodeQL raised three
+ * alerts on it that were all correct:
+ *
+ * - **Regex injection.** `version` is `process.argv[2]`. A value like `(((((`
+ *   throws before the file is even read, and `(a+)+$` is a ReDoS pattern handed
+ *   to a matcher. The operator supplies it, which is a reason it is unlikely and
+ *   not a reason it is safe.
+ * - **Incomplete escaping, twice.** Escaping `.` and not `\` is the classic
+ *   half-done job: a version containing a backslash escapes the wrong thing.
+ *
+ * The real mistake was upstream of all three. A version number is not a pattern
+ * and never needed to be one. This also makes the `1.0.0` versus `1.0.10`
+ * boundary something you can see — the character after the version must be a
+ * space or the end of the line — rather than a lookahead you have to trust.
  */
-const heading = new RegExp(`^## ${version.replace(/\./g, '\\.')}(?![\\d.])`, 'm');
-const start = releases.search(heading);
-if (start === -1) {
+const HEADING = '## ';
+const lines = releases.split('\n');
+const wanted = lines.findIndex(
+  (line) => line === `${HEADING}${version}` || line.startsWith(`${HEADING}${version} `),
+);
+
+if (wanted === -1) {
   console.error(`RELEASES.md has no section for ${version}.`);
   console.error('Write the notes before tagging — see the top of that file for why.');
   process.exit(1);
 }
 
-const rest = releases.slice(start);
-const nextHeading = rest.slice(1).search(/^## /m);
-const section = nextHeading === -1 ? rest : rest.slice(0, nextHeading + 1);
+let end = lines.length;
+for (let i = wanted + 1; i < lines.length; i++) {
+  if (lines[i].startsWith(HEADING)) {
+    end = i;
+    break;
+  }
+}
+const section = lines.slice(wanted, end).join('\n');
 
 // The `---` rule before the next section belongs to the layout of the file, not
 // to these notes.
