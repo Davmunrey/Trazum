@@ -12,6 +12,33 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**The README described a tool that only shortens prompts, and two counts in the
+docs had drifted.**
+
+Nine commands have landed since that front page was written, and it had been
+updated by inserting a paragraph into whichever section each one belonged to —
+which is exactly how a summary goes stale while every detail below it stays
+correct. "What it actually does" listed four things, all of them `optimize`. A
+reader who stopped there never learned that `rank` says which of forty prompts is
+worth an afternoon, that `blame` names the commit, or that four commands write
+markdown for a pull request comment. There is a table now, and the architecture
+diagram includes the Action, which it had never mentioned.
+
+`Layout` was missing a whole workspace (`action/`), plus `scripts/` and the eleven
+core modules added since it was written.
+
+Two numbers were simply wrong. The README advertised **580 tests** where the real
+figure had reached **798**. `RELEASES.md` claimed **thirteen** deterministic rules
+where there are **twelve**, and listed "restated output formats" among what they
+cut — an advisory that is deliberately never cut, so that sentence was wrong twice.
+
+Both are now checked rather than corrected. `publish.test.js` compares the rule
+count in prose against `RULES.length`, refuses to let an advisory be described as
+something the rules cut, and fails if the README ever advertises a test total
+again — because a total across four suites cannot be verified from one of them, and
+a number nobody maintains is worse than no number. Three mutants, each killed by
+reintroducing the exact error it replaces.
+
 **A blame test threw away the evidence when it failed.** `shows the most recent N`
 was the only test in `blame.test.js` that checked neither the exit code nor passed
 the command's output into an assertion, so when it failed once on CI the entire

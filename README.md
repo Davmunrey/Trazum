@@ -11,10 +11,12 @@ of it sits an **optional LLM pass** for the compression rules cannot do, using
 whichever provider you configure.
 
 ```
-┌──────────────┐   ┌───────────────┐   ┌──────────────────┐
-│ @trazum/core │ ← │ @trazum/cli   │   │ @trazum/web      │
-│  library     │   │  terminal     │   │  Next.js         │
-└──────────────┘   └───────────────┘   └──────────────────┘
+                    ┌──────────────┐
+                    │ @trazum/core │   the library: rules, tokens, pricing
+                    └──────┬───────┘   no dependencies, browser-safe
+             ┌─────────────┼─────────────┐
+       @trazum/cli    @trazum/web    action/
+       nine commands  Next.js        comments on pull requests
 ```
 
 ---
@@ -71,7 +73,29 @@ of diff — and a single rule you disagree with comes off with `--disable`:
 
 **4. Optionally, runs it past an LLM.** The result is only accepted if it is
 shorter and leaves protected content byte-identical. Otherwise the deterministic
-version stands. It never returns something worse than where it started.
+version stands. It never returns something worse than where it started. With
+`--suggest` it proposes phrases one at a time — `You should always make sure to →
+Always` — each checked against your prompt before you see it, so eight surviving
+out of ten is a useful morning rather than a rewrite to read end to end.
+
+**5. Answers the questions that come before "shorten this".** Trimming one file
+is the smallest thing here. `optimize` is one of nine commands, and the others
+exist because knowing a prompt is wasteful is not the same as knowing *which*
+prompt, *whose* change made it so, or whether the shorter version still works:
+
+| Command | Answers |
+|---|---|
+| `optimize` | what can come out of this prompt, and what that is worth per month |
+| `rank <dir>` | which of these forty prompts is worth an afternoon |
+| `blame <file>` | who made this prompt expensive, and in which commit |
+| `diff <a> <b>` | did this edit make it worse — every figure `after - before` |
+| `check --max-tokens` | does it fit a budget; exits 1 when it does not, so CI catches it |
+| `eval --cases` | does the shorter prompt still get the same answers |
+| `where [file]` | which provider this file's prompts are actually sent to, and how it knows |
+| `models`, `rules` | the pricing table; what each rule does and its id |
+
+`check`, `diff`, `rank` and `blame` all take `--markdown-out`, so the answer can
+land in a pull request comment rather than a terminal nobody is looking at.
 
 ---
 
@@ -80,8 +104,13 @@ version stands. It never returns something worse than where it started.
 ```bash
 npm install
 npm run build      # core + cli
-npm test           # 580 tests
+npm test           # every suite: core, CLI, web, Action
+npm run verify     # the above plus typecheck and the web build
 ```
+
+<sub>The test count used to be written here as a number. It said 580 while the real
+figure had reached 798, because nothing checked it — so it now says what the command
+covers instead. A number nobody maintains is worse than no number.</sub>
 
 ### CLI
 
@@ -108,12 +137,18 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-Other commands:
+The other eight commands, each with its own section below:
 
 ```bash
-node packages/cli/dist/index.js models    # pricing table and cache minimums
-node packages/cli/dist/index.js rules     # what each rule does, and its id
-node packages/cli/dist/index.js --help
+trazum rank prompts/                 # which one to fix first
+trazum blame prompts/system.txt      # who made it expensive, and when
+trazum diff old.txt new.txt          # what this edit cost
+trazum check prompts/ --max-tokens 2000
+trazum eval prompts/system.txt --cases cases.json
+trazum where src/agent.ts            # which provider this actually calls
+trazum models                        # pricing table and cache minimums
+trazum rules                         # what each rule does, and its id
+trazum --help
 ```
 
 When redirected it writes only the optimised prompt, so it pipes cleanly:
@@ -1263,10 +1298,22 @@ packages/core/     dependency-free library (rules, tokens, pricing, LLM)
   src/structure.ts   contradictions and repeated few-shot examples
   src/similarity.ts  shared near-duplicate scoring
   src/advisories.ts  caching, batch, model and context advisories
+  src/reorder.ts     moving blocks in front of the first placeholder
+  src/compare.ts     comparePrompts — after minus before, positive is worse
+  src/profile.ts     the measurements behind `rank`, and no score
+  src/suggest.ts     phrase-level rewrites, and the checks each one passes
+  src/promptfoo.ts   exporting a suite for somebody else's assertions
+  src/extract.ts     prompts marked inside source files
+  src/detect.ts      which provider a file actually calls
   src/llm.ts         pluggable providers and safety checks
+  src/net.ts         endpoint validation, the allowlist, safe fetch defaults
   src/i18n/          message catalogues (report language)
 packages/cli/      dependency-free CLI
-apps/web/          Next.js (App Router)
+  src/markdown.ts    the report as markdown, and the three escapers
+  src/git.ts         the only module here that runs another program
+apps/web/          Next.js (App Router) — Optimise and Compare
+action/            the packaged GitHub Action that comments on pull requests
+scripts/           release notes, and the token-band measurement harness
 ```
 
 ## Updating prices

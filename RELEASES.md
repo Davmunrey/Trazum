@@ -198,10 +198,12 @@ tested rather than intended.
 
 ### What's new
 
-- **Thirteen deterministic rules**, offline and free, that cut politeness
-  formulas, filler, hedges, shouted emphasis, decorative separators, repeated
-  paragraphs and restated output formats — without touching code, URLs, template
-  placeholders or XML tags, which are copied character for character.
+- **Twelve deterministic rules**, offline and free, that cut politeness formulas,
+  filler, hedges, shouted emphasis, decorative separators and repeated paragraphs
+  — without touching code, URLs, template placeholders or XML tags, which are
+  copied character for character. A restated output format is *reported* and never
+  cut: the schema and the prose walking through it are both defensible, and which
+  to keep is the author's call.
 - **Two levels.** `safe` has no semantic risk. `aggressive` shows you exactly
   what it changed, phrase by phrase, because "read the diff" is not advice you
   can follow on a diff of everything at once.
