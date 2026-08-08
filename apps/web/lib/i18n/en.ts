@@ -51,6 +51,15 @@ export const en: WebMessages = {
     baseUrl: 'Base URL',
     baseUrlPlaceholder: 'https://your-llm.example.com/v1',
     baseUrlServerDefault: "the server's own endpoint",
+    suggest: 'Suggest phrase-level rewrites',
+    suggestHint:
+      'Asks the model which exact phrases say something in more words than they need, and '
+      + 'lists them. Each one is checked against your prompt before you see it. Nothing is '
+      + 'changed unless you also turn on "Apply them".',
+    applySuggestions: 'Apply them',
+    applySuggestionsHint:
+      'Rewrites the prompt with every surviving suggestion. Read the diff afterwards — these '
+      + 'came from a model.',
     baseUrlNotOffered:
       'This server calls only the LLM its operator configured. Run Trazum yourself — the CLI, or '
       + 'your own deployment — to point it at any endpoint you like.',
@@ -108,6 +117,16 @@ export const en: WebMessages = {
       'Read the diff: this moved text rather than deleting it, so the question is whether the order mattered.',
     reorderDeclinedRef: (phrase, excerpt) => `refers back ("${phrase}"): ${excerpt}`,
     reorderDeclinedAfter: (excerpt) => `after a block that had to stay: ${excerpt}`,
+    suggestOffered: (count, tokens) =>
+      `${count} ${count === 1 ? 'phrase' : 'phrases'} could say the same in ~${tokens} fewer tokens:`,
+    suggestApplied: (count, tokens) =>
+      `Applied ${count} ${count === 1 ? 'rewrite' : 'rewrites'} (~${tokens} tokens) — read the diff.`,
+    suggestNothing: (provider, model) =>
+      `${provider} (${model}) found nothing worth rewriting that the rules had not taken.`,
+    suggestRejected: (count) =>
+      `${count} ${count === 1 ? 'proposal' : 'proposals'} did not survive checking against your prompt.`,
+    suggestRemoved: '(removed)',
+    suggestNotApplied: 'Nothing was changed. Turn on "Apply them" to take these.',
     reorderDeclinedScript: (script) =>
       `this prompt is written in ${script}, and Trazum has no backward-reference phrases ` +
       `for it — it cannot tell an instruction that is safe to move from one that points ` +
@@ -135,6 +154,9 @@ export const en: WebMessages = {
       + 'configured, or none. To allow a choice, set TRAZUM_ALLOWED_LLM_ENDPOINTS on the server.',
     endpointNotAllowed: (allowed: readonly string[]) =>
       `That endpoint is not one this server offers. Allowed: ${allowed.join(', ')}.`,
+    applyNeedsSuggest:
+      '"applySuggestions" has nothing to apply without "suggest". On its own it would have '
+      + 'returned silently and changed nothing, which is not an answer.',
     llmNotConfigured:
       'You enabled the LLM pass but no provider is configured. Fill in the endpoint and model, or set TRAZUM_LLM_BASE_URL and TRAZUM_LLM_MODEL on the server.',
     unexpected: 'Unexpected error.',

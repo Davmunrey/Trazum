@@ -709,6 +709,13 @@ stored only in the browser — nothing leaves your machine.
 a level, with the same warning the CLI prints and the same refusals reported. It
 is the largest saving Trazum can make, and it should not need a terminal to find.
 
+**So are phrase-level rewrites.** Two switches: one asks the model for
+suggestions, the second takes them. They are listed above the saving, one line
+each — `You should always make sure to → Always  ~4 ×2` — with a count of how
+many the checks threw out, because "four did not survive" is the useful fact and
+which four is noise unless you are debugging the model. Nothing is applied unless
+the second switch is on, and turning the first one off clears it.
+
 The HTTP API behind it is public and small:
 
 ```bash
@@ -723,15 +730,32 @@ curl -X POST https://your-deployment/api/optimize \
     "level": "safe",
     "locale": "en",
     "reorder": false,
+    "suggest": false,
+    "applySuggestions": false,
     "usage": { "model": "claude-opus-5", "callsPerMonth": 20000, "avgOutputTokens": 300 }
   }'
 ```
 
-`reorder` is honoured only on a literal `true` — a string or a number is ignored,
-because the body is untrusted and a truthy check would let `"false"` rearrange
-somebody's prompt. When it is set, the response carries a `reorder` object with
-what moved and what was declined, and `original` stays the text you sent so a diff
-shows the move rather than hiding it behind the deletions.
+`reorder`, `suggest` and `applySuggestions` are honoured only on a literal `true`
+— a string or a number is ignored, because the body is untrusted and a truthy
+check would let `"false"` rearrange somebody's prompt or hand it to a model for
+rewriting.
+
+When `reorder` is set, the response carries a `reorder` object with what moved and
+what was declined, and `original` stays the text you sent so a diff shows the move
+rather than hiding it behind the deletions.
+
+When `suggest` is set, the response carries a `suggestions` object — every
+proposal that survived the checks, everything rejected and why, and `applied`
+saying whether the text you are holding was rewritten. It is present even when the
+model proposed nothing, so "nothing was found" is distinguishable from "you did
+not ask". Needs an LLM configured, and runs its own call.
+
+`applySuggestions` without `suggest` is a **`400`**, not a no-op. On its own it
+would have returned a complete report and quietly applied nothing, which is the
+same failure as a misspelled field being accepted — and the endpoint already
+refuses those for `disableRules` and `usage.model`. The refusal comes before any
+call to the model, so a malformed request never costs one.
 
 The endpoint is rate limited (30/min per IP). It will not fetch an LLM endpoint
 a caller names: a request may only **select** one from

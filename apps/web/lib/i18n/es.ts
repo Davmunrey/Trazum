@@ -50,6 +50,15 @@ export const es: WebMessages = {
     baseUrl: 'URL base',
     baseUrlPlaceholder: 'https://tu-llm.ejemplo.com/v1',
     baseUrlServerDefault: 'el endpoint del propio servidor',
+    suggest: 'Sugerir reescrituras frase a frase',
+    suggestHint:
+      'Pregunta al modelo qué frases concretas dicen algo con más palabras de las necesarias '
+      + 'y las lista. Cada una se comprueba contra tu prompt antes de que la veas. No se '
+      + 'cambia nada salvo que actives también «Aplicarlas».',
+    applySuggestions: 'Aplicarlas',
+    applySuggestionsHint:
+      'Reescribe el prompt con todas las sugerencias que hayan sobrevivido. Lee el diff '
+      + 'después: vienen de un modelo.',
     baseUrlNotOffered:
       'Este servidor solo llama al LLM que configuró su operador. Ejecuta Trazum tú mismo — la '
       + 'CLI, o tu propio despliegue — para apuntarlo al endpoint que quieras.',
@@ -110,6 +119,16 @@ export const es: WebMessages = {
       'Lee el diff: esto ha movido texto en vez de borrarlo, así que la pregunta es si el orden importaba.',
     reorderDeclinedRef: (phrase, excerpt) => `hace referencia hacia atrás ("${phrase}"): ${excerpt}`,
     reorderDeclinedAfter: (excerpt) => `va después de un bloque que tenía que quedarse: ${excerpt}`,
+    suggestOffered: (count, tokens) =>
+      `${count} ${count === 1 ? 'frase podría decir' : 'frases podrían decir'} lo mismo con ~${tokens} tokens menos:`,
+    suggestApplied: (count, tokens) =>
+      `Aplicadas ${count} ${count === 1 ? 'reescritura' : 'reescrituras'} (~${tokens} tokens) — lee el diff.`,
+    suggestNothing: (provider, model) =>
+      `${provider} (${model}) no ha encontrado nada que reescribir que las reglas no hubieran cogido ya.`,
+    suggestRejected: (count) =>
+      `${count} ${count === 1 ? 'propuesta no ha superado' : 'propuestas no han superado'} la comprobación contra tu prompt.`,
+    suggestRemoved: '(eliminado)',
+    suggestNotApplied: 'No se ha cambiado nada. Activa «Aplicarlas» para tomarlas.',
     reorderDeclinedScript: (script) =>
       `este prompt está escrito en ${script}, y Trazum no tiene frases de referencia hacia ` +
       `atrás para ese alfabeto: no puede distinguir una instrucción que se puede mover de ` +
@@ -138,6 +157,9 @@ export const es: WebMessages = {
       + 'TRAZUM_ALLOWED_LLM_ENDPOINTS en el servidor.',
     endpointNotAllowed: (allowed: readonly string[]) =>
       `Ese endpoint no es uno de los que ofrece este servidor. Permitidos: ${allowed.join(', ')}.`,
+    applyNeedsSuggest:
+      '"applySuggestions" no tiene nada que aplicar sin "suggest". Por su cuenta habría '
+      + 'respondido en silencio sin cambiar nada, y eso no es una respuesta.',
     llmNotConfigured:
       'Has activado la pasada por LLM pero no hay proveedor configurado. Rellena endpoint y modelo, o define TRAZUM_LLM_BASE_URL y TRAZUM_LLM_MODEL en el servidor.',
     unexpected: 'Error inesperado.',
