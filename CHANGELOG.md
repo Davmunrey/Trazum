@@ -388,6 +388,39 @@ asserting it without checking was not.
 
 ### Fixed
 
+**A rate limiter that could be turned into a way to take the deployment down.**
+The expired-entry sweep ran on *every* miss once the map passed `sweepAbove`,
+and a miss is any key not seen before. `clientKey` reads `x-forwarded-for`,
+which this module already documented as freely spoofable — so an attacker
+rotating that header made every request a miss, and every request an O(n) walk
+of a map their earlier requests had grown. Almost nothing was reclaimed while
+they did it, because entries in the current window have not expired yet.
+
+Measured rather than reasoned about:
+
+```
+                 before                            after
+N= 20000    1,410ms   149,985,000 compares      14ms   10,001
+N= 40000    7,576ms   749,975,000 compares      19ms   10,001
+N= 80000   46,759ms 3,149,955,000 compares      79ms   10,001
+```
+
+Doubling the requests multiplied the work by 4.4, then 7.6. Eighty thousand
+requests — not an interesting number of requests — was 46 seconds of a
+single-threaded event loop during which the deployment serves nobody. The
+limiter answered every one of them correctly; it just answered quadratically.
+
+Sweeping at most once per window makes the total linear. Memory is unchanged
+and worth stating: a window's worth of distinct keys is held until the next
+sweep, which is inherent to counting per key rather than a consequence of the
+fix, and it does not accumulate across windows.
+
+The limiter now exposes a `sweeps` count, so the test asserts the sweep's
+frequency instead of trusting a comment about it — the bug was invisible from
+outside, since every verdict it gave was right. Eight mutants, all killed.
+Asserted on the count and not on elapsed time: a timing assertion on shared CI
+hardware is a flake generator, and the count is the thing that changed.
+
 **The roadmap said the web app's features would deliberately never be built.**
 `ROADMAP.md` listed **Prompt library** under "Under consideration" with the
 reasoning *"storing prompts is a different product, and one that would mean
