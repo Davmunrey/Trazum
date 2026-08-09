@@ -353,6 +353,39 @@ value bound in the wrong position and a `DELETE` whose predicate is too wide, an
 cannot catch SQL that Postgres would reject. `docs/accounts.md` says so, and lists
 the rest of what is not covered.
 
+### Added
+
+**Route invariants, checked against every route rather than the ones with
+tests.** Five API subsystems landed in five consecutive merges — auth, share
+links, the library, the admin overview, the badge — each getting its rules
+right because the author remembered them. Nothing was checking, and "remembered
+five times" is not a property.
+
+Two invariants, read from source: every state-changing handler in a route that
+reads credentials reaches a same-origin check, and any response a route builds
+by hand carries `no-store`. Routes are walked from `app/api`; the exemption for
+`/api/optimize` and `/api/compare` is derived from their reading no cookie and
+no session, not from a list, so either one stops being exempt the moment it
+reads one.
+
+**The gap this closes is measured, not asserted.** Deleting the same-origin
+check from `DELETE /api/prompts/[id]` passes the entire pre-existing web suite:
+every write funnels through one `requireCaller`, so the behavioural tests prove
+*that function* refuses a hostile `Origin` and prove nothing about whether a
+given handler asked it to. Five such mutants survive everything except the new
+file. Going the other way, changing `requireCaller`'s condition to `if (false)`
+survives the new file — `sameOrigin(` is still there to match — and is killed by
+the behavioural tests. Neither layer is redundant; neither covers the other's
+mutant. Ten mutants, all killed once both layers run.
+
+Both guards were wrong before they were right. The cache-control one originally
+asked whether a route *used the response helpers*, which is a proxy for the
+property rather than the property, and failed against `/api/auth/session` — a
+route that sets `no-store` correctly on both branches without them. Its stated
+premise was false too: `jsonError` and `redirect` set no cache-control at all,
+and the comment claimed they did. They carry no session data, so that is fine;
+asserting it without checking was not.
+
 ### Fixed
 
 **The roadmap said the web app's features would deliberately never be built.**
