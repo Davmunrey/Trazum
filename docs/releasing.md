@@ -17,6 +17,23 @@ The scope does not exist yet: `npm view @trazum/core` returns 404. Create it at
 [npmjs.com/org/create](https://www.npmjs.com/org/create), or by publishing under
 it once by hand — but the point of this workflow is that nobody has to.
 
+**Nothing extra is needed to make the packages public, and there is nothing to
+get wrong here.** A scoped package is *restricted* by default, so both manifests
+carry `publishConfig.access: "public"` and both publish steps pass
+`--access public`. Belt and braces on purpose: the failure they prevent is not
+a loud one. On a free account a missing `--access public` fails the publish,
+which is fine; on a paid account it **succeeds** and uploads a package nobody
+outside the org can install — a release that looks completely normal, for an
+open-source project, and unpublishable after 72 hours.
+
+`publish.test.js` asserts both, asserts that `apps/web` stays `private: true`
+so an application never reaches a registry, and derives the set of publishable
+workspaces from the root `workspaces` globs — so a workspace added later has to
+make the choice rather than inherit one.
+
+If the org's default visibility is set to private, leave it: the per-package
+`access` setting is what decides, and it is already committed here.
+
 ### 2. Create the `release` environment
 
 Repository *Settings → Environments → New environment*, named exactly `release`.

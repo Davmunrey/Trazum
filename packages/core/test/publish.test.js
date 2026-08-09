@@ -19,9 +19,28 @@ const repoRoot = join(here, '..', '..', '..');
  * whoever installs it first.
  */
 
-const PACKAGES = ['packages/core', 'packages/cli'];
 const manifestOf = (pkg) =>
   JSON.parse(readFileSync(join(repoRoot, pkg, 'package.json'), 'utf8'));
+
+/**
+ * Every workspace, expanded from the root `workspaces` globs.
+ *
+ * Listed by hand until now, which made this whole file blind to a workspace
+ * added after it was written — the failure mode every other derived guard here
+ * exists to avoid. Only the `dir/*` form is used in this repository.
+ */
+const WORKSPACES = manifestOf('.')
+  .workspaces.flatMap((pattern) => {
+    const parent = pattern.replace(/\/\*$/, '');
+    return readdirSync(join(repoRoot, parent), { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => `${parent}/${entry.name}`)
+      .filter((pkg) => existsSync(join(repoRoot, pkg, 'package.json')));
+  })
+  .sort();
+
+/** The ones npm would upload: publishable unless the manifest says otherwise. */
+const PACKAGES = WORKSPACES.filter((pkg) => manifestOf(pkg).private !== true);
 
 describe('what npm would publish', () => {
   for (const pkg of PACKAGES) {
@@ -94,6 +113,71 @@ describe('what npm would publish', () => {
       });
     });
   }
+
+  it('is published publicly, which a scoped package is not by default', () => {
+    /**
+     * **A scoped package is private unless it says otherwise.** `npm publish`
+     * on `@trazum/core` without `--access public` or
+     * `publishConfig.access: "public"` does one of two things, and both are
+     * wrong for a project whose entire point is that anyone can install it: it
+     * fails on a free account, or on a paid one it *succeeds* and uploads a
+     * restricted package nobody outside the org can fetch.
+     *
+     * The second is the one worth a test. It is silent, it looks exactly like a
+     * successful release, and npm allows unpublishing for 72 hours and then
+     * never again.
+     *
+     * Both belts are asserted — the manifest here, the flag in the workflow
+     * below — because they fail in different places. A dropped `publishConfig`
+     * is invisible to the workflow, and a workflow rewritten to publish some
+     * other way is invisible to the manifest.
+     */
+    for (const pkg of PACKAGES) {
+      assert.equal(
+        manifestOf(pkg).publishConfig?.access,
+        'public',
+        `${pkg} would upload as a restricted package`,
+      );
+    }
+  });
+
+  it('nothing is publishable by accident', () => {
+    // Derived from the workspace globs, so a workspace added later has to make
+    // the choice rather than inherit one. `apps/web` is an application: it has
+    // dependencies, it is deployed rather than installed, and uploading it
+    // would put a Next app on a registry as though it were a library.
+    assert.ok(WORKSPACES.length >= 3, `only found ${WORKSPACES}`);
+    assert.deepEqual(PACKAGES, ['packages/cli', 'packages/core']);
+  });
+
+  it('the release workflow publishes exactly those, and publicly', () => {
+    /**
+     * The manifest and the workflow have to agree about the *set*, not only
+     * about the flag. A package that is publishable and never published is a
+     * release that ships half of itself — and `@trazum/cli` pins
+     * `@trazum/core` at an exact version, so the half that shipped would not
+     * install.
+     */
+    const workflow = readFileSync(join(repoRoot, '.github/workflows/release.yml'), 'utf8');
+    const published = [...workflow.matchAll(/npm publish -w (\S+)([^\n]*)/g)];
+
+    assert.equal(
+      published.length,
+      PACKAGES.length,
+      `${PACKAGES.length} publishable packages, ${published.length} publish steps`,
+    );
+
+    for (const pkg of PACKAGES) {
+      const { name } = manifestOf(pkg);
+      const step = published.find((match) => match[1] === name);
+      assert.ok(step, `the release workflow never publishes ${name}`);
+      assert.match(step[2], /--access public/, `${name} is published without --access public`);
+      // Provenance is what lets somebody verify the tarball was built from this
+      // repository at this commit — most of what "open source" is worth to a
+      // person deciding whether to install it.
+      assert.match(step[2], /--provenance/, `${name} is published without provenance`);
+    }
+  });
 
   it('every manifest carries the same version', () => {
     // Released in lockstep on purpose: a version skew between the core and the

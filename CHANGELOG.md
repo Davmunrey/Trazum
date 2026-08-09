@@ -355,6 +355,27 @@ the rest of what is not covered.
 
 ### Added
 
+**Guards that the published packages are actually public.** A scoped package is
+*restricted* by default, and this project is open source — so the two manifests
+carry `publishConfig.access: "public"` and both release steps pass
+`--access public`. Both were already correct; nothing checked either.
+
+The failure that would have gone unnoticed is the quiet one. On a free account a
+missing `--access public` fails the publish, which is fine. On a paid one it
+**succeeds** and uploads a package nobody outside the org can install — a
+release that looks entirely normal, and unpublishable after 72 hours.
+
+Three assertions: every publishable manifest declares public access; the release
+workflow publishes exactly the publishable set, each with `--access public` and
+`--provenance`; and nothing is publishable by accident, with `apps/web` staying
+`private: true` so a Next application never reaches a registry as though it were
+a library.
+
+The set of workspaces is now derived from the root `workspaces` globs rather
+than listed. It had been a hardcoded pair, which made the whole file blind to
+any workspace added after it was written — a new publishable workspace now
+fails the suite until somebody decides what it is. Eight mutants, all killed.
+
 **Route invariants, checked against every route rather than the ones with
 tests.** Five API subsystems landed in five consecutive merges — auth, share
 links, the library, the admin overview, the badge — each getting its rules
