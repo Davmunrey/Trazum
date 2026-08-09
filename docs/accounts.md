@@ -24,6 +24,7 @@ restart.
 | `TRAZUM_DATABASE_URL` | no | Any Postgres. Without it, sessions live in memory |
 | `TRAZUM_DATABASE_SSL` | no | `verify-full` (default for remote hosts), `require`, `prefer`, `allow`, `disable` |
 | `TRAZUM_DATABASE_POOL` | no | Connections per instance. Default `4` |
+| `TRAZUM_ADMINS` | no | Who may see the deployment overview. Empty means nobody, and the page does not exist |
 
 ### 1. Register a GitHub OAuth app
 
@@ -182,6 +183,62 @@ Limits: 100 links per account, refused rather than evicted.
 
 ---
 
+## The deployment overview
+
+`/admin`, for accounts named in `TRAZUM_ADMINS`. **Unset by default, and unset
+means the page does not exist** — not "exists and refuses". A signed-in account
+that is not on the list gets the same `404` as one asking about a deployment
+with no admins at all, because a `403` would confirm that a dashboard is here
+and that they are outside it.
+
+There is no organisation model in Trazum and this is the decision not to invent
+one: a self-hosted instance *is* the team. The alternative was reading GitHub
+organisation membership, which means asking for the `read:org` scope on every
+sign-in so that some deployments can skip an environment variable. Sign-in asks
+for `read:user` and nothing else, and keeping that true is worth more.
+
+```sh
+# By GitHub username — convenient
+TRAZUM_ADMINS=octocat,monalisa
+
+# By GitHub numeric id — safer, see below
+TRAZUM_ADMINS=583231,1024025
+```
+
+**Prefer ids.** A GitHub login is renameable and, once released, reusable, so an
+admin list naming `octocat` grants the overview to whoever holds that name
+*today*. A numeric id cannot be transferred. Logins are still accepted because
+they are what an operator actually knows — the dashboard says on screen when it
+let you in on the strength of one. (Usernames may also be entirely digits, so a
+list entry of `1001` is read as an id and will *not* admit the account whose
+username is `1001`.)
+
+### It is not a spend report, and it says so
+
+Trazum has never seen a bill, an API call or a token counter. It reads prompt
+text and measures it. A dashboard headed "spend" would be printing a number
+nobody can reconcile against an invoice.
+
+So the headline is **input tokens**, which is a property of a prompt alone and
+needs no assumption about how often anyone calls it, and the second figure is
+**how many of those the rules would remove** — measured by running the rules, the
+same standard `trazum rank` is held to. There is no score. Every number on the
+page can be reproduced by running `trazum` on the same prompt.
+
+### What it shows about other people
+
+Counts, prompt names and account logins. **Never the text of anybody's prompt.**
+An admin is an operator, not an auditor of what their colleagues wrote, and
+"which prompt is expensive" is answerable from a name. The text reaches the
+overview layer only long enough to be counted and is never serialised to a
+browser.
+
+One overview reads at most 500 prompts. When a deployment has more, the page
+says so with both numbers rather than reporting a total that quietly covers part
+of it.
+
+---
+
 ## What it does with your data
 
 | Thing | Where it goes |
@@ -278,6 +335,8 @@ goes wrong.
   so a second one is additive, but SSO through anything else is not written.
 - **A revoked link is gone, but a copy taken while it was live is not.** This is
   what "publish" means; there is no recall.
+- **The overview is deployment-wide, not per team.** One instance, one group of
+  people. Two teams sharing a deployment share an overview.
 - **The library is per person, not per team.** Every prompt has one owner and
   there is no way to share one. The `author_id` column on a version exists so
   that becomes a migration rather than a rewrite, and today it is always the

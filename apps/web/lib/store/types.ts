@@ -18,7 +18,7 @@
  *    is what makes it testable without waiting a month.
  */
 
-import type { PromptStore } from './prompts';
+import type { AdminStore, PromptStore } from './prompts';
 import type { ShareStore } from './shares';
 
 /** Identity providers this deployment can authenticate against. */
@@ -84,6 +84,17 @@ export interface Store {
    * about `PromptStore` instead of a mostly-true one.
    */
   readonly shares: ShareStore;
+
+  /**
+   * Reading across accounts, for the deployment overview.
+   *
+   * Third namespace rather than a method on `prompts`, and the split is the
+   * point: `PromptStore` binds an owner in every lookup, and an exception living
+   * inside it is an exception somebody adds a second one beside. Guarded by
+   * `adminSource`, which refuses unless `TRAZUM_ADMINS` names the caller — and
+   * that variable is empty by default.
+   */
+  readonly admin: AdminStore;
 
   /**
    * True when everything in here dies with the process.

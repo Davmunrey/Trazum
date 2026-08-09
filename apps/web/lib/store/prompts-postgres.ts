@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { MAX_PROMPTS_PER_OWNER, MAX_VERSIONS_PER_PROMPT } from './prompts';
+import type { AdminStore, PromptCensus } from './prompts';
 import type {
   AddVersionResult,
   PromptRecord,
@@ -200,6 +201,56 @@ export function promptsInPostgres(sql: SqlClient): PromptStore {
         delete from trazum_prompts where id = ${id} and owner_id = ${ownerId} returning id
       `;
       return rows.length > 0;
+    },
+  };
+}
+
+/** The deployment-wide read, against Postgres. Its own factory, like the memory one. */
+export function adminInPostgres(sql: SqlClient): AdminStore {
+  return {
+    async census(limit: number): Promise<PromptCensus> {
+      // The totals come from their own statement rather than from the length of
+      // the list below. Counting the rows that were returned would report the
+      // cap as the size of the deployment, which is the one number this method
+      // exists to be honest about.
+      const [totals] = await sql<Row>`
+        select count(*) as prompts, count(distinct owner_id) as accounts
+        from trazum_prompts
+      `;
+
+      const rows = await sql<Row>`
+        select
+          p.id, p.name, p.owner_id, p.updated_at,
+          u.login as owner_login,
+          coalesce(latest.text, '')        as latest_text,
+          coalesce(counts.version_count, 0) as version_count
+        from trazum_prompts p
+        join trazum_users u on u.id = p.owner_id
+        left join lateral (
+          select v.text from trazum_prompt_versions v
+          where v.prompt_id = p.id order by v.version desc limit 1
+        ) latest on true
+        left join lateral (
+          select count(*) as version_count from trazum_prompt_versions v
+          where v.prompt_id = p.id
+        ) counts on true
+        order by p.updated_at desc
+        limit ${limit}
+      `;
+
+      return {
+        entries: rows.map((row) => ({
+          id: String(row.id),
+          name: String(row.name),
+          ownerId: String(row.owner_id),
+          ownerLogin: String(row.owner_login),
+          latestText: String(row.latest_text),
+          versionCount: Number(row.version_count),
+          updatedAt: new Date(row.updated_at as string),
+        })),
+        totalPrompts: Number(totals?.prompts ?? 0),
+        totalAccounts: Number(totals?.accounts ?? 0),
+      };
     },
   };
 }

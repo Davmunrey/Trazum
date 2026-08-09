@@ -84,6 +84,42 @@ export const MAX_PROMPT_TEXT_CHARS = 100_000;
 export const MAX_PROMPT_NAME_CHARS = 120;
 export const MAX_NOTE_CHARS = 500;
 
+/**
+ * One prompt, as the deployment-wide overview sees it.
+ *
+ * Carries the text because a token count has to be computed from it, and
+ * carries the owner's login because the overview's whole job is saying *whose*
+ * prompt is the expensive one. It does **not** leave this layer: the admin API
+ * turns it into counts and never sends the text to a browser.
+ */
+export interface PromptCensusEntry {
+  id: string;
+  name: string;
+  ownerId: string;
+  ownerLogin: string;
+  latestText: string;
+  versionCount: number;
+  updatedAt: Date;
+}
+
+export interface PromptCensus {
+  entries: PromptCensusEntry[];
+  /** Every prompt in the deployment, including those beyond the cap. */
+  totalPrompts: number;
+  /** Distinct accounts holding at least one prompt. */
+  totalAccounts: number;
+}
+
+/**
+ * How many prompts one overview will read the text of.
+ *
+ * A cap, because the overview computes a real token count per prompt and that
+ * means holding every prompt's text in memory at once. When it bites, the API
+ * says so — `truncated: true` and both numbers — rather than quietly reporting a
+ * total that covers part of the deployment.
+ */
+export const CENSUS_LIMIT = 500;
+
 export interface PromptStore {
   listPrompts(ownerId: string): Promise<PromptSummary[]>;
 
@@ -113,4 +149,26 @@ export interface PromptStore {
 
   /** Takes the versions with it. `false` when there was nothing of theirs to delete. */
   deletePrompt(id: string, ownerId: string): Promise<boolean>;
+
+}
+
+/**
+ * Reading across accounts. A separate interface, deliberately.
+ *
+ * `census` was briefly a method on `PromptStore` with a comment calling itself
+ * "the documented hole" in the rule that every lookup binds an owner — and the
+ * guard written to enforce that rule immediately failed on it, which was the
+ * guard being right. A rule with a documented exception inside it is a rule
+ * somebody adds a second exception to.
+ *
+ * So it lives here instead, the same way `ShareStore.findShare` does: the two
+ * places in Trazum that read something without an owner are the two places that
+ * are not `PromptStore`, and "every `PromptStore` lookup binds an owner" stays a
+ * true sentence rather than a mostly-true one.
+ *
+ * Nothing reaches this without passing `adminSource`, and `TRAZUM_ADMINS` is
+ * empty by default, so on an ordinary deployment nothing can call it at all.
+ */
+export interface AdminStore {
+  census(limit: number): Promise<PromptCensus>;
 }

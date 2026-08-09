@@ -26,6 +26,16 @@ Ten commands now, up from four.
 
 ### What's new
 
+- **A deployment overview for whoever runs it.** `/admin` adds up every prompt
+  saved on the instance and says which ones are worth an afternoon — and it is
+  careful about what it claims. It is **not** a spend report: Trazum has never
+  seen a bill or an API call, so the headline is input tokens, the second figure
+  is what running the rules would remove, and there is no score anywhere,
+  because a number nobody can reproduce by hand is a number nobody can argue
+  with. It shows prompt names and never prompt text: an admin is an operator,
+  not an auditor of what their colleagues wrote. Off unless `TRAZUM_ADMINS` is
+  set, and off means the page does not exist rather than refuses.
+
 - **Share links: send a colleague what the edit cost.** A comparison published
   at an unguessable URL that anyone can open without an account, which is what
   "share" has to mean and is also the only thing in Trazum that serves one

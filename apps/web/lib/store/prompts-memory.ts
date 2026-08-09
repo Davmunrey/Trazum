@@ -4,6 +4,7 @@ import {
   MAX_PROMPTS_PER_OWNER,
   MAX_VERSIONS_PER_PROMPT,
 } from './prompts';
+import type { AdminStore, PromptCensus } from './prompts';
 import type {
   AddVersionResult,
   PromptRecord,
@@ -22,13 +23,30 @@ import type {
  * because a memory deployment that silently allowed two prompts called "triage"
  * would be a different product from the Postgres one.
  */
-export function promptsInMemory(): PromptStore {
-  const prompts = new Map<string, PromptRecord>();
+/**
+ * The prompt tables, and the two capabilities that read them.
+ *
+ * One factory rather than two, because the deployment overview and the prompt
+ * library share the same maps and there is no honest way for the overview to
+ * reach them from outside. They stay two *interfaces* — `PromptStore` binds an
+ * owner in every lookup, `AdminStore` does not — which is the distinction worth
+ * keeping. Sharing the storage is not the same as sharing the rule.
+ */
+export function promptTablesInMemory(): {
+  prompts: PromptStore;
+  /**
+   * @param loginOf how to name an owner. Injected because the accounts live in
+   * a different map owned by a different module, and this one has no business
+   * reading the user table. Falls back to the id so an overview is never blank.
+   */
+  adminFor(loginOf: (ownerId: string) => string): AdminStore;
+} {
+  const promptRows = new Map<string, PromptRecord>();
   const versions = new Map<string, PromptVersionRecord[]>();
 
   /** The rows this owner may see. The only way rows are ever selected. */
   const ownedBy = (ownerId: string) =>
-    [...prompts.values()].filter((prompt) => prompt.ownerId === ownerId);
+    [...promptRows.values()].filter((prompt) => prompt.ownerId === ownerId);
 
   /**
    * A prompt, but only if it is theirs.
@@ -39,14 +57,14 @@ export function promptsInMemory(): PromptStore {
    * cannot forget is the one that never holds the row in the first place.
    */
   const owned = (id: string, ownerId: string): PromptRecord | null => {
-    const prompt = prompts.get(id);
+    const prompt = promptRows.get(id);
     return prompt && prompt.ownerId === ownerId ? prompt : null;
   };
 
   const newestFirst = (promptId: string) =>
     [...(versions.get(promptId) ?? [])].sort((a, b) => b.version - a.version);
 
-  return {
+  const prompts: PromptStore = {
     async listPrompts(ownerId: string): Promise<PromptSummary[]> {
       return ownedBy(ownerId)
         .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
@@ -71,7 +89,7 @@ export function promptsInMemory(): PromptStore {
         createdAt: now,
         updatedAt: now,
       };
-      prompts.set(prompt.id, prompt);
+      promptRows.set(prompt.id, prompt);
 
       // Created with version 1 rather than empty. A prompt with no versions has
       // no text, and every reader of this store would need a branch for it.
@@ -120,7 +138,7 @@ export function promptsInMemory(): PromptStore {
       };
 
       versions.set(promptId, [...(versions.get(promptId) ?? []), version]);
-      prompts.set(promptId, { ...prompt, updatedAt: now });
+      promptRows.set(promptId, { ...prompt, updatedAt: now });
       return { status: 'saved', version };
     },
 
@@ -130,13 +148,13 @@ export function promptsInMemory(): PromptStore {
       // Their own other prompts, not everyone's: the constraint is per owner.
       if (ownedBy(ownerId).some((other) => other.id !== id && other.name === name)) return false;
 
-      prompts.set(id, { ...prompt, name, updatedAt: now });
+      promptRows.set(id, { ...prompt, name, updatedAt: now });
       return true;
     },
 
     async deletePrompt(id: string, ownerId: string): Promise<boolean> {
       if (!owned(id, ownerId)) return false;
-      prompts.delete(id);
+      promptRows.delete(id);
       /**
        * The cascade the schema declares, done by hand.
        *
@@ -150,6 +168,57 @@ export function promptsInMemory(): PromptStore {
        */
       versions.delete(id);
       return true;
+    },
+  };
+
+  return {
+    prompts,
+    adminFor: (loginOf) => adminInMemory(() => promptRows.values(), newestFirst, loginOf),
+  };
+}
+
+/** The library alone, for callers that have no business with the overview. */
+export function promptsInMemory(): PromptStore {
+  return promptTablesInMemory().prompts;
+}
+
+/**
+ * The deployment-wide read, in memory.
+ *
+ * Takes the same maps the prompt store holds, handed in rather than reached for:
+ * this is a different capability with a different guard, and giving it its own
+ * factory keeps that visible at the call site in `memory.ts`.
+ */
+export function adminInMemory(
+  prompts: () => Iterable<{ id: string; ownerId: string; name: string; updatedAt: Date }>,
+  versionsOf: (promptId: string) => { text: string }[],
+  loginOf: (ownerId: string) => string,
+): AdminStore {
+  return {
+    async census(limit: number): Promise<PromptCensus> {
+      const all = [...prompts()].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+
+      return {
+        // Sliced after sorting, so a truncated census is the most recently
+        // touched prompts rather than an arbitrary subset.
+        entries: all.slice(0, limit).map((prompt) => {
+          const history = versionsOf(prompt.id);
+          return {
+            id: prompt.id,
+            name: prompt.name,
+            ownerId: prompt.ownerId,
+            ownerLogin: loginOf(prompt.ownerId),
+            latestText: history[0]?.text ?? '',
+            versionCount: history.length,
+            updatedAt: prompt.updatedAt,
+          };
+        }),
+        // Counted over everything, not over the slice: a total that silently
+        // described only the first five hundred would be the exact mistake the
+        // cap exists to make visible.
+        totalPrompts: all.length,
+        totalAccounts: new Set(all.map((prompt) => prompt.ownerId)).size,
+      };
     },
   };
 }
