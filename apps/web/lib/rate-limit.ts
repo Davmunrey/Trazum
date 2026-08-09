@@ -18,6 +18,15 @@
 export interface RateLimiter {
   /** True when this request is over the limit and should be refused. */
   (request: Request, now: number): boolean;
+  /**
+   * How many times the expired-entry sweep has run.
+   *
+   * Exposed so a test can assert the sweep's *frequency* rather than trust a
+   * comment about it. The bug this counter exists to pin was invisible from
+   * the outside — every answer the limiter gave was correct, it just gave them
+   * quadratically.
+   */
+  readonly sweeps: number;
 }
 
 export interface RateLimitOptions {
@@ -32,6 +41,39 @@ export interface RateLimitOptions {
    */
   sweepAbove?: number;
 }
+
+/**
+ * How the sweep used to work, and why that was a way to take the app down.
+ *
+ * It ran on **every** miss once the map passed `sweepAbove`. A miss is any key
+ * not seen before — and `clientKey` reads `x-forwarded-for`, which this module
+ * already documents as freely spoofable. So an attacker rotating that header
+ * makes every request a miss, and every request an O(n) walk of a map their
+ * previous requests grew. N requests inside one window cost O(N²), and almost
+ * nothing is reclaimed while they are doing it, because entries in the current
+ * window have not expired yet.
+ *
+ * Measured rather than reasoned about, on this container:
+ *
+ * ```
+ * N= 20000    1560ms   scans=9,999   compares=  149,985,000
+ * N= 40000    6895ms   scans=29,999  compares=  749,975,000
+ * N= 80000   52752ms   scans=69,999  compares=3,149,955,000
+ * ```
+ *
+ * Doubling the requests multiplied the work by 4.4, then 7.6. Eighty thousand
+ * requests — which is not an interesting number of requests — is 52 seconds of
+ * a single-threaded event loop, during which the deployment serves nobody. The
+ * limiter answered every one of them correctly. It just answered quadratically.
+ *
+ * Sweeping at most once per window makes the total linear: each arrival is one
+ * insert, and the walk happens once per `windowMs` however hard it is pushed.
+ *
+ * Memory is unchanged and worth stating: a window's worth of distinct keys is
+ * held until the next sweep, which is inherent to counting per key rather than
+ * a consequence of this fix. It does not accumulate across windows — a rotation
+ * attack's old keys are all expired by the time the next sweep sees them.
+ */
 
 /**
  * The caller's address, as well as it can be known behind a proxy.
@@ -51,13 +93,19 @@ export function clientKey(request: Request): string {
 
 export function createRateLimiter({ windowMs, max, sweepAbove = 10_000 }: RateLimitOptions): RateLimiter {
   const buckets = new Map<string, { count: number; resetAt: number }>();
+  let sweeps = 0;
+  // Zero rather than "one window from now": the first sweep should happen as
+  // soon as there is anything to sweep, not a minute after the map filled up.
+  let nextSweepAt = 0;
 
-  return function rateLimited(request: Request, now: number): boolean {
+  const rateLimited = function rateLimited(request: Request, now: number): boolean {
     const key = clientKey(request);
     const bucket = buckets.get(key);
 
     if (!bucket || now >= bucket.resetAt) {
-      if (buckets.size > sweepAbove) {
+      if (buckets.size > sweepAbove && now >= nextSweepAt) {
+        nextSweepAt = now + windowMs;
+        sweeps++;
         for (const [other, value] of buckets) {
           if (now >= value.resetAt) buckets.delete(other);
         }
@@ -69,4 +117,7 @@ export function createRateLimiter({ windowMs, max, sweepAbove = 10_000 }: RateLi
     bucket.count++;
     return bucket.count > max;
   };
+
+  Object.defineProperty(rateLimited, 'sweeps', { get: () => sweeps });
+  return rateLimited as RateLimiter;
 }
