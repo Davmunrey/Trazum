@@ -12,6 +12,39 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`--cache-suggestions`: `--suggest` answers from disk when the question has not
+changed.** A content-addressed cache under `$XDG_CACHE_HOME/trazum/suggestions`,
+keyed on provider, model, system prompt and the author's prompt, kept for seven
+days. Re-running `--suggest` over a directory after editing two files out of
+forty makes thirty-eight fewer requests. `trazum --clear-suggestion-cache`
+empties it, with no command and no config read.
+
+Opt-in, and printed on stderr every time it answers: a hit is a week-old
+response from something that is not a pure function, and the other three
+model-touching flags all make you ask twice.
+
+The **raw response** is stored, not the checked suggestions. All five checks in
+`suggestRewrites` — `before` appears byte for byte, nothing touches protected
+content, `after` introduces none, it actually saves tokens, overlaps are dropped
+— re-run on a hit, so an answer from last week is judged by this week's rules
+instead of replaying an older version's verdict. Same reasoning as recomputing
+token counts on read rather than storing them.
+
+Files are 0600 in a 0700 directory that this code creates. The cache holds
+prompt text, which is the most sensitive thing the tool touches.
+
+**This is not the API's prompt caching, and the reason is a number.** The
+roadmap item asked for `cache_control` on the stable prefix. The minimum
+cacheable prefix is 512 tokens on the most generous model and 4,096 on others;
+Trazum's suggest system prompt is 291 tokens; and a prefix below the minimum is
+*silently* not cached — no error, `cache_creation_input_tokens: 0`. Everything
+after the system prompt is the author's text, which differs on every call, so no
+placement of `cache_control` helps. Marking it would have looked like an
+optimisation, cost one line, changed nothing, and been undetectable.
+`suggest-cache.test.js` measures the prompt against the published minima per
+model, so if a model ever lowers its floor below 291 the claim fails loudly
+rather than staying in a comment that has quietly stopped being true.
+
 **A README badge at `/badge/<token>.svg`.** The share link, as a picture.
 
 It rides on the share token rather than inventing one. A badge is strictly less
@@ -321,6 +354,21 @@ cannot catch SQL that Postgres would reject. `docs/accounts.md` says so, and lis
 the rest of what is not covered.
 
 ### Fixed
+
+**The help-text guard could not see a flag that belongs to no command.** It
+derives its list from the unknown-flag rejection message, which is printed
+per-command — so `--clear-suggestion-cache`, an errand that runs with no command
+named, was documented nowhere in either locale and the suite stayed green. A
+second guard now reads `main()` for flags handled before dispatch and requires
+each in the help. Both are derived rather than listed, which is the reason the
+first one exists: a hardcoded list is how `--reorder` shipped fully implemented
+and absent from `--help`.
+
+That flag also did not work. It was handled below the branch that prints usage
+when no command is given, so `trazum --clear-suggestion-cache` printed the help
+and cleared nothing — silently, which is the failure mode the flag list is there
+to prevent. Found by an end-to-end test counting requests at a socket rather
+than by reading the code.
 
 **A control-character filter written with control characters.** The first draft of
 the `?next=` guard spelled its character class literally, which put a NUL and a

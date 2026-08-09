@@ -96,6 +96,11 @@ ${bold('OPTIONS FOR optimize')}
                               and dropped if it does not survive.
   --apply-suggestions         Take them. Only with --suggest; alone it is an error
                               rather than a flag that runs and does nothing.
+  --cache-suggestions         Answer --suggest from a local cache when the same
+                              prompt was asked about before, instead of paying for
+                              the call again. Off by default: a hit is what the
+                              model said last time, and that should be a choice.
+                              Kept in $XDG_CACHE_HOME/trazum, 0600, for 7 days.
   --reorder                   Move stable instructions ahead of the first placeholder,
                               so prompt caching can reach them. This MOVES text rather
                               than deleting it: read the diff and decide whether the
@@ -115,6 +120,9 @@ ${bold('OPTIONS FOR optimize')}
   --locale <${d.locales.join('|')}>            Language of the report. Default: the system language.
   -o, --out <file>            Write the optimised prompt to a file.
   -h, --help                  This help.
+  --clear-suggestion-cache    Empty the --cache-suggestions cache and say how much
+                              went. An errand rather than a mode: it needs no
+                              command and reads no config.
 
 ${bold('OPTIONS FOR check')}
   --max-tokens <n>            Input token budget. Required unless a config budget covers the file.
@@ -248,6 +256,15 @@ ${bold('EXAMPLES')}
   trazum diff prompts/system.txt prompts/system.new.txt --max-growth 10
   trazum check prompts/
 `,
+
+  cache: {
+    cleared: (entries: number, bytes: number, dir: string) =>
+      entries === 0
+        ? `No cached suggestions to remove (${dir}).`
+        : `Removed ${entries} cached ${entries === 1 ? 'answer' : 'answers'} (${(bytes / 1024).toFixed(1)} KB) from ${dir}.`,
+    used: (hits: number, misses: number) =>
+      `Suggestions: ${hits} from cache, ${misses} asked. Cached answers are what the model said last time; --clear-suggestion-cache to start over.`,
+  },
 
   errors: {
     optionNeedsValue: (name) => `Option --${name} needs a value.`,

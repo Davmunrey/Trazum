@@ -26,9 +26,11 @@ let server;
 let port;
 let reply = [];
 let lastPrompt = null;
+let requests = 0;
 
 before(async () => {
   server = createServer((req, res) => {
+    requests += 1;
     let body = '';
     req.on('data', (chunk) => (body += chunk));
     req.on('end', () => {
@@ -79,8 +81,13 @@ async function project() {
  * process only works if the test process is free to run.
  */
 function run(args, cwd, env = {}) {
+  return runRaw(['optimize', 'p.txt', ...args], cwd, env);
+}
+
+/** The same, without a command chosen for you. */
+function runRaw(args, cwd, env = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [CLI, 'optimize', 'p.txt', ...args], {
+    const child = spawn(process.execPath, [CLI, ...args], {
       cwd,
       env: {
         ...process.env,
@@ -234,5 +241,77 @@ describe('--json', () => {
     const root = await project();
     const report = JSON.parse((await run(['--json'], root)).stdout);
     assert.equal('suggestions' in report, false);
+  });
+});
+
+describe('--cache-suggestions', () => {
+  /**
+   * The seam, counted at the socket.
+   *
+   * `suggest-cache.test.js` covers the cache itself. What it cannot show is
+   * whether the flag reaches it — a wrapper that is built and then dropped on
+   * the floor passes every unit test the wrapper has. So these count HTTP
+   * requests the fake server actually received, with `XDG_CACHE_HOME` pointed
+   * at a directory this test owns.
+   */
+  const cacheEnv = async () => ({
+    XDG_CACHE_HOME: await mkdtemp(join(tmpdir(), 'trazum-xdg-')),
+  });
+
+  it('does not ask twice about a prompt that has not changed', async () => {
+    reply = [{ before: 'You should always make sure to', after: 'Always' }];
+    const root = await project();
+    const env = await cacheEnv();
+
+    requests = 0;
+    const first = await run(['--suggest', '--cache-suggestions', '-o', 'a.txt'], root, env);
+    const second = await run(['--suggest', '--cache-suggestions', '-o', 'b.txt'], root, env);
+
+    assert.equal(first.code, 0, first.out);
+    assert.equal(second.code, 0, second.out);
+    assert.equal(requests, 1, 'the second run reached the network');
+    // And the answer survived the trip through disk unchanged.
+    assert.match(second.out, /You should always make sure to → Always/);
+  });
+
+  it('says when an answer came from disk, on stderr', async () => {
+    // Never silent: a hit is a week-old answer, and stdout belongs to --json.
+    reply = [{ before: 'You should always make sure to', after: 'Always' }];
+    const root = await project();
+    const env = await cacheEnv();
+
+    await run(['--suggest', '--cache-suggestions', '-o', 'a.txt'], root, env);
+    const { stdout, out } = await run(['--suggest', '--cache-suggestions', '--json'], root, env);
+
+    assert.match(out, /cache/i);
+    JSON.parse(stdout); // the notice did not land in the machine-readable output
+  });
+
+  it('asks again without the flag, so a cache hit is never the default', async () => {
+    reply = [{ before: 'You should always make sure to', after: 'Always' }];
+    const root = await project();
+    const env = await cacheEnv();
+
+    await run(['--suggest', '--cache-suggestions', '-o', 'a.txt'], root, env);
+    requests = 0;
+    await run(['--suggest', '-o', 'b.txt'], root, env);
+
+    assert.equal(requests, 1, 'a cached answer was used without being asked for');
+  });
+
+  it('empties the cache on request, and reports where it was', async () => {
+    reply = [{ before: 'You should always make sure to', after: 'Always' }];
+    const root = await project();
+    const env = await cacheEnv();
+    await run(['--suggest', '--cache-suggestions', '-o', 'a.txt'], root, env);
+
+    const cleared = await runRaw(['--clear-suggestion-cache'], root, env);
+    assert.equal(cleared.code, 0, cleared.out);
+    assert.match(cleared.out, /1/);
+    assert.match(cleared.out, /trazum[/\\]suggestions/);
+
+    requests = 0;
+    await run(['--suggest', '--cache-suggestions', '-o', 'b.txt'], root, env);
+    assert.equal(requests, 1, 'the cleared entry answered anyway');
   });
 });

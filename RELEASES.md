@@ -26,6 +26,26 @@ Ten commands now, up from four.
 
 ### What's new
 
+- **`--suggest` stops paying for answers it already has.** Add
+  `--cache-suggestions` and a prompt that has not changed since the last run is
+  answered from disk instead of from the model — re-run over forty prompts after
+  editing two, and thirty-eight requests do not happen. It is off unless you ask,
+  and it says out loud every time it uses a cached answer, because a cached
+  answer is what the model said last week and a model is not a calculator. What
+  gets stored is the model's raw reply, so every safety check runs again on the
+  way out: a suggestion cached in March is still checked against your prompt in
+  April by April's rules. Seven days, files nobody else on the machine can read,
+  and `trazum --clear-suggestion-cache` when you want it gone.
+
+  The honest footnote: this was meant to be the API's own prompt caching, and
+  that turned out to be impossible rather than difficult. The API will not cache
+  a prefix shorter than 512 tokens, our suggest instructions are 291, and a
+  prefix that is too short is not cached *and does not tell you* — it just
+  quietly costs full price. One line of code, zero saving, no way to notice.
+  There is now a test that measures the prompt against every model's published
+  floor, so if that ever changes we find out from a red build rather than from a
+  comment nobody re-checked.
+
 - **A badge for your README.** Every share link is also `/badge/<token>.svg`:
   the token change, in an image you can paste into a repository's front page. It
   is **recomputed every time it loads**, so it follows the prompts instead of
