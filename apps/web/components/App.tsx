@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 
 import type { Locale } from '@trazum/core';
 
+import { Account } from './Account';
 import { Comparer } from './Comparer';
 import { Optimizer } from './Optimizer';
 import { Button } from '@/components/ui/button';
@@ -76,29 +77,33 @@ export function App({
         <h1 className="text-2xl font-semibold tracking-tight">Trazum</h1>
         <span className="text-sm text-muted-foreground">{t.meta.tagline}</span>
 
-        {/* Pushed to the far end so it reads as a page-level control rather
-            than part of the title. */}
-        <div
-          className="ml-auto flex gap-0.5 rounded-lg border p-0.5"
-          role="group"
-          aria-label={t.page.localeSwitchLabel}
-        >
-          {LOCALES.map((option) => (
-            <Button
-              key={option}
-              type="button"
-              variant="ghost"
-              size="sm"
-              aria-pressed={option === locale}
-              onClick={() => chooseLocale(option)}
-              className={cn(
-                'h-7 px-2.5 text-[13px] font-normal text-muted-foreground',
-                option === locale && 'bg-muted text-foreground',
-              )}
-            >
-              {getWebMessages(option).endonym}
-            </Button>
-          ))}
+        {/* Pushed to the far end so they read as page-level controls rather
+            than as part of the title. */}
+        <div className="ml-auto flex items-center gap-3">
+          <Account t={t} />
+
+          <div
+            className="flex gap-0.5 rounded-lg border p-0.5"
+            role="group"
+            aria-label={t.page.localeSwitchLabel}
+          >
+            {LOCALES.map((option) => (
+              <Button
+                key={option}
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-pressed={option === locale}
+                onClick={() => chooseLocale(option)}
+                className={cn(
+                  'h-7 px-2.5 text-[13px] font-normal text-muted-foreground',
+                  option === locale && 'bg-muted text-foreground',
+                )}
+              >
+                {getWebMessages(option).endonym}
+              </Button>
+            ))}
+          </div>
         </div>
       </header>
 

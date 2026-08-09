@@ -82,6 +82,16 @@ export interface WebMessages {
     privacyNote: string;
   };
 
+  /** The sign-in control in the header. Absent entirely when auth is off. */
+  account: {
+    signIn: string;
+    signOut: string;
+    signingOut: string;
+    /** Shown beside the name when the store forgets on restart. */
+    ephemeral: string;
+    ephemeralHint: string;
+  };
+
   /** The Compare tab: what an edit did to a prompt. */
   compare: {
     tab: string;

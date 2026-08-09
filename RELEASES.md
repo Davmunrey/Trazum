@@ -22,9 +22,21 @@ Trazum 1.0.0 could tell you what a prompt cost. It could not tell you **which**
 prompt, **who** made it expensive, whether the shorter version still worked, or
 what to do about any of it. That is what everything since has been about.
 
-Nine commands now, up from four.
+Ten commands now, up from four.
 
 ### What's new
+
+- **Sign in with GitHub — and the app is unchanged if you don't.** Accounts are
+  off by default; a deployment with no GitHub app configured is the anonymous
+  tool it always was, with no button and no database. Turn it on and Trazum
+  remembers who you are, which is what a saved prompt library and a shared
+  budget need to exist at all. It asks GitHub for `read:user` and nothing else
+  — no repositories, no email, no write anywhere — and **never stores the
+  access token**: it is exchanged, used once to read your login, and dropped.
+  Session cookies are 256 random bits stored only as their SHA-256, so a
+  database dump is a list of hashes rather than a list of live logins. Any
+  Postgres will do; without one, sessions live in memory and the header says
+  "temporary session" instead of letting you discover it.
 
 - **`--reorder` — the saving Trazum had been pointing at for months.** Prompt
   caching is a byte-for-byte prefix match, so a stable instruction sitting

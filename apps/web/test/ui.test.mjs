@@ -315,3 +315,51 @@ describe('the Compare tab inverts the sign convention, and says so first', () =>
     assert.match(optimizer, /import \{ formatUsd \} from '@trazum\/core'/);
   });
 });
+
+describe('the account control does not advertise what the deployment lacks', () => {
+  const account = codeOf('components/Account.tsx');
+
+  it('renders nothing at all when sign-in is not configured', () => {
+    // Not a disabled button: a disabled button is a promise, and the endpoint
+    // behind it answers 503. Most self-hosted deployments are in this case.
+    assert.match(account, /if \(!state\?\.enabled\) return null;/);
+  });
+
+  it('waits for the answer instead of guessing signed-out', () => {
+    // `state` starts null and the same guard covers it, so the first paint
+    // shows nothing rather than flashing "Sign in" at somebody who is not.
+    assert.match(account, /useState<SessionResponse \| null>\(null\)/);
+  });
+
+  it('sends cookies deliberately on every call it makes', () => {
+    const fetches = account.match(/fetch\(/g) ?? [];
+    const credentialled = account.match(/credentials: 'same-origin'/g) ?? [];
+    assert.equal(
+      fetches.length,
+      credentialled.length,
+      'every fetch states its credentials mode',
+    );
+  });
+
+  it('signs out with POST, which an image tag cannot forge', () => {
+    assert.match(account, /'\/api\/auth\/signout', \{ method: 'POST'/);
+  });
+
+  it('proposes a destination that is a path, never a whole URL', () => {
+    // `window.location.href` here would hand the server an absolute URL and
+    // lean on the filter to notice. A path cannot name another origin at all.
+    assert.match(account, /window\.location\.pathname \+ window\.location\.search/);
+    assert.match(account, /encodeURIComponent/);
+    assert.ok(!/next=\$\{window\.location\.href\}/.test(account));
+  });
+
+  it('does not leak the current page to whoever serves the avatar', () => {
+    assert.match(account, /referrerPolicy="no-referrer"/);
+  });
+
+  it('reloads on sign-out rather than clearing state in place', () => {
+    // The page holds prompts and results. Dropping the account without
+    // dropping those leaves somebody else's work on a signed-out screen.
+    assert.match(account, /window\.location\.assign\('\/'\)/);
+  });
+});

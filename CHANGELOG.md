@@ -12,6 +12,108 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**Sign in with GitHub.** Optional, off by default, and the first thing in this
+repository that stores anything about a person.
+
+The reason it exists is that everything a team wants — a prompt library with
+history, a budget somebody else set, an organisation's spend in one place —
+needs an answer to "who is asking", and there wasn't one. So this change is the
+foundation and deliberately not the features: identity, a session, and a store
+those can be built on.
+
+Off by default is load-bearing rather than polite. Most people running Trazum
+run it for themselves, and a tool that suddenly requires a database to start is a
+tool they stop running. With no `TRAZUM_GITHUB_CLIENT_ID`, `authConfig` reports
+disabled with a reason, `/api/auth/*` answers 503 naming the variable to set, and
+the header renders nothing at all. Not a disabled button: a disabled button is a
+promise, and the endpoint behind it is a 503.
+
+**No framework.** The OAuth flow is about two hundred lines — authorize,
+exchange, read the profile — and hand-writing it keeps `apps/web` at one new
+dependency (`postgres`, which has none of its own) instead of a tree. The three
+things a framework would have gotten right are gotten right here, and each is
+worth naming because each looks like a detail:
+
+- The redirect URI is built from `TRAZUM_PUBLIC_URL` and never from a request
+  header. `Host` is client-supplied; a callback built from it lets an attacker
+  send a victim to `/api/auth/github` with `Host: evil.example` and collect the
+  authorisation code. GitHub's own callback allowlist would catch that one case,
+  which is not a reason to depend on one checkbox in someone else's console.
+- `state` is verified **before** the code is exchanged. Verifying it afterwards
+  passes every functional test and defends against nothing, so the order is
+  asserted directly: the test counts calls to a recording `fetch` and requires
+  zero.
+- The `__Host-` cookie is cleared as `Secure` even when the deployment is not.
+  A `__Host-` cookie without `Secure` is rejected outright — including the one
+  meant to delete it — so getting this wrong makes sign-out appear to work and
+  do nothing.
+
+Sessions are opaque 256-bit tokens rather than signed claims, stored as SHA-256.
+Revoking one is a `DELETE`, which is the property a JWT does not have, and a
+leaked table is hashes rather than cookies. Sign-out deletes the row before
+clearing the cookie; the other order leaves a live session the browser has
+forgotten — invisible, unrevokable, valid for a month.
+
+Two store drivers behind one interface. Memory is the default and reports
+`ephemeral: true`, which `/api/auth/session` passes to the browser and the header
+draws as "temporary session" — because on a platform that runs several instances
+the alternative is being signed out at random with no explanation. Postgres is
+the other, and its schema enables row level security with no policies: that
+blocks the REST layer platforms like Supabase put in front of `public`, while
+Trazum, connecting as the table owner, is exempt. `ENABLE` and not `FORCE` —
+`FORCE` applies the policies to the owner too and locks the app out of its own
+tables, which is the stricter-looking word and the one that takes the site down.
+
+Twelve mutants, twelve killed: state checked after the exchange, the `__Host-`
+delete without `Secure`, the redirect filter without `//`, the expiry boundary at
+`<` instead of `<=`, the sweep that could delete a live session, an upsert that
+resets `created_at`, a token exchange that trusts the HTTP status (GitHub answers
+a bad code with 200 and an `error` field), storing the raw token, accepting HTTP
+off localhost, a cacheable session response, and a cross-origin sign-out.
+
+Honest about the gap: the Postgres driver has never run against Postgres. Its SQL
+is checked against a recording tagged template, which catches a mistyped column, a
+value bound in the wrong position and a `DELETE` whose predicate is too wide, and
+cannot catch SQL that Postgres would reject. `docs/accounts.md` says so, and lists
+the rest of what is not covered.
+
+### Fixed
+
+**A control-character filter written with control characters.** The first draft of
+the `?next=` guard spelled its character class literally, which put a NUL and a
+run of C0 bytes into `github.ts` and made the source file binary — the same defect
+this repository shipped once before in `reorder-properties.test.js` and had to be
+told about by a guard. Replaced with a code-point comparison, which cannot carry
+the bytes it is checking for. An intermediate repair was worse: a class written as
+`[ -]` matched space through hyphen, so every path with a hyphen in it — which is
+most of them — was silently redirected to `/`. Both are pinned by tests.
+
+**`RELEASES.md` said "Nine commands" for two merges after there were ten.** The
+guard written to catch exactly this drift read `README.md` only, so correcting the
+README was mistaken for correcting the count. Widened to both files — and then
+found to be blind anyway: the pattern was lowercase-only and the sentence starts
+with a capital, so `Nine commands` had never been visible to it. Both fixed, and
+the guard mutation-tested in both files and both cases rather than trusted.
+
+Widening it also made it cry wolf on "the two commands that answer *which prompt
+is worth an afternoon* and *who made this one expensive*", which is correct prose
+counting a subset. A restrictive `that` or `which` now marks a subset the way
+`other` already did — a guard that fails on true sentences gets deleted.
+
+### Changed
+
+**Rate limiting is one function with private buckets.** Both API routes carried a
+copy of the same sliding window, with a comment on one saying the duplication was
+deliberate because a shared `Map` would let comparisons spend the optimise budget.
+That is right about the state and wrong about the code: `createRateLimiter` hands
+each caller its own `Map`. The sign-in routes were going to be the third and
+fourth copy.
+
+Its limit is thirty a minute per address rather than the ten a sign-in route
+appears to need, because the limiter keys on an address and not on a person: ten
+is generous for an individual and refuses the eleventh person behind a corporate
+NAT.
+
 **The price list says how old it is, not just when it was checked.** `doctor` and
 `models` print `Prices reviewed 2026-06-24 (46 days ago)`.
 
