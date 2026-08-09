@@ -179,6 +179,36 @@ The settings are canonicalised on write from a whitelist of known keys — they
 are replayed into the core on every future view, by a reader who did not choose
 them and cannot see them.
 
+### The README badge
+
+Every share link doubles as a badge at `/badge/<token>.svg`:
+
+```markdown
+[![Trazum](https://trazum.example/badge/<token>.svg)](https://trazum.example/c/<token>)
+```
+
+It shows the token change and is **recomputed on every load**, so it follows the
+prompts rather than freezing a number from the day it was made. Same capability
+as the link — revoking the link revokes the badge, because there is only one
+thing to revoke.
+
+Four properties worth knowing:
+
+- **It always answers 200.** An unknown, expired or malformed token renders the
+  same neutral "unavailable" badge. A non-2xx makes GitHub's image proxy show a
+  broken image, which tells every reader of the README something is wrong without
+  saying what — and the three cases must be indistinguishable anyway.
+- **The document is inert.** No script, no `foreignObject`, no external font,
+  image or stylesheet. It is served with `nosniff` and
+  `default-src 'none'; sandbox`, because an SVG from your own origin is a page
+  when navigated to rather than embedded.
+- **No prompt text ever reaches it.** The message is assembled from numbers. It
+  is XML-escaped regardless, because "no untrusted text gets here" is a property
+  one commit can break.
+- **It is cached** (five minutes, public), unlike the page behind the same token.
+  Safe because the token is in the URL, and necessary because a README badge is
+  fetched by every reader of the page.
+
 Limits: 100 links per account, refused rather than evicted.
 
 ---

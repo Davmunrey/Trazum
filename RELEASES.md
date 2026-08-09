@@ -26,6 +26,15 @@ Ten commands now, up from four.
 
 ### What's new
 
+- **A badge for your README.** Every share link is also `/badge/<token>.svg`:
+  the token change, in an image you can paste into a repository's front page. It
+  is **recomputed every time it loads**, so it follows the prompts instead of
+  freezing a number from the day somebody made it — which is the failure mode of
+  every hand-written "saves 30%" line in every README. Revoking the link revokes
+  the badge, because there is only one thing to revoke. An unknown, expired or
+  revoked token renders the same neutral badge rather than a broken image, and
+  no character of anybody's prompt ever reaches the picture.
+
 - **A deployment overview for whoever runs it.** `/admin` adds up every prompt
   saved on the instance and says which ones are worth an afternoon — and it is
   careful about what it claims. It is **not** a spend report: Trazum has never

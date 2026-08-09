@@ -438,3 +438,18 @@ describe('the library tab does not tell the reader something untrue', () => {
     assert.match(app, /promptText=\{promptText\}/);
   });
 });
+
+describe('the badge markdown is derived, not assembled twice', () => {
+  const control = codeOf('components/ShareControl.tsx');
+
+  it('builds the badge URL from the share URL', () => {
+    // Two fields that must agree are two fields that can disagree. The badge
+    // and the page are the same capability, so the markdown derives one from
+    // the other rather than the API sending both.
+    assert.match(control, /share\.url\.replace\('\/c\/', '\/badge\/'\)/);
+  });
+
+  it('links the image at the page, so a reader can click through', () => {
+    assert.match(control, /\[!\[Trazum\]\(\$\{[^}]+\}\.svg\)\]\(\$\{share\.url\}\)/);
+  });
+});

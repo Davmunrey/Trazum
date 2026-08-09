@@ -135,6 +135,10 @@ export const es: WebMessages = {
     existing: 'Enlaces que has creado',
     expiresOn: (when: string) => `caduca ${when}`,
     neverExpires: 'no caduca',
+    badge: 'Insignia',
+    badgeHint:
+      'Markdown para un README. La insignia muestra el cambio de tokens y se recalcula cada vez que se carga, así que sigue a los prompts en vez de congelar un número.',
+    copyBadge: 'Copiar markdown de la insignia',
   },
 
   admin: {

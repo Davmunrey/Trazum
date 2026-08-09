@@ -136,6 +136,10 @@ export const en: WebMessages = {
     existing: 'Links you have created',
     expiresOn: (when: string) => `expires ${when}`,
     neverExpires: 'never expires',
+    badge: 'Badge',
+    badgeHint:
+      'Markdown for a README. The badge shows the token change and is recomputed each time it loads, so it follows the prompts rather than freezing a number.',
+    copyBadge: 'Copy badge markdown',
   },
 
   admin: {

@@ -12,6 +12,50 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**A README badge at `/badge/<token>.svg`.** The share link, as a picture.
+
+It rides on the share token rather than inventing one. A badge is strictly less
+information than the page at `/c/<token>`, and a second capability for a smaller
+disclosure would have been two things to revoke instead of one.
+
+**It is recomputed on every load**, like the page. A badge is the single most
+likely artefact to be looked at a year from now, and a stored number is the most
+likely thing to have quietly stopped being true — which is the failure mode of
+every hand-written "saves 30%" line in every README.
+
+**It always answers 200.** Unknown, expired and malformed tokens all render the
+same neutral badge. A non-2xx makes GitHub's image proxy show a broken image,
+telling every reader of the page that something is wrong without saying what; the
+three cases have to be indistinguishable anyway; and a revoked link should stop
+reporting rather than announce that it used to exist.
+
+The document is inert — no script, no `foreignObject`, no external font or
+stylesheet — and served with `nosniff` and `default-src 'none'; sandbox`, because
+an SVG from your own origin is a *page* when navigated to rather than embedded in
+an `<img>`. Everything interpolated is XML-escaped even though the only inputs
+are numbers this route computed: "no untrusted text reaches here" is a property
+one commit can break.
+
+Cached for five minutes, unlike everything else behind a share token. Safe
+because the token is in the URL, and necessary because a README badge is fetched
+by every reader of the page through an image proxy.
+
+Nineteen mutants, nineteen killed, after three survived a first pass and each
+was a test that had only asked the easy half:
+
+- **Only the label was tested for escaping**, never the message — so deleting
+  the message's escape changed nothing any assertion could see. Both are
+  constants or numbers today, which is exactly why one of them went untested.
+- **`textWidth('WWWW') > textWidth('iiii')`** holds whether or not capitals get
+  their own width, because `i` is narrow either way. Compared against `wwww` now.
+- **The UUID-guard problem again**, one route over: a malformed token produces
+  the same neutral badge whether or not it is refused before the lookup, so the
+  test watches whether the store was asked rather than what came back.
+
+Also two assertions that were wrong rather than the code: one required the SVG to
+contain no `http` at all, which its own XML namespace fails, and one required no
+`"/>` anywhere, which every `<rect>` ends with.
+
 **A deployment overview at `/admin`.** The last of the team features, and the one
 whose hardest part was deciding what it is allowed to claim.
 
