@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
@@ -345,6 +345,99 @@ describe('a count written in prose is a claim like any other', () => {
       .filter((id) => !readme.includes(`trazum ${id}`) && !readme.includes(`\`${id}`));
 
     assert.deepEqual(missing, [], `undocumented commands: ${missing.join(', ')}`);
+  });
+
+  it('every route the web app serves is named in the roadmap', () => {
+    /**
+     * The drift this catches actually happened.
+     *
+     * `ROADMAP.md` listed **Prompt library** under "Under consideration" —
+     * *"storing prompts is a different product, and one that would mean sending
+     * them to a server. Trazum's privacy story is that it never does."* By then
+     * the web app had shipped a prompt library with version history, an admin
+     * overview, share links and a badge, and the roadmap said none of it
+     * existed while explaining why one piece deliberately never would.
+     *
+     * A changelog records what happened; a roadmap says what the product is.
+     * The second is the one somebody reads before opening a pull request, and
+     * it is the one nothing was checking.
+     *
+     * Derived from the filesystem rather than a list kept here, for the reason
+     * every other derived guard in this file exists: a hardcoded list stops
+     * covering the thing that was added after it was written.
+     */
+    const roadmap = readFileSync(join(repoRoot, 'ROADMAP.md'), 'utf8');
+    const appDir = join(repoRoot, 'apps/web/app');
+
+    /** Every directory holding a `route.ts` or `page.tsx`, as a URL path. */
+    const routes = [];
+    const walk = (dir, prefix) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        const path = join(dir, entry.name);
+        if (entry.isDirectory()) {
+          walk(path, `${prefix}/${entry.name}`);
+        } else if (entry.name === 'route.ts' || entry.name === 'page.tsx') {
+          routes.push(prefix === '' ? '/' : prefix);
+        }
+      }
+    };
+    walk(appDir, '');
+
+    assert.ok(routes.length > 8, `only ${routes.length} routes found — has the app moved?`);
+
+    // The root page and the two endpoints it calls are the original product and
+    // are described throughout rather than by path. Everything else is a surface
+    // added later, which is exactly what a roadmap goes stale about.
+    const ORIGINAL = ['/', '/api/optimize', '/api/compare'];
+
+    /**
+     * Collapsed to the capability, not the endpoint.
+     *
+     * A dynamic segment is `[token]` on disk and `<token>` in prose, so the
+     * guard asks about the segment before it. API paths collapse to their first
+     * segment, so `/api/auth/github/callback` is asked about as `/api/auth`: a
+     * roadmap that had to name an OAuth callback URL would be a roadmap written
+     * to satisfy a test, and a guard that demands noise is a guard somebody
+     * deletes.
+     *
+     * What this proves is narrow and worth stating: the roadmap *knows the
+     * surface exists*. It cannot check that what the roadmap says about it is
+     * true — nothing mechanical can — but the failure it caught was not a
+     * subtle mischaracterisation, it was a whole subsystem the document denied
+     * having built.
+     */
+    const capability = (route) =>
+      route.startsWith('/api/')
+        ? `/api/${route.split('/')[2]}`
+        : route.replace(/\/\[[^\]]+\].*$/, '');
+
+    /**
+     * A whole path, not a substring — which the first version got wrong twice.
+     *
+     * `roadmap.includes('/admin')` was satisfied by the `/api/admin` written two
+     * paragraphs away, so deleting every mention of the admin *page* left the
+     * guard green. And `/c` — the share page — is two characters that occur
+     * inside almost any path, so that route counted as documented by accident
+     * from the start.
+     *
+     * A capability therefore has to start where a path starts: preceded by
+     * something that is neither a path character nor a word character. What
+     * follows it may be `/`, since `/badge` appears in prose as
+     * `/badge/<token>.svg`.
+     */
+    const mentioned = (route) => {
+      const escaped = route.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return new RegExp(`(^|[^\\w/])${escaped}($|[^\\w-])`).test(roadmap);
+    };
+
+    const missing = routes
+      .filter((route) => !ORIGINAL.includes(route))
+      .map(capability)
+      .filter((route, index, all) => all.indexOf(route) === index)
+      .filter((route) => !mentioned(route))
+      .sort();
+
+    assert.deepEqual(missing, [], `routes the roadmap never mentions: ${missing.join(', ')}`);
   });
 
   it('the README states no test total, because nothing here can check one', () => {

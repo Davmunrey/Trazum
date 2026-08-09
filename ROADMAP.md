@@ -726,11 +726,79 @@ SSRF closed at its real source (the request body now *selects* an endpoint the
 operator listed rather than naming one), and the alert gate fixed after it was
 caught racing the analysis it reads.
 
+### 1.7.0 — An account, and what an account makes possible
+
+Everything before this ran on one machine and remembered nothing. That is the
+right default and it is still the default — but "what did last month's edit do
+to this prompt?" is not a question a stateless tool can answer, and neither is
+"which of our forty prompts is worth an afternoon?" when the forty belong to
+six people.
+
+**Sign-in through GitHub** (`/api/auth`), and nothing else. Sessions are opaque tokens stored
+as a SHA-256 hash, in a `__Host-` prefixed cookie; the server keeps no password
+to leak and no OAuth token beyond the exchange. Signing out deletes the session
+row rather than clearing a cookie and hoping.
+
+**Share links** (`/api/shares`) publish a comparison at `/c/<token>` — an
+unguessable URL anyone can open
+without an account — the only thing in Trazum that serves one person's prompt to
+a stranger, so the interface says exactly that *before* the button rather than
+after. Thirty-day default expiry, revocable, kept out of search engines two
+independent ways. Reading one writes nothing: an unauthenticated request that
+can cause a write is a lever, and a view counter is not worth being one.
+
+**A prompt library with full version history** (`/api/prompts`). Append-only — saving over a
+prompt writes a new version and never rewrites one, and a save that changed
+nothing writes nothing and says so. Token counts are recomputed on read rather
+than stored, so two versions saved a year apart are comparable instead of being
+priced by two different estimators. Somebody else's prompt answers **404, never
+403**, and the store has no lookup that takes an id without an owner, so that
+mistake cannot be written rather than merely not being written.
+
+**A deployment overview at `/admin`** (`/api/admin`) for whoever runs the instance, off unless
+`TRAZUM_ADMINS` is set — and off means the page does not exist rather than
+refuses. It is careful about what it claims: Trazum has never seen a bill or an
+API call, so the headline is input tokens and the second figure is what the
+rules would remove. Prompt names, never prompt text: an admin is an operator,
+not an auditor of what their colleagues wrote.
+
+**A badge at `/badge/<token>.svg`**, riding the share token rather than
+inventing a second capability for a smaller disclosure. Recomputed on every
+load, because a stored number is the most likely thing to have quietly stopped
+being true — which is the failure mode of every hand-written "saves 30%" line
+in every README.
+
+**Rule 1 is intact and is the reason this is a separate application.** The CLI
+still sends nothing anywhere, still needs no account, and still optimises a
+prompt with the network unplugged. The web app is opt-in, self-hosted, and
+holds only what somebody deliberately saved to it.
+
+### 1.8.0 — Not asking the model twice
+
+`optimize --suggest --cache-suggestions` answers from a local cache when the
+same prompt was asked about before. Re-run over forty prompts after editing
+two, and thirty-eight requests do not happen.
+
+**The roadmap item behind it was the API's prompt caching, and that turned out
+to be impossible rather than merely hard.** The minimum cacheable prefix is 512
+tokens on the most generous model and 4,096 on others; the suggest system prompt
+is 291 tokens; and a prefix below the minimum is *silently* not cached — no
+error, `cache_creation_input_tokens: 0`. Everything after it is the author's
+text, which differs every call. Marking it would have cost one line, saved
+nothing, and been undetectable. A test measures the prompt against the published
+per-model minima so the claim fails loudly if a model ever lowers its floor.
+
+Opt-in and never silent, because a hit is a week-old answer from something that
+is not a pure function. The **raw** response is stored rather than the checked
+suggestions, so every safety rule re-runs on a hit and an answer from March is
+judged by April's rules. 0600 files in a 0700 directory: the cache holds prompt
+text, which is the most sensitive thing this tool touches.
+
 ---
 
 ## Next
 
-### 1.7.0 — The error band, measured
+### 1.9.0 — The error band, measured
 
 **Why this entry keeps moving.** The corpus, the harness and the test shipped in
 what was then 1.3.0; the *measurement* cannot happen inside this repository,
@@ -800,6 +868,21 @@ Not scheduled. Listed so the reasoning is on the record.
   now a catalogue plus dictionary entries. Held back on purpose: a language
   needs a maintainer who actually reads it, and a stale translation is worse
   than an honest fallback to English.
+
+  **Japanese is deliberately not on this list, and the split is the point.**
+  There is no Japanese trimming dictionary and one is not planned: deciding that
+  a phrase says something in more words than it needs is a judgement about the
+  language, and nobody here can make it in Japanese. But `--reorder`'s
+  backward-reference list *does* cover Japanese and Chinese, matched without
+  word boundaries because 上記のテキスト has none. Those two are not the same
+  claim. Refusing to rearrange somebody's prompt needs only enough of the
+  language to recognise a phrase pointing backwards; offering to shorten it
+  means asserting the shorter version still asks for the same thing. Trazum will
+  do the first in a language it cannot read and will not do the second.
+
+  So a Japanese prompt gets `--reorder`'s protections in full, no trimming, and
+  a report that names the seven languages the dictionaries cover rather than
+  implying the prompt was already efficient.
 - **Editor extension.** Live token cost while writing a prompt is the right
   place for this to live. Unblocked as of 0.10.0 — it now has a config file and
   a budget per path to read — and still unscheduled, because an extension is a
@@ -820,9 +903,15 @@ Not scheduled. Listed so the reasoning is on the record.
   Measuring the band is what decides whether the dependency is worth taking:
   within 5% across families and it is not; 40% out and it is. Deciding now would
   be deciding without the one number that settles it.
-- **Prompt library.** Storing prompts is a different product, and one that
-  would mean sending them to a server. Trazum's privacy story is that it never
-  does.
+- ~~**Prompt library.**~~ **Shipped in 1.7.0, and the reasoning here was
+  wrong in an instructive way.** This entry said storing prompts "would mean
+  sending them to a server. Trazum's privacy story is that it never does" — and
+  it read as a principle when it was really a conflation of two things. Rule 1
+  binds the *optimiser*: the CLI sends nothing, needs no account, and works with
+  the network unplugged, and none of that changed. It never said nobody may run
+  a service that stores what they chose to save to it. Left visible rather than
+  deleted, because a roadmap that quietly removes the entries it went back on is
+  a roadmap with no record of having gone back on anything.
 - **Cost alerting.** A bot that watches a prompt's monthly estimate and speaks up
   when it crosses a threshold, or when caching effectiveness drops. Attractive,
   and unscheduled for the same reason as the two above: it needs somewhere to run
