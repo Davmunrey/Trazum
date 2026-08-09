@@ -4,6 +4,7 @@ import { RULES, comparePrompts, getMessages, listModels, resolveLocale } from '@
 import type { AdvisoryId, Locale, PromptComparison, RuleId, RuleLevel, UsageProfile } from '@trazum/core';
 
 import { getWebMessages } from '../../../lib/i18n';
+import { createRateLimiter } from '../../../lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -24,38 +25,16 @@ export const runtime = 'nodejs';
 /** Per prompt, so a comparison can carry twice the optimise route's cap. */
 const MAX_PROMPT_CHARS = 400_000;
 
-const RATE_WINDOW_MS = 60_000;
-const RATE_MAX_REQUESTS = 30;
-const rateBuckets = new Map<string, { count: number; resetAt: number }>();
-
 /**
- * In-memory sliding window per IP.
+ * In-memory sliding window per IP, in a bucket of its own.
  *
- * A copy of the optimise route's limiter rather than a shared module, and that is
- * deliberate: sharing the `Map` would let a burst of comparisons spend somebody
- * else's optimise budget. Two endpoints, two buckets, one algorithm.
+ * This used to be a copy of the optimise route's limiter, with a comment saying
+ * the duplication was deliberate because sharing the `Map` would let a burst of
+ * comparisons spend somebody else's optimise budget. The state does have to be
+ * private; the algorithm never did. `createRateLimiter` hands out a fresh `Map`
+ * per call, so both properties hold at once.
  */
-function rateLimited(request: Request): boolean {
-  const ip =
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    request.headers.get('x-real-ip') ??
-    'local';
-  const now = Date.now();
-  const bucket = rateBuckets.get(ip);
-
-  if (!bucket || now >= bucket.resetAt) {
-    if (rateBuckets.size > 10_000) {
-      for (const [key, value] of rateBuckets) {
-        if (now >= value.resetAt) rateBuckets.delete(key);
-      }
-    }
-    rateBuckets.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
-    return false;
-  }
-
-  bucket.count++;
-  return bucket.count > RATE_MAX_REQUESTS;
-}
+const rateLimited = createRateLimiter({ windowMs: 60_000, max: 30 });
 
 interface RequestBody {
   before?: unknown;
@@ -100,7 +79,7 @@ function withTitles(ids: readonly RuleId[], locale: Locale): { id: RuleId; title
 }
 
 export async function POST(request: Request) {
-  if (rateLimited(request)) {
+  if (rateLimited(request, Date.now())) {
     const t = getWebMessages(localeOf(request));
     return NextResponse.json({ error: t.api.rateLimited }, { status: 429 });
   }

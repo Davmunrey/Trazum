@@ -31,6 +31,7 @@ import type {
 
 import { getWebMessages } from '../../../lib/i18n';
 import type { WebMessages } from '../../../lib/i18n';
+import { createRateLimiter } from '../../../lib/rate-limit';
 
 export const runtime = 'nodejs';
 
@@ -45,33 +46,12 @@ const MAX_PROMPT_CHARS = 400_000;
  * In-memory sliding window per IP. On serverless each instance keeps its own
  * counter, so the real limit can be somewhat looser: this is a barrier against
  * accidental abuse, not a billing quota.
+ *
+ * Its own bucket, from a shared factory. The bucket has to be private — a burst
+ * of comparisons must not spend this route's budget — but the algorithm does
+ * not, and by the fourth copy of it that distinction was worth making in code.
  */
-const RATE_WINDOW_MS = 60_000;
-const RATE_MAX_REQUESTS = 30;
-const rateBuckets = new Map<string, { count: number; resetAt: number }>();
-
-function rateLimited(request: Request): boolean {
-  const ip =
-    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-    request.headers.get('x-real-ip') ??
-    'local';
-  const now = Date.now();
-  const bucket = rateBuckets.get(ip);
-
-  if (!bucket || now >= bucket.resetAt) {
-    // Take the chance to purge expired entries so the map cannot grow forever.
-    if (rateBuckets.size > 10_000) {
-      for (const [key, value] of rateBuckets) {
-        if (now >= value.resetAt) rateBuckets.delete(key);
-      }
-    }
-    rateBuckets.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
-    return false;
-  }
-
-  bucket.count++;
-  return bucket.count > RATE_MAX_REQUESTS;
-}
+const rateLimited = createRateLimiter({ windowMs: 60_000, max: 30 });
 
 // --------------------------------------------------------------------------
 // SSRF protection
@@ -223,7 +203,7 @@ function buildProvider(
 }
 
 export async function POST(request: Request) {
-  if (rateLimited(request)) {
+  if (rateLimited(request, Date.now())) {
     // No body has been read yet, so the header is all we have to go on.
     const t = getWebMessages(localeOf(request));
     return NextResponse.json({ error: t.api.rateLimited }, { status: 429 });
