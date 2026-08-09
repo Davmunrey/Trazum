@@ -144,6 +144,11 @@ export const BADGE_HEADERS = {
   'content-type': 'image/svg+xml; charset=utf-8',
   'cache-control': 'public, max-age=300, s-maxage=300',
   'x-content-type-options': 'nosniff',
-  'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; sandbox",
+  // `frame-ancestors` is in here rather than inherited from the site-wide
+  // header in `next.config.mjs`, because a config header replaces a route's
+  // rather than adding to it — so this route is excluded from that rule and has
+  // to carry the directive itself or go without it.
+  'content-security-policy':
+    "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; sandbox",
   'x-robots-tag': 'noindex',
 } as const;

@@ -20,9 +20,13 @@ export const dynamic = 'force-dynamic';
  *
  * - **It writes nothing.** No view counter, no last-seen. An anonymous request
  *   that can cause a write is a lever, and a view count is not worth being one.
- * - **It is `noindex`,** set both here in the metadata and as an
- *   `X-Robots-Tag`-shaped instruction, because an unlisted link that reaches a
- *   search index is a published prompt.
+ * - **It is `noindex` three ways,** because an unlisted link that reaches a
+ *   search index is a published prompt: the metadata below, the `X-Robots-Tag`
+ *   in `next.config.mjs`, and the `Disallow` in `robots.txt`. They fail
+ *   differently — a meta tag needs the crawler to parse the HTML, a header does
+ *   not, and `robots.txt` stops the fetch before either is read, but only for a
+ *   crawler that asks. This comment previously claimed the header existed while
+ *   it was sitting in an unused constant.
  * - **It renders the prompts as text, never as markup.** React escapes by
  *   default; the point of saying so is that nothing on this page may ever reach
  *   for `dangerouslySetInnerHTML`, because the content is attacker-supplied by

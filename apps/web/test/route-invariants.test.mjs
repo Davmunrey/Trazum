@@ -148,6 +148,121 @@ describe('every route that trusts a cookie refuses a forged one', () => {
   });
 });
 
+describe('the headers a page cannot set itself', () => {
+  /**
+   * Imported, not read as text. `next.config.mjs` is plain JavaScript, so the
+   * test can ask the real object what it declares rather than matching on the
+   * source that produces it.
+   *
+   * **What this cannot prove**, stated because the gap it replaces was exactly
+   * this: it does not prove Next *sends* them, and it deliberately does not
+   * reimplement Next's path matching to guess which rule applies where. A
+   * constant asserted to have the right contents is what `SHARE_HEADERS` was,
+   * and `SHARE_HEADERS` sent nothing for its whole life. This object is at
+   * least the one Next reads — but "declared in the config Next reads" is one
+   * step short of "observed on a response", and that step is taken by hand
+   * against a built server, with the output recorded in the pull request.
+   */
+  const rules = async () => (await import(new URL('../next.config.mjs', import.meta.url).href))
+    .default.headers();
+
+  const ruleFor = (all, key) => all.find((rule) => rule.headers.some((h) => h.key === key));
+
+  it('every page refuses to be framed', async () => {
+    /**
+     * The finding this fixes, and it was reachable rather than theoretical:
+     * `curl -I` against a built server returned no `X-Frame-Options` and no
+     * CSP, so every signed-in control in this app — publish a comparison,
+     * revoke a link, delete a prompt — was operable inside somebody else's
+     * iframe. `SameSite=Lax` is not a defence against it: a framed page is
+     * same-site with itself, so its own `fetch` carries the session cookie
+     * exactly as it would in a tab.
+     */
+    const all = await rules();
+
+    const framing = ruleFor(all, 'x-frame-options');
+    assert.ok(framing, 'nothing declares X-Frame-Options');
+    assert.equal(framing.source, '/:path*', 'framing is refused on some paths and not others');
+    assert.equal(
+      framing.headers.find((h) => h.key === 'x-frame-options').value,
+      'DENY',
+    );
+
+    const csp = ruleFor(all, 'content-security-policy');
+    assert.ok(csp, 'nothing declares a CSP');
+    assert.match(csp.headers[0].value, /frame-ancestors 'none'/);
+  });
+
+  it('the badge keeps the stricter policy it sets for itself', async () => {
+    /**
+     * A config header **replaces** one a route handler set rather than adding
+     * to it, which the first version of this change did not know and which is
+     * wrong in the dangerous direction: a site-wide `frame-ancestors` silently
+     * replaced the badge's `default-src 'none'; sandbox`, and the badge came
+     * out of a security change weaker than it went in. Nothing in the config or
+     * the types says so — it took `curl -I` against a built server.
+     *
+     * So the CSP rule cuts `/badge/` out, and the badge carries the directive
+     * itself. Both halves are asserted, because either one alone leaves it
+     * either unframed-but-scriptable or inert-but-framable.
+     */
+    const csp = ruleFor(await rules(), 'content-security-policy');
+    assert.match(csp.source, /badge/, 'the CSP rule no longer excludes the badge');
+    assert.match(csp.source, /\(\?!/, 'the exclusion is not a negative lookahead any more');
+
+    const svg = readFileSync(new URL('../lib/badge/svg.ts', import.meta.url).pathname, 'utf8');
+    const own = svg.slice(svg.indexOf('BADGE_HEADERS'));
+    assert.match(own, /default-src 'none'/);
+    assert.match(own, /sandbox/);
+    assert.match(own, /frame-ancestors 'none'/);
+  });
+
+  it('no request leaks a share token in a Referer', async () => {
+    // The token is the capability and it is in the path, so a `Referer` hands
+    // the capability to whoever receives the request. Site-wide rather than on
+    // `/c/` alone: two rules matching one path send the header twice, and which
+    // value a browser honours is not a thing to be clever about.
+    const referrer = ruleFor(await rules(), 'referrer-policy');
+    assert.ok(referrer, 'nothing declares a Referrer-Policy');
+    assert.equal(referrer.source, '/:path*');
+    assert.equal(referrer.headers.find((h) => h.key === 'referrer-policy').value, 'no-referrer');
+  });
+
+  it('the share page tells crawlers to stay out, in a header and not only a tag', async () => {
+    const robots = ruleFor(await rules(), 'x-robots-tag');
+    assert.ok(robots, 'nothing declares an X-Robots-Tag');
+    assert.equal(robots.source, '/c/:token', 'the directive is not scoped to the share page');
+    assert.match(robots.headers[0].value, /noindex/);
+    assert.match(robots.headers[0].value, /noarchive/);
+  });
+
+  it('no path can be sent the same header twice, whatever it matches', async () => {
+    /**
+     * Asserted without simulating the router, which is both simpler and
+     * stronger: if no two rules declare the same key at all, then no path gets
+     * a duplicate — for every path, including ones nobody thought of.
+     *
+     * It matters because what a browser does with a repeated header varies by
+     * header. `X-Robots-Tag` combines its directives, `Referrer-Policy` picks
+     * one, and two CSPs are enforced as an intersection. Rather than reason
+     * about each, there are no duplicates to reason about.
+     */
+    const declared = (await rules()).flatMap((rule) => rule.headers.map((h) => h.key));
+    assert.deepEqual(
+      declared.filter((key, index) => declared.indexOf(key) !== index),
+      [],
+    );
+  });
+
+  it('the constant that sent nothing is gone', async () => {
+    // Deleted rather than left in place. A constant holding the right headers
+    // and applied to nothing reads, to the next person, as a defence that
+    // exists — and its own tests passed for as long as it was there.
+    const shares = readFileSync(new URL('../lib/shares/api.ts', import.meta.url).pathname, 'utf8');
+    assert.equal(/export const SHARE_HEADERS/.test(shares), false);
+  });
+});
+
 describe('nothing private is cacheable', () => {
   it('privateJson forbids storing', () => {
     /**
