@@ -12,6 +12,63 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**Share links for comparisons.** `POST /api/shares` publishes a comparison at
+`/c/<token>`, readable by anyone holding the URL with no account at all.
+
+This is the first thing in Trazum with a bearer-capability security model, and
+almost every decision follows from naming that honestly rather than treating it
+as "the prompt library but public".
+
+**The token is the secret**, 32 bytes from the same CSPRNG that mints session
+cookies — not a slug, not a short id, not derived from the content. Stored in the
+clear, and the asymmetry with sessions is deliberate: hashing a session token
+means a leaked table is hashes rather than live logins; hashing this one would
+protect nothing, because the row it points at *is* the secret.
+
+**Reading writes nothing.** No view counter, no last-seen column, and the schema
+says why it does not have one. An unauthenticated request that can cause a write
+is a lever, and "how many people opened this" is not worth being one.
+
+**Expiry is a default, not an option.** Thirty days unless you choose 7, 90 or
+never. A link that never expires is a permanent publication made by somebody
+thinking about the next ten minutes, so `never` exists and has to be asked for.
+Expired is indistinguishable from never-existed — "this link has expired" tells a
+stranger the token was real, which is one bit more than they had.
+
+**Kept out of search twice**, by two defences that fail differently: `noindex` in
+the page metadata stops indexing, `robots.txt` stops the fetch. Plus
+`no-referrer`, because the token is in the path and one outbound navigation would
+otherwise put the whole capability in someone else's access log.
+
+**The settings are canonicalised from a whitelist.** They are replayed into the
+core on every future view, by a reader who did not choose them and cannot see
+them, so the parser builds a fully-populated object from known keys rather than
+merging over what arrived. Numbers are clamped — refusing a whole publication
+over a call volume of −1 helps nobody — but the model id and rule ids are
+rejected outright, because a silent fallback would price the comparison against
+something the sharer did not pick.
+
+The warning lives **above** the button and is always visible. A confirm dialog is
+a thing people dismiss; a sentence above the control is a thing they read while
+deciding.
+
+Eighteen mutants, eighteen killed — but only after the pass found the one that
+mattered most:
+
+**The share URL could have been built from the `Host` header and no test would
+have noticed.** Every request in the suite was constructed on the same origin as
+`TRAZUM_PUBLIC_URL`, so a header-derived URL came out byte-identical and the
+assertion passed either way. The failure it was hiding is not cosmetic: a link
+built from a client-supplied host points wherever the client said, and is then
+handed to a colleague by somebody who trusted it. There is now a request whose
+`Host` deliberately disagrees with the configuration.
+
+Also: a test asserting the shared page never reaches for
+`dangerouslySetInnerHTML` failed on the page's own comment saying exactly that —
+the second time this repository has made that mistake, after a schema comment
+about `force row level security`. Both tests now strip comments before reading
+the source.
+
 **A prompt library with version history.** The first thing accounts were for.
 
 Everything about it follows from one question: *what did last month's edit do to

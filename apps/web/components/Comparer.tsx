@@ -22,6 +22,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import type { WebMessages } from '../lib/i18n';
 import type { Scenario } from '../lib/scenario';
+import { ShareControl } from './ShareControl';
 
 /**
  * Two versions of a prompt, and what the edit cost.
@@ -390,6 +391,31 @@ export function Comparer({
           </AnimatedContent>
         )}
       </div>
+      {/*
+        Below the result, not beside the inputs. Sharing is something you do to
+        a comparison you have looked at, and a share button next to the text
+        boxes invites publishing a prompt before reading what it says.
+      */}
+      <ShareControl
+        t={t}
+        before={before}
+        after={after}
+        settings={{
+          // The Compare tab has no rule-level control and so always runs at
+          // `safe`, which is what the endpoint defaults to when the field is
+          // absent. Sent explicitly rather than omitted, so the share records
+          // the level the comparison actually used instead of inheriting
+          // whatever the default becomes later.
+          level: 'safe',
+          optimizeBoth,
+          model: scenario.usage.model,
+          callsPerMonth: scenario.usage.callsPerMonth,
+          avgOutputTokens: scenario.usage.avgOutputTokens,
+          cacheHitRate: scenario.usage.cacheHitRate,
+          batchEligible: scenario.usage.batchEligible,
+        }}
+      />
+
     </div>
   );
 }

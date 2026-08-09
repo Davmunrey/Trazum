@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { promptsInMemory } from './prompts-memory';
+import { sharesInMemory } from './shares-memory';
 import type { NewUser, SessionRecord, Store, UserRecord } from './types';
 
 /**
@@ -28,6 +29,7 @@ export function memoryStore(): Store {
     kind: 'memory',
     ephemeral: true,
     prompts: promptsInMemory(),
+    shares: sharesInMemory(),
 
     async upsertUser(input: NewUser, now: Date): Promise<UserRecord> {
       const existingId = byProvider.get(key(input.provider, input.providerId));

@@ -6,6 +6,7 @@ export type { AuthProvider, NewUser, SessionRecord, Store, UserRecord } from './
 export { memoryStore } from './memory';
 export { postgresStore } from './postgres';
 export * from './prompts';
+export * from './shares';
 
 /**
  * How strictly to verify the database's TLS certificate.

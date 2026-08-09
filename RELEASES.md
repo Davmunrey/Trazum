@@ -26,6 +26,17 @@ Ten commands now, up from four.
 
 ### What's new
 
+- **Share links: send a colleague what the edit cost.** A comparison published
+  at an unguessable URL that anyone can open without an account, which is what
+  "share" has to mean and is also the only thing in Trazum that serves one
+  person's prompt to a stranger. So it says what it does **before** the button,
+  not after: *this publishes both prompts to anyone who has the URL.* Links
+  expire in thirty days unless you pick otherwise, can be revoked, and are kept
+  out of search engines two independent ways. Reading one writes nothing —
+  no view counter, because an unauthenticated request that can cause a write is
+  a lever and a view count is not worth being one. And nothing derived is
+  stored, so a link opened next year is priced by next year's rules.
+
 - **A prompt library, with every version you ever saved.** Signed in, Trazum
   keeps your prompts and the whole history of each — because the question worth
   asking about a prompt is not what it costs today, it is what last month's edit

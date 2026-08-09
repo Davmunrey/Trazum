@@ -114,6 +114,29 @@ export const es: WebMessages = {
     versionTokens: (tokens: string, when: string) => `${tokens} tokens · ${when}`,
   },
 
+  share: {
+    sharedBy: (login: string, when: string) => `Compartido por ${login} el ${when}. Cualquiera con este enlace puede leerlo.`,
+    footer:
+      'Las cifras se recalculan a partir de los prompts cada vez que se abre esta página, así que reflejan las reglas y precios de hoy y no una instantánea.',
+    button: 'Crear enlace para compartir',
+    working: 'Creando…',
+    heading: 'Compartir esta comparación',
+    expiryLabel: 'El enlace caduca',
+    expiry7: 'en 7 días',
+    expiry30: 'en 30 días',
+    expiry90: 'en 90 días',
+    expiryNever: 'nunca',
+    warning:
+      'Un enlace compartido publica ambos prompts para cualquiera que tenga la URL, sin necesidad de iniciar sesión. No compartas un prompt con secretos, datos de clientes ni nada que no pegarías en una página pública.',
+    created: (url: string) => `Enlace creado: ${url}`,
+    copy: 'Copiar enlace',
+    copied: 'Copiado',
+    revoke: 'Revocar',
+    existing: 'Enlaces que has creado',
+    expiresOn: (when: string) => `caduca ${when}`,
+    neverExpires: 'no caduca',
+  },
+
   compare: {
     tab: 'Comparar',
     optimiseTab: 'Optimizar',

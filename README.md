@@ -1064,9 +1064,14 @@ and token counts are recomputed on read rather than stored — two versions pric
 by two different estimators would make the trend line move when the prompts did
 not.
 
+On the Compare tab, **Create share link** publishes a comparison at `/c/<token>`
+that anyone holding the URL can read without signing in — for showing a
+colleague what a prompt edit cost. Links expire after thirty days by default,
+can be revoked, are kept out of search engines two different ways, and say
+plainly what they publish *before* the button rather than after.
+
 [docs/accounts.md](docs/accounts.md) has the setup, the schema, every security
-decision and why, the library's limits, and an explicit list of what is **not**
-covered.
+decision and why, the limits, and an explicit list of what is **not** covered.
 
 ### Deploying to Vercel
 

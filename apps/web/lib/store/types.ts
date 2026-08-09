@@ -19,6 +19,7 @@
  */
 
 import type { PromptStore } from './prompts';
+import type { ShareStore } from './shares';
 
 /** Identity providers this deployment can authenticate against. */
 export type AuthProvider = 'github';
@@ -72,6 +73,17 @@ export interface Store {
    * make every driver a single file that nobody reads to the end of.
    */
   readonly prompts: PromptStore;
+
+  /**
+   * Share links.
+   *
+   * Its own namespace rather than more methods on `prompts`, because it obeys a
+   * different rule. Every `PromptStore` lookup binds an owner; `findShare`
+   * deliberately does not, since an anonymous reader has no owner to be. Keeping
+   * them apart is what lets "every lookup binds an owner" stay a true statement
+   * about `PromptStore` instead of a mostly-true one.
+   */
+  readonly shares: ShareStore;
 
   /**
    * True when everything in here dies with the process.
