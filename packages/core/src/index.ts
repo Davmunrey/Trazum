@@ -20,6 +20,7 @@ export {
   DEFAULT_MODEL,
   COST_MULTIPLIERS,
   PRICING_LAST_REVIEWED,
+  reviewAgeDays,
   BUNDLED_CATALOGUE,
   getModel,
   listModels,

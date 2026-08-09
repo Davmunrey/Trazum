@@ -218,11 +218,22 @@ describe('a survey, not a gate', () => {
     assert.match(out, /No prompt files under/);
   });
 
-  it('says how old the prices are', async () => {
-    // Every figure above descends from them, and the reader cannot tell a
-    // three-week-old price from a three-month-old one without being told.
+  it('says how old the prices are, in days', async () => {
+    /**
+     * The date alone makes the reader subtract against today to learn the one
+     * thing they wanted — whether to trust the figures. A reader who is not
+     * already suspicious will not bother, which is the reader this line exists
+     * for.
+     */
     const root = await project({ 'a.txt': PADDED }, { usage: USAGE });
-    assert.match(run(['.'], root).out, /Prices reviewed \d{4}-\d{2}-\d{2}/);
+    const { out } = run(['.'], root);
+
+    assert.match(out, /Prices reviewed \d{4}-\d{2}-\d{2}/);
+    assert.match(
+      out,
+      /Prices reviewed \d{4}-\d{2}-\d{2} \((today|1 day ago|\d+ days ago)\)/,
+      'the review date is printed without its age',
+    );
   });
 
   it('reports in Spanish too', async () => {
@@ -281,4 +292,3 @@ describe('doctor --otlp-out', () => {
     assert.equal(existsSync(join(root, 'metrics.json')), false);
   });
 });
-

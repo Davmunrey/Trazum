@@ -11,6 +11,8 @@ import {
   listModels,
   optimize,
   recommendTier,
+  reviewAgeDays,
+  PRICING_LAST_REVIEWED,
 } from '../dist/index.js';
 
 describe('pricing catalogue', () => {
@@ -202,5 +204,67 @@ describe('advisories', () => {
       ),
       'opus',
     );
+  });
+});
+
+describe('how old the prices are', () => {
+  /**
+   * Every dollar figure Trazum prints descends from the price list, and the list
+   * carries the date it was checked. Printing only that date makes the reader do
+   * arithmetic against today to learn the one thing they wanted — whether to trust
+   * it — and a reader who is not already suspicious will not bother.
+   */
+  const at = (iso) => new Date(iso);
+
+  it('counts whole days, from UTC midnight on both sides', () => {
+    // Otherwise the answer changes by one depending on what time of day the
+    // command happens to run, which makes it look unreliable when it is not.
+    assert.equal(reviewAgeDays('2026-08-08', at('2026-08-08T00:00:01Z')), 0);
+    assert.equal(reviewAgeDays('2026-08-08', at('2026-08-08T23:59:59Z')), 0);
+    assert.equal(reviewAgeDays('2026-08-08', at('2026-08-09T00:00:01Z')), 1);
+    assert.equal(reviewAgeDays('2026-06-24', at('2026-08-08T12:00:00Z')), 45);
+  });
+
+  it('is unaffected by daylight saving', () => {
+    // A local-time subtraction across a spring-forward gap is 47 hours and rounds
+    // to 1 day, not 2. UTC has no such gap.
+    assert.equal(reviewAgeDays('2026-03-28', at('2026-03-30T01:00:00Z')), 2);
+  });
+
+  it('says unknown rather than guessing', () => {
+    // An overlay supplies this string. A wrong one should read as unknown, not as
+    // a confident number computed from NaN.
+    assert.equal(reviewAgeDays('soon', at('2026-08-08T00:00:00Z')), null);
+    assert.equal(reviewAgeDays('', at('2026-08-08T00:00:00Z')), null);
+    assert.equal(reviewAgeDays('2026-6-24', at('2026-08-08T00:00:00Z')), null);
+  });
+
+  it('refuses a year-month, which would silently become the first of the month', () => {
+    /**
+     * The case the format guard exists for, and the only one that distinguishes it
+     * from the NaN check underneath.
+     *
+     * `Date.parse('2026-06' + 'T00:00:00Z')` is **2026-06-01** — a day nobody
+     * wrote. Without the guard, an overlay carrying `"lastReviewed": "2026-06"`
+     * gets an age computed from an invented day of the month and printed with the
+     * same confidence as a real one.
+     *
+     * Found by mutation: deleting the guard failed no test, because every other
+     * malformed value this was checked against is NaN either way.
+     */
+    assert.equal(reviewAgeDays('2026-06', at('2026-08-08T00:00:00Z')), null);
+    assert.equal(reviewAgeDays('2026', at('2026-08-08T00:00:00Z')), null);
+  });
+
+  it('treats a future date as unknown, not as negative days', () => {
+    // A typo or a wrong clock. "Reviewed in -12 days" reads as a bug either way,
+    // and claiming the prices are fresh would be worse than saying nothing.
+    assert.equal(reviewAgeDays('2027-01-01', at('2026-08-08T00:00:00Z')), null);
+  });
+
+  it('the bundled catalogue carries a usable date', () => {
+    // The guard on the whole idea: an unparseable constant would make every report
+    // silently drop the age and nothing else would notice.
+    assert.notEqual(reviewAgeDays(PRICING_LAST_REVIEWED, new Date()), null);
   });
 });

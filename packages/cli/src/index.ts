@@ -6,6 +6,7 @@ import {
   DEFAULT_USAGE,
   LOCALES,
   PRICING_LAST_REVIEWED,
+  reviewAgeDays,
   RULES,
   comparePrompts,
   countTokensAnthropic,
@@ -1059,7 +1060,9 @@ function commandModels(t: CliMessages, pricing: PricingCatalogue): void {
 
   console.log();
   console.log(c.bold(t.models.title()) + c.dim(t.models.unit()));
-  console.log(c.dim(t.models.reviewedOn(pricing.lastReviewed)));
+  console.log(
+    c.dim(t.models.reviewedOn(pricing.lastReviewed, reviewAgeDays(pricing.lastReviewed, new Date()))),
+  );
   console.log();
 
   const rows = pricing.models.map((m) => ({
@@ -2985,7 +2988,11 @@ function printDoctor(
   console.log(
     c.dim(t.doctor.subheading(model?.displayName ?? usage.model, n(usage.callsPerMonth))),
   );
-  console.log(c.dim(t.doctor.pricesReviewed(pricing.lastReviewed)));
+  console.log(
+    c.dim(
+      t.doctor.pricesReviewed(pricing.lastReviewed, reviewAgeDays(pricing.lastReviewed, new Date())),
+    ),
+  );
 
   // Budgets first. Everything below is money; this is whether anything is
   // watching at all, and an unwatched prompt is how the money got there.

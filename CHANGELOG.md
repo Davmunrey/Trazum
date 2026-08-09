@@ -12,6 +12,33 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**The price list says how old it is, not just when it was checked.** `doctor` and
+`models` print `Prices reviewed 2026-06-24 (46 days ago)`.
+
+Every dollar figure Trazum prints descends from that list. The date alone makes the
+reader subtract against today to learn the one thing they wanted — whether to trust
+the figures — and a reader who is not already suspicious will not bother, which is
+exactly the reader the line is for.
+
+No threshold and no warning: "stale" would be a number nobody could check, and the
+age is the fact. `reviewAgeDays` takes `now` as a parameter, for the reason
+`computeSavings` takes a `Date`. Compared at UTC midnight on both sides, so the
+answer does not shift by one depending on what time of day the command runs, and so
+a daylight-saving gap cannot turn two days into one.
+
+A future date reports unknown rather than negative days — that is a typo or a wrong
+clock, and "reviewed in −12 days" reads as a bug either way.
+
+**A guard that no test could distinguish, until one could.** Deleting the
+`YYYY-MM-DD` format check failed nothing: every malformed value it had been checked
+against is `NaN` to `Date.parse` regardless. The input that separates them is
+`"2026-06"` — `Date.parse("2026-06T00:00:00Z")` is **2026-06-01**, a day nobody
+wrote, and without the guard an overlay carrying that string gets an age computed
+from an invented day of the month and printed as confidently as a real one. Found by
+mutation, and now pinned.
+
+### Added
+
 **`suggest-fixes: true` on the Action — the optimised prompt as a GitHub suggested
 change**, applied with one button.
 

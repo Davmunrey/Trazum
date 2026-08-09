@@ -128,7 +128,8 @@ export interface CliMessages {
   models: {
     title(): string;
     unit(): string;
-    reviewedOn(date: string): string;
+    /** `days` is null when the date is unusable or in the future. */
+    reviewedOn(date: string, days: number | null): string;
     columns: {
       model: string;
       input: string;
@@ -192,7 +193,7 @@ export interface CliMessages {
   doctor: {
     heading(root: string, prompts: number): string;
     subheading(model: string, calls: string): string;
-    pricesReviewed(date: string): string;
+    pricesReviewed(date: string, days: number | null): string;
     budgetsHeading(): string;
     everyPromptBudgeted(count: number): string;
     unbudgeted(count: number, total: number): string;

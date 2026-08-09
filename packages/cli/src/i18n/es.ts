@@ -1,5 +1,10 @@
 import type { CliMessages } from './types.js';
 
+/** "(hace 46 días)", o nada cuando no se sabe la antigüedad. */
+const hace = (days: number | null): string =>
+  days === null ? '' : days === 0 ? ' (hoy)' : days === 1 ? ' (hace 1 día)' : ` (hace ${days} días)`;
+
+
 /** Spanish catalogue. Mirrors `en.ts`; see that file for the contract. */
 export const es: CliMessages = {
   locale: 'es',
@@ -409,7 +414,8 @@ ${bold('EJEMPLOS')}
   models: {
     title: () => 'Modelos y precios',
     unit: () => '  (USD por millón de tokens)',
-    reviewedOn: (date) => `  Tabla revisada el ${date}. Verifica antes de presupuestar.`,
+    reviewedOn: (date, days) =>
+      `  Tabla revisada el ${date}${hace(days)}. Verifica antes de presupuestar.`,
     columns: {
       model: 'modelo',
       input: 'entrada',
@@ -492,7 +498,7 @@ ${bold('EJEMPLOS')}
   doctor: {
     heading: (root, prompts) => `${root} — ${prompts} prompt${prompts === 1 ? '' : 's'}`,
     subheading: (model, calls) => `Con precios de ${model} y ${calls} llamadas al mes.`,
-    pricesReviewed: (date) => `Precios revisados el ${date}.`,
+    pricesReviewed: (date, days) => `Precios revisados el ${date}${hace(days)}.`,
     budgetsHeading: () => 'Presupuestos',
     everyPromptBudgeted: (count) =>
       count === 1
