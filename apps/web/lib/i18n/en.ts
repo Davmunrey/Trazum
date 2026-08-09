@@ -93,6 +93,28 @@ export const en: WebMessages = {
       'This deployment keeps sessions in memory, so you will be signed out when the server restarts. Set TRAZUM_DATABASE_URL to keep them.',
   },
 
+  library: {
+    tab: 'Library',
+    lede: 'Prompts you have saved, and every version of each. Saving keeps the old text — the history is the record of what changed and what it cost.',
+    loading: 'Loading your library…',
+    empty: 'Nothing saved yet. Write a prompt on the Optimise tab and save it here.',
+    saveCurrent: 'Save current prompt',
+    nothingToSave: 'Write a prompt on the Optimise tab first.',
+    namePrompt: 'Name this prompt',
+    saveVersion: 'Save as new version',
+    saved: 'Saved as a new version.',
+    unchanged: 'No changes to save — the text is identical to the latest version.',
+    showHistory: 'History',
+    hideHistory: 'Hide history',
+    restore: 'Load',
+    delete: 'Delete',
+    confirmDelete: (name: string) => `Delete “${name}” and its whole history? This cannot be undone.`,
+    meta: (tokens: string, versions: number, updated: string) =>
+      `${tokens} tokens · ${versions} ${versions === 1 ? 'version' : 'versions'} · updated ${updated}`,
+    versionLabel: (version: number) => `v${version}`,
+    versionTokens: (tokens: string, when: string) => `${tokens} tokens · ${when}`,
+  },
+
   compare: {
     tab: 'Compare',
     optimiseTab: 'Optimise',

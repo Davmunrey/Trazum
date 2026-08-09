@@ -40,9 +40,10 @@ anywhere. If the consent screen offers more than that, it is not this app.
 
 ```sh
 psql "$TRAZUM_DATABASE_URL" -f apps/web/db/001_accounts.sql
+psql "$TRAZUM_DATABASE_URL" -f apps/web/db/002_prompts.sql
 ```
 
-The file is idempotent — re-running it is safe — and it works on any Postgres:
+Apply them in order. Both files are idempotent — re-running it is safe — and it works on any Postgres:
 Supabase, Neon, RDS, or a container on your laptop.
 
 **Without `TRAZUM_DATABASE_URL`, sessions are held in memory.** That is a real
@@ -72,6 +73,60 @@ Misconfiguration does not crash the app. Any missing or invalid variable turns
 sign-in off, the header renders no button, and `/api/auth/*` answers **503 with
 the name of the variable to set** — so the failure is readable by the person who
 can fix it.
+
+---
+
+## The prompt library
+
+Signed in, a **Library** tab appears. It holds prompts you saved and every
+version of each.
+
+| Route | What it does |
+| --- | --- |
+| `GET /api/prompts` | Your library. A preview per prompt, not the whole text |
+| `POST /api/prompts` | Save the current prompt as version 1 |
+| `GET /api/prompts/:id` | One prompt and its whole history |
+| `POST /api/prompts/:id` | Save the current text as the next version |
+| `PATCH /api/prompts/:id` | Rename |
+| `DELETE /api/prompts/:id` | Remove it and every version |
+
+Four things about it that are decisions rather than defaults:
+
+**History is append-only.** Saving over a prompt writes a new row; nothing ever
+updates one. A history you can edit is not a history, and the question the
+feature exists to answer — *what did we change, and did it get more expensive?*
+— is unanswerable the moment a row can be rewritten.
+
+**Saving unedited text saves nothing, and says so.** The response is `200` with
+`saved: false`, not an error and not a duplicate row. Pressing Save twice is a
+reasonable thing to do; putting two identical versions in a history whose only
+job is showing what moved is not.
+
+**Token counts are recomputed on read, never stored.** The history is a chart of
+how a prompt's cost moved. Priced with the estimator of the day each version was
+saved, that line moves when the estimator changes and the prompts did not.
+Recomputing every version with today's is the only way two are comparable.
+
+**Somebody else's prompt is `404`, not `403`.** A `403` confirms the id exists,
+which turns the route into an oracle for enumerating other people's libraries.
+There is nothing a legitimate caller can do with the distinction, because they
+were never getting in either way. The store enforces it in the query — every
+method takes an owner id and puts it in the `where` clause, and there is no
+lookup that takes an id without one, so the mistake cannot be written.
+
+### Ceilings
+
+Refused, never trimmed. Pruning the oldest version to make room would quietly
+delete the record the prompt was kept for.
+
+| Limit | Value |
+| --- | --- |
+| Prompts per account | 200 |
+| Versions per prompt | 500 |
+| Prompt text | 100,000 characters |
+| Name | 120 characters |
+| Note | 500 characters |
+| Requests per minute per address | 60 |
 
 ---
 
@@ -169,3 +224,12 @@ goes wrong.
   sign in again.
 - **GitHub is the only provider.** The store keys on `(provider, provider_id)`
   so a second one is additive, but SSO through anything else is not written.
+- **The library is per person, not per team.** Every prompt has one owner and
+  there is no way to share one. The `author_id` column on a version exists so
+  that becomes a migration rather than a rewrite, and today it is always the
+  owner.
+- **One mutant in the prompt library survives, and is documented on the line
+  that survives it.** The memory driver's version sweep on delete cannot be
+  observed through the store's interface: the prompt is already gone and ids are
+  UUIDs, so nothing will ever ask for the orphaned versions again. What it costs
+  is memory, which no assertion in the suite can see.

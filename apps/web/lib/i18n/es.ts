@@ -92,6 +92,28 @@ export const es: WebMessages = {
       'Este despliegue guarda las sesiones en memoria, así que se cerrará cuando el servidor se reinicie. Define TRAZUM_DATABASE_URL para conservarlas.',
   },
 
+  library: {
+    tab: 'Biblioteca',
+    lede: 'Los prompts que has guardado, y todas sus versiones. Al guardar se conserva el texto anterior: el historial es el registro de qué cambió y cuánto costó.',
+    loading: 'Cargando tu biblioteca…',
+    empty: 'Todavía no hay nada guardado. Escribe un prompt en la pestaña Optimizar y guárdalo aquí.',
+    saveCurrent: 'Guardar el prompt actual',
+    nothingToSave: 'Escribe primero un prompt en la pestaña Optimizar.',
+    namePrompt: 'Nombra este prompt',
+    saveVersion: 'Guardar como nueva versión',
+    saved: 'Guardado como nueva versión.',
+    unchanged: 'No hay cambios que guardar: el texto es idéntico a la última versión.',
+    showHistory: 'Historial',
+    hideHistory: 'Ocultar historial',
+    restore: 'Cargar',
+    delete: 'Eliminar',
+    confirmDelete: (name: string) => `¿Eliminar «${name}» y todo su historial? Esto no se puede deshacer.`,
+    meta: (tokens: string, versions: number, updated: string) =>
+      `${tokens} tokens · ${versions} ${versions === 1 ? 'versión' : 'versiones'} · actualizado ${updated}`,
+    versionLabel: (version: number) => `v${version}`,
+    versionTokens: (tokens: string, when: string) => `${tokens} tokens · ${when}`,
+  },
+
   compare: {
     tab: 'Comparar',
     optimiseTab: 'Optimizar',
