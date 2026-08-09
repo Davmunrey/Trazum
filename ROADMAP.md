@@ -383,24 +383,57 @@ one action in this repository that cannot be undone after 72 hours.
 
 ---
 
-## Merged into `main`, not yet released
+### 1.8.0 — The first published version
 
-**Nothing below has a tag or a version on npm.** These were written as release
-milestones and filed under "Released", which was not true of any of them: there
-is no git tag in this repository, the `@trazum` scope does not exist yet, and
-[CHANGELOG.md](CHANGELOG.md) — which is the truthful record — holds every one of
-them under a single `Unreleased`.
+**The first thing anybody can `npm install`.** It collapses the seven milestones
+below — 1.1.0 through 1.7.0 — into one version, because none of them was ever
+tagged or uploaded: the `@trazum` scope did not exist while they were written.
+Those seven will never appear on the registry.
 
-The numbering is kept because the ordering is the useful part: it says what
-landed in what sequence and why. But **the first publish collapses all of it into
-one version**, so these are milestones rather than releases, and the numbers below
-will not appear on npm.
+What it adds over the last of those milestones is the entry that gave it its
+number:
 
-Two things are needed before any of it ships, and both belong to the maintainer:
-create the `@trazum` scope and the `release` environment with its trusted
-publisher (see [docs/releasing.md](docs/releasing.md)), and run
-`ANTHROPIC_API_KEY=... npm run measure:tokens` so the ±15% band printed on every
-report stops being an unmeasured design target.
+#### Not asking the model twice
+
+`optimize --suggest --cache-suggestions` answers from a local cache when the
+same prompt was asked about before. Re-run over forty prompts after editing
+two, and thirty-eight requests do not happen.
+
+**The roadmap item behind it was the API's prompt caching, and that turned out
+to be impossible rather than merely hard.** The minimum cacheable prefix is 512
+tokens on the most generous model and 4,096 on others; the suggest system prompt
+is 291 tokens; and a prefix below the minimum is *silently* not cached — no
+error, `cache_creation_input_tokens: 0`. Everything after it is the author's
+text, which differs every call. Marking it would have cost one line, saved
+nothing, and been undetectable. A test measures the prompt against the published
+per-model minima so the claim fails loudly if a model ever lowers its floor.
+
+Opt-in and never silent, because a hit is a week-old answer from something that
+is not a pure function. The **raw** response is stored rather than the checked
+suggestions, so every safety rule re-runs on a hit and an answer from March is
+judged by April's rules. 0600 files in a 0700 directory: the cache holds prompt
+text, which is the most sensitive thing this tool touches.
+
+---
+
+## Collapsed into 1.8.0
+
+**Everything below shipped as 1.8.0, and none of these numbers is on npm.** They
+were written as release milestones and filed under "Released", which was not true
+of any of them at the time: there was no git tag, the `@trazum` scope did not
+exist, and [CHANGELOG.md](CHANGELOG.md) — the truthful record — held all of them
+under a single `Unreleased`.
+
+That is what this section was always going to become. Its previous heading said
+"the first publish collapses all of it into one version", and 1.8.0 is that
+publish. The numbering is kept because the ordering is the useful part: it says
+what landed in what sequence and why. A consumer will never see 1.1.0 through
+1.7.0, because they never existed anywhere one could reach.
+
+`## Released` above holds the versions with their own entry in the changelog.
+This section holds the ones that do not, and `publish.test.js` asserts the
+difference in both directions — so a milestone cannot be promoted to a release
+by moving a heading.
 
 ### 1.1.0 — Doing the thing it had only been pricing
 
@@ -772,29 +805,6 @@ in every README.
 still sends nothing anywhere, still needs no account, and still optimises a
 prompt with the network unplugged. The web app is opt-in, self-hosted, and
 holds only what somebody deliberately saved to it.
-
-### 1.8.0 — Not asking the model twice
-
-`optimize --suggest --cache-suggestions` answers from a local cache when the
-same prompt was asked about before. Re-run over forty prompts after editing
-two, and thirty-eight requests do not happen.
-
-**The roadmap item behind it was the API's prompt caching, and that turned out
-to be impossible rather than merely hard.** The minimum cacheable prefix is 512
-tokens on the most generous model and 4,096 on others; the suggest system prompt
-is 291 tokens; and a prefix below the minimum is *silently* not cached — no
-error, `cache_creation_input_tokens: 0`. Everything after it is the author's
-text, which differs every call. Marking it would have cost one line, saved
-nothing, and been undetectable. A test measures the prompt against the published
-per-model minima so the claim fails loudly if a model ever lowers its floor.
-
-Opt-in and never silent, because a hit is a week-old answer from something that
-is not a pure function. The **raw** response is stored rather than the checked
-suggestions, so every safety rule re-runs on a hit and an answer from March is
-judged by April's rules. 0600 files in a 0700 directory: the cache holds prompt
-text, which is the most sensitive thing this tool touches.
-
----
 
 ## Next
 

@@ -1,6 +1,6 @@
 {
   "name": "@trazum/core",
-  "version": "1.0.0",
+  "version": "1.8.0",
   "description": "Prompt optimiser core: deterministic rules, token counting, pricing and savings analysis.",
   "license": "MIT",
   "author": "David Mu\u00f1oz Rey",

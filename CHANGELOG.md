@@ -10,6 +10,18 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.8.0
+
+**The first version published to npm**, and it collapses everything since the
+1.0.0 milestone into one release. Those milestones are numbered 1.1.0 to 1.8.0
+in [ROADMAP.md](ROADMAP.md) and none of them was ever tagged or uploaded — the
+scope did not exist. Publishing as 1.8.0 rather than 1.1.0 makes the version on
+npm agree with the record in this repository, which is the only thing the number
+has to do. 1.1.0 through 1.7.0 will never appear on the registry, because they
+never existed anywhere a consumer could reach.
+
 ### Added
 
 **`--cache-suggestions`: `--suggest` answers from disk when the question has not
