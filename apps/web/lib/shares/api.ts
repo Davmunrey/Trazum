@@ -94,18 +94,16 @@ export function parseSettings(raw: unknown): { value: ShareSettings } | { error:
 }
 
 /**
- * Headers every shared page and share response carries.
+ * The headers a shared page carries are declared in `next.config.mjs`, not here.
  *
- * `noindex` because a share link is unlisted, not public: one of them reaching a
- * search index publishes a prompt somebody sent to one colleague. `noarchive`
- * and `nosnippet` for the same reason a step further — a cache copy outlives the
- * revocation.
+ * There used to be a `SHARE_HEADERS` constant at this spot holding exactly the
+ * right three, and it was applied to nothing. It could not have been: `/c/<token>`
+ * is a page, and in the App Router a page cannot set a response header —
+ * `headers()` is read-only. The constant read as a defence, was tested as a
+ * constant, and sent nothing.
  *
- * `no-referrer` because the token is *in the path*. Any outbound navigation from
- * the page would otherwise put the whole capability in someone else's access log.
+ * `next.config.mjs` is where a page's headers can actually be sent from, so that
+ * is where they live: `no-referrer` site-wide because the token is in the path,
+ * and `X-Robots-Tag` on `/c/:token` because an unlisted link that reaches a
+ * search index is a published prompt.
  */
-export const SHARE_HEADERS = {
-  'x-robots-tag': 'noindex, nofollow, noarchive, nosnippet',
-  'referrer-policy': 'no-referrer',
-  'cache-control': 'private, no-store',
-} as const;
