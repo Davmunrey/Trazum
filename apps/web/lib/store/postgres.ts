@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { promptsInPostgres } from './prompts-postgres';
 import type { NewUser, SessionRecord, Store, UserRecord } from './types';
 
 /**
@@ -55,6 +56,7 @@ export function postgresStore(sql: SqlClient): Store {
   return {
     kind: 'postgres',
     ephemeral: false,
+    prompts: promptsInPostgres(sql),
 
     async upsertUser(input: NewUser, now: Date): Promise<UserRecord> {
       // `created_at` is absent from the update list on purpose: a sign-in that
