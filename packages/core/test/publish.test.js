@@ -263,17 +263,30 @@ describe('the record agrees with itself', () => {
     );
   });
 
-  it('and nothing merged-but-unreleased is claimed as released', () => {
-    // The other direction, so moving an entry between the two sections cannot
-    // silently promote it.
-    const merged = versionsUnder('Merged into `main`, not yet released') ?? [];
-    assert.ok(merged.length > 0, 'the merged-not-released section lists no versions');
+  it('and no milestone that never shipped under its own number is called released', () => {
+    /**
+     * The other direction, so moving an entry between the two sections cannot
+     * silently promote it.
+     *
+     * The section was called "Merged into `main`, not yet released" until 1.8.0
+     * was published; it is now "Collapsed into 1.8.0", because those milestones
+     * *have* shipped — inside 1.8.0, never under their own numbers, and never
+     * onto npm. The property is unchanged and so is the test: a version listed
+     * there must not have its own `## X.Y.Z` heading in the changelog.
+     *
+     * The rename is the reason this failed rather than passing quietly, and
+     * that is the design: `versionsUnder` returns null for a section that is
+     * not there, and an empty list of subjects is refused rather than treated
+     * as an empty list of findings.
+     */
+    const merged = versionsUnder('Collapsed into 1.8.0') ?? [];
+    assert.ok(merged.length > 0, 'the collapsed-milestones section lists no versions');
 
     const wrong = merged.filter((version) => releasedInChangelog.includes(version));
     assert.deepEqual(
       wrong,
       [],
-      `these sit under "not yet released" but CHANGELOG.md has released them: ${wrong.join(', ')}`,
+      `these are listed as collapsed but CHANGELOG.md released them separately: ${wrong.join(', ')}`,
     );
   });
 

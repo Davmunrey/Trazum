@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -618,15 +619,17 @@ describe('the packaged Action', () => {
     assert.deepEqual(missing, [], `a pinned action has no version comment:\n  ${missing.join('\n  ')}`);
   });
 
-  it('the docs recommend a SHA pin too, not a tag', () => {
+  it('the docs recommend a SHA pin too, not a tag', (t) => {
     // The rule above governs what this repository runs. This one governs what it
     // *tells other people to run*, which had drifted: the README recommended
     // `Davmunrey/Trazum@v1.0.0` for a whole release — a tag that did not exist,
     // so the copy-pasteable example 404'd, and a tag at all, which is the exact
     // movable ref SECURITY.md warns against. Nothing was checking.
     const SHA_PIN = /^Davmunrey\/Trazum@[0-9a-f]{40}$/;
-    const VERSION = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')).version;
     const bad = [];
+    /** Pins whose commit this clone does not have, reported rather than ignored. */
+    const unchecked = [];
+    let pins = 0;
 
     for (const name of ['README.md', 'SECURITY.md', 'CONTRIBUTING.md', 'docs/authoring-rules.md']) {
       let source;
@@ -640,6 +643,7 @@ describe('the packaged Action', () => {
         // version, and the changelog's record of what past releases did, are not.
         const ref = /^\s*(?:- )?uses:\s*(Davmunrey\/Trazum\S*)/.exec(line);
         if (!ref) continue;
+        pins += 1;
         if (!SHA_PIN.test(ref[1])) {
           bad.push(`${name}: ${ref[1]}`);
           continue;
@@ -649,18 +653,68 @@ describe('the packaged Action', () => {
         // the fix it was written to guard shipped saying `# 1.1.0` against
         // manifests reading 1.0.0 — a version with no tag and no package.
         const comment = /#\s*v?(\d+\.\d+\.\d+)/.exec(line);
-        if (!comment) bad.push(`${name}: ${ref[1]} (no version comment)`);
-        else if (comment[1] !== VERSION) {
-          bad.push(`${name}: comment says ${comment[1]}, the manifests say ${VERSION}`);
+        if (!comment) {
+          bad.push(`${name}: ${ref[1]} (no version comment)`);
+          continue;
+        }
+
+        /**
+         * The label has to be true about **the commit it labels**, which is not
+         * the same question as whether it matches the working tree.
+         *
+         * This compared the comment to `package.json` until 1.8.0 was prepared,
+         * and that coupling made an honest release impossible: bumping the
+         * manifests to 1.8.0 turned a correct `# 1.0.0` into a failure, and the
+         * only ways to satisfy it were to relabel a 1.0.0 commit as 1.8.0 — a
+         * lie about a real SHA — or to pin a commit that does not exist yet,
+         * since the 1.8.0 commit is the one the bump is part of. A guard whose
+         * only exits are a lie or a paradox is asking the wrong question.
+         *
+         * So it asks git. The pinned commit either says 1.0.0 in its own
+         * manifest or it does not, and that is checkable without knowing
+         * anything about what is being released today.
+         */
+        const sha = ref[1].split('@')[1];
+        const show = spawnSync('git', ['show', `${sha}:package.json`], {
+          cwd: repoRoot,
+          encoding: 'utf8',
+        });
+
+        if (show.status !== 0) {
+          // A shallow clone — CI checks out with the default `fetch-depth: 1`,
+          // so the object is genuinely absent rather than wrong. Named out loud
+          // rather than passed over: a check that quietly does nothing reports
+          // the same "0 failures" as one that verified something.
+          unchecked.push(`${name}: ${sha.slice(0, 7)} not in this clone`);
+          continue;
+        }
+
+        const pinned = JSON.parse(show.stdout).version;
+        if (comment[1] !== pinned) {
+          bad.push(`${name}: comment says ${comment[1]}, ${sha.slice(0, 7)} says ${pinned}`);
         }
       }
     }
 
+    assert.ok(pins > 0, 'no action pin found in the docs — has the example moved?');
     assert.deepEqual(
       bad,
       [],
       `the docs tell readers to use a movable or unlabelled ref:\n  ${bad.join('\n  ')}`,
     );
+    if (unchecked.length > 0) {
+      /**
+       * On stderr, not through `t.diagnostic`, because the diagnostic does not
+       * appear in this runner's default output — checked, in a shallow clone,
+       * and the test passed printing nothing at all. A skip nobody can see is
+       * the failure this repository keeps writing tests about, and writing one
+       * into the test that was meant to avoid it would have been a good joke at
+       * my expense.
+       *
+       * CI checks out with `fetch-depth: 0` so this branch never runs there.
+       */
+      console.error(`  ! label not verified against the pinned commit: ${unchecked.join(', ')}`);
+    }
   });
 
   it('publishing needs no stored credential', () => {

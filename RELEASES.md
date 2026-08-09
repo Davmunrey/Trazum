@@ -7,16 +7,19 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**Nothing has been published yet.** There is no git tag and the `@trazum` scope
-does not exist on npm, so the top section is what the first publish will say
-rather than what anyone can install. `RELEASES.md` is checked against the
-manifests by `publish.test.js`, which means a version cannot be tagged without
-its notes being written first. That is the point of the file being here rather
-than pasted into a GitHub form at release time.
+**1.8.0 is the first version on npm**, and it is the first one anybody can
+install. Everything below it — 1.0.0 and earlier — is a milestone recorded in
+this repository and never uploaded anywhere, because the `@trazum` scope did not
+exist while they were being written. The numbering is kept because the ordering
+is the useful part.
+
+`RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
+cannot be tagged without its notes being written first. That is the point of the
+file being here rather than pasted into a GitHub form at release time.
 
 ---
 
-## Unreleased — "Everything it had only been pricing" (the first publish)
+## 1.8.0 — "Everything it had only been pricing" (the first publish)
 
 Trazum 1.0.0 could tell you what a prompt cost. It could not tell you **which**
 prompt, **who** made it expensive, whether the shorter version still worked, or
