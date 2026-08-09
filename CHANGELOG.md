@@ -355,6 +355,37 @@ the rest of what is not covered.
 
 ### Fixed
 
+**The roadmap said the web app's features would deliberately never be built.**
+`ROADMAP.md` listed **Prompt library** under "Under consideration" with the
+reasoning *"storing prompts is a different product, and one that would mean
+sending them to a server. Trazum's privacy story is that it never does"* — while
+the app shipped a prompt library with version history, share links, an admin
+overview and a badge. Seven user-visible surfaces existed and the document
+mentioned none of them, one of them by explicitly explaining why it never would.
+
+That reasoning was also a conflation worth naming rather than deleting. Rule 1
+binds the *optimiser*: the CLI sends nothing, needs no account and works with the
+network unplugged, and none of that changed. It never said nobody may run a
+service that stores what they chose to save to it. The entry is struck through
+and kept, because a roadmap that silently removes what it went back on has no
+record of having gone back on anything.
+
+Added: milestone sections for the account-and-sharing work and for
+`--cache-suggestions`, and a guard deriving every route from `apps/web/app` and
+requiring the roadmap to name it. The guard is deliberately narrow — it proves
+the document knows a surface exists, not that what it says about it is true —
+and it caught two of its own defects first: a substring match let `/api/admin`
+satisfy `/admin`, and `/c` counted as documented by accident because two
+characters occur inside almost any path.
+
+**Japanese is now stated as a deliberate absence rather than a gap.** There is no
+Japanese trimming dictionary and one is not planned — deciding a phrase says
+something in more words than it needs is a judgement about the language. But
+`--reorder`'s backward-reference list *does* cover Japanese and Chinese, matched
+without word boundaries. Those are different claims: refusing to rearrange needs
+only enough of a language to spot a phrase pointing backwards, while offering to
+shorten means asserting the shorter version still asks for the same thing.
+
 **The help-text guard could not see a flag that belongs to no command.** It
 derives its list from the unknown-flag rejection message, which is printed
 per-command — so `--clear-suggestion-cache`, an errand that runs with no command
