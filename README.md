@@ -1058,8 +1058,15 @@ so a database dump is a list of hashes rather than a list of live logins.
 Misconfigure any of it and sign-in simply stays off: no button, and
 `/api/auth/*` answers 503 naming the variable to set.
 
+Signed in, a **Library** tab appears: prompts you saved and every version of
+each. History is append-only, saving unedited text saves nothing and says so,
+and token counts are recomputed on read rather than stored — two versions priced
+by two different estimators would make the trend line move when the prompts did
+not.
+
 [docs/accounts.md](docs/accounts.md) has the setup, the schema, every security
-decision and why, and an explicit list of what is **not** covered.
+decision and why, the library's limits, and an explicit list of what is **not**
+covered.
 
 ### Deploying to Vercel
 

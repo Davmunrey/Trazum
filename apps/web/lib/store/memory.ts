@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { promptsInMemory } from './prompts-memory';
 import type { NewUser, SessionRecord, Store, UserRecord } from './types';
 
 /**
@@ -26,6 +27,7 @@ export function memoryStore(): Store {
   return {
     kind: 'memory',
     ephemeral: true,
+    prompts: promptsInMemory(),
 
     async upsertUser(input: NewUser, now: Date): Promise<UserRecord> {
       const existingId = byProvider.get(key(input.provider, input.providerId));

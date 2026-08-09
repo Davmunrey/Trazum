@@ -12,6 +12,80 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**A prompt library with version history.** The first thing accounts were for.
+
+Everything about it follows from one question: *what did last month's edit do to
+this prompt?* A store that answers that has to be append-only, has to price every
+version the same way, and has to be unable to show one person another person's
+work. Each of those is a decision that was cheaper to make now than to migrate to.
+
+**Append-only.** Saving over a prompt writes a new row; nothing updates one. A
+history you can edit is not a history.
+
+**A save that changed nothing writes nothing** and answers `200` with
+`saved: false` — not an error, because pressing Save on unedited text is a
+reasonable thing to do, and not a duplicate row, because the history's only job
+is showing what moved. The UI turns that flag into "no changes to save"; a screen
+that says "Saved" when nothing was written is training its reader to distrust it.
+
+**Token counts are recomputed on read, never stored.** This is the decision that
+looks wrong from a caching point of view and is not. The history is a chart. Two
+versions saved a year apart, each priced by the estimator of its day, produce a
+line that moves when the estimator changed and the prompts did not. Recomputing
+every version with today's costs a little and is the only way any two of them are
+comparable to each other.
+
+**Somebody else's prompt is 404, not 403.** A 403 confirms the id is real, which
+turns the route into an oracle for enumerating other people's libraries, and a
+legitimate caller can do nothing with the distinction because they were never
+getting in. Enforced in the query rather than after it: every store method takes
+an owner id and puts it in the `where` clause. `PromptStore` has no lookup that
+takes an id without an owner at all, so a handler *cannot* tell "not yours" from
+"not there" — the mistake is unrepresentable rather than untested, and a guard
+pins that shape because the way it comes back is somebody adding a convenience
+method.
+
+Ceilings — 200 prompts, 500 versions, 100k characters — are refused loudly rather
+than trimmed silently. Evicting the oldest version to make room deletes the record
+the prompt was kept for.
+
+Seventeen of eighteen mutants killed, including every ownership predicate in both
+drivers. Three findings from the pass, all of which had passed the suite first:
+
+- **The Postgres prompt driver had no tests at all.** The route suite runs
+  entirely on the memory driver, so every ownership assertion in it passed
+  against SQL that selected by id alone. `prompts-postgres.test.mjs` now drives
+  all six methods and sweeps the recorded statements mechanically: anything that
+  names a prompt must also bind an owner, and anything that binds one must
+  compare it.
+- **The UUID check on the path segment looked decorative and is not.** Every
+  test around it asserted the outcome — 404 — which holds with the check removed,
+  because the memory driver answers `null` for any key it does not hold. Bind
+  `'../../etc/passwd'` to a `uuid` column and Postgres raises, which is a 500
+  where the caller should have had a 404. What distinguishes the two is not the
+  answer but whether the store was asked, so that is what the test now watches.
+- **One mutant survives and is documented on the line it survives.** The memory
+  driver's version sweep on delete changes nothing observable: the prompt is
+  gone, ids are UUIDs, nothing will ask again. What it costs is memory — which is
+  exactly the kind of line somebody deletes during a cleanup because no test
+  complained.
+
+### Changed
+
+**The prompt lives at page level now, next to the scenario.** The Library tab has
+to save the prompt that is on screen and put a restored version back on it, and
+neither is possible for a sibling holding its own copy — two components with two
+copies of "the prompt" is how a library quietly stores something else. Same
+reasoning that moved the usage scenario, same shape: a hook the page owns.
+
+**A tab test counted tabs when it meant to check a property.** "Keeps both tabs
+mounted" asserted there were exactly two `TabsContent` and that both were
+`forceMount`, and it failed the moment a third arrived — on a tab that
+deliberately is not one, because the library holds nothing the server does not
+already have and is better re-read on return. Rewritten to assert the actual
+invariant: a tab holding state the server does not have must stay mounted, and
+anything opting out has to be named. Mutation-tested both ways.
+
 **Sign in with GitHub.** Optional, off by default, and the first thing in this
 repository that stores anything about a person.
 

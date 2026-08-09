@@ -250,15 +250,38 @@ describe('the Compare tab inverts the sign convention, and says so first', () =>
     );
   });
 
-  it('keeps both tabs mounted, so a result survives a switch', () => {
-    // Radix unmounts inactive tab content by default, which would discard a
-    // comparison somebody is still reading the moment they glanced at Optimise.
+  it('keeps the tabs holding unsaved work mounted, so a result survives a switch', () => {
+    /**
+     * Radix unmounts inactive tab content by default, which would discard a
+     * comparison somebody is still reading the moment they glanced at Optimise.
+     *
+     * This used to assert there were exactly two tabs and that both were
+     * `forceMount`, which failed the moment a third arrived — on a tab that
+     * deliberately is not. The count was standing in for the property. The
+     * property is: **a tab holding state the server does not have must stay
+     * mounted.** Optimise and Compare hold a result nobody saved; Library holds
+     * a list that is already on the server and is better re-read on return.
+     */
     const source = codeOf('components/App.tsx');
     const mounts = source.match(/<TabsContent[^>]*>/g) ?? [];
-    assert.equal(mounts.length, 2, 'expected two tabs');
-    for (const tag of mounts) {
+    assert.ok(mounts.length >= 2, 'expected at least the two working tabs');
+
+    const held = ['optimise', 'compare'];
+    for (const value of held) {
+      const tag = mounts.find((m) => m.includes(`value="${value}"`));
+      assert.ok(tag, `no TabsContent for ${value}`);
       assert.match(tag, /forceMount/, `TabsContent without forceMount: ${tag}`);
       assert.match(tag, /data-\[state=inactive\]:hidden/, `forceMount without hiding: ${tag}`);
+    }
+
+    // And anything that opts out has to be a tab with nothing to lose. Named
+    // explicitly rather than inferred, so adding a third working tab and
+    // forgetting `forceMount` fails here instead of losing somebody's result.
+    const exempt = ['library'];
+    for (const tag of mounts) {
+      if (/forceMount/.test(tag)) continue;
+      const value = /value="([a-z]+)"/.exec(tag)?.[1];
+      assert.ok(exempt.includes(value ?? ''), `TabsContent without forceMount: ${tag}`);
     }
   });
 
@@ -361,5 +384,57 @@ describe('the account control does not advertise what the deployment lacks', () 
     // The page holds prompts and results. Dropping the account without
     // dropping those leaves somebody else's work on a signed-out screen.
     assert.match(account, /window\.location\.assign\('\/'\)/);
+  });
+});
+
+describe('the library tab does not tell the reader something untrue', () => {
+  const library = codeOf('components/Library.tsx');
+  const app = codeOf('components/App.tsx');
+
+  it('says "no changes to save" instead of "saved" when nothing was written', () => {
+    // The API answers `saved: false` for a save that changed nothing. A UI that
+    // reports success there is training its reader to distrust it.
+    assert.match(library, /saved \? t\.library\.saved : t\.library\.unchanged/);
+  });
+
+  it('re-reads the list after every write rather than patching it locally', () => {
+    // Patching is faster and is how a version count on screen ends up
+    // disagreeing with the server — in the one view whose whole job is being
+    // the record.
+    const writes = library.match(/method: '(POST|DELETE|PATCH)'/g) ?? [];
+    assert.ok(writes.length >= 3, 'expected the create, version and delete calls');
+    // All of them go through `mutate`, which is the only place `refresh` is
+    // called after a write.
+    assert.match(library, /await refresh\(\);/);
+    assert.equal((library.match(/async function mutate\(/g) ?? []).length, 1);
+  });
+
+  it('sends cookies deliberately on every call', () => {
+    const fetches = library.match(/fetch\(/g) ?? [];
+    const credentialled = library.match(/credentials: 'same-origin'/g) ?? [];
+    assert.equal(fetches.length, credentialled.length);
+  });
+
+  it('confirms before destroying a history', () => {
+    assert.match(library, /window\.confirm\(t\.library\.confirmDelete/);
+  });
+
+  it('compares a version against the one before it, not against the newest', () => {
+    // `versions` is newest-first, so the previous version in time is the *next*
+    // entry in the list. Off by one here silently inverts every delta.
+    assert.match(library, /const previous = open\.versions\[index \+ 1\];/);
+  });
+
+  it('shows the tab only to a reader who is signed in', () => {
+    // A library nobody can read is worse than an absent tab: it renders an
+    // empty list that looks like "you have saved nothing".
+    assert.match(app, /signedIn && <TabsTrigger value="library">/);
+    assert.match(app, /\{signedIn && \(/);
+  });
+
+  it('owns the prompt at page level so the library saves what is on screen', () => {
+    assert.match(app, /const promptText = usePromptText\(locale\);/);
+    assert.match(app, /currentPrompt=\{promptText\.value\}/);
+    assert.match(app, /promptText=\{promptText\}/);
   });
 });

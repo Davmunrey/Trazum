@@ -15,6 +15,7 @@ import { formatUsd } from '@trazum/core';
 import { track } from './Analytics';
 import { diffTexts } from './diff';
 import type { WebMessages } from '../lib/i18n';
+import type { PromptText } from '../lib/prompt-text';
 import type { Scenario } from '../lib/scenario';
 
 import { Check, ChevronDown, Copy, Trash2 } from 'lucide-react';
@@ -102,63 +103,6 @@ interface Metadata {
   allowedEndpoints?: readonly string[];
 }
 
-/**
- * Starter prompts, one per locale.
- *
- * Each is written in its own language on purpose: the point of the example is
- * to show the rules firing, and the phrase dictionaries are per-language.
- */
-const EXAMPLES: Record<Locale, string> = {
-  en: `You are an expert customer support assistant.
-
-IMPORTANT: You MUST always answer in English.
-
-Please, in order to help the user, I basically need you to analyse the query arriving in {{query}} and, if you don't mind, classify it into one of the categories.
-
-================================================
-
-It is important to note that you have to be very careful when classifying.
-
-Always answer in English and keep a formal tone with the end user.
-
-Check the catalogue at https://api.example.com/v1/catalogue?full=true
-
-Use this function as-is:
-
-\`\`\`python
-def classify(text):
-    return   model.predict(text)   # do not touch the indentation
-\`\`\`
-
-Always answer in English and keep a formal tone with the end user.
-
-Please double-check your answer before responding. Thank you very much!`,
-
-  es: `Eres un asistente experto en atención al cliente.
-
-IMPORTANTE: DEBES responder SIEMPRE en español.
-
-Por favor, con el fin de ayudar al usuario, básicamente necesito que analices la consulta que llega en {{consulta}} y, si no te importa, la clasifiques en una de las categorías.
-
-================================================
-
-Es importante destacar que tienes que ser muy cuidadoso al clasificar.
-
-Responde siempre en español y usa un tono formal con el usuario final.
-
-Consulta el catálogo en https://api.ejemplo.com/v1/catalogo?full=true
-
-Usa esta función tal cual:
-
-\`\`\`python
-def clasificar(texto):
-    return   modelo.predict(texto)   # no tocar la indentación
-\`\`\`
-
-Responde siempre en español y usa un tono formal con el usuario final.
-
-Por favor verifica tu respuesta antes de contestar. ¡¡¡Muchas gracias!!!`,
-};
 
 /** One line of a declined block, short enough to sit in a list. */
 function excerpt(text: string, max = 48): string {
@@ -170,13 +114,17 @@ export function Optimizer({
   locale,
   t,
   scenario,
+  promptText,
 }: {
   locale: Locale;
   t: WebMessages;
   scenario: Scenario;
+  promptText: PromptText;
 }) {
   const [meta, setMeta] = useState<Metadata | null>(null);
-  const [prompt, setPrompt] = useState(EXAMPLES[locale]);
+  // Owned by the page, so the Library tab saves and restores the prompt that
+  // is actually on screen rather than a copy of it.
+  const { value: prompt, set: setPrompt } = promptText;
   const [level, setLevel] = useState<'safe' | 'aggressive'>('safe');
   const [reorder, setReorder] = useState(false);
   const [suggest, setSuggest] = useState(false);
@@ -216,15 +164,6 @@ export function Optimizer({
       .catch(() => setMeta(null));
     setHistory(loadHistory());
   }, []);
-
-  // Switching language swaps the starter prompt, but never a prompt the reader
-  // has actually written: losing someone's text to a language toggle would be
-  // unforgivable.
-  useEffect(() => {
-    setPrompt((current) =>
-      Object.values(EXAMPLES).includes(current) ? EXAMPLES[locale] : current,
-    );
-  }, [locale]);
 
   function recordHistory(promptUsed: string, data: OptimizationResult) {
     const entry: HistoryEntry = {

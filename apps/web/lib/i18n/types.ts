@@ -92,6 +92,29 @@ export interface WebMessages {
     ephemeralHint: string;
   };
 
+  /** The saved-prompts tab. Rendered only for a signed-in reader. */
+  library: {
+    tab: string;
+    lede: string;
+    loading: string;
+    empty: string;
+    saveCurrent: string;
+    nothingToSave: string;
+    namePrompt: string;
+    saveVersion: string;
+    saved: string;
+    /** A save that changed nothing. Reported as a note, not a failure. */
+    unchanged: string;
+    showHistory: string;
+    hideHistory: string;
+    restore: string;
+    delete: string;
+    confirmDelete(name: string): string;
+    meta(tokens: string, versions: number, updated: string): string;
+    versionLabel(version: number): string;
+    versionTokens(tokens: string, when: string): string;
+  };
+
   /** The Compare tab: what an edit did to a prompt. */
   compare: {
     tab: string;

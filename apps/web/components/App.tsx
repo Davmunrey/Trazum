@@ -5,12 +5,14 @@ import { useEffect, useState } from 'react';
 import type { Locale } from '@trazum/core';
 
 import { Account } from './Account';
+import { Library } from './Library';
 import { Comparer } from './Comparer';
 import { Optimizer } from './Optimizer';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { LOCALES, LOCALE_STORAGE_KEY, getWebMessages } from '../lib/i18n';
+import { usePromptText } from '../lib/prompt-text';
 import { useScenario } from '../lib/scenario';
 
 function storedLocale(): Locale | null {
@@ -48,6 +50,31 @@ export function App({
   // answers through it, and two tabs disagreeing about the call volume would
   // make their answers incomparable while looking like one workload.
   const scenario = useScenario();
+
+  // Owned here for the same reason as the scenario. The Library tab saves and
+  // restores the prompt that is on screen; it cannot do that for a sibling
+  // holding its own copy, and two copies of "the prompt" is how a library ends
+  // up quietly storing something else.
+  const promptText = usePromptText(locale);
+
+  // The Library tab appears only for a signed-in reader. Rendered from the same
+  // endpoint the header uses, so the tab and the button cannot disagree about
+  // whether this deployment has accounts.
+  const [signedIn, setSignedIn] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/auth/session', { credentials: 'same-origin' })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body) => {
+        if (!cancelled && body?.user) setSignedIn(true);
+      })
+      .catch(() => {
+        // No answer means no tab. A library nobody can read is worse than absent.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const modelName =
     models.find((m) => m.id === scenario.usage.model)?.displayName ?? scenario.usage.model;
 
@@ -113,6 +140,7 @@ export function App({
         <TabsList className="mb-5">
           <TabsTrigger value="optimise">{t.compare.optimiseTab}</TabsTrigger>
           <TabsTrigger value="compare">{t.compare.tab}</TabsTrigger>
+          {signedIn && <TabsTrigger value="library">{t.library.tab}</TabsTrigger>}
         </TabsList>
 
         {/*
@@ -121,7 +149,7 @@ export function App({
           content unless told otherwise.
         */}
         <TabsContent value="optimise" forceMount className="data-[state=inactive]:hidden">
-          <Optimizer locale={locale} t={t} scenario={scenario} />
+          <Optimizer locale={locale} t={t} scenario={scenario} promptText={promptText} />
         </TabsContent>
         <TabsContent value="compare" forceMount className="data-[state=inactive]:hidden">
           <Comparer
@@ -132,6 +160,19 @@ export function App({
             models={models}
           />
         </TabsContent>
+        {signedIn && (
+          // Not forceMount, unlike the other two: this tab holds no unsaved
+          // work — everything in it is already on the server — and remounting
+          // re-reads the list, which is the behaviour you want on return.
+          <TabsContent value="library">
+            <Library
+              t={t}
+              locale={locale}
+              currentPrompt={promptText.value}
+              onRestore={(text) => promptText.set(text)}
+            />
+          </TabsContent>
+        )}
       </Tabs>
 
       <footer className="mt-8 border-t pt-3.5 text-xs text-muted-foreground">

@@ -18,6 +18,8 @@
  *    is what makes it testable without waiting a month.
  */
 
+import type { PromptStore } from './prompts';
+
 /** Identity providers this deployment can authenticate against. */
 export type AuthProvider = 'github';
 
@@ -60,6 +62,16 @@ export interface SessionRecord {
 
 export interface Store {
   readonly kind: 'memory' | 'postgres';
+
+  /**
+   * The prompt library.
+   *
+   * A nested namespace rather than fifteen more methods on this interface. The
+   * two halves have nothing to say to each other — accounts answer *who is
+   * asking*, prompts answer *what did they save* — and flattening them would
+   * make every driver a single file that nobody reads to the end of.
+   */
+  readonly prompts: PromptStore;
 
   /**
    * True when everything in here dies with the process.

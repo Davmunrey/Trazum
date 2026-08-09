@@ -26,6 +26,18 @@ Ten commands now, up from four.
 
 ### What's new
 
+- **A prompt library, with every version you ever saved.** Signed in, Trazum
+  keeps your prompts and the whole history of each — because the question worth
+  asking about a prompt is not what it costs today, it is what last month's edit
+  did to it. History is append-only: saving over a prompt writes a new version
+  and never rewrites one, and a save that changed nothing writes nothing and
+  says so rather than filling the record with identical rows. Token counts are
+  recomputed on read rather than stored, so two versions saved a year apart are
+  actually comparable instead of being priced by two different estimators.
+  Somebody else's prompt answers **404, never 403** — a 403 confirms the id
+  exists — and the store has no lookup that takes an id without an owner, so
+  that mistake cannot be written rather than merely not being written.
+
 - **Sign in with GitHub — and the app is unchanged if you don't.** Accounts are
   off by default; a deployment with no GitHub app configured is the anonymous
   tool it always was, with no button and no database. Turn it on and Trazum

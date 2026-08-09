@@ -5,6 +5,7 @@ import type { Store } from './types';
 export type { AuthProvider, NewUser, SessionRecord, Store, UserRecord } from './types';
 export { memoryStore } from './memory';
 export { postgresStore } from './postgres';
+export * from './prompts';
 
 /**
  * How strictly to verify the database's TLS certificate.
