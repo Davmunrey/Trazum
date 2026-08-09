@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { promptsInMemory } from './prompts-memory';
+import { promptTablesInMemory } from './prompts-memory';
 import { sharesInMemory } from './shares-memory';
 import type { NewUser, SessionRecord, Store, UserRecord } from './types';
 
@@ -25,11 +25,16 @@ export function memoryStore(): Store {
   const key = (provider: string, providerId: string) => `${provider}:${providerId}`;
   const byProvider = new Map<string, string>();
 
+  // Both read the same maps; only one of them binds an owner. Built together
+  // because there is no honest way for the overview to reach them from outside.
+  const tables = promptTablesInMemory();
+
   return {
     kind: 'memory',
     ephemeral: true,
-    prompts: promptsInMemory(),
+    prompts: tables.prompts,
     shares: sharesInMemory(),
+    admin: tables.adminFor((ownerId) => users.get(ownerId)?.login ?? ownerId),
 
     async upsertUser(input: NewUser, now: Date): Promise<UserRecord> {
       const existingId = byProvider.get(key(input.provider, input.providerId));

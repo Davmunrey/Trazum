@@ -139,6 +139,26 @@ export interface WebMessages {
     neverExpires: string;
   };
 
+  /** The deployment overview at /admin. Absent unless TRAZUM_ADMINS is set. */
+  admin: {
+    heading: string;
+    lede: string;
+    /** The disclaimer, rendered above the first number. */
+    notSpend: string;
+    /** Shown when the admin list matched a renameable login rather than an id. */
+    loginWarning: string;
+    accounts: string;
+    prompts: string;
+    prompt: string;
+    account: string;
+    tokens: string;
+    recoverable: string;
+    byAccount: string;
+    topHeading: string;
+    truncated(measured: string, total: string): string;
+    footer: string;
+  };
+
   /** The Compare tab: what an edit did to a prompt. */
   compare: {
     tab: string;

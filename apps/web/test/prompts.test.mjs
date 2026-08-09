@@ -574,7 +574,18 @@ describe('the list is a list, not the whole library', () => {
 
 describe('the store makes leaking existence unrepresentable', () => {
   const source = readFileSync(new URL('../lib/store/prompts.ts', import.meta.url), 'utf8');
-  const body = source.slice(source.indexOf('export interface PromptStore'));
+  /**
+   * The `PromptStore` block, bounded at its own closing brace.
+   *
+   * It used to slice to the end of the file, which was fine while `PromptStore`
+   * was the last thing in it and wrong the moment `AdminStore` was added below —
+   * whose `census(limit)` takes no owner *by design*, and which this guard then
+   * reported as a hole. Third unbounded slice in this repository to read past
+   * the thing it meant; the previous one read an `on conflict` clause into a
+   * `returning` list.
+   */
+  const start = source.indexOf('export interface PromptStore');
+  const body = source.slice(start, source.indexOf('\n}', start));
 
   it('gives no method a way to name a prompt without naming an owner', () => {
     /**

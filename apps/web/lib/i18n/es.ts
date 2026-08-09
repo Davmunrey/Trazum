@@ -137,6 +137,27 @@ export const es: WebMessages = {
     neverExpires: 'no caduca',
   },
 
+  admin: {
+    heading: 'Resumen del despliegue',
+    lede: 'Todos los prompts guardados en este despliegue y lo que las reglas recuperarían de ellos.',
+    notSpend:
+      'Esto son recuentos de tokens, no gasto. Trazum nunca ha visto una factura ni una llamada a la API: lee los prompts de esta biblioteca y los mide. Lo que cuesta un prompt depende de con qué frecuencia lo llames, y eso solo lo sabes tú. Aquí no hay ninguna puntuación a propósito: cada número de esta página se puede reproducir ejecutando trazum sobre el mismo prompt.',
+    loginWarning:
+      'Estás en la lista de administradores por nombre de usuario de GitHub. Los nombres se pueden cambiar y, una vez liberados, los puede reclamar otra persona: usar los IDs numéricos de GitHub en TRAZUM_ADMINS mantiene el significado de la lista.',
+    accounts: 'Cuentas',
+    prompts: 'Prompts',
+    prompt: 'Prompt',
+    account: 'Cuenta',
+    tokens: 'Tokens de entrada',
+    recoverable: 'Recuperables',
+    byAccount: 'Por cuenta',
+    topHeading: 'Merecen una tarde',
+    truncated: (measured: string, total: string) =>
+      `Mostrando ${measured} de ${total} prompts. Los totales de arriba cubren solo esos ${measured}: este despliegue tiene más prompts de los que lee un resumen.`,
+    footer:
+      'Solo nombres y totales: esta página nunca muestra el texto del prompt de nadie. Los tokens recuperables se miden ejecutando las reglas, no se estiman.',
+  },
+
   compare: {
     tab: 'Comparar',
     optimiseTab: 'Optimizar',

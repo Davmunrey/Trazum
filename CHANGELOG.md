@@ -12,6 +12,74 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**A deployment overview at `/admin`.** The last of the team features, and the one
+whose hardest part was deciding what it is allowed to claim.
+
+The request was "aggregate spending across the org", and neither half of that
+phrase survives contact with what Trazum knows. **It has never seen a bill, an
+API call or a token counter** — it reads prompt text and measures it. A dashboard
+headed "spend" would print a figure nobody can reconcile against an invoice, and
+the rule here is that a number a reader cannot reproduce by hand does not get
+printed. So the headline is input tokens, which is a property of a prompt alone,
+and the second figure is what running the rules would remove — measured by
+running them, the standard `trazum rank` is already held to. No score. The
+disclaimer sits above the first number rather than in a footnote, because a
+footnote is read second.
+
+**And there is no organisation model**, which is also a decision rather than an
+omission: a self-hosted instance *is* the team. The alternative was reading
+GitHub organisation membership, which would mean asking for `read:org` on every
+sign-in so that some deployments could skip an environment variable. Sign-in asks
+for `read:user` and nothing else, and keeping that true is worth more than the
+convenience.
+
+`TRAZUM_ADMINS` is unset by default and unset means the page **does not exist** —
+`404`, identical to the `404` a signed-in non-admin gets, because a `403` would
+confirm a dashboard is here and that they are outside it.
+
+It reports counts, prompt names and logins, and never a line of anybody's prompt.
+An admin is an operator, not an auditor of what their colleagues wrote, and
+"which prompt is expensive" is answerable from a name. One overview reads at most
+500 prompts; past that the page states both numbers instead of reporting a total
+that quietly covers part of the deployment.
+
+**A guard caught its own author.** `census` was first written as a method on
+`PromptStore`, with a comment calling itself "the documented hole" in the rule
+that every lookup binds an owner — and the guard written to enforce that rule
+failed on it immediately, which was the guard being right. A rule with an
+exception written inside it is a rule somebody adds a second exception beside. It
+moved to its own `AdminStore` interface, the way `ShareStore.findShare` already
+had, so "every `PromptStore` lookup binds an owner" stays a true sentence rather
+than a mostly-true one.
+
+Fixing that surfaced one more: the guard read `PromptStore` by slicing from its
+declaration **to the end of the file**, which was fine while it was the last
+interface there and reported `AdminStore.census` as a hole the moment it was not.
+Third unbounded slice in this repository to read past the thing it meant — the
+previous one read a `returning` list into an `on conflict` clause.
+
+Sixteen mutants, sixteen killed — but only after three of them survived the first
+pass, and all three were tests that had encoded the easy case:
+
+- **A GitHub username may be entirely digits.** A version of `adminSource` that
+  checked the numeric-id list against the login as well passed everything,
+  because no fixture had an account whose username collided with somebody's id.
+  It does now: listing `1001` means boss's account and must not admit whoever
+  registered the *username* `1001`.
+- **Ranking by size and ranking by waste give the same answer** whenever the
+  biggest prompt is also the most wasteful, which was the only case the fixture
+  had. A long prompt of unique prose against a short one full of known filler
+  tells them apart — and telling them apart is the whole value of the ranking,
+  because the long one is what an admin would have guessed.
+- **"Some `notFound()` precedes the census call"** stayed true when the admin
+  guard was deleted, because the signed-out guard above it kept the ordering.
+  Each of the four guards is now required by name.
+
+One more fixture lesson, the same one as always: the prompt this suite used to
+represent "wordy" was *"You should always make sure to carefully read the entire
+text below"*, which reads bloated and which no rule touches. Every savings
+assertion was comparing zero to zero.
+
 **Share links for comparisons.** `POST /api/shares` publishes a comparison at
 `/c/<token>`, readable by anyone holding the URL with no account at all.
 

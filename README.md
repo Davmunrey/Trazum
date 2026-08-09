@@ -1070,6 +1070,12 @@ colleague what a prompt edit cost. Links expire after thirty days by default,
 can be revoked, are kept out of search engines two different ways, and say
 plainly what they publish *before* the button rather than after.
 
+Set `TRAZUM_ADMINS` and `/admin` shows what every prompt on the deployment adds
+up to — input tokens, and how many of them the rules would remove, measured by
+running them. Deliberately **not** a spend report: Trazum has never seen a bill,
+so the page says so above the first number, shows no score, and shows prompt
+names but never anybody's prompt text. Unset means the page does not exist.
+
 [docs/accounts.md](docs/accounts.md) has the setup, the schema, every security
 decision and why, the limits, and an explicit list of what is **not** covered.
 

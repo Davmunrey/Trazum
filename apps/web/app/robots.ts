@@ -19,7 +19,7 @@ export default function robots(): MetadataRoute.Robots {
        * is the point of the feature. Both are about the URL not spreading on its
        * own.
        */
-      disallow: ['/api/', '/c/'],
+      disallow: ['/api/', '/c/', '/admin'],
     },
   };
 }
