@@ -25,6 +25,13 @@ export interface CliMessages {
 
   help(defaults: HelpDefaults, bold: (s: string) => string): string;
 
+  /** The on-disk cache of model answers for `--suggest`. */
+  cache: {
+    cleared(entries: number, bytes: number, dir: string): string;
+    /** Printed after a run that used the cache, so a hit is never silent. */
+    used(hits: number, misses: number): string;
+  };
+
   errors: {
     optionNeedsValue(name: string): string;
     mustBeNonNegative(name: string, raw: string): string;

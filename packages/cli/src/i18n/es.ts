@@ -93,6 +93,11 @@ ${bold('OPCIONES DE optimize')}
                               se descarta si no sobrevive.
   --apply-suggestions         Las aplica. Solo con --suggest; a secas es un error,
                               no un flag que se ejecuta sin hacer nada.
+  --cache-suggestions         Responde a --suggest desde una caché local cuando ya
+                              se preguntó por el mismo prompt, en vez de pagar otra
+                              vez la llamada. Desactivado por defecto: un acierto es
+                              lo que el modelo dijo la última vez, y eso debe
+                              elegirse. En $XDG_CACHE_HOME/trazum, 0600, 7 días.
   --reorder                   Mueve las instrucciones estables delante del primer
                               marcador, para que la caché de prompts las alcance. Esto
                               MUEVE texto en vez de borrarlo: lee el diff y decide si
@@ -114,6 +119,9 @@ ${bold('OPCIONES DE optimize')}
   --locale <${d.locales.join('|')}>            Idioma del informe. Por defecto: el del sistema.
   -o, --out <fichero>         Escribe el prompt optimizado a un fichero.
   -h, --help                  Esta ayuda.
+  --clear-suggestion-cache    Vacía la caché de --cache-suggestions y dice cuánto
+                              ocupaba. Es un recado, no un modo: no necesita
+                              comando ni lee el config.
 
 ${bold('OPCIONES DE check')}
   --max-tokens <n>            Presupuesto de tokens de entrada. Obligatorio salvo que el config cubra el fichero.
@@ -248,6 +256,15 @@ ${bold('EJEMPLOS')}
   trazum diff prompts/system.txt prompts/system.new.txt --max-growth 10
   trazum check prompts/
 `,
+
+  cache: {
+    cleared: (entries: number, bytes: number, dir: string) =>
+      entries === 0
+        ? `No hay sugerencias en caché que eliminar (${dir}).`
+        : `Se eliminaron ${entries} ${entries === 1 ? 'respuesta' : 'respuestas'} en caché (${(bytes / 1024).toFixed(1)} KB) de ${dir}.`,
+    used: (hits: number, misses: number) =>
+      `Sugerencias: ${hits} desde la caché, ${misses} consultadas. Las respuestas en caché son lo que el modelo dijo la última vez; usa --clear-suggestion-cache para empezar de nuevo.`,
+  },
 
   errors: {
     optionNeedsValue: (name) => `La opción --${name} necesita un valor.`,

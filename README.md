@@ -770,6 +770,56 @@ told what Trazum knew for free.
 On its own it is an error rather than a no-op, for the same reason a misspelled
 flag is: a flag that runs silently and changes nothing is not an answer.
 
+#### Not asking twice: `--cache-suggestions`
+
+Running `--suggest` across a directory asks the same questions again on every
+run, and most of the prompts have not changed since the last one.
+`--cache-suggestions` answers those from disk:
+
+```bash
+trazum optimize prompts/support.txt --suggest --cache-suggestions
+```
+
+```
+Suggestions: 1 from cache, 0 asked. Cached answers are what the model said
+last time; --clear-suggestion-cache to start over.
+```
+
+On a re-run after editing two files out of forty, thirty-eight requests do not
+happen. That notice goes to stderr, so it never lands in `--json`, and it is
+always printed: a cache hit is a week-old answer from something that is not a
+pure function, and it should never be silent.
+
+Four decisions worth knowing about:
+
+- **Off by default.** Every other model-touching feature here makes you ask
+  twice. Answering from a stale response without being asked would be the one
+  surprise in a tool built on not producing any.
+- **The raw response is cached, not the checked result.** All five checks above
+  run again on a hit, so an answer stored last week is judged by this week's
+  rules rather than replaying an older version's verdict.
+- **Seven days, then it is asked again.** Long enough for a working week, short
+  enough that a model alias which started pointing somewhere new does not keep
+  answering in the old model's words.
+- **Mode 0600 in a 0700 directory** under `$XDG_CACHE_HOME/trazum/suggestions`
+  (or `~/.cache`). The cache holds prompt text, which is the most sensitive
+  thing this tool ever touches; a world-readable copy in a shared home would
+  publish somebody's unreleased product behaviour to every account on the box.
+
+`trazum --clear-suggestion-cache` empties it and says how much went. It needs no
+command and reads no config — a cache you cannot empty because an unrelated
+`trazum.config.json` fails to parse is a cache somebody deletes by hand,
+guessing at the path.
+
+**This is not the API's prompt caching, and that is not an oversight.** Marking
+Trazum's suggest system prompt with `cache_control` would cache nothing: the
+minimum cacheable prefix is 512 tokens on the most generous model and 4,096 on
+others, that prompt is 291 tokens, and a prefix below the minimum is *silently*
+not cached — no error, `cache_creation_input_tokens: 0`. Everything after the
+system prompt is your text, which differs on every call, so there is no
+placement of `cache_control` that helps. A test measures the prompt against the
+published minima, so if that ever stops being true it stops loudly.
+
 ### Which prompt to fix first: `trazum rank`
 
 Forty prompts in a repository, an afternoon to spend. Which one?

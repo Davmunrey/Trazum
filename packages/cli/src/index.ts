@@ -38,6 +38,7 @@ import {
   reviewExamples,
   withExactTokenCounts,
 } from '@trazum/core';
+import { cacheDir, cacheStats, cachingProvider, clearCache } from './suggest-cache.js';
 import type {
   Advisory,
   ExampleReview,
@@ -312,6 +313,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
     'level', 'model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch',
     'disable', 'llm', 'exact-tokens', 'diff', 'reorder', 'out', 'o',
     'tokens-only', 'cost', 'prompt', 'suggest', 'apply-suggestions',
+    'cache-suggestions',
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
@@ -1214,13 +1216,36 @@ async function commandOptimize(
   }
 
   if (boolFlag(args, 'suggest')) {
-    const provider = providerFromEnv();
-    if (!provider) throw new Error(t.errors.llmNotConfigured());
+    const base = providerFromEnv();
+    if (!base) throw new Error(t.errors.llmNotConfigured());
+
+    /**
+     * Opt-in, like everything else here that touches a model.
+     *
+     * A cache hit returns what the model said last time, and a model is not a
+     * pure function — answering from a week-old response without being asked
+     * would be a surprise in a tool that already makes you opt in twice to let
+     * one edit your prompt.
+     *
+     * The saving is not the API's prompt-caching discount, which cannot apply:
+     * the only stable prefix is a 291-token system prompt, below every model's
+     * minimum cacheable prefix, so marking it would silently cache nothing.
+     * See `suggest-cache.ts`.
+     */
+    const cached = boolFlag(args, 'cache-suggestions')
+      ? cachingProvider(base, { dir: cacheDir() })
+      : null;
+    const provider = cached ?? base;
 
     // On the deterministic result rather than the text as written: the rules
     // have already taken the easy wins, and asking the model to find them again
     // spends a call to be told what Trazum knew for free.
     suggestions = await suggestRewrites(result.optimized, provider, { locale });
+
+    // Said out loud, on stderr so it never lands in `--json`. A cache hit
+    // returns last week's answer, and a reader who does not know that will
+    // wonder why the model stopped noticing a phrase they just added.
+    if (cached) console.error(t.cache.used(cached.hits, cached.misses));
 
     // Opt in twice, deliberately. Listing is safe — nothing changes and the
     // author reads eight one-line proposals. Applying is a model editing their
@@ -2703,6 +2728,26 @@ async function main(): Promise<void> {
   let locale = localeFromArgv(argv);
   let t = getCliMessages(locale);
   const args = parseArgs(argv, t);
+
+  /**
+   * An errand, not a mode of a command — so it runs with no command named, and
+   * before the config is loaded.
+   *
+   * Both halves of that are deliberate. `trazum --clear-suggestion-cache` with
+   * nothing else on the line is how somebody will type it, and the first
+   * version sat below the help branch, where `!args.command` had already
+   * printed the usage text and returned: the flag did nothing, and said nothing
+   * about doing nothing. Loading the config first would be the same mistake one
+   * layer down — a cache you cannot empty because an unrelated `trazum.config.json`
+   * fails to parse is a cache somebody deletes by hand, guessing at the path.
+   */
+  if (boolFlag(args, 'clear-suggestion-cache')) {
+    const dir = cacheDir();
+    const before = cacheStats(dir);
+    const removed = clearCache(dir);
+    console.log(t.cache.cleared(removed, before.bytes, dir));
+    return;
+  }
 
   if (boolFlag(args, 'help') || boolFlag(args, 'h') || !args.command) {
     console.log(

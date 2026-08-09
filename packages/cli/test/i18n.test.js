@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
 import { CONFIG_KEYS, CONFIG_USAGE_KEYS, LOCALES } from '@trazum/core';
@@ -138,6 +139,43 @@ describe('catalogue parity', () => {
     for (const locale of LOCALES) {
       const help = getCliMessages(locale).help(defaults, (s) => s);
       for (const flag of documented) {
+        assert.ok(help.includes(`--${flag}`), `${locale}: help does not document --${flag}`);
+      }
+    }
+  });
+
+  it('every flag handled before a command is chosen is documented too', () => {
+    /**
+     * The test above derives its list from the rejection message, which is
+     * per-command — so a flag belonging to no command is invisible to it.
+     * `--clear-suggestion-cache` is exactly that: an errand that runs with no
+     * command named. It shipped documented nowhere and the suite stayed green.
+     *
+     * This reads `main()` instead, which is where such a flag has to be handled
+     * to work at all.
+     */
+    const source = readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8');
+    const body = source.slice(source.indexOf('async function main('));
+    assert.ok(body.length > 0, 'main() could not be found — has it been renamed?');
+
+    const handled = new Set(
+      [...body.matchAll(/boolFlag\(args, '([^']+)'\)/g)].map((match) => match[1]),
+    );
+    assert.ok(handled.has('clear-suggestion-cache'), 'the derivation stopped finding flags');
+
+    const defaults = {
+      model: 'claude-opus-5',
+      callsPerMonth: 1000,
+      avgOutputTokens: 500,
+      cacheHitRate: 0.9,
+      locales: LOCALES,
+    };
+
+    for (const locale of LOCALES) {
+      const help = getCliMessages(locale).help(defaults, (s) => s);
+      for (const flag of handled) {
+        // `-h` is an alias printed beside --help on one line.
+        if (flag === 'h') continue;
         assert.ok(help.includes(`--${flag}`), `${locale}: help does not document --${flag}`);
       }
     }
