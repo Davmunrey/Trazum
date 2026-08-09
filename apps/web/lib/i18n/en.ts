@@ -115,6 +115,29 @@ export const en: WebMessages = {
     versionTokens: (tokens: string, when: string) => `${tokens} tokens · ${when}`,
   },
 
+  share: {
+    sharedBy: (login: string, when: string) => `Shared by ${login} on ${when}. Anyone with this link can read it.`,
+    footer:
+      'Figures are recomputed from the prompts every time this page is opened, so they reflect today’s rules and prices rather than a snapshot.',
+    button: 'Create share link',
+    working: 'Creating…',
+    heading: 'Share this comparison',
+    expiryLabel: 'Link expires',
+    expiry7: 'in 7 days',
+    expiry30: 'in 30 days',
+    expiry90: 'in 90 days',
+    expiryNever: 'never',
+    warning:
+      'A share link publishes both prompts to anyone who has the URL — no sign-in required. Do not share a prompt containing secrets, customer data or anything you would not paste into a public page.',
+    created: (url: string) => `Link created: ${url}`,
+    copy: 'Copy link',
+    copied: 'Copied',
+    revoke: 'Revoke',
+    existing: 'Links you have created',
+    expiresOn: (when: string) => `expires ${when}`,
+    neverExpires: 'never expires',
+  },
+
   compare: {
     tab: 'Compare',
     optimiseTab: 'Optimise',

@@ -115,6 +115,30 @@ export interface WebMessages {
     versionTokens(tokens: string, when: string): string;
   };
 
+  /** The shared-comparison page at /c/:token. Read by people with no account. */
+  share: {
+    sharedBy(login: string, when: string): string;
+    footer: string;
+    /** The Compare tab's share control. */
+    button: string;
+    working: string;
+    heading: string;
+    expiryLabel: string;
+    expiry7: string;
+    expiry30: string;
+    expiry90: string;
+    expiryNever: string;
+    /** Said before the link is created, not after. */
+    warning: string;
+    created(url: string): string;
+    copy: string;
+    copied: string;
+    revoke: string;
+    existing: string;
+    expiresOn(when: string): string;
+    neverExpires: string;
+  };
+
   /** The Compare tab: what an edit did to a prompt. */
   compare: {
     tab: string;

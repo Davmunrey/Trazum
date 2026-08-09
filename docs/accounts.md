@@ -41,6 +41,7 @@ anywhere. If the consent screen offers more than that, it is not this app.
 ```sh
 psql "$TRAZUM_DATABASE_URL" -f apps/web/db/001_accounts.sql
 psql "$TRAZUM_DATABASE_URL" -f apps/web/db/002_prompts.sql
+psql "$TRAZUM_DATABASE_URL" -f apps/web/db/003_shares.sql
 ```
 
 Apply them in order. Both files are idempotent — re-running it is safe — and it works on any Postgres:
@@ -127,6 +128,57 @@ delete the record the prompt was kept for.
 | Name | 120 characters |
 | Note | 500 characters |
 | Requests per minute per address | 60 |
+
+---
+
+## Share links
+
+On the Compare tab, signed in, **Create share link** publishes a comparison at
+`/c/<token>` — readable by anyone holding the URL, with no sign-in.
+
+That is a genuinely different security model from everything else here, and the
+page says so before the button rather than after: *a share link publishes both
+prompts to anyone who has the URL.* The warning is above the control, always
+visible, and not behind a dialog — a dialog on click is a thing people dismiss;
+a sentence above the button is a thing they read while deciding.
+
+| Route | Who |
+| --- | --- |
+| `POST /api/shares` | Signed in, same-origin |
+| `GET /api/shares` | Signed in — your links, previews only, never the prompts |
+| `DELETE /api/shares/:token` | Signed in, and only the link's owner |
+| `GET /c/:token` | **Anyone with the token** |
+
+**The token is the secret.** 32 bytes from the CSPRNG, the same generator that
+mints session cookies. It is stored in the clear, unlike a session token, and
+the asymmetry is deliberate: hashing a session token means a leaked table is a
+list of hashes rather than a list of live logins, whereas hashing this one would
+protect nothing, because the row it points at *is* the secret.
+
+**Links expire.** Thirty days by default; 7, 90 or never if you ask. A link that
+never expires is a permanent publication made by somebody thinking about the
+next ten minutes, so `never` exists and has to be chosen.
+
+**Reading a link writes nothing.** No view counter, no last-seen timestamp. An
+unauthenticated request that can cause a write is a lever, and "how many people
+opened this" is not worth being one.
+
+**It is kept out of search twice.** The page declares `noindex` in its metadata
+and `robots.txt` disallows `/c/`. Two defences that fail differently: one stops
+the fetch, the other stops the indexing of a fetch that happened anyway. Neither
+is a security control — anyone with the URL can read it, which is the feature —
+both are about the URL not spreading on its own. The page also sends
+`no-referrer`, because the token is in the path and any outbound navigation
+would otherwise put the whole capability in someone else's access log.
+
+**Nothing derived is stored.** A share holds the two prompts and the settings;
+the comparison is recomputed on every view, so a link opened next year is priced
+by next year's rules rather than by a snapshot that quietly stopped being true.
+The settings are canonicalised on write from a whitelist of known keys — they
+are replayed into the core on every future view, by a reader who did not choose
+them and cannot see them.
+
+Limits: 100 links per account, refused rather than evicted.
 
 ---
 
@@ -224,6 +276,8 @@ goes wrong.
   sign in again.
 - **GitHub is the only provider.** The store keys on `(provider, provider_id)`
   so a second one is additive, but SSO through anything else is not written.
+- **A revoked link is gone, but a copy taken while it was live is not.** This is
+  what "publish" means; there is no recall.
 - **The library is per person, not per team.** Every prompt has one owner and
   there is no way to share one. The `author_id` column on a version exists so
   that becomes a migration rather than a rewrite, and today it is always the
