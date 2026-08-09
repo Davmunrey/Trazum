@@ -137,6 +137,10 @@ export interface WebMessages {
     existing: string;
     expiresOn(when: string): string;
     neverExpires: string;
+    /** The README badge built from the same link. */
+    badge: string;
+    badgeHint: string;
+    copyBadge: string;
   };
 
   /** The deployment overview at /admin. Absent unless TRAZUM_ADMINS is set. */

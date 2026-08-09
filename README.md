@@ -1076,6 +1076,11 @@ running them. Deliberately **not** a spend report: Trazum has never seen a bill,
 so the page says so above the first number, shows no score, and shows prompt
 names but never anybody's prompt text. Unset means the page does not exist.
 
+Every share link doubles as a **README badge** at `/badge/<token>.svg` — the
+token change, recomputed on every load rather than frozen the day it was made.
+The image is inert: no script, no external font, nothing fetched, and no prompt
+text ever reaches it.
+
 [docs/accounts.md](docs/accounts.md) has the setup, the schema, every security
 decision and why, the limits, and an explicit list of what is **not** covered.
 

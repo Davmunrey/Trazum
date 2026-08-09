@@ -107,6 +107,18 @@ export function ShareControl({
     }
   }
 
+  /**
+   * The markdown somebody pastes into a README.
+   *
+   * The image points at `/badge/<token>.svg` and the link at the page, so a
+   * reader who wants the detail can click through — and both are revoked by the
+   * same action, because they are the same capability. The badge URL is derived
+   * from the share URL rather than sent separately: two fields that must agree
+   * are two fields that can disagree.
+   */
+  const badgeMarkdown = (share: Share) =>
+    `[![Trazum](${share.url.replace('/c/', '/badge/')}.svg)](${share.url})`;
+
   const when = (iso: string) =>
     new Date(iso).toLocaleDateString(t.numberLocale, { dateStyle: 'medium' });
 
@@ -151,6 +163,7 @@ export function ShareControl({
       {shares.length > 0 && (
         <>
           <h4 className="mt-4 text-xs font-medium text-muted-foreground">{t.share.existing}</h4>
+          <p className="mt-1 max-w-[62ch] text-xs text-muted-foreground">{t.share.badgeHint}</p>
           <ul className="mt-1.5 grid gap-1.5">
             {shares.map((share) => (
               <li key={share.token} className="flex flex-wrap items-center gap-2 text-xs">
@@ -168,6 +181,15 @@ export function ShareControl({
                   onClick={() => copy(share.url)}
                 >
                   {copied === share.url ? t.share.copied : t.share.copy}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs"
+                  onClick={() => copy(badgeMarkdown(share))}
+                >
+                  {copied === badgeMarkdown(share) ? t.share.copied : t.share.badge}
                 </Button>
                 <Button
                   type="button"
