@@ -1255,6 +1255,12 @@ word overlap. The review reports; it never edits.
 
 Trazum prices Anthropic, OpenAI, Google, Moonshot, DeepSeek, xAI and Mistral:
 
+**Every report says how old the prices are** — `Prices reviewed 2026-06-24 (46 days
+ago)` — because every dollar figure descends from that list, and a date alone makes
+you subtract against today to learn whether to trust it. There is deliberately no
+"stale" threshold: that would be a number nobody could check, and the age is the
+fact.
+
 ```bash
 trazum optimize prompt.txt --model gpt-5 --calls 50000
 trazum optimize prompt.txt --model kimi-k2

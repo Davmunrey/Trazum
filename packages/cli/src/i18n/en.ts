@@ -1,5 +1,10 @@
 import type { CliMessages } from './types.js';
 
+/** "(46 days ago)", or nothing when the age is unknown. */
+const ago = (days: number | null): string =>
+  days === null ? '' : days === 0 ? ' (today)' : days === 1 ? ' (1 day ago)' : ` (${days} days ago)`;
+
+
 /**
  * English catalogue — the source of truth.
  *
@@ -397,7 +402,8 @@ ${bold('EXAMPLES')}
   models: {
     title: () => 'Models and pricing',
     unit: () => '  (USD per million tokens)',
-    reviewedOn: (date) => `  Table reviewed on ${date}. Verify before budgeting.`,
+    reviewedOn: (date, days) =>
+      `  Table reviewed on ${date}${ago(days)}. Verify before budgeting.`,
     columns: {
       model: 'model',
       input: 'input',
@@ -481,7 +487,7 @@ ${bold('EXAMPLES')}
     heading: (root, prompts) =>
       `${root} — ${prompts} ${prompts === 1 ? 'prompt' : 'prompts'}`,
     subheading: (model, calls) => `Priced on ${model} at ${calls} calls a month.`,
-    pricesReviewed: (date) => `Prices reviewed ${date}.`,
+    pricesReviewed: (date, days) => `Prices reviewed ${date}${ago(days)}.`,
     budgetsHeading: () => 'Budgets',
     everyPromptBudgeted: (count) =>
       count === 1

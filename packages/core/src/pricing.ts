@@ -438,3 +438,31 @@ export function cheapestOfTier(tier: ModelPricing['tier']): ModelPricing {
   if (!first) throw new Error(`No models for tier "${tier}"`);
   return candidates.reduce((best, m) => (m.inputPerMTok < best.inputPerMTok ? m : best), first);
 }
+
+/**
+ * Whole days between a `YYYY-MM-DD` review date and now, or `null`.
+ *
+ * Every dollar figure Trazum prints descends from a price list, and the list
+ * carries the date it was checked. Printing only that date makes the reader do
+ * arithmetic against today to learn the one thing they wanted to know — whether
+ * to trust it — and a reader who is not already suspicious will not bother.
+ *
+ * `now` is a parameter for the reason `computeSavings` takes a `Date`: a function
+ * that reads the clock can only be asserted for shape.
+ *
+ * Compared at UTC midnight on both sides, so the answer does not change by one
+ * depending on what time of day the command runs. `null` for anything that is not
+ * a date — an overlay supplies this string, and a wrong one should read as
+ * unknown rather than as a confident number computed from `NaN`.
+ */
+export function reviewAgeDays(lastReviewed: string, now: Date): number | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(lastReviewed)) return null;
+  const then = Date.parse(`${lastReviewed}T00:00:00Z`);
+  if (Number.isNaN(then)) return null;
+
+  const today = Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate());
+  const days = Math.round((today - then) / 86_400_000);
+  // A future date is a typo or a clock problem, not an age. Reported as unknown
+  // rather than as a negative number of days, which reads like a bug either way.
+  return days < 0 ? null : days;
+}
