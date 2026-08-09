@@ -1,0 +1,101 @@
+/**
+ * What Trazum needs to remember between requests, and nothing else.
+ *
+ * Until now the web app remembered nothing: every request carried its own
+ * prompt, computed an answer and forgot both. Accounts change that, so this
+ * file exists to keep the change small and reviewable — one interface, one
+ * table per concept, and two drivers that have to satisfy the same tests.
+ *
+ * Three rules the drivers are held to, because they are the ones a leak turns
+ * on:
+ *
+ * 1. **Session tokens are never stored.** Only their SHA-256. A dump of the
+ *    `sessions` table is a list of hashes, not a list of live logins.
+ * 2. **The provider's access token is never stored at all.** It is exchanged,
+ *    used once to read the account's name, and dropped. Trazum cannot act on
+ *    anyone's GitHub account because it does not keep the means to.
+ * 3. **`now` is an argument.** Expiry is decided by the caller's clock, which
+ *    is what makes it testable without waiting a month.
+ */
+
+/** Identity providers this deployment can authenticate against. */
+export type AuthProvider = 'github';
+
+export interface UserRecord {
+  /** Ours, not the provider's. A UUID, stable across provider renames. */
+  id: string;
+  provider: AuthProvider;
+  /**
+   * The provider's immutable id for the account, as a string.
+   *
+   * GitHub's numeric id, not the login: logins are renameable and reusable, so
+   * keying on one would hand a released username the previous holder's saved
+   * prompts.
+   */
+  providerId: string;
+  /** Display handle. Refreshed on every sign-in, so a rename follows through. */
+  login: string;
+  name: string | null;
+  avatarUrl: string | null;
+  createdAt: Date;
+}
+
+/** The fields a sign-in supplies; `id` and `createdAt` belong to the store. */
+export interface NewUser {
+  provider: AuthProvider;
+  providerId: string;
+  login: string;
+  name: string | null;
+  avatarUrl: string | null;
+}
+
+export interface SessionRecord {
+  /** SHA-256 of the cookie value, hex. The cookie value itself is never here. */
+  tokenHash: string;
+  userId: string;
+  createdAt: Date;
+  /** Absolute expiry. Enforced server-side; the cookie's Max-Age is a courtesy. */
+  expiresAt: Date;
+}
+
+export interface Store {
+  readonly kind: 'memory' | 'postgres';
+
+  /**
+   * True when everything in here dies with the process.
+   *
+   * Surfaced rather than hidden. A memory store behind two serverless instances
+   * signs people out at random, and the honest place to say so is the same
+   * place that knows it — see `/api/auth/session`, which reports it to the UI.
+   */
+  readonly ephemeral: boolean;
+
+  /**
+   * Insert or refresh the account behind `(provider, providerId)`.
+   *
+   * Refresh, not insert-if-absent: a login, display name or avatar that changed
+   * upstream should change here too, and the sign-in is the only moment we are
+   * told about it.
+   */
+  upsertUser(input: NewUser, now: Date): Promise<UserRecord>;
+
+  createSession(session: SessionRecord): Promise<void>;
+
+  /**
+   * The session and its owner, or `null` when there is no such session or it
+   * has expired.
+   *
+   * An expired session is deleted on the way out. Otherwise the only thing that
+   * ever removes one is a sign-out, and a table of month-old dead rows is a
+   * table someone eventually has to be told about.
+   */
+  findSession(tokenHash: string, now: Date): Promise<{ session: SessionRecord; user: UserRecord } | null>;
+
+  deleteSession(tokenHash: string): Promise<void>;
+
+  /** Drop every session belonging to a user. Sign out everywhere. */
+  deleteSessionsForUser(userId: string): Promise<void>;
+
+  /** Release connections. A no-op for the memory driver. */
+  close(): Promise<void>;
+}

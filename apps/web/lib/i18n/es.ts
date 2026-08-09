@@ -83,6 +83,15 @@ export const es: WebMessages = {
     privacyNote: 'El historial se guarda solo en este navegador; nada sale de tu máquina.',
   },
 
+  account: {
+    signIn: 'Iniciar sesión',
+    signOut: 'Cerrar sesión',
+    signingOut: 'Cerrando sesión…',
+    ephemeral: 'sesión temporal',
+    ephemeralHint:
+      'Este despliegue guarda las sesiones en memoria, así que se cerrará cuando el servidor se reinicie. Define TRAZUM_DATABASE_URL para conservarlas.',
+  },
+
   compare: {
     tab: 'Comparar',
     optimiseTab: 'Optimizar',

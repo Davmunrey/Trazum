@@ -84,6 +84,15 @@ export const en: WebMessages = {
     privacyNote: 'History is stored in this browser only; nothing leaves your machine.',
   },
 
+  account: {
+    signIn: 'Sign in',
+    signOut: 'Sign out',
+    signingOut: 'Signing out…',
+    ephemeral: 'temporary session',
+    ephemeralHint:
+      'This deployment keeps sessions in memory, so you will be signed out when the server restarts. Set TRAZUM_DATABASE_URL to keep them.',
+  },
+
   compare: {
     tab: 'Compare',
     optimiseTab: 'Optimise',

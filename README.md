@@ -1031,6 +1031,36 @@ That is stricter than filtering the URL, and deliberately so: the filter reads a
 hostname, and a hostname an attacker registered can resolve wherever they like.
 See [SECURITY.md](SECURITY.md) for the full reasoning.
 
+### Signing in (optional)
+
+Off by default, and a deployment that leaves it off is the tool this README has
+been describing all along: paste a prompt, get an answer, nothing remembered.
+
+Set three variables and the header grows a **Sign in** button:
+
+```sh
+TRAZUM_GITHUB_CLIENT_ID=Iv1.xxxx
+TRAZUM_GITHUB_CLIENT_SECRET=xxxx
+TRAZUM_PUBLIC_URL=https://trazum.example
+```
+
+A fourth, `TRAZUM_DATABASE_URL`, points it at any Postgres so the sign-in
+survives a restart. Without it sessions live in memory, which works and says so:
+the header renders "temporary session", because on a platform that runs more
+than one instance the alternative is being signed out at random with no
+explanation.
+
+Trazum asks GitHub for `read:user` and nothing else, and **never stores the
+access token** — it is exchanged, used once to read your login and avatar, and
+dropped. Session cookies are opaque random tokens stored only as their SHA-256,
+so a database dump is a list of hashes rather than a list of live logins.
+
+Misconfigure any of it and sign-in simply stays off: no button, and
+`/api/auth/*` answers 503 naming the variable to set.
+
+[docs/accounts.md](docs/accounts.md) has the setup, the schema, every security
+decision and why, and an explicit list of what is **not** covered.
+
 ### Deploying to Vercel
 
 The repo is an npm workspaces monorepo; Vercel handles it with no special
@@ -1040,7 +1070,13 @@ configuration:
 2. **Root Directory**: `apps/web`. The rest — installing from the workspace
    root, building `@trazum/core` via `prebuild` — is automatic.
 3. Optional variables: `TRAZUM_LLM_*` to offer the LLM pass without users
-   supplying keys, `NEXT_PUBLIC_POSTHOG_KEY` for analytics.
+   supplying keys, `NEXT_PUBLIC_POSTHOG_KEY` for analytics, `TRAZUM_GITHUB_*`
+   and `TRAZUM_PUBLIC_URL` for sign-in.
+
+Vercel runs more than one instance, so if you enable sign-in there, set
+`TRAZUM_DATABASE_URL` as well. Without it each instance keeps its own sessions
+in memory and a browser is signed in against one and signed out against the
+next.
 
 ### Library
 

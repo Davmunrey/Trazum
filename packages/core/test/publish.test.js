@@ -271,7 +271,6 @@ describe('a count written in prose is a claim like any other', () => {
      * thirteen rules, in a file that had just been corrected for both. Correcting a
      * count without checking it only resets the clock.
      */
-    const readme = readFileSync(join(repoRoot, 'README.md'), 'utf8');
     const cli = readFileSync(join(repoRoot, 'packages/cli/src/index.ts'), 'utf8');
     const block = cli.slice(
       cli.indexOf('const COMMAND_FLAGS'),
@@ -280,20 +279,56 @@ describe('a count written in prose is a claim like any other', () => {
     const commands = [...block.matchAll(/^ {2}([a-z]+):/gm)].map((m) => m[1]);
     assert.ok(commands.length > 5, 'COMMAND_FLAGS could not be parsed — has it moved?');
 
+    /**
+     * Both prose files, not just the README.
+     *
+     * The fourth time this count drifted, and the first time the guard was
+     * standing right next to it: `RELEASES.md` said "Nine commands now, up from
+     * four" for two merges after `doctor` made it ten, because the test that
+     * exists to catch exactly this read one file. Fixing a count in the file the
+     * guard covers is not the same as fixing the count.
+     */
+    const prose = ['README.md', 'RELEASES.md'];
+
     // Two different claims share the shape `<number> commands`. "ten commands" is
     // the whole set; "the other nine commands" is the set minus `optimize`, and is
     // correct prose. Reading both as the total made this test fail on a sentence
     // that was right — a guard that cries wolf gets deleted, so it distinguishes
     // them rather than banning the phrasing.
-    for (const match of readme.matchAll(/\b(other )?([a-z]+) commands\b/g)) {
-      const claimed = NUMBERS[match[2]];
-      if (claimed === undefined) continue; // "these commands", "the other commands"
-      const expected = match[1] ? commands.length - 1 : commands.length;
-      assert.equal(
-        claimed,
-        expected,
-        `README says "${match[0]}" — expected ${expected} of ${commands.length}: ${commands.join(', ')}`,
-      );
+    for (const file of prose) {
+      const text = readFileSync(join(repoRoot, file), 'utf8');
+      /**
+         * Case-insensitive, which is not a detail.
+         *
+         * The lowercase-only version of this pattern could not see "Nine
+         * commands now, up from four" at the top of `RELEASES.md`, because the
+         * sentence starts there and the word is capitalised. Widening the guard
+         * to a second file and then checking that it caught the drift it was
+         * written for is what surfaced it: the count was wrong, the guard ran
+         * green, and both were true at once.
+         */
+      for (const match of text.matchAll(/\b(other )?([a-z]+) commands\b( that | which )?/gi)) {
+        const claimed = NUMBERS[match[2].toLowerCase()];
+        if (claimed === undefined) continue; // "these commands", "the other commands"
+
+        /**
+         * A restrictive relative clause makes the phrase a subset, not a total.
+         *
+         * Widening this guard to `RELEASES.md` immediately failed on "the two
+         * commands that answer *which prompt is worth an afternoon* and *who
+         * made this one expensive*" — a sentence that is entirely correct and
+         * counts two of the ten. `that` and `which` are what mark it, the same
+         * way `other` marks "the other nine".
+         */
+        if (match[3]) continue;
+
+        const expected = match[1] ? commands.length - 1 : commands.length;
+        assert.equal(
+          claimed,
+          expected,
+          `${file} says "${match[0]}" — expected ${expected} of ${commands.length}: ${commands.join(', ')}`,
+        );
+      }
     }
   });
 
