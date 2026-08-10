@@ -188,9 +188,12 @@ describe('the headers a page cannot set itself', () => {
       'DENY',
     );
 
+    // The CSP lives in `middleware.ts` now — a nonce has to differ per response
+    // and a config header is one string for every response. `frame-ancestors` is
+    // asserted there; here it is enough that `X-Frame-Options` still covers the
+    // agents that do not implement it.
     const csp = ruleFor(all, 'content-security-policy');
-    assert.ok(csp, 'nothing declares a CSP');
-    assert.match(csp.headers[0].value, /frame-ancestors 'none'/);
+    assert.equal(csp, undefined, 'a static CSP came back to the config — see middleware.ts');
   });
 
   it('the badge keeps the stricter policy it sets for itself', async () => {
@@ -206,9 +209,13 @@ describe('the headers a page cannot set itself', () => {
      * itself. Both halves are asserted, because either one alone leaves it
      * either unframed-but-scriptable or inert-but-framable.
      */
-    const csp = ruleFor(await rules(), 'content-security-policy');
-    assert.match(csp.source, /badge/, 'the CSP rule no longer excludes the badge');
-    assert.match(csp.source, /\(\?!/, 'the exclusion is not a negative lookahead any more');
+    // The exclusion moved with the policy: it is the middleware matcher now.
+    const middlewareSource = readFileSync(
+      new URL('../middleware.ts', import.meta.url).pathname,
+      'utf8',
+    );
+    assert.match(middlewareSource, /matcher/, 'the middleware no longer scopes itself');
+    assert.match(middlewareSource, /\(\?!badge\//, 'the badge is no longer excluded');
 
     const svg = readFileSync(new URL('../lib/badge/svg.ts', import.meta.url).pathname, 'utf8');
     const own = svg.slice(svg.indexOf('BADGE_HEADERS'));
@@ -260,6 +267,129 @@ describe('the headers a page cannot set itself', () => {
     // exists — and its own tests passed for as long as it was there.
     const shares = readFileSync(new URL('../lib/shares/api.ts', import.meta.url).pathname, 'utf8');
     assert.equal(/export const SHARE_HEADERS/.test(shares), false);
+  });
+});
+
+describe('the content-security policy', () => {
+  /**
+   * Read from `middleware.ts`, and the limits of that are worth stating.
+   *
+   * A policy is only real if the browser gets it *and* the page still works
+   * under it, and neither is visible from source. Both were checked by hand
+   * against a built server, and the output is in the pull request: nine of nine
+   * script tags carrying the nonce from the header, a different nonce on every
+   * request, and the badge keeping its own stricter policy. What is asserted
+   * here is the part that can rot silently — the directives themselves.
+   */
+  const middleware = readFileSync(new URL('../middleware.ts', import.meta.url).pathname, 'utf8');
+
+  /**
+   * Comments stripped before anything is matched.
+   *
+   * `directive('default-src')` returned `'none'` on the first attempt — from the
+   * doc comment explaining that the *badge* uses `default-src 'none'`, several
+   * paragraphs above the policy. This repository has been caught by "the pattern
+   * matched the comment rather than the code" three times now, and a test that
+   * fails when you document the reasoning teaches people to stop documenting it.
+   */
+  const code = middleware.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^[ \t]*\/\/.*$/gm, '');
+  const directive = (name) => new RegExp(`\`${name} ([^\`;]*)`).exec(code)?.[1] ?? '';
+
+  it('has a script-src at all, which is the whole point', () => {
+    /**
+     * Until this existed the policy was `frame-ancestors 'none'` and nothing
+     * else. That stops clickjacking and does nothing about script injection, so
+     * React's escaping was the only thing standing between an XSS and full
+     * exploitation. It was documented as a limitation rather than dressed up,
+     * and this is the limitation being removed.
+     */
+    assert.match(middleware, /script-src/);
+    assert.match(middleware, /nonce-\$\{value\}/, 'the script-src has no nonce in it');
+  });
+
+  it('never allows unsafe-inline for script, which would undo it entirely', () => {
+    // The one directive that would make the whole policy theatre: it permits
+    // exactly the injection the policy is written to stop.
+    const scriptSrc = directive('script-src');
+    assert.ok(scriptSrc, 'no script-src found — has the policy moved?');
+    assert.ok(!scriptSrc.includes("'unsafe-inline'"), `script-src allows inline: ${scriptSrc}`);
+  });
+
+  it('keeps unsafe-eval out of production', () => {
+    // The dev server compiles with it. Shipping it hands back most of what the
+    // policy buys, and it is one deleted conditional away from happening.
+    assert.match(
+      middleware,
+      /dev \? " 'unsafe-eval'" : ''/,
+      'unsafe-eval is no longer conditional on the environment',
+    );
+  });
+
+  it('sets the header on the request as well as the response', () => {
+    /**
+     * The line that is impossible to notice from the outside. Next reads the
+     * policy off the *request* headers to learn which nonce to stamp on its own
+     * inline scripts; set it only on the response and the header is perfect,
+     * the page is blank, and nothing in the header says why.
+     */
+    /**
+     * Matched as the *request* line specifically, which the first version did
+     * not do: `/headers\.set\('content-security-policy'/` is satisfied by
+     * `response.headers.set(…)` two lines below, so deleting the request header
+     * left the test green.
+     *
+     * Deleting it is not cosmetic. Measured against a built server: nine script
+     * tags, **zero** carrying a nonce — every one of them blocked by the policy
+     * in the response, and the page dead. A header that is perfect and a page
+     * that is blank.
+     */
+    assert.match(
+      code,
+      /\n {2}headers\.set\('content-security-policy', policy\);/,
+      'the policy is not set on the request — Next will not stamp the nonce',
+    );
+    assert.match(code, /NextResponse\.next\(\{ request: \{ headers \} \}\)/);
+    assert.match(code, /response\.headers\.set\('content-security-policy', policy\);/);
+  });
+
+  it('closes the directives an injected script would reach for', () => {
+    // `connect-src` is the exfiltration channel, `base-uri` rewrites every
+    // relative URL on the page, `object-src` is the plugin escape hatch, and
+    // `form-action` is where a hijacked form posts to.
+    for (const [name, expected] of [
+      ['connect-src', "'self'"],
+      ['base-uri', "'self'"],
+      ['object-src', "'none'"],
+      ['form-action', "'self'"],
+      ['default-src', "'self'"],
+    ]) {
+      assert.equal(directive(name).trim(), expected, name);
+    }
+  });
+
+  it('leaves the badge alone', () => {
+    /**
+     * `/badge/<token>` sets `default-src 'none'; sandbox` for itself — tighter
+     * than anything here, because it is an image with no script at all. It is
+     * excluded from the matcher rather than trusted to win: this repository has
+     * already shipped one change that silently replaced that policy with a
+     * looser one.
+     */
+    assert.match(middleware, /matcher: \['\/\(\(\?!badge\//);
+
+    const svg = readFileSync(new URL('../lib/badge/svg.ts', import.meta.url).pathname, 'utf8');
+    assert.match(svg.slice(svg.indexOf('BADGE_HEADERS')), /default-src 'none'/);
+  });
+
+  it('the nonce is not a UUID', () => {
+    // 128 bits from the CSPRNG. `randomUUID` is 122 with six fixed, and a
+    // predictable nonce is one an attacker can sign their own injection with.
+    // Against the comment-stripped source, and that is not a detail: the doc
+    // comment above the nonce explains why `randomUUID` is the wrong tool, so
+    // asserting its absence in the raw file fails on the sentence saying it is
+    // not used. Third time in one session.
+    assert.match(code, /getRandomValues\(new Uint8Array\(16\)\)/);
+    assert.ok(!code.includes('randomUUID'), 'the nonce is a UUID');
   });
 });
 

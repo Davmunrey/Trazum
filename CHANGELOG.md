@@ -12,6 +12,46 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**A Content-Security-Policy with a real `script-src`.** The web app had
+`frame-ancestors 'none'` and nothing else — enough to stop clickjacking, and
+nothing at all against script injection, so React's escaping was the only thing
+between an XSS and full exploitation. It was documented as a limitation rather
+than dressed up as a policy, and this is the limitation removed.
+
+It needed middleware, because it needed a nonce. A policy worth having excludes
+inline script, the App Router serves its flight data in inline `<script>` tags,
+and a static header must therefore either allow `'unsafe-inline'` — permitting
+exactly the attack the policy exists to stop — or break the app. The value has
+to differ per response, and a config header is one string for every response.
+
+`default-src 'self'`, `script-src` with a per-request nonce plus
+`strict-dynamic`, `connect-src 'self'` to close the exfiltration channel,
+`base-uri`, `object-src`, `form-action`. `'unsafe-eval'` only outside
+production. `style-src` keeps `'unsafe-inline'`, which is the one concession and
+the cheap one: a stylesheet cannot execute.
+
+**Verified against a built server rather than asserted.** Nine of nine script
+tags carrying the nonce from the header, a different nonce on every request, the
+page rendering, and `/badge/<token>` keeping its own `default-src 'none';
+sandbox` — tighter than the site policy, and excluded from the matcher rather
+than trusted to win, because this repository already shipped one change that
+silently replaced it with something looser.
+
+Thirteen mutants, all killed — the last one only after the test was fixed. It
+asserted `headers.set('content-security-policy'`, which
+`response.headers.set(…)` two lines below also satisfies, so deleting the
+**request** header left it green. Deleting it is not cosmetic: measured on a
+built server, nine script tags and *zero* nonces. Next reads the policy off the
+request to learn which nonce to stamp, so without that line the header is
+perfect and the page is dead.
+
+Two of the new tests were also caught matching their own comments — once on
+`default-src 'none'` from the paragraph about the badge, once on `randomUUID`
+from the sentence explaining why it is not used. Both now read the source with
+comments stripped, which is the third time this repository has needed that.
+
+### Added
+
 **Bedrock and Vertex, with their credentials signed by hand.** The last two
 providers whose auth is not a bearer token, and the reason there is no SDK here:
 `@trazum/core` has zero runtime dependencies and a test that fails the build if
