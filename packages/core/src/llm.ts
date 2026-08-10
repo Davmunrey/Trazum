@@ -468,10 +468,22 @@ export function bedrockProvider(options: BedrockProviderOptions): LlmProvider {
     name: 'bedrock',
     model,
     async complete({ system, user }) {
-      // Bedrock's model ids contain `:` and `.`, both legal in a path segment
-      // and both mangled by an encoder that is too eager. `encodeURIComponent`
-      // leaves them alone and escapes the things that would change the path.
-      const path = `/model/${encodeURIComponent(model)}/converse`;
+      /**
+       * Bedrock model ids contain a colon — `anthropic.claude-v2:1` — and AWS's
+       * own URLs carry it unencoded, which RFC 3986 permits in a path segment.
+       *
+       * The comment that used to sit here claimed `encodeURIComponent` leaves it
+       * alone. It does not: it produces `%3A`. The signature would still have
+       * matched, because the same string is signed and sent — but the request
+       * would have gone to a path AWS does not document, and whether its router
+       * normalises `%3A` back to `:` is not something this repository can find
+       * out from here. A test asserting the path exactly is what surfaced it.
+       *
+       * So: encode, then put the colon back. `/` stays encoded, which is the one
+       * character that would change the shape of the path rather than a
+       * character in it.
+       */
+      const path = `/model/${encodeURIComponent(model).replace(/%3A/g, ':')}/converse`;
       const body = JSON.stringify({
         system: [{ text: system }],
         messages: [{ role: 'user', content: [{ text: user }] }],

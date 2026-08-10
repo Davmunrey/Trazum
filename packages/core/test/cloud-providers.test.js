@@ -222,10 +222,39 @@ describe('Bedrock', () => {
     const { fetchImpl, calls } = fake(answer('done'));
     await bedrockProvider({ ...options, fetchImpl }).complete({ system: 's', user: 'u' });
 
-    assert.match(calls[0].url, /\/converse$/);
+    // The colon stays a colon. AWS's own URLs carry it unencoded, and this
+    // assertion is what caught it being percent-encoded — the signature matched
+    // either way, so nothing else would have.
+    assert.equal(new URL(calls[0].url).pathname, '/model/anthropic.claude-v2:1/converse');
     const body = JSON.parse(calls[0].init.body);
     assert.deepEqual(body.system, [{ text: 's' }]);
     assert.deepEqual(body.messages, [{ role: 'user', content: [{ text: 'u' }] }]);
+  });
+
+  it('keeps a model id with a slash inside one path segment', async () => {
+    /**
+     * A provisioned-throughput ARN is a legal `modelId` and contains both `:`
+     * and `/`. The colon has to survive; the slash must not, because a slash in
+     * a path is a new segment — `/model/a/b/converse` is a different request
+     * from `/model/a%2Fb/converse`, and the first one is a 404 at best.
+     *
+     * Without this, dropping the encoding entirely passed every test: the
+     * ordinary model id `anthropic.claude-v2:1` has nothing in it that needs
+     * escaping, so the escaping was exercised by nothing.
+     */
+    const { fetchImpl, calls } = fake(answer('done'));
+    await bedrockProvider({
+      ...options,
+      model: 'arn:aws:bedrock:us-east-1:1234:provisioned-model/abc',
+      fetchImpl,
+    }).complete({ system: 's', user: 'u' });
+
+    const { pathname } = new URL(calls[0].url);
+    assert.equal(
+      pathname,
+      '/model/arn:aws:bedrock:us-east-1:1234:provisioned-model%2Fabc/converse',
+    );
+    assert.equal(pathname.split('/').length, 4, `the slash became a path segment: ${pathname}`);
   });
 
   it('signs the request it actually sends', async () => {
@@ -234,10 +263,20 @@ describe('Bedrock', () => {
     const { fetchImpl, calls } = fake(answer('done'));
     await bedrockProvider({ ...options, fetchImpl }).complete({ system: 's', user: 'u' });
 
+    /**
+     * The path and body come from the request that was actually made, not from
+     * a second copy of how they are built.
+     *
+     * Re-deriving them here made the test agree with an implementation detail
+     * instead of with the property: when the model-id encoding changed, this
+     * failed for the encoding rather than for the signature, which is the wrong
+     * thing to be told. What matters is that the `Authorization` header covers
+     * the request that went out.
+     */
     const sent = calls[0].init;
     const expected = await signRequest({
       method: 'POST',
-      path: `/model/${encodeURIComponent('anthropic.claude-v2:1')}/converse`,
+      path: new URL(calls[0].url).pathname,
       host: 'bedrock-runtime.us-east-1.amazonaws.com',
       region: 'us-east-1',
       service: 'bedrock',
@@ -389,9 +428,28 @@ describe('Vertex: the call', () => {
     });
 
     assert.equal(await provider.complete({ system: 's', user: 'u' }), 'done');
-    assert.match(calls[0].url, /oauth2\.googleapis\.com/);
-    assert.match(calls[1].url, /us-central1-aiplatform\.googleapis\.com/);
-    assert.match(calls[1].url, /projects\/my-project\/locations\/us-central1/);
+
+    /**
+     * Hosts compared as parsed hosts, not matched as substrings.
+     *
+     * CodeQL flagged the first version of these three lines and was right about
+     * something a test-only false positive would not have been: an unanchored
+     * `/oauth2\.googleapis\.com/` matches
+     * `https://evil.example/?x=oauth2.googleapis.com` too, so the assertion did
+     * not say what it looked like it said. It is a weak *assertion* rather than
+     * a vulnerability — the URL is one this code built — but a test that would
+     * pass against a request to the wrong host is not testing the thing it
+     * names.
+     */
+    const token = new URL(calls[0].url);
+    const model = new URL(calls[1].url);
+
+    assert.equal(token.host, 'oauth2.googleapis.com');
+    assert.equal(model.host, 'us-central1-aiplatform.googleapis.com');
+    assert.equal(
+      model.pathname,
+      '/v1/projects/my-project/locations/us-central1/publishers/google/models/gemini-2.5-pro:generateContent',
+    );
     assert.equal(calls[1].init.headers.authorization, 'Bearer ya29.fake');
   });
 
@@ -414,7 +472,7 @@ describe('Vertex: the call', () => {
     await provider.complete({ system: 's', user: 'b' });
     await provider.complete({ system: 's', user: 'c' });
 
-    const tokenCalls = calls.filter((call) => call.url.includes('oauth2')).length;
+    const tokenCalls = calls.filter((call) => new URL(call.url).host === 'oauth2.googleapis.com').length;
     assert.equal(tokenCalls, 1, `fetched ${tokenCalls} tokens for three prompts`);
   });
 

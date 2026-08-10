@@ -41,7 +41,24 @@ OpenRouter feed or the Gemini endpoint. This environment's network policy denies
 all of them. What the tests prove is stated in the files themselves: the shape is
 right, and the first real call is what proves it works.
 
-Twenty-four mutants: twenty-two killed, two documented equivalents. Three of the
+**CodeQL caught a weak assertion, and the weak assertion was hiding a bug.**
+Three host checks in the new tests used unanchored regexes, so
+`/oauth2\.googleapis\.com/` would also have matched
+`https://evil.example/?x=oauth2.googleapis.com`. Not a vulnerability — the URL is
+one this code built — but an assertion that would pass against a request to the
+wrong host is not testing what it names. Rewritten to compare parsed hosts and
+paths.
+
+Asserting the path exactly is what then surfaced the real defect: Bedrock model
+ids contain a colon, AWS's own URLs carry it unencoded, and the comment in the
+provider claimed `encodeURIComponent` leaves it alone. It does not — it produces
+`%3A`. The signature matched either way, because the same string is signed and
+sent, so nothing else in the suite could have noticed; the request would simply
+have gone to a path AWS does not document. The colon is preserved now and the
+slash is not, because a slash in a path is a new segment and a provisioned-model
+ARN contains both.
+
+Twenty-eight mutants: twenty-six killed, two documented equivalents. Three of the
 kills only became possible after the tests got better — deleting the region from
 the SigV4 key chain, deleting the service, and dropping the `AWS4` prefix from the
 secret all left every test green, because the region and service *also* appear in
