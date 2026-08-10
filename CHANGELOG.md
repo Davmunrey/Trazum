@@ -12,6 +12,35 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**A native Gemini provider**, and the reason it needs one while eleven other
+providers do not.
+
+`openai` in `TRAZUM_LLM_PROVIDER` is not "OpenAI", it is the wire format — so
+OpenRouter, LiteLLM, Groq, Together, Fireworks, DeepInfra, DeepSeek, Mistral,
+Cerebras, SiliconFlow, Ollama and vLLM are all a base URL away and always were.
+The README now names each one with its exact URL, because true and undocumented
+is not much better than false.
+
+Google's API is a different document: the system prompt is `systemInstruction`
+rather than a turn, and the answer is a candidate's parts. What actually earns
+it a function is that **three of its failure modes arrive as HTTP 200** — a
+blocked prompt (`promptFeedback.blockReason`, with no candidates at all), a
+truncated answer (`finishReason: MAX_TOKENS`), and a candidate with no text. A
+client that checks `res.ok` treats all three as success, and the second is the
+worst thing that can happen to a rewrite pass: half an answer reads exactly like
+a whole one. All three throw.
+
+The key goes in `x-goog-api-key`, not the `?key=` that Google's own examples
+use, which writes a live credential into every proxy log and `Referer` between
+here and there. The model name is escaped into the path, and the endpoint goes
+through the same gate as every other outbound call.
+
+Eleven mutants, all killed — one of them by the type checker, which is a real
+kill: removing the empty-text guard stops the function compiling because the
+return type stops being a string.
+
+### Added
+
 **`--pricing-live`: prices from OpenRouter instead of a table somebody typed.**
 The bundled catalogue is stale the day after it is written and only ever covered
 the providers whoever wrote it reached for — so a user on Groq or Together got no
