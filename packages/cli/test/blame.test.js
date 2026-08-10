@@ -60,11 +60,19 @@ async function repo(commits) {
  */
 const rowsOf = (out) => out.split('\n').filter((line) => /^\d{4}-\d{2}-\d{2}\s/.test(line));
 
-function run(args, cwd) {
+function run(args, cwd, env = {}) {
   const result = spawnSync(process.execPath, [CLI, 'blame', ...args], {
     encoding: 'utf8',
     cwd,
-    env: { ...process.env, NO_COLOR: '1', LANG: '', LC_ALL: '', TRAZUM_LOCALE: '', CLAUDECODE: '' },
+    env: {
+      ...process.env,
+      NO_COLOR: '1',
+      LANG: '',
+      LC_ALL: '',
+      TRAZUM_LOCALE: '',
+      CLAUDECODE: '',
+      ...env,
+    },
   });
   return { out: `${result.stdout}${result.stderr}`, stdout: result.stdout, code: result.status };
 }
@@ -195,6 +203,134 @@ describe('it refuses clearly rather than reporting nothing', () => {
 
     assert.notEqual(code, 0);
     assert.match(out, /no commits touching untracked\.txt/);
+  });
+
+  it('does not call a git it could not run "no commits"', async () => {
+    /**
+     * Issue #58: a table with zero rows, exit 0, once on CI, never reproducible.
+     *
+     * `git()` collapsed every failure into `null` — git missing, git exiting
+     * non-zero, and **the process failing to start at all** — and `revisionsFor`
+     * turned `null` into `[]`. So a fork refused with `EAGAIN` on a loaded
+     * runner, which is a fact about the machine for one instant, reached the
+     * author as `git has no commits touching p.txt`: a confident claim about
+     * their repository, made without having asked it anything. That is the one
+     * shape of #58 that cannot be diagnosed afterwards, because its output is
+     * identical to the true answer.
+     *
+     * Called directly rather than through the CLI, and that matters: the first
+     * version of this test ran `blame` with `PATH` stripped and passed against
+     * every mutant, including the bug restored. `blame` checks `gitAvailable`
+     * before it asks for revisions, so the process never reached the code under
+     * test — the test was watching the wrong door.
+     *
+     * `ENOENT` rather than a real `EAGAIN`: both are `spawnSync` failing to
+     * start a process, which is the branch that matters, and a test that tries
+     * to exhaust the process table is a test that wedges somebody's laptop.
+     *
+     * What this does **not** claim is that `EAGAIN` caused the CI failure.
+     * Nobody knows, and the issue is honest about that. What it fixes is that
+     * this failure can no longer disguise itself as an empty history.
+     */
+    const { revisionsFor, GitUnavailableError } = await import('../dist/git.js');
+    const root = await repo([['first', { 'p.txt': SHORT }]]);
+
+    const realPath = process.env.PATH;
+    process.env.PATH = '/nonexistent';
+    try {
+      assert.throws(
+        () => revisionsFor('p.txt', { cwd: root, max: 3 }),
+        GitUnavailableError,
+        'a git that never ran came back as a repository with no history',
+      );
+    } finally {
+      process.env.PATH = realPath;
+    }
+  });
+
+  it('retries a fork the kernel refused, once', async () => {
+    /**
+     * `EAGAIN` is the kernel declining a fork because the process limit is
+     * momentarily full. It is a fact about the machine for one instant, it is
+     * gone by the next, and it is the reason this class of failure shows up on a
+     * loaded CI runner and never on a laptop.
+     *
+     * Injected rather than provoked: producing a real `EAGAIN` means exhausting
+     * the process table, which is not a thing a test suite should do to the
+     * machine running it.
+     */
+    const { revisionsFor } = await import('../dist/git.js');
+    const root = await repo([['first', { 'p.txt': SHORT }]]);
+
+    let calls = 0;
+    const flaky = (file, args, options) => {
+      calls += 1;
+      if (calls === 1) return { error: Object.assign(new Error('fork'), { code: 'EAGAIN' }) };
+      return spawnSync(file, args, options);
+    };
+
+    const revisions = revisionsFor('p.txt', { cwd: root, max: 3, spawn: flaky });
+    assert.equal(calls, 2, 'the refused fork was not retried');
+    assert.equal(revisions.length, 1, 'the retry did not produce the history');
+  });
+
+  it('and gives up rather than retrying for ever', async () => {
+    // A machine that is out of processes stays out of processes. Retrying until
+    // it works is how a CLI hangs instead of failing.
+    const { revisionsFor, GitUnavailableError } = await import('../dist/git.js');
+    const root = await repo([['first', { 'p.txt': SHORT }]]);
+
+    let calls = 0;
+    const always = () => {
+      calls += 1;
+      return { error: Object.assign(new Error('fork'), { code: 'EAGAIN' }) };
+    };
+
+    assert.throws(() => revisionsFor('p.txt', { cwd: root, max: 3, spawn: always }), GitUnavailableError);
+    assert.equal(calls, 2, 'a permanently refused fork was not bounded to two attempts');
+  });
+
+  it('does not retry a git that is simply not installed', async () => {
+    // `ENOENT` is not transient: git will still be missing a millisecond later.
+    // Only a refused fork is worth a second attempt, and the difference is
+    // observable only in the count — so the count is what is asserted.
+    const { revisionsFor, GitUnavailableError } = await import('../dist/git.js');
+    const root = await repo([['first', { 'p.txt': SHORT }]]);
+
+    let calls = 0;
+    const missing = () => {
+      calls += 1;
+      return { error: Object.assign(new Error('no git'), { code: 'ENOENT' }) };
+    };
+
+    assert.throws(() => revisionsFor('p.txt', { cwd: root, max: 3, spawn: missing }), GitUnavailableError);
+    assert.equal(calls, 1, 'a missing git was looked for twice');
+  });
+
+  it('does not retry a git that ran and refused', async () => {
+    // A non-zero exit is git answering. Asking again just runs a command that
+    // already failed for a reason, and doubles the wait before saying so.
+    const { revisionsFor } = await import('../dist/git.js');
+    const root = await repo([['first', { 'p.txt': SHORT }]]);
+
+    let calls = 0;
+    const refuses = () => {
+      calls += 1;
+      return { status: 128, stdout: '', stderr: 'fatal: bad revision' };
+    };
+
+    assert.deepEqual(revisionsFor('p.txt', { cwd: root, max: 3, spawn: refuses }), []);
+    assert.equal(calls, 1, 'a git that answered was asked twice');
+  });
+
+  it('still calls an empty history an empty history', async () => {
+    // The other side of the same distinction, so the fix cannot be "throw on
+    // everything". git runs, git answers, the answer is nothing.
+    const { revisionsFor } = await import('../dist/git.js');
+    const root = await repo([['first', { 'p.txt': SHORT }]]);
+    await writeFile(join(root, 'untracked.txt'), SHORT);
+
+    assert.deepEqual(revisionsFor('untracked.txt', { cwd: root, max: 3 }), []);
   });
 });
 

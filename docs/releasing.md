@@ -14,8 +14,23 @@ step — which is the right failure, having published nothing.
 ### 1. Create the `@trazum` scope
 
 The scope does not exist yet: `npm view @trazum/core` returns 404. Create it at
-[npmjs.com/org/create](https://www.npmjs.com/org/create), or by publishing under
-it once by hand — but the point of this workflow is that nobody has to.
+[npmjs.com/org/create](https://www.npmjs.com/org/create).
+
+**The first publish has to be made by hand, and that is not a workaround.** A
+trusted publisher is configured on a *package's* settings page, and that page
+does not exist until the package does — `npmjs.com/package/@trazum/core/access`
+answers `{"message": "Not Found"}` today. So the order is: publish once with a
+login, then configure trusted publishing, and every release after that goes
+through a tag with no credential anywhere.
+
+```bash
+npm login
+npm publish -w @trazum/core --access public   # core first: the CLI pins it exactly
+npm publish -w @trazum/cli  --access public
+```
+
+`prepublishOnly` rebuilds and runs the tests before either upload, so a failure
+aborts the publish rather than reaching the registry.
 
 **Nothing extra is needed to make the packages public, and there is nothing to
 get wrong here.** A scoped package is *restricted* by default, so both manifests
@@ -34,10 +49,16 @@ make the choice rather than inherit one.
 If the org's default visibility is set to private, leave it: the per-package
 `access` setting is what decides, and it is already committed here.
 
-### 2. Create the `release` environment
+### 2. Create the `release` environment — done
 
 Repository *Settings → Environments → New environment*, named exactly `release`.
 Twenty seconds, and no configuration needed inside it.
+
+**This one is already in place**, and it has been exercised: a
+`workflow_dispatch` run went green through `verify` and `npm pack --dry-run`
+with all three publish steps correctly skipped. If the environment were missing
+or gated, the job would have sat in `waiting` before running anything, so a run
+that starts at all is the proof.
 
 Do this rather than relying on the workflow to bring it into existence. It is
 also where a required reviewer goes if you ever want publishing to need a second
@@ -79,14 +100,20 @@ asserts no workflow reaches for one.
 2. **Move the `ROADMAP.md` entry** from `Next` to `Released`, and say what
    actually shipped rather than what was planned — they differ more often than
    they should.
-3. **Bump the version in all three manifests** — root, `packages/core`,
-   `packages/cli` — plus the `@trazum/core` dependency in `packages/cli`.
-   `publish.test.js` fails if they disagree.
+3. **Bump the version in all four manifests** — root, `packages/core`,
+   `packages/cli`, `apps/web` — plus the `@trazum/core` dependency in
+   `packages/cli`, and the lockfile. `publish.test.js` fails if they disagree.
 4. **Update the README's action pin** to the release commit, with the new version
-   in the trailing comment. `security.test.js` compares that comment against
-   `package.json` and fails if they drift.
-5. `npm run verify`, and read the exit code rather than the output.
-6. Merge, then tag the merge commit and push it:
+   in the trailing comment. `security.test.js` asks git what version *that commit*
+   declares and fails if the label disagrees — so the pin can only be advanced
+   once the commit it names exists, which is after the merge rather than in it.
+5. **Drop the "not published yet" notes** from `RELEASES.md` and both package
+   READMEs. `publish.test.js` keys this on whether `v<version>` is tagged and
+   asserts it in *both* directions, so it fails if the notes are missing before
+   the tag and again if they survive after it — the point being that a note
+   removed by hand at release time is a note that survives three releases.
+6. `npm run verify`, and read the exit code rather than the output.
+7. Merge, then tag the merge commit and push it:
 
    ```bash
    git tag v1.2.0 && git push origin v1.2.0

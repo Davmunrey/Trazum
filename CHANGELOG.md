@@ -10,7 +10,68 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Fixed
+
+**`blame` reported a git it could not run as a repository with no history.**
+`git()` collapsed every failure into `null` — git missing, git exiting non-zero,
+and *the process failing to start at all* — and `revisionsFor` turned `null`
+into `[]`. So a fork the kernel refused with `EAGAIN`, which is a fact about the
+machine for one instant, reached the author as `git has no commits touching
+p.txt`: a confident claim about their repository, made without having asked it
+anything.
+
+That is the shape of [#58](https://github.com/Davmunrey/Trazum/issues/58) — zero
+rows, exit 0, once on CI, never reproducible — and it is the shape that cannot
+be diagnosed afterwards, because its output is identical to the true answer.
+Failing to run git now throws `GitUnavailableError`; an empty history still
+returns an empty list. Transient spawn failures (`EAGAIN`, `ENOMEM`) are retried
+once, bounded by the loop rather than by a condition inside it.
+
+**This does not prove `EAGAIN` caused that CI failure.** Nobody knows, and the
+issue was honest about it. What changed is that this failure can no longer
+disguise itself as an empty history.
+
+Eight mutants, all killed, and two of them were the tests being wrong rather
+than the code. The first version of the regression test drove the CLI with
+`PATH` stripped and passed against every mutant including the bug restored,
+because `blame` checks `gitAvailable` before asking for revisions — the process
+never reached the code under test. The second was worse: mutating the retry into
+an unbounded loop did not surface as a surviving mutant, it surfaced as the
+suite hanging until the runner killed it, which in CI is a job that burns its
+whole timeout instead of failing in a second. The loop is now bounded by
+construction.
+
+**A broken anchor in the README, and nothing looking for one.**
+`#reordering-for-the-cache-reorder` pointed at a heading whose real slug has
+three hyphens, because GitHub turns `cache: --reorder` into `cache---reorder`. A
+dead anchor renders as ordinary text and silently does nothing, so no other
+check could see it. All 25 in-page links are now verified.
+
+**Documents that had gone out of date with the release.** `RELEASES.md` claimed
+1.8.0 was on npm and installable; nothing is published, there is no tag, and
+`npm view @trazum/core` returns 404. The guard that exists to catch exactly this
+missed it because it read "is there a `## X.Y.Z` heading in the changelog",
+which is *a release cut in this repository*, not *a package on a registry*.
+Preparing 1.8.0 satisfied it and switched the assertion off. It now asks git for
+a tag, which is what `release.yml` actually triggers on.
+
+The same claim is now checked in both directions across `RELEASES.md` and both
+package READMEs — the ones that open with `npm install @trazum/…` and *are* the
+npm page. Untagged, the notice is required; tagged, it is forbidden. A note that
+has to be removed by hand at release time is a note that survives three
+releases.
+
+`ROADMAP.md` and `docs/releasing.md` follow: the `release` environment exists
+and has been exercised by a dry run, the first publish has to be made by hand
+because a trusted publisher is configured on a package page that does not exist
+until the package does, the manifest count is four rather than three, and the
+action-pin step describes the guard as it now works.
+
+### Changed
+
+**The README is navigable.** 1,431 lines with no way in: five badges, a table of
+the ten commands and what each answers, and a contents list. Nothing was
+removed.
 
 ## 1.8.0
 

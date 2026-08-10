@@ -47,20 +47,111 @@ export interface Revision {
   subject: string;
 }
 
-function git(args: readonly string[], cwd: string): string | null {
-  const result = spawnSync('git', args, {
-    cwd,
-    // Stated rather than left to the default: this is the line that matters.
-    shell: false,
-    encoding: 'utf8',
-    timeout: TIMEOUT_MS,
-    maxBuffer: MAX_BUFFER,
-    // No prompting for credentials, no pager waiting on a TTY that is not there.
-    env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_PAGER: 'cat', PAGER: 'cat' },
-  });
+/**
+ * Errors that mean *the process could not be started*, not that git said no.
+ *
+ * `EAGAIN` is the kernel refusing a fork because the process or thread limit is
+ * momentarily full; `ENOMEM` is the same story with memory. Both are properties
+ * of the machine at that instant and both are gone a moment later, which is
+ * exactly why they surface on a loaded CI runner and never on a laptop.
+ */
+const TRANSIENT = new Set(['EAGAIN', 'ENOMEM']);
 
-  if (result.error !== undefined || result.status !== 0) return null;
-  return result.stdout;
+/**
+ * Why a git invocation produced nothing — which is not one question but two.
+ *
+ * `git log` exiting 0 with no output means *this file has no history*. Failing
+ * to spawn git at all means *we do not know what history this file has*. They
+ * had the same representation here — `null` — so `revisionsFor` returned `[]`
+ * for both and `blame` told the author "git has no commits touching p.txt",
+ * confidently, on the strength of never having asked.
+ *
+ * That is the shape of issue #58: zero rows, exit 0, only on CI, never
+ * reproducible. A fork that fails under load is invisible and looks like a fact
+ * about the repository.
+ */
+type GitOutcome =
+  | { ran: true; stdout: string }
+  | { ran: true; stdout: null }
+  | { ran: false; stdout: null; detail: string };
+
+/**
+ * The spawn, injectable — the same seam the LLM providers use for `fetch`.
+ *
+ * Exported because the retry below is otherwise untestable: provoking a real
+ * `EAGAIN` means exhausting the process table, which is not something a test
+ * suite should do to the machine running it. A retry nothing checks is a retry
+ * somebody deletes in a refactor, and mutation testing said exactly that.
+ *
+ * It widens nothing in practice: the CLI has no library entry, so this module
+ * is reachable only from inside this package and from its tests.
+ */
+export type SpawnLike = typeof spawnSync;
+
+function runGit(
+  args: readonly string[],
+  cwd: string,
+  spawn: SpawnLike = spawnSync,
+): GitOutcome {
+  /**
+   * Bounded by the loop, not by a condition inside it.
+   *
+   * Written as `for (;;)` with a `continue` guarded by `attempt === 0` first,
+   * which is one edit away from retrying for ever — and mutation testing does
+   * not report that as a surviving mutant, it reports it as the suite hanging
+   * until the runner is killed. In CI that is a job that burns its whole
+   * timeout instead of failing in a second.
+   *
+   * Two attempts, and only for a failure to *start* the process. A git that ran
+   * and exited non-zero is answering, and asking it twice would just re-run a
+   * command that already failed for a reason.
+   */
+  const ATTEMPTS = 2;
+  let last: GitOutcome = { ran: false, stdout: null, detail: 'not attempted' };
+
+  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+    const result = spawn('git', args, {
+      cwd,
+      // Stated rather than left to the default: this is the line that matters.
+      shell: false,
+      encoding: 'utf8',
+      timeout: TIMEOUT_MS,
+      maxBuffer: MAX_BUFFER,
+      // No prompting for credentials, no pager waiting on a TTY that is not there.
+      env: { ...process.env, GIT_TERMINAL_PROMPT: '0', GIT_PAGER: 'cat', PAGER: 'cat' },
+    });
+
+    if (result.error !== undefined) {
+      const code = (result.error as NodeJS.ErrnoException).code ?? '';
+      last = { ran: false, stdout: null, detail: code || result.error.message };
+      if (TRANSIENT.has(code)) continue;
+      return last;
+    }
+
+    if (result.status !== 0) return { ran: true, stdout: null };
+    return { ran: true, stdout: result.stdout };
+  }
+
+  // Every attempt was refused before git started. The machine is out of
+  // whatever it ran out of, and saying so beats a third try.
+  return last;
+}
+
+function git(args: readonly string[], cwd: string): string | null {
+  return runGit(args, cwd).stdout;
+}
+
+/**
+ * Thrown when git could not be run, as distinct from git having nothing to say.
+ *
+ * A distinct type rather than a message, so a caller cannot accidentally treat
+ * it as an empty result — which is the whole bug.
+ */
+export class GitUnavailableError extends Error {
+  constructor(detail: string) {
+    super(`could not run git (${detail})`);
+    this.name = 'GitUnavailableError';
+  }
 }
 
 /**
@@ -106,7 +197,7 @@ export function pathInRepository(root: string, target: string): string | null {
  */
 export function revisionsFor(
   repoPath: string,
-  options: { cwd: string; max: number },
+  options: { cwd: string; max: number; spawn?: SpawnLike },
 ): Revision[] {
   // A unit separator between fields and a record separator between commits:
   // both are characters git will not emit inside a name or a subject, unlike
@@ -118,7 +209,7 @@ export function revisionsFor(
   const RECORD = '\u001e';
   const format = ['%H', '%h', '%an', '%aI', '%s'].join(FIELD) + RECORD;
 
-  const out = git(
+  const outcome = runGit(
     [
       'log',
       '--follow',
@@ -129,7 +220,14 @@ export function revisionsFor(
       repoPath,
     ],
     options.cwd,
+    options.spawn,
   );
+
+  // The distinction this function used to lose. An empty list now means git
+  // looked and found nothing; being unable to look throws instead, so it can
+  // never be reported to somebody as a fact about their repository.
+  if (!outcome.ran) throw new GitUnavailableError(outcome.detail);
+  const out = outcome.stdout;
   if (out === null) return [];
 
   return out

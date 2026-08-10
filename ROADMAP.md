@@ -383,12 +383,16 @@ one action in this repository that cannot be undone after 72 hours.
 
 ---
 
-### 1.8.0 — The first published version
+### 1.8.0 — Prepared for the first publish
 
-**The first thing anybody can `npm install`.** It collapses the seven milestones
-below — 1.1.0 through 1.7.0 — into one version, because none of them was ever
-tagged or uploaded: the `@trazum` scope did not exist while they were written.
-Those seven will never appear on the registry.
+**The version that will be the first thing anybody can `npm install`** — and is
+not yet. The manifests carry it and the notes are written; there is no tag and
+`npm view @trazum/core` returns 404. Publishing is a decision, and it is the
+maintainer's.
+
+It collapses the seven milestones below — 1.1.0 through 1.7.0 — into one
+version, because none of them was ever tagged or uploaded either. Those seven
+will never appear on the registry.
 
 What it adds over the last of those milestones is the entry that gave it its
 number:
@@ -530,9 +534,13 @@ Three refusals, each one a mistake that cannot be corrected afterwards:
 other order leaves a window where installing the CLI fails on a dependency that
 does not exist yet.
 
-**Still needs the maintainer, once.** The `@trazum` scope does not exist on npm
-(`@trazum/core` returns 404), so it has to be created and this repository
-configured as a trusted publisher for both packages.
+**Still needs the maintainer, once.** The `release` environment now exists, and
+a `workflow_dispatch` dry run has gone green through `verify` and
+`npm pack --dry-run` with every publish step correctly skipped. What is left is
+npm's side: `@trazum/core` returns 404, so the first publish has to be made by
+hand — a trusted publisher is configured on a package's settings page, and that
+page does not exist until the package does. From the second release onward the
+tag workflow does it with no credential anywhere.
 [docs/releasing.md](docs/releasing.md) has the exact fields, including the one
 that is easy to get wrong: npm's *Environment* must read `release`, because the
 workflow declares it and the OIDC token carries the claim — leave it blank and

@@ -7,11 +7,14 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**1.8.0 is the first version on npm**, and it is the first one anybody can
-install. Everything below it — 1.0.0 and earlier — is a milestone recorded in
-this repository and never uploaded anywhere, because the `@trazum` scope did not
-exist while they were being written. The numbering is kept because the ordering
-is the useful part.
+**Nothing has been published yet.** 1.8.0 is the version *prepared* for the
+first publish — the manifests carry it and the notes below are written — but
+there is no git tag and `npm view @trazum/core` still returns 404. Nobody can
+install any of this yet.
+
+Everything under 1.8.0 is a milestone recorded in this repository and never
+uploaded anywhere, 1.0.0 included. The numbering is kept because the ordering is
+the useful part.
 
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
