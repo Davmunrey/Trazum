@@ -31,13 +31,10 @@
  * headers, and which one a browser honours is not a thing to be clever about.
  * Nothing in this app links out, so the strict value costs nothing.
  *
- * **The CSP here is `frame-ancestors` only, and that is a stated limitation
- * rather than an oversight.** A `script-src` worth having needs a nonce
- * threaded through middleware, because Next's App Router serves its flight data
- * in inline `<script>` tags — a policy without one either breaks the app or
- * needs `'unsafe-inline'`, which is a policy that permits the attack it is
- * written to stop. That is a change with its own tests, not a line added here
- * on the way past.
+ * **There is no CSP in this list any more.** It was `frame-ancestors` only for
+ * a while, stated as a limitation rather than dressed up as a policy, because a
+ * `script-src` worth having needs a nonce and a nonce cannot come from a static
+ * header. `middleware.ts` sets the whole policy now, per request.
  */
 const BASELINE = [
   { key: 'x-frame-options', value: 'DENY' },
@@ -46,22 +43,25 @@ const BASELINE = [
 ];
 
 /**
- * The CSP is set separately, and `/badge/` is cut out of it, because a header
- * here **replaces** one a route handler set rather than adding to it.
+ * There is no CSP here any more, and its absence is the design.
  *
- * That is not what the first version of this file assumed, and the assumption
- * was wrong in the dangerous direction. `/badge/<token>` serves an SVG with
- * `default-src 'none'; style-src 'unsafe-inline'; sandbox` — the policy that
- * makes the document inert when it is *navigated to* rather than embedded in an
- * `<img>`. Adding `frame-ancestors 'none'` site-wide silently replaced it, so
- * the badge came out of the change with a weaker policy than it went in with.
- * Observed with `curl -I` against a built server; nothing in the config or the
- * types says it.
+ * A policy worth having excludes inline script, and the App Router serves its
+ * flight data in inline `<script>` tags — so a static header must either allow
+ * `'unsafe-inline'`, which permits the attack the policy exists to stop, or
+ * break the app. The value has to differ per response, and a config header is
+ * one string for every response.
  *
- * The other three do not collide: the badge sets none of them except
- * `nosniff`, and that one to the same value.
+ * `middleware.ts` sets it now, with a per-request nonce, and excludes
+ * `/badge/` for the reason this file learned the hard way: a header set here
+ * **replaces** one a route handler set rather than adding to it. Adding
+ * `frame-ancestors 'none'` site-wide silently replaced the badge's
+ * `default-src 'none'; sandbox` — the policy that makes that SVG inert when it
+ * is navigated to — and the badge came out of a security change weaker than it
+ * went in. Observed with `curl -I`; nothing in the config or the types says it.
+ *
+ * The three below do not collide: the badge sets none of them except `nosniff`,
+ * and that one to the same value.
  */
-const CSP = [{ key: 'content-security-policy', value: "frame-ancestors 'none'" }];
 
 /**
  * The share page, additionally.
@@ -92,8 +92,6 @@ const nextConfig = {
   async headers() {
     return [
       { source: '/:path*', headers: BASELINE },
-      // Everything except the badge, which carries a stricter policy of its own.
-      { source: '/((?!badge/).*)', headers: CSP },
       { source: '/c/:token', headers: [NO_INDEX] },
     ];
   },
