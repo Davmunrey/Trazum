@@ -290,6 +290,110 @@ export function anthropicProvider(options: AnthropicProviderOptions): LlmProvide
   };
 }
 
+export interface GeminiProviderOptions {
+  apiKey: string;
+  /** Default: `gemini-2.5-pro`. */
+  model?: string;
+  /** Default: Google's public endpoint. */
+  baseUrl?: string;
+  maxTokens?: number;
+  fetchImpl?: typeof fetch;
+  /** See `OpenAiCompatibleOptions.allowInsecure`: only when you chose the URL. */
+  allowInsecure?: boolean;
+}
+
+/**
+ * Gemini directly, via `generateContent`.
+ *
+ * The one provider on the list that needs its own function rather than the
+ * OpenAI-compatible path. Everything else — Groq, Together, Fireworks,
+ * DeepInfra, Cerebras, SiliconFlow, OpenRouter, LiteLLM — speaks the OpenAI
+ * shape, so `openAiCompatibleProvider` with a base URL is the whole
+ * integration. Google's is a different document: the system prompt is
+ * `systemInstruction` rather than a message, turns are `contents` with `parts`,
+ * and the answer is the first candidate's parts joined.
+ *
+ * Three failure modes that are not HTTP errors, and each has bitten somebody:
+ *
+ * - **A safety block returns 200.** `promptFeedback.blockReason` arrives with no
+ *   candidates at all, so reading `candidates[0]` gives `undefined` and the
+ *   caller sees "no text" for what is actually a refusal.
+ * - **`finishReason: MAX_TOKENS` also returns 200**, with a truncated answer.
+ *   For a rewrite pass that is worse than an error: the text looks like a
+ *   result and is half a result.
+ * - **Parts can be empty.** A candidate with no text part is a valid document
+ *   and not a valid answer.
+ *
+ * The key goes in a header, not the query string. Google's own examples put it
+ * in `?key=`, which puts a credential in every proxy log and referrer between
+ * here and there.
+ */
+export function geminiProvider(options: GeminiProviderOptions): LlmProvider {
+  const {
+    apiKey,
+    model = 'gemini-2.5-pro',
+    baseUrl = 'https://generativelanguage.googleapis.com',
+    maxTokens = 8192,
+    fetchImpl = fetch,
+    allowInsecure = false,
+  } = options;
+
+  const endpoint = checkedEndpoint(baseUrl, { allowInsecure, name: 'gemini' });
+
+  return {
+    name: 'gemini',
+    model,
+    async complete({ system, user }) {
+      const res = await fetchImpl(
+        `${endpoint}/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+        {
+          ...SAFE_FETCH_INIT,
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
+          body: JSON.stringify({
+            systemInstruction: { parts: [{ text: system }] },
+            contents: [{ role: 'user', parts: [{ text: user }] }],
+            generationConfig: { maxOutputTokens: maxTokens, temperature: 0 },
+          }),
+        },
+      );
+
+      if (!res.ok) {
+        throw new Error(`The Gemini API responded ${res.status}: ${await res.text()}`);
+      }
+
+      const data = (await res.json()) as {
+        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> }; finishReason?: string }>;
+        promptFeedback?: { blockReason?: string };
+      };
+
+      const blocked = data.promptFeedback?.blockReason;
+      if (blocked) {
+        throw new Error(`The Gemini API blocked the prompt (${blocked}).`);
+      }
+
+      const candidate = data.candidates?.[0];
+      if (!candidate) {
+        throw new Error('Unexpected response from the Gemini API: no candidates.');
+      }
+      if (candidate.finishReason === 'MAX_TOKENS') {
+        // Refused rather than returned. A truncated rewrite is the failure this
+        // whole package is built to avoid: it reads as an answer.
+        throw new Error('The Gemini API stopped at the token limit — the answer is incomplete.');
+      }
+      if (candidate.finishReason === 'SAFETY' || candidate.finishReason === 'PROHIBITED_CONTENT') {
+        throw new Error(`The Gemini API declined the request (${candidate.finishReason}).`);
+      }
+
+      const text = candidate.content?.parts?.map((part) => part.text ?? '').join('');
+      if (!text) {
+        throw new Error('Unexpected response from the Gemini API: no text in the candidate.');
+      }
+      return text;
+    },
+  };
+}
+
 export interface CustomProviderOptions {
   name: string;
   model: string;
@@ -351,6 +455,18 @@ export function providerFromEnv(
   if (kind === 'anthropic') {
     if (!apiKey) return null;
     return anthropicProvider({
+      apiKey,
+      allowInsecure: true,
+      ...(model ? { model } : {}),
+      ...(baseUrl ? { baseUrl } : {}),
+    });
+  }
+
+  if (kind === 'gemini' || kind === 'google') {
+    // Same shape as the Anthropic branch: a key is enough, because the endpoint
+    // has a working default and the model does too.
+    if (!apiKey) return null;
+    return geminiProvider({
       apiKey,
       allowInsecure: true,
       ...(model ? { model } : {}),

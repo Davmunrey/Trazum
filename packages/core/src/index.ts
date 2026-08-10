@@ -79,6 +79,7 @@ export {
   refineWithLlm,
   openAiCompatible,
   anthropicProvider,
+  geminiProvider,
   customProvider,
   providerFromEnv,
   REFINER_SYSTEM_PROMPT,
@@ -87,6 +88,7 @@ export type {
   RefineOptions,
   OpenAiCompatibleOptions,
   AnthropicProviderOptions,
+  GeminiProviderOptions,
   CustomProviderOptions,
 } from './llm.js';
 

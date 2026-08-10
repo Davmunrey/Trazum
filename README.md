@@ -1340,11 +1340,33 @@ of the report.
 The provider is pluggable. Configure it by environment:
 
 ```bash
-TRAZUM_LLM_PROVIDER=openai               # openai (default) | anthropic
+TRAZUM_LLM_PROVIDER=openai               # openai (default) | anthropic | gemini
 TRAZUM_LLM_BASE_URL=https://your-llm/v1  # without /chat/completions
 TRAZUM_LLM_MODEL=model-name
 TRAZUM_LLM_API_KEY=...
 ```
+
+**`openai` is not "OpenAI", it is the wire format** — and that is why this list
+is short while the coverage is not. Set a base URL and it works with anything
+speaking that shape:
+
+| Provider | `TRAZUM_LLM_BASE_URL` |
+|---|---|
+| OpenRouter | `https://openrouter.ai/api/v1` |
+| LiteLLM (your own proxy) | `http://localhost:4000/v1` |
+| Groq | `https://api.groq.com/openai/v1` |
+| Together | `https://api.together.xyz/v1` |
+| Fireworks | `https://api.fireworks.ai/inference/v1` |
+| DeepInfra | `https://api.deepinfra.com/v1/openai` |
+| DeepSeek | `https://api.deepseek.com` |
+| Mistral | `https://api.mistral.ai/v1` |
+| Ollama, vLLM, LM Studio | whatever you are hosting |
+
+`anthropic` and `gemini` are separate because their APIs are separate documents,
+not because they are favoured. Gemini's needs its own handling for a reason
+worth knowing: **a blocked prompt, a truncated answer and an empty candidate all
+come back as HTTP 200**, so a client that checks only the status code treats a
+half-written rewrite as a finished one. Trazum refuses all three.
 
 Deploying the web app for other people to use? One more, and only if you want
 visitors to be able to pick:
