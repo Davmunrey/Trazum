@@ -1,14 +1,17 @@
 # Trazum
 
 [![CI](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml)
 [![MIT licence](https://img.shields.io/badge/licence-MIT-blue.svg)](LICENSE)
+[![Node](https://img.shields.io/badge/node-%E2%89%A520-3c873a.svg)](package.json)
+[![Runtime dependencies](https://img.shields.io/badge/runtime%20dependencies-0-2f855a.svg)](#layout)
 
-Prompt optimiser. Shortens what you send to the model without changing what you
-ask for, and tells you what that is worth per month.
+**Shortens what you send to the model without changing what you ask for — and
+tells you what that is worth per month.**
 
-The core is **deterministic**: same rules, same result, zero cost to run. On top
-of it sits an **optional LLM pass** for the compression rules cannot do, using
-whichever provider you configure.
+The core is **deterministic**: same rules, same result, zero cost, no network.
+On top of it sits an **optional LLM pass** for the compression rules cannot do,
+through whichever provider you configure.
 
 ```
                     ┌──────────────┐
@@ -18,6 +21,38 @@ whichever provider you configure.
        @trazum/cli    @trazum/web    action/
        ten commands   Next.js        comments on pull requests
 ```
+
+> [!NOTE]
+> **Not on npm yet.** 1.8.0 is prepared — manifests, notes and release workflow
+> are all in place — but nothing has been published and there is no tag, so
+> `npm install @trazum/cli` will not work today. Run it from source with the
+> steps in [Getting started](#getting-started). See [RELEASES.md](RELEASES.md).
+
+## The ten commands
+
+| Command | What it answers |
+|---|---|
+| [`trazum optimize`](#cli) | What can come out of this prompt, and what is that worth a month? |
+| [`trazum check`](#cli) | Does this prompt fit its token budget? *Exits 1 when it does not — this is the CI gate.* |
+| [`trazum diff`](#did-this-edit-make-it-worse) | What did this edit cost? |
+| [`trazum rank`](#which-prompt-to-fix-first-trazum-rank) | Of these forty prompts, which is worth an afternoon? |
+| [`trazum doctor`](#the-whole-workspace-at-once-trazum-doctor) | What is wrong across the whole workspace? |
+| [`trazum blame`](#who-made-this-prompt-expensive-trazum-blame) | Who made this prompt expensive, and when? |
+| [`trazum eval`](#does-the-shorter-prompt-still-work) | Does the shorter prompt still do the job? |
+| [`trazum where`](#prompts-where-they-actually-live) | Which prompts are hiding inside my source files? |
+| [`trazum models`](#every-model-you-pay-for-by-the-token) | What does each model cost, and what is its cache minimum? |
+| [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
+
+## Contents
+
+- [What it actually does](#what-it-actually-does) — the five things, and what it refuses to touch
+- [Getting started](#getting-started) — CLI, web, the GitHub Action
+- [Languages](#languages) — what the dictionaries cover, and what they deliberately do not
+- [Connecting your own LLM](#connecting-your-own-llm) — providers, and the SSRF rules
+- [Every model you pay for by the token](#every-model-you-pay-for-by-the-token) — pricing across seven providers
+- [Token counting](#token-counting) — the estimator, and the error band it prints
+- [Limitations, stated plainly](#limitations-stated-plainly) — read this one
+- [Layout](#layout) · [Updating prices](#updating-prices) · [Privacy](#analytics-and-privacy) · [Roadmap](#roadmap-and-contributing)
 
 ---
 
@@ -38,7 +73,7 @@ what usually saves more than shortening ever will:
 | Advisory | Why it matters |
 |---|---|
 | Prompt caching | Reading from cache costs 10% of input. The saving is computed over the **real stable prefix**: in a template with `{{placeholders}}`, only what precedes the first one is cached — not the whole prompt. |
-| Reorder the template | Stable instructions sitting *after* the first variable placeholder never cache today. Trazum prices moving them in front — and with `--reorder`, [does it](#reordering-for-the-cache-reorder). |
+| Reorder the template | Stable instructions sitting *after* the first variable placeholder never cache today. Trazum prices moving them in front — and with `--reorder`, [does it](#reordering-for-the-cache---reorder). |
 | Batch API | 50% off input and output when the work tolerates latency. |
 | Cheaper model | Complexity heuristic: if the task looks simple, what dropping a tier would save. |
 | Output-dominated cost | If you pay more for the answer than for the prompt, shortening the prompt has a ceiling. |

@@ -537,6 +537,39 @@ describe('a count written in prose is a claim like any other', () => {
     assert.deepEqual(missing, [], `routes the roadmap never mentions: ${missing.join(', ')}`);
   });
 
+  it('every in-page link in the README goes somewhere', () => {
+    /**
+     * A table of contents is only useful if it arrives somewhere, and a dead
+     * anchor is invisible to every other check here — it renders as ordinary
+     * text and silently does nothing when clicked.
+     *
+     * One was already broken before this test existed:
+     * `#reordering-for-the-cache-reorder`, pointing at a heading whose real slug
+     * is `…cache---reorder`, because GitHub turns `cache: --reorder` into three
+     * hyphens and not one. Nothing noticed, because nothing was looking.
+     *
+     * The slug rule is GitHub's: lowercase, drop backticks and punctuation, keep
+     * hyphens, spaces become hyphens — which is why runs of them survive.
+     */
+    const readme = readFileSync(join(repoRoot, 'README.md'), 'utf8');
+    const slug = (text) =>
+      text
+        .toLowerCase()
+        .replace(/`/g, '')
+        .replace(/[^\w\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-');
+
+    const anchors = new Set(
+      [...readme.matchAll(/^#{1,6}\s+(.+)$/gm)].map((match) => slug(match[1])),
+    );
+    const links = [...readme.matchAll(/\]\(#([^)]+)\)/g)].map((match) => match[1]);
+
+    assert.ok(links.length > 10, `only ${links.length} in-page links — has the contents gone?`);
+    const dead = [...new Set(links)].filter((target) => !anchors.has(target));
+    assert.deepEqual(dead, [], `README links to headings that do not exist: ${dead.join(', ')}`);
+  });
+
   it('the README states no test total, because nothing here can check one', () => {
     const readme = readFileSync(join(repoRoot, 'README.md'), 'utf8');
     const claim = readme.match(/#\s*(\d[\d,]*)\s+tests/);
@@ -588,18 +621,56 @@ describe('a release cannot ship without notes', () => {
   });
 
   it('states that nothing is published, while nothing is published', () => {
-    // The claim this repository got wrong once already, in ROADMAP.md. A file
-    // whose whole job is announcing releases is the likeliest place to imply one
-    // happened.
-    const changelog = readFileSync(join(repoRoot, 'CHANGELOG.md'), 'utf8');
-    const released = [...changelog.matchAll(/^## (\d+\.\d+\.\d+)/gm)].map((m) => m[1]);
-    const somethingIsPublished = released.includes(manifestOf('.').version) && sections[0] !== 'Unreleased';
+    /**
+     * The claim this repository got wrong once already, in ROADMAP.md. A file
+     * whose whole job is announcing releases is the likeliest place to imply one
+     * happened — and it did happen again, in the commit that prepared 1.8.0.
+     *
+     * **The signal was wrong, which is why the guard let it through.** It read
+     * "is there a `## X.Y.Z` heading in the changelog for the manifest version",
+     * which is *a release cut in this repository* and not *a package on npm*.
+     * Preparing 1.8.0 satisfied it, the assertion stopped running, and
+     * RELEASES.md went out saying "1.8.0 is the first version on npm, and it is
+     * the first one anybody can install" while `npm view` returned 404.
+     *
+     * A tag is the honest local proxy. `release.yml` triggers on `v*.*.*` and
+     * publishes on nothing else, so no tag means nothing was ever uploaded —
+     * checkable without the network, which a test in CI should not have.
+     *
+     * It needs the tags to be there. CI fetches full history for the action-pin
+     * guard, which is the same requirement; a clone without them reports no tag
+     * and asks for the sentence, which is the safe direction to be wrong in.
+     */
+    const version = manifestOf('.').version;
+    const tagged = spawnSync('git', ['tag', '--list', `v${version}`], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+    });
+    const somethingIsPublished = tagged.status === 0 && tagged.stdout.trim() !== '';
 
-    if (!somethingIsPublished) {
-      assert.match(
-        releases,
-        /Nothing has been published yet/,
-        'RELEASES.md no longer says that nothing is published, and nothing is published',
+    /**
+     * Both directions, and every file that makes the claim.
+     *
+     * The package READMEs open with `npm install @trazum/…`, and they *are* the
+     * npm page — so while nothing is published that line is an instruction that
+     * 404s, and once something is published the warning above it becomes the
+     * lie instead. A note that has to be removed by hand at release time is a
+     * note that survives three releases.
+     */
+    const claimants = {
+      'RELEASES.md': releases,
+      'packages/core/README.md': readFileSync(join(repoRoot, 'packages/core/README.md'), 'utf8'),
+      'packages/cli/README.md': readFileSync(join(repoRoot, 'packages/cli/README.md'), 'utf8'),
+    };
+
+    for (const [name, text] of Object.entries(claimants)) {
+      const says = /[Nn]ot(hing has been)? published yet/.test(text);
+      assert.equal(
+        says,
+        !somethingIsPublished,
+        somethingIsPublished
+          ? `${name} still says nothing is published, and v${version} is tagged`
+          : `${name} no longer says that nothing is published, and nothing is published`,
       );
     }
   });
