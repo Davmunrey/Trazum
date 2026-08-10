@@ -15,10 +15,10 @@
     "@trazum/core": "1.8.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "lucide-react": "^1.28.0",
+    "lucide-react": "^1.30.0",
     "next": "^16.2.12",
     "postgres": "^3.4.9",
-    "posthog-js": "^1.200.0",
+    "posthog-js": "^1.414.0",
     "radix-ui": "^1.6.7",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
@@ -26,10 +26,10 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
-    "@types/node": "^26.1.2",
+    "@types/node": "^26.2.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
-    "postcss": "^8.5.25",
+    "postcss": "^8.5.26",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2"
   }
