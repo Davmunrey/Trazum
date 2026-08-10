@@ -1,5 +1,8 @@
 import { buildAdvisories } from './advisories.js';
 import { getMessages } from './i18n/index.js';
+import { signRequest } from './aws-sigv4.js';
+import { accessToken } from './gcp-auth.js';
+import type { CachedToken, ServiceAccount } from './gcp-auth.js';
 import { SAFE_FETCH_INIT, checkedEndpoint } from './net.js';
 import type { Locale } from './i18n/types.js';
 import { computeSavings } from './savings.js';
@@ -290,6 +293,49 @@ export function anthropicProvider(options: AnthropicProviderOptions): LlmProvide
   };
 }
 
+/**
+ * Reads an answer out of Google's `generateContent` response, or refuses.
+ *
+ * Shared by `geminiProvider` and `vertexProvider`, which speak to the same API
+ * behind different credentials. Two copies of "is this answer complete" is one
+ * copy too many: the whole point of these checks is that three of Google's
+ * failure modes arrive as HTTP 200, and a second copy is a second place for one
+ * of them to be forgotten.
+ *
+ * `label` names the surface in the error, because "Gemini refused" and "Vertex
+ * refused" send somebody to different consoles.
+ */
+function readGeminiAnswer(payload: unknown, label: string): string {
+  const data = payload as {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> }; finishReason?: string }>;
+    promptFeedback?: { blockReason?: string };
+  };
+
+  const blocked = data.promptFeedback?.blockReason;
+  if (blocked) {
+    throw new Error(`${label} blocked the prompt (${blocked}).`);
+  }
+
+  const candidate = data.candidates?.[0];
+  if (!candidate) {
+    throw new Error(`Unexpected response from ${label}: no candidates.`);
+  }
+  if (candidate.finishReason === 'MAX_TOKENS') {
+    // Refused rather than returned. A truncated rewrite is the failure this
+    // whole package is built to avoid: it reads as an answer.
+    throw new Error(`${label} stopped at the token limit — the answer is incomplete.`);
+  }
+  if (candidate.finishReason === 'SAFETY' || candidate.finishReason === 'PROHIBITED_CONTENT') {
+    throw new Error(`${label} declined the request (${candidate.finishReason}).`);
+  }
+
+  const text = candidate.content?.parts?.map((part) => part.text ?? '').join('');
+  if (!text) {
+    throw new Error(`Unexpected response from ${label}: no text in the candidate.`);
+  }
+  return text;
+}
+
 export interface GeminiProviderOptions {
   apiKey: string;
   /** Default: `gemini-2.5-pro`. */
@@ -361,35 +407,200 @@ export function geminiProvider(options: GeminiProviderOptions): LlmProvider {
       if (!res.ok) {
         throw new Error(`The Gemini API responded ${res.status}: ${await res.text()}`);
       }
+      return readGeminiAnswer(await res.json(), 'The Gemini API');
+    },
+  };
+}
+
+export interface BedrockProviderOptions {
+  /** e.g. `anthropic.claude-sonnet-4-5-20250929-v1:0`. */
+  model: string;
+  region: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  /** For temporary credentials from STS or an instance role. */
+  sessionToken?: string;
+  maxTokens?: number;
+  /** Override the host. Defaults to the regional Bedrock runtime endpoint. */
+  baseUrl?: string;
+  fetchImpl?: typeof fetch;
+  allowInsecure?: boolean;
+  /** Injectable for tests; the signature is a function of the clock. */
+  now?: () => Date;
+}
+
+/**
+ * Amazon Bedrock, through **Converse** rather than `InvokeModel`.
+ *
+ * That choice is the whole reason this is one provider instead of six.
+ * `InvokeModel` takes a body in each model family's own shape — Anthropic's
+ * `messages` with `anthropic_version`, Meta's `prompt`, Amazon's
+ * `inputText` — so supporting "Bedrock" through it means supporting each vendor
+ * separately and getting a 400 for every model nobody thought about. `Converse`
+ * is Bedrock's unified surface: one request shape, one response shape, every
+ * model that supports it.
+ *
+ * Signed with SigV4 by hand — see `aws-sigv4.ts` for why there is no SDK here
+ * and what the tests do and do not prove.
+ *
+ * `stopReason: 'max_tokens'` throws, for the same reason it does on Gemini: a
+ * truncated rewrite reads exactly like a finished one, and that is the failure
+ * this package exists to refuse.
+ */
+export function bedrockProvider(options: BedrockProviderOptions): LlmProvider {
+  const {
+    model,
+    region,
+    accessKeyId,
+    secretAccessKey,
+    sessionToken,
+    maxTokens = 8192,
+    baseUrl = `https://bedrock-runtime.${region}.amazonaws.com`,
+    fetchImpl = fetch,
+    allowInsecure = false,
+    now = () => new Date(),
+  } = options;
+
+  const endpoint = checkedEndpoint(baseUrl, { allowInsecure, name: 'bedrock' });
+  const host = new URL(endpoint).host;
+
+  return {
+    name: 'bedrock',
+    model,
+    async complete({ system, user }) {
+      // Bedrock's model ids contain `:` and `.`, both legal in a path segment
+      // and both mangled by an encoder that is too eager. `encodeURIComponent`
+      // leaves them alone and escapes the things that would change the path.
+      const path = `/model/${encodeURIComponent(model)}/converse`;
+      const body = JSON.stringify({
+        system: [{ text: system }],
+        messages: [{ role: 'user', content: [{ text: user }] }],
+        inferenceConfig: { maxTokens, temperature: 0 },
+      });
+
+      const signed = await signRequest({
+        method: 'POST',
+        path,
+        host,
+        region,
+        service: 'bedrock',
+        body,
+        accessKeyId,
+        secretAccessKey,
+        ...(sessionToken ? { sessionToken } : {}),
+        now: now(),
+      });
+
+      const res = await fetchImpl(`${endpoint}${path}`, {
+        ...SAFE_FETCH_INIT,
+        method: 'POST',
+        headers: { ...signed, 'content-type': 'application/json' },
+        body,
+      });
+
+      if (!res.ok) {
+        throw new Error(`Bedrock responded ${res.status}: ${await res.text()}`);
+      }
 
       const data = (await res.json()) as {
-        candidates?: Array<{ content?: { parts?: Array<{ text?: string }> }; finishReason?: string }>;
-        promptFeedback?: { blockReason?: string };
+        output?: { message?: { content?: Array<{ text?: string }> } };
+        stopReason?: string;
       };
 
-      const blocked = data.promptFeedback?.blockReason;
-      if (blocked) {
-        throw new Error(`The Gemini API blocked the prompt (${blocked}).`);
+      if (data.stopReason === 'max_tokens') {
+        throw new Error('Bedrock stopped at the token limit — the answer is incomplete.');
+      }
+      if (data.stopReason === 'content_filtered') {
+        throw new Error('Bedrock filtered the response (stopReason: content_filtered).');
       }
 
-      const candidate = data.candidates?.[0];
-      if (!candidate) {
-        throw new Error('Unexpected response from the Gemini API: no candidates.');
-      }
-      if (candidate.finishReason === 'MAX_TOKENS') {
-        // Refused rather than returned. A truncated rewrite is the failure this
-        // whole package is built to avoid: it reads as an answer.
-        throw new Error('The Gemini API stopped at the token limit — the answer is incomplete.');
-      }
-      if (candidate.finishReason === 'SAFETY' || candidate.finishReason === 'PROHIBITED_CONTENT') {
-        throw new Error(`The Gemini API declined the request (${candidate.finishReason}).`);
-      }
-
-      const text = candidate.content?.parts?.map((part) => part.text ?? '').join('');
+      const text = data.output?.message?.content?.map((part) => part.text ?? '').join('');
       if (!text) {
-        throw new Error('Unexpected response from the Gemini API: no text in the candidate.');
+        throw new Error('Unexpected response from Bedrock: no text in the message.');
       }
       return text;
+    },
+  };
+}
+
+export interface VertexProviderOptions {
+  /** The parsed contents of a service-account JSON key. */
+  serviceAccount: ServiceAccount;
+  project: string;
+  /** e.g. `us-central1`. `global` is also valid for some models. */
+  location: string;
+  /** Default: `gemini-2.5-pro`. */
+  model?: string;
+  /** Default: `google`. `anthropic` for Claude on Vertex. */
+  publisher?: string;
+  maxTokens?: number;
+  baseUrl?: string;
+  fetchImpl?: typeof fetch;
+  allowInsecure?: boolean;
+  now?: () => Date;
+}
+
+/**
+ * Gemini through Vertex AI, with a service account instead of an API key.
+ *
+ * Vertex will not take an API key, which is the whole difference from
+ * `geminiProvider`: the credential is a signed assertion traded for an access
+ * token that lasts an hour. `gcp-auth.ts` does that, caches the token, and
+ * explains why there is no SDK.
+ *
+ * The response shape is Gemini's, so the same three HTTP-200 failures apply and
+ * are refused the same way — a blocked prompt, a truncated answer, an empty
+ * candidate. The parsing is shared with `geminiProvider` rather than copied,
+ * because two copies of "is this answer complete" is one copy too many.
+ */
+export function vertexProvider(options: VertexProviderOptions): LlmProvider {
+  const {
+    serviceAccount,
+    project,
+    location,
+    model = 'gemini-2.5-pro',
+    publisher = 'google',
+    maxTokens = 8192,
+    baseUrl = location === 'global'
+      ? 'https://aiplatform.googleapis.com'
+      : `https://${location}-aiplatform.googleapis.com`,
+    fetchImpl = fetch,
+    allowInsecure = false,
+    now = () => new Date(),
+  } = options;
+
+  const endpoint = checkedEndpoint(baseUrl, { allowInsecure, name: 'vertex' });
+  // One cache per provider instance, so two providers in one process do not
+  // share a token — and neither leaks into the other's requests.
+  const cache: { current: CachedToken | null } = { current: null };
+
+  return {
+    name: 'vertex',
+    model,
+    async complete({ system, user }) {
+      const token = await accessToken(serviceAccount, { fetchImpl, now, cache });
+
+      const path =
+        `/v1/projects/${encodeURIComponent(project)}` +
+        `/locations/${encodeURIComponent(location)}` +
+        `/publishers/${encodeURIComponent(publisher)}` +
+        `/models/${encodeURIComponent(model)}:generateContent`;
+
+      const res = await fetchImpl(`${endpoint}${path}`, {
+        ...SAFE_FETCH_INIT,
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: system }] },
+          contents: [{ role: 'user', parts: [{ text: user }] }],
+          generationConfig: { maxOutputTokens: maxTokens, temperature: 0 },
+        }),
+      });
+
+      if (!res.ok) {
+        throw new Error(`Vertex responded ${res.status}: ${await res.text()}`);
+      }
+      return readGeminiAnswer(await res.json(), 'Vertex');
     },
   };
 }

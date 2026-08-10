@@ -45,6 +45,15 @@ export {
 } from './pricing-overlay.js';
 export type { PricingOverlay } from './pricing-overlay.js';
 export { openrouterOverlay } from './openrouter.js';
+
+// SigV4 and the Google service-account flow, both hand-rolled on WebCrypto to
+// keep the zero-dependency invariant. Exported so they can be tested directly:
+// a signer that is only reachable through a network call is a signer nothing
+// checks.
+export { amzDates, canonicalRequest, signRequest, signingKey } from './aws-sigv4.js';
+export type { SignInput, SignedHeaders } from './aws-sigv4.js';
+export { accessToken, pkcs8FromPem, signedJwt } from './gcp-auth.js';
+export type { CachedToken, ServiceAccount } from './gcp-auth.js';
 export type { OpenRouterResult } from './openrouter.js';
 export { RULES, getRule } from './rules.js';
 export { segment, join, protectedTexts } from './segment.js';
@@ -79,7 +88,9 @@ export {
   refineWithLlm,
   openAiCompatible,
   anthropicProvider,
+  bedrockProvider,
   geminiProvider,
+  vertexProvider,
   customProvider,
   providerFromEnv,
   REFINER_SYSTEM_PROMPT,
@@ -88,7 +99,9 @@ export type {
   RefineOptions,
   OpenAiCompatibleOptions,
   AnthropicProviderOptions,
+  BedrockProviderOptions,
   GeminiProviderOptions,
+  VertexProviderOptions,
   CustomProviderOptions,
 } from './llm.js';
 
