@@ -12,6 +12,67 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**Bedrock and Vertex, with their credentials signed by hand.** The last two
+providers whose auth is not a bearer token, and the reason there is no SDK here:
+`@trazum/core` has zero runtime dependencies and a test that fails the build if
+one appears, because every dependency is somebody else's code reading your
+prompts. The AWS and Google SDKs are two hundred packages between them to
+authenticate one request. SigV4 and the service-account JWT are about three
+hundred lines, on WebCrypto so the browser-safe entry point stays browser-safe.
+
+**Bedrock goes through Converse, not `InvokeModel`.** That is what makes it one
+provider instead of six: `InvokeModel` takes each model family's own body shape —
+Anthropic's `messages`, Meta's `prompt`, Amazon's `inputText` — so supporting
+"Bedrock" through it means a 400 for every model nobody thought about.
+
+**Vertex caches its access token.** A token lasts an hour and `--suggest` over a
+directory makes one call per prompt; without the cache, forty prompts are eighty
+requests, half of them to an endpoint that rate-limits. One cache per provider
+instance, so two providers in one process cannot leak a token into each other's
+requests.
+
+Google's three HTTP-200 failures are now read by one shared function rather than
+two copies. Two copies of "is this answer complete" is one copy too many when the
+whole point is that a truncated rewrite reads like a finished one — and the error
+names Vertex or Gemini, because those are different consoles.
+
+**Neither has been exercised against the real service**, and neither has the
+OpenRouter feed or the Gemini endpoint. This environment's network policy denies
+all of them. What the tests prove is stated in the files themselves: the shape is
+right, and the first real call is what proves it works.
+
+**CodeQL caught a weak assertion, and the weak assertion was hiding a bug.**
+Three host checks in the new tests used unanchored regexes, so
+`/oauth2\.googleapis\.com/` would also have matched
+`https://evil.example/?x=oauth2.googleapis.com`. Not a vulnerability — the URL is
+one this code built — but an assertion that would pass against a request to the
+wrong host is not testing what it names. Rewritten to compare parsed hosts and
+paths.
+
+Asserting the path exactly is what then surfaced the real defect: Bedrock model
+ids contain a colon, AWS's own URLs carry it unencoded, and the comment in the
+provider claimed `encodeURIComponent` leaves it alone. It does not — it produces
+`%3A`. The signature matched either way, because the same string is signed and
+sent, so nothing else in the suite could have noticed; the request would simply
+have gone to a path AWS does not document. The colon is preserved now and the
+slash is not, because a slash in a path is a new segment and a provisioned-model
+ARN contains both.
+
+Twenty-eight mutants: twenty-six killed, two documented equivalents. Three of the
+kills only became possible after the tests got better — deleting the region from
+the SigV4 key chain, deleting the service, and dropping the `AWS4` prefix from the
+secret all left every test green, because the region and service *also* appear in
+the credential scope inside the string to sign. "Different region, different
+signature" is true of a signer whose key derivation is entirely wrong. The chain
+is now derived a second time from the specification and compared.
+
+The two equivalents are the header sort: removing it changes nothing while the
+literal list is already in order, and reordering the literal changes nothing
+while the sort is there. Doing both at once is killed, which is what shows the
+ordering is actually asserted.
+
+### Added
+
 **A native Gemini provider**, and the reason it needs one while eleven other
 providers do not.
 

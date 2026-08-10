@@ -1362,6 +1362,27 @@ speaking that shape:
 | Mistral | `https://api.mistral.ai/v1` |
 | Ollama, vLLM, LM Studio | whatever you are hosting |
 
+**Bedrock and Vertex** are configured in code rather than by three environment
+variables, because their credentials are not a bearer token:
+
+```ts
+import { bedrockProvider, vertexProvider } from '@trazum/core';
+
+bedrockProvider({ model: 'anthropic.claude-v2:1', region: 'us-east-1', accessKeyId, secretAccessKey });
+vertexProvider({ serviceAccount: JSON.parse(keyJson), project: 'p', location: 'us-central1' });
+```
+
+Bedrock goes through **Converse**, not `InvokeModel` — `InvokeModel` takes each
+model family's own body shape, so supporting "Bedrock" through it means a 400 for
+every model nobody thought about. Signed with SigV4 by hand; Vertex's
+service-account JWT is signed by hand too. Both on WebCrypto, both because this
+library has zero runtime dependencies and the AWS and Google SDKs are two
+hundred packages between them to authenticate one request.
+
+**Neither has been run against the real service.** The signer is tested against
+the canonical strings and against an independent implementation of the key
+chain; the first real call is what proves it.
+
 `anthropic` and `gemini` are separate because their APIs are separate documents,
 not because they are favoured. Gemini's needs its own handling for a reason
 worth knowing: **a blocked prompt, a truncated answer and an empty candidate all
