@@ -1,7 +1,7 @@
 import { BUNDLED_CATALOGUE } from './pricing.js';
 import { nearestName } from './nearest.js';
 import type { PricingCatalogue } from './pricing.js';
-import type { ModelPricing } from './types.js';
+import type { Capability, CachingMode, ModelPricing } from './types.js';
 
 /**
  * Local price corrections, so a price change does not require a library upgrade.
@@ -30,13 +30,17 @@ export const PRICING_MODEL_KEYS = [
   'contextWindow',
   'cacheMinTokens',
   'tier',
+  'capability',
+  'caching',
   'notes',
   'promo',
 ] as const;
 
 const PROMO_KEYS = ['inputPerMTok', 'outputPerMTok', 'until'] as const;
 
-const TIERS: ModelPricing['tier'][] = ['frontier', 'opus', 'sonnet', 'haiku'];
+const TIERS: ModelPricing['tier'][] = ['frontier', 'opus', 'sonnet', 'haiku', 'unknown'];
+const CAPABILITIES: Capability[] = ['small', 'mid', 'large', 'frontier', 'unknown'];
+const CACHING_MODES: CachingMode[] = ['explicit', 'automatic', 'none', 'unknown'];
 
 /** Largest overlay this will read — a price list, not a dataset. */
 export const MAX_PRICING_BYTES = 64 * 1024;
@@ -159,7 +163,32 @@ function parseModel(
     model.contextWindow = integerAbove(raw.contextWindow, `models.${id}.contextWindow`, source);
   }
   if (raw.cacheMinTokens !== undefined) {
-    model.cacheMinTokens = integerAbove(raw.cacheMinTokens, `models.${id}.cacheMinTokens`, source);
+    // `null` is "this catalogue does not know", which is a different statement
+    // from any number — including zero, which claims caching from the first
+    // token. A live price feed knows what a model costs and nothing about how
+    // it caches, so the distinction has to be expressible.
+    model.cacheMinTokens =
+      raw.cacheMinTokens === null
+        ? null
+        : integerAbove(raw.cacheMinTokens, `models.${id}.cacheMinTokens`, source);
+  }
+  if (raw.capability !== undefined) {
+    if (typeof raw.capability !== 'string' || !CAPABILITIES.includes(raw.capability as Capability)) {
+      throw new PricingOverlayError(
+        `"models.${id}.capability" must be one of ${CAPABILITIES.join(', ')}`,
+        source,
+      );
+    }
+    model.capability = raw.capability as Capability;
+  }
+  if (raw.caching !== undefined) {
+    if (typeof raw.caching !== 'string' || !CACHING_MODES.includes(raw.caching as CachingMode)) {
+      throw new PricingOverlayError(
+        `"models.${id}.caching" must be one of ${CACHING_MODES.join(', ')}`,
+        source,
+      );
+    }
+    model.caching = raw.caching as CachingMode;
   }
   if (raw.tier !== undefined) {
     if (typeof raw.tier !== 'string' || !TIERS.includes(raw.tier as ModelPricing['tier'])) {
@@ -255,7 +284,14 @@ export function applyPricingOverlay(
   for (const [id, patch] of Object.entries(overlay.models)) {
     if (base.byId.has(id)) continue;
 
-    const missing = (['displayName', 'inputPerMTok', 'outputPerMTok', 'contextWindow', 'cacheMinTokens', 'tier'] as const).filter(
+    // `capability` joins the list: it is a required field of `ModelPricing`, and
+    // an added model without one produced an object the type says cannot exist —
+    // the cast below was hiding it.
+    //
+    // `cacheMinTokens` is checked for `undefined` and not for falsiness, so an
+    // explicit `null` counts as supplied. That is the point of it: saying "not
+    // known" is an answer, leaving it out is not.
+    const missing = (['displayName', 'inputPerMTok', 'outputPerMTok', 'contextWindow', 'cacheMinTokens', 'tier', 'capability'] as const).filter(
       (key) => patch[key] === undefined,
     );
     if (missing.length > 0) {

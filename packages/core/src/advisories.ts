@@ -39,6 +39,18 @@ export function recommendTier(prompt: string, tokens: number): ModelPricing['tie
 }
 
 const TIER_ORDER: Record<ModelPricing['tier'], number> = {
+  /**
+   * Below every real tier, so no tier is ever "less capable than unknown".
+   *
+   * The value carries the intent rather than the guard below carrying it alone.
+   * Set the other way — above everything — the comparison
+   * `TIER_ORDER[suggested] < TIER_ORDER['unknown']` is true for every prompt,
+   * and the only thing left standing between that and a recommendation is an
+   * unrelated provider filter. Mutation testing found exactly that: deleting
+   * the guard changed no test result, because a second accident was covering
+   * for it. Two accidents in a row is not a design.
+   */
+  unknown: Number.NEGATIVE_INFINITY,
   haiku: 0,
   sonnet: 1,
   opus: 2,
@@ -135,13 +147,28 @@ export function buildAdvisories(
   // zero minimum satisfies `0 >= 0` and Trazum offers a saving that cannot be
   // bought at any price — the exact failure that moving the multipliers onto the
   // model was meant to prevent, reintroduced one field along.
-  if (usage.callsPerMonth > 1 && model.caching !== 'none') {
+  /**
+   * Three ways to have nothing useful to say about caching, and only one of
+   * them used to be handled.
+   *
+   * `none` is a fact: the provider does not cache, so advice would be a saving
+   * nobody can buy. `unknown` is the absence of a fact — a catalogue built from
+   * a live price feed knows what a model costs and not how it caches — and it
+   * has to decline for the opposite reason: not because the answer is no, but
+   * because nobody asked anyone. Guessing either way is a number in somebody's
+   * budget that came from nowhere.
+   */
+  const cachingKnown = model.caching !== 'none' && model.caching !== 'unknown' && model.cacheMinTokens !== null;
+
+  if (usage.callsPerMonth > 1 && cachingKnown) {
     const prefixShare = tokensAfter > 0 ? cache.stablePrefixTokens / tokensAfter : 0;
     const monthlyPrefixUsd = monthlyInputUsd * Math.min(1, prefixShare);
     const hitRate = Math.min(Math.max(usage.cacheHitRate, 0), 1);
     const factor = (1 - hitRate) * rates.cacheWrite5m + hitRate * rates.cacheRead;
 
-    if (cache.stablePrefixTokens >= model.cacheMinTokens) {
+    const minTokens = model.cacheMinTokens ?? 0;
+
+    if (cache.stablePrefixTokens >= minTokens) {
       const saving = monthlyPrefixUsd * (1 - factor);
       if (saving > 0) {
         advisories.push({
@@ -151,7 +178,7 @@ export function buildAdvisories(
             placeholder: cache.firstPlaceholder,
             prefixTokens: cache.stablePrefixTokens,
             totalTokens: tokensAfter,
-            minTokens: model.cacheMinTokens,
+            minTokens,
             modelName: model.displayName,
             hitRatePct: Math.round(hitRate * 100),
             readPct: Math.round(rates.cacheRead * 100),
@@ -174,11 +201,11 @@ export function buildAdvisories(
         severity: 'info',
         ...t.advisories.belowCacheMinimum({
           modelName: model.displayName,
-          minTokens: model.cacheMinTokens,
+          minTokens,
           placeholder: cache.firstPlaceholder,
           prefixTokens: cache.stablePrefixTokens,
           totalTokens: tokensAfter,
-          mentionLowerMinimum: model.cacheMinTokens > 512,
+          mentionLowerMinimum: minTokens > 512,
         }),
         estimatedMonthlyUsd: null,
       });
@@ -222,7 +249,24 @@ export function buildAdvisories(
 
   // --- Recommended model ---
   const suggestedTier = recommendTier(optimizedPrompt, tokensAfter);
-  if (TIER_ORDER[suggestedTier] < TIER_ORDER[model.tier]) {
+  /**
+   * A model whose capability nobody recorded is never told it is overpowered.
+   *
+   * Part of the condition rather than an early return, which is how the first
+   * version of this was wrong: `return advisories` here skipped every advisory
+   * *after* the model check — output-dominated, contradictory instructions —
+   * none of which has anything to do with what tier the model is. An unknown
+   * capability is a reason to say nothing about capability, not a reason to
+   * stop reading the prompt.
+   *
+   * **Deliberately redundant**, and the one surviving mutant in this change.
+   * `TIER_ORDER.unknown` is `-Infinity`, so the comparison is already false and
+   * deleting this clause changes no behaviour and no test. It stays because the
+   * two express the same rule in different places: an ordering that forgets it
+   * and a condition that forgets it both have to happen before a model of
+   * unrecorded capability is told it is overpowered.
+   */
+  if (model.tier !== 'unknown' && TIER_ORDER[suggestedTier] < TIER_ORDER[model.tier]) {
     const candidate = cheapestInTier(suggestedTier, on, pricing, model.provider);
     if (candidate) {
       const candidatePricing = effectivePricing(candidate, on);

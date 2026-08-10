@@ -61,7 +61,12 @@ import {
   CONFIG_FILENAME,
   DEFAULT_EXTENSIONS,
   budgetFor,
+  BUNDLED_CATALOGUE,
+  SAFE_FETCH_INIT,
+  applyPricingOverlay,
   catalogueFromOverlay,
+  checkedEndpoint,
+  openrouterOverlay,
   detectHost,
   loadConfig,
   walkPrompts,
@@ -282,14 +287,78 @@ function usageFrom(
  * Prices for this run: `--pricing` beats the config's overlay, which beats the
  * bundled catalogue — the same layering as every other setting.
  */
+/**
+ * OpenRouter's public catalogue. Overridable for an operator behind a mirror.
+ *
+ * Not a secret and not a credential: the models endpoint is unauthenticated,
+ * which is why this can be a flag rather than a key.
+ */
+const OPENROUTER_MODELS_URL =
+  process.env.TRAZUM_OPENROUTER_URL ?? 'https://openrouter.ai/api/v1/models';
+
+/**
+ * Prices from a live source, and the reasoning for why this is opt-in.
+ *
+ * The bundled catalogue is a table somebody typed, so it is stale the day after
+ * it is written and it only ever covered the providers whoever typed it reached
+ * for. `--pricing-live` replaces the price half of it with today's figures for
+ * hundreds of models across dozens of providers.
+ *
+ * **Opt-in, because it is a network call.** Rule 1 of this project is that no
+ * feature makes a network call a prerequisite for optimising a prompt. This is
+ * the CLI reaching out on request and handing the core a value; the core never
+ * fetches anything, which is what keeps `optimize()` free, offline and
+ * deterministic.
+ *
+ * Through `checkedEndpoint` and `SAFE_FETCH_INIT` like every other outbound
+ * call here: URL validated before the request, redirects refused, so an
+ * endpoint that passes the check cannot answer `302` and send the request
+ * somewhere on the metadata network.
+ */
+async function livePricing(source: string, t: CliMessages): Promise<PricingCatalogue> {
+  const endpoint = checkedEndpoint(source, { name: 'openrouter' });
+
+  let payload: unknown;
+  try {
+    const response = await fetch(endpoint, { ...SAFE_FETCH_INIT, method: 'GET' });
+    if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
+    payload = await response.json();
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : String(error);
+    throw new Error(t.errors.livePricingFailed(endpoint, detail));
+  }
+
+  const known = new Set(BUNDLED_CATALOGUE.models.map((model) => model.id));
+  const { overlay, skipped } = openrouterOverlay(payload, {
+    knownIds: known,
+    lastReviewed: new Date().toISOString().slice(0, 10),
+  });
+
+  const catalogue = applyPricingOverlay(BUNDLED_CATALOGUE, overlay, endpoint);
+
+  // Said out loud, on stderr so it never lands in `--json`. A price feed that
+  // silently dropped a third of its entries would leave somebody wondering why
+  // their model is still missing.
+  console.error(
+    t.pricing.liveLoaded(catalogue.addedModels.length, catalogue.overriddenModels.length, skipped.length),
+  );
+
+  return catalogue;
+}
+
 async function pricingFor(
   args: Args,
   loaded: { pricing: PricingCatalogue },
+  t: CliMessages,
 ): Promise<PricingCatalogue> {
   const flag = stringFlag(args, 'pricing');
-  if (!flag) return loaded.pricing;
-  const raw = await readFile(flag, 'utf8');
-  return catalogueFromOverlay(raw, flag);
+  if (flag) {
+    const raw = await readFile(flag, 'utf8');
+    return catalogueFromOverlay(raw, flag);
+  }
+  // A file beats the network: somebody who wrote prices down meant them.
+  if (boolFlag(args, 'pricing-live')) return livePricing(OPENROUTER_MODELS_URL, t);
+  return loaded.pricing;
 }
 
 /** Rules to disable: the flag replaces the config list rather than adding to it. */
@@ -307,7 +376,7 @@ function disabledRules(args: Args, config: TrazumConfig): RuleId[] | undefined {
  * a threshold is set — `--max-growh 5` would have been ignored and the build
  * gone green. Silence is the wrong answer for a typo.
  */
-const GLOBAL_FLAGS = ['help', 'h', 'locale', 'json', 'config', 'pricing'];
+const GLOBAL_FLAGS = ['help', 'h', 'locale', 'json', 'config', 'pricing', 'pricing-live'];
 const COMMAND_FLAGS: Record<string, string[]> = {
   optimize: [
     'level', 'model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch',
@@ -1072,7 +1141,9 @@ function commandModels(t: CliMessages, pricing: PricingCatalogue): void {
     input: m.promo ? `${m.promo.inputPerMTok} (→${m.inputPerMTok})` : String(m.inputPerMTok),
     output: m.promo ? `${m.promo.outputPerMTok} (→${m.outputPerMTok})` : String(m.outputPerMTok),
     context: `${n(m.contextWindow / 1000)}K`,
-    cache: n(m.cacheMinTokens),
+    // An unknown minimum prints as a dash, not as zero. Zero is a claim —
+    // "caches from the first token" — and it is the wrong one.
+    cache: m.cacheMinTokens === null ? '—' : n(m.cacheMinTokens),
   }));
   const widths = {
     id: Math.max(...rows.map((r) => r.id.length), col.model.length),
@@ -1187,7 +1258,13 @@ async function commandOptimize(
     // A prefix below the model's cacheable minimum caches nothing at all, so a
     // rearrangement that does not get it over the line buys nothing and there is
     // no reason to hand the author a diff for it.
-    minPrefixTokens: getModel(usage.model).cacheMinTokens,
+    //
+    // `undefined` when the catalogue does not know the minimum, which `reorder`
+    // reads as "no floor to clear". That is the right way to be wrong here: the
+    // author asked for the rearrangement explicitly, and withholding it on a
+    // guess about a threshold nobody knows would be refusing to do the thing
+    // they asked for on no evidence.
+    minPrefixTokens: getModel(usage.model).cacheMinTokens ?? undefined,
   }) : null;
   const prompt = reorder?.text ?? original;
 
@@ -2773,7 +2850,7 @@ async function main(): Promise<void> {
   // "defaults" for a budget means "no budget", which means a green build.
   const loaded = await loadConfig({ explicit: stringFlag(args, 'config') });
   const { config } = loaded;
-  const pricing = await pricingFor(args, loaded);
+  const pricing = await pricingFor(args, loaded, t);
 
   // The config only gets to choose the locale when nothing more explicit did.
   if (config.locale && !stringFlag(args, 'locale')) {

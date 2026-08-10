@@ -228,6 +228,18 @@ ${bold('PRECIOS')}
   una cifra del catálogo incluido y una de tu JSON son indistinguibles si no.
 
   --pricing <fichero>         Usa este overlay, por delante del del config.
+  --pricing-live              Toma los precios de OpenRouter en vez de la tabla
+                              incluida: cifras de hoy para cientos de modelos de
+                              docenas de proveedores. Opt-in, porque es una llamada
+                              de red — el núcleo determinista no hace ninguna.
+                              Un fichero --pricing gana sobre esto.
+
+                              Esa fuente no publica si un modelo tiene caché de
+                              prompt ni el mínimo a partir del cual cachea. Así que
+                              los modelos que añade no reciben ningún consejo de
+                              caché, en vez de una suposición: afirmar que cachea
+                              ofrecería un ahorro que nadie puede comprar, y
+                              afirmar que no esconde el mayor ahorro que hay.
 
 ${bold('LLM OPCIONAL')}
   El núcleo es determinista y gratis. Con --llm se añade una pasada de
@@ -267,6 +279,8 @@ ${bold('EJEMPLOS')}
   },
 
   errors: {
+    livePricingFailed: (url: string, detail: string) =>
+      `No se han podido cargar los precios en vivo desde ${url}: ${detail}. Los precios incluidos siguen ahí — quita --pricing-live para usarlos.`,
     optionNeedsValue: (name) => `La opción --${name} necesita un valor.`,
     mustBeNonNegative: (name, raw) =>
       `--${name} debe ser un número no negativo (recibido: "${raw}").`,
@@ -426,6 +440,11 @@ ${bold('EJEMPLOS')}
     fromProviderDefault: (provider) =>
       `(${provider} se ha leído del código; nada nombra un modelo, así que este es el suyo)`,
     fromDefault: () => '(el valor por defecto — nada dijo otra cosa)',
+  },
+
+  pricing: {
+    liveLoaded: (added: number, refreshed: number, skipped: number) =>
+      `Precios en vivo: ${refreshed} actualizados, ${added} modelos añadidos, ${skipped} descartados por no traer precio o ventana de contexto utilizables. Esta fuente no publica los mínimos de caché, así que el consejo de caché se omite para los modelos añadidos.`,
   },
 
   models: {
