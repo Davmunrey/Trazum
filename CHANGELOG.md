@@ -12,6 +12,56 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**The token-band measurement could never have passed, and nobody could know.**
+`measure-token-band.mjs` hashed the corpus with NUL separators and
+`token-band.test.js` hashed it with spaces, so the two digests could not match.
+The first real measurement would have failed its freshness check with *"the
+corpus changed since it was measured — re-run scripts/measure-token-band.mjs"*
+— advice that produces the same failure however many times it is followed.
+
+It went unnoticed because running the script costs an API key nobody had spent.
+The one workflow that discharges this project's central claim had never been
+executed end to end, and the check guarding it was broken in the way that
+surfaces only the first time it matters.
+
+Fixed structurally rather than by making the copies agree, since two copies
+agreeing is the state it was in when it broke: `scripts/corpus-digest.mjs` is
+the single implementation and both sides import it. A guard asserts neither has
+grown a second one — and it builds its own needle at runtime, because written as
+a literal the assertion matches its own source and fails on the file it defends.
+
+**And a fourth raw control byte in a source file.** Writing that shared module
+put a real NUL into it on the first attempt, exactly as happened in
+`reorder-properties.test.js`, `github.ts` and `measure-token-band.mjs` before
+it. Caught this time by checking the bytes rather than the diff. The separator
+is written as an escape.
+
+### Added
+
+**`measure-token-band.mjs --provider deepseek`**, and the distinction that makes
+it safe to have.
+
+`±15%` is the estimator's accuracy against *Claude's* tokenizer — the family it
+was calibrated on, and the one every published claim refers to. Trazum prices
+seven providers with that one estimator, and how far off it is on the others is
+a question [ROADMAP.md](ROADMAP.md) has open with a decision resting on it:
+*within 5% across families and a real tokenizer dependency is not worth taking;
+40% out and it is.*
+
+So each provider writes its own fixture and only Anthropic's governs the
+published band. A cross-family fixture asserts corpus freshness and coverage,
+prints the error per text type, and asserts nothing about a band it was never
+calibrated for — with a guard that it cannot claim otherwise. Reading a DeepSeek
+number as the published band would be the same class of error as calling a
+release published because a changelog heading exists.
+
+Two things the script now says out loud before sending anything: DeepSeek has no
+free counting endpoint, so every sample is a real completion with
+`max_tokens: 1` and the prompt half is billed; and a run against it does not
+discharge the ±15%.
+
+### Fixed
+
 **`blame` reported a git it could not run as a repository with no history.**
 `git()` collapsed every failure into `null` — git missing, git exiting non-zero,
 and *the process failing to start at all* — and `revisionsFor` turned `null`

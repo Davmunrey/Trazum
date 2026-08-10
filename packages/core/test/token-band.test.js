@@ -1,15 +1,16 @@
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 
 import { estimateTokens } from '../dist/index.js';
+import { digestOf } from '../../../scripts/corpus-digest.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const corpusDir = join(here, 'corpus');
-const truthPath = join(here, 'fixtures', 'token-ground-truth.json');
+const fixturesDir = join(here, 'fixtures');
+const truthPath = join(fixturesDir, 'token-ground-truth.json');
 
 /**
  * The accuracy claim, checked.
@@ -27,20 +28,65 @@ const truthPath = join(here, 'fixtures', 'token-ground-truth.json');
  * Ground truth comes from the official counting endpoint, which cannot run here:
  * it needs a key, and the deterministic core stays offline. So the numbers are
  * committed as a fixture that `scripts/measure-token-band.mjs` writes.
+ *
+ * **One band, one tokenizer, and the difference is load-bearing.** The script
+ * can also measure against DeepSeek, which answers a question the roadmap has
+ * open — Trazum prices seven providers with an estimator tuned for one, and
+ * nobody has measured how far off the others are. It does *not* answer the
+ * published claim. `±15%` is Claude-calibrated, so only the Anthropic fixture
+ * asserts it; every other fixture is measured, reported, and asserted against
+ * nothing it was never calibrated for. Reading a DeepSeek number as the
+ * published band would be the same class of error as calling a release
+ * published because a changelog heading exists.
  */
 
 const PUBLISHED_BAND = 0.15;
 
 const corpusFiles = readdirSync(corpusDir).filter((n) => n.endsWith('.txt')).sort();
 
-const digestOf = (entries) => {
-  const hash = createHash('sha256');
-  for (const [name, text] of entries) hash.update(`${name} ${text} `);
-  return hash.digest('hex').slice(0, 16);
-};
+
 
 const corpus = corpusFiles.map((name) => [name, readFileSync(join(corpusDir, name), 'utf8')]);
 const truth = existsSync(truthPath) ? JSON.parse(readFileSync(truthPath, 'utf8')) : null;
+
+describe('the freshness check can actually pass', () => {
+  it('the script and this file compute one digest, not two that agree', () => {
+    /**
+     * They did not agree. The script joined the corpus with NUL separators and
+     * this file joined it with spaces, so the digests could never match — and
+     * the very first real measurement would have failed the freshness check
+     * with *"the corpus changed since it was measured — re-run
+     * scripts/measure-token-band.mjs"*, which produces the same failure however
+     * many times somebody follows it.
+     *
+     * It went unnoticed because running the script costs an API key nobody had
+     * spent: the one workflow that discharges this project's central claim had
+     * never been executed end to end. The check guarding it was broken in the
+     * way that only shows up the first time it matters.
+     *
+     * Fixed structurally rather than by making the two copies match, because
+     * two copies matching is the state it was already in when it broke. There
+     * is one implementation now, and this asserts that neither side has grown a
+     * second.
+     */
+    const script = readFileSync(join(here, '..', '..', '..', 'scripts', 'measure-token-band.mjs'), 'utf8');
+    const self = readFileSync(join(here, 'token-band.test.js'), 'utf8');
+
+    // Built at runtime so the needle is not sitting in the haystack: written as
+    // a literal, this assertion matches its own source and fails on the file it
+    // is defending.
+    const hashing = new RegExp(['create', 'Hash'].join(''));
+
+    for (const [name, source] of [['the script', script], ['this file', self]]) {
+      assert.match(source, /import \{ digestOf \}/, `${name} does not import the shared digest`);
+      assert.doesNotMatch(
+        source,
+        hashing,
+        `${name} hashes the corpus itself again — that is how the two drifted apart`,
+      );
+    }
+  });
+});
 
 describe('the corpus itself', () => {
   // These run whether or not anything has been measured. A corpus that has
@@ -140,6 +186,16 @@ describe('the published error band', () => {
     });
   }
 
+  it('is the tokenizer the band was calibrated on', () => {
+    // The fixture that governs the published number has to be the Anthropic
+    // one. If somebody points this file at a cross-family measurement, the
+    // ±15% assertions below would be checking the estimator against a
+    // tokenizer it was never tuned for, and failing for the right reason with
+    // completely the wrong message.
+    assert.equal(truth.provider ?? 'anthropic', 'anthropic');
+    assert.notEqual(truth.governsPublishedBand, false);
+  });
+
   it('reports the worst type, so the band is a finding rather than a hope', () => {
     // Not an assertion about a threshold — a printed summary. If prose is 4% out
     // and CJK is 14%, the band technically holds and the report saying ±15% for
@@ -159,4 +215,81 @@ describe('the published error band', () => {
 
     assert.ok(worst.length > 0, 'nothing was measured');
   });
+});
+
+describe('the estimator against tokenizers it was never tuned for', () => {
+  /**
+   * The cross-family question, and it is genuinely open.
+   *
+   * 1.5.0 priced seven providers against an estimator calibrated on one. The
+   * roadmap says what turns on the answer: *"within 5% across families and [a
+   * real tokenizer dependency] is not [worth taking]; 40% out and it is."*
+   * Nobody has run it, so nobody knows.
+   *
+   * These fixtures assert nothing about `±15%`, on purpose. That band is a
+   * claim about Claude, and holding a DeepSeek measurement to it would be
+   * asserting a promise nobody made. What is asserted is that the numbers
+   * describe the corpus as it stands and cover all of it — the same two things
+   * that stop any fixture quietly describing something else — and the error is
+   * printed so the open question has a number attached to it.
+   */
+  const others = readdirSync(fixturesDir)
+    .filter((name) => /^token-ground-truth\..+\.json$/.test(name))
+    .sort();
+
+  if (others.length === 0) {
+    it('has not been measured for any other provider', {
+      skip: 'run scripts/measure-token-band.mjs --provider deepseek',
+    }, () => {});
+    return;
+  }
+
+  for (const name of others) {
+    const other = JSON.parse(readFileSync(join(fixturesDir, name), 'utf8'));
+
+    describe(other.provider ?? name, () => {
+      it('does not claim to govern the published band', () => {
+        // The guard against the whole hazard: a cross-family fixture that says
+        // it is the authority would let the assertions above run against the
+        // wrong tokenizer.
+        assert.equal(other.governsPublishedBand, false, `${name} claims the published band`);
+        assert.notEqual(other.provider, 'anthropic');
+      });
+
+      it('was measured against the corpus as it stands now', () => {
+        assert.equal(
+          other.corpusDigest,
+          digestOf(corpus),
+          `${name} describes a corpus that has since changed — re-run the script`,
+        );
+      });
+
+      it('measured every sample', () => {
+        const measured = new Set(other.samples.map((sample) => sample.file));
+        const missing = corpusFiles.filter((file) => !measured.has(file));
+        assert.deepEqual(missing, [], `never measured: ${missing.join(', ')}`);
+      });
+
+      it('reports how far the estimator is from this family', () => {
+        const byType = new Map();
+        for (const sample of other.samples) {
+          const text = readFileSync(join(corpusDir, sample.file), 'utf8');
+          const error = Math.abs(estimateTokens(text) - sample.actualTokens) / sample.actualTokens;
+          byType.set(sample.type, Math.max(byType.get(sample.type) ?? 0, error));
+        }
+
+        const worst = [...byType.entries()].sort((a, b) => b[1] - a[1]);
+        console.log(`      ${other.model} (${other.provider}) on ${other.measuredAt}:`);
+        for (const [type, error] of worst) {
+          console.log(`        ${type.padEnd(14)} ${(error * 100).toFixed(1)}%`);
+        }
+        console.log(
+          `        worst ${(worst[0][1] * 100).toFixed(1)}% — the roadmap's threshold for ` +
+            'taking a real tokenizer dependency is 5% good, 40% bad',
+        );
+
+        assert.ok(worst.length > 0, 'nothing was measured');
+      });
+    });
+  }
 });
