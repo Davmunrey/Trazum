@@ -108,7 +108,23 @@ export type CachingMode =
   /** The provider caches long-enough prefixes with no marker. */
   | 'automatic'
   /** No prompt caching at all. */
-  | 'none';
+  | 'none'
+  /**
+   * Nobody here knows, and saying so beats guessing.
+   *
+   * A catalogue can now be built from a live source — OpenRouter publishes
+   * price and context window for hundreds of models — and that source publishes
+   * neither whether a model caches nor the minimum prefix it caches at. Both
+   * halves of the caching advisory need those, and that advisory is the largest
+   * saving Trazum reports.
+   *
+   * The two wrong answers are symmetrical. Assume caching works and Trazum
+   * offers a saving that cannot be bought at any price, which is the Mistral
+   * bug in a new costume. Assume it does not and Trazum hides the biggest
+   * saving there is. So: `unknown` fires nothing and the report says the
+   * catalogue does not know, which is a fact the reader can act on.
+   */
+  | 'unknown';
 
 /**
  * Capability, without a vendor's ladder in the name.
@@ -118,7 +134,7 @@ export type CachingMode =
  * task "looks like haiku complexity" is a label that means something other than
  * what it says.
  */
-export type Capability = 'small' | 'mid' | 'large' | 'frontier';
+export type Capability = 'small' | 'mid' | 'large' | 'frontier' | 'unknown';
 
 export interface ModelPricing {
   id: string;
@@ -131,8 +147,14 @@ export interface ModelPricing {
   outputPerMTok: number;
   /** Context window in tokens. */
   contextWindow: number;
-  /** Minimum tokens before prompt caching actually caches. */
-  cacheMinTokens: number;
+  /**
+   * Minimum tokens before prompt caching actually caches.
+   *
+   * `null` when the catalogue does not know — see `CachingMode.unknown`. A
+   * number here is a claim about a specific provider's behaviour, and a live
+   * price feed is not a source for it.
+   */
+  cacheMinTokens: number | null;
   /** How caching is enabled. Defaults to `explicit`. */
   caching?: CachingMode;
   /** Provider-specific cache and batch pricing. Defaults to Anthropic's. */
@@ -152,7 +174,7 @@ export interface ModelPricing {
    * stopped making sense once other providers were priced. Kept in step with
    * `capability` for the whole of 1.x and removed in 2.0 — see VERSIONING.md.
    */
-  tier: 'haiku' | 'sonnet' | 'opus' | 'frontier';
+  tier: 'haiku' | 'sonnet' | 'opus' | 'frontier' | 'unknown';
   /** Promotional pricing, when one is running. */
   promo?: {
     inputPerMTok: number;

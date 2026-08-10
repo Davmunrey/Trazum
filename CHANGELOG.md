@@ -10,6 +10,62 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+**`--pricing-live`: prices from OpenRouter instead of a table somebody typed.**
+The bundled catalogue is stale the day after it is written and only ever covered
+the providers whoever wrote it reached for — so a user on Groq or Together got no
+figure at all, from a tool whose entire output is figures. OpenRouter publishes
+price and context window for hundreds of models across dozens of providers, as
+data, at a URL.
+
+Opt-in, because it is a network call: rule 1 is that no feature makes one a
+prerequisite for optimising a prompt. The CLI fetches and hands the core a
+value; `openrouterOverlay` is a pure transformation, so it is testable without a
+network. Through `checkedEndpoint` and `SAFE_FETCH_INIT` like every other
+outbound call here, so redirects are refused rather than followed to the
+metadata network. A `--pricing` file still wins: somebody who wrote prices down
+meant them.
+
+**What that feed does not publish, and what is done about it.** It has no
+opinion on whether a model has prompt caching or the minimum prefix it caches
+at — and that is the input to the largest saving Trazum reports, an order of
+magnitude above what the trimming rules recover.
+
+So `CachingMode` gains `unknown` and `cacheMinTokens` becomes nullable, and a
+model that arrives from the feed carries both. The caching advisory declines,
+and `trazum models` prints a dash rather than a zero. The two available lies are
+symmetrical and both worse than silence: claim caching works and Trazum offers a
+saving nobody can buy at any price — the Mistral bug in a new costume — and
+claim it does not and Trazum hides the biggest saving there is.
+
+`Capability` and `tier` gain `unknown` for the same reason, so a model whose
+capability nobody recorded is neither recommended to somebody else nor told it
+is overpowered. For a model the bundled catalogue already has, only price in,
+price out and context window are refreshed: the rest was written by somebody who
+looked it up, and replacing a researched fact with a blank is not a refresh.
+
+### Fixed
+
+**An added model could carry no `capability` at all.** `applyPricingOverlay`
+required six fields for a model the bundled catalogue does not have, and
+`capability` — a required field of `ModelPricing` — was not among them, so
+`as ModelPricing` produced an object the type says cannot exist. Now required,
+which is why two overlay fixtures needed a line.
+
+Ten mutants over the new code; nine killed and one documented equivalent. Two of
+the kills were bugs of mine rather than of the tests:
+
+- The unknown-capability guard was written as an early `return`, which skipped
+  every advisory *after* the model check — output-dominated, contradictory
+  instructions — none of which has anything to do with a model's tier.
+- `TIER_ORDER.unknown` was set above every real tier, which makes the downgrade
+  comparison *true* for every prompt; the only thing then standing between that
+  and a recommendation was an unrelated provider filter. Two accidents covering
+  for each other is not a design. It is `-Infinity` now, so the ordering carries
+  the rule and the guard beside it is deliberate redundancy — that is the
+  equivalent mutant.
+
 ### Fixed
 
 **The token-band measurement could never have passed, and nobody could know.**

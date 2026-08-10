@@ -44,6 +44,8 @@ export {
   parsePricingOverlay,
 } from './pricing-overlay.js';
 export type { PricingOverlay } from './pricing-overlay.js';
+export { openrouterOverlay } from './openrouter.js';
+export type { OpenRouterResult } from './openrouter.js';
 export { RULES, getRule } from './rules.js';
 export { segment, join, protectedTexts } from './segment.js';
 export { computeSavings, costOfCall, formatUsd, formatSignedUsd } from './savings.js';
@@ -121,7 +123,9 @@ export { jaccard, normalizeForCompare } from './similarity.js';
 
 // Endpoint validation for the pluggable LLM layer
 export {
+  SAFE_FETCH_INIT,
   allowedEndpoints,
+  checkedEndpoint,
   isPrivateHost,
   resolveEndpoint,
   validateLlmEndpoint,

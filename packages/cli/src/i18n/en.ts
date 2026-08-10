@@ -228,6 +228,18 @@ ${bold('PRICES')}
   look identical.
 
   --pricing <file>            Use this overlay, ahead of the config's own.
+  --pricing-live              Take prices from OpenRouter instead of the bundled
+                              table: today's figures for hundreds of models across
+                              dozens of providers. Opt-in, because it is a network
+                              call — the deterministic core never makes one.
+                              A --pricing file wins over this.
+
+                              What that source does not publish is whether a model
+                              has prompt caching or the minimum prefix it caches
+                              at. Models it adds therefore get no caching advice
+                              at all, rather than a guess: claiming caching works
+                              would offer a saving nobody can buy, and claiming it
+                              does not would hide the largest saving there is.
 
 ${bold('OPTIONAL LLM')}
   The core is deterministic and free. --llm adds a semantic compression pass
@@ -267,6 +279,8 @@ ${bold('EXAMPLES')}
   },
 
   errors: {
+    livePricingFailed: (url: string, detail: string) =>
+      `Could not load live prices from ${url}: ${detail}. The bundled prices are still there — drop --pricing-live to use them.`,
     optionNeedsValue: (name) => `Option --${name} needs a value.`,
     mustBeNonNegative: (name, raw) =>
       `--${name} must be a non-negative number (received: "${raw}").`,
@@ -414,6 +428,11 @@ ${bold('EXAMPLES')}
     fromProviderDefault: (provider) =>
       `(${provider} was read from the source; nothing named a model, so this is theirs)`,
     fromDefault: () => '(the built-in default — nothing said otherwise)',
+  },
+
+  pricing: {
+    liveLoaded: (added: number, refreshed: number, skipped: number) =>
+      `Live prices: ${refreshed} refreshed, ${added} models added, ${skipped} skipped for having no usable price or context window. Caching minimums are not published by this source, so caching advice is withheld for the added models.`,
   },
 
   models: {

@@ -264,7 +264,12 @@ export async function POST(request: Request) {
     const reorder: ReorderResult | null =
       body.reorder === true
         ? reorderForCache(prompt, {
-            minPrefixTokens: getModel(usage.model ?? '').cacheMinTokens,
+            // `undefined` when the catalogue does not know the minimum, which
+            // `reorder` reads as no floor to clear — the same choice the CLI
+            // makes, and for the same reason: the caller asked for the
+            // rearrangement, so withholding it on a threshold nobody knows
+            // would be refusing on no evidence.
+            minPrefixTokens: getModel(usage.model ?? '').cacheMinTokens ?? undefined,
           })
         : null;
 

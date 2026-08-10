@@ -44,6 +44,14 @@ export {
   parsePricingOverlay,
 } from './pricing-overlay.js';
 export type { PricingOverlay } from './pricing-overlay.js';
+
+// Turns a live price feed into an overlay. Pure — the fetch is the CLI's — and
+// re-exported here for the same reason as the overlay itself: one import.
+export { openrouterOverlay } from './openrouter.js';
+export type { OpenRouterResult } from './openrouter.js';
+
+// The endpoint gate every outbound call in this project goes through.
+export { SAFE_FETCH_INIT, checkedEndpoint } from './net.js';
 export { BUNDLED_CATALOGUE } from './pricing.js';
 export type { PricingCatalogue } from './pricing.js';
 

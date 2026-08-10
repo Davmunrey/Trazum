@@ -89,6 +89,7 @@ describe('applying an overlay', () => {
           contextWindow: 2_000_000,
           cacheMinTokens: 256,
           tier: 'opus',
+          capability: 'large',
         },
       }),
     );
@@ -334,6 +335,7 @@ describe('loading an overlay through the config', () => {
           contextWindow: 2_000_000,
           cacheMinTokens: 256,
           tier: 'opus',
+          capability: 'large',
         },
       }),
     );

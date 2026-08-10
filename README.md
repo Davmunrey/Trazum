@@ -1395,6 +1395,38 @@ word overlap. The review reports; it never edits.
 
 ---
 
+### Prices that are not a table somebody typed: `--pricing-live`
+
+The bundled catalogue is stale the day after it is written, and it only covers
+the providers whoever wrote it reached for. `--pricing-live` takes today's
+figures from OpenRouter instead — hundreds of models across dozens of providers,
+which covers OpenAI, Anthropic, Google, Mistral, Groq, Together, Fireworks,
+DeepInfra, Cerebras, DeepSeek, xAI and the rest of the open-weight hosts in one
+request.
+
+```bash
+trazum optimize prompts/support.txt --pricing-live --model deepseek/deepseek-chat
+```
+
+**Opt-in, because it is a network call.** The deterministic core never makes one:
+the CLI fetches, and hands the library a value. A `--pricing` file wins over it,
+because somebody who wrote prices down meant them.
+
+**What that feed cannot tell you, Trazum does not claim.** It publishes price and
+context window. It has no opinion on whether a model has prompt caching or the
+minimum prefix it caches at — and that is the input to the largest saving here.
+So models it adds get **no caching advice at all** rather than a guess, and
+`trazum models` shows a dash instead of a number:
+
+```
+Model                        In    Out  Context  Cache min
+deepseek/deepseek-chat     0.27   1.10     64K          —
+```
+
+The two available lies are symmetrical and both worse than silence. Claim caching
+works and Trazum offers a saving that cannot be bought at any price; claim it
+does not and Trazum hides the biggest saving there is.
+
 ## Every model you pay for by the token
 
 Trazum prices Anthropic, OpenAI, Google, Moonshot, DeepSeek, xAI and Mistral:

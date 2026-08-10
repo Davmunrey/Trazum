@@ -33,6 +33,7 @@ export interface CliMessages {
   };
 
   errors: {
+    livePricingFailed: (url: string, detail: string) => string;
     optionNeedsValue(name: string): string;
     mustBeNonNegative(name: string, raw: string): string;
     badLevel(received: string): string;
@@ -130,6 +131,10 @@ export interface CliMessages {
     fromDetection(): string;
     fromProviderDefault(provider: string): string;
     fromDefault(): string;
+  };
+
+  pricing: {
+    liveLoaded: (added: number, refreshed: number, skipped: number) => string;
   };
 
   models: {
