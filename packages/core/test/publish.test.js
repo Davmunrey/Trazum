@@ -744,3 +744,76 @@ describe('a release cannot ship without notes', () => {
     }
   });
 });
+
+describe('a privacy claim is a claim like any other', () => {
+  /**
+   * The README said prompts are **never stored on any server**, full stop, while
+   * `trazum_prompt_versions.text` had been storing prompt text since the library
+   * shipped. The library is off by default, so the sentence was true in the
+   * configuration everybody develops in and false in the one an operator opts
+   * into — the same shape as the Content-Security-Policy that blocked analytics
+   * nobody had switched on, found the same day.
+   *
+   * It is worse than that one in a way worth naming: a broken policy breaks
+   * visibly, eventually, to the operator who enabled it. A privacy sentence is
+   * read once, by somebody deciding whether to trust the thing, and nothing ever
+   * tells them it was wrong.
+   *
+   * So the claim is derived from the schema rather than trusted. Nothing here
+   * asks whether the wording is *nice*; it asks whether the file that stores
+   * prompts and the file that describes what is stored still agree.
+   */
+  const schemaDir = join(repoRoot, 'apps/web/db');
+
+  /** Every `.sql` in the schema directory, concatenated. */
+  const schema = readdirSync(schemaDir)
+    .filter((name) => name.endsWith('.sql'))
+    .map((name) => readFileSync(join(schemaDir, name), 'utf8'))
+    .join('\n');
+
+  /** The privacy section, and nothing after it. */
+  const privacySection = () => {
+    const readme = readFileSync(join(repoRoot, 'README.md'), 'utf8');
+    const start = readme.indexOf('## Analytics and privacy');
+    assert.notEqual(start, -1, 'the privacy section has been renamed or removed');
+    const next = readme.indexOf('\n## ', start + 1);
+    return readme.slice(start, next === -1 ? undefined : next);
+  };
+
+  it('the schema still stores prompt text, which is what makes the claim conditional', () => {
+    /**
+     * Asserted rather than branched on. A conditional that skips when the
+     * premise disappears is how a test goes quiet at the exact moment it had
+     * something to say — if prompt text stops being persisted the claim can be
+     * absolute again, and that should arrive as a failing test telling somebody
+     * to simplify the README, not as silence.
+     */
+    const stores = /create table[^;]*prompt_versions[\s\S]*?\n\s+text\s+text\s+not null/.test(schema);
+    assert.ok(
+      stores,
+      'no table stores prompt text any more — the README may state the absolute again, ' +
+        'and this test should be deleted rather than made to pass',
+    );
+  });
+
+  it('the privacy section does not claim prompts are never stored', () => {
+    // The exact sentence that was wrong, and the reason it is matched literally:
+    // it is short, quotable, and the one a reader carries away.
+    const section = privacySection();
+    assert.ok(
+      !/never stored on any server[^.]*\./.test(section.replace(/^.*was wrong.*$/gm, '')),
+      'the privacy section still states the unqualified claim',
+    );
+  });
+
+  it('and names both configurations, because one of them does store them', () => {
+    const section = privacySection();
+
+    // Signed out: what the default actually is, and what switches it off.
+    assert.match(section, /TRAZUM_GITHUB_CLIENT_ID/, 'the default configuration is not identified');
+    // Signed in: the column, so the claim points at the thing rather than gesturing.
+    assert.match(section, /trazum_prompt_versions/, 'the table that stores prompt text is not named');
+    // Where the whole story lives.
+    assert.match(section, /docs\/accounts\.md/, 'the section does not link the full account');
+  });
+});

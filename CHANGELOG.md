@@ -12,6 +12,27 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**The README claimed prompts are never stored on any server.** They are, once the
+prompt library is switched on: `trazum_prompt_versions.text` holds the text of
+every saved version, and has since the library shipped. The library is off by
+default, so the sentence was true in the configuration everybody develops in and
+false in the one an operator opts into.
+
+That is the same shape as the Content-Security-Policy that blocked analytics
+nobody had enabled, found the same day — and worse in one respect. A broken policy
+eventually breaks visibly for the operator who enabled it. A privacy sentence is
+read once, by somebody deciding whether to trust the thing, and nothing ever tells
+them it was wrong.
+
+The section now states both configurations and names the column. Three tests keep
+it honest: the schema is asserted still to store prompt text, so if that ever
+stops being true the claim can go back to being absolute and a failing test says
+so rather than the guard going quiet; the exact sentence that was wrong may not
+reappear; and both configurations have to be identified by the thing that selects
+them. `docs/accounts.md` was already accurate and is now linked from here.
+
+Five mutants, five killed, the first of them the original defect put back verbatim.
+
 **The new Content-Security-Policy blocked analytics, silently.** `connect-src
 'self'` shipped in the same change as the nonce, and `Analytics.tsx` posts to
 `https://eu.i.posthog.com`. An operator setting `NEXT_PUBLIC_POSTHOG_KEY` got a
