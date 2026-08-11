@@ -10,6 +10,54 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**The new Content-Security-Policy blocked analytics, silently.** `connect-src
+'self'` shipped in the same change as the nonce, and `Analytics.tsx` posts to
+`https://eu.i.posthog.com`. An operator setting `NEXT_PUBLIC_POSTHOG_KEY` got a
+page that rendered perfectly and sent nothing, with the reason visible only in a
+browser console nobody was reading.
+
+Nothing caught it because the key is unset in CI and in development: the
+configuration where it breaks is the one no test exercises. Found by reading the
+policy next to the component while reviewing an unrelated `posthog-js` bump —
+not by any check in this repository.
+
+The host now comes from `lib/analytics`, which both files read, so the policy
+and the request cannot name different hosts again. With no key the policy is
+byte-for-byte what it was; with one, `connect-src` gains exactly one origin.
+
+It is an **origin**, never the configured string. A policy is built by joining
+text with `;`, so a host of `evil.test; script-src *` would not have widened
+`connect-src` — it would have appended a directive of somebody else's choosing.
+`new URL().origin` discards everything a host source may not contain, and a
+value that will not parse, or is not https, widens nothing at all.
+
+Verified against a built server in both configurations: with the key set,
+`connect-src 'self' https://eu.i.posthog.com` and nine of nine script tags still
+nonced; without it, the previous policy unchanged. The badge keeps its own
+`default-src 'none'; sandbox` either way. Nine mutants, nine killed.
+
+**CodeQL was one merge away from being permanently broken.** Dependabot raised
+`github/codeql-action/init` and `github/codeql-action/analyze` 3.37.6 → 4.37.6 as
+two pull requests, because they are two sub-paths of one action and it treats
+sub-paths independently. They are not independent: `analyze` reads the
+configuration `init` wrote and refuses one written by a different version —
+`Loaded a configuration file for version '4.37.6', but running version
+'3.37.6'`. Each pull request was red on its own for that reason, which is the
+harmless failure. The harmful one is merging both halves in either order and
+stopping halfway: the security job goes red and stays red, while every other
+check on every later pull request is green.
+
+Both are now bumped in one commit, and a test keeps them together — grouped by
+`owner/repo` rather than by a list naming `codeql-action`, because the next
+action split this way will not be that one. Verified against the real thing: the
+test was run with the workflow put into each of the two pull requests' exact
+states, and failed on both.
+
+The bump was not optional maintenance either. v3 targets Node 20, which Actions
+has deprecated and is already force-running on Node 24.
+
 ### Added
 
 **A Content-Security-Policy with a real `script-src`.** The web app had

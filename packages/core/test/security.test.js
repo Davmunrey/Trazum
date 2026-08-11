@@ -619,6 +619,58 @@ describe('the packaged Action', () => {
     assert.deepEqual(missing, [], `a pinned action has no version comment:\n  ${missing.join('\n  ')}`);
   });
 
+  it('sub-actions of the same action agree on their commit', () => {
+    // `github/codeql-action/init` and `github/codeql-action/analyze` are two
+    // entry points of one action, and analyze refuses a configuration file init
+    // wrote at a different version:
+    //
+    //   Loaded a configuration file for version '4.37.6', but running '3.37.6'
+    //
+    // Dependabot raises one pull request per sub-path, so a version bump always
+    // arrives split in two and each half is red on its own. That is how it is
+    // *supposed* to fail. The dangerous ordering is the other one: merge both
+    // halves and the mismatch is gone, merge one and forget, and the security
+    // job stays broken while everything else is green.
+    //
+    // Grouped by `owner/repo` rather than by a list naming codeql-action,
+    // because the next action to be split this way will not be that one.
+    const shaFor = new Map();
+    const disagreements = [];
+
+    for (const name of readdirSync(join(repoRoot, '.github/workflows'))) {
+      if (!/\.ya?ml$/.test(name)) continue;
+      const source = readFileSync(join(repoRoot, '.github/workflows', name), 'utf8');
+
+      for (const [, ref] of source.matchAll(/^\s*(?:- )?uses:\s*(\S+@[0-9a-f]{40})/gm)) {
+        const [path, sha] = ref.split('@');
+        const segments = path.split('/');
+        // Only paths deeper than `owner/repo` can disagree with a sibling.
+        if (segments.length < 3) continue;
+        const action = segments.slice(0, 2).join('/');
+
+        const seen = shaFor.get(action);
+        if (!seen) shaFor.set(action, { sha, where: `${name}: ${path}` });
+        else if (seen.sha !== sha) {
+          disagreements.push(`${action}\n      ${seen.where} @${seen.sha}\n      ${name}: ${path} @${sha}`);
+        }
+      }
+    }
+
+    // An empty `disagreements` proves nothing on its own: it is also what a
+    // matcher that stopped matching produces. Verified by breaking the segment
+    // filter, which left the assertion below green while inspecting nothing.
+    assert.ok(
+      shaFor.size > 0,
+      'no sub-path action reference was found — this guard is inspecting nothing',
+    );
+
+    assert.deepEqual(
+      disagreements,
+      [],
+      `sub-actions of one action are pinned to different commits:\n  ${disagreements.join('\n  ')}`,
+    );
+  });
+
   it('the docs recommend a SHA pin too, not a tag', (t) => {
     // The rule above governs what this repository runs. This one governs what it
     // *tells other people to run*, which had drifted: the README recommended
