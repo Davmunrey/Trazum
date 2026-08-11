@@ -9,8 +9,10 @@ every other locale is translated from.
 
 Two deliberate exceptions:
 
-- **`packages/core/src/phrases.ts`** contains Spanish (and, in time, other)
-  phrases. Those are *data* — the vocabulary Trazum looks for inside the
+- **`packages/core/src/phrases.ts`** contains the phrase dictionaries in the
+  seven covered languages — English, Spanish, French, German, Portuguese,
+  Italian and Dutch — including `OUTPUT_CUES_BY_LANGUAGE`, the phrases that mark
+  a fenced block as an output contract. Those are *data* — the vocabulary Trazum looks for inside the
   prompts it optimises — not interface. Adding a language there is unrelated to
   the language of the report.
 - **`packages/*/src/i18n/es.ts`, `apps/web/lib/i18n/es.ts`** and the Spanish
@@ -26,7 +28,7 @@ npm run verify     # everything CI runs, in the order CI runs it
 Node 22. No global installs needed.
 
 `verify` is the one command worth remembering — it is build, tests, typecheck
-across all three workspaces, and the web build. **Run it before pushing, and
+across all four workspaces, and the web build. **Run it before pushing, and
 read its exit code rather than its output.** The web build in particular fails on
 things nothing else notices: `@trazum/core` is bundled for the browser, so one
 `node:fs` import anywhere in its import graph breaks it, and neither the tests
@@ -37,7 +39,7 @@ The pieces individually, if you want a faster loop:
 ```bash
 npm run build      # core + cli
 npm test           # core + cli test suites
-npm run typecheck  # all three workspaces
+npm run typecheck  # all four workspaces
 npm run build:web  # the Next.js app
 ```
 

@@ -25,8 +25,9 @@ through a tag with no credential anywhere.
 
 ```bash
 npm login
-npm publish -w @trazum/core --access public   # core first: the CLI pins it exactly
+npm publish -w @trazum/core --access public   # core first: the others pin it exactly
 npm publish -w @trazum/cli  --access public
+npm publish -w @trazum/mcp  --access public
 ```
 
 `prepublishOnly` rebuilds and runs the tests before either upload, so a failure
@@ -67,7 +68,7 @@ there blocks the publish rather than interrupting it halfway.
 
 ### 3. Configure this repository as a trusted publisher
 
-For **each** of `@trazum/core` and `@trazum/cli`, on the package's npm settings
+For **each** of `@trazum/core`, `@trazum/cli` and `@trazum/mcp`, on the package's npm settings
 page under *Publishing access → Trusted publisher*, enter exactly:
 
 | Field | Value |
@@ -100,9 +101,9 @@ asserts no workflow reaches for one.
 2. **Move the `ROADMAP.md` entry** from `Next` to `Released`, and say what
    actually shipped rather than what was planned — they differ more often than
    they should.
-3. **Bump the version in all four manifests** — root, `packages/core`,
-   `packages/cli`, `apps/web` — plus the `@trazum/core` dependency in
-   `packages/cli`, and the lockfile. `publish.test.js` fails if they disagree.
+3. **Bump the version in all five manifests** — root, `packages/core`,
+   `packages/cli`, `packages/mcp`, `apps/web` — plus the `@trazum/core` dependency in
+   `packages/cli` and `packages/mcp`, and the lockfile. `publish.test.js` fails if they disagree.
 4. **Update the README's action pin** to the release commit, with the new version
    in the trailing comment. `security.test.js` asks git what version *that commit*
    declares and fails if the label disagrees — so the pin can only be advanced
@@ -124,7 +125,7 @@ and it runs the same `verify` a pull request runs before anything is published �
 a release gate that checks less than the pull-request gate lets through exactly
 what the tag was for.
 
-`@trazum/core` publishes first. The CLI depends on it at an exact version, so the
+`@trazum/core` publishes first. The CLI and the MCP server depend on it at an exact version, so the
 other order leaves a window where installing the CLI fails on a dependency that
 does not exist yet.
 
@@ -139,7 +140,7 @@ tag would be a release with no version to check against.
 
 - **The tag was wrong** — nothing was published, because the version check runs
   before `verify`. Delete the tag, fix it, tag again.
-- **`@trazum/core` published and `@trazum/cli` failed** — the core version is
+- **`@trazum/core` published and `@trazum/cli` or `@trazum/mcp` failed** — the core version is
   spent. Bump to the next patch across all manifests and release again rather
   than trying to reuse the number; npm will not let you, and a `--force` that
   worked would be worse.

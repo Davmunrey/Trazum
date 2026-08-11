@@ -814,6 +814,43 @@ still sends nothing anywhere, still needs no account, and still optimises a
 prompt with the network unplugged. The web app is opt-in, self-hosted, and
 holds only what somebody deliberately saved to it.
 
+### The publish itself — what shipped under 1.8.0's own banner
+
+The version the collapse ships under, and the only one a consumer will ever
+install. Beyond carrying 1.1.0–1.7.0, it added its own layer, in two waves.
+
+**The provider wave.** Pricing seven providers (1.5.0) made the next gap obvious:
+Trazum could *price* every model and *call* almost none of them. Now `openai` in
+`TRAZUM_LLM_PROVIDER` is documented as what it always was — a wire format, not a
+company — and one base URL covers OpenRouter, LiteLLM, Groq, Together, Fireworks,
+DeepInfra, DeepSeek, Mistral, Ollama, vLLM and LM Studio. Native providers exist
+where the wire format genuinely differs: Anthropic, Gemini (whose blocked prompts,
+truncated answers and empty candidates all arrive as HTTP 200, and are all
+refused), and Bedrock and Vertex, whose credentials are not bearer tokens — SigV4
+and the service-account JWT are signed by hand on WebCrypto, keeping the
+zero-dependency invariant. Live prices arrive through an OpenRouter overlay that
+marks everything the feed does not carry `unknown` rather than guessing. None of
+these paths has been run against the real service from this environment, and each
+says so where it is documented.
+
+**The measurement wave.** `trazum prune` measures which few-shot examples earn
+their tokens — leave-one-out against the prompt's own noise floor, the only
+command that asks before spending. `doctor` reports preambles that could share a
+cache entry and do not, the first finding no single prompt can produce. An
+advisory catches output schemas the request could carry as a parameter instead —
+the rare change that is cheaper *and* stricter. `@trazum/mcp` exposes
+`check_prompt`, `optimize_prompt` and `list_models` over stdio so an agent can
+budget its own prompts before sending them. A `.pre-commit-hooks.yaml` covers
+teams who manage hooks with the pre-commit framework. And the web app's
+Content-Security-Policy stopped being `frame-ancestors` plus an admission: a
+nonce per request, `strict-dynamic`, and no `unsafe-inline` for script.
+
+Two entries here exist because their absence was found to be a live defect while
+writing them: the README's privacy section claimed prompts are never stored on
+any server for several releases after the prompt library made that conditional,
+and the CSP shipped blocking the analytics the operator could switch on. Both
+carry tests now that derive the claim from the code rather than trusting prose.
+
 ## Next
 
 ### 1.9.0 — The error band, measured

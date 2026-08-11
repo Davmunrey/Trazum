@@ -32,6 +32,54 @@ Eleven commands now, up from four.
 
 ### What's new
 
+- **`trazum prune` — which few-shot examples earn their tokens, measured.** Removes
+  each example in turn and checks whether any answer moves further than the model
+  already moves on its own. It is the only command that asks before spending — the
+  bill is `(2 + examples) × cases`, printed before a provider is even looked up —
+  and it reports "no effect on these inputs", never "delete this". Nothing is
+  edited.
+
+- **`@trazum/mcp` — Trazum as an MCP server, so an agent can budget its own
+  prompts.** Three tools over stdio (`check_prompt`, `optimize_prompt`,
+  `list_models`), running on your machine like the CLI: no service, no prompt
+  leaving the box. The JSON-RPC layer is written by hand because every published
+  package here carries zero runtime dependencies — and an MCP server reading
+  model-supplied text is the last place to relax that.
+
+- **`trazum doctor` finds preambles that could share a cache entry and do not.**
+  Prompt caching matches bytes, so twelve prompts assembled from the same preamble
+  — identical except a trailing tab and a stray capital — occupy twelve cache
+  entries and share nothing. Each file is individually fine, which is why no
+  per-prompt analysis can see it. No dollar figure, deliberately: pricing it would
+  mean inventing how your calls spread across the group.
+
+- **An advisory for a schema the request could carry instead of the prompt.**
+  `Output format:` followed by a fenced JSON block costs those tokens on every
+  call; every major API now takes the same shape as a request parameter, where the
+  decoder is constrained rather than persuaded. Cheaper and stricter both — the
+  rare finding that is not a trade-off. Trazum reports it and never edits it,
+  because it is a change to the call, not the prompt.
+
+- **LLM-agnostic, for real.** `openai` in `TRAZUM_LLM_PROVIDER` is a wire format,
+  not a company — point a base URL at OpenRouter, LiteLLM, Groq, Together,
+  Fireworks, DeepInfra, DeepSeek, Mistral, Ollama, vLLM or LM Studio and it works.
+  Native providers for Anthropic and Gemini, and `bedrockProvider` /
+  `vertexProvider` with SigV4 and the service-account JWT signed by hand on
+  WebCrypto, because the AWS and Google SDKs are two hundred packages between them
+  to authenticate one request. Live prices via an OpenRouter overlay, with every
+  fact the feed does not carry marked `unknown` rather than guessed.
+
+- **A real Content-Security-Policy on the web app.** A 128-bit nonce per request,
+  `strict-dynamic`, no `unsafe-inline` in `script-src` — verified against a built
+  server: nine of nine script tags carry the nonce, and deleting the one
+  easy-to-miss line (the policy must ride the *request* headers too) gives nine
+  tags and zero nonces.
+
+- **A `.pre-commit-hooks.yaml`** for teams who manage hooks with the pre-commit
+  framework, and **automatic recovery from container rollbacks** for anyone
+  developing this repository in an environment that restores stale disk snapshots
+  — which this one did, more than twenty times.
+
 - **`--suggest` stops paying for answers it already has.** Add
   `--cache-suggestions` and a prompt that has not changed since the last run is
   answered from disk instead of from the model — re-run over forty prompts after

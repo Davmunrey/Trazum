@@ -12,6 +12,28 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**The README leads with the receipts, and every markdown file caught up with the
+code.** The front page now opens with a transcribed — not mocked — `optimize` run
+as an SVG terminal, down to the closing line where Trazum admits the advisory is
+worth 22× what the rules saved. The first draft of that SVG contained exactly one
+invented figure, which its own header comment forbids; it was caught and replaced
+with the real third advisory. A new guard derives the front page from the
+workspace manifests: the architecture diagram had silently omitted `@trazum/mcp`
+for the whole day that package existed, and now the next package added has to
+appear in the README or `publish.test.js` fails.
+
+The sweep also caught: `SECURITY.md` crediting zero dependencies to "the core and
+the CLI" when three packages now carry the invariant; `CONTRIBUTING.md` counting
+three workspaces and describing `phrases.ts` as "Spanish (and, in time, other)"
+seven languages later; `docs/releasing.md` publishing two packages when the
+workflow publishes three; the CLI README's command table listing five commands of
+eleven; and `VERSIONING.md` freezing every API surface except the newest one —
+the MCP server's tool names and input schemas are now part of the promise.
+`RELEASES.md` and `ROADMAP.md` gained the account of everything that shipped
+under 1.8.0's banner since their last update, provider layer and measurement
+layer both.
+
+
 **Automatic recovery from container rollbacks, at `scripts/recover-workspace.sh`
 and a Claude Code SessionStart hook.** The remote environment this repository is
 developed in restored its container disk to a stale snapshot more than twenty
