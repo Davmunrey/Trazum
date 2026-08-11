@@ -12,6 +12,46 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`trazum prune <file> --cases <file>` — which few-shot examples earn their tokens,
+measured rather than guessed.** The eleventh command.
+
+The `redundant-examples` advisory asks a textual question: does this example look like
+an earlier one? This asks a stronger one: does removing it change any answer? Two
+examples can be textually unalike and teach the same thing, and the few-shot section
+is routinely most of a prompt.
+
+Leave-one-out against the prompt's own noise floor. Ask the full prompt twice to
+learn how much the model disagrees with *itself*, then remove one example and ask
+again; a removal that moves the answer less than that did no observable work. The
+thresholds come from `evaluate`'s `verdictFor` rather than a second set.
+
+**The only command that asks before spending.** The bill is `(2 + examples) × cases`
+— 220 calls for a nine-example prompt over twenty cases. Without `--yes` it prints the
+figure and stops, and it prints it *before* looking for a provider, so the cost is
+visible without a key configured. `plannedCalls` is exported and pure, and a test
+asserts the number it promises is the number spent.
+
+**It reports "no effect on these inputs" and never "delete this."** An example may
+exist for a case the given inputs do not contain. Nothing is edited, and the strength
+of the claim is bounded by the inputs — which only the caller can judge.
+
+`withoutExample` locates blocks by position rather than by
+`prompt.replace(text, '')`: a copy-pasted few-shot section contains identical blocks,
+and a text replace would match the first occurrence for both, so measuring the
+removal of the second would describe the removal of the first.
+
+Twelve mutants, twelve killed. Two defects came out of it that no test would have
+found, because both were about *reading* the output:
+
+- The first draft duplicated `agreement` from `evaluate.ts` as a bag-of-words F1
+  while that one is Jaccard over normalised text — two different numbers under one
+  name, with a comment in the copy claiming they were the same measure. `agreement`
+  and `pooled` are now exported and shared, which makes the comment true.
+- The report put a green tick beside "0% agreement without it", which reads as
+  approval next to the one line meaning "leave this alone", and printed `Example:` as
+  every block's identifying line. Both only visible by running it against a local
+  stand-in provider, which is how they were found.
+
 **`@trazum/mcp` — Trazum as an MCP server, so an agent can price and budget a
 prompt before it sends it.** Three tools over stdio: `check_prompt`,
 `optimize_prompt`, `list_models`. It runs on the caller's machine, one process

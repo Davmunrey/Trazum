@@ -19,7 +19,7 @@ through whichever provider you configure.
                     └──────┬───────┘   no dependencies, browser-safe
              ┌─────────────┼─────────────┐
        @trazum/cli    @trazum/web    action/
-       ten commands   Next.js        comments on pull requests
+    eleven commands   Next.js        comments on pull requests
 ```
 
 > [!NOTE]
@@ -28,7 +28,7 @@ through whichever provider you configure.
 > `npm install @trazum/cli` will not work today. Run it from source with the
 > steps in [Getting started](#getting-started). See [RELEASES.md](RELEASES.md).
 
-## The ten commands
+## The eleven commands
 
 | Command | What it answers |
 |---|---|
@@ -37,6 +37,7 @@ through whichever provider you configure.
 | [`trazum diff`](#did-this-edit-make-it-worse) | What did this edit cost? |
 | [`trazum rank`](#which-prompt-to-fix-first-trazum-rank) | Of these forty prompts, which is worth an afternoon? |
 | [`trazum doctor`](#the-whole-workspace-at-once-trazum-doctor) | What is wrong across the whole workspace? |
+| [`trazum prune`](#which-few-shot-examples-earn-their-tokens-trazum-prune) | Which few-shot examples earn their tokens? Measured, and it asks before spending. |
 | [`trazum blame`](#who-made-this-prompt-expensive-trazum-blame) | Who made this prompt expensive, and when? |
 | [`trazum eval`](#does-the-shorter-prompt-still-work) | Does the shorter prompt still do the job? |
 | [`trazum where`](#prompts-where-they-actually-live) | Which prompts are hiding inside my source files? |
@@ -146,7 +147,7 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of ten commands, and the others
+is the smallest thing here. `optimize` is one of eleven commands, and the others
 exist because knowing a prompt is wasteful is not the same as knowing *which*
 prompt, *whose* change made it so, or whether the shorter version still works:
 
@@ -206,7 +207,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other nine commands, each with its own section below:
+The other ten commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -1794,6 +1795,54 @@ scripts/           release notes, and the token-band measurement harness
 it, update `PRICING_LAST_REVIEWED` too. The test suite checks the table stays
 coherent (output dearer than input, promotions with an expiry date, plausible
 context windows).
+
+### Which few-shot examples earn their tokens: `trazum prune`
+
+The `redundant-examples` advisory asks a *textual* question: does this example look
+like an earlier one? It is free and it catches the way few-shot blocks actually grow
+— copy the last one, change two fields.
+
+`prune` asks a stronger one: **does removing this example change any answer?** Two
+examples can be textually unalike and teach the same thing, and the few-shot section
+is routinely most of a prompt.
+
+```bash
+trazum prune prompt.txt --cases cases.txt          # prints the bill, calls nothing
+trazum prune prompt.txt --cases cases.txt --yes    # spends it
+```
+
+```
+4 examples × 3 cases: 18 provider calls (2 baselines per case, then one per
+example removed).
+
+What each example is doing, measured on claude-opus-5
+  The prompt agrees with itself 94% of the time. That is the yardstick.
+
+  → example 1 — 18 tokens, 93% agreement without it  no effect on these inputs
+      Input: my card was declined
+  · example 3 — 19 tokens, 41% agreement without it  needed here
+      Input: I want my money back
+```
+
+**Leave-one-out against the prompt's own noise floor.** Ask the full prompt twice to
+find out how much the model disagrees with *itself*, then remove one example and ask
+again. A removal that moves the answer less than the model already moves on its own
+did not do observable work. The thresholds come from `evaluate`'s `verdictFor`, not a
+second set — a repository where two of them disagreed about "within the noise" would
+be one where the answer depends on which you ran.
+
+**It is the only command that asks before spending.** The bill is
+`(2 + examples) × cases`, which for a nine-example prompt over twenty cases is 220
+calls — a number to agree to rather than discover. Without `--yes` it prints the
+figure and stops, and it prints it *before* looking for a provider, so you can see
+the cost without a key configured.
+
+**It reports "no effect on these inputs" and never "delete this."** An example may
+exist for a case your inputs do not contain — the boundary condition somebody hit in
+production last March and added a demonstration for. Removing it would change nothing
+measurable and break that case. Nothing is edited; the strength of the claim is
+bounded by the inputs you gave it, and only you know whether those cover what
+matters.
 
 ### An MCP server, so an agent can budget its own prompts
 
