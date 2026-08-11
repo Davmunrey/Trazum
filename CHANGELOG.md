@@ -10,6 +10,28 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**CodeQL was one merge away from being permanently broken.** Dependabot raised
+`github/codeql-action/init` and `github/codeql-action/analyze` 3.37.6 → 4.37.6 as
+two pull requests, because they are two sub-paths of one action and it treats
+sub-paths independently. They are not independent: `analyze` reads the
+configuration `init` wrote and refuses one written by a different version —
+`Loaded a configuration file for version '4.37.6', but running version
+'3.37.6'`. Each pull request was red on its own for that reason, which is the
+harmless failure. The harmful one is merging both halves in either order and
+stopping halfway: the security job goes red and stays red, while every other
+check on every later pull request is green.
+
+Both are now bumped in one commit, and a test keeps them together — grouped by
+`owner/repo` rather than by a list naming `codeql-action`, because the next
+action split this way will not be that one. Verified against the real thing: the
+test was run with the workflow put into each of the two pull requests' exact
+states, and failed on both.
+
+The bump was not optional maintenance either. v3 targets Node 20, which Actions
+has deprecated and is already force-running on Node 24.
+
 ### Added
 
 **A Content-Security-Policy with a real `script-src`.** The web app had
