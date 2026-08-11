@@ -1795,6 +1795,44 @@ it, update `PRICING_LAST_REVIEWED` too. The test suite checks the table stays
 coherent (output dearer than input, promotions with an expiry date, plausible
 context windows).
 
+### An MCP server, so an agent can budget its own prompts
+
+`@trazum/mcp` exposes three tools over stdio. Every other surface here answers
+"what does this prompt cost" for a human after the fact; this answers it for the
+thing composing the prompt, before it sends anything.
+
+```jsonc
+{ "mcpServers": { "trazum": { "command": "npx", "args": ["-y", "@trazum/mcp"] } } }
+```
+
+**It runs on the caller's machine and costs nothing to host** — one process, spawned
+by the client, exactly like the CLI. No service, no prompt leaving the machine.
+
+`check_prompt` is the one worth wiring up, and it has three outcomes rather than
+two:
+
+```
+OVER BUDGET — 2,140 tokens against 2,000, but the safe rules bring it to 1,870,
+which fits. Optimise rather than cut.
+```
+
+"Over budget" and "over budget but the rules would fix it" are different
+instructions. A boolean throws away the actionable half.
+
+**What it cannot do is the design.** No paths — every tool takes text, and the
+package imports only the browser-safe entry point, so it cannot read a file even if
+somebody adds a parameter for one. No network: `--suggest` and `eval` are
+deliberately not exposed, because a tool an agent can invoke in a loop must not be
+able to spend money. No writes.
+
+**Zero runtime dependencies, which is why the JSON-RPC layer is hand-written**
+rather than taken from the official SDK. It was written with the SDK first and
+`publish.test.js` refused it: every publishable package here carries no runtime
+dependencies, and the stated reason — every dependency is somebody else's code
+reading your prompts — applies to an MCP server with *more* force than anywhere
+else, not less. [packages/mcp/README.md](packages/mcp/README.md) states what the
+protocol implementation covers and what it does not.
+
 ### The pre-commit framework
 
 `scripts/pre-commit` is a plain git hook and stays the recommended way to do this.

@@ -12,6 +12,49 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`@trazum/mcp` — Trazum as an MCP server, so an agent can price and budget a
+prompt before it sends it.** Three tools over stdio: `check_prompt`,
+`optimize_prompt`, `list_models`. It runs on the caller's machine, one process
+spawned by the client exactly like the CLI — no service to host, and no prompt
+leaves the machine.
+
+`check_prompt` has three outcomes rather than two, which is the reason it exists:
+inside budget, over budget but the rules would fix it, or over budget with content
+that has to be cut. A boolean throws away the actionable half.
+
+**What it cannot do is the design.** No paths — every tool takes text, and the
+package imports `@trazum/core` rather than `@trazum/core/node`, so the file-reading
+capability is *absent* rather than unused. No network: `--suggest` and `eval` are
+deliberately not exposed, because a tool an agent can invoke in a loop must not be
+able to spend the caller's money. No writes.
+
+**The JSON-RPC layer is written by hand, and that was not the first attempt.** It
+used `@modelcontextprotocol/sdk` and thirteen tests passed against a real process.
+Then `publish.test.js` refused it: every publishable package here carries no runtime
+dependencies outside the repository, and the reason `security.test.js` gives — every
+dependency is somebody else's code running on untrusted text — applies to an MCP
+server with *more* force than anywhere else in Trazum. Relaxing the invariant at the
+point it matters most would have been backwards, so the invariant won.
+
+What that costs is stated in the module: the implementation covers `initialize`,
+`notifications/initialized`, `tools/list`, `tools/call` and `ping`, and answers
+anything else with `-32601`. It has been driven by a raw newline-delimited client in
+the tests, not by every MCP client in existence.
+
+Writing it by hand immediately produced the bug that justifies testing it: the
+notification check sat *inside* the method switch, listing the two `notifications/*`
+methods by name. A notification is defined by the **absence of an id**, not by its
+method, so `{"jsonrpc":"2.0","method":"initialize"}` with no id got a reply —
+a protocol violation some clients tolerate and others hang on, which is the worst
+kind because it works in testing. A test that asked for the rule rather than for the
+two names found it.
+
+Seventeen mutants: fifteen killed by tests, two by the compiler. Four new guards in
+`publish.test.js` and the release workflow had to be updated too — a third
+publishable package needs a README, a LICENSE, provenance, and a publish step
+ordered after `@trazum/core`, and every one of those was a test failure rather than
+something anybody remembered.
+
 **A `.pre-commit-hooks.yaml`, for teams who manage hooks with pre-commit.**
 `scripts/pre-commit` stays the recommended path; this is for the repositories that
 already have a `.pre-commit-config.yaml`, which in practice means Python shops whose

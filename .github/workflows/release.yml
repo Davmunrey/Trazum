@@ -87,6 +87,7 @@ jobs:
         run: |
           npm pack --dry-run -w @trazum/core
           npm pack --dry-run -w @trazum/cli
+          npm pack --dry-run -w @trazum/mcp
 
       # Provenance comes free with OIDC and is the reason to prefer it beyond
       # not storing a secret: a consumer can verify a published tarball was built
@@ -101,6 +102,13 @@ jobs:
       - name: Publish @trazum/cli
         if: startsWith(github.ref, 'refs/tags/')
         run: npm publish -w @trazum/cli --provenance --access public
+
+      # Third, for the same reason the CLI is second: @trazum/mcp pins
+      # @trazum/core at an exact version too, so publishing it before core exists
+      # leaves a window where installing it fails.
+      - name: Publish @trazum/mcp
+        if: startsWith(github.ref, 'refs/tags/')
+        run: npm publish -w @trazum/mcp --provenance --access public
 
       # The release body comes from RELEASES.md, which was written and reviewed in
       # a pull request. Before this, publishing to npm created no GitHub release
