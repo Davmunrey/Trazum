@@ -137,6 +137,17 @@ export interface RedundantExamplesParams {
   topSimilarityPct: number;
 }
 
+export interface MovableSchemaParams {
+  /** How many cued schema blocks were found. */
+  blocks: number;
+  /** Tokens they hold, fences included. */
+  tokens: number;
+  /** The keys, already formatted for prose. */
+  keyList: string;
+  /** The phrase that identified the block as an output contract. */
+  cue: string;
+}
+
 export interface RestatedOutputFormatParams {
   restatedCount: number;
   totalCount: number;
@@ -183,6 +194,7 @@ export interface CoreMessages {
     contradictoryInstructions(p: ContradictoryInstructionsParams): LocalizedMessage;
     redundantExamples(p: RedundantExamplesParams): LocalizedMessage;
     restatedOutputFormat(p: RestatedOutputFormatParams): LocalizedMessage;
+    movableSchema(p: MovableSchemaParams): LocalizedMessage;
   };
   /** Names of the axes two instructions can disagree on. */
   contradictionAxes: Record<ContradictionAxisId, string>;

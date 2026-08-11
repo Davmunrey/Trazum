@@ -1,4 +1,5 @@
 import { segment } from './segment.js';
+import { OUTPUT_CUES } from './phrases.js';
 import { jaccard, normalizeForCompare } from './similarity.js';
 import type { ContradictionAxisId, ContradictionValueId } from './i18n/types.js';
 import type { TokenCounter } from './types.js';
@@ -542,4 +543,110 @@ export function findRestatedFormat(prompt: string, count: TokenCounter): Restate
 
 function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// --------------------------------------------------------------------------
+// An output schema the API could carry instead of the prompt
+// --------------------------------------------------------------------------
+
+/**
+ * A schema shown in the prompt that the request could carry as a parameter.
+ *
+ * Every provider worth naming now accepts a response schema alongside the
+ * message — `output_config.format`, `response_format`, `responseSchema`,
+ * whatever it is called this quarter. A prompt that spells the same shape out in
+ * a fenced block pays for it in input tokens on **every call**, and gets a
+ * weaker guarantee for the money: prose asks the model to comply, a parameter
+ * makes the decoder comply.
+ *
+ * So this is the rare finding that is not a trade-off. Moving a schema out is
+ * cheaper *and* stricter. What stops it being a rule is that Trazum cannot make
+ * the change: it edits prompts, and this is a change to the call around the
+ * prompt. It reports, names the tokens, and leaves the edit to whoever owns the
+ * client code.
+ *
+ * **The one way this could do harm, and what prevents it.** A fenced JSON block
+ * in a prompt is one of two completely different things. `Output format: {...}`
+ * is a contract and moving it is free. `Input: {...}` inside a few-shot example
+ * is *data the prompt needs*, and moving it breaks the prompt. Nothing here
+ * guesses which: a block counts only when a phrase from `OUTPUT_CUES_BY_LANGUAGE`
+ * appears in the text immediately before it. A schema with no such phrase is
+ * left alone, and a prompt in a language those dictionaries do not cover raises
+ * nothing at all — a false negative, stated as one, rather than an English cue
+ * matched inside Japanese prose and called a saving.
+ */
+export interface MovableSchema {
+  /** Fenced blocks that an output cue introduces. */
+  blocks: number;
+  /** Top-level keys across all of them, deduplicated. */
+  keys: string[];
+  /** Tokens the blocks hold, fences included, since all of it leaves the prompt. */
+  tokens: number;
+  /** The cue that identified the first block, so the report can quote it. */
+  cue: string;
+}
+
+/** How far back to look for a cue introducing a block. */
+const CUE_WINDOW = 240;
+
+/** Fenced blocks with their offset, needed to read what precedes them. */
+function fencedBlocksAt(prompt: string): Array<{ lang: string; body: string; at: number; raw: string }> {
+  const blocks: Array<{ lang: string; body: string; at: number; raw: string }> = [];
+  const fence = /^([ \t]{0,3})(`{3,}|~{3,})([^\n]*)\n([\s\S]*?)^\1\2[ \t]*$/gm;
+  let match: RegExpExecArray | null;
+  while ((match = fence.exec(prompt)) !== null) {
+    blocks.push({
+      lang: (match[3] ?? '').trim().toLowerCase(),
+      body: match[4] ?? '',
+      at: match.index,
+      raw: match[0],
+    });
+  }
+  return blocks;
+}
+
+export function findMovableSchema(prompt: string, count: TokenCounter): MovableSchema | null {
+  const cued: Array<{ raw: string; keys: string[]; cue: string }> = [];
+
+  for (const block of fencedBlocksAt(prompt)) {
+    // Explicitly JSON-ish, or unlabelled but structured enough to be a shape.
+    // A labelled `python` block is somebody's code and never an output contract.
+    const jsonish = /^(json|jsonc|json5)$/.test(block.lang) || block.lang === '';
+    if (!jsonish) continue;
+
+    /**
+     * No minimum key *length* here, unlike the restated-format detector.
+     * That filter exists there to stop a two-letter key matching a word in
+     * prose; nothing is matched against prose here, so all it would do is
+     * undercount schemas whose fields are called `id` or `ok`. It was copied
+     * across in the first draft and a mutation run found it: deleting it changed
+     * no test, which is what a line with no reason looks like.
+     */
+    const keys = topLevelKeys(block.body);
+    // Fewer than three keys is an illustration, not a contract worth moving —
+    // the same threshold the restated-format advisory uses, for the same reason.
+    if (keys.length < RESTATED_KEY_MINIMUM) continue;
+
+    /**
+     * The window before the fence, normalised the way every other comparison in
+     * this package normalises: case folded, accents stripped, punctuation
+     * flattened. `Formato de salida:` and `FORMATO DE SALIDA —` are the same cue,
+     * and a dictionary that only matched one of them would cover Spanish on
+     * paper.
+     */
+    const lead = normalizeForCompare(prompt.slice(Math.max(0, block.at - CUE_WINDOW), block.at));
+    const cue = OUTPUT_CUES.find((phrase) => lead.includes(normalizeForCompare(phrase)));
+    if (cue === undefined) continue;
+
+    cued.push({ raw: block.raw, keys, cue });
+  }
+
+  if (cued.length === 0) return null;
+
+  return {
+    blocks: cued.length,
+    keys: [...new Set(cued.flatMap((block) => block.keys))],
+    tokens: count(cued.map((block) => block.raw).join('\n\n')),
+    cue: cued[0]?.cue ?? '',
+  };
 }

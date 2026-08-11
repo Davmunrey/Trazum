@@ -5,7 +5,8 @@ import { COMPLEX_SIGNALS, SIMPLE_SIGNALS } from './phrases.js';
 import { BUNDLED_CATALOGUE, effectivePricing, modelFrom, multipliersFor } from './pricing.js';
 import type { PricingCatalogue } from './pricing.js';
 import { formatUsd } from './savings.js';
-import { analyzeExamples, findContradictions, findRestatedFormat } from './structure.js';
+import { analyzeExamples, findContradictions, findMovableSchema,
+  findRestatedFormat } from './structure.js';
 import { estimateTokens } from './tokenizer.js';
 import type { Advisory, ModelPricing, TokenCounter, UsageProfile } from './types.js';
 
@@ -350,6 +351,34 @@ export function buildAdvisories(
 
   // --- Output format written out twice ---
   const restated = findRestatedFormat(optimizedPrompt, count);
+  const movable = findMovableSchema(optimizedPrompt, count);
+  if (movable) {
+    /**
+     * Priced from the tokens, which are real and reproducible, with the
+     * uncertainty in the text rather than in the figure.
+     *
+     * What Trazum knows is how many tokens the block holds; what it cannot know
+     * from here is whether the provider accepts a response schema. Withholding
+     * the figure for that reason would be the wrong trade — the number is right
+     * *if* the move is available, and the advisory says plainly that it does not
+     * check. The same posture as `model-downgrade`, which carries a figure and
+     * says out loud that it is a keyword heuristic.
+     */
+    const saving =
+      tokensAfter > 0 ? monthlyInputUsd * Math.min(1, movable.tokens / tokensAfter) : 0;
+    advisories.push({
+      id: 'movable-output-schema',
+      severity: 'opportunity',
+      ...t.advisories.movableSchema({
+        blocks: movable.blocks,
+        tokens: movable.tokens,
+        keyList: movable.keys.map((k) => `\`${k}\``).join(', '),
+        cue: movable.cue,
+      }),
+      estimatedMonthlyUsd: saving > 0 ? saving : null,
+    });
+  }
+
   if (restated) {
     const saving =
       tokensAfter > 0

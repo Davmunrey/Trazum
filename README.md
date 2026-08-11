@@ -82,10 +82,42 @@ what usually saves more than shortening ever will:
 | Contradictory instructions | "Answer in English" three paragraphs above "reply in the customer's own language". The model has to pick one, and which one can change between calls — a correctness problem that also costs tokens twice. |
 | Redundant examples | Few-shot examples that are near-copies of an earlier one, and what they cost per month. |
 | Output format stated twice | A schema shown in a code block and then walked again in prose. The block is the version worth keeping. |
+| Schema the request could carry | A schema block introduced by "Output format:" is paid for in input tokens on every call. Every major API now takes a response schema as a *parameter* — and moving it there is both cheaper and stricter. See below. |
 
-The last three are **advisory only**. A contradiction has a right answer that only
+The last four are **advisory only**. A contradiction has a right answer that only
 the author knows, and an example that looks redundant may be demonstrating a
 boundary case on purpose. Trazum points; it does not cut.
+
+#### The one finding that is not a trade-off
+
+Most of what Trazum reports is a choice: shorter against clearer, cheaper against
+more capable. Moving an output schema out of the prompt is neither.
+
+```
+→ The output schema could travel in the request instead of the prompt
+  A schema block introduced by "output format" defines `category`, `reply`,
+  `escalate_to_human`, `confidence`, costing about 62 tokens on every call.
+```
+
+Those tokens are paid on **every call** to have the model read a shape and be
+asked, politely, to match it. `output_config.format`, `response_format`,
+`responseSchema` — whatever your provider calls it — takes the same shape as a
+request parameter, where the decoder is constrained rather than persuaded. Cheaper
+*and* stricter.
+
+**Trazum reports it and never does it**, because it is not a change to the prompt:
+it is a change to the code that sends the prompt. A rule that deleted the schema
+would leave a prompt asking for a shape it no longer describes, sent by a client
+nobody updated — strictly worse than what it started from.
+
+**The one way this could do harm, and what stops it.** A fenced JSON block is one
+of two entirely different things. `Output format: {...}` is a contract and moving
+it is free. `Input: {...}` inside a few-shot example is *data the prompt needs*,
+and moving it breaks the prompt. So nothing is guessed: a block counts only when a
+phrase from the output-cue dictionary appears in the text immediately before it,
+in one of the seven languages the rules cover. A schema with no such phrase is
+left alone, and a prompt in an uncovered language raises nothing — a false
+negative, which is the right direction to be wrong in.
 
 The example detector finds near-copies — the way few-shot blocks actually grow,
 by copy-paste-and-tweak. It deliberately does not flag *paraphrases*: the same

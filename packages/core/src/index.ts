@@ -133,6 +133,7 @@ export {
   analyzeExamples,
   findContradictions,
   findExamples,
+  findMovableSchema,
   findRestatedFormat,
 } from './structure.js';
 export type {
@@ -141,10 +142,12 @@ export type {
   ContradictionSide,
   ExampleAnalysis,
   ExampleBlock,
+  MovableSchema,
   RedundantExample,
   RestatedFormat,
 } from './structure.js';
 export { jaccard, normalizeForCompare } from './similarity.js';
+export { OUTPUT_CUES, OUTPUT_CUES_BY_LANGUAGE } from './phrases.js';
 
 // Endpoint validation for the pluggable LLM layer
 export {

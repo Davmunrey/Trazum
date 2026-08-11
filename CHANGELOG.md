@@ -12,6 +12,49 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**An advisory for a schema the request could carry instead of the prompt.** The
+one finding here that is not a trade-off.
+
+A prompt that spells out its output shape in a fenced block pays for it in input
+tokens on every call, and gets the weaker of the two available guarantees for the
+money: prose asks the model to comply, a response schema makes the decoder comply.
+`output_config.format`, `response_format`, `responseSchema` — every major API takes
+the same shape as a request parameter. Moving it is cheaper *and* stricter.
+
+**Reported, never done.** It is not a change to the prompt but to the code that
+sends the prompt, and a rule that deleted the schema would leave a prompt asking
+for a shape it no longer describes, sent by a client nobody updated — strictly
+worse than the prompt it started from. A test asserts the schema and its fences
+survive `--level aggressive`.
+
+**The one way it could do harm, and what stops it.** A fenced JSON block is either
+an output contract, which moves for free, or data a few-shot example needs, which
+breaks the prompt if moved. Nothing guesses: a block counts only when a phrase from
+the new `OUTPUT_CUES_BY_LANGUAGE` appears in the 240 characters before it. A schema
+with no cue is left alone; a prompt in a language the dictionaries do not cover
+raises nothing at all — a false negative, which is the right direction to be wrong
+in, and stated as one rather than papered over.
+
+The cue is matched through `normalizeForCompare`, so `FORMATO DE SALIDA —` and
+`formato de salida:` are the same phrase, and it is quoted back **verbatim from the
+prompt** rather than translated: it is the author's text, not the report's.
+
+**The figure is attached and the uncertainty is in the words.** Trazum knows how
+many tokens the block holds, which is reproducible; it cannot know from here
+whether a given provider offers the parameter. Withholding the number for that
+reason would be the wrong trade — it is right *if* the move is available — so the
+advisory says plainly that it does not check. The same posture as
+`model-downgrade`, which carries a figure and admits to being a keyword heuristic.
+
+Thirteen mutants, thirteen killed. One found a real defect: the first draft
+filtered out keys shorter than three characters, copied from the restated-format
+detector where it stops a two-letter key matching a word in prose. Nothing is
+matched against prose here, so all it did was undercount schemas whose fields are
+called `id` or `ok`. Deleting it changed no test, which is what a line with no
+reason looks like; it is gone, with a test for short field names in its place.
+
+### Added
+
 **`trazum doctor` finds preambles that could share a cache entry and do not.** The
 first finding in this repository that no single prompt can produce.
 

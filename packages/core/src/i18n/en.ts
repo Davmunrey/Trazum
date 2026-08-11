@@ -198,6 +198,14 @@ export const en: CoreMessages = {
         'Read them before deleting: an example that looks redundant may be showing a boundary case on purpose.',
     }),
 
+    movableSchema: ({ blocks, tokens, keyList, cue }) => ({
+      title: 'The output schema could travel in the request instead of the prompt',
+      detail:
+        `${blocks === 1 ? 'A schema block' : `${blocks} schema blocks`} introduced by "${cue}" defines ${keyList}, costing about ${n(tokens)} tokens on every call. ` +
+        'Every major API now takes a response schema as a request parameter — output_config.format, response_format, responseSchema — and moving it there is the rare change that is both cheaper and stricter: prose asks the model to comply, a parameter makes the decoder comply. ' +
+        'Trazum cannot make this edit, because it changes the call rather than the prompt, and it does not check whether your provider offers the parameter — if it does not, this is not available to you.',
+    }),
+
     restatedOutputFormat: ({ restatedCount, totalCount, restatedTokens, keyList }) => ({
       title: 'The output format is specified twice',
       detail:
