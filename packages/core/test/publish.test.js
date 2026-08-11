@@ -141,6 +141,22 @@ describe('what npm would publish', () => {
     }
   });
 
+  it("the README's front page names every workspace", () => {
+    /**
+     * The architecture diagram at the top of the README is the first thing a
+     * visitor reads, and it silently omitted `@trazum/mcp` for the whole day
+     * that package existed — the same drift, in the same file, as the prompt
+     * library the roadmap denied and the privacy sentence the schema
+     * contradicted. Derived from the workspace manifests rather than a list
+     * here, so the next package added has to appear or this fails.
+     */
+    const readme = readFileSync(join(repoRoot, 'README.md'), 'utf8');
+    const missing = WORKSPACES.map((pkg) => manifestOf(pkg).name).filter(
+      (name) => !readme.includes(name),
+    );
+    assert.deepEqual(missing, [], `the README never mentions: ${missing.join(', ')}`);
+  });
+
   it('nothing is publishable by accident', () => {
     // Derived from the workspace globs, so a workspace added later has to make
     // the choice rather than inherit one. `apps/web` is an application: it has

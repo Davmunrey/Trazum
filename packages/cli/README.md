@@ -24,8 +24,13 @@ npm install -g @trazum/cli
 |---|---|
 | `trazum optimize <file>` | shorten it, and price what that is worth |
 | `trazum check <file\|dir>` | does it fit its budget — exits 1 when it does not |
+| `trazum doctor [dir]` | the whole workspace: what nothing is watching, and what fixing would be worth |
+| `trazum rank <dir>` | of these forty prompts, which is worth an afternoon |
+| `trazum prune <file> --cases <file>` | which few-shot examples earn their tokens — measured, and it asks before spending |
 | `trazum diff <before> <after>` | somebody edited this; did it get worse? |
+| `trazum blame <file>` | who made this prompt expensive, and when |
 | `trazum eval <file> --cases <file>` | does the shorter prompt still work |
+| `trazum where [file]` | which prompts hide in my source files, and which model they call |
 | `trazum models` · `trazum rules` | prices; what each rule does |
 
 `trazum --help` documents every flag. Reports are available in English and

@@ -48,7 +48,7 @@ the CLI; what changed is who is allowed to choose.
 | SSRF into the internal network or cloud metadata | Scheme, credential and private-host filter on every endpoint, wherever it came from | `packages/core/src/net.ts`, `security.test.js` |
 | A validated endpoint redirecting the request somewhere else | `redirect: 'error'` on every server-side call, so a `302` to the metadata service fails instead of being followed | `packages/core/src/net.ts`, `security.test.js` |
 | ReDoS from a crafted prompt | Time budget over pathological inputs on every pull request | `security.test.js` |
-| A dependency that reads your prompts | The core and the CLI carry **zero** runtime dependencies, asserted in CI | `security.test.js` |
+| A dependency that reads your prompts | All three published packages — core, CLI and the MCP server — carry **zero** runtime dependencies, asserted in CI. The MCP server hand-rolls its JSON-RPC layer for exactly this reason: it reads text a model chose | `security.test.js`, `publish.test.js` |
 | `optimize()` quietly phoning home | `fetch` is only permitted in the two modules whose job is to make calls | `security.test.js` |
 | Memory exhaustion | 400 KB prompt cap, 30 requests/minute per IP | `apps/web/app/api/optimize/route.ts` |
 | A vulnerable dependency arriving in a PR | Dependency review blocks moderate and above | `.github/workflows/security.yml` |

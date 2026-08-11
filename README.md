@@ -1,4 +1,12 @@
+<div align="center">
+
 # Trazum
+
+### Cut what your prompts cost. Keep what they ask.
+
+**A deterministic prompt optimiser** — same input, same output, zero cost, no
+network — that prices every change in dollars per month and tells you, out
+loud, when *not* shortening the prompt would save you more.
 
 [![CI](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml)
@@ -6,20 +14,28 @@
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-3c873a.svg)](package.json)
 [![Runtime dependencies](https://img.shields.io/badge/runtime%20dependencies-0-2f855a.svg)](#layout)
 
-**Shortens what you send to the model without changing what you ask for — and
-tells you what that is worth per month.**
+<img src="docs/assets/demo.svg" alt="trazum optimize on a wordy support prompt: 238 tokens down to 142 (-40.3%), $24.00/month saved by the rules — and an advisory pointing at $528.40/month, 22× more" width="760">
 
-The core is **deterministic**: same rules, same result, zero cost, no network.
-On top of it sits an **optional LLM pass** for the compression rules cannot do,
-through whichever provider you configure.
+*Real output, transcribed — including the last line, where Trazum admits the
+rules were the small win and points at the big one.*
+
+</div>
+
+**Every figure has a receipt.** The core is deterministic: twelve rules, applied
+the same way every time, free, offline. What no rule can see, advisories report
+— caching, batching, model tier, schemas the request could carry — each one
+priced, each one reproducible on a single file. On top sits an **optional LLM
+pass** for the compression rules cannot do, through whichever provider you
+configure, and it never runs unless you ask.
 
 ```
-                    ┌──────────────┐
-                    │ @trazum/core │   the library: rules, tokens, pricing
-                    └──────┬───────┘   no dependencies, browser-safe
-             ┌─────────────┼─────────────┐
-       @trazum/cli    @trazum/web    action/
-    eleven commands   Next.js        comments on pull requests
+                      ┌──────────────┐
+                      │ @trazum/core │   the library: rules, tokens, pricing
+                      └──────┬───────┘   zero dependencies, browser-safe
+         ┌─────────────┬─────┴────────┬──────────────┐
+   @trazum/cli    @trazum/mcp    @trazum/web       action/
+  eleven commands  MCP server      Next.js     comments on pull requests
+                 for your agents
 ```
 
 > [!NOTE]
@@ -47,10 +63,12 @@ through whichever provider you configure.
 ## Contents
 
 - [What it actually does](#what-it-actually-does) — the five things, and what it refuses to touch
-- [Getting started](#getting-started) — CLI, web, the GitHub Action
+- [Getting started](#getting-started) — CLI, web, the GitHub Action, pre-commit
+- [Which few-shot examples earn their tokens](#which-few-shot-examples-earn-their-tokens-trazum-prune) — measured, and it asks before spending
+- [An MCP server for your agents](#an-mcp-server-so-an-agent-can-budget-its-own-prompts) — budget a prompt before sending it
 - [Languages](#languages) — what the dictionaries cover, and what they deliberately do not
-- [Connecting your own LLM](#connecting-your-own-llm) — providers, and the SSRF rules
-- [Every model you pay for by the token](#every-model-you-pay-for-by-the-token) — pricing across seven providers
+- [Connecting your own LLM](#connecting-your-own-llm) — one wire format, four native providers, and the SSRF rules
+- [Every model you pay for by the token](#every-model-you-pay-for-by-the-token) — pricing across seven providers, live via OpenRouter
 - [Token counting](#token-counting) — the estimator, and the error band it prints
 - [Limitations, stated plainly](#limitations-stated-plainly) — read this one
 - [Layout](#layout) · [Updating prices](#updating-prices) · [Privacy](#analytics-and-privacy) · [Roadmap](#roadmap-and-contributing)
@@ -1781,12 +1799,20 @@ packages/core/     dependency-free library (rules, tokens, pricing, LLM)
   src/llm.ts         pluggable providers and safety checks
   src/net.ts         endpoint validation, the allowlist, safe fetch defaults
   src/i18n/          message catalogues (report language)
+  src/shared-prefix.ts  preambles that could share a cache entry and do not
+  src/prune.ts       leave-one-out over few-shot examples, against the noise floor
+  src/aws-sigv4.ts   Bedrock's signature, by hand, on WebCrypto
+  src/gcp-auth.ts    Vertex's service-account JWT, same reasoning
+  src/openrouter.ts  live prices, with the unknowns marked unknown
 packages/cli/      dependency-free CLI
   src/markdown.ts    the report as markdown, and the three escapers
   src/git.ts         the only module here that runs another program
+packages/mcp/      dependency-free MCP server — three tools over stdio
+  src/rpc.ts         JSON-RPC 2.0 by hand; the invariant beat the SDK
+  src/tools.ts       the whole surface an agent can reach, in one file
 apps/web/          Next.js (App Router) — Optimise and Compare
 action/            the packaged GitHub Action that comments on pull requests
-scripts/           release notes, and the token-band measurement harness
+scripts/           release notes, the token-band harness, rollback recovery
 ```
 
 ## Updating prices

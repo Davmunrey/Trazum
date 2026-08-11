@@ -67,6 +67,10 @@ Covered by the versioning promise:
   and a script branching on it is depending on the API.
 - The HTTP API's request and response shapes.
 - The GitHub Action's inputs.
+- The MCP server's **tool names and input schemas**. An agent configuration
+  naming `check_prompt` is a caller like any other, and the text a tool returns
+  is copy — same split as everywhere else: branch on the structure, not the
+  prose.
 - Advisory and rule **identifiers** — stable across locales and versions on
   purpose, so callers can branch on them.
 - The `trazum.config.json` and pricing-overlay **schemas**. A config that

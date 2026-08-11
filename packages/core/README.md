@@ -65,6 +65,7 @@ saving:
 | `contradictory-instructions` | "Answer in English" three paragraphs above "reply in the customer's own language". A correctness bug that also costs tokens twice. |
 | `redundant-examples` | Few-shot examples that are near-copies of an earlier one. |
 | `restated-output-format` | A schema shown in a code block and then walked again in prose. |
+| `movable-output-schema` | A schema the request could carry as a parameter instead — cheaper *and* stricter, and the one finding that is not a trade-off. Reported, never edited: it changes the call, not the prompt. |
 | `model-downgrade` | A keyword heuristic, not a quality judgement — validate with evaluations before acting on it. |
 | `output-dominated` | You pay more for the answer than the prompt, so shortening it has a ceiling. |
 | `batch-api`, `below-cache-minimum`, `context-window`, `promotional-pricing` | |
