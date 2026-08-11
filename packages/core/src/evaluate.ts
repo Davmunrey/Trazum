@@ -76,7 +76,16 @@ export function fillPrompt(prompt: string, input: string): string {
 }
 
 /** Agreement between two answers, 0-1. */
-function agreement(a: string, b: string): number {
+/**
+ * How closely two answers agree, 0 to 1.
+ *
+ * Exported because `prune.ts` measures the same thing and must measure it the
+ * same way. It was a private function here first, and the copy that appeared in
+ * `prune.ts` was a bag-of-words F1 while this is Jaccard over normalised text —
+ * two different numbers under one name, with a comment in the copy claiming they
+ * were the same measure. Sharing the function is what makes that comment true.
+ */
+export function agreement(a: string, b: string): number {
   const left = normalizeForCompare(a);
   const right = normalizeForCompare(b);
   if (left === right) return 1;
@@ -108,7 +117,7 @@ export function verdictFor(selfAgreement: number, crossAgreement: number): EvalV
 }
 
 /** Runs `tasks` with a bounded number in flight, preserving order. */
-async function pooled<T>(tasks: Array<() => Promise<T>>, limit: number): Promise<T[]> {
+export async function pooled<T>(tasks: Array<() => Promise<T>>, limit: number): Promise<T[]> {
   const results = new Array<T>(tasks.length);
   let next = 0;
 

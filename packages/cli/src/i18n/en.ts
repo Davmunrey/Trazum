@@ -28,9 +28,24 @@ ${bold('USAGE')}
   trazum rank <dir> [options]
   trazum doctor [dir] [options]
   trazum blame <file> [options]
+  trazum prune <file> --cases <file> --yes
   trazum where [file]
   trazum models
   trazum rules
+
+${bold('OPTIONS FOR prune')}
+  --cases <file>              One input per line, or a JSON array. Required.
+  --yes                       Actually spend the calls. Without it the estimate is
+                              printed and nothing is called.
+  --concurrency <n>           Calls in flight at once. Default: 3.
+  --json                      The measurement as data.
+
+  Removes each few-shot example in turn and measures whether the answers move
+  further than the prompt already moves on its own. The bill is
+  (2 + examples) x cases, which is why this is the one command that asks first.
+
+  It reports "no effect on these inputs" and never "delete this": an example may
+  exist for a case your inputs do not contain. Nothing is edited.
 
 ${bold('OPTIONS FOR eval')}
   --cases <file>              One input per line, or a JSON array. Required.
@@ -561,6 +576,32 @@ ${bold('EXAMPLES')}
       + 'one cache entry each instead of one between them — but what that costs depends on '
       + 'how the calls are spread across the group, and Trazum applies a single '
       + '--cache-hit-rate to every prompt. Pricing it would mean inventing your traffic.',
+  },
+
+  prune: {
+    needsExamples: () =>
+      'This prompt has fewer than two few-shot examples, so there is nothing to compare.',
+    estimate: (examples, cases, calls) =>
+      `${examples} examples × ${cases} cases: ${calls} provider calls `
+      + `(2 baselines per case, then one per example removed).`,
+    needsConsent: () =>
+      'Nothing was called. Add --yes to spend it. This is the only command that asks, '
+      + 'because it is the only one whose bill grows with the length of your prompt.',
+    heading: (model) => `What each example is doing, measured on ${model}`,
+    selfAgreement: (pct) =>
+      `The prompt agrees with itself ${pct} of the time. That is the yardstick: a removal `
+      + 'that moves the answer less than this moved nothing attributable to the example.',
+    line: (n, tokens, pct) => `example ${n} — ${tokens} tokens, ${pct} agreement without it`,
+    verdictNeeded: () => 'needed here',
+    verdictRecoverable: () => 'no effect on these inputs',
+    verdictUnknown: () => 'inconclusive',
+    recoverable: (tokens) =>
+      `${tokens} tokens sit in examples whose removal changed nothing measurable here.`,
+    caveat: () =>
+      'Which is not the same as "delete them". An example may exist for a case these '
+      + 'inputs do not contain — the boundary condition somebody hit in production and '
+      + 'added a demonstration for. This measures the inputs you gave it, and only you '
+      + 'know whether they cover what matters. Nothing was edited.',
   },
 
   eval: {

@@ -22,9 +22,24 @@ ${bold('USO')}
   trazum rank <dir> [opciones]
   trazum doctor [dir] [opciones]
   trazum blame <fichero> [opciones]
+  trazum prune <fichero> --cases <fichero> --yes
   trazum where [fichero]
   trazum models
   trazum rules
+
+${bold('OPCIONES DE prune')}
+  --cases <fichero>           Una entrada por línea, o un array JSON. Obligatorio.
+  --yes                       Gasta las llamadas de verdad. Sin él se imprime la
+                              estimación y no se llama a nada.
+  --concurrency <n>           Llamadas en vuelo a la vez. Por defecto: 3.
+  --json                      La medición como datos.
+
+  Retira cada ejemplo few-shot por turnos y mide si las respuestas se mueven más
+  de lo que el prompt ya se mueve por su cuenta. La factura es
+  (2 + ejemplos) x casos, y por eso es el único comando que pregunta antes.
+
+  Informa de "sin efecto en estas entradas", nunca de "bórralo": un ejemplo puede
+  existir para un caso que tus entradas no contienen. No se edita nada.
 
 ${bold('OPCIONES DE eval')}
   --cases <fichero>           Una entrada por línea, o un array JSON. Obligatorio.
@@ -572,6 +587,32 @@ ${bold('EJEMPLOS')}
       + 'ocupan una entrada cada uno en lugar de una entre todos — pero lo que eso cuesta '
       + 'depende de cómo se reparten las llamadas dentro del grupo, y Trazum aplica un '
       + 'único --cache-hit-rate a todos. Cifrarlo sería inventarse tu tráfico.',
+  },
+
+  prune: {
+    needsExamples: () =>
+      'Este prompt tiene menos de dos ejemplos few-shot, así que no hay nada que comparar.',
+    estimate: (examples, cases, calls) =>
+      `${examples} ejemplos × ${cases} casos: ${calls} llamadas al proveedor `
+      + `(2 de referencia por caso, y luego una por ejemplo retirado).`,
+    needsConsent: () =>
+      'No se ha llamado a nada. Añade --yes para gastarlo. Es el único comando que '
+      + 'pregunta, porque es el único cuya factura crece con la longitud de tu prompt.',
+    heading: (model) => `Qué hace cada ejemplo, medido en ${model}`,
+    selfAgreement: (pct) =>
+      `El prompt coincide consigo mismo el ${pct} de las veces. Ese es el patrón de medida: `
+      + 'una retirada que mueva la respuesta menos que eso no movió nada atribuible al ejemplo.',
+    line: (n, tokens, pct) => `ejemplo ${n} — ${tokens} tokens, ${pct} de coincidencia sin él`,
+    verdictNeeded: () => 'hace falta aquí',
+    verdictRecoverable: () => 'sin efecto en estas entradas',
+    verdictUnknown: () => 'no concluyente',
+    recoverable: (tokens) =>
+      `${tokens} tokens están en ejemplos cuya retirada no cambió nada medible aquí.`,
+    caveat: () =>
+      'Lo cual no es lo mismo que "bórralos". Un ejemplo puede existir para un caso que '
+      + 'estas entradas no contienen — la condición límite que alguien encontró en '
+      + 'producción y para la que añadió una demostración. Esto mide las entradas que le '
+      + 'diste, y solo tú sabes si cubren lo que importa. No se ha editado nada.',
   },
 
   eval: {

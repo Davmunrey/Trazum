@@ -168,6 +168,12 @@ export type { RuleChange } from './changes.js';
 export { reviewExamples, EXAMPLE_REVIEW_SYSTEM_PROMPT } from './review.js';
 export type { ExampleReview, ExampleRedundancy, ReviewExamplesOptions } from './review.js';
 
+// Which few-shot examples earn their tokens, measured by leave-one-out. Optional,
+// and the most expensive thing here: see prune.ts for the call arithmetic and for
+// what the measurement cannot tell you.
+export { NothingToPrune, plannedCalls, pruneExamples, withoutExample } from './prune.js';
+export type { ExampleContribution, PruneOptions, PruneReport } from './prune.js';
+
 // Golden-set evaluation (optional, costs three LLM calls per case)
 export { evaluate, fillPrompt, verdictFor } from './evaluate.js';
 export type { EvalCase, EvalReport, EvalVerdict, EvaluateOptions } from './evaluate.js';

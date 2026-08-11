@@ -28,6 +28,9 @@ import {
   reorderForCache,
   sharedPrefixes,
   cacheableMinimum,
+  findExamples,
+  plannedCalls,
+  pruneExamples,
   extractPrompts,
   promptId,
   hasMarker,
@@ -389,6 +392,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
+  prune: ['cases', 'concurrency', 'json', 'yes'],
   diff: ['level', 'model', 'calls', 'output-tokens', 'batch', 'max-growth', 'optimized', 'markdown-out', 'all', 'prompt'],
   models: [],
   rank: ['level', 'model', 'calls', 'output-tokens', 'batch', 'disable', 'prompt', 'markdown-out'],
@@ -1967,6 +1971,104 @@ function joinPosix(root: string, relativePath: string): string {
  * — without it, "diverged on 3 of 10" could be better than the original
  * manages against itself. The cost is printed before any call goes out.
  */
+/**
+ * `trazum prune <file> --cases <file>` — which few-shot examples earn their tokens.
+ *
+ * The most expensive command here, and the only one that says what it will cost
+ * and then stops. `eval` spends `3 × cases`, which is predictable enough to just
+ * do. This spends `(2 + examples) × cases`, which for a nine-example prompt over
+ * twenty cases is 220 calls — the sort of number somebody should agree to rather
+ * than discover in a bill. So it prints the figure and requires `--yes`.
+ *
+ * The wording of the output matters as much as the measurement. An example whose
+ * removal changes nothing **on these inputs** is not an example to delete: it may
+ * exist for the boundary case somebody hit in production last March, which these
+ * twenty cases do not contain. The report says "no effect on these inputs" and
+ * never "delete this", and nothing here edits the prompt.
+ */
+async function commandPrune(args: Args, t: CliMessages): Promise<void> {
+  const prompt = await readInput(args.positional[0], t);
+
+  const casesPath = stringFlag(args, 'cases');
+  if (!casesPath) throw new Error(t.errors.evalNeedsCases());
+  const inputs = parseCases(await readFile(casesPath, 'utf8'));
+  if (inputs.length === 0) throw new Error(t.errors.evalNoCases(casesPath));
+
+  const examples = findExamples(prompt, estimateTokens);
+  if (examples.length < 2) throw new Error(t.prune.needsExamples());
+
+  const calls = plannedCalls(examples.length, inputs.length);
+
+  // Printed before the key is even looked up, so somebody weighing it up does not
+  // need a configured provider to see the number.
+  console.log();
+  console.log(c.bold(t.prune.estimate(examples.length, inputs.length, calls)));
+
+  if (!boolFlag(args, 'yes')) {
+    console.log(c.yellow(`  ${t.prune.needsConsent()}`));
+    return;
+  }
+
+  const provider = providerFromEnv();
+  if (!provider) throw new Error(t.errors.llmNotConfigured());
+
+  const report = await pruneExamples(prompt, inputs, provider, {
+    concurrency: numberFlag(args, 'concurrency', 3, t),
+  });
+
+  if (boolFlag(args, 'json')) {
+    console.log(JSON.stringify(report, null, 2));
+    return;
+  }
+
+  const pct = (value: number): string => `${(value * 100).toFixed(0)}%`;
+  console.log();
+  console.log(c.bold(t.prune.heading(provider.model)));
+  console.log(`  ${c.dim(t.prune.selfAgreement(pct(report.selfAgreement)))}`);
+  console.log();
+
+  for (const contribution of report.contributions) {
+    /**
+     * The mark points at what the reader can act on, which is the *recoverable*
+     * ones — and the first draft had it backwards, putting a green tick beside
+     * "0% agreement without it". That reads as approval next to the one line
+     * meaning "this example is load-bearing, leave it alone". Only visible by
+     * running it.
+     */
+    const needed = contribution.verdict === 'diverges';
+    const unknown = contribution.verdict === 'inconclusive';
+    const mark = unknown ? c.yellow('?') : needed ? c.dim('·') : c.green('→');
+    const label = unknown
+      ? t.prune.verdictUnknown()
+      : needed
+        ? t.prune.verdictNeeded()
+        : t.prune.verdictRecoverable();
+
+    console.log(
+      `  ${mark} ${t.prune.line(contribution.index + 1, contribution.tokens, pct(contribution.agreementWithout))}`
+        + `  ${unknown ? c.yellow(label) : needed ? c.dim(label) : c.green(label)}`,
+    );
+
+    /**
+     * The first line that is not the header, because the header is the same on
+     * every block. Printing `contribution.text`'s first non-empty line showed
+     * "Example:" four times over, which identifies nothing — again, only visible
+     * by running it.
+     */
+    const lines = contribution.text.split('\n').filter((line) => line.trim() !== '');
+    const body = lines.find((line) => !/^\s*(?:#+\s*)?(?:example|ejemplo)\b[\s:.-]*$/i.test(line));
+    console.log(`      ${c.dim(truncate((body ?? lines[0] ?? '').trim(), 60))}`);
+  }
+
+  console.log();
+  if (report.recoverableTokens > 0) {
+    console.log(`  ${t.prune.recoverable(report.recoverableTokens)}`);
+  }
+  console.log(`  ${c.dim(wrap(t.prune.caveat(), 74, '  '))}`);
+  console.log();
+  console.log(c.dim(`  ${t.eval.callsMade(report.callsMade)}`));
+}
+
 async function commandEval(
   args: Args,
   config: TrazumConfig,
@@ -2870,6 +2972,9 @@ async function main(): Promise<void> {
       break;
     case 'eval':
       await commandEval(args, config, t, locale);
+      break;
+    case 'prune':
+      await commandPrune(args, t);
       break;
     case 'diff':
       await commandDiff(args, config, pricing, t, locale);

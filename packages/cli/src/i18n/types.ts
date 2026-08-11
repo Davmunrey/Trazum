@@ -221,6 +221,20 @@ export interface CliMessages {
     sharedPrefixNoFigure(): string;
   };
 
+  prune: {
+    needsExamples(): string;
+    estimate(examples: number, cases: number, calls: number): string;
+    needsConsent(): string;
+    heading(model: string): string;
+    selfAgreement(pct: string): string;
+    line(n: number, tokens: number, pct: string): string;
+    verdictNeeded(): string;
+    verdictRecoverable(): string;
+    verdictUnknown(): string;
+    recoverable(tokens: number): string;
+    caveat(): string;
+  };
+
   eval: {
     nothingToCompare(): string;
     starting(cases: number, calls: number, model: string): string;
