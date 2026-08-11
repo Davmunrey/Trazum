@@ -1795,6 +1795,38 @@ it, update `PRICING_LAST_REVIEWED` too. The test suite checks the table stays
 coherent (output dearer than input, promotions with an expiry date, plausible
 context windows).
 
+### The pre-commit framework
+
+`scripts/pre-commit` is a plain git hook and stays the recommended way to do this.
+`.pre-commit-hooks.yaml` exists for teams who manage hooks with
+[pre-commit](https://pre-commit.com) — mostly Python shops, whose prompts live in
+`.py` string literals that `check` reads through a marker comment.
+
+```yaml
+repos:
+  - repo: https://github.com/Davmunrey/Trazum
+    rev: <a commit SHA>          # not a tag: a tag can be moved after you review it
+    hooks:
+      - id: trazum-check
+        args: [--max-tokens, '2000']
+```
+
+`trazum-check` is a gate and fails the commit. `trazum-doctor` never does, because
+`doctor` exits 0 by design — a hook that blocks on somebody else's prompt is one
+people learn to bypass.
+
+**It needs `@trazum/cli` published, and it is not yet.** The executable comes from
+`additional_dependencies`, not from installing this repository: `language: node`
+installs the hook repo, this repo's root is a private workspace root with no `bin`,
+and pre-commit reports `Executable trazum not found`. Giving the root a `bin` and a
+`prepare` that builds does not help either — pre-commit installs with
+`npm install -g`, and npm answers `Workspaces not supported for global packages`.
+Both were tried rather than reasoned about.
+
+The mechanism itself is verified: with locally packed tarballs standing in for the
+registry, the gate fails a prompt over budget, passes one inside it, and the survey
+hook exits 0. What remains untested is the registry lookup.
+
 ## Analytics and privacy
 
 **There are two configurations and they have different answers.** Both are stated

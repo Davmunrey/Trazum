@@ -12,6 +12,27 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**A `.pre-commit-hooks.yaml`, for teams who manage hooks with pre-commit.**
+`scripts/pre-commit` stays the recommended path; this is for the repositories that
+already have a `.pre-commit-config.yaml`, which in practice means Python shops whose
+prompts live in `.py` string literals.
+
+Two hooks rather than one with a flag: `trazum-check` is a gate and fails the
+commit, `trazum-doctor` never does. Collapsing them would let a `--survey` argument
+silently turn a gate into a report.
+
+**It needs the first npm publish to work, and says so.** The `trazum` executable
+comes from `additional_dependencies` rather than from installing this repository,
+and the two alternatives were tried rather than reasoned about: installing the repo
+root gives `Executable trazum not found`, because the root is a private workspace
+root with no `bin`; adding a `bin` plus a `prepare` that builds gives
+`Workspaces not supported for global packages`, because pre-commit installs with
+`npm install -g`.
+
+The mechanism is verified with locally packed tarballs standing in for the registry
+— the gate fails a prompt over budget, passes one inside it, and the survey hook
+exits 0. The registry lookup is the only untested part.
+
 **An advisory for a schema the request could carry instead of the prompt.** The
 one finding here that is not a trade-off.
 
