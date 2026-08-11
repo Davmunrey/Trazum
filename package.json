@@ -16,9 +16,9 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "npm run build -w @trazum/core && npm run build -w @trazum/cli",
-    "test": "npm run test -w @trazum/core && npm run test -w @trazum/cli && npm run test -w @trazum/web && npm run test:action",
-    "typecheck": "npm run typecheck -w @trazum/core && npm run typecheck -w @trazum/cli && npm run typecheck -w @trazum/web",
+    "build": "npm run build -w @trazum/core && npm run build -w @trazum/cli && npm run build -w @trazum/mcp",
+    "test": "npm run test -w @trazum/core && npm run test -w @trazum/cli && npm run test -w @trazum/mcp && npm run test -w @trazum/web && npm run test:action",
+    "typecheck": "npm run typecheck -w @trazum/core && npm run typecheck -w @trazum/cli && npm run typecheck -w @trazum/mcp && npm run typecheck -w @trazum/web",
     "verify": "npm run build && npm run test && npm run typecheck && npm run build:web",
     "dev:web": "npm run dev -w @trazum/web",
     "build:web": "npm run build -w @trazum/web",

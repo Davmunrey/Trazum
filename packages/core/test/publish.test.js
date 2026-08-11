@@ -147,7 +147,7 @@ describe('what npm would publish', () => {
     // dependencies, it is deployed rather than installed, and uploading it
     // would put a Next app on a registry as though it were a library.
     assert.ok(WORKSPACES.length >= 3, `only found ${WORKSPACES}`);
-    assert.deepEqual(PACKAGES, ['packages/cli', 'packages/core']);
+    assert.deepEqual(PACKAGES, ['packages/cli', 'packages/core', 'packages/mcp']);
   });
 
   it('the release workflow publishes exactly those, and publicly', () => {

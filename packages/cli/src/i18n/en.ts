@@ -545,6 +545,22 @@ ${bold('EXAMPLES')}
       'Nothing here fails a build. trazum check is the gate; this is the survey — the '
       + 'model recommendation is a keyword heuristic, and a build gated on one teaches '
       + 'people to re-run until green.',
+
+    sharedPrefixHeading: () => 'Preambles that could share a cache entry and do not',
+    sharedPrefixGroup: (count, tokens, drift) =>
+      `${count} prompts open with the same ${tokens}-token preamble, `
+      + (drift === 'whitespace'
+        ? 'differing only in whitespace'
+        : 'differing in wording, capitalisation or punctuation'),
+    sharedPrefixFix: (drift) =>
+      drift === 'whitespace'
+        ? 'A formatter fixes this: the text already agrees, only the spacing does not.'
+        : 'Someone has to pick one wording — the text itself differs, not just its spacing.',
+    sharedPrefixNoFigure: () =>
+      'No figure is attached, deliberately. Caching matches bytes, so these prompts hold '
+      + 'one cache entry each instead of one between them — but what that costs depends on '
+      + 'how the calls are spread across the group, and Trazum applies a single '
+      + '--cache-hit-rate to every prompt. Pricing it would mean inventing your traffic.',
   },
 
   eval: {

@@ -1,0 +1,85 @@
+# Hooks for the `pre-commit` framework (https://pre-commit.com).
+#
+# `scripts/pre-commit` is a plain git hook, installed with a symlink, and it
+# stays the recommended way to do this. This file exists because a large share of
+# the teams with prompts in their repository manage hooks with `pre-commit` —
+# mostly Python shops, whose prompts live in `.py` string literals that
+# `trazum check` reads through a marker comment — and for them "install a git
+# hook by hand" competes with a `.pre-commit-config.yaml` they already have.
+#
+# Add to that file:
+#
+#     repos:
+#       - repo: https://github.com/Davmunrey/Trazum
+#         rev: <a commit SHA>
+#         hooks:
+#           - id: trazum-check
+#             args: [--max-tokens, '2000']
+#
+# `rev` should be a SHA rather than a tag, for the reason SECURITY.md gives about
+# actions: a tag can be moved to point at different code after you have reviewed
+# it.
+#
+# ---------------------------------------------------------------------------
+# Why `language: node` and not `system`
+#
+# `system` would mean "trazum must already be on PATH", which is exactly the
+# assumption that makes a hook fail differently on every machine. `language: node`
+# gives pre-commit its own isolated environment, and `additional_dependencies`
+# below is what puts the CLI in it — see the note there for the two things that
+# do not work and were tried.
+#
+# **This needs `@trazum/cli` to exist on npm, and today it does not.** The
+# mechanism was verified against locally packed tarballs of the same two packages,
+# so what is untested here is the registry lookup and nothing else. Until the
+# first publish, use `scripts/pre-commit`.
+#
+# ---------------------------------------------------------------------------
+# Why two hooks rather than one with a flag
+#
+# `trazum-check` is a gate: it fails the commit. `trazum-doctor` never does —
+# `doctor` exits 0 by design, because it surveys the whole workspace and a hook
+# that blocks on somebody else's prompt is one people learn to bypass. Offering
+# them as one hook with a flag would let a `--survey` argument silently turn a
+# gate into a report, which is the worst of both.
+# ---------------------------------------------------------------------------
+
+- id: trazum-check
+  name: trazum check (prompt token budget)
+  description: >-
+    Fails the commit when a prompt it touches is over its token budget. Needs
+    either --max-tokens or a trazum.config.json carrying a budget for the path.
+  entry: trazum check
+  language: node
+  # This is what provides the `trazum` executable, and it is not optional.
+  #
+  # `language: node` installs the hook repository itself, and this repository's
+  # root is a private workspace root with no `bin`: pre-commit installs it
+  # happily and then reports `Executable trazum not found`. Verified, not
+  # assumed. Giving the root a `bin` plus a `prepare` that builds does not fix it
+  # either — pre-commit installs with `npm install -g`, and npm answers
+  # `Workspaces not supported for global packages`.
+  #
+  # So the executable comes from the published package instead, pinned to a
+  # compatible range while `rev` pins this manifest.
+  additional_dependencies: ['@trazum/cli@^1.8.0']
+  # Prompt files, plus the source languages a marked prompt can live in. Kept in
+  # step with DEFAULT_EXTENSIONS and SOURCE_EXTENSIONS in the core package; a
+  # file with no marker costs one `includes()` and is skipped.
+  files: \.(txt|md|prompt|tmpl|ts|tsx|js|jsx|mjs|cjs|py|rb|go|rs|java|kt|php|yaml|yml)$
+  # One invocation for every staged match, rather than one per file: budgets are
+  # per prompt, and `check` takes several paths.
+  require_serial: false
+
+- id: trazum-doctor
+  name: trazum doctor (workspace survey, never blocks)
+  description: >-
+    Prints what is worth fixing across the whole workspace. Always exits 0 —
+    trazum check is the gate.
+  entry: trazum doctor
+  language: node
+  additional_dependencies: ['@trazum/cli@^1.8.0']
+  # The survey reads the workspace rather than the changed files, so it runs once
+  # with no filenames appended.
+  pass_filenames: false
+  always_run: true

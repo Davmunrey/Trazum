@@ -205,6 +205,7 @@ export const es: WebMessages = {
       'contradictory-instructions': 'Dos instrucciones se contradicen',
       'redundant-examples': 'Algunos ejemplos repiten lo que ya muestran otros',
       'restated-output-format': 'El formato de salida se repite más de una vez',
+      'movable-output-schema': 'El esquema de salida podría ir en la petición',
     },
   },
 

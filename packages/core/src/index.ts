@@ -74,6 +74,16 @@ export type {
 } from './reorder.js';
 export type { CachePrefixAnalysis } from './cache.js';
 
+// The caching loss that only exists between prompts: a preamble shared by forty
+// files and byte-identical in none of them. Reports no dollar figure on purpose
+// — see shared-prefix.ts for why the cost model cannot price it.
+export { cacheableMinimum, sharedPrefixes } from './shared-prefix.js';
+export type {
+  PrefixCandidate,
+  SharedPrefix,
+  SharedPrefixOptions,
+} from './shared-prefix.js';
+
 // Prompts embedded in source files, found by an explicit marker rather than
 // guessed at — see extract.ts for why a gate cannot afford a heuristic here.
 export { extractPrompts, promptId, hasMarker, SOURCE_EXTENSIONS } from './extract.js';
@@ -123,6 +133,7 @@ export {
   analyzeExamples,
   findContradictions,
   findExamples,
+  findMovableSchema,
   findRestatedFormat,
 } from './structure.js';
 export type {
@@ -131,10 +142,12 @@ export type {
   ContradictionSide,
   ExampleAnalysis,
   ExampleBlock,
+  MovableSchema,
   RedundantExample,
   RestatedFormat,
 } from './structure.js';
 export { jaccard, normalizeForCompare } from './similarity.js';
+export { OUTPUT_CUES, OUTPUT_CUES_BY_LANGUAGE } from './phrases.js';
 
 // Endpoint validation for the pluggable LLM layer
 export {

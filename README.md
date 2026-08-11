@@ -82,10 +82,42 @@ what usually saves more than shortening ever will:
 | Contradictory instructions | "Answer in English" three paragraphs above "reply in the customer's own language". The model has to pick one, and which one can change between calls — a correctness problem that also costs tokens twice. |
 | Redundant examples | Few-shot examples that are near-copies of an earlier one, and what they cost per month. |
 | Output format stated twice | A schema shown in a code block and then walked again in prose. The block is the version worth keeping. |
+| Schema the request could carry | A schema block introduced by "Output format:" is paid for in input tokens on every call. Every major API now takes a response schema as a *parameter* — and moving it there is both cheaper and stricter. See below. |
 
-The last three are **advisory only**. A contradiction has a right answer that only
+The last four are **advisory only**. A contradiction has a right answer that only
 the author knows, and an example that looks redundant may be demonstrating a
 boundary case on purpose. Trazum points; it does not cut.
+
+#### The one finding that is not a trade-off
+
+Most of what Trazum reports is a choice: shorter against clearer, cheaper against
+more capable. Moving an output schema out of the prompt is neither.
+
+```
+→ The output schema could travel in the request instead of the prompt
+  A schema block introduced by "output format" defines `category`, `reply`,
+  `escalate_to_human`, `confidence`, costing about 62 tokens on every call.
+```
+
+Those tokens are paid on **every call** to have the model read a shape and be
+asked, politely, to match it. `output_config.format`, `response_format`,
+`responseSchema` — whatever your provider calls it — takes the same shape as a
+request parameter, where the decoder is constrained rather than persuaded. Cheaper
+*and* stricter.
+
+**Trazum reports it and never does it**, because it is not a change to the prompt:
+it is a change to the code that sends the prompt. A rule that deleted the schema
+would leave a prompt asking for a shape it no longer describes, sent by a client
+nobody updated — strictly worse than what it started from.
+
+**The one way this could do harm, and what stops it.** A fenced JSON block is one
+of two entirely different things. `Output format: {...}` is a contract and moving
+it is free. `Input: {...}` inside a few-shot example is *data the prompt needs*,
+and moving it breaks the prompt. So nothing is guessed: a block counts only when a
+phrase from the output-cue dictionary appears in the text immediately before it,
+in one of the seven languages the rules cover. A schema with no such phrase is
+left alone, and a prompt in an uncovered language raises nothing — a false
+negative, which is the right direction to be wrong in.
 
 The example detector finds near-copies — the way few-shot blocks actually grow,
 by copy-paste-and-tweak. It deliberately does not flag *paraphrases*: the same
@@ -682,6 +714,41 @@ Two things it reports that no other command does: **which prompts no budget
 pattern matches**, because an unwatched prompt is how the money got there in the
 first place, and **which are already over budget** — before a red build tells you,
 which is too late to think about it.
+
+#### Preambles that could share a cache entry and do not
+
+The one section here that is *not* a rolled-up advisory, because it is the one
+question you cannot ask of a single file.
+
+```
+Preambles that could share a cache entry and do not
+  ! 3 prompts open with the same 1,398-token preamble, differing only in whitespace
+      orders.txt
+      refunds.txt
+      support.txt
+      A formatter fixes this: the text already agrees, only the spacing does not.
+```
+
+Prompt caching is a byte-for-byte prefix match. Twelve prompts assembled from the
+same system preamble — identical except that one has a trailing tab, another
+reordered two bullets, and a third writes `E-Commerce` where the rest write
+`e-commerce` — occupy **twelve cache entries and share nothing**. Every one of
+those files is individually fine, which is why no per-prompt analysis finds it.
+
+`drift` says which kind of work it is: `whitespace` means a formatter fixes it,
+because the text already agrees; `wording` means somebody has to pick one.
+
+**Gated on the model's own cacheable minimum**, so a shared preamble too short to
+cache is not reported at all — the same refusal `--reorder` makes. Run the same
+directory against Haiku 4.5, whose minimum is 4,096, and a 1,398-token preamble
+produces nothing, because unifying it would buy nothing.
+
+**No dollar figure, deliberately.** The saving lives in the cache hit rate, and
+that is an *input* to Trazum's cost model rather than something it derives:
+`--cache-hit-rate` applies one value to every prompt, so the model has no term for
+how many distinct cache entries exist. Pricing this would mean inventing how your
+calls are spread across the group, which is the one thing here only you know. It
+names the mechanism instead.
 
 **It exits 0 even when it finds things.** `trazum check` is the gate. The model
 recommendation is a keyword heuristic, and a build gated on a keyword heuristic
@@ -1727,6 +1794,76 @@ scripts/           release notes, and the token-band measurement harness
 it, update `PRICING_LAST_REVIEWED` too. The test suite checks the table stays
 coherent (output dearer than input, promotions with an expiry date, plausible
 context windows).
+
+### An MCP server, so an agent can budget its own prompts
+
+`@trazum/mcp` exposes three tools over stdio. Every other surface here answers
+"what does this prompt cost" for a human after the fact; this answers it for the
+thing composing the prompt, before it sends anything.
+
+```jsonc
+{ "mcpServers": { "trazum": { "command": "npx", "args": ["-y", "@trazum/mcp"] } } }
+```
+
+**It runs on the caller's machine and costs nothing to host** — one process, spawned
+by the client, exactly like the CLI. No service, no prompt leaving the machine.
+
+`check_prompt` is the one worth wiring up, and it has three outcomes rather than
+two:
+
+```
+OVER BUDGET — 2,140 tokens against 2,000, but the safe rules bring it to 1,870,
+which fits. Optimise rather than cut.
+```
+
+"Over budget" and "over budget but the rules would fix it" are different
+instructions. A boolean throws away the actionable half.
+
+**What it cannot do is the design.** No paths — every tool takes text, and the
+package imports only the browser-safe entry point, so it cannot read a file even if
+somebody adds a parameter for one. No network: `--suggest` and `eval` are
+deliberately not exposed, because a tool an agent can invoke in a loop must not be
+able to spend money. No writes.
+
+**Zero runtime dependencies, which is why the JSON-RPC layer is hand-written**
+rather than taken from the official SDK. It was written with the SDK first and
+`publish.test.js` refused it: every publishable package here carries no runtime
+dependencies, and the stated reason — every dependency is somebody else's code
+reading your prompts — applies to an MCP server with *more* force than anywhere
+else, not less. [packages/mcp/README.md](packages/mcp/README.md) states what the
+protocol implementation covers and what it does not.
+
+### The pre-commit framework
+
+`scripts/pre-commit` is a plain git hook and stays the recommended way to do this.
+`.pre-commit-hooks.yaml` exists for teams who manage hooks with
+[pre-commit](https://pre-commit.com) — mostly Python shops, whose prompts live in
+`.py` string literals that `check` reads through a marker comment.
+
+```yaml
+repos:
+  - repo: https://github.com/Davmunrey/Trazum
+    rev: <a commit SHA>          # not a tag: a tag can be moved after you review it
+    hooks:
+      - id: trazum-check
+        args: [--max-tokens, '2000']
+```
+
+`trazum-check` is a gate and fails the commit. `trazum-doctor` never does, because
+`doctor` exits 0 by design — a hook that blocks on somebody else's prompt is one
+people learn to bypass.
+
+**It needs `@trazum/cli` published, and it is not yet.** The executable comes from
+`additional_dependencies`, not from installing this repository: `language: node`
+installs the hook repo, this repo's root is a private workspace root with no `bin`,
+and pre-commit reports `Executable trazum not found`. Giving the root a `bin` and a
+`prepare` that builds does not help either — pre-commit installs with
+`npm install -g`, and npm answers `Workspaces not supported for global packages`.
+Both were tried rather than reasoned about.
+
+The mechanism itself is verified: with locally packed tarballs standing in for the
+registry, the gate fails a prompt over budget, passes one inside it, and the survey
+hook exits 0. What remains untested is the registry lookup.
 
 ## Analytics and privacy
 

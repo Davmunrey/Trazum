@@ -198,6 +198,14 @@ export const es: CoreMessages = {
         'Léelos antes de borrar: un ejemplo que parece redundante puede estar mostrando un caso límite a propósito.',
     }),
 
+    movableSchema: ({ blocks, tokens, keyList, cue }) => ({
+      title: 'El esquema de salida podría ir en la petición y no en el prompt',
+      detail:
+        `${blocks === 1 ? 'Un bloque de esquema' : `${blocks} bloques de esquema`} introducido por "${cue}" define ${keyList}, y cuesta unos ${n(tokens)} tokens en cada llamada. ` +
+        'Toda API relevante acepta ya un esquema de respuesta como parámetro de la petición — output_config.format, response_format, responseSchema — y moverlo allí es el cambio raro que sale más barato y además más estricto: la prosa le pide al modelo que cumpla, un parámetro obliga al decodificador. ' +
+        'Trazum no puede hacer esta edición, porque cambia la llamada y no el prompt, y no comprueba si tu proveedor ofrece el parámetro — si no lo ofrece, esto no está disponible para ti.',
+    }),
+
     restatedOutputFormat: ({ restatedCount, totalCount, restatedTokens, keyList }) => ({
       title: 'El formato de salida está especificado dos veces',
       detail:

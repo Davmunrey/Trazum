@@ -1,0 +1,49 @@
+{
+  "name": "@trazum/mcp",
+  "version": "1.8.0",
+  "description": "Trazum as an MCP server: let an agent price and budget its own prompts before it sends them.",
+  "license": "MIT",
+  "author": "David Mu\u00f1oz Rey",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Davmunrey/Trazum.git",
+    "directory": "packages/mcp"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "prompt",
+    "llm",
+    "tokens",
+    "cost"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "bin": {
+    "trazum-mcp": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "src",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json && chmod +x dist/index.js",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test test/*.test.js",
+    "prepublishOnly": "npm run build && npm test"
+  },
+  "dependencies": {
+    "@trazum/core": "1.8.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "typescript": "^7.0.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

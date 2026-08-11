@@ -54,7 +54,8 @@ export type AdvisoryId =
   | 'promo-pricing'
   | 'contradictory-instructions'
   | 'redundant-examples'
-  | 'restated-output-format';
+  | 'restated-output-format'
+  | 'movable-output-schema';
 
 /** A recommendation that does NOT modify the prompt, only informs. */
 export interface Advisory {

@@ -215,6 +215,10 @@ export interface CliMessages {
     acrossPrompts(count: number): string;
     findingsNote(): string;
     notAGate(): string;
+    sharedPrefixHeading(): string;
+    sharedPrefixGroup(count: number, tokens: string, drift: 'whitespace' | 'wording'): string;
+    sharedPrefixFix(drift: 'whitespace' | 'wording'): string;
+    sharedPrefixNoFigure(): string;
   };
 
   eval: {

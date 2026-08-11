@@ -909,3 +909,139 @@ export const UNCOVERED_SCRIPTS: ReadonlyArray<{ name: string; pattern: RegExp }>
   { name: 'Thai', pattern: /\p{Script=Thai}/u },
   { name: 'Greek', pattern: /\p{Script=Greek}/u },
 ];
+
+/**
+ * Phrases that mark a block as the *output contract* rather than as data.
+ *
+ * Needed because a fenced JSON block in a prompt is one of two completely
+ * different things, and confusing them is the one way this analysis could do
+ * harm. `Output format: {...}` describes what the model must return, and a
+ * provider that accepts a response schema takes it as a request parameter
+ * instead — those tokens leave the prompt on every call. `Input: {...}` inside a
+ * few-shot example is *data the prompt needs*, and advising anyone to move it
+ * would break their prompt.
+ *
+ * Nothing here guesses. A schema block with no such phrase before it is left
+ * alone, because "probably an output format" is not good enough when being wrong
+ * costs somebody a working prompt.
+ *
+ * Seven languages, the same set the rules cover. A prompt in a language absent
+ * here raises nothing, which is a false negative and states itself as one — the
+ * alternative is matching an English cue inside Japanese prose and calling the
+ * result a saving.
+ */
+export const OUTPUT_CUES_BY_LANGUAGE: Readonly<Record<string, readonly string[]>> = {
+  en: [
+    'output format',
+    'response format',
+    'output schema',
+    'respond with',
+    'reply with',
+    'answer with',
+    'return only',
+    'return a json',
+    'return json',
+    'must return',
+    'your output',
+    'your response must',
+    'format your',
+    'in this format',
+    'following format',
+    'following shape',
+    'json format',
+  ],
+  es: [
+    'formato de salida',
+    'formato de respuesta',
+    'esquema de salida',
+    'responde con',
+    'responda con',
+    'contesta con',
+    'devuelve solo',
+    'devuelve un json',
+    'devuelve json',
+    'debe devolver',
+    'tu respuesta',
+    'tu salida',
+    'con este formato',
+    'siguiente formato',
+    'formato json',
+  ],
+  fr: [
+    'format de sortie',
+    'format de réponse',
+    'schéma de sortie',
+    'réponds avec',
+    'répondez avec',
+    'renvoie uniquement',
+    'renvoie un json',
+    'doit renvoyer',
+    'ta réponse',
+    'votre réponse',
+    'ce format',
+    'format suivant',
+    'format json',
+  ],
+  de: [
+    'ausgabeformat',
+    'antwortformat',
+    'ausgabeschema',
+    'antworte mit',
+    'antworten sie mit',
+    'gib nur',
+    'gib ein json',
+    'muss zurückgeben',
+    'deine antwort',
+    'ihre antwort',
+    'diesem format',
+    'folgendes format',
+    'json-format',
+  ],
+  pt: [
+    'formato de saída',
+    'formato de resposta',
+    'esquema de saída',
+    'responda com',
+    'responde com',
+    'retorne apenas',
+    'retorne um json',
+    'deve retornar',
+    'sua resposta',
+    'sua saída',
+    'este formato',
+    'formato seguinte',
+    'formato json',
+  ],
+  it: [
+    'formato di output',
+    'formato di risposta',
+    'schema di output',
+    'rispondi con',
+    'risponda con',
+    'restituisci solo',
+    'restituisci un json',
+    'deve restituire',
+    'la tua risposta',
+    'il tuo output',
+    'questo formato',
+    'formato seguente',
+    'formato json',
+  ],
+  nl: [
+    'uitvoerformaat',
+    'antwoordformaat',
+    'uitvoerschema',
+    'antwoord met',
+    'geef alleen',
+    'geef een json',
+    'moet teruggeven',
+    'je antwoord',
+    'uw antwoord',
+    'dit formaat',
+    'volgende formaat',
+    'json-formaat',
+  ],
+};
+
+/** Every output cue, flattened. Order is not significant. */
+export const OUTPUT_CUES: readonly string[] = Object.values(OUTPUT_CUES_BY_LANGUAGE).flat();
