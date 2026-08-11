@@ -12,6 +12,39 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**Automatic recovery from container rollbacks, at `scripts/recover-workspace.sh`
+and a Claude Code SessionStart hook.** The remote environment this repository is
+developed in restored its container disk to a stale snapshot more than twenty
+times across two working sessions — every tracked file reverted, mid-work,
+silently, always to the same commit. The first draft of this very script was
+destroyed by the failure it exists to repair, one commit short of being safe.
+
+**A script inside the repository cannot prevent that**, and this one does not
+claim to: it reverts along with everything else. What survives a rollback is the
+remote, so recovery is always fetch, reset to origin/main, reinstall — and the
+script makes those one safe move. The rollback signature is precise (HEAD strictly
+*behind* origin/main) and everything else is refused: a tree that is ahead is work
+in progress, a diverged tree is a choice no script should make (exit 1), and
+uncommitted changes are stashed by name before any reset rather than discarded.
+
+`.claude/hooks/session-start.sh` runs it at the start of every Claude Code on the
+web session — and only there, guarded on `CLAUDE_CODE_REMOTE`, because on a local
+machine the tree is the developer's own and resets are not a hook's call.
+
+Eleven behavioural tests drive the real script against real git repositories in
+temp directories, including the one that matters most: the rollback also reverts
+`.git`'s remote-tracking refs, so a script that compared HEAD to `origin/main`'s
+*ref* would see them equal and announce nothing to recover. The fixture builds
+exactly that state, and only a real fetch passes it. Thirteen mutants, thirteen
+killed — among them "the stash disappears", "an ahead tree also gets reset" and
+"a push appears", each the difference between a recovery script and a data-loss
+tool with a reassuring name.
+
+The definitive fix is platform-side — recreating the environment so it stops
+restoring a stale snapshot — and is not something a repository can do to itself.
+
+### Added
+
 **`trazum prune <file> --cases <file>` — which few-shot examples earn their tokens,
 measured rather than guessed.** The eleventh command.
 
