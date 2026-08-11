@@ -683,6 +683,41 @@ pattern matches**, because an unwatched prompt is how the money got there in the
 first place, and **which are already over budget** — before a red build tells you,
 which is too late to think about it.
 
+#### Preambles that could share a cache entry and do not
+
+The one section here that is *not* a rolled-up advisory, because it is the one
+question you cannot ask of a single file.
+
+```
+Preambles that could share a cache entry and do not
+  ! 3 prompts open with the same 1,398-token preamble, differing only in whitespace
+      orders.txt
+      refunds.txt
+      support.txt
+      A formatter fixes this: the text already agrees, only the spacing does not.
+```
+
+Prompt caching is a byte-for-byte prefix match. Twelve prompts assembled from the
+same system preamble — identical except that one has a trailing tab, another
+reordered two bullets, and a third writes `E-Commerce` where the rest write
+`e-commerce` — occupy **twelve cache entries and share nothing**. Every one of
+those files is individually fine, which is why no per-prompt analysis finds it.
+
+`drift` says which kind of work it is: `whitespace` means a formatter fixes it,
+because the text already agrees; `wording` means somebody has to pick one.
+
+**Gated on the model's own cacheable minimum**, so a shared preamble too short to
+cache is not reported at all — the same refusal `--reorder` makes. Run the same
+directory against Haiku 4.5, whose minimum is 4,096, and a 1,398-token preamble
+produces nothing, because unifying it would buy nothing.
+
+**No dollar figure, deliberately.** The saving lives in the cache hit rate, and
+that is an *input* to Trazum's cost model rather than something it derives:
+`--cache-hit-rate` applies one value to every prompt, so the model has no term for
+how many distinct cache entries exist. Pricing this would mean inventing how your
+calls are spread across the group, which is the one thing here only you know. It
+names the mechanism instead.
+
 **It exits 0 even when it finds things.** `trazum check` is the gate. The model
 recommendation is a keyword heuristic, and a build gated on a keyword heuristic
 teaches people to re-run until it goes green, which costs more than the tool ever

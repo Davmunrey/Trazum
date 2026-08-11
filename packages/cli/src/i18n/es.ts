@@ -556,6 +556,22 @@ ${bold('EJEMPLOS')}
       'Nada de esto hace fallar un build. trazum check es la puerta; esto es el '
       + 'reconocimiento — la recomendación de modelo es una heurística de palabras clave, '
       + 'y un build que dependa de una enseña a repetir hasta que salga verde.',
+
+    sharedPrefixHeading: () => 'Preámbulos que podrían compartir caché y no lo hacen',
+    sharedPrefixGroup: (count, tokens, drift) =>
+      `${count} prompts empiezan con el mismo preámbulo de ${tokens} tokens, `
+      + (drift === 'whitespace'
+        ? 'y solo difieren en espaciado'
+        : 'y difieren en redacción, mayúsculas o puntuación'),
+    sharedPrefixFix: (drift) =>
+      drift === 'whitespace'
+        ? 'Lo arregla un formateador: el texto ya coincide, el espaciado no.'
+        : 'Alguien tiene que elegir una redacción — difiere el texto, no solo su espaciado.',
+    sharedPrefixNoFigure: () =>
+      'No se adjunta cifra, a propósito. El caché compara bytes, así que estos prompts '
+      + 'ocupan una entrada cada uno en lugar de una entre todos — pero lo que eso cuesta '
+      + 'depende de cómo se reparten las llamadas dentro del grupo, y Trazum aplica un '
+      + 'único --cache-hit-rate a todos. Cifrarlo sería inventarse tu tráfico.',
   },
 
   eval: {

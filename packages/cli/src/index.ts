@@ -26,6 +26,8 @@ import {
   toOtlpMetrics,
   providerFromEnv,
   reorderForCache,
+  sharedPrefixes,
+  cacheableMinimum,
   extractPrompts,
   promptId,
   hasMarker,
@@ -52,6 +54,7 @@ import type {
   RejectedReason,
   PromptProfile,
   RuleLevel,
+  SharedPrefix,
   SuggestResult,
   UsageProfile,
 } from '@trazum/core';
@@ -2912,6 +2915,15 @@ interface Diagnosis {
   /** The budget that applies, or null when no pattern matches. */
   budget: ResolvedBudget | null;
   advisories: readonly Advisory[];
+  /**
+   * The prompt as written, kept only for the cross-prompt pass.
+   *
+   * Every other figure here is per prompt and the text could be dropped after
+   * `optimize` returned. Shared cache prefixes cannot be found that way: the
+   * question is whether *these two files* open with the same bytes, and no
+   * summary of either one answers it.
+   */
+  text: string;
 }
 
 /** An advisory rolled up across every prompt that raised it. */
@@ -3003,6 +3015,7 @@ async function commandDoctor(
       tokens: result.tokensBefore,
       budget: budgetFor(file, config.budgets),
       advisories: result.advisories,
+      text,
     });
   }
 
@@ -3033,6 +3046,24 @@ async function commandDoctor(
   // prompts raised it rather than falling to the bottom as a zero.
   findings.sort((a, b) => (b.monthlyUsd ?? 0) - (a.monthlyUsd ?? 0) || b.prompts - a.prompts);
 
+  /**
+   * The one finding here that is not a rolled-up advisory.
+   *
+   * Everything above is `optimize` run on one file and summed, which is the
+   * constraint this command was built around — every line reproducible on a
+   * single prompt. This is the deliberate exception, and it earns it by being
+   * the only question that cannot be asked of one file: whether a preamble
+   * shared by twelve prompts is byte-identical in any two of them.
+   *
+   * Gated on the model's own cacheable minimum, so a shared prefix too short to
+   * cache is not reported as an opportunity — the same refusal `reorderForCache`
+   * makes.
+   */
+  const prefixGroups = sharedPrefixes(
+    seen.map((d) => ({ path: d.path, text: d.text })),
+    { minTokens: cacheableMinimum(pricing.models.find((m) => m.id === usage.model)) },
+  );
+
   // Before the print, like every other file this repository writes: a report that
   // only appears when the terminal output was also wanted is a report a scheduled
   // job cannot rely on.
@@ -3054,7 +3085,7 @@ async function commandDoctor(
   );
 
   printDoctor(
-    { root, seen, unbudgeted, overBudget, findings, skipped, truncated },
+    { root, seen, unbudgeted, overBudget, findings, prefixGroups, skipped, truncated },
     { args, usage, pricing, t },
   );
 }
@@ -3066,12 +3097,13 @@ function printDoctor(
     unbudgeted: readonly Diagnosis[];
     overBudget: readonly Diagnosis[];
     findings: readonly Finding[];
+    prefixGroups: readonly SharedPrefix[];
     skipped: number;
     truncated: boolean;
   },
   context: { args: Args; usage: UsageProfile; pricing: PricingCatalogue; t: CliMessages },
 ): void {
-  const { root, seen, unbudgeted, overBudget, findings, skipped, truncated } = report;
+  const { root, seen, unbudgeted, overBudget, findings, prefixGroups, skipped, truncated } = report;
   const { args, usage, pricing, t } = context;
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
 
@@ -3096,6 +3128,14 @@ function printDoctor(
             id: f.id,
             prompts: f.prompts,
             estimatedMonthlyUsd: f.monthlyUsd,
+          })),
+          // No `estimatedMonthlyUsd` here, and consumers should not add one: see
+          // shared-prefix.ts for why the cost model cannot price this.
+          sharedPrefixes: prefixGroups.map((group) => ({
+            paths: group.paths,
+            tokens: group.tokens,
+            blocks: group.blocks,
+            drift: group.drift,
           })),
         },
         null,
@@ -3155,6 +3195,32 @@ function printDoctor(
       );
     }
     console.log(`\n  ${c.dim(t.doctor.findingsNote())}`);
+  }
+
+  /**
+   * Its own section, below the money, and not among the findings.
+   *
+   * Every line above carries a dollar figure or is one advisory `optimize` would
+   * raise on a single file. This is neither, and putting it in that list would
+   * make it look like a finding with the money left off — which is how a reader
+   * concludes the tool forgot to compute something rather than that it declined
+   * to guess.
+   */
+  if (prefixGroups.length > 0) {
+    console.log(`\n${c.bold(t.doctor.sharedPrefixHeading())}`);
+    for (const group of prefixGroups) {
+      console.log(
+        `  ${c.yellow('!')} ${t.doctor.sharedPrefixGroup(group.paths.length, n(group.tokens), group.drift)}`,
+      );
+      for (const path of group.paths.slice(0, DOCTOR_LIST_LIMIT)) {
+        console.log(`      ${c.dim(path)}`);
+      }
+      if (group.paths.length > DOCTOR_LIST_LIMIT) {
+        console.log(`      ${c.dim(t.doctor.andMore(group.paths.length - DOCTOR_LIST_LIMIT))}`);
+      }
+      console.log(`      ${c.dim(t.doctor.sharedPrefixFix(group.drift))}`);
+    }
+    console.log(`\n  ${c.dim(t.doctor.sharedPrefixNoFigure())}`);
   }
 
   if (skipped > 0) console.log(`\n${c.dim(t.rank.skipped(skipped))}`);

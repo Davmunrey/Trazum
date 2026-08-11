@@ -233,9 +233,25 @@ describe('the estimator against tokenizers it was never tuned for', () => {
    * that stop any fixture quietly describing something else — and the error is
    * printed so the open question has a number attached to it.
    */
-  const others = readdirSync(fixturesDir)
-    .filter((name) => /^token-ground-truth\..+\.json$/.test(name))
-    .sort();
+  /**
+   * `existsSync` first, and the reason is embarrassing enough to write down.
+   *
+   * `fixtures/` does not exist on a clean checkout — `scripts/measure-token-band.mjs`
+   * creates it, and nobody has run it. So this `readdirSync` threw ENOENT during
+   * suite construction on every CI run, node's test runner printed the stack as a
+   * diagnostic, reported `fail 0`, and **exited 0**.
+   *
+   * Which is precisely what the top of this file forbids: *"'0 failures' from a
+   * check that measured nothing is the most misleading thing a suite can report."*
+   * The skip below was written for a directory that exists and holds no
+   * per-provider file; it never covered the directory being absent, which is the
+   * normal state of this repository.
+   */
+  const others = existsSync(fixturesDir)
+    ? readdirSync(fixturesDir)
+        .filter((name) => /^token-ground-truth\..+\.json$/.test(name))
+        .sort()
+    : [];
 
   if (others.length === 0) {
     it('has not been measured for any other provider', {

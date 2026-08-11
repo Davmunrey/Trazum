@@ -10,6 +10,61 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+**`trazum doctor` finds preambles that could share a cache entry and do not.** The
+first finding in this repository that no single prompt can produce.
+
+Prompt caching is a byte-for-byte prefix match, so twelve prompts assembled from
+the same system preamble — identical except that one has a trailing tab, another
+reordered two bullets, and a third writes `E-Commerce` where the rest write
+`e-commerce` — occupy twelve cache entries and share nothing. Every one of those
+files is individually fine, which is exactly why no per-prompt analysis finds it.
+
+`drift` says which kind of work it is: `whitespace` means the text already agrees
+and a formatter fixes it; `wording` means somebody has to pick one.
+
+Three refusals, and they are the design:
+
+- **Grouped by the *first* block.** Caching matches from the start of the request,
+  so prompts whose opening paragraphs differ share nothing however identical the
+  rest is. Grouping on a later block would name prompts that can only be made to
+  share a prefix by reordering their instructions — the one transformation this
+  repository keeps out of `aggressive` for being dangerous.
+- **Gated on the model's own cacheable minimum**, via a new exported
+  `cacheableMinimum`. A model whose caching is `unknown` — what the live pricing
+  overlay assigns to one it has never seen — yields `Infinity`, so nothing is
+  reported. Telling somebody to unify a preamble across twelve files to enable
+  caching their provider may not offer spends their afternoon, and unlike a wrong
+  number on a report nothing later corrects it. The same directory against Haiku
+  4.5, minimum 4,096, produces nothing for a 1,398-token preamble.
+- **Prompts already byte-identical are not reported.** They share an entry today.
+
+**No dollar figure, and that is a finding rather than a gap.** The saving lives in
+the cache hit rate, and `cacheHitRate` is an *input* to the cost model rather than
+something it derives — `--cache-hit-rate` applies one value to every prompt, so the
+model has no term for how many distinct cache entries exist. Pricing this would
+mean inventing how the calls are spread across the group, which is the one thing
+here only the operator knows. A test asserts structurally that no field on the
+result looks like money.
+
+Thirteen mutants, eleven killed. The two survivors are equivalent rather than
+uncovered — two independent guards cover the same case, so no test can distinguish
+them — and both are documented in the test file so nobody removes one believing the
+other carries the weight.
+
+### Fixed
+
+**A suite crashed on every clean checkout and exited 0.** `token-band.test.js` read
+`fixtures/` with an unguarded `readdirSync`, and that directory does not exist until
+somebody runs `scripts/measure-token-band.mjs`. So it threw ENOENT during suite
+construction, node's runner printed the stack as a diagnostic, reported `fail 0` and
+exited 0 — which is precisely what the top of that file forbids: *"'0 failures' from
+a check that measured nothing is the most misleading thing a suite can report."* The
+skip beneath it was written for a directory that exists and holds no per-provider
+file; it never covered the directory being absent, which is this repository's normal
+state. Found while diagnosing an unrelated `verify` failure.
+
 ### Fixed
 
 **The README claimed prompts are never stored on any server.** They are, once the
