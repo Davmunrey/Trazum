@@ -466,28 +466,43 @@ describe('the policy and the analytics it has to allow', () => {
     /**
      * The actual defect was not the missing entry, it was two files reading the
      * environment separately. Whichever way the default moves next, it has to
-     * move in one place — so neither file may name a PostHog host of its own.
+     * move in one place — so neither file may carry a copy of it.
+     *
+     * The needle is read out of `lib/analytics.ts` rather than written here.
+     * That is partly doctrine and partly a correction: the first version asked
+     * `source.includes('posthog.com')`, and CodeQL was right to flag it. A bare
+     * domain substring is the shape of a sanitiser that `evil-posthog.com.au`
+     * walks straight through — harmless in a test asserting *absence*, but the
+     * habit is the problem, and this version is also strictly better. It pins
+     * the exact literal that must not be duplicated, so it keeps working when
+     * the default host stops being a PostHog one.
      */
-    const component = readFileSync(
-      new URL('../components/Analytics.tsx', import.meta.url).pathname,
+    const analyticsSource = readFileSync(
+      new URL('../lib/analytics.ts', import.meta.url).pathname,
       'utf8',
-    ).replace(/\/\*[\s\S]*?\*\//g, '');
-    const middlewareCode = readFileSync(
-      new URL('../middleware.ts', import.meta.url).pathname,
-      'utf8',
-    ).replace(/\/\*[\s\S]*?\*\//g, '');
+    );
+    const defaultHost = /const DEFAULT_HOST = '([^']+)'/.exec(analyticsSource)?.[1];
+    assert.ok(defaultHost, 'no DEFAULT_HOST found in lib/analytics — has it moved?');
+
+    const strip = (path) =>
+      readFileSync(new URL(path, import.meta.url).pathname, 'utf8').replace(/\/\*[\s\S]*?\*\//g, '');
 
     for (const [name, source] of [
-      ['Analytics.tsx', component],
-      ['middleware.ts', middlewareCode],
+      ['Analytics.tsx', strip('../components/Analytics.tsx')],
+      ['middleware.ts', strip('../middleware.ts')],
     ]) {
       assert.ok(
-        !source.includes('posthog.com'),
-        `${name} names a PostHog host of its own — it must come from lib/analytics`,
+        !source.includes(defaultHost),
+        `${name} carries its own copy of ${defaultHost} — it must come from lib/analytics`,
       );
       assert.ok(
         !source.includes('NEXT_PUBLIC_POSTHOG'),
         `${name} reads the analytics environment directly — it must come from lib/analytics`,
+      );
+      assert.match(
+        source,
+        /from '@\/lib\/analytics'/,
+        `${name} does not import from lib/analytics at all`,
       );
     }
   });
