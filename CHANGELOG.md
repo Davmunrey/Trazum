@@ -12,6 +12,32 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**The new Content-Security-Policy blocked analytics, silently.** `connect-src
+'self'` shipped in the same change as the nonce, and `Analytics.tsx` posts to
+`https://eu.i.posthog.com`. An operator setting `NEXT_PUBLIC_POSTHOG_KEY` got a
+page that rendered perfectly and sent nothing, with the reason visible only in a
+browser console nobody was reading.
+
+Nothing caught it because the key is unset in CI and in development: the
+configuration where it breaks is the one no test exercises. Found by reading the
+policy next to the component while reviewing an unrelated `posthog-js` bump —
+not by any check in this repository.
+
+The host now comes from `lib/analytics`, which both files read, so the policy
+and the request cannot name different hosts again. With no key the policy is
+byte-for-byte what it was; with one, `connect-src` gains exactly one origin.
+
+It is an **origin**, never the configured string. A policy is built by joining
+text with `;`, so a host of `evil.test; script-src *` would not have widened
+`connect-src` — it would have appended a directive of somebody else's choosing.
+`new URL().origin` discards everything a host source may not contain, and a
+value that will not parse, or is not https, widens nothing at all.
+
+Verified against a built server in both configurations: with the key set,
+`connect-src 'self' https://eu.i.posthog.com` and nine of nine script tags still
+nonced; without it, the previous policy unchanged. The badge keeps its own
+`default-src 'none'; sandbox` either way. Nine mutants, nine killed.
+
 **CodeQL was one merge away from being permanently broken.** Dependabot raised
 `github/codeql-action/init` and `github/codeql-action/analyze` 3.37.6 → 4.37.6 as
 two pull requests, because they are two sub-paths of one action and it treats

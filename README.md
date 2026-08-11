@@ -1735,7 +1735,13 @@ context windows).
 - Analytics (PostHog) is **off by default**. It only switches on if the
   operator sets `NEXT_PUBLIC_POSTHOG_KEY`, and even then it never sends prompt
   content — only aggregate metrics (reduction percentage, level, model,
-  locale).
+  locale). Setting that key also adds the analytics host to `connect-src` in
+  the Content-Security-Policy, because otherwise the browser blocks every
+  request it makes and the page gives no sign of it. With no key the policy is
+  unchanged: `connect-src 'self'`, one origin.
+- `NEXT_PUBLIC_POSTHOG_HOST` overrides the destination, defaulting to
+  `https://eu.i.posthog.com`. It must be `https` and only its origin reaches
+  the policy — a value that does not parse widens nothing.
 - LLM keys entered in the UI are used for that request and discarded; they are
   neither logged nor persisted.
 
