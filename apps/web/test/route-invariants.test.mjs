@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
+import { register } from 'node:module';
 import { join } from 'node:path';
-import { describe, it } from 'node:test';
+import { before, describe, it } from 'node:test';
+
+register('./helpers/loader.mjs', import.meta.url);
 
 /**
  * Properties every route has to have, checked against every route there is.
@@ -357,7 +360,6 @@ describe('the content-security policy', () => {
     // relative URL on the page, `object-src` is the plugin escape hatch, and
     // `form-action` is where a hijacked form posts to.
     for (const [name, expected] of [
-      ['connect-src', "'self'"],
       ['base-uri', "'self'"],
       ['object-src', "'none'"],
       ['form-action', "'self'"],
@@ -365,6 +367,22 @@ describe('the content-security policy', () => {
     ]) {
       assert.equal(directive(name).trim(), expected, name);
     }
+
+    /**
+     * `connect-src` is the one directive that takes an addition, so it gets its
+     * own assertion rather than going through `directive()` — that helper stops
+     * at the first backtick and this value contains a nested template.
+     *
+     * Asserted on shape: `'self'` first, and the only thing that may follow is
+     * the analytics origin. Anything else concatenated here is one more place a
+     * stolen prompt could be sent to.
+     */
+    const connectSrc = /\n\s*`connect-src ([^\n]*)`,\n/.exec(code)?.[1];
+    assert.equal(
+      connectSrc,
+      "'self'${analytics ? ` ${analytics}` : ''}",
+      'connect-src is no longer self plus at most the analytics origin',
+    );
   });
 
   it('leaves the badge alone', () => {
@@ -390,6 +408,88 @@ describe('the content-security policy', () => {
     // not used. Third time in one session.
     assert.match(code, /getRandomValues\(new Uint8Array\(16\)\)/);
     assert.ok(!code.includes('randomUUID'), 'the nonce is a UUID');
+  });
+});
+
+describe('the policy and the analytics it has to allow', () => {
+  /**
+   * `connect-src 'self'` was wrong from the moment it shipped.
+   *
+   * `Analytics.tsx` posts to PostHog, so an operator who set
+   * `NEXT_PUBLIC_POSTHOG_KEY` got a page that rendered perfectly and sent
+   * nothing — the reason visible only in a browser console nobody was reading.
+   * Nothing caught it because the key is unset in CI and in development: the
+   * configuration where it breaks is the one no test exercises.
+   *
+   * These run the real function against explicit values rather than the ambient
+   * environment, which is the only way to exercise the on state at all.
+   */
+  let analyticsConnectSrc;
+
+  before(async () => {
+    ({ analyticsConnectSrc } = await import('../lib/analytics.ts'));
+  });
+
+  it('adds nothing when analytics is off, which is the default', () => {
+    assert.equal(analyticsConnectSrc(undefined, 'https://eu.i.posthog.com'), null);
+    assert.equal(analyticsConnectSrc('', 'https://eu.i.posthog.com'), null);
+  });
+
+  it('allows the configured host when analytics is on', () => {
+    assert.equal(analyticsConnectSrc('phc_x', 'https://eu.i.posthog.com'), 'https://eu.i.posthog.com');
+    assert.equal(analyticsConnectSrc('phc_x', 'https://ph.example.test'), 'https://ph.example.test');
+  });
+
+  it('emits an origin, so the host cannot smuggle in a directive', () => {
+    /**
+     * The policy is built by joining strings with `; `. A host interpolated
+     * verbatim is therefore not a value — it is anything the operator's
+     * environment says, including a whole directive that replaces the one above
+     * it. This is the difference between reading an environment variable and
+     * trusting it.
+     */
+    const injected = analyticsConnectSrc('phc_x', 'https://ph.example.test/x?a=b#c');
+    assert.equal(injected, 'https://ph.example.test');
+    assert.ok(!/[;'\s]/.test(injected), `not a bare origin: ${injected}`);
+  });
+
+  it('refuses anything it cannot parse, rather than widening on a guess', () => {
+    // Fails towards analytics being blocked. The other direction is a policy
+    // that says something nobody wrote.
+    assert.equal(analyticsConnectSrc('phc_x', 'not a url'), null);
+    assert.equal(analyticsConnectSrc('phc_x', ''), null);
+    // Plain http would let an active network attacker read what is sent.
+    assert.equal(analyticsConnectSrc('phc_x', 'http://ph.example.test'), null);
+  });
+
+  it('is the same host the component posts to', () => {
+    /**
+     * The actual defect was not the missing entry, it was two files reading the
+     * environment separately. Whichever way the default moves next, it has to
+     * move in one place — so neither file may name a PostHog host of its own.
+     */
+    const component = readFileSync(
+      new URL('../components/Analytics.tsx', import.meta.url).pathname,
+      'utf8',
+    ).replace(/\/\*[\s\S]*?\*\//g, '');
+    const middlewareCode = readFileSync(
+      new URL('../middleware.ts', import.meta.url).pathname,
+      'utf8',
+    ).replace(/\/\*[\s\S]*?\*\//g, '');
+
+    for (const [name, source] of [
+      ['Analytics.tsx', component],
+      ['middleware.ts', middlewareCode],
+    ]) {
+      assert.ok(
+        !source.includes('posthog.com'),
+        `${name} names a PostHog host of its own — it must come from lib/analytics`,
+      );
+      assert.ok(
+        !source.includes('NEXT_PUBLIC_POSTHOG'),
+        `${name} reads the analytics environment directly — it must come from lib/analytics`,
+      );
+    }
   });
 });
 

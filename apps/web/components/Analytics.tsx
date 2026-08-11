@@ -2,6 +2,8 @@
 
 import { useEffect } from 'react';
 
+import { ANALYTICS_HOST, ANALYTICS_KEY } from '@/lib/analytics';
+
 /**
  * Optional analytics, off by default.
  *
@@ -9,10 +11,15 @@ import { useEffect } from 'react';
  * time. Without a key not one byte of posthog-js is loaded (the import is
  * dynamic), no server is contacted and `track` is a no-op. Prompt content is
  * never sent: aggregate metrics only (reduction %, level, model, locale).
+ *
+ * The key and the host come from `lib/analytics` rather than from `process.env`
+ * here, because the Content-Security-Policy has to name the same host and the
+ * two read the environment independently exactly once — after which the policy
+ * blocked the requests this file makes.
  */
 
-const KEY = process.env.NEXT_PUBLIC_POSTHOG_KEY;
-const HOST = process.env.NEXT_PUBLIC_POSTHOG_HOST ?? 'https://eu.i.posthog.com';
+const KEY = ANALYTICS_KEY;
+const HOST = ANALYTICS_HOST;
 
 export function track(event: string, properties?: Record<string, unknown>): void {
   if (!KEY) return;

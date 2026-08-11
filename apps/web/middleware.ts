@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+import { analyticsConnectSrc } from '@/lib/analytics';
+
 /**
  * A Content-Security-Policy with a real `script-src`, which needs a nonce, which
  * needs middleware.
@@ -62,6 +64,23 @@ export function middleware(request: NextRequest) {
    * shipping it would hand back most of what the policy buys.
    */
   const dev = process.env.NODE_ENV !== 'production';
+
+  /**
+   * One host, and only when the operator asked for it.
+   *
+   * `connect-src 'self'` alone was wrong the moment it shipped: `Analytics.tsx`
+   * posts to PostHog, so an operator who set `NEXT_PUBLIC_POSTHOG_KEY` got a
+   * page that rendered perfectly and sent nothing, with the reason visible only
+   * in the browser console. No test caught it, because the key is unset in CI
+   * and in development — the configuration where it breaks is the one nothing
+   * exercises.
+   *
+   * With no key the policy is byte-for-byte what it was. `analyticsConnectSrc`
+   * returns an origin rather than the configured string, so this cannot become
+   * a way to inject a directive through an environment variable.
+   */
+  const analytics = analyticsConnectSrc();
+
   const policy = [
     `default-src 'self'`,
     `script-src 'self' 'nonce-${value}' 'strict-dynamic' https:${dev ? " 'unsafe-eval'" : ''}`,
@@ -71,9 +90,10 @@ export function middleware(request: NextRequest) {
     // Avatars come from GitHub, and `data:` covers the inlined icon.
     `img-src 'self' data: https://avatars.githubusercontent.com`,
     `font-src 'self'`,
-    // The app talks to its own origin only. An exfiltration channel opened by an
-    // injected script is the thing this line closes.
-    `connect-src 'self'`,
+    // The app talks to its own origin, plus analytics when it is switched on. An
+    // exfiltration channel opened by an injected script is what this line closes,
+    // so every addition to it is one more place a stolen prompt could go.
+    `connect-src 'self'${analytics ? ` ${analytics}` : ''}`,
     `frame-ancestors 'none'`,
     `form-action 'self'`,
     `base-uri 'self'`,
