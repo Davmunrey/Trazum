@@ -55,6 +55,24 @@ export type { SignInput, SignedHeaders } from './aws-sigv4.js';
 export { accessToken, pkcs8FromPem, signedJwt } from './gcp-auth.js';
 export type { CachedToken, ServiceAccount } from './gcp-auth.js';
 export type { OpenRouterResult } from './openrouter.js';
+export {
+  BASELINE_FILENAME,
+  BASELINE_VERSION,
+  BaselineError,
+  MAX_BASELINE_BYTES,
+  breaches,
+  compareToBaseline,
+  formatBaseline,
+  moneyIsComparable,
+  parseBaseline,
+} from './baseline.js';
+export type {
+  BaselineBreach,
+  BaselineChange,
+  BaselineComparison,
+  BaselineDocument,
+  BaselineThresholds,
+} from './baseline.js';
 export { RULES, getRule } from './rules.js';
 export { segment, join, protectedTexts } from './segment.js';
 export { computeSavings, costOfCall, formatUsd, formatSignedUsd } from './savings.js';

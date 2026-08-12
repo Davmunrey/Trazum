@@ -15,6 +15,7 @@ export const es: CliMessages = {
 ${bold('USO')}
   trazum optimize <fichero|-> [opciones]
   trazum check <fichero|dir|-> --max-tokens <n> [opciones]
+  trazum baseline [dir] [opciones]
   trazum eval <fichero> --cases <fichero> [opciones]
   trazum eval <fichero> --cases <fichero> --export promptfoo -o suite.json
   trazum diff <antes> <después> [opciones]
@@ -145,6 +146,9 @@ ${bold('OPCIONES DE check')}
   --json                      Resultado en JSON.
   --markdown-out <fichero>    Escribe además el informe en Markdown, para el resumen
                               de un job de CI o un comentario de pull request.
+  --baseline                  Aplica la línea base registrada. Activo por defecto siempre
+                              que el config declare una, así CI no necesita argumentos; la
+                              forma útil es --no-baseline, que la omite en una ejecución.
 
   Pensado para CI: sale con código 1 si el prompt supera el presupuesto,
   así una plantilla que crece sin control rompe la build en vez de la factura.
@@ -155,6 +159,26 @@ ${bold('OPCIONES DE check')}
   listado como sin presupuesto, no omitido en silencio, y una ejecución en la
   que no se ha presupuestado nada es un error: "0 fallos" de una comprobación
   que no ha medido nada es lo más engañoso que podría decirte.
+
+${bold('OPCIONES DE baseline')}
+  Registra lo que cuestan ahora mismo los prompts de un directorio, en un fichero
+  del que haces commit. Después "check" tumba la build cuando el repositorio se
+  desvía de él: la pregunta que los presupuestos no pueden responder, porque un
+  repositorio al 95% de todos sus presupuestos pasa siempre mientras un PR añade
+  cuatrocientos tokens repartidos en doce ficheros.
+
+  -o, --out <fichero>         Dónde escribirlo. Por defecto: baseline.path del config,
+                              o trazum.baseline.json.
+  --model, --calls, --output-tokens, --cache-hit-rate, --batch
+                              El escenario con el que se registra la cifra mensual. Se
+                              registra para que una comparación posterior pueda decir si el
+                              dinero es comparable — la puerta va en tokens, así que
+                              cambiar el precio de un modelo nunca tumba una build por sí solo.
+  --exact-tokens              Recuentos exactos (necesita ANTHROPIC_API_KEY).
+  --json                      Resultado en JSON.
+
+  Nunca falla. Registrar no es un veredicto, y un comando que pudiera fallar
+  mientras escribe aquello con lo que arreglarías el fallo es un bucle.
 
 ${bold('OPCIONES DE eval')}
   --cases <fichero>           Entradas a probar, una por línea o array JSON. Obligatorio.
@@ -212,12 +236,23 @@ ${bold('FICHERO DE CONFIGURACIÓN')}
     level, locale, disable, maxGrowth, extensions
     usage     { model, callsPerMonth, avgOutputTokens, cacheHitRate, batchEligible }
     budgets   { "prompts/**": 2000, "prompts/system.txt": 4000 }
+    baseline  { "path": "trazum.baseline.json", "maxGrowthTokens": 0, "maxGrowthPct": 5 }
     pricing   "./prices.json"   — correcciones locales de precios, ver abajo
 
   Las opciones ganan al config; el config gana a los valores por defecto. Los
   presupuestos se resuelven con el patrón más específico que encaje — gana el
   que tenga más caracteres literales. Un booleano que el config haya activado se
   desactiva con --no-<opción>, por ejemplo --no-batch.
+
+  ${bold('budgets')} es un techo; ${bold('baseline')} es una puerta. Uno pregunta si un
+  fichero cabe, la otra si el repositorio ha empeorado respecto al commit que
+  alguien registró con "trazum baseline". Un repositorio al 95% de todos sus
+  presupuestos pasa siempre, mientras un PR añade cuatrocientos tokens
+  repartidos en doce ficheros. Con baseline en el config, "check" sobre un
+  directorio lo lee y lo aplica sin ninguna opción: una puerta que exige
+  acordarse de pasar un argumento se ejecuta en la terminal del autor y no en
+  CI. Los umbrales van en tokens, nunca en dólares — si no, cambiar el precio de
+  un modelo tumbaría una build por algo que nadie tocó.
 
   Un config que no valide es un error, incluida una clave desconocida. Un
   parser permisivo restauraría los valores por defecto en silencio, y para un
@@ -330,6 +365,10 @@ ${bold('EJEMPLOS')}
     noBudgetsApply: (directory, configFile) =>
       `Ningún presupuesto cubre nada dentro de "${directory}". Añade uno en ${configFile}, en "budgets", o pasa --max-tokens. ` +
       'Decir "0 fallos" de unos ficheros que nadie ha medido sería peor que este error.',
+    baselineMissing: (path) =>
+      `El config declara una l\u00ednea base en "${path}" y no est\u00e1. Registra una con "trazum baseline" y hazle commit. Es un error y no una comprobaci\u00f3n omitida: una puerta que el config ha pedido y no se ha podido ejecutar no es un aprobado.`,
+    baselineTooBig: (path, limit) =>
+      `"${path}" supera el l\u00edmite de ${limit} bytes para una l\u00ednea base. En esa ruta hay algo que no es una l\u00ednea base.`,
     errorLabel: () => 'Error',
   },
 
@@ -758,5 +797,29 @@ ${bold('EJEMPLOS')}
       'Se ha parado antes de tiempo: el directorio supera el límite de recorrido, así que esto no es el cuadro completo.',
     exactCountsCost: (files) =>
       `Contando ${files} ${files === 1 ? 'fichero' : 'ficheros'} con la API, una llamada por cada uno. Esto tarda un momento.`,
+  },
+  baseline: {
+    recorded: (path, files, tokens) =>
+      `Registrados ${files} prompts, ${tokens} tokens, en ${path}. Haz commit: la puerta compara el \u00e1rbol con lo que est\u00e9 commiteado.`,
+    recordedMoney: (monthly, model, calls) =>
+      `Son ${monthly} al mes con ${model} y ${calls} llamadas. Es informativo, no la puerta: los umbrales van en tokens, as\u00ed que cambiar el precio de un modelo nunca tumba una build por s\u00ed solo.`,
+    heading: () => 'Frente a la l\u00ednea base',
+    unchanged: (tokens) => `sin cambios, ${tokens} tokens`,
+    grew: (delta, pct, tokens) => `ha crecido ${delta} tokens (${pct}) hasta ${tokens}`,
+    shrank: (delta, pct, tokens) => `ha bajado ${delta} tokens (${pct}) hasta ${tokens}`,
+    entry: (path, before, after, delta) => `${path}  ${before} \u2192 ${after}  (${delta})`,
+    addedHeading: (count) => `Nuevos desde la l\u00ednea base (${count})`,
+    removedHeading: (count) => `Desaparecidos desde la l\u00ednea base (${count})`,
+    grownHeading: (count) => `Han crecido (${count})`,
+    breachTokens: (actual, limit) =>
+      `un crecimiento de ${actual} tokens supera el l\u00edmite de ${limit}`,
+    breachPct: (actual, limit) => `un crecimiento de ${actual} supera el l\u00edmite de ${limit}`,
+    reRecord: (path) =>
+      `Si el crecimiento es intencionado, vuelve a registrar con "trazum baseline" y haz commit de ${path}.`,
+    money: (before, after, delta) => `Coste mensual ${before} \u2192 ${after} (${delta})`,
+    moneyIncomparableScenario: () =>
+      'El escenario de uso ha cambiado desde que se registr\u00f3 la l\u00ednea base, as\u00ed que las dos cifras mensuales no son la misma medida. La comparaci\u00f3n de tokens no se ve afectada.',
+    moneyIncomparablePricing: (was, now) =>
+      `Los precios se revisaron el ${was} cuando se registr\u00f3 la l\u00ednea base y el ${now} ahora, as\u00ed que las cifras mensuales no son la misma medida. La comparaci\u00f3n de tokens no se ve afectada.`,
   },
 };

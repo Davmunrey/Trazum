@@ -21,6 +21,7 @@ export const en: CliMessages = {
 ${bold('USAGE')}
   trazum optimize <file|-> [options]
   trazum check <file|dir|-> --max-tokens <n> [options]
+  trazum baseline [dir] [options]
   trazum eval <file> --cases <file> [options]
   trazum eval <file> --cases <file> --export promptfoo -o suite.json
   trazum diff <before> <after> [options]
@@ -146,9 +147,31 @@ ${bold('OPTIONS FOR check')}
   --json                      Result as JSON.
   --markdown-out <file>       Also write the report as Markdown, for a CI job summary
                               or a pull request comment.
+  --baseline                  Gate on the recorded cost baseline. On by default whenever
+                              the config declares one, so CI needs no argument; the useful
+                              spelling is --no-baseline, which skips it for one run.
 
   Built for CI: exits with code 1 when the prompt busts the budget, so a
   template that grows unchecked breaks the build instead of the bill.
+
+${bold('OPTIONS FOR baseline')}
+  Records what the prompts in a directory cost right now, to a file you commit.
+  Then "check" fails the build when the repository drifts past it — the question
+  budgets cannot answer, because a repository at 95% of every budget passes
+  forever while a pull request adds four hundred tokens across a dozen files.
+
+  -o, --out <file>            Where to write it. Default: the config's baseline.path,
+                              or trazum.baseline.json.
+  --model, --calls, --output-tokens, --cache-hit-rate, --batch
+                              The scenario the monthly figure is recorded under. It is
+                              recorded so a later comparison can say whether the money is
+                              comparable — the gate itself is in tokens, so a repriced
+                              model never fails a build on its own.
+  --exact-tokens              Exact counts (needs ANTHROPIC_API_KEY).
+  --json                      Result as JSON.
+
+  It never fails. Recording is not a verdict, and a command that could fail while
+  writing the thing you would fix the failure with is a loop.
 
   Given a directory it checks every prompt inside it against the "budgets"
   patterns in ${bold('trazum.config.json')} — one CI step for a whole repository of
@@ -214,11 +237,21 @@ ${bold('CONFIG FILE')}
     level, locale, disable, maxGrowth, extensions
     usage     { model, callsPerMonth, avgOutputTokens, cacheHitRate, batchEligible }
     budgets   { "prompts/**": 2000, "prompts/system.txt": 4000 }
+    baseline  { "path": "trazum.baseline.json", "maxGrowthTokens": 0, "maxGrowthPct": 5 }
     pricing   "./prices.json"   — local price corrections, see below
 
   Flags beat the config; the config beats the defaults. Budgets resolve to the
   most specific matching pattern — most literal characters wins. A boolean the
   config switched on comes back off with --no-<flag>, e.g. --no-batch.
+
+  ${bold('budgets')} is a ceiling; ${bold('baseline')} is a gate. One asks whether a file fits,
+  the other whether the repository got worse than the commit somebody recorded
+  with "trazum baseline". A repository at 95% of every budget passes forever
+  while a pull request adds four hundred tokens across a dozen files. With
+  baseline in the config, "check" on a directory reads it and gates on it — no
+  flag, because a gate you have to remember to pass an argument to runs in the
+  author's terminal and not in CI. Thresholds are in tokens, never dollars: a
+  repriced model would otherwise fail a build for a change nobody made.
 
   A config that will not validate is an error, including an unknown key. A
   lenient parser would silently restore defaults, and for a budget the default
@@ -327,6 +360,10 @@ ${bold('EXAMPLES')}
     noBudgetsApply: (directory, configFile) =>
       `No budget covers anything under "${directory}". Add one to ${configFile} under "budgets", or pass --max-tokens. ` +
       'Reporting "0 failures" for files nobody measured would be worse than this error.',
+    baselineMissing: (path) =>
+      `The config declares a baseline at "${path}" and it is not there. Record one with "trazum baseline" and commit it. This is an error rather than a skipped check: a gate the config asked for and could not run is not a pass.`,
+    baselineTooBig: (path, limit) =>
+      `"${path}" is over the ${limit}-byte limit for a baseline. Something other than a baseline is at that path.`,
     errorLabel: () => 'Error',
   },
 
@@ -748,5 +785,28 @@ ${bold('EXAMPLES')}
       'Stopped early: the directory is larger than the walk limit, so this is not the whole picture.',
     exactCountsCost: (files) =>
       `Counting ${files} ${files === 1 ? 'file' : 'files'} through the API, one call each. This takes a moment.`,
+  },
+  baseline: {
+    recorded: (path, files, tokens) =>
+      `Recorded ${files} prompts, ${tokens} tokens, to ${path}. Commit it — the gate compares the tree against what is committed.`,
+    recordedMoney: (monthly, model, calls) =>
+      `That is ${monthly} per month with ${model} at ${calls} calls. Reported, not gated on: thresholds are in tokens, so a repriced model never fails a build on its own.`,
+    heading: () => 'Against the baseline',
+    unchanged: (tokens) => `unchanged at ${tokens} tokens`,
+    grew: (delta, pct, tokens) => `grew by ${delta} tokens (${pct}) to ${tokens}`,
+    shrank: (delta, pct, tokens) => `shrank by ${delta} tokens (${pct}) to ${tokens}`,
+    entry: (path, before, after, delta) => `${path}  ${before} \u2192 ${after}  (${delta})`,
+    addedHeading: (count) => `New since the baseline (${count})`,
+    removedHeading: (count) => `Gone since the baseline (${count})`,
+    grownHeading: (count) => `Grew (${count})`,
+    breachTokens: (actual, limit) => `growth of ${actual} tokens is over the limit of ${limit}`,
+    breachPct: (actual, limit) => `growth of ${actual} is over the limit of ${limit}`,
+    reRecord: (path) =>
+      `If the growth is intended, re-record with "trazum baseline" and commit ${path}.`,
+    money: (before, after, delta) => `Monthly cost ${before} \u2192 ${after} (${delta})`,
+    moneyIncomparableScenario: () =>
+      'The usage scenario changed since the baseline was recorded, so the two monthly figures are not the same measurement. The token comparison is unaffected.',
+    moneyIncomparablePricing: (was, now) =>
+      `Prices were reviewed ${was} when the baseline was recorded and ${now} now, so the monthly figures are not the same measurement. The token comparison is unaffected.`,
   },
 };

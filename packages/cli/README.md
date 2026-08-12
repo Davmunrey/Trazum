@@ -23,7 +23,8 @@ npm install -g @trazum/cli
 | | |
 |---|---|
 | `trazum optimize <file>` | shorten it, and price what that is worth |
-| `trazum check <file\|dir>` | does it fit its budget — exits 1 when it does not |
+| `trazum check <file\|dir>` | does it fit its budget, and has the repo drifted past its baseline — exits 1 when either fails |
+| `trazum baseline [dir]` | what the prompts cost now, recorded to a file you commit |
 | `trazum doctor [dir]` | the whole workspace: what nothing is watching, and what fixing would be worth |
 | `trazum rank <dir>` | of these forty prompts, which is worth an afternoon |
 | `trazum prune <file> --cases <file>` | which few-shot examples earn their tokens — measured, and it asks before spending |

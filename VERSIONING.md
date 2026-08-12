@@ -76,6 +76,13 @@ Covered by the versioning promise:
 - The `trazum.config.json` and pricing-overlay **schemas**. A config that
   validates today has to keep validating; new keys are additions, and a key
   cannot change meaning.
+- The `trazum.baseline.json` **file format**, which is the strongest of these
+  promises because the file is committed. It sits in somebody's repository across
+  upgrades, and a Trazum that silently misread an older one would gate their
+  build on numbers it invented. That is why the document carries a `version` and
+  why a version this Trazum does not know is a loud error naming
+  `trazum baseline` rather than a best-effort read. Bumping that version is a
+  breaking change and needs a major.
 - The **shape** of what `--json` prints, and of the file `--markdown-out` writes.
   Fields get added; existing fields keep their names and their units.
 
