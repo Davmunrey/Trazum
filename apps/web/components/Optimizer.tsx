@@ -309,8 +309,16 @@ export function Optimizer({
 
   return (
     <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
-      {/* ---------------- Input ---------------- */}
-      <div className="flex flex-col gap-[18px]">
+      {/*
+        ---------------- Input ----------------
+
+        Two columns side by side on a wide screen; one column on a narrow one.
+        `contents` is what makes the narrow case work: it dissolves the two
+        wrappers so every card becomes a direct grid item, which lets the
+        history card take `order-last` and stop sitting between the button and
+        the answer the reader just pressed it for.
+      */}
+      <div className="contents lg:flex lg:flex-col lg:gap-[18px]">
         <Card className="gap-4 py-[18px]">
           <CardHeader className="px-[18px]">
             <Eyebrow>{t.input.promptHeading}</Eyebrow>
@@ -590,7 +598,7 @@ export function Optimizer({
         </Card>
 
         {history.length > 0 && (
-          <Card className="gap-4 py-[18px]">
+          <Card className="order-last gap-4 py-[18px] lg:order-none">
             <CardHeader className="items-center px-[18px]">
               <Eyebrow>{t.history.heading}</Eyebrow>
               <CardAction>
@@ -637,7 +645,7 @@ export function Optimizer({
       </div>
 
       {/* ---------------- Results ---------------- */}
-      <div className="flex flex-col gap-[18px]">
+      <div className="contents lg:flex lg:flex-col lg:gap-[18px]">
         {error && (
           <Card className="border-warn bg-warn-wash py-3.5">
             <CardContent className="px-3.5 text-sm text-warn">{error}</CardContent>

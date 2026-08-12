@@ -101,22 +101,23 @@ export function App({
   return (
     <main className="mx-auto max-w-[1180px] px-5 pt-7 pb-16">
       <header className="mb-1.5 flex flex-wrap items-baseline gap-3">
-        {/* A drawn mark rather than a stock glyph: a prompt caret with the
-            trailing dashes of what the tool takes out. Two paths, no asset,
-            and it inherits the terracotta from the palette. */}
+        {/* A drawn mark rather than a stock glyph: the prompt caret and its
+            cursor, which is where a prompt is written and the only place this
+            tool ever touches. Two paths, no asset, and it takes the terracotta
+            from the palette. */}
         <span className="flex items-baseline gap-2">
           <svg
             viewBox="0 0 22 22"
             aria-hidden="true"
-            className="size-[19px] shrink-0 translate-y-px text-terracotta"
+            className="size-[21px] shrink-0 translate-y-px text-terracotta"
             fill="none"
             stroke="currentColor"
-            strokeWidth="2.1"
+            strokeWidth="2.4"
             strokeLinecap="round"
             strokeLinejoin="round"
           >
-            <path d="M4 4.5 12 11l-8 6.5" />
-            <path d="M15.5 17.5h3" strokeDasharray="1 3.2" />
+            <path d="M4.5 5 11 11l-6.5 6" />
+            <path d="M14 17h4.5" />
           </svg>
           <h1 className="font-display text-[27px] leading-none font-semibold tracking-[-0.01em]">
             Trazum
