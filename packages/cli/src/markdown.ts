@@ -1,6 +1,13 @@
 import type { CliMessages } from './i18n/index.js';
 import type { Revision } from './git.js';
-import type { Locale, PromptComparison, PromptProfile, RuleLevel } from '@trazum/core';
+import type {
+  BaselineBreach,
+  BaselineComparison,
+  Locale,
+  PromptComparison,
+  PromptProfile,
+  RuleLevel,
+} from '@trazum/core';
 import { formatSignedUsd, formatUsd, getMessages, getModel } from '@trazum/core';
 
 /**
@@ -138,6 +145,22 @@ export interface MarkdownFileVerdict {
   optimizedTokens: number | null;
 }
 
+/**
+ * The cost diff, when the run had a baseline to compare against.
+ *
+ * Everything here is already computed by the time the report is rendered; this
+ * carries it rather than recomputing, so the comment on a pull request and the
+ * exit code can never disagree about whether the branch got more expensive.
+ */
+export interface BaselineMarkdown {
+  comparison: BaselineComparison;
+  breached: BaselineBreach[];
+  /** Recomputed monthly cost, and whether it is comparable to the baseline's. */
+  money: { before: number; after: number; comparable: boolean };
+  /** The file to re-record, named so the reader can act without looking it up. */
+  path: string;
+}
+
 export interface CheckMarkdownInput {
   /** The directory or file the run was pointed at. */
   target: string;
@@ -146,6 +169,8 @@ export interface CheckMarkdownInput {
   tokenSource: 'heuristic' | 'external';
   /** True when a walk limit stopped the run early. */
   truncated: boolean;
+  /** Absent when no baseline governed the run. */
+  baseline?: BaselineMarkdown;
   t: CliMessages;
 }
 
@@ -158,6 +183,90 @@ const overBudget = (v: MarkdownFileVerdict): boolean =>
  * The table is the whole point, so it comes first and the prose comes after. A
  * reviewer scanning a comment reads the rows and stops.
  */
+/**
+ * The baseline half of a check report.
+ *
+ * Only the directions that cost money are itemised — a list of every file that
+ * shrank buries the two rows a reviewer has to act on. Shrinking still gets its
+ * headline, because a branch that made things cheaper deserves to say so.
+ */
+function baselineBlock(baseline: BaselineMarkdown, t: CliMessages): string[] {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const md = t.markdown;
+  const { comparison, breached, money } = baseline;
+  const pct = (value: number): string => `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
+  const signed = (value: number): string => `${value > 0 ? '+' : ''}${n(value)}`;
+
+  const lines: string[] = [];
+
+  const headline =
+    comparison.delta === 0
+      ? md.baselineUnchanged()
+      : comparison.delta > 0
+        ? md.baselineGrew(n(comparison.delta), pct(comparison.deltaPct))
+        : md.baselineShrank(n(-comparison.delta), pct(comparison.deltaPct));
+
+  if (breached.length > 0) {
+    const limits = breached
+      .map((breach) =>
+        breach.kind === 'tokens'
+          ? md.baselineLimitTokens(n(breach.limit))
+          : md.baselineLimitPct(String(breach.limit)),
+      )
+      .join(', ');
+    lines.push('> [!CAUTION]');
+    lines.push(`> **${headline}** — ${md.baselineOverLimit(limits)}.`);
+  } else {
+    lines.push(`**${headline}.**`);
+  }
+  lines.push('');
+
+  const moved = [...comparison.grown, ...comparison.added, ...comparison.removed];
+  if (moved.length > 0) {
+    lines.push(
+      `| | ${md.columnFile()} | ${md.baselineColumnBefore()} | ${md.baselineColumnAfter()} | ${md.columnChange()} |`,
+    );
+    lines.push('|:--:|---|--:|--:|--:|');
+    for (const change of comparison.grown) {
+      lines.push(
+        `| 📈 | ${mdCell(change.path)} | ${n(change.before)} | ${n(change.after)} | ${signed(change.delta)} |`,
+      );
+    }
+    for (const change of comparison.added) {
+      lines.push(
+        `| 🆕 | ${mdCell(change.path)} | – | ${n(change.after)} | ${signed(change.delta)} |`,
+      );
+    }
+    for (const change of comparison.removed) {
+      lines.push(
+        `| 🗑️ | ${mdCell(change.path)} | ${n(change.before)} | – | ${signed(change.delta)} |`,
+      );
+    }
+    lines.push('');
+  }
+
+  // Money is shown when it means something and explained when it does not. A
+  // delta across a reprice is two different measurements subtracted, which is
+  // worse than no figure at all in a comment somebody will quote in a meeting.
+  lines.push(
+    money.comparable
+      ? md.baselineMoney(
+          formatUsd(money.before),
+          formatUsd(money.after),
+          formatSignedUsd(money.after - money.before),
+        )
+      : `_${md.baselineMoneyIncomparable()}_`,
+  );
+  lines.push('');
+
+  if (breached.length > 0) {
+    lines.push(md.baselineReRecord('trazum baseline', baseline.path));
+    lines.push('');
+  }
+
+  return lines;
+}
+
 export function renderCheckMarkdown(input: CheckMarkdownInput): string {
   const { target, verdicts, level, tokenSource, truncated, t } = input;
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
@@ -174,6 +283,17 @@ export function renderCheckMarkdown(input: CheckMarkdownInput): string {
   const lines: string[] = [];
   lines.push(`### ${md.checkHeading(mdCell(target))}`);
   lines.push('');
+
+  /**
+   * The cost diff leads.
+   *
+   * A reviewer reads the first two lines of a comment and scrolls past the rest.
+   * "Does each file fit its ceiling" is the older question and the narrower one;
+   * "did this branch make the repository more expensive" is what the pull request
+   * is actually proposing, so it goes above the table rather than under it.
+   */
+  if (input.baseline) lines.push(...baselineBlock(input.baseline, t));
+
   lines.push(
     failures.length > 0
       ? `**${md.overBudget(failures.length, measured)}**`

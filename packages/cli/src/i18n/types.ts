@@ -280,6 +280,18 @@ export interface CliMessages {
    */
   markdown: {
     checkHeading(target: string): string;
+    /** The cost-diff block a pull-request comment leads with. */
+    baselineGrew(delta: string, pct: string): string;
+    baselineShrank(delta: string, pct: string): string;
+    baselineUnchanged(): string;
+    baselineOverLimit(limits: string): string;
+    baselineLimitTokens(limit: string): string;
+    baselineLimitPct(limit: string): string;
+    baselineColumnBefore(): string;
+    baselineColumnAfter(): string;
+    baselineMoney(before: string, after: string, delta: string): string;
+    baselineMoneyIncomparable(): string;
+    baselineReRecord(command: string, path: string): string;
     diffHeading(before: string, after: string): string;
     rankHeading(root: string, count: number): string;
     blameHeading(path: string): string;
