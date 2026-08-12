@@ -214,11 +214,21 @@ ${bold('CONFIG FILE')}
     level, locale, disable, maxGrowth, extensions
     usage     { model, callsPerMonth, avgOutputTokens, cacheHitRate, batchEligible }
     budgets   { "prompts/**": 2000, "prompts/system.txt": 4000 }
+    baseline  { "path": "trazum.baseline.json", "maxGrowthTokens": 0, "maxGrowthPct": 5 }
     pricing   "./prices.json"   — local price corrections, see below
 
   Flags beat the config; the config beats the defaults. Budgets resolve to the
   most specific matching pattern — most literal characters wins. A boolean the
   config switched on comes back off with --no-<flag>, e.g. --no-batch.
+
+  ${bold('budgets')} is a ceiling; ${bold('baseline')} is a gate. One asks whether a file fits,
+  the other whether the repository got worse than the commit somebody recorded
+  with "trazum baseline". A repository at 95% of every budget passes forever
+  while a pull request adds four hundred tokens across a dozen files. With
+  baseline in the config, "check" on a directory reads it and gates on it — no
+  flag, because a gate you have to remember to pass an argument to runs in the
+  author's terminal and not in CI. Thresholds are in tokens, never dollars: a
+  repriced model would otherwise fail a build for a change nobody made.
 
   A config that will not validate is an error, including an unknown key. A
   lenient parser would silently restore defaults, and for a budget the default

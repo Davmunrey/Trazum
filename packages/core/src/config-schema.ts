@@ -1,3 +1,4 @@
+import { BASELINE_FILENAME } from './baseline.js';
 import { mostSpecificMatch } from './glob.js';
 import type { PricingCatalogue } from './pricing.js';
 import { isLocale } from './i18n/index.js';
@@ -36,6 +37,17 @@ export const MAX_CONFIG_BYTES = 64 * 1024;
 /** How far up the tree the search for a config file will walk. */
 export const MAX_CONFIG_SEARCH_DEPTH = 32;
 
+export interface BaselineConfig {
+  /** Path to the baseline file, relative to the config. */
+  path: string;
+  /**
+   * Thresholds. At least one is required — see `parseBaselineConfig` for why a
+   * baseline with no threshold is a configuration error rather than a default.
+   */
+  maxGrowthTokens?: number;
+  maxGrowthPct?: number;
+}
+
 export interface TrazumConfig {
   level?: RuleLevel;
   locale?: Locale;
@@ -49,6 +61,17 @@ export interface TrazumConfig {
   budgets?: Record<string, number>;
   /** Default for `trazum diff --max-growth`, in tokens. */
   maxGrowth?: number;
+  /**
+   * The cost baseline, and how much drift from it is tolerated.
+   *
+   * This is the difference between a ceiling and a gate. `budgets` asks whether
+   * a file fits; this asks whether the repository got worse than it was at the
+   * commit somebody recorded. Present in the config means `trazum check` in
+   * directory mode reads the baseline and gates on it without a flag — a gate
+   * you have to remember to pass an argument to is a gate that runs in the
+   * author's terminal and not in CI.
+   */
+  baseline?: BaselineConfig;
   /** File extensions directory mode treats as prompts. */
   extensions?: string[];
   /**
@@ -72,9 +95,12 @@ export const CONFIG_KEYS = [
   'usage',
   'budgets',
   'maxGrowth',
+  'baseline',
   'extensions',
   'pricing',
 ] as const;
+
+export const CONFIG_BASELINE_KEYS = ['path', 'maxGrowthTokens', 'maxGrowthPct'] as const;
 
 export const CONFIG_USAGE_KEYS = [
   'model',
@@ -218,6 +244,68 @@ function parseBudgets(raw: unknown, source: string): Record<string, number> {
 }
 
 /**
+ * Validates the `baseline` block.
+ *
+ * **A baseline with no threshold is an error, not a default.** Either default is
+ * wrong in a way that is silent: zero tolerance turns every honest addition into
+ * a failed build and gets the whole block deleted within a week, and a generous
+ * default is a gate that passes things nobody agreed to let through. The number
+ * is a policy decision, so the policy has to be written down.
+ *
+ * `path` defaults, because there is one sensible answer and repeating it in every
+ * config is noise.
+ */
+function parseBaselineConfig(raw: unknown, source: string): BaselineConfig {
+  if (!isPlainObject(raw)) throw new ConfigError('"baseline" must be an object', source);
+  rejectUnknownKeys(raw, CONFIG_BASELINE_KEYS, source, 'baseline.');
+
+  const baseline: BaselineConfig = { path: BASELINE_FILENAME };
+
+  if (raw.path !== undefined) {
+    if (typeof raw.path !== 'string' || raw.path.trim() === '') {
+      throw new ConfigError('"baseline.path" must be a path to a baseline file', source);
+    }
+    if (IS_ABSOLUTE.test(raw.path) || raw.path.includes('..')) {
+      throw new ConfigError(
+        `"baseline.path" must be a relative path inside the project (got "${raw.path}")`,
+        source,
+      );
+    }
+    baseline.path = raw.path;
+  }
+
+  if (raw.maxGrowthTokens !== undefined) {
+    const tokens = requireNonNegativeNumber(
+      raw.maxGrowthTokens,
+      'baseline.maxGrowthTokens',
+      source,
+    );
+    if (!Number.isInteger(tokens)) {
+      throw new ConfigError('"baseline.maxGrowthTokens" must be a whole number of tokens', source);
+    }
+    baseline.maxGrowthTokens = tokens;
+  }
+
+  if (raw.maxGrowthPct !== undefined) {
+    baseline.maxGrowthPct = requireNonNegativeNumber(
+      raw.maxGrowthPct,
+      'baseline.maxGrowthPct',
+      source,
+    );
+  }
+
+  if (baseline.maxGrowthTokens === undefined && baseline.maxGrowthPct === undefined) {
+    throw new ConfigError(
+      '"baseline" needs at least one of "maxGrowthTokens" or "maxGrowthPct" — ' +
+        'a baseline with no threshold cannot fail, and a gate that cannot fail is not a gate',
+      source,
+    );
+  }
+
+  return baseline;
+}
+
+/**
  * Checks a config's `usage.model` against a resolved catalogue.
  *
  * Separate from `parseConfig` because it needs the catalogue, and the catalogue
@@ -302,6 +390,9 @@ export function parseConfig(raw: string, source = CONFIG_FILENAME): TrazumConfig
 
   if (document.usage !== undefined) config.usage = parseUsage(document.usage, source);
   if (document.budgets !== undefined) config.budgets = parseBudgets(document.budgets, source);
+  if (document.baseline !== undefined) {
+    config.baseline = parseBaselineConfig(document.baseline, source);
+  }
 
   if (document.maxGrowth !== undefined) {
     config.maxGrowth = requireNonNegativeNumber(document.maxGrowth, 'maxGrowth', source);

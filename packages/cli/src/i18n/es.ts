@@ -212,12 +212,23 @@ ${bold('FICHERO DE CONFIGURACIÓN')}
     level, locale, disable, maxGrowth, extensions
     usage     { model, callsPerMonth, avgOutputTokens, cacheHitRate, batchEligible }
     budgets   { "prompts/**": 2000, "prompts/system.txt": 4000 }
+    baseline  { "path": "trazum.baseline.json", "maxGrowthTokens": 0, "maxGrowthPct": 5 }
     pricing   "./prices.json"   — correcciones locales de precios, ver abajo
 
   Las opciones ganan al config; el config gana a los valores por defecto. Los
   presupuestos se resuelven con el patrón más específico que encaje — gana el
   que tenga más caracteres literales. Un booleano que el config haya activado se
   desactiva con --no-<opción>, por ejemplo --no-batch.
+
+  ${bold('budgets')} es un techo; ${bold('baseline')} es una puerta. Uno pregunta si un
+  fichero cabe, la otra si el repositorio ha empeorado respecto al commit que
+  alguien registró con "trazum baseline". Un repositorio al 95% de todos sus
+  presupuestos pasa siempre, mientras un PR añade cuatrocientos tokens
+  repartidos en doce ficheros. Con baseline en el config, "check" sobre un
+  directorio lo lee y lo aplica sin ninguna opción: una puerta que exige
+  acordarse de pasar un argumento se ejecuta en la terminal del autor y no en
+  CI. Los umbrales van en tokens, nunca en dólares — si no, cambiar el precio de
+  un modelo tumbaría una build por algo que nadie tocó.
 
   Un config que no valide es un error, incluida una clave desconocida. Un
   parser permisivo restauraría los valores por defecto en silencio, y para un
