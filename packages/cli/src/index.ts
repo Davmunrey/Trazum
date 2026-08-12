@@ -1772,7 +1772,25 @@ async function checkEmbedded(
   if (!ok) process.exitCode = 1;
 }
 
-async function checkDirectory(
+interface PromptScan {
+  verdicts: FileVerdict[];
+  declined: Array<{ path: string; line: number; detail: string }>;
+  truncated: boolean;
+  /** The extensions actually walked, so an error can name them. */
+  extensions: string[];
+}
+
+/**
+ * Walks a directory and counts every prompt in it.
+ *
+ * Extracted from `checkDirectory` when `baseline` arrived, because the two
+ * commands have to agree about what a prompt is down to the last token. Two
+ * walks would be two definitions of the estate — a marker convention read one
+ * way here and another way there — and the baseline would then be a record of
+ * files the gate does not check. One walk, one answer, and the budget resolution
+ * comes along for free so `check` still sees exactly what it always did.
+ */
+async function scanPrompts(
   root: string,
   args: Args,
   flagBudget: number,
@@ -1782,8 +1800,7 @@ async function checkDirectory(
   t: CliMessages,
   locale: Locale,
   pricing: PricingCatalogue,
-): Promise<void> {
-  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+): Promise<PromptScan> {
   // Source files are walked alongside prompt files rather than opted into.
   // Requiring config to discover a marker somebody just wrote is how `eval` came
   // to be fully implemented and completely undiscoverable; an unmarked source
@@ -1840,6 +1857,33 @@ async function checkDirectory(
   if (verdicts.length === 0 && declined.length === 0) {
     throw new Error(t.errors.noPromptsFound(root, extensions.join(' ')));
   }
+
+  return { verdicts, declined, truncated, extensions };
+}
+
+async function checkDirectory(
+  root: string,
+  args: Args,
+  flagBudget: number,
+  config: TrazumConfig,
+  counter: Counter,
+  level: RuleLevel,
+  t: CliMessages,
+  locale: Locale,
+  pricing: PricingCatalogue,
+): Promise<void> {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const { verdicts, declined, truncated, extensions } = await scanPrompts(
+    root,
+    args,
+    flagBudget,
+    config,
+    counter,
+    level,
+    t,
+    locale,
+    pricing,
+  );
 
   if (verdicts.every((v) => v.maxTokens === null)) {
     throw new Error(t.errors.noBudgetsApply(root, CONFIG_FILENAME));
