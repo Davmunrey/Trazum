@@ -15,6 +15,7 @@ export const es: CliMessages = {
 ${bold('USO')}
   trazum optimize <fichero|-> [opciones]
   trazum check <fichero|dir|-> --max-tokens <n> [opciones]
+  trazum baseline [dir] [opciones]
   trazum eval <fichero> --cases <fichero> [opciones]
   trazum eval <fichero> --cases <fichero> --export promptfoo -o suite.json
   trazum diff <antes> <después> [opciones]
@@ -145,6 +146,9 @@ ${bold('OPCIONES DE check')}
   --json                      Resultado en JSON.
   --markdown-out <fichero>    Escribe además el informe en Markdown, para el resumen
                               de un job de CI o un comentario de pull request.
+  --baseline                  Aplica la línea base registrada. Activo por defecto siempre
+                              que el config declare una, así CI no necesita argumentos; la
+                              forma útil es --no-baseline, que la omite en una ejecución.
 
   Pensado para CI: sale con código 1 si el prompt supera el presupuesto,
   así una plantilla que crece sin control rompe la build en vez de la factura.
@@ -155,6 +159,26 @@ ${bold('OPCIONES DE check')}
   listado como sin presupuesto, no omitido en silencio, y una ejecución en la
   que no se ha presupuestado nada es un error: "0 fallos" de una comprobación
   que no ha medido nada es lo más engañoso que podría decirte.
+
+${bold('OPCIONES DE baseline')}
+  Registra lo que cuestan ahora mismo los prompts de un directorio, en un fichero
+  del que haces commit. Después "check" tumba la build cuando el repositorio se
+  desvía de él: la pregunta que los presupuestos no pueden responder, porque un
+  repositorio al 95% de todos sus presupuestos pasa siempre mientras un PR añade
+  cuatrocientos tokens repartidos en doce ficheros.
+
+  -o, --out <fichero>         Dónde escribirlo. Por defecto: baseline.path del config,
+                              o trazum.baseline.json.
+  --model, --calls, --output-tokens, --cache-hit-rate, --batch
+                              El escenario con el que se registra la cifra mensual. Se
+                              registra para que una comparación posterior pueda decir si el
+                              dinero es comparable — la puerta va en tokens, así que
+                              cambiar el precio de un modelo nunca tumba una build por sí solo.
+  --exact-tokens              Recuentos exactos (necesita ANTHROPIC_API_KEY).
+  --json                      Resultado en JSON.
+
+  Nunca falla. Registrar no es un veredicto, y un comando que pudiera fallar
+  mientras escribe aquello con lo que arreglarías el fallo es un bucle.
 
 ${bold('OPCIONES DE eval')}
   --cases <fichero>           Entradas a probar, una por línea o array JSON. Obligatorio.

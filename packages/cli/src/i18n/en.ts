@@ -21,6 +21,7 @@ export const en: CliMessages = {
 ${bold('USAGE')}
   trazum optimize <file|-> [options]
   trazum check <file|dir|-> --max-tokens <n> [options]
+  trazum baseline [dir] [options]
   trazum eval <file> --cases <file> [options]
   trazum eval <file> --cases <file> --export promptfoo -o suite.json
   trazum diff <before> <after> [options]
@@ -146,9 +147,31 @@ ${bold('OPTIONS FOR check')}
   --json                      Result as JSON.
   --markdown-out <file>       Also write the report as Markdown, for a CI job summary
                               or a pull request comment.
+  --baseline                  Gate on the recorded cost baseline. On by default whenever
+                              the config declares one, so CI needs no argument; the useful
+                              spelling is --no-baseline, which skips it for one run.
 
   Built for CI: exits with code 1 when the prompt busts the budget, so a
   template that grows unchecked breaks the build instead of the bill.
+
+${bold('OPTIONS FOR baseline')}
+  Records what the prompts in a directory cost right now, to a file you commit.
+  Then "check" fails the build when the repository drifts past it — the question
+  budgets cannot answer, because a repository at 95% of every budget passes
+  forever while a pull request adds four hundred tokens across a dozen files.
+
+  -o, --out <file>            Where to write it. Default: the config's baseline.path,
+                              or trazum.baseline.json.
+  --model, --calls, --output-tokens, --cache-hit-rate, --batch
+                              The scenario the monthly figure is recorded under. It is
+                              recorded so a later comparison can say whether the money is
+                              comparable — the gate itself is in tokens, so a repriced
+                              model never fails a build on its own.
+  --exact-tokens              Exact counts (needs ANTHROPIC_API_KEY).
+  --json                      Result as JSON.
+
+  It never fails. Recording is not a verdict, and a command that could fail while
+  writing the thing you would fix the failure with is a loop.
 
   Given a directory it checks every prompt inside it against the "budgets"
   patterns in ${bold('trazum.config.json')} — one CI step for a whole repository of
