@@ -1,7 +1,7 @@
 {
   "name": "@trazum/core",
   "version": "1.8.0",
-  "description": "Prompt optimiser core: deterministic rules, token counting, pricing and savings analysis.",
+  "description": "Trazum core: priced advisories for LLM prompts (caching, model tier, batching, schemas), plus deterministic trimming, token counting and pricing.",
   "license": "MIT",
   "author": "David Mu\u00f1oz Rey",
   "repository": {
