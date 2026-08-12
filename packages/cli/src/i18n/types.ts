@@ -53,6 +53,8 @@ export interface CliMessages {
     cannotNegate(name: string): string;
     noPromptsFound(directory: string, extensions: string): string;
     noBudgetsApply(directory: string, configFile: string): string;
+    baselineMissing(path: string): string;
+    baselineTooBig(path: string, limit: number): string;
     errorLabel(): string;
   };
 
@@ -328,5 +330,31 @@ export interface CliMessages {
     noBudget(): string;
     walkTruncated(): string;
     exactCountsCost(files: number): string;
+  };
+
+  /**
+   * The cost baseline: recording one, and reporting drift from it.
+   *
+   * Separate from `check` because it answers a different question — "did this
+   * get worse" rather than "does this fit" — and both verdicts appear in the
+   * same run.
+   */
+  baseline: {
+    recorded(path: string, files: string, tokens: string): string;
+    recordedMoney(monthly: string, model: string, calls: string): string;
+    heading(): string;
+    unchanged(tokens: string): string;
+    grew(delta: string, pct: string, tokens: string): string;
+    shrank(delta: string, pct: string, tokens: string): string;
+    entry(path: string, before: string, after: string, delta: string): string;
+    addedHeading(count: number): string;
+    removedHeading(count: number): string;
+    grownHeading(count: number): string;
+    breachTokens(actual: string, limit: string): string;
+    breachPct(actual: string, limit: string): string;
+    reRecord(path: string): string;
+    money(before: string, after: string, delta: string): string;
+    moneyIncomparableScenario(): string;
+    moneyIncomparablePricing(was: string, now: string): string;
   };
 }

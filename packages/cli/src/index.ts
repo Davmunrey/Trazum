@@ -3,6 +3,14 @@ import { readFile, stat, writeFile } from 'node:fs/promises';
 import { join, resolve as resolvePath } from 'node:path';
 
 import {
+  BASELINE_FILENAME,
+  BASELINE_VERSION,
+  MAX_BASELINE_BYTES,
+  breaches,
+  compareToBaseline,
+  formatBaseline,
+  moneyIsComparable,
+  parseBaseline,
   DEFAULT_USAGE,
   LOCALES,
   PRICING_LAST_REVIEWED,
@@ -45,6 +53,10 @@ import {
 } from '@trazum/core';
 import { cacheDir, cacheStats, cachingProvider, clearCache } from './suggest-cache.js';
 import type {
+  BaselineBreach,
+  BaselineChange,
+  BaselineComparison,
+  BaselineDocument,
   Advisory,
   ExampleReview,
   PromptComparison,
@@ -390,7 +402,8 @@ const COMMAND_FLAGS: Record<string, string[]> = {
     'tokens-only', 'cost', 'prompt', 'suggest', 'apply-suggestions',
     'cache-suggestions',
   ],
-  check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out'],
+  check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline'],
+  baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
   diff: ['level', 'model', 'calls', 'output-tokens', 'batch', 'max-growth', 'optimized', 'markdown-out', 'all', 'prompt'],
@@ -1772,6 +1785,178 @@ async function checkEmbedded(
   if (!ok) process.exitCode = 1;
 }
 
+/**
+ * The scenario a baseline is recorded under, and the money it implies.
+ *
+ * Shared by `baseline` and the gate so both compute the monthly figure the same
+ * way. `computeSavings` is asked for a before/after where both sides are the
+ * same token count, because what is wanted here is the cost of a total, not a
+ * saving — `perMonth.before.totalUsd` is that number.
+ */
+function monthlyCostOf(tokens: number, usage: UsageProfile, pricing: PricingCatalogue): number {
+  return computeSavings(tokens, tokens, usage, new Date(), pricing).perMonth.before.totalUsd;
+}
+
+/** Today, as the ISO date a baseline records. */
+function isoDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * `trazum baseline <dir>` — record what the estate costs now.
+ *
+ * Writes the file and says what to do with it. It never gates: recording is not
+ * a verdict, and a command that could fail while writing the thing you would fix
+ * the failure with is a loop.
+ */
+async function commandBaseline(
+  args: Args,
+  config: TrazumConfig,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+  locale: Locale,
+): Promise<void> {
+  const root = args.positional[0] ?? '.';
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const counter = counterFor(args, t);
+  const usage = usageFrom(args, config, t);
+
+  // `level` is irrelevant to a baseline — it records what the prompts cost as
+  // written, not what they would cost optimised — but `scanPrompts` wants one
+  // for the advisory second pass that only runs on an over-budget file. Nothing
+  // here is over budget, because nothing here has a budget.
+  const { verdicts } = await scanPrompts(
+    root,
+    args,
+    -1,
+    config,
+    counter,
+    'safe',
+    t,
+    locale,
+    pricing,
+  );
+
+  const files: Record<string, number> = {};
+  for (const verdict of verdicts) files[verdict.path] = verdict.tokens;
+  const tokens = Object.values(files).reduce((a, b) => a + b, 0);
+
+  const document: BaselineDocument = {
+    version: BASELINE_VERSION,
+    recorded: isoDate(),
+    scenario: usage,
+    pricingReviewed: pricing.lastReviewed,
+    totals: { tokens, monthlyUsd: monthlyCostOf(tokens, usage, pricing) },
+    files,
+  };
+
+  const out = stringFlag(args, 'out') ?? stringFlag(args, 'o') ?? config.baseline?.path ?? BASELINE_FILENAME;
+  await writeFile(out, formatBaseline(document), 'utf8');
+
+  if (boolFlag(args, 'json')) {
+    console.log(JSON.stringify({ path: out, files: verdicts.length, ...document.totals }));
+    return;
+  }
+
+  console.log(`\n${c.green(t.baseline.recorded(out, n(verdicts.length), n(tokens)))}`);
+  console.log(
+    c.dim(
+      t.baseline.recordedMoney(
+        formatUsd(document.totals.monthlyUsd),
+        usage.model,
+        n(usage.callsPerMonth),
+      ),
+    ),
+  );
+  console.log();
+}
+
+/**
+ * Reports a directory against its baseline, and returns whether it passed.
+ *
+ * Returns rather than exiting, so the caller decides how a breach combines with
+ * a busted budget — they are two independent verdicts about the same run and
+ * either one failing has to fail the build.
+ */
+function reportBaseline(
+  comparison: BaselineComparison,
+  breached: BaselineBreach[],
+  baseline: BaselineDocument,
+  path: string,
+  usage: UsageProfile,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): void {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const pct = (value: number): string => `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
+  const signed = (value: number): string => `${value > 0 ? '+' : ''}${n(value)}`;
+
+  console.log(`  ${c.bold(t.baseline.heading())}`);
+
+  const headline =
+    comparison.delta === 0
+      ? c.dim(t.baseline.unchanged(n(comparison.tokensAfter)))
+      : comparison.delta > 0
+        ? t.baseline.grew(n(comparison.delta), pct(comparison.deltaPct), n(comparison.tokensAfter))
+        : t.baseline.shrank(
+            n(-comparison.delta),
+            pct(comparison.deltaPct),
+            n(comparison.tokensAfter),
+          );
+  console.log(
+    `  ${breached.length > 0 ? c.red(headline) : comparison.delta < 0 ? c.green(headline) : headline}`,
+  );
+
+  // Only the directions that cost money are itemised. A list of everything that
+  // shrank is a list nobody acts on, and it buries the two lines that matter.
+  for (const [heading, changes] of [
+    [t.baseline.grownHeading(comparison.grown.length), comparison.grown],
+    [t.baseline.addedHeading(comparison.added.length), comparison.added],
+    [t.baseline.removedHeading(comparison.removed.length), comparison.removed],
+  ] as Array<[string, BaselineChange[]]>) {
+    if (changes.length === 0) continue;
+    console.log(`    ${c.dim(heading)}`);
+    for (const change of changes) {
+      console.log(
+        `      ${t.baseline.entry(change.path, n(change.before), n(change.after), signed(change.delta))}`,
+      );
+    }
+  }
+
+  const money = moneyIsComparable(baseline, usage, pricing.lastReviewed);
+  const now = monthlyCostOf(comparison.tokensAfter, usage, pricing);
+  if (money.comparable) {
+    console.log(
+      `  ${t.baseline.money(
+        formatUsd(baseline.totals.monthlyUsd),
+        formatUsd(now),
+        formatSignedUsd(now - baseline.totals.monthlyUsd),
+      )}`,
+    );
+  } else {
+    // Two different measurements are not subtracted. Saying which one moved is
+    // more use than a delta that means nothing.
+    console.log(
+      `  ${c.yellow(
+        money.pricingChanged
+          ? t.baseline.moneyIncomparablePricing(baseline.pricingReviewed, pricing.lastReviewed)
+          : t.baseline.moneyIncomparableScenario(),
+      )}`,
+    );
+  }
+
+  for (const breach of breached) {
+    console.log(
+      `  ${c.red(
+        breach.kind === 'tokens'
+          ? t.baseline.breachTokens(n(breach.actual), n(breach.limit))
+          : t.baseline.breachPct(pct(breach.actual), `${breach.limit}%`),
+      )}`,
+    );
+  }
+  if (breached.length > 0) console.log(`  ${c.dim(t.baseline.reRecord(path))}`);
+}
+
 interface PromptScan {
   verdicts: FileVerdict[];
   declined: Array<{ path: string; line: number; detail: string }>;
@@ -1885,7 +2070,53 @@ async function checkDirectory(
     pricing,
   );
 
-  if (verdicts.every((v) => v.maxTokens === null)) {
+  /**
+   * The baseline gate, when the config declares one and `--no-baseline` did not
+   * switch it off for this run.
+   *
+   * Read before the budget verdict is reported so a missing or malformed file
+   * fails the run loudly rather than after a green summary. A gate the config
+   * asked for and could not run is not a pass: that is the whole reason
+   * `parseBaseline` throws on everything.
+   */
+  const wantsBaseline = config.baseline !== undefined && boolFlag(args, 'baseline', true);
+  let baselineOutcome: {
+    comparison: BaselineComparison;
+    breached: BaselineBreach[];
+    document: BaselineDocument;
+    path: string;
+    usage: UsageProfile;
+  } | null = null;
+
+  if (wantsBaseline) {
+    const path = config.baseline!.path;
+    let raw: string;
+    try {
+      raw = await readFile(path, 'utf8');
+    } catch {
+      throw new Error(t.errors.baselineMissing(path));
+    }
+    if (Buffer.byteLength(raw) > MAX_BASELINE_BYTES) {
+      throw new Error(t.errors.baselineTooBig(path, MAX_BASELINE_BYTES));
+    }
+    const document = parseBaseline(raw, path);
+    const current: Record<string, number> = {};
+    for (const verdict of verdicts) current[verdict.path] = verdict.tokens;
+    const comparison = compareToBaseline(document, current);
+    baselineOutcome = {
+      comparison,
+      breached: breaches(comparison, config.baseline!),
+      document,
+      path,
+      usage: usageFrom(args, config, t),
+    };
+  }
+
+  // A budget ceiling is no longer the only thing that can govern a directory: a
+  // baseline governs it too, and a repository using only a baseline is not an
+  // unmeasured one. Without this, adopting `baseline` alone would fail every run
+  // with "no budget covers anything here".
+  if (!wantsBaseline && verdicts.every((v) => v.maxTokens === null)) {
     throw new Error(t.errors.noBudgetsApply(root, CONFIG_FILENAME));
   }
 
@@ -1989,9 +2220,34 @@ async function checkDirectory(
 
   console.log();
   const summary = t.check.directorySummary(failures.length, verdicts.length);
-  const bad = failures.length > 0 || declined.length > 0;
-  console.log(`  ${bad ? c.red(summary) : c.green(summary)}`);
+  // Three independent verdicts about one run: a busted budget, an unreadable
+  // marker, and drift past the baseline. Any of them failing fails the build —
+  // an && here would let a breach ride out on a green budget.
+  // The summary sentence counts budgets, so its colour follows budgets. `bad`
+  // is the run's verdict and folds in the baseline: three independent findings
+  // about one run, and any of them failing fails the build. An && here would let
+  // a breach ride out on a green budget.
+  const budgetBad = failures.length > 0 || declined.length > 0;
+  const bad = budgetBad || (baselineOutcome?.breached.length ?? 0) > 0;
+  console.log(`  ${budgetBad ? c.red(summary) : c.green(summary)}`);
   if (truncated) console.log(`  ${c.yellow(t.check.walkTruncated())}`);
+
+  // After the per-file summary, because the two answer different questions and
+  // the wider one reads last: budgets are about files, the baseline is about the
+  // repository. Printing it first put "All 2 within budget" underneath a failed
+  // gate, which reads as a contradiction.
+  if (baselineOutcome && !boolFlag(args, 'json')) {
+    console.log();
+    reportBaseline(
+      baselineOutcome.comparison,
+      baselineOutcome.breached,
+      baselineOutcome.document,
+      baselineOutcome.path,
+      baselineOutcome.usage,
+      pricing,
+      t,
+    );
+  }
   console.log();
 
   if (bad) process.exitCode = 1;
@@ -3013,6 +3269,9 @@ async function main(): Promise<void> {
       break;
     case 'check':
       await commandCheck(args, config, pricing, t, locale);
+      break;
+    case 'baseline':
+      await commandBaseline(args, config, pricing, t, locale);
       break;
     case 'eval':
       await commandEval(args, config, t, locale);

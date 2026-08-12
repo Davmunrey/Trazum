@@ -337,6 +337,10 @@ ${bold('EXAMPLES')}
     noBudgetsApply: (directory, configFile) =>
       `No budget covers anything under "${directory}". Add one to ${configFile} under "budgets", or pass --max-tokens. ` +
       'Reporting "0 failures" for files nobody measured would be worse than this error.',
+    baselineMissing: (path) =>
+      `The config declares a baseline at "${path}" and it is not there. Record one with "trazum baseline" and commit it. This is an error rather than a skipped check: a gate the config asked for and could not run is not a pass.`,
+    baselineTooBig: (path, limit) =>
+      `"${path}" is over the ${limit}-byte limit for a baseline. Something other than a baseline is at that path.`,
     errorLabel: () => 'Error',
   },
 
@@ -758,5 +762,28 @@ ${bold('EXAMPLES')}
       'Stopped early: the directory is larger than the walk limit, so this is not the whole picture.',
     exactCountsCost: (files) =>
       `Counting ${files} ${files === 1 ? 'file' : 'files'} through the API, one call each. This takes a moment.`,
+  },
+  baseline: {
+    recorded: (path, files, tokens) =>
+      `Recorded ${files} prompts, ${tokens} tokens, to ${path}. Commit it — the gate compares the tree against what is committed.`,
+    recordedMoney: (monthly, model, calls) =>
+      `That is ${monthly} per month with ${model} at ${calls} calls. Reported, not gated on: thresholds are in tokens, so a repriced model never fails a build on its own.`,
+    heading: () => 'Against the baseline',
+    unchanged: (tokens) => `unchanged at ${tokens} tokens`,
+    grew: (delta, pct, tokens) => `grew by ${delta} tokens (${pct}) to ${tokens}`,
+    shrank: (delta, pct, tokens) => `shrank by ${delta} tokens (${pct}) to ${tokens}`,
+    entry: (path, before, after, delta) => `${path}  ${before} \u2192 ${after}  (${delta})`,
+    addedHeading: (count) => `New since the baseline (${count})`,
+    removedHeading: (count) => `Gone since the baseline (${count})`,
+    grownHeading: (count) => `Grew (${count})`,
+    breachTokens: (actual, limit) => `growth of ${actual} tokens is over the limit of ${limit}`,
+    breachPct: (actual, limit) => `growth of ${actual} is over the limit of ${limit}`,
+    reRecord: (path) =>
+      `If the growth is intended, re-record with "trazum baseline" and commit ${path}.`,
+    money: (before, after, delta) => `Monthly cost ${before} \u2192 ${after} (${delta})`,
+    moneyIncomparableScenario: () =>
+      'The usage scenario changed since the baseline was recorded, so the two monthly figures are not the same measurement. The token comparison is unaffected.',
+    moneyIncomparablePricing: (was, now) =>
+      `Prices were reviewed ${was} when the baseline was recorded and ${now} now, so the monthly figures are not the same measurement. The token comparison is unaffected.`,
   },
 };

@@ -341,6 +341,10 @@ ${bold('EJEMPLOS')}
     noBudgetsApply: (directory, configFile) =>
       `Ningún presupuesto cubre nada dentro de "${directory}". Añade uno en ${configFile}, en "budgets", o pasa --max-tokens. ` +
       'Decir "0 fallos" de unos ficheros que nadie ha medido sería peor que este error.',
+    baselineMissing: (path) =>
+      `El config declara una l\u00ednea base en "${path}" y no est\u00e1. Registra una con "trazum baseline" y hazle commit. Es un error y no una comprobaci\u00f3n omitida: una puerta que el config ha pedido y no se ha podido ejecutar no es un aprobado.`,
+    baselineTooBig: (path, limit) =>
+      `"${path}" supera el l\u00edmite de ${limit} bytes para una l\u00ednea base. En esa ruta hay algo que no es una l\u00ednea base.`,
     errorLabel: () => 'Error',
   },
 
@@ -769,5 +773,29 @@ ${bold('EJEMPLOS')}
       'Se ha parado antes de tiempo: el directorio supera el límite de recorrido, así que esto no es el cuadro completo.',
     exactCountsCost: (files) =>
       `Contando ${files} ${files === 1 ? 'fichero' : 'ficheros'} con la API, una llamada por cada uno. Esto tarda un momento.`,
+  },
+  baseline: {
+    recorded: (path, files, tokens) =>
+      `Registrados ${files} prompts, ${tokens} tokens, en ${path}. Haz commit: la puerta compara el \u00e1rbol con lo que est\u00e9 commiteado.`,
+    recordedMoney: (monthly, model, calls) =>
+      `Son ${monthly} al mes con ${model} y ${calls} llamadas. Es informativo, no la puerta: los umbrales van en tokens, as\u00ed que cambiar el precio de un modelo nunca tumba una build por s\u00ed solo.`,
+    heading: () => 'Frente a la l\u00ednea base',
+    unchanged: (tokens) => `sin cambios, ${tokens} tokens`,
+    grew: (delta, pct, tokens) => `ha crecido ${delta} tokens (${pct}) hasta ${tokens}`,
+    shrank: (delta, pct, tokens) => `ha bajado ${delta} tokens (${pct}) hasta ${tokens}`,
+    entry: (path, before, after, delta) => `${path}  ${before} \u2192 ${after}  (${delta})`,
+    addedHeading: (count) => `Nuevos desde la l\u00ednea base (${count})`,
+    removedHeading: (count) => `Desaparecidos desde la l\u00ednea base (${count})`,
+    grownHeading: (count) => `Han crecido (${count})`,
+    breachTokens: (actual, limit) =>
+      `un crecimiento de ${actual} tokens supera el l\u00edmite de ${limit}`,
+    breachPct: (actual, limit) => `un crecimiento de ${actual} supera el l\u00edmite de ${limit}`,
+    reRecord: (path) =>
+      `Si el crecimiento es intencionado, vuelve a registrar con "trazum baseline" y haz commit de ${path}.`,
+    money: (before, after, delta) => `Coste mensual ${before} \u2192 ${after} (${delta})`,
+    moneyIncomparableScenario: () =>
+      'El escenario de uso ha cambiado desde que se registr\u00f3 la l\u00ednea base, as\u00ed que las dos cifras mensuales no son la misma medida. La comparaci\u00f3n de tokens no se ve afectada.',
+    moneyIncomparablePricing: (was, now) =>
+      `Los precios se revisaron el ${was} cuando se registr\u00f3 la l\u00ednea base y el ${now} ahora, as\u00ed que las cifras mensuales no son la misma medida. La comparaci\u00f3n de tokens no se ve afectada.`,
   },
 };
