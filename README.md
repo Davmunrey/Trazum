@@ -1090,6 +1090,13 @@ believe a limit is set.
 
 ### Web
 
+<div align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/web-dark.png">
+    <img src="docs/assets/web-light.png" alt="The Trazum web app: a wordy support prompt on the left, and on the right a result panel reading minus 43.7 percent, 158 to 89 input tokens, and a saving of $3.45 a month." width="820">
+  </picture>
+</div>
+
 ```bash
 npm run build:web
 npm run dev:web        # http://localhost:3000
@@ -1810,7 +1817,7 @@ packages/cli/      dependency-free CLI
 packages/mcp/      dependency-free MCP server — three tools over stdio
   src/rpc.ts         JSON-RPC 2.0 by hand; the invariant beat the SDK
   src/tools.ts       the whole surface an agent can reach, in one file
-apps/web/          Next.js (App Router) — Optimise and Compare
+apps/web/          Next.js (App Router) — Optimise, Compare, and the Library
 action/            the packaged GitHub Action that comments on pull requests
 scripts/           release notes, the token-band harness, rollback recovery
 ```

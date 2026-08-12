@@ -157,6 +157,28 @@ describe('what npm would publish', () => {
     assert.deepEqual(missing, [], `the README never mentions: ${missing.join(', ')}`);
   });
 
+  it('every image the README points at is actually in the repository', () => {
+    /**
+     * A README image is the one part of the front page that fails silently:
+     * GitHub renders a broken-image placeholder to every visitor and says
+     * nothing to the person who moved the file. Both the hero terminal and the
+     * web-app screenshots are local paths, and a rename that misses one is a
+     * commit that looks clean in review.
+     *
+     * Only repository-relative paths are checked. An absolute URL is somebody
+     * else's uptime and not something a test here can assert.
+     */
+    const readme = readFileSync(join(repoRoot, 'README.md'), 'utf8');
+    const referenced = [...readme.matchAll(/(?:src|srcset)="([^"]+)"/g)]
+      .map((match) => match[1].trim())
+      .filter((path) => !/^(?:https?:)?\/\//.test(path) && !path.startsWith('data:'));
+
+    assert.ok(referenced.length > 0, 'no local images found — has the syntax changed?');
+
+    const broken = referenced.filter((path) => !existsSync(join(repoRoot, path)));
+    assert.deepEqual(broken, [], `the README points at files that do not exist: ${broken}`);
+  });
+
   it('nothing is publishable by accident', () => {
     // Derived from the workspace globs, so a workspace added later has to make
     // the choice rather than inherit one. `apps/web` is an application: it has

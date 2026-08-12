@@ -110,10 +110,14 @@ another, which is testing the mechanism rather than the wording.
 These are enforced by tests in `packages/core/test/security.test.js`. If your
 change trips one, that is the test working — read the failure before adjusting it.
 
-1. **The core and the CLI have no runtime dependencies.** They process untrusted
-   text; every dependency is unreviewed code running on someone's prompts. If you
-   genuinely need one, argue for it in the pull request and change the test
-   deliberately.
+1. **Every published package has no runtime dependencies** — the core, the CLI
+   and the MCP server. They process untrusted text; every dependency is
+   unreviewed code running on someone's prompts. If you genuinely need one,
+   argue for it in the pull request and change the test deliberately. The list
+   is derived from the root `workspaces` globs rather than typed, because it was
+   typed once and did not mention `packages/mcp` for the whole day that package
+   existed. `apps/web` is exempt only because it is `private: true` and is
+   deployed rather than published.
 2. **`optimize()` never touches the network.** `fetch` is permitted only in
    `llm.ts` and `tokenizer.ts`, the two modules that exist to make calls.
 3. **`@trazum/core` imports no Node builtins.** Enforced by walking the import
