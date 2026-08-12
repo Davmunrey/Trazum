@@ -10,6 +10,54 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+**`trazum baseline`, and a `check` that fails on drift rather than only on a
+ceiling.** `budgets` answers "does this file fit". That is a ceiling, and a
+ceiling has a blind spot: a repository sitting at 95% of every budget passes
+forever while a pull request adds four hundred tokens across a dozen files.
+Nothing busted, bill up. A baseline answers the other question — did this get
+worse than the commit we agreed on — and it is the twelfth command.
+
+`trazum baseline [dir]` records what the estate costs now to a file you commit.
+With a `baseline` block in `trazum.config.json`, `trazum check` on a directory
+reads it and gates on it **with no flag**, because a gate you have to remember to
+pass an argument to runs in the author's terminal and not in CI. `--no-baseline`
+skips it for one run.
+
+The behaviour the whole thing turns on: a prompt that is *new* counts. Comparing
+only the paths present in both documents would let a five-thousand-token addition
+through every threshold — it is in neither the grown list nor the baseline total
+— so the demonstration case is a run where every budget is green, no existing
+file grew, and the build fails anyway because somebody added a file.
+
+**The threshold is in tokens, and the money is only reported.** A dollar figure
+comes from the token count, the usage scenario and the price list, and two of
+those move for reasons that have nothing to do with the prompts. A baseline
+holding dollars would fail a build the day a model was repriced, calling a price
+change a regression, and a gate that cries wolf is a gate somebody deletes. When
+the scenario or the price list has moved, the report says which one instead of
+subtracting two different measurements and presenting the difference as a saving.
+
+**A declared-but-missing or corrupt baseline fails the run.** A gate the config
+asked for and could not execute is not a pass; otherwise deleting one file
+silently switches CI off. That includes a hand-edited `totals.tokens` that
+disagrees with its own per-file counts — the corruption that otherwise looks
+completely normal. Neither threshold has a default and omitting both is a config
+error, because every default here is silently wrong: zero tolerance gets the
+block deleted within a week, and a generous one is a gate passing things nobody
+agreed to.
+
+`trazum.baseline.json`'s format joins the frozen API in `VERSIONING.md`, and it
+is the strongest of those promises because the file is committed: it outlives the
+Trazum that wrote it, so the document carries a `version` and an unknown one is a
+loud error rather than a best-effort read.
+
+Internally, the directory walk that decides what counts as a prompt was extracted
+from `checkDirectory` so both commands share it. Two walks would be two
+definitions of the estate, and the baseline would end up recording files the gate
+never checks.
+
 ### Changed
 
 **Trazum was selling the weakest half of itself.** The front page led with "cut

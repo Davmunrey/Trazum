@@ -28,7 +28,7 @@ Trazum 1.0.0 could tell you what a prompt cost. It could not tell you **which**
 prompt, **who** made it expensive, whether the shorter version still worked, or
 what to do about any of it. That is what everything since has been about.
 
-Eleven commands now, up from four.
+Twelve commands now, up from four.
 
 ### What's new
 

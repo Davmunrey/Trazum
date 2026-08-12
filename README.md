@@ -43,7 +43,7 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
-  eleven commands  MCP server      Next.js     comments on pull requests
+  twelve commands  MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
@@ -53,12 +53,13 @@ never runs unless you ask.
 > `npm install @trazum/cli` will not work today. Run it from source with the
 > steps in [Getting started](#getting-started). See [RELEASES.md](RELEASES.md).
 
-## The eleven commands
+## The twelve commands
 
 | Command | What it answers |
 |---|---|
 | [`trazum optimize`](#cli) | What can come out of this prompt, and what is that worth a month? |
-| [`trazum check`](#cli) | Does this prompt fit its token budget? *Exits 1 when it does not — this is the CI gate.* |
+| [`trazum check`](#cli) | Does this prompt fit its token budget, and has the repository drifted past its recorded baseline? *Exits 1 when either fails — this is the CI gate.* |
+| [`trazum baseline`](#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate) | What does this repository's prompts cost right now? *Records it, to commit.* |
 | [`trazum diff`](#did-this-edit-make-it-worse) | What did this edit cost? |
 | [`trazum rank`](#which-prompt-to-fix-first-trazum-rank) | Of these forty prompts, which is worth an afternoon? |
 | [`trazum doctor`](#the-whole-workspace-at-once-trazum-doctor) | What is wrong across the whole workspace? |
@@ -177,7 +178,7 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of eleven commands, and the others
+is the smallest thing here. `optimize` is one of twelve commands, and the others
 exist because knowing a prompt is wasteful is not the same as knowing *which*
 prompt, *whose* change made it so, or whether the shorter version still works:
 
@@ -190,6 +191,7 @@ prompt, *whose* change made it so, or whether the shorter version still works:
 | `diff <a> <b>` | did this edit make it worse — every figure `after - before` |
 | `diff --all <d> <d>` | the same question across a whole prompt library |
 | `check --max-tokens` | does it fit a budget; exits 1 when it does not, so CI catches it |
+| `baseline [dir]` | what the estate costs now, recorded to a file you commit, so `check` can fail on drift |
 | `eval --cases` | does the shorter prompt still get the same answers |
 | `where [file]` | which provider this file's prompts are actually sent to, and how it knows |
 | `models`, `rules` | the pricing table; what each rule does and its id |
@@ -237,7 +239,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other ten commands, each with its own section below:
+The other eleven commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -593,6 +595,80 @@ It emits JSON rather than YAML, which promptfoo reads just as happily. This
 package has no dependencies and is not acquiring a YAML emitter; a hand-rolled
 one is a quoting bug waiting for the first prompt containing a colon, a tab, or
 a line ending in a space.
+
+### The CI gate: a budget is a ceiling, a baseline is a gate
+
+`budgets` answers **"does this file fit"**. That is a ceiling, and a ceiling has
+a blind spot: a repository sitting at 95% of every budget passes forever while a
+pull request quietly adds four hundred tokens across a dozen files. Nothing
+busted, bill up.
+
+A baseline answers the other question — **"did this get worse than the commit we
+agreed on"**:
+
+```bash
+trazum baseline prompts/          # record what it costs now
+git add trazum.baseline.json      # commit it; the gate compares the tree against this
+```
+
+```json
+{
+  "usage": { "model": "claude-opus-5", "callsPerMonth": 10000 },
+  "baseline": { "maxGrowthTokens": 0, "maxGrowthPct": 5 }
+}
+```
+
+With that in `trazum.config.json`, `trazum check prompts/` reads the baseline and
+gates on it. **No flag** — a gate you have to remember to pass an argument to is
+a gate that runs in the author's terminal and not in CI. `--no-baseline` skips it
+for one run.
+
+```
+  All 2 within budget.
+
+  Against the baseline
+  grew by 64 tokens (+67.4%) to 159
+    New since the baseline (1)
+      prompts/triage.md  0 → 64  (+64)
+  Monthly cost $129.75 → $132.95 (+$3.20)
+  growth of 64 tokens is over the limit of 0
+  growth of +67.4% is over the limit of 5%
+```
+
+Read those two blocks together, because that is the whole point: **every budget
+passed, and the run exited 1.** Nobody edited an existing prompt — somebody added
+a file. A comparison over only the paths present in both documents would have let
+it through, so a file that is new is counted, and there is a test whose name says
+that is what the gate turns on.
+
+**Both thresholds are optional and at least one is required.** Either default is
+silently wrong: zero tolerance turns every honest addition into a failed build
+and gets the block deleted inside a week, and a generous default is a gate
+passing things nobody agreed to. Whichever is exceeded fails, so the output names
+the limit that was actually crossed.
+
+#### Why the threshold is in tokens when the point is money
+
+A dollar figure comes from three things — the token count, the usage scenario,
+and the price list — and two of them move for reasons that have nothing to do
+with your prompts. A baseline holding dollars would fail a build the day a model
+was repriced, calling a price change a regression, and **a gate that cries wolf
+is a gate somebody deletes.**
+
+So the threshold is in tokens, which depend on the text and nothing else. The
+monthly figure is recomputed and shown next to it, and when it is not comparable
+Trazum says so instead of subtracting two different measurements:
+
+```
+  Prices were reviewed 2025-01-01 when the baseline was recorded and 2026-06-24
+  now, so the monthly figures are not the same measurement. The token comparison
+  is unaffected.
+```
+
+**A missing or corrupt baseline fails the run.** A gate the config asked for and
+could not execute is not a pass — otherwise deleting one file silently switches
+CI off. That includes a hand-edited `totals.tokens` that disagrees with its own
+per-file counts, which is the corruption that otherwise looks completely normal.
 
 ### A whole repository of prompts
 
