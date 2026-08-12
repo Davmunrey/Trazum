@@ -1,4 +1,12 @@
 @import 'tailwindcss';
+/*
+ * Fraunces, self-hosted from npm. The display voice for the wordmark and the
+ * figures that are the point of the page — a warm old-style serif that belongs
+ * to the paper-and-terracotta identity in a way no system sans can. Served
+ * from this origin, so the CSP's `font-src 'self'` holds and nothing is
+ * fetched from a foreign host at runtime.
+ */
+@import '@fontsource-variable/fraunces/wght.css';
 
 /*
  * Trazum's palette, wearing shadcn's variable names.
@@ -30,6 +38,15 @@
 
   --radius: 0.625rem;
 
+  /*
+   * Two tiers of depth, and only two. Working surfaces sit almost flush — a
+   * hairline and a breath of shadow. The result panel is the one focal moment
+   * the page has, and it alone earns the second tier; both shadows carry an
+   * offset and a soft blur, because a zero-offset halo is decoration.
+   */
+  --shadow-raised: 0 1px 2px rgb(27 27 25 / 0.05);
+  --shadow-focal: 0 1px 2px rgb(27 27 25 / 0.06), 0 12px 32px -12px rgb(76 46 33 / 0.18);
+
   /* The shadcn contract, derived. */
   --background: var(--paper);
   --foreground: var(--ink);
@@ -60,21 +77,32 @@
  */
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #16161a;
-    --paper-raised: #1d1d22;
-    --paper-sunken: #26262c;
-    --rule: #33333b;
-    --ink: #eceaf0;
-    --ink-soft: #9d9caa;
+    /*
+     * Warmed, not just darkened. The first dark palette was a cool violet-grey
+     * — the default of every dashboard — which put the terracotta on a surface
+     * from someone else's identity. These carry the same umber cast as the
+     * paper does in the light theme, so the brand survives the scheme change.
+     */
+    --paper: #171512;
+    --paper-raised: #1e1c18;
+    --paper-sunken: #262420;
+    --rule: #363329;
+    --ink: #efece4;
+    --ink-soft: #a8a495;
     --terracotta: #e08a63;
     --terracotta-wash: #2e211b;
     --good: #6fc99a;
-    --good-wash: #1b2a22;
+    --good-wash: #1c2a21;
     --warn: #d6ad63;
     --warn-wash: #2a2417;
 
-    --primary-foreground: #16161a;
+    --primary-foreground: #171512;
     --destructive: #e08a63;
+
+    /* Shadows read as murk on dark paper; the raised tier leans on a lifted
+       surface and a hairline instead. */
+    --shadow-raised: 0 1px 2px rgb(0 0 0 / 0.5);
+    --shadow-focal: 0 2px 6px rgb(0 0 0 / 0.45), 0 12px 32px -12px rgb(0 0 0 / 0.6);
   }
 }
 
@@ -113,6 +141,10 @@
   --radius-xl: calc(var(--radius) + 4px);
 
   --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+  --font-display: 'Fraunces Variable', Georgia, 'Times New Roman', serif;
+
+  --shadow-raised: var(--shadow-raised);
+  --shadow-focal: var(--shadow-focal);
 }
 
 /*
@@ -137,6 +169,43 @@
     @apply bg-background text-foreground;
     font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
+  }
+
+  /*
+   * The surfaces the browser draws are still the design.
+   *
+   * Selection, the caret, focus rings and scrollbars all ship with defaults
+   * that belong to no identity — cobalt highlights on warm paper. Themed once
+   * here, from the palette, they are the cheapest signal that the page was
+   * built rather than assembled.
+   */
+  ::selection {
+    background: var(--terracotta);
+    color: var(--primary-foreground);
+  }
+
+  input,
+  textarea {
+    caret-color: var(--terracotta);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--terracotta);
+    outline-offset: 2px;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--rule) transparent;
+  }
+
+  /*
+   * Every figure on this page is a measurement — tokens, dollars, percentages
+   * — and measurements align or they wobble. Tabular by default; prose is not
+   * numeric enough for the trade to cost anything.
+   */
+  body {
+    font-variant-numeric: tabular-nums;
   }
 }
 

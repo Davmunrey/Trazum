@@ -644,24 +644,36 @@ export function Optimizer({
           </Card>
         )}
 
+        {/*
+          The empty state is not a card pretending to hold something. A sunken
+          panel says "nothing here yet" without borrowing the elevation the
+          real report will have, and the sentence is set in the display face so
+          the wait reads as composed rather than unfinished.
+        */}
         {!result && !error && (
-          <Card className="py-[18px]">
-            <CardContent className="px-[18px] py-12 text-center text-sm text-muted-foreground">
+          <div className="rounded-xl bg-muted/60 px-8 py-14 text-center">
+            <p className="mx-auto max-w-[36ch] font-display text-[17px] leading-snug text-muted-foreground italic">
               {t.results.empty}
-            </CardContent>
-          </Card>
+            </p>
+          </div>
         )}
 
         {result && (
           <>
             <AnimatedContent>
-              <Card className="gap-4 py-[18px]">
+              {/*
+                The one focal surface on the page. Elevation once: the border
+                goes transparent because the shadow is already doing the
+                separating, and two things drawing the same edge is what makes
+                an interface look assembled.
+              */}
+              <Card className="gap-4 border-transparent py-[18px] shadow-focal">
                 <CardHeader className="px-[18px]">
                   <Eyebrow>{t.results.heading}</Eyebrow>
                 </CardHeader>
                 <CardContent className="px-[18px]">
                   <div className="mb-1 flex flex-wrap items-baseline gap-3.5">
-                    <span className="text-[40px] leading-none font-bold tracking-tight text-good">
+                    <span className="font-display text-[clamp(40px,5.5vw,52px)] leading-none font-semibold tracking-[-0.015em] text-good">
                       −
                       <CountUp
                         to={result.reductionPct}
@@ -682,7 +694,7 @@ export function Optimizer({
                     chose.
                   */}
                   {reorderResult && (
-                    <div className="mt-3.5 rounded-lg border border-l-[3px] border-l-primary px-3.5 py-3">
+                    <div className="mt-3.5 rounded-lg bg-terracotta-wash px-3.5 py-3">
                       {reorderResult.moved.length > 0 ? (
                         <>
                           <div className="text-[15px] font-semibold">
@@ -738,7 +750,7 @@ export function Optimizer({
                     the caveat is a saving nobody chose.
                   */}
                   {suggestions && (
-                    <div className="mt-3.5 rounded-lg border border-l-[3px] border-l-primary px-3.5 py-3">
+                    <div className="mt-3.5 rounded-lg bg-terracotta-wash px-3.5 py-3">
                       {suggestions.suggestions.length > 0 ? (
                         <>
                           <div className="text-[15px] font-semibold">
@@ -798,8 +810,8 @@ export function Optimizer({
                     </div>
                   )}
 
-                  <div className="mt-3.5 rounded-lg border bg-good-wash px-3.5 py-3">
-                    <div className="text-[22px] font-bold text-good">
+                  <div className="mt-3.5 rounded-lg bg-good-wash px-4 py-3.5">
+                    <div className="font-display text-[26px] leading-tight font-semibold text-good">
                       {t.results.perMonth(formatUsd(result.savings.monthlySavingsUsd))}
                     </div>
                     <div className="text-[13px] text-muted-foreground">
