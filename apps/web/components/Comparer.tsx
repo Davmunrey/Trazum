@@ -294,7 +294,9 @@ export function Comparer({
                 )}
 
                 <div className="rounded-lg border px-3.5 py-3">
-                  <div className={`text-[22px] font-bold ${toneOf(result.tokenDelta)}`}>
+                  <div
+                    className={`font-display text-[26px] leading-tight font-semibold ${toneOf(result.tokenDelta)}`}
+                  >
                     {result.tokenDelta === 0
                       ? t.compare.unchanged
                       : t.compare.delta(

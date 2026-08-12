@@ -9,7 +9,12 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90",
+        // The one authored motion moment on the primary action: it takes the
+        // press. A pixel of travel and the shadow going flat is what a physical
+        // key does, and it is the difference between a button and a coloured
+        // rectangle that happens to be clickable.
+        default:
+          "bg-primary text-primary-foreground shadow-raised hover:bg-primary/90 active:translate-y-px active:shadow-none",
         destructive:
           "bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:bg-destructive/60 dark:focus-visible:ring-destructive/40",
         outline:

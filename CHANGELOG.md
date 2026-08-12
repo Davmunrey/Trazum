@@ -10,6 +10,34 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Changed
+
+**The web app got a display voice, two tiers of depth, and browser surfaces that
+belong to its own palette.** It had been correct and characterless: shadcn's
+shapes wearing Trazum's colours, one system sans doing every job from the
+wordmark to the percentage that is the entire point of the page, and a dark
+theme in violet-grey borrowed from every other dashboard. Nothing about the
+identity changed — paper, terracotta and ink are exactly what they were — but
+the page now looks like it was built rather than assembled.
+
+Fraunces Variable is self-hosted from npm and carries the wordmark and the
+figures; the CSP's `font-src 'self'` holds, so no font is fetched from a foreign
+host at runtime. Elevation is now two tiers and only two: working surfaces get a
+hairline and a breath of shadow, and the result panel — the page's one focal
+moment — drops its border rather than drawing the same edge twice. The dark
+palette was warmed to the same umber cast as the light one so the terracotta
+sits on Trazum's paper in both schemes. Selection, caret, focus ring and
+scrollbars are themed from the palette, and the body sets tabular figures,
+because every number on this page is a measurement and measurements align or
+they wobble.
+
+Two defects went with it. The reorder callouts were drawing a 3px coloured rule
+down one side — a border doing a highlight's job — and are now a terracotta
+wash. And on a narrow screen the history card sat between the Optimise button
+and the answer the reader had just pressed it for; the two column wrappers
+collapse to `display: contents` below `lg`, which makes every card a grid item
+and lets history take `order-last` without moving a line of markup.
+
 ### Added
 
 **The README leads with the receipts, and every markdown file caught up with the
