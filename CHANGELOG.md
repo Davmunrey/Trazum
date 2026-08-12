@@ -10,6 +10,40 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**The CLI test suite passed in CI and failed on a contributor's laptop.** Seven
+tests, the first time anybody ran `npm run verify` on a machine whose locale is
+not English — which was during a release, on the maintainer's Mac, with `LANG`
+set to `es_ES.UTF-8`. Three spawns in `i18n.test.js` built their environment
+inline from `process.env` and asserted on English output, so they inherited
+whatever the machine said. A CI runner leaves `LANG` unset, so the bug was
+invisible to the only place that was looking.
+
+Five variants of that environment object had grown across the test files by then.
+Three of them cleared `LANG`, `LC_ALL` and `TRAZUM_LOCALE`; **none** cleared
+`LC_MESSAGES`, which `detectLocale` also reads — so even the files following the
+"correct" pattern were one variable away from the same failure.
+
+There is one environment now, in `packages/cli/test/env.mjs`, and it clears the
+list of variables **imported from the detector** rather than a copy of it.
+`LOCALE_ENV_VARS` is exported from `packages/cli/src/i18n/index.ts` and the
+detector maps over it, so the list is the implementation: a variable added there
+is read by the detector and cleared by the tests in the same commit, or in
+neither.
+
+It clears rather than pinning `TRAZUM_LOCALE: 'en'`, which was the first attempt
+and was wrong — that outranks the project config, so every test taking its
+language from `"locale": "es"` in `trazum.config.json` would have reported in
+English and asserted against the wrong catalogue. Clearing the environment leaves
+the precedence chain intact and only removes the machine from it.
+
+Two guards keep it: one fails when any test file builds a spawn environment
+inline, naming the file, and one asserts the shared environment clears every
+variable the detector reads. Both mutation-tested, including reverting a file to
+the exact shape that carried the bug.
+
+
 ### Added
 
 **The pull-request comment leads with what the branch costs.** The Action has

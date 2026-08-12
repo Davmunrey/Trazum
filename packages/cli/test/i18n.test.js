@@ -1,11 +1,16 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 
 import { CONFIG_KEYS, CONFIG_USAGE_KEYS, LOCALES } from '@trazum/core';
 
-import { detectLocale, en, es, getCliMessages } from '../dist/i18n/index.js';
+import { LOCALE_ENV_VARS, detectLocale, en, es, getCliMessages } from '../dist/i18n/index.js';
+import { SPAWN_ENV } from './env.mjs';
+
+const here = dirname(fileURLToPath(import.meta.url));
 
 describe('locale detection', () => {
   it('the flag wins over everything else', () => {
@@ -125,7 +130,7 @@ describe('catalogue parity', () => {
       const { stdout, stderr } = spawnSync(
         process.execPath,
         [CLI, command, 'README.md', '--definitely-not-a-flag'],
-        { encoding: 'utf8', env: { ...process.env, NO_COLOR: '1' } },
+        { encoding: 'utf8', env: SPAWN_ENV },
       );
       const list = /This command accepts: (.+?)\.?$/m.exec(`${stdout}${stderr}`);
       assert.ok(list, `${command}: could not read the accepted-flag list`);
@@ -299,7 +304,7 @@ describe('the CLI rejects what it does not understand', () => {
   function run(args) {
     const result = spawnSync(process.execPath, [CLI, ...args], {
       encoding: 'utf8',
-      env: { ...process.env, NO_COLOR: '1' },
+      env: SPAWN_ENV,
     });
     return `${result.stdout}${result.stderr}`;
   }
@@ -348,7 +353,7 @@ describe('trazum diff', () => {
   function run(args) {
     const r = spawnSync(process.execPath, [CLI, ...args], {
       encoding: 'utf8',
-      env: { ...process.env, NO_COLOR: '1' },
+      env: SPAWN_ENV,
     });
     return { out: `${r.stdout}${r.stderr}`, code: r.status };
   }
@@ -391,5 +396,45 @@ describe('trazum diff', () => {
     const { out } = run(['diff', AFTER, BEFORE]);
     assert.match(out, /contradictory-instructions/);
     assert.match(out, /-\d+ \(-\d+%\)/, 'a shrinking prompt should show a negative delta');
+  });
+});
+
+describe('the suite does not depend on the machine it runs on', () => {
+  /**
+   * Seven tests in this file passed in CI for months and failed on the first
+   * contributor laptop with a Spanish locale, because three spawns inherited the
+   * ambient environment and asserted on English output. The fix is `env.mjs`;
+   * this is what stops the next spawn from reintroducing it.
+   */
+  const files = readdirSync(here).filter((name) => name.endsWith('.test.js'));
+
+  it('every spawn goes through the shared environment', () => {
+    assert.ok(files.length > 5, 'the test directory could not be read');
+
+    const offenders = [];
+    for (const name of files) {
+      const source = readFileSync(join(here, name), 'utf8');
+      // A spawn env built inline from `process.env` is the shape that carried the
+      // bug: it inherits whatever the machine says. `blame.test.js` also assigns
+      // to `process.env.PATH` directly, which is not an env object for a spawn,
+      // so the pattern is deliberately anchored on the spread.
+      if (/env:\s*\{[^}]*\.\.\.process\.env/.test(source)) offenders.push(name);
+    }
+
+    assert.deepEqual(
+      offenders,
+      [],
+      `these build a spawn environment inline instead of importing SPAWN_ENV: ${offenders.join(', ')}`,
+    );
+  });
+
+  it('and the shared environment clears every variable the detector reads', () => {
+    // The list lives in the detector and is imported here. Both halves are
+    // asserted because the import could be dropped and replaced with a copy,
+    // which is exactly how `LC_MESSAGES` came to be missing.
+    for (const name of LOCALE_ENV_VARS) {
+      assert.equal(SPAWN_ENV[name], '', `${name} is not cleared for spawned runs`);
+    }
+    assert.ok(LOCALE_ENV_VARS.includes('LC_MESSAGES'), 'the variable that was missed is missing again');
   });
 });

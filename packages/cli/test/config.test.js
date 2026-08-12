@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
+import { SPAWN_ENV } from './env.mjs';
 
 const CLI = new URL('../dist/index.js', import.meta.url).pathname;
 
@@ -19,10 +20,7 @@ function run(args, cwd) {
     // LANG cleared so a config `locale` is actually the most explicit source,
     // and the runner's own language cannot decide the assertion.
     env: {
-      ...process.env,
-      NO_COLOR: '1',
-      LANG: '',
-      LC_ALL: '',
+      ...SPAWN_ENV,
       LC_MESSAGES: '',
       TRAZUM_LOCALE: '',
     },

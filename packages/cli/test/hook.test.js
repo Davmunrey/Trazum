@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
+import { SPAWN_ENV } from './env.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const HOOK = join(here, '..', '..', '..', 'scripts', 'pre-commit');
@@ -70,7 +71,7 @@ function commit(root, message, env = {}) {
   const result = spawnSync('git', ['commit', '-m', message], {
     cwd: root,
     encoding: 'utf8',
-    env: { ...process.env, ...env },
+    env: { ...SPAWN_ENV, ...env },
   });
   return { code: result.status, out: `${result.stdout}${result.stderr}` };
 }

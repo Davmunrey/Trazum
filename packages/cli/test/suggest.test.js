@@ -5,6 +5,7 @@ import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, before, describe, it } from 'node:test';
+import { SPAWN_ENV } from './env.mjs';
 
 const CLI = new URL('../dist/index.js', import.meta.url).pathname;
 
@@ -90,12 +91,7 @@ function runRaw(args, cwd, env = {}) {
     const child = spawn(process.execPath, [CLI, ...args], {
       cwd,
       env: {
-        ...process.env,
-        NO_COLOR: '1',
-        LANG: '',
-        LC_ALL: '',
-        TRAZUM_LOCALE: '',
-        CLAUDECODE: '',
+        ...SPAWN_ENV,
         TRAZUM_LLM_BASE_URL: `http://127.0.0.1:${port}/v1`,
         TRAZUM_LLM_MODEL: 'fake-1',
         TRAZUM_LLM_API_KEY: 'x',
