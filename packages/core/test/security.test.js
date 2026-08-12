@@ -96,10 +96,39 @@ describe('SSRF: endpoint validation', () => {
 });
 
 describe('no runtime dependencies', () => {
-  // The core and the CLI process untrusted text. Every runtime dependency is
-  // code that would run on that text with no review from this project, so the
-  // dependency count is a security property, not a packaging preference.
-  for (const pkg of ['packages/core', 'packages/cli']) {
+  // Every published package here processes untrusted text. A runtime dependency
+  // is code that would run on that text with no review from this project, so
+  // the dependency count is a security property, not a packaging preference.
+  //
+  // Derived from the root `workspaces` globs rather than listed, because the
+  // list was `['packages/core', 'packages/cli']` for the whole day
+  // `packages/mcp` existed — the MCP server hand-rolls its JSON-RPC layer to
+  // hold this exact invariant, and the test that was supposed to hold it had
+  // never heard of the package. A workspace added later is covered on the
+  // commit that adds it, or it declares itself private and is not published at
+  // all.
+  const published = readFileSync(join(repoRoot, 'package.json'), 'utf8');
+  const packages = JSON.parse(published)
+    .workspaces.flatMap((pattern) => {
+      const parent = pattern.replace(/\/\*$/, '');
+      return readdirSync(join(repoRoot, parent), { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => `${parent}/${entry.name}`);
+    })
+    .filter((pkg) => {
+      const manifest = JSON.parse(readFileSync(join(repoRoot, pkg, 'package.json'), 'utf8'));
+      return manifest.private !== true;
+    })
+    .sort();
+
+  it('finds every publishable workspace, so this suite cannot go blind', () => {
+    // Without this the derivation could quietly resolve to nothing and every
+    // assertion below would pass by never running.
+    assert.ok(packages.length >= 3, `only found ${packages.join(', ') || 'nothing'}`);
+    assert.ok(packages.includes('packages/mcp'), 'the MCP server is not covered');
+  });
+
+  for (const pkg of packages) {
     it(`${pkg} depends on nothing outside this repo`, () => {
       const manifest = JSON.parse(readFileSync(join(repoRoot, pkg, 'package.json'), 'utf8'));
       const deps = Object.keys(manifest.dependencies ?? {});

@@ -10,6 +10,35 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**The zero-dependency invariant was documented for three packages and enforced
+for two.** `security.test.js` looped over a typed list — `packages/core` and
+`packages/cli` — while `SECURITY.md` credited the invariant to all three
+published packages. `packages/mcp` hand-rolls its JSON-RPC layer for exactly
+this reason, and the test named as the reason had never heard of it. The list is
+derived from the root `workspaces` globs now, with an assertion that the
+derivation found the MCP server at all, so a suite that quietly resolves to
+nothing cannot report "0 failures" from having checked nothing.
+`CONTRIBUTING.md`'s first rule said "the core and the CLI" and now says what is
+actually enforced, including why `apps/web` is exempt.
+
+**Nothing checked that the README's images exist.** A moved or renamed asset
+renders a broken-image placeholder to every visitor on the front page and tells
+the person who moved it nothing. Local `src` and `srcset` paths are now asserted
+to exist, absolute URLs deliberately excluded — somebody else's uptime is not
+something a test here can hold.
+
+The README's layout diagram also described `apps/web` as "Optimise and Compare",
+one tab short since the prompt library shipped.
+
+### Added
+
+**A real screenshot of the web app on the README**, light and dark, swapped by
+`prefers-color-scheme` so it matches the theme the reader is already in. Captured
+from the production build rather than drawn, on the same wordy support prompt the
+CLI demo uses.
+
 ### Changed
 
 **The web app got a display voice, two tiers of depth, and browser surfaces that
