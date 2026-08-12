@@ -4,6 +4,7 @@ import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
+import { SPAWN_ENV } from './env.mjs';
 
 const CLI = new URL('../dist/index.js', import.meta.url).pathname;
 
@@ -20,7 +21,7 @@ function run(args, cwd) {
   const result = spawnSync(process.execPath, [CLI, ...args], {
     encoding: 'utf8',
     cwd,
-    env: { ...process.env, NO_COLOR: '1', LANG: '', LC_ALL: '', TRAZUM_LOCALE: '' },
+    env: SPAWN_ENV,
   });
   return { out: `${result.stdout}${result.stderr}`, code: result.status };
 }
@@ -227,7 +228,7 @@ describe('trazum optimize --reorder', () => {
     const result = spawnSync(process.execPath, [CLI, 'optimize', 'p.txt', '--reorder'], {
       encoding: 'utf8',
       cwd: root,
-      env: { ...process.env, NO_COLOR: '1', LANG: '', LC_ALL: '', TRAZUM_LOCALE: '' },
+      env: SPAWN_ENV,
     });
 
     assert.match(result.stderr, /moved 1 block \(~[\d,]+ tokens\) into the cacheable prefix/);
@@ -244,7 +245,7 @@ describe('trazum optimize --reorder', () => {
     const result = spawnSync(process.execPath, [CLI, 'optimize', 'p.txt', '--reorder'], {
       encoding: 'utf8',
       cwd: root,
-      env: { ...process.env, NO_COLOR: '1', LANG: '', LC_ALL: '', TRAZUM_LOCALE: '' },
+      env: SPAWN_ENV,
     });
     assert.match(result.stderr, /nothing could safely move; 2 blocks left in place/);
   });
@@ -254,7 +255,7 @@ describe('trazum optimize --reorder', () => {
     const result = spawnSync(process.execPath, [CLI, 'optimize', 'p.txt'], {
       encoding: 'utf8',
       cwd: root,
-      env: { ...process.env, NO_COLOR: '1', LANG: '', LC_ALL: '', TRAZUM_LOCALE: '' },
+      env: SPAWN_ENV,
     });
     assert.equal(result.stderr, '', 'a plain piped run printed something to stderr');
   });

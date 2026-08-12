@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
+import { SPAWN_ENV } from './env.mjs';
 
 const CLI = new URL('../dist/index.js', import.meta.url).pathname;
 
@@ -20,7 +21,7 @@ function run(args, cwd) {
   const result = spawnSync(process.execPath, [CLI, 'rank', ...args], {
     encoding: 'utf8',
     cwd,
-    env: { ...process.env, NO_COLOR: '1', LANG: '', LC_ALL: '', TRAZUM_LOCALE: '', CLAUDECODE: '' },
+    env: SPAWN_ENV,
   });
   return { out: `${result.stdout}${result.stderr}`, stdout: result.stdout, code: result.status };
 }

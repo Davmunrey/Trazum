@@ -5,6 +5,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
+import { SPAWN_ENV } from './env.mjs';
 
 const CLI = new URL('../dist/index.js', import.meta.url).pathname;
 
@@ -65,12 +66,7 @@ function run(args, cwd, env = {}) {
     encoding: 'utf8',
     cwd,
     env: {
-      ...process.env,
-      NO_COLOR: '1',
-      LANG: '',
-      LC_ALL: '',
-      TRAZUM_LOCALE: '',
-      CLAUDECODE: '',
+      ...SPAWN_ENV,
       ...env,
     },
   });

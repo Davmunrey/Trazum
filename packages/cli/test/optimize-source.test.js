@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
+import { SPAWN_ENV } from './env.mjs';
 
 const CLI = new URL('../dist/index.js', import.meta.url).pathname;
 
@@ -24,12 +25,7 @@ function run(args, cwd, env = {}) {
     encoding: 'utf8',
     cwd,
     env: {
-      ...process.env,
-      NO_COLOR: '1',
-      LANG: '',
-      LC_ALL: '',
-      TRAZUM_LOCALE: '',
-      CLAUDECODE: '',
+      ...SPAWN_ENV,
       ...env,
     },
   });
@@ -184,7 +180,7 @@ describe('a prompt file is untouched by any of this', () => {
       encoding: 'utf8',
       cwd: root,
       input: 'Please kindly be brief.',
-      env: { ...process.env, NO_COLOR: '1', TRAZUM_LOCALE: '', CLAUDECODE: '' },
+      env: SPAWN_ENV,
     });
     assert.equal(result.status, 0);
     assert.match(result.stdout, /Be brief\./);

@@ -4,6 +4,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
+import { SPAWN_ENV } from './env.mjs';
 
 const CLI = new URL('../dist/index.js', import.meta.url).pathname;
 
@@ -23,20 +24,11 @@ const CLI = new URL('../dist/index.js', import.meta.url).pathname;
  * fragment of a number or a path.
  */
 
-const ENV = {
-  ...process.env,
-  NO_COLOR: '1',
-  LANG: '',
-  LC_ALL: '',
-  TRAZUM_LOCALE: '',
-  CLAUDECODE: '',
-};
-
 function run(command, args, cwd) {
   const result = spawnSync(process.execPath, [CLI, command, ...args], {
     encoding: 'utf8',
     cwd,
-    env: ENV,
+    env: SPAWN_ENV,
   });
   return { out: `${result.stdout}${result.stderr}`, code: result.status };
 }
