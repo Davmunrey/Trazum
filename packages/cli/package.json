@@ -1,7 +1,7 @@
 {
   "name": "@trazum/cli",
   "version": "1.8.0",
-  "description": "Trazum CLI: optimise prompts, enforce token budgets in CI and price the savings from your terminal.",
+  "description": "Trazum CLI: find where your LLM bill goes, price every finding per month, and enforce token budgets in CI.",
   "license": "MIT",
   "author": "David Mu\u00f1oz Rey",
   "repository": {

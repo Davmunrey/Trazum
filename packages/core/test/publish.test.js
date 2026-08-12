@@ -157,6 +157,53 @@ describe('what npm would publish', () => {
     assert.deepEqual(missing, [], `the README never mentions: ${missing.join(', ')}`);
   });
 
+  it('the counts the README claims are the counts the code has', () => {
+    /**
+     * The front page now leads with "thirteen findings" and "twelve
+     * deterministic rules". Those are the load-bearing numbers of the pitch —
+     * the whole argument is that the advisories outnumber and outweigh the
+     * trimming — and a rule or an advisory added later would leave the headline
+     * quietly wrong to every visitor.
+     *
+     * `RULES` is imported. The advisories have no runtime array to count, so
+     * the `AdvisoryId` union is counted from source: the alternative is
+     * hardcoding a second number here, which is the thing being guarded
+     * against.
+     */
+    // Collapsed, because the phrase this looks for is wrapped across a line
+    // break in the hero and a literal match would depend on where the wrap
+    // happens to fall.
+    const readme = readFileSync(join(repoRoot, 'README.md'), 'utf8').replace(/\s+/g, ' ');
+    const words = {
+      twelve: 12,
+      thirteen: 13,
+      fourteen: 14,
+      fifteen: 15,
+      sixteen: 16,
+      seventeen: 17,
+      eighteen: 18,
+      nineteen: 19,
+      twenty: 20,
+    };
+
+    const union = readFileSync(join(repoRoot, 'packages/core/src/types.ts'), 'utf8')
+      .split('export type AdvisoryId =')[1]
+      ?.split(';')[0];
+    assert.ok(union, 'the AdvisoryId union moved — this guard can no longer find it');
+    const advisoryCount = [...union.matchAll(/'[a-z-]+'/g)].length;
+    assert.ok(advisoryCount >= 5, `only parsed ${advisoryCount} advisories out of the union`);
+
+    for (const [claimed, expected] of [
+      [`${Object.keys(words).find((w) => words[w] === advisoryCount)} findings`, advisoryCount],
+      [`${Object.keys(words).find((w) => words[w] === RULES.length)} deterministic rules`, RULES.length],
+    ]) {
+      assert.ok(
+        readme.includes(claimed),
+        `the README should say "${claimed}" (the code has ${expected})`,
+      );
+    }
+  });
+
   it('every image the README points at is actually in the repository', () => {
     /**
      * A README image is the one part of the front page that fails silently:

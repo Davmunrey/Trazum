@@ -10,6 +10,29 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Changed
+
+**Trazum was selling the weakest half of itself.** The front page led with "cut
+what your prompts cost", and directly underneath it the demo — real output, not
+a mock-up — showed the rules recovering $24.00 a month while a single advisory
+sitting above them was worth $528.40. Twenty-two times more. The tool has been
+telling the truth about that gap for several releases; the pitch had not caught
+up.
+
+The framing now leads with the finding rather than the trim. The headline is
+that most of an LLM bill is not the prompt, the advisories come first in *What
+it actually does* with the trimming after them, and the caption under the demo
+points at the two lines that make the argument instead of hoping the reader
+notices. The package descriptions, the web app's title, tagline and lede all say
+the same thing in both locales.
+
+Nothing about the product changed — no rule, no advisory, no number. This is the
+description catching up with what was already being measured.
+
+The two counts the pitch now rests on — thirteen advisories, twelve rules — are
+asserted against `RULES` and the `AdvisoryId` union, so a fourteenth advisory
+cannot ship while the front page still says thirteen.
+
 ### Fixed
 
 **The zero-dependency invariant was documented for three packages and enforced

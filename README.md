@@ -2,11 +2,12 @@
 
 # Trazum
 
-### Cut what your prompts cost. Keep what they ask.
+### Most of your LLM bill is not the prompt. Trazum finds where it is.
 
-**A deterministic prompt optimiser** — same input, same output, zero cost, no
-network — that prices every change in dollars per month and tells you, out
-loud, when *not* shortening the prompt would save you more.
+**A deterministic cost analyser for prompts** — offline, free, same answer every
+time. It reports thirteen findings priced in dollars per month: caching you are
+not getting, a model tier you may not need, a schema you pay to describe on
+every call. Shortening the prompt is one of them, and it is rarely the biggest.
 
 [![CI](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml)
@@ -16,17 +17,25 @@ loud, when *not* shortening the prompt would save you more.
 
 <img src="docs/assets/demo.svg" alt="trazum optimize on a wordy support prompt: 238 tokens down to 142 (-40.3%), $24.00/month saved by the rules — and an advisory pointing at $528.40/month, 22× more" width="760">
 
-*Real output, transcribed — including the last line, where Trazum admits the
-rules were the small win and points at the big one.*
+*Real output, transcribed. Read the last two lines: the rules recovered $24.00
+a month, and the advisory above them is worth $528.40 — **22× more**. That gap
+is the entire argument for this tool.*
 
 </div>
 
-**Every figure has a receipt.** The core is deterministic: twelve rules, applied
-the same way every time, free, offline. What no rule can see, advisories report
-— caching, batching, model tier, schemas the request could carry — each one
-priced, each one reproducible on a single file. On top sits an **optional LLM
-pass** for the compression rules cannot do, through whichever provider you
-configure, and it never runs unless you ask.
+**The prompt is the part everyone looks at, and usually the cheap part.** In the
+run above, forty percent of the text came out and it moved 3.5% of the bill.
+What moved the rest was a question nobody was asking: does this task need the
+model it is running on?
+
+**Every figure has a receipt.** Thirteen advisories, each priced per month and
+reproducible on a single file — caching you are not getting, work that could go
+through the Batch API, a schema costing tokens on every call to describe a shape
+the request could carry as a parameter. Underneath them, twelve deterministic
+rules that shorten the text itself: same input, same output, free, offline, and
+never touching code, URLs or placeholders. On top, an **optional LLM pass** for
+the compression rules cannot do, through whichever provider you configure, which
+never runs unless you ask.
 
 ```
                       ┌──────────────┐
@@ -77,17 +86,9 @@ configure, and it never runs unless you ask.
 
 ## What it actually does
 
-**1. Trims the prompt with deterministic rules.** Courtesy, filler, verbose
-phrasing, duplicated paragraphs, decorative separators, shouting in capitals.
-Two levels: `safe` (no semantic risk) and `aggressive` (read the diff).
-
-**2. Never touches what would break the prompt.** Code fences, inline code,
-URLs, template placeholders (`{{x}}`, `${x}`, `{x}`, `{% %}`) and XML/HTML tags
-are isolated before any rule runs. If a rule ever did make one of those
-disappear, that rule is discarded and the rest carry on.
-
-**3. Tells you where the money actually is.** Beyond the trimming, it flags
-what usually saves more than shortening ever will:
+**1. Tells you where the money actually is.** This is the part worth reading
+first, because it is where the numbers are. Every advisory is priced per month
+against your own call volume, and none of them is about making the text shorter:
 
 | Advisory | Why it matters |
 |---|---|
@@ -143,6 +144,17 @@ by copy-paste-and-tweak. It deliberately does not flag *paraphrases*: the same
 lesson in different words scores close enough to two genuinely distinct
 examples that catching it would mean flagging examples that teach different
 things. That case needs a model, and is on the roadmap for the LLM pass.
+
+**2. Then it trims the prompt itself.** Twelve deterministic rules: courtesy,
+filler, verbose phrasing, duplicated paragraphs, decorative separators, shouting
+in capitals. Two levels — `safe` (no semantic risk) and `aggressive` (read the
+diff). This is the smallest number on the page more often than not, and it is
+reported that way rather than dressed up.
+
+**3. And never touches what would break the prompt.** Code fences, inline code,
+URLs, template placeholders (`{{x}}`, `${x}`, `{x}`, `{% %}`) and XML/HTML tags
+are isolated before any rule runs. If a rule ever did make one of those
+disappear, that rule is discarded and the rest carry on.
 
 **Reviewing an aggressive run.** Every rule reports what it actually changed,
 so the level that saves the most is judged rule by rule rather than as one wall
