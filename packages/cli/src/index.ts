@@ -2129,6 +2129,25 @@ async function checkDirectory(
       level,
       tokenSource: counter.source,
       truncated,
+      // The same outcome the exit code was computed from, so a pull-request
+      // comment and a red build can never disagree about whether the branch got
+      // more expensive.
+      baseline: baselineOutcome
+        ? {
+            comparison: baselineOutcome.comparison,
+            breached: baselineOutcome.breached,
+            money: {
+              before: baselineOutcome.document.totals.monthlyUsd,
+              after: monthlyCostOf(baselineOutcome.comparison.tokensAfter, baselineOutcome.usage, pricing),
+              comparable: moneyIsComparable(
+                baselineOutcome.document,
+                baselineOutcome.usage,
+                pricing.lastReviewed,
+              ).comparable,
+            },
+            path: baselineOutcome.path,
+          }
+        : undefined,
       t,
     }),
   );

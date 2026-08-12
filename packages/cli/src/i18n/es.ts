@@ -723,6 +723,19 @@ ${bold('EJEMPLOS')}
 
   markdown: {
     checkHeading: (target) => `Trazum — presupuestos de tokens en ${target}`,
+    baselineGrew: (delta, pct) => `Esta rama a\u00f1ade ${delta} tokens (${pct}) a los prompts de aqu\u00ed`,
+    baselineShrank: (delta, pct) => `Esta rama quita ${delta} tokens (${pct}) de los prompts de aqu\u00ed`,
+    baselineUnchanged: () => 'Sin cambios frente a la l\u00ednea base registrada',
+    baselineOverLimit: (limits) => `supera el l\u00edmite de ${limits}`,
+    baselineLimitTokens: (limit) => `${limit} tokens`,
+    baselineLimitPct: (limit) => `${limit}%`,
+    baselineColumnBefore: () => 'L\u00ednea base',
+    baselineColumnAfter: () => 'Ahora',
+    baselineMoney: (before, after, delta) => `Coste mensual **${before} \u2192 ${after}** (${delta})`,
+    baselineMoneyIncomparable: () =>
+      'El escenario o el cat\u00e1logo de precios han cambiado desde que se registr\u00f3 la l\u00ednea base, as\u00ed que las dos cifras mensuales no son la misma medida y aqu\u00ed no se restan. La comparaci\u00f3n de tokens de arriba no se ve afectada.',
+    baselineReRecord: (command, path) =>
+      `Si este crecimiento es intencionado, vuelve a registrar con \`${command}\` y haz commit de \`${path}\`.`,
     diffHeading: (before, after) => `Trazum — ${before} → ${after}`,
     rankHeading: (root, count) =>
       `Trazum — qué arreglar primero en ${root} (${count} ${count === 1 ? "prompt" : "prompts"})`,

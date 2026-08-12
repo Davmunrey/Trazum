@@ -622,3 +622,147 @@ describe('the blame report', () => {
     assert.match(render({ t: es }), /historial de tokens/);
   });
 });
+
+describe('the cost diff a pull-request comment leads with', () => {
+  const base = { level: 'safe', tokenSource: 'heuristic', truncated: false, t };
+  const verdict = (path, tokens) => ({
+    path,
+    tokens,
+    maxTokens: null,
+    pattern: null,
+    optimizedTokens: null,
+  });
+
+  const comparison = (over) => ({
+    grown: [{ path: 'prompts/support.txt', before: 100, after: 145, delta: 45 }],
+    shrunk: [{ path: 'prompts/quiet.txt', before: 80, after: 60, delta: -20 }],
+    added: [{ path: 'prompts/triage.md', before: 0, after: 64, delta: 64 }],
+    removed: [{ path: 'prompts/gone.txt', before: 30, after: 0, delta: -30 }],
+    tokensBefore: 210,
+    tokensAfter: 269,
+    delta: 59,
+    deltaPct: 28.1,
+    ...over,
+  });
+
+  const withBaseline = (over = {}, breached = [], comparable = true) =>
+    renderCheckMarkdown({
+      ...base,
+      target: 'prompts/',
+      verdicts: [verdict('prompts/support.txt', 145)],
+      baseline: {
+        comparison: comparison(over),
+        breached,
+        money: { before: 400, after: 412.5, comparable },
+        path: 'trazum.baseline.json',
+      },
+    });
+
+  it('puts the cost verdict above the budget table', () => {
+    /**
+     * A reviewer reads the first two lines and scrolls. "Does each file fit its
+     * ceiling" is the narrower question; "did this branch make the repository
+     * more expensive" is what the pull request proposes.
+     */
+    const md = withBaseline();
+    assert.ok(
+      md.indexOf('This branch adds') < md.indexOf('within budget'),
+      'the budget summary came first',
+    );
+  });
+
+  it('shouts only when a threshold was actually crossed', () => {
+    assert.doesNotMatch(withBaseline(), /\[!CAUTION\]/, 'shouted about growth nobody limited');
+    const breached = withBaseline({}, [{ kind: 'tokens', limit: 0, actual: 59 }]);
+    assert.match(breached, /\[!CAUTION\]/);
+    assert.match(breached, /0 tokens/, 'does not name the limit that was crossed');
+  });
+
+  it('names every limit that was crossed, not just the first', () => {
+    const md = withBaseline({}, [
+      { kind: 'tokens', limit: 0, actual: 59 },
+      { kind: 'pct', limit: 5, actual: 28.1 },
+    ]);
+    assert.match(md, /0 tokens/);
+    assert.match(md, /5%/);
+  });
+
+  it('itemises what cost money and leaves the rest out', () => {
+    // A list of everything that shrank buries the rows a reviewer has to act on.
+    const md = withBaseline();
+    assert.match(md, /prompts\/support\.txt/, 'a file that grew is missing');
+    assert.match(md, /prompts\/triage\.md/, 'a file that is new is missing');
+    assert.match(md, /prompts\/gone\.txt/, 'a deletion is missing');
+    assert.doesNotMatch(md, /prompts\/quiet\.txt/, 'a merely shrunk file was itemised');
+  });
+
+  it('says a branch got cheaper rather than staying silent', () => {
+    const md = withBaseline({ delta: -30, deltaPct: -14.3, tokensAfter: 180 });
+    assert.match(md, /removes 30 tokens/);
+    assert.doesNotMatch(md, /\[!CAUTION\]/);
+  });
+
+  it('does not subtract two different measurements', () => {
+    // A monthly delta across a reprice or a scenario edit is not a saving, and a
+    // figure in a pull-request comment gets quoted in a meeting.
+    const md = withBaseline({}, [], false);
+    assert.doesNotMatch(md, /Monthly cost/);
+    assert.match(md, /not the same measurement/);
+  });
+
+  it('tells the reader how to accept the growth', () => {
+    const md = withBaseline({}, [{ kind: 'tokens', limit: 0, actual: 59 }]);
+    assert.match(md, /trazum baseline/);
+    assert.match(md, /trazum\.baseline\.json/);
+  });
+
+  it('says nothing at all when no baseline governed the run', () => {
+    const md = renderCheckMarkdown({
+      ...base,
+      target: 'prompts/',
+      verdicts: [verdict('prompts/support.txt', 145)],
+    });
+    assert.doesNotMatch(md, /Baseline|This branch/);
+  });
+
+  it('escapes a path in the cost table too', () => {
+    // The budget table's escaping is tested above; this table is a second place
+    // a repository-controlled path reaches GFM.
+    const md = renderCheckMarkdown({
+      ...base,
+      target: 'prompts/',
+      verdicts: [verdict('a|b.txt', 10)],
+      baseline: {
+        comparison: comparison({
+          grown: [{ path: 'a|b.txt', before: 1, after: 10, delta: 9 }],
+          shrunk: [],
+          added: [],
+          removed: [],
+        }),
+        breached: [],
+        money: { before: 1, after: 2, comparable: true },
+        path: 'trazum.baseline.json',
+      },
+    });
+    for (const row of tableRows(md)) {
+      assert.ok(row.length <= 5, `a row split into ${row.length} cells: ${JSON.stringify(row)}`);
+    }
+  });
+
+  it('renders in Spanish too', () => {
+    const md = renderCheckMarkdown({
+      ...base,
+      t: es,
+      target: 'prompts/',
+      verdicts: [verdict('prompts/support.txt', 145)],
+      baseline: {
+        comparison: comparison(),
+        breached: [],
+        money: { before: 400, after: 412.5, comparable: true },
+        path: 'trazum.baseline.json',
+      },
+    });
+    assert.match(md, /Esta rama a\u00f1ade/);
+    assert.match(md, /Coste mensual/);
+  });
+});

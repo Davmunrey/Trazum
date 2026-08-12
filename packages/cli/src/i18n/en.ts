@@ -711,6 +711,19 @@ ${bold('EXAMPLES')}
 
   markdown: {
     checkHeading: (target) => `Trazum — token budgets for ${target}`,
+    baselineGrew: (delta, pct) => `This branch adds ${delta} tokens (${pct}) to the prompts here`,
+    baselineShrank: (delta, pct) => `This branch removes ${delta} tokens (${pct}) from the prompts here`,
+    baselineUnchanged: () => 'No change against the recorded baseline',
+    baselineOverLimit: (limits) => `over the limit of ${limits}`,
+    baselineLimitTokens: (limit) => `${limit} tokens`,
+    baselineLimitPct: (limit) => `${limit}%`,
+    baselineColumnBefore: () => 'Baseline',
+    baselineColumnAfter: () => 'Now',
+    baselineMoney: (before, after, delta) => `Monthly cost **${before} \u2192 ${after}** (${delta})`,
+    baselineMoneyIncomparable: () =>
+      'The scenario or the price list moved since the baseline was recorded, so the two monthly figures are not the same measurement and are not subtracted here. The token comparison above is unaffected.',
+    baselineReRecord: (command, path) =>
+      `If this growth is intended, re-record with \`${command}\` and commit \`${path}\`.`,
     diffHeading: (before, after) => `Trazum — ${before} → ${after}`,
     rankHeading: (root, count) =>
       `Trazum — what to fix first in ${root} (${count} ${count === 1 ? "prompt" : "prompts"})`,

@@ -12,6 +12,41 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**The pull-request comment leads with what the branch costs.** The Action has
+been posting a budget table since it shipped: a list of files and whether each
+one fits its ceiling. Useful, and not the question a reviewer is holding. What a
+pull request proposes is a change, so the comment now opens with the change —
+against the baseline recorded on the base branch — and puts the ceiling check
+underneath it.
+
+```
+> [!CAUTION]
+> **This branch adds 64 tokens (+67.4%) to the prompts here** — over the limit of 0 tokens, 5%.
+
+| | Prompt | Baseline | Now | Change |
+|:--:|---|--:|--:|--:|
+| 🆕 | prompts/triage.md | – | 64 | +64 |
+
+Monthly cost **$129.75 → $132.95** (+$3.20)
+```
+
+Only the directions that cost money are itemised. A list of every file that
+shrank buries the two rows somebody has to act on — though a branch that made
+things cheaper still gets its headline, because that is worth saying.
+
+The rendered block comes from the same outcome the exit code was computed from,
+so a green comment and a red build cannot disagree. It shouts only when a
+threshold was actually crossed, names every limit that was crossed rather than
+the first, and refuses to print a monthly delta when the scenario or the price
+list moved — a figure in a pull-request comment gets quoted in a meeting, and two
+different measurements subtracted is not a saving.
+
+**No change to the Action was needed.** It already posts whatever
+`check --markdown-out` writes, so the report carrying the cost diff is the whole
+mechanism.
+
+### Added
+
 **`trazum baseline`, and a `check` that fails on drift rather than only on a
 ceiling.** `budgets` answers "does this file fit". That is a ceiling, and a
 ceiling has a blind spot: a repository sitting at 95% of every budget passes
