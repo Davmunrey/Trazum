@@ -10,6 +10,42 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Changed
+
+**The report was leading with its smallest number.** Measured rather than
+assumed: on an ordinary customer-support prompt — already reasonably written,
+which is what a real one is — the rules recover **three tokens of 306**, worth
+$0.75 a month. The advisories listed below them on the same prompt are worth
+$345 and $48. The report opened with `-1.0%` and closed with the comparison.
+
+`Start here:` is the first thing in the report now:
+
+```
+Start here:
+  "This task may not need Claude Opus 5" — $345.45/month, 461× what the
+  rules saved.
+
+Input tokens
+  306 → 303   -1.0% (estimated, ±15%)
+```
+
+That ordering was not a presentation quibble. It taught the reader that
+shortening the prompt is what this tool is for, and on any prompt somebody
+competent wrote, shortening it is the smallest thing available. The rules earn
+their keep on genuine bloat — a duplicated paragraph, "due to the fact that",
+where they measure **-23.5%** — and recover close to nothing once it is gone,
+because they recover waste rather than creating savings. Both figures are from
+the same build, minutes apart, on two prompts.
+
+Nothing about what Trazum computes changed. It already knew the advisory was
+worth 461 times more and said so at the bottom of the screen.
+
+One thing got simpler on the way. The line's guard was duplicated — an early
+return *and* a filter, both keyed on the same condition — which made it
+untestable: removing the guard left the filter still suppressing the line, so a
+mutation that priced a flat plan passed. Two checks for one condition is one
+check and one place for a bug.
+
 ## 1.9.1 — "The preflight"
 
 **A release whose point is that the next one publishes itself.** 1.8.0 and 1.9.0
