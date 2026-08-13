@@ -22,7 +22,7 @@
   },
   "type": "module",
   "bin": {
-    "trazum-mcp": "./dist/index.js"
+    "trazum-mcp": "dist/index.js"
   },
   "files": [
     "dist",
