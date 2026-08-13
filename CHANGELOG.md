@@ -33,12 +33,29 @@ code block it was meant to sit inside, and everything after it would render as
 page rather than as data.
 
 A garbled summary is the mild version. One that reads as though it says something
-it does not is the reason to bother. Claim values go through an allow-list of what
-these claims are actually made of — repository paths, refs, workflow paths, an
-environment name — with anything else becoming `?` so a surprise is visible rather
-than dropped, and a cap, because a claim is a short identifier and a long one is
-not a claim. The HTTP status in each verdict is narrowed to a known integer for
-the same reason.
+it does not is the reason to bother.
+
+**The first fix was the shallow one.** Sanitising the claim strings addressed how
+they could rearrange a rendered document and left the plainer fact underneath: a
+value fetched over HTTP was being written to a file, and CodeQL said so again.
+
+So the block does not quote the token any more. The values printed come from
+**this run's own environment** — `GITHUB_REPOSITORY`, `GITHUB_WORKFLOW_REF` — which
+is the authority on what this job is, while the token is a statement about it made
+elsewhere. The token is reduced to one computed word per field: `agrees`,
+`DIFFERS`, `absent`. A disagreement is still visible, which was the whole point,
+and nothing this process did not author reaches the file. The HTTP status in each
+verdict is narrowed to a known integer for the same reason.
+
+It is also a better diagnosis. It prints what to type into npm rather than what
+the token happened to say, which is the question somebody reading a refusal
+actually has.
+
+**And a test was asserting one spelling of one payload.** It checked the summary
+did not contain `<script>`, which CodeQL correctly called a bad filter: it would
+pass against `<SCRIPT>` and against everything else a hostile value could open. It
+asserts the property now — no markup characters in the summary at all — which is
+what the code guarantees.
 
 **The auth preflight asked about one package and reported on one package, and
 the first real run showed why that is not enough.** It checked the first name

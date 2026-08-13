@@ -211,59 +211,77 @@ async function githubIdToken() {
 }
 
 /**
- * What the token actually asserts, so a mismatch can be seen rather than guessed.
+ * What to type into npm, and whether the token agrees.
  *
- * "A claim does not match" is a useless diagnosis on its own — it names a
- * category, not a field, and leaves you comparing four settings against nothing.
- * These are the four npm matches on, printed beside the refusal so the wrong one
- * is visible.
+ * "A claim does not match" names a category rather than a field and leaves the
+ * reader comparing four settings against nothing. So the four fields npm matches
+ * on get reported — but **the values printed come from the runner's own
+ * environment, not from the token**, and that is the second thing CodeQL was
+ * right about.
  *
- * **An allow-list, and the token itself is never printed.** The claims below are
- * public metadata about the run; the token is a bearer credential that npm would
- * accept, and dumping a payload wholesale is how something that is not on this
- * list ends up in a public log one day.
+ * The first fix sanitised the claim strings before writing them. That addressed
+ * how they could rearrange a rendered summary and not the plainer fact underneath:
+ * a value fetched over HTTP was being written to a file, and the check exists to
+ * tell somebody what to configure. `GITHUB_REPOSITORY` and `GITHUB_WORKFLOW_REF`
+ * answer that question from the runner, which is the authority on what this job
+ * *is*; the token is a statement about it made elsewhere.
  *
- * `environment` absent is itself the answer in the common case: it appears only
- * when the job declares one, so a token without it against an npm rule that
- * requires `release` can never match.
- */
-const TOKEN_CLAIMS = ['repository', 'repository_owner', 'workflow_ref', 'job_workflow_ref', 'environment', 'ref'];
-
-/**
- * A claim value, reduced to something that cannot rearrange the page it lands on.
+ * So the token is reduced to one word per field — `agrees`, `differs`, `absent` —
+ * computed here and never quoted. A disagreement is the interesting case and it is
+ * still visible; what is not written is a string this process did not author.
  *
- * **CodeQL raised this and it is the same class of fault as the last one.** These
- * values arrive over the network — a JWT fetched from the runner's token endpoint
- * — and they are written into a job summary, which is *rendered markdown*. Writing
- * them through unchanged means a value containing a backtick fence closes the code
- * block it was supposed to sit inside, and everything after it renders as page
- * rather than as data. A garbled summary is the mild version; a summary that reads
- * as if it says something it does not is the reason to bother.
+ * `absent` on `environment` is the single most useful line in the block: the claim
+ * exists only when the job declares an environment, so an npm rule requiring
+ * `release` can never match a token without it.
  *
- * The allow-list is what these claims are actually made of: repository paths, refs,
- * workflow paths, an environment name. Anything else becomes `?`, so a surprise is
- * visible rather than silently dropped, and the whole thing is capped because a
- * claim is a short identifier and a long one is not a claim.
+ * **The token itself is never printed either way.** It is a bearer credential npm
+ * would accept, and a public log is forever.
  */
 const CLAIM_SAFE = /[^A-Za-z0-9/._@:+-]/g;
 
+/** Environment values are this process's own, but a summary is still markdown. */
 function safeClaim(value) {
-  if (value === undefined || value === null) return '(absent)';
-  const text = String(value);
-  const cleaned = text.replace(CLAIM_SAFE, '?');
+  if (value === undefined || value === null || value === '') return '(unset)';
+  const cleaned = String(value).replace(CLAIM_SAFE, '?');
   return cleaned.length > 200 ? `${cleaned.slice(0, 200)}…(truncated)` : cleaned;
 }
 
+/**
+ * The fields npm matches on, each with where its expected value comes from.
+ *
+ * `environment` has no environment variable — GitHub does not expose one — so it
+ * is reported by presence alone, which is the diagnostic that matters anyway.
+ */
+const MATCHED_FIELDS = [
+  { claim: 'repository', from: 'GITHUB_REPOSITORY', label: 'Repository' },
+  { claim: 'repository_owner', from: 'GITHUB_REPOSITORY_OWNER', label: 'Organization or user' },
+  { claim: 'workflow_ref', from: 'GITHUB_WORKFLOW_REF', label: 'Workflow filename (inside this)' },
+  { claim: 'environment', from: null, label: 'Environment' },
+];
+
 function describeToken(idToken) {
+  let claims;
   try {
     const [, payload] = idToken.split('.');
-    const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    const lines = TOKEN_CLAIMS.map((key) => `    ${key}: ${safeClaim(claims[key])}`);
-    return `  The token this run carries:\n${lines.join('\n')}`;
+    claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
   } catch {
     // A token that will not decode is not a reason to say nothing about the rest.
     return '  (could not read the token claims)';
   }
+
+  const lines = MATCHED_FIELDS.map(({ claim, from, label }) => {
+    const present = claims[claim] !== undefined && claims[claim] !== null && claims[claim] !== '';
+    if (!from) {
+      // Presence only: computed here, so nothing from the token is quoted.
+      return `    ${label}: ${present ? 'the token carries one' : 'ABSENT — a rule requiring it cannot match'}`;
+    }
+    const expected = process.env[from];
+    // One word, computed. Never the claim's own text.
+    const agreement = !present ? 'absent from the token' : claims[claim] === expected ? 'agrees' : 'DIFFERS from this run';
+    return `    ${label}: ${safeClaim(expected)}  (token ${agreement})`;
+  });
+
+  return `  What npm must match, from this run's own environment:\n${lines.join('\n')}`;
 }
 
 /** Ask npm whether this token may publish one package. */
@@ -349,9 +367,8 @@ async function checkAuth() {
           : 'Trusted publishing is not configured, or a claim does not match. ') +
         'For each one: npm settings -> Publishing access -> Trusted publisher, with ' +
         'GitHub Actions, org Davmunrey, repo Trazum, workflow release.yml, environment ' +
-        'release. Compare each field against the claims below — `environment` absent ' +
-        'means this job did not declare one, and a rule requiring it can never match. ' +
-        'See docs/releasing.md. ' +
+        'release. The block below prints those values as this run sees them, and whether ' +
+        'the token agrees with each. See docs/releasing.md. ' +
         'AND IF YOU HAVE ALREADY CONFIGURED ALL OF THEM: believe your settings over ' +
         'this check. It uses an endpoint npm does not document, in a way this ' +
         'repository worked out by probing it, so a rejection can be the check being ' +

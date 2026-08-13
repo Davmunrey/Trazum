@@ -1151,28 +1151,33 @@ describe('the publish preflight', () => {
     assert.match(result.stdout, /per\s+package/i, 'it does not say the setting is per package');
   });
 
-  it('reports the claims to compare against, and never the token', async () => {
+  it('reports what npm must match from this run, and never the token', async () => {
     /**
-     * "A claim does not match" names a category, not a field, and leaves the
-     * reader comparing four settings against nothing. The claims are printed so
-     * the wrong one is visible.
+     * The diagnosis has to name a field, not a category — "a claim does not
+     * match" leaves the reader comparing four settings against nothing.
      *
-     * The second assertion is the one that matters more. These are public
-     * metadata about the run; the token beside them is a bearer credential npm
-     * would accept, and a public log is forever.
+     * But the values printed come from **this run's environment**, not from the
+     * token, which is the second thing CodeQL was right about. Sanitising the
+     * claim strings addressed how they could rearrange a rendered summary and not
+     * the plainer fact underneath: a value fetched over HTTP was being written to
+     * a file. `GITHUB_REPOSITORY` answers "what is this job" from the runner; the
+     * token is a statement about it made elsewhere, and it is reduced to one
+     * computed word.
+     *
+     * So this asserts three things: the expected values are reported, a
+     * disagreement is still visible, and nothing the token said is quoted.
      */
-    const payload = Buffer.from(
-      JSON.stringify({
-        repository: 'Davmunrey/Trazum',
-        repository_owner: 'Davmunrey',
-        workflow_ref: 'Davmunrey/Trazum/.github/workflows/release.yml@refs/tags/v1.9.0',
-        ref: 'refs/tags/v1.9.0',
-        // Absent on purpose: it appears only when the job declares an
-        // environment, and that absence against a rule requiring one is the
-        // single most likely cause of the refusal being explained.
-        a_secret_looking_claim: 'must-not-be-printed',
-      }),
-    ).toString('base64url');
+    const claims = {
+      repository: 'Davmunrey/Trazum',
+      repository_owner: 'Davmunrey',
+      // Deliberately not what the environment below says, so `DIFFERS` is exercised.
+      workflow_ref: 'Davmunrey/Trazum/.github/workflows/SOMETHING-ELSE.yml@refs/heads/main',
+      // Absent on purpose: it appears only when the job declares an environment,
+      // and that absence against a rule requiring one is the likeliest cause of
+      // the refusal this block exists to explain.
+      a_secret_looking_claim: 'must-not-be-printed',
+    };
+    const payload = Buffer.from(JSON.stringify(claims)).toString('base64url');
     const token = `header.${payload}.signature`;
 
     const result = await withRegistry(
@@ -1186,19 +1191,31 @@ describe('the publish preflight', () => {
         await run('auth', url, {
           ACTIONS_ID_TOKEN_REQUEST_URL: `${url}/token?x=1`,
           ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'runner',
+          GITHUB_REPOSITORY: 'Davmunrey/Trazum',
+          GITHUB_REPOSITORY_OWNER: 'Davmunrey',
+          GITHUB_WORKFLOW_REF: 'Davmunrey/Trazum/.github/workflows/release.yml@refs/heads/main',
         }),
     );
 
     assert.equal(result.status, 0);
-    assert.match(result.stdout, /workflow_ref: .*release\.yml/, 'the workflow claim is not reported');
-    assert.match(result.stdout, /environment: \(absent\)/, 'an absent environment is not called out');
+
+    // What to type into npm, sourced from the runner.
+    assert.match(result.stdout, /Repository: Davmunrey\/Trazum/, 'the repository to configure is not named');
+    assert.match(result.stdout, /release\.yml/, 'the workflow to configure is not named');
+
+    // The token agreeing and disagreeing are both visible, as one word each.
+    assert.match(result.stdout, /token agrees/, 'agreement is not reported');
+    assert.match(result.stdout, /DIFFERS/, 'a disagreeing claim is not flagged');
+    assert.match(result.stdout, /ABSENT/, 'an absent environment claim is not called out');
 
     const printed = result.stdout + result.stderr;
-    assert.doesNotMatch(printed, /must-not-be-printed/, 'it printed a claim outside the allow-list');
+    // Nothing the token said is quoted — not the off-list claim, and not the
+    // disagreeing value whose text would otherwise be the obvious thing to show.
+    assert.doesNotMatch(printed, /must-not-be-printed/, 'an off-list claim was printed');
+    assert.doesNotMatch(printed, /SOMETHING-ELSE/, 'a claim value from the token was quoted');
     assert.ok(!printed.includes(token), 'it printed the OIDC token itself');
     assert.ok(!printed.includes(payload), 'it printed the raw token payload');
   });
-
   it('refuses to build a URL out of a manifest that does not look like one', async () => {
     /**
      * CodeQL raised this and was right to: both halves of every URL here come
@@ -1353,19 +1370,25 @@ describe('the publish preflight', () => {
 
     assert.equal(result.status, 0);
     const written = read(summaryPath, 'utf8');
-    const printed = written + result.stdout;
 
-    // Nothing that closes a fence, opens a heading, or opens a tag survives.
-    assert.doesNotMatch(printed, /Everything is fine/, 'a claim injected a heading');
-    assert.doesNotMatch(printed, /<script>/, 'a claim injected a tag');
-    // The fence the script opens is the only one in the document.
+    /**
+     * The invariant, not a sample of it.
+     *
+     * This asserted `doesNotMatch(/<script>/)` first, and CodeQL was right to
+     * call that a bad filter: it pins one spelling of one payload, so it would
+     * pass against `<SCRIPT>` and against every other thing a hostile value
+     * could open. The property is that **nothing the token said reaches the
+     * summary at all** — the block is built from this run's environment and
+     * one-word verdicts — so the check is for the characters that could
+     * restructure the document, whatever they spell.
+     */
+    assert.doesNotMatch(written, /[<>]/, 'the summary contains markup characters');
+    assert.doesNotMatch(written, /Everything is fine/, 'a claim reached the summary');
     assert.equal(
       (written.match(/```/g) ?? []).length % 2,
       0,
       'the summary has an unbalanced code fence',
     );
-    // And an absurdly long claim is cut rather than filling the page.
-    assert.match(printed, /truncated/, 'a 500-character claim was written in full');
   });
 
   it('the release workflow runs both, gated the way each needs', () => {
