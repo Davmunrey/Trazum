@@ -108,13 +108,37 @@ do not know to look for it.
 **Check it without spending a version.** Run the release workflow from the
 Actions tab — `workflow_dispatch` is dry-run only — and read the *Can this
 workflow authenticate to npm?* step. It asks npm's token-exchange endpoint the
-same question the upload steps ask it, and reports one of three answers:
+same question the upload steps ask it, once per package:
 
-| It says | It means |
+```
+  configured            @trazum/cli
+  rejected (404)        @trazum/core
+  configured            @trazum/mcp
+```
+
+| Verdict | It means |
 |---|---|
-| `trusted publishing is configured` | Every claim matched. A tag will publish. |
-| `npm refused the OIDC token (401/403/404)` | Not configured, or a claim does not match. Check the table above, starting with the environment. |
-| `could not verify` | Something else answered. Tag if you like; the upload is still the authority. |
+| `configured` | Every claim matched for that package. |
+| `rejected (401/403/404)` | Not configured for **that package**, or a claim does not match. |
+| `unknown (…)` | Something else answered. Tag if you like; the upload is still the authority. |
+
+**Per package, and it is listed per package because that is how it goes wrong.**
+The trusted publisher is a setting on three separate pages, so configuring two of
+them is the easiest mistake available — and the release publishes `@trazum/core`
+first, so the package that fails is not necessarily the one you last looked at.
+
+On a refusal the step also prints the claims the token carries:
+
+```
+  The token this run carries:
+    repository: Davmunrey/Trazum
+    workflow_ref: Davmunrey/Trazum/.github/workflows/release.yml@refs/tags/v1.9.0
+    environment: release
+```
+
+Compare each against what you typed into npm. **`environment: (absent)` is the
+answer whenever it appears** — the claim exists only when the job declares an
+environment, so a rule requiring `release` can never match a token without it.
 
 Until this existed the only way to test a trusted publisher was to spend a
 version number on it, which is why 1.9.0 found out the expensive way.

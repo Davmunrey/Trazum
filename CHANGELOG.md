@@ -10,6 +10,39 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**The auth preflight asked about one package and reported on one package, and
+the first real run showed why that is not enough.** It checked the first name
+alphabetically — `@trazum/cli` — on the reasoning that a misconfiguration is
+all-or-nothing. It is not. The trusted publisher is a setting on three separate
+pages, one per package, so configuring two of them is the easiest mistake
+available. And the release publishes `@trazum/core` first, so the package that
+actually stops a release need not be the one that was asked about.
+
+It asks about every published package now and prints a line for each, so a
+partial configuration reads as one:
+
+```
+  configured            @trazum/cli
+  rejected (404)        @trazum/core
+  configured            @trazum/mcp
+```
+
+**And "a claim does not match" now says which claim.** That sentence names a
+category rather than a field and leaves the reader comparing four settings
+against nothing. On a refusal the step prints the four claims npm matches on —
+repository, workflow ref, environment, ref — beside the failure. `environment:
+(absent)` is the answer whenever it appears: the claim exists only when the job
+declares an environment, so an npm rule requiring `release` can never match a
+token without it.
+
+The claims are an allow-list and **the token itself is never printed**. Those
+values are public metadata about the run; the token beside them is a bearer
+credential npm would accept, and a public log is forever. Two tests hold that
+line — one fails if the payload is dumped wholesale, one fails if the token is
+printed at all.
+
 ### Added
 
 **The release workflow can now tell you whether a tag will publish, before you

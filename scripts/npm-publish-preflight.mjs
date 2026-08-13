@@ -186,10 +186,56 @@ async function githubIdToken() {
 }
 
 /**
+ * What the token actually asserts, so a mismatch can be seen rather than guessed.
+ *
+ * "A claim does not match" is a useless diagnosis on its own — it names a
+ * category, not a field, and leaves you comparing four settings against nothing.
+ * These are the four npm matches on, printed beside the refusal so the wrong one
+ * is visible.
+ *
+ * **An allow-list, and the token itself is never printed.** The claims below are
+ * public metadata about the run; the token is a bearer credential that npm would
+ * accept, and dumping a payload wholesale is how something that is not on this
+ * list ends up in a public log one day.
+ *
+ * `environment` absent is itself the answer in the common case: it appears only
+ * when the job declares one, so a token without it against an npm rule that
+ * requires `release` can never match.
+ */
+const TOKEN_CLAIMS = ['repository', 'repository_owner', 'workflow_ref', 'job_workflow_ref', 'environment', 'ref'];
+
+function describeToken(idToken) {
+  try {
+    const [, payload] = idToken.split('.');
+    const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    const lines = TOKEN_CLAIMS.map((key) => `    ${key}: ${claims[key] ?? '(absent)'}`);
+    return `  The token this run carries:\n${lines.join('\n')}`;
+  } catch {
+    // A token that will not decode is not a reason to say nothing about the rest.
+    return '  (could not read the token claims)';
+  }
+}
+
+/** Ask npm whether this token may publish one package. */
+async function exchangeFor(name, idToken) {
+  const endpoint = registryUrl('-', 'npm', 'v1', 'oidc', 'token', 'exchange', 'package', registryName(name));
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { authorization: `Bearer ${idToken}`, 'content-type': 'application/json' },
+    body: '{}',
+  });
+  if (res.ok) return 'configured';
+  // 404 is the one that misleads. npm answers a write you are not authorised for
+  // with "not found", which reads as a missing package and is an auth failure.
+  if ([401, 403, 404].includes(res.status)) return `rejected (${res.status})`;
+  return `unknown (${res.status})`;
+}
+
+/**
  * Three outcomes, and the third is the point.
  *
- * `configured` — npm accepted the token. The next tag publishes.
- * `rejected`   — npm refused it definitively. The settings are wrong.
+ * `configured` — npm accepted the token for every package. The next tag publishes.
+ * `rejected`   — npm refused at least one. The settings are wrong.
  * `unknown`    — anything else. Say so; do not guess either way.
  */
 async function checkAuth() {
@@ -209,46 +255,56 @@ async function checkAuth() {
     return 'rejected';
   }
 
-  // Asked about the first package alphabetically rather than all three: the
-  // trusted publisher is configured per package, but a misconfiguration is
-  // almost always all-or-nothing, and one request is enough to answer "has this
-  // been set up at all" — the question that actually goes unanswered.
-  const [first] = publishablePackages();
-  const endpoint = registryUrl('-', 'npm', 'v1', 'oidc', 'token', 'exchange', 'package', registryName(first.name));
-
-  let res;
-  try {
-    res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${idToken}`, 'content-type': 'application/json' },
-      body: '{}',
-    });
-  } catch (error) {
-    warn(`Could not reach npm to verify trusted publishing: ${error.message}`);
-    return 'unknown';
+  /**
+   * Every package, not the first one alphabetically.
+   *
+   * That was the original shape, on the reasoning that a misconfiguration is
+   * all-or-nothing. It is not: the trusted publisher is configured per package,
+   * on three separate settings pages, and doing two of them is the easiest
+   * mistake available. Reporting `@trazum/cli` while saying nothing about the
+   * other two answers the wrong question — and the release publishes core first,
+   * so the package that fails first is not the one that was asked about.
+   */
+  const packages = publishablePackages();
+  const verdicts = [];
+  for (const { name } of packages) {
+    try {
+      verdicts.push([name, await exchangeFor(name, idToken)]);
+    } catch (error) {
+      warn(`Could not reach npm to verify ${name}: ${error.message}`);
+      verdicts.push([name, 'unknown (unreachable)']);
+    }
   }
 
-  if (res.ok) {
-    notice(`npm trusted publishing is configured for ${first.name}. A tag will publish.`);
-    return 'configured';
-  }
+  for (const [name, verdict] of verdicts) console.log(`  ${verdict.padEnd(22)}${name}`);
 
-  // 404 is the one that misleads. npm answers a write you are not authorised for
-  // with "not found", which reads as a missing package and is an auth failure.
-  if ([401, 403, 404].includes(res.status)) {
+  const rejected = verdicts.filter(([, v]) => v.startsWith('rejected')).map(([name]) => name);
+  const unknown = verdicts.filter(([, v]) => v.startsWith('unknown')).map(([name]) => name);
+
+  if (rejected.length > 0) {
     warn(
-      `npm refused the OIDC token for ${first.name} (${res.status}). ` +
-        'Trusted publishing is not configured, or a claim does not match. On each of ' +
-        'the published packages, npm settings -> Publishing access -> Trusted publisher: ' +
-        'GitHub Actions, org Davmunrey, repo Trazum, workflow release.yml, ' +
-        'environment release. The environment field is the one that is easy to leave ' +
-        'blank and it is not optional. See docs/releasing.md.',
+      `npm refused the OIDC token for ${rejected.join(', ')}. ` +
+        (rejected.length < packages.length
+          ? 'Some packages are configured and some are not — the trusted publisher is set per ' +
+            'package, on a separate settings page each. '
+          : 'Trusted publishing is not configured, or a claim does not match. ') +
+        'For each one: npm settings -> Publishing access -> Trusted publisher, with ' +
+        'GitHub Actions, org Davmunrey, repo Trazum, workflow release.yml, environment ' +
+        'release. Compare each field against the claims below — `environment` absent ' +
+        'means this job did not declare one, and a rule requiring it can never match. ' +
+        'See docs/releasing.md.',
     );
+    console.log(describeToken(idToken));
     return 'rejected';
   }
 
-  warn(`npm answered the token exchange with ${res.status}; could not verify trusted publishing.`);
-  return 'unknown';
+  if (unknown.length > 0) {
+    warn(`Could not verify trusted publishing for ${unknown.join(', ')}.`);
+    return 'unknown';
+  }
+
+  notice(`npm trusted publishing is configured for all ${packages.length} packages. A tag will publish.`);
+  return 'configured';
 }
 
 /** Whether `version` of `name` is already on the registry. */

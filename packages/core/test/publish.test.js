@@ -1107,6 +1107,98 @@ describe('the publish preflight', () => {
     assert.doesNotMatch(accepted.stdout, /::warning::/, 'it warned about a working configuration');
   });
 
+  it('names which packages are configured when only some of them are', async () => {
+    /**
+     * The reason this stopped asking about one package. It checked the first
+     * name alphabetically on the reasoning that a misconfiguration is
+     * all-or-nothing — and it is not: the trusted publisher is set per package,
+     * on three separate settings pages, so doing two of them is the easiest
+     * mistake available.
+     *
+     * Reporting `@trazum/cli` while saying nothing about the others answers the
+     * wrong question, and the release publishes core first, so the package that
+     * actually fails need not be the one that was asked about.
+     */
+    const configured = manifestOf('packages/core').name;
+    const result = await withRegistry(
+      (req, res) => {
+        if (req.url.includes('audience=')) return res.writeHead(200).end('{"value":"a.b.c"}');
+        const forConfigured = decodeURIComponent(req.url).includes(configured);
+        if (forConfigured) res.writeHead(200).end('{"token":"npm_shortlived"}');
+        else res.writeHead(404).end('{}');
+      },
+      async (url) =>
+        await run('auth', url, {
+          ACTIONS_ID_TOKEN_REQUEST_URL: `${url}/token?x=1`,
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'runner',
+        }),
+    );
+
+    assert.equal(result.status, 0, 'a partial configuration failed the job');
+
+    // Every package accounted for, not just the one that was asked about.
+    for (const pkg of PACKAGES) {
+      assert.match(
+        result.stdout,
+        new RegExp(manifestOf(pkg).name.replace('/', '\\/')),
+        `${pkg} is missing from the report`,
+      );
+    }
+
+    // And the message has to say that the setting is per package, or the reader
+    // fixes the one it named and tags again into the same failure.
+    assert.match(result.stdout, /::warning::/);
+    assert.match(result.stdout, /per\s+package/i, 'it does not say the setting is per package');
+  });
+
+  it('reports the claims to compare against, and never the token', async () => {
+    /**
+     * "A claim does not match" names a category, not a field, and leaves the
+     * reader comparing four settings against nothing. The claims are printed so
+     * the wrong one is visible.
+     *
+     * The second assertion is the one that matters more. These are public
+     * metadata about the run; the token beside them is a bearer credential npm
+     * would accept, and a public log is forever.
+     */
+    const payload = Buffer.from(
+      JSON.stringify({
+        repository: 'Davmunrey/Trazum',
+        repository_owner: 'Davmunrey',
+        workflow_ref: 'Davmunrey/Trazum/.github/workflows/release.yml@refs/tags/v1.9.0',
+        ref: 'refs/tags/v1.9.0',
+        // Absent on purpose: it appears only when the job declares an
+        // environment, and that absence against a rule requiring one is the
+        // single most likely cause of the refusal being explained.
+        a_secret_looking_claim: 'must-not-be-printed',
+      }),
+    ).toString('base64url');
+    const token = `header.${payload}.signature`;
+
+    const result = await withRegistry(
+      (req, res) => {
+        if (req.url.includes('audience=')) {
+          return res.writeHead(200).end(JSON.stringify({ value: token }));
+        }
+        res.writeHead(404).end('{}');
+      },
+      async (url) =>
+        await run('auth', url, {
+          ACTIONS_ID_TOKEN_REQUEST_URL: `${url}/token?x=1`,
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'runner',
+        }),
+    );
+
+    assert.equal(result.status, 0);
+    assert.match(result.stdout, /workflow_ref: .*release\.yml/, 'the workflow claim is not reported');
+    assert.match(result.stdout, /environment: \(absent\)/, 'an absent environment is not called out');
+
+    const printed = result.stdout + result.stderr;
+    assert.doesNotMatch(printed, /must-not-be-printed/, 'it printed a claim outside the allow-list');
+    assert.ok(!printed.includes(token), 'it printed the OIDC token itself');
+    assert.ok(!printed.includes(payload), 'it printed the raw token payload');
+  });
+
   it('refuses to build a URL out of a manifest that does not look like one', async () => {
     /**
      * CodeQL raised this and was right to: both halves of every URL here come
