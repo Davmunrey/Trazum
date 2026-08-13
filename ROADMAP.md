@@ -421,6 +421,56 @@ text, which is the most sensitive thing this tool touches.
 
 ---
 
+### 1.9.0 — The error band, measured
+
+**The entry that kept moving, and what it found when it finally ran.** The corpus,
+the harness and the test shipped in what was then 1.3.0; the measurement needed
+the official counting endpoint and a key, which is not something this repository
+could schedule. The maintainer supplied one on 2026-08-13 and the answer arrived
+in about a minute.
+
+**The band was false.** Two of eight samples were outside `±15%` and both
+underestimated — the numeric sample by 30.6%, Spanish prose by 22.1%.
+Underestimating tokens under-reports cost, which is the flattering direction and
+the worst one for this tool.
+
+Two separate faults, found in that order:
+
+- **Digits were counted at three per token.** Claude splits long runs far more
+  finely, because a merge table cannot cover every number. Corrected in isolation:
+  that sample went from -30.6% to -5.0% and nothing else moved four points.
+- **The estimator was calibrated for English, not for prose.** One divisor served
+  every language, and German measured -37.3%, Dutch -28.3%, Italian -23.8%,
+  Spanish -22.9%, Portuguese -18.1%, French -15.1% — against English at +1.0%.
+
+**This roadmap predicted the wrong culprit.** It said CJK would break the band, on
+the reasoning that the estimator treats CJK quite differently from words. CJK was
+fine: -3.2% and +11.2%. What broke it was every Latin language that is not
+English, which nothing here had thought to doubt.
+
+**And the first hypothesis about *why* was tested and killed.** Accent density
+separated the corpus perfectly — every non-Spanish Latin sample at 0.00%, Spanish
+at 1.71% — so a Spanish sample with zero diacritics was written specifically to
+falsify it. It measured -22.9% against -22.1% for accented Spanish. The signal is
+the language, not its marks, so `language.ts` counts function words and answers
+`null` when no answer is safe.
+
+**What shipped:** per-language divisors for seven languages, each with a held-out
+sample in a different register; a corpus of twenty-one measured samples that can
+grow one at a time, because the freshness digest is per sample rather than per
+corpus; a band of `±15%` that is measured, exported as one constant, and guarded
+so no file can state a different one; and `below-cache-minimum` no longer
+asserting from an estimate near a hard threshold.
+
+Worst error across the corpus: **11.2%**, on Japanese, which does not use the word
+branch at all.
+
+**What it did not settle.** The seven divisors rest on two or three samples each.
+That is enough for a held-out test to mean something and not enough for a
+distribution, so the band is still a worst case rather than a percentile. Going
+further needs samples from real prompts rather than written for the purpose —
+more of the same hand is more of the same bias, however many files it fills.
+
 ## Collapsed into 1.8.0
 
 **Everything below shipped as 1.8.0, and none of these numbers is on npm.** They
@@ -854,61 +904,7 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-### 1.9.0 — The error band, measured
-
-**Why this entry keeps moving.** The corpus, the harness and the test shipped in
-what was then 1.3.0; the *measurement* cannot happen inside this repository,
-because ground truth needs the official counting endpoint and a key. It has been
-renumbered twice now, and it will be renumbered again by anything that ships
-before it — this is the only item on the roadmap whose completion is not ours to
-schedule, and holding shippable work behind it would be the wrong trade every
-time. Recorded here once rather than re-explained at each move.
-
-It is also **more urgent than it was**. 1.5.0 priced seven providers against an
-estimator tuned for one, so the band is now unmeasured across families as well as
-across text types. The report says which tokenizer it was calibrated on instead of
-claiming a number, which is honest and is not the same as knowing.
-
-The band is printed on every report, appears in both READMEs, in the estimator's own
-doc comment and in `VERSIONING.md` as part of the frozen API. Every dollar figure
-Trazum prints descends from it — and `estimateTokens` was tested for exactly three
-things: zero on empty input, monotonic growth, and never returning `NaN`. Nothing
-measured its accuracy.
-
-It is also **one number for all text**, which is a second assumption. The
-estimator is calibrated per character class and treats CJK, digits and punctuation
-quite differently from words; there is no reason those should land on the same
-accuracy. If the real error on Japanese is 40%, every figure for a Japanese prompt
-is wrong while the report says otherwise.
-
-**In place now:** a committed corpus of eight samples covering prose (English and
-Spanish), CJK (Japanese and Chinese), code, few-shot blocks, punctuation-heavy
-tables and dense numerics; `scripts/measure-token-band.mjs`, which measures them
-against the official counting endpoint and subtracts the message envelope so the
-figures describe the text; and `token-band.test.js`, which asserts the band per
-sample as soon as the ground truth exists.
-
-Three things that test does deliberately:
-
-- **It does not pass quietly while unmeasured.** "0 failures" from a check that
-  measured nothing is the most misleading thing a suite can report — the same
-  reasoning that makes `trazum check` treat an unbudgeted run as an error. It
-  skips out loud and names the command.
-- **It requires the documentation to admit the band is unverified** until ground
-  truth exists, so the band cannot quietly harden from an estimate into a fact
-  nobody established.
-- **It carries a digest of the corpus.** Numbers describing text that has since
-  been edited pass while describing something else, which is worse than no
-  numbers at all.
-
-**Needs the maintainer once:** `ANTHROPIC_API_KEY=... npm run measure:tokens`.
-The counting endpoint is free and does not run the model, so it costs nothing
-beyond the round trips. Commit what it writes and the assertions go live.
-
-**Then, and only then, the decision this release exists for:** if the bands differ
-materially by type — which the CJK case suggests they will — the report stops
-printing one number for all text and says the band that applies to the prompt in
-front of it.
+Nothing scheduled. The next thing this needs is users, and what they report.
 
 ## Under consideration
 

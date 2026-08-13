@@ -10,6 +10,35 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+## 1.9.0 — "The error band, measured"
+
+**The release that found out the central claim was false, and fixed it.**
+
+`±15%` had been printed on every report for eight releases, with every dollar
+figure descending from it, and nothing in this repository established that it
+held. The first run of `measure-token-band.mjs` against the official counting
+endpoint found it did not: the numeric sample was 30.6% under, Spanish prose
+22.1% under. Nine of eleven samples underestimated, always in the direction that
+under-reports cost.
+
+Two things were wrong. Digits were counted at three per token where Claude splits
+them far more finely — corrected in isolation, that sample went to -5.0%. And the
+estimator turned out to be calibrated **for English specifically**, not for prose:
+German measured -37.3% under one divisor that served every language.
+
+The band is measured now, at ±15%, and it landing back on the old number is a
+coincidence rather than a restoration: that 15 bounded nothing, and this one
+bounds **twenty-one samples across seven languages and six text types**, worst
+case 11.2%. Every language divisor has a held-out test in a different register.
+
+Also here: `trazum baseline` and a `check` that gates on drift rather than only on
+a ceiling; a pull-request comment that leads with what the branch costs; and
+`below-cache-minimum` no longer asserting from an estimate near a hard threshold,
+which was wrong advice rather than an imprecise figure.
+
+The sections below are as they accumulated, entry by entry, and were not
+consolidated: they are the record of what happened in the order it happened.
+
 ### Fixed
 
 **`below-cache-minimum` was asserting from an estimate, and near the threshold
