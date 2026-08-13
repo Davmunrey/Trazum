@@ -732,57 +732,43 @@ describe('a release cannot ship without notes', () => {
     );
   });
 
-  it('states that nothing is published, while nothing is published', () => {
+  it('no file still says nothing is published, because it is', () => {
     /**
-     * The claim this repository got wrong once already, in ROADMAP.md. A file
-     * whose whole job is announcing releases is the likeliest place to imply one
-     * happened — and it did happen again, in the commit that prepared 1.8.0.
+     * **This guard used to key on a git tag, and the first publish broke that.**
      *
-     * **The signal was wrong, which is why the guard let it through.** It read
-     * "is there a `## X.Y.Z` heading in the changelog for the manifest version",
-     * which is *a release cut in this repository* and not *a package on npm*.
-     * Preparing 1.8.0 satisfied it, the assertion stopped running, and
-     * RELEASES.md went out saying "1.8.0 is the first version on npm, and it is
-     * the first one anybody can install" while `npm view` returned 404.
+     * The reasoning was sound and the proxy was not. `release.yml` publishes on
+     * `v*.*.*` and nothing else, so "no tag" meant "nothing uploaded" — checkable
+     * without a network call, which a test in CI should not need. But the *first*
+     * publish could never go that way: a trusted publisher is configured on a
+     * package's settings page, and that page does not exist until the package
+     * does. So 1.8.0 went up by hand on 2026-08-13, no tag was pushed, and the
+     * repository went on telling every visitor that nothing was installable while
+     * three packages sat on the registry.
      *
-     * A tag is the honest local proxy. `release.yml` triggers on `v*.*.*` and
-     * publishes on nothing else, so no tag means nothing was ever uploaded —
-     * checkable without the network, which a test in CI should not have.
+     * That is the second time this claim has been wrong and the second signal to
+     * fail. The first read "is there a `## X.Y.Z` heading in the changelog",
+     * which is *a release cut here* rather than *a package on npm*.
      *
-     * It needs the tags to be there. CI fetches full history for the action-pin
-     * guard, which is the same requirement; a clone without them reports no tag
-     * and asks for the sentence, which is the safe direction to be wrong in.
-     */
-    const version = manifestOf('.').version;
-    const tagged = spawnSync('git', ['tag', '--list', `v${version}`], {
-      cwd: repoRoot,
-      encoding: 'utf8',
-    });
-    const somethingIsPublished = tagged.status === 0 && tagged.stdout.trim() !== '';
-
-    /**
-     * Both directions, and every file that makes the claim.
-     *
-     * The package READMEs open with `npm install @trazum/…`, and they *are* the
-     * npm page — so while nothing is published that line is an instruction that
-     * 404s, and once something is published the warning above it becomes the
-     * lie instead. A note that has to be removed by hand at release time is a
-     * note that survives three releases.
+     * There is no third proxy. Publication is not reversible — npm allows
+     * unpublishing for 72 hours and then the version is permanent — so "something
+     * is published" is now a fact about the world that cannot go back to being
+     * false. The honest assertion is the one-directional one: no file may claim
+     * otherwise. If this project ever starts over under a new scope, delete this
+     * test rather than inventing a fourth way to guess.
      */
     const claimants = {
       'RELEASES.md': releases,
+      'README.md': readFileSync(join(repoRoot, 'README.md'), 'utf8'),
       'packages/core/README.md': readFileSync(join(repoRoot, 'packages/core/README.md'), 'utf8'),
       'packages/cli/README.md': readFileSync(join(repoRoot, 'packages/cli/README.md'), 'utf8'),
+      'packages/mcp/README.md': readFileSync(join(repoRoot, 'packages/mcp/README.md'), 'utf8'),
     };
 
     for (const [name, text] of Object.entries(claimants)) {
-      const says = /[Nn]ot(hing has been)? published yet/.test(text);
-      assert.equal(
-        says,
-        !somethingIsPublished,
-        somethingIsPublished
-          ? `${name} still says nothing is published, and v${version} is tagged`
-          : `${name} no longer says that nothing is published, and nothing is published`,
+      assert.doesNotMatch(
+        text,
+        /[Nn]ot(hing has been)? published yet|[Nn]ot on npm yet/,
+        `${name} says nothing is published; @trazum/core has been on npm since 2026-08-13`,
       );
     }
   });

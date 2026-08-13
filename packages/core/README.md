@@ -10,11 +10,6 @@ reading them too.
 Part of [Trazum](https://github.com/Davmunrey/Trazum). For the terminal, see
 [`@trazum/cli`](https://www.npmjs.com/package/@trazum/cli).
 
-> [!NOTE]
-> **Not published yet.** The command below will not work today — there is no tag
-> and `npm view` returns 404. Run it from source meanwhile:
-> [github.com/Davmunrey/Trazum](https://github.com/Davmunrey/Trazum#getting-started).
-
 ```bash
 npm install @trazum/core
 ```
