@@ -50,7 +50,7 @@
  * existed.
  */
 
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { appendFileSync, readFileSync, readdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -88,10 +88,35 @@ function publishablePackages() {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** GitHub Actions annotations, so a finding lands on the run summary. */
+/** GitHub Actions annotations, so a finding surfaces without opening the log. */
 const notice = (message) => console.log(`::notice::${message}`);
 const warn = (message) => console.log(`::warning::${message}`);
 const fail = (message) => console.log(`::error::${message}`);
+
+/**
+ * The job summary, which is where this actually gets read.
+ *
+ * **stdout was not enough and that was found the hard way.** This step runs
+ * before `verify`, and `verify` prints thousands of lines of TAP output after
+ * it — so the per-package verdicts and the token claims, the whole point of the
+ * diagnostic, sit above a wall of test results. The GitHub logs API returns the
+ * *tail* of a job, and thirty thousand lines of it still did not reach this
+ * step. A diagnosis nobody can retrieve is not a diagnosis.
+ *
+ * The summary is a separate document, rendered at the top of the run page and
+ * fetchable on its own. Same content, somewhere it can be found.
+ *
+ * Silently a no-op outside Actions, so the script still runs locally.
+ */
+function summary(markdown) {
+  const path = process.env.GITHUB_STEP_SUMMARY;
+  if (!path) return;
+  try {
+    appendFileSync(path, `${markdown}\n`);
+  } catch {
+    // A summary that cannot be written is not worth failing a release over.
+  }
+}
 
 /**
  * A package name and a version, checked before either reaches a URL.
@@ -186,35 +211,101 @@ async function githubIdToken() {
 }
 
 /**
- * What the token actually asserts, so a mismatch can be seen rather than guessed.
+ * What to type into npm, and whether the token agrees.
  *
- * "A claim does not match" is a useless diagnosis on its own — it names a
- * category, not a field, and leaves you comparing four settings against nothing.
- * These are the four npm matches on, printed beside the refusal so the wrong one
- * is visible.
+ * "A claim does not match" names a category rather than a field and leaves the
+ * reader comparing four settings against nothing. So the four fields npm matches
+ * on get reported — but **the values printed come from the runner's own
+ * environment, not from the token**, and that is the second thing CodeQL was
+ * right about.
  *
- * **An allow-list, and the token itself is never printed.** The claims below are
- * public metadata about the run; the token is a bearer credential that npm would
- * accept, and dumping a payload wholesale is how something that is not on this
- * list ends up in a public log one day.
+ * The first fix sanitised the claim strings before writing them. That addressed
+ * how they could rearrange a rendered summary and not the plainer fact underneath:
+ * a value fetched over HTTP was being written to a file, and the check exists to
+ * tell somebody what to configure. `GITHUB_REPOSITORY` and `GITHUB_WORKFLOW_REF`
+ * answer that question from the runner, which is the authority on what this job
+ * *is*; the token is a statement about it made elsewhere.
  *
- * `environment` absent is itself the answer in the common case: it appears only
- * when the job declares one, so a token without it against an npm rule that
- * requires `release` can never match.
+ * So the token is reduced to one word per field — `agrees`, `differs`, `absent` —
+ * computed here and never quoted. A disagreement is the interesting case and it is
+ * still visible; what is not written is a string this process did not author.
+ *
+ * `absent` on `environment` is the single most useful line in the block: the claim
+ * exists only when the job declares an environment, so an npm rule requiring
+ * `release` can never match a token without it.
+ *
+ * **The token itself is never printed either way.** It is a bearer credential npm
+ * would accept, and a public log is forever.
  */
-const TOKEN_CLAIMS = ['repository', 'repository_owner', 'workflow_ref', 'job_workflow_ref', 'environment', 'ref'];
+const CLAIM_SAFE = /[^A-Za-z0-9/._@:+-]/g;
+
+/** Environment values are this process's own, but a summary is still markdown. */
+function safeClaim(value) {
+  if (value === undefined || value === null || value === '') return '(unset)';
+  const cleaned = String(value).replace(CLAIM_SAFE, '?');
+  return cleaned.length > 200 ? `${cleaned.slice(0, 200)}…(truncated)` : cleaned;
+}
+
+/**
+ * The fields npm matches on, each with where its expected value comes from.
+ *
+ * `environment` has no environment variable — GitHub does not expose one — so it
+ * is reported by presence alone, which is the diagnostic that matters anyway.
+ */
+const MATCHED_FIELDS = [
+  { claim: 'repository', from: 'GITHUB_REPOSITORY', label: 'Repository' },
+  { claim: 'repository_owner', from: 'GITHUB_REPOSITORY_OWNER', label: 'Organization or user' },
+  { claim: 'workflow_ref', from: 'GITHUB_WORKFLOW_REF', label: 'Workflow filename (inside this)' },
+  { claim: 'environment', from: null, label: 'Environment' },
+];
 
 function describeToken(idToken) {
+  let claims;
   try {
     const [, payload] = idToken.split('.');
-    const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    const lines = TOKEN_CLAIMS.map((key) => `    ${key}: ${claims[key] ?? '(absent)'}`);
-    return `  The token this run carries:\n${lines.join('\n')}`;
+    claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
   } catch {
     // A token that will not decode is not a reason to say nothing about the rest.
     return '  (could not read the token claims)';
   }
+
+  const lines = MATCHED_FIELDS.map(({ claim, from, label }) => {
+    const present = claims[claim] !== undefined && claims[claim] !== null && claims[claim] !== '';
+    if (!from) {
+      // Presence only: computed here, so nothing from the token is quoted.
+      return `    ${label}: ${present ? 'the token carries one' : 'ABSENT — a rule requiring it cannot match'}`;
+    }
+    const expected = process.env[from];
+    // One word, computed. Never the claim's own text.
+    const agreement = !present ? 'absent from the token' : claims[claim] === expected ? 'agrees' : 'DIFFERS from this run';
+    return `    ${label}: ${safeClaim(expected)}  (token ${agreement})`;
+  });
+
+  return `  What npm must match, from this run's own environment:\n${lines.join('\n')}`;
 }
+
+/**
+ * How npm answered, as one of a fixed set of words this file chose.
+ *
+ * **Nothing from the response is interpolated, and that is the point.** The
+ * previous version built `rejected (${res.status})`, which put a number that
+ * arrived over HTTP into a string that ends up in a rendered file — CodeQL's
+ * "network data written to file", raised twice, and the second time after a fix
+ * that had only addressed the claims. Narrowing it to an integer was not enough
+ * and should not have been: the flow is the finding, not the shape of the value.
+ *
+ * So the status selects a label rather than becoming one. The unknown case keeps
+ * its number, on stdout only, because a status nobody can see is a dead end for
+ * whoever has to work out what happened — and stdout is a log, not a document
+ * this file is composing.
+ */
+const VERDICT = {
+  configured: 'configured',
+  unauthorized: 'rejected (401)',
+  forbidden: 'rejected (403)',
+  notFound: 'rejected (404)',
+  unknown: 'unknown',
+};
 
 /** Ask npm whether this token may publish one package. */
 async function exchangeFor(name, idToken) {
@@ -224,11 +315,16 @@ async function exchangeFor(name, idToken) {
     headers: { authorization: `Bearer ${idToken}`, 'content-type': 'application/json' },
     body: '{}',
   });
-  if (res.ok) return 'configured';
+
+  if (res.ok) return VERDICT.configured;
   // 404 is the one that misleads. npm answers a write you are not authorised for
   // with "not found", which reads as a missing package and is an auth failure.
-  if ([401, 403, 404].includes(res.status)) return `rejected (${res.status})`;
-  return `unknown (${res.status})`;
+  if (res.status === 401) return VERDICT.unauthorized;
+  if (res.status === 403) return VERDICT.forbidden;
+  if (res.status === 404) return VERDICT.notFound;
+  // The number goes to the log, never into what gets written.
+  console.log(`  npm answered ${String(Number(res.status) || 0)} for this package`);
+  return VERDICT.unknown;
 }
 
 /**
@@ -272,14 +368,19 @@ async function checkAuth() {
       verdicts.push([name, await exchangeFor(name, idToken)]);
     } catch (error) {
       warn(`Could not reach npm to verify ${name}: ${error.message}`);
-      verdicts.push([name, 'unknown (unreachable)']);
+      verdicts.push([name, VERDICT.unknown]);
     }
   }
 
   for (const [name, verdict] of verdicts) console.log(`  ${verdict.padEnd(22)}${name}`);
+  summary(
+    ['### npm trusted publishing', '', '| package | verdict |', '|---|---|']
+      .concat(verdicts.map(([name, verdict]) => `| \`${name}\` | ${verdict} |`))
+      .join('\n'),
+  );
 
   const rejected = verdicts.filter(([, v]) => v.startsWith('rejected')).map(([name]) => name);
-  const unknown = verdicts.filter(([, v]) => v.startsWith('unknown')).map(([name]) => name);
+  const unknown = verdicts.filter(([, v]) => v === VERDICT.unknown).map(([name]) => name);
 
   if (rejected.length > 0) {
     warn(
@@ -290,11 +391,17 @@ async function checkAuth() {
           : 'Trusted publishing is not configured, or a claim does not match. ') +
         'For each one: npm settings -> Publishing access -> Trusted publisher, with ' +
         'GitHub Actions, org Davmunrey, repo Trazum, workflow release.yml, environment ' +
-        'release. Compare each field against the claims below — `environment` absent ' +
-        'means this job did not declare one, and a rule requiring it can never match. ' +
-        'See docs/releasing.md.',
+        'release. The block below prints those values as this run sees them, and whether ' +
+        'the token agrees with each. See docs/releasing.md. ' +
+        'AND IF YOU HAVE ALREADY CONFIGURED ALL OF THEM: believe your settings over ' +
+        'this check. It uses an endpoint npm does not document, in a way this ' +
+        'repository worked out by probing it, so a rejection can be the check being ' +
+        'wrong rather than the configuration. That is why it only warns. The tag is ' +
+        'the authority, and a tag that fails publishes nothing.',
     );
-    console.log(describeToken(idToken));
+    const claims = describeToken(idToken);
+    console.log(claims);
+    summary(`\n**Compare these against what npm has:**\n\n\`\`\`\n${claims}\n\`\`\``);
     return 'rejected';
   }
 

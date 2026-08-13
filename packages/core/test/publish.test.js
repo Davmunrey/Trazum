@@ -1151,28 +1151,33 @@ describe('the publish preflight', () => {
     assert.match(result.stdout, /per\s+package/i, 'it does not say the setting is per package');
   });
 
-  it('reports the claims to compare against, and never the token', async () => {
+  it('reports what npm must match from this run, and never the token', async () => {
     /**
-     * "A claim does not match" names a category, not a field, and leaves the
-     * reader comparing four settings against nothing. The claims are printed so
-     * the wrong one is visible.
+     * The diagnosis has to name a field, not a category — "a claim does not
+     * match" leaves the reader comparing four settings against nothing.
      *
-     * The second assertion is the one that matters more. These are public
-     * metadata about the run; the token beside them is a bearer credential npm
-     * would accept, and a public log is forever.
+     * But the values printed come from **this run's environment**, not from the
+     * token, which is the second thing CodeQL was right about. Sanitising the
+     * claim strings addressed how they could rearrange a rendered summary and not
+     * the plainer fact underneath: a value fetched over HTTP was being written to
+     * a file. `GITHUB_REPOSITORY` answers "what is this job" from the runner; the
+     * token is a statement about it made elsewhere, and it is reduced to one
+     * computed word.
+     *
+     * So this asserts three things: the expected values are reported, a
+     * disagreement is still visible, and nothing the token said is quoted.
      */
-    const payload = Buffer.from(
-      JSON.stringify({
-        repository: 'Davmunrey/Trazum',
-        repository_owner: 'Davmunrey',
-        workflow_ref: 'Davmunrey/Trazum/.github/workflows/release.yml@refs/tags/v1.9.0',
-        ref: 'refs/tags/v1.9.0',
-        // Absent on purpose: it appears only when the job declares an
-        // environment, and that absence against a rule requiring one is the
-        // single most likely cause of the refusal being explained.
-        a_secret_looking_claim: 'must-not-be-printed',
-      }),
-    ).toString('base64url');
+    const claims = {
+      repository: 'Davmunrey/Trazum',
+      repository_owner: 'Davmunrey',
+      // Deliberately not what the environment below says, so `DIFFERS` is exercised.
+      workflow_ref: 'Davmunrey/Trazum/.github/workflows/SOMETHING-ELSE.yml@refs/heads/main',
+      // Absent on purpose: it appears only when the job declares an environment,
+      // and that absence against a rule requiring one is the likeliest cause of
+      // the refusal this block exists to explain.
+      a_secret_looking_claim: 'must-not-be-printed',
+    };
+    const payload = Buffer.from(JSON.stringify(claims)).toString('base64url');
     const token = `header.${payload}.signature`;
 
     const result = await withRegistry(
@@ -1186,19 +1191,31 @@ describe('the publish preflight', () => {
         await run('auth', url, {
           ACTIONS_ID_TOKEN_REQUEST_URL: `${url}/token?x=1`,
           ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'runner',
+          GITHUB_REPOSITORY: 'Davmunrey/Trazum',
+          GITHUB_REPOSITORY_OWNER: 'Davmunrey',
+          GITHUB_WORKFLOW_REF: 'Davmunrey/Trazum/.github/workflows/release.yml@refs/heads/main',
         }),
     );
 
     assert.equal(result.status, 0);
-    assert.match(result.stdout, /workflow_ref: .*release\.yml/, 'the workflow claim is not reported');
-    assert.match(result.stdout, /environment: \(absent\)/, 'an absent environment is not called out');
+
+    // What to type into npm, sourced from the runner.
+    assert.match(result.stdout, /Repository: Davmunrey\/Trazum/, 'the repository to configure is not named');
+    assert.match(result.stdout, /release\.yml/, 'the workflow to configure is not named');
+
+    // The token agreeing and disagreeing are both visible, as one word each.
+    assert.match(result.stdout, /token agrees/, 'agreement is not reported');
+    assert.match(result.stdout, /DIFFERS/, 'a disagreeing claim is not flagged');
+    assert.match(result.stdout, /ABSENT/, 'an absent environment claim is not called out');
 
     const printed = result.stdout + result.stderr;
-    assert.doesNotMatch(printed, /must-not-be-printed/, 'it printed a claim outside the allow-list');
+    // Nothing the token said is quoted — not the off-list claim, and not the
+    // disagreeing value whose text would otherwise be the obvious thing to show.
+    assert.doesNotMatch(printed, /must-not-be-printed/, 'an off-list claim was printed');
+    assert.doesNotMatch(printed, /SOMETHING-ELSE/, 'a claim value from the token was quoted');
     assert.ok(!printed.includes(token), 'it printed the OIDC token itself');
     assert.ok(!printed.includes(payload), 'it printed the raw token payload');
   });
-
   it('refuses to build a URL out of a manifest that does not look like one', async () => {
     /**
      * CodeQL raised this and was right to: both halves of every URL here come
@@ -1251,6 +1268,166 @@ describe('the publish preflight', () => {
       assert.match(child.stderr, /implausible (package name|version)/, `${label}: wrong refusal`);
       assert.equal(child.stdout, '', `${label} produced output before refusing`);
     }
+  });
+
+  it('writes its verdict where it can actually be read', async () => {
+    /**
+     * Found the hard way. This step runs before `verify`, which then prints
+     * thousands of lines of TAP output — so the verdicts and the claims, the
+     * whole point of the diagnostic, sit above a wall of test results. The logs
+     * API returns the *tail* of a job, and thirty thousand lines of it still did
+     * not reach this step. The first real refusal could not be diagnosed because
+     * the diagnosis was unreachable.
+     *
+     * The job summary is a separate document, so it is written there too.
+     */
+    const { mkdtempSync, readFileSync: read } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const summaryPath = join(mkdtempSync(join(tmpdir(), 'trazum-summary-')), 'summary.md');
+
+    await withRegistry(
+      (req, res) => {
+        if (req.url.includes('audience=')) return res.writeHead(200).end('{"value":"a.b.c"}');
+        res.writeHead(404).end('{}');
+      },
+      async (url) =>
+        await run('auth', url, {
+          ACTIONS_ID_TOKEN_REQUEST_URL: `${url}/token?x=1`,
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'runner',
+          GITHUB_STEP_SUMMARY: summaryPath,
+        }),
+    );
+
+    const written = read(summaryPath, 'utf8');
+    for (const pkg of PACKAGES) {
+      assert.ok(written.includes(manifestOf(pkg).name), `${pkg} is missing from the summary`);
+    }
+    assert.match(written, /rejected/, 'the summary does not carry the verdict');
+  });
+
+  it('says the check may be wrong, not only that the settings are', async () => {
+    /**
+     * The honesty this needs to keep. The exchange endpoint is undocumented and
+     * this repository worked out how to call it by probing, so a rejection can
+     * be the check being wrong rather than the configuration — which is exactly
+     * what it looked like the first time all three came back refused against
+     * settings that had just been filled in.
+     *
+     * Telling somebody their configuration is broken on the word of a guess is
+     * the failure mode here, and it is worse than saying nothing.
+     */
+    const result = await withRegistry(
+      (req, res) => {
+        if (req.url.includes('audience=')) return res.writeHead(200).end('{"value":"a.b.c"}');
+        res.writeHead(404).end('{}');
+      },
+      async (url) =>
+        await run('auth', url, {
+          ACTIONS_ID_TOKEN_REQUEST_URL: `${url}/token?x=1`,
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'runner',
+        }),
+    );
+
+    assert.match(result.stdout, /does not document/, 'it does not admit the endpoint is undocumented');
+    assert.match(result.stdout, /tag is\s+the authority/, 'it does not name what actually settles it');
+  });
+
+  it('a claim cannot rearrange the summary it is written into', async () => {
+    /**
+     * CodeQL's third finding on this script, and the same class as the first two:
+     * a value that arrives over the network reaching somewhere it can do more
+     * than be read. The job summary is *rendered markdown*, and the claims are
+     * decoded from a JWT fetched from the runner's token endpoint — so a claim
+     * carrying a backtick fence closes the code block it was meant to sit inside
+     * and everything after it renders as page rather than as data.
+     *
+     * A garbled summary is the mild version. One that reads as if it says
+     * something it does not is the reason to bother.
+     */
+    const { mkdtempSync, readFileSync: read } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const summaryPath = join(mkdtempSync(join(tmpdir(), 'trazum-claim-')), 'summary.md');
+
+    const hostile = '```\n\n## Everything is fine\n\n<script>alert(1)</script>';
+    const payload = Buffer.from(
+      JSON.stringify({ repository: hostile, workflow_ref: 'a'.repeat(500), environment: 'release' }),
+    ).toString('base64url');
+
+    const result = await withRegistry(
+      (req, res) => {
+        if (req.url.includes('audience=')) {
+          return res.writeHead(200).end(JSON.stringify({ value: `h.${payload}.s` }));
+        }
+        res.writeHead(404).end('{}');
+      },
+      async (url) =>
+        await run('auth', url, {
+          ACTIONS_ID_TOKEN_REQUEST_URL: `${url}/token?x=1`,
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'runner',
+          GITHUB_STEP_SUMMARY: summaryPath,
+        }),
+    );
+
+    assert.equal(result.status, 0);
+    const written = read(summaryPath, 'utf8');
+
+    /**
+     * The invariant, not a sample of it.
+     *
+     * This asserted `doesNotMatch(/<script>/)` first, and CodeQL was right to
+     * call that a bad filter: it pins one spelling of one payload, so it would
+     * pass against `<SCRIPT>` and against every other thing a hostile value
+     * could open. The property is that **nothing the token said reaches the
+     * summary at all** — the block is built from this run's environment and
+     * one-word verdicts — so the check is for the characters that could
+     * restructure the document, whatever they spell.
+     */
+    assert.doesNotMatch(written, /[<>]/, 'the summary contains markup characters');
+    assert.doesNotMatch(written, /Everything is fine/, 'a claim reached the summary');
+    assert.equal(
+      (written.match(/```/g) ?? []).length % 2,
+      0,
+      'the summary has an unbalanced code fence',
+    );
+  });
+
+  it('writes no value that arrived over the network', async () => {
+    /**
+     * The finding CodeQL raised twice, and the second time after a fix that had
+     * only addressed the claims. The summary is a document this script composes;
+     * every word in it should be one this file chose.
+     *
+     * A status npm invents is the case that slipped through — `rejected (599)`
+     * interpolates a number from a response into a rendered file. Narrowing it to
+     * an integer was not enough and should not have been: the flow is the
+     * finding, not the shape of the value.
+     */
+    const { mkdtempSync, readFileSync: read } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const summaryPath = join(mkdtempSync(join(tmpdir(), 'trazum-net-')), 'summary.md');
+
+    const result = await withRegistry(
+      (req, res) => {
+        if (req.url.includes('audience=')) return res.writeHead(200).end('{"value":"a.b.c"}');
+        // A status outside every case the script names, so an interpolated one
+        // would be unmistakable in the file.
+        res.writeHead(599).end('{}');
+      },
+      async (url) =>
+        await run('auth', url, {
+          ACTIONS_ID_TOKEN_REQUEST_URL: `${url}/token?x=1`,
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'runner',
+          GITHUB_STEP_SUMMARY: summaryPath,
+        }),
+    );
+
+    assert.equal(result.status, 0);
+    const written = read(summaryPath, 'utf8');
+    assert.doesNotMatch(written, /599/, "npm's status code was written into the summary");
+    assert.match(written, /unknown/, 'the summary does not report the outcome at all');
+    // It is still diagnosable — the number reaches the log, which is not a
+    // document this script is composing.
+    assert.match(result.stdout, /599/, 'the status is nowhere, so nobody can diagnose it');
   });
 
   it('the release workflow runs both, gated the way each needs', () => {

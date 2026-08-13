@@ -80,12 +80,16 @@ also where a required reviewer goes if you ever want publishing to need a second
 pair of eyes — the environment gate runs before the job starts, so an approval
 there blocks the publish rather than interrupting it halfway.
 
-### 3. Configure this repository as a trusted publisher — outstanding
+### 3. Configure this repository as a trusted publisher — reported done
 
-**This is the only step still to do**, and it is the one that decides whether a
-tag publishes or fails at the last stage. It has now failed that way twice: 1.8.0
-because the packages did not exist yet, and 1.9.0 because this step had not been
-done — both releases went out by hand, and neither has provenance as a result.
+The step that decides whether a tag publishes or fails at the last stage. It has
+failed that way twice: 1.8.0 because the packages did not exist yet, and 1.9.0
+because this had not been done — both releases went out by hand, and neither has
+provenance as a result.
+
+All three were configured on **2026-08-13**. The preflight below still reports
+`rejected`, which is either a setting that does not match or the preflight being
+wrong — see *when to disbelieve it*. Nothing settles it but a tag.
 
 For **each** of `@trazum/core`, `@trazum/cli` and `@trazum/mcp`, on the package's npm settings
 page under *Publishing access → Trusted publisher*, enter exactly:
@@ -143,10 +147,17 @@ environment, so a rule requiring `release` can never match a token without it.
 Until this existed the only way to test a trusted publisher was to spend a
 version number on it, which is why 1.9.0 found out the expensive way.
 
-**Why it only reports.** The exchange endpoint is npm's own plumbing rather than
-a documented API. A gate built on it would one day block a release that would
-have worked, and that is a worse failure than the one it prevents. What it buys
-is knowing before you tag rather than after.
+**Why it only reports, and when to disbelieve it.** The exchange endpoint is
+npm's own plumbing rather than a documented API — how to call it was worked out
+by probing. So a `rejected` verdict has two possible causes and the check cannot
+tell them apart: the configuration is wrong, or the request is. **If you have
+filled in all three settings pages and it still says rejected, believe the
+settings.** Tag, and let the publish answer — a tag that fails publishes
+nothing, which is the same position as not having tagged.
+
+That is also why it never gates. A gate built on a guess would one day block a
+release that would have worked, and that is worse than the failure it prevents.
+What it buys is a chance of knowing before you tag, not a verdict.
 
 There is **no token to paste and none to rotate.** That is the whole design: a
 long-lived `NPM_TOKEN` would be the highest-value credential this project holds,

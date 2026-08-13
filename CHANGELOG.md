@@ -10,7 +10,60 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+## 1.9.1 — "The preflight"
+
+**A release whose point is that the next one publishes itself.** 1.8.0 and 1.9.0
+both went out by hand — the first because the packages did not exist yet, the
+second because the trusted publisher had not been configured — so neither carries
+provenance. Nothing in the repository could tell you in advance which way a tag
+would go.
+
+It can now, with one caveat stated in the entry below: the endpoint it asks is
+undocumented, so a refusal can be the check being wrong rather than the settings.
+It says so, and it never gates.
+
 ### Fixed
+
+**A token claim could have rearranged the summary it was written into.** CodeQL's
+third finding on this script, and the same class as the first two: a value that
+arrives over the network reaching somewhere it can do more than be read. The job
+summary is *rendered markdown*, and the claims are decoded from a JWT fetched from
+the runner's token endpoint — so a claim carrying a backtick fence would close the
+code block it was meant to sit inside, and everything after it would render as
+page rather than as data.
+
+A garbled summary is the mild version. One that reads as though it says something
+it does not is the reason to bother.
+
+**The first fix was the shallow one.** Sanitising the claim strings addressed how
+they could rearrange a rendered document and left the plainer fact underneath: a
+value fetched over HTTP was being written to a file, and CodeQL said so again.
+
+So the block does not quote the token any more. The values printed come from
+**this run's own environment** — `GITHUB_REPOSITORY`, `GITHUB_WORKFLOW_REF` — which
+is the authority on what this job is, while the token is a statement about it made
+elsewhere. The token is reduced to one computed word per field: `agrees`,
+`DIFFERS`, `absent`. A disagreement is still visible, which was the whole point,
+and nothing this process did not author reaches the file. The HTTP status in each
+verdict is narrowed to a known integer for the same reason.
+
+It is also a better diagnosis. It prints what to type into npm rather than what
+the token happened to say, which is the question somebody reading a refusal
+actually has.
+
+**One value still slipped through: the HTTP status.** `rejected (${res.status})`
+put a number npm invented into a string that ends up in the file, and narrowing it
+to an integer was not enough — the flow is the finding, not the shape of the
+value. The status selects one of five labels this file chose, and the unknown case
+keeps its number on **stdout only**, because a status nobody can see is a dead end
+for whoever has to work out what happened, and a log is not a document this script
+is composing.
+
+**And a test was asserting one spelling of one payload.** It checked the summary
+did not contain `<script>`, which CodeQL correctly called a bad filter: it would
+pass against `<SCRIPT>` and against everything else a hostile value could open. It
+asserts the property now — no markup characters in the summary at all — which is
+what the code guarantees.
 
 **The auth preflight asked about one package and reported on one package, and
 the first real run showed why that is not enough.** It checked the first name

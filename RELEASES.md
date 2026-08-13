@@ -7,8 +7,8 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**1.8.0 is on npm.** `@trazum/core`, `@trazum/cli` and `@trazum/mcp` were
-published on 2026-08-13 and are installable today.
+**All three packages are on npm at 1.9.0**, published 2026-08-13 and installable
+today: `@trazum/core`, `@trazum/cli` and `@trazum/mcp`.
 
 Everything under 1.8.0 is a milestone recorded in this repository and never
 uploaded anywhere, 1.0.0 included. The numbering is kept because the ordering is
@@ -18,6 +18,39 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.9.1 — "The preflight"
+
+**Maintenance, and the point of it is that the next release publishes itself.**
+
+1.8.0 and 1.9.0 both went out by hand — the first because the packages did not
+exist yet, the second because the trusted publisher had not been configured — so
+neither tarball carries provenance. Nothing in the repository could tell you in
+advance which way a tag would go, so 1.9.0 found out by spending the tag.
+
+Two questions get asked before anything is at stake now, and a dry run from the
+Actions tab can answer them without spending a version:
+
+- **Will npm accept this workflow's identity?** Asked against npm's token
+  exchange, once per package, because the setting lives on three separate pages
+  and doing two of them is the easiest mistake available.
+- **Is any of these version numbers already spent?** npm never reuses one, and
+  the packages publish in dependency order — so without this, core uploading and
+  the CLI failing costs the whole set a version.
+
+**One honest caveat.** The endpoint behind the first question is not documented;
+how to call it was worked out by probing. A refusal can therefore be the check
+being wrong rather than your settings, and it cannot tell those apart — so it
+says so and never blocks a release. Only a tag settles it.
+
+Also: `E404 Not Found - PUT` from npm is an authentication failure, not a missing
+package. The workflow explains that itself now instead of leaving it in a
+document you would have to already know to read.
+
+**Nothing in the library, the CLI or the reports changed.** If you are not
+releasing Trazum, this version is identical to 1.9.0 for you.
 
 ---
 
