@@ -284,6 +284,29 @@ function describeToken(idToken) {
   return `  What npm must match, from this run's own environment:\n${lines.join('\n')}`;
 }
 
+/**
+ * How npm answered, as one of a fixed set of words this file chose.
+ *
+ * **Nothing from the response is interpolated, and that is the point.** The
+ * previous version built `rejected (${res.status})`, which put a number that
+ * arrived over HTTP into a string that ends up in a rendered file — CodeQL's
+ * "network data written to file", raised twice, and the second time after a fix
+ * that had only addressed the claims. Narrowing it to an integer was not enough
+ * and should not have been: the flow is the finding, not the shape of the value.
+ *
+ * So the status selects a label rather than becoming one. The unknown case keeps
+ * its number, on stdout only, because a status nobody can see is a dead end for
+ * whoever has to work out what happened — and stdout is a log, not a document
+ * this file is composing.
+ */
+const VERDICT = {
+  configured: 'configured',
+  unauthorized: 'rejected (401)',
+  forbidden: 'rejected (403)',
+  notFound: 'rejected (404)',
+  unknown: 'unknown',
+};
+
 /** Ask npm whether this token may publish one package. */
 async function exchangeFor(name, idToken) {
   const endpoint = registryUrl('-', 'npm', 'v1', 'oidc', 'token', 'exchange', 'package', registryName(name));
@@ -292,15 +315,16 @@ async function exchangeFor(name, idToken) {
     headers: { authorization: `Bearer ${idToken}`, 'content-type': 'application/json' },
     body: '{}',
   });
-  // The status is narrowed to a known integer rather than interpolated as it
-  // arrived. It reaches a rendered summary, and network data does not get to
-  // choose how a document is laid out — same reason as `safeClaim`.
-  const status = Number.isInteger(res.status) ? res.status : 0;
-  if (res.ok) return 'configured';
+
+  if (res.ok) return VERDICT.configured;
   // 404 is the one that misleads. npm answers a write you are not authorised for
   // with "not found", which reads as a missing package and is an auth failure.
-  if ([401, 403, 404].includes(status)) return `rejected (${status})`;
-  return `unknown (${status})`;
+  if (res.status === 401) return VERDICT.unauthorized;
+  if (res.status === 403) return VERDICT.forbidden;
+  if (res.status === 404) return VERDICT.notFound;
+  // The number goes to the log, never into what gets written.
+  console.log(`  npm answered ${String(Number(res.status) || 0)} for this package`);
+  return VERDICT.unknown;
 }
 
 /**
@@ -344,7 +368,7 @@ async function checkAuth() {
       verdicts.push([name, await exchangeFor(name, idToken)]);
     } catch (error) {
       warn(`Could not reach npm to verify ${name}: ${error.message}`);
-      verdicts.push([name, 'unknown (unreachable)']);
+      verdicts.push([name, VERDICT.unknown]);
     }
   }
 
@@ -356,7 +380,7 @@ async function checkAuth() {
   );
 
   const rejected = verdicts.filter(([, v]) => v.startsWith('rejected')).map(([name]) => name);
-  const unknown = verdicts.filter(([, v]) => v.startsWith('unknown')).map(([name]) => name);
+  const unknown = verdicts.filter(([, v]) => v === VERDICT.unknown).map(([name]) => name);
 
   if (rejected.length > 0) {
     warn(

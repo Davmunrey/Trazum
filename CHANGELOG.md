@@ -51,6 +51,14 @@ It is also a better diagnosis. It prints what to type into npm rather than what
 the token happened to say, which is the question somebody reading a refusal
 actually has.
 
+**One value still slipped through: the HTTP status.** `rejected (${res.status})`
+put a number npm invented into a string that ends up in the file, and narrowing it
+to an integer was not enough — the flow is the finding, not the shape of the
+value. The status selects one of five labels this file chose, and the unknown case
+keeps its number on **stdout only**, because a status nobody can see is a dead end
+for whoever has to work out what happened, and a log is not a document this script
+is composing.
+
 **And a test was asserting one spelling of one payload.** It checked the summary
 did not contain `<script>`, which CodeQL correctly called a bad filter: it would
 pass against `<SCRIPT>` and against everything else a hostile value could open. It

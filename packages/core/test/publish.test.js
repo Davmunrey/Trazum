@@ -1391,6 +1391,45 @@ describe('the publish preflight', () => {
     );
   });
 
+  it('writes no value that arrived over the network', async () => {
+    /**
+     * The finding CodeQL raised twice, and the second time after a fix that had
+     * only addressed the claims. The summary is a document this script composes;
+     * every word in it should be one this file chose.
+     *
+     * A status npm invents is the case that slipped through — `rejected (599)`
+     * interpolates a number from a response into a rendered file. Narrowing it to
+     * an integer was not enough and should not have been: the flow is the
+     * finding, not the shape of the value.
+     */
+    const { mkdtempSync, readFileSync: read } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const summaryPath = join(mkdtempSync(join(tmpdir(), 'trazum-net-')), 'summary.md');
+
+    const result = await withRegistry(
+      (req, res) => {
+        if (req.url.includes('audience=')) return res.writeHead(200).end('{"value":"a.b.c"}');
+        // A status outside every case the script names, so an interpolated one
+        // would be unmistakable in the file.
+        res.writeHead(599).end('{}');
+      },
+      async (url) =>
+        await run('auth', url, {
+          ACTIONS_ID_TOKEN_REQUEST_URL: `${url}/token?x=1`,
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'runner',
+          GITHUB_STEP_SUMMARY: summaryPath,
+        }),
+    );
+
+    assert.equal(result.status, 0);
+    const written = read(summaryPath, 'utf8');
+    assert.doesNotMatch(written, /599/, "npm's status code was written into the summary");
+    assert.match(written, /unknown/, 'the summary does not report the outcome at all');
+    // It is still diagnosable — the number reaches the log, which is not a
+    // document this script is composing.
+    assert.match(result.stdout, /599/, 'the status is nowhere, so nobody can diagnose it');
+  });
+
   it('the release workflow runs both, gated the way each needs', () => {
     const release = readFileSync(join(repoRoot, '.github/workflows/release.yml'), 'utf8');
     const steps = release.split(/^      - /m);
