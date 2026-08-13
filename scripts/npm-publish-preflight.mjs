@@ -50,7 +50,7 @@
  * existed.
  */
 
-import { readFileSync, readdirSync, existsSync } from 'node:fs';
+import { appendFileSync, readFileSync, readdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -88,10 +88,35 @@ function publishablePackages() {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** GitHub Actions annotations, so a finding lands on the run summary. */
+/** GitHub Actions annotations, so a finding surfaces without opening the log. */
 const notice = (message) => console.log(`::notice::${message}`);
 const warn = (message) => console.log(`::warning::${message}`);
 const fail = (message) => console.log(`::error::${message}`);
+
+/**
+ * The job summary, which is where this actually gets read.
+ *
+ * **stdout was not enough and that was found the hard way.** This step runs
+ * before `verify`, and `verify` prints thousands of lines of TAP output after
+ * it — so the per-package verdicts and the token claims, the whole point of the
+ * diagnostic, sit above a wall of test results. The GitHub logs API returns the
+ * *tail* of a job, and thirty thousand lines of it still did not reach this
+ * step. A diagnosis nobody can retrieve is not a diagnosis.
+ *
+ * The summary is a separate document, rendered at the top of the run page and
+ * fetchable on its own. Same content, somewhere it can be found.
+ *
+ * Silently a no-op outside Actions, so the script still runs locally.
+ */
+function summary(markdown) {
+  const path = process.env.GITHUB_STEP_SUMMARY;
+  if (!path) return;
+  try {
+    appendFileSync(path, `${markdown}\n`);
+  } catch {
+    // A summary that cannot be written is not worth failing a release over.
+  }
+}
 
 /**
  * A package name and a version, checked before either reaches a URL.
@@ -277,6 +302,11 @@ async function checkAuth() {
   }
 
   for (const [name, verdict] of verdicts) console.log(`  ${verdict.padEnd(22)}${name}`);
+  summary(
+    ['### npm trusted publishing', '', '| package | verdict |', '|---|---|']
+      .concat(verdicts.map(([name, verdict]) => `| \`${name}\` | ${verdict} |`))
+      .join('\n'),
+  );
 
   const rejected = verdicts.filter(([, v]) => v.startsWith('rejected')).map(([name]) => name);
   const unknown = verdicts.filter(([, v]) => v.startsWith('unknown')).map(([name]) => name);
@@ -292,9 +322,16 @@ async function checkAuth() {
         'GitHub Actions, org Davmunrey, repo Trazum, workflow release.yml, environment ' +
         'release. Compare each field against the claims below — `environment` absent ' +
         'means this job did not declare one, and a rule requiring it can never match. ' +
-        'See docs/releasing.md.',
+        'See docs/releasing.md. ' +
+        'AND IF YOU HAVE ALREADY CONFIGURED ALL OF THEM: believe your settings over ' +
+        'this check. It uses an endpoint npm does not document, in a way this ' +
+        'repository worked out by probing it, so a rejection can be the check being ' +
+        'wrong rather than the configuration. That is why it only warns. The tag is ' +
+        'the authority, and a tag that fails publishes nothing.',
     );
-    console.log(describeToken(idToken));
+    const claims = describeToken(idToken);
+    console.log(claims);
+    summary(`\n**Compare these against what npm has:**\n\n\`\`\`\n${claims}\n\`\`\``);
     return 'rejected';
   }
 

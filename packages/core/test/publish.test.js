@@ -1253,6 +1253,68 @@ describe('the publish preflight', () => {
     }
   });
 
+  it('writes its verdict where it can actually be read', async () => {
+    /**
+     * Found the hard way. This step runs before `verify`, which then prints
+     * thousands of lines of TAP output — so the verdicts and the claims, the
+     * whole point of the diagnostic, sit above a wall of test results. The logs
+     * API returns the *tail* of a job, and thirty thousand lines of it still did
+     * not reach this step. The first real refusal could not be diagnosed because
+     * the diagnosis was unreachable.
+     *
+     * The job summary is a separate document, so it is written there too.
+     */
+    const { mkdtempSync, readFileSync: read } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const summaryPath = join(mkdtempSync(join(tmpdir(), 'trazum-summary-')), 'summary.md');
+
+    await withRegistry(
+      (req, res) => {
+        if (req.url.includes('audience=')) return res.writeHead(200).end('{"value":"a.b.c"}');
+        res.writeHead(404).end('{}');
+      },
+      async (url) =>
+        await run('auth', url, {
+          ACTIONS_ID_TOKEN_REQUEST_URL: `${url}/token?x=1`,
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'runner',
+          GITHUB_STEP_SUMMARY: summaryPath,
+        }),
+    );
+
+    const written = read(summaryPath, 'utf8');
+    for (const pkg of PACKAGES) {
+      assert.ok(written.includes(manifestOf(pkg).name), `${pkg} is missing from the summary`);
+    }
+    assert.match(written, /rejected/, 'the summary does not carry the verdict');
+  });
+
+  it('says the check may be wrong, not only that the settings are', async () => {
+    /**
+     * The honesty this needs to keep. The exchange endpoint is undocumented and
+     * this repository worked out how to call it by probing, so a rejection can
+     * be the check being wrong rather than the configuration — which is exactly
+     * what it looked like the first time all three came back refused against
+     * settings that had just been filled in.
+     *
+     * Telling somebody their configuration is broken on the word of a guess is
+     * the failure mode here, and it is worse than saying nothing.
+     */
+    const result = await withRegistry(
+      (req, res) => {
+        if (req.url.includes('audience=')) return res.writeHead(200).end('{"value":"a.b.c"}');
+        res.writeHead(404).end('{}');
+      },
+      async (url) =>
+        await run('auth', url, {
+          ACTIONS_ID_TOKEN_REQUEST_URL: `${url}/token?x=1`,
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'runner',
+        }),
+    );
+
+    assert.match(result.stdout, /does not document/, 'it does not admit the endpoint is undocumented');
+    assert.match(result.stdout, /tag is\s+the authority/, 'it does not name what actually settles it');
+  });
+
   it('the release workflow runs both, gated the way each needs', () => {
     const release = readFileSync(join(repoRoot, '.github/workflows/release.yml'), 'utf8');
     const steps = release.split(/^      - /m);
