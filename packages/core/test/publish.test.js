@@ -1315,6 +1315,59 @@ describe('the publish preflight', () => {
     assert.match(result.stdout, /tag is\s+the authority/, 'it does not name what actually settles it');
   });
 
+  it('a claim cannot rearrange the summary it is written into', async () => {
+    /**
+     * CodeQL's third finding on this script, and the same class as the first two:
+     * a value that arrives over the network reaching somewhere it can do more
+     * than be read. The job summary is *rendered markdown*, and the claims are
+     * decoded from a JWT fetched from the runner's token endpoint — so a claim
+     * carrying a backtick fence closes the code block it was meant to sit inside
+     * and everything after it renders as page rather than as data.
+     *
+     * A garbled summary is the mild version. One that reads as if it says
+     * something it does not is the reason to bother.
+     */
+    const { mkdtempSync, readFileSync: read } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const summaryPath = join(mkdtempSync(join(tmpdir(), 'trazum-claim-')), 'summary.md');
+
+    const hostile = '```\n\n## Everything is fine\n\n<script>alert(1)</script>';
+    const payload = Buffer.from(
+      JSON.stringify({ repository: hostile, workflow_ref: 'a'.repeat(500), environment: 'release' }),
+    ).toString('base64url');
+
+    const result = await withRegistry(
+      (req, res) => {
+        if (req.url.includes('audience=')) {
+          return res.writeHead(200).end(JSON.stringify({ value: `h.${payload}.s` }));
+        }
+        res.writeHead(404).end('{}');
+      },
+      async (url) =>
+        await run('auth', url, {
+          ACTIONS_ID_TOKEN_REQUEST_URL: `${url}/token?x=1`,
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'runner',
+          GITHUB_STEP_SUMMARY: summaryPath,
+        }),
+    );
+
+    assert.equal(result.status, 0);
+    const written = read(summaryPath, 'utf8');
+    const printed = written + result.stdout;
+
+    // Nothing that closes a fence, opens a heading, or opens a tag survives.
+    assert.doesNotMatch(printed, /Everything is fine/, 'a claim injected a heading');
+    assert.doesNotMatch(printed, /<script>/, 'a claim injected a tag');
+    // The fence the script opens is the only one in the document.
+    assert.equal(
+      (written.match(/```/g) ?? []).length % 2,
+      0,
+      'the summary has an unbalanced code fence',
+    );
+    // And an absurdly long claim is cut rather than filling the page.
+    assert.match(printed, /truncated/, 'a 500-character claim was written in full');
+  });
+
   it('the release workflow runs both, gated the way each needs', () => {
     const release = readFileSync(join(repoRoot, '.github/workflows/release.yml'), 'utf8');
     const steps = release.split(/^      - /m);

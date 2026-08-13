@@ -229,11 +229,36 @@ async function githubIdToken() {
  */
 const TOKEN_CLAIMS = ['repository', 'repository_owner', 'workflow_ref', 'job_workflow_ref', 'environment', 'ref'];
 
+/**
+ * A claim value, reduced to something that cannot rearrange the page it lands on.
+ *
+ * **CodeQL raised this and it is the same class of fault as the last one.** These
+ * values arrive over the network — a JWT fetched from the runner's token endpoint
+ * — and they are written into a job summary, which is *rendered markdown*. Writing
+ * them through unchanged means a value containing a backtick fence closes the code
+ * block it was supposed to sit inside, and everything after it renders as page
+ * rather than as data. A garbled summary is the mild version; a summary that reads
+ * as if it says something it does not is the reason to bother.
+ *
+ * The allow-list is what these claims are actually made of: repository paths, refs,
+ * workflow paths, an environment name. Anything else becomes `?`, so a surprise is
+ * visible rather than silently dropped, and the whole thing is capped because a
+ * claim is a short identifier and a long one is not a claim.
+ */
+const CLAIM_SAFE = /[^A-Za-z0-9/._@:+-]/g;
+
+function safeClaim(value) {
+  if (value === undefined || value === null) return '(absent)';
+  const text = String(value);
+  const cleaned = text.replace(CLAIM_SAFE, '?');
+  return cleaned.length > 200 ? `${cleaned.slice(0, 200)}…(truncated)` : cleaned;
+}
+
 function describeToken(idToken) {
   try {
     const [, payload] = idToken.split('.');
     const claims = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
-    const lines = TOKEN_CLAIMS.map((key) => `    ${key}: ${claims[key] ?? '(absent)'}`);
+    const lines = TOKEN_CLAIMS.map((key) => `    ${key}: ${safeClaim(claims[key])}`);
     return `  The token this run carries:\n${lines.join('\n')}`;
   } catch {
     // A token that will not decode is not a reason to say nothing about the rest.
@@ -249,11 +274,15 @@ async function exchangeFor(name, idToken) {
     headers: { authorization: `Bearer ${idToken}`, 'content-type': 'application/json' },
     body: '{}',
   });
+  // The status is narrowed to a known integer rather than interpolated as it
+  // arrived. It reaches a rendered summary, and network data does not get to
+  // choose how a document is laid out — same reason as `safeClaim`.
+  const status = Number.isInteger(res.status) ? res.status : 0;
   if (res.ok) return 'configured';
   // 404 is the one that misleads. npm answers a write you are not authorised for
   // with "not found", which reads as a missing package and is an auth failure.
-  if ([401, 403, 404].includes(res.status)) return `rejected (${res.status})`;
-  return `unknown (${res.status})`;
+  if ([401, 403, 404].includes(status)) return `rejected (${status})`;
+  return `unknown (${status})`;
 }
 
 /**

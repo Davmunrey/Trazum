@@ -24,6 +24,22 @@ It says so, and it never gates.
 
 ### Fixed
 
+**A token claim could have rearranged the summary it was written into.** CodeQL's
+third finding on this script, and the same class as the first two: a value that
+arrives over the network reaching somewhere it can do more than be read. The job
+summary is *rendered markdown*, and the claims are decoded from a JWT fetched from
+the runner's token endpoint — so a claim carrying a backtick fence would close the
+code block it was meant to sit inside, and everything after it would render as
+page rather than as data.
+
+A garbled summary is the mild version. One that reads as though it says something
+it does not is the reason to bother. Claim values go through an allow-list of what
+these claims are actually made of — repository paths, refs, workflow paths, an
+environment name — with anything else becoming `?` so a surprise is visible rather
+than dropped, and a cap, because a claim is a short identifier and a long one is
+not a claim. The HTTP status in each verdict is narrowed to a known integer for
+the same reason.
+
 **The auth preflight asked about one package and reported on one package, and
 the first real run showed why that is not enough.** It checked the first name
 alphabetically — `@trazum/cli` — on the reasoning that a misconfiguration is
