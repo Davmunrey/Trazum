@@ -10,6 +10,18 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+## 1.9.1 — "The preflight"
+
+**A release whose point is that the next one publishes itself.** 1.8.0 and 1.9.0
+both went out by hand — the first because the packages did not exist yet, the
+second because the trusted publisher had not been configured — so neither carries
+provenance. Nothing in the repository could tell you in advance which way a tag
+would go.
+
+It can now, with one caveat stated in the entry below: the endpoint it asks is
+undocumented, so a refusal can be the check being wrong rather than the settings.
+It says so, and it never gates.
+
 ### Fixed
 
 **The auth preflight asked about one package and reported on one package, and
