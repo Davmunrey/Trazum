@@ -915,3 +915,227 @@ describe('a privacy claim is a claim like any other', () => {
     assert.match(section, /docs\/accounts\.md/, 'the section does not link the full account');
   });
 });
+
+describe('the publish preflight', () => {
+  /**
+   * The checks that would have caught 1.9.0 before it cost anything.
+   *
+   * That release was tagged, passed everything, and failed on the last step with
+   * `E404 Not Found - PUT` because the trusted publisher had not been configured.
+   * npm reports a write you are not authorised for as "not found", so the error
+   * named the wrong problem. Nothing was published — but the tag was spent and
+   * the release went out by hand, which means no provenance.
+   *
+   * Two questions, and they are gated differently on purpose. Whether a version
+   * is already spent is read from the public registry API and is not a maybe, so
+   * it fails the job. Whether npm will accept the OIDC token is read from npm's
+   * internal token-exchange plumbing, so it only reports: a gate built on an
+   * undocumented endpoint would one day block a release that would have worked,
+   * which is worse than the failure it prevents.
+   */
+
+  const script = join(repoRoot, 'scripts/npm-publish-preflight.mjs');
+
+  /**
+   * The script against a registry under this test's control.
+   *
+   * `spawn` and not `spawnSync`, which is not a style preference: the fake
+   * registry runs in this process, and `spawnSync` blocks the event loop, so the
+   * server can never accept the connection the child is waiting on. Written that
+   * way first and every test in here timed out at twenty seconds against a
+   * script that works.
+   */
+  const run = async (mode, registry, env = {}) => {
+    const { spawn } = await import('node:child_process');
+    const child = spawn(process.execPath, [script, mode], {
+      env: {
+        ...process.env,
+        TRAZUM_NPM_REGISTRY: registry,
+        // Cleared so a real runner's credentials can never reach this test, and
+        // so `auth` takes its no-token path unless a case supplies one.
+        ACTIONS_ID_TOKEN_REQUEST_URL: '',
+        ACTIONS_ID_TOKEN_REQUEST_TOKEN: '',
+        ...env,
+      },
+    });
+
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (chunk) => (stdout += chunk));
+    child.stderr.on('data', (chunk) => (stderr += chunk));
+
+    const status = await new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        child.kill();
+        reject(new Error(`${mode} did not finish in 20s`));
+      }, 20000);
+      child.on('error', reject);
+      child.on('close', (code) => {
+        clearTimeout(timer);
+        resolve(code);
+      });
+    });
+
+    return { status, stdout, stderr };
+  };
+
+  /** A registry that answers however the test needs, on a real socket. */
+  const withRegistry = async (handler, body) => {
+    const { createServer } = await import('node:http');
+    const server = createServer(handler);
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    try {
+      return await body(`http://127.0.0.1:${server.address().port}`);
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+    }
+  };
+
+  it('passes when every version is free, and names all of them', async () => {
+    const asked = [];
+    const result = await withRegistry(
+      (req, res) => {
+        asked.push(req.url);
+        res.writeHead(404).end('{}');
+      },
+      async (url) => await run('versions', url),
+    );
+
+    assert.equal(result.status, 0, result.stdout + result.stderr);
+
+    // Derived from the root `workspaces` globs rather than a list typed in the
+    // script — the failure mode every other guard in this file exists to avoid,
+    // and the one that left `packages/mcp` unmentioned for a whole day.
+    const publishable = PACKAGES.map((pkg) => manifestOf(pkg).name);
+    assert.ok(publishable.length >= 3, 'fewer publishable packages than expected');
+    for (const name of publishable) {
+      assert.ok(
+        // Decoded, because the scope slash reaches the wire as `%2f` and
+        // asserting on the encoding would pin npm's spelling rather than ours.
+        asked.some((path) => decodeURIComponent(path).includes(name)),
+        `${name} was never checked against the registry`,
+      );
+    }
+  });
+
+  it('fails, and publishes nothing, when a version is already spent', async () => {
+    // The expensive shape this prevents: core uploads, the CLI fails, and core's
+    // number is gone. npm never reuses a version, so the whole set has to move.
+    const taken = manifestOf('packages/core').name;
+    const result = await withRegistry(
+      (req, res) => {
+        if (decodeURIComponent(req.url).includes(taken)) res.writeHead(200).end('{"version":"x"}');
+        else res.writeHead(404).end('{}');
+      },
+      async (url) => await run('versions', url),
+    );
+
+    assert.equal(result.status, 1);
+    assert.match(result.stdout, /::error::/);
+    assert.match(result.stdout, new RegExp(taken.replace('/', '\\/')));
+  });
+
+  it('treats an unreachable registry as unknown, never as free', async () => {
+    /**
+     * The direction that matters. A registry that will not answer is not
+     * evidence a version is available, and publishing on that assumption is the
+     * mistake this whole file exists to prevent — so a 500 fails the job exactly
+     * as a taken version does.
+     */
+    const result = await withRegistry(
+      (_req, res) => res.writeHead(500).end('nope'),
+      async (url) => await run('versions', url),
+    );
+
+    assert.equal(result.status, 1, 'a broken registry was treated as permission to publish');
+    assert.match(result.stdout, /Could not check/);
+  });
+
+  it('the auth check reports and never fails the job', async () => {
+    /**
+     * Deliberate, and the comment in the script argues it at length: the
+     * exchange endpoint is npm's internal plumbing. If npm moves it, a gate
+     * would block releases that would have worked. It reports; the upload is
+     * still the authority.
+     *
+     * Both paths asserted — no OIDC token available, and a registry refusing
+     * the exchange — because "never fails" is the property, not "never fails
+     * for the reason I happened to test".
+     */
+    const noToken = await withRegistry(
+      (_req, res) => res.writeHead(404).end('{}'),
+      async (url) => await run('auth', url),
+    );
+    assert.equal(noToken.status, 0, 'a missing OIDC token failed the job');
+    assert.match(noToken.stdout, /::warning::/, 'it failed quietly instead of reporting');
+
+    const refused = await withRegistry(
+      (req, res) => {
+        // Stand in for the runner's token endpoint and for npm, in one server.
+        if (req.url.includes('audience=')) res.writeHead(200).end('{"value":"a.b.c"}');
+        else res.writeHead(404).end('{}');
+      },
+      async (url) =>
+        await run('auth', url, {
+          ACTIONS_ID_TOKEN_REQUEST_URL: `${url}/token?x=1`,
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'runner',
+        }),
+    );
+    assert.equal(refused.status, 0, 'npm refusing the token failed the job');
+    assert.match(refused.stdout, /::warning::/);
+    // The message has to name the field people actually leave blank.
+    assert.match(refused.stdout, /environment/i);
+  });
+
+  it('and says so plainly when npm accepts the token', async () => {
+    // The green case is the one that answers the open question in a dry run, so
+    // it needs to be unmistakable rather than silence.
+    const accepted = await withRegistry(
+      (req, res) => {
+        if (req.url.includes('audience=')) res.writeHead(200).end('{"value":"a.b.c"}');
+        else res.writeHead(200).end('{"token":"npm_shortlived"}');
+      },
+      async (url) =>
+        await run('auth', url, {
+          ACTIONS_ID_TOKEN_REQUEST_URL: `${url}/token?x=1`,
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'runner',
+        }),
+    );
+
+    assert.equal(accepted.status, 0);
+    assert.match(accepted.stdout, /::notice::/);
+    assert.doesNotMatch(accepted.stdout, /::warning::/, 'it warned about a working configuration');
+  });
+
+  it('the release workflow runs both, gated the way each needs', () => {
+    const release = readFileSync(join(repoRoot, '.github/workflows/release.yml'), 'utf8');
+    const steps = release.split(/^      - /m);
+
+    const authStep = steps.find((s) => /preflight\.mjs auth/.test(s));
+    const versionStep = steps.find((s) => /preflight\.mjs versions/.test(s));
+
+    assert.ok(authStep, 'the release does not check whether it can authenticate');
+    assert.ok(versionStep, 'the release does not check whether a version is spent');
+
+    // The auth check has to run on `workflow_dispatch` too, or the open question
+    // stays open: before this, a dry run proved the environment gate existed and
+    // nothing about npm, so testing a trusted publisher cost a version number.
+    assert.doesNotMatch(
+      authStep,
+      /if:\s*startsWith\(github\.ref/,
+      'the auth check is tag-gated, so a dry run still cannot answer it',
+    );
+
+    // The version check must run before anything is uploaded, or it is a
+    // post-mortem rather than a preflight.
+    assert.match(versionStep, /if:\s*startsWith\(github\.ref, 'refs\/tags\/'\)/);
+    assert.ok(
+      release.indexOf('preflight.mjs versions') < release.indexOf('run: npm publish'),
+      'the version check runs after a publish, which is not a preflight',
+    );
+
+    // And the failure note, because npm's 404 names the wrong problem.
+    assert.match(release, /if:\s*failure\(\)/, 'nothing explains a failed publish');
+    assert.match(release, /E404/, 'the failure note does not name the error it explains');
+  });
+});

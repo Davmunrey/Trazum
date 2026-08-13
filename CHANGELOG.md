@@ -10,6 +10,49 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+**The release workflow can now tell you whether a tag will publish, before you
+push the tag.** 1.9.0 was tagged, passed every check, and failed on the last step
+with `E404 Not Found - PUT` because the trusted publisher had not been
+configured. Nothing was published — but the tag was spent and the release went
+out by hand for the second time running, which means no provenance for the second
+time running.
+
+Both of the things that went wrong were knowable in advance, and neither was
+checked. `scripts/npm-publish-preflight.mjs` asks them now.
+
+**Can this workflow authenticate?** It puts a GitHub-signed OIDC token to npm's
+token-exchange endpoint — the same question the upload steps ask — and answers
+`configured`, `rejected` or `could not verify`. It runs on `workflow_dispatch`
+too, so a dry run finally settles this: before, a dry run proved the environment
+gate existed and nothing at all about npm, and the only way to test a trusted
+publisher was to spend a version number on it.
+
+**This one never fails the job, deliberately.** The exchange endpoint is npm's
+own plumbing rather than a documented API, and a gate built on it would one day
+block a release that would have worked — worse than the failure it prevents. It
+reports; the upload is still the authority. A test pins that, because "it only
+warns" is the kind of property that quietly becomes "it fails on Tuesdays".
+
+**Is any of these versions already spent?** npm never reuses a version, and the
+packages publish in dependency order, so the expensive shape is core uploading,
+the CLI failing, and core's number being gone. Checking all three against the
+public registry before the first upload turns that into a clean abort. This one
+**does** fail the job — it reads a documented API, and a version that already
+exists is not a maybe. An unreachable registry fails it too: not answering is not
+evidence a version is free.
+
+**And npm's 404 no longer names the wrong problem.** Any publish failure now
+prints what `E404 Not Found - PUT` actually means, with the four fields to check
+and which one people leave blank. That diagnosis existed in `docs/releasing.md`
+and was no use to anyone who did not already know to look there.
+
+All five guards are mutation-tested: reporting a taken version as free, treating
+an unreachable registry as free, making the auth check fail the job, dropping the
+version preflight from the workflow, and tag-gating the auth check so a dry run
+cannot answer it. Each one fails the suite.
+
 ### Changed
 
 **The README's action pin advanced to the 1.9.0 commit**, from a 1.0.0 commit it
