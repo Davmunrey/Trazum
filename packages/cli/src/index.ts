@@ -527,6 +527,59 @@ function languageNames(codes: readonly string[], t: CliMessages): string {
   return `${names.slice(0, -1).join(', ')} ${t.languages.and} ${names[names.length - 1]}`;
 }
 
+/**
+ * Advisories whose entire pitch is money.
+ *
+ * On a subscription these are not weaker advice, they are not advice: "use a
+ * cheaper model" saves nothing on a flat plan, and its detail text quotes dollars
+ * per month, so suppressing only the price tag beside the title left the money in
+ * the sentence underneath.
+ */
+const MONEY_ONLY_ADVISORIES: ReadonlySet<string> = new Set([
+  'model-downgrade',
+  'batch-api',
+  'output-dominated',
+  'promo-pricing',
+  'prompt-caching-not-worth-it',
+]);
+
+/**
+ * The one thing worth doing about this prompt, and how it compares to shortening it.
+ *
+ * `null` when there is nothing to say: no advisory carries a figure, or the
+ * reader is on a subscription where a monthly saving is meaningless. A heading
+ * with a shrug under it is worse than no heading.
+ */
+function biggestLever(
+  result: OptimizationResult,
+  tokensOnly: boolean,
+  t: CliMessages,
+): { line: string } | null {
+  /**
+   * One guard, and it is the only thing deciding.
+   *
+   * The first version also filtered the candidate list by `!tokensOnly`, which
+   * duplicated this and made it untestable: removing the guard left the filter
+   * still suppressing the line, so a mutation that priced a subscription passed
+   * the suite. Two checks for one condition is one check and one place for a bug.
+   */
+  if (tokensOnly) return null;
+  const best = result.advisories.find((a) => (a.estimatedMonthlyUsd ?? 0) > 0);
+  if (!best?.estimatedMonthlyUsd) return null;
+
+  const ruleSaving = result.savings.monthlySavingsUsd;
+  return {
+    line: t.report.biggestLeverDetail(
+      best.title,
+      formatUsd(best.estimatedMonthlyUsd),
+      // The multiple is the point of the line, and it is only honest when there
+      // is something to divide by. A prompt the rules could not improve at all
+      // gets the amount and no ratio rather than a division by zero dressed up.
+      ruleSaving > 0 ? Math.round(best.estimatedMonthlyUsd / ruleSaving) : null,
+    ),
+  };
+}
+
 function printReport(
   result: OptimizationResult,
   showDiff: boolean,
@@ -542,6 +595,32 @@ function printReport(
     result.tokenSource === 'heuristic'
       ? c.dim(t.report.estimated(offFamilyName(result.usage.model)))
       : c.dim(t.report.exactCount());
+
+  /**
+   * The largest lever, first.
+   *
+   * This line used to be the last thing in the report and it is the most useful
+   * thing in it. Measured on an ordinary support prompt — already reasonably
+   * written, which is what a real one is — the rules recover **three tokens of
+   * 306**, worth $0.75 a month, while the cache reorder sitting below them is
+   * worth $48. The report opened with the 1.3% and closed with the 64×.
+   *
+   * That ordering is not a presentation quibble. It teaches the reader that
+   * shortening the prompt is what this tool is for, and on any prompt somebody
+   * competent wrote, shortening it is the smallest thing available. The rules
+   * earn their keep on genuine bloat — a duplicated paragraph, "due to the fact
+   * that" — and recover close to nothing once that is gone, because they recover
+   * waste rather than creating savings.
+   *
+   * So the answer to "what should I do about this prompt" goes at the top, and
+   * the token count follows as the detail it is.
+   */
+  const best = biggestLever(result, tokensOnly, t);
+  if (best) {
+    console.log();
+    console.log(c.bold(t.report.biggestLever()));
+    console.log(`  ${c.dim(wrap(best.line, 74, '  '))}`);
+  }
 
   console.log();
   console.log(c.bold(t.report.inputTokens()));
@@ -668,13 +747,7 @@ function printReport(
   // The rest stay: an overflowing context window still fails the call, a
   // contradiction is still wrong, redundant examples still cost tokens, and
   // caching still buys latency and rate-limit headroom.
-  const MONEY_ONLY = new Set([
-    'model-downgrade',
-    'batch-api',
-    'output-dominated',
-    'promo-pricing',
-    'prompt-caching-not-worth-it',
-  ]);
+  const MONEY_ONLY = MONEY_ONLY_ADVISORIES;
   const advisories = tokensOnly
     ? result.advisories.filter((a) => !MONEY_ONLY.has(a.id))
     : result.advisories;
@@ -711,23 +784,8 @@ function printReport(
       console.log(`${gutter}${c.dim(wrap(advisory.detail, 78 - gutter.length, gutter))}`);
     }
 
-    // What to do first. The rules trimmed $1.25 and the top advisory is worth
-    // $506; leaving the reader to notice that by comparing four numbers in four
-    // sentences is how the most valuable line in the report gets skipped.
-    const best = advisories.find((a) => (a.estimatedMonthlyUsd ?? 0) > 0);
-    if (!tokensOnly && best?.estimatedMonthlyUsd) {
-      const ruleSaving = result.savings.monthlySavingsUsd;
-      const line = t.report.biggestLeverDetail(
-        best.title,
-        formatUsd(best.estimatedMonthlyUsd),
-        ruleSaving > 0 ? Math.round(best.estimatedMonthlyUsd / ruleSaving) : null,
-      );
-      console.log();
-      // Wrapped to the same width as everything else. An unwrapped closing line
-      // is the one that runs off a narrow terminal, and it is the line most
-      // worth reading.
-      console.log(`  ${c.bold(t.report.biggestLever())} ${c.dim(wrap(line, 62, '  '))}`);
-    }
+    // The "start here" line is printed at the top of the report now, where a
+    // reader who stops after four lines still sees it.
   }
 
   printSuggestions(suggestions, t, n);
