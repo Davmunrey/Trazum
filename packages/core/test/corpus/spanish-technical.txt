@@ -1,0 +1,14 @@
+Revisa el diff de la pull request y decide si es seguro fusionarla.
+
+Considera cada uno de estos puntos por separado y responde sobre todos ellos:
+- ¿El cambio introduce una regresión de comportamiento que las pruebas no detectarían?
+- ¿Hay rutas de error que se traguen un fallo en lugar de mostrarlo?
+- ¿Aparece alguna dependencia nueva, y está justificada en la descripción?
+- ¿Se altera la interfaz pública de forma que rompería a quien la llama?
+
+Presenta los hallazgos como una lista numerada, del más grave al menos grave. Para
+cada uno indica el fichero y la línea, una frase que enuncie el defecto, y un caso
+concreto en el que produzca un resultado incorrecto. No informes de preferencias de
+estilo ni repitas lo que el diff ya dice.
+
+Diff: {{diff}}

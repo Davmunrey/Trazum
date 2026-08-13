@@ -66,6 +66,20 @@ const TYPES = {
   'spanish-unaccented.txt': 'prose-latin',
   'french-prose.txt': 'prose-latin',
   'german-prose.txt': 'prose-latin',
+  /**
+   * Held-out samples for the four languages whose divisors were calibrated on one
+   * or two files each. Deliberately a different register — a code-review prompt
+   * rather than a support prompt — so agreeing is evidence the divisor generalises
+   * rather than evidence it memorised a template.
+   */
+  'english-technical.txt': 'prose-latin',
+  'spanish-technical.txt': 'prose-latin',
+  'german-technical.txt': 'prose-latin',
+  'french-technical.txt': 'prose-latin',
+  /** In the detector since it shipped, never measured, so never given a divisor. */
+  'italian-prose.txt': 'prose-latin',
+  'portuguese-prose.txt': 'prose-latin',
+  'dutch-prose.txt': 'prose-latin',
 };
 
 /**

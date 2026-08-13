@@ -1,0 +1,13 @@
+Prüfen Sie den folgenden Pull-Request-Diff und entscheiden Sie, ob er sicher zusammengeführt werden kann.
+
+Betrachten Sie die folgenden Punkte einzeln und berichten Sie über jeden davon:
+- Führt die Änderung eine Verhaltensregression ein, die von den Tests nicht erkannt wird?
+- Gibt es Fehlerpfade, die einen Fehler verschlucken, anstatt ihn sichtbar zu machen?
+- Kommt eine neue Abhängigkeit hinzu, und ist sie in der Beschreibung begründet?
+- Wird die öffentliche Schnittstelle so verändert, dass aufrufender Code bricht?
+
+Geben Sie die Ergebnisse als nummerierte Liste aus, das Schwerwiegendste zuerst. Nennen
+Sie für jeden Punkt die Datei und die Zeile, einen Satz zum Defekt und ein konkretes
+Szenario, in dem er ein falsches Ergebnis liefert. Melden Sie keine Stilfragen.
+
+Diff: {{diff}}

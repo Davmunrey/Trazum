@@ -1,0 +1,13 @@
+Examinez le diff de la pull request ci-dessous et déterminez s'il peut être fusionné sans risque.
+
+Traitez chacun de ces points séparément et rendez compte de tous :
+- Le changement introduit-il une régression de comportement que les tests ne verraient pas ?
+- Existe-t-il des chemins d'erreur qui avalent une défaillance au lieu de la signaler ?
+- Une nouvelle dépendance apparaît-elle, et est-elle justifiée dans la description ?
+- L'interface publique est-elle modifiée d'une manière qui casserait un appelant ?
+
+Présentez vos conclusions sous forme de liste numérotée, la plus grave en premier. Pour
+chacune, indiquez le fichier et la ligne, une phrase énonçant le défaut, et un scénario
+concret produisant un résultat erroné. Ne signalez pas les préférences de style.
+
+Diff : {{diff}}
