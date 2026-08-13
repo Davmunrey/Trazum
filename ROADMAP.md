@@ -33,8 +33,8 @@ engine removes it reproducibly, for free, with no API key and no round trip.
 - Protection pass: code fences, inline code, URLs, template placeholders and
   XML/HTML tags are isolated *before* any rule runs, so no rule can
   structurally break a prompt.
-- Dependency-free heuristic token estimator (±15% measured, worst case on
-  non-English Latin prose).
+- Dependency-free heuristic token estimator. Published at ±15% here, which was a
+  design target and not true; measured and made true in 1.9.0.
 - Pricing catalogue with promotional pricing and per-model cache minimums.
 - Advisories: caching, Batch API, model tier, context window.
 - Optional, pluggable LLM pass with safety checks — a candidate is only

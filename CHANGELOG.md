@@ -39,6 +39,50 @@ which was wrong advice rather than an imprecise figure.
 The sections below are as they accumulated, entry by entry, and were not
 consolidated: they are the record of what happened in the order it happened.
 
+### Changed
+
+**The corpus went from eleven samples to twenty-one, and every divisor now has a
+held-out test.** The eleven that set the band left three languages calibrated on a
+single sample each, which is a fit rather than a measurement: a divisor chosen to
+minimise the error on one file will always look good on that file.
+
+Ten samples were added, in two rounds. The first round gave Italian, Portuguese
+and Dutch a sample each — three languages that had a divisor by inheritance and no
+evidence — and the second gave every calibrated language a **second** sample in a
+different register: the first set are support prompts, the second are code-review
+prompts, different vocabulary and different length. That second sample is what
+turns the first from a fit into a finding, and all seven held:
+
+```
+                calibrated on   held out on
+english             +1.0%          +0.4%
+german              -9.2%          -8.5%
+french              -1.2%          -5.8%
+spanish             -6.2%          -9.7%
+```
+
+The divisors moved as a result — Italian and Dutch had been taking English's 4 —
+and the corpus-wide worst case is unchanged at 11.2%, on Japanese, which no
+divisor touches. Nothing in twenty-one samples is outside `±15%`.
+
+**Italian had to be rebuilt, and the reason is worth recording.** Its first
+function-word list was half Spanish: `per con del una sempre` are as common in one
+as the other, so they earned nothing, the margin rule tied, and an Italian
+code-review prompt came back `null`, fell through to the English divisor and
+measured -21.9%. The detector was working exactly as designed — it refuses rather
+than guesses — and the fault was a word list that could not tell the two apart.
+The replacement is words Italian has and Spanish does not. Over-correcting it
+broke the prose sample instead, which is the shape of this whole file: a list
+tuned on one register is a list tuned on one register.
+
+**What a hundred samples per language would have bought, and why they were not
+written.** The counting endpoint is free, so the constraint was never money. It is
+that every sample here was written by the same hand, and ninety more of those is
+ninety more of the same bias — a tighter-looking number resting on nothing new.
+Twenty-one real prompts bound the band honestly; a hundred invented ones would
+bound it decoratively. The corpus grows one sample at a time now, and the samples
+worth adding are the ones that came from somebody's actual work.
+
 ### Fixed
 
 **`below-cache-minimum` was asserting from an estimate, and near the threshold

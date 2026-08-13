@@ -165,16 +165,38 @@ Run `npm run verify` before pushing and read its exit code, not its output.
 
 ## Measuring the token band
 
-`±15%` is a design target that nothing establishes. The corpus and harness are
-committed; the measurement needs a key and one command:
+`±15%` is measured: 21 samples, seven languages, six text types, worst case
+11.2%. It was a design target for eight releases and it was false — see the 1.9.0
+entry in [CHANGELOG.md](CHANGELOG.md) for what that cost.
+
+The corpus and harness are committed; re-measuring needs a key and one command:
 
 ```bash
 ANTHROPIC_API_KEY=... npm run measure:tokens
 ```
 
 The counting endpoint is free and does not run the model. Commit what it writes.
-Re-run it whenever `packages/core/test/corpus/` changes — the fixture carries a
-digest and the test fails rather than describing text that has moved on.
+
+**Adding a sample is the cheap, useful contribution here.** Drop a `.txt` file in
+`packages/core/test/corpus/`, run the script, commit the fixture. Digests are per
+sample, so a new file is measured on its own and nothing already measured is
+retired. The test names any sample it has no measurement for rather than passing
+quietly, and **fails** on one whose text changed after it was measured.
+
+Two rules for what a sample is worth:
+
+- It must be text somebody would actually put in a prompt. The corpus is the
+  evidence behind a number printed on every report, and filler written to pad a
+  count would make that number look better established than it is.
+- A held-out sample is worth more than a calibrating one. Every divisor in
+  `DIVISOR_BY_LANGUAGE` was fitted on support prompts and then checked against a
+  code-review prompt — a different register, different vocabulary. That second
+  sample is what makes the first one evidence.
+
+**If a change moves the worst case, `ESTIMATE_ERROR_BAND_PCT` moves with it.** It
+is one exported constant in `tokenizer.ts` that every report, README and tool
+description reads; it was a literal in twenty-four files once. Rounding up is the
+rule, in both directions — the band went 15 → 25 → 15 as the measurements came in.
 
 ## Releasing
 

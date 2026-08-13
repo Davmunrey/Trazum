@@ -80,7 +80,14 @@ also where a required reviewer goes if you ever want publishing to need a second
 pair of eyes — the environment gate runs before the job starts, so an approval
 there blocks the publish rather than interrupting it halfway.
 
-### 3. Configure this repository as a trusted publisher
+### 3. Configure this repository as a trusted publisher — outstanding
+
+**This is the only step still to do**, and it is the one that decides whether a
+tag publishes or fails at the last stage. Nothing is lost by finding out the hard
+way: the workflow runs `verify` and `npm pack --dry-run` first, so a missing
+trusted publisher fails having published nothing. But it does mean the tag is
+spent and the version has to go out by hand, which is the manual path in step 1
+again.
 
 For **each** of `@trazum/core`, `@trazum/cli` and `@trazum/mcp`, on the package's npm settings
 page under *Publishing access → Trusted publisher*, enter exactly:

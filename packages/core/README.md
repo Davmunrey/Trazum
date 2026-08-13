@@ -133,9 +133,27 @@ const refined = await refineWithLlm(result, openAiCompatible({
 
 ## Token counts
 
-The bundled estimator is a dependency-free heuristic, accurate to about **±15%**
-on ordinary prose, and it compares two versions of the same prompt well — which
-is what it is for. For exact figures, pass a real counter:
+The bundled estimator is a dependency-free heuristic, and it compares two versions
+of the same prompt well — which is what it is for. Its error band is **±15%**,
+exported as `ESTIMATE_ERROR_BAND_PCT` so you can print the same number the report
+prints rather than hard-coding it.
+
+That band is measured, against the official counting endpoint, over 21 samples in
+seven languages and six text types — worst case 11.2%. It was an unchecked design
+target for eight releases and it was false; the 1.9.0 entry in the changelog says
+what was wrong.
+
+Two things follow from how it was measured, and both matter if you depend on the
+number:
+
+- **The band is a Claude number.** The estimator is tuned against Claude's
+  tokenizer. Other families tokenize differently and nothing here bounds the error
+  for them.
+- **It detects the language and divides accordingly**, because one divisor
+  calibrated on English measured −37.3% on German. `detectTextLanguage` answers
+  `null` when it cannot tell, which falls back to the English behaviour.
+
+For exact figures, pass a real counter — the counting endpoint is free:
 
 ```ts
 import { countTokensAnthropic, withExactTokenCounts } from '@trazum/core';
