@@ -9,11 +9,6 @@ every dependency would be someone else's code reading them too.
 Part of [Trazum](https://github.com/Davmunrey/Trazum). For the library, see
 [`@trazum/core`](https://www.npmjs.com/package/@trazum/core).
 
-> [!NOTE]
-> **Not published yet.** The command below will not work today — there is no tag
-> and `npm view` returns 404. Run it from source meanwhile:
-> [github.com/Davmunrey/Trazum](https://github.com/Davmunrey/Trazum#getting-started).
-
 ```bash
 npm install -g @trazum/cli
 ```

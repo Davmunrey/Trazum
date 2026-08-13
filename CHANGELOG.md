@@ -10,6 +10,35 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Changed
+
+**1.8.0 is on npm.** `@trazum/core`, `@trazum/cli` and `@trazum/mcp` were
+published by hand on 2026-08-13. The first publish had to be manual — a trusted
+publisher is configured on a package's settings page, and that page does not
+exist until the package does — so every release after this one goes through a tag
+with no credential anywhere.
+
+The documentation caught up: the "not published yet" notes are gone from
+`RELEASES.md`, the front page and both package READMEs, and `Getting started`
+leads with `npx @trazum/cli` instead of instructions for building from source,
+which are now folded away for people working on Trazum itself.
+
+**The guard that watched those notes was keying on the wrong thing, and the
+publish proved it.** It asked whether `v1.8.0` was tagged, on the reasoning that
+`release.yml` publishes on a tag and nothing else — checkable offline, which a
+test in CI should be. But the first publish could never go through a tag, so no
+tag was pushed, and the repository went on telling every visitor that nothing was
+installable while three packages sat on the registry. That is the second signal
+this claim has outlived; the first asked whether the changelog had a heading for
+the manifest version, which is a release cut here rather than a package on npm.
+
+There is no third proxy. Publication does not reverse, so the assertion is
+one-directional now: no file may claim nothing is published. `docs/releasing.md`
+records both traps the real publish hit — a `404 Not Found - PUT` is npm hiding
+an auth failure behind a missing-scope error, and `npm view` 404s for minutes
+after a successful publish because the packument propagates behind the tarball.
+
+
 ### Fixed
 
 **npm was silently rewriting the manifest of both published binaries.** Every

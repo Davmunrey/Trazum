@@ -47,12 +47,6 @@ never runs unless you ask.
                  for your agents
 ```
 
-> [!NOTE]
-> **Not on npm yet.** 1.8.0 is prepared — manifests, notes and release workflow
-> are all in place — but nothing has been published and there is no tag, so
-> `npm install @trazum/cli` will not work today. Run it from source with the
-> steps in [Getting started](#getting-started). See [RELEASES.md](RELEASES.md).
-
 ## The twelve commands
 
 | Command | What it answers |
@@ -204,11 +198,28 @@ land in a pull request comment rather than a terminal nobody is looking at.
 ## Getting started
 
 ```bash
+npx @trazum/cli optimize your-prompt.txt --cost
+```
+
+No install, no key, no network. Or keep it around:
+
+```bash
+npm install -g @trazum/cli     # the terminal
+npm install @trazum/core       # the library
+npm install @trazum/mcp        # the MCP server, for an agent
+```
+
+<details>
+<summary>From source, if you are working on Trazum itself</summary>
+
+```bash
 npm install
 npm run build      # core + cli
 npm test           # every suite: core, CLI, web, Action
 npm run verify     # the above plus typecheck and the web build
 ```
+
+</details>
 
 <sub>The test count used to be written here as a number. It said 580 while the real
 figure had reached 798, because nothing checked it — so it now says what the command
