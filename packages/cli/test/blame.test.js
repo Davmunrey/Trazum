@@ -128,7 +128,7 @@ describe('it reports what the prompt cost at each commit', () => {
 
   it('says the counts are estimates, since every figure descends from one', async () => {
     const root = await repo([['first', { 'p.txt': SHORT }]]);
-    assert.match(run(['p.txt'], root).out, /estimates \(±25%\)/);
+    assert.match(run(['p.txt'], root).out, /estimates \(±15%\)/);
   });
 });
 

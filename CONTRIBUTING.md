@@ -165,7 +165,7 @@ Run `npm run verify` before pushing and read its exit code, not its output.
 
 ## Measuring the token band
 
-`±25%` is a design target that nothing establishes. The corpus and harness are
+`±15%` is a design target that nothing establishes. The corpus and harness are
 committed; the measurement needs a key and one command:
 
 ```bash

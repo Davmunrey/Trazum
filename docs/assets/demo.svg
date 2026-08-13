@@ -28,7 +28,7 @@
     <text x="34" y="74" fill="#8b949e">$ <tspan fill="#e6edf3">trazum optimize support-prompt.txt --calls 50000 --cost</tspan></text>
 
     <text x="34" y="106" fill="#e6edf3" font-weight="bold">Input tokens</text>
-    <text x="34" y="128" fill="#e6edf3">  238 → <tspan fill="#7ee787" font-weight="bold">142</tspan>   <tspan fill="#7ee787" font-weight="bold">-40.3%</tspan> <tspan fill="#8b949e">(estimated, ±25%)</tspan></text>
+    <text x="34" y="128" fill="#e6edf3">  238 → <tspan fill="#7ee787" font-weight="bold">142</tspan>   <tspan fill="#7ee787" font-weight="bold">-40.3%</tspan> <tspan fill="#8b949e">(estimated, ±15%)</tspan></text>
 
     <text x="34" y="160" fill="#e6edf3" font-weight="bold">Rules applied</text>
     <text x="34" y="182" fill="#8b949e">  [safe] <tspan fill="#e6edf3">Repeated paragraphs</tspan>          (1×, ~60 tokens)</text>

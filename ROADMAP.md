@@ -33,7 +33,7 @@ engine removes it reproducibly, for free, with no API key and no round trip.
 - Protection pass: code fences, inline code, URLs, template placeholders and
   XML/HTML tags are isolated *before* any rule runs, so no rule can
   structurally break a prompt.
-- Dependency-free heuristic token estimator (±25% measured, worst case on
+- Dependency-free heuristic token estimator (±15% measured, worst case on
   non-English Latin prose).
 - Pricing catalogue with promotional pricing and per-model cache minimums.
 - Advisories: caching, Batch API, model tier, context window.
