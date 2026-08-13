@@ -10,6 +10,32 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**`SECURITY.md` claimed prompts are never stored, and that stopped being true
+when `--suggest --cache` shipped.** The sentence was written when it was
+unqualified and correct; the cache arrived later and nobody went back to the
+security document. It writes the model's raw response, keyed by the prompt, to a
+file under the user's home directory.
+
+Nothing about the feature is wrong — it is opt-in, it is local, and the files
+are `0600` in a `0700` directory precisely because a prompt is the most sensitive
+thing this tool touches. What was wrong is a security document telling a reader
+that no such file exists, which is the kind of error that survives review because
+it reads as reassurance.
+
+The paragraph now says what is guaranteed (nothing about a prompt reaches a
+server that keeps it) separately from what the CLI can be asked to do on the
+machine it already runs on, and names where to delete it.
+
+**The repository-hardening checklist listed a step that is done and enforced.**
+Pinning every third-party action to a commit SHA was item 6, phrased as
+something to run once there is network access. It has been done for several
+releases and `security.test.js` fails any `uses:` naming a tag or a branch — so
+it is not a checklist item, it is an invariant, and it moved to a section that
+says so. The list also had two items numbered `3` and a closing line counting
+five of six.
+
 ## 1.9.0 — "The error band, measured"
 
 **The release that found out the central claim was false, and fixed it.**

@@ -77,6 +77,34 @@ most misleading thing this tool could tell you.
 step summary or a pull request comment. There is also a
 [packaged GitHub Action](https://github.com/Davmunrey/Trazum#cli).
 
+## The ceiling is not the problem
+
+A budget says nothing while a prompt climbs from 800 tokens to 1,900 under a
+limit of 2,000, and that climb is what actually happens to a repository — nobody
+adds a thousand tokens in one commit. A baseline records where you are now:
+
+```bash
+trazum baseline prompts/          # writes trazum.baseline.json — commit it
+```
+
+```json
+{ "baseline": { "path": "trazum.baseline.json", "maxGrowthTokens": 500 } }
+```
+
+`trazum check` then gates on drift away from that record as well as on the
+ceiling, and exits 1 when either fails. One of `maxGrowthTokens` or
+`maxGrowthPct` is required, because a baseline with no threshold gates nothing.
+`--no-baseline` skips it for a run.
+
+**The gate is in tokens, not dollars.** Prices move on somebody else's schedule
+and a price change is not a regression in your prompts. The file still records
+the money it was written under and the report compares it — but only while the
+scenario and the pricing date still match, and it says why not when they do not.
+
+**Added files count**, or the gate would be defeated by adding a prompt rather
+than editing one. And re-recording is how you accept growth: it is a commit, in
+a diff, where a decision to spend five hundred more tokens belongs.
+
 ## Did this edit make it worse?
 
 ```bash
@@ -98,6 +126,7 @@ gets removed from the pipeline rather than fixed.
   "usage": { "model": "claude-opus-5", "callsPerMonth": 50000 },
   "budgets": { "prompts/**": 2000, "prompts/system.txt": 4000 },
   "maxGrowth": 100,
+  "baseline": { "path": "trazum.baseline.json", "maxGrowthTokens": 500 },
   "pricing": "./prices.json"
 }
 ```

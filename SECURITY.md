@@ -87,8 +87,23 @@ property of a fork.
 
 ### Deliberate design decisions
 
-**Prompts are never stored.** Optimisation is synchronous; the web app's
-history lives in the browser's `localStorage` and never reaches a server.
+**A prompt never reaches a server that keeps it.** Optimisation is synchronous;
+the web app's history lives in the browser's `localStorage`. Nothing about a
+prompt is written on any machine but the one it was already on.
+
+This paragraph used to say "prompts are never stored", flatly, and that stopped
+being true when `--suggest --cache` shipped. **The CLI can write prompt text to
+disk, on your own machine, and only if you ask it to.** The cache lives under
+your home directory, holds the model's raw response keyed by the prompt, and
+exists so a re-run over forty files does not ask thirty-eight questions it
+already has answers to. It is opt-in for a reason unrelated to secrecy — a model
+is not a pure function and a silent week-old answer would be a surprise — but the
+storage is the part that belongs in this document.
+
+The files are `0600` in a `0700` directory. A prompt is the most sensitive thing
+this tool touches; a world-readable cache in a shared home directory would
+publish somebody's unreleased product behaviour to every account on the machine.
+Delete it whenever you like — it is a cache, and a miss costs a call.
 
 **LLM keys are used once and dropped.** A key supplied through the UI is used
 for that single request and never logged or persisted. If you would rather not
@@ -188,19 +203,26 @@ Some of this cannot be committed to a file — it lives in repository settings.
 3. **Actions → General → Fork pull request workflows**: set approval to
    *Require approval for all external contributors*. Without it, a first-time
    contributor's workflow changes run automatically.
-3. **Actions → General → Workflow permissions**: *Read repository contents
+4. **Actions → General → Workflow permissions**: *Read repository contents
    permission* by default.
-4. **Code security → Secret scanning**, including **push protection**. This is
+5. **Code security → Secret scanning**, including **push protection**. This is
    what stops a key from reaching the history in the first place.
-5. **Code security → Private vulnerability reporting**, so the link at the top
+6. **Code security → Private vulnerability reporting**, so the link at the top
    of this file works.
-6. **Pin the actions to commit SHAs.** Once you have network access to the
-   GitHub API:
-   ```bash
-   npx pin-github-action .github/workflows/*.yml
-   ```
-   Dependabot will keep the pins updated, since `github-actions` is already in
-   its config.
 
-Items 1–5 are settings toggles; none of them can be committed, which is why
-they are a checklist and not a file.
+None of these can be committed, which is why they are a checklist and not a
+file.
+
+### Done, and kept done by a test
+
+**Every third-party action is pinned to a commit SHA**, with a `# vN` comment
+Dependabot bumps — `github-actions` is in its config, so the pins stay current
+without going stale into a fork of an abandoned action.
+
+This used to be an item on the list above, to run `npx pin-github-action` once
+there was network access. It is not a checklist item any more because a
+one-time fix to a thing that regresses is not a fix: `security.test.js` walks
+every workflow and fails on a `uses:` that names a tag or a branch. A tag can be
+moved by whoever owns it and a branch moves by design, so either one is a
+third party who can change what runs against this repository's token, at a
+moment of their choosing.
