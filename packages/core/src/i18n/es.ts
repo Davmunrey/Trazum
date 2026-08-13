@@ -132,6 +132,7 @@ export const es: CoreMessages = {
       prefixTokens,
       totalTokens,
       mentionLowerMinimum,
+      couldReachMinimum,
     }) => {
       const reason = placeholder
         ? `aquí el primer marcador variable (${placeholder}) aparece a los ~${n(prefixTokens)} tokens y solo lo anterior puede cachearse`
@@ -142,6 +143,9 @@ export const es: CoreMessages = {
           `${modelName} necesita al menos ${n(minTokens)} tokens de prefijo para cachear; ${reason}. Marcar cache_control no dará error, simplemente no cacheará.` +
           (mentionLowerMinimum
             ? ' Claude Opus 5 baja ese mínimo a 512 tokens, así que prompts cortos que aquí no cachean, allí sí.'
+            : '') +
+          (couldReachMinimum
+            ? ' Ese recuento del prefijo es una estimación y está cerca del límite, así que el real puede estar ya por encima: compruébalo con --exact-tokens antes de dar esto por perdido. El endpoint de conteo es gratis.'
             : ''),
       };
     },
