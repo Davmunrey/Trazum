@@ -44,7 +44,14 @@ const FUNCTION_WORDS: Readonly<Record<string, readonly string[]>> = {
   fr: ['les', 'des', 'une', 'dans', 'pour', 'avec', 'vous', 'est', 'sur', 'aux', 'cette', 'toujours'],
   de: ['der', 'die', 'das', 'und', 'nicht', 'sie', 'ist', 'mit', 'auf', 'einen', 'einer', 'immer'],
   pt: ['que', 'dos', 'das', 'uma', 'para', 'com', 'como', 'não', 'seu', 'este', 'pelo', 'sempre'],
-  it: ['che', 'per', 'con', 'del', 'una', 'sono', 'nel', 'alla', 'questo', 'suoi', 'anche', 'sempre'],
+  /**
+   * Rebuilt once, because half of it was Spanish. `per con del una sempre` are as
+   * common in Spanish as in Italian, so they earned nothing and cost the margin
+   * rule its answer: an Italian code-review prompt scored a tie and came back
+   * `null`, fell through to the English divisor, and measured -21.9%. These are
+   * words Italian has and Spanish does not.
+   */
+  it: ['il', 'della', 'nella', 'nel', 'che', 'quando', 'senza', 'gli', 'delle', 'degli', 'più', 'anche'],
   nl: ['het', 'een', 'van', 'niet', 'zijn', 'met', 'voor', 'dat', 'aan', 'deze', 'wordt', 'altijd'],
 };
 

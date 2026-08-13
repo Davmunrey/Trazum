@@ -1,0 +1,14 @@
+Review the pull request diff below and decide whether it is safe to merge.
+
+Consider each of these in turn and report on them separately:
+- Does the change introduce a regression in behaviour that the tests would not catch?
+- Are there error paths that swallow a failure instead of surfacing it?
+- Does any new dependency appear, and is it justified in the description?
+- Is the public interface altered in a way that would break a caller?
+
+Report your findings as a numbered list, most severe first. For each finding give
+the file and the line, a one sentence statement of the defect, and a concrete
+scenario in which it produces a wrong result. Do not report style preferences and
+do not restate what the diff already says.
+
+Diff: {{diff}}

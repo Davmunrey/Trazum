@@ -1,0 +1,13 @@
+Esamina il diff della pull request e stabilisci se può essere unito senza rischi.
+
+Considera ciascuno di questi punti separatamente e riferisci su tutti:
+- La modifica introduce una regressione di comportamento che i test non rileverebbero?
+- Esistono percorsi di errore che inghiottono un guasto invece di segnalarlo?
+- Compare una nuova dipendenza, ed è giustificata nella descrizione?
+- L'interfaccia pubblica viene alterata in modo da rompere chi la chiama?
+
+Presenta i risultati come elenco numerato, dal più grave. Per ognuno indica il file e
+la riga, una frase che enunci il difetto, e uno scenario concreto in cui produce un
+risultato errato. Non segnalare preferenze di stile.
+
+Diff: {{diff}}

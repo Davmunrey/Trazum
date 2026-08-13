@@ -71,9 +71,10 @@ anything else with `-32601 Method not found`. No resources, no prompts, no
 sampling. It is driven by a raw newline-delimited client in the tests; it has not
 been driven by every MCP client in existence.
 
-Token counts are estimates (±15% on prose, calibrated against Claude's tokenizer),
-and every tool says so in its own output. A prompt within a few percent of its
-budget should be treated as uncertain rather than as passing.
+Token counts are estimates (±15%, measured against Claude's tokenizer over 21
+samples in seven languages), and every tool says so in its own output. A prompt
+within a few percent of its budget should be treated as uncertain rather than as
+passing. `--exact-tokens` settles it against the counting endpoint, which is free.
 
 ## Licence
 

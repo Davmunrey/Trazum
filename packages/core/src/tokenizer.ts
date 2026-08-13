@@ -69,10 +69,17 @@ const DIGIT = /[0-9]/;
  * English keeps 4 because it measures +1.0% there; the others are lower because
  * they are thinner in the merge table and cost more tokens for the same text.
  *
- * **Each of these is calibrated on one or two samples**, which is enough to
- * establish the effect — five samples across four languages all point the same way
- * — and not enough to call the residual a measured band. The published band is set
- * by the unknown-language fallback, not by these.
+ * **Every one of these now has a held-out test.** Each language was calibrated on
+ * support prompts and then measured again on a code-review prompt — a different
+ * register, different vocabulary, different length — and the divisors held:
+ * English +1.0% then +0.4%, German -9.2% then -8.5%, French -1.2% then -5.8%,
+ * Spanish -6.2% then -9.7% under the previous values. That is the evidence that
+ * these fit a language rather than a template, and it is why the band can rest on
+ * them now.
+ *
+ * `en` stays at a round 4 rather than the 4.05 the search prefers: a hundredth of
+ * a divisor is precision the twenty-one samples cannot support, and it changes no
+ * estimate.
  *
  * A language absent from this table falls through to `DEFAULT_DIVISOR`, which is
  * the English number and the behaviour this estimator has always had. Adding a
@@ -80,9 +87,12 @@ const DIGIT = /[0-9]/;
  */
 const DIVISOR_BY_LANGUAGE: Readonly<Record<string, number>> = {
   en: 4,
-  es: 3,
-  fr: 3.4,
-  de: 2.5,
+  es: 2.8,
+  fr: 3.05,
+  de: 2.25,
+  it: 2.8,
+  pt: 3.05,
+  nl: 2.65,
 };
 
 /**

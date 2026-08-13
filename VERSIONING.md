@@ -92,6 +92,14 @@ Not covered, and free to change in any release:
   prose and rejection reasons are copy: they get improved. Match on ids.
 - The exact output of the heuristic token estimator. It is an estimate with a
   documented error band, and improving its accuracy is not a breaking change.
+- **The value of `ESTIMATE_ERROR_BAND_PCT`, and the answer `detectTextLanguage`
+  gives.** The exports are frozen; what they say is not. The band is a measured
+  worst case and it moves when the measurement does — it has been 15, then 25,
+  then 15 again, and the release that widened it was the honest one. Freezing the
+  number would mean either never measuring again or lying about what was found.
+  Read the constant rather than hard-coding 15; that is what it is exported for.
+  The same holds for the language detector: adding a language, or making it answer
+  `null` where it used to guess, changes estimates by design.
 - The exact **prose and layout** of the human-readable terminal report and the
   markdown report. Parse `--json`, not the table.
 - Anything under `src/` that neither entry point re-exports. It is shipped in the
@@ -146,9 +154,10 @@ To release:
 
 1. Fold `Unreleased` into a new version heading, or leave anything genuinely
    not-shipping-yet behind. Breaking changes go first, with the migration.
-2. Bump the version in every manifest, including the `@trazum/core` dependency
-   pinned by `@trazum/cli` and `@trazum/web`.
-3. `npm run verify` must be green — build, tests, typecheck across all three
+2. Bump the version in **all five** manifests — the root, `@trazum/core`,
+   `@trazum/cli`, `@trazum/mcp` and the web app — including the `@trazum/core`
+   dependency pinned by the CLI and the MCP server. Regenerate the lockfile.
+3. `npm run verify` must be green — build, tests, typecheck across all four
    workspaces, and the web build. The web build in particular catches things
    nothing else does: `@trazum/core` is bundled for the browser, so one
    `node:fs` import anywhere in its import graph breaks it while `tsc` and the
@@ -156,6 +165,10 @@ To release:
 4. Tag `v<version>`.
 5. Move the matching `ROADMAP.md` entry from `Next` to `Released`.
 
-The four manifests are kept in lockstep deliberately: the packages are
-developed together, and a version skew between the core and the CLI has no
-useful meaning.
+The manifests are kept in lockstep deliberately: the packages are developed
+together, and a version skew between the core and the CLI has no useful meaning.
+
+That is the summary. **[docs/releasing.md](docs/releasing.md) is the procedure**,
+and it is the one to follow — it covers the parts that only bite once, including
+what the tag does, what has to be configured before a publish can succeed, and
+the README pin that has to move after the release commit exists.

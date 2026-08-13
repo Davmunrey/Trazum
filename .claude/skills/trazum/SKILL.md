@@ -68,6 +68,42 @@ by any pattern, so nothing is watching it. Mention them. If the command errors
 with *"No budget covers anything"*, the fix is a `budgets` entry or
 `--max-tokens` — do not present that error as "the prompts are fine".
 
+## Stopping the estate drifting upwards
+
+A budget is a ceiling. It says nothing while a prompt climbs from 800 tokens to
+1,900 under a limit of 2,000, and that climb is what actually happens to a
+repository — nobody adds a thousand tokens in one commit.
+
+`trazum baseline` records what the prompts cost **now**, into a file the user
+commits:
+
+```bash
+node packages/cli/dist/index.js baseline prompts/
+```
+
+Then `check` gates on drift away from that record as well as on the ceiling, when
+`trazum.config.json` declares one:
+
+```json
+{ "baseline": { "path": "trazum.baseline.json", "maxGrowthTokens": 500 } }
+```
+
+Either `maxGrowthTokens` or `maxGrowthPct` is required — a baseline with no
+threshold gates nothing. `--no-baseline` skips the gate for one run.
+
+Three things to get right when reporting on this:
+
+- **The gate is in tokens, not dollars.** Prices move on somebody else's schedule
+  and a price change is not a regression in the prompts. The baseline carries the
+  money it was recorded under, and the report shows the comparison only when the
+  scenario and the pricing date still match — otherwise it says why not. Do not
+  present a dollar delta the tool declined to make.
+- **Added files count.** A new prompt is real growth; a baseline that ignored it
+  would be gamed by adding files instead of editing them.
+- **Re-recording is how you accept growth**, and it should be a visible commit.
+  If the user's answer to a breach is to re-record, say that the diff is the
+  record of the decision.
+
 ## Reporting into a pull request
 
 `--markdown-out <file>` on `check` or `diff` writes the same report as
@@ -88,7 +124,8 @@ the answer.
 ## The config file
 
 `trazum.config.json`, found by walking up from the working directory. Keys:
-`level`, `locale`, `disable`, `usage`, `budgets`, `maxGrowth`, `extensions`.
+`level`, `locale`, `disable`, `usage`, `budgets`, `maxGrowth`, `baseline`,
+`extensions`, `pricing`.
 
 Flags beat the config; the config beats the defaults. When suggesting a setting a
 project will reuse, put it in the config rather than repeating flags in every CI
@@ -205,7 +242,14 @@ this: the optimised prompt will not have broken someone's JSON schema.
 - **Token counts are estimates (±15%).** Fine for comparing two versions of the
   same prompt, which is what they are for. For exact figures use
   `--exact-tokens` with `ANTHROPIC_API_KEY` set — the counting endpoint does not
-  charge for tokens.
+  charge for tokens. The band is measured against Claude's tokenizer over
+  twenty-one samples; against a non-Anthropic model the report drops it and says
+  so, and you should not reinstate it.
+- **A percentage is more trustworthy than a total.** The estimator's error is
+  largely a per-language constant, so it mostly cancels in a before/after ratio:
+  `-27.9%` survives an error that moves both totals. Lead with the percentage
+  when the numbers are estimated, and reach for `--exact-tokens` before quoting
+  an absolute figure somebody will budget from.
 - **Savings are projections over the scenario given**, not billing. Pass real
   `--calls` and `--output-tokens` or say the numbers are illustrative.
 - **Output tokens are held constant** in the calculation. The reported saving

@@ -1826,25 +1826,39 @@ measured for it:
 
 Use `--exact-tokens` for figures you can budget from.
 
-**And even for Claude, that band is a design target rather than a measurement.** It is printed on every
-report and every dollar figure descends from it, and nothing in this repository
-establishes that it holds — the estimator's only accuracy-adjacent tests were
-zero-on-empty, monotonic growth, and not-`NaN`. It is also stated as one number
-for all text, which is a second assumption: the estimator treats CJK, digits and
-punctuation quite differently from words, and there is no reason those should
-land on the same accuracy.
+**That band is measured, and it was false when it was not.** For eight releases
+`±15%` was a design target nobody had checked. The first run against the official
+counting endpoint found two of eight samples outside it, both underestimating —
+which is the direction that under-reports cost. Two faults came out of it: digits
+were counted at three per token where Claude splits them far more finely, and the
+estimator was calibrated **for English** while one divisor served every language
+(German measured −37.3%). Both are fixed; `±15%` is now the measured worst case
+across the corpus, rounded up.
 
-A corpus covering those types is committed, along with the harness that measures
-it against the official counting endpoint:
+The corpus is 21 samples across seven languages and six text types, and the
+harness that measures it against the counting endpoint is committed:
 
 ```bash
 ANTHROPIC_API_KEY=... npm run measure:tokens
 ```
 
-`token-band.test.js` asserts the band per text type as soon as that ground truth
-exists, and refuses to pass quietly until then. It also carries a digest of the
-corpus, so numbers describing text that has since been edited fail rather than
-mislead.
+The endpoint is free — it does not run the model — so re-measuring costs nothing
+but time.
+
+| what | worst error |
+|---|---|
+| the seven samples nothing was fitted to | 11.2% (Japanese) |
+| every language divisor, on a held-out sample in another register | 9.7% |
+| samples outside `±15%` | 0 of 21 |
+
+`token-band.test.js` asserts the band per text type against that ground truth, and
+carries a per-sample digest: a sample edited since it was measured **fails**, and
+a sample never measured **skips out loud** and is named. Numbers describing text
+that has moved on cannot pass quietly.
+
+One caveat stated rather than buried: the Latin-language divisors were calibrated
+on the samples they are measured against, so those residuals are optimistic by
+construction. The band rests on the samples nothing was fitted to.
 
 For exact numbers, the official counting endpoint does not charge tokens:
 

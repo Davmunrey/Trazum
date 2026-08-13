@@ -12,6 +12,105 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**`SECURITY.md` claimed prompts are never stored, and that stopped being true
+when `--suggest --cache` shipped.** The sentence was written when it was
+unqualified and correct; the cache arrived later and nobody went back to the
+security document. It writes the model's raw response, keyed by the prompt, to a
+file under the user's home directory.
+
+Nothing about the feature is wrong — it is opt-in, it is local, and the files
+are `0600` in a `0700` directory precisely because a prompt is the most sensitive
+thing this tool touches. What was wrong is a security document telling a reader
+that no such file exists, which is the kind of error that survives review because
+it reads as reassurance.
+
+The paragraph now says what is guaranteed (nothing about a prompt reaches a
+server that keeps it) separately from what the CLI can be asked to do on the
+machine it already runs on, and names where to delete it.
+
+**The repository-hardening checklist listed a step that is done and enforced.**
+Pinning every third-party action to a commit SHA was item 6, phrased as
+something to run once there is network access. It has been done for several
+releases and `security.test.js` fails any `uses:` naming a tag or a branch — so
+it is not a checklist item, it is an invariant, and it moved to a section that
+says so. The list also had two items numbered `3` and a closing line counting
+five of six.
+
+## 1.9.0 — "The error band, measured"
+
+**The release that found out the central claim was false, and fixed it.**
+
+`±15%` had been printed on every report for eight releases, with every dollar
+figure descending from it, and nothing in this repository established that it
+held. The first run of `measure-token-band.mjs` against the official counting
+endpoint found it did not: the numeric sample was 30.6% under, Spanish prose
+22.1% under. Nine of eleven samples underestimated, always in the direction that
+under-reports cost.
+
+Two things were wrong. Digits were counted at three per token where Claude splits
+them far more finely — corrected in isolation, that sample went to -5.0%. And the
+estimator turned out to be calibrated **for English specifically**, not for prose:
+German measured -37.3% under one divisor that served every language.
+
+The band is measured now, at ±15%, and it landing back on the old number is a
+coincidence rather than a restoration: that 15 bounded nothing, and this one
+bounds **twenty-one samples across seven languages and six text types**, worst
+case 11.2%. Every language divisor has a held-out test in a different register.
+
+Also here: `trazum baseline` and a `check` that gates on drift rather than only on
+a ceiling; a pull-request comment that leads with what the branch costs; and
+`below-cache-minimum` no longer asserting from an estimate near a hard threshold,
+which was wrong advice rather than an imprecise figure.
+
+The sections below are as they accumulated, entry by entry, and were not
+consolidated: they are the record of what happened in the order it happened.
+
+### Changed
+
+**The corpus went from eleven samples to twenty-one, and every divisor now has a
+held-out test.** The eleven that set the band left three languages calibrated on a
+single sample each, which is a fit rather than a measurement: a divisor chosen to
+minimise the error on one file will always look good on that file.
+
+Ten samples were added, in two rounds. The first round gave Italian, Portuguese
+and Dutch a sample each — three languages that had a divisor by inheritance and no
+evidence — and the second gave every calibrated language a **second** sample in a
+different register: the first set are support prompts, the second are code-review
+prompts, different vocabulary and different length. That second sample is what
+turns the first from a fit into a finding, and all seven held:
+
+```
+                calibrated on   held out on
+english             +1.0%          +0.4%
+german              -9.2%          -8.5%
+french              -1.2%          -5.8%
+spanish             -6.2%          -9.7%
+```
+
+The divisors moved as a result — Italian and Dutch had been taking English's 4 —
+and the corpus-wide worst case is unchanged at 11.2%, on Japanese, which no
+divisor touches. Nothing in twenty-one samples is outside `±15%`.
+
+**Italian had to be rebuilt, and the reason is worth recording.** Its first
+function-word list was half Spanish: `per con del una sempre` are as common in one
+as the other, so they earned nothing, the margin rule tied, and an Italian
+code-review prompt came back `null`, fell through to the English divisor and
+measured -21.9%. The detector was working exactly as designed — it refuses rather
+than guesses — and the fault was a word list that could not tell the two apart.
+The replacement is words Italian has and Spanish does not. Over-correcting it
+broke the prose sample instead, which is the shape of this whole file: a list
+tuned on one register is a list tuned on one register.
+
+**What a hundred samples per language would have bought, and why they were not
+written.** The counting endpoint is free, so the constraint was never money. It is
+that every sample here was written by the same hand, and ninety more of those is
+ninety more of the same bias — a tighter-looking number resting on nothing new.
+Twenty-one real prompts bound the band honestly; a hundred invented ones would
+bound it decoratively. The corpus grows one sample at a time now, and the samples
+worth adding are the ones that came from somebody's actual work.
+
+### Fixed
+
 **`below-cache-minimum` was asserting from an estimate, and near the threshold
 that made it wrong advice.** It compares the stable prefix against a hard limit —
 512 tokens on Claude Opus 5 — and then tells the reader caching will not work

@@ -3,7 +3,7 @@
   "governsPublishedBand": true,
   "model": "claude-opus-5",
   "measuredAt": "2026-08-13",
-  "corpusDigest": "cd4f47a2cdd8ff25",
+  "corpusDigest": "ec3124820b13497d",
   "envelopeTokens": 6,
   "samples": [
     {
@@ -28,11 +28,32 @@
       "digest": "de7f2ec8a6850b95"
     },
     {
+      "file": "dutch-prose.txt",
+      "type": "prose-latin",
+      "chars": 728,
+      "actualTokens": 314,
+      "digest": "3abd1666b39a9ec7"
+    },
+    {
+      "file": "dutch-technical.txt",
+      "type": "prose-latin",
+      "chars": 745,
+      "actualTokens": 330,
+      "digest": "105a97d485369903"
+    },
+    {
       "file": "english-prose.txt",
       "type": "prose-latin",
       "chars": 1332,
       "actualTokens": 387,
       "digest": "798f05ec3630190c"
+    },
+    {
+      "file": "english-technical.txt",
+      "type": "prose-latin",
+      "chars": 742,
+      "actualTokens": 224,
+      "digest": "eaaf9f5b260e1d42"
     },
     {
       "file": "few-shot.txt",
@@ -49,6 +70,13 @@
       "digest": "c96a4005a729adb1"
     },
     {
+      "file": "french-technical.txt",
+      "type": "prose-latin",
+      "chars": 790,
+      "actualTokens": 313,
+      "digest": "a81134be0c092872"
+    },
+    {
       "file": "german-prose.txt",
       "type": "prose-latin",
       "chars": 661,
@@ -56,11 +84,46 @@
       "digest": "3cd8c20a0a0aaf15"
     },
     {
+      "file": "german-technical.txt",
+      "type": "prose-latin",
+      "chars": 795,
+      "actualTokens": 386,
+      "digest": "ab392ec50f0d586d"
+    },
+    {
+      "file": "italian-prose.txt",
+      "type": "prose-latin",
+      "chars": 720,
+      "actualTokens": 298,
+      "digest": "7d862f9cf3971d7e"
+    },
+    {
+      "file": "italian-technical.txt",
+      "type": "prose-latin",
+      "chars": 702,
+      "actualTokens": 278,
+      "digest": "223ef1eca8fdd740"
+    },
+    {
       "file": "numeric-heavy.txt",
       "type": "numeric",
       "chars": 729,
       "actualTokens": 399,
       "digest": "0b6dd59425f7642f"
+    },
+    {
+      "file": "portuguese-prose.txt",
+      "type": "prose-latin",
+      "chars": 689,
+      "actualTokens": 281,
+      "digest": "a05ba3b0e1f1b378"
+    },
+    {
+      "file": "portuguese-technical.txt",
+      "type": "prose-latin",
+      "chars": 710,
+      "actualTokens": 270,
+      "digest": "9e7f9bbe245791b7"
     },
     {
       "file": "punctuation-heavy.txt",
@@ -75,6 +138,13 @@
       "chars": 1158,
       "actualTokens": 452,
       "digest": "bec0195bcd1ad76a"
+    },
+    {
+      "file": "spanish-technical.txt",
+      "type": "prose-latin",
+      "chars": 760,
+      "actualTokens": 308,
+      "digest": "7391550f3b51cbc9"
     },
     {
       "file": "spanish-unaccented.txt",

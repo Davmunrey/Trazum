@@ -21,6 +21,59 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.9.0 — "The error band, measured"
+
+**Trazum was under-reporting what your prompts cost, and now it does not.**
+
+Every report printed `±15%`, every dollar figure descended from it, and nothing
+had ever checked it. Measured against Anthropic's official counting endpoint, it
+was false: nine of eleven samples underestimated, the worst by 30.6%.
+Underestimating tokens under-reports cost — the flattering direction, and the
+worst one for a tool whose whole argument is honest cost accounting.
+
+**If you use Trazum on anything other than English, this release changes your
+numbers.** The estimator turned out to be calibrated for English specifically:
+German came out 37.3% under, Dutch 28.3%, Italian 23.8%, Spanish 22.9%,
+Portuguese 18.1%, French 15.1% — against English at +1.0%. It now detects the
+language and counts accordingly, and the figures it gives you go **up**, because
+they were too low.
+
+| language | before | now |
+|---|---:|---:|
+| German | −37.3% | +1.3% |
+| Dutch | −28.3% | −2.1% |
+| Italian | −23.8% | +2.0% |
+| Spanish | −22.1% | +3.1% |
+| Portuguese | −18.1% | −5.7% |
+| French | −15.1% | +0.4% |
+| Numeric-heavy text | −30.6% | −5.0% |
+
+The band is still `±15%`, and that is a coincidence rather than a restoration:
+the old one bounded nothing, and this one bounds **twenty-one measured samples
+across seven languages and six text types**, worst case 11.2%. Every language has
+a held-out sample in a different register, so the calibration fits a language
+rather than a template.
+
+**`trazum baseline`** records what a repository's prompts cost, to a file you
+commit. `trazum check` then fails the build when the estate drifts past it — the
+question a per-file budget cannot answer, because a repository at 95% of every
+budget passes forever while a pull request adds four hundred tokens across a
+dozen files. Thresholds are in tokens, never dollars: a repriced model would
+otherwise fail a build for a change nobody made.
+
+**The pull-request comment leads with what the branch costs**, not with a table of
+which files fit their ceilings. No change to the Action was needed.
+
+**One advisory was giving wrong advice.** `below-cache-minimum` compared an
+*estimated* prefix against a hard 512-token threshold and told you caching would
+not work. Near the line an underestimate made that false, and it cost the reader
+the largest saving Trazum offers. It hedges there now and names `--exact-tokens`,
+which is free.
+
+**If you want exact numbers, they are free.** `--exact-tokens` uses the official
+counting endpoint, which does not run the model. On non-English prompts it remains
+the honest choice; the band above is what the heuristic gets you without a key.
+
 ## 1.8.0 — "Everything it had only been pricing" (the first publish)
 
 Trazum 1.0.0 could tell you what a prompt cost. It could not tell you **which**
@@ -314,6 +367,9 @@ the test are all written and waiting; the measurement needs the official countin
 endpoint and a key, so it cannot happen inside this repository. Until somebody
 runs it, the code says so out loud rather than passing quietly — which is the
 whole disposition of this project in one sentence.
+
+*Somebody ran it in 1.9.0, and it was false. See the notes at the top of this
+file. This paragraph is left as it was written.*
 
 ---
 

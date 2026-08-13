@@ -1,0 +1,13 @@
+Beoordeel het onderstaande pull-request-diff en bepaal of het veilig samengevoegd kan worden.
+
+Behandel elk van deze punten afzonderlijk en rapporteer over allemaal:
+- Introduceert de wijziging een gedragsregressie die de tests niet zouden opmerken?
+- Zijn er foutpaden die een fout opslokken in plaats van deze zichtbaar te maken?
+- Verschijnt er een nieuwe afhankelijkheid, en is die verantwoord in de beschrijving?
+- Wordt de publieke interface zo gewijzigd dat aanroepende code breekt?
+
+Geef de bevindingen als genummerde lijst, de ernstigste eerst. Vermeld per bevinding het
+bestand en de regel, een zin die het defect benoemt, en een concreet scenario waarin het
+een verkeerd resultaat oplevert. Meld geen stijlvoorkeuren.
+
+Diff: {{diff}}
