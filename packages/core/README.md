@@ -133,7 +133,7 @@ const refined = await refineWithLlm(result, openAiCompatible({
 
 ## Token counts
 
-The bundled estimator is a dependency-free heuristic, accurate to about **±15%**
+The bundled estimator is a dependency-free heuristic, accurate to about **±25%**
 on ordinary prose, and it compares two versions of the same prompt well — which
 is what it is for. For exact figures, pass a real counter:
 

@@ -1,0 +1,58 @@
+{
+  "provider": "anthropic",
+  "governsPublishedBand": true,
+  "model": "claude-opus-5",
+  "measuredAt": "2026-08-13",
+  "corpusDigest": "3200c43c08c6d0cc",
+  "envelopeTokens": 6,
+  "samples": [
+    {
+      "file": "cjk-chinese.txt",
+      "type": "cjk",
+      "chars": 306,
+      "actualTokens": 313
+    },
+    {
+      "file": "cjk-japanese.txt",
+      "type": "cjk",
+      "chars": 379,
+      "actualTokens": 338
+    },
+    {
+      "file": "code-heavy.txt",
+      "type": "code",
+      "chars": 1284,
+      "actualTokens": 481
+    },
+    {
+      "file": "english-prose.txt",
+      "type": "prose-latin",
+      "chars": 1332,
+      "actualTokens": 387
+    },
+    {
+      "file": "few-shot.txt",
+      "type": "few-shot",
+      "chars": 865,
+      "actualTokens": 292
+    },
+    {
+      "file": "numeric-heavy.txt",
+      "type": "numeric",
+      "chars": 729,
+      "actualTokens": 399
+    },
+    {
+      "file": "punctuation-heavy.txt",
+      "type": "punctuation",
+      "chars": 871,
+      "actualTokens": 404
+    },
+    {
+      "file": "spanish-prose.txt",
+      "type": "prose-latin",
+      "chars": 1158,
+      "actualTokens": 452
+    }
+  ]
+}

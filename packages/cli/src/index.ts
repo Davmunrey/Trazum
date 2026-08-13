@@ -504,7 +504,7 @@ function renderDiff(before: string, after: string, t: CliMessages): string {
  * The provider's name when the estimator was not calibrated for it.
  *
  * `estimateTokens` is a heuristic tuned against Claude's tokenizer, and the
- * ±15% band descends from that. Printing the same band beside a GPT or Kimi
+ * ±25% band descends from that. Printing the same band beside a GPT or Kimi
  * figure states a precision nobody has measured for that family — and since the
  * catalogue grew past Anthropic, that is most of it. Returns null when the model
  * is Anthropic's, where the band is at least the claim it was written for.

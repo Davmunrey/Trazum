@@ -42,7 +42,7 @@ export const MAX_PROMPT_CHARS = 400_000;
 
 /** Every figure this server prints descends from the estimator, so it says so. */
 const BAND_NOTE =
-  'token counts are estimates (±15% on prose, calibrated on Claude); prices reviewed '
+  'token counts are estimates (±25% on prose, calibrated on Claude); prices reviewed '
   + PRICING_LAST_REVIEWED;
 
 function promptFrom(args: Record<string, unknown>): string {
@@ -214,7 +214,7 @@ const CHECK: ToolDefinition = {
 
     return [
       verdict,
-      'token counts are estimates (±15% on prose, calibrated on Claude), so a prompt within'
+      'token counts are estimates (±25% on prose, calibrated on Claude), so a prompt within'
         + ' a few percent of its budget should be treated as uncertain',
     ].join('\n');
   },

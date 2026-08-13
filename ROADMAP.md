@@ -33,7 +33,8 @@ engine removes it reproducibly, for free, with no API key and no round trip.
 - Protection pass: code fences, inline code, URLs, template placeholders and
   XML/HTML tags are isolated *before* any rule runs, so no rule can
   structurally break a prompt.
-- Dependency-free heuristic token estimator (±15% on ordinary prose).
+- Dependency-free heuristic token estimator (±25% measured, worst case on
+  non-English Latin prose).
 - Pricing catalogue with promotional pricing and per-model cache minimums.
 - Advisories: caching, Batch API, model tier, context window.
 - Optional, pluggable LLM pass with safety checks — a candidate is only
@@ -706,7 +707,7 @@ not Anthropic's. Full procedure per [VERSIONING.md](VERSIONING.md); both fields
 stay populated for all of 1.x and a test asserts they never disagree.
 
 **The estimator is still a Claude estimator**, and the report now says so rather
-than printing a ±15% band nobody measured for GPT or Kimi. Which makes the
+than printing a Claude-calibrated band nobody measured for GPT or Kimi. Which makes the
 tokenizer question under `Under consideration` heavier than it was.
 
 ---
@@ -868,7 +869,7 @@ estimator tuned for one, so the band is now unmeasured across families as well a
 across text types. The report says which tokenizer it was calibrated on instead of
 claiming a number, which is honest and is not the same as knowing.
 
-`±15%` is printed on every report, appears in both READMEs, in the estimator's own
+The band is printed on every report, appears in both READMEs, in the estimator's own
 doc comment and in `VERSIONING.md` as part of the frozen API. Every dollar figure
 Trazum prints descends from it — and `estimateTokens` was tested for exactly three
 things: zero on empty input, monotonic growth, and never returning `NaN`. Nothing
@@ -878,7 +879,7 @@ It is also **one number for all text**, which is a second assumption. The
 estimator is calibrated per character class and treats CJK, digits and punctuation
 quite differently from words; there is no reason those should land on the same
 accuracy. If the real error on Japanese is 40%, every figure for a Japanese prompt
-is wrong while the report says ±15%.
+is wrong while the report says otherwise.
 
 **In place now:** a committed corpus of eight samples covering prose (English and
 Spanish), CJK (Japanese and Chinese), code, few-shot blocks, punctuation-heavy
@@ -894,7 +895,7 @@ Three things that test does deliberately:
   reasoning that makes `trazum check` treat an unbudgeted run as an error. It
   skips out loud and names the command.
 - **It requires the documentation to admit the band is unverified** until ground
-  truth exists, so `±15%` cannot quietly harden from an estimate into a fact
+  truth exists, so the band cannot quietly harden from an estimate into a fact
   nobody established.
 - **It carries a digest of the corpus.** Numbers describing text that has since
   been edited pass while describing something else, which is worse than no
@@ -952,7 +953,7 @@ Not scheduled. Listed so the reasoning is on the record.
   seven providers made this the question it always was in miniature: the estimator
   is tuned against Claude's tokenizer, and a GPT or Kimi figure carries whatever
   error that mismatch produces. Nobody has measured it, so the report stops
-  claiming ±15% for those models and says which tokenizer it was calibrated on
+  claiming a Claude band for those models and says which tokenizer it was calibrated on
   instead — honest, and no substitute for knowing.
 
   Measuring the band is what decides whether the dependency is worth taking:
