@@ -56,6 +56,24 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
+      # 1.9.0 was tagged, passed every check, and failed on the last step with
+      # `E404 Not Found - PUT` because the trusted publisher had not been
+      # configured. Nothing was published — but the tag was spent, and the
+      # release went out by hand for the second time running, which means no
+      # provenance for the second time running.
+      #
+      # This asks npm the same question the upload steps below ask it, before
+      # anything is at stake, and it runs on `workflow_dispatch` too. A dry run
+      # proved the environment gate existed and nothing about npm, so the only
+      # way to test a trusted publisher was to spend a version number on it.
+      #
+      # It reports and never fails: the exchange endpoint is npm's internal
+      # plumbing rather than a documented API, and a gate built on it would one
+      # day block a release that would have worked. The publish is still the
+      # authority. See scripts/npm-publish-preflight.mjs.
+      - name: Can this workflow authenticate to npm?
+        run: node scripts/npm-publish-preflight.mjs auth
+
       # The tag says what is being released. The manifests say what would
       # actually be published. A tag reading v1.2.0 against manifests reading
       # 1.1.0 publishes 1.1.0 under a release note for 1.2.0, and that is the
@@ -89,6 +107,17 @@ jobs:
           npm pack --dry-run -w @trazum/cli
           npm pack --dry-run -w @trazum/mcp
 
+      # The packages publish in dependency order, so a half-finished release is
+      # the expensive shape: core uploads, the CLI fails, and core's number is
+      # spent — npm never reuses a version, so the whole set has to move to the
+      # next patch. Checking all three first turns that into a clean abort.
+      #
+      # This one does fail the job. It reads the public registry API rather than
+      # internal plumbing, and a version that already exists is not a maybe.
+      - name: No version may already be on the registry
+        if: startsWith(github.ref, 'refs/tags/')
+        run: node scripts/npm-publish-preflight.mjs versions
+
       # Provenance comes free with OIDC and is the reason to prefer it beyond
       # not storing a secret: a consumer can verify a published tarball was built
       # from this repository, at this commit, by this workflow.
@@ -109,6 +138,26 @@ jobs:
       - name: Publish @trazum/mcp
         if: startsWith(github.ref, 'refs/tags/')
         run: npm publish -w @trazum/mcp --provenance --access public
+
+      # npm reports a write you are not authorised for as `404 Not Found`, which
+      # reads as a missing package and is an auth failure. That cost an hour at
+      # the first publish and reappeared at 1.9.0, so the workflow says it out
+      # loud rather than leaving it in a document somebody has to already know
+      # to read.
+      #
+      # `failure()` rather than a specific step id: any publish failing here is
+      # worth this note, and naming one step would go quiet the moment the
+      # failure moved to the next package.
+      - name: What that failure probably means
+        if: failure()
+        run: |
+          echo "::error::A publish step failed. If the log says 'E404 Not Found - PUT', that is"
+          echo "::error::an authentication failure, not a missing package — npm reports them the same way."
+          echo "::error::Check the trusted publisher on each package: npm settings -> Publishing access"
+          echo "::error::-> Trusted publisher, with Environment set to 'release'. It is the field people"
+          echo "::error::leave blank, and this workflow declares 'environment: release', so a blank one"
+          echo "::error::is a claims mismatch. Full procedure in docs/releasing.md."
+          echo "::error::Nothing is half-published: the preflight checks all versions before the first upload."
 
       # The release body comes from RELEASES.md, which was written and reviewed in
       # a pull request. Before this, publishing to npm created no GitHub release

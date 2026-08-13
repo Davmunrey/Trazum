@@ -83,11 +83,9 @@ there blocks the publish rather than interrupting it halfway.
 ### 3. Configure this repository as a trusted publisher — outstanding
 
 **This is the only step still to do**, and it is the one that decides whether a
-tag publishes or fails at the last stage. Nothing is lost by finding out the hard
-way: the workflow runs `verify` and `npm pack --dry-run` first, so a missing
-trusted publisher fails having published nothing. But it does mean the tag is
-spent and the version has to go out by hand, which is the manual path in step 1
-again.
+tag publishes or fails at the last stage. It has now failed that way twice: 1.8.0
+because the packages did not exist yet, and 1.9.0 because this step had not been
+done — both releases went out by hand, and neither has provenance as a result.
 
 For **each** of `@trazum/core`, `@trazum/cli` and `@trazum/mcp`, on the package's npm settings
 page under *Publishing access → Trusted publisher*, enter exactly:
@@ -106,6 +104,25 @@ claim. If npm's configuration leaves the environment blank while the token
 asserts one, the claims do not match and the publish is rejected — with an error
 about the token rather than about the mismatch, which is a confusing hour if you
 do not know to look for it.
+
+**Check it without spending a version.** Run the release workflow from the
+Actions tab — `workflow_dispatch` is dry-run only — and read the *Can this
+workflow authenticate to npm?* step. It asks npm's token-exchange endpoint the
+same question the upload steps ask it, and reports one of three answers:
+
+| It says | It means |
+|---|---|
+| `trusted publishing is configured` | Every claim matched. A tag will publish. |
+| `npm refused the OIDC token (401/403/404)` | Not configured, or a claim does not match. Check the table above, starting with the environment. |
+| `could not verify` | Something else answered. Tag if you like; the upload is still the authority. |
+
+Until this existed the only way to test a trusted publisher was to spend a
+version number on it, which is why 1.9.0 found out the expensive way.
+
+**Why it only reports.** The exchange endpoint is npm's own plumbing rather than
+a documented API. A gate built on it would one day block a release that would
+have worked, and that is a worse failure than the one it prevents. What it buys
+is knowing before you tag rather than after.
 
 There is **no token to paste and none to rotate.** That is the whole design: a
 long-lived `NPM_TOKEN` would be the highest-value credential this project holds,
@@ -162,10 +179,21 @@ tag would be a release with no version to check against.
 
 - **The tag was wrong** — nothing was published, because the version check runs
   before `verify`. Delete the tag, fix it, tag again.
+- **`E404 Not Found - PUT`** — an authentication failure, not a missing package.
+  npm reports a write you are not authorised for as "not found", which is why
+  this cost an hour at the first publish and reappeared at 1.9.0. Go to step 3.
+  The workflow now says this itself on any publish failure rather than leaving it
+  in a document you have to already know to read.
 - **`@trazum/core` published and `@trazum/cli` or `@trazum/mcp` failed** — the core version is
   spent. Bump to the next patch across all manifests and release again rather
   than trying to reuse the number; npm will not let you, and a `--force` that
   worked would be worse.
+
+  This is the shape the preflight exists to prevent: *No version may already be
+  on the registry* checks all three before the first upload, so a re-tag of a
+  half-published release aborts instead of spending another number. It cannot
+  help with a failure that happens **between** two uploads — nothing can, short
+  of a transaction npm does not offer — but that is now the only way to get here.
 - **Within 72 hours, badly wrong** — `npm unpublish @trazum/core@1.2.0`. After
   that the version is permanent and the answer is a new one with a changelog entry
   saying what the bad one did.
