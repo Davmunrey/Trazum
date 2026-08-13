@@ -107,6 +107,33 @@ describe('what npm would publish', () => {
         );
       });
 
+      it('declares a bin npm will not rewrite on the way to the registry', () => {
+        /**
+         * **npm silently corrects a manifest as it publishes it.** Both of these
+         * shipped `"./dist/index.js"`, and every publish answered
+         * `"bin[trazum]" script name was cleaned` — npm stripping the `./` and
+         * uploading a manifest that differs from the one in the repository. On
+         * npm 12 the same warning reads "was invalid and removed", which would
+         * put a package with a `bin` field and no executable on the registry.
+         *
+         * The registry copy is the one users install, so what it says is not a
+         * cosmetic matter. Asserted here rather than trusted to a warning nobody
+         * reads in a wall of `npm notice` lines during the one command this
+         * repository cannot take back.
+         */
+        for (const [name, target] of Object.entries(manifest.bin ?? {})) {
+          assert.doesNotMatch(
+            target,
+            /^\.\//,
+            `bin["${name}"] starts with "./", which npm rewrites while publishing`,
+          );
+          assert.ok(
+            existsSync(join(repoRoot, pkg, target)) || manifest.files.includes(target.split('/')[0]),
+            `bin["${name}"] points at ${target}, which is not in the tarball`,
+          );
+        }
+      });
+
       it('points at the repository, so npm can link back to it', () => {
         assert.equal(manifest.repository?.directory, pkg);
         assert.ok(manifest.repository?.url?.includes('Davmunrey/Trazum'));

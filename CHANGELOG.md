@@ -12,6 +12,22 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**npm was silently rewriting the manifest of both published binaries.** Every
+`npm publish` answered `"bin[trazum]" script name was cleaned` — npm stripping
+the `./` from `"./dist/index.js"` and uploading a manifest that differs from the
+one in this repository. On npm 12 the same correction reads *"was invalid and
+removed"*, which would put a package declaring a `bin` and carrying no executable
+on the registry: `npx @trazum/cli` would resolve and then do nothing.
+
+Caught on the first real publish attempt, in the wall of `npm notice` lines
+nobody reads during the one command this repository cannot take back. Both
+manifests now say `dist/index.js`, which npm has nothing to correct, and a guard
+asserts it for every publishable workspace — plus that the target actually
+travels in the tarball, since a `bin` pointing outside `files` is the same defect
+arriving by a different route.
+
+### Fixed
+
 **The CLI test suite passed in CI and failed on a contributor's laptop.** Seven
 tests, the first time anybody ran `npm run verify` on a machine whose locale is
 not English — which was during a release, on the maintainer's Mac, with `LANG`
