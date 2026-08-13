@@ -3,7 +3,7 @@
   "governsPublishedBand": true,
   "model": "claude-opus-5",
   "measuredAt": "2026-08-13",
-  "corpusDigest": "71f4ea3271233a5e",
+  "corpusDigest": "ec3124820b13497d",
   "envelopeTokens": 6,
   "samples": [
     {
@@ -33,6 +33,13 @@
       "chars": 728,
       "actualTokens": 314,
       "digest": "3abd1666b39a9ec7"
+    },
+    {
+      "file": "dutch-technical.txt",
+      "type": "prose-latin",
+      "chars": 745,
+      "actualTokens": 330,
+      "digest": "105a97d485369903"
     },
     {
       "file": "english-prose.txt",
@@ -91,6 +98,13 @@
       "digest": "7d862f9cf3971d7e"
     },
     {
+      "file": "italian-technical.txt",
+      "type": "prose-latin",
+      "chars": 702,
+      "actualTokens": 278,
+      "digest": "223ef1eca8fdd740"
+    },
+    {
       "file": "numeric-heavy.txt",
       "type": "numeric",
       "chars": 729,
@@ -103,6 +117,13 @@
       "chars": 689,
       "actualTokens": 281,
       "digest": "a05ba3b0e1f1b378"
+    },
+    {
+      "file": "portuguese-technical.txt",
+      "type": "prose-latin",
+      "chars": 710,
+      "actualTokens": 270,
+      "digest": "9e7f9bbe245791b7"
     },
     {
       "file": "punctuation-heavy.txt",

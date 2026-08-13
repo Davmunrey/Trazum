@@ -80,6 +80,10 @@ const TYPES = {
   'italian-prose.txt': 'prose-latin',
   'portuguese-prose.txt': 'prose-latin',
   'dutch-prose.txt': 'prose-latin',
+  /** Second sample each, so no language rests on a single point. */
+  'italian-technical.txt': 'prose-latin',
+  'portuguese-technical.txt': 'prose-latin',
+  'dutch-technical.txt': 'prose-latin',
 };
 
 /**

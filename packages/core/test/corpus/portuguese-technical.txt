@@ -1,0 +1,13 @@
+Analise o diff da pull request e decida se pode ser integrado com segurança.
+
+Considere cada um destes pontos separadamente e relate todos eles:
+- A alteração introduz uma regressão de comportamento que os testes não apanhariam?
+- Existem caminhos de erro que engolem uma falha em vez de a mostrarem?
+- Surge alguma dependência nova, e está justificada na descrição?
+- A interface pública é alterada de forma que quebraria quem a chama?
+
+Apresente as conclusões como uma lista numerada, da mais grave para a menos grave. Para
+cada uma indique o ficheiro e a linha, uma frase que enuncie o defeito, e um cenário
+concreto em que produza um resultado incorreto. Não relate preferências de estilo.
+
+Diff: {{diff}}
