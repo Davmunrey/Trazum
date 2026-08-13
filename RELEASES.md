@@ -368,6 +368,9 @@ endpoint and a key, so it cannot happen inside this repository. Until somebody
 runs it, the code says so out loud rather than passing quietly — which is the
 whole disposition of this project in one sentence.
 
+*Somebody ran it in 1.9.0, and it was false. See the notes at the top of this
+file. This paragraph is left as it was written.*
+
 ---
 
 ## 1.0.0 — "A stable contract"

@@ -236,7 +236,7 @@ non-terminating run. The fixtures that missed them were all repeated words.
 npm run verify
 ```
 
-Build, tests, typecheck across all three workspaces, and the web build — in the
+Build, tests, typecheck across all four workspaces, and the web build — in the
 order CI runs them. Read the exit code, not the output.
 
 Then add a `CHANGELOG.md` entry under `Unreleased`, and say in the pull request
