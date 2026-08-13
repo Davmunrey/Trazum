@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 
-import { estimateTokens } from '../dist/index.js';
+import { ESTIMATE_ERROR_BAND_PCT, estimateTokens } from '../dist/index.js';
 import { digestOf } from '../../../scripts/corpus-digest.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
+const repoRoot = join(here, '..', '..', '..');
 const corpusDir = join(here, 'corpus');
 const fixturesDir = join(here, 'fixtures');
 const truthPath = join(fixturesDir, 'token-ground-truth.json');
@@ -15,7 +17,7 @@ const truthPath = join(fixturesDir, 'token-ground-truth.json');
 /**
  * The accuracy claim, checked.
  *
- * `±15%` is printed on every report, appears in both READMEs, in the estimator's
+ * `±25%` is printed on every report, appears in both READMEs, in the estimator's
  * own doc comment and in VERSIONING.md as part of the frozen API. Every dollar
  * figure Trazum prints descends from it — and until this file existed, the
  * estimator was tested for exactly three things: zero on empty input, monotonic
@@ -33,14 +35,18 @@ const truthPath = join(fixturesDir, 'token-ground-truth.json');
  * can also measure against DeepSeek, which answers a question the roadmap has
  * open — Trazum prices seven providers with an estimator tuned for one, and
  * nobody has measured how far off the others are. It does *not* answer the
- * published claim. `±15%` is Claude-calibrated, so only the Anthropic fixture
+ * published claim. `±25%` is Claude-calibrated, so only the Anthropic fixture
  * asserts it; every other fixture is measured, reported, and asserted against
  * nothing it was never calibrated for. Reading a DeepSeek number as the
  * published band would be the same class of error as calling a release
  * published because a changelog heading exists.
  */
 
-const PUBLISHED_BAND = 0.15;
+/**
+ * Imported, not repeated. This was `0.15` here while twenty-three other files
+ * said the old band in prose, and the number the code publishes is now the only copy.
+ */
+const PUBLISHED_BAND = ESTIMATE_ERROR_BAND_PCT / 100;
 
 const corpusFiles = readdirSync(corpusDir).filter((n) => n.endsWith('.txt')).sort();
 
@@ -142,7 +148,7 @@ describe('the published error band', () => {
 
     it('is therefore described as a claim rather than a measurement', () => {
       // Until the fixture exists, the documentation must not say the band was
-      // measured. This is the assertion that stops "±15%" quietly hardening from
+      // measured. This is the assertion that stops "±25%" quietly hardening from
       // an estimate into a fact nobody established.
       const tokenizer = readFileSync(join(here, '..', 'src', 'tokenizer.ts'), 'utf8');
       assert.match(
@@ -189,7 +195,7 @@ describe('the published error band', () => {
   it('is the tokenizer the band was calibrated on', () => {
     // The fixture that governs the published number has to be the Anthropic
     // one. If somebody points this file at a cross-family measurement, the
-    // ±15% assertions below would be checking the estimator against a
+    // ±25% assertions below would be checking the estimator against a
     // tokenizer it was never tuned for, and failing for the right reason with
     // completely the wrong message.
     assert.equal(truth.provider ?? 'anthropic', 'anthropic');
@@ -198,7 +204,7 @@ describe('the published error band', () => {
 
   it('reports the worst type, so the band is a finding rather than a hope', () => {
     // Not an assertion about a threshold — a printed summary. If prose is 4% out
-    // and CJK is 14%, the band technically holds and the report saying ±15% for
+    // and CJK is 14%, the band technically holds and the report saying ±25% for
     // both is still misleading. This is what makes that visible.
     const byType = new Map();
     for (const sample of truth.samples) {
@@ -226,7 +232,7 @@ describe('the estimator against tokenizers it was never tuned for', () => {
    * real tokenizer dependency] is not [worth taking]; 40% out and it is."*
    * Nobody has run it, so nobody knows.
    *
-   * These fixtures assert nothing about `±15%`, on purpose. That band is a
+   * These fixtures assert nothing about `±25%`, on purpose. That band is a
    * claim about Claude, and holding a DeepSeek measurement to it would be
    * asserting a promise nobody made. What is asserted is that the numbers
    * describe the corpus as it stands and cover all of it — the same two things
@@ -308,4 +314,42 @@ describe('the estimator against tokenizers it was never tuned for', () => {
       });
     });
   }
+});
+
+describe('the published band has one source', () => {
+  /**
+   * The band lived as a literal in twenty-three files, and the only machine-readable
+   * copy was `PUBLISHED_BAND` in this test — so when the measurement showed the
+   * real band was 22.1%, changing it meant a hand sweep across READMEs, three
+   * locale catalogues, the MCP tool descriptions, the web app and the demo SVG.
+   * Exactly the drift the derived guards in `publish.test.js` exist to prevent,
+   * on the number every dollar figure in the product descends from.
+   *
+   * `CHANGELOG.md` is excluded: it records what the band *was* at each release,
+   * and rewriting history to match the present is the opposite of a changelog.
+   */
+  const skip = new Set(['CHANGELOG.md']);
+
+  it('no file states a band the code does not publish', () => {
+    const listed = spawnSync('git', ['grep', '-l', '-E', '±[0-9]+%'], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+    });
+    const files = listed.stdout.split('\n').filter((f) => f && !skip.has(f));
+    assert.ok(files.length > 5, 'git grep found almost nothing — has the notation changed?');
+
+    const wrong = [];
+    for (const file of files) {
+      const text = readFileSync(join(repoRoot, file), 'utf8');
+      for (const match of text.matchAll(/±(\d+)%/g)) {
+        if (Number(match[1]) !== ESTIMATE_ERROR_BAND_PCT) wrong.push(`${file}: ±${match[1]}%`);
+      }
+    }
+
+    assert.deepEqual(
+      wrong,
+      [],
+      `these publish a band other than ±${ESTIMATE_ERROR_BAND_PCT}%: ${wrong.join(', ')}`,
+    );
+  });
 });

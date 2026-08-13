@@ -2,7 +2,7 @@
 /**
  * Measures the token estimator against the official counting endpoint.
  *
- * `±15%` is printed on every report Trazum produces, appears in both READMEs and
+ * `±25%` is printed on every report Trazum produces, appears in both READMEs and
  * in the estimator's own doc comment, and every dollar figure the tool prints
  * descends from it. Until this script has been run, that number is a claim
  * rather than a measurement.
@@ -36,7 +36,7 @@ const corpusDir = join(repoRoot, 'packages/core/test/corpus');
  *
  * The types are the point: the estimator is calibrated per character class, so
  * "one band for all text" is an assumption rather than a finding. If Japanese is
- * 40% out while English prose is 5%, printing ±15% on a Japanese prompt is
+ * 40% out while English prose is 5%, printing ±25% on a Japanese prompt is
  * telling somebody a number that is wrong about their prompt specifically.
  */
 const TYPES = {
@@ -61,7 +61,7 @@ const TYPES = {
  * Where ground truth comes from, per provider.
  *
  * **Two providers measure two different things, and conflating them would be
- * the whole mistake.** The published `±15%` is the estimator's accuracy against
+ * the whole mistake.** The published `±25%` is the estimator's accuracy against
  * *Claude's* tokenizer — the one it was calibrated on, and the one every claim
  * in the documentation refers to. A DeepSeek measurement is the error against
  * DeepSeek's tokenizer: a real and currently unanswered question, since Trazum
@@ -172,7 +172,7 @@ if (!provider.governsPublishedBand) {
     'This measures the estimator against ' +
       provider.label +
       "'s tokenizer, which is NOT the\n" +
-      'published ±15%. That band is Claude-calibrated and only the Anthropic run\n' +
+      'published ±25%. That band is Claude-calibrated and only the Anthropic run\n' +
       'discharges it. This answers a different and genuinely open question: how far\n' +
       'off the estimator is on a family it was never tuned for.\n',
   );

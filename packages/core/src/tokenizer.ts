@@ -3,7 +3,7 @@
  *
  * This is NOT a real tokenizer: it is a heuristic calibrated per character
  * class. It is built to keep the typical error on ordinary text
- * (English/Spanish, markdown, code) inside ±15%, which is plenty for comparing
+ * (English/Spanish, markdown, code) inside ±25%, which is plenty for comparing
  * two versions of the same prompt — but do NOT bill anyone from it.
  *
  * **That band is a design target that has not been measured.** It is printed on
@@ -22,6 +22,33 @@
  */
 
 import { SAFE_FETCH_INIT, checkedEndpoint } from './net.js';
+
+/**
+ * The error band this estimator is published under, as a percentage.
+ *
+ * **Measured, not chosen.** It was `15` for eight releases — a design target
+ * nobody had checked — and the first run of `scripts/measure-token-band.mjs`
+ * against the official counting endpoint found two of eight samples outside it,
+ * both underestimating. Underestimating tokens means under-reporting cost, which
+ * is the flattering direction and the worst one for this tool.
+ *
+ * `25` is the measured worst case rounded up: after correcting the digit constant
+ * the corpus tops out at 22.1%, on Spanish prose. Rounded up rather than printed
+ * as 22, because eight samples cannot bound a worst case tightly and the honest
+ * direction to be wrong in is the pessimistic one.
+ *
+ * **What drives it is not accents.** Spanish words tokenize into more tokens than
+ * English words of the same length even when they are pure ASCII, because Spanish
+ * is thinner in the merge table. No per-character-class constant can fix that —
+ * weighting accented characters from 2 to 5 moves the sample by three points —
+ * so it needs a signal this estimator does not have, and one Spanish sample
+ * cannot calibrate one. Recorded in ROADMAP.md rather than guessed at.
+ *
+ * Exported so every report, README and tool description reads the same number.
+ * It was a literal in twenty-four files before this, with the only machine-
+ * readable copy in a test.
+ */
+export const ESTIMATE_ERROR_BAND_PCT = 25;
 
 const CJK = /[぀-ヿ㐀-䶿一-鿿가-힯]/;
 const LETTER = /[A-Za-zÀ-ɏͰ-ϿЀ-ӿ]/;
@@ -97,7 +124,20 @@ export function estimateTokens(text: string): number {
         n++;
         i++;
       }
-      total += Math.ceil(n / 3);
+      /**
+       * 1.5 digits per token, not 3.
+       *
+       * The 3 was a guess and it was the single worst constant in this file:
+       * measured against the counting endpoint, the numeric-heavy sample came out
+       * **30.6% under** — by far the largest error in the corpus. Claude's
+       * tokenizer splits long digit runs far more finely than prose, because a
+       * merge table cannot cover every number.
+       *
+       * Corrected in isolation, which is why it can be trusted: changing only
+       * this takes that sample from -30.6% to -5.0% and moves nothing else more
+       * than four points. See `test/fixtures/token-ground-truth.json`.
+       */
+      total += Math.ceil(n / 1.5);
       continue;
     }
 

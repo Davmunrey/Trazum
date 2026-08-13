@@ -185,7 +185,7 @@ describe('the check report', () => {
 
   it('states where the numbers came from', () => {
     const estimated = renderCheckMarkdown({ ...base, target: 'p/', verdicts: [verdict(false)] });
-    assert.match(estimated, /estimated, ±15%/);
+    assert.match(estimated, /estimated, ±25%/);
     const exact = renderCheckMarkdown({
       ...base,
       target: 'p/',

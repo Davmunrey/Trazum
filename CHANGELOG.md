@@ -10,6 +10,51 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**The ±15% error band was never true, and now it is measured.** Eight releases
+printed it on every report and every dollar figure descended from it, while
+nothing in this repository established that it held. The first run of
+`scripts/measure-token-band.mjs` against the official counting endpoint found two
+of eight samples outside it, **both underestimating**:
+
+```
+numeric-heavy    estimated 277, actual 399   -30.6%
+spanish-prose    estimated 352, actual 452   -22.1%
+```
+
+Underestimating tokens means under-reporting cost. Trazum was telling people
+their prompts were cheaper than they are — the flattering direction, and the worst
+one for a tool whose whole argument is honest cost accounting.
+
+**One constant was simply wrong.** Digits were counted at three per token; Claude
+splits long runs far more finely, because a merge table cannot cover every number.
+Correcting it in isolation — nothing else touched — takes the numeric sample from
+−30.6% to **−5.0%** and moves no other sample more than four points.
+
+**The Spanish error is not about accents, and that matters.** Weighting accented
+characters from 2 to 5 moves that sample by three points. Spanish words tokenize
+into more tokens than English words of the same length *even when they are pure
+ASCII*, because Spanish is thinner in the merge table — so no per-character-class
+constant can fix it, and one Spanish sample cannot calibrate a signal that would.
+English prose lands at +1.0%, which says the estimator's structure is sound and
+its coverage of non-English text is not.
+
+So the published band is now **±25%**: the measured worst case (22.1%) rounded up,
+because eight samples cannot bound a worst case tightly and the honest direction
+to be wrong in is the pessimistic one. It is `ESTIMATE_ERROR_BAND_PCT`, exported
+from the core — it had been a literal in twenty-three files with its only
+machine-readable copy in a test, which is why correcting it meant a hand sweep
+across three locale catalogues, four READMEs, the MCP tool descriptions, the web
+app and the demo. A guard now fails when any file states a band the code does not
+publish, with `CHANGELOG.md` excluded because rewriting history to match the
+present is the opposite of a changelog.
+
+The roadmap predicted CJK would be the problem. CJK is fine at −3.2% and +11.2%.
+It was wrong about which text type and right that one number cannot cover all of
+them.
+
+
 ### Changed
 
 **1.8.0 is on npm.** `@trazum/core`, `@trazum/cli` and `@trazum/mcp` were

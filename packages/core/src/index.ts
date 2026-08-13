@@ -1,5 +1,5 @@
 export * from './types.js';
-export { estimateTokens, countTokensAnthropic } from './tokenizer.js';
+export { ESTIMATE_ERROR_BAND_PCT, estimateTokens, countTokensAnthropic } from './tokenizer.js';
 export { countSentences, profilePrompt } from './profile.js';
 export { PHRASE_LANGUAGES } from './phrases.js';
 export { toPromptfoo } from './promptfoo.js';

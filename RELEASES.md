@@ -299,7 +299,7 @@ Twelve commands now, up from four.
   large | frontier`. Telling somebody on Kimi that their task "looks like haiku
   complexity" is a label meaning something other than what it says. `tier` keeps
   working for all of 1.x.
-- **The report stops claiming ±15% for models it was not calibrated on.** The
+- **The report stops claiming a Claude-calibrated band for models it was not calibrated on.** The
   estimator is tuned against Claude's tokenizer, and printing a Claude band beside
   a GPT figure was a precision claim nobody had earned.
 - **Money-only advisories are gone from `--tokens-only`.** Suppressing the price
@@ -308,7 +308,7 @@ Twelve commands now, up from four.
 
 ### Still honest about
 
-The **±15% band is a design target that has not been measured.** It is printed on
+The **band was a design target that had not been measured** when this shipped. It is printed on
 every report and every dollar figure descends from it. The corpus, the harness and
 the test are all written and waiting; the measurement needs the official counting
 endpoint and a key, so it cannot happen inside this repository. Until somebody

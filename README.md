@@ -233,7 +233,7 @@ node packages/cli/dist/index.js optimize prompt.txt --calls 50000 --diff
 
 ```
 Input tokens
-  190 → 137   -27.9% (estimated, ±15%)
+  190 → 137   -27.9% (estimated, ±25%)
 
 Rules applied
   [safe] Repeated paragraphs (1×, ~19 tokens)
@@ -1811,7 +1811,7 @@ forces the other direction anywhere.
 ## Token counting
 
 By default Trazum uses a **dependency-free heuristic estimator**: it classifies
-by character type (words, numbers, punctuation, CJK, emoji). It targets ±15% on
+by character type (words, numbers, punctuation, CJK, emoji). It targets ±25% on
 ordinary prose, and it is built for comparing two versions of the same prompt,
 which is what it is used for.
 

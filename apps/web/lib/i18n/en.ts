@@ -17,7 +17,7 @@ export const en: WebMessages = {
   page: {
     lede: 'Prices every way this prompt costs more than it needs to — caching, model tier, the Batch API — and shortens the text itself without changing what it asks for. Code, URLs and template placeholders stay exactly as they were.',
     footerLead: (pricingReviewed) =>
-      `Pricing reviewed on ${pricingReviewed}. Token counts are estimates (±15%); for exact figures use the official counting endpoint from the CLI with `,
+      `Pricing reviewed on ${pricingReviewed}. Token counts are estimates (±25%); for exact figures use the official counting endpoint from the CLI with `,
     footerTail:
       '. Savings are projections over the scenario you describe, not billing.',
     localeSwitchLabel: 'Language',
