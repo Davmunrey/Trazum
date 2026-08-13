@@ -15,7 +15,7 @@ Things that will still change in a 1.x minor, and are not breaking:
 - **New** exports, options, commands, flags, rules and advisories. An addition
   cannot break code that does not use it.
 - The **text** of any message, in any language.
-- The exact output of the heuristic token estimator, within its documented ±25%.
+- The exact output of the heuristic token estimator, within its documented ±15%.
 - Prices, which move on someone else's schedule — see below.
 
 ### Deprecating something

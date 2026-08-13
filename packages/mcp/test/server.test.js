@@ -141,7 +141,7 @@ describe('optimize_prompt', () => {
 
   it('states the error band, so a figure quoted onward carries its uncertainty', async () => {
     const answer = await client.call('optimize_prompt', { prompt: 'Please be brief.' });
-    assert.match(bodyOf(answer), /estimates \(±25%/);
+    assert.match(bodyOf(answer), /estimates \(±15%/);
   });
 
   it('refuses a prompt past the size cap rather than working through it', async () => {

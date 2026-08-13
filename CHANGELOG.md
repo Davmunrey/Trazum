@@ -10,6 +10,60 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**The estimator was calibrated for English and silently wrong for every other
+Latin language.** Measured across eleven samples: German −37.3%, Spanish −22.9%
+and −22.1%, French −15.1%, English +1.0%. Nine of eleven underestimated, always in
+the direction that under-reports cost. Characters per token says why — English
+3.44, French 2.66, Spanish 2.53, German 2.02 — while one divisor of 4 served all
+of them.
+
+`estimateTokens` now detects the language and divides accordingly:
+
+```
+german-prose        -37.3%  →   -9.2%
+spanish-unaccented  -22.9%  →   -6.5%
+spanish-prose       -22.1%  →   -6.2%
+french-prose        -15.1%  →   -1.2%
+worst in corpus      37.3%  →   11.2%   (Japanese, untouched)
+```
+
+The published band drops to **±15%** — the measured worst case rounded up, the
+same rule that briefly made it 25. Landing back on the number that was a guess for
+eight releases is a coincidence, not a restoration: that 15 bounded nothing, and
+this one bounds eleven samples across four languages and six text types.
+
+**The signal is not accents, and that was tested rather than assumed.** A Spanish
+sample with zero diacritics measured −22.9% against −22.1% for accented Spanish,
+which killed the hypothesis the previous release recorded. What separates these
+languages is which words they are made of, so `language.ts` counts function words
+— `the of and to` against `der die und ist` against `que los las del`.
+
+**It answers `null` when unsure, and most of its tests are about earning that.**
+A three-line prompt, a JSON schema, English instructions wrapped around a Spanish
+example: no answer is safe for any of them, and a wrong language applies another
+language's divisor to text that does not want it. `null` falls back to the English
+divisor, which is what the estimator always did. Two bars guard it — four distinct
+function words minimum, and a 1.6× margin over the runner-up — and removing either
+one fails the suite.
+
+One caveat stated plainly rather than buried: the four Latin divisors are
+calibrated on one or two samples each, so their residuals are in-sample and
+optimistic by construction. The band is set by the seven samples nothing was
+fitted to. The honest test is the next held-out sample in Spanish, French or
+German, and the corpus grows one sample at a time now.
+
+### Known, not fixed
+
+`below-cache-minimum` compares an *estimated* prefix against a hard 512-token
+threshold, so an underestimate can report "caching will not work here" when it
+would — wrong advice, not just an imprecise figure, and it costs the reader the
+largest saving Trazum offers. The worst estimate on measured text is now −9.2%
+rather than −37.3%, which shrinks the window considerably but does not close it.
+The advisory should hedge near the threshold; that is its own change.
+
+
 ### Added
 
 **The corpus can grow now, and three samples were added to falsify a

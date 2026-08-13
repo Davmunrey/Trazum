@@ -17,7 +17,7 @@ const truthPath = join(fixturesDir, 'token-ground-truth.json');
 /**
  * The accuracy claim, checked.
  *
- * `±25%` is printed on every report, appears in both READMEs, in the estimator's
+ * `±15%` is printed on every report, appears in both READMEs, in the estimator's
  * own doc comment and in VERSIONING.md as part of the frozen API. Every dollar
  * figure Trazum prints descends from it — and until this file existed, the
  * estimator was tested for exactly three things: zero on empty input, monotonic
@@ -35,7 +35,7 @@ const truthPath = join(fixturesDir, 'token-ground-truth.json');
  * can also measure against DeepSeek, which answers a question the roadmap has
  * open — Trazum prices seven providers with an estimator tuned for one, and
  * nobody has measured how far off the others are. It does *not* answer the
- * published claim. `±25%` is Claude-calibrated, so only the Anthropic fixture
+ * published claim. `±15%` is Claude-calibrated, so only the Anthropic fixture
  * asserts it; every other fixture is measured, reported, and asserted against
  * nothing it was never calibrated for. Reading a DeepSeek number as the
  * published band would be the same class of error as calling a release
@@ -155,7 +155,7 @@ describe('the published error band', () => {
 
     it('is therefore described as a claim rather than a measurement', () => {
       // Until the fixture exists, the documentation must not say the band was
-      // measured. This is the assertion that stops "±25%" quietly hardening from
+      // measured. This is the assertion that stops "±15%" quietly hardening from
       // an estimate into a fact nobody established.
       const tokenizer = readFileSync(join(here, '..', 'src', 'tokenizer.ts'), 'utf8');
       assert.match(
@@ -239,7 +239,7 @@ describe('the published error band', () => {
   it('is the tokenizer the band was calibrated on', () => {
     // The fixture that governs the published number has to be the Anthropic
     // one. If somebody points this file at a cross-family measurement, the
-    // ±25% assertions below would be checking the estimator against a
+    // ±15% assertions below would be checking the estimator against a
     // tokenizer it was never tuned for, and failing for the right reason with
     // completely the wrong message.
     assert.equal(truth.provider ?? 'anthropic', 'anthropic');
@@ -248,7 +248,7 @@ describe('the published error band', () => {
 
   it('reports the worst type, so the band is a finding rather than a hope', () => {
     // Not an assertion about a threshold — a printed summary. If prose is 4% out
-    // and CJK is 14%, the band technically holds and the report saying ±25% for
+    // and CJK is 14%, the band technically holds and the report saying ±15% for
     // both is still misleading. This is what makes that visible.
     const byType = new Map();
     for (const sample of truth.samples) {
@@ -276,7 +276,7 @@ describe('the estimator against tokenizers it was never tuned for', () => {
    * real tokenizer dependency] is not [worth taking]; 40% out and it is."*
    * Nobody has run it, so nobody knows.
    *
-   * These fixtures assert nothing about `±25%`, on purpose. That band is a
+   * These fixtures assert nothing about `±15%`, on purpose. That band is a
    * claim about Claude, and holding a DeepSeek measurement to it would be
    * asserting a promise nobody made. What is asserted is that the numbers
    * describe the corpus as it stands and cover all of it — the same two things

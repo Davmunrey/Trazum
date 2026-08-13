@@ -3,7 +3,7 @@
   "governsPublishedBand": true,
   "model": "claude-opus-5",
   "measuredAt": "2026-08-13",
-  "corpusDigest": "3200c43c08c6d0cc",
+  "corpusDigest": "cd4f47a2cdd8ff25",
   "envelopeTokens": 6,
   "samples": [
     {
@@ -42,6 +42,20 @@
       "digest": "85d58c550747a167"
     },
     {
+      "file": "french-prose.txt",
+      "type": "prose-latin",
+      "chars": 687,
+      "actualTokens": 258,
+      "digest": "c96a4005a729adb1"
+    },
+    {
+      "file": "german-prose.txt",
+      "type": "prose-latin",
+      "chars": 661,
+      "actualTokens": 327,
+      "digest": "3cd8c20a0a0aaf15"
+    },
+    {
       "file": "numeric-heavy.txt",
       "type": "numeric",
       "chars": 729,
@@ -61,6 +75,13 @@
       "chars": 1158,
       "actualTokens": 452,
       "digest": "bec0195bcd1ad76a"
+    },
+    {
+      "file": "spanish-unaccented.txt",
+      "type": "prose-latin",
+      "chars": 727,
+      "actualTokens": 292,
+      "digest": "6f092aade2c77b74"
     }
   ]
 }

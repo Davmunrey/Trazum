@@ -3,7 +3,7 @@
  *
  * This is NOT a real tokenizer: it is a heuristic calibrated per character
  * class. It is built to keep the typical error on ordinary text
- * (English/Spanish, markdown, code) inside ±25%, which is plenty for comparing
+ * (English/Spanish, markdown, code) inside ±15%, which is plenty for comparing
  * two versions of the same prompt — but do NOT bill anyone from it.
  *
  * **That band is a design target that has not been measured.** It is printed on
@@ -21,6 +21,7 @@
  * endpoint, which is free) or pass your own `TokenCounter`.
  */
 
+import { detectTextLanguage } from './language.js';
 import { SAFE_FETCH_INIT, checkedEndpoint } from './net.js';
 
 /**
@@ -32,27 +33,67 @@ import { SAFE_FETCH_INIT, checkedEndpoint } from './net.js';
  * both underestimating. Underestimating tokens means under-reporting cost, which
  * is the flattering direction and the worst one for this tool.
  *
- * `25` is the measured worst case rounded up: after correcting the digit constant
- * the corpus tops out at 22.1%, on Spanish prose. Rounded up rather than printed
- * as 22, because eight samples cannot bound a worst case tightly and the honest
- * direction to be wrong in is the pessimistic one.
+ * `15` is the measured worst case rounded up, by the same rule that briefly made
+ * it 25: the corpus now tops out at 11.2%, on Japanese. It landing back on the
+ * number that was a guess for eight releases is a coincidence and not a
+ * restoration — that 15 bounded nothing, and this one bounds eleven measured
+ * samples across four languages and six text types.
  *
- * **What drives it is not accents.** Spanish words tokenize into more tokens than
- * English words of the same length even when they are pure ASCII, because Spanish
- * is thinner in the merge table. No per-character-class constant can fix that —
- * weighting accented characters from 2 to 5 moves the sample by three points —
- * so it needs a signal this estimator does not have, and one Spanish sample
- * cannot calibrate one. Recorded in ROADMAP.md rather than guessed at.
+ * **Read one caveat before trusting it.** Four of those samples are the Latin
+ * languages whose divisors in `DIVISOR_BY_LANGUAGE` were calibrated on one or two
+ * samples each, so their residuals are in-sample and optimistic by construction.
+ * The band is set by the seven samples nothing was fitted to — worst 11.2% — and
+ * the honest test of it is the next held-out sample in Spanish, French or German.
+ * The corpus grows one sample at a time now, so that test is cheap to run.
+ *
+ * **What got it there was not accents.** A Spanish sample with zero accented
+ * characters measured -22.9% against -22.1% for accented Spanish, which killed
+ * diacritics as a signal. Languages differ in how many tokens their words cost —
+ * English 3.44 characters per token, German 2.02 — so the estimator detects the
+ * language and divides accordingly. See `language.ts`.
  *
  * Exported so every report, README and tool description reads the same number.
  * It was a literal in twenty-four files before this, with the only machine-
  * readable copy in a test.
  */
-export const ESTIMATE_ERROR_BAND_PCT = 25;
+export const ESTIMATE_ERROR_BAND_PCT = 15;
 
 const CJK = /[぀-ヿ㐀-䶿一-鿿가-힯]/;
 const LETTER = /[A-Za-zÀ-ɏͰ-ϿЀ-ӿ]/;
 const DIGIT = /[0-9]/;
+
+/**
+ * Characters per token, per language.
+ *
+ * Measured, one entry at a time, against `test/fixtures/token-ground-truth.json`.
+ * English keeps 4 because it measures +1.0% there; the others are lower because
+ * they are thinner in the merge table and cost more tokens for the same text.
+ *
+ * **Each of these is calibrated on one or two samples**, which is enough to
+ * establish the effect — five samples across four languages all point the same way
+ * — and not enough to call the residual a measured band. The published band is set
+ * by the unknown-language fallback, not by these.
+ *
+ * A language absent from this table falls through to `DEFAULT_DIVISOR`, which is
+ * the English number and the behaviour this estimator has always had. Adding a
+ * language means measuring it, not guessing it.
+ */
+const DIVISOR_BY_LANGUAGE: Readonly<Record<string, number>> = {
+  en: 4,
+  es: 3,
+  fr: 3.4,
+  de: 2.5,
+};
+
+/**
+ * What a prompt gets when the language could not be told.
+ *
+ * The English value on purpose. An unknown-language prompt is most often English
+ * or code, and lowering this would inflate every estimate that the detector
+ * declined to classify — a change that helps nothing measured and hurts the two
+ * samples the estimator gets right.
+ */
+const DEFAULT_DIVISOR = 4;
 
 /** Effective word length: non-ASCII characters split into more tokens. */
 function effectiveLength(word: string): number {
@@ -75,6 +116,11 @@ function effectiveLength(word: string): number {
  */
 export function estimateTokens(text: string): number {
   if (!text) return 0;
+
+  // Detected once for the whole text, not per word. A prompt is one document; a
+  // per-word guess would be noise, and this runs on every call.
+  const language = detectTextLanguage(text);
+  const divisor = (language === null ? undefined : DIVISOR_BY_LANGUAGE[language]) ?? DEFAULT_DIVISOR;
 
   let total = 0;
   let i = 0;
@@ -114,7 +160,7 @@ export function estimateTokens(text: string): number {
         word += chars[i]!;
         i++;
       }
-      total += Math.max(1, Math.ceil(effectiveLength(word) / 4));
+      total += Math.max(1, Math.ceil(effectiveLength(word) / divisor));
       continue;
     }
 
