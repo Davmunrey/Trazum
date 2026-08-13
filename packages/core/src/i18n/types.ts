@@ -88,6 +88,16 @@ export interface BelowCacheMinimumParams {
   totalTokens: number;
   /** Whether to point at Claude Opus 5's lower 512-token minimum. */
   mentionLowerMinimum: boolean;
+  /**
+   * The prefix is *estimated* and close enough to the minimum that the real
+   * count could be above it.
+   *
+   * Without this the advisory asserts "caching will not work here" from a number
+   * measured to ±15%, and on a prefix near the threshold that is not an imprecise
+   * figure — it is wrong advice, and it costs the reader the largest saving
+   * Trazum offers.
+   */
+  couldReachMinimum: boolean;
 }
 
 export interface CachePrefixReorderParams {

@@ -132,6 +132,7 @@ export const en: CoreMessages = {
       prefixTokens,
       totalTokens,
       mentionLowerMinimum,
+      couldReachMinimum,
     }) => {
       const reason = placeholder
         ? `here the first variable placeholder (${placeholder}) shows up at ~${n(prefixTokens)} tokens and only what precedes it can be cached`
@@ -142,6 +143,9 @@ export const en: CoreMessages = {
           `${modelName} needs at least ${n(minTokens)} prefix tokens to cache; ${reason}. Setting cache_control will not error, it simply will not cache.` +
           (mentionLowerMinimum
             ? ' Claude Opus 5 lowers that minimum to 512 tokens, so short prompts that miss here would cache there.'
+            : '') +
+          (couldReachMinimum
+            ? ' That prefix count is an estimate and it is close to the line, so the real one may already be above it — check with --exact-tokens before deciding this is not available to you. The counting endpoint is free.'
             : ''),
       };
     },

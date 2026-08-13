@@ -12,6 +12,32 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**`below-cache-minimum` was asserting from an estimate, and near the threshold
+that made it wrong advice.** It compares the stable prefix against a hard limit —
+512 tokens on Claude Opus 5 — and then tells the reader caching will not work
+here. The prefix is estimated, so a prompt measured at 505 tokens could really be
+at 540 and cache perfectly well. Not an imprecise figure: a reader told to stop
+looking at the single largest saving Trazum offers.
+
+Near the line it now says so, and names the way to settle it — `--exact-tokens`,
+against an endpoint that is free. Far below the line it stays quiet, because a
+hedge on every case is a hedge nobody reads.
+
+**And it does not hedge a number the caller measured.** `count` defaults to
+`estimateTokens`; a caller who supplied their own counter has an authoritative
+figure, and telling them it might be wrong is its own kind of dishonesty — it
+pushes them toward a check they have already done.
+
+Both directions mutation-tested: hedging always fails the exact-counter test,
+hedging never fails the near-threshold ones.
+
+This was listed as *known, not fixed* one release ago. The window shrank when
+language detection took the worst estimate from −37.3% to −9.2%; it did not close,
+which is why this is a fix rather than a note.
+
+
+### Fixed
+
 **The estimator was calibrated for English and silently wrong for every other
 Latin language.** Measured across eleven samples: German −37.3%, Spanish −22.9%
 and −22.1%, French −15.1%, English +1.0%. Nine of eleven underestimated, always in

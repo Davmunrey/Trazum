@@ -7,7 +7,7 @@ import type { PricingCatalogue } from './pricing.js';
 import { formatUsd } from './savings.js';
 import { analyzeExamples, findContradictions, findMovableSchema,
   findRestatedFormat } from './structure.js';
-import { estimateTokens } from './tokenizer.js';
+import { ESTIMATE_ERROR_BAND_PCT, estimateTokens } from './tokenizer.js';
 import type { Advisory, ModelPricing, TokenCounter, UsageProfile } from './types.js';
 
 function countSignals(haystack: string, signals: readonly string[]): number {
@@ -207,6 +207,17 @@ export function buildAdvisories(
           prefixTokens: cache.stablePrefixTokens,
           totalTokens: tokensAfter,
           mentionLowerMinimum: minTokens > 512,
+          /**
+           * Only when the number is an estimate and near the line.
+           *
+           * `count` defaults to `estimateTokens`; a caller who supplied their own
+           * counter — `--exact-tokens`, or the official endpoint — gets an
+           * authoritative number and no hedge, because hedging a measured figure
+           * is its own kind of dishonesty.
+           */
+          couldReachMinimum:
+            count === estimateTokens &&
+            cache.stablePrefixTokens * (1 + ESTIMATE_ERROR_BAND_PCT / 100) >= minTokens,
         }),
         estimatedMonthlyUsd: null,
       });
