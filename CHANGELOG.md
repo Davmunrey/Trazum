@@ -10,6 +10,31 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**The preflight told the reader to disbelieve it, and it was right.** The caveat
+closed with "believe your settings over this check", on the reasoning that the
+exchange endpoint is undocumented and a refusal could be the request being wrong.
+
+Then it was tested. `v1.9.1` was tagged against settings that had just been filled
+in on all three packages; the check said `rejected`; the publish failed with the
+same `E404` it predicted, twice. The check has been right in the only case that
+has ever tested it, and the caveat argued the reader out of a true finding — which
+is worse than no caveat.
+
+It still says the endpoint is undocumented, because that is true and matters. It
+now also says it has been right once, and asks to be believed until it is not.
+
+**And the diagnosis was unreachable for a third time.** The auth check runs before
+`verify`, which then prints thousands of lines, and GitHub's logs API returns the
+*tail* of a job — so the block naming what npm must match could not be retrieved
+while a release was actually failing, twice during v1.9.1. Writing it to the job
+summary fixed that for anyone on the run page and not for anyone reading the log,
+which is where a failure gets read.
+
+The failure step repeats it now, at the end, where the tail always reaches. Four
+lines, and it is the difference between an error and a diagnosis.
+
 ### Changed
 
 **The report was leading with its smallest number.** Measured rather than
