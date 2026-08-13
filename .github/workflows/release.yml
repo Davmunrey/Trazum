@@ -158,6 +158,7 @@ jobs:
           echo "::error::leave blank, and this workflow declares 'environment: release', so a blank one"
           echo "::error::is a claims mismatch. Full procedure in docs/releasing.md."
           echo "::error::Nothing is half-published: the preflight checks all versions before the first upload."
+          node scripts/npm-publish-preflight.mjs claims
 
       # The release body comes from RELEASES.md, which was written and reviewed in
       # a pull request. Before this, publishing to npm created no GitHub release

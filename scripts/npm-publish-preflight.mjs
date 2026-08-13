@@ -393,11 +393,10 @@ async function checkAuth() {
         'GitHub Actions, org Davmunrey, repo Trazum, workflow release.yml, environment ' +
         'release. The block below prints those values as this run sees them, and whether ' +
         'the token agrees with each. See docs/releasing.md. ' +
-        'AND IF YOU HAVE ALREADY CONFIGURED ALL OF THEM: believe your settings over ' +
-        'this check. It uses an endpoint npm does not document, in a way this ' +
-        'repository worked out by probing it, so a rejection can be the check being ' +
-        'wrong rather than the configuration. That is why it only warns. The tag is ' +
-        'the authority, and a tag that fails publishes nothing.',
+        'This check uses an endpoint npm does not document, so it only warns rather ' +
+        'than blocking the release. It has been tested against a real publish once, ' +
+        'on v1.9.1: it said rejected, the settings had just been filled in, and the ' +
+        'publish failed the same way. Treat a rejection as real until it is wrong.',
     );
     const claims = describeToken(idToken);
     console.log(claims);
@@ -460,9 +459,30 @@ if (mode === 'auth') {
   // Never non-zero: see the header. A dry run reports, a release publishes.
   await checkAuth();
   process.exit(0);
+} else if (mode === 'claims') {
+  /**
+   * The same block again, at the end of a failed job.
+   *
+   * The auth check runs before `verify`, and `verify` prints thousands of lines
+   * after it. GitHub's logs API returns the *tail* of a job, so the diagnosis was
+   * unreachable three separate times while a release was actually failing — the
+   * job summary fixed that for anyone on the run page and not for anyone reading
+   * the log, which is where a failure gets read.
+   *
+   * So the failure step repeats it. A diagnosis printed where the reader is not
+   * looking is the same as no diagnosis, and this one costs four lines.
+   */
+  let idToken = null;
+  try {
+    idToken = await githubIdToken();
+  } catch {
+    // Nothing to add; the publish error above is the story.
+  }
+  if (idToken) console.log(describeToken(idToken));
+  process.exit(0);
 } else if (mode === 'versions') {
   process.exit(await checkVersions());
 } else {
-  console.error('usage: npm-publish-preflight.mjs <auth|versions>');
+  console.error('usage: npm-publish-preflight.mjs <auth|claims|versions>');
   process.exit(2);
 }

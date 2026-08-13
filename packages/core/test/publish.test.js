@@ -1305,16 +1305,17 @@ describe('the publish preflight', () => {
     assert.match(written, /rejected/, 'the summary does not carry the verdict');
   });
 
-  it('says the check may be wrong, not only that the settings are', async () => {
+  it('is honest about its own standing without talking down its finding', async () => {
     /**
-     * The honesty this needs to keep. The exchange endpoint is undocumented and
-     * this repository worked out how to call it by probing, so a rejection can
-     * be the check being wrong rather than the configuration — which is exactly
-     * what it looked like the first time all three came back refused against
-     * settings that had just been filled in.
+     * The endpoint is undocumented, so the check says so — but the caveat used to
+     * close with "believe your settings over this check", and that was wrong the
+     * one time anything tested it. v1.9.1 was tagged against settings that had
+     * just been filled in; the check said rejected; the publish failed the same
+     * way, twice.
      *
-     * Telling somebody their configuration is broken on the word of a guess is
-     * the failure mode here, and it is worse than saying nothing.
+     * A caveat that talks the reader out of a true finding is worse than no
+     * caveat. It records that it has been right once and asks to be believed
+     * until it is not.
      */
     const result = await withRegistry(
       (req, res) => {
@@ -1329,7 +1330,15 @@ describe('the publish preflight', () => {
     );
 
     assert.match(result.stdout, /does not document/, 'it does not admit the endpoint is undocumented');
-    assert.match(result.stdout, /tag is\s+the authority/, 'it does not name what actually settles it');
+    /**
+     * It used to close with "believe your settings over this check", and that
+     * advice was wrong the one time it was tested: v1.9.1 was tagged against
+     * settings that had just been filled in, the check said rejected, and the
+     * publish failed the same way. A caveat that talks the reader out of a true
+     * finding is worse than no caveat.
+     */
+    assert.match(result.stdout, /until it is wrong/, 'it still argues against its own finding');
+    assert.doesNotMatch(result.stdout, /believe your settings/, 'the disproved advice is back');
   });
 
   it('a claim cannot rearrange the summary it is written into', async () => {
@@ -1428,6 +1437,51 @@ describe('the publish preflight', () => {
     // It is still diagnosable — the number reaches the log, which is not a
     // document this script is composing.
     assert.match(result.stdout, /599/, 'the status is nowhere, so nobody can diagnose it');
+  });
+
+  it('repeats the diagnosis at the end of a failed job', async () => {
+    /**
+     * The auth check runs before `verify`, and `verify` prints thousands of lines
+     * after it. GitHub's logs API returns the tail of a job, so this diagnosis was
+     * unreachable **three separate times while a release was actually failing** —
+     * once when the preflight first reported a refusal, and twice more during
+     * v1.9.1. The job summary fixed it for anyone on the run page and not for
+     * anyone reading the log, which is where a failure gets read.
+     *
+     * So the failure step repeats it. A diagnosis printed where the reader is not
+     * looking is the same as no diagnosis.
+     */
+    const payload = Buffer.from(JSON.stringify({ repository: 'Davmunrey/Trazum' })).toString(
+      'base64url',
+    );
+    const result = await withRegistry(
+      (req, res) => {
+        if (req.url.includes('audience=')) {
+          return res.writeHead(200).end(JSON.stringify({ value: `h.${payload}.s` }));
+        }
+        res.writeHead(404).end('{}');
+      },
+      async (url) =>
+        await run('claims', url, {
+          ACTIONS_ID_TOKEN_REQUEST_URL: `${url}/token?x=1`,
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: 'runner',
+          GITHUB_REPOSITORY: 'Davmunrey/Trazum',
+        }),
+    );
+
+    assert.equal(result.status, 0, 'the claims mode failed the job it is diagnosing');
+    assert.match(result.stdout, /npm must match/, 'it printed no diagnosis');
+    assert.match(result.stdout, /Davmunrey\/Trazum/, 'it did not name what to configure');
+  });
+
+  it('the failure step prints the diagnosis where the log tail reaches', () => {
+    const release = readFileSync(join(repoRoot, '.github/workflows/release.yml'), 'utf8');
+    const failureStep = release.slice(release.indexOf('if: failure()'));
+    assert.match(
+      failureStep.slice(0, 1200),
+      /preflight\.mjs claims/,
+      'the failure step explains the error and not what to compare it against',
+    );
   });
 
   it('the release workflow runs both, gated the way each needs', () => {
