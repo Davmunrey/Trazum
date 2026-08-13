@@ -81,7 +81,10 @@ function publishablePackages() {
   return workspaces
     .map((dir) => manifestOf(dir))
     .filter((manifest) => manifest.private !== true)
-    .map((manifest) => ({ name: manifest.name, version: manifest.version }))
+    // Validated here, once, so nothing downstream has to remember to. A manifest
+    // that does not look like one stops the release rather than being sent to a
+    // registry to find out.
+    .map((manifest) => checkedPackage({ name: manifest.name, version: manifest.version }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -90,8 +93,74 @@ const notice = (message) => console.log(`::notice::${message}`);
 const warn = (message) => console.log(`::warning::${message}`);
 const fail = (message) => console.log(`::error::${message}`);
 
-/** npm wants the scope slash encoded, and `encodeURIComponent` leaves it alone. */
-const registryName = (name) => name.replace('/', '%2f');
+/**
+ * A package name and a version, checked before either reaches a URL.
+ *
+ * **Both values come out of a file**, which is what CodeQL flagged and it was
+ * right to. A manifest is trusted here by convention rather than by anything
+ * enforced — it is whatever is on disk when the release runs — and this script
+ * turns its contents into a request to a host that holds publish rights. So the
+ * values are validated rather than assumed, on the same principle as
+ * `checkedEndpoint` in `net.ts`: the boundary is where the check goes, and it
+ * fails closed.
+ *
+ * These are deliberately narrower than npm's own rules. This repository
+ * publishes three lower-case scoped packages at plain semver, and a preflight
+ * that accepts more than it will ever see is surface for no benefit.
+ */
+const NPM_NAME = /^(@[a-z0-9][a-z0-9._-]*\/)?[a-z0-9][a-z0-9._-]*$/;
+const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
+
+function checkedPackage({ name, version }) {
+  if (typeof name !== 'string' || !NPM_NAME.test(name)) {
+    throw new Error(`refusing to build a URL from an implausible package name: ${JSON.stringify(name)}`);
+  }
+  if (typeof version !== 'string' || !SEMVER.test(version)) {
+    throw new Error(`refusing to build a URL from an implausible version: ${JSON.stringify(version)}`);
+  }
+  return { name, version };
+}
+
+/**
+ * The name as a single path segment.
+ *
+ * This was `name.replace('/', '%2f')`, which encodes the *first* slash and
+ * leaves any others — the incomplete-escaping shape CodeQL raised as high, and
+ * the same mistake `release-notes.mjs` made by building a regex out of a version
+ * string. A scoped name has exactly one slash today, so it worked; hand-rolled
+ * encoding that happens to be right is still hand-rolled encoding.
+ *
+ * `encodeURIComponent` encodes the `@` too. Both endpoints accept that — checked
+ * against the live registry, `%40trazum%2Fcore` and `@trazum%2fcore` answer
+ * identically — so there is nothing to preserve by being clever.
+ *
+ * **No test fails if you put the old version back**, and that is deliberate
+ * rather than a gap. `checkedPackage` rejects any name with a second slash
+ * before it gets here, so the two forms are equivalent for every input that
+ * reaches them — a test that failed on the hand-rolled one would be enforcing a
+ * preference, not a requirement. What guards this is CodeQL, which raised it as
+ * high and runs on every pull request.
+ */
+const registryName = (name) => encodeURIComponent(name);
+
+/**
+ * Every URL this script fetches, built one way.
+ *
+ * The segments are encoded and the result is checked back against the
+ * registry's own origin before it is returned. That second half is the part
+ * worth having: encoding already stops a name reaching the path structure, and
+ * the assertion means that if it ever did, the request does not leave rather
+ * than leaving for somewhere else. A preflight that can be steered by a file
+ * would be a worse bug than the one it exists to catch.
+ */
+function registryUrl(...segments) {
+  const base = new URL(REGISTRY);
+  const url = new URL(`${base.pathname.replace(/\/$/, '')}/${segments.join('/')}`, base);
+  if (url.origin !== base.origin) {
+    throw new Error(`refusing to fetch ${url.origin}, which is not ${base.origin}`);
+  }
+  return url;
+}
 
 /**
  * The GitHub-signed token, or `null` when this is not running with
@@ -145,7 +214,7 @@ async function checkAuth() {
   // almost always all-or-nothing, and one request is enough to answer "has this
   // been set up at all" — the question that actually goes unanswered.
   const [first] = publishablePackages();
-  const endpoint = `${REGISTRY}/-/npm/v1/oidc/token/exchange/package/${registryName(first.name)}`;
+  const endpoint = registryUrl('-', 'npm', 'v1', 'oidc', 'token', 'exchange', 'package', registryName(first.name));
 
   let res;
   try {
@@ -184,7 +253,7 @@ async function checkAuth() {
 
 /** Whether `version` of `name` is already on the registry. */
 async function alreadyPublished(name, version) {
-  const res = await fetch(`${REGISTRY}/${registryName(name)}/${version}`, {
+  const res = await fetch(registryUrl(registryName(name), encodeURIComponent(version)), {
     headers: { accept: 'application/json' },
   });
   if (res.status === 404) return false;

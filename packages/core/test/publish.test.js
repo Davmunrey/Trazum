@@ -1107,6 +1107,60 @@ describe('the publish preflight', () => {
     assert.doesNotMatch(accepted.stdout, /::warning::/, 'it warned about a working configuration');
   });
 
+  it('refuses to build a URL out of a manifest that does not look like one', async () => {
+    /**
+     * CodeQL raised this and was right to: both halves of every URL here come
+     * out of a file, and a manifest is trusted by convention rather than by
+     * anything enforced — it is whatever is on disk when the release runs. This
+     * script turns those values into a request to a host that holds publish
+     * rights, so they are checked at the boundary, the same way
+     * `checkedEndpoint` checks an LLM endpoint in `net.ts`.
+     *
+     * Driven through the real script with a real manifest rather than by
+     * importing the regex, because the property is "a bad name never reaches
+     * the network", and a test that asserts the pattern would still pass if
+     * nothing called it.
+     */
+    const { mkdtempSync, writeFileSync, mkdirSync, cpSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+
+    const cases = [
+      ['a name that escapes its path segment', { name: '@trazum/core/../../evil', version: '1.0.0' }],
+      ['a name that is a whole URL', { name: 'https://evil.example/x', version: '1.0.0' }],
+      ['a version that is a path', { name: '@trazum/core', version: '../../etc/passwd' }],
+      ['a version that is not one', { name: '@trazum/core', version: 'latest' }],
+    ];
+
+    for (const [label, manifest] of cases) {
+      // A whole fake repository, so the script reads these values the way it
+      // reads the real ones rather than through a seam built for the test.
+      const root = mkdtempSync(join(tmpdir(), 'trazum-preflight-'));
+      mkdirSync(join(root, 'packages', 'one'), { recursive: true });
+      mkdirSync(join(root, 'scripts'), { recursive: true });
+      writeFileSync(
+        join(root, 'package.json'),
+        JSON.stringify({ name: 'root', version: '1.0.0', workspaces: ['packages/*'] }),
+      );
+      writeFileSync(
+        join(root, 'packages', 'one', 'package.json'),
+        JSON.stringify({ ...manifest, publishConfig: { access: 'public' } }),
+      );
+      cpSync(script, join(root, 'scripts', 'npm-publish-preflight.mjs'));
+
+      const child = spawnSync(process.execPath, [join(root, 'scripts/npm-publish-preflight.mjs'), 'versions'], {
+        encoding: 'utf8',
+        timeout: 20000,
+        // A registry that would answer, so a pass here would mean the value
+        // genuinely reached the network rather than the request merely failing.
+        env: { ...process.env, TRAZUM_NPM_REGISTRY: 'https://registry.npmjs.org' },
+      });
+
+      assert.notEqual(child.status, 0, `${label} was accepted`);
+      assert.match(child.stderr, /implausible (package name|version)/, `${label}: wrong refusal`);
+      assert.equal(child.stdout, '', `${label} produced output before refusing`);
+    }
+  });
+
   it('the release workflow runs both, gated the way each needs', () => {
     const release = readFileSync(join(repoRoot, '.github/workflows/release.yml'), 'utf8');
     const steps = release.split(/^      - /m);

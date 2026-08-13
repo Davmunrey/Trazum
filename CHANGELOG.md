@@ -53,6 +53,33 @@ an unreachable registry as free, making the auth check fail the job, dropping th
 version preflight from the workflow, and tag-gating the auth check so a dry run
 cannot answer it. Each one fails the suite.
 
+**CodeQL raised three alerts on the first version of it, and all three were
+right.** Both halves of every URL here come out of a file, and a manifest is
+trusted by convention rather than by anything enforced — it is whatever is on
+disk when the release runs, and this script turns it into a request to a host
+that holds publish rights.
+
+So the values are checked at the boundary now, on the same principle as
+`checkedEndpoint` in `net.ts`: a name that is not a package name and a version
+that is not a version stop the release rather than being sent to a registry to
+find out. Every URL is built through one helper that encodes its segments and
+then asserts the result is still on the registry's own origin — if a value ever
+did reach the path structure, the request does not leave rather than leaving for
+somewhere else.
+
+The high-severity one was `name.replace('/', '%2f')`, which encodes the *first*
+slash and leaves any others. A scoped name has exactly one, so it worked; it is
+the same shape as the regex `release-notes.mjs` built out of a version string,
+and hand-rolled encoding that happens to be right is still hand-rolled encoding.
+`encodeURIComponent` now, verified against the live registry to accept the
+encoded `@`.
+
+Putting the incomplete escape back fails no test, which is the honest outcome
+rather than a gap: the name validation makes the two forms equivalent for
+anything that reaches them, so a test failing on one would enforce a preference
+instead of a requirement. CodeQL is what guards it, and it runs on every pull
+request.
+
 ### Changed
 
 **The README's action pin advanced to the 1.9.0 commit**, from a 1.0.0 commit it
