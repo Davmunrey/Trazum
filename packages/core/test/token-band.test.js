@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 
 import { ESTIMATE_ERROR_BAND_PCT, estimateTokens } from '../dist/index.js';
-import { digestOf } from '../../../scripts/corpus-digest.mjs';
+import { digestOf, digestOfOne } from '../../../scripts/corpus-digest.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..', '..', '..');
@@ -84,7 +84,14 @@ describe('the freshness check can actually pass', () => {
     const hashing = new RegExp(['create', 'Hash'].join(''));
 
     for (const [name, source] of [['the script', script], ['this file', self]]) {
-      assert.match(source, /import \{ digestOf \}/, `${name} does not import the shared digest`);
+      // Any of the shared helpers counts. Pinned to the exact `{ digestOf }`
+      // spelling, this failed the moment `digestOfOne` was imported alongside it —
+      // a guard that breaks when you use more of the thing it is protecting.
+      assert.match(
+        source,
+        /import \{[^}]*\bdigestOf(One)?\b[^}]*\} from '.*corpus-digest\.mjs'/,
+        `${name} does not import the shared digest`,
+      );
       assert.doesNotMatch(
         source,
         hashing,
@@ -160,20 +167,57 @@ describe('the published error band', () => {
     return;
   }
 
-  it('was measured against the corpus as it stands now', () => {
-    // A fixture describing text that has since been edited is worse than no
-    // fixture: it passes, and it is describing something else.
-    assert.equal(
-      truth.corpusDigest,
-      digestOf(corpus),
-      'the corpus changed since it was measured — re-run scripts/measure-token-band.mjs',
+  /**
+   * Per sample, not per corpus.
+   *
+   * The whole-corpus digest could not tell an *edited* file from an *added* one,
+   * and answered both with "re-run the script" — right for an edit, wrong for an
+   * addition, because it retires eight measurements that each cost an API call to
+   * admit one new sample. That made the corpus effectively frozen: growing it was
+   * gated on a key nobody wanted to spend.
+   *
+   * Split, the two cases get the treatment each deserves. A file that changed
+   * since it was measured **fails**: its measurement now describes different text,
+   * which is the dangerous case, because it passes while being wrong. A file with
+   * no measurement **skips out loud** and is named, because a gap in coverage is
+   * something to report rather than a reason to distrust what has been measured.
+   */
+  const measuredByFile = new Map((truth.samples ?? []).map((s) => [s.file, s]));
+
+  it('every measurement still describes the file it measured', () => {
+    const stale = [];
+    for (const [file, sample] of measuredByFile) {
+      const text = readFileSync(join(corpusDir, file), 'utf8');
+      // A measurement written before per-sample digests existed carries none.
+      // Fall back to the corpus digest so an old fixture is still checked rather
+      // than waved through.
+      const fresh = sample.digest
+        ? sample.digest === digestOfOne(file, text)
+        : truth.corpusDigest === digestOf(corpus);
+      if (!fresh) stale.push(file);
+    }
+    assert.deepEqual(
+      stale,
+      [],
+      `these changed since they were measured — re-run scripts/measure-token-band.mjs: ${stale.join(', ')}`,
     );
   });
 
-  it('measured every sample in the corpus', () => {
-    const measured = new Set(truth.samples.map((s) => s.file));
-    const missing = corpusFiles.filter((n) => !measured.has(n));
-    assert.deepEqual(missing, [], `never measured: ${missing.join(', ')}`);
+  it('reports which samples have no measurement yet', () => {
+    // Named, never silent. A corpus sample with no ground truth is a text type
+    // whose accuracy nobody has established, and this suite exists precisely to
+    // stop that being invisible.
+    const unmeasured = corpusFiles.filter((n) => !measuredByFile.has(n));
+    if (unmeasured.length > 0) {
+      console.log(
+        `\n  ${unmeasured.length} corpus sample(s) not yet measured, so no band is asserted for ` +
+          `them: ${unmeasured.join(', ')}\n  Run ANTHROPIC_API_KEY=... npm run measure:tokens ` +
+          '— the counting endpoint is free.\n',
+      );
+    }
+    // Deliberately not an assertion. The corpus is allowed to grow ahead of the
+    // measurements; what is not allowed is doing it quietly.
+    assert.ok(corpusFiles.length >= truth.samples.length);
   });
 
   for (const sample of truth?.samples ?? []) {

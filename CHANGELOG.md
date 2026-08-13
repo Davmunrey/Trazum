@@ -10,6 +10,51 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+**The corpus can grow now, and three samples were added to falsify a
+hypothesis.** Measuring the band left one finding unexplained: Spanish prose
+comes out 22.1% under while English comes out 1.0% over, and accents are not the
+cause — weighting them from 2 to 5 moves the figure three points. The candidate
+explanation is merge-table coverage: text that is not English costs more tokens
+per character whatever its diacritics.
+
+`spanish-unaccented.txt` is the test that can prove that wrong. It is Spanish with
+**zero** accented characters, so if accent density were a usable detector for "this
+is not English" — and on the old corpus it separated perfectly, 0.00% against
+1.71% — this sample would slip past it and stay underestimated. If instead it
+lands where accented Spanish lands, the phenomenon is the language and the accents
+were a coincidence of one file. `french-prose.txt` (1.83% accented) and
+`german-prose.txt` (1.64%) say whether other Latin languages behave like Spanish
+or like English.
+
+Adding them required fixing something first. **The freshness digest covered the
+whole corpus, so it could not tell an edited file from an added one** and answered
+both with "re-run the script" — correct for an edit, wrong for an addition,
+because it retires eight measurements that cost an API call each to admit one new
+sample. The corpus was effectively frozen: growing it was gated on a key nobody
+wanted to spend.
+
+Digests are per sample now, via `digestOfOne`, and the two cases get what each
+deserves. A file that changed since it was measured **fails** — its measurement
+describes different text, which is the dangerous case because it passes while
+being wrong. A file with no measurement **skips out loud** and is named, with the
+command to run, because a gap in coverage is something to report rather than a
+reason to distrust what has been measured. The existing fixture was migrated
+without new API calls, which is sound only because the whole-corpus digest still
+matched: that match is the proof those eight files are the ones that were
+measured.
+
+One guard had to be loosened to its intent rather than its letter: it asserted
+`import { digestOf }` literally and failed the moment `digestOfOne` was imported
+alongside it — a guard that breaks when you use more of the thing it protects.
+
+**A global correction factor was tried and rejected.** The best available (×1.05)
+takes the worst case from 22.1% to 18.2%, and does it by pushing Japanese from
++11% to +17% and English from +1% to +6%. That is redistributing error, not
+reducing it, and it damages the two samples the estimator gets right.
+
+
 ### Fixed
 
 **The ±15% error band was never true, and now it is measured.** Eight releases

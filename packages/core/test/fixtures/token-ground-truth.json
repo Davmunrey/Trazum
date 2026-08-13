@@ -10,49 +10,57 @@
       "file": "cjk-chinese.txt",
       "type": "cjk",
       "chars": 306,
-      "actualTokens": 313
+      "actualTokens": 313,
+      "digest": "19fcd3e76dfa2d6e"
     },
     {
       "file": "cjk-japanese.txt",
       "type": "cjk",
       "chars": 379,
-      "actualTokens": 338
+      "actualTokens": 338,
+      "digest": "35fcef684f0c8538"
     },
     {
       "file": "code-heavy.txt",
       "type": "code",
       "chars": 1284,
-      "actualTokens": 481
+      "actualTokens": 481,
+      "digest": "de7f2ec8a6850b95"
     },
     {
       "file": "english-prose.txt",
       "type": "prose-latin",
       "chars": 1332,
-      "actualTokens": 387
+      "actualTokens": 387,
+      "digest": "798f05ec3630190c"
     },
     {
       "file": "few-shot.txt",
       "type": "few-shot",
       "chars": 865,
-      "actualTokens": 292
+      "actualTokens": 292,
+      "digest": "85d58c550747a167"
     },
     {
       "file": "numeric-heavy.txt",
       "type": "numeric",
       "chars": 729,
-      "actualTokens": 399
+      "actualTokens": 399,
+      "digest": "0b6dd59425f7642f"
     },
     {
       "file": "punctuation-heavy.txt",
       "type": "punctuation",
       "chars": 871,
-      "actualTokens": 404
+      "actualTokens": 404,
+      "digest": "62944c8e47e623cc"
     },
     {
       "file": "spanish-prose.txt",
       "type": "prose-latin",
       "chars": 1158,
-      "actualTokens": 452
+      "actualTokens": 452,
+      "digest": "bec0195bcd1ad76a"
     }
   ]
 }

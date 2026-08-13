@@ -29,3 +29,22 @@ export function digestOf(entries) {
   for (const [name, text] of entries) hash.update(name + '\0' + text + '\0');
   return hash.digest('hex').slice(0, 16);
 }
+
+/**
+ * The digest of a single sample.
+ *
+ * The whole-corpus digest cannot tell "this file was edited" from "a file was
+ * added", and it answers both with the same failure: *re-run the script*. That is
+ * right for an edit and wrong for an addition — it retires every existing
+ * measurement to admit one new sample, and the measurements cost an API call each.
+ *
+ * Per sample, the two cases separate. A changed file invalidates its own
+ * measurement and nothing else; a new file has no measurement yet, which is a gap
+ * to report rather than a reason to distrust the eight that exist.
+ *
+ * Deliberately the same construction as `digestOf` over a single entry, so a
+ * one-sample corpus hashes identically either way.
+ */
+export function digestOfOne(name, text) {
+  return digestOf([[name, text]]);
+}
