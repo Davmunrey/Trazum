@@ -25,7 +25,7 @@ import { constants } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { digestOf } from './corpus-digest.mjs';
+import { digestOf, digestOfOne } from './corpus-digest.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..');
@@ -48,6 +48,24 @@ const TYPES = {
   'few-shot.txt': 'few-shot',
   'punctuation-heavy.txt': 'punctuation',
   'numeric-heavy.txt': 'numeric',
+  /**
+   * Three samples added to answer one question the corpus could not.
+   *
+   * Spanish prose measured 22.1% under while English measured 1.0% over, and the
+   * cause is not accents — weighting them barely moves the figure. The candidate
+   * explanation is merge-table coverage: text that is not English costs more
+   * tokens per character whatever its diacritics.
+   *
+   * `spanish-unaccented.txt` is the falsification test. It is Spanish with zero
+   * accented characters, so if accent *density* were a usable detector for "this
+   * is not English", this sample would slip past it and stay underestimated. If it
+   * lands where accented Spanish lands, the phenomenon is the language and
+   * accents were a coincidence of the sample. French and German say whether other
+   * Latin languages behave like Spanish or like English.
+   */
+  'spanish-unaccented.txt': 'prose-latin',
+  'french-prose.txt': 'prose-latin',
+  'german-prose.txt': 'prose-latin',
 };
 
 /**
@@ -263,7 +281,15 @@ console.log(`Message envelope: ${envelope} tokens (subtracted from every figure)
 const samples = [];
 for (const [name, text] of entries) {
   const counted = (await countTokens(text)) - envelope;
-  samples.push({ file: name, type: TYPES[name], chars: text.length, actualTokens: counted });
+  // The digest of *this* sample, so adding a ninth file does not retire the
+  // measurements of the first eight — each of which costs an API call.
+  samples.push({
+    file: name,
+    type: TYPES[name],
+    chars: text.length,
+    actualTokens: counted,
+    digest: digestOfOne(name, text),
+  });
   console.log(`  ${name.padEnd(24)} ${String(counted).padStart(6)} tokens`);
 }
 
