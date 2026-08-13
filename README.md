@@ -322,7 +322,7 @@ In GitHub Actions, use the packaged action — nothing to install:
 
 ```yaml
 - uses: actions/checkout@v7
-- uses: Davmunrey/Trazum@588f9e7d8658fc0aa061800ed59f779987bfb5c7  # 1.0.0
+- uses: Davmunrey/Trazum@78dee637b36767e23ec3a8db5aab94d50161aa50  # 1.9.0
   with:
     target: prompts/system.txt
     max-tokens: 2000
@@ -374,7 +374,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v7
-  - uses: Davmunrey/Trazum@588f9e7d8658fc0aa061800ed59f779987bfb5c7  # 1.0.0
+  - uses: Davmunrey/Trazum@78dee637b36767e23ec3a8db5aab94d50161aa50  # 1.9.0
     with:
       target: prompts/            # a directory uses trazum.config.json budgets
       comment: true
