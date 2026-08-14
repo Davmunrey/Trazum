@@ -46,7 +46,11 @@ describe('reading a usage line', () => {
     assert.equal(record.inputTokens, 1500);
     assert.equal(record.outputTokens, 500);
     assert.equal(record.cacheReadTokens, 12000);
-    assert.equal(record.cacheWriteTokens, 800);
+    // A flat write count with no TTL stated lands on the 5-minute rate, and the
+    // record says the rate was assumed rather than read.
+    assert.equal(record.cacheWrite5mTokens, 800);
+    assert.equal(record.cacheWrite1hTokens, 0);
+    assert.equal(record.writeTtlKnown, false);
   });
 
   it('takes a flattened line too, because that is what people log', () => {
@@ -78,6 +82,69 @@ describe('reading a usage line', () => {
     assert.equal(record.inputTokens, 1000, 'the cached tokens were billed twice');
     assert.equal(record.cacheReadTokens, 9000);
     assert.equal(record.outputTokens, 400);
+  });
+
+  it('refuses a line whose count is present but unreadable', () => {
+    /**
+     * Absent and corrupt are different, and conflating them cost the whole bill.
+     *
+     * One helper returned a fallback for both, so `"200000"` out of `jq` or a
+     * `null` out of a Postgres round-trip became a clean zero indistinguishable
+     * from a real one. The record survived, its token class vanished, and it never
+     * reached `skippedLines` — so nothing said a number had been thrown away.
+     *
+     * Measured on a two-line log: $0.0150 against a true $2.015, with the headline
+     * flipped to "output is 100% of this bill" on a workload that was almost
+     * entirely prompt. The advice was the exact opposite of correct.
+     */
+    for (const bad of ['"200000"', 'null', '-5', 'true', '{}']) {
+      const line = `{"model":"claude-opus-5","usage":{"input_tokens":${bad},"output_tokens":300}}`;
+      assert.equal(parseUsageLine(line), null, `a count of ${bad} was accepted as zero`);
+    }
+  });
+
+  it('still treats a genuinely absent count as zero', () => {
+    // The other half. Somebody who logs only what they care about is not corrupt,
+    // and rejecting their whole log would be the fix overshooting.
+    const record = parseUsageLine(JSON.stringify({ model: 'claude-opus-5', output_tokens: 300 }));
+    assert.ok(record, 'a log with only output was rejected');
+    assert.equal(record.inputTokens, 0);
+    assert.equal(record.outputTokens, 300);
+  });
+
+  it('reads the cache-write TTL split, because the two rates differ', () => {
+    /**
+     * Anthropic charges 1.25x input for a 5-minute cache entry and **2x** for a
+     * 1-hour one. Reading only the flat `cache_creation_input_tokens` threw the
+     * distinction away and priced everything at the cheaper rate: a 1-hour
+     * workload reported 37.5% under, on its largest line, silently.
+     */
+    const record = parseUsageLine(
+      JSON.stringify({
+        model: 'claude-opus-5',
+        usage: {
+          input_tokens: 100,
+          output_tokens: 50,
+          cache_creation_input_tokens: 10_000,
+          cache_creation: { ephemeral_5m_input_tokens: 4_000, ephemeral_1h_input_tokens: 6_000 },
+        },
+      }),
+    );
+
+    assert.equal(record.cacheWrite5mTokens, 4_000);
+    assert.equal(record.cacheWrite1hTokens, 6_000);
+    assert.equal(record.writeTtlKnown, true);
+  });
+
+  it('says when it had to assume a TTL rather than assuming quietly', () => {
+    // Only the flat count: which rate applies is unknowable, so the cheaper one is
+    // used and the record admits it. Choosing the cheaper rate in silence is the
+    // flattering direction.
+    const record = parseUsageLine(
+      JSON.stringify({ model: 'claude-opus-5', input_tokens: 100, cache_creation_input_tokens: 9_000 }),
+    );
+    assert.equal(record.cacheWrite5mTokens, 9_000);
+    assert.equal(record.writeTtlKnown, false, 'it assumed a rate without saying so');
   });
 
   it('refuses a line that is not a usage record', () => {
@@ -184,6 +251,34 @@ describe('what the profile is for', () => {
     const shares = sharesOf(report.total);
     assert.ok(shares.output > 0.8, `output is only ${(shares.output * 100).toFixed(0)}% of the bill`);
     assert.ok(shares.input < 0.2);
+  });
+
+  it('prices a 1-hour cache write at 2x, not 1.25x', () => {
+    // The exact scenario an adversarial reviewer found: 10M tokens of 1-hour cache
+    // writes on Opus 5. Anthropic bills 10M x $5/MTok x 2.0 = $100.
+    const report = profile([
+      {
+        model: 'claude-opus-5',
+        usage: {
+          input_tokens: 0,
+          output_tokens: 0,
+          cache_creation_input_tokens: 10_000_000,
+          cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 10_000_000 },
+        },
+      },
+    ]);
+
+    assert.equal(Math.round(report.total.cacheWriteUsd), 100, 'the 1-hour rate is not applied');
+    assert.equal(report.total.assumedWriteTtlCalls, 0, 'a stated TTL was recorded as assumed');
+  });
+
+  it('counts the calls whose TTL it had to assume', () => {
+    const report = profile([
+      { model: 'claude-opus-5', input_tokens: 10, cache_creation_input_tokens: 5_000 },
+      { model: 'claude-opus-5', input_tokens: 10, cache_creation_input_tokens: 0 },
+    ]);
+    // Only the call with actual writes is an assumption; zero writes assume nothing.
+    assert.equal(report.total.assumedWriteTtlCalls, 1);
   });
 
   it('measures the cache hit rate that actually happened', () => {

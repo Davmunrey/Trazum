@@ -10,6 +10,52 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**Three faults in `profile`, found by an adversarial review of the code that had
+just been written, and all three understated the bill.** Twenty-four agents across
+four lenses — money honesty, the parser, the report's claims, security — each
+finding then handed to an independent verifier told to refute it. Everything that
+survived was in the flattering direction, which is the one direction this tool
+exists not to take.
+
+**A 1-hour cache write was priced at the 5-minute rate.** Anthropic charges 1.25x
+input for a 5-minute entry and **2x** for a 1-hour one. `cacheWrite1h` was computed
+in `pricing.ts` and never used by anything. Ten million tokens of 1-hour writes on
+Opus 5 reported **$62.50** against a real **$100.00** — 37.5% under, on the largest
+line of that bill, silently.
+
+Worse, the information needed was in the log and was being thrown away: the API
+returns a `cache_creation` object splitting the two, and the parser read only the
+flat total. It reads the split now. When a log carries only the flat count the
+cheaper rate is used **and the report says so** — the total is a floor for those
+calls, and it uses the word.
+
+**A count that was present but unreadable became a silent zero.** The guard was
+`if (input < 0 && output < 0)` — an AND — so a record survived when only one of the
+two failed to parse. A stringified `"200000"` out of `jq`, or a `null` out of a
+Postgres JSON round-trip, produced a clean zero indistinguishable from a real one,
+and the line never reached `skippedLines`, so nothing on screen said a number had
+been dropped.
+
+Measured: **$0.0150 against a true $2.015**, and the headline flipped to "output is
+100% of this bill, so shortening prompts has a low ceiling" on a workload that was
+almost entirely prompt. The one piece of advice the command exists to give, exactly
+inverted.
+
+Absent and corrupt are different things now. An absent field is a zero somebody may
+legitimately mean — a log recording only what its author cared about is not
+corrupt. A field that is *there* and unusable rejects the line, which puts it in
+`skippedLines` where the report names it.
+
+**A wholly unpriced log printed a report of zero rather than no report.** The empty
+guard required both the priced and unpriced counts to be zero, so a log whose every
+model was unknown fell through and printed a full report built from a zeroed total:
+`0 calls · $0`, four zero rows, a meaningless "Input is 0.0% of this bill", and — on
+a log holding a hundred thousand cache-read tokens — the flatly false **"Caching was
+never used on these calls."** Two affirmatively wrong claims, and the only correct
+line on screen was the quietest one.
+
 ### Added
 
 **`trazum profile <log.jsonl>` — the command on top of the usage reader.** Reads a

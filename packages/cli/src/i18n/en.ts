@@ -826,6 +826,10 @@ ${bold('EXAMPLES')}
     skipped: (lineCount, lines) =>
       `${count(lineCount)} ${lineCount === 1 ? 'line' : 'lines'} could not be read and ${lineCount === 1 ? 'was' : 'were'} left out (${lineCount === 1 ? 'line' : 'lines'} ${lines}).`,
     empty: () => 'No usage records in that file.',
+    nothingPriced: () =>
+      'None of the models in that log are in the pricing catalogue, so there is no bill to report. Add them with a pricing overlay (--pricing) and run this again.',
+    assumedWriteTtl: (calls) =>
+      `${count(calls)} ${calls === 1 ? 'call did' : 'calls did'} not say which cache-write TTL was used, so the cheaper 5-minute rate was assumed. A 1-hour entry costs 2x input rather than 1.25x, so this total is a floor for those calls. Record the "cache_creation" object the API returns to remove the assumption.`,
   },
 
   baseline: {

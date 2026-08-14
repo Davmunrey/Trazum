@@ -374,6 +374,8 @@ export interface CliMessages {
     unpriced(models: string, calls: number): string;
     skipped(count: number, lines: string): string;
     empty(): string;
+    nothingPriced(): string;
+    assumedWriteTtl(calls: number): string;
   };
   baseline: {
     recorded(path: string, files: string, tokens: string): string;

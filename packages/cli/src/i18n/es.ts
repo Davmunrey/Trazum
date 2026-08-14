@@ -838,6 +838,10 @@ ${bold('EJEMPLOS')}
     skipped: (lineCount, lines) =>
       `No se ${lineCount === 1 ? 'pudo leer' : 'pudieron leer'} ${count(lineCount)} ${lineCount === 1 ? 'línea y quedó fuera' : 'líneas y quedaron fuera'} (${lineCount === 1 ? 'línea' : 'líneas'} ${lines}).`,
     empty: () => 'No hay registros de uso en ese archivo.',
+    nothingPriced: () =>
+      'Ninguno de los modelos de ese log está en el catálogo de precios, así que no hay factura que reportar. Añádelos con un overlay de precios (--pricing) y vuelve a ejecutarlo.',
+    assumedWriteTtl: (calls) =>
+      `${count(calls)} ${calls === 1 ? 'llamada no dijo' : 'llamadas no dijeron'} qué TTL de escritura de caché se usó, así que se asumió la tarifa más barata, la de 5 minutos. Una entrada de 1 hora cuesta 2x la entrada en vez de 1.25x, así que este total es un suelo para esas llamadas. Registra el objeto "cache_creation" que devuelve la API para quitar la suposición.`,
   },
 
   baseline: {

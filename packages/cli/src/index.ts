@@ -1899,9 +1899,21 @@ async function commandProfile(args: Args, pricing: PricingCatalogue, t: CliMessa
     return;
   }
 
-  if (report.total.calls === 0 && report.unpriced.calls === 0) {
+  /**
+   * Nothing priced means there is no report, not a report of zero.
+   *
+   * The guard was `total.calls === 0 && unpriced.calls === 0`, so a log whose every
+   * model was unknown fell through and printed a full report built from a zeroed
+   * total: `0 calls · $0`, four `$0 / 0.0%` rows, a meaningless "Input is 0.0% of
+   * this bill", and — on a log containing a hundred thousand cache-read tokens —
+   * the flatly false "Caching was never used on these calls".
+   *
+   * Two affirmatively wrong claims and a $0 headline for a real bill. The trailing
+   * unpriced note was the only correct line on screen, and it was the quietest.
+   */
+  if (report.total.calls === 0) {
     console.log();
-    console.log(c.dim(t.profile.empty()));
+    console.log(c.dim(report.unpriced.calls === 0 ? t.profile.empty() : t.profile.nothingPriced()));
     reportProfileGaps(report, t, n);
     return;
   }
@@ -1946,6 +1958,20 @@ async function commandProfile(args: Args, pricing: PricingCatalogue, t: CliMessa
       ? `  ${c.dim(wrap(t.profile.cacheNever(), 74, '  '))}`
       : `  ${c.dim(t.profile.cacheHit(pct(hitRate)))}`,
   );
+
+  /**
+   * A total that assumed a cache-write rate is a floor, and says so.
+   *
+   * Anthropic's 1-hour entry costs 2x input against the 5-minute entry's 1.25x. A
+   * log carrying only the flat `cache_creation_input_tokens` cannot say which, so
+   * the cheaper one is used — and the flattering direction is exactly the one this
+   * tool refuses to take quietly.
+   */
+  if (report.total.assumedWriteTtlCalls > 0) {
+    console.log(
+      `  ${c.dim(wrap(t.profile.assumedWriteTtl(report.total.assumedWriteTtlCalls), 74, '  '))}`,
+    );
+  }
 
   for (const [heading, rows] of [
     [t.profile.byLabelHeading(), report.byLabel.map((r) => [r.label === UNLABELLED ? t.profile.unlabelled() : r.label, r.breakdown] as const)],
