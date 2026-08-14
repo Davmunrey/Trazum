@@ -106,6 +106,7 @@ export const en: CoreMessages = {
       readPct,
       writePct,
       explicit,
+      nearMinimum,
     }) => {
       const scope = placeholder
         ? `The stable prefix — everything before the first placeholder ${placeholder} — is ~${n(prefixTokens)} of the prompt's ${n(totalTokens)} tokens, and clears ${modelName}'s ${n(minTokens)}-token cacheable minimum.`
@@ -113,9 +114,12 @@ export const en: CoreMessages = {
       const how = explicit
         ? 'Put the cache marker at the end of the stable prefix: any byte that changes before the cut invalidates everything after it.'
         : `${modelName} caches automatically above its minimum, so there is nothing to set — but the same rule applies: any byte that changes before the cut invalidates everything after it.`;
+      const hedge = nearMinimum
+        ? ` One caveat on the figure: that prefix count is an estimate and it is close to the line, so the real one may be below the ${n(minTokens)}-token minimum — in which case nothing caches and this saving is not there. Settle it with --exact-tokens before budgeting from it. The counting endpoint is free.`
+        : '';
       return {
         title: 'Turn on prompt caching for the stable prefix',
-        detail: `${scope} At a ${hitRatePct}% hit rate, a cache read costs ${readPct}% of the input price and a write costs ${writePct}%. ${how}`,
+        detail: `${scope} At a ${hitRatePct}% hit rate, a cache read costs ${readPct}% of the input price and a write costs ${writePct}%. ${how}${hedge}`,
       };
     },
 

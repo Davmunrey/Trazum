@@ -185,6 +185,22 @@ export function buildAdvisories(
             readPct: Math.round(rates.cacheRead * 100),
             writePct: Math.round(rates.cacheWrite5m * 100),
             explicit: (model.caching ?? 'explicit') === 'explicit',
+            /**
+             * The mirror of `couldReachMinimum` on `below-cache-minimum`, and the
+             * asymmetry between them was a real gap: that one hedged an estimate
+             * landing just *under* the threshold, while this one promised money on
+             * an estimate landing just *over* it. With a ±10% band an estimated
+             * 528-token prefix can truly be 475, and then nothing caches at all.
+             *
+             * The cautionary direction is the one that needed it, because this is
+             * the side with a dollar figure attached. Only when the number is an
+             * estimate: a caller who supplied their own counter has an
+             * authoritative prefix and hedging it would push them toward a check
+             * they have already done.
+             */
+            nearMinimum:
+              count === estimateTokens &&
+              cache.stablePrefixTokens * (1 - ESTIMATE_ERROR_BAND_PCT / 100) < minTokens,
           }),
           estimatedMonthlyUsd: saving,
         });
