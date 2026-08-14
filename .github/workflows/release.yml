@@ -114,7 +114,13 @@ jobs:
       #
       # This one does fail the job. It reads the public registry API rather than
       # internal plumbing, and a version that already exists is not a maybe.
+      #
+      # It emits `publish`, which is false when *every* version is already there.
+      # That is a finished release missing only its tag — 1.10.0 was exactly that
+      # — and treating it as a collision would refuse the GitHub release for a
+      # version that had shipped, then blame authentication for it.
       - name: No version may already be on the registry
+        id: versions
         if: startsWith(github.ref, 'refs/tags/')
         run: node scripts/npm-publish-preflight.mjs versions
 
@@ -122,21 +128,21 @@ jobs:
       # not storing a secret: a consumer can verify a published tarball was built
       # from this repository, at this commit, by this workflow.
       - name: Publish @trazum/core
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') && steps.versions.outputs.publish == 'true'
         run: npm publish -w @trazum/core --provenance --access public
 
       # Second, and only if the first succeeded. @trazum/cli depends on
       # @trazum/core at an exact version, so publishing the CLI first would leave
       # a window where installing it fails on a dependency that does not exist.
       - name: Publish @trazum/cli
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') && steps.versions.outputs.publish == 'true'
         run: npm publish -w @trazum/cli --provenance --access public
 
       # Third, for the same reason the CLI is second: @trazum/mcp pins
       # @trazum/core at an exact version too, so publishing it before core exists
       # leaves a window where installing it fails.
       - name: Publish @trazum/mcp
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') && steps.versions.outputs.publish == 'true'
         run: npm publish -w @trazum/mcp --provenance --access public
 
       # npm reports a write you are not authorised for as `404 Not Found`, which
