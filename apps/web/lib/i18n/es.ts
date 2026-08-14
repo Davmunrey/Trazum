@@ -194,6 +194,7 @@ export const es: WebMessages = {
     measuringOptimised: 'Se mide lo que dejarían las reglas, no lo que está escrito.',
     advisoryLabel: {
       'context-overflow': 'El prompt no cabe en la ventana de contexto',
+      'context-near-limit': 'El prompt puede no caber en la ventana de contexto',
       'prompt-caching': 'La caché de prompts se pagaría sola',
       'prompt-caching-not-worth-it': 'La caché de prompts costaría más de lo que ahorra',
       'below-cache-minimum': 'Demasiado corto para cachear en este modelo',
