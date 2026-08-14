@@ -10,6 +10,25 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**A high-severity advisory in `nanoid`, reachable only from the web app's build.**
+`GHSA-2v37-7h3g-55p8` — a custom generator can loop indefinitely when size is zero.
+It arrives transitively: `@tailwindcss/postcss` → `postcss` → `nanoid`, in
+`apps/web`, which is `private: true` and deployed rather than published.
+
+**No published package is affected, and that is asserted rather than assumed.**
+`@trazum/core` carries zero dependencies and the CLI and MCP server carry only each
+other, which `security.test.js` enforces from the root `workspaces` globs. The
+exposure was a build-time tool in a private app.
+
+Fixed in the lockfile, 3.3.17 → 3.3.18, and **verified transitively** rather than by
+reading `npm audit` once. That distinction is in `SECURITY.md` for a reason: the last
+time this repository cleared an advisory, Dependabot raised the direct dependency to
+`next@16` and left the vulnerable `postcss` and `sharp` pinned in the lockfile, so
+the advisories survived the upgrade meant to fix them. Reinstalled from the lockfile
+and re-audited: 0 vulnerabilities.
+
 ### Changed
 
 **The README's action pin advanced to the 1.10.0 commit.** It can only move after
