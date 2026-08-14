@@ -293,3 +293,99 @@ describe('prompt-caching hedges above the line, not only below it', () => {
     );
   });
 });
+
+describe('the context window is an estimate against a hard edge too', () => {
+  /**
+   * The third place a ±10% number was compared against a threshold and the answer
+   * stated as fact, after `cache-prefix-reorder` and `prompt-caching`. This one
+   * carries no dollar figure and is the most absolute of the three:
+   * **"The call will fail."**
+   *
+   * It is wrong in both directions. An estimated 205,000 tokens against a 200,000
+   * window can truly be 184,500 — the call succeeds, and the reader has been sent
+   * to split a prompt that fitted. An estimated 199,000 can truly be 218,900,
+   * which does not fit, and **nothing warned at all**.
+   *
+   * The silent direction is the worse one. A prompt over the window fails outright
+   * rather than degrading, so there is no partial result to notice and no other
+   * advisory covers it.
+   */
+  const HAIKU = getModel('claude-haiku-4-5');
+  const WINDOW = HAIKU.contextWindow;
+  const USAGE_H = { ...USAGE, model: 'claude-haiku-4-5' };
+
+  const contextIdsFor = (tokens, options = {}) =>
+    buildAdvisories('x', tokens, USAGE_H, options)
+      .map((a) => a.id)
+      .filter((id) => id.startsWith('context'));
+
+  it('warns when an estimate fits but its error range does not', () => {
+    // The gap that was silent. Under the window, band reaching over it.
+    const tokens = Math.round(WINDOW * 0.97);
+    assert.ok(tokens < WINDOW, 'the fixture no longer fits');
+    assert.deepEqual(contextIdsFor(tokens), ['context-near-limit']);
+  });
+
+  it('says nothing when the estimate is comfortably inside', () => {
+    // Warning on every prompt would make the warning noise. No error of the
+    // measured size brings this one near the edge.
+    assert.deepEqual(contextIdsFor(Math.round(WINDOW * 0.5)), []);
+  });
+
+  it('softens "the call will fail" when the estimate is barely over', () => {
+    const advisory = buildAdvisories('x', Math.round(WINDOW * 1.02), USAGE_H, {}).find(
+      (a) => a.id === 'context-overflow',
+    );
+    assert.ok(advisory, 'the overflow advisory stopped firing');
+    assert.match(advisory.title, /probably/, 'it still states a prediction as a fact');
+    assert.match(advisory.detail, /--exact-tokens/, 'it does not name the way to settle it');
+  });
+
+  it('keeps stating it flatly when nothing could rescue the prompt', () => {
+    // Far over the line, no band reaches back. Hedging here would be its own
+    // dishonesty: the call does fail.
+    const advisory = buildAdvisories('x', WINDOW * 2, USAGE_H, {}).find(
+      (a) => a.id === 'context-overflow',
+    );
+    assert.doesNotMatch(advisory.title, /probably/);
+    assert.match(advisory.detail, /will fail/);
+  });
+
+  it('does not hedge, or warn, about a number the caller measured', () => {
+    /**
+     * The same rule the other two advisories follow. An exact count near the edge
+     * is not uncertain, so `context-near-limit` must not fire at all and the
+     * overflow message must not soften — telling somebody their measurement might
+     * be wrong pushes them toward a check they have already done.
+     */
+    const near = Math.round(WINDOW * 0.97);
+    assert.deepEqual(contextIdsFor(near, { count: () => near }), []);
+
+    const over = Math.round(WINDOW * 1.02);
+    const advisory = buildAdvisories('x', over, USAGE_H, { count: () => over }).find(
+      (a) => a.id === 'context-overflow',
+    );
+    assert.doesNotMatch(advisory.title, /probably/, 'it hedged an exact count');
+  });
+
+  it('leaves no silent gap anywhere around the edge', () => {
+    /**
+     * The property, swept. Every size whose band crosses the window must produce
+     * some context advisory — the fault was a range of sizes where none did, and
+     * only a sweep shows the seam between "fits" and "does not" is covered.
+     */
+    const band = ESTIMATE_ERROR_BAND_PCT / 100;
+    const silent = [];
+    for (let pct = 80; pct <= 125; pct += 1) {
+      const tokens = Math.round((WINDOW * pct) / 100);
+      const straddles = tokens * (1 - band) <= WINDOW && tokens * (1 + band) > WINDOW;
+      if (straddles && contextIdsFor(tokens).length === 0) silent.push(`${pct}%`);
+    }
+
+    assert.deepEqual(
+      silent,
+      [],
+      `these sizes straddle the window and produce no warning: ${silent.join(', ')}`,
+    );
+  });
+});

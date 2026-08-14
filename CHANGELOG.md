@@ -10,6 +10,43 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+**`context-near-limit`, for the prompt that fits by estimate and might not fit at
+all.** The third place a ±10% number was compared against a hard threshold and the
+answer stated as fact, after `cache-prefix-reorder` and `prompt-caching`. This one
+carries no dollar figure and was the most absolute of the three: **"The call will
+fail."**
+
+It was wrong in both directions. An estimated 205,000 tokens against a 200,000
+window can truly be 184,500 — the call succeeds, and the reader was sent to split a
+prompt that fitted. An estimated 199,000 can truly be 218,900, which does not fit,
+and **nothing warned at all**.
+
+The silent direction is the worse one and it is the new advisory. A prompt over the
+window fails outright rather than degrading, so there is no partial result to
+notice and no other finding covers it.
+
+### Fixed
+
+**`context-overflow` no longer states a prediction as a fact.** Barely over the
+line it says the call will *probably* fail and names `--exact-tokens`; far over, it
+still says the call will fail, because it does. Hedging there would be its own
+dishonesty.
+
+Neither fires on a number the caller measured. An exact count near the edge is not
+uncertain, and telling somebody their measurement might be wrong pushes them toward
+a check they have already done — the same rule the other two advisories follow.
+
+**Three advisories, one fault, found by asking twice whether it had a twin.** The
+pattern is worth naming because it will recur: any comparison of an estimate
+against a hard threshold has two failure modes, and the quiet one is usually worse
+than the loud one. The sweep tests now cover the seam around each threshold rather
+than sampling either side of it.
+
+Adding the id made the typed union fail the web app's catalogues and a derived
+guard fail the README's count of findings. Both are the mechanisms working.
+
 ### Fixed
 
 **`prompt-caching` hedged in one direction and promised money in the other.** Found

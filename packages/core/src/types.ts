@@ -44,6 +44,7 @@ export type AdvisorySeverity = 'info' | 'opportunity' | 'warning';
 /** Every advisory the core can emit. */
 export type AdvisoryId =
   | 'context-overflow'
+  | 'context-near-limit'
   | 'prompt-caching'
   | 'prompt-caching-not-worth-it'
   | 'below-cache-minimum'

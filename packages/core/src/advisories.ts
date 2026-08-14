@@ -125,12 +125,44 @@ export function buildAdvisories(
   const monthlyOutputUsd =
     (usage.avgOutputTokens / 1_000_000) * outputPerMTok * usage.callsPerMonth * batchFactor;
 
-  // --- Context window ---
+  /**
+   * --- Context window ---
+   *
+   * The third place an estimate was compared against a hard threshold and the
+   * answer stated as fact, after `cache-prefix-reorder` and `prompt-caching`. This
+   * one has no dollar figure and is the most absolute of the three: **"The call
+   * will fail."**
+   *
+   * With a ±10% band it fails in both directions. An estimated 1,050,000 tokens
+   * against a 1,000,000 window can truly be 945,000 — the call succeeds and the
+   * reader has been sent to split a prompt that fitted. And an estimated 990,000
+   * can truly be 1,089,000, which does not fit, and nothing said anything at all.
+   *
+   * The silent direction is the worse one. A prompt over the window fails
+   * outright rather than degrading, so there is no partial result to notice.
+   */
+  const estimated = count === estimateTokens;
+  const band = ESTIMATE_ERROR_BAND_PCT / 100;
+
   if (tokensAfter > model.contextWindow) {
     advisories.push({
       id: 'context-overflow',
       severity: 'warning',
       ...t.advisories.contextOverflow({
+        tokens: tokensAfter,
+        modelName: model.displayName,
+        contextWindow: model.contextWindow,
+        // Only an estimate can be uncertain. A caller who counted exactly is told
+        // the call fails, because it does.
+        uncertain: estimated && tokensAfter * (1 - band) <= model.contextWindow,
+      }),
+      estimatedMonthlyUsd: null,
+    });
+  } else if (estimated && tokensAfter * (1 + band) > model.contextWindow) {
+    advisories.push({
+      id: 'context-near-limit',
+      severity: 'warning',
+      ...t.advisories.contextNearLimit({
         tokens: tokensAfter,
         modelName: model.displayName,
         contextWindow: model.contextWindow,

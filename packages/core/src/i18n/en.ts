@@ -91,9 +91,18 @@ export const en: CoreMessages = {
   },
 
   advisories: {
-    contextOverflow: ({ tokens, modelName, contextWindow }) => ({
-      title: 'The prompt does not fit in the context window',
-      detail: `The optimised prompt is ~${n(tokens)} tokens and ${modelName} accepts ${n(contextWindow)}. The call will fail: split the content or move to a model with a larger window.`,
+    contextOverflow: ({ tokens, modelName, contextWindow, uncertain }) => ({
+      title: uncertain
+        ? 'The prompt probably does not fit in the context window'
+        : 'The prompt does not fit in the context window',
+      detail: uncertain
+        ? `The optimised prompt is ~${n(tokens)} tokens against ${modelName}'s ${n(contextWindow)}. That count is an estimate and it is close to the line, so the call will probably fail but might not — settle it with --exact-tokens before rewriting anything. The counting endpoint is free. If it does exceed the window, split the content or move to a model with a larger one.`
+        : `The optimised prompt is ~${n(tokens)} tokens and ${modelName} accepts ${n(contextWindow)}. The call will fail: split the content or move to a model with a larger window.`,
+    }),
+
+    contextNearLimit: ({ tokens, modelName, contextWindow }) => ({
+      title: 'The prompt may not fit in the context window',
+      detail: `The optimised prompt is ~${n(tokens)} tokens against ${modelName}'s ${n(contextWindow)}, which fits — but that count is an estimate and its error range reaches past the window, so the real prompt may not. A call that exceeds the window fails outright rather than degrading, and nothing else here warns about it. Confirm with --exact-tokens; the counting endpoint is free.`,
     }),
 
     promptCaching: ({

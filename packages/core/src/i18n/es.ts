@@ -91,9 +91,18 @@ export const es: CoreMessages = {
   },
 
   advisories: {
-    contextOverflow: ({ tokens, modelName, contextWindow }) => ({
-      title: 'El prompt no cabe en la ventana de contexto',
-      detail: `El prompt optimizado ocupa ~${n(tokens)} tokens y ${modelName} admite ${n(contextWindow)}. La llamada fallará: divide el contenido o cambia a un modelo con ventana mayor.`,
+    contextOverflow: ({ tokens, modelName, contextWindow, uncertain }) => ({
+      title: uncertain
+        ? 'El prompt probablemente no cabe en la ventana de contexto'
+        : 'El prompt no cabe en la ventana de contexto',
+      detail: uncertain
+        ? `El prompt optimizado ocupa ~${n(tokens)} tokens frente a los ${n(contextWindow)} de ${modelName}. Ese recuento es una estimación y está cerca del límite, así que la llamada fallará probablemente, pero puede que no —confírmalo con --exact-tokens antes de reescribir nada. El endpoint de conteo es gratis. Si de verdad se pasa, divide el contenido o cambia a un modelo con ventana mayor.`
+        : `El prompt optimizado ocupa ~${n(tokens)} tokens y ${modelName} admite ${n(contextWindow)}. La llamada fallará: divide el contenido o cambia a un modelo con ventana mayor.`,
+    }),
+
+    contextNearLimit: ({ tokens, modelName, contextWindow }) => ({
+      title: 'El prompt puede no caber en la ventana de contexto',
+      detail: `El prompt optimizado ocupa ~${n(tokens)} tokens frente a los ${n(contextWindow)} de ${modelName}, así que cabe —pero ese recuento es una estimación y su margen de error se pasa de la ventana, así que el prompt real puede no caber. Una llamada que excede la ventana falla del todo en lugar de degradarse, y nada más aquí avisa de eso. Confírmalo con --exact-tokens; el endpoint de conteo es gratis.`,
     }),
 
     promptCaching: ({

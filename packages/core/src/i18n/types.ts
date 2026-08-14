@@ -51,6 +51,17 @@ export interface RuleCopy {
 // --------------------------------------------------------------------------
 
 export interface ContextOverflowParams {
+  /**
+   * The count is an estimate and its band reaches back under the window, so
+   * "the call will fail" is a prediction rather than a fact.
+   */
+  uncertain: boolean;
+  tokens: number;
+  modelName: string;
+  contextWindow: number;
+}
+
+export interface ContextNearLimitParams {
   tokens: number;
   modelName: string;
   contextWindow: number;
@@ -209,6 +220,7 @@ export interface CoreMessages {
   suggest: SuggestMessages;
   advisories: {
     contextOverflow(p: ContextOverflowParams): LocalizedMessage;
+    contextNearLimit(p: ContextNearLimitParams): LocalizedMessage;
     promptCaching(p: PromptCachingParams): LocalizedMessage;
     promptCachingNotWorthIt(): LocalizedMessage;
     belowCacheMinimum(p: BelowCacheMinimumParams): LocalizedMessage;
