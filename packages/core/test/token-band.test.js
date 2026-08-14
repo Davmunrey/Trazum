@@ -17,7 +17,7 @@ const truthPath = join(fixturesDir, 'token-ground-truth.json');
 /**
  * The accuracy claim, checked.
  *
- * `±15%` is printed on every report, appears in both READMEs, in the estimator's
+ * `±10%` is printed on every report, appears in both READMEs, in the estimator's
  * own doc comment and in VERSIONING.md as part of the frozen API. Every dollar
  * figure Trazum prints descends from it — and until this file existed, the
  * estimator was tested for exactly three things: zero on empty input, monotonic
@@ -35,7 +35,7 @@ const truthPath = join(fixturesDir, 'token-ground-truth.json');
  * can also measure against DeepSeek, which answers a question the roadmap has
  * open — Trazum prices seven providers with an estimator tuned for one, and
  * nobody has measured how far off the others are. It does *not* answer the
- * published claim. `±15%` is Claude-calibrated, so only the Anthropic fixture
+ * published claim. `±10%` is Claude-calibrated, so only the Anthropic fixture
  * asserts it; every other fixture is measured, reported, and asserted against
  * nothing it was never calibrated for. Reading a DeepSeek number as the
  * published band would be the same class of error as calling a release
@@ -155,7 +155,7 @@ describe('the published error band', () => {
 
     it('is therefore described as a claim rather than a measurement', () => {
       // Until the fixture exists, the documentation must not say the band was
-      // measured. This is the assertion that stops "±15%" quietly hardening from
+      // measured. This is the assertion that stops "±10%" quietly hardening from
       // an estimate into a fact nobody established.
       const tokenizer = readFileSync(join(here, '..', 'src', 'tokenizer.ts'), 'utf8');
       assert.match(
@@ -239,16 +239,81 @@ describe('the published error band', () => {
   it('is the tokenizer the band was calibrated on', () => {
     // The fixture that governs the published number has to be the Anthropic
     // one. If somebody points this file at a cross-family measurement, the
-    // ±15% assertions below would be checking the estimator against a
+    // ±10% assertions below would be checking the estimator against a
     // tokenizer it was never tuned for, and failing for the right reason with
     // completely the wrong message.
     assert.equal(truth.provider ?? 'anthropic', 'anthropic');
     assert.notEqual(truth.governsPublishedBand, false);
   });
 
+  it('does not lose accuracy it has already achieved', () => {
+    /**
+     * A regression gate, **not a claim** — and the difference is the whole point
+     * of it existing separately from `PUBLISHED_BAND`.
+     *
+     * The published band is what a user may rely on, and it is deliberately looser
+     * than the measurements: 10 against a worst case of 6.4, because six text types
+     * cannot bound a seventh. That looseness has a cost. A change that quietly took
+     * CJK from 1.5% back to 3.6% would pass every assertion in this file, because
+     * both are comfortably inside ten.
+     *
+     * That is exactly what happened when these floors were written: setting
+     * `HAN_TOKENS_PER_CHAR` back to a round 1 doubles the CJK error and nothing
+     * failed. So each type carries the accuracy it has actually reached, rounded
+     * out to leave room for honest noise.
+     *
+     * **These are ratchets and they are allowed to tighten, never to slacken.** If
+     * a change improves a type, lower its floor in the same commit — a floor left
+     * at the old value is a licence to give the improvement back later. If a change
+     * genuinely trades one type against another, raise the floor deliberately and
+     * say why in the changelog, which is a different act from not noticing.
+     *
+     * Same idea as `trazum baseline` applied to this repository's own numbers:
+     * publish a ceiling, gate on drift away from what you had.
+     */
+    const FLOORS = {
+      cjk: 0.03,
+      'prose-latin': 0.06,
+      code: 0.08,
+      numeric: 0.07,
+      punctuation: 0.07,
+      'few-shot': 0.04,
+    };
+
+    const byType = new Map();
+    for (const sample of truth.samples) {
+      const text = readFileSync(join(corpusDir, sample.file), 'utf8');
+      const error = Math.abs(estimateTokens(text) - sample.actualTokens) / sample.actualTokens;
+      byType.set(sample.type, Math.max(byType.get(sample.type) ?? 0, error));
+    }
+
+    // Every measured type needs a floor, derived rather than assumed: a type added
+    // to the corpus without one would be ungated and nobody would find out.
+    const ungated = [...byType.keys()].filter((type) => FLOORS[type] === undefined);
+    assert.deepEqual(
+      ungated,
+      [],
+      `these types are measured but not gated against regression: ${ungated.join(', ')}`,
+    );
+
+    const lost = [];
+    for (const [type, error] of byType) {
+      if (error > FLOORS[type]) {
+        lost.push(`${type} ${(error * 100).toFixed(1)}% (floor ${(FLOORS[type] * 100).toFixed(0)}%)`);
+      }
+    }
+
+    assert.deepEqual(
+      lost,
+      [],
+      `accuracy already achieved has been given back: ${lost.join(', ')}. ` +
+        'The published band still holds, which is why this gate exists separately.',
+    );
+  });
+
   it('reports the worst type, so the band is a finding rather than a hope', () => {
     // Not an assertion about a threshold — a printed summary. If prose is 4% out
-    // and CJK is 14%, the band technically holds and the report saying ±15% for
+    // and CJK is 14%, the band technically holds and the report saying ±10% for
     // both is still misleading. This is what makes that visible.
     const byType = new Map();
     for (const sample of truth.samples) {
@@ -276,7 +341,7 @@ describe('the estimator against tokenizers it was never tuned for', () => {
    * real tokenizer dependency] is not [worth taking]; 40% out and it is."*
    * Nobody has run it, so nobody knows.
    *
-   * These fixtures assert nothing about `±15%`, on purpose. That band is a
+   * These fixtures assert nothing about `±10%`, on purpose. That band is a
    * claim about Claude, and holding a DeepSeek measurement to it would be
    * asserting a promise nobody made. What is asserted is that the numbers
    * describe the corpus as it stands and cover all of it — the same two things
@@ -369,10 +434,17 @@ describe('the published band has one source', () => {
    * Exactly the drift the derived guards in `publish.test.js` exist to prevent,
    * on the number every dollar figure in the product descends from.
    *
-   * `CHANGELOG.md` is excluded: it records what the band *was* at each release,
-   * and rewriting history to match the present is the opposite of a changelog.
+   * Three files are excluded, and they are the three that record what the band
+   * *was* rather than what it is: the changelog, the release notes and the
+   * roadmap's `Released` section. Rewriting those to match the present is the
+   * opposite of what they are for — "the band is still ±10%" in the 1.9.0 notes is
+   * a true statement about 1.9.0, and making it say 10 would be falsifying a
+   * record to satisfy a test.
+   *
+   * Everything else is a live claim and has to agree: READMEs, three locale
+   * catalogues, the MCP tool descriptions, the web app, the demo SVG.
    */
-  const skip = new Set(['CHANGELOG.md']);
+  const skip = new Set(['CHANGELOG.md', 'RELEASES.md', 'ROADMAP.md']);
 
   it('no file states a band the code does not publish', () => {
     const listed = spawnSync('git', ['grep', '-l', '-E', '±[0-9]+%'], {

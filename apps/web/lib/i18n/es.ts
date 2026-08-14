@@ -17,7 +17,7 @@ export const es: WebMessages = {
   page: {
     lede: 'Calcula todo lo que hace que este prompt cueste más de lo necesario —el caching, la gama de modelo, la Batch API— y acorta el texto sin cambiar lo que pide. El código, las URLs y los marcadores de plantilla se quedan intactos.',
     footerLead: (pricingReviewed) =>
-      `Precios revisados el ${pricingReviewed}. El recuento de tokens es una estimación (±15%); para cifras exactas usa el endpoint oficial de recuento desde la CLI con `,
+      `Precios revisados el ${pricingReviewed}. El recuento de tokens es una estimación (±10%); para cifras exactas usa el endpoint oficial de recuento desde la CLI con `,
     footerTail: '. Los ahorros son proyecciones sobre el escenario que indiques, no facturación.',
     localeSwitchLabel: 'Idioma',
   },

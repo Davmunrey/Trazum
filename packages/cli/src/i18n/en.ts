@@ -371,7 +371,7 @@ ${bold('EXAMPLES')}
     inputTokens: () => 'Input tokens',
     estimated: (offFamily) =>
       offFamily === null
-        ? ' (estimated, ±15%)'
+        ? ' (estimated, ±10%)'
         : ` (estimated — the counter is calibrated on Claude, not ${offFamily})`,
     exactCount: () => ' (exact count)',
     rulesApplied: () => 'Rules applied',
@@ -551,7 +551,7 @@ ${bold('EXAMPLES')}
       `Showing the most recent ${shown}. Pass --limit for more.`,
     followedRename: (from) => `Followed a rename: earlier revisions are ${from}.`,
     estimateNote: () =>
-      'Token counts are estimates (±15%). The trend is the point; the absolute figures are not.',
+      'Token counts are estimates (±10%). The trend is the point; the absolute figures are not.',
   },
 
   languages: {
@@ -754,7 +754,7 @@ ${bold('EXAMPLES')}
     footer: (source, level) => `Token counts ${source} · rule level \`${level}\``,
     pricingOverlaid: (count, lastReviewed) =>
       `Prices for ${count} ${count === 1 ? 'model' : 'models'} came from a local overlay reviewed ${lastReviewed}.`,
-    sourceEstimated: () => 'estimated, ±15%',
+    sourceEstimated: () => 'estimated, ±10%',
     sourceExact: () => 'counted exactly',
     measuringOptimised: () =>
       'Measuring what the rules would leave, not what is written in the file.',
