@@ -505,7 +505,24 @@ describe('a count written in prose is a claim like any other', () => {
     // that was right — a guard that cries wolf gets deleted, so it distinguishes
     // them rather than banning the phrasing.
     for (const file of prose) {
-      const text = readFileSync(join(repoRoot, file), 'utf8');
+      const whole = readFileSync(join(repoRoot, file), 'utf8');
+
+      /**
+       * In `RELEASES.md`, only the standing header is a live claim.
+       *
+       * **The second guard today to need this distinction**, after the one on the
+       * published error band. Below the first `## <version>` heading the file is a
+       * record: "Twelve commands now, up from four" is a true statement about
+       * 1.8.0, and rewriting it to say thirteen would be falsifying history to
+       * satisfy a test. The drift this guard was written for lived in the standing
+       * header — "Nine commands now" at the top, two merges after `doctor` made it
+       * ten — and that half is still checked.
+       *
+       * `README.md` has no such split. Every word of it describes the present.
+       */
+      const firstRelease = whole.search(/^## \d+\.\d+\.\d+/m);
+      const text =
+        file === 'RELEASES.md' && firstRelease > 0 ? whole.slice(0, firstRelease) : whole;
       /**
          * Case-insensitive, which is not a detail.
          *

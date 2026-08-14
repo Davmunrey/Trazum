@@ -1,5 +1,8 @@
 import type { CliMessages } from './types.js';
 
+/** Counts, grouped. A log with forty thousand torn lines should say so legibly. */
+const count = (value: number): string => value.toLocaleString('es-ES');
+
 /** "(hace 46 días)", o nada cuando no se sabe la antigüedad. */
 const hace = (days: number | null): string =>
   days === null ? '' : days === 0 ? ' (hoy)' : days === 1 ? ' (hace 1 día)' : ` (hace ${days} días)`;
@@ -811,6 +814,32 @@ ${bold('EJEMPLOS')}
     exactCountsCost: (files) =>
       `Contando ${files} ${files === 1 ? 'fichero' : 'ficheros'} con la API, una llamada por cada uno. Esto tarda un momento.`,
   },
+  profile: {
+    noTarget: () =>
+      'Apúntalo a un log de uso: trazum profile usage.jsonl — un objeto JSON por línea, cada uno con un "model" y el objeto "usage" que devolvió la API. Registrarlo son tres líneas en tu propio código, y nunca contiene el texto del prompt.',
+    heading: () => 'Adónde fue el dinero',
+    spent: (calls, total) => `${calls} llamadas · ${total}`,
+    part: (name, usd, pct, tokens) => `${name.padEnd(15)}${usd.padStart(11)}  ${pct.padStart(5)}   ${tokens} tokens`,
+    partInput: () => 'Entrada',
+    partCacheRead: () => 'Lecturas caché',
+    partCacheWrite: () => 'Escrituras caché',
+    partOutput: () => 'Salida',
+    byLabelHeading: () => 'Por etiqueta',
+    byModelHeading: () => 'Por modelo',
+    row: (name, usd, pct, calls) => `${usd.padStart(11)}  ${pct.padStart(5)}   ${name}  (${calls} llamadas)`,
+    unlabelled: () => 'sin etiqueta',
+    cacheHit: (pct) => `Tasa de acierto de caché: ${pct} de la entrada facturable.`,
+    cacheNever: () => 'No se usó caché en estas llamadas. Si algún prefijo se repite, ese es el mayor ahorro disponible.',
+    biggestPart: (name, pct) => `${name} es el ${pct} de esta factura.`,
+    outputDominates: (pct) =>
+      `La salida es el ${pct} de esta factura, así que acortar prompts tiene un techo bajo aquí. Lo que mueve la aguja es pedir respuestas más cortas y limitar max_tokens.`,
+    unpriced: (models, calls) =>
+      `${count(calls)} ${calls === 1 ? 'llamada no está' : 'llamadas no están'} en estos totales: el catálogo de precios no conoce ${models}. Añádelos con un overlay de precios (--pricing) para incluirlos.`,
+    skipped: (lineCount, lines) =>
+      `No se ${lineCount === 1 ? 'pudo leer' : 'pudieron leer'} ${count(lineCount)} ${lineCount === 1 ? 'línea y quedó fuera' : 'líneas y quedaron fuera'} (${lineCount === 1 ? 'línea' : 'líneas'} ${lines}).`,
+    empty: () => 'No hay registros de uso en ese archivo.',
+  },
+
   baseline: {
     recorded: (path, files, tokens) =>
       `Registrados ${files} prompts, ${tokens} tokens, en ${path}. Haz commit: la puerta compara el \u00e1rbol con lo que est\u00e9 commiteado.`,

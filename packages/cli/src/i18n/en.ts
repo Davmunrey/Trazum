@@ -1,5 +1,8 @@
 import type { CliMessages } from './types.js';
 
+/** Counts, grouped. A log with forty thousand torn lines should say so legibly. */
+const count = (value: number): string => value.toLocaleString('en-US');
+
 /** "(46 days ago)", or nothing when the age is unknown. */
 const ago = (days: number | null): string =>
   days === null ? '' : days === 0 ? ' (today)' : days === 1 ? ' (1 day ago)' : ` (${days} days ago)`;
@@ -799,6 +802,32 @@ ${bold('EXAMPLES')}
     exactCountsCost: (files) =>
       `Counting ${files} ${files === 1 ? 'file' : 'files'} through the API, one call each. This takes a moment.`,
   },
+  profile: {
+    noTarget: () =>
+      'Point this at a usage log: trazum profile usage.jsonl — one JSON object per line, each with a "model" and the "usage" object the API returned. Recording one is three lines in your own code, and it never contains prompt text.',
+    heading: () => 'Where the money went',
+    spent: (calls, total) => `${calls} calls · ${total}`,
+    part: (name, usd, pct, tokens) => `${name.padEnd(13)}${usd.padStart(11)}  ${pct.padStart(5)}   ${tokens} tokens`,
+    partInput: () => 'Input',
+    partCacheRead: () => 'Cache reads',
+    partCacheWrite: () => 'Cache writes',
+    partOutput: () => 'Output',
+    byLabelHeading: () => 'By label',
+    byModelHeading: () => 'By model',
+    row: (name, usd, pct, calls) => `${usd.padStart(11)}  ${pct.padStart(5)}   ${name}  (${calls} calls)`,
+    unlabelled: () => 'unlabelled',
+    cacheHit: (pct) => `Cache hit rate ${pct} of billable input.`,
+    cacheNever: () => 'Caching was never used on these calls. If any prefix repeats, that is the largest saving available.',
+    biggestPart: (name, pct) => `${name} is ${pct} of this bill.`,
+    outputDominates: (pct) =>
+      `Output is ${pct} of this bill, so shortening prompts has a low ceiling here. What moves it is asking for shorter answers and capping max_tokens.`,
+    unpriced: (models, calls) =>
+      `${count(calls)} ${calls === 1 ? 'call is' : 'calls are'} not in these totals — the pricing catalogue does not know: ${models}. Add them with a pricing overlay (--pricing) to include them.`,
+    skipped: (lineCount, lines) =>
+      `${count(lineCount)} ${lineCount === 1 ? 'line' : 'lines'} could not be read and ${lineCount === 1 ? 'was' : 'were'} left out (${lineCount === 1 ? 'line' : 'lines'} ${lines}).`,
+    empty: () => 'No usage records in that file.',
+  },
+
   baseline: {
     recorded: (path, files, tokens) =>
       `Recorded ${files} prompts, ${tokens} tokens, to ${path}. Commit it — the gate compares the tree against what is committed.`,

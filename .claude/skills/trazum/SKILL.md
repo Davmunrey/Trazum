@@ -68,6 +68,33 @@ by any pattern, so nothing is watching it. Mention them. If the command errors
 with *"No budget covers anything"*, the fix is a `budgets` entry or
 `--max-tokens` — do not present that error as "the prompts are fine".
 
+## Where the money actually went
+
+When the user asks what their LLM bill is made of — rather than what one prompt
+costs — this is the command, and it is the only one that reads real usage instead
+of a file:
+
+```bash
+node packages/cli/dist/index.js profile usage.jsonl
+```
+
+The log is one JSON object per line, each with a `model` and the `usage` object
+the API returned. If the user does not have one, tell them it is three lines to
+record and that it never contains prompt text — the record shape has no field for
+content.
+
+Three things to get right when reporting on this:
+
+- **It reports no saving, and neither should you.** It says what was spent and
+  where. Attributing "you could have saved X" to a call that already happened
+  means guessing what the call should have been.
+- **If output dominates, say so plainly.** On many real bills output is over half,
+  and then shortening prompts has a low ceiling — the controls that move it are
+  shorter answers and `max_tokens`, not the rules engine.
+- **Unpriced models are named and excluded from the totals.** If the report warns
+  about one, the total is lower than the real bill by that amount. Do not quote
+  the total without mentioning it.
+
 ## Stopping the estate drifting upwards
 
 A budget is a ceiling. It says nothing while a prompt climbs from 800 tokens to

@@ -3,52 +3,56 @@ import { readFile, stat, writeFile } from 'node:fs/promises';
 import { join, resolve as resolvePath } from 'node:path';
 
 import {
+  applyRewrites,
   BASELINE_FILENAME,
   BASELINE_VERSION,
-  MAX_BASELINE_BYTES,
   breaches,
-  compareToBaseline,
-  formatBaseline,
-  moneyIsComparable,
-  parseBaseline,
-  DEFAULT_USAGE,
-  LOCALES,
-  PRICING_LAST_REVIEWED,
-  reviewAgeDays,
-  RULES,
+  cacheableMinimum,
+  cacheHitRate,
   comparePrompts,
-  countTokensAnthropic,
-  getModel,
-  applyRewrites,
+  compareToBaseline,
   computeSavings,
-  profilePrompt,
-  toPromptfoo,
-  PHRASE_LANGUAGES,
+  countTokensAnthropic,
+  DEFAULT_USAGE,
+  detectFromSource,
   estimateTokens,
-  formatUsd,
+  evaluate,
+  extractPrompts,
+  findExamples,
+  formatBaseline,
   formatSignedUsd,
+  formatUsd,
   getMessages,
+  getModel,
+  hasMarker,
   listModels,
+  LOCALES,
+  MAX_BASELINE_BYTES,
+  moneyIsComparable,
   nearestName,
   optimize,
-  toOtlpMetrics,
-  providerFromEnv,
-  reorderForCache,
-  sharedPrefixes,
-  cacheableMinimum,
-  findExamples,
+  parseBaseline,
+  PHRASE_LANGUAGES,
   plannedCalls,
-  pruneExamples,
-  extractPrompts,
+  PRICING_LAST_REVIEWED,
+  profilePrompt,
+  profileUsage,
   promptId,
-  hasMarker,
-  SOURCE_EXTENSIONS,
-  detectFromSource,
-  evaluate,
+  providerFromEnv,
+  pruneExamples,
   refineWithLlm,
   rejectionText,
-  suggestRewrites,
+  reorderForCache,
+  reviewAgeDays,
   reviewExamples,
+  RULES,
+  sharedPrefixes,
+  sharesOf,
+  SOURCE_EXTENSIONS,
+  suggestRewrites,
+  toOtlpMetrics,
+  toPromptfoo,
+  UNLABELLED,
   withExactTokenCounts,
 } from '@trazum/core';
 import { cacheDir, cacheStats, cachingProvider, clearCache } from './suggest-cache.js';
@@ -404,6 +408,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
+  profile: ['json', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
   diff: ['level', 'model', 'calls', 'output-tokens', 'batch', 'max-growth', 'optimized', 'markdown-out', 'all', 'prompt'],
@@ -1858,6 +1863,130 @@ function monthlyCostOf(tokens: number, usage: UsageProfile, pricing: PricingCata
 /** Today, as the ISO date a baseline records. */
 function isoDate(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * `trazum profile <log.jsonl>` — where the money actually went.
+ *
+ * Every other command in this file reads a prompt and reasons forward about what
+ * it would cost. This one reads what the provider charged and reasons backward,
+ * and it exists because the forward direction can only see the smallest line item:
+ * on an ordinary support prompt the rules recover about 1% of the monthly figure
+ * while output alone was 87% of it.
+ *
+ * **Money is never suppressed here, unlike every other report.** The rest of the
+ * CLI hides dollar figures on a subscription host, because a saving quoted to
+ * somebody on a flat plan is money that does not exist. This log is a record of
+ * metered API calls somebody was actually billed for — the bill exists wherever
+ * Trazum happens to be running, so the host has no bearing on it.
+ */
+async function commandProfile(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
+  const path = args.positional[0];
+  if (path === undefined) {
+    console.log();
+    console.log(c.dim(wrap(t.profile.noTarget(), 74, '  ')));
+    console.log();
+    return;
+  }
+
+  const raw = await readFile(path, 'utf8');
+  const report = profileUsage(raw, { catalogue: pricing });
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
+
+  if (boolFlag(args, 'json')) {
+    console.log(JSON.stringify(report, null, 2));
+    return;
+  }
+
+  if (report.total.calls === 0 && report.unpriced.calls === 0) {
+    console.log();
+    console.log(c.dim(t.profile.empty()));
+    reportProfileGaps(report, t, n);
+    return;
+  }
+
+  const shares = sharesOf(report.total);
+  const parts: Array<[string, number, number, number]> = [
+    [t.profile.partInput(), report.total.inputUsd, shares.input, report.total.inputTokens],
+    [t.profile.partCacheRead(), report.total.cacheReadUsd, shares.cacheRead, report.total.cacheReadTokens],
+    [t.profile.partCacheWrite(), report.total.cacheWriteUsd, shares.cacheWrite, report.total.cacheWriteTokens],
+    [t.profile.partOutput(), report.total.outputUsd, shares.output, report.total.outputTokens],
+  ];
+
+  console.log();
+  console.log(c.bold(t.profile.heading()));
+  console.log(`  ${t.profile.spent(n(report.total.calls), formatUsd(report.total.totalUsd))}`);
+  console.log();
+  // Every part, including the zero ones. A row missing because it was zero reads
+  // as a row somebody forgot, and "you are not caching at all" is a finding.
+  for (const [name, usd, share, tokens] of parts) {
+    console.log(`  ${c.dim(t.profile.part(name, formatUsd(usd), pct(share), n(tokens)))}`);
+  }
+
+  /**
+   * The line the command exists for: which part of the bill to argue with.
+   *
+   * When output is both the biggest part and over half, the two sentences say the
+   * same thing and the second says more — so only the second prints. Reporting a
+   * fact twice in adjacent lines reads as a bug, and it was one.
+   */
+  const [biggestName, , biggestShare] = parts.reduce((a, b) => (b[1] > a[1] ? b : a));
+  const outputDominates = shares.output > 0.5;
+  console.log();
+  if (outputDominates) {
+    console.log(`  ${c.bold(wrap(t.profile.outputDominates(pct(shares.output)), 74, '  '))}`);
+  } else {
+    console.log(`  ${c.bold(t.profile.biggestPart(biggestName, pct(biggestShare)))}`);
+  }
+
+  const hitRate = cacheHitRate(report.total);
+  console.log(
+    hitRate === null
+      ? `  ${c.dim(wrap(t.profile.cacheNever(), 74, '  '))}`
+      : `  ${c.dim(t.profile.cacheHit(pct(hitRate)))}`,
+  );
+
+  for (const [heading, rows] of [
+    [t.profile.byLabelHeading(), report.byLabel.map((r) => [r.label === UNLABELLED ? t.profile.unlabelled() : r.label, r.breakdown] as const)],
+    [t.profile.byModelHeading(), report.byModel.map((r) => [r.model, r.breakdown] as const)],
+  ] as const) {
+    if (rows.length <= 1) continue; // One row is the total again, said twice.
+    console.log();
+    console.log(c.bold(heading));
+    for (const [name, breakdown] of rows) {
+      const share = report.total.totalUsd > 0 ? breakdown.totalUsd / report.total.totalUsd : 0;
+      console.log(`  ${t.profile.row(name, formatUsd(breakdown.totalUsd), pct(share), n(breakdown.calls))}`);
+    }
+  }
+
+  reportProfileGaps(report, t, n);
+}
+
+/**
+ * What the profile could not account for, said out loud.
+ *
+ * Separated so both the empty and the populated path print it. A total that
+ * silently omits calls is wrong in the flattering direction, which is the fault
+ * this repository keeps finding in itself.
+ */
+function reportProfileGaps(
+  report: ReturnType<typeof profileUsage>,
+  t: CliMessages,
+  n: (value: number) => string,
+): void {
+  if (report.unpricedModels.length > 0) {
+    console.log();
+    console.log(
+      `  ${c.yellow('!')} ${c.dim(wrap(t.profile.unpriced(report.unpricedModels.join(', '), report.unpriced.calls), 74, '    '))}`,
+    );
+  }
+  if (report.skippedLines.length > 0) {
+    const shown = report.skippedLines.slice(0, 5).join(', ');
+    console.log(
+      `  ${c.dim(t.profile.skipped(report.skippedLines.length, report.skippedLines.length > 5 ? `${shown}…` : shown))}`,
+    );
+  }
 }
 
 /**
@@ -3349,6 +3478,9 @@ async function main(): Promise<void> {
       break;
     case 'baseline':
       await commandBaseline(args, config, pricing, t, locale);
+      break;
+    case 'profile':
+      await commandProfile(args, pricing, t);
       break;
     case 'eval':
       await commandEval(args, config, t, locale);

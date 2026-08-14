@@ -12,6 +12,52 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`trazum profile <log.jsonl>` — the command on top of the usage reader.** Reads a
+usage log and prints where the money went: the bill, the split across input, cache
+reads, cache writes and output with each one's share, the cache hit rate that
+actually happened, and a breakdown by label and by model.
+
+It leads with the part of the bill worth arguing with. When output is over half it
+says so and names the two controls that move it — shorter answers and
+`max_tokens` — because at that point shortening prompts has a low ceiling and the
+rest of this tool is about shortening prompts.
+
+**Money is never suppressed here, unlike every other report.** The rest of the CLI
+hides dollar figures on a subscription host, because a saving quoted to somebody on
+a flat plan is money that does not exist. This log records metered API calls
+somebody was already billed for: the bill exists wherever Trazum happens to be
+running, so the host has no bearing on it. A test pins that, since the general rule
+is the opposite.
+
+**Every part prints, including the zero rows.** A row missing because it was zero
+reads as a row somebody forgot, and "your cache writes are zero" is a finding — it
+is how you see at a glance that caching is off.
+
+### Fixed
+
+**The headline claim printed twice.** When output was both the largest part and
+over half, the report said "Output is 61.8% of this bill" and then "Output is 61.8%
+of this bill, so shortening prompts has a low ceiling here" on the next line. The
+same fact in adjacent lines reads as a bug because it was one; only the sentence
+that says more prints now.
+
+**The command-count guard could not tell a live claim from a record.** It covers
+`RELEASES.md`, which was right — the count drifted there once and went unnoticed
+for two merges — but it read the whole file, so "Twelve commands now, up from four"
+in the **1.8.0 notes** failed against a thirteenth command. That sentence is true
+about 1.8.0.
+
+Below the first version heading `RELEASES.md` is a record, and rewriting it to
+match the present is falsifying history to satisfy a test. The standing header is
+still checked, which is where the drift it was written for actually lived — proven
+by reintroducing that drift and watching it fail.
+
+**The second guard in this release to need that distinction**, after the one on the
+published error band. Worth noticing as a pattern: a file that mixes current claims
+with dated ones needs a guard that knows which half it is reading.
+
+### Added
+
 **`profileUsage` — reading what the provider actually charged, rather than
 estimating what a file would cost.** The first piece of the answer to the thing
 this release measured and could not fix: on an ordinary support prompt the
