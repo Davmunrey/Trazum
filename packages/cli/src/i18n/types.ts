@@ -368,6 +368,21 @@ export interface CliMessages {
     unlabelled(): string;
     cacheHit(pct: string): string;
     cacheNever(): string;
+    /**
+     * Caching added to the bill instead of taking money off it.
+     *
+     * The finding no other command in this repository can produce, and the only
+     * one that can contradict Trazum's own advice: on Anthropic a cache write is
+     * billed at 1.25x plain input, or 2x at the 1-hour TTL, so a prefix that
+     * changes faster than it is reused costs a premium and returns nothing.
+     */
+    cacheLost(usd: string, writes: string, reads: string): string;
+    cachePaidOff(usd: string): string;
+    cacheNoDifference(): string;
+    /** Which labels the loss is in, when the total already reports one. */
+    cacheLostBy(labels: string): string;
+    /** A label bleeding underneath a total that looks fine. */
+    cacheLostHidden(usd: string, labels: string): string;
     /** The finding the whole command exists to produce. */
     biggestPart(name: string, pct: string): string;
     outputDominates(pct: string): string;

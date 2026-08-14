@@ -249,3 +249,91 @@ describe('the three faults an adversarial review found', () => {
     assert.match(flat(result), /somebodys-finetune/, 'it no longer names what it could not price');
   });
 });
+
+describe('whether the caching was worth doing', () => {
+  /**
+   * The one finding here that can contradict Trazum's own advice.
+   *
+   * The rest of the package tells people to cache. On Anthropic a cache write is
+   * billed at 1.25x plain input, or 2x at the one-hour TTL, so a prefix rebuilt
+   * faster than it is reused pays a premium and gets nothing back — and the cache
+   * hit rate printed directly above this reads 97.8% on a log where one workload
+   * is bleeding.
+   */
+
+  const write5m = (tokens, over = {}) =>
+    call({ usage: { input_tokens: 100, output_tokens: 100, cache_creation: { ephemeral_5m_input_tokens: tokens, ephemeral_1h_input_tokens: 0 } }, ...over });
+  const read = (tokens, over = {}) =>
+    call({ usage: { input_tokens: 100, output_tokens: 100, cache_read_input_tokens: tokens }, ...over });
+
+  it('names the loss, in money, when the cache never gets read back', async () => {
+    const result = run(await logOf(Array.from({ length: 10 }, () => write5m(10_000))));
+    assert.equal(result.status, 0, result.stderr);
+
+    // $0.625 of writes against $0.500 as plain input. The figure, not just a warning.
+    assert.match(flat(result), /Caching added \$0\.1250 to this bill/, 'the loss was not priced on screen');
+    assert.doesNotMatch(flat(result), /Caching took .* off this bill/, 'a loss reported as a saving');
+  });
+
+  it('never claims caching went unused on a bill made of cache writes', async () => {
+    /**
+     * The hit rate is undefined when there are no reads and no plain input — zero
+     * over zero — and the message was keyed off that null rather than off whether
+     * caching had been used. So a log of pure cache writes printed "Caching was
+     * never used on these calls" above a bill that was 96% cache writes.
+     */
+    const result = run(await logOf([write5m(10_000, { usage: { input_tokens: 0, output_tokens: 100, cache_creation: { ephemeral_5m_input_tokens: 10_000, ephemeral_1h_input_tokens: 0 } } })]));
+    assert.equal(result.status, 0, result.stderr);
+    assert.doesNotMatch(flat(result), /never used/i, 'claimed caching was unused on a bill of cache writes');
+    assert.match(flat(result), /Caching added/, 'the write premium went unreported');
+  });
+
+  it('surfaces the label bleeding under a healthy total', async () => {
+    /**
+     * `chat` saves $0.3925 and `rag` burns $0.125. The total is a comfortable
+     * $0.2675 saved, so every headline on screen looks fine — and one of the two
+     * workloads would be cheaper with caching switched off. The aggregate is
+     * exactly where that hides, which is why it prints as a warning under the
+     * good news rather than instead of it.
+     */
+    const result = run(
+      await logOf([
+        write5m(10_000, { label: 'chat' }),
+        ...Array.from({ length: 9 }, () => read(10_000, { label: 'chat' })),
+        ...Array.from({ length: 10 }, () => write5m(10_000, { label: 'rag' })),
+      ]),
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const out = flat(result);
+
+    assert.match(out, /Caching took \$0\.2675 off this bill/, 'the healthy total went unreported');
+    assert.match(out, /costs \$0\.1250 on: rag/, 'the bleeding label was not named');
+  });
+
+  it('stays quiet about caching nobody turned on', async () => {
+    const result = run(await logOf([call(), call()]));
+    assert.equal(result.status, 0, result.stderr);
+    const out = flat(result);
+    assert.match(out, /Caching was never used/);
+    assert.doesNotMatch(out, /Caching added|Caching took|came out level/, 'a verdict on caching that never happened');
+  });
+
+  it('carries the verdict into --json rather than leaving it to be re-derived', async () => {
+    /**
+     * Positive means worse here, which is backwards from every other figure Trazum
+     * emits. A consumer left to re-derive that from the raw fields is a second
+     * implementation of the sign convention, and one of the two will get it round
+     * the wrong way.
+     */
+    const result = run(await logOf([write5m(10_000, { label: 'rag' })]), ['--json']);
+    assert.equal(result.status, 0, result.stderr);
+    const json = JSON.parse(result.stdout);
+
+    assert.equal(json.cache.verdict, 'lost-money');
+    assert.ok(json.cache.deltaUsd > 0, 'a loss did not come out positive');
+    assert.deepEqual(
+      json.cacheByLabel.map((r) => [r.label, r.cache.verdict]),
+      [['rag', 'lost-money']],
+    );
+  });
+});

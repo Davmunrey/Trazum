@@ -4,6 +4,7 @@ import { describe, it } from 'node:test';
 import {
   BUNDLED_CATALOGUE,
   UNLABELLED,
+  cacheEconomics,
   cacheHitRate,
   parseUsageLine,
   profileUsage,
@@ -308,5 +309,143 @@ describe('what the profile is for', () => {
       { model: 'claude-opus-5', input_tokens: 0, output_tokens: 100, cache_creation_input_tokens: 9000 },
     ]);
     assert.notEqual(cacheHitRate(warming.total), 0, 'a warming cache reported as a total miss');
+  });
+});
+
+describe('did caching pay for itself', () => {
+  /**
+   * The question nothing else in this repository can answer, and the only finding
+   * here that can contradict the advice Trazum gives everywhere else.
+   *
+   * A cache write costs 1.25x plain input on Anthropic and 2x at the one-hour TTL.
+   * A prefix rebuilt faster than it is reused pays that premium and gets nothing
+   * back, so the workload is cheaper with caching switched off — and every other
+   * report in the package, including the cache hit rate two functions up, would
+   * describe that bill as healthy.
+   */
+
+  const opus = (extra) => ({ model: 'claude-opus-5', input_tokens: 100, output_tokens: 100, ...extra });
+  const write5m = (tokens) => opus({ cache_creation: { ephemeral_5m_input_tokens: tokens, ephemeral_1h_input_tokens: 0 } });
+  const write1h = (tokens) => opus({ cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: tokens } });
+  const read = (tokens) => opus({ cache_read_input_tokens: tokens });
+
+  it('says so when the cache cost more than it saved', () => {
+    /**
+     * Ten calls, each rebuilding the same 10,000-token prefix and never reading it
+     * back. Opus 5 input is $5/MTok, so 100,000 written tokens are $0.625 at the
+     * 1.25x write rate against $0.500 as plain input: caching added $0.125.
+     *
+     * Checked against the arithmetic rather than a recorded string, because a
+     * snapshot of a wrong number is a test that defends the bug.
+     */
+    const report = profile(Array.from({ length: 10 }, () => write5m(10_000)));
+    const cache = cacheEconomics(report.total);
+
+    assert.equal(cache.verdict, 'lost-money');
+    assert.ok(Math.abs(cache.spentUsd - 0.625) < 1e-9, `spent ${cache.spentUsd}`);
+    assert.ok(Math.abs(cache.withoutCachingUsd - 0.5) < 1e-9, `without ${cache.withoutCachingUsd}`);
+    assert.ok(Math.abs(cache.deltaUsd - 0.125) < 1e-9, `delta ${cache.deltaUsd}`);
+    assert.equal(cache.readsPerWrite, 0);
+  });
+
+  it('charges the one-hour TTL its own premium, which is four times the loss', () => {
+    /**
+     * The same ten calls at the 1-hour rate: 2x input rather than 1.25x, so the
+     * premium over not caching is $0.50 rather than $0.125. Pricing both TTLs the
+     * same is the fault this whole area was rewritten for, and a verdict that
+     * cannot tell them apart would report a quarter of the real loss.
+     */
+    const hour = cacheEconomics(profile(Array.from({ length: 10 }, () => write1h(10_000))).total);
+    const minute = cacheEconomics(profile(Array.from({ length: 10 }, () => write5m(10_000))).total);
+
+    assert.equal(hour.verdict, 'lost-money');
+    assert.ok(Math.abs(hour.deltaUsd - 0.5) < 1e-9, `1h delta ${hour.deltaUsd}`);
+    assert.ok(hour.deltaUsd > minute.deltaUsd * 3.9, 'the 1-hour TTL was not costed above the 5-minute one');
+  });
+
+  it('says so when the cache did its job', () => {
+    /**
+     * Written once, read nine times: $0.0625 of write plus $0.045 of reads against
+     * $0.50 as plain input. Negative is the good direction here, which is the
+     * opposite of the sign convention everywhere else in Trazum and the reason the
+     * verdict is a word rather than a number for a caller to interpret.
+     */
+    const cache = cacheEconomics(profile([write5m(10_000), ...Array.from({ length: 9 }, () => read(10_000))]).total);
+
+    assert.equal(cache.verdict, 'paid-off');
+    assert.ok(Math.abs(cache.deltaUsd + 0.3925) < 1e-9, `delta ${cache.deltaUsd}`);
+    assert.equal(cache.readsPerWrite, 9);
+  });
+
+  it('does not accuse a provider whose writes cost no more than input', () => {
+    /**
+     * OpenAI-style automatic caching writes at 1x, so it cannot lose money and the
+     * user could not switch it off if it did. A verdict derived from Anthropic's
+     * multipliers rather than the model's own would report a loss against a bill
+     * that has none, on a knob nobody can turn.
+     */
+    const cache = cacheEconomics(
+      profile([{ model: 'gpt-5', prompt_tokens: 100, completion_tokens: 100, cache_creation_input_tokens: 10_000 }]).total,
+    );
+    assert.equal(cache.verdict, 'no-difference');
+    assert.equal(cache.deltaUsd, 0);
+  });
+
+  it('stays quiet when caching was never attempted', () => {
+    const cache = cacheEconomics(profile([opus({})]).total);
+    assert.equal(cache.verdict, 'not-attempted');
+    assert.equal(cache.readsPerWrite, null);
+  });
+
+  it('refuses a verdict on tokens it could not price', () => {
+    /**
+     * An unpriced model contributes counts through `countInto` and never any
+     * dollars, so both sides of the comparison are zero and the naive answer is
+     * "no difference" — a confident claim about a bill that was never computed.
+     * There is nothing to compare, and saying nothing is the only honest answer.
+     */
+    const report = profile([
+      { model: 'some-finetune-nobody-published', input_tokens: 100, output_tokens: 100, cache_read_input_tokens: 50_000 },
+    ]);
+    assert.equal(cacheEconomics(report.unpriced).verdict, 'unpriced');
+  });
+
+  it('finds the loss a healthy total is hiding', () => {
+    /**
+     * The case this is for. `chat` saves $0.3925 and `rag` burns $0.125, so the
+     * total comes to a comfortable $0.2675 saved and the cache hit rate reads 97.8%
+     * — while one of the two workloads would be cheaper with caching turned off.
+     * An aggregate is exactly where that hides.
+     */
+    const report = profile([
+      { ...write5m(10_000), label: 'chat' },
+      ...Array.from({ length: 9 }, () => ({ ...read(10_000), label: 'chat' })),
+      ...Array.from({ length: 10 }, () => ({ ...write5m(10_000), label: 'rag' })),
+    ]);
+
+    assert.equal(cacheEconomics(report.total).verdict, 'paid-off');
+    const byLabel = Object.fromEntries(report.byLabel.map((r) => [r.label, cacheEconomics(r.breakdown).verdict]));
+    assert.equal(byLabel.rag, 'lost-money', 'the losing workload was not visible per label');
+    assert.equal(byLabel.chat, 'paid-off');
+  });
+
+  it('prices the counterfactual per model rather than at one blended rate', () => {
+    /**
+     * Haiku input is $1/MTok against Opus 5's $5. Costing the uncached equivalent
+     * at a single rate would move the verdict by whichever model happened to be
+     * summed — so the same tokens under two models must come to five times apart,
+     * and the per-call accumulation is what makes that true.
+     */
+    const on = (model) =>
+      cacheEconomics(
+        profileUsage(
+          JSON.stringify({ model, input_tokens: 100, output_tokens: 100, cache_creation: { ephemeral_5m_input_tokens: 10_000, ephemeral_1h_input_tokens: 0 } }),
+          { catalogue: BUNDLED_CATALOGUE },
+        ).total,
+      );
+    const opusDelta = on('claude-opus-5').deltaUsd;
+    const haikuDelta = on('claude-haiku-4-5').deltaUsd;
+    assert.ok(opusDelta > 0 && haikuDelta > 0);
+    assert.ok(Math.abs(opusDelta / haikuDelta - 5) < 1e-6, `ratio ${opusDelta / haikuDelta} — the counterfactual was not priced per model`);
   });
 });

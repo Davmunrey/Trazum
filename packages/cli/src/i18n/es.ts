@@ -830,6 +830,14 @@ ${bold('EJEMPLOS')}
     unlabelled: () => 'sin etiqueta',
     cacheHit: (pct) => `Tasa de acierto de caché: ${pct} de la entrada facturable.`,
     cacheNever: () => 'No se usó caché en estas llamadas. Si algún prefijo se repite, ese es el mayor ahorro disponible.',
+    cacheLost: (usd, writes, reads) =>
+      `La caché añadió ${usd} a esta factura en lugar de restarlos. Se escribieron ${writes} tokens en la caché y se leyeron ${reads} — y una escritura cuesta 1,25x la entrada normal, o 2x con el TTL de una hora. Un prefijo que cambia más rápido de lo que se reutiliza paga esa prima a cambio de nada. O cachea un prefijo que no se mueva, o desactiva la caché aquí.`,
+    cachePaidOff: (usd) => `La caché quitó ${usd} de esta factura, frente a esos mismos tokens sin cachear.`,
+    cacheNoDifference: () =>
+      'La caché quedó a cero: la prima de las escrituras y el descuento de las lecturas se compensaron. Ni se paga a sí misma ni te está costando nada.',
+    cacheLostBy: (labels) => `La pérdida está en: ${labels}.`,
+    cacheLostHidden: (usd, labels) =>
+      `La caché sale a cuenta en conjunto, pero cuesta ${usd} en: ${labels}. El total lo esconde.`,
     biggestPart: (name, pct) => `${name} es el ${pct} de esta factura.`,
     outputDominates: (pct) =>
       `La salida es el ${pct} de esta factura, así que acortar prompts tiene un techo bajo aquí. Lo que mueve la aguja es pedir respuestas más cortas y limitar max_tokens.`,

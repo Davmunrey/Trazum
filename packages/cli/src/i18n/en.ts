@@ -818,6 +818,14 @@ ${bold('EXAMPLES')}
     unlabelled: () => 'unlabelled',
     cacheHit: (pct) => `Cache hit rate ${pct} of billable input.`,
     cacheNever: () => 'Caching was never used on these calls. If any prefix repeats, that is the largest saving available.',
+    cacheLost: (usd, writes, reads) =>
+      `Caching added ${usd} to this bill instead of taking it off. ${writes} tokens were written to the cache and ${reads} read back — and a write costs 1.25x plain input, or 2x at the 1-hour TTL. A prefix that changes faster than it is reused pays that premium for nothing. Either cache a prefix that holds still, or turn caching off here.`,
+    cachePaidOff: (usd) => `Caching took ${usd} off this bill, against the same tokens uncached.`,
+    cacheNoDifference: () =>
+      'Caching came out level: the premium on the writes and the discount on the reads cancelled. It is neither paying for itself nor costing you anything.',
+    cacheLostBy: (labels) => `The loss is in: ${labels}.`,
+    cacheLostHidden: (usd, labels) =>
+      `Caching pays off overall, but it costs ${usd} on: ${labels}. The total hides that.`,
     biggestPart: (name, pct) => `${name} is ${pct} of this bill.`,
     outputDominates: (pct) =>
       `Output is ${pct} of this bill, so shortening prompts has a low ceiling here. What moves it is asking for shorter answers and capping max_tokens.`,

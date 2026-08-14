@@ -10,7 +10,51 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+**`trazum profile` now says whether the caching actually paid for itself** — the
+one finding in this repository that can contradict the advice the rest of it
+gives.
+
+Trazum tells people to cache. On Anthropic a cache **write** costs 1.25x plain
+input, and **2x** at the one-hour TTL, so a prefix that changes faster than it is
+reused pays that premium and gets nothing back: those calls are cheaper with
+caching switched off. Nothing else on the report could say so. The cache hit rate
+cannot — it reads **97.8%** on the log used to test this, while one of the two
+workloads on it is burning money.
+
+```
+  Cache hit rate 97.8% of billable input.
+  Caching took $0.2675 off this bill, against the same tokens uncached.
+  ! Caching pays off overall, but it costs $0.1250 on: rag. The total hides that.
+```
+
+Computed **per label as well as over the whole log**, because that is the case
+worth having it for: a profitable cache on one workload and a bleeding one on
+another net out to a comfortable total, and an aggregate is exactly where a loss
+like that hides. Both sides are priced **per model**, so a provider whose writes
+cost the same as plain input — OpenAI, Gemini — is never accused of a loss it
+cannot have and could not switch off if it did.
+
+This is the only counterfactual in `profile`, and it is not an exception to the
+module's no-savings rule so much as the line that rule draws. A saving means
+imagining a prompt nobody wrote. This means imagining the *same tokens at a
+different rate*, which is arithmetic: caching changes the multiplier on a token,
+never the token.
+
+`--json` carries the verdict as `cache` and `cacheByLabel` rather than leaving a
+consumer to re-derive it — **positive `deltaUsd` means worse**, the opposite of
+every other figure Trazum emits, and two implementations of that convention would
+eventually disagree. `cacheEconomics` is exported from `@trazum/core`.
+
 ### Fixed
+
+**`profile` claimed caching had never been used on a bill made of cache writes.**
+The message was keyed off a null cache hit rate, and the rate is undefined — zero
+reads over zero attempts — on a log whose calls are entirely cache writes with no
+plain input. So "Caching was never used on these calls" printed above a bill that
+was 96% cache writes. It is keyed off whether caching was used now, which is a
+different question and the one the sentence asks.
 
 **Three faults in `profile`, found by an adversarial review of the code that had
 just been written, and all three understated the bill.** Twenty-four agents across

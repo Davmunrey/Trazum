@@ -55,6 +55,13 @@ import type { PricingCatalogue } from './pricing.js';
  * exists precisely because guessing is what the rest of the package has to do.
  * It reports what was spent, split by where it went. What to do about it is a
  * different question and belongs to the advisories.
+ *
+ * `cacheEconomics` is the one counterfactual here, and it is not an exception to
+ * that rule — it is the line the rule draws. A saving requires imagining a prompt
+ * nobody wrote; this requires imagining the **same tokens at a different rate**,
+ * which is arithmetic. Caching does not change what is sent, only the multiplier
+ * it is billed at, so "these tokens cost 1.25x instead of 1x" is as measured as
+ * the total itself. Anything that would need a guess about content stays out.
  */
 
 /** One recorded call, after parsing. All counts, no content. */
@@ -107,6 +114,15 @@ export interface UsageBreakdown {
   cacheWriteUsd: number;
   outputUsd: number;
   totalUsd: number;
+  /**
+   * What the cache-touched tokens would have cost as ordinary input.
+   *
+   * Reads plus writes, at each model's own full input rate, accumulated per call
+   * because the rate is per model and a total loses that. Not part of `totalUsd`
+   * and not a bill — it is the other half of `cacheEconomics`, kept here because
+   * it can only be computed while the model is still in hand.
+   */
+  cachedTokensAtInputRateUsd: number;
 }
 
 export interface UsageProfileReport {
@@ -169,6 +185,7 @@ const EMPTY = (): UsageBreakdown => ({
   cacheWriteUsd: 0,
   outputUsd: 0,
   totalUsd: 0,
+  cachedTokensAtInputRateUsd: 0,
 });
 
 /**
@@ -358,6 +375,14 @@ function add(into: UsageBreakdown, record: UsageRecord, catalogue: PricingCatalo
   into.cacheWriteUsd += per(record.cacheWrite5mTokens, inputPerMTok * rates.cacheWrite5m);
   into.cacheWriteUsd += per(record.cacheWrite1hTokens, inputPerMTok * rates.cacheWrite1h);
   into.outputUsd += per(record.outputTokens, outputPerMTok);
+  /**
+   * The same cache-touched tokens at the plain input rate, banked here because
+   * `inputPerMTok` is per model and is gone by the time anybody reads the total.
+   */
+  into.cachedTokensAtInputRateUsd += per(
+    record.cacheReadTokens + record.cacheWrite5mTokens + record.cacheWrite1hTokens,
+    inputPerMTok,
+  );
   into.totalUsd =
     into.inputUsd + into.cacheReadUsd + into.cacheWriteUsd + into.outputUsd;
   return true;
@@ -476,4 +501,119 @@ export function cacheHitRate(breakdown: UsageBreakdown): number | null {
   if (breakdown.cacheReadTokens === 0 && breakdown.cacheWriteTokens === 0) return null;
   if (attempts === 0) return null;
   return breakdown.cacheReadTokens / attempts;
+}
+
+/** What caching did to this bill, measured against the same tokens uncached. */
+export interface CacheEconomics {
+  /** What the cache-touched tokens actually cost: reads plus writes. */
+  spentUsd: number;
+  /** What those same tokens would have cost billed as ordinary input. */
+  withoutCachingUsd: number;
+  /**
+   * `spentUsd - withoutCachingUsd`.
+   *
+   * **Positive means caching cost more than it saved** — the opposite of the sign
+   * convention everywhere else in Trazum, and deliberately so, because this is the
+   * number nobody expects to come out positive and the one worth interrupting for.
+   */
+  deltaUsd: number;
+  /**
+   * Read tokens per write token, or `null` when nothing was written.
+   *
+   * Context for the delta, not a verdict of its own: the delta already decides,
+   * and it decides at the real per-model rates. This says *why* — a ratio near
+   * zero on an Anthropic workload is a prefix being rebuilt faster than it is
+   * reused, which is the shape of a cache that never gets to work.
+   */
+  readsPerWrite: number | null;
+  verdict: CacheVerdict;
+}
+
+/**
+ * - `paid-off` — caching took money off the bill.
+ * - `lost-money` — caching added to it. Possible on Anthropic, where a write
+ *   costs 1.25x input (5-minute) or 2x (1-hour); a prefix that never gets read
+ *   back is billed at a premium for nothing.
+ * - `no-difference` — the multipliers cancelled out. This is where automatic
+ *   caching with a 1x write rate lands when nothing was ever read.
+ * - `not-attempted` — no cache tokens at all, in either direction.
+ * - `unpriced` — cache tokens with no prices behind them, so there is no
+ *   comparison to make. Saying nothing is the only honest answer.
+ */
+export type CacheVerdict =
+  | 'paid-off'
+  | 'lost-money'
+  | 'no-difference'
+  | 'not-attempted'
+  | 'unpriced';
+
+/**
+ * Floating-point noise, not a judgement threshold.
+ *
+ * Summing a million per-call doubles around a $100 bill accumulates roughly
+ * `n · eps · magnitude` ≈ $2e-8 of drift, and a verdict that flipped on that would
+ * be reporting arithmetic error as a finding. A millionth of a dollar is orders of
+ * magnitude below anything this tool prints, so nothing real is being rounded away
+ * — deliberately not a "too small to care about" cutoff, which would be a
+ * judgement and would belong somewhere a reader can see it.
+ */
+const CACHE_DELTA_NOISE_USD = 1e-6;
+
+/**
+ * Did caching pay for itself?
+ *
+ * The question nothing else in this package can answer, and the one that decides
+ * whether the advice the rest of it gives was right. Trazum tells people to cache;
+ * on Anthropic a cache **write** costs 1.25x plain input at the 5-minute TTL and
+ * **2x** at the 1-hour one, so a prefix that changes faster than it is reused is
+ * billed at a premium and returns nothing. That workload would be cheaper with
+ * caching switched off, and no other report in this repository would ever say so.
+ *
+ * The counterfactual is exact, which is why this is allowed to exist here at all:
+ * caching changes the multiplier on a token, never the token. Had `cache_control`
+ * not been set, the identical prefix would have gone up as ordinary input at 1x.
+ * So `withoutCachingUsd` is not an estimate of a different call — it is the same
+ * call, arithmetic away.
+ *
+ * Worth running per label as well as over the whole log. A profitable cache on one
+ * workload and a bleeding one on another net out to a comfortable-looking total,
+ * and the aggregate is exactly where a loss hides.
+ */
+export function cacheEconomics(breakdown: UsageBreakdown): CacheEconomics {
+  const touchedTokens = breakdown.cacheReadTokens + breakdown.cacheWriteTokens;
+  const spentUsd = breakdown.cacheReadUsd + breakdown.cacheWriteUsd;
+  const withoutCachingUsd = breakdown.cachedTokensAtInputRateUsd;
+
+  const none = (verdict: CacheVerdict): CacheEconomics => ({
+    spentUsd,
+    withoutCachingUsd,
+    deltaUsd: 0,
+    readsPerWrite: null,
+    verdict,
+  });
+
+  if (touchedTokens === 0) return none('not-attempted');
+  /**
+   * Tokens went through the cache and no money is attached to either side, so
+   * there is nothing to compare. This is what an unpriced model looks like: the
+   * counts accumulate through `countInto` and the dollars never do. Without this
+   * guard the delta is `0 - 0` and the verdict comes out `no-difference` — a
+   * confident claim about a bill that was never computed.
+   */
+  if (spentUsd === 0 && withoutCachingUsd === 0) return none('unpriced');
+
+  const deltaUsd = spentUsd - withoutCachingUsd;
+  const readsPerWrite =
+    breakdown.cacheWriteTokens === 0
+      ? null
+      : breakdown.cacheReadTokens / breakdown.cacheWriteTokens;
+
+  const verdict: CacheVerdict =
+    Math.abs(deltaUsd) < CACHE_DELTA_NOISE_USD
+      ? 'no-difference'
+      : deltaUsd > 0
+        ? 'lost-money'
+        : 'paid-off';
+
+  return { spentUsd, withoutCachingUsd, deltaUsd, readsPerWrite, verdict };
 }
