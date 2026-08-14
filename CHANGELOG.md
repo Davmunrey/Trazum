@@ -10,6 +10,73 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Changed
+
+**The published error band drops from ±15% to ±10%, and the worst measured error
+from 11.2% to 6.4%.** No new API calls were needed for this — the finding was
+sitting in the twenty-one measurements already committed.
+
+**Kana and han do not cost the same.** Every CJK character was charged one token,
+and measured against the counting endpoint that put Japanese at **+11.2%** — the
+worst figure anywhere in the corpus — while Chinese sat at **−3.2%** under the
+identical rule. One constant cannot be right for both, and the samples say why: the
+Japanese file is 58% kana and the Chinese one is 0%.
+
+Kana are a small syllabary that appears in every sentence, so a merge table covers
+runs of them and several characters share a token. Han are tens of thousands of
+rare characters a merge table cannot cover, and they cost about one each. Measured:
+kana 0.75 tokens per character, han 1.05.
+
+```
+cjk-japanese   +11.2%  →  -1.5%
+cjk-chinese     -3.2%  →  +1.3%
+worst in corpus 11.2%  →   6.4%   (code-heavy, which nothing is fitted to)
+```
+
+**The signal needs no detector**, which is what separates this from `language.ts`.
+A character is kana or it is not; the two samples separate perfectly at 58.3%
+against 0.00%. No refusal case, no margin rule, nothing to get wrong on a
+three-line prompt.
+
+**Rounding up per run was the first attempt and it was wrong by five points.**
+Ordinary Japanese alternates kana and han inside every sentence, so the runs are
+short and numerous, and a `Math.ceil` per run charges most of a token for each
+boundary — an artefact of where the loop breaks rather than of what the text costs.
+CJK accumulates as a fraction now and is rounded once, over the whole document. A
+test builds the same characters blocked and alternating and requires the two
+estimates to agree within one token.
+
+**The band is 10 rather than 7, and the margin is deliberate.** 6.4 rounded up is
+7, and publishing 7 would be a tighter claim than twenty-one samples across six
+text types can support: there is no Korean here, no Cyrillic prose, no mixed-script
+document, and a seventh type could easily land at eight. A band that becomes false
+the first time somebody measures something new is the exact fault this whole
+exercise was fixing, so the uncertainty is overstated rather than understated.
+
+### Added
+
+**Accuracy is ratcheted per text type, separately from the published band.** The
+band is deliberately loose and that has a cost: a change taking CJK from 1.5% back
+to 3.6% passes every band assertion, because both are inside ten. Found while
+mutation-testing this very change — setting `HAN_TOKENS_PER_CHAR` back to a round 1
+doubles the CJK error and nothing failed.
+
+Each type now carries a floor set to what it has actually reached. They tighten,
+never slacken: an improvement lowers its floor in the same commit, and a deliberate
+trade raises it with a changelog line, which is a different act from not noticing.
+A type added to the corpus without a floor fails the suite rather than going
+ungated.
+
+Same idea as `trazum baseline` turned on this repository's own numbers — publish a
+ceiling, gate on drift away from what you had.
+
+**`RELEASES.md` and `ROADMAP.md` join `CHANGELOG.md` as records exempt from the
+band-consistency guard.** The guard requires every file stating a band to match the
+code, which is right for a README and wrong for a release note: "the band is still
+±15%" is a true statement about 1.9.0, and rewriting it to say 10 would be
+falsifying a record to satisfy a test. The other twenty files it flagged were live
+claims and were updated.
+
 ### Fixed
 
 **The preflight told the reader to disbelieve it, and it was right.** The caveat

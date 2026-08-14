@@ -239,7 +239,7 @@ this: the optimised prompt will not have broken someone's JSON schema.
 
 ## Things to get right
 
-- **Token counts are estimates (±15%).** Fine for comparing two versions of the
+- **Token counts are estimates (±10%).** Fine for comparing two versions of the
   same prompt, which is what they are for. For exact figures use
   `--exact-tokens` with `ANTHROPIC_API_KEY` set — the counting endpoint does not
   charge for tokens. The band is measured against Claude's tokenizer over

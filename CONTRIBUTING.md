@@ -165,8 +165,9 @@ Run `npm run verify` before pushing and read its exit code, not its output.
 
 ## Measuring the token band
 
-`±15%` is measured: 21 samples, seven languages, six text types, worst case
-11.2%. It was a design target for eight releases and it was false — see the 1.9.0
+`±10%` is the published band. 21 samples, seven languages, six text types, and
+the worst measured error is **6.4%** — the margin between the two is deliberate,
+because six text types cannot bound a seventh. It was a design target for eight releases and it was false — see the 1.9.0
 entry in [CHANGELOG.md](CHANGELOG.md) for what that cost.
 
 The corpus and harness are committed; re-measuring needs a key and one command:
@@ -192,6 +193,23 @@ Two rules for what a sample is worth:
   `DIVISOR_BY_LANGUAGE` was fitted on support prompts and then checked against a
   code-review prompt — a different register, different vocabulary. That second
   sample is what makes the first one evidence.
+
+**Accuracy is ratcheted per text type, separately from the band.** The published
+band is deliberately looser than the measurements — 10 against a worst case of
+6.4 — and that looseness has a cost: a change that took CJK from 1.5% back to 3.6%
+would pass every band assertion, because both are inside ten. So
+`token-band.test.js` also carries a floor per type, set to what that type has
+actually achieved.
+
+They tighten, never slacken. If your change improves a type, lower its floor in the
+same commit — a floor left at the old value is a licence to give the improvement
+back later. If it genuinely trades one type against another, raise the floor
+deliberately and say so in the changelog. That is a different act from not
+noticing, which is the whole reason the floors exist: setting `HAN_TOKENS_PER_CHAR`
+back to a round 1 doubles the CJK error, and before the floors nothing failed.
+
+A type added to the corpus without a floor fails the suite rather than going
+ungated.
 
 **If a change moves the worst case, `ESTIMATE_ERROR_BAND_PCT` moves with it.** It
 is one exported constant in `tokenizer.ts` that every report, README and tool

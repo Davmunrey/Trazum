@@ -93,7 +93,7 @@ export interface BelowCacheMinimumParams {
    * count could be above it.
    *
    * Without this the advisory asserts "caching will not work here" from a number
-   * measured to ±15%, and on a prefix near the threshold that is not an imprecise
+   * measured to ±10%, and on a prefix near the threshold that is not an imprecise
    * figure — it is wrong advice, and it costs the reader the largest saving
    * Trazum offers.
    */

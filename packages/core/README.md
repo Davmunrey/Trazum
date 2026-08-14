@@ -134,16 +134,20 @@ const refined = await refineWithLlm(result, openAiCompatible({
 ## Token counts
 
 The bundled estimator is a dependency-free heuristic, and it compares two versions
-of the same prompt well — which is what it is for. Its error band is **±15%**,
+of the same prompt well — which is what it is for. Its error band is **±10%**,
 exported as `ESTIMATE_ERROR_BAND_PCT` so you can print the same number the report
 prints rather than hard-coding it.
 
 That band is measured, against the official counting endpoint, over 21 samples in
-seven languages and six text types — worst case 11.2%. It was an unchecked design
-target for eight releases and it was false; the 1.9.0 entry in the changelog says
-what was wrong.
+seven languages and six text types. **The worst error in the corpus is 6.4%** and
+the published band is 10 — the margin is deliberate, because 21 samples across six
+types cannot bound a seventh, and a band that becomes false the first time somebody
+measures something new is the fault this whole exercise was fixing.
 
-Two things follow from how it was measured, and both matter if you depend on the
+It was an unchecked design target for eight releases and it was false; the 1.9.0
+entry in the changelog says what was wrong.
+
+Three things follow from how it was measured, and they matter if you depend on the
 number:
 
 - **The band is a Claude number.** The estimator is tuned against Claude's
@@ -152,6 +156,9 @@ number:
 - **It detects the language and divides accordingly**, because one divisor
   calibrated on English measured −37.3% on German. `detectTextLanguage` answers
   `null` when it cannot tell, which falls back to the English behaviour.
+- **Kana and han cost different amounts.** Charging one token per CJK character put
+  Japanese at +11.2% and Chinese at −3.2% under the same rule; kana measure 0.75
+  tokens per character and han 1.05, which takes both inside 1.5%.
 
 For exact figures, pass a real counter — the counting endpoint is free:
 

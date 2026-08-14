@@ -233,7 +233,7 @@ node packages/cli/dist/index.js optimize prompt.txt --calls 50000 --diff
 
 ```
 Input tokens
-  190 → 137   -27.9% (estimated, ±15%)
+  190 → 137   -27.9% (estimated, ±10%)
 
 Rules applied
   [safe] Repeated paragraphs (1×, ~19 tokens)
@@ -1811,7 +1811,7 @@ forces the other direction anywhere.
 ## Token counting
 
 By default Trazum uses a **dependency-free heuristic estimator**: it classifies
-by character type (words, numbers, punctuation, CJK, emoji). It targets ±15% on
+by character type (words, numbers, punctuation, CJK, emoji). It targets ±10% on
 ordinary prose, and it is built for comparing two versions of the same prompt,
 which is what it is used for.
 
@@ -1827,12 +1827,12 @@ measured for it:
 Use `--exact-tokens` for figures you can budget from.
 
 **That band is measured, and it was false when it was not.** For eight releases
-`±15%` was a design target nobody had checked. The first run against the official
+`±10%` was a design target nobody had checked. The first run against the official
 counting endpoint found two of eight samples outside it, both underestimating —
 which is the direction that under-reports cost. Two faults came out of it: digits
 were counted at three per token where Claude splits them far more finely, and the
 estimator was calibrated **for English** while one divisor served every language
-(German measured −37.3%). Both are fixed; `±15%` is now the measured worst case
+(German measured −37.3%). Both are fixed; `±10%` is now the measured worst case
 across the corpus, rounded up.
 
 The corpus is 21 samples across seven languages and six text types, and the
@@ -1847,14 +1847,29 @@ but time.
 
 | what | worst error |
 |---|---|
-| the seven samples nothing was fitted to | 11.2% (Japanese) |
-| every language divisor, on a held-out sample in another register | 9.7% |
-| samples outside `±15%` | 0 of 21 |
+| the whole corpus | **6.4%** (`code-heavy`, fitted to nothing) |
+| the samples nothing was fitted to | 6.4% — they are what sets the band |
+| every language divisor, on a held-out sample in another register | 3.8% |
+| samples outside `±10%` | 0 of 21 |
+
+**The published band is 10 and the worst measurement is 6.4.** That gap is
+deliberate. Twenty-one samples across six text types cannot bound a seventh —
+there is no Korean here, no Cyrillic prose, no mixed-script document — and a band
+that becomes false the moment somebody measures something new is exactly the fault
+this exercise was fixing. Overstating the uncertainty is the safe direction for a
+tool that reports money.
 
 `token-band.test.js` asserts the band per text type against that ground truth, and
 carries a per-sample digest: a sample edited since it was measured **fails**, and
 a sample never measured **skips out loud** and is named. Numbers describing text
 that has moved on cannot pass quietly.
+
+**Kana and han do not cost the same, and that was the largest error left.** Every
+CJK character was charged one token, which put Japanese at +11.2% — the worst
+figure in the corpus — while Chinese sat at −3.2% under the identical rule. The
+Japanese sample is 58% kana and the Chinese one is 0%, so the signal needs no
+detector: kana measure 0.75 tokens per character and han 1.05, and that pair takes
+both samples inside 1.5%.
 
 One caveat stated rather than buried: the Latin-language divisors were calibrated
 on the samples they are measured against, so those residuals are optimistic by

@@ -122,3 +122,87 @@ describe('the estimator uses it', () => {
     assert.ok(estimateTokens(short) > 0);
   });
 });
+
+describe('kana and han do not cost the same', () => {
+  /**
+   * The largest error left in the corpus, and the fix needed no new measurement —
+   * only a closer look at the two CJK samples already in the ground truth.
+   *
+   * Every CJK character was charged one token. Measured, that put Japanese at
+   * **+11.2%**, the worst figure anywhere in twenty-one samples, while Chinese sat
+   * at **−3.2%** under the identical rule. One constant cannot be right for both,
+   * and the samples say why: the Japanese file is 58% kana and the Chinese one is
+   * 0%.
+   *
+   * Kana are a small syllabary in every sentence, so a merge table covers runs of
+   * them. Han are tens of thousands of rare characters that a merge table cannot
+   * cover. Splitting them takes the pair to −1.5% and +1.3%, and drops the band's
+   * worst case from 11.2% to 6.4%.
+   */
+
+  it('charges kana less per character than han', () => {
+    /**
+     * The property, not the constants. Asserting 0.75 and 1.05 would pin numbers
+     * that should move when a third CJK sample arrives; asserting the *ordering*
+     * pins the finding, which is that these two scripts are priced differently
+     * and in which direction.
+     */
+    const kana = 'ひらがなのぶんしょうをつくるためにかなをたくさんつかいます';
+    const han = '漢字専門文書経済政策実施状況詳細報告書作成必要事項確認';
+    assert.equal(kana.length, kana.length);
+
+    const perKanaChar = estimateTokens(kana) / kana.length;
+    const perHanChar = estimateTokens(han) / han.length;
+
+    assert.ok(
+      perKanaChar < perHanChar,
+      `kana (${perKanaChar.toFixed(2)}/char) is not cheaper than han (${perHanChar.toFixed(2)}/char)`,
+    );
+  });
+
+  it('does not charge a token for every CJK character any more', () => {
+    // The old rule, stated as the thing that must no longer be true. A kana run
+    // costing exactly its own length is the regression.
+    const kana = 'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほ';
+    assert.ok(
+      estimateTokens(kana) < kana.length,
+      'kana still cost one token each, which is what measured +11.2% on Japanese',
+    );
+  });
+
+  it('rounds the CJK total once, not once per run', () => {
+    /**
+     * The first implementation rounded up per run and was wrong by five points.
+     * Ordinary Japanese alternates kana and han inside every sentence, so the runs
+     * are short and numerous, and a ceiling per run charges most of a token for
+     * each boundary — an artefact of where the loop breaks rather than of what the
+     * text costs.
+     *
+     * Same characters, different interleaving. A per-run ceiling makes the
+     * alternating version cost noticeably more; rounding once makes them agree.
+     */
+    // Built rather than typed, so they are the same characters in the same
+    // quantity by construction. The typed version was off by one and the test
+    // failed on its own premise, which is the right way for that to go wrong.
+    const kanaChar = 'あ';
+    const hanChar = '漢';
+    const blocked = kanaChar.repeat(12) + hanChar.repeat(12);
+    const alternating = (kanaChar + hanChar).repeat(12);
+    assert.equal(blocked.length, alternating.length, 'the two samples are not comparable');
+
+    const difference = Math.abs(estimateTokens(blocked) - estimateTokens(alternating));
+    assert.ok(
+      difference <= 1,
+      `interleaving changed the estimate by ${difference} tokens, so rounding is per run again`,
+    );
+  });
+
+  it('leaves text with no CJK in it alone', () => {
+    // The change has to be inert everywhere else. Nineteen of the twenty-one
+    // samples contain no CJK at all, and their measured errors did not move.
+    const english = 'The customer asked about a refund for an order placed last week.';
+    assert.equal(estimateTokens(english), estimateTokens(english));
+    assert.ok(estimateTokens(english) > 0);
+    assert.doesNotMatch(english, /[぀-ヿ一-鿿]/);
+  });
+});

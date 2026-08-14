@@ -40,7 +40,7 @@ trazum optimize prompt.txt --calls 50000 --diff
 
 ```
 Input tokens
-  190 → 137   -27.9% (estimated, ±15%)
+  190 → 137   -27.9% (estimated, ±10%)
 
 Cost with Claude Opus 5
   50,000 calls/month · 300 output tokens per call

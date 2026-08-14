@@ -3,7 +3,7 @@
  *
  * This is NOT a real tokenizer: it is a heuristic calibrated per character
  * class. It is built to keep the typical error on ordinary text
- * (English/Spanish, markdown, code) inside ±15%, which is plenty for comparing
+ * (English/Spanish, markdown, code) inside ±10%, which is plenty for comparing
  * two versions of the same prompt — but do NOT bill anyone from it.
  *
  * **That band is a design target that has not been measured.** It is printed on
@@ -27,38 +27,67 @@ import { SAFE_FETCH_INIT, checkedEndpoint } from './net.js';
 /**
  * The error band this estimator is published under, as a percentage.
  *
- * **Measured, not chosen.** It was `15` for eight releases — a design target
- * nobody had checked — and the first run of `scripts/measure-token-band.mjs`
- * against the official counting endpoint found two of eight samples outside it,
- * both underestimating. Underestimating tokens means under-reporting cost, which
- * is the flattering direction and the worst one for this tool.
+ * **Measured, not chosen, and it has moved three times.** It was `15` for eight
+ * releases as a design target nobody had checked; the first measurement found two
+ * of eight samples outside it and it went to `25`; fixing the digit divisor and
+ * calibrating per language brought it back to `15`. This is the fourth value and
+ * the first one that is comfortably above what the corpus actually shows.
  *
- * `15` is the measured worst case rounded up, by the same rule that briefly made
- * it 25: the corpus now tops out at 11.2%, on Japanese. It landing back on the
- * number that was a guess for eight releases is a coincidence and not a
- * restoration — that 15 bounded nothing, and this one bounds eleven measured
- * samples across four languages and six text types.
+ * ```
+ * worst measured error   6.4%   (code-heavy, which nothing is fitted to)
+ * published band        10%
+ * ```
  *
- * **Read one caveat before trusting it.** Four of those samples are the Latin
- * languages whose divisors in `DIVISOR_BY_LANGUAGE` were calibrated on one or two
- * samples each, so their residuals are in-sample and optimistic by construction.
- * The band is set by the seven samples nothing was fitted to — worst 11.2% — and
- * the honest test of it is the next held-out sample in Spanish, French or German.
- * The corpus grows one sample at a time now, so that test is cheap to run.
+ * **The margin is deliberate and it is not slack.** 6.4 rounded up is 7, and
+ * publishing 7 would be a tighter claim than twenty-one samples across six text
+ * types can support: the corpus has no Korean, no Arabic, no Cyrillic prose, no
+ * mixed-script document, and a seventh text type could easily land at eight. A
+ * band that becomes false the first time somebody measures something new is the
+ * exact fault this whole exercise was fixing. Overstating the uncertainty is the
+ * safe direction for a tool that reports money.
  *
- * **What got it there was not accents.** A Spanish sample with zero accented
- * characters measured -22.9% against -22.1% for accented Spanish, which killed
- * diacritics as a signal. Languages differ in how many tokens their words cost —
- * English 3.44 characters per token, German 2.02 — so the estimator detects the
- * language and divides accordingly. See `language.ts`.
+ * What earned the drop from 15 was **splitting kana from han**. Every CJK
+ * character was charged one token, which put Japanese at +11.2% — the worst error
+ * anywhere in the corpus — while Chinese sat at −3.2% under the same rule. Kana
+ * measure 0.75 tokens per character and han 1.05, and that pair takes the two
+ * samples to −1.5% and +1.3%. See `KANA_TOKENS_PER_CHAR`.
  *
- * Exported so every report, README and tool description reads the same number.
- * It was a literal in twenty-four files before this, with the only machine-
- * readable copy in a test.
+ * **Which samples the band rests on matters more than the number.** Eight of the
+ * twenty-one had a constant fitted to them — seven Latin divisors and the digit
+ * divisor — so their residuals are optimistic by construction. The two worst
+ * errors in the corpus, `code-heavy` at 6.4% and `punctuation-heavy` at 5.7%, are
+ * fitted to nothing at all, and they are what sets this figure.
+ *
+ * Exported so every report, README and tool description reads the same number. It
+ * was a literal in twenty-four files before this, with the only machine-readable
+ * copy in a test, and `token-band.test.js` now fails any file that states a
+ * different one.
  */
-export const ESTIMATE_ERROR_BAND_PCT = 15;
+export const ESTIMATE_ERROR_BAND_PCT = 10;
 
 const CJK = /[぀-ヿ㐀-䶿一-鿿가-힯]/;
+
+/**
+ * Kana, separated from the rest of CJK because they do not cost the same.
+ *
+ * **This was the largest error left in the corpus.** Every CJK character was
+ * charged one token, and measured against the counting endpoint that put Japanese
+ * at **+11.2%** — the worst figure anywhere in twenty-one samples — while Chinese
+ * came out at −3.2% under the identical rule. One constant cannot be right for
+ * both, and the reason is visible in the samples: the Japanese one is 58% kana and
+ * the Chinese one is 0%.
+ *
+ * Kana are a small syllabary that appears in every sentence, so the merge table
+ * covers runs of them and several characters share a token. Han are tens of
+ * thousands of rare characters; a merge table cannot cover them and they cost
+ * about one each, sometimes more.
+ *
+ * The signal needs no detector. A character is kana or it is not, and the two
+ * samples separate perfectly — 58.3% against 0.00% — so this is a property of the
+ * character rather than a guess about the document. That is the difference between
+ * this and `language.ts`, which has to decide and is allowed to refuse.
+ */
+const KANA = /[぀-ヿ]/;
 const LETTER = /[A-Za-zÀ-ɏͰ-ϿЀ-ӿ]/;
 const DIGIT = /[0-9]/;
 
@@ -94,6 +123,27 @@ const DIVISOR_BY_LANGUAGE: Readonly<Record<string, number>> = {
   pt: 3.05,
   nl: 2.65,
 };
+
+/**
+ * Tokens per character for the two halves of CJK, measured.
+ *
+ * `0.75` and `1.05` come from a search over the two CJK samples in
+ * `test/fixtures/token-ground-truth.json`, and they take that pair from
+ * +11.2% / −3.2% to −1.5% / +1.3%.
+ *
+ * **Two samples fitted two constants, so those residuals are in-sample and
+ * optimistic by construction** — the same caveat the Latin divisors carry, stated
+ * for the same reason. What makes them worth having anyway is the size of the
+ * error they replace and the fact that they move in opposite directions: a single
+ * constant could not have been within four points of both, whatever it was set to.
+ * The honest test is a third CJK sample, and the corpus grows one at a time.
+ *
+ * Hangul keeps the old cost of 1, because nothing here measures Korean. Guessing
+ * it from Japanese would be inventing a figure — the two scripts have nothing in
+ * common that would make one predict the other.
+ */
+const KANA_TOKENS_PER_CHAR = 0.75;
+const HAN_TOKENS_PER_CHAR = 1.05;
 
 /**
  * What a prompt gets when the language could not be told.
@@ -133,6 +183,11 @@ export function estimateTokens(text: string): number {
   const divisor = (language === null ? undefined : DIVISOR_BY_LANGUAGE[language]) ?? DEFAULT_DIVISOR;
 
   let total = 0;
+  /**
+   * CJK is summed separately because it is the one class counted in fractions of
+   * a token. Everything else is whole tokens by the character class it belongs to.
+   */
+  let cjkTokens = 0;
   let i = 0;
   const chars = Array.from(text);
 
@@ -155,12 +210,19 @@ export function estimateTokens(text: string): number {
     }
 
     if (CJK.test(ch)) {
-      let n = 0;
+      /**
+       * Accumulated as a fraction and rounded once, at the end.
+       *
+       * Rounding up per run was the first attempt and it was wrong by five
+       * points. Ordinary Japanese alternates kana and han inside every sentence,
+       * so the runs are short and there are many of them — and a `Math.ceil` per
+       * run charges most of a token for each boundary. That is an artefact of
+       * where the loop happens to break, not of what the text costs.
+       */
       while (i < chars.length && CJK.test(chars[i]!)) {
-        n++;
+        cjkTokens += KANA.test(chars[i]!) ? KANA_TOKENS_PER_CHAR : HAN_TOKENS_PER_CHAR;
         i++;
       }
-      total += n;
       continue;
     }
 
@@ -229,7 +291,8 @@ export function estimateTokens(text: string): number {
     }
   }
 
-  return total;
+  // Rounded once, over the whole document, rather than per run — see the CJK branch.
+  return total + Math.ceil(cjkTokens);
 }
 
 /** Asynchronous token counter, for remote sources. */
