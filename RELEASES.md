@@ -7,8 +7,13 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.9.0**, published 2026-08-13 and installable
-today: `@trazum/core`, `@trazum/cli` and `@trazum/mcp`.
+**All three packages are on npm at 1.9.0**, published 2026-08-13: `@trazum/core`,
+`@trazum/cli` and `@trazum/mcp`.
+
+**1.9.1 was prepared and never published.** Its tag failed three times against a
+trusted-publisher configuration npm kept refusing, nothing reached the registry, and
+everything in it is contained in 1.10.0. Its notes are kept below because the work
+happened; the version number is simply spent.
 
 Everything under 1.8.0 is a milestone recorded in this repository and never
 uploaded anywhere, 1.0.0 included. The numbering is kept because the ordering is
@@ -18,6 +23,78 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.10.0 — "Every hard edge, both sides"
+
+**If you use Trazum, this release changes the number beside every token count.**
+The published error band is `±10%`, down from `±15%`, and it is the fourth value that
+figure has had — the first three were a guess, a measurement, and a fix. This one is
+a measured worst case with deliberate room left over.
+
+### The estimator got more accurate on CJK, for free
+
+Every CJK character was charged one token. Measured against Anthropic's counting
+endpoint that put Japanese at **+11.2%** — the worst error in the whole corpus —
+while Chinese sat at **−3.2%** under exactly the same rule.
+
+One constant could not be right for both, and the samples say why: the Japanese file
+is 58% kana, the Chinese one is 0%. Kana are a small syllabary in every sentence, so
+the merge table covers runs of them. Han are tens of thousands of rare characters it
+cannot cover.
+
+| | before | now |
+|---|---:|---:|
+| Japanese | +11.2% | −1.5% |
+| Chinese | −3.2% | +1.3% |
+| **worst in the corpus** | **11.2%** | **6.4%** |
+
+No new API calls were needed. The finding was sitting in the twenty-one measurements
+already committed, which is worth saying because the previous two band changes both
+cost a key.
+
+**The band is 10 and the worst measurement is 6.4, on purpose.** Twenty-one samples
+across six text types cannot bound a seventh — there is no Korean here, no Cyrillic
+prose, no mixed-script document. A band that becomes false the first time somebody
+measures something new is the fault this whole exercise was fixing.
+
+### Three advisories were stating predictions as facts
+
+Trazum compares token counts against thresholds that are absolute — a model's
+cacheable minimum, its context window — while the counts carry a ±10% band. Three
+findings got that wrong, in both available directions:
+
+- **`cache-prefix-reorder` offered money that could not be collected.** It priced
+  moving stable content into the cacheable prefix without checking the prefix that
+  would build clears the minimum. On a 306-token prompt against a 512-token minimum
+  the best possible prefix is 302 — nothing caches at any ordering — and it offered
+  **$48.67 a month**, in the same report as another finding saying caching would not
+  work here at all.
+- **`prompt-caching` hedged below the line and promised money above it.** An
+  estimated 528-token prefix can truly be 475, and then nothing caches and the figure
+  beside the advisory is not there.
+- **`context-overflow` said "the call will fail" as a certainty** — and said nothing
+  at all when an estimate that fitted might really not. That silent case is now
+  `context-near-limit`, the fourteenth finding, and it is the more dangerous of the
+  two: a prompt over the window fails outright rather than degrading, so there is no
+  partial result to notice.
+
+### And the advisory tells you the command now
+
+`cache-prefix-reorder` described the rearrangement in prose and left you to do it by
+hand, while Trazum had `--reorder` all along — whole blocks only, refusing anything
+that refers back to earlier text. On a 1,355-token prompt it takes the cacheable
+prefix from **13 tokens to 1,350**.
+
+### What stops it happening again
+
+Fixing one fault three times is evidence it will recur, so there is now a guard that
+asserts the property rather than the instances: for every model in the pricing
+catalogue, no token count near a threshold may produce an unqualified claim, and
+**silence counts as a failure** rather than a pass. Eighteen models, four cacheable
+minimums, six context windows, all derived — a model added later is covered without
+anybody remembering to.
 
 ---
 
