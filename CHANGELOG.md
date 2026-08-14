@@ -10,6 +10,13 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Changed
+
+**The README's action pin advanced to the 1.10.0 commit.** It can only move after
+the merge it names exists — `security.test.js` asks git what version the pinned
+commit declares in its own manifest, so a pin cannot be advanced inside the commit
+it points at and cannot carry a label its target does not have.
+
 ## 1.10.0 — "Every hard edge, both sides"
 
 **A minor rather than a patch, because it changes every report.** The published
