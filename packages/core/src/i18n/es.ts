@@ -150,9 +150,9 @@ export const es: CoreMessages = {
       };
     },
 
-    cachePrefixReorder: ({ staticTokensAfter, sharePct, placeholder }) => ({
+    cachePrefixReorder: ({ staticTokensAfter, sharePct, placeholder, command }) => ({
       title: 'Mueve las instrucciones estables antes del primer marcador',
-      detail: `Unos ~${n(staticTokensAfter)} tokens de contenido estable (el ${sharePct}% del prompt) están después del primer marcador variable ${placeholder}, así que hoy no se cachean nunca. Reordena la plantilla —instrucciones y contexto fijos primero, marcadores al final— y ese contenido pasa a leerse de caché al 10% del precio. Revisa que la reordenación no cambie el sentido del prompt.`,
+      detail: `Unos ~${n(staticTokensAfter)} tokens de contenido estable (el ${sharePct}% del prompt) están después del primer marcador variable ${placeholder}, así que hoy no se cachean nunca. Instrucciones y contexto fijos primero, marcadores al final, y ese contenido empieza a leerse de caché al 10% del precio. Ejecuta \`${command}\` para intentarlo: solo mueve bloques completos y se niega a mover cualquiera que se refiera a texto anterior. Lee el diff —el orden significa algo, y «resume el texto de arriba» no tiene sentido delante del texto al que apunta.`,
     }),
 
     batchApi: () => ({

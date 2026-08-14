@@ -150,9 +150,9 @@ export const en: CoreMessages = {
       };
     },
 
-    cachePrefixReorder: ({ staticTokensAfter, sharePct, placeholder }) => ({
+    cachePrefixReorder: ({ staticTokensAfter, sharePct, placeholder, command }) => ({
       title: 'Move the stable instructions ahead of the first placeholder',
-      detail: `About ~${n(staticTokensAfter)} tokens of stable content (${sharePct}% of the prompt) sit after the first variable placeholder ${placeholder}, so today they never get cached. Reorder the template — fixed instructions and context first, placeholders last — and that content starts being read from cache at 10% of the price. Check that reordering does not change what the prompt asks for.`,
+      detail: `About ~${n(staticTokensAfter)} tokens of stable content (${sharePct}% of the prompt) sit after the first variable placeholder ${placeholder}, so today they never get cached. Fixed instructions and context first, placeholders last, and that content starts being read from cache at 10% of the price. Run \`${command}\` to attempt it: whole blocks only, and it refuses to move anything that refers back to earlier text. Read the diff — order carries meaning, and "summarise the text above" is nonsense in front of the text it points at.`,
     }),
 
     batchApi: () => ({

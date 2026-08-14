@@ -223,12 +223,49 @@ export function buildAdvisories(
       });
     }
 
-    // Stable content placed AFTER the first placeholder: never cached today,
-    // but moving it in front would make it cacheable.
+    /**
+     * Stable content placed AFTER the first placeholder: never cached today, and
+     * cacheable if it moves in front.
+     *
+     * **The prefix it would produce has to clear the minimum, and it did not used
+     * to be checked.** That was a money figure in the flattering direction, which
+     * is the one fault this file exists to avoid. On a 306-token support prompt
+     * against Claude Opus 5's 512-token minimum, the best prefix a rearrangement
+     * can build is 302 — so nothing caches, and the advisory offered $48.67 a
+     * month that cannot be collected.
+     *
+     * Worse, it said so in the same report as `below-cache-minimum`, which was
+     * telling the reader caching would not work here at all. Two advisories
+     * contradicting each other, and the one with a dollar sign winning the
+     * argument.
+     *
+     * `reorderForCache` already refused these prompts for exactly this reason, so
+     * the tool's advice and its action disagreed: follow the advice, run
+     * `--reorder`, and watch nothing happen.
+     */
+    /**
+     * The best prefix any rearrangement could build, compared strictly.
+     *
+     * **No band hedge here, and that was tried first.** Widening the comparison by
+     * ±10% — on the same reasoning that makes `below-cache-minimum` hedge near the
+     * line — opened a window between 466 and 512 tokens where this advisory
+     * offered a saving and `reorderForCache` refused to perform it. That is the
+     * fault being fixed, reintroduced one layer up, and a test caught it.
+     *
+     * The near-the-line case is already handled and in the right place:
+     * `below-cache-minimum` says the estimate is close to the threshold and names
+     * `--exact-tokens`. Settle the number and both this advisory and the command
+     * work from the same certainty. Two components disagreeing is worse than one
+     * of them being briefly quiet.
+     */
+    const reorderedPrefix = cache.stablePrefixTokens + cache.staticTokensAfter;
+    const reachableAfterReorder = reorderedPrefix >= minTokens;
+
     if (
       cache.firstPlaceholder &&
       cache.staticTokensAfter >= 200 &&
-      cache.staticTokensAfter >= tokensAfter * 0.3
+      cache.staticTokensAfter >= tokensAfter * 0.3 &&
+      reachableAfterReorder
     ) {
       const movableShare = tokensAfter > 0 ? cache.staticTokensAfter / tokensAfter : 0;
       const saving = monthlyInputUsd * movableShare * Math.max(0, 1 - factor);
@@ -239,6 +276,13 @@ export function buildAdvisories(
           staticTokensAfter: cache.staticTokensAfter,
           sharePct: Math.round(movableShare * 100),
           placeholder: cache.firstPlaceholder,
+          /**
+           * Trazum can do this, and until now it told you to do it by hand.
+           * `reorderForCache` moves whole blocks, refuses any block carrying a
+           * backward reference, and refuses everything after one — so the command
+           * is the safe way to attempt what the prose was describing.
+           */
+          command: 'trazum optimize <file> --reorder',
         }),
         estimatedMonthlyUsd: saving > 0 ? saving : null,
       });
