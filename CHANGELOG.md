@@ -12,6 +12,36 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**A guard so the threshold fault cannot be shipped a fourth time.** The same
+mistake was found and fixed three times this release — an estimate with a ±10% band
+compared against an absolute threshold, and the answer stated as a fact.
+`threshold-honesty.test.js` asserts the property instead of the three instances.
+
+It is **derived from the pricing catalogue**, not from a list of thresholds typed
+into a test: eighteen models, four distinct cacheable minimums, six distinct context
+windows, and a model added later with a new window is covered without anybody
+remembering to. Weak about wording, strong about presence — it does not care what
+the caveat says, only that a report facing a line its own error band straddles
+admits it somewhere. Pinning the phrasing would make it a copy test.
+
+**Silence is a failure, not a skip**, and getting that wrong is how the first
+version missed the bug it was written for. It skipped when no relevant finding
+existed — which is precisely the quiet failure mode — so deleting `context-near-limit`
+left it green. The one legitimate silence is a threshold the model does not have.
+
+Coverage stated exactly in the file: reintroducing faults 2 and 3 fails it, both
+halves of 3 included. Fault 1 does not, because its property is different — "offers
+a saving the tool would refuse to deliver" rather than "admits uncertainty" — and
+that one is guarded by the advice-matches-action sweep in `cache-minimum.test.js`.
+Two properties, two tests, said out loud rather than implied.
+
+The first version also fed the cache advisories a bare token count with a
+placeholder prompt, and those advisories reason about the stable prefix of the real
+text. A two-token prompt labelled 486 tokens is nowhere near any minimum, so it
+reported eighteen failures against correct code — a test measuring its own fixture.
+
+### Added
+
 **`context-near-limit`, for the prompt that fits by estimate and might not fit at
 all.** The third place a ±10% number was compared against a hard threshold and the
 answer stated as fact, after `cache-prefix-reorder` and `prompt-caching`. This one
