@@ -10,6 +10,29 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+## 1.10.0 — "Every hard edge, both sides"
+
+**A minor rather than a patch, because it changes every report.** The published
+error band drops from `±15%` to `±10%`, which moves the number printed beside every
+token count Trazum has ever shown, and a fourteenth finding joins the list.
+
+The band moved because **kana and han do not cost the same**. Charging one token per
+CJK character put Japanese at +11.2%, the worst error in the corpus, while Chinese
+sat at -3.2% under the identical rule. No new measurements were needed — the finding
+was in the twenty-one samples already committed.
+
+Then three advisories turned out to share one fault: an estimate with a ±10% band
+compared against an absolute threshold, and the answer stated as a fact. One offered
+$48.67 a month that could not be collected. One promised money on a prefix that
+might not clear the cache minimum. One said "the call will fail" as a certainty, and
+said nothing at all in the case where a prompt that seemed to fit really might not.
+All three are fixed, and a guard derived from the pricing catalogue now covers the
+pattern across eighteen models so it cannot ship a fourth time.
+
+**1.9.1 was prepared and never published.** Its tag failed three times against a
+trusted-publisher configuration that npm kept refusing, and everything in it is
+contained here. This release supersedes it.
+
 ### Added
 
 **A guard so the threshold fault cannot be shipped a fourth time.** The same
