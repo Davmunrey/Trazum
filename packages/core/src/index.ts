@@ -1,5 +1,19 @@
 export * from './types.js';
 export { ESTIMATE_ERROR_BAND_PCT, estimateTokens, countTokensAnthropic } from './tokenizer.js';
+export {
+  UNLABELLED,
+  cacheHitRate,
+  parseUsageLine,
+  profileUsage,
+  sharesOf,
+} from './usage.js';
+export type {
+  UsageProfileOptions,
+  UsageBreakdown,
+  UsageProfileReport,
+  UsageRecord,
+  UsageShares,
+} from './usage.js';
 export { DETECTABLE_LANGUAGES, detectTextLanguage } from './language.js';
 export { countSentences, profilePrompt } from './profile.js';
 export { PHRASE_LANGUAGES } from './phrases.js';

@@ -10,6 +10,55 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+**`profileUsage` — reading what the provider actually charged, rather than
+estimating what a file would cost.** The first piece of the answer to the thing
+this release measured and could not fix: on an ordinary support prompt the
+deterministic rules recover about **1%** of the monthly figure, while output
+tokens alone were **87%** of it. A tool that reads `prompts/*.txt` cannot see
+retrieved context, conversation history, tool results or answers, and on a RAG or
+agent workload those are nearly the whole invoice.
+
+It takes a JSON Lines usage log and says where the money went — by label, by model,
+split across input, cache reads, cache writes and output — plus the cache hit rate
+that actually happened.
+
+**It reads a file, and that is the design.** Not a proxy, not an SDK wrapper.
+Trazum's security position is that prompts do not leave the machine they are on,
+asserted by tests rather than promised, and sitting in the request path trades that
+away for convenience.
+
+**The format is the one the API already returns.** `model` plus the `usage` object
+from any Anthropic response, flattened or nested. OpenAI's shape is accepted too,
+with the one real difference handled: OpenAI counts cached tokens **inside**
+`prompt_tokens` while Anthropic reports them beside `input_tokens`, so treating
+them alike bills the cached half at the full rate as well as the cached rate.
+
+**There is nowhere to put prompt text.** The record shape has no content field, so
+a usage log handed to Trazum cannot contain a prompt even by accident — a stronger
+promise than "we do not look at it".
+
+**And it reports no saving**, deliberately. Attributing "you could have saved X" to
+a call that already happened means guessing what the call should have been, which
+is exactly what this exists to stop doing.
+
+### Fixed
+
+**A model the catalogue does not know was making the total too low.** Found in the
+first smoke run of the module above, and it is the same fault as the three
+advisories fixed earlier in this release: counts were accumulated **before** the
+price lookup could fail, so an unpriced call contributed its tokens to the totals
+and its dollars to nothing. `total.inputTokens` included it, `total.inputUsd` did
+not, and a cost-per-token taken from that report was wrong by however much of the
+log was unpriced — silently, and in the flattering direction.
+
+A production log will contain models this catalogue has never heard of: a
+fine-tune, a preview, a competitor. They are now kept entirely separate, so every
+token in the priced total is a token the dollars describe, and the size of what
+could not be priced is visible rather than folded into a number that looks
+complete.
+
 ### Fixed
 
 **A high-severity advisory in `nanoid`, reachable only from the web app's build.**
