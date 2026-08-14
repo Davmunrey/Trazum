@@ -104,6 +104,8 @@ export interface CachePrefixReorderParams {
   staticTokensAfter: number;
   sharePct: number;
   placeholder: string;
+  /** The command that attempts it, because Trazum can do this itself. */
+  command: string;
 }
 
 export interface ModelDowngradeParams {

@@ -10,6 +10,59 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**`cache-prefix-reorder` was offering money that could not be collected.** It fired
+whenever enough stable content sat after the first placeholder and priced moving it
+forward at 90% off — without asking whether the prefix that rearrangement would
+build actually clears the model's cacheable minimum.
+
+On a 306-token support prompt against Claude Opus 5's 512-token minimum, the best
+prefix any ordering can produce is 302. Nothing caches at any ordering. The
+advisory offered **$48.67 a month**, in the same report as `below-cache-minimum`
+telling the reader caching would not work here at all — two findings contradicting
+each other, with the dollar sign winning the argument.
+
+`reorderForCache` had refused these prompts from the start, for precisely this
+reason, so Trazum's advice and Trazum's action disagreed: take the advice, run
+`--reorder`, watch nothing happen. A money figure in the flattering direction is
+the one fault this file exists to catch.
+
+The gate is a strict comparison against the minimum. **No band hedge, and that was
+tried first** — widening it by ±10%, on the reasoning that makes
+`below-cache-minimum` hedge near the line, opened a window between 466 and 512
+tokens where the advisory offered and the command refused. The same fault one layer
+up, and the test caught it. The near-the-line case is already handled in the right
+place: `below-cache-minimum` names `--exact-tokens`, and once the number is certain
+both work from the same certainty.
+
+### Changed
+
+**The advisory names the command that does it.** It described the rearrangement in
+prose and left the reader to perform it by hand, while `reorderForCache` sat in the
+same package able to attempt it — whole blocks only, refusing any block that refers
+back to earlier text, and everything after one. It now prints
+`trazum optimize <file> --reorder` and still says to read the diff, because this is
+the one transformation that moves text rather than deleting it.
+
+An advisory that withholds the command is the shape of the whole product problem:
+Trazum knowing something worth more than what it does about it. On a 1,355-token
+prompt the command takes the cacheable prefix from **13 tokens to 1,350**.
+
+### Added
+
+**A test that the advice and the action cannot disagree.** For every size in a
+sweep: if the report offers the saving, `reorderForCache` must deliver movement.
+
+One-directional on purpose, and the direction took two attempts to get right. The
+first version asserted that `cache-prefix-reorder` and `below-cache-minimum` never
+appear together — wrong about the product, not the code: on a prompt with plenty of
+movable content both are true and both useful, a diagnosis followed by its fix. The
+second asserted the converse as well, and failed against working code because below
+200 movable tokens the advisory stays deliberately quiet while the command remains
+available. Silence about a small win is not the same fault as a promise about an
+impossible one.
+
 ### Changed
 
 **The published error band drops from ±15% to ±10%, and the worst measured error
