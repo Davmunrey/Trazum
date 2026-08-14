@@ -106,6 +106,7 @@ export const es: CoreMessages = {
       readPct,
       writePct,
       explicit,
+      nearMinimum,
     }) => {
       const scope = placeholder
         ? `El prefijo estable —lo anterior al primer marcador ${placeholder}— son ~${n(prefixTokens)} de los ${n(totalTokens)} tokens del prompt, y supera el mínimo cacheable de ${n(minTokens)} de ${modelName}.`
@@ -113,9 +114,12 @@ export const es: CoreMessages = {
       const how = explicit
         ? 'Coloca el marcador de caché al final del prefijo estable: cualquier byte que cambie antes del corte invalida todo lo que va detrás.'
         : `${modelName} cachea automáticamente por encima de su mínimo, así que no hay nada que activar; pero la regla es la misma: cualquier byte que cambie antes del corte invalida todo lo que va detrás.`;
+      const hedge = nearMinimum
+        ? ` Un aviso sobre la cifra: ese recuento del prefijo es una estimación y está cerca del límite, así que el real puede quedar por debajo del mínimo de ${n(minTokens)} tokens —y entonces no se cachea nada y este ahorro no existe. Confírmalo con --exact-tokens antes de presupuestar sobre él. El endpoint de conteo es gratis.`
+        : '';
       return {
         title: 'Activa prompt caching en el prefijo estable',
-        detail: `${scope} Con una tasa de acierto del ${hitRatePct}%, la lectura de caché cuesta un ${readPct}% del precio de entrada y la escritura un ${writePct}%. ${how}`,
+        detail: `${scope} Con una tasa de acierto del ${hitRatePct}%, la lectura de caché cuesta un ${readPct}% del precio de entrada y la escritura un ${writePct}%. ${how}${hedge}`,
       };
     },
 

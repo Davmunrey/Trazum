@@ -12,6 +12,40 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**`prompt-caching` hedged in one direction and promised money in the other.** Found
+by asking whether the bug just fixed in `cache-prefix-reorder` had a twin. It did.
+
+`below-cache-minimum` hedges when an estimated prefix lands just *under* the
+threshold — the real one may already be over, and withholding the largest saving
+Trazum offers on the strength of a ±10% figure is wrong advice. `prompt-caching`
+did **not** hedge when an estimate landed just *over* it. With a ±10% band an
+estimated 528-token prefix can truly be 475, and then nothing caches at all and the
+dollar figure printed beside the advisory is uncollectable.
+
+Same fault as the reorder advisory, opposite direction, and this is the direction
+with money attached. The hedge qualifies the figure rather than withdrawing it —
+the prefix probably does clear the line — and names `--exact-tokens`, which settles
+it for free.
+
+Only on an estimate. A caller who supplied their own counter has an authoritative
+prefix, and telling them it might be wrong pushes them toward a check they have
+already done.
+
+### Added
+
+**A test that no size around the threshold makes an unqualified claim.** Whichever
+advisory fires, if the band around the estimated prefix straddles the minimum, the
+text has to say so. Swept across the window rather than asserted on two samples,
+because the fault was an asymmetry between two code paths and only a sweep can show
+the seam between them is closed.
+
+It reads the prefix from `analyzeCachePrefix` rather than scraping `~528` out of the
+sentence. The first version did scrape it, defaulted to "straddles" when the regex
+missed, and reported two failures against correct behaviour — a test asserting its
+own parsing instead of the property.
+
+### Fixed
+
 **`cache-prefix-reorder` was offering money that could not be collected.** It fired
 whenever enough stable content sat after the first placeholder and priced moving it
 forward at 90% off — without asking whether the prefix that rearrangement would

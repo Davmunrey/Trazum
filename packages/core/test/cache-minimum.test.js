@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { buildAdvisories, estimateTokens, getModel, reorderForCache } from '../dist/index.js';
+import {
+  ESTIMATE_ERROR_BAND_PCT,
+  analyzeCachePrefix,
+  buildAdvisories,
+  estimateTokens,
+  getModel,
+  reorderForCache,
+} from '../dist/index.js';
 
 /**
  * `below-cache-minimum`, and the estimate it used to assert from.
@@ -190,5 +197,99 @@ describe('cache-prefix-reorder cannot promise what caching will not give', () =>
     assert.match(advisory.detail, /--reorder/, 'the advisory does not name the command');
     // And it still says to read the diff, because this one moves text.
     assert.match(advisory.detail, /diff/i, 'it no longer tells the reader to check the result');
+  });
+});
+
+describe('prompt-caching hedges above the line, not only below it', () => {
+  /**
+   * An asymmetry that was a real gap, found by asking whether the bug just fixed
+   * in `cache-prefix-reorder` had a twin.
+   *
+   * `below-cache-minimum` hedges when an estimated prefix lands just *under* the
+   * threshold: the real one may already be over, and refusing to mention the
+   * largest saving Trazum offers on the strength of a ±10% figure is wrong advice.
+   *
+   * `prompt-caching` did not hedge when an estimate landed just *over* it. With a
+   * ±10% band an estimated 528-token prefix can truly be 475, in which case
+   * nothing caches and the dollar figure printed beside the advisory is
+   * uncollectable. Same fault as the reorder advisory, opposite direction, and the
+   * direction with money attached is the one that needed it more.
+   */
+  const HEDGE = /close to the line/;
+  const cachingFor = (prompt, options = {}) =>
+    buildAdvisories(prompt, estimateTokens(prompt), USAGE, options).find(
+      (a) => a.id === 'prompt-caching',
+    );
+
+  it('warns when the real prefix may be under the minimum after all', () => {
+    // 29 repetitions estimates ~528 against a 512 minimum, so the low end of the
+    // band is ~475 — under the line, and the saving would not exist.
+    const advisory = cachingFor(promptOf(29));
+    assert.ok(advisory, 'the fixture no longer clears the minimum — retune it');
+    assert.match(advisory.detail, HEDGE);
+    assert.match(advisory.detail, /--exact-tokens/, 'does not name the way to settle it');
+    assert.match(advisory.detail, /free/, 'does not say the counting endpoint costs nothing');
+    // The figure is still offered — the hedge qualifies it rather than withdrawing
+    // it, because the prefix probably does clear the line.
+    assert.ok((advisory.estimatedMonthlyUsd ?? 0) > 0, 'the saving vanished instead of being qualified');
+  });
+
+  it('says nothing extra when the prefix is comfortably over', () => {
+    // Hedging every case makes the hedge noise. No error of the measured size
+    // brings this prefix near the threshold.
+    const advisory = cachingFor(promptOf(40));
+    assert.ok(advisory, 'expected the advisory for a long prefix');
+    assert.doesNotMatch(advisory.detail, HEDGE);
+  });
+
+  it('does not hedge a number the caller measured', () => {
+    /**
+     * Same rule as `below-cache-minimum`. A caller who supplied their own counter
+     * has an authoritative prefix, and telling them it might be wrong pushes them
+     * toward a check they have already done — which is its own kind of dishonesty.
+     */
+    const prompt = promptOf(29);
+    const exact = buildAdvisories(prompt, 528, USAGE, { count: () => 528 }).find(
+      (a) => a.id === 'prompt-caching',
+    );
+    assert.ok(exact, 'expected the advisory with an exact counter');
+    assert.doesNotMatch(exact.detail, HEDGE);
+  });
+
+  it('hedges in both directions across the whole window', () => {
+    /**
+     * The property rather than two samples of it. Somewhere around the threshold
+     * every prompt is either told "below the minimum, but maybe not" or "above it,
+     * but maybe not" — and there must be no size that gets a bare, unqualified
+     * claim while the band still straddles the line.
+     */
+    const min = MODEL.cacheMinTokens ?? 0;
+    const band = ESTIMATE_ERROR_BAND_PCT / 100;
+    const unqualified = [];
+
+    for (let reps = 20; reps <= 40; reps += 1) {
+      const prompt = promptOf(reps);
+      const all = buildAdvisories(prompt, estimateTokens(prompt), USAGE, {});
+      const advisory =
+        all.find((a) => a.id === 'prompt-caching') ??
+        all.find((a) => a.id === 'below-cache-minimum');
+      if (!advisory) continue;
+
+      /**
+       * Read from the analysis, not parsed out of the prose. The first version of
+       * this scraped `~528` from the sentence and defaulted to "straddles" when
+       * the regex missed, which reported two failures against correct behaviour —
+       * a test asserting its own parsing rather than the property.
+       */
+      const prefix = analyzeCachePrefix(prompt, estimateTokens).stablePrefixTokens;
+      const straddles = prefix * (1 - band) < min && prefix * (1 + band) >= min;
+      if (straddles && !HEDGE.test(advisory.detail)) unqualified.push(`${reps} (prefix ~${prefix})`);
+    }
+
+    assert.deepEqual(
+      unqualified,
+      [],
+      `these sizes make an unqualified claim while the band straddles the minimum: ${unqualified.join(', ')}`,
+    );
   });
 });

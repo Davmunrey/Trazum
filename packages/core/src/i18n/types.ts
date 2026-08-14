@@ -60,6 +60,20 @@ export interface PromptCachingParams {
   /** First template placeholder, or `null` when the prompt has none. */
   placeholder: string | null;
   prefixTokens: number;
+  /**
+   * The prefix is an estimate and the band reaches below the minimum, so the
+   * saving may not be collectable at all.
+   *
+   * The mirror of `BelowCacheMinimumParams.couldReachMinimum`, and the asymmetry
+   * was a real gap: that one hedged an estimate landing just *under* a hard
+   * threshold, while this one promised money on an estimate landing just *over*
+   * it. With a ±10% band an estimated 528-token prefix can truly be 475, in which
+   * case nothing caches and the figure beside this advisory is uncollectable.
+   *
+   * The cautionary direction matters more than the encouraging one, because this
+   * is the side with a dollar sign attached.
+   */
+  nearMinimum: boolean;
   totalTokens: number;
   minTokens: number;
   modelName: string;
