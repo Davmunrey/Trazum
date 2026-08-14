@@ -65,8 +65,19 @@ export interface UsageRecord {
   inputTokens: number;
   /** Tokens billed at the cache-read rate. Zero when nothing was cached. */
   cacheReadTokens: number;
-  /** Tokens billed at the cache-write rate, which costs more than input once. */
-  cacheWriteTokens: number;
+  /** Cache writes at the 5-minute rate — 1.25x input on Anthropic. */
+  cacheWrite5mTokens: number;
+  /** Cache writes at the 1-hour rate, which is **2x** input, not 1.25x. */
+  cacheWrite1hTokens: number;
+  /**
+   * Whether the log said which TTL those writes used.
+   *
+   * `false` when only the flat `cache_creation_input_tokens` was present and it
+   * was non-zero: the writes are then priced at the cheaper 5-minute rate because
+   * one of the two has to be assumed, and the report says so. Choosing the cheaper
+   * rate silently understates a 1-hour workload by 37.5% on its largest line.
+   */
+  writeTtlKnown: boolean;
   outputTokens: number;
   /**
    * Optional label for grouping — an endpoint, a feature, a prompt name.
@@ -86,6 +97,11 @@ export interface UsageBreakdown {
   cacheReadTokens: number;
   cacheWriteTokens: number;
   outputTokens: number;
+  /**
+   * Calls whose cache-write TTL the log did not state, so the cheaper rate was
+   * assumed. Non-zero means this total is a floor on those calls, not a figure.
+   */
+  assumedWriteTtlCalls: number;
   inputUsd: number;
   cacheReadUsd: number;
   cacheWriteUsd: number;
@@ -147,6 +163,7 @@ const EMPTY = (): UsageBreakdown => ({
   cacheReadTokens: 0,
   cacheWriteTokens: 0,
   outputTokens: 0,
+  assumedWriteTtlCalls: 0,
   inputUsd: 0,
   cacheReadUsd: 0,
   cacheWriteUsd: 0,
@@ -154,8 +171,41 @@ const EMPTY = (): UsageBreakdown => ({
   totalUsd: 0,
 });
 
-const numberOr = (value: unknown, fallback: number): number =>
-  typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback;
+/**
+ * A count, and whether the log actually said it.
+ *
+ * **Absent and corrupt are different, and conflating them cost the whole bill.**
+ * The first version used one helper that returned a fallback for both, so a field
+ * present as `"200000"` or `null` — a string count out of `jq`, a null out of a
+ * Postgres JSON round-trip — became a clean zero indistinguishable from a real
+ * one. The record survived, its token class vanished, and it was never added to
+ * `skippedLines`, so nothing on screen said a number had been thrown away.
+ *
+ * Measured on a two-line log with a stringified `input_tokens`: the report came to
+ * $0.0150 against a true $2.015, and the headline flipped to "output is 100% of
+ * this bill, so shortening prompts has a low ceiling" — the opposite of the truth
+ * on a workload that was almost entirely prompt.
+ *
+ * So: absent is a zero anybody may legitimately mean, and corrupt rejects the
+ * line.
+ */
+type Count = { kind: 'ok'; value: number } | { kind: 'absent' } | { kind: 'corrupt' };
+
+const OK = (value: number): Count => ({ kind: 'ok', value });
+
+function readCount(...candidates: unknown[]): Count {
+  let sawCorrupt = false;
+  for (const value of candidates) {
+    if (value === undefined) continue;
+    if (typeof value === 'number' && Number.isFinite(value) && value >= 0) return OK(value);
+    // Present and unusable: a string, a null, a negative, a NaN.
+    sawCorrupt = true;
+  }
+  return sawCorrupt ? { kind: 'corrupt' } : { kind: 'absent' };
+}
+
+/** Zero for an absent count. Callers reject corrupt ones before reaching this. */
+const valueOf = (count: Count): number => (count.kind === 'ok' ? count.value : 0);
 
 /**
  * One line of a usage log, or `null` when it is not one.
@@ -165,9 +215,14 @@ const numberOr = (value: unknown, fallback: number): number =>
  * for a transformation step before the tool will read anything, and a tool with a
  * setup cost that exceeds its payoff does not get run twice.
  *
- * A record with no token counts at all is `null` rather than a zero-cost call:
- * counting it would inflate the call count while contributing nothing, which
- * silently lowers every per-call figure in the report.
+ * `null` in three cases, and the third is the one that was wrong:
+ *
+ * 1. Not JSON, or not an object, or no `model`.
+ * 2. **No** token counts at all — counting it would inflate the call count while
+ *    contributing nothing, which lowers every per-call figure.
+ * 3. **Any** count present but unreadable. A field that is there and unusable is
+ *    corruption, and a corrupt line belongs in `skippedLines` where the report
+ *    names it, not in the totals as a silent zero.
  */
 export function parseUsageLine(line: string): UsageRecord | null {
   let raw: unknown;
@@ -188,16 +243,6 @@ export function parseUsageLine(line: string): UsageRecord | null {
   const model = typeof record.model === 'string' ? record.model : null;
   if (!model) return null;
 
-  const inputTokens = numberOr(
-    usage.input_tokens,
-    numberOr(usage.inputTokens, numberOr(usage.prompt_tokens, -1)),
-  );
-  const outputTokens = numberOr(
-    usage.output_tokens,
-    numberOr(usage.outputTokens, numberOr(usage.completion_tokens, -1)),
-  );
-  if (inputTokens < 0 && outputTokens < 0) return null;
-
   /**
    * OpenAI reports cached tokens inside `prompt_tokens_details` **and counts them
    * in `prompt_tokens`**, while Anthropic reports them separately and does not.
@@ -208,31 +253,63 @@ export function parseUsageLine(line: string): UsageRecord | null {
     typeof usage.prompt_tokens_details === 'object' && usage.prompt_tokens_details !== null
       ? (usage.prompt_tokens_details as Record<string, unknown>)
       : null;
-  const openAiCached = details ? numberOr(details.cached_tokens, 0) : 0;
+  const openAiCached = details ? readCount(details.cached_tokens) : ({ kind: 'absent' } as Count);
 
-  const cacheReadTokens = numberOr(
-    usage.cache_read_input_tokens,
-    numberOr(usage.cacheReadTokens, openAiCached),
-  );
-  const cacheWriteTokens = numberOr(
-    usage.cache_creation_input_tokens,
-    numberOr(usage.cacheWriteTokens, 0),
-  );
-
-  const billedInput = Math.max(0, inputTokens < 0 ? 0 : inputTokens - openAiCached);
-
-  const label =
-    typeof record.label === 'string' && record.label.trim() !== ''
-      ? record.label.trim()
+  /**
+   * Anthropic splits cache writes by time-to-live, and the two cost different
+   * amounts: 1.25x input for the 5-minute entry, **2x** for the 1-hour one.
+   *
+   * Reading only the flat `cache_creation_input_tokens` threw that distinction
+   * away and then priced everything at the cheaper rate — a 1-hour workload
+   * reported 37.5% under, silently, on its largest line. The split is in the log
+   * whenever the recording recipe in the README is followed, because it is part of
+   * the `usage` object the API returns.
+   */
+  const creation =
+    typeof usage.cache_creation === 'object' && usage.cache_creation !== null
+      ? (usage.cache_creation as Record<string, unknown>)
       : null;
+  const write5m = creation ? readCount(creation.ephemeral_5m_input_tokens) : ({ kind: 'absent' } as Count);
+  const write1h = creation ? readCount(creation.ephemeral_1h_input_tokens) : ({ kind: 'absent' } as Count);
+
+  const counts: Record<string, Count> = {
+    input: readCount(usage.input_tokens, usage.inputTokens, usage.prompt_tokens),
+    output: readCount(usage.output_tokens, usage.outputTokens, usage.completion_tokens),
+    cacheRead: readCount(usage.cache_read_input_tokens, usage.cacheReadTokens),
+    cacheWrite: readCount(usage.cache_creation_input_tokens, usage.cacheWriteTokens),
+    openAiCached,
+    write5m,
+    write1h,
+  };
+
+  // Any field present and unreadable rejects the line. See `readCount`.
+  if (Object.values(counts).some((c) => c.kind === 'corrupt')) return null;
+  // Nothing to count at all.
+  if (Object.values(counts).every((c) => c.kind === 'absent')) return null;
+
+  const cached = valueOf(counts.openAiCached!);
+  const flatWrite = valueOf(counts.cacheWrite!);
+  const split5m = valueOf(counts.write5m!);
+  const split1h = valueOf(counts.write1h!);
+  const hasSplit = counts.write5m!.kind === 'ok' || counts.write1h!.kind === 'ok';
 
   return {
     model,
-    inputTokens: billedInput,
-    cacheReadTokens,
-    cacheWriteTokens,
-    outputTokens: outputTokens < 0 ? 0 : outputTokens,
-    label,
+    inputTokens: Math.max(0, valueOf(counts.input!) - cached),
+    cacheReadTokens: counts.cacheRead!.kind === 'ok' ? counts.cacheRead!.value : cached,
+    /**
+     * The split when the log carries it, the flat number otherwise — and
+     * `writeTtlKnown` says which, so the report can admit that a rate was assumed
+     * rather than quietly choosing the cheaper one.
+     */
+    cacheWrite5mTokens: hasSplit ? split5m : flatWrite,
+    cacheWrite1hTokens: hasSplit ? split1h : 0,
+    writeTtlKnown: hasSplit || flatWrite === 0,
+    outputTokens: valueOf(counts.output!),
+    label:
+      typeof record.label === 'string' && record.label.trim() !== ''
+        ? record.label.trim()
+        : null,
   };
 }
 
@@ -244,7 +321,8 @@ function countInto(into: UsageBreakdown, record: UsageRecord): void {
   into.calls += 1;
   into.inputTokens += record.inputTokens;
   into.cacheReadTokens += record.cacheReadTokens;
-  into.cacheWriteTokens += record.cacheWriteTokens;
+  into.cacheWriteTokens += record.cacheWrite5mTokens + record.cacheWrite1hTokens;
+  if (!record.writeTtlKnown) into.assumedWriteTtlCalls += 1;
   into.outputTokens += record.outputTokens;
 }
 
@@ -271,7 +349,14 @@ function add(into: UsageBreakdown, record: UsageRecord, catalogue: PricingCatalo
 
   into.inputUsd += per(record.inputTokens, inputPerMTok);
   into.cacheReadUsd += per(record.cacheReadTokens, inputPerMTok * rates.cacheRead);
-  into.cacheWriteUsd += per(record.cacheWriteTokens, inputPerMTok * rates.cacheWrite5m);
+  /**
+   * Each TTL at its own rate. Anthropic charges 1.25x input for a 5-minute entry
+   * and 2x for a 1-hour one, and the first version applied 1.25x to both — 37.5%
+   * under on a 1-hour workload, on the largest line, with nothing on screen
+   * saying a rate had been chosen.
+   */
+  into.cacheWriteUsd += per(record.cacheWrite5mTokens, inputPerMTok * rates.cacheWrite5m);
+  into.cacheWriteUsd += per(record.cacheWrite1hTokens, inputPerMTok * rates.cacheWrite1h);
   into.outputUsd += per(record.outputTokens, outputPerMTok);
   into.totalUsd =
     into.inputUsd + into.cacheReadUsd + into.cacheWriteUsd + into.outputUsd;

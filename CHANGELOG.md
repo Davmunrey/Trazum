@@ -10,6 +10,98 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**Three faults in `profile`, found by an adversarial review of the code that had
+just been written, and all three understated the bill.** Twenty-four agents across
+four lenses — money honesty, the parser, the report's claims, security — each
+finding then handed to an independent verifier told to refute it. Everything that
+survived was in the flattering direction, which is the one direction this tool
+exists not to take.
+
+**A 1-hour cache write was priced at the 5-minute rate.** Anthropic charges 1.25x
+input for a 5-minute entry and **2x** for a 1-hour one. `cacheWrite1h` was computed
+in `pricing.ts` and never used by anything. Ten million tokens of 1-hour writes on
+Opus 5 reported **$62.50** against a real **$100.00** — 37.5% under, on the largest
+line of that bill, silently.
+
+Worse, the information needed was in the log and was being thrown away: the API
+returns a `cache_creation` object splitting the two, and the parser read only the
+flat total. It reads the split now. When a log carries only the flat count the
+cheaper rate is used **and the report says so** — the total is a floor for those
+calls, and it uses the word.
+
+**A count that was present but unreadable became a silent zero.** The guard was
+`if (input < 0 && output < 0)` — an AND — so a record survived when only one of the
+two failed to parse. A stringified `"200000"` out of `jq`, or a `null` out of a
+Postgres JSON round-trip, produced a clean zero indistinguishable from a real one,
+and the line never reached `skippedLines`, so nothing on screen said a number had
+been dropped.
+
+Measured: **$0.0150 against a true $2.015**, and the headline flipped to "output is
+100% of this bill, so shortening prompts has a low ceiling" on a workload that was
+almost entirely prompt. The one piece of advice the command exists to give, exactly
+inverted.
+
+Absent and corrupt are different things now. An absent field is a zero somebody may
+legitimately mean — a log recording only what its author cared about is not
+corrupt. A field that is *there* and unusable rejects the line, which puts it in
+`skippedLines` where the report names it.
+
+**A wholly unpriced log printed a report of zero rather than no report.** The empty
+guard required both the priced and unpriced counts to be zero, so a log whose every
+model was unknown fell through and printed a full report built from a zeroed total:
+`0 calls · $0`, four zero rows, a meaningless "Input is 0.0% of this bill", and — on
+a log holding a hundred thousand cache-read tokens — the flatly false **"Caching was
+never used on these calls."** Two affirmatively wrong claims, and the only correct
+line on screen was the quietest one.
+
+### Added
+
+**`trazum profile <log.jsonl>` — the command on top of the usage reader.** Reads a
+usage log and prints where the money went: the bill, the split across input, cache
+reads, cache writes and output with each one's share, the cache hit rate that
+actually happened, and a breakdown by label and by model.
+
+It leads with the part of the bill worth arguing with. When output is over half it
+says so and names the two controls that move it — shorter answers and
+`max_tokens` — because at that point shortening prompts has a low ceiling and the
+rest of this tool is about shortening prompts.
+
+**Money is never suppressed here, unlike every other report.** The rest of the CLI
+hides dollar figures on a subscription host, because a saving quoted to somebody on
+a flat plan is money that does not exist. This log records metered API calls
+somebody was already billed for: the bill exists wherever Trazum happens to be
+running, so the host has no bearing on it. A test pins that, since the general rule
+is the opposite.
+
+**Every part prints, including the zero rows.** A row missing because it was zero
+reads as a row somebody forgot, and "your cache writes are zero" is a finding — it
+is how you see at a glance that caching is off.
+
+### Fixed
+
+**The headline claim printed twice.** When output was both the largest part and
+over half, the report said "Output is 61.8% of this bill" and then "Output is 61.8%
+of this bill, so shortening prompts has a low ceiling here" on the next line. The
+same fact in adjacent lines reads as a bug because it was one; only the sentence
+that says more prints now.
+
+**The command-count guard could not tell a live claim from a record.** It covers
+`RELEASES.md`, which was right — the count drifted there once and went unnoticed
+for two merges — but it read the whole file, so "Twelve commands now, up from four"
+in the **1.8.0 notes** failed against a thirteenth command. That sentence is true
+about 1.8.0.
+
+Below the first version heading `RELEASES.md` is a record, and rewriting it to
+match the present is falsifying history to satisfy a test. The standing header is
+still checked, which is where the drift it was written for actually lived — proven
+by reintroducing that drift and watching it fail.
+
+**The second guard in this release to need that distinction**, after the one on the
+published error band. Worth noticing as a pattern: a file that mixes current claims
+with dated ones needs a guard that knows which half it is reading.
+
 ### Added
 
 **`profileUsage` — reading what the provider actually charged, rather than

@@ -43,11 +43,11 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
-  twelve commands  MCP server      Next.js     comments on pull requests
+ thirteen commands MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
-## The twelve commands
+## The thirteen commands
 
 | Command | What it answers |
 |---|---|
@@ -62,6 +62,7 @@ never runs unless you ask.
 | [`trazum eval`](#does-the-shorter-prompt-still-work) | Does the shorter prompt still do the job? |
 | [`trazum where`](#prompts-where-they-actually-live) | Which prompts are hiding inside my source files? |
 | [`trazum models`](#every-model-you-pay-for-by-the-token) | What does each model cost, and what is its cache minimum? |
+| [`trazum profile`](#where-the-money-actually-went-trazum-profile) | Where did the money actually go? *Reads a usage log, not a prompt.* |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
 
 ## Contents
@@ -172,7 +173,7 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of twelve commands, and the others
+is the smallest thing here. `optimize` is one of thirteen commands, and the others
 exist because knowing a prompt is wasteful is not the same as knowing *which*
 prompt, *whose* change made it so, or whether the shorter version still works:
 
@@ -250,7 +251,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other eleven commands, each with its own section below:
+The other twelve commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -1807,6 +1808,73 @@ correctness are still real.
 prompt goes — somebody editing a production prompt inside Cursor wants the
 dollars, and `--cost` gives them back without leaving the editor. `--tokens-only`
 forces the other direction anywhere.
+
+## Where the money actually went: `trazum profile`
+
+Every other command reads a prompt and reasons forward about what it *would* cost.
+This one reads what the provider actually charged and reasons backward — because
+the forward direction can only see the smallest line item.
+
+Measured on an ordinary support prompt: the deterministic rules recover about
+**1%** of the monthly figure, while output tokens alone were **87%** of it. A tool
+that reads `prompts/*.txt` cannot see retrieved context, conversation history, tool
+results or answers, and on a RAG or agent workload those are nearly the whole
+invoice.
+
+```bash
+trazum profile usage.jsonl
+```
+
+```
+Where the money went
+  2,650 calls · $27.04
+
+  Input              $8.05  29.8%   2,807,222 tokens
+  Cache reads        $2.28   8.4%   4,562,593 tokens
+  Cache writes          $0   0.0%   0 tokens
+  Output            $16.71  61.8%   700,203 tokens
+
+  Output is 61.8% of this bill, so shortening prompts has a low ceiling here.
+  What moves it is asking for shorter answers and capping max_tokens.
+  Cache hit rate 61.9% of billable input.
+
+By label
+       $15.62  57.8%   chat  (250 calls)
+        $9.72  36.0%   support-rag  (400 calls)
+        $1.70   6.3%   classify  (2,000 calls)
+```
+
+**The format is the one the API already returns.** One JSON object per line, each
+with a `model` and the `usage` object from the response. Recording it is three
+lines and no transformer:
+
+```ts
+appendFileSync('usage.jsonl', JSON.stringify({
+  model: response.model,
+  label: 'support-rag',   // optional, and it is what makes the report useful
+  ...response.usage,
+}) + '\n');
+```
+
+OpenAI's shape works too, with the one real difference handled: it counts cached
+tokens *inside* `prompt_tokens` while Anthropic reports them beside
+`input_tokens`, so treating them alike would bill the cached half twice.
+
+**It reads a file, and that is the design.** Not a proxy, not an SDK wrapper.
+Trazum's position is that prompts do not leave the machine they are on — asserted
+by tests rather than promised — and sitting in the request path trades that away
+for convenience. The record shape has **no field for content**, so a usage log
+handed to Trazum cannot contain a prompt even by accident.
+
+**It reports no saving**, deliberately. Attributing "you could have saved X" to a
+call that already happened means guessing what the call should have been, which is
+what this exists to stop doing. It says what was spent and where; what to do about
+it is the advisories' job.
+
+A model the pricing catalogue does not know is **named and kept out of the
+totals** rather than costed at zero — a total that silently omits calls is wrong in
+the flattering direction.
+
 
 ## Token counting
 

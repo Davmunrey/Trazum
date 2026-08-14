@@ -20,6 +20,7 @@ npm install -g @trazum/cli
 | `trazum optimize <file>` | shorten it, and price what that is worth |
 | `trazum check <file\|dir>` | does it fit its budget, and has the repo drifted past its baseline — exits 1 when either fails |
 | `trazum baseline [dir]` | what the prompts cost now, recorded to a file you commit |
+| `trazum profile <log.jsonl>` | where the money actually went — reads a usage log, not a prompt |
 | `trazum doctor [dir]` | the whole workspace: what nothing is watching, and what fixing would be worth |
 | `trazum rank <dir>` | of these forty prompts, which is worth an afternoon |
 | `trazum prune <file> --cases <file>` | which few-shot examples earn their tokens — measured, and it asks before spending |
@@ -76,6 +77,42 @@ most misleading thing this tool could tell you.
 `--markdown-out <file>` writes the report as GitHub-flavoured markdown, for a
 step summary or a pull request comment. There is also a
 [packaged GitHub Action](https://github.com/Davmunrey/Trazum#cli).
+
+## Where the money actually went
+
+Every other command reads a prompt and reasons forward about what it *would* cost.
+This one reads what the provider charged and reasons backward, because the forward
+direction only sees the smallest line item — measured on an ordinary support
+prompt, the rules recover about **1%** of the monthly figure while output alone was
+**87%** of it.
+
+```bash
+trazum profile usage.jsonl
+```
+
+One JSON object per line, each with a `model` and the `usage` object the API
+returned. Recording it is three lines and no transformer:
+
+```ts
+appendFileSync('usage.jsonl', JSON.stringify({
+  model: response.model,
+  label: 'support-rag',   // optional, and it is what makes the report useful
+  ...response.usage,
+}) + '\n');
+```
+
+OpenAI's shape works too, with the one real difference handled: it counts cached
+tokens *inside* `prompt_tokens` while Anthropic reports them beside
+`input_tokens`.
+
+**It reads a file, not your traffic.** The record shape has no field for content,
+so a usage log handed to Trazum cannot contain a prompt even by accident. And it
+reports **no saving** — attributing "you could have saved X" to a call that already
+happened means guessing what the call should have been.
+
+A model the pricing catalogue does not know is named and kept **out** of the
+totals, because a total that silently omits calls is wrong in the flattering
+direction.
 
 ## The ceiling is not the problem
 

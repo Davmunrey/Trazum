@@ -351,6 +351,32 @@ export interface CliMessages {
    * get worse" rather than "does this fit" — and both verdicts appear in the
    * same run.
    */
+  profile: {
+    noTarget(): string;
+    heading(): string;
+    /** Totals line: calls and the bill they came to. */
+    spent(calls: string, total: string): string;
+    /** One row of the split, with its share of the bill. */
+    part(name: string, usd: string, pct: string, tokens: string): string;
+    partInput(): string;
+    partCacheRead(): string;
+    partCacheWrite(): string;
+    partOutput(): string;
+    byLabelHeading(): string;
+    byModelHeading(): string;
+    row(name: string, usd: string, pct: string, calls: string): string;
+    unlabelled(): string;
+    cacheHit(pct: string): string;
+    cacheNever(): string;
+    /** The finding the whole command exists to produce. */
+    biggestPart(name: string, pct: string): string;
+    outputDominates(pct: string): string;
+    unpriced(models: string, calls: number): string;
+    skipped(count: number, lines: string): string;
+    empty(): string;
+    nothingPriced(): string;
+    assumedWriteTtl(calls: number): string;
+  };
   baseline: {
     recorded(path: string, files: string, tokens: string): string;
     recordedMoney(monthly: string, model: string, calls: string): string;
