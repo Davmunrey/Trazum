@@ -128,10 +128,16 @@ so a prefix that changes faster than it is reused pays that premium for nothing:
   ! Caching pays off overall, but it costs $0.1250 on: rag. The total hides that.
 ```
 
-Computed per label as well as overall, because a profitable cache on one workload
-and a bleeding one on another net out to a comfortable total. Each side is priced
-per model, so a provider whose writes cost the same as input is never accused of a
-loss it cannot have.
+Computed per label as well as overall — ranked by what caching cost each one, not
+by the size of its bill, because the worst cache in an estate usually sits on a
+small workload. Each side is priced per model, so a provider whose writes cost the
+same as input is never accused of a loss it cannot have; a model added through a
+`pricing` overlay can declare its own `multipliers` for the same reason.
+
+**When the log cannot settle it, neither does the report.** A cache write whose
+TTL was not recorded is priced at the cheaper of the two rates, and that moves the
+verdict rather than only the total — so instead of a figure you get both, and what
+to record to remove the doubt.
 
 This is the only counterfactual here, and it is arithmetic rather than a guess:
 caching changes the multiplier on a token, never the token. `--json` carries it as

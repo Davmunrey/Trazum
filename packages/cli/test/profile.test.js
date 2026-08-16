@@ -337,3 +337,104 @@ describe('whether the caching was worth doing', () => {
     );
   });
 });
+
+describe('what the report says when the log leaves the TTL out', () => {
+  /**
+   * From an adversarial review of the verdict, confirmed by four verifiers, and
+   * the second time this command has made the same mistake: a rate assumed in the
+   * cheap direction and then reported as measured.
+   */
+
+  const flatWrite = (tokens) =>
+    call({ usage: { input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: tokens } });
+  const read = (tokens) =>
+    call({ usage: { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: tokens } });
+
+  it('reports neither answer, and does not assert one above the warning', async () => {
+    /**
+     * A million written, 300,000 read back: a $0.10 saving at the assumed 1.25x
+     * and a $3.65 loss at 2x.
+     *
+     * The `doesNotMatch` is the half that was missed first time round. Adding the
+     * warning while leaving `Caching took $0.1000 off this bill` printed above it
+     * means the reader meets the affirmative claim first — and a finding a later
+     * line retracts is still a finding somebody acted on.
+     */
+    const result = run(await logOf([flatWrite(1_000_000), read(300_000)]));
+    assert.equal(result.status, 0, result.stderr);
+    const out = flat(result);
+
+    assert.match(out, /cannot say whether caching paid for itself/, 'the ambiguity went unreported');
+    assert.match(out, /took \$0\.1000 off this bill/, 'the recorded figure is missing');
+    assert.match(out, /added \$3\.65 to it/, 'the long-TTL figure is missing');
+    assert.doesNotMatch(
+      out,
+      /off this bill, against the same tokens uncached/,
+      'still asserted the flattering half above the warning',
+    );
+  });
+
+  it('drops the hedge on a log that recorded every TTL', async () => {
+    // Otherwise it is noise on every report, and noise is what gets a warning
+    // ignored on the run where it mattered.
+    const result = run(
+      await logOf([
+        call({ usage: { input_tokens: 0, output_tokens: 0, cache_creation: { ephemeral_5m_input_tokens: 1_000_000, ephemeral_1h_input_tokens: 0 } } }),
+        read(300_000),
+      ]),
+    );
+    assert.equal(result.status, 0, result.stderr);
+    assert.doesNotMatch(flat(result), /cannot say whether|is a bound/, 'hedged a log with nothing to hedge');
+  });
+});
+
+describe('naming the labels that are losing money', () => {
+  const write5m = (tokens, label, input = 0) =>
+    call({ label, usage: { input_tokens: input, output_tokens: 0, cache_creation: { ephemeral_5m_input_tokens: tokens, ephemeral_1h_input_tokens: 0 } } });
+
+  it('ranks by what caching cost, not by the size of the bill', async () => {
+    /**
+     * `byLabel` arrives sorted by spend and the first version took the first three
+     * off that list, so the worst cache in the estate went unnamed whenever it sat
+     * on a small workload — which is where a bad cache usually is.
+     *
+     * `huge` loses more than the other four together and has the smallest bill, so
+     * a spend-ordered list puts it last.
+     */
+    const result = run(
+      await logOf([
+        write5m(4_000_000, 'huge'),
+        write5m(200_000, 'a', 9_000_000),
+        write5m(190_000, 'b', 8_000_000),
+        write5m(180_000, 'c', 7_000_000),
+        write5m(170_000, 'd', 6_000_000),
+      ]),
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const out = flat(result);
+
+    assert.match(out, /The loss is in: huge,/, 'the biggest loser was not named first');
+    assert.match(out, /and 2 more/, 'two losing labels were dropped in silence');
+  });
+
+  it('never claims the total pays off while saying it came out level', async () => {
+    /**
+     * The hidden-loss line ran under both `paid-off` and `no-difference` while
+     * opening "Caching pays off overall" — printed directly beneath a line saying
+     * caching had come out level. `rag` writes 3,600,000 at 1.25x and `chat` reads
+     * 1,000,000 at 0.1x, which cancel to zero exactly.
+     */
+    const result = run(
+      await logOf([
+        write5m(3_600_000, 'rag'),
+        call({ label: 'chat', usage: { input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 1_000_000 } }),
+      ]),
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const out = flat(result);
+
+    assert.match(out, /came out level/, 'the level total was not reported');
+    assert.match(out, /hides a loss: caching costs \$4\.50 across rag/, 'the hidden loss was not named');
+    assert.doesNotMatch(out, /pays off overall/, 'claimed a payoff on a bill it had just called level');
+  });
+});

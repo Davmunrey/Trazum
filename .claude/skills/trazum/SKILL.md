@@ -103,7 +103,13 @@ Three things to get right when reporting on this:
   97.8% on a log where a workload is bleeding.
 - **The per-label line is the actionable one.** A profitable cache on one workload
   and a losing one on another net out to a comfortable total. If the report names
-  a label under "the total hides that", that label is the thing to fix.
+  a label under "the total hides a loss", that label is the thing to fix.
+- **If it says the log cannot settle whether caching paid off, do not pick a
+  side.** A cache write whose TTL the log did not record is priced at the cheaper
+  of the two rates, and that assumption moves the verdict: the same calls can pay
+  for themselves at 1.25x and lose money at 2x. The report prints both figures and
+  refuses to choose; report it the same way, and tell the user the fix is
+  recording the `cache_creation` object the API already returns.
 
 ## Stopping the estate drifting upwards
 

@@ -1903,6 +1903,24 @@ prompt nobody wrote. This requires imagining the *same tokens at a different
 rate*, which is arithmetic: caching changes the multiplier on a token, never the
 token. Each side is priced per model, so a provider whose writes cost the same as
 input (OpenAI, Gemini) is never accused of a loss it cannot have — or turn off.
+A model you add through a `pricing` overlay can declare its own `multipliers` for
+exactly this reason; without them it would inherit Anthropic's rates and be
+charged a premium its provider never billed.
+
+**When the log cannot settle it, neither does the report.** A cache write whose
+TTL was not recorded is priced at the cheaper of the two rates, and that
+assumption moves the *verdict*, not only the total: between 0.28 and 1.11 read
+tokens per written token the same calls pay for themselves at 1.25x and lose
+money at 2x. So the confident sentence does not print at all —
+
+```
+  ! This log cannot say whether caching paid for itself. 1 call did not record
+    which cache-write TTL was used: at the 5-minute rate caching took $0.1000
+    off this bill, and at the 1-hour rate the same calls added $3.65 to it.
+```
+
+Recording the `cache_creation` object the API returns settles it, and the
+warning disappears.
 
 `--json` carries the verdict as `cache` and `cacheByLabel` rather than leaving it
 to be re-derived. **Positive `deltaUsd` means worse**, the opposite of every other

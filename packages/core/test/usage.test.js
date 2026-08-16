@@ -449,3 +449,85 @@ describe('did caching pay for itself', () => {
     assert.ok(Math.abs(opusDelta / haikuDelta - 5) < 1e-6, `ratio ${opusDelta / haikuDelta} — the counterfactual was not priced per model`);
   });
 });
+
+describe('the cache verdict under an unstated write TTL', () => {
+  /**
+   * Found by an adversarial review of the verdict this file had just gained, and
+   * confirmed by four independent verifiers. It is the same fault the profile has
+   * now produced twice: a rate that has to be assumed, assumed in the cheap
+   * direction, and then reported as measured.
+   *
+   * A log carrying only the flat `cache_creation_input_tokens` cannot say which
+   * TTL a write used. The total already admitted the assumption; the verdict did
+   * not, and the verdict is the part that inverts. Reported delta is `0.25w -
+   * 0.9r`; at the 1-hour rate the truth is `w - 0.9r`, so the **sign** disagrees
+   * for any workload reading back between 0.278 and 1.111 tokens per token
+   * written — an entirely ordinary shape.
+   */
+
+  const flat = (writes, reads) => [
+    { model: 'claude-opus-5', input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: writes },
+    { model: 'claude-opus-5', input_tokens: 0, output_tokens: 0, cache_read_input_tokens: reads },
+  ];
+
+  it('refuses to answer when the assumed rate is what decides the answer', () => {
+    /**
+     * A million written, three hundred thousand read back. Opus 5 input is $5/MTok:
+     * $6.40 at the assumed 1.25x against $6.50 uncached — a $0.10 saving — and
+     * $10.15 at 2x, a $3.65 loss. A $3.75 swing across the sign, and the flattering
+     * half was the one the log's silence selected.
+     */
+    const cache = cacheEconomics(profile(flat(1_000_000, 300_000)).total);
+
+    assert.equal(cache.verdict, 'paid-off');
+    assert.equal(cache.worstCaseVerdict, 'lost-money', 'the long TTL was never costed');
+    assert.ok(Math.abs(cache.deltaUsd + 0.1) < 1e-9, `as recorded ${cache.deltaUsd}`);
+    assert.ok(Math.abs(cache.worstCaseDeltaUsd - 3.65) < 1e-9, `at 1h ${cache.worstCaseDeltaUsd}`);
+  });
+
+  it('leaves the worst case equal to the measurement when every TTL was recorded', () => {
+    /**
+     * The hedge has to disappear on a well-recorded log or it is noise on every
+     * report — and noise is what gets a warning ignored on the run that mattered.
+     */
+    const cache = cacheEconomics(
+      profile([
+        { model: 'claude-opus-5', input_tokens: 0, output_tokens: 0, cache_creation: { ephemeral_5m_input_tokens: 1_000_000, ephemeral_1h_input_tokens: 0 } },
+        { model: 'claude-opus-5', input_tokens: 0, output_tokens: 0, cache_read_input_tokens: 300_000 },
+      ]).total,
+    );
+    assert.equal(cache.verdict, cache.worstCaseVerdict);
+    assert.equal(cache.deltaUsd, cache.worstCaseDeltaUsd);
+  });
+
+  it('never makes the worst case the better one, on any model in the catalogue', () => {
+    /**
+     * Derived over the catalogue rather than over a list typed here. "Worst" is a
+     * claim about the 1-hour multiplier being at or above the 5-minute one, and a
+     * model added later with a cheaper long TTL would make the word a lie in a
+     * report that prints the two as a floor and a ceiling.
+     */
+    for (const model of BUNDLED_CATALOGUE.models) {
+      const cache = cacheEconomics(
+        profileUsage(
+          JSON.stringify({ model: model.id, input_tokens: 0, output_tokens: 0, cache_creation_input_tokens: 1_000_000 }),
+          { catalogue: BUNDLED_CATALOGUE },
+        ).total,
+      );
+      assert.ok(
+        cache.worstCaseDeltaUsd >= cache.deltaUsd - 1e-9,
+        `${model.id}: the 1-hour rate came out cheaper than the 5-minute one`,
+      );
+    }
+  });
+
+  it('does not invent a range for a provider whose writes cost what input costs', () => {
+    // Both multipliers are 1 on gpt-5, so there is no assumption to be wrong
+    // about and the hedge must stay silent rather than manufacture a doubt.
+    const cache = cacheEconomics(
+      profile([{ model: 'gpt-5', prompt_tokens: 0, completion_tokens: 0, cache_creation_input_tokens: 1_000_000 }]).total,
+    );
+    assert.equal(cache.deltaUsd, cache.worstCaseDeltaUsd);
+    assert.equal(cache.worstCaseVerdict, 'no-difference');
+  });
+});

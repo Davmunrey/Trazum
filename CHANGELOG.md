@@ -10,6 +10,47 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**Four faults in the cache verdict, found by an adversarial review of the code
+that had just been written.** Sixteen agents across four lenses, every finding
+handed to an independent verifier told to refute it. Ten survived, and they
+reduce to four.
+
+**The verdict was computed from a total the code itself calls a floor.** A log
+carrying only the flat `cache_creation_input_tokens` cannot say which TTL a write
+used, so the cheaper 5-minute rate is assumed — and that assumption moves the
+*verdict*, not only the total. Reported delta is `0.25w - 0.9r`; at the 1-hour
+rate the truth is `w - 0.9r`, so the **sign** disagrees for any workload reading
+back between 0.28 and 1.11 tokens per token written. Measured on a million written
+against three hundred thousand read back: `Caching took $0.1000 off this bill`,
+where the truth at 2x was a **$3.65 loss**. A $3.75 swing across the sign, taken
+in the flattering direction, printed as a fact.
+
+The economics now carry `worstCaseDeltaUsd` and `worstCaseVerdict`, priced per
+model because the ratio between the two rates is 1.6 on Anthropic and 1.0 where a
+write costs what input costs. When the two verdicts disagree, neither is reported
+— and the confident sentence does not print at all, which is the second half of
+the fix: the first attempt added a caveat and left the assertion above it.
+
+**Losing labels were named by bill size and truncated at three in silence**, while
+the money beside them was summed over every loser. Four bleeding labels printed
+three names and a figure charging them with a fourth's loss, and the worst cache
+in an estate — usually on a small workload — was the one dropped. Ranked by loss
+now, with the remainder counted.
+
+**"Caching pays off overall" printed under a total the line above had just called
+level.** The sentence no longer restates a verdict it is not in a position to make.
+
+**A pricing overlay could not declare `multipliers`,** so a model added through
+`--pricing` inherited Anthropic's 1.25x/2x writes. Trazum computed a premium that
+provider never charged, reported an impossible caching loss, and told the reader
+to turn caching off — while three documents claimed that could not happen to a
+provider whose writes cost what input costs. Overlays carry `multipliers` now,
+validated like every other key: an unknown rate name is an error with a
+suggestion, a zero multiplier is refused along with the negatives, and `batch:
+null` stays distinct from leaving it out.
+
 ### Added
 
 **`trazum profile` now says whether the caching actually paid for itself** — the
