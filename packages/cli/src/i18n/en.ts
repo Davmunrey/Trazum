@@ -832,7 +832,7 @@ ${bold('EXAMPLES')}
   },
   profile: {
     noTarget: () =>
-      'Point this at a usage log: trazum profile usage.jsonl — one JSON object per line, each with a "model" and the "usage" object the API returned. Recording one is three lines in your own code, and it never contains prompt text.',
+      'Point this at a usage log: trazum profile usage.jsonl — one JSON object per line, each with a "model" and the "usage" object the API returned. Add "label" (which workload) and "session" (which conversation) while you are there: without them every call looks alike, and the two largest findings this command makes cannot be made at all. Recording it is three lines in your own code, it never contains prompt text, and the session key is grouped by and never printed.',
     heading: () => 'Where the money went',
     spent: (calls, total) => `${calls} calls · ${total}`,
     part: (name, usd, pct, tokens) => `${name.padEnd(13)}${usd.padStart(11)}  ${pct.padStart(5)}   ${tokens} tokens`,

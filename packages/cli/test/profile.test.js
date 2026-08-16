@@ -650,3 +650,57 @@ describe('a log with no labels at all', () => {
     assert.doesNotMatch(flat(result), /None of these calls carried a label/);
   });
 });
+
+describe('the recipe this tool tells you to record', () => {
+  /**
+   * The onboarding message and the README both hand the reader a snippet. If
+   * following it produces a report that immediately asks for two more fields, the
+   * snippet was wrong — and it was: the headline recipe carried `label` as
+   * "optional" and no `session` at all, so a reader who copied it was told, on
+   * their first run, that the two largest findings could not be made.
+   *
+   * This is the docs pinned against the tool. It fails if either drifts.
+   */
+
+  /** Exactly what the documented snippet produces, for a cached RAG workload. */
+  const asDocumented = () =>
+    Array.from({ length: 50 }, (_, s) =>
+      Array.from({ length: 8 }, (_, t) => ({
+        model: 'claude-opus-5',
+        label: 'support-rag',
+        session: `conversation-${s}`,
+        usage: {
+          input_tokens: 300 + t * 400,
+          output_tokens: 250,
+          ...(t === 0
+            ? { cache_creation: { ephemeral_5m_input_tokens: 4000, ephemeral_1h_input_tokens: 0 } }
+            : { cache_read_input_tokens: 4000 }),
+        },
+      })),
+    ).flat();
+
+  it('produces a report that asks for nothing more', async () => {
+    const out = flat(run(await logOf(asDocumented())));
+
+    for (const complaint of [
+      /No call in this log carried a session/,
+      /None of these calls carried a label/,
+      /did not say which cache-write TTL was used/,
+      /could not be read/,
+    ]) {
+      assert.doesNotMatch(out, complaint, `the documented recipe still triggers: ${complaint}`);
+    }
+  });
+
+  it('names both fields when there is no log to read yet', async () => {
+    /**
+     * The no-argument message is the first thing a reader sees. It used to
+     * describe a log with neither field — the exact log the report then complains
+     * about twice.
+     */
+    const out = flat(run(null));
+    assert.match(out, /"label"/, 'the onboarding message does not mention label');
+    assert.match(out, /"session"/, 'the onboarding message does not mention session');
+    assert.match(out, /never printed/, 'asked for a session key without saying what happens to it');
+  });
+});

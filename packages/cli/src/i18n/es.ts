@@ -845,7 +845,7 @@ ${bold('EJEMPLOS')}
   },
   profile: {
     noTarget: () =>
-      'Apúntalo a un log de uso: trazum profile usage.jsonl — un objeto JSON por línea, cada uno con un "model" y el objeto "usage" que devolvió la API. Registrarlo son tres líneas en tu propio código, y nunca contiene el texto del prompt.',
+      'Apúntalo a un log de uso: trazum profile usage.jsonl — un objeto JSON por línea, cada uno con un "model" y el objeto "usage" que devolvió la API. Añade "label" (qué carga) y "session" (qué conversación) ya que estás: sin ellos todas las llamadas parecen iguales, y los dos hallazgos más grandes de este comando no se pueden hacer siquiera. Registrarlo son tres líneas en tu propio código, nunca contiene el texto del prompt, y la clave de sesión se agrupa y nunca se imprime.',
     heading: () => 'Adónde fue el dinero',
     spent: (calls, total) => `${calls} llamadas · ${total}`,
     part: (name, usd, pct, tokens) => `${name.padEnd(15)}${usd.padStart(11)}  ${pct.padStart(5)}   ${tokens} tokens`,
