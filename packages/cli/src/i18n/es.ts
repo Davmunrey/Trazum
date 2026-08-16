@@ -901,6 +901,8 @@ ${bold('EJEMPLOS')}
       `Si cada turno hubiera costado lo que costó su propio primer turno, esa entrada habrían sido ${flat} en vez de ${spent} — así que como mucho ${usd} de esta factura es crecimiento de la conversación (${pct}). Es un techo y no un ahorro: parte de eso son los mensajes nuevos del propio usuario, que nada puede truncar, y esto lee cuentas y no contenido, así que no puede separarlos. Lo que lo mueve es limitar el historial que reproduces, o resumirlo.`,
     historyNoSessions: () =>
       'Ninguna llamada de este registro llevaba sesión, así que no se pudo medir lo que cuesta reenviar la conversación — normalmente la línea más grande de una factura de chat o de agente. Añade "session" (o "conversation_id") al registro y vuelve a ejecutarlo. Trazum agrupa por ese campo y nunca lo imprime.',
+    leversUnlabelled: () =>
+      'Ninguna de estas llamadas llevaba label, así que esto es todas las cargas en una fila — un clasificador y un pipeline RAG fundidos en una sola cifra, con una única ruta sugerida para los dos. Añade "label" al registro y las palancas se separan por carga, que es la agrupación en la que de verdad se toma una decisión.',
     leversNone: () =>
       'Aquí no hay nada que llegue al 1% de la factura: estas llamadas ya van al modelo más barato de su familia, o su proveedor no tiene Batch API. Eso es una respuesta de verdad, no una sección vacía.',
     assumedWriteTtl: (calls) =>
@@ -928,6 +930,8 @@ ${bold('EJEMPLOS')}
       `DIVERGE — el modelo más barato da respuestas materialmente distintas. Los ${usd} son reales y el cambio de comportamiento también; esto no es dinero gratis.`,
     inconclusive: () =>
       'NO CONCLUYENTE — el modelo original fue demasiado inconsistente consigo mismo en estos casos como para juzgar nada contra eso. Añade casos, o elige unos con menos margen para que el modelo divague.',
+    unlabelledSlice: () =>
+      'Estas llamadas no llevan label, así que Trazum no puede saber si son todas este prompt. Si no lo son, la cifra de arriba cubre llamadas que esta medición no tocó — añade "label" al registro y la porción pasa a ser una sola carga, que es lo que hace la cifra atribuible.',
     yours: () =>
       'Coincidir no es acertar. Esto mide si las respuestas se movieron, no si alguna vez fueron correctas — la decisión sigue siendo tuya.',
   },
