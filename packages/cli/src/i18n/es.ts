@@ -861,7 +861,7 @@ ${bold('EJEMPLOS')}
     byLabelHeading: () => 'Por etiqueta',
     byModelHeading: () => 'Por modelo',
     row: (name, usd, pct, calls) => `${usd.padStart(11)}  ${pct.padStart(5)}   ${name}  (${calls})`,
-    unlabelled: () => 'sin etiqueta',
+    unlabelled: () => '(sin label)',
     cacheHit: (pct) => `Tasa de acierto de caché: ${pct} de la entrada facturable.`,
     cacheNever: () => 'No se usó caché en estas llamadas. Si algún prefijo se repite, ese es el mayor ahorro disponible.',
     cacheLost: (usd, writes, reads) =>

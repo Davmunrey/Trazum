@@ -855,7 +855,9 @@ ${bold('EXAMPLES')}
     byLabelHeading: () => 'By label',
     byModelHeading: () => 'By model',
     row: (name, usd, pct, calls) => `${usd.padStart(11)}  ${pct.padStart(5)}   ${name}  (${calls})`,
-    unlabelled: () => 'unlabelled',
+    // Parenthesised so a real label named "unlabelled" cannot read identically
+    // beside it — the data already keeps them apart; the display should too.
+    unlabelled: () => '(no label)',
     cacheHit: (pct) => `Cache hit rate ${pct} of billable input.`,
     cacheNever: () => 'Caching was never used on these calls. If any prefix repeats, that is the largest saving available.',
     cacheLost: (usd, writes, reads) =>

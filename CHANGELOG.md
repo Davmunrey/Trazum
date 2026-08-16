@@ -12,6 +12,24 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**A workload literally named `unlabelled` merged into the missing-label bucket.**
+The sentinel was the string `'unlabelled'`, so 200 calls somebody had given that
+name and 200 calls with no label at all reported as one row of 400 — a figure
+attributed to something it does not describe — and the "none of these calls
+carried a label" logic could fire over a log where half of them had. The sentinel
+is the empty string now, the one value a parsed label can never be; the terminal
+shows the missing bucket as `(no label)` so the two cannot read identically
+either.
+
+**A label containing a newline corrupted the structured keys.** Labels are half of
+keys that split on `\n` — `byLabelAndModel`, the conversation tracker, the
+output-shape tracker — so `label: "rag\nclaude-haiku-4-5"` truncated the label to
+`rag` and mangled the model half. Whitespace inside a label is normalised to a
+single space at the parse boundary, protecting every consumer at once.
+
+
+### Fixed
+
 **The conversation measurement depended on the order of the log.** Growth was
 anchored on the first record seen per session — a fact about the log's ordering,
 not about the conversation. The identical workload exported newest-first, an

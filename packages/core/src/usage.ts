@@ -384,9 +384,17 @@ export function parseUsageLine(line: string): UsageRecord | null {
     cacheWrite1hTokens: hasSplit ? split1h : 0,
     writeTtlKnown: hasSplit || flatWrite === 0,
     outputTokens: valueOf(counts.output!),
+    /**
+     * Trimmed and internally normalised: any whitespace run becomes one space.
+     * A label is a workload name, and it is also used as half of structured keys
+     * that split on `\n` — `byLabelAndModel`, the conversation tracker, the
+     * output-shape tracker. A label carrying a newline would corrupt that split
+     * and mis-file every figure under a truncated name; normalising at the one
+     * boundary where labels enter keeps every consumer honest at once.
+     */
     label:
       typeof record.label === 'string' && record.label.trim() !== ''
-        ? record.label.trim()
+        ? record.label.trim().replace(/\s+/g, ' ')
         : null,
     /**
      * Read from either spelling, because both are what people already have:
@@ -403,8 +411,20 @@ export function parseUsageLine(line: string): UsageRecord | null {
   };
 }
 
-/** The bucket unlabelled calls land in, named so a report can say so. */
-export const UNLABELLED = 'unlabelled';
+/**
+ * The bucket unlabelled calls land in.
+ *
+ * The empty string, because it is the one value a parsed label can never be —
+ * `parseUsageLine` trims and rejects empty. The first version used the literal
+ * string `'unlabelled'`, and a workload somebody had actually named `unlabelled`
+ * merged silently into the missing-label bucket: 200 labelled calls and 200
+ * unlabelled ones reported as one row of 400, and the "none of these calls
+ * carried a label" warning fired over a log where half of them had.
+ *
+ * Presentation stays in the CLI, which translates this sentinel through the
+ * message catalogue; data consumers can tell `''` from any real label.
+ */
+export const UNLABELLED = '';
 
 /** Token counts only. Used for both halves, because both need them. */
 function countInto(into: UsageBreakdown, record: UsageRecord): void {
