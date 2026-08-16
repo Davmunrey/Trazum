@@ -41,6 +41,16 @@ export type EvalVerdict = 'indistinguishable' | 'within-noise' | 'diverges' | 'i
 export interface EvalReport {
   provider: string;
   model: string;
+  /**
+   * The model the candidate answer came from.
+   *
+   * Equal to `model` on the ordinary comparison — same model, two prompts. It
+   * differs when the question is the other one: **same prompt, two models**, which
+   * is what a routing decision is. `profile` prices that route exactly and can say
+   * nothing at all about whether the cheaper model still does the job; this is the
+   * measurement that can.
+   */
+  candidateModel: string;
   cases: EvalCase[];
   /** Mean agreement of the original prompt with itself. The yardstick. */
   selfAgreement: number;
@@ -58,6 +68,20 @@ export interface EvaluateOptions {
    * call already paid for.
    */
   concurrency?: number;
+  /**
+   * Where the candidate answer comes from. Defaults to `provider`.
+   *
+   * This is the whole routing axis, and it needed no new yardstick. The baseline
+   * prompt is still run **twice on the original model** to measure that model's own
+   * variance, and the candidate is still judged against it — so the question
+   * becomes "does the cheaper model agree with the expensive one more closely than
+   * the expensive one agrees with itself?", which is the honest form of "is this
+   * route safe".
+   *
+   * A verdict built any other way would be a threshold somebody picked. This one is
+   * the model's own noise floor, measured on the same cases in the same run.
+   */
+  candidateProvider?: LlmProvider;
 }
 
 /**
@@ -149,9 +173,13 @@ export async function evaluate(
   options: EvaluateOptions = {},
 ): Promise<EvalReport> {
   const concurrency = Math.max(1, options.concurrency ?? 3);
+  const candidate = options.candidateProvider ?? provider;
 
-  const run = (prompt: string, input: string): Promise<string> =>
-    provider.complete({ system: fillPrompt(prompt, input), user: input });
+  const run = (
+    prompt: string,
+    input: string,
+    on: LlmProvider = provider,
+  ): Promise<string> => on.complete({ system: fillPrompt(prompt, input), user: input });
 
   const cases = await pooled(
     inputs.map((input) => async (): Promise<EvalCase> => {
@@ -160,7 +188,8 @@ export async function evaluate(
       // serve one from a cache and report a variance of zero.
       const baselineA = await run(originalPrompt, input);
       const baselineB = await run(originalPrompt, input);
-      const optimized = await run(optimizedPrompt, input);
+      // On `candidate`, which is `provider` unless a route is being measured.
+      const optimized = await run(optimizedPrompt, input, candidate);
 
       return {
         input,
@@ -179,6 +208,7 @@ export async function evaluate(
   return {
     provider: provider.name,
     model: provider.model,
+    candidateModel: candidate.model,
     cases,
     selfAgreement,
     crossAgreement,

@@ -21,6 +21,7 @@ ${bold('USO')}
   trazum baseline [dir] [opciones]
   trazum eval <fichero> --cases <fichero> [opciones]
   trazum eval <fichero> --cases <fichero> --export promptfoo -o suite.json
+  trazum route <log.jsonl> --prompt-file <fichero> --cases <fichero> --yes
   trazum diff <antes> <después> [opciones]
   trazum diff --all <dir> <dir> [opciones]
   trazum rank <dir> [opciones]
@@ -194,6 +195,24 @@ ${bold('OPCIONES DE eval')}
   original dos veces, para medir la varianza propia del modelo, y el optimizado
   una. Esa base es la vara de medir: sin ella, un porcentaje de divergencia no
   significa nada. Sale con código 1 cuando las respuestas divergen de verdad.
+
+${bold('OPCIONES DE route')}
+  --prompt-file <fichero>     El prompt que mandan esas llamadas. No --prompt,
+                              que nombra un prompt marcado dentro de un fuente.
+  --cases <fichero>           Una entrada por línea, o un array JSON. Obligatorio.
+  --label <nombre>            Mide esta carga en vez de la más cara.
+  --concurrency <n>           Llamadas en vuelo a la vez. Por defecto: 3.
+  --yes                       Gasta las llamadas de verdad. Sin él se imprime la
+                              cuenta y no se llama a nada.
+  --json                      La porción y la medición como datos.
+
+  Lee un registro de uso, busca la porción donde llevar las llamadas a un modelo
+  más barato vale más, y mide si ese modelo sigue haciendo el trabajo. El mismo
+  prompt va a los dos, y el original se ejecuta dos veces por caso — así el
+  veredicto se juzga contra la varianza de ese modelo y no contra un umbral
+  inventado.
+
+  Cuesta tres llamadas al proveedor por caso y necesita TRAZUM_LLM_* configurado.
 
 ${bold('OPCIONES DE diff')}
   --max-growth <n>            Falla si el prompt ha crecido más de n tokens.
@@ -860,7 +879,7 @@ ${bold('EJEMPLOS')}
       `${label} en ${model} — hasta ${usd} de esta factura (${pct})`,
     leverRoute: (candidate, usd) => `llévalo a ${candidate}, ${usd}`,
     leverRouteVerify: (candidate) =>
-      `Si eso aguanta es una pregunta de evaluación, no de aritmética, y aquí no se ha visto ni una sola respuesta. Mídelo: trazum eval <prompt> --cases <casos> --model ${candidate}`,
+      `Si eso aguanta es una pregunta de evaluación, no de aritmética, y aquí no se ha visto ni una sola respuesta. Mídelo: trazum route <log> --prompt-file <prompt> --cases <casos> --yes`,
     leverBatch: (usd) => `mándalo por la Batch API, ${usd}`,
     leverCalls: (calls, spent) => `${calls} llamadas, ${spent} gastados`,
     leverPromptCeiling: (usd, pct) =>
@@ -869,6 +888,31 @@ ${bold('EJEMPLOS')}
       'Aquí no hay nada que llegue al 1% de la factura: estas llamadas ya van al modelo más barato de su familia, o su proveedor no tiene Batch API. Eso es una respuesta de verdad, no una sección vacía.',
     assumedWriteTtl: (calls) =>
       `${count(calls)} ${calls === 1 ? 'llamada no dijo' : 'llamadas no dijeron'} qué TTL de escritura de caché se usó, así que se asumió la tarifa más barata, la de 5 minutos. Una entrada de 1 hora cuesta 2x la entrada en vez de 1.25x, así que este total es un suelo para esas llamadas. Registra el objeto "cache_creation" que devuelve la API para quitar la suposición.`,
+  },
+
+  route: {
+    noTarget: () =>
+      'Apunta esto a un registro de uso y a un prompt: trazum route usage.jsonl --prompt-file prompts/soporte.txt --cases casos.txt --yes. Busca la porción que más vale y mide si el modelo más barato sigue haciendo el trabajo. El flag es --prompt-file y no --prompt, porque en el resto de la herramienta --prompt nombra un prompt marcado dentro de un fichero fuente.',
+    needsPrompt: () =>
+      '--prompt y --cases son los dos obligatorios. El registro dice qué ruta vale dinero; solo el prompt y los casos pueden decir si funciona.',
+    noRoute: () =>
+      'Ninguna ruta de este registro llega al 1% de la factura. Estas llamadas ya van al modelo más barato de su familia, o el catálogo no tiene nada por debajo.',
+    picked: (label, model, candidate, usd, pct) =>
+      `${label} en ${model} → ${candidate}, vale ${usd} de esta factura (${pct}).`,
+    willSpend: (calls, model, candidate) =>
+      `Esto hará ${count(calls)} llamadas al proveedor: dos por caso en ${model} para medir su propia varianza, una por caso en ${candidate}. Todavía no se ha gastado nada — añade --yes para ejecutarlo.`,
+    dryRun: () => 'No se llamó a nada.',
+    running: (cases) => `Ejecutando ${count(cases)} casos...`,
+    agreement: (cross, self) =>
+      `El modelo más barato coincide con el original el ${cross} de las veces. El original coincide consigo mismo el ${self} — esa es la vara de medir, no el 100%.`,
+    holds: (usd) =>
+      `AGUANTA — la diferencia está dentro del propio ruido del modelo original. En esta factura esa ruta vale ${usd}.`,
+    diverges: (usd) =>
+      `DIVERGE — el modelo más barato da respuestas materialmente distintas. Los ${usd} son reales y el cambio de comportamiento también; esto no es dinero gratis.`,
+    inconclusive: () =>
+      'NO CONCLUYENTE — el modelo original fue demasiado inconsistente consigo mismo en estos casos como para juzgar nada contra eso. Añade casos, o elige unos con menos margen para que el modelo divague.',
+    yours: () =>
+      'Coincidir no es acertar. Esto mide si las respuestas se movieron, no si alguna vez fueron correctas — la decisión sigue siendo tuya.',
   },
 
   baseline: {

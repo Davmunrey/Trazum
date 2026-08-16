@@ -12,6 +12,50 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`trazum route` — the loop the levers section could only point at.**
+
+`profile` prices a route exactly: the same tokens at a cheaper model's published
+rate. It can say nothing whatever about whether that model still does the job, so
+it printed a figure and a homework assignment — and homework does not get done.
+
+```bash
+trazum route usage.jsonl --prompt-file prompts/support.txt --cases cases.txt --yes
+```
+
+```
+  support-rag on Claude Opus 5 → Claude Sonnet 5, worth $12.60 of this bill (60.0%).
+
+  The cheaper model agrees with the original 94% of the time. The original
+  agrees with itself 91% of the time — that is the yardstick, not 100%.
+
+  ✓ HOLDS — the difference is inside the original model's own noise.
+```
+
+It finds the slice worth the most on its own, so the reader does not have to know
+which workload to point it at. **The yardstick is the expensive model's own
+run-to-run variance**, measured on the same cases in the same run: a route is safe
+when the cheaper model agrees with the original more closely than the original
+agrees with itself, and any other bar would be a number somebody chose.
+
+Three provider calls per case — two on the original, one on the candidate — and it
+prints the count and stops unless `--yes` is given, exactly as `prune` does. It
+reports `INCONCLUSIVE` rather than inventing a verdict, and says **agreement is not
+correctness** on every verdict including the good one.
+
+`evaluate` gains `candidateProvider`, which is the whole routing axis and needed no
+new yardstick — the baseline still runs twice on the original model. `EvalReport`
+gains `candidateModel`, because a report naming one model could not say what it had
+compared.
+
+### Fixed
+
+**The levers section named a command that cannot test a route.** It printed
+`trazum eval <prompt> --cases <cases> --model <candidate>`, and `eval` runs against
+whatever `TRAZUM_LLM_MODEL` says — `--model` only prices the report. The
+instruction sent the reader to a measurement that never touched the candidate
+model. It names `trazum route` now, which does.
+
+
 **`trazum profile` now prices what would actually move the bill** — the answer to
 the fairest complaint this product has had.
 
