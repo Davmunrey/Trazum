@@ -150,6 +150,11 @@ interface Args {
 }
 
 const VALUE_FLAGS = new Set([
+  // `route` takes a path here, and the flag is deliberately not `--prompt`:
+  // everywhere else in this tool `--prompt` names a marked prompt *inside* a
+  // source file, and reusing it for a path would be a trap laid for the reader.
+  'prompt-file',
+  'label',
   'level',
   'model',
   'calls',
@@ -411,6 +416,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
   profile: ['json', 'pricing', 'pricing-live'],
+  route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
   diff: ['level', 'model', 'calls', 'output-tokens', 'batch', 'max-growth', 'optimized', 'markdown-out', 'all', 'prompt'],
@@ -2224,6 +2230,121 @@ function reportProfileGaps(
 }
 
 /**
+ * `trazum route <log> --prompt-file <p> --cases <c>` — the loop the levers could
+ * only point at.
+ *
+ * `profile` prices a route exactly and can say nothing whatever about whether the
+ * cheaper model still does the job. So it printed a figure and a homework
+ * assignment, and homework does not get done — the report said "$16.80 available,
+ * go and test it" and the reader closed the terminal.
+ *
+ * This runs the test. Same prompt, two models, judged against **the expensive
+ * model's own run-to-run variance** measured on the same cases in the same run. No
+ * threshold anybody picked: the question is whether the cheaper model agrees with
+ * the original more closely than the original agrees with itself.
+ *
+ * It costs three provider calls per case and says so before spending one of them,
+ * exactly as `prune` does. A command that can spend somebody's money without
+ * telling them first is a command they stop trusting.
+ */
+async function commandRoute(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
+  const path = args.positional[0];
+  if (path === undefined) {
+    console.log();
+    console.log(c.dim(wrap(t.route.noTarget(), 74, '  ')));
+    console.log();
+    return;
+  }
+
+  const promptPath = stringFlag(args, 'prompt-file');
+  const casesPath = stringFlag(args, 'cases');
+  if (!promptPath || !casesPath) throw new Error(t.route.needsPrompt());
+
+  const report = profileUsage(await readFile(path, 'utf8'), { catalogue: pricing });
+  const levers = billLevers(report, { catalogue: pricing });
+  const wanted = stringFlag(args, 'label');
+  const slice = levers.slices.find(
+    (s) => s.route !== null && (wanted === undefined || s.label === wanted),
+  );
+  if (!slice?.route) {
+    console.log();
+    console.log(c.dim(wrap(t.route.noRoute(), 74, '  ')));
+    console.log();
+    return;
+  }
+
+  const prompt = await readFile(promptPath, 'utf8');
+  const inputs = parseCases(await readFile(casesPath, 'utf8'));
+  if (inputs.length === 0) throw new Error(t.errors.evalNoCases(casesPath));
+
+  const provider = providerFromEnv();
+  if (!provider) throw new Error(t.errors.llmNotConfigured());
+  /**
+   * The candidate on the same endpoint and key, with the model swapped. Built
+   * through the same factory rather than by hand so a provider that needs more
+   * than a model id — a Bedrock region, a Vertex project — keeps whatever the
+   * environment already gave it.
+   */
+  const candidate = providerFromEnv({
+    ...process.env,
+    TRAZUM_LLM_MODEL: slice.route.candidate.id,
+  });
+  if (!candidate) throw new Error(t.errors.llmNotConfigured());
+
+  const label = slice.label === UNLABELLED ? t.profile.unlabelled() : slice.label;
+  const worth = formatUsd(slice.route.savingUsd);
+  console.log();
+  console.log(
+    `  ${c.bold(t.route.picked(label, slice.modelName, slice.route.candidate.displayName, worth, `${(slice.shareOfBill * 100).toFixed(1)}%`))}`,
+  );
+  console.log();
+  console.log(
+    `  ${c.dim(wrap(t.route.willSpend(inputs.length * 3, provider.model, candidate.model), 74, '  '))}`,
+  );
+
+  if (!boolFlag(args, 'yes')) {
+    console.log(`  ${c.dim(t.route.dryRun())}`);
+    console.log();
+    return;
+  }
+
+  console.log(`  ${c.dim(t.route.running(inputs.length))}`);
+  // Same prompt on both sides. The axis under test is the model, and passing the
+  // prompt twice is what says so at the call site.
+  const result = await evaluate(prompt, prompt, inputs, provider, {
+    candidateProvider: candidate,
+    concurrency: numberFlag(args, 'concurrency', 3, t),
+  });
+
+  if (boolFlag(args, 'json')) {
+    console.log(JSON.stringify({ slice, evaluation: result }, null, 2));
+    return;
+  }
+
+  const asPct = (v: number): string => `${(v * 100).toFixed(0)}%`;
+  console.log();
+  console.log(
+    `  ${c.dim(wrap(t.route.agreement(asPct(result.crossAgreement), asPct(result.selfAgreement)), 74, '  '))}`,
+  );
+  console.log();
+  if (result.verdict === 'inconclusive') {
+    console.log(`  ${c.bold(wrap(t.route.inconclusive(), 74, '  '))}`);
+  } else if (result.verdict === 'diverges') {
+    console.log(`  ${c.yellow('!')} ${c.bold(wrap(t.route.diverges(worth), 74, '    '))}`);
+  } else {
+    console.log(`  ${c.green('✓')} ${c.bold(wrap(t.route.holds(worth), 74, '    '))}`);
+  }
+  /**
+   * Printed on every verdict including the good one. Agreement is not
+   * correctness: this measures whether the answers moved, not whether they were
+   * ever right, and a green tick that let somebody forget that would be the tool
+   * overstating what it knows.
+   */
+  console.log(`  ${c.dim(wrap(t.route.yours(), 74, '  '))}`);
+  console.log();
+}
+
+/**
  * `trazum baseline <dir>` — record what the estate costs now.
  *
  * Writes the file and says what to do with it. It never gates: recording is not
@@ -3715,6 +3836,9 @@ async function main(): Promise<void> {
       break;
     case 'profile':
       await commandProfile(args, pricing, t);
+      break;
+    case 'route':
+      await commandRoute(args, pricing, t);
       break;
     case 'eval':
       await commandEval(args, config, t, locale);

@@ -185,3 +185,86 @@ describe('evaluation', () => {
     await assert.rejects(() => evaluate('A {{q}}', 'B {{q}}', ['x'], provider), /429/);
   });
 });
+
+describe('measuring a route rather than a rewrite', () => {
+  /**
+   * The other axis, and it needed no new yardstick.
+   *
+   * `profile` prices a route exactly — the same tokens at a cheaper model's rate —
+   * and can say nothing whatever about whether the cheaper model still does the
+   * job. So the report printed a figure and a homework assignment, and homework
+   * does not get done.
+   *
+   * The measurement is the same one that judges a rewrite, with the candidate
+   * answer taken from a different model instead of a different prompt: the
+   * baseline still runs **twice on the original model**, so the question becomes
+   * "does the cheaper model agree with the expensive one more closely than the
+   * expensive one agrees with itself?" — the model's own noise floor, measured on
+   * the same cases in the same run, rather than a threshold somebody picked.
+   */
+
+  const twoProviders = () => {
+    const original = scriptedProvider(() => 'the original answer');
+    const candidate = scriptedProvider(() => 'the original answer');
+    original.model = 'claude-opus-5';
+    candidate.model = 'claude-sonnet-5';
+    return { original, candidate };
+  };
+
+  it('sends the baseline to the original and the candidate to the cheaper model', async () => {
+    /**
+     * Two calls on the expensive model and one on the cheap one, per case. Getting
+     * this backwards would measure the *cheap* model's variance and judge the
+     * expensive one against it — a yardstick from the wrong instrument.
+     */
+    const { original, candidate } = twoProviders();
+    const report = await evaluate('a prompt {{x}}', 'a prompt {{x}}', ['one', 'two'], original, {
+      candidateProvider: candidate,
+      concurrency: 1,
+    });
+
+    assert.equal(original.calls.length, 4, 'the baseline did not run twice per case');
+    assert.equal(candidate.calls.length, 2, 'the candidate did not answer once per case');
+    assert.equal(report.callsMade, 6);
+  });
+
+  it('reports which model each side came from', async () => {
+    // A report that named one model could not say what it had compared, and the
+    // whole decision is which of the two you keep paying for.
+    const { original, candidate } = twoProviders();
+    const report = await evaluate('p', 'p', ['one'], original, { candidateProvider: candidate });
+
+    assert.equal(report.model, 'claude-opus-5');
+    assert.equal(report.candidateModel, 'claude-sonnet-5');
+  });
+
+  it('leaves the ordinary comparison naming one model twice', async () => {
+    // No candidate provider is the rewrite question, where both answers come from
+    // the same model. Reporting a different candidate there would be an invention.
+    const provider = scriptedProvider(() => 'same');
+    const report = await evaluate('before', 'after', ['one'], provider);
+    assert.equal(report.candidateModel, report.model);
+  });
+
+  it('judges the cheaper model against the expensive one\'s own noise, not against agreement', async () => {
+    /**
+     * The original disagrees with itself here — two different answers to the same
+     * case — and the candidate matches the first exactly. A verdict built on raw
+     * agreement would call a perfect match a pass regardless; this one has to
+     * survive the comparison with a baseline that is itself unstable.
+     */
+    let n = 0;
+    const original = scriptedProvider(() => (n++ % 2 === 0 ? 'answer one' : 'a completely different reply'));
+    const candidate = scriptedProvider(() => 'answer one');
+    original.model = 'claude-opus-5';
+    candidate.model = 'claude-haiku-4-5';
+
+    const report = await evaluate('p', 'p', ['one'], original, {
+      candidateProvider: candidate,
+      concurrency: 1,
+    });
+
+    assert.ok(report.crossAgreement > report.selfAgreement, 'the yardstick was not the baseline variance');
+    assert.notEqual(report.verdict, 'diverges', 'a candidate inside the noise was called a divergence');
+  });
+});

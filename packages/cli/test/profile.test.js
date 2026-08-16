@@ -523,6 +523,14 @@ describe('what would actually move this bill', () => {
      */
     const out = flat(run(await logOf(estate('support-rag', 400, 9000, 300))));
     assert.match(out, /evaluation question, not an arithmetic one/);
-    assert.match(out, /trazum eval .*--model claude-sonnet-5/);
+    assert.match(out, /trazum route <log> --prompt-file <prompt> --cases <cases> --yes/);
+    /**
+     * The command it used to name. `trazum eval --model <id>` does not test a
+     * route: `eval` runs against whatever `TRAZUM_LLM_MODEL` says and `--model`
+     * only prices the report, so the instruction sent the reader to a measurement
+     * that never touched the candidate model. This assertion is the one that
+     * matters — the wrong command was worse than none.
+     */
+    assert.doesNotMatch(out, /trazum eval .*--model/, 'named a command that cannot test a route');
   });
 });

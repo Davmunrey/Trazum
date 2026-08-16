@@ -133,6 +133,34 @@ Three things to get right when reporting on this:
   refuses to choose; report it the same way, and tell the user the fix is
   recording the `cache_creation` object the API already returns.
 
+## Is the cheaper model good enough?
+
+When the profile names a route worth money, this is the command that settles it —
+and it is the only way to settle it. `trazum eval --model <id>` does **not** test a
+route: `eval` runs against whatever `TRAZUM_LLM_MODEL` says and `--model` only
+prices the report.
+
+```bash
+node packages/cli/dist/index.js route usage.jsonl \
+  --prompt-file prompts/support.txt --cases cases.txt --yes
+```
+
+**Costs three provider calls per case** — two on the original model, one on the
+candidate — so never run it without saying so first. Without `--yes` it prints the
+count and calls nothing.
+
+Three things to get right when reporting the result:
+
+- **The yardstick is the original model's own variance, not 100%.** A 94% match is
+  a pass when the original self-agrees 91%, and alarming when it self-agrees 100%.
+  Quote both figures or neither.
+- **`INCONCLUSIVE` is an answer.** It means the original was too inconsistent on
+  these cases to judge anything against. Report it as it stands and suggest more
+  cases; do not round it to the nearest verdict.
+- **Agreement is not correctness.** This measures whether the answers moved, not
+  whether they were ever right. Say so even when the verdict is good — especially
+  then.
+
 ## Stopping the estate drifting upwards
 
 A budget is a ceiling. It says nothing while a prompt climbs from 800 tokens to

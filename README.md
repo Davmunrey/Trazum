@@ -43,11 +43,11 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- thirteen commands MCP server      Next.js     comments on pull requests
+ fourteen commands MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
-## The thirteen commands
+## The fourteen commands
 
 | Command | What it answers |
 |---|---|
@@ -63,6 +63,7 @@ never runs unless you ask.
 | [`trazum where`](#prompts-where-they-actually-live) | Which prompts are hiding inside my source files? |
 | [`trazum models`](#every-model-you-pay-for-by-the-token) | What does each model cost, and what is its cache minimum? |
 | [`trazum profile`](#where-the-money-actually-went-trazum-profile) | Where did the money actually go? *Reads a usage log, not a prompt.* |
+| [`trazum route`](#is-the-cheaper-model-good-enough-trazum-route) | Is the cheaper model good enough? *Measured, and it asks before spending.* |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
 
 ## Contents
@@ -173,7 +174,7 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of thirteen commands, and the others
+is the smallest thing here. `optimize` is one of fourteen commands, and the others
 exist because knowing a prompt is wasteful is not the same as knowing *which*
 prompt, *whose* change made it so, or whether the shorter version still works:
 
@@ -251,7 +252,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other twelve commands, each with its own section below:
+The other thirteen commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -1926,6 +1927,38 @@ Four things it refuses to do, and each one is a bug it had:
 
 And it prints the ceiling on prompt shortening underneath, on purpose. A 1% win
 reported without saying 1% of *what* is not information.
+
+### Is the cheaper model good enough: `trazum route`
+
+Pricing a route is arithmetic. Whether the cheaper model still does the job is not,
+and the levers section could only hand you homework — which does not get done.
+
+```bash
+trazum route usage.jsonl --prompt-file prompts/support.txt --cases cases.txt --yes
+```
+
+```
+  support-rag on Claude Opus 5 → Claude Sonnet 5, worth $12.60 of this bill (60.0%).
+
+  This will make 9 provider calls: two per case on claude-opus-5 to measure its
+  own variance, one per case on claude-sonnet-5.
+
+  The cheaper model agrees with the original 94% of the time. The original
+  agrees with itself 91% of the time — that is the yardstick, not 100%.
+
+  ✓ HOLDS — the difference is inside the original model's own noise. On this
+    bill that route is worth $12.60.
+```
+
+**The yardstick is the expensive model's own run-to-run variance**, measured on the
+same cases in the same run. That is the whole design: a route is safe when the
+cheaper model agrees with the original *more closely than the original agrees with
+itself*, and any other bar would be a number somebody chose.
+
+Three provider calls per case, and it prints the count and stops unless you pass
+`--yes`. It reports `INCONCLUSIVE` rather than inventing a verdict when the
+original was too inconsistent to judge anything against — and it says **agreement
+is not correctness** on every verdict, including the good one.
 
 ### Did the caching actually pay for itself?
 

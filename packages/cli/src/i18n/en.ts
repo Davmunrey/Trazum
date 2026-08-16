@@ -27,6 +27,7 @@ ${bold('USAGE')}
   trazum baseline [dir] [options]
   trazum eval <file> --cases <file> [options]
   trazum eval <file> --cases <file> --export promptfoo -o suite.json
+  trazum route <log.jsonl> --prompt-file <file> --cases <file> --yes
   trazum diff <before> <after> [options]
   trazum diff --all <dir> <dir> [options]
   trazum rank <dir> [options]
@@ -194,6 +195,23 @@ ${bold('OPTIONS FOR eval')}
   original twice, to measure the model's own run-to-run variance, and the
   optimised once. That baseline is the yardstick — without it, a divergence
   figure means nothing. Exits with code 1 when the answers genuinely diverge.
+
+${bold('OPTIONS FOR route')}
+  --prompt-file <file>        The prompt those calls send. Not --prompt, which
+                              names a marked prompt inside a source file.
+  --cases <file>              One input per line, or a JSON array. Required.
+  --label <name>              Measure this workload instead of the costliest one.
+  --concurrency <n>           Calls in flight at once. Default: 3.
+  --yes                       Actually spend the calls. Without it the count is
+                              printed and nothing is called.
+  --json                      The slice and the measurement as data.
+
+  Reads a usage log, finds the slice where routing to a cheaper model is worth
+  the most, and measures whether that model still does the job. The same prompt
+  goes to both, and the original runs twice per case — so the verdict is judged
+  against that model's own variance rather than a threshold somebody picked.
+
+  Costs three provider calls per case and needs TRAZUM_LLM_* configured.
 
 ${bold('OPTIONS FOR diff')}
   --max-growth <n>            Fail if the prompt grew by more than n tokens.
@@ -848,7 +866,7 @@ ${bold('EXAMPLES')}
       `${label} on ${model} — up to ${usd} of this bill (${pct})`,
     leverRoute: (candidate, usd) => `route it to ${candidate}, ${usd}`,
     leverRouteVerify: (candidate) =>
-      `Whether that holds is an evaluation question, not an arithmetic one, and nothing here has seen a single answer. Measure it: trazum eval <prompt> --cases <cases> --model ${candidate}`,
+      `Whether that holds is an evaluation question, not an arithmetic one, and nothing here has seen a single answer. Measure it: trazum route <log> --prompt-file <prompt> --cases <cases> --yes`,
     leverBatch: (usd) => `send it through the Batch API, ${usd}`,
     leverCalls: (calls, spent) => `${calls} calls, ${spent} spent`,
     leverPromptCeiling: (usd, pct) =>
@@ -857,6 +875,31 @@ ${bold('EXAMPLES')}
       'Nothing here clears 1% of the bill: these calls are already on the cheapest model of their family, or their provider has no batch API. That is a real answer, not an empty section.',
     assumedWriteTtl: (calls) =>
       `${count(calls)} ${calls === 1 ? 'call did' : 'calls did'} not say which cache-write TTL was used, so the cheaper 5-minute rate was assumed. A 1-hour entry costs 2x input rather than 1.25x, so this total is a floor for those calls. Record the "cache_creation" object the API returns to remove the assumption.`,
+  },
+
+  route: {
+    noTarget: () =>
+      'Point this at a usage log and a prompt: trazum route usage.jsonl --prompt-file prompts/support.txt --cases cases.txt --yes. It finds the slice worth the most, then measures whether the cheaper model still does the job. The flag is --prompt-file and not --prompt, because --prompt names a marked prompt inside a source file everywhere else in this tool.',
+    needsPrompt: () =>
+      '--prompt and --cases are both required. The log says which route is worth money; only the prompt and the cases can say whether it works.',
+    noRoute: () =>
+      'No route on this log clears 1% of the bill. These calls are already on the cheapest model of their family, or the catalogue has nothing below them.',
+    picked: (label, model, candidate, usd, pct) =>
+      `${label} on ${model} → ${candidate}, worth ${usd} of this bill (${pct}).`,
+    willSpend: (calls, model, candidate) =>
+      `This will make ${count(calls)} provider calls: two per case on ${model} to measure its own variance, one per case on ${candidate}. Nothing has been spent yet — add --yes to run it.`,
+    dryRun: () => 'Nothing was called.',
+    running: (cases) => `Running ${count(cases)} cases...`,
+    agreement: (cross, self) =>
+      `The cheaper model agrees with the original ${cross} of the time. The original agrees with itself ${self} of the time — that is the yardstick, not 100%.`,
+    holds: (usd) =>
+      `HOLDS — the difference is inside the original model's own noise. On this bill that route is worth ${usd}.`,
+    diverges: (usd) =>
+      `DIVERGES — the cheaper model gives materially different answers. The ${usd} is real and so is the change in behaviour; this one is not free money.`,
+    inconclusive: () =>
+      'INCONCLUSIVE — the original model was too inconsistent with itself on these cases to judge anything against. Add cases, or pick ones with less room for the model to wander.',
+    yours: () =>
+      'Agreement is not correctness. This measures whether the answers moved, not whether they were ever right — the decision is still yours.',
   },
 
   baseline: {

@@ -21,6 +21,7 @@ npm install -g @trazum/cli
 | `trazum check <file\|dir>` | does it fit its budget, and has the repo drifted past its baseline — exits 1 when either fails |
 | `trazum baseline [dir]` | what the prompts cost now, recorded to a file you commit |
 | `trazum profile <log.jsonl>` | where the money actually went — reads a usage log, not a prompt |
+| `trazum route <log.jsonl>` | is the cheaper model good enough? — measured, and it asks before spending |
 | `trazum doctor [dir]` | the whole workspace: what nothing is watching, and what fixing would be worth |
 | `trazum rank <dir>` | of these forty prompts, which is worth an afternoon |
 | `trazum prune <file> --cases <file>` | which few-shot examples earn their tokens — measured, and it asks before spending |
@@ -133,6 +134,32 @@ cheaper model, so the pair is $16.80 and not $23.10 against $21.00 spent. A rout
 prints the `eval` command rather than a recommendation: the arithmetic is exact and
 says nothing about quality. Nothing crosses a vendor, and no figure is ever "per
 month" — a log covers whatever period you recorded.
+
+### Is the cheaper model good enough? — `trazum route`
+
+The section above prices a route and can say nothing about whether it works. This
+runs the measurement:
+
+```bash
+trazum route usage.jsonl --prompt-file prompts/support.txt --cases cases.txt --yes
+```
+
+```
+  support-rag on Claude Opus 5 → Claude Sonnet 5, worth $12.60 of this bill (60.0%).
+
+  The cheaper model agrees with the original 94% of the time. The original
+  agrees with itself 91% of the time — that is the yardstick, not 100%.
+
+  ✓ HOLDS — the difference is inside the original model's own noise.
+```
+
+**The yardstick is the expensive model's own variance**, measured on the same cases
+in the same run, so the verdict is not a threshold somebody picked. Three provider
+calls per case — two on the original, one on the candidate — and it prints the
+count and stops unless you pass `--yes`.
+
+It says *agreement is not correctness* on every verdict, including the good one.
+This measures whether the answers moved, not whether they were ever right.
 
 ### Did the caching pay for itself?
 

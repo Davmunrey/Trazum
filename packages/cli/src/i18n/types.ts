@@ -432,6 +432,14 @@ export interface CliMessages {
      */
     leverSlice(label: string, model: string, usd: string, pct: string): string;
     leverRoute(candidate: string, usd: string): string;
+    /**
+     * The command that settles it.
+     *
+     * It used to name `trazum eval --model <candidate>`, which does not do what
+     * that sentence claims: `eval` runs against whatever `TRAZUM_LLM_MODEL` says
+     * and `--model` only prices the report. The instruction sent the reader to a
+     * measurement that never touched the candidate model.
+     */
     leverRouteVerify(candidate: string): string;
     leverBatch(usd: string): string;
     /** How many calls the slice covers, so the reader can judge the effort. */
@@ -447,6 +455,33 @@ export interface CliMessages {
     leversNone(): string;
     assumedWriteTtl(calls: number): string;
   };
+  /**
+   * `trazum route` — the loop the levers section could only point at.
+   *
+   * `profile` prices a route exactly and can say nothing about whether the cheaper
+   * model still does the job. This runs that measurement: same prompt, two models,
+   * judged against the expensive model's own run-to-run variance. It is what turns
+   * "here is $16.80 you might save" into "here is $16.80, measured".
+   */
+  route: {
+    noTarget(): string;
+    needsPrompt(): string;
+    noRoute(): string;
+    /** The slice picked, and what taking it is worth. */
+    picked(label: string, model: string, candidate: string, usd: string, pct: string): string;
+    /** What the measurement will cost, before a single call is made. */
+    willSpend(calls: number, model: string, candidate: string): string;
+    dryRun(): string;
+    running(cases: number): string;
+    /** The verdict, against the original model's own variance. */
+    agreement(cross: string, self: string): string;
+    holds(usd: string): string;
+    diverges(usd: string): string;
+    inconclusive(): string;
+    /** Never a recommendation on its own — the money is only half the answer. */
+    yours(): string;
+  };
+
   baseline: {
     recorded(path: string, files: string, tokens: string): string;
     recordedMoney(monthly: string, model: string, calls: string): string;
