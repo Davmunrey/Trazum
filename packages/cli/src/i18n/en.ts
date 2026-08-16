@@ -843,6 +843,18 @@ ${bold('EXAMPLES')}
     empty: () => 'No usage records in that file.',
     nothingPriced: () =>
       'None of the models in that log are in the pricing catalogue, so there is no bill to report. Add them with a pricing overlay (--pricing) and run this again.',
+    leversHeading: () => 'What would actually move this bill',
+    leverSlice: (label, model, usd, pct) =>
+      `${label} on ${model} — up to ${usd} of this bill (${pct})`,
+    leverRoute: (candidate, usd) => `route it to ${candidate}, ${usd}`,
+    leverRouteVerify: (candidate) =>
+      `Whether that holds is an evaluation question, not an arithmetic one, and nothing here has seen a single answer. Measure it: trazum eval <prompt> --cases <cases> --model ${candidate}`,
+    leverBatch: (usd) => `send it through the Batch API, ${usd}`,
+    leverCalls: (calls, spent) => `${calls} calls, ${spent} spent`,
+    leverPromptCeiling: (usd, pct) =>
+      `For comparison: shortening the prompt text can touch ${usd} at the very most — ${pct} of this bill, and only if you deleted every input token. The real figure is far below that, because most of those tokens are retrieved context, conversation history and tool results that no prompt file contains.`,
+    leversNone: () =>
+      'Nothing here clears 1% of the bill: these calls are already on the cheapest model of their family, or their provider has no batch API. That is a real answer, not an empty section.',
     assumedWriteTtl: (calls) =>
       `${count(calls)} ${calls === 1 ? 'call did' : 'calls did'} not say which cache-write TTL was used, so the cheaper 5-minute rate was assumed. A 1-hour entry costs 2x input rather than 1.25x, so this total is a floor for those calls. Record the "cache_creation" object the API returns to remove the assumption.`,
   },

@@ -10,6 +10,67 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+**`trazum profile` now prices what would actually move the bill** — the answer to
+the fairest complaint this product has had.
+
+> *"if it only saves €200 to a company spending €20k, it's rubbish"*
+
+The €200 is right. The rules recover about **1%**: three tokens out of three
+hundred and six, measured on an ordinary support prompt. The conclusion is not that
+the number is wrong but that shortening the prompt was never where the money was.
+
+| lever | what it moves |
+|---|---|
+| **which model the call goes to** | Opus 5 → Sonnet 5 is **40%** off; → Haiku 4.5 is **80%** |
+| **the Batch API** | **50%** flat, on input and output |
+| prompt caching | 3–4× the rules |
+| shortening the prompt | **~1%** |
+
+So the report prices the other rows, from the log the reader already has:
+
+```
+What would actually move this bill
+
+  → support-rag on Claude Opus 5 — up to $16.80 of this bill (52.2%)
+    400 calls, $21.00 spent
+    · route it to Claude Sonnet 5, $12.60
+    · send it through the Batch API, $10.50
+    Whether that holds is an evaluation question, not an arithmetic one, and
+    nothing here has seen a single answer. Measure it: trazum eval <prompt>
+    --cases <cases> --model claude-sonnet-5
+
+  For comparison: shortening the prompt text can touch $18.00 at the very
+  most — 85.7% of this bill, and only if you deleted every input token.
+```
+
+On that estate the levers come to **80% of the bill**. Every figure is arithmetic
+on tokens that were billed: the same counts at another model's published rate, the
+same tokens at the provider's batch multiplier. Nothing modelled, nothing
+extrapolated.
+
+Four refusals, each of them a bug caught while building it:
+
+- **The options are combined, never summed.** Batching a routed call discounts the
+  *cheaper* model, so the pair is $16.80 — not the $23.10 an addition gives, which
+  is more than the $21.00 that slice had ever cost.
+- **A route is never called safe.** That is a quality question arithmetic cannot
+  answer, and this has seen no prompt and no answer. It prints the `eval` command
+  instead of a recommendation, and steps down **one** capability rung rather than
+  to the cheapest model on the shelf — frontier to small is a bigger number and a
+  different product.
+- **No figure is "per month".** A log covers whatever period somebody recorded.
+- **Nothing crosses a vendor.** A cheaper model at another provider is a migration.
+
+The ceiling on prompt shortening prints underneath, on purpose: a 1% win reported
+without saying 1% of *what* is not information. It counts retrieved context and
+conversation history too, so it is generous — the real figure is far below it.
+
+`profileUsage` gains `byLabelAndModel`, because a route is decided per model and a
+label spanning two of them has no single answer. `billLevers` is exported from
+`@trazum/core`.
+
 ### Fixed
 
 **Four faults in the cache verdict, found by an adversarial review of the code

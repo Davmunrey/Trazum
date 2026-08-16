@@ -855,6 +855,18 @@ ${bold('EJEMPLOS')}
     empty: () => 'No hay registros de uso en ese archivo.',
     nothingPriced: () =>
       'Ninguno de los modelos de ese log está en el catálogo de precios, así que no hay factura que reportar. Añádelos con un overlay de precios (--pricing) y vuelve a ejecutarlo.',
+    leversHeading: () => 'Lo que de verdad movería esta factura',
+    leverSlice: (label, model, usd, pct) =>
+      `${label} en ${model} — hasta ${usd} de esta factura (${pct})`,
+    leverRoute: (candidate, usd) => `llévalo a ${candidate}, ${usd}`,
+    leverRouteVerify: (candidate) =>
+      `Si eso aguanta es una pregunta de evaluación, no de aritmética, y aquí no se ha visto ni una sola respuesta. Mídelo: trazum eval <prompt> --cases <casos> --model ${candidate}`,
+    leverBatch: (usd) => `mándalo por la Batch API, ${usd}`,
+    leverCalls: (calls, spent) => `${calls} llamadas, ${spent} gastados`,
+    leverPromptCeiling: (usd, pct) =>
+      `Para comparar: acortar el texto del prompt puede tocar ${usd} como mucho — el ${pct} de esta factura, y solo si borraras hasta el último token de entrada. La cifra real está muy por debajo, porque la mayoría de esos tokens son contexto recuperado, historial de conversación y resultados de herramientas que no están en ningún fichero de prompt.`,
+    leversNone: () =>
+      'Aquí no hay nada que llegue al 1% de la factura: estas llamadas ya van al modelo más barato de su familia, o su proveedor no tiene Batch API. Eso es una respuesta de verdad, no una sección vacía.',
     assumedWriteTtl: (calls) =>
       `${count(calls)} ${calls === 1 ? 'llamada no dijo' : 'llamadas no dijeron'} qué TTL de escritura de caché se usó, así que se asumió la tarifa más barata, la de 5 minutos. Una entrada de 1 hora cuesta 2x la entrada en vez de 1.25x, así que este total es un suelo para esas llamadas. Registra el objeto "cache_creation" que devuelve la API para quitar la suposición.`,
   },

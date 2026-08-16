@@ -413,6 +413,38 @@ export interface CliMessages {
     skipped(count: number, lines: string): string;
     empty(): string;
     nothingPriced(): string;
+    /**
+     * The section the whole command builds towards.
+     *
+     * Trazum's rules recover about 1% of a bill. Which model a call goes to moves
+     * 40% to 80%, and the Batch API moves 50% flat. A report that shows where the
+     * money went and then stops is a report that leaves the reader with the
+     * smallest lever in their hand.
+     */
+    leversHeading(): string;
+    /**
+     * One slice, with what everything on it comes to **together**.
+     *
+     * The headline is the combined figure and not a sum of the options below it:
+     * batching a routed call discounts the cheaper model's price, not the one you
+     * left. Printing the options as separate rows produced $12.60 and $10.50
+     * against a slice that had spent $21.00.
+     */
+    leverSlice(label: string, model: string, usd: string, pct: string): string;
+    leverRoute(candidate: string, usd: string): string;
+    leverRouteVerify(candidate: string): string;
+    leverBatch(usd: string): string;
+    /** How many calls the slice covers, so the reader can judge the effort. */
+    leverCalls(calls: string, spent: string): string;
+    /**
+     * The ceiling on shortening prompts, printed beside the levers on purpose.
+     *
+     * A 1% win reported without saying 1% of what is not information. This is the
+     * comparison that makes the rest of the report honest about its own value.
+     */
+    leverPromptCeiling(usd: string, pct: string): string;
+    /** Nothing cleared the threshold, which is a real answer. */
+    leversNone(): string;
     assumedWriteTtl(calls: number): string;
   };
   baseline: {

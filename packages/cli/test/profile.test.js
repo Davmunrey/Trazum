@@ -438,3 +438,91 @@ describe('naming the labels that are losing money', () => {
     assert.doesNotMatch(out, /pays off overall/, 'claimed a payoff on a bill it had just called level');
   });
 });
+
+describe('what would actually move this bill', () => {
+  /**
+   * The answer to the fairest complaint this product has had: on a bill of twenty
+   * thousand, the rules recover two hundred.
+   *
+   * That figure is right — three tokens out of three hundred and six, measured. The
+   * conclusion is not that the tool is worthless but that it had been reading the
+   * smallest line item. Which model a call goes to moves 40% to 80%; the Batch API
+   * moves 50% flat. Both are priced here from the reader's own tokens.
+   */
+
+  const estate = (label, count, input, output, model = 'claude-opus-5') =>
+    Array.from({ length: count }, () => ({ model, label, usage: { input_tokens: input, output_tokens: output } }));
+
+  it('leads with the lever, priced, above the breakdowns', async () => {
+    /**
+     * 400 calls of 9,000 input and 300 output on Opus 5 is $21.00. The same tokens
+     * on Sonnet 5 are $8.40, and batching that is $4.20 — so the slice is worth
+     * $16.80, which is 52.2% of a bill whose prompt text could never be worth more
+     * than 70.9% even deleted entirely.
+     */
+    // Two labels, so the breakdown table prints at all: it is suppressed on a
+    // single row, where it would only be the total said twice.
+    const result = run(
+      await logOf([...estate('support-rag', 400, 9000, 300), ...estate('chat', 100, 2400, 700)]),
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const out = flat(result);
+
+    assert.match(out, /What would actually move this bill/);
+    assert.match(out, /support-rag on Claude Opus 5 — up to \$16\.80/, 'the combined figure is wrong or missing');
+    assert.match(out, /route it to Claude Sonnet 5, \$12\.60/);
+    assert.match(out, /send it through the Batch API, \$10\.50/);
+
+    // Above the breakdowns, because a lever nobody scrolls to is a lever nobody pulls.
+    assert.ok(
+      result.stdout.indexOf('What would actually move') < result.stdout.indexOf('By label'),
+      'the levers printed below the breakdown tables',
+    );
+  });
+
+  it('never lets the options be added into a saving larger than the bill', async () => {
+    /**
+     * The fault the slice grouping exists for. Route and batch printed as separate
+     * rows came to $23.10 against a slice that had spent $21.00 — impossible, and
+     * in the flattering direction.
+     */
+    const result = run(await logOf(estate('support-rag', 400, 9000, 300)));
+    const out = flat(result);
+    assert.match(out, /400 calls, \$21\.00 spent/);
+    assert.doesNotMatch(out, /up to \$2[1-9]\./, 'offered a saving larger than the slice ever cost');
+  });
+
+  it('says how much the prompt could ever be worth, and calls it a ceiling', async () => {
+    /**
+     * The comparison that makes the rest of the report honest. A 1% win reported
+     * without saying 1% of what is not information, and this repository would
+     * rather print the uncomfortable number itself than let somebody else find it.
+     */
+    const result = run(await logOf(estate('support-rag', 400, 9000, 300)));
+    const out = flat(result);
+    assert.match(out, /shortening the prompt text can touch \$18\.00 at the very most/);
+    assert.match(out, /only if you deleted every input token/, 'presented a ceiling as an estimate');
+  });
+
+  it('says so plainly when there is no lever, rather than printing an empty heading', async () => {
+    // Kimi K2 is the bottom of its family and its provider sells no batch API.
+    // That reader is exactly the one who most needs the ceiling line.
+    const result = run(await logOf(estate('chat', 200, 4000, 400, 'kimi-k2')));
+    assert.equal(result.status, 0, result.stderr);
+    const out = flat(result);
+    assert.match(out, /Nothing here clears 1% of the bill/);
+    assert.match(out, /shortening the prompt text can touch/, 'the ceiling went unreported');
+  });
+
+  it('names the command that decides whether a route is safe', async () => {
+    /**
+     * The arithmetic is exact and says nothing about quality. Nothing here has seen
+     * the prompt or a single answer, so a route is worth testing rather than worth
+     * doing — and the difference between a saving and a gamble is naming the
+     * command.
+     */
+    const out = flat(run(await logOf(estate('support-rag', 400, 9000, 300))));
+    assert.match(out, /evaluation question, not an arithmetic one/);
+    assert.match(out, /trazum eval .*--model claude-sonnet-5/);
+  });
+});

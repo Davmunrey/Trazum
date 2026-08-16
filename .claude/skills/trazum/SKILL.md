@@ -83,6 +83,28 @@ the API returned. If the user does not have one, tell them it is three lines to
 record and that it never contains prompt text — the record shape has no field for
 content.
 
+**Lead with "What would actually move this bill".** It is the section the command
+exists for, and the one that answers the fair complaint that Trazum saves 1%. The
+rules recover about 1%; which model a call goes to moves 40% to 80% and the Batch
+API moves 50% flat, and both are priced there from the user's own tokens. If you
+summarise the report and leave that section out, you have handed the user the
+smallest lever in the tool.
+
+Four things to get right about those levers:
+
+- **The options under a slice are combined, never added.** The headline figure
+  already accounts for both — batching a routed call discounts the cheaper model.
+  Adding "route $12.60" and "batch $10.50" gives $23.10 on a slice that spent
+  $21.00, which is impossible. Quote the combined figure.
+- **A route is worth testing, not worth doing.** The arithmetic is exact and says
+  nothing about quality. Give the user the `trazum eval --model <candidate>`
+  command the report prints; never present a route as a recommendation.
+- **No figure is per month.** A usage log covers whatever period was recorded and
+  the tool is not told which. Say "on this bill", not "/month".
+- **The prompt ceiling is a ceiling.** "Shortening prompts can touch at most X%"
+  counts retrieved context and conversation history, which no prompt file holds.
+  The real figure is far below it — do not quote the ceiling as an opportunity.
+
 Three things to get right when reporting on this:
 
 - **It reports no saving, and neither should you.** It says what was spent and
