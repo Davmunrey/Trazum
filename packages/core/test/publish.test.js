@@ -1052,6 +1052,81 @@ describe('the publish preflight', () => {
     assert.match(result.stdout, new RegExp(taken.replace('/', '\\/')));
   });
 
+  it('tells a finished release apart from a collision, and skips rather than failing', async () => {
+    /**
+     * Every version already on the registry is a release that shipped and is
+     * missing only its tag. 1.10.0 was exactly that: the trusted publisher
+     * refused this workflow three tags running, the packages went out by hand,
+     * and the tag was the last thing left.
+     *
+     * Failing there would have refused the GitHub release for a version already
+     * installable — and the failure step would then have printed the
+     * authentication diagnosis, sending the reader to fix credentials that were
+     * not the problem. A confident wrong diagnosis costs more than none.
+     *
+     * So it passes, tells the workflow not to publish, and says out loud that
+     * those tarballs carry no provenance: provenance is signed by whatever
+     * uploads, and this workflow did not.
+     */
+    const { mkdtempSync, readFileSync: read } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const outputPath = join(mkdtempSync(join(tmpdir(), 'trazum-output-')), 'output.txt');
+
+    const result = await withRegistry(
+      (_req, res) => res.writeHead(200).end('{"version":"x"}'),
+      async (url) => await run('versions', url, { GITHUB_OUTPUT: outputPath }),
+    );
+
+    assert.equal(result.status, 0, `a finished release was treated as a collision: ${result.stdout}`);
+    assert.equal(read(outputPath, 'utf8').trim(), 'publish=false');
+    assert.match(result.stdout, /NO provenance/, 'skipped the upload without saying the tarballs are unattested');
+  });
+
+  it('never tells the workflow to publish over a half-finished release', async () => {
+    /**
+     * The dangerous shape, and the reason the skip above is gated on *every*
+     * version being taken rather than any. Some spent and some free means an
+     * earlier run uploaded part of the set and died — those numbers are gone for
+     * good, npm never reuses one, and publishing the remainder would ship a
+     * release whose packages disagree about what version they are.
+     *
+     * Asserting on the absence of `publish=true` and not only on the exit code:
+     * an output written before the failure would leave the workflow's condition
+     * true while the step went red, which is the one combination that publishes
+     * anyway.
+     */
+    const { mkdtempSync, readFileSync: read, existsSync } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const outputPath = join(mkdtempSync(join(tmpdir(), 'trazum-output-')), 'output.txt');
+
+    const taken = manifestOf('packages/core').name;
+    const result = await withRegistry(
+      (req, res) => {
+        if (decodeURIComponent(req.url).includes(taken)) res.writeHead(200).end('{"version":"x"}');
+        else res.writeHead(404).end('{}');
+      },
+      async (url) => await run('versions', url, { GITHUB_OUTPUT: outputPath }),
+    );
+
+    assert.equal(result.status, 1, 'a half-finished release was allowed through');
+    const written = existsSync(outputPath) ? read(outputPath, 'utf8') : '';
+    assert.doesNotMatch(written, /publish=true/, 'told the workflow to publish over a spent version');
+  });
+
+  it('clears the workflow to publish when every version is free', async () => {
+    const { mkdtempSync, readFileSync: read } = await import('node:fs');
+    const { tmpdir } = await import('node:os');
+    const outputPath = join(mkdtempSync(join(tmpdir(), 'trazum-output-')), 'output.txt');
+
+    const result = await withRegistry(
+      (_req, res) => res.writeHead(404).end('{}'),
+      async (url) => await run('versions', url, { GITHUB_OUTPUT: outputPath }),
+    );
+
+    assert.equal(result.status, 0, result.stdout);
+    assert.equal(read(outputPath, 'utf8').trim(), 'publish=true');
+  });
+
   it('treats an unreachable registry as unknown, never as free', async () => {
     /**
      * The direction that matters. A registry that will not answer is not

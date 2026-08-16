@@ -8,6 +8,7 @@ import {
   BASELINE_VERSION,
   breaches,
   cacheableMinimum,
+  cacheEconomics,
   cacheHitRate,
   comparePrompts,
   compareToBaseline,
@@ -1895,7 +1896,28 @@ async function commandProfile(args: Args, pricing: PricingCatalogue, t: CliMessa
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
 
   if (boolFlag(args, 'json')) {
-    console.log(JSON.stringify(report, null, 2));
+    /**
+     * The report, plus the cache verdict the human output leads on.
+     *
+     * Additive rather than a reshape: `report` keeps the shape `@trazum/core`
+     * returns. Leaving a consumer to re-derive the verdict means two
+     * implementations of a sign convention where positive means *worse*, and one
+     * of them will eventually get it backwards.
+     */
+    console.log(
+      JSON.stringify(
+        {
+          ...report,
+          cache: cacheEconomics(report.total),
+          cacheByLabel: report.byLabel.map((r) => ({
+            label: r.label,
+            cache: cacheEconomics(r.breakdown),
+          })),
+        },
+        null,
+        2,
+      ),
+    );
     return;
   }
 
@@ -1952,12 +1974,136 @@ async function commandProfile(args: Args, pricing: PricingCatalogue, t: CliMessa
     console.log(`  ${c.bold(t.profile.biggestPart(biggestName, pct(biggestShare)))}`);
   }
 
+  /**
+   * The hit rate, and then the question the hit rate does not answer.
+   *
+   * `cacheNever()` is keyed off the **verdict**, not off a null hit rate. Those
+   * two came apart on a log whose calls were entirely cache writes with no plain
+   * input: the rate is undefined there — zero reads over zero attempts — while
+   * caching was plainly in use, and the old branch printed "caching was never
+   * used" over a bill made of cache writes.
+   */
+  const cache = cacheEconomics(report.total);
   const hitRate = cacheHitRate(report.total);
-  console.log(
-    hitRate === null
-      ? `  ${c.dim(wrap(t.profile.cacheNever(), 74, '  '))}`
-      : `  ${c.dim(t.profile.cacheHit(pct(hitRate)))}`,
-  );
+  if (cache.verdict === 'not-attempted') {
+    console.log(`  ${c.dim(wrap(t.profile.cacheNever(), 74, '  '))}`);
+  } else if (hitRate !== null) {
+    console.log(`  ${c.dim(t.profile.cacheHit(pct(hitRate)))}`);
+  }
+
+  /**
+   * Whether the caching was worth doing — the one finding here that can
+   * contradict the advice Trazum gives everywhere else.
+   *
+   * A cache write costs 1.25x plain input on Anthropic and 2x at the one-hour
+   * TTL, so a prefix rebuilt faster than it is reused is billed at a premium and
+   * returns nothing: that workload is cheaper with caching switched off. The
+   * counterfactual is exact rather than a projection — caching changes the
+   * multiplier on a token, never the token — so this is the one place in `profile`
+   * where a comparison against what-might-have-been is arithmetic instead of a
+   * guess about a prompt nobody wrote.
+   */
+  /**
+   * The losing labels, **ranked by what caching cost them** and not by bill size.
+   *
+   * `byLabel` arrives sorted by total spend, which is the right order for the
+   * table above and the wrong one here: the worst cache in an estate usually sits
+   * on a small workload, so taking the first three off a spend-ordered list meant
+   * the biggest loser could be the one that went unnamed.
+   */
+  const lostLabels = report.byLabel
+    .map((r) => ({ row: r, cache: cacheEconomics(r.breakdown) }))
+    .filter((r) => r.cache.verdict === 'lost-money')
+    .sort((a, b) => b.cache.deltaUsd - a.cache.deltaUsd);
+
+  const NAMED = 3;
+  const nameOf = (row: { label: string }): string =>
+    row.label === UNLABELLED ? t.profile.unlabelled() : row.label;
+  /**
+   * The names, with the ones that did not fit **counted rather than dropped**.
+   *
+   * The first version sliced to three silently while the money beside it was
+   * summed over every loser — so four bleeding labels printed three names and a
+   * figure that charged them with a fourth label's loss. Truncating is fine;
+   * truncating without saying so is the flattering omission this repository keeps
+   * catching itself at, and `reportProfileGaps` already had the pattern.
+   */
+  const listNames = (rows: Array<{ row: { label: string } }>): string => {
+    const names = rows.slice(0, NAMED).map((r) => nameOf(r.row)).join(', ');
+    return rows.length <= NAMED
+      ? names
+      : `${names} ${t.profile.andMoreLabels(rows.length - NAMED)}`;
+  };
+  const namedLosers = listNames(lostLabels);
+  const bleeding = lostLabels.reduce((sum, r) => sum + r.cache.deltaUsd, 0);
+
+  /**
+   * Whether the log can settle the question at all.
+   *
+   * Decided before anything prints, because it governs whether the confident
+   * sentence prints — not merely whether a caveat follows it. The first attempt
+   * added the caveat and left the assertion above it, so the reader met `Caching
+   * took $0.1000 off this bill` and only afterwards learned it might be a $3.65
+   * loss. A finding a later line retracts is still a finding somebody acted on.
+   */
+  const unsettled =
+    cache.worstCaseVerdict !== cache.verdict && report.total.assumedWriteTtlCalls > 0;
+
+  if (unsettled) {
+    console.log(
+      `  ${c.yellow('!')} ${c.bold(wrap(t.profile.cacheTtlUnsettled(report.total.assumedWriteTtlCalls, formatUsd(-cache.deltaUsd), formatUsd(cache.worstCaseDeltaUsd)), 74, '    '))}`,
+    );
+  } else if (cache.verdict === 'lost-money') {
+    console.log(
+      `  ${c.yellow('!')} ${c.bold(wrap(t.profile.cacheLost(formatUsd(cache.deltaUsd), n(report.total.cacheWriteTokens), n(report.total.cacheReadTokens)), 74, '    '))}`,
+    );
+    // Only when it narrows the search. One label is the total again, said twice.
+    if (lostLabels.length > 0 && report.byLabel.length > 1) {
+      console.log(`    ${c.dim(wrap(t.profile.cacheLostBy(namedLosers), 74, '    '))}`);
+    }
+  } else {
+    if (cache.verdict === 'paid-off') {
+      console.log(`  ${c.dim(wrap(t.profile.cachePaidOff(formatUsd(-cache.deltaUsd)), 74, '  '))}`);
+    } else if (cache.verdict === 'no-difference') {
+      console.log(`  ${c.dim(wrap(t.profile.cacheNoDifference(), 74, '  '))}`);
+    }
+  }
+
+  /**
+   * A workload bleeding underneath a total that does not report a loss.
+   *
+   * The case the aggregate is actively hiding, so it prints as a warning: a cache
+   * paying for itself on one label and losing on another nets out to a comfortable
+   * number, and nothing else on screen would say otherwise.
+   *
+   * The sentence deliberately does not restate the total's verdict. It used to
+   * open "Caching pays off overall", which this position cannot claim — it also
+   * runs under `no-difference`, where the line immediately above has just said the
+   * opposite, and under `unsettled`, where there is no verdict to report at all.
+   */
+  if (lostLabels.length > 0 && cache.verdict !== 'lost-money') {
+    console.log(
+      `  ${c.yellow('!')} ${c.dim(wrap(t.profile.cacheLostHidden(formatUsd(bleeding), namedLosers), 74, '    '))}`,
+    );
+  }
+
+  /**
+   * A label that loses money only if its unstated TTL was the long one.
+   *
+   * The same ambiguity one level down, and it hides better here: a total whose
+   * TTLs are mostly recorded reads as settled while one workload inside it is
+   * entirely unstated. Listed apart from the confirmed losers because it is a
+   * different claim — this one is conditional, and merging the two would make
+   * every name in either list mean less.
+   */
+  const maybeLostLabels = report.byLabel
+    .map((r) => ({ row: r, cache: cacheEconomics(r.breakdown) }))
+    .filter((r) => r.cache.verdict !== 'lost-money' && r.cache.worstCaseVerdict === 'lost-money');
+  if (maybeLostLabels.length > 0) {
+    console.log(
+      `  ${c.dim(wrap(t.profile.cacheTtlUnsettledLabels(listNames(maybeLostLabels)), 74, '    '))}`,
+    );
+  }
 
   /**
    * A total that assumed a cache-write rate is a floor, and says so.

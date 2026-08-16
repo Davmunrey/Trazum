@@ -830,6 +830,21 @@ ${bold('EJEMPLOS')}
     unlabelled: () => 'sin etiqueta',
     cacheHit: (pct) => `Tasa de acierto de caché: ${pct} de la entrada facturable.`,
     cacheNever: () => 'No se usó caché en estas llamadas. Si algún prefijo se repite, ese es el mayor ahorro disponible.',
+    cacheLost: (usd, writes, reads) =>
+      `La caché añadió ${usd} a esta factura en lugar de restarlos. Se escribieron ${writes} tokens en la caché y se leyeron ${reads} — y una escritura cuesta 1,25x la entrada normal, o 2x con el TTL de una hora. Un prefijo que cambia más rápido de lo que se reutiliza paga esa prima a cambio de nada. O cachea un prefijo que no se mueva, o desactiva la caché aquí.`,
+    cachePaidOff: (usd) => `La caché quitó ${usd} de esta factura, frente a esos mismos tokens sin cachear.`,
+    cacheNoDifference: () =>
+      'La caché quedó a cero en esta factura: lo que cobró por estos tokens es lo que habrían costado como entrada normal. Ni se paga a sí misma ni te está costando nada.',
+    cacheLostBy: (labels) => `La pérdida está en: ${labels}.`,
+    cacheLostHidden: (usd, labels) =>
+      `El total de arriba esconde una pérdida: la caché cuesta ${usd} repartidos en ${labels}.`,
+    andMoreLabels: (n) => `y ${count(n)} más`,
+    cacheTtlUnsettled: (calls, asRecorded, atLongTtl) =>
+      `Este registro no puede decir si la caché salió a cuenta. ${count(calls)} ${calls === 1 ? 'llamada no registró' : 'llamadas no registraron'} qué TTL de escritura de caché se usó: con la tarifa de 5 minutos la caché quitó ${asRecorded} de esta factura, y con la de 1 hora esas mismas llamadas le añadieron ${atLongTtl}. No se da ninguna de las dos como respuesta. Registra el objeto "cache_creation" que devuelve la API y esto se resuelve solo.`,
+    cacheTtlBound: (calls, atLongTtl) =>
+      `Esa cifra es una cota, no una medición: ${count(calls)} ${calls === 1 ? 'llamada no registró' : 'llamadas no registraron'} el TTL de escritura de caché, y con la tarifa de 1 hora es ${atLongTtl}.`,
+    cacheTtlUnsettledLabels: (labels) =>
+      `Estas estarían perdiendo dinero si sus escrituras sin registrar usaron el TTL de 1 hora: ${labels}.`,
     biggestPart: (name, pct) => `${name} es el ${pct} de esta factura.`,
     outputDominates: (pct) =>
       `La salida es el ${pct} de esta factura, así que acortar prompts tiene un techo bajo aquí. Lo que mueve la aguja es pedir respuestas más cortas y limitar max_tokens.`,

@@ -28,6 +28,15 @@ file being here rather than pasted into a GitHub form at release time.
 
 ## 1.10.0 — "Every hard edge, both sides"
 
+> **This release has no provenance attestation.** It went out by hand, like 1.8.0
+> and 1.9.0 before it — the trusted publisher refused this workflow on three
+> separate tags, and the diagnosis in 1.9.1 turned out to be right about *that it
+> was refusing* and unable to say why. So these tarballs are not signed by the
+> workflow, and you cannot verify from npm alone that they were built from this
+> commit. The release workflow now tells a shipped release apart from a version
+> collision, so tagging one of these no longer fails and no longer blames
+> authentication for it.
+
 **If you use Trazum, this release changes the number beside every token count.**
 The published error band is `±10%`, down from `±15%`, and it is the fourth value that
 figure has had — the first three were a guess, a measurement, and a fix. This one is

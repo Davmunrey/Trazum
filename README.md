@@ -1875,6 +1875,57 @@ A model the pricing catalogue does not know is **named and kept out of the
 totals** rather than costed at zero — a total that silently omits calls is wrong in
 the flattering direction.
 
+### Did the caching actually pay for itself?
+
+The rest of Trazum tells you to cache. This is the one report that can tell you
+the advice was wrong for a given workload — and a healthy-looking cache hit rate
+will not.
+
+A cache **write** costs 1.25x plain input on Anthropic, and **2x** at the one-hour
+TTL. So a prefix that changes faster than it is reused pays that premium and gets
+nothing back: those calls would be cheaper with caching switched off, and no other
+figure on the report would ever say so.
+
+```
+  Cache hit rate 97.8% of billable input.
+  Caching took $0.2675 off this bill, against the same tokens uncached.
+  ! Caching pays off overall, but it costs $0.1250 on: rag. The total hides that.
+```
+
+That is the case worth having the check for. The hit rate reads 97.8%, the total
+is comfortably ahead, and one of the two workloads is still burning money — the
+aggregate is exactly where a loss like that hides, so the verdict is computed per
+label as well as over the whole log.
+
+**This is the one counterfactual in `profile`, and it is not an exception to the
+no-savings rule — it is the line that rule draws.** A saving requires imagining a
+prompt nobody wrote. This requires imagining the *same tokens at a different
+rate*, which is arithmetic: caching changes the multiplier on a token, never the
+token. Each side is priced per model, so a provider whose writes cost the same as
+input (OpenAI, Gemini) is never accused of a loss it cannot have — or turn off.
+A model you add through a `pricing` overlay can declare its own `multipliers` for
+exactly this reason; without them it would inherit Anthropic's rates and be
+charged a premium its provider never billed.
+
+**When the log cannot settle it, neither does the report.** A cache write whose
+TTL was not recorded is priced at the cheaper of the two rates, and that
+assumption moves the *verdict*, not only the total: between 0.28 and 1.11 read
+tokens per written token the same calls pay for themselves at 1.25x and lose
+money at 2x. So the confident sentence does not print at all —
+
+```
+  ! This log cannot say whether caching paid for itself. 1 call did not record
+    which cache-write TTL was used: at the 5-minute rate caching took $0.1000
+    off this bill, and at the 1-hour rate the same calls added $3.65 to it.
+```
+
+Recording the `cache_creation` object the API returns settles it, and the
+warning disappears.
+
+`--json` carries the verdict as `cache` and `cacheByLabel` rather than leaving it
+to be re-derived. **Positive `deltaUsd` means worse**, the opposite of every other
+figure Trazum emits, which is why the verdict is a word and not just a number.
+
 
 ## Token counting
 

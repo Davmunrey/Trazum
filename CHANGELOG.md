@@ -12,6 +12,91 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**Four faults in the cache verdict, found by an adversarial review of the code
+that had just been written.** Sixteen agents across four lenses, every finding
+handed to an independent verifier told to refute it. Ten survived, and they
+reduce to four.
+
+**The verdict was computed from a total the code itself calls a floor.** A log
+carrying only the flat `cache_creation_input_tokens` cannot say which TTL a write
+used, so the cheaper 5-minute rate is assumed — and that assumption moves the
+*verdict*, not only the total. Reported delta is `0.25w - 0.9r`; at the 1-hour
+rate the truth is `w - 0.9r`, so the **sign** disagrees for any workload reading
+back between 0.28 and 1.11 tokens per token written. Measured on a million written
+against three hundred thousand read back: `Caching took $0.1000 off this bill`,
+where the truth at 2x was a **$3.65 loss**. A $3.75 swing across the sign, taken
+in the flattering direction, printed as a fact.
+
+The economics now carry `worstCaseDeltaUsd` and `worstCaseVerdict`, priced per
+model because the ratio between the two rates is 1.6 on Anthropic and 1.0 where a
+write costs what input costs. When the two verdicts disagree, neither is reported
+— and the confident sentence does not print at all, which is the second half of
+the fix: the first attempt added a caveat and left the assertion above it.
+
+**Losing labels were named by bill size and truncated at three in silence**, while
+the money beside them was summed over every loser. Four bleeding labels printed
+three names and a figure charging them with a fourth's loss, and the worst cache
+in an estate — usually on a small workload — was the one dropped. Ranked by loss
+now, with the remainder counted.
+
+**"Caching pays off overall" printed under a total the line above had just called
+level.** The sentence no longer restates a verdict it is not in a position to make.
+
+**A pricing overlay could not declare `multipliers`,** so a model added through
+`--pricing` inherited Anthropic's 1.25x/2x writes. Trazum computed a premium that
+provider never charged, reported an impossible caching loss, and told the reader
+to turn caching off — while three documents claimed that could not happen to a
+provider whose writes cost what input costs. Overlays carry `multipliers` now,
+validated like every other key: an unknown rate name is an error with a
+suggestion, a zero multiplier is refused along with the negatives, and `batch:
+null` stays distinct from leaving it out.
+
+### Added
+
+**`trazum profile` now says whether the caching actually paid for itself** — the
+one finding in this repository that can contradict the advice the rest of it
+gives.
+
+Trazum tells people to cache. On Anthropic a cache **write** costs 1.25x plain
+input, and **2x** at the one-hour TTL, so a prefix that changes faster than it is
+reused pays that premium and gets nothing back: those calls are cheaper with
+caching switched off. Nothing else on the report could say so. The cache hit rate
+cannot — it reads **97.8%** on the log used to test this, while one of the two
+workloads on it is burning money.
+
+```
+  Cache hit rate 97.8% of billable input.
+  Caching took $0.2675 off this bill, against the same tokens uncached.
+  ! Caching pays off overall, but it costs $0.1250 on: rag. The total hides that.
+```
+
+Computed **per label as well as over the whole log**, because that is the case
+worth having it for: a profitable cache on one workload and a bleeding one on
+another net out to a comfortable total, and an aggregate is exactly where a loss
+like that hides. Both sides are priced **per model**, so a provider whose writes
+cost the same as plain input — OpenAI, Gemini — is never accused of a loss it
+cannot have and could not switch off if it did.
+
+This is the only counterfactual in `profile`, and it is not an exception to the
+module's no-savings rule so much as the line that rule draws. A saving means
+imagining a prompt nobody wrote. This means imagining the *same tokens at a
+different rate*, which is arithmetic: caching changes the multiplier on a token,
+never the token.
+
+`--json` carries the verdict as `cache` and `cacheByLabel` rather than leaving a
+consumer to re-derive it — **positive `deltaUsd` means worse**, the opposite of
+every other figure Trazum emits, and two implementations of that convention would
+eventually disagree. `cacheEconomics` is exported from `@trazum/core`.
+
+### Fixed
+
+**`profile` claimed caching had never been used on a bill made of cache writes.**
+The message was keyed off a null cache hit rate, and the rate is undefined — zero
+reads over zero attempts — on a log whose calls are entirely cache writes with no
+plain input. So "Caching was never used on these calls" printed above a bill that
+was 96% cache writes. It is keyed off whether caching was used now, which is a
+different question and the one the sentence asks.
+
 **Three faults in `profile`, found by an adversarial review of the code that had
 just been written, and all three understated the bill.** Twenty-four agents across
 four lenses — money honesty, the parser, the report's claims, security — each

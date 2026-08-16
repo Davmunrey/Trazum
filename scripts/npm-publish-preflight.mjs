@@ -119,6 +119,23 @@ function summary(markdown) {
 }
 
 /**
+ * A step output, for a decision the workflow has to make from what was found.
+ *
+ * Only ever called with values this file wrote — never with anything from the
+ * registry — because a step output becomes a shell condition in the caller and
+ * a value crossing that boundary is an injection surface, not a string.
+ */
+function output(key, value) {
+  const path = process.env.GITHUB_OUTPUT;
+  if (!path) return;
+  try {
+    appendFileSync(path, `${key}=${value}\n`);
+  } catch {
+    // Outside Actions, or a read-only path. The caller defaults to publishing.
+  }
+}
+
+/**
  * A package name and a version, checked before either reaches a URL.
  *
  * **Both values come out of a file**, which is what CodeQL flagged and it was
@@ -441,14 +458,58 @@ async function checkVersions() {
     if (taken) spent.push(`${name}@${version}`);
   }
 
+  /**
+   * Every version already on the registry is a **finished** release, not a
+   * collision.
+   *
+   * That state is reachable and 1.10.0 reached it: the trusted publisher refused
+   * this workflow three tags running, the packages went out by hand, and the tag
+   * was then the only thing missing. Failing here would have refused to create the
+   * GitHub release for a version that had shipped, and — worse — the failure step
+   * would have printed the authentication diagnosis, telling the reader to go fix
+   * credentials that were not the problem. A wrong diagnosis is more expensive than
+   * none.
+   *
+   * So the publish steps are skipped and the release goes ahead. Loudly: a release
+   * that quietly did not publish is the flattering silence this repository refuses,
+   * and these tarballs carry **no provenance attestation**, because provenance is
+   * signed by the workflow that uploads and this workflow did not upload them.
+   */
+  if (spent.length === packages.length) {
+    output('publish', 'false');
+    notice(
+      `All ${packages.length} versions are already on the registry, so this tag has nothing to ` +
+        'upload and the publish steps are skipped. Those tarballs were published outside this ' +
+        'workflow and therefore carry NO provenance attestation — a consumer cannot verify they ' +
+        'were built from this repository. Record that in RELEASES.md. The GitHub release is still ' +
+        'created, because the tag is what was missing.',
+    );
+    summary(
+      '\n### Nothing to publish\n\nEvery version in this tag is already on the registry, so the ' +
+        'publish steps were skipped and the GitHub release was created on its own.\n\n' +
+        '> **These tarballs have no provenance attestation.** They did not come from this ' +
+        'workflow, and provenance is signed by whatever uploads. `RELEASES.md` should say so.\n',
+    );
+    return 0;
+  }
+
+  /**
+   * Some spent and some free is the dangerous shape, and the only one that fails.
+   * The packages publish in dependency order, so this is what a half-finished
+   * release looks like from the next tag: whatever uploaded has spent its number
+   * for good, and npm never reuses one.
+   */
   if (spent.length > 0) {
     fail(
       `Already on the registry, and npm never reuses a version: ${spent.join(', ')}. ` +
-        'Bump every manifest to the next patch and tag again. Nothing was published.',
+        `The other ${packages.length - spent.length} are free, so this is a half-finished release ` +
+        'rather than a repeated tag. Bump every manifest to the next patch and tag again. ' +
+        'Nothing was published.',
     );
     return 1;
   }
 
+  output('publish', 'true');
   notice(`All ${packages.length} versions are free to publish.`);
   return 0;
 }

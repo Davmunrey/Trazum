@@ -368,6 +368,44 @@ export interface CliMessages {
     unlabelled(): string;
     cacheHit(pct: string): string;
     cacheNever(): string;
+    /**
+     * Caching added to the bill instead of taking money off it.
+     *
+     * The finding no other command in this repository can produce, and the only
+     * one that can contradict Trazum's own advice: on Anthropic a cache write is
+     * billed at 1.25x plain input, or 2x at the 1-hour TTL, so a prefix that
+     * changes faster than it is reused costs a premium and returns nothing.
+     */
+    cacheLost(usd: string, writes: string, reads: string): string;
+    cachePaidOff(usd: string): string;
+    cacheNoDifference(): string;
+    /** Which labels the loss is in, when the total already reports one. */
+    cacheLostBy(labels: string): string;
+    /**
+     * A label bleeding underneath a total that reports no loss.
+     *
+     * Deliberately says nothing about what the total did. It runs under both
+     * `paid-off` and `no-difference`, and the version that opened "Caching pays
+     * off overall" printed that claim directly beneath a line saying caching had
+     * come out level.
+     */
+    cacheLostHidden(usd: string, labels: string): string;
+    /** Losing labels past the ones named, counted rather than dropped. */
+    andMoreLabels(count: number): string;
+    /**
+     * The log cannot say whether caching paid for itself.
+     *
+     * An unrecorded cache-write TTL is priced at the cheaper of the two rates, and
+     * that moves the verdict rather than only the total: between 0.28 and 1.11
+     * reads per write the same calls pay for themselves at 1.25x and lose money at
+     * 2x. Reporting the assumed half as an answer takes the flattering side of a
+     * question the data does not settle.
+     */
+    cacheTtlUnsettled(calls: number, asRecorded: string, atLongTtl: string): string;
+    /** Same verdict either way, but the figure beside it is a bound. */
+    cacheTtlBound(calls: number, atLongTtl: string): string;
+    /** Labels that lose money only if their unstated TTL was the long one. */
+    cacheTtlUnsettledLabels(labels: string): string;
     /** The finding the whole command exists to produce. */
     biggestPart(name: string, pct: string): string;
     outputDominates(pct: string): string;

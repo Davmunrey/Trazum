@@ -8,10 +8,12 @@ import { describe, it } from 'node:test';
 // Splitting the imports here is also the shape a consumer should copy.
 import {
   BUNDLED_CATALOGUE,
+  cacheEconomics,
   catalogueFromOverlay,
   cheapestOfTierIn,
   modelFrom,
   optimize,
+  profileUsage,
   parsePricingOverlay,
   withExactTokenCounts,
 } from '../dist/index.js';
@@ -385,5 +387,104 @@ describe('recomputing with exact counts', () => {
     const result = optimize('Please summarise this. Thank you.');
     const recomputed = await withExactTokenCounts(result, async () => 100);
     assert.equal(recomputed.tokenSource, 'external');
+  });
+});
+
+describe('cache and batch rates in an overlay', () => {
+  /**
+   * From an adversarial review of `trazum profile`, and the fault was a false
+   * accusation rather than a missing feature.
+   *
+   * `multipliers` was not an overlay key, so a model added through `--pricing`
+   * inherited Anthropic's defaults: a cache write at 1.25x input, or 2x at the
+   * long TTL. Most providers charge plain input for a write. `profile` therefore
+   * computed a premium that model never charged, reported a caching loss it could
+   * not have, and told the reader to turn caching off — while the README, the CLI
+   * README and the skill all said a provider whose writes cost what input costs is
+   * never accused of a loss it cannot have.
+   */
+
+  const overlay = (multipliers) =>
+    JSON.stringify({
+      lastReviewed: '2026-08-14',
+      models: {
+        'acme-fast-1': {
+          displayName: 'Acme Fast 1',
+          inputPerMTok: 2,
+          outputPerMTok: 8,
+          contextWindow: 200_000,
+          cacheMinTokens: 1024,
+          tier: 'sonnet',
+          capability: 'mid',
+          caching: 'automatic',
+          ...(multipliers === undefined ? {} : { multipliers }),
+        },
+      },
+    });
+
+  it('lets an added model say what its cache writes actually cost', () => {
+    const catalogue = catalogueFromOverlay(
+      overlay({ cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null }),
+    );
+    const model = catalogue.byId.get('acme-fast-1');
+    assert.deepEqual(model.multipliers, {
+      cacheRead: 0.1,
+      cacheWrite5m: 1,
+      cacheWrite1h: 1,
+      batch: null,
+    });
+  });
+
+  it('and that stops it being accused of a loss it cannot have', () => {
+    /**
+     * The whole point, checked end to end rather than on the parsed object: a
+     * million tokens written and never read back is a real premium at 1.25x and no
+     * premium at all at 1x, and the verdict has to follow the model rather than
+     * the default.
+     */
+    const log = JSON.stringify({
+      model: 'acme-fast-1',
+      usage: { input_tokens: 100, output_tokens: 100, cache_creation_input_tokens: 1_000_000 },
+    });
+    const declared = cacheEconomics(
+      profileUsage(log, {
+        catalogue: catalogueFromOverlay(overlay({ cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null })),
+      }).total,
+    );
+    assert.equal(declared.verdict, 'no-difference', 'a 1x write was still charged a premium');
+    assert.equal(declared.worstCaseVerdict, 'no-difference', 'the long TTL invented one');
+
+    // And the default remains what it was for anyone who says nothing, so this is
+    // an added capability rather than a silent change to existing overlays.
+    const silent = cacheEconomics(
+      profileUsage(log, { catalogue: catalogueFromOverlay(overlay(undefined)) }).total,
+    );
+    assert.equal(silent.verdict, 'lost-money');
+  });
+
+  it('refuses a misspelled rate rather than ignoring it', () => {
+    // The same standard as every other key here: an overlay that silently drops
+    // half of what it says leaves a price decision made on a number nobody applied.
+    assert.throws(
+      () => catalogueFromOverlay(overlay({ cacheWrite5min: 1 })),
+      /unknown key "models\.acme-fast-1\.multipliers\.cacheWrite5min" — did you mean "cacheWrite5m"\?/,
+    );
+  });
+
+  it('refuses a free cache read', () => {
+    /**
+     * Zero goes out with the negatives. No provider publishes a free read, and
+     * accepting one would let a typo turn a real cost into no cost — the
+     * flattering direction, which is the one this file exists to keep out.
+     */
+    assert.throws(() => catalogueFromOverlay(overlay({ cacheRead: 0 })), /must be a number greater than 0/);
+  });
+
+  it('keeps "no batch API" distinct from "nobody said"', () => {
+    const explicit = catalogueFromOverlay(overlay({ batch: null })).byId.get('acme-fast-1');
+    assert.equal(explicit.multipliers.batch, null, 'an explicit null was dropped');
+
+    const unsaid = catalogueFromOverlay(overlay({ cacheRead: 0.1 })).byId.get('acme-fast-1');
+    assert.equal('batch' in unsaid.multipliers, false, 'an unmentioned batch rate was invented');
   });
 });

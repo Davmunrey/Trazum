@@ -94,6 +94,22 @@ Three things to get right when reporting on this:
 - **Unpriced models are named and excluded from the totals.** If the report warns
   about one, the total is lower than the real bill by that amount. Do not quote
   the total without mentioning it.
+- **If it says caching cost money, that outranks everything else on screen.** A
+  cache write is 1.25x plain input on Anthropic and 2x at the one-hour TTL, so a
+  prefix that changes faster than it is reused pays a premium for nothing — those
+  calls are cheaper with caching off. It is the one finding that contradicts the
+  advice the rest of Trazum gives, so report it plainly rather than softening it,
+  and never quote the cache hit rate as reassurance against it: the hit rate reads
+  97.8% on a log where a workload is bleeding.
+- **The per-label line is the actionable one.** A profitable cache on one workload
+  and a losing one on another net out to a comfortable total. If the report names
+  a label under "the total hides a loss", that label is the thing to fix.
+- **If it says the log cannot settle whether caching paid off, do not pick a
+  side.** A cache write whose TTL the log did not record is priced at the cheaper
+  of the two rates, and that assumption moves the verdict: the same calls can pay
+  for themselves at 1.25x and lose money at 2x. The report prints both figures and
+  refuses to choose; report it the same way, and tell the user the fix is
+  recording the `cache_creation` object the API already returns.
 
 ## Stopping the estate drifting upwards
 

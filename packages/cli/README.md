@@ -114,6 +114,35 @@ A model the pricing catalogue does not know is named and kept **out** of the
 totals, because a total that silently omits calls is wrong in the flattering
 direction.
 
+### Did the caching pay for itself?
+
+The rest of Trazum tells you to cache. This is the one report that can say the
+advice was wrong here — and the cache hit rate will not.
+
+A cache write costs 1.25x plain input on Anthropic and **2x** at the one-hour TTL,
+so a prefix that changes faster than it is reused pays that premium for nothing:
+
+```
+  Cache hit rate 97.8% of billable input.
+  Caching took $0.2675 off this bill, against the same tokens uncached.
+  ! Caching pays off overall, but it costs $0.1250 on: rag. The total hides that.
+```
+
+Computed per label as well as overall — ranked by what caching cost each one, not
+by the size of its bill, because the worst cache in an estate usually sits on a
+small workload. Each side is priced per model, so a provider whose writes cost the
+same as input is never accused of a loss it cannot have; a model added through a
+`pricing` overlay can declare its own `multipliers` for the same reason.
+
+**When the log cannot settle it, neither does the report.** A cache write whose
+TTL was not recorded is priced at the cheaper of the two rates, and that moves the
+verdict rather than only the total — so instead of a figure you get both, and what
+to record to remove the doubt.
+
+This is the only counterfactual here, and it is arithmetic rather than a guess:
+caching changes the multiplier on a token, never the token. `--json` carries it as
+`cache` and `cacheByLabel` — **positive `deltaUsd` means worse.**
+
 ## The ceiling is not the problem
 
 A budget says nothing while a prompt climbs from 800 tokens to 1,900 under a

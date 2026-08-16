@@ -818,6 +818,21 @@ ${bold('EXAMPLES')}
     unlabelled: () => 'unlabelled',
     cacheHit: (pct) => `Cache hit rate ${pct} of billable input.`,
     cacheNever: () => 'Caching was never used on these calls. If any prefix repeats, that is the largest saving available.',
+    cacheLost: (usd, writes, reads) =>
+      `Caching added ${usd} to this bill instead of taking it off. ${writes} tokens were written to the cache and ${reads} read back — and a write costs 1.25x plain input, or 2x at the 1-hour TTL. A prefix that changes faster than it is reused pays that premium for nothing. Either cache a prefix that holds still, or turn caching off here.`,
+    cachePaidOff: (usd) => `Caching took ${usd} off this bill, against the same tokens uncached.`,
+    cacheNoDifference: () =>
+      'Caching came out level on this bill: what it charged for these tokens is what they would have cost as ordinary input. It is neither paying for itself nor costing you anything.',
+    cacheLostBy: (labels) => `The loss is in: ${labels}.`,
+    cacheLostHidden: (usd, labels) =>
+      `The total above hides a loss: caching costs ${usd} across ${labels}.`,
+    andMoreLabels: (n) => `and ${count(n)} more`,
+    cacheTtlUnsettled: (calls, asRecorded, atLongTtl) =>
+      `This log cannot say whether caching paid for itself. ${count(calls)} ${calls === 1 ? 'call' : 'calls'} did not record which cache-write TTL was used: at the 5-minute rate caching took ${asRecorded} off this bill, and at the 1-hour rate the same calls added ${atLongTtl} to it. Neither is reported as the answer. Record the "cache_creation" object the API returns and this settles itself.`,
+    cacheTtlBound: (calls, atLongTtl) =>
+      `That figure is a bound, not a measurement: ${count(calls)} ${calls === 1 ? 'call' : 'calls'} did not record a cache-write TTL, and at the 1-hour rate it is ${atLongTtl}.`,
+    cacheTtlUnsettledLabels: (labels) =>
+      `These would be losing money if their unrecorded writes used the 1-hour TTL: ${labels}.`,
     biggestPart: (name, pct) => `${name} is ${pct} of this bill.`,
     outputDominates: (pct) =>
       `Output is ${pct} of this bill, so shortening prompts has a low ceiling here. What moves it is asking for shorter answers and capping max_tokens.`,
