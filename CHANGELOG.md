@@ -10,6 +10,8 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+## 1.11.0 — "What actually moves the bill"
+
 ### Fixed
 
 **`1 calls`, and `1 llamadas` in Spanish.** Reachable on ordinary input — a
