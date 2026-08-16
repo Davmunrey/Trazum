@@ -71,7 +71,13 @@ describe('inside a subscription', () => {
 
     assert.match(out, /What this buys on Claude Code/);
     assert.match(out, /tokens back, every call/);
-    assert.match(out, /Context window: [\d.]+% → [\d.]+%/);
+    /**
+     * Either shape, because both say what the tokens bought. The share moves on a
+     * prompt where the rules recover enough to shift a decimal, and where they do
+     * not the honest line is that it did not move — which is what replaced the
+     * `0.0% → 0.0%` this used to allow.
+     */
+    assert.match(out, /Context window: [\d.]+% → [\d.]+%|[\d.]+% of .*-token window, before and after/);
   });
 
   it('drops the advisories whose only pitch is money', async () => {
@@ -173,7 +179,9 @@ describe('Spanish', () => {
       CLAUDECODE: '1',
     });
     assert.match(out, /Qué ganas con esto en Claude Code/);
-    assert.match(out, /Ventana de contexto/);
+    // Either shape, as in the English case above: the share moves, or the line
+    // says plainly that it did not.
+    assert.match(out, /Ventana de contexto|de la ventana de .*, antes y después/);
     assert.doesNotMatch(out, /\$/);
   });
 });

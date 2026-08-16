@@ -602,6 +602,8 @@ function printReport(
   tokensOnly = false,
   host: HostEnvironment = { id: 'terminal', displayName: 'terminal', billing: 'unknown', evidence: null },
   suggestions: { result: SuggestResult; applied: boolean; locale: Locale } | null = null,
+  /** They named a scenario, and the host is suppressing the money anyway. */
+  namedScenario = false,
 ): void {
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const sourceNote =
@@ -747,7 +749,7 @@ function printReport(
   //
   // What replaces it is the thing that *is* scarce there: the context window.
   if (tokensOnly) {
-    printTokensOnly(result, host, t, n);
+    printTokensOnly(result, host, t, n, namedScenario);
   } else {
     printMoney(result, t, n);
   }
@@ -803,6 +805,25 @@ function printReport(
 
   printSuggestions(suggestions, t, n);
   printRest(result, showDiff, t, examplesReview, n);
+
+  /**
+   * Where the money actually is, said at the front door.
+   *
+   * `optimize` is the first command anybody runs, and it reports the smallest
+   * line item on the bill: measured, about 1% of a monthly figure. Everything
+   * that moves 40% to 80% — which model the call goes to, the Batch API,
+   * caching, what re-sending the conversation costs — lives in `profile`, which
+   * needs a usage log a new reader does not have and has no reason to go looking
+   * for.
+   *
+   * A tool that learned that and only said it in the command you reach last has
+   * not said it. So it prints here, once, at the end, on every run: this is the
+   * small lever, and the big ones are one file away.
+   */
+  console.log();
+  console.log(
+    `  ${c.dim(wrap(tokensOnly ? t.report.beyondThisPromptTokensOnly() : t.report.beyondThisPrompt(), 74, '  '))}`,
+  );
 }
 
 /** The cost section, for anyone billed by the token. */
@@ -855,6 +876,8 @@ function printTokensOnly(
   host: HostEnvironment,
   t: CliMessages,
   n: (v: number) => string,
+  /** Whether they named a scenario while the money was being withheld. */
+  namedScenario = false,
 ): void {
   const model = getModel(result.usage.model);
   const saved = result.tokensBefore - result.tokensAfter;
@@ -874,20 +897,39 @@ function printTokensOnly(
   console.log();
   console.log(`  ${c.green(t.report.tokensSaved(n(saved)))}`);
 
-  // Share of the window, which is what a saved token is actually worth here.
+  /**
+   * Share of the window, which is what a saved token is actually worth here.
+   *
+   * A 225-token prompt against a million-token window printed `0.0% → 0.0%`: a
+   * line whose whole job is to say what a token buys, saying nothing twice. When
+   * both sides round to the same figure the honest statement is the other one —
+   * that the window is not the constraint on this prompt.
+   */
   const share = (tokens: number): string =>
     `${((tokens / model.contextWindow) * 100).toFixed(1)}%`;
+  const before = share(result.tokensBefore);
+  const after = share(result.tokensAfter);
+  /**
+   * Three cases, and the first version had two.
+   *
+   * Equal shares mean either "this prompt is nothing against a million tokens" or
+   * "this prompt is 10% of the window and one token did not move it". Using the
+   * negligible message for both told a reader holding a tenth of a Haiku window
+   * that they were under a tenth of a percent — off by two orders of magnitude,
+   * on a line whose only job is to size the prompt against the window.
+   */
+  const unchanged = before === after;
+  const negligible = after === '0.0%';
   console.log(
     `  ${c.dim(
-      t.report.windowUse(
-        share(result.tokensBefore),
-        share(result.tokensAfter),
-        model.displayName,
-        n(model.contextWindow),
-      ),
+      !unchanged
+        ? t.report.windowUse(before, after, model.displayName, n(model.contextWindow))
+        : negligible
+          ? t.report.windowNegligible(n(result.tokensAfter), model.displayName, n(model.contextWindow))
+          : t.report.windowUnmoved(after, model.displayName, n(model.contextWindow)),
     )}`,
   );
-  console.log(`  ${c.dim(t.report.tokensOnlyCost())}`);
+  console.log(`  ${c.dim(namedScenario ? t.report.tokensOnlyAskedFor() : t.report.tokensOnlyCost())}`);
 }
 
 /**
@@ -1522,11 +1564,26 @@ async function commandOptimize(
   const tokensOnly = boolFlag(args, 'cost')
     ? false
     : boolFlag(args, 'tokens-only') || host.billing === 'subscription';
+  /**
+   * Whether they named a scenario while the money was being withheld.
+   *
+   * Not a reason to start printing dollars — `--cost` is the documented way to
+   * ask, and `--calls` is a scenario parameter with a default that several
+   * commands take purely to size a finding. Making it imply `--cost` would hand
+   * dollar figures to somebody who put `--calls` in an alias precisely because
+   * they had configured the tool not to show them.
+   *
+   * It is a reason to stop answering with a generic hint. Somebody who typed
+   * `--calls 50000` and read "pass --cost if this prompt is bound for a metered
+   * API" has been told to do a thing they plainly just tried to do.
+   */
+  const namedScenario = args.flags.has('calls') || args.flags.has('output-tokens');
 
   printReport(result, boolFlag(args, 'diff'), t, examplesReview, reorder, tokensOnly, host,
     suggestions
       ? { result: suggestions, applied: boolFlag(args, 'apply-suggestions'), locale }
       : null,
+    namedScenario,
   );
   if (outPath) {
     console.log(c.dim(t.report.wroteTo(outPath)));

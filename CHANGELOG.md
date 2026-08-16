@@ -10,6 +10,40 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**Three product faults, found by running the tool as a new user would rather than
+by reading it.**
+
+**`optimize` never said where the money was.** It is the first command anybody
+runs, and it reports the smallest line item on the bill — measured, about 1%. On
+the bundled example it prints `-0.4%` and `no rule found anything to trim`, and
+then stopped. Everything that moves 40% to 80% lives in `profile`, which needs a
+usage log a new reader does not have and has no reason to go looking for. A tool
+that learned that and only said it in the command you reach last has not said it.
+Every `optimize` run now closes with the four levers named and the command that
+prices them.
+
+**A named scenario was answered with a hint to name it.** Inside Claude Code the
+report switches to tokens-only, and `--calls 50000` was met with "pass --cost if
+this prompt is bound for a metered API" — telling somebody to do the thing they had
+plainly just tried to do. It now says the scenario went unpriced and why.
+
+The first attempt at this made `--calls` imply `--cost`, which was wrong and the
+existing tests were right to fail it: `--calls` is a scenario parameter with a
+default that several commands take purely to size a finding, so making it price
+things would hand dollar figures to anybody who had put it in an alias precisely
+because they had configured the tool not to show them. `--cost` stays the one way
+to ask.
+
+**A line that said nothing twice.** A 225-token prompt against a million-token
+window reported `Context window: 0.0% → 0.0%` — the one line whose job is to say
+what a saved token buys. It now distinguishes three cases, and the first attempt at
+that was itself wrong: equal shares can mean "nothing against a million tokens" or
+"10% of a Haiku window that one token did not move", and using the negligible
+wording for both told a reader holding a tenth of the window they were under a
+tenth of a percent. Caught by its own test.
+
 ### Added
 
 **`trazum profile` now measures what re-sending the conversation costs.**
