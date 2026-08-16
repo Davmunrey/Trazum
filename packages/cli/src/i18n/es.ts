@@ -441,8 +441,18 @@ ${bold('EJEMPLOS')}
     tokensOnlyAsked: () => 'Costes ocultos porque has pedido solo tokens.',
     tokensSaved: (tokens) =>
       `${tokens} token${tokens === '1' ? '' : 's'} de vuelta, en cada llamada.`,
+    windowNegligible: (tokens, model, window) =>
+      `${tokens} tokens de la ventana de ${window} de ${model} — menos de una décima de por ciento, así que la ventana no es lo que limita este prompt.`,
+    windowUnmoved: (share, model, window) =>
+      `${share} de la ventana de ${window} de ${model}, antes y después: este cambio es demasiado pequeño para moverla.`,
+    beyondThisPromptTokensOnly: () =>
+      'Acortar un prompt es la palanca más pequeña que hay: medido en un prompt de soporte corriente, las reglas recuperan alrededor del 1% de una factura mensual. Si alguno de tus prompts va a una API de pago por uso, "trazum profile <usage.jsonl>" lee lo que el proveedor cobró de verdad y calcula las palancas que no son el prompt. Grabar ese registro son tres líneas y nunca contiene texto del prompt.',
+    beyondThisPrompt: () =>
+      'Acortar un prompt es la palanca más pequeña que hay: medido en un prompt de soporte corriente, las reglas recuperan alrededor del 1% de una factura mensual. En una API de pago por uso, lo que mueve del 40% al 80% es a qué modelo va la llamada, la Batch API, la caché de prompts, y lo que cuesta reenviar la conversación — y "trazum profile <usage.jsonl>" calcula las cuatro a partir de lo que el proveedor cobró de verdad. Grabar ese registro son tres líneas y nunca contiene texto del prompt.',
     windowUse: (before, after, model, window) =>
       `Ventana de contexto: ${before} → ${after} de los ${window} tokens de ${model} — sitio que se lleva la conversación.`,
+    tokensOnlyAskedFor: () =>
+      'Has nombrado un escenario y no se ha calculado su coste: Trazum se está ejecutando en un sitio que factura por suscripción, así que aquí no hay factura que reducir. Añade --cost para calcularlo igualmente — el host dice dónde se ejecuta Trazum, no a dónde va tu prompt.',
     tokensOnlyCost: () => 'Usa --cost si este prompt va a una API de pago por uso.',
     pricingOverlaid: (models, lastReviewed) =>
       `Los precios de ${models} vienen de un overlay local revisado el ${lastReviewed}, no del catálogo incluido.`,

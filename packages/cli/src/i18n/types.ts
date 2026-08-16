@@ -93,7 +93,49 @@ export interface CliMessages {
     tokensOnlyAsked(): string;
     tokensSaved(tokens: string): string;
     windowUse(before: string, after: string, model: string, window: string): string;
+    /**
+     * The prompt is a rounding error against the window.
+     *
+     * Distinct from `windowUnmoved`: both shares rounding to the same string can
+     * mean "this prompt is nothing against a million tokens" or "this prompt is
+     * 10% of the window and one token did not move it". The first version used
+     * one message for both and told a reader holding 10% of the window that they
+     * were under a tenth of a percent.
+     */
+    windowNegligible(tokens: string, model: string, window: string): string;
+    /** A material share the change did not move. */
+    windowUnmoved(share: string, model: string, window: string): string;
+    /**
+     * Where the money actually is, said at the front door.
+     *
+     * `optimize` is the first command anybody runs and it reports the smallest
+     * line item on the bill — measured, about 1%. Everything that moves 40% to
+     * 80% lives in `profile`, which needs a usage log, which a new reader does
+     * not have and has no reason to go looking for. A tool that learned the
+     * truth and only tells it in the command you reach last has not told you.
+     */
+    beyondThisPrompt(): string;
+    /**
+     * The same pointer where the host bills by subscription.
+     *
+     * Deliberately does not list the metered levers. `tokens-only.test.js` refuses
+     * any mention of the Batch API on a flat plan — "use a cheaper model" is not
+     * weaker advice there, it is not advice — and a closing note that recited them
+     * would put money advice in front of the reader that guard exists to protect,
+     * however carefully it was hedged.
+     */
+    beyondThisPromptTokensOnly(): string;
     tokensOnlyCost(): string;
+    /**
+     * They named a scenario and the host withheld the money anyway.
+     *
+     * `--cost` stays the one way to ask, because `--calls` is a scenario
+     * parameter with a default that several commands take purely to size a
+     * finding. But answering somebody who typed `--calls 50000` with "pass
+     * --cost if this prompt is bound for a metered API" tells them to do the
+     * thing they plainly just tried to do.
+     */
+    tokensOnlyAskedFor(): string;
     diffTooLarge(lines: number, max: number): string;
     reorderHeading(): string;
     reorderMoved(blocks: number, tokens: string): string;

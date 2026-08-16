@@ -437,8 +437,18 @@ ${bold('EXAMPLES')}
     // `tokens` arrives already formatted for the locale, so the singular is
     // decided on the string rather than on a number that is no longer here.
     tokensSaved: (tokens) => `${tokens} token${tokens === '1' ? '' : 's'} back, every call.`,
+    windowNegligible: (tokens, model, window) =>
+      `${tokens} tokens of ${model}'s ${window}-token window — under a tenth of a percent, so the window is not what constrains this prompt.`,
+    windowUnmoved: (share, model, window) =>
+      `${share} of ${model}'s ${window}-token window, before and after: this change is too small to move it.`,
+    beyondThisPromptTokensOnly: () =>
+      'Shortening a prompt is the smallest lever there is: measured on an ordinary support prompt, the rules recover about 1% of a monthly bill. If any of your prompts go to a metered API, "trazum profile <usage.jsonl>" reads what the provider actually charged and prices the levers that are not the prompt. Recording that log is three lines and it never contains prompt text.',
+    beyondThisPrompt: () =>
+      'Shortening a prompt is the smallest lever there is: measured on an ordinary support prompt, the rules recover about 1% of a monthly bill. On a metered API the things that move 40% to 80% are which model the call goes to, the Batch API, prompt caching, and what re-sending the conversation costs — and "trazum profile <usage.jsonl>" prices all four from what the provider actually charged. Recording that log is three lines and it never contains prompt text.',
     windowUse: (before, after, model, window) =>
       `Context window: ${before} → ${after} of ${model}'s ${window} tokens — room the conversation gets instead.`,
+    tokensOnlyAskedFor: () =>
+      'You named a scenario, and it was not priced: Trazum is running somewhere that bills by subscription, so there is no bill here to reduce. Add --cost to price it anyway — the host says where Trazum runs, not where your prompt goes.',
     tokensOnlyCost: () => 'Pass --cost if this prompt is bound for a metered API.',
     pricingOverlaid: (models, lastReviewed) =>
       `Prices for ${models} came from a local overlay reviewed ${lastReviewed}, not from the bundled catalogue.`,

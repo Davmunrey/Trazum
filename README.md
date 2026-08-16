@@ -2055,6 +2055,23 @@ to be re-derived. **Positive `deltaUsd` means worse**, the opposite of every oth
 figure Trazum emits, which is why the verdict is a word and not just a number.
 
 
+## Where this fits, said at the front door
+
+Every `optimize` run closes with the same sentence, because it is the truth about
+what the command just did:
+
+```
+  Shortening a prompt is the smallest lever there is: measured on an ordinary
+  support prompt, the rules recover about 1% of a monthly bill. On a metered
+  API the things that move 40% to 80% are which model the call goes to, the
+  Batch API, prompt caching, and what re-sending the conversation costs — and
+  "trazum profile <usage.jsonl>" prices all four from what the provider
+  actually charged.
+```
+
+A tool whose first command reports 1% and says nothing about the other 99% has
+not told you what it knows.
+
 ## Token counting
 
 By default Trazum uses a **dependency-free heuristic estimator**: it classifies
