@@ -18,6 +18,8 @@ export type {
   UsageShares,
 } from './usage.js';
 export { conversationGrowth, createConversationTracker } from './conversation.js';
+export { createOutputShapeTracker, outputShapes } from './output-shape.js';
+export type { OutputShape, OutputShapeOptions, OutputShapeTracker } from './output-shape.js';
 export type { ConversationGrowth, ConversationOptions, ConversationTracker } from './conversation.js';
 export { billLevers } from './levers.js';
 export type { BillLevers, BillLeverOptions, LeverId, SliceLevers } from './levers.js';

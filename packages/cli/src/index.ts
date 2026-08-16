@@ -2296,6 +2296,39 @@ async function commandProfile(args: Args, pricing: PricingCatalogue, t: CliMessa
     console.log(`  ${c.dim(wrap(t.profile.historyNoSessions(), 74, '  '))}`);
   }
 
+  /**
+   * Where the output spend concentrates — the actionable half of "output
+   * dominates", which the headline above could only state as a total.
+   *
+   * Two bills with identical output spend want opposite responses. Six per cent
+   * of calls holding half of it is a tail, and a tail has a cause worth a
+   * morning; forty-five per cent is what evenly spread looks like, and the only
+   * lever there is asking every answer to be shorter. The threshold between the
+   * two is a quarter of the calls — far enough from both shapes that rounding
+   * cannot flip the message, and stated here because it is a presentation choice,
+   * not a measurement.
+   */
+  if (report.outputShapes.length > 0) {
+    console.log();
+    console.log(c.bold(t.profile.outputShapeHeading()));
+    for (const shape of report.outputShapes.slice(0, 3)) {
+      const label = shape.label === UNLABELLED ? t.profile.unlabelled() : shape.label;
+      const isTail = shape.heavyCallShare < 0.25;
+      console.log();
+      if (isTail) {
+        console.log(
+          `  ${c.bold(wrap(t.profile.outputTail(label, shape.modelName, pct(shape.heavyCallShare), pct(shape.heavySpendShare), n(shape.aboveTokens), formatUsd(shape.outputUsd)), 74, '  '))}`,
+        );
+        console.log(`  ${c.dim(wrap(t.profile.outputTailAdvice(), 74, '  '))}`);
+      } else {
+        console.log(
+          `  ${c.bold(wrap(t.profile.outputFlat(label, shape.modelName, pct(shape.heavyCallShare), pct(shape.heavySpendShare), formatUsd(shape.outputUsd)), 74, '  '))}`,
+        );
+        console.log(`  ${c.dim(wrap(t.profile.outputFlatAdvice(), 74, '  '))}`);
+      }
+    }
+  }
+
   for (const [heading, rows] of [
     [t.profile.byLabelHeading(), report.byLabel.map((r) => [r.label === UNLABELLED ? t.profile.unlabelled() : r.label, r.breakdown] as const)],
     [t.profile.byModelHeading(), report.byModel.map((r) => [r.model, r.breakdown] as const)],

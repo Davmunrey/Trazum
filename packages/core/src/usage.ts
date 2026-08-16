@@ -1,6 +1,8 @@
 import { effectivePricing, multipliersFor } from './pricing.js';
 import { createConversationTracker } from './conversation.js';
+import { createOutputShapeTracker } from './output-shape.js';
 import type { ConversationGrowth } from './conversation.js';
+import type { OutputShape } from './output-shape.js';
 import type { PricingCatalogue } from './pricing.js';
 
 /**
@@ -214,6 +216,13 @@ export interface UsageProfileReport {
   conversations: ConversationGrowth[];
   /** Whether any record carried a session at all. */
   hasSessions: boolean;
+  /**
+   * Where the output spend concentrates, for slices whose output is a real share
+   * of the bill. The actionable half of "output dominates": six per cent of calls
+   * holding half the spend is a tail worth hunting, forty-five per cent is a task
+   * whose answers are inherently long — and the total cannot tell them apart.
+   */
+  outputShapes: OutputShape[];
 }
 
 /** The share of the bill each part accounts for, as fractions of 1. */
@@ -498,6 +507,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
    * bounded by the number of conversations instead.
    */
   const conversations = createConversationTracker({ catalogue, on });
+  const output = createOutputShapeTracker({ catalogue, on });
   let hasSessions = false;
 
   const lines = text.split('\n');
@@ -513,6 +523,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
 
     if (record.session !== null) hasSessions = true;
     conversations.add(record);
+    output.add(record);
 
     if (!add(total, record, catalogue, on)) {
       unpricedModels.add(record.model);
@@ -561,6 +572,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
     skippedLines,
     conversations: conversations.finish(total.totalUsd),
     hasSessions,
+    outputShapes: output.finish(total.totalUsd),
   };
 }
 
