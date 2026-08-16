@@ -10,6 +10,17 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**`profile --json` omitted the levers.** The flagship section — "What would
+actually move this bill", the reason the command exists — was terminal-only, so
+any pipeline, dashboard or CI step reading the JSON never saw it. A finding the
+machine-readable output omits is a finding the reader's tooling will never
+surface. The JSON now carries `levers` beside the cache verdict, the
+conversations and the output shapes, and a test asserts every section the
+terminal renders has a machine-readable counterpart.
+
+
 ### Added
 
 **`trazum profile` now says where the output spend concentrates** — the actionable

@@ -1961,12 +1961,18 @@ async function commandProfile(args: Args, pricing: PricingCatalogue, t: CliMessa
 
   if (boolFlag(args, 'json')) {
     /**
-     * The report, plus the cache verdict the human output leads on.
+     * The report, plus everything the human output leads on.
      *
      * Additive rather than a reshape: `report` keeps the shape `@trazum/core`
-     * returns. Leaving a consumer to re-derive the verdict means two
-     * implementations of a sign convention where positive means *worse*, and one
-     * of them will eventually get it backwards.
+     * returns. The cache verdict is included because leaving a consumer to
+     * re-derive it means two implementations of a sign convention where positive
+     * means *worse*, and one of them will eventually get it backwards.
+     *
+     * `levers` is included because it was not, and that made the flagship
+     * section terminal-only: "What would actually move this bill" — the reason
+     * the command exists — was invisible to any pipeline, dashboard or CI step
+     * reading the JSON. A finding the machine-readable output omits is a finding
+     * the reader's tooling will never surface.
      */
     console.log(
       JSON.stringify(
@@ -1977,6 +1983,7 @@ async function commandProfile(args: Args, pricing: PricingCatalogue, t: CliMessa
             label: r.label,
             cache: cacheEconomics(r.breakdown),
           })),
+          levers: billLevers(report, { catalogue: pricing }),
         },
         null,
         2,
