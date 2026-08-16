@@ -1875,6 +1875,58 @@ A model the pricing catalogue does not know is **named and kept out of the
 totals** rather than costed at zero — a total that silently omits calls is wrong in
 the flattering direction.
 
+### What would actually move this bill
+
+**The rules recover about 1%.** Measured: three tokens out of three hundred and six
+on an ordinary support prompt. On a company spending €20,000 a month that is €200,
+and nobody installs a tool for €200. The complaint is correct, and the answer is
+not that the number is wrong — it is that shortening the prompt was never where the
+money was.
+
+| lever | what it moves |
+|---|---|
+| **which model the call goes to** | Opus 5 → Sonnet 5 is **40%** off; → Haiku 4.5 is **80%** |
+| **the Batch API** | **50%** flat, on input and output |
+| prompt caching | 3–4× the rules |
+| shortening the prompt | **~1%** |
+
+So `profile` prices the other rows, from the log you already have:
+
+```
+What would actually move this bill
+
+  → support-rag on Claude Opus 5 — up to $16.80 of this bill (52.2%)
+    400 calls, $21.00 spent
+    · route it to Claude Sonnet 5, $12.60
+    · send it through the Batch API, $10.50
+    Whether that holds is an evaluation question, not an arithmetic one, and
+    nothing here has seen a single answer. Measure it: trazum eval <prompt>
+    --cases <cases> --model claude-sonnet-5
+
+  For comparison: shortening the prompt text can touch $18.00 at the very
+  most — 85.7% of this bill, and only if you deleted every input token.
+```
+
+**Every figure is arithmetic on tokens that were billed.** The same counts at
+another model's published rate; the same tokens at the provider's batch multiplier.
+Nothing is modelled, nothing extrapolated, no assumed traffic.
+
+Four things it refuses to do, and each one is a bug it had:
+
+- **It never adds the options.** Batching a routed call discounts the *cheaper*
+  model, so route + batch is $16.80 and not $23.10 — a figure larger than the
+  $21.00 that slice had ever cost.
+- **It never says a route is safe.** That is a quality question arithmetic cannot
+  answer, and nothing here has seen a prompt or an answer. So it prints the
+  `eval` command instead of a recommendation.
+- **It never says "per month".** A log covers whatever period somebody recorded.
+  Every figure is over exactly the calls in the file.
+- **It never crosses a vendor.** A cheaper model at another provider is a
+  migration, not a routing change.
+
+And it prints the ceiling on prompt shortening underneath, on purpose. A 1% win
+reported without saying 1% of *what* is not information.
+
 ### Did the caching actually pay for itself?
 
 The rest of Trazum tells you to cache. This is the one report that can tell you
@@ -1889,7 +1941,7 @@ figure on the report would ever say so.
 ```
   Cache hit rate 97.8% of billable input.
   Caching took $0.2675 off this bill, against the same tokens uncached.
-  ! Caching pays off overall, but it costs $0.1250 on: rag. The total hides that.
+  ! The total above hides a loss: caching costs $0.1250 across rag.
 ```
 
 That is the case worth having the check for. The hit rate reads 97.8%, the total

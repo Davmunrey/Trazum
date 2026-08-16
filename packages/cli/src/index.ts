@@ -8,6 +8,7 @@ import {
   BASELINE_VERSION,
   breaches,
   cacheableMinimum,
+  billLevers,
   cacheEconomics,
   cacheHitRate,
   comparePrompts,
@@ -2118,6 +2119,67 @@ async function commandProfile(args: Args, pricing: PricingCatalogue, t: CliMessa
       `  ${c.dim(wrap(t.profile.assumedWriteTtl(report.total.assumedWriteTtlCalls), 74, '  '))}`,
     );
   }
+
+  /**
+   * The section this command is for, and the answer to the fairest complaint the
+   * product has had: on a bill of twenty thousand, the rules recover two hundred.
+   *
+   * That figure is right — measured, three tokens out of three hundred and six on
+   * an ordinary support prompt. The conclusion is not that the tool is worthless
+   * but that it had been looking at the smallest line item. Which model a call
+   * goes to moves 40% to 80%. The Batch API moves 50% flat. Both are priced here
+   * from the reader's own tokens, at published rates, with no modelling in
+   * between — and printed above the breakdowns, because a lever nobody scrolls to
+   * is a lever nobody pulls.
+   *
+   * The ceiling on prompt shortening prints underneath them on purpose. A 1% win
+   * reported without saying 1% of what is not information, and this repository
+   * would rather say the uncomfortable number itself than let somebody else
+   * discover it.
+   */
+  const levers = billLevers(report, { catalogue: pricing });
+  console.log();
+  console.log(c.bold(t.profile.leversHeading()));
+  if (levers.slices.length === 0) {
+    console.log(`  ${c.dim(wrap(t.profile.leversNone(), 74, '  '))}`);
+  } else {
+    for (const slice of levers.slices.slice(0, 5)) {
+      const label = slice.label === UNLABELLED ? t.profile.unlabelled() : slice.label;
+      console.log();
+      /**
+       * The headline is the **combined** figure, and the options underneath are
+       * the ways to reach it — not rows to add up. Batching a routed call
+       * discounts the cheaper model's price, so listing them separately printed
+       * $12.60 and $10.50 against a slice that had spent $21.00: a saving larger
+       * than the bill it came from, in the flattering direction.
+       */
+      console.log(
+        `  ${c.green('→')} ${c.bold(wrap(t.profile.leverSlice(label, slice.modelName, formatUsd(slice.combinedUsd), pct(slice.shareOfBill)), 74, '    '))}`,
+      );
+      console.log(`    ${c.dim(t.profile.leverCalls(n(slice.calls), formatUsd(slice.spentUsd)))}`);
+      if (slice.route) {
+        console.log(
+          `    ${c.dim('·')} ${c.dim(wrap(t.profile.leverRoute(slice.route.candidate.displayName, formatUsd(slice.route.savingUsd)), 74, '      '))}`,
+        );
+      }
+      if (slice.batch) {
+        console.log(
+          `    ${c.dim('·')} ${c.dim(wrap(t.profile.leverBatch(formatUsd(slice.batch.savingUsd)), 74, '      '))}`,
+        );
+      }
+      // The arithmetic is exact and the quality question is untouched by it.
+      // Naming the command is the difference between a saving and a gamble.
+      if (slice.route) {
+        console.log(
+          `    ${c.dim(wrap(t.profile.leverRouteVerify(slice.route.candidate.id), 74, '    '))}`,
+        );
+      }
+    }
+  }
+  console.log();
+  console.log(
+    `  ${c.dim(wrap(t.profile.leverPromptCeiling(formatUsd(levers.promptCeilingUsd), pct(levers.promptCeilingShare)), 74, '  '))}`,
+  );
 
   for (const [heading, rows] of [
     [t.profile.byLabelHeading(), report.byLabel.map((r) => [r.label === UNLABELLED ? t.profile.unlabelled() : r.label, r.breakdown] as const)],

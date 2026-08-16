@@ -114,6 +114,26 @@ A model the pricing catalogue does not know is named and kept **out** of the
 totals, because a total that silently omits calls is wrong in the flattering
 direction.
 
+### What would actually move this bill
+
+The rules recover about **1%** — measured. Which model a call goes to moves 40% to
+80%, and the Batch API moves 50% flat. `profile` prices those from your log:
+
+```
+  → support-rag on Claude Opus 5 — up to $16.80 of this bill (52.2%)
+    400 calls, $21.00 spent
+    · route it to Claude Sonnet 5, $12.60
+    · send it through the Batch API, $10.50
+
+  For comparison: shortening the prompt text can touch $18.00 at the very most.
+```
+
+The options are **combined, never summed** — batching a routed call discounts the
+cheaper model, so the pair is $16.80 and not $23.10 against $21.00 spent. A route
+prints the `eval` command rather than a recommendation: the arithmetic is exact and
+says nothing about quality. Nothing crosses a vendor, and no figure is ever "per
+month" — a log covers whatever period you recorded.
+
 ### Did the caching pay for itself?
 
 The rest of Trazum tells you to cache. This is the one report that can say the
@@ -125,7 +145,7 @@ so a prefix that changes faster than it is reused pays that premium for nothing:
 ```
   Cache hit rate 97.8% of billable input.
   Caching took $0.2675 off this bill, against the same tokens uncached.
-  ! Caching pays off overall, but it costs $0.1250 on: rag. The total hides that.
+  ! The total above hides a loss: caching costs $0.1250 across rag.
 ```
 
 Computed per label as well as overall — ranked by what caching cost each one, not

@@ -147,6 +147,16 @@ export interface UsageProfileReport {
   /** Per model, largest bill first. */
   byModel: Array<{ model: string; breakdown: UsageBreakdown }>;
   /**
+   * Per label **and** model, largest bill first.
+   *
+   * The grouping a decision is actually made at. "Route `classify` to something
+   * cheaper" is a question about the calls `classify` makes to one model, and a
+   * label that spans two models has no single answer — pricing it against a
+   * cheaper candidate would mean picking one of the two current prices and
+   * applying it to tokens that were never billed at it.
+   */
+  byLabelAndModel: Array<{ label: string; model: string; breakdown: UsageBreakdown }>;
+  /**
    * Models in the log that the pricing catalogue does not know.
    *
    * Named rather than silently costed at zero. A profile that quietly omits a
@@ -438,6 +448,9 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
   const unpriced = EMPTY();
   const byLabel = new Map<string, UsageBreakdown>();
   const byModel = new Map<string, UsageBreakdown>();
+  // Keyed on a pair, so the key carries a separator that cannot occur in either
+  // half. A model id is `[A-Za-z0-9._-]`, so a newline is safe in both.
+  const byPair = new Map<string, UsageBreakdown>();
   const unpricedModels = new Set<string>();
   const skippedLines: number[] = [];
 
@@ -468,6 +481,10 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
 
     if (!byModel.has(record.model)) byModel.set(record.model, EMPTY());
     add(byModel.get(record.model)!, record, catalogue, on);
+
+    const pairKey = `${labelKey}\n${record.model}`;
+    if (!byPair.has(pairKey)) byPair.set(pairKey, EMPTY());
+    add(byPair.get(pairKey)!, record, catalogue, on);
   }
 
   const sorted = <K extends string>(
@@ -484,6 +501,12 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
     total,
     byLabel: sorted(byLabel, 'label'),
     byModel: sorted(byModel, 'model'),
+    byLabelAndModel: [...byPair.entries()]
+      .sort((a, b) => b[1].totalUsd - a[1].totalUsd || a[0].localeCompare(b[0]))
+      .map(([key, breakdown]) => {
+        const split = key.indexOf('\n');
+        return { label: key.slice(0, split), model: key.slice(split + 1), breakdown };
+      }),
     unpricedModels: [...unpricedModels].sort(),
     unpriced,
     skippedLines,
