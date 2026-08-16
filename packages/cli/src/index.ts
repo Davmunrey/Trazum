@@ -2187,6 +2187,43 @@ async function commandProfile(args: Args, pricing: PricingCatalogue, t: CliMessa
     `  ${c.dim(wrap(t.profile.leverPromptCeiling(formatUsd(levers.promptCeilingUsd), pct(levers.promptCeilingShare)), 74, '  '))}`,
   );
 
+  /**
+   * What re-sending the conversation costs — the line nothing here could see.
+   *
+   * A chat or agent workload sends the whole conversation back on every turn, so
+   * the input grows with the turn count and that growth is routinely the largest
+   * item on the bill. A prompt file shows the system prompt and not the history; a
+   * total shows the sum and not the shape.
+   *
+   * Reported as a **ceiling**, because part of the growth is the user's own new
+   * messages and this reads counts rather than content, so it cannot separate the
+   * two. Saying nothing because the exact split is unknowable would be worse: the
+   * bound is exact, and the reader can act on it.
+   */
+  if (report.conversations.length > 0) {
+    console.log();
+    console.log(c.bold(t.profile.historyHeading()));
+    for (const growth of report.conversations.slice(0, 3)) {
+      const label = growth.label === UNLABELLED ? t.profile.unlabelled() : growth.label;
+      console.log();
+      console.log(
+        `  ${c.bold(wrap(t.profile.historyGrowth(label, growth.modelName, n(Math.round(growth.firstTurnTokens)), n(Math.round(growth.lastTurnTokens)), n(growth.longestSession)), 74, '  '))}`,
+      );
+      console.log(
+        `  ${c.dim(wrap(t.profile.historyCeiling(formatUsd(growth.growthUsd), pct(growth.shareOfBill), formatUsd(growth.flatUsd), formatUsd(growth.inputUsd)), 74, '  '))}`,
+      );
+    }
+  } else if (!report.hasSessions) {
+    /**
+     * Not the same as "no growth". A log without a session field cannot be asked
+     * the question at all, and silence there would read as a clean bill of health
+     * on the line most likely to be the biggest.
+     */
+    console.log();
+    console.log(c.bold(t.profile.historyHeading()));
+    console.log(`  ${c.dim(wrap(t.profile.historyNoSessions(), 74, '  '))}`);
+  }
+
   for (const [heading, rows] of [
     [t.profile.byLabelHeading(), report.byLabel.map((r) => [r.label === UNLABELLED ? t.profile.unlabelled() : r.label, r.breakdown] as const)],
     [t.profile.byModelHeading(), report.byModel.map((r) => [r.model, r.breakdown] as const)],

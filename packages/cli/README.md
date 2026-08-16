@@ -135,6 +135,26 @@ prints the `eval` command rather than a recommendation: the arithmetic is exact 
 says nothing about quality. Nothing crosses a vendor, and no figure is ever "per
 month" — a log covers whatever period you recorded.
 
+### What re-sending the conversation costs
+
+A chat or agent workload replays the whole conversation every turn, so the input
+grows with the turn count — routinely the largest line on an agent bill, and
+invisible to everything else here. Add `session` (or `conversation_id`) to the log
+and `profile` measures it:
+
+```
+  agent on Claude Opus 5: input goes from 600 tokens on the opening turn to
+  5,000 on the closing one, over conversations of up to 12 turns.
+  If every turn had cost what its own first turn cost, that input would have
+  been $7.20 instead of $33.60 — so at most $26.40 of this bill is
+  conversation growth (57.9%).
+```
+
+**A ceiling, not a saving**: some of that growth is the user's own new messages, and
+this reads counts rather than content. **The session key is never printed** — it
+groups calls and counts turns, every figure comes out per label, and a test asserts
+it appears nowhere in the report or in `--json`.
+
 ### Is the cheaper model good enough? — `trazum route`
 
 The section above prices a route and can say nothing about whether it works. This

@@ -12,6 +12,44 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`trazum profile` now measures what re-sending the conversation costs.**
+
+A chat or agent workload sends the whole conversation back on every turn: turn one
+is a system prompt and a question, turn twenty is a system prompt, nineteen previous
+exchanges and a question. On an agent bill that growth is routinely **the largest
+single line**, and nothing in this package could see it — a prompt file shows the
+system prompt and not the history, and a total shows the sum and not the shape.
+
+```
+What re-sending the conversation costs
+
+  agent on Claude Opus 5: input goes from 600 tokens on the opening turn to
+  5,000 on the closing one, over conversations of up to 12 turns.
+  If every turn had cost what its own first turn cost, that input would have
+  been $7.20 instead of $33.60 — so at most $26.40 of this bill is
+  conversation growth (57.9%).
+```
+
+Reported as a **ceiling**: what the workload would have cost if every turn had cost
+what its own first turn cost. That subtraction is exact; the split between re-sent
+history and the user's own new messages is not knowable from counts, and inventing
+one would be the flattering direction. Saying nothing because the split is unknowable
+would be worse.
+
+It needs one field — `session`, or `conversation_id`, whichever the log already has
+— and **Trazum never prints it**. In a real log a session key is often an account id,
+a ticket number or an email address, so it is used to group calls and count turns,
+every figure comes out per label, and tests assert the value appears nowhere in the
+report or in `--json`. A log with no session field says so rather than staying
+quiet: "nothing recorded" and "nothing to report" are answers a reader would act on
+differently.
+
+Measured in the pass `profileUsage` already makes, so a megabyte log is never held
+in memory: what the tracker keeps is bounded by the number of conversations.
+`conversationGrowth` and `createConversationTracker` are exported from
+`@trazum/core`.
+
+
 **`trazum route` — the loop the levers section could only point at.**
 
 `profile` prices a route exactly: the same tokens at a cheaper model's published

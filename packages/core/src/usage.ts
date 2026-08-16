@@ -1,4 +1,6 @@
 import { effectivePricing, multipliersFor } from './pricing.js';
+import { createConversationTracker } from './conversation.js';
+import type { ConversationGrowth } from './conversation.js';
 import type { PricingCatalogue } from './pricing.js';
 
 /**
@@ -95,6 +97,21 @@ export interface UsageRecord {
    * refuses to read a log until it is annotated is a profile nobody runs.
    */
   label: string | null;
+  /**
+   * Optional conversation identifier, for measuring what re-sent history costs.
+   *
+   * On a chat or agent workload the input grows with every turn, because the whole
+   * conversation goes back up on each call. That is frequently the largest line on
+   * the bill and nothing watches it — a prompt file cannot show it, and a total
+   * cannot either.
+   *
+   * **Trazum never prints this value.** A session key is somebody's conversation
+   * and could easily be an account id or an email; it is used to group calls and
+   * to count turns, and every figure derived from it is reported per *label*. That
+   * keeps the guarantee this module is built on: a usage log handed to Trazum
+   * carries no content, and nothing identifying comes back out of it either.
+   */
+  session: string | null;
 }
 
 /** What a set of calls cost, split by where the money went. */
@@ -187,6 +204,16 @@ export interface UsageProfileReport {
    * produces a total that is wrong by an unknown amount.
    */
   skippedLines: number[];
+  /**
+   * What re-sending the conversation costs, where the log carries a session.
+   *
+   * Empty when it does not, which is a different statement from zero growth — the
+   * report says which, because "nothing to report" and "nothing recorded" are the
+   * two answers a reader would act on differently.
+   */
+  conversations: ConversationGrowth[];
+  /** Whether any record carried a session at all. */
+  hasSessions: boolean;
 }
 
 /** The share of the bill each part accounts for, as fractions of 1. */
@@ -352,6 +379,18 @@ export function parseUsageLine(line: string): UsageRecord | null {
       typeof record.label === 'string' && record.label.trim() !== ''
         ? record.label.trim()
         : null,
+    /**
+     * Read from either spelling, because both are what people already have:
+     * `session` in a hand-rolled log, `conversation_id` in most chat schemas.
+     * Refusing one of them would make the field's adoption a chore, and a field
+     * nobody sets measures nothing.
+     */
+    session:
+      typeof record.session === 'string' && record.session.trim() !== ''
+        ? record.session.trim()
+        : typeof record.conversation_id === 'string' && record.conversation_id.trim() !== ''
+          ? record.conversation_id.trim()
+          : null,
   };
 }
 
@@ -453,6 +492,13 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
   const byPair = new Map<string, UsageBreakdown>();
   const unpricedModels = new Set<string>();
   const skippedLines: number[] = [];
+  /**
+   * Fed in the pass this function already makes, rather than by keeping the records
+   * for a second one: a usage log is measured in megabytes, and what this holds is
+   * bounded by the number of conversations instead.
+   */
+  const conversations = createConversationTracker({ catalogue, on });
+  let hasSessions = false;
 
   const lines = text.split('\n');
   for (let i = 0; i < lines.length; i += 1) {
@@ -464,6 +510,9 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
       skippedLines.push(i + 1);
       continue;
     }
+
+    if (record.session !== null) hasSessions = true;
+    conversations.add(record);
 
     if (!add(total, record, catalogue, on)) {
       unpricedModels.add(record.model);
@@ -510,6 +559,8 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
     unpricedModels: [...unpricedModels].sort(),
     unpriced,
     skippedLines,
+    conversations: conversations.finish(total.totalUsd),
+    hasSessions,
   };
 }
 

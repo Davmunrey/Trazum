@@ -453,6 +453,19 @@ export interface CliMessages {
     leverPromptCeiling(usd: string, pct: string): string;
     /** Nothing cleared the threshold, which is a real answer. */
     leversNone(): string;
+    /**
+     * What re-sending the conversation costs.
+     *
+     * On an agent bill this is routinely the largest line, and nothing in this
+     * tool could see it: a prompt file shows the system prompt and not the
+     * history, and a total shows the sum and not the shape.
+     */
+    historyHeading(): string;
+    historyGrowth(label: string, model: string, first: string, last: string, turns: string): string;
+    /** A ceiling, and it says so — part of the growth is the user's own messages. */
+    historyCeiling(usd: string, pct: string, flat: string, spent: string): string;
+    /** No session field in the log, so the question cannot be asked. */
+    historyNoSessions(): string;
     assumedWriteTtl(calls: number): string;
   };
   /**

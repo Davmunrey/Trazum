@@ -534,3 +534,87 @@ describe('what would actually move this bill', () => {
     assert.doesNotMatch(out, /trazum eval .*--model/, 'named a command that cannot test a route');
   });
 });
+
+describe('what re-sending the conversation costs', () => {
+  /**
+   * The line nothing in this tool could see. A chat or agent workload sends the
+   * whole conversation back on every turn, so the input grows with the turn count
+   * — and on an agent bill that growth is routinely the largest single item.
+   */
+
+  const agent = (sessions, turns) =>
+    Array.from({ length: sessions }, (_, s) =>
+      Array.from({ length: turns }, (_, t) => ({
+        model: 'claude-opus-5',
+        label: 'agent',
+        session: `conversation-${s}`,
+        usage: { input_tokens: 600 + t * 400, output_tokens: 200 },
+      })),
+    ).flat();
+
+  it('prices the growth, and calls it a ceiling rather than a saving', async () => {
+    /**
+     * 200 conversations of 12 turns: $33.60 of input against $7.20 if every turn
+     * had cost what its own first turn did. So at most $26.40 of that bill is
+     * conversation growth — 57.9% of it, and a figure no other part of this tool
+     * could produce.
+     */
+    const result = run(await logOf(agent(200, 12)));
+    assert.equal(result.status, 0, result.stderr);
+    const out = flat(result);
+
+    assert.match(out, /input goes from 600 tokens on the opening turn to 5,000/);
+    assert.match(out, /at most \$26\.40 of this bill is conversation growth/);
+    assert.match(out, /ceiling and not a saving/, 'presented a bound as an opportunity');
+  });
+
+  it('never prints the session key', async () => {
+    /**
+     * The guarantee the whole feature rests on. A session key is somebody's
+     * conversation and in a real log is often an account id or an email. Trazum
+     * groups by it and counts turns; nothing it prints carries it.
+     */
+    const secret = 'user-4471-billing-dispute@example.com';
+    const records = Array.from({ length: 8 }, (_, t) => ({
+      model: 'claude-opus-5',
+      label: 'agent',
+      session: secret,
+      usage: { input_tokens: 600 + t * 400, output_tokens: 200 },
+    }));
+    const path = await logOf(records);
+
+    for (const extra of [[], ['--json']]) {
+      const out = `${run(path, extra).stdout}${run(path, extra).stderr}`;
+      assert.ok(!out.includes(secret), `the session key was printed${extra.length ? ' by --json' : ''}`);
+      assert.ok(!out.includes('4471'), 'part of the session key was printed');
+    }
+  });
+
+  it('says the field is missing rather than implying there is no growth', async () => {
+    /**
+     * Two different answers. A log with no session cannot be asked the question at
+     * all, and silence there would read as a clean bill of health on the line most
+     * likely to be the biggest.
+     */
+    const result = run(await logOf([call(), call(), call()]));
+    const out = flat(result);
+    assert.match(out, /No call in this log carried a session/);
+    assert.match(out, /never prints it/, 'asked for a session without saying what happens to it');
+  });
+
+  it('stays quiet on a log whose conversations do not grow', async () => {
+    // A stateless workload that happens to carry a session has no growth, and a
+    // row for it would be noise on the report.
+    const flatRecords = Array.from({ length: 50 }, (_, s) =>
+      Array.from({ length: 10 }, () => ({
+        model: 'claude-opus-5',
+        label: 'batch',
+        session: `c-${s}`,
+        usage: { input_tokens: 600, output_tokens: 200 },
+      })),
+    ).flat();
+    const out = flat(run(await logOf(flatRecords)));
+    assert.doesNotMatch(out, /conversation growth/, 'invented growth on a flat workload');
+    assert.doesNotMatch(out, /No call in this log carried a session/, 'claimed the field was missing');
+  });
+});
