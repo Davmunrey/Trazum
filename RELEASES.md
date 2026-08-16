@@ -26,6 +26,115 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.11.0 — "What actually moves the bill"
+
+**This release exists because the fairest complaint anybody has made about Trazum
+was right.** On a company spending €20,000 a month, the rules recovered about €200 —
+1%, measured: three tokens out of three hundred and six on an ordinary support
+prompt. Nobody installs a tool for €200.
+
+The number was never wrong. **Shortening the prompt was never where the money was**,
+and the tool that only did that had no figure anywhere for the places it is.
+
+| lever | what it moves | before |
+|---|---|---|
+| which model the call goes to | Opus 5 → Sonnet 5 is **40%** off; → Haiku 4.5 is **80%** | unpriced |
+| the Batch API | **50%** flat | unpriced |
+| what re-sending the conversation costs | **58%** of a modelled agent bill | invisible |
+| whether caching paid for itself | can be **negative** | unanswerable |
+| shortening the prompt | **~1%** | the whole product |
+
+### `trazum profile` now prices the levers that are not the prompt
+
+```
+What would actually move this bill
+
+  → support-rag on Claude Opus 5 — up to $16.80 of this bill (52.2%)
+    400 calls, $21.00 spent
+    · route it to Claude Sonnet 5, $12.60
+    · send it through the Batch API, $10.50
+
+  For comparison: shortening the prompt text can touch $22.80 at the very
+  most — 70.9% of this bill, and only if you deleted every input token.
+```
+
+On a modelled estate — a classifier, a chat and a RAG workload — the levers came to
+**80% of the bill**. Every figure is arithmetic on tokens that were billed: the same
+counts at another model's published rate, the same tokens at the provider's batch
+multiplier. Nothing modelled, nothing extrapolated.
+
+The options on a slice are **combined and never summed**: batching a routed call
+discounts the cheaper model, so the pair is $16.80 and not the $23.10 an addition
+gives — against $21.00 that slice had ever spent. A route prints the command that
+tests it rather than a recommendation, and steps down **one** capability rung rather
+than to the cheapest model on the shelf.
+
+### `trazum route` measures whether the cheaper model still does the job
+
+```
+  support-rag on Claude Opus 5 → Claude Sonnet 5, worth $12.60 of this bill (60.0%).
+  The cheaper model agrees with the original 94% of the time. The original
+  agrees with itself 91% of the time — that is the yardstick, not 100%.
+  ✓ HOLDS — the difference is inside the original model's own noise.
+```
+
+**The yardstick needed no inventing.** `eval` already ran a prompt twice to measure
+the model's own run-to-run variance; routing is the same measurement on a different
+axis. A route is safe when the cheaper model agrees with the original *more closely
+than the original agrees with itself*, and any other bar would be a number somebody
+chose. Three calls per case, and it calls nothing without `--yes`.
+
+### What re-sending the conversation costs
+
+A chat or agent workload sends the whole conversation back every turn, and on an
+agent bill that growth is routinely the largest single line. Nothing here could see
+it — a prompt file shows the system prompt, not the history.
+
+Add `session` (or `conversation_id`) and it is measured as a **ceiling**: what the
+workload would have cost if every turn had cost what its own first turn cost. The
+subtraction is exact; the split between re-sent history and the user's own new
+messages is not knowable from counts, and inventing one would be the flattering
+direction.
+
+**Trazum never prints the session key.** In a real log it is an account id, a ticket
+number or an email address. It groups calls and counts turns; tests assert the value
+appears nowhere in the report or in `--json`.
+
+### Did the caching pay for itself?
+
+The rest of Trazum tells you to cache. This is the one report that can say the
+advice was wrong for a workload — a cache write is 1.25x plain input, or 2x at the
+one-hour TTL, so a prefix that changes faster than it is reused pays a premium and
+returns nothing. **The cache hit rate cannot tell you**: it reads 97.8% on a log
+where one of two workloads is burning money.
+
+When the log did not record which TTL a write used, the report says the question
+cannot be settled and gives both figures rather than the flattering one. That
+assumption moves the verdict, not just the total: between 0.28 and 1.11 reads per
+write the same calls pay for themselves at 1.25x and lose money at 2x.
+
+### Ten faults found by adversarial review, and five by using the tool
+
+Sixteen agents over four lenses, every finding handed to an independent verifier
+told to refute it. Everything that survived flattered the bill. The worst inverted a
+verdict — `Caching took $0.1000 off this bill` where the truth was a **$3.65 loss**.
+
+And five more found by running the thing as a new user would rather than reading it:
+`optimize` reported 1% and never said where the rest was; `Context window: 0.0% →
+0.0%`; a named scenario answered with a hint to name it; `unlabelled` reported as
+though it were a workload; and `1 calls`.
+
+Twice in that pass the existing code or an existing test was right and the change
+was not, and the change was reverted. That is the system working.
+
+### Note on provenance
+
+Like 1.8.0, 1.9.0 and 1.10.0, check `docs/releasing.md` before tagging: the trusted
+publisher refused this workflow on three separate tags, and a release that goes out
+by hand carries **no provenance attestation**. The workflow now tells a shipped
+release apart from a version collision, so tagging one no longer fails and no longer
+blames authentication for it.
+
 ## 1.10.0 — "Every hard edge, both sides"
 
 > **This release has no provenance attestation.** It went out by hand, like 1.8.0
