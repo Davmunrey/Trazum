@@ -3,6 +3,17 @@ import type { CliMessages } from './types.js';
 /** Counts, grouped. A log with forty thousand torn lines should say so legibly. */
 const count = (value: number): string => value.toLocaleString('en-US');
 
+/**
+ * A grouped count and its noun, agreeing.
+ *
+ * `1 calls` and `1 prompts` were reachable on ordinary input — a one-call log, a
+ * repository with a single prompt — and two messages in this file already did the
+ * agreement by hand while a dozen did not. A helper rather than a dozen ternaries,
+ * so the next message written gets it for free.
+ */
+const plural = (value: number, one: string, many = `${one}s`): string =>
+  `${count(value)} ${value === 1 ? one : many}`;
+
 /** "(46 days ago)", or nothing when the age is unknown. */
 const ago = (days: number | null): string =>
   days === null ? '' : days === 0 ? ' (today)' : days === 1 ? ' (1 day ago)' : ` (${days} days ago)`;
@@ -834,7 +845,8 @@ ${bold('EXAMPLES')}
     noTarget: () =>
       'Point this at a usage log: trazum profile usage.jsonl — one JSON object per line, each with a "model" and the "usage" object the API returned. Add "label" (which workload) and "session" (which conversation) while you are there: without them every call looks alike, and the two largest findings this command makes cannot be made at all. Recording it is three lines in your own code, it never contains prompt text, and the session key is grouped by and never printed.',
     heading: () => 'Where the money went',
-    spent: (calls, total) => `${calls} calls · ${total}`,
+    calls: (n) => plural(n, 'call'),
+    spent: (calls, total) => `${calls} · ${total}`,
     part: (name, usd, pct, tokens) => `${name.padEnd(13)}${usd.padStart(11)}  ${pct.padStart(5)}   ${tokens} tokens`,
     partInput: () => 'Input',
     partCacheRead: () => 'Cache reads',
@@ -842,7 +854,7 @@ ${bold('EXAMPLES')}
     partOutput: () => 'Output',
     byLabelHeading: () => 'By label',
     byModelHeading: () => 'By model',
-    row: (name, usd, pct, calls) => `${usd.padStart(11)}  ${pct.padStart(5)}   ${name}  (${calls} calls)`,
+    row: (name, usd, pct, calls) => `${usd.padStart(11)}  ${pct.padStart(5)}   ${name}  (${calls})`,
     unlabelled: () => 'unlabelled',
     cacheHit: (pct) => `Cache hit rate ${pct} of billable input.`,
     cacheNever: () => 'Caching was never used on these calls. If any prefix repeats, that is the largest saving available.',
@@ -878,7 +890,7 @@ ${bold('EXAMPLES')}
     leverRouteVerify: (candidate) =>
       `Whether that holds is an evaluation question, not an arithmetic one, and nothing here has seen a single answer. Measure it: trazum route <log> --prompt-file <prompt> --cases <cases> --yes`,
     leverBatch: (usd) => `send it through the Batch API, ${usd}`,
-    leverCalls: (calls, spent) => `${calls} calls, ${spent} spent`,
+    leverCalls: (calls, spent) => `${calls}, ${spent} spent`,
     leverPromptCeiling: (usd, pct) =>
       `For comparison: shortening the prompt text can touch ${usd} at the very most — ${pct} of this bill, and only if you deleted every input token. The real figure is far below that, because most of those tokens are retrieved context, conversation history and tool results that no prompt file contains.`,
     historyHeading: () => 'What re-sending the conversation costs',

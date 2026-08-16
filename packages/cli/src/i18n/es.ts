@@ -3,6 +3,10 @@ import type { CliMessages } from './types.js';
 /** Counts, grouped. A log with forty thousand torn lines should say so legibly. */
 const count = (value: number): string => value.toLocaleString('es-ES');
 
+/** Un contador agrupado y su sustantivo, concordando. Ver `plural` en en.ts. */
+const plural = (value: number, one: string, many = `${one}s`): string =>
+  `${count(value)} ${value === 1 ? one : many}`;
+
 /** "(hace 46 días)", o nada cuando no se sabe la antigüedad. */
 const hace = (days: number | null): string =>
   days === null ? '' : days === 0 ? ' (hoy)' : days === 1 ? ' (hace 1 día)' : ` (hace ${days} días)`;
@@ -847,7 +851,8 @@ ${bold('EJEMPLOS')}
     noTarget: () =>
       'Apúntalo a un log de uso: trazum profile usage.jsonl — un objeto JSON por línea, cada uno con un "model" y el objeto "usage" que devolvió la API. Añade "label" (qué carga) y "session" (qué conversación) ya que estás: sin ellos todas las llamadas parecen iguales, y los dos hallazgos más grandes de este comando no se pueden hacer siquiera. Registrarlo son tres líneas en tu propio código, nunca contiene el texto del prompt, y la clave de sesión se agrupa y nunca se imprime.',
     heading: () => 'Adónde fue el dinero',
-    spent: (calls, total) => `${calls} llamadas · ${total}`,
+    calls: (n) => plural(n, 'llamada'),
+    spent: (calls, total) => `${calls} · ${total}`,
     part: (name, usd, pct, tokens) => `${name.padEnd(15)}${usd.padStart(11)}  ${pct.padStart(5)}   ${tokens} tokens`,
     partInput: () => 'Entrada',
     partCacheRead: () => 'Lecturas caché',
@@ -855,7 +860,7 @@ ${bold('EJEMPLOS')}
     partOutput: () => 'Salida',
     byLabelHeading: () => 'Por etiqueta',
     byModelHeading: () => 'Por modelo',
-    row: (name, usd, pct, calls) => `${usd.padStart(11)}  ${pct.padStart(5)}   ${name}  (${calls} llamadas)`,
+    row: (name, usd, pct, calls) => `${usd.padStart(11)}  ${pct.padStart(5)}   ${name}  (${calls})`,
     unlabelled: () => 'sin etiqueta',
     cacheHit: (pct) => `Tasa de acierto de caché: ${pct} de la entrada facturable.`,
     cacheNever: () => 'No se usó caché en estas llamadas. Si algún prefijo se repite, ese es el mayor ahorro disponible.',
@@ -891,7 +896,7 @@ ${bold('EJEMPLOS')}
     leverRouteVerify: (candidate) =>
       `Si eso aguanta es una pregunta de evaluación, no de aritmética, y aquí no se ha visto ni una sola respuesta. Mídelo: trazum route <log> --prompt-file <prompt> --cases <casos> --yes`,
     leverBatch: (usd) => `mándalo por la Batch API, ${usd}`,
-    leverCalls: (calls, spent) => `${calls} llamadas, ${spent} gastados`,
+    leverCalls: (calls, spent) => `${calls}, ${spent} gastados`,
     leverPromptCeiling: (usd, pct) =>
       `Para comparar: acortar el texto del prompt puede tocar ${usd} como mucho — el ${pct} de esta factura, y solo si borraras hasta el último token de entrada. La cifra real está muy por debajo, porque la mayoría de esos tokens son contexto recuperado, historial de conversación y resultados de herramientas que no están en ningún fichero de prompt.`,
     historyHeading: () => 'Lo que cuesta reenviar la conversación',

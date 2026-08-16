@@ -2014,7 +2014,7 @@ async function commandProfile(args: Args, pricing: PricingCatalogue, t: CliMessa
 
   console.log();
   console.log(c.bold(t.profile.heading()));
-  console.log(`  ${t.profile.spent(n(report.total.calls), formatUsd(report.total.totalUsd))}`);
+  console.log(`  ${t.profile.spent(t.profile.calls(report.total.calls), formatUsd(report.total.totalUsd))}`);
   console.log();
   // Every part, including the zero ones. A row missing because it was zero reads
   // as a row somebody forgot, and "you are not caching at all" is a finding.
@@ -2234,7 +2234,7 @@ async function commandProfile(args: Args, pricing: PricingCatalogue, t: CliMessa
       console.log(
         `  ${c.green('→')} ${c.bold(wrap(t.profile.leverSlice(label, slice.modelName, formatUsd(slice.combinedUsd), pct(slice.shareOfBill)), 74, '    '))}`,
       );
-      console.log(`    ${c.dim(t.profile.leverCalls(n(slice.calls), formatUsd(slice.spentUsd)))}`);
+      console.log(`    ${c.dim(t.profile.leverCalls(t.profile.calls(slice.calls), formatUsd(slice.spentUsd)))}`);
       if (slice.route) {
         console.log(
           `    ${c.dim('·')} ${c.dim(wrap(t.profile.leverRoute(slice.route.candidate.displayName, formatUsd(slice.route.savingUsd)), 74, '      '))}`,
@@ -2305,7 +2305,7 @@ async function commandProfile(args: Args, pricing: PricingCatalogue, t: CliMessa
     console.log(c.bold(heading));
     for (const [name, breakdown] of rows) {
       const share = report.total.totalUsd > 0 ? breakdown.totalUsd / report.total.totalUsd : 0;
-      console.log(`  ${t.profile.row(name, formatUsd(breakdown.totalUsd), pct(share), n(breakdown.calls))}`);
+      console.log(`  ${t.profile.row(name, formatUsd(breakdown.totalUsd), pct(share), t.profile.calls(breakdown.calls))}`);
     }
   }
 
