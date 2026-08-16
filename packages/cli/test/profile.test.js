@@ -704,3 +704,36 @@ describe('the recipe this tool tells you to record', () => {
     assert.match(out, /never printed/, 'asked for a session key without saying what happens to it');
   });
 });
+
+describe('where the output spend concentrates', () => {
+  /**
+   * The actionable half of "output dominates". Two bills with identical output
+   * spend want opposite responses — a tail has a cause worth a morning, a flat
+   * distribution means the answer length is the task — and the total cannot tell
+   * them apart.
+   */
+
+  it('names a tail as a tail, with the threshold and the shares', async () => {
+    const records = [
+      ...Array.from({ length: 1880 }, () => call({ usage: { input_tokens: 1200, output_tokens: 200 } })),
+      ...Array.from({ length: 120 }, () => call({ usage: { input_tokens: 1200, output_tokens: 8000 } })),
+    ];
+    const out = flat(run(await logOf(records)));
+
+    assert.match(out, /6\.0% of calls hold 71\.9% of the output spend/);
+    assert.match(out, /answering with more than 8,000 tokens/);
+    assert.match(out, /a tail has a cause/, 'a tail was not called a tail');
+    assert.doesNotMatch(out, /no tail to hunt/);
+  });
+
+  it('says plainly when there is no tail to hunt', async () => {
+    const records = Array.from({ length: 2000 }, () =>
+      call({ label: 'summaries', usage: { input_tokens: 1200, output_tokens: 900 } }),
+    );
+    const out = flat(run(await logOf(records)));
+
+    assert.match(out, /There is no tail to hunt/);
+    assert.match(out, /cap max_tokens/);
+    assert.doesNotMatch(out, /a tail has a cause/, 'a flat workload was sent tail-hunting');
+  });
+});

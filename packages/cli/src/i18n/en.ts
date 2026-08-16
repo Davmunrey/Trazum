@@ -902,6 +902,15 @@ ${bold('EXAMPLES')}
       'No call in this log carried a session, so what re-sending the conversation costs could not be measured — usually the largest line on a chat or agent bill. Add "session" (or "conversation_id") to the record and run this again. Trazum groups by it and never prints it.',
     leversUnlabelled: () =>
       'None of these calls carried a label, so this is every workload in one row — a classifier and a RAG pipeline merged into a single figure, with one route suggested for both. Add "label" to the record and the levers split by workload, which is the grouping a decision is actually made at.',
+    outputShapeHeading: () => 'Where the output spend concentrates',
+    outputTail: (label, model, callPct, spendPct, above, usd) =>
+      `${label} on ${model}: ${callPct} of calls hold ${spendPct} of the output spend — the ones answering with more than ${above} tokens, out of ${usd} of output on this slice.`,
+    outputTailAdvice: () =>
+      'That is a tail, and a tail has a cause: a path through the prompt that invites an essay, a call with no max_tokens, a retrieval that returned a book. Finding it is a morning; it is not "make everything shorter".',
+    outputFlat: (label, model, callPct, spendPct, usd) =>
+      `${label} on ${model}: the output spend sits where the calls are — ${callPct} of them hold ${spendPct} of ${usd}. There is no tail to hunt.`,
+    outputFlatAdvice: () =>
+      'The answer length is the task here, so the levers are the blunt ones: ask for shorter answers in the prompt, and cap max_tokens.',
     leversNone: () =>
       'Nothing here clears 1% of the bill: these calls are already on the cheapest model of their family, or their provider has no batch API. That is a real answer, not an empty section.',
     assumedWriteTtl: (calls) =>

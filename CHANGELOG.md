@@ -10,6 +10,45 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+**`trazum profile` now says where the output spend concentrates** — the actionable
+half of "output dominates", which was the biggest line on the measured bill (87%)
+and the one the report could only state as a total.
+
+Two bills with identical output spend want opposite responses, and only the shape
+tells them apart:
+
+```
+  chat on Claude Opus 5: 5.9% of calls hold 71.5% of the output spend — the
+  ones answering with more than 8,000 tokens, out of $33.01 of output on
+  this slice.
+  That is a tail, and a tail has a cause: a path through the prompt that
+  invites an essay, a call with no max_tokens, a retrieval that returned a
+  book. Finding it is a morning; it is not "make everything shorter".
+```
+
+against:
+
+```
+  summaries on Claude Opus 5: the output spend sits where the calls are —
+  100.0% of them hold 100.0% of $45.00. There is no tail to hunt.
+```
+
+The figure is **the smallest group of calls holding at least half the output
+spend** — a median over money rather than a threshold somebody picked, found by
+walking the distribution down from the longest answers. "At least half" is meant
+literally: the walk stops on a bucket boundary, and claiming exactly half would be
+a precision the histogram does not have. The threshold named is always a bucket
+edge, so "calls answering with more than N tokens" is exact.
+
+Counted in fixed buckets in the pass `profileUsage` already makes — 64-token
+resolution where answers actually land, coarser in the tail — so memory is bounded
+by slices × touched buckets, not by the log. Per label **and** model, because a
+distribution mixed across two prices describes neither. `outputShapes` and
+`createOutputShapeTracker` are exported from `@trazum/core`.
+
+
 ## 1.11.0 — "What actually moves the bill"
 
 ### Fixed

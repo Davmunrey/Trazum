@@ -527,6 +527,18 @@ export interface CliMessages {
     historyCeiling(usd: string, pct: string, flat: string, spent: string): string;
     /** No session field in the log, so the question cannot be asked. */
     historyNoSessions(): string;
+    /**
+     * Where the output spend concentrates — the actionable half of "output
+     * dominates". A tail worth hunting and a task whose answers are inherently
+     * long produce the same total, and only the shape tells them apart.
+     */
+    outputShapeHeading(): string;
+    /** A tail: a small share of calls holds half the spend. */
+    outputTail(label: string, model: string, callPct: string, spendPct: string, above: string, usd: string): string;
+    outputTailAdvice(): string;
+    /** Flat: the spend is where the calls are, and the length is the task. */
+    outputFlat(label: string, model: string, callPct: string, spendPct: string, usd: string): string;
+    outputFlatAdvice(): string;
     assumedWriteTtl(calls: number): string;
   };
   /**

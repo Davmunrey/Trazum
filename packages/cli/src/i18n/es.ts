@@ -908,6 +908,15 @@ ${bold('EJEMPLOS')}
       'Ninguna llamada de este registro llevaba sesión, así que no se pudo medir lo que cuesta reenviar la conversación — normalmente la línea más grande de una factura de chat o de agente. Añade "session" (o "conversation_id") al registro y vuelve a ejecutarlo. Trazum agrupa por ese campo y nunca lo imprime.',
     leversUnlabelled: () =>
       'Ninguna de estas llamadas llevaba label, así que esto es todas las cargas en una fila — un clasificador y un pipeline RAG fundidos en una sola cifra, con una única ruta sugerida para los dos. Añade "label" al registro y las palancas se separan por carga, que es la agrupación en la que de verdad se toma una decisión.',
+    outputShapeHeading: () => 'Dónde se concentra el gasto en salida',
+    outputTail: (label, model, callPct, spendPct, above, usd) =>
+      `${label} en ${model}: el ${callPct} de las llamadas concentra el ${spendPct} del gasto en salida — las que responden con más de ${above} tokens, de ${usd} de salida en esta porción.`,
+    outputTailAdvice: () =>
+      'Eso es una cola, y una cola tiene una causa: un camino del prompt que invita a una redacción, una llamada sin max_tokens, una recuperación que devolvió un libro. Encontrarla es una mañana; no es "acorta todo".',
+    outputFlat: (label, model, callPct, spendPct, usd) =>
+      `${label} en ${model}: el gasto en salida está donde están las llamadas — el ${callPct} concentra el ${spendPct} de ${usd}. No hay cola que cazar.`,
+    outputFlatAdvice: () =>
+      'Aquí la longitud de la respuesta es la tarea, así que las palancas son las bastas: pide respuestas más cortas en el prompt, y limita max_tokens.',
     leversNone: () =>
       'Aquí no hay nada que llegue al 1% de la factura: estas llamadas ya van al modelo más barato de su familia, o su proveedor no tiene Batch API. Eso es una respuesta de verdad, no una sección vacía.',
     assumedWriteTtl: (calls) =>
