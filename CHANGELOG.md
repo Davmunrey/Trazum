@@ -12,6 +12,20 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**Following this tool's own recording recipe produced a report that asked for two
+more fields.** The onboarding message described a log with a `model` and a `usage`
+object; the headline README snippet carried `label` marked "optional" and no
+`session` at all. A reader who copied either was told on their first run that no
+call carried a session, and — since #128 — that no call carried a label, so the two
+largest findings the command makes could not be made.
+
+There is one recipe now and it is complete. `label` says which workload and
+`session` says which conversation; both are one line, neither can contain prompt
+text, and the session key is grouped by and never printed. A test records the
+documented snippet and fails if the report complains about anything, so the docs
+and the tool cannot drift apart again.
+
+
 **A log with no labels was reported as though `unlabelled` were a workload.** A
 2,000-call classifier and a 400-call RAG pipeline with no label between them merge
 into one slice, and the levers section then offered **a single route for both** —

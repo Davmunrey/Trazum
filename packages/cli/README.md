@@ -97,7 +97,8 @@ returned. Recording it is three lines and no transformer:
 ```ts
 appendFileSync('usage.jsonl', JSON.stringify({
   model: response.model,
-  label: 'support-rag',   // optional, and it is what makes the report useful
+  label: 'support-rag',       // which workload — without it every call looks alike
+  session: conversationId,    // which conversation — grouped by, never printed
   ...response.usage,
 }) + '\n');
 ```
