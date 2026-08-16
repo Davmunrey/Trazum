@@ -12,6 +12,21 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**`1 calls`, and `1 llamadas` in Spanish.** Reachable on ordinary input — a
+one-call log, a label covering one call, a slice of one — on the totals line, the
+breakdown rows and the levers.
+
+Two messages in the English catalogue already did the agreement by hand while a
+dozen did not, so the fault was never that somebody forgot: getting it right was a
+choice made per message. Both catalogues have a `plural` helper now and the count
+arrives already agreeing with its noun, so the next message written gets it for
+free and neither language can get it right while the other does not.
+
+The guard runs over both catalogues rather than over a list of strings, and checks
+the plural as well as the singular — a fix that hard-coded `1 call` would have
+passed every assertion about one and been wrong on every real log.
+
+
 **Following this tool's own recording recipe produced a report that asked for two
 more fields.** The onboarding message described a log with a `model` and a `usage`
 object; the headline README snippet carried `label` marked "optional" and no

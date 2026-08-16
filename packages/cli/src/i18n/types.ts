@@ -396,8 +396,17 @@ export interface CliMessages {
   profile: {
     noTarget(): string;
     heading(): string;
-    /** Totals line: calls and the bill they came to. */
+    /**
+     * Totals line: calls and the bill they came to.
+     *
+     * `calls` arrives already agreeing with its noun — "1 call", "2,400 calls".
+     * The count and the word have to be built together or one language gets it
+     * right and the next does not, and `1 calls` was reachable on an ordinary
+     * one-call log.
+     */
     spent(calls: string, total: string): string;
+    /** A count of calls with its noun, agreeing. */
+    calls(count: number): string;
     /** One row of the split, with its share of the bill. */
     part(name: string, usd: string, pct: string, tokens: string): string;
     partInput(): string;
