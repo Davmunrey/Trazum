@@ -1928,6 +1928,49 @@ Four things it refuses to do, and each one is a bug it had:
 And it prints the ceiling on prompt shortening underneath, on purpose. A 1% win
 reported without saying 1% of *what* is not information.
 
+### What re-sending the conversation costs
+
+A chat or agent workload sends the whole conversation back on every turn. Turn one
+is a system prompt and a question; turn twenty is a system prompt, nineteen previous
+exchanges and a question. **On an agent bill that growth is routinely the largest
+single line, and nothing in this tool could see it** — a prompt file shows the
+system prompt and not the history, and a total shows the sum and not the shape.
+
+Add one field to the log:
+
+```ts
+appendFileSync('usage.jsonl', JSON.stringify({
+  model: response.model,
+  label: 'agent',
+  session: conversationId,   // or conversation_id — either is read
+  ...response.usage,
+}) + '\n');
+```
+
+```
+What re-sending the conversation costs
+
+  agent on Claude Opus 5: input goes from 600 tokens on the opening turn to
+  5,000 on the closing one, over conversations of up to 12 turns.
+  If every turn had cost what its own first turn cost, that input would have
+  been $7.20 instead of $33.60 — so at most $26.40 of this bill is
+  conversation growth (57.9%).
+```
+
+**It is a ceiling, and it says so.** Part of that growth is the user's own new
+messages, which nothing can truncate away, and this reads counts rather than content
+so it cannot separate the two. The bound is exact; the split is not knowable from a
+usage log, and inventing one would be the flattering direction.
+
+**Trazum never prints the session key.** In a real log it is often an account id, a
+ticket number or an email address — so it is used to group calls and count turns,
+every figure is reported per *label*, and a test asserts the value appears nowhere
+in the report or in `--json`. A log that carries no content is only half the promise
+if something identifying comes back out.
+
+A log without the field says so rather than staying silent: *"nothing recorded"* and
+*"nothing to report"* are answers a reader would act on differently.
+
 ### Is the cheaper model good enough: `trazum route`
 
 Pricing a route is arithmetic. Whether the cheaper model still does the job is not,

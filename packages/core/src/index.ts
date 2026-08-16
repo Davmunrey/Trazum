@@ -17,6 +17,8 @@ export type {
   UsageRecord,
   UsageShares,
 } from './usage.js';
+export { conversationGrowth, createConversationTracker } from './conversation.js';
+export type { ConversationGrowth, ConversationOptions, ConversationTracker } from './conversation.js';
 export { billLevers } from './levers.js';
 export type { BillLevers, BillLeverOptions, LeverId, SliceLevers } from './levers.js';
 export { DETECTABLE_LANGUAGES, detectTextLanguage } from './language.js';

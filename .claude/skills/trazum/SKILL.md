@@ -133,6 +133,28 @@ Three things to get right when reporting on this:
   refuses to choose; report it the same way, and tell the user the fix is
   recording the `cache_creation` object the API already returns.
 
+## What re-sending the conversation costs
+
+On a chat or agent bill this is routinely the largest single line, and it is
+invisible to every other command: a prompt file shows the system prompt and not the
+history. `profile` measures it when the log carries a `session` (or
+`conversation_id`) field.
+
+If the report says **no call carried a session**, that is not a clean bill of
+health — it is the question going unasked. Tell the user to add the field; it is one
+line, and Trazum never prints the value.
+
+Three things to get right when reporting it:
+
+- **It is a ceiling, not a saving.** "At most $26.40 of this bill is conversation
+  growth" counts the user's own new messages, which nothing can truncate away.
+  Never quote it as an opportunity or add it to other savings.
+- **Never ask for the session key in a message, and never repeat it.** It is often
+  an account id or an email. Trazum groups by it and prints nothing derived from it;
+  do the same.
+- **The control is the history you replay**, capped or summarised — not the prompt,
+  and not the model.
+
 ## Is the cheaper model good enough?
 
 When the profile names a route worth money, this is the command that settles it —

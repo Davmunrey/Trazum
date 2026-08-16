@@ -884,6 +884,13 @@ ${bold('EJEMPLOS')}
     leverCalls: (calls, spent) => `${calls} llamadas, ${spent} gastados`,
     leverPromptCeiling: (usd, pct) =>
       `Para comparar: acortar el texto del prompt puede tocar ${usd} como mucho — el ${pct} de esta factura, y solo si borraras hasta el último token de entrada. La cifra real está muy por debajo, porque la mayoría de esos tokens son contexto recuperado, historial de conversación y resultados de herramientas que no están en ningún fichero de prompt.`,
+    historyHeading: () => 'Lo que cuesta reenviar la conversación',
+    historyGrowth: (label, model, first, last, turns) =>
+      `${label} en ${model}: la entrada pasa de ${first} tokens en el primer turno a ${last} en el último, en conversaciones de hasta ${turns} turnos.`,
+    historyCeiling: (usd, pct, flat, spent) =>
+      `Si cada turno hubiera costado lo que costó su propio primer turno, esa entrada habrían sido ${flat} en vez de ${spent} — así que como mucho ${usd} de esta factura es crecimiento de la conversación (${pct}). Es un techo y no un ahorro: parte de eso son los mensajes nuevos del propio usuario, que nada puede truncar, y esto lee cuentas y no contenido, así que no puede separarlos. Lo que lo mueve es limitar el historial que reproduces, o resumirlo.`,
+    historyNoSessions: () =>
+      'Ninguna llamada de este registro llevaba sesión, así que no se pudo medir lo que cuesta reenviar la conversación — normalmente la línea más grande de una factura de chat o de agente. Añade "session" (o "conversation_id") al registro y vuelve a ejecutarlo. Trazum agrupa por ese campo y nunca lo imprime.',
     leversNone: () =>
       'Aquí no hay nada que llegue al 1% de la factura: estas llamadas ya van al modelo más barato de su familia, o su proveedor no tiene Batch API. Eso es una respuesta de verdad, no una sección vacía.',
     assumedWriteTtl: (calls) =>
