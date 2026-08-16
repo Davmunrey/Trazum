@@ -888,6 +888,8 @@ ${bold('EXAMPLES')}
       `If every turn had cost what its own first turn cost, that input would have been ${flat} instead of ${spent} — so at most ${usd} of this bill is conversation growth (${pct}). It is a ceiling and not a saving: some of that is the user's own new messages, which nothing can truncate away, and this reads counts rather than content so it cannot tell the two apart. What moves it is capping the history you replay, or summarising it.`,
     historyNoSessions: () =>
       'No call in this log carried a session, so what re-sending the conversation costs could not be measured — usually the largest line on a chat or agent bill. Add "session" (or "conversation_id") to the record and run this again. Trazum groups by it and never prints it.',
+    leversUnlabelled: () =>
+      'None of these calls carried a label, so this is every workload in one row — a classifier and a RAG pipeline merged into a single figure, with one route suggested for both. Add "label" to the record and the levers split by workload, which is the grouping a decision is actually made at.',
     leversNone: () =>
       'Nothing here clears 1% of the bill: these calls are already on the cheapest model of their family, or their provider has no batch API. That is a real answer, not an empty section.',
     assumedWriteTtl: (calls) =>
@@ -915,6 +917,8 @@ ${bold('EXAMPLES')}
       `DIVERGES — the cheaper model gives materially different answers. The ${usd} is real and so is the change in behaviour; this one is not free money.`,
     inconclusive: () =>
       'INCONCLUSIVE — the original model was too inconsistent with itself on these cases to judge anything against. Add cases, or pick ones with less room for the model to wander.',
+    unlabelledSlice: () =>
+      'These calls carry no label, so Trazum cannot tell whether they are all this prompt. If they are not, the figure above covers calls this measurement never touched — add "label" to the record and the slice becomes one workload, which is what makes the number attributable.',
     yours: () =>
       'Agreement is not correctness. This measures whether the answers moved, not whether they were ever right — the decision is still yours.',
   },

@@ -136,3 +136,48 @@ describe('measuring whether a route is safe', () => {
     assert.doesNotMatch(out, /trazum eval .*--model claude-sonnet-5/, 'still names a command that cannot test a route');
   });
 });
+
+describe('when the slice is a mixture', () => {
+  /**
+   * A log with no labels merges every workload into one row: a 2,000-call
+   * classifier and a 400-call RAG pipeline become a single slice worth a single
+   * figure, and this command measures exactly **one** prompt against it.
+   *
+   * Attributing the verdict to money covering both is a number describing
+   * something other than what was measured — the fault this repository keeps
+   * finding in itself, in a new place. It cannot be detected from counts, so it is
+   * stated rather than guessed at.
+   */
+  const mixed = async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'trazum-mixed-'));
+    const log = join(dir, 'usage.jsonl');
+    await writeFile(
+      log,
+      [
+        ...Array.from({ length: 2000 }, () =>
+          JSON.stringify({ model: 'claude-opus-5', usage: { input_tokens: 180, output_tokens: 40 } }),
+        ),
+        ...Array.from({ length: 400 }, () =>
+          JSON.stringify({ model: 'claude-opus-5', usage: { input_tokens: 9000, output_tokens: 300 } }),
+        ),
+      ].join('\n') + '\n',
+    );
+    return log;
+  };
+
+  it('says the figure may cover calls the measurement never touched', async () => {
+    const { prompt, cases } = await fixture();
+    const out = flat(run([await mixed(), '--prompt-file', prompt, '--cases', cases]));
+
+    assert.match(out, /carry no label, so Trazum cannot tell whether they are all this prompt/);
+    assert.match(out, /covers calls this measurement never touched/);
+  });
+
+  it('stays quiet when the slice is one named workload', async () => {
+    // Nothing is ambiguous there, and a caveat on every run is a caveat nobody
+    // reads on the run where it mattered.
+    const { log, prompt, cases } = await fixture();
+    const out = flat(run([log, '--prompt-file', prompt, '--cases', cases]));
+    assert.doesNotMatch(out, /carry no label/);
+  });
+});

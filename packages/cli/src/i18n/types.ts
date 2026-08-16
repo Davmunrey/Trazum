@@ -496,6 +496,16 @@ export interface CliMessages {
     /** Nothing cleared the threshold, which is a real answer. */
     leversNone(): string;
     /**
+     * The log carries no labels, so every lever describes a mixture.
+     *
+     * A classifier and a RAG workload with no label between them merge into one
+     * slice, and the report then recommends a single route for two workloads that
+     * need different answers. The session case already says "add the field"; this
+     * one said nothing, and the row is named `unlabelled` as though that were a
+     * workload.
+     */
+    leversUnlabelled(): string;
+    /**
      * What re-sending the conversation costs.
      *
      * On an agent bill this is routinely the largest line, and nothing in this
@@ -535,6 +545,14 @@ export interface CliMessages {
     inconclusive(): string;
     /** Never a recommendation on its own — the money is only half the answer. */
     yours(): string;
+    /**
+     * The slice carries no label, so the figure may cover calls this prompt is not.
+     *
+     * Measuring one prompt and attributing the verdict to a bucket holding two
+     * workloads is a figure describing something other than what was measured —
+     * the fault this repository keeps finding in itself, in a new place.
+     */
+    unlabelledSlice(): string;
   };
 
   baseline: {

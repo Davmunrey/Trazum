@@ -618,3 +618,35 @@ describe('what re-sending the conversation costs', () => {
     assert.doesNotMatch(out, /No call in this log carried a session/, 'claimed the field was missing');
   });
 });
+
+describe('a log with no labels at all', () => {
+  it('says every lever describes a mixture', async () => {
+    /**
+     * Two workloads with no label between them merge into one row, and the section
+     * then offers a single route for both. The session case already tells the
+     * reader to add its field; this one named the row `unlabelled` and said
+     * nothing, as though that were a workload.
+     */
+    const result = run(
+      await logOf([
+        ...Array.from({ length: 2000 }, () => call({ usage: { input_tokens: 180, output_tokens: 40 } })),
+        ...Array.from({ length: 400 }, () => call({ usage: { input_tokens: 9000, output_tokens: 300 } })),
+      ]),
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const out = flat(result);
+
+    assert.match(out, /None of these calls carried a label/);
+    assert.match(out, /Add "label" to the record/);
+  });
+
+  it('stays quiet when the log is labelled', async () => {
+    const result = run(
+      await logOf([
+        ...Array.from({ length: 400 }, () => call({ label: 'rag', usage: { input_tokens: 9000, output_tokens: 300 } })),
+        ...Array.from({ length: 400 }, () => call({ label: 'chat', usage: { input_tokens: 2400, output_tokens: 700 } })),
+      ]),
+    );
+    assert.doesNotMatch(flat(result), /None of these calls carried a label/);
+  });
+});

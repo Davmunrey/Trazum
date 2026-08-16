@@ -2203,6 +2203,21 @@ async function commandProfile(args: Args, pricing: PricingCatalogue, t: CliMessa
   const levers = billLevers(report, { catalogue: pricing });
   console.log();
   console.log(c.bold(t.profile.leversHeading()));
+  /**
+   * Every lever below describes a mixture when nothing carries a label.
+   *
+   * A 2,000-call classifier and a 400-call RAG pipeline merge into one slice, and
+   * the section then offers a single route for two workloads that need different
+   * answers — and `trazum route` would measure one prompt against a figure
+   * covering both. The session case already tells the reader to add the field;
+   * this one named the row `unlabelled` and said nothing, as though that were a
+   * workload.
+   */
+  const unlabelledOnly =
+    report.byLabel.length === 1 && report.byLabel[0]!.label === UNLABELLED;
+  if (unlabelledOnly && levers.slices.length > 0) {
+    console.log(`  ${c.yellow('!')} ${c.dim(wrap(t.profile.leversUnlabelled(), 74, '    '))}`);
+  }
   if (levers.slices.length === 0) {
     console.log(`  ${c.dim(wrap(t.profile.leversNone(), 74, '  '))}`);
   } else {
@@ -2391,6 +2406,18 @@ async function commandRoute(args: Args, pricing: PricingCatalogue, t: CliMessage
   console.log(
     `  ${c.bold(t.route.picked(label, slice.modelName, slice.route.candidate.displayName, worth, `${(slice.shareOfBill * 100).toFixed(1)}%`))}`,
   );
+  /**
+   * The money and the measurement have to describe the same calls.
+   *
+   * An unlabelled slice can hold a classifier and a RAG pipeline at once, and
+   * this measures exactly one prompt. Attributing the verdict to a figure that
+   * covers both is the fault this repository keeps finding in itself — a number
+   * describing something other than what was measured. It cannot be detected from
+   * counts, so it is stated rather than guessed at.
+   */
+  if (slice.label === UNLABELLED) {
+    console.log(`  ${c.yellow('!')} ${c.dim(wrap(t.route.unlabelledSlice(), 74, '    '))}`);
+  }
   console.log();
   console.log(
     `  ${c.dim(wrap(t.route.willSpend(inputs.length * 3, provider.model, candidate.model), 74, '  '))}`,

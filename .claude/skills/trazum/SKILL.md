@@ -133,6 +133,20 @@ Three things to get right when reporting on this:
   refuses to choose; report it the same way, and tell the user the fix is
   recording the `cache_creation` object the API already returns.
 
+## When the log has no labels
+
+If the report says **none of these calls carried a label**, do not quote the levers
+as though they described one workload. Without a label every call looks alike, so a
+classifier and a RAG pipeline merge into one row and a single route is offered for
+both.
+
+Tell the user to add `label` to the record. It is one line, and it is what turns
+"up to $19.84 on unlabelled" into a figure somebody can act on.
+
+The same caveat is louder in `trazum route`, which measures exactly one prompt: on
+an unlabelled slice the money may cover calls the measurement never touched. Report
+the verdict and the caveat together or neither.
+
 ## What re-sending the conversation costs
 
 On a chat or agent bill this is routinely the largest single line, and it is

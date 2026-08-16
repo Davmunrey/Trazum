@@ -12,6 +12,22 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**A log with no labels was reported as though `unlabelled` were a workload.** A
+2,000-call classifier and a 400-call RAG pipeline with no label between them merge
+into one slice, and the levers section then offered **a single route for both** —
+two workloads that need different answers, priced as one.
+
+Worse in `trazum route`, which measures exactly one prompt: it named
+`unlabelled on Claude Opus 5 → Claude Sonnet 5, worth $14.88` and would have
+attributed that verdict to a figure covering 2,400 calls the measurement never
+touched. A number describing something other than what was measured, which is the
+fault this repository keeps finding in itself.
+
+Both say so now. The conversation-growth section already told the reader to add its
+field when it was missing; labels got the same treatment, because the fix is one
+line in their logger and it is what makes every figure below attributable.
+
+
 **Three product faults, found by running the tool as a new user would rather than
 by reading it.**
 
