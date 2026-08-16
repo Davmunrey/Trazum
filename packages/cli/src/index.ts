@@ -2003,15 +2003,57 @@ async function commandProfile(args: Args, pricing: PricingCatalogue, t: CliMessa
    * where a comparison against what-might-have-been is arithmetic instead of a
    * guess about a prompt nobody wrote.
    */
-  const lostLabels = report.byLabel.filter(
-    (r) => cacheEconomics(r.breakdown).verdict === 'lost-money',
-  );
-  const namedLosers = lostLabels
-    .slice(0, 3)
-    .map((r) => (r.label === UNLABELLED ? t.profile.unlabelled() : r.label))
-    .join(', ');
+  /**
+   * The losing labels, **ranked by what caching cost them** and not by bill size.
+   *
+   * `byLabel` arrives sorted by total spend, which is the right order for the
+   * table above and the wrong one here: the worst cache in an estate usually sits
+   * on a small workload, so taking the first three off a spend-ordered list meant
+   * the biggest loser could be the one that went unnamed.
+   */
+  const lostLabels = report.byLabel
+    .map((r) => ({ row: r, cache: cacheEconomics(r.breakdown) }))
+    .filter((r) => r.cache.verdict === 'lost-money')
+    .sort((a, b) => b.cache.deltaUsd - a.cache.deltaUsd);
 
-  if (cache.verdict === 'lost-money') {
+  const NAMED = 3;
+  const nameOf = (row: { label: string }): string =>
+    row.label === UNLABELLED ? t.profile.unlabelled() : row.label;
+  /**
+   * The names, with the ones that did not fit **counted rather than dropped**.
+   *
+   * The first version sliced to three silently while the money beside it was
+   * summed over every loser — so four bleeding labels printed three names and a
+   * figure that charged them with a fourth label's loss. Truncating is fine;
+   * truncating without saying so is the flattering omission this repository keeps
+   * catching itself at, and `reportProfileGaps` already had the pattern.
+   */
+  const listNames = (rows: Array<{ row: { label: string } }>): string => {
+    const names = rows.slice(0, NAMED).map((r) => nameOf(r.row)).join(', ');
+    return rows.length <= NAMED
+      ? names
+      : `${names} ${t.profile.andMoreLabels(rows.length - NAMED)}`;
+  };
+  const namedLosers = listNames(lostLabels);
+  const bleeding = lostLabels.reduce((sum, r) => sum + r.cache.deltaUsd, 0);
+
+  /**
+   * Whether the log can settle the question at all.
+   *
+   * Decided before anything prints, because it governs whether the confident
+   * sentence prints — not merely whether a caveat follows it. The first attempt
+   * added the caveat and left the assertion above it, so the reader met `Caching
+   * took $0.1000 off this bill` and only afterwards learned it might be a $3.65
+   * loss. A finding a later line retracts is still a finding somebody acted on.
+   */
+  const unsettled =
+    cache.worstCaseVerdict !== cache.verdict && report.total.assumedWriteTtlCalls > 0;
+
+  if (unsettled) {
+    console.log(
+      `  ${c.yellow('!')} ${c.bold(wrap(t.profile.cacheTtlUnsettled(report.total.assumedWriteTtlCalls, formatUsd(-cache.deltaUsd), formatUsd(cache.worstCaseDeltaUsd)), 74, '    '))}`,
+    );
+  } else if (cache.verdict === 'lost-money') {
     console.log(
       `  ${c.yellow('!')} ${c.bold(wrap(t.profile.cacheLost(formatUsd(cache.deltaUsd), n(report.total.cacheWriteTokens), n(report.total.cacheReadTokens)), 74, '    '))}`,
     );
@@ -2025,25 +2067,42 @@ async function commandProfile(args: Args, pricing: PricingCatalogue, t: CliMessa
     } else if (cache.verdict === 'no-difference') {
       console.log(`  ${c.dim(wrap(t.profile.cacheNoDifference(), 74, '  '))}`);
     }
-    /**
-     * A workload bleeding underneath a total that does not report a loss.
-     *
-     * This is the case the aggregate is actively hiding, so it prints louder than
-     * the line above it: a cache paying for itself on one label and losing on
-     * another nets out to a comfortable number, and nothing else on screen would
-     * ever say otherwise. It sits outside the `paid-off` branch on purpose —
-     * a total that came out level hides a loss exactly as well as a total that
-     * came out ahead.
-     */
-    if (lostLabels.length > 0) {
-      const bleeding = lostLabels.reduce(
-        (sum, r) => sum + cacheEconomics(r.breakdown).deltaUsd,
-        0,
-      );
-      console.log(
-        `  ${c.yellow('!')} ${c.dim(wrap(t.profile.cacheLostHidden(formatUsd(bleeding), namedLosers), 74, '    '))}`,
-      );
-    }
+  }
+
+  /**
+   * A workload bleeding underneath a total that does not report a loss.
+   *
+   * The case the aggregate is actively hiding, so it prints as a warning: a cache
+   * paying for itself on one label and losing on another nets out to a comfortable
+   * number, and nothing else on screen would say otherwise.
+   *
+   * The sentence deliberately does not restate the total's verdict. It used to
+   * open "Caching pays off overall", which this position cannot claim — it also
+   * runs under `no-difference`, where the line immediately above has just said the
+   * opposite, and under `unsettled`, where there is no verdict to report at all.
+   */
+  if (lostLabels.length > 0 && cache.verdict !== 'lost-money') {
+    console.log(
+      `  ${c.yellow('!')} ${c.dim(wrap(t.profile.cacheLostHidden(formatUsd(bleeding), namedLosers), 74, '    '))}`,
+    );
+  }
+
+  /**
+   * A label that loses money only if its unstated TTL was the long one.
+   *
+   * The same ambiguity one level down, and it hides better here: a total whose
+   * TTLs are mostly recorded reads as settled while one workload inside it is
+   * entirely unstated. Listed apart from the confirmed losers because it is a
+   * different claim — this one is conditional, and merging the two would make
+   * every name in either list mean less.
+   */
+  const maybeLostLabels = report.byLabel
+    .map((r) => ({ row: r, cache: cacheEconomics(r.breakdown) }))
+    .filter((r) => r.cache.verdict !== 'lost-money' && r.cache.worstCaseVerdict === 'lost-money');
+  if (maybeLostLabels.length > 0) {
+    console.log(
+      `  ${c.dim(wrap(t.profile.cacheTtlUnsettledLabels(listNames(maybeLostLabels)), 74, '    '))}`,
+    );
   }
 
   /**

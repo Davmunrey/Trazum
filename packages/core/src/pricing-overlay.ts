@@ -1,7 +1,7 @@
 import { BUNDLED_CATALOGUE } from './pricing.js';
 import { nearestName } from './nearest.js';
 import type { PricingCatalogue } from './pricing.js';
-import type { Capability, CachingMode, ModelPricing } from './types.js';
+import type { Capability, CachingMode, CostMultipliers, ModelPricing } from './types.js';
 
 /**
  * Local price corrections, so a price change does not require a library upgrade.
@@ -34,9 +34,27 @@ export const PRICING_MODEL_KEYS = [
   'caching',
   'notes',
   'promo',
+  'multipliers',
 ] as const;
 
 const PROMO_KEYS = ['inputPerMTok', 'outputPerMTok', 'until'] as const;
+
+/**
+ * Cache and batch rates, which an overlay had no way to state — and had to.
+ *
+ * Without this, a model added through `--pricing` silently inherited Anthropic's
+ * multipliers: a cache write at 1.25x input, or 2x at the long TTL. Most
+ * providers charge plain input for a write, so `trazum profile` computed a
+ * premium that model never charged, accused the workload of a caching loss it
+ * could not have, and told the reader to turn caching off. Three documents
+ * claimed that could not happen to a provider whose writes cost what input costs,
+ * and for an overlay model it was exactly what happened.
+ *
+ * `batch` accepts `null`, which is not the same as leaving it out: "this provider
+ * has no batch API" should stop the advisory offering a discount nobody sells,
+ * while "nobody has said" should fall back to the default.
+ */
+const MULTIPLIER_KEYS = ['cacheRead', 'cacheWrite5m', 'cacheWrite1h', 'batch'] as const;
 
 const TIERS: ModelPricing['tier'][] = ['frontier', 'opus', 'sonnet', 'haiku', 'unknown'];
 const CAPABILITIES: Capability[] = ['small', 'mid', 'large', 'frontier', 'unknown'];
@@ -129,6 +147,36 @@ function parsePromo(raw: unknown, label: string, source: string): ModelPricing['
   };
 }
 
+function parseMultipliers(raw: unknown, label: string, source: string): CostMultipliers {
+  if (!isPlainObject(raw)) {
+    throw new PricingOverlayError(`"${label}" must be an object`, source);
+  }
+  rejectUnknownKeys(raw, MULTIPLIER_KEYS, source, `${label}.`);
+  if (Object.keys(raw).length === 0) {
+    throw new PricingOverlayError(
+      `"${label}" is empty — remove it, or say which rate it changes`,
+      source,
+    );
+  }
+
+  const multipliers: CostMultipliers = {};
+  for (const key of ['cacheRead', 'cacheWrite5m', 'cacheWrite1h'] as const) {
+    if (raw[key] === undefined) continue;
+    /**
+     * Zero is refused along with the negatives. A free cache read is not a price
+     * anybody publishes, and admitting one would let an overlay typo turn a real
+     * cost into no cost — the flattering direction, and the one this whole file
+     * exists to keep out of a report.
+     */
+    multipliers[key] = positiveNumber(raw[key], `${label}.${key}`, source);
+  }
+  if (raw.batch !== undefined) {
+    multipliers.batch =
+      raw.batch === null ? null : positiveNumber(raw.batch, `${label}.batch`, source);
+  }
+  return multipliers;
+}
+
 function parseModel(
   raw: unknown,
   id: string,
@@ -208,6 +256,9 @@ function parseModel(
   if (raw.promo !== undefined) {
     // `null` is how you cancel a bundled promotion that has been withdrawn.
     model.promo = raw.promo === null ? undefined : parsePromo(raw.promo, `models.${id}.promo`, source);
+  }
+  if (raw.multipliers !== undefined) {
+    model.multipliers = parseMultipliers(raw.multipliers, `models.${id}.multipliers`, source);
   }
 
   return model;

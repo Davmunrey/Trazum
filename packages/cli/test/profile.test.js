@@ -307,7 +307,7 @@ describe('whether the caching was worth doing', () => {
     const out = flat(result);
 
     assert.match(out, /Caching took \$0\.2675 off this bill/, 'the healthy total went unreported');
-    assert.match(out, /costs \$0\.1250 on: rag/, 'the bleeding label was not named');
+    assert.match(out, /hides a loss: caching costs \$0\.1250 across rag/, 'the bleeding label was not named');
   });
 
   it('stays quiet about caching nobody turned on', async () => {

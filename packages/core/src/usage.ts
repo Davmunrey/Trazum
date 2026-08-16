@@ -123,6 +123,20 @@ export interface UsageBreakdown {
    * it can only be computed while the model is still in hand.
    */
   cachedTokensAtInputRateUsd: number;
+  /**
+   * `cacheWriteUsd` with every **unstated-TTL** write priced at the 1-hour rate.
+   *
+   * Equal to `cacheWriteUsd` when the log recorded which TTL each write used.
+   * When it did not, the cheaper 5-minute rate is assumed for the headline figure
+   * — and this is what the same calls cost if that assumption is wrong.
+   *
+   * It exists because the assumption reaches further than the total. It moves the
+   * *verdict*: a workload reading back between 0.28 and 1.11 tokens per token
+   * written is reported as paying for itself at 1.25x and as losing money at 2x,
+   * and the log is silent about which. A verdict that cannot see the assumption
+   * behind it states the flattering half as a fact.
+   */
+  cacheWriteUsdIfAssumed1h: number;
 }
 
 export interface UsageProfileReport {
@@ -186,6 +200,7 @@ const EMPTY = (): UsageBreakdown => ({
   outputUsd: 0,
   totalUsd: 0,
   cachedTokensAtInputRateUsd: 0,
+  cacheWriteUsdIfAssumed1h: 0,
 });
 
 /**
@@ -374,6 +389,20 @@ function add(into: UsageBreakdown, record: UsageRecord, catalogue: PricingCatalo
    */
   into.cacheWriteUsd += per(record.cacheWrite5mTokens, inputPerMTok * rates.cacheWrite5m);
   into.cacheWriteUsd += per(record.cacheWrite1hTokens, inputPerMTok * rates.cacheWrite1h);
+  /**
+   * The same writes with the assumption taken the other way.
+   *
+   * A record whose TTL the log did not state has all of its writes in the
+   * 5-minute bucket — `parseUsageLine` puts them there because one rate has to be
+   * chosen — so this prices exactly those at the 1-hour rate instead. Accumulated
+   * per call, and per model, because the ratio between the two rates is not a
+   * constant: 2.0/1.25 on Anthropic, 1.0/1.0 where a write costs what input
+   * costs. Scaling the total afterwards would invent a premium for providers that
+   * have none.
+   */
+  const writeRateIfWrong = record.writeTtlKnown ? rates.cacheWrite5m : rates.cacheWrite1h;
+  into.cacheWriteUsdIfAssumed1h += per(record.cacheWrite5mTokens, inputPerMTok * writeRateIfWrong);
+  into.cacheWriteUsdIfAssumed1h += per(record.cacheWrite1hTokens, inputPerMTok * rates.cacheWrite1h);
   into.outputUsd += per(record.outputTokens, outputPerMTok);
   /**
    * The same cache-touched tokens at the plain input rate, banked here because
@@ -527,6 +556,29 @@ export interface CacheEconomics {
    */
   readsPerWrite: number | null;
   verdict: CacheVerdict;
+  /**
+   * `deltaUsd` with every write whose TTL the log did not state priced at the
+   * 1-hour rate instead of the assumed 5-minute one.
+   *
+   * Equal to `deltaUsd` when every TTL was recorded, and never smaller: the
+   * 1-hour multiplier is at or above the 5-minute one on every model in the
+   * catalogue, so this is a genuine worst case rather than the other end of a
+   * range.
+   */
+  worstCaseDeltaUsd: number;
+  /**
+   * The verdict at that worst case.
+   *
+   * **When this differs from `verdict`, the log cannot settle the question** and
+   * neither can any report built from it. That is not a rare shape: a workload
+   * reading back between 0.28 and 1.11 tokens per token written flips between
+   * `paid-off` and `lost-money` on the TTL alone, and a log carrying only the flat
+   * `cache_creation_input_tokens` never says which. Measured on a million written
+   * tokens against three hundred thousand read back, the difference was a $0.10
+   * saving against a $3.65 loss — a $3.75 swing across the sign, and the assumed
+   * half is the flattering one.
+   */
+  worstCaseVerdict: CacheVerdict;
 }
 
 /**
@@ -590,6 +642,8 @@ export function cacheEconomics(breakdown: UsageBreakdown): CacheEconomics {
     deltaUsd: 0,
     readsPerWrite: null,
     verdict,
+    worstCaseDeltaUsd: 0,
+    worstCaseVerdict: verdict,
   });
 
   if (touchedTokens === 0) return none('not-attempted');
@@ -603,17 +657,23 @@ export function cacheEconomics(breakdown: UsageBreakdown): CacheEconomics {
   if (spentUsd === 0 && withoutCachingUsd === 0) return none('unpriced');
 
   const deltaUsd = spentUsd - withoutCachingUsd;
+  const worstCaseDeltaUsd =
+    breakdown.cacheReadUsd + breakdown.cacheWriteUsdIfAssumed1h - withoutCachingUsd;
   const readsPerWrite =
     breakdown.cacheWriteTokens === 0
       ? null
       : breakdown.cacheReadTokens / breakdown.cacheWriteTokens;
 
-  const verdict: CacheVerdict =
-    Math.abs(deltaUsd) < CACHE_DELTA_NOISE_USD
-      ? 'no-difference'
-      : deltaUsd > 0
-        ? 'lost-money'
-        : 'paid-off';
+  const decide = (delta: number): CacheVerdict =>
+    Math.abs(delta) < CACHE_DELTA_NOISE_USD ? 'no-difference' : delta > 0 ? 'lost-money' : 'paid-off';
 
-  return { spentUsd, withoutCachingUsd, deltaUsd, readsPerWrite, verdict };
+  return {
+    spentUsd,
+    withoutCachingUsd,
+    deltaUsd,
+    readsPerWrite,
+    verdict: decide(deltaUsd),
+    worstCaseDeltaUsd,
+    worstCaseVerdict: decide(worstCaseDeltaUsd),
+  };
 }
