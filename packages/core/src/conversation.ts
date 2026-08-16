@@ -22,9 +22,13 @@ import type { UsageRecord } from './usage.js';
  * ## What it will and will not claim
  *
  * The honest figure is a **ceiling**, and it is exact: what this workload would
- * have cost if every turn had cost what its own first turn cost. Subtract that from
- * what was actually spent and you have the most that eliminating conversation
- * growth could ever be worth.
+ * have cost if every turn had cost what its *cheapest* turn cost. Subtract that
+ * from what was actually spent and you have the most that eliminating conversation
+ * growth could ever be worth — no truncation strategy can pay less than the
+ * cheapest turn per turn. The cheapest turn rather than the first one seen,
+ * because the first is a fact about the *log's ordering* and not about the
+ * conversation: the identical workload exported newest-first used to compute a
+ * negative growth and vanish from the report entirely.
  *
  * It is a ceiling and not a saving because part of that growth is the user's own
  * new messages, which nobody can truncate away, and this module cannot tell those
@@ -50,15 +54,15 @@ export interface ConversationGrowth {
   /** How many distinct conversations were seen. Never which ones. */
   sessions: number;
   calls: number;
-  /** Mean input tokens on the opening turn of a conversation. */
-  firstTurnTokens: number;
-  /** Mean input tokens on the closing turn. */
-  lastTurnTokens: number;
+  /** Mean input tokens on the smallest turn of a conversation. */
+  minTurnTokens: number;
+  /** Mean input tokens on the largest turn. */
+  maxTurnTokens: number;
   /** Turns in the longest conversation seen. */
   longestSession: number;
   /** Input-side spend: plain input, cache reads and cache writes. */
   inputUsd: number;
-  /** What that would have been if every turn had cost what its own first turn did. */
+  /** What that would have been if every turn had cost what its cheapest turn did. */
   flatUsd: number;
   /**
    * `inputUsd - flatUsd`. **A ceiling on what removing conversation growth could
@@ -108,9 +112,21 @@ const inputTokensOf = (r: UsageRecord): number =>
 
 interface Session {
   turns: number;
-  firstCostUsd: number;
-  firstTokens: number;
-  lastTokens: number;
+  /**
+   * The cheapest turn, not the first one seen.
+   *
+   * The first version anchored on the first record encountered, which made the
+   * measurement depend on the order of the log: the identical workload exported
+   * newest-first computed a *negative* growth and the section silently vanished
+   * — the largest line on an agent bill, gone because somebody's log was sorted
+   * the other way. The cheapest turn is order-independent, equals the opening
+   * turn on any genuinely growing conversation, and keeps the figure an exact
+   * ceiling: no truncation strategy can pay less than the cheapest turn per
+   * turn.
+   */
+  minCostUsd: number;
+  minTokens: number;
+  maxTokens: number;
   totalUsd: number;
 }
 
@@ -167,15 +183,17 @@ export function createConversationTracker(options: ConversationOptions): Convers
     if (!existing) {
       sessions.set(record.session, {
         turns: 1,
-        firstCostUsd: cost,
-        firstTokens: tokens,
-        lastTokens: tokens,
+        minCostUsd: cost,
+        minTokens: tokens,
+        maxTokens: tokens,
         totalUsd: cost,
       });
       return;
     }
     existing.turns += 1;
-    existing.lastTokens = tokens;
+    existing.minCostUsd = Math.min(existing.minCostUsd, cost);
+    existing.minTokens = Math.min(existing.minTokens, tokens);
+    existing.maxTokens = Math.max(existing.maxTokens, tokens);
     existing.totalUsd += cost;
   };
 
@@ -200,17 +218,18 @@ export function createConversationTracker(options: ConversationOptions): Convers
 
     let inputUsd = 0;
     let flatUsd = 0;
-    let firstTokens = 0;
-    let lastTokens = 0;
+    let minTokens = 0;
+    let maxTokens = 0;
     let calls = 0;
     let longestSession = 0;
 
     for (const session of long) {
       inputUsd += session.totalUsd;
-      // What every turn would have cost at this conversation's own opening price.
-      flatUsd += session.firstCostUsd * session.turns;
-      firstTokens += session.firstTokens;
-      lastTokens += session.lastTokens;
+      // What every turn would have cost at this conversation's own cheapest
+      // price — order-independent, and an exact floor on any truncation.
+      flatUsd += session.minCostUsd * session.turns;
+      minTokens += session.minTokens;
+      maxTokens += session.maxTokens;
       calls += session.turns;
       longestSession = Math.max(longestSession, session.turns);
     }
@@ -239,8 +258,8 @@ export function createConversationTracker(options: ConversationOptions): Convers
       modelName: model.displayName,
       sessions: long.length,
       calls,
-      firstTurnTokens: firstTokens / long.length,
-      lastTurnTokens: lastTokens / long.length,
+      minTurnTokens: minTokens / long.length,
+      maxTurnTokens: maxTokens / long.length,
       longestSession,
       inputUsd,
       flatUsd,

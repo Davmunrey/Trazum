@@ -563,7 +563,9 @@ describe('what re-sending the conversation costs', () => {
     assert.equal(result.status, 0, result.stderr);
     const out = flat(result);
 
-    assert.match(out, /input goes from 600 tokens on the opening turn to 5,000/);
+    // "smallest"/"largest", never "opening"/"closing": the measurement is
+    // order-independent now and the wording must not claim an order it cannot know.
+    assert.match(out, /input ranges from 600 tokens on the smallest turn to 5,000 on the largest/);
     assert.match(out, /at most \$26\.40 of this bill is conversation growth/);
     assert.match(out, /ceiling and not a saving/, 'presented a bound as an opportunity');
   });

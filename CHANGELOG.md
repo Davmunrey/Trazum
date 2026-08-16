@@ -12,6 +12,30 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**The conversation measurement depended on the order of the log.** Growth was
+anchored on the first record seen per session — a fact about the log's ordering,
+not about the conversation. The identical workload exported newest-first, an
+ordinary shape for a warehouse export, computed a *negative* growth and the whole
+section silently vanished: the largest line on an agent bill, gone because
+somebody's log was sorted the other way.
+
+The anchor is the **cheapest turn** now, which is order-independent, equals the
+opening turn on any genuinely growing conversation, and keeps the figure an exact
+ceiling — no truncation strategy can pay less than the cheapest turn per turn. A
+test runs the same workload forward, reversed and re-sorted and requires identical
+results up to floating-point associativity.
+
+The wording followed: *smallest turn* and *largest turn*, never *opening* and
+*closing*, because the report must not claim an order it cannot know. For the same
+reason a shrinking conversation and its growing mirror — literally
+indistinguishable once order is unknown — now produce the same report, which
+replaces a test that demanded the impossible. `ConversationGrowth` renames
+`firstTurnTokens`/`lastTurnTokens` to `minTurnTokens`/`maxTurnTokens` (unreleased
+API).
+
+
+### Fixed
+
 **`profile --json` omitted the levers.** The flagship section — "What would
 actually move this bill", the reason the command exists — was terminal-only, so
 any pipeline, dashboard or CI step reading the JSON never saw it. A finding the
