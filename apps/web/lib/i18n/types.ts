@@ -254,7 +254,7 @@ export interface WebMessages {
     empty: string;
     nothingPriced: string;
     heading: string;
-    headline(calls: string, total: string): string;
+    headline(calls: number, total: string): string;
     partInput: string;
     partCacheRead: string;
     partCacheWrite: string;
@@ -271,16 +271,17 @@ export interface WebMessages {
     cacheNoDifference: string;
     cacheUnpriced: string;
     /** The log cannot settle the verdict; both ends are stated, neither as the answer. */
-    cacheUnsettled(calls: string, asRecorded: string, atLongTtl: string): string;
+    cacheUnsettled(calls: number, asRecorded: string, atLongTtl: string): string;
     /** The verdict survives the assumption, but the figure is a bound. */
-    cacheTtlBound(calls: string, atLongTtl: string): string;
+    cacheTtlBound(calls: number, atLongTtl: string): string;
     /** A losing label hidden inside a comfortable total. */
     cacheHiddenLoss(usd: string, labels: string): string;
     leversHeading: string;
+    /** `usd` is the slice's combined saving, never its spend — the share describes it. */
     leverSlice(label: string, model: string, usd: string, pct: string): string;
     leverRoute(candidate: string, usd: string): string;
     leverBatch(usd: string): string;
-    leverCalls(calls: string, spent: string): string;
+    leverCalls(calls: number, spent: string): string;
     routeVerify: string;
     leverPromptCeiling(usd: string, pct: string): string;
     leversNone: string;
@@ -300,15 +301,15 @@ export interface WebMessages {
     ): string;
     outputFlat(label: string, model: string, callPct: string, spendPct: string, usd: string): string;
     truncatedHeading: string;
-    truncatedWaste(calls: string, usd: string, pct: string): string;
+    truncatedWaste(calls: number, usd: string, pct: string): string;
     truncatedNone: string;
     truncatedNotRecorded: string;
     byLabelHeading: string;
     byModelHeading: string;
     unlabelled: string;
     moreRows(count: number): string;
-    unpriced(models: string, calls: string): string;
-    skipped(count: string, lines: string): string;
+    unpriced(models: string, calls: number): string;
+    skipped(count: number, lines: string): string;
   };
 
   errors: {

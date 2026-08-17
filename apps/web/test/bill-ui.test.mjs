@@ -102,4 +102,71 @@ describe('the bill tab reads the log in the browser and nowhere else', () => {
     assert.equal(/function formatUsd/.test(bill), false);
     assert.match(bill, /formatUsd,\n\s*profileUsage|formatUsd/, 'formatUsd comes from @trazum/core');
   });
+
+  it('puts the saving beside the saving’s share, never the spend', () => {
+    /**
+     * `shareOfBill` on a lever slice is the *combined saving* as a fraction of
+     * the bill. The first version rendered `spentUsd` next to it — "$0.4669
+     * (72%)" on a slice the by-label table said was 100% of the bill, two
+     * figures on one line describing different things. Caught by driving the
+     * built page in a browser, not by any source assertion; this pins the fix.
+     */
+    const sliceCall = /t\.bill\.leverSlice\(([\s\S]*?)\)\s*\}/.exec(bill);
+    assert.ok(sliceCall, 'leverSlice is not rendered');
+    assert.match(sliceCall[1], /slice\.combinedUsd/, 'leverSlice must carry the combined saving');
+    assert.equal(
+      /slice\.spentUsd/.test(sliceCall[1]),
+      false,
+      'leverSlice is fed the spend — the share beside it describes the saving',
+    );
+    // The spend still appears, on the line that names it as spend.
+    const callsLine = /t\.bill\.leverCalls\(([\s\S]*?)\)\s*\}/.exec(bill);
+    assert.ok(callsLine && /slice\.spentUsd/.test(callsLine[1]));
+  });
+});
+
+describe('the bill copy agrees with its own numbers', () => {
+  /**
+   * "1 calls are not in these totals", read off a screenshot. Every message
+   * that renders a count must take it as a number and branch on one, in both
+   * locales — a count formatted upstream into a string cannot conjugate.
+   */
+  const COUNTED = [
+    'headline',
+    'cacheUnsettled',
+    'cacheTtlBound',
+    'leverCalls',
+    'truncatedWaste',
+    'unpriced',
+    'skipped',
+  ];
+
+  /** The source of one message implementation, sliced out of a catalogue file. */
+  const messageSource = (file, name) => {
+    const source = read(file);
+    const start = source.indexOf(`    ${name}: (`);
+    assert.notEqual(start, -1, `${file} does not define bill.${name}`);
+    const next = source.slice(start + 4).search(/\n    [a-zA-Z]+:/);
+    return source.slice(start, next === -1 ? undefined : start + 4 + next);
+  };
+
+  it('declares every counted parameter as a number', () => {
+    const types = read('lib/i18n/types.ts');
+    for (const name of COUNTED) {
+      const declaration = new RegExp(`${name}\\([^)]*(calls|count): number`);
+      assert.match(types, declaration, `bill.${name} takes its count as a pre-formatted string`);
+    }
+  });
+
+  for (const file of ['lib/i18n/en.ts', 'lib/i18n/es.ts']) {
+    it(`${file} conjugates every counted message`, () => {
+      for (const name of COUNTED) {
+        assert.match(
+          messageSource(file, name),
+          /=== 1/,
+          `bill.${name} never branches on the singular`,
+        );
+      }
+    });
+  }
 });

@@ -288,7 +288,8 @@ export const es: WebMessages = {
       + 'factura que mostrar. La CLI puede ponerles precio con un overlay: trazum profile '
       + '--pricing.',
     heading: 'Adónde fue el dinero',
-    headline: (calls, total) => `${calls} llamadas · ${total}`,
+    headline: (calls, total) =>
+      `${calls.toLocaleString('es-ES')} ${calls === 1 ? 'llamada' : 'llamadas'} · ${total}`,
     partInput: 'Entrada',
     partCacheRead: 'Lecturas de caché',
     partCacheWrite: 'Escrituras de caché',
@@ -316,21 +317,24 @@ export const es: WebMessages = {
       'Pasaron tokens por la caché en modelos que el catálogo de precios no conoce, así que no '
       + 'hay comparación posible.',
     cacheUnsettled: (calls, asRecorded, atLongTtl) =>
-      `Este registro no puede decir si la caché se pagó sola. ${calls} llamadas no anotaron `
-      + `qué TTL de escritura usaron: a la tarifa de 5 minutos la caché quitó ${asRecorded} de `
-      + `esta factura, y a la de 1 hora las mismas llamadas le añadieron ${atLongTtl}. Ninguna `
-      + 'de las dos se presenta como la respuesta. Registra el objeto "cache_creation" que '
-      + 'devuelve la API y esto se resuelve solo.',
+      `Este registro no puede decir si la caché se pagó sola. ${calls.toLocaleString('es-ES')} `
+      + `${calls === 1 ? 'llamada no anotó' : 'llamadas no anotaron'} qué TTL de escritura `
+      + `${calls === 1 ? 'usó' : 'usaron'}: a la tarifa de 5 minutos la caché quitó `
+      + `${asRecorded} de esta factura, y a la de 1 hora las mismas llamadas le añadieron `
+      + `${atLongTtl}. Ninguna de las dos se presenta como la respuesta. Registra el objeto `
+      + '"cache_creation" que devuelve la API y esto se resuelve solo.',
     cacheTtlBound: (calls, atLongTtl) =>
-      `Esa cifra es una cota, no una medición: ${calls} llamadas no anotaron el TTL de `
-      + `escritura, y a la tarifa de 1 hora sale ${atLongTtl}.`,
+      `Esa cifra es una cota, no una medición: ${calls.toLocaleString('es-ES')} `
+      + `${calls === 1 ? 'llamada no anotó' : 'llamadas no anotaron'} el TTL de escritura, y a `
+      + `la tarifa de 1 hora sale ${atLongTtl}.`,
     cacheHiddenLoss: (usd, labels) =>
       `El total esconde una pérdida: la caché cuesta ${usd} en ${labels}.`,
     leversHeading: 'Qué movería esta factura de verdad',
     leverSlice: (label, model, usd, pct) => `${label} en ${model} — hasta ${usd} (${pct})`,
     leverRoute: (candidate, usd) => `enrutarlo a ${candidate}: ${usd}`,
     leverBatch: (usd) => `enviarlo por la Batch API: ${usd}`,
-    leverCalls: (calls, spent) => `${calls} llamadas, ${spent} gastados`,
+    leverCalls: (calls, spent) =>
+      `${calls.toLocaleString('es-ES')} ${calls === 1 ? 'llamada' : 'llamadas'}, ${spent} gastados`,
     routeVerify:
       'Que una ruta aguante es una pregunta de evaluación, no de aritmética: nada aquí ha visto '
       + 'una sola respuesta. La CLI lo mide: trazum route <log> --prompt-file <prompt> --cases '
@@ -376,10 +380,12 @@ export const es: WebMessages = {
       + 'y limita max_tokens.',
     truncatedHeading: 'Respuestas cortadas a medias',
     truncatedWaste: (calls, usd, pct) =>
-      `${calls} llamadas chocaron con el techo de max_tokens: ${usd} del gasto de salida `
-      + `(${pct}) compró respuestas cortadas a media generación — pagadas enteras, a menudo `
-      + 'reintentadas y facturadas otra vez. Donde la respuesta necesite el espacio de verdad, '
-      + 'sube max_tokens; donde no, pide menos.',
+      `${calls.toLocaleString('es-ES')} ${calls === 1 ? 'llamada chocó' : 'llamadas chocaron'} `
+      + `con el techo de max_tokens: ${usd} del gasto de salida (${pct}) compró `
+      + `${calls === 1 ? 'una respuesta cortada' : 'respuestas cortadas'} a media generación — `
+      + `${calls === 1 ? 'pagada entera, a menudo reintentada y facturada' : 'pagadas enteras, a menudo reintentadas y facturadas'} `
+      + 'otra vez. Donde la respuesta necesite el espacio de verdad, sube max_tokens; donde '
+      + 'no, pide menos.',
     truncatedNone: 'Se registraron los motivos de parada y ninguna respuesta chocó con el techo de max_tokens.',
     truncatedNotRecorded:
       'No se pudo medir si alguna respuesta quedó cortada: ninguna llamada de este registro '
@@ -390,10 +396,12 @@ export const es: WebMessages = {
     unlabelled: '(sin etiqueta)',
     moreRows: (count) => `…y ${count} más.`,
     unpriced: (models, calls) =>
-      `${calls} llamadas no están en estos totales — el catálogo de precios no conoce: `
-      + `${models}. La CLI puede ponerles precio con un overlay (trazum profile --pricing).`,
+      `${calls.toLocaleString('es-ES')} ${calls === 1 ? 'llamada no está' : 'llamadas no están'} `
+      + `en estos totales — el catálogo de precios no conoce: ${models}. La CLI puede `
+      + `${calls === 1 ? 'ponerle' : 'ponerles'} precio con un overlay (trazum profile --pricing).`,
     skipped: (count, lines) =>
-      `${count} líneas no se pudieron leer y quedaron fuera (líneas ${lines}).`,
+      `${count.toLocaleString('es-ES')} ${count === 1 ? 'línea no se pudo leer y quedó' : 'líneas no se pudieron leer y quedaron'} `
+      + `fuera (${count === 1 ? 'línea' : 'líneas'} ${lines}).`,
   },
 
   errors: {
