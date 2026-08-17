@@ -214,7 +214,7 @@ function Report({
           <CardHeader className="px-[18px]">{eyebrow(t.bill.heading)}</CardHeader>
           <CardContent className="flex flex-col gap-3.5 px-[18px]">
             <div className="font-display text-[26px] leading-tight font-semibold">
-              {t.bill.headline(n(total.calls), formatUsd(total.totalUsd))}
+              {t.bill.headline(total.calls, formatUsd(total.totalUsd))}
             </div>
             <table className="w-full text-[13px]">
               <thead>
@@ -263,7 +263,7 @@ function Report({
               {unsettled ? (
                 <div className="rounded-lg border border-l-[3px] border-l-warn px-3.5 py-3 text-[13px] leading-snug text-warn">
                   {t.bill.cacheUnsettled(
-                    n(total.assumedWriteTtlCalls),
+                    total.assumedWriteTtlCalls,
                     formatUsd(Math.abs(cache.deltaUsd)),
                     formatUsd(Math.abs(cache.worstCaseDeltaUsd)),
                   )}
@@ -286,7 +286,7 @@ function Report({
                   {total.assumedWriteTtlCalls > 0 && (
                     <span className="text-[13px] text-muted-foreground">
                       {t.bill.cacheTtlBound(
-                        n(total.assumedWriteTtlCalls),
+                        total.assumedWriteTtlCalls,
                         formatSignedUsd(cache.worstCaseDeltaUsd),
                       )}
                     </span>
@@ -321,15 +321,23 @@ function Report({
               {levers.slices.slice(0, MAX_SLICES).map((slice) => (
                 <div key={`${slice.label}\n${slice.model}`} className="rounded-lg border px-3.5 py-3">
                   <div className="font-semibold">
+                    {/*
+                      combinedUsd, never spentUsd: the share beside it is the
+                      *saving*'s share of the bill, and gluing the slice's spend
+                      to the saving's percentage put two figures on one line
+                      that described different things. Caught on screen, in a
+                      browser — "$0.4669 (72%)" against a by-label table saying
+                      the same slice was 100% of the bill.
+                    */}
                     {t.bill.leverSlice(
                       labelName(slice.label),
                       slice.modelName,
-                      formatUsd(slice.spentUsd),
+                      formatUsd(slice.combinedUsd),
                       pct(slice.shareOfBill),
                     )}
                   </div>
                   <div className="text-[13px] text-muted-foreground">
-                    {t.bill.leverCalls(n(slice.calls), formatUsd(slice.spentUsd))}
+                    {t.bill.leverCalls(slice.calls, formatUsd(slice.spentUsd))}
                   </div>
                   <ul className="m-0 mt-1 list-disc pl-5 text-[13px]">
                     {slice.route !== null && (
@@ -422,7 +430,7 @@ function Report({
               ) : total.truncatedCalls > 0 ? (
                 <span className="text-terracotta">
                   {t.bill.truncatedWaste(
-                    n(total.truncatedCalls),
+                    total.truncatedCalls,
                     formatUsd(total.truncatedOutputUsd),
                     pct(outputShare),
                   )}
@@ -504,9 +512,9 @@ function Gaps({
   return (
     <div className="flex flex-col gap-1 text-[13px] text-terracotta">
       {unpricedModels.length > 0 && (
-        <span>{t.bill.unpriced(unpricedModels.join(', '), n(unpriced.calls))}</span>
+        <span>{t.bill.unpriced(unpricedModels.join(', '), unpriced.calls)}</span>
       )}
-      {skippedLines.length > 0 && <span>{t.bill.skipped(n(skippedLines.length), shownLines)}</span>}
+      {skippedLines.length > 0 && <span>{t.bill.skipped(skippedLines.length, shownLines)}</span>}
     </div>
   );
 }

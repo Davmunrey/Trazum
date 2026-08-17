@@ -286,7 +286,8 @@ export const en: WebMessages = {
       + 'report. The CLI can price unknown models with a pricing overlay: trazum profile '
       + '--pricing.',
     heading: 'Where the money went',
-    headline: (calls, total) => `${calls} calls · ${total}`,
+    headline: (calls, total) =>
+      `${calls.toLocaleString('en-US')} ${calls === 1 ? 'call' : 'calls'} · ${total}`,
     partInput: 'Input',
     partCacheRead: 'Cache reads',
     partCacheWrite: 'Cache writes',
@@ -313,21 +314,23 @@ export const en: WebMessages = {
       'Tokens went through the cache on models the pricing catalogue does not know, so there is '
       + 'no comparison to make.',
     cacheUnsettled: (calls, asRecorded, atLongTtl) =>
-      `This log cannot say whether caching paid for itself. ${calls} calls did not record which `
-      + `cache-write TTL was used: at the 5-minute rate caching took ${asRecorded} off this `
-      + `bill, and at the 1-hour rate the same calls added ${atLongTtl} to it. Neither is `
-      + 'reported as the answer. Record the "cache_creation" object the API returns and this '
-      + 'settles itself.',
+      `This log cannot say whether caching paid for itself. ${calls.toLocaleString('en-US')} `
+      + `${calls === 1 ? 'call' : 'calls'} did not record which cache-write TTL was used: at `
+      + `the 5-minute rate caching took ${asRecorded} off this bill, and at the 1-hour rate `
+      + `the same calls added ${atLongTtl} to it. Neither is reported as the answer. Record `
+      + 'the "cache_creation" object the API returns and this settles itself.',
     cacheTtlBound: (calls, atLongTtl) =>
-      `That figure is a bound, not a measurement: ${calls} calls did not record a cache-write `
-      + `TTL, and at the 1-hour rate it is ${atLongTtl}.`,
+      `That figure is a bound, not a measurement: ${calls.toLocaleString('en-US')} `
+      + `${calls === 1 ? 'call' : 'calls'} did not record a cache-write TTL, and at the `
+      + `1-hour rate it is ${atLongTtl}.`,
     cacheHiddenLoss: (usd, labels) =>
       `The total hides a loss: caching costs ${usd} across ${labels}.`,
     leversHeading: 'What would actually move this bill',
     leverSlice: (label, model, usd, pct) => `${label} on ${model} — up to ${usd} (${pct})`,
     leverRoute: (candidate, usd) => `route it to ${candidate}: ${usd}`,
     leverBatch: (usd) => `send it through the Batch API: ${usd}`,
-    leverCalls: (calls, spent) => `${calls} calls, ${spent} spent`,
+    leverCalls: (calls, spent) =>
+      `${calls.toLocaleString('en-US')} ${calls === 1 ? 'call' : 'calls'}, ${spent} spent`,
     routeVerify:
       'Whether a route holds is an evaluation question, not an arithmetic one — nothing here '
       + 'has seen a single answer. The CLI measures it: trazum route <log> --prompt-file '
@@ -372,10 +375,11 @@ export const en: WebMessages = {
       + 'max_tokens.',
     truncatedHeading: 'Answers cut off mid-generation',
     truncatedWaste: (calls, usd, pct) =>
-      `${calls} calls hit the max_tokens ceiling: ${usd} of the output spend (${pct}) bought `
-      + 'answers that were cut off mid-generation — paid in full, frequently retried and billed '
-      + 'again. Where the answer genuinely needs the room, raise max_tokens; where it does not, '
-      + 'ask for less.',
+      `${calls.toLocaleString('en-US')} ${calls === 1 ? 'call' : 'calls'} hit the max_tokens `
+      + `ceiling: ${usd} of the output spend (${pct}) bought `
+      + `${calls === 1 ? 'an answer that was' : 'answers that were'} cut off mid-generation — `
+      + 'paid in full, frequently retried and billed again. Where the answer genuinely needs '
+      + 'the room, raise max_tokens; where it does not, ask for less.',
     truncatedNone: 'Stop reasons were recorded, and no answer hit the max_tokens ceiling.',
     truncatedNotRecorded:
       'Whether any answers were cut off could not be measured — no call in this log carries a '
@@ -386,10 +390,13 @@ export const en: WebMessages = {
     unlabelled: '(no label)',
     moreRows: (count) => `…and ${count} more.`,
     unpriced: (models, calls) =>
-      `${calls} calls are not in these totals — the pricing catalogue does not know: ${models}. `
-      + 'The CLI can price them with a pricing overlay (trazum profile --pricing).',
+      `${calls.toLocaleString('en-US')} ${calls === 1 ? 'call is' : 'calls are'} not in these `
+      + `totals — the pricing catalogue does not know: ${models}. The CLI can price `
+      + `${calls === 1 ? 'it' : 'them'} with a pricing overlay (trazum profile --pricing).`,
     skipped: (count, lines) =>
-      `${count} lines could not be read and were left out (lines ${lines}).`,
+      `${count.toLocaleString('en-US')} ${count === 1 ? 'line' : 'lines'} could not be read `
+      + `and ${count === 1 ? 'was' : 'were'} left out `
+      + `(${count === 1 ? 'line' : 'lines'} ${lines}).`,
   },
 
   errors: {
