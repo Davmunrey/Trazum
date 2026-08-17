@@ -156,6 +156,27 @@ this reads counts rather than content. **The session key is never printed** — 
 groups calls and counts turns, every figure comes out per label, and a test asserts
 it appears nowhere in the report or in `--json`.
 
+### Why a failing cache fails
+
+`profile` can say *that* caching loses money on a label — the log carries counts,
+not content. Map the label to its prompt file and it reads the file and says why:
+
+```json
+{ "labels": { "support-rag": "prompts/support.txt" } }
+```
+
+```
+  prompts/support.txt (as it is today — the log may predate it): the stable
+    prefix is 13 tokens and Claude Opus 5 caches nothing under 512. Setting
+    cache_control there does not error, it simply never caches.
+```
+
+Three diagnoses: a prefix under the model's minimum, stable tokens stranded behind
+the first placeholder (`--reorder` moves them), or a healthy file whose problem is
+byte-identity between calls. Every sentence says the file is **today's** — the log
+may predate it, and a fresh file presented as the history's explanation would be a
+figure attributed to something it does not describe.
+
 ### Is the cheaper model good enough? — `trazum route`
 
 The section above prices a route and can say nothing about whether it works. This

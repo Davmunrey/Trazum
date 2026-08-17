@@ -894,3 +894,76 @@ describe('--markdown-out', () => {
     assert.match(md, /hit the max\\_tokens ceiling/, 'the truncation waste is missing');
   });
 });
+
+describe('closing the cache loop through the labels map', () => {
+  /**
+   * `profile` alone can say *that* caching loses money on a label — the log
+   * carries counts, not content. `labels` in the config maps a label to the
+   * prompt file it sends, and the report then reads the file and says *why*.
+   */
+
+  const writeOnly = (label, count = 10) =>
+    Array.from({ length: count }, () => ({
+      model: 'claude-opus-5',
+      label,
+      usage: { input_tokens: 0, output_tokens: 100, cache_creation: { ephemeral_5m_input_tokens: 2000, ephemeral_1h_input_tokens: 0 } },
+    }));
+
+  const project = async (promptText, labels) => {
+    const dir = await mkdtemp(join(tmpdir(), 'trazum-labels-'));
+    await writeFile(join(dir, 'prompt.txt'), promptText);
+    await writeFile(join(dir, 'trazum.config.json'), JSON.stringify({ labels }));
+    const log = join(dir, 'usage.jsonl');
+    await writeFile(log, writeOnly('support-rag').map((r) => JSON.stringify(r)).join('\n'));
+    return { dir, log };
+  };
+
+  const runIn = (dir, log) =>
+    spawnSync(process.execPath, [CLI, 'profile', log], {
+      encoding: 'utf8', env: SPAWN_ENV, cwd: dir, timeout: 30000,
+    });
+
+  it('names a prefix below the cache minimum, and says the file is today\'s', async () => {
+    const { dir, log } = await project('You are a support agent. Be brief.\n\n{{query}}\n', { 'support-rag': 'prompt.txt' });
+    const out = flat(runIn(dir, log));
+
+    assert.match(out, /the stable prefix is 13 tokens and Claude Opus 5 caches nothing under 512/);
+    // The file is whatever the repository holds now, which may not be what
+    // produced the log. Presenting a fresh file as the history's explanation
+    // would be a figure attributed to something it does not describe.
+    assert.match(out, /as it is today — the log may predate it/);
+  });
+
+  it('names stable tokens stranded behind the first placeholder', async () => {
+    // The prefix must clear the 512 minimum or the below-minimum branch wins,
+    // which is the right precedence: a prefix that cannot cache at all outranks
+    // one that caches less than it could.
+    const stranded = `${'Stable opening instruction. '.repeat(150)}\n\n{{query}}\n\n${'All of these instructions are stable and belong before the placeholder. '.repeat(40)}`;
+    const { dir, log } = await project(stranded, { 'support-rag': 'prompt.txt' });
+    const out = flat(runIn(dir, log));
+
+    assert.match(out, /stable tokens sit after the first placeholder, where caching cannot reach them/);
+    assert.match(out, /--reorder/, 'the fix command is not named');
+  });
+
+  it('says the mapped file does not exist rather than skipping in silence', async () => {
+    const { dir, log } = await project('x {{q}}', { 'support-rag': 'gone.txt' });
+    const out = flat(runIn(dir, log));
+    assert.match(out, /labels\["support-rag"\] points at gone\.txt, which does not exist/);
+  });
+
+  it('stays quiet for a label whose cache is healthy', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'trazum-labels-'));
+    await writeFile(join(dir, 'prompt.txt'), 'x {{q}}');
+    await writeFile(join(dir, 'trazum.config.json'), JSON.stringify({ labels: { chat: 'prompt.txt' } }));
+    const log = join(dir, 'usage.jsonl');
+    // Healthy: written once, read many times.
+    const records = [
+      { model: 'claude-opus-5', label: 'chat', usage: { input_tokens: 100, output_tokens: 100, cache_creation: { ephemeral_5m_input_tokens: 2000, ephemeral_1h_input_tokens: 0 } } },
+      ...Array.from({ length: 20 }, () => ({ model: 'claude-opus-5', label: 'chat', usage: { input_tokens: 100, output_tokens: 100, cache_read_input_tokens: 2000 } })),
+    ];
+    await writeFile(log, records.map((r) => JSON.stringify(r)).join('\n'));
+    const out = flat(runIn(dir, log));
+    assert.doesNotMatch(out, /as it is today/, 'analysed a file whose cache is paying for itself');
+  });
+});

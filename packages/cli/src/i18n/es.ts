@@ -280,6 +280,9 @@ ${bold('FICHERO DE CONFIGURACIÓN')}
     budgets   { "prompts/**": 2000, "prompts/system.txt": 4000 }
     baseline  { "path": "trazum.baseline.json", "maxGrowthTokens": 0, "maxGrowthPct": 5 }
     pricing   "./prices.json"   — correcciones locales de precios, ver abajo
+    labels    { "support-rag": "prompts/soporte.txt" } — qué fichero de prompt
+              manda cada label del registro de uso, para que "trazum profile"
+              lea el fichero y diga por qué falla una caché que falla
 
   Las opciones ganan al config; el config gana a los valores por defecto. Los
   presupuestos se resuelven con el patrón más específico que encaje — gana el
@@ -928,6 +931,14 @@ ${bold('EJEMPLOS')}
     againstDriver: (delta, label, before, after) => `${delta}  ${label}  (${before} → ${after})`,
     againstDriverNew: (delta, label) => `${delta}  ${label}  (nuevo desde el registro anterior)`,
     againstDriverGone: (delta, label) => `${delta}  ${label}  (desaparecido desde el registro anterior)`,
+    labelPrefixBelowMinimum: (file, prefix, minimum, model) =>
+      `${file} (tal y como está hoy — el registro puede ser anterior): el prefijo estable son ${prefix} tokens y ${model} no cachea nada por debajo de ${minimum}. Poner cache_control ahí no da error, simplemente nunca cachea — que es exactamente el aspecto que tiene en la factura una caché que solo escribe.`,
+    labelPrefixMovable: (file, movable, prefix) =>
+      `${file} (tal y como está hoy — el registro puede ser anterior): ~${movable} tokens estables están detrás del primer marcador, donde la caché no llega; el prefijo cacheable es ${prefix}. "trazum optimize ${file} --reorder" los mueve delante y enseña el diff.`,
+    labelPrefixHealthy: (file, prefix, minimum) =>
+      `${file} (tal y como está hoy — el registro puede ser anterior): el prefijo estable son ${prefix} tokens, por encima del mínimo de ${minimum}. El fichero no es el problema; mira si el prefijo es byte a byte idéntico entre llamadas.`,
+    labelFileMissing: (label, file) =>
+      `labels["${label}"] apunta a ${file}, que no existe — el mapeo se ha saltado.`,
     againstNothingPriced: () =>
       'El registro anterior no tiene nada que el catálogo de precios conozca, así que no hay comparación que hacer.',
     truncatedNotRecorded: () =>

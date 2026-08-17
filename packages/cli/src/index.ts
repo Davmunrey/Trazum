@@ -8,6 +8,7 @@ import {
   BASELINE_VERSION,
   breaches,
   cacheableMinimum,
+  analyzeCachePrefix,
   billLevers,
   cacheEconomics,
   cacheHitRate,
@@ -1947,7 +1948,7 @@ function isoDate(): string {
  * metered API calls somebody was actually billed for — the bill exists wherever
  * Trazum happens to be running, so the host has no bearing on it.
  */
-async function commandProfile(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
+async function commandProfile(args: Args, config: TrazumConfig, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
   const path = args.positional[0];
   if (path === undefined) {
     console.log();
@@ -2176,6 +2177,59 @@ async function commandProfile(args: Args, pricing: PricingCatalogue, t: CliMessa
     console.log(
       `  ${c.dim(wrap(t.profile.cacheTtlUnsettledLabels(listNames(maybeLostLabels)), 74, '    '))}`,
     );
+  }
+
+  /**
+   * Why, read from the prompt file itself — the loop `profile` could not close.
+   *
+   * The log carries counts, so this command can say *that* caching loses money
+   * on a label and nothing more. `labels` in the config maps a label to the
+   * prompt file it sends, and for each mapped label whose cache is failing —
+   * losing money, or never attempted while money sat in cacheable input — the
+   * file is read and the reason named: a prefix under the model's minimum,
+   * stable tokens stranded behind the first placeholder, or a healthy file
+   * whose problem is byte-identity between calls.
+   *
+   * Every sentence carries "as it is today": the file is whatever the
+   * repository holds now, which may not be what produced the log, and a fresh
+   * file presented as the history's explanation would be a figure attributed to
+   * something it does not describe.
+   */
+  const labelMap = config.labels ?? {};
+  for (const { label, model: modelId, breakdown } of report.byLabelAndModel) {
+    const file = labelMap[label];
+    if (file === undefined) continue;
+    const labelCache = cacheEconomics(breakdown);
+    const failing =
+      labelCache.verdict === 'lost-money' ||
+      (labelCache.verdict === 'not-attempted' && breakdown.inputUsd > 0);
+    if (!failing) continue;
+
+    let text: string;
+    try {
+      text = await readFile(file, 'utf8');
+    } catch {
+      console.log(`  ${c.dim(wrap(t.profile.labelFileMissing(label, file), 74, '    '))}`);
+      continue;
+    }
+    const model = pricing.byId.get(modelId);
+    if (!model) continue;
+    const analysis = analyzeCachePrefix(text, estimateTokens);
+    const minimum = model.cacheMinTokens;
+    console.log();
+    if (minimum !== null && analysis.stablePrefixTokens < minimum) {
+      console.log(
+        `  ${c.dim(wrap(t.profile.labelPrefixBelowMinimum(file, n(analysis.stablePrefixTokens), n(minimum), model.displayName), 74, '    '))}`,
+      );
+    } else if (analysis.staticTokensAfter >= 200) {
+      console.log(
+        `  ${c.dim(wrap(t.profile.labelPrefixMovable(file, n(analysis.staticTokensAfter), n(analysis.stablePrefixTokens)), 74, '    '))}`,
+      );
+    } else {
+      console.log(
+        `  ${c.dim(wrap(t.profile.labelPrefixHealthy(file, n(analysis.stablePrefixTokens), n(minimum ?? 0)), 74, '    '))}`,
+      );
+    }
   }
 
   /**
@@ -4106,7 +4160,7 @@ async function main(): Promise<void> {
       await commandBaseline(args, config, pricing, t, locale);
       break;
     case 'profile':
-      await commandProfile(args, pricing, t);
+      await commandProfile(args, config, pricing, t);
       break;
     case 'route':
       await commandRoute(args, pricing, t);

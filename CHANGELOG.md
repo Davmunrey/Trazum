@@ -12,6 +12,24 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**The cache loop, closed: `labels` in the config maps a usage-log label to its
+prompt file, and `profile` reads the file and says why a failing cache fails.**
+
+The report could say "caching loses money on `support-rag`" and nothing more —
+the log carries counts, not content. With the map it names the reason: a stable
+prefix under the model's cache minimum (writes that can never become reads),
+stable tokens stranded behind the first placeholder (`--reorder` moves them), or
+a healthy file whose problem is byte-identity between calls. A mapped file that
+does not exist is said out loud rather than skipped.
+
+Every sentence carries *"as it is today — the log may predate it"*: the file is
+whatever the repository holds now, which may not be what produced the log, and a
+fresh file presented as the history's explanation would be a figure attributed to
+something it does not describe.
+
+
+### Added
+
 **`profile` prices the answers that were cut off.** With `stop_reason`
 (Anthropic) or `finish_reason` (OpenAI) in the log — the API returns both beside
 `usage` — the report names the one category of a bill that is waste without a

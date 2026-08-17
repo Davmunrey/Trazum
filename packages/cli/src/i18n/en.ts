@@ -285,6 +285,9 @@ ${bold('CONFIG FILE')}
     budgets   { "prompts/**": 2000, "prompts/system.txt": 4000 }
     baseline  { "path": "trazum.baseline.json", "maxGrowthTokens": 0, "maxGrowthPct": 5 }
     pricing   "./prices.json"   — local price corrections, see below
+    labels    { "support-rag": "prompts/support.txt" } — which prompt file each
+              usage-log label sends, so "trazum profile" can read the file and
+              say why a failing cache fails
 
   Flags beat the config; the config beats the defaults. Budgets resolve to the
   most specific matching pattern — most literal characters wins. A boolean the
@@ -922,6 +925,14 @@ ${bold('EXAMPLES')}
     againstDriver: (delta, label, before, after) => `${delta}  ${label}  (${before} → ${after})`,
     againstDriverNew: (delta, label) => `${delta}  ${label}  (new since the previous log)`,
     againstDriverGone: (delta, label) => `${delta}  ${label}  (gone since the previous log)`,
+    labelPrefixBelowMinimum: (file, prefix, minimum, model) =>
+      `${file} (as it is today — the log may predate it): the stable prefix is ${prefix} tokens and ${model} caches nothing under ${minimum}. Setting cache_control there does not error, it simply never caches — which is what a cache that only writes looks like from the bill.`,
+    labelPrefixMovable: (file, movable, prefix) =>
+      `${file} (as it is today — the log may predate it): ~${movable} stable tokens sit after the first placeholder, where caching cannot reach them; the cacheable prefix is ${prefix}. "trazum optimize ${file} --reorder" moves them in front and shows the diff.`,
+    labelPrefixHealthy: (file, prefix, minimum) =>
+      `${file} (as it is today — the log may predate it): the stable prefix is ${prefix} tokens, over the ${minimum} minimum. The prompt file is not the problem; look at whether the prefix is byte-identical between calls.`,
+    labelFileMissing: (label, file) =>
+      `labels["${label}"] points at ${file}, which does not exist — the mapping was skipped.`,
     againstNothingPriced: () =>
       'The previous log has nothing the pricing catalogue knows, so there is no comparison to make.',
     truncatedNotRecorded: () =>
