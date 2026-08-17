@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import type { Locale } from '@trazum/core';
 
 import { Account } from './Account';
+import { Bill } from './Bill';
 import { Library } from './Library';
 import { Comparer } from './Comparer';
 import { Optimizer } from './Optimizer';
@@ -161,6 +162,7 @@ export function App({
         <TabsList className="mb-5">
           <TabsTrigger value="optimise">{t.compare.optimiseTab}</TabsTrigger>
           <TabsTrigger value="compare">{t.compare.tab}</TabsTrigger>
+          <TabsTrigger value="bill">{t.bill.tab}</TabsTrigger>
           {signedIn && <TabsTrigger value="library">{t.library.tab}</TabsTrigger>}
         </TabsList>
 
@@ -180,6 +182,15 @@ export function App({
             modelName={modelName}
             models={models}
           />
+        </TabsContent>
+        {/*
+          forceMount for the same reason as Optimise and Compare: the pasted
+          log and its report exist nowhere but this tab — the whole point of
+          the tab is that they were never sent anywhere — so unmounting it
+          would destroy the one copy.
+        */}
+        <TabsContent value="bill" forceMount className="data-[state=inactive]:hidden">
+          <Bill t={t} />
         </TabsContent>
         {signedIn && (
           // Not forceMount, unlike the other two: this tab holds no unsaved

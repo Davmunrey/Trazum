@@ -263,6 +263,139 @@ export const es: WebMessages = {
     reorderDeclinedMore: (count) => `…y ${count} más.`,
   },
 
+  bill: {
+    tab: 'Tu factura',
+    lede:
+      'Lee un registro de uso — un objeto JSON por línea, cada uno con un "model" y el objeto '
+      + '"usage" que devolvió la API — y dice adónde fue el dinero: qué carga de trabajo, qué '
+      + 'modelo, si la caché se pagó sola y qué palancas moverían la factura de verdad.',
+    privacy:
+      'El registro se lee por completo en esta pestaña del navegador. No se sube, no se guarda '
+      + 'ni se envía a ninguna parte: cierra la página y desaparece.',
+    dropLabel: 'Suelta aquí un registro de uso',
+    chooseFile: 'Elegir un archivo',
+    orPaste: 'o pega el registro debajo',
+    pasteAriaLabel: 'Registro de uso a analizar',
+    analyze: 'Leer la factura',
+    recipe:
+      'Registrar el log son tres líneas en tu propio código: tras cada llamada a la API, añade '
+      + 'una línea JSON con el modelo, el objeto de uso que trajo la respuesta, un "label" que '
+      + 'nombre la carga de trabajo y un "session" que nombre la conversación. Nunca contiene '
+      + 'texto de prompts, y la clave de sesión se usa para agrupar y jamás se muestra.',
+    empty: 'No hay registros de uso en ese log.',
+    nothingPriced:
+      'Ninguno de los modelos de ese registro está en el catálogo de precios, así que no hay '
+      + 'factura que mostrar. La CLI puede ponerles precio con un overlay: trazum profile '
+      + '--pricing.',
+    heading: 'Adónde fue el dinero',
+    headline: (calls, total) => `${calls} llamadas · ${total}`,
+    partInput: 'Entrada',
+    partCacheRead: 'Lecturas de caché',
+    partCacheWrite: 'Escrituras de caché',
+    partOutput: 'Salida',
+    spendColumn: 'Gasto',
+    shareColumn: 'Parte',
+    tokensColumn: 'Tokens',
+    callsColumn: 'Llamadas',
+    cacheHeading: '¿Se pagó sola la caché?',
+    cacheHit: (pct) => `Tasa de acierto de caché: ${pct} de la entrada facturable.`,
+    cacheNever:
+      'La caché no se usó nunca en estas llamadas. Si algún prefijo se repite, ese es el mayor '
+      + 'ahorro disponible.',
+    cachePaidOff: (usd) =>
+      `La caché quitó ${usd} de esta factura, frente a los mismos tokens sin caché.`,
+    cacheLost: (usd) =>
+      `La caché añadió ${usd} a esta factura en lugar de quitarlo. Una escritura de caché `
+      + 'cuesta más que la entrada normal — 1,25x, o 2x con el TTL de 1 hora — así que un '
+      + 'prefijo que cambia más rápido de lo que se reutiliza paga esa prima a cambio de nada. '
+      + 'O cachea un prefijo que se quede quieto, o apaga la caché aquí.',
+    cacheNoDifference:
+      'La caché quedó en tablas en esta factura: lo que cobró por estos tokens es lo que '
+      + 'habrían costado como entrada normal.',
+    cacheUnpriced:
+      'Pasaron tokens por la caché en modelos que el catálogo de precios no conoce, así que no '
+      + 'hay comparación posible.',
+    cacheUnsettled: (calls, asRecorded, atLongTtl) =>
+      `Este registro no puede decir si la caché se pagó sola. ${calls} llamadas no anotaron `
+      + `qué TTL de escritura usaron: a la tarifa de 5 minutos la caché quitó ${asRecorded} de `
+      + `esta factura, y a la de 1 hora las mismas llamadas le añadieron ${atLongTtl}. Ninguna `
+      + 'de las dos se presenta como la respuesta. Registra el objeto "cache_creation" que '
+      + 'devuelve la API y esto se resuelve solo.',
+    cacheTtlBound: (calls, atLongTtl) =>
+      `Esa cifra es una cota, no una medición: ${calls} llamadas no anotaron el TTL de `
+      + `escritura, y a la tarifa de 1 hora sale ${atLongTtl}.`,
+    cacheHiddenLoss: (usd, labels) =>
+      `El total esconde una pérdida: la caché cuesta ${usd} en ${labels}.`,
+    leversHeading: 'Qué movería esta factura de verdad',
+    leverSlice: (label, model, usd, pct) => `${label} en ${model} — hasta ${usd} (${pct})`,
+    leverRoute: (candidate, usd) => `enrutarlo a ${candidate}: ${usd}`,
+    leverBatch: (usd) => `enviarlo por la Batch API: ${usd}`,
+    leverCalls: (calls, spent) => `${calls} llamadas, ${spent} gastados`,
+    routeVerify:
+      'Que una ruta aguante es una pregunta de evaluación, no de aritmética: nada aquí ha visto '
+      + 'una sola respuesta. La CLI lo mide: trazum route <log> --prompt-file <prompt> --cases '
+      + '<cases>.',
+    leverPromptCeiling: (usd, pct) =>
+      `Como referencia: acortar el texto del prompt puede tocar como muchísimo ${usd} — ${pct} `
+      + 'de esta factura, y solo si borraras todos los tokens de entrada. La cifra real queda '
+      + 'muy por debajo, porque la mayoría de esos tokens son contexto recuperado, historial de '
+      + 'conversación y resultados de herramientas que no están en ningún archivo de prompt.',
+    leversNone:
+      'Nada aquí supera el 1% de la factura: estas llamadas ya van al modelo más barato de su '
+      + 'familia, o su proveedor no tiene Batch API. Es una respuesta real, no una sección '
+      + 'vacía.',
+    leversUnlabelled:
+      'Ninguna de estas llamadas llevaba etiqueta, así que esto es todas las cargas de trabajo '
+      + 'en una sola fila — un clasificador y un pipeline RAG fundidos en una cifra, con una '
+      + 'única ruta sugerida para ambos. Añade "label" al registro y las palancas se separan '
+      + 'por carga de trabajo, que es el nivel al que se decide de verdad.',
+    historyHeading: 'Qué cuesta reenviar la conversación',
+    historyGrowth: (label, model, first, last, turns) =>
+      `${label} en ${model}: la entrada va de ${first} tokens en el turno más pequeño a ${last} `
+      + `en el más grande, en conversaciones de hasta ${turns} turnos.`,
+    historyCeiling: (usd, pct, flat, spent) =>
+      `Si cada turno hubiera tenido el tamaño del más pequeño, esa entrada habría costado `
+      + `${flat} en vez de ${spent} — así que como mucho ${usd} de esta factura es crecimiento `
+      + `de conversación (${pct}). Es un techo y no un ahorro: parte son los mensajes nuevos `
+      + 'del propio usuario, que nada puede recortar. Lo que lo mueve es limitar el historial '
+      + 'que reenvías, o resumirlo.',
+    historyNoSessions:
+      'Ninguna llamada de este registro llevaba sesión, así que no se pudo medir qué cuesta '
+      + 'reenviar la conversación — normalmente la mayor línea de una factura de chat o de '
+      + 'agentes. Añade "session" (o "conversation_id") al registro. Trazum agrupa por esa '
+      + 'clave y nunca la muestra.',
+    outputHeading: 'Dónde se concentra el gasto de salida',
+    outputTail: (label, model, callPct, spendPct, above, usd) =>
+      `${label} en ${model}: el ${callPct} de las llamadas concentra el ${spendPct} del gasto `
+      + `de salida — las que responden con más de ${above} tokens, de ${usd} de salida en este `
+      + 'segmento. Eso es una cola, y una cola tiene una causa: un camino del prompt que invita '
+      + 'a un ensayo, una llamada sin max_tokens, una recuperación que devolvió un libro.',
+    outputFlat: (label, model, callPct, spendPct, usd) =>
+      `${label} en ${model}: el gasto de salida está donde están las llamadas — el ${callPct} `
+      + `concentra el ${spendPct} de ${usd}. No hay cola que cazar; pide respuestas más cortas `
+      + 'y limita max_tokens.',
+    truncatedHeading: 'Respuestas cortadas a medias',
+    truncatedWaste: (calls, usd, pct) =>
+      `${calls} llamadas chocaron con el techo de max_tokens: ${usd} del gasto de salida `
+      + `(${pct}) compró respuestas cortadas a media generación — pagadas enteras, a menudo `
+      + 'reintentadas y facturadas otra vez. Donde la respuesta necesite el espacio de verdad, '
+      + 'sube max_tokens; donde no, pide menos.',
+    truncatedNone: 'Se registraron los motivos de parada y ninguna respuesta chocó con el techo de max_tokens.',
+    truncatedNotRecorded:
+      'No se pudo medir si alguna respuesta quedó cortada: ninguna llamada de este registro '
+      + 'lleva motivo de parada. Añade "stop_reason" (Anthropic) o "finish_reason" (OpenAI) al '
+      + 'registro; la API ya lo devuelve junto a "usage".',
+    byLabelHeading: 'Por etiqueta',
+    byModelHeading: 'Por modelo',
+    unlabelled: '(sin etiqueta)',
+    moreRows: (count) => `…y ${count} más.`,
+    unpriced: (models, calls) =>
+      `${calls} llamadas no están en estos totales — el catálogo de precios no conoce: `
+      + `${models}. La CLI puede ponerles precio con un overlay (trazum profile --pricing).`,
+    skipped: (count, lines) =>
+      `${count} líneas no se pudieron leer y quedaron fuera (líneas ${lines}).`,
+  },
+
   errors: {
     requestFailed: 'No se ha podido optimizar el prompt.',
     unreachable: 'No se ha podido contactar con el servidor.',

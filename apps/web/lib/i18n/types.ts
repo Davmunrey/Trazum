@@ -231,6 +231,86 @@ export interface WebMessages {
     reorderDeclinedMore(count: number): string;
   };
 
+  /**
+   * The Bill tab: a usage log read entirely in the browser.
+   *
+   * Nothing in this section may promise less than the CLI's `profile` command
+   * states — the doctrine travels with the copy. Ceilings are named as
+   * ceilings, an unsettled cache verdict is reported as unsettled, and "not
+   * recorded" is never rendered as "did not happen".
+   */
+  bill: {
+    tab: string;
+    lede: string;
+    /** Stated above the input, before anyone pastes. The whole privacy story. */
+    privacy: string;
+    dropLabel: string;
+    chooseFile: string;
+    orPaste: string;
+    pasteAriaLabel: string;
+    analyze: string;
+    /** How to record a log, for a reader arriving with nothing to paste. */
+    recipe: string;
+    empty: string;
+    nothingPriced: string;
+    heading: string;
+    headline(calls: string, total: string): string;
+    partInput: string;
+    partCacheRead: string;
+    partCacheWrite: string;
+    partOutput: string;
+    spendColumn: string;
+    shareColumn: string;
+    tokensColumn: string;
+    callsColumn: string;
+    cacheHeading: string;
+    cacheHit(pct: string): string;
+    cacheNever: string;
+    cachePaidOff(usd: string): string;
+    cacheLost(usd: string): string;
+    cacheNoDifference: string;
+    cacheUnpriced: string;
+    /** The log cannot settle the verdict; both ends are stated, neither as the answer. */
+    cacheUnsettled(calls: string, asRecorded: string, atLongTtl: string): string;
+    /** The verdict survives the assumption, but the figure is a bound. */
+    cacheTtlBound(calls: string, atLongTtl: string): string;
+    /** A losing label hidden inside a comfortable total. */
+    cacheHiddenLoss(usd: string, labels: string): string;
+    leversHeading: string;
+    leverSlice(label: string, model: string, usd: string, pct: string): string;
+    leverRoute(candidate: string, usd: string): string;
+    leverBatch(usd: string): string;
+    leverCalls(calls: string, spent: string): string;
+    routeVerify: string;
+    leverPromptCeiling(usd: string, pct: string): string;
+    leversNone: string;
+    leversUnlabelled: string;
+    historyHeading: string;
+    historyGrowth(label: string, model: string, first: string, last: string, turns: string): string;
+    historyCeiling(usd: string, pct: string, flat: string, spent: string): string;
+    historyNoSessions: string;
+    outputHeading: string;
+    outputTail(
+      label: string,
+      model: string,
+      callPct: string,
+      spendPct: string,
+      above: string,
+      usd: string,
+    ): string;
+    outputFlat(label: string, model: string, callPct: string, spendPct: string, usd: string): string;
+    truncatedHeading: string;
+    truncatedWaste(calls: string, usd: string, pct: string): string;
+    truncatedNone: string;
+    truncatedNotRecorded: string;
+    byLabelHeading: string;
+    byModelHeading: string;
+    unlabelled: string;
+    moreRows(count: number): string;
+    unpriced(models: string, calls: string): string;
+    skipped(count: string, lines: string): string;
+  };
+
   errors: {
     requestFailed: string;
     unreachable: string;
