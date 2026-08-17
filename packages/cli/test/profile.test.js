@@ -771,3 +771,93 @@ describe('--json carries everything the terminal says', () => {
     assert.ok(Array.isArray(json.outputShapes));
   });
 });
+
+describe('output spend that bought cut-off answers', () => {
+  it('names the waste, in money and share of output', async () => {
+    /**
+     * The one category of a bill that is waste without a counterpart: a
+     * truncated answer was paid in full, is frequently retried — billed again —
+     * and the cut attempt bought nothing. 12 calls of 1,024 output tokens at
+     * Opus 5's $25/MTok is $0.3072, and the whole output line is $1.8472.
+     */
+    const records = Array.from({ length: 100 }, (_, i) => ({
+      model: 'claude-opus-5',
+      label: 'chat',
+      stop_reason: i < 12 ? 'max_tokens' : 'end_turn',
+      usage: { input_tokens: 2000, output_tokens: i < 12 ? 1024 : 700 },
+    }));
+    const out = flat(run(await logOf(records)));
+
+    assert.match(out, /12 calls hit the max_tokens ceiling/);
+    assert.match(out, /\$0\.3072 of the output spend \(16\.6%\)/);
+  });
+
+  it('says the field is missing rather than implying no truncation', async () => {
+    // "No truncation recorded" and "no truncation happened" are different
+    // answers, and silence would read as the second.
+    const out = flat(run(await logOf([call(), call()])));
+    assert.match(out, /no call in this log carries a stop reason/i);
+  });
+
+  it('stays quiet when stop reasons were recorded and nothing truncated', async () => {
+    const records = Array.from({ length: 10 }, () => ({
+      model: 'claude-opus-5',
+      stop_reason: 'end_turn',
+      usage: { input_tokens: 2000, output_tokens: 300 },
+    }));
+    const out = flat(run(await logOf(records)));
+    assert.doesNotMatch(out, /max_tokens ceiling/);
+    assert.doesNotMatch(out, /carries a stop reason/, 'asked for a field the log already has');
+  });
+});
+
+describe('this bill against the previous one', () => {
+  const week = (rag, chat) => [
+    ...Array.from({ length: rag }, () => call({ label: 'rag', usage: { input_tokens: 9000, output_tokens: 300 } })),
+    ...Array.from({ length: chat }, () => call({ label: 'chat', usage: { input_tokens: 2400, output_tokens: 700 } })),
+  ];
+
+  it('reports the delta with the diff sign convention, and names the drivers', async () => {
+    /**
+     * How spend actually gets out of hand: four percent a week while every
+     * snapshot looks reasonable. Positive means the bill grew — the diff
+     * convention — and the drivers are ranked by contribution to the change,
+     * not by bill size, because the second-biggest workload can be the whole
+     * story of the growth.
+     */
+    const prev = await logOf(week(300, 250));
+    const now = await logOf(week(430, 240));
+    const result = run(now, ['--against', prev]);
+    assert.equal(result.status, 0, result.stderr);
+    const out = flat(result);
+
+    assert.match(out, /Against the previous log/);
+    assert.match(out, /\+\$6\.83 rag/, 'the driver of the growth was not named first');
+    assert.match(out, /Positive means the bill grew/);
+    assert.match(out, /no period is assumed/, 'claimed a period the files do not carry');
+  });
+
+  it('ranks drivers by contribution to the change, not by insertion order', async () => {
+    /**
+     * rag barely moved and chat tripled. An unranked list prints rag first —
+     * it appears first in the union of labels — and the reader meets a $0.05
+     * footnote before the workload that is the whole story of the growth.
+     */
+    const prev = await logOf(week(300, 100));
+    const now = await logOf(week(301, 300));
+    const out = flat(run(now, ['--against', prev]));
+
+    // `flat()` collapses the double-space column gaps to single spaces.
+    const chatAt = out.indexOf('chat ($');
+    const ragAt = out.indexOf('rag ($');
+    assert.ok(chatAt !== -1 && ragAt !== -1, 'a driver is missing');
+    assert.ok(chatAt < ragAt, 'the biggest driver did not print first');
+  });
+
+  it('names a workload that appeared, rather than folding it into the total', async () => {
+    const prev = await logOf(week(300, 0));
+    const now = await logOf(week(300, 250));
+    const out = flat(run(now, ['--against', prev]));
+    assert.match(out, /chat \(new since the previous log\)/);
+  });
+});

@@ -528,6 +528,35 @@ export interface CliMessages {
     /** No session field in the log, so the question cannot be asked. */
     historyNoSessions(): string;
     /**
+     * Output spend that bought answers cut off mid-generation.
+     *
+     * The one category of a bill that is waste without a counterpart: a
+     * truncated answer was paid for in full, is frequently retried — billed
+     * again — and the cut attempt bought nothing. Output is the largest line on
+     * most bills, and this is the slice of it nobody sees.
+     */
+    truncatedWaste(calls: string, usd: string, pct: string): string;
+    /** The log carries no stop reason, so the question cannot be asked. */
+    truncatedNotRecorded(): string;
+    /**
+     * This bill against the previous one — how spend actually gets out of hand.
+     *
+     * Nobody adds five thousand a month in one day; bills grow four percent a
+     * week while every snapshot looks reasonable. Comparing two logs is the
+     * baseline gate the prompts already had, applied to the money itself.
+     * **Positive means the bill grew** — the diff convention, not the savings
+     * one — and every figure is between exactly these two files: no periods are
+     * assumed, so the call counts print beside the money for the reader to
+     * judge comparability.
+     */
+    againstHeading(): string;
+    againstTotals(before: string, after: string, delta: string, pct: string, callsBefore: string, callsAfter: string): string;
+    /** One label's contribution to the change. */
+    againstDriver(delta: string, label: string, before: string, after: string): string;
+    againstDriverNew(delta: string, label: string): string;
+    againstDriverGone(delta: string, label: string): string;
+    againstNothingPriced(): string;
+    /**
      * Where the output spend concentrates — the actionable half of "output
      * dominates". A tail worth hunting and a task whose answers are inherently
      * long produce the same total, and only the shape tells them apart.

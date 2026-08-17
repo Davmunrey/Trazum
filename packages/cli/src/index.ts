@@ -150,6 +150,7 @@ interface Args {
 }
 
 const VALUE_FLAGS = new Set([
+  'against',
   // `route` takes a path here, and the flag is deliberately not `--prompt`:
   // everywhere else in this tool `--prompt` names a marked prompt *inside* a
   // source file, and reusing it for a path would be a trap laid for the reader.
@@ -415,7 +416,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
-  profile: ['json', 'pricing', 'pricing-live'],
+  profile: ['json', 'pricing', 'pricing-live', 'against', 'markdown-out'],
   route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
@@ -2332,6 +2333,86 @@ async function commandProfile(args: Args, pricing: PricingCatalogue, t: CliMessa
           `  ${c.bold(wrap(t.profile.outputFlat(label, shape.modelName, pct(shape.heavyCallShare), pct(shape.heavySpendShare), formatUsd(shape.outputUsd)), 74, '  '))}`,
         );
         console.log(`  ${c.dim(wrap(t.profile.outputFlatAdvice(), 74, '  '))}`);
+      }
+    }
+  }
+
+  /**
+   * Output spend that bought answers cut off mid-generation — the one slice of
+   * a bill that is waste without a counterpart. Paid in full, frequently
+   * retried and billed again, and the truncated attempt bought nothing.
+   *
+   * Three states, kept apart on purpose: waste found, none found on a log that
+   * measured, and a log that never recorded a stop reason at all — which gets
+   * the missing-field message, because silence there would read as a clean bill
+   * of health on a question the log never asked.
+   */
+  if (report.total.truncatedCalls > 0 && report.total.outputUsd > 0) {
+    console.log();
+    console.log(
+      `  ${c.yellow('!')} ${c.bold(wrap(t.profile.truncatedWaste(t.profile.calls(report.total.truncatedCalls), formatUsd(report.total.truncatedOutputUsd), pct(report.total.truncatedOutputUsd / report.total.outputUsd)), 74, '    '))}`,
+    );
+  } else if (report.total.stopReasonCalls === 0) {
+    console.log();
+    console.log(`  ${c.dim(wrap(t.profile.truncatedNotRecorded(), 74, '  '))}`);
+  }
+
+  /**
+   * This bill against the previous one — how spend actually gets out of hand.
+   *
+   * Nobody adds five thousand a month in one day; bills grow four percent a week
+   * while every snapshot looks reasonable. This is the baseline gate the prompts
+   * already had, applied to the money itself. **Positive means the bill grew**
+   * (the diff convention), and every figure is between exactly these two files:
+   * no period is assumed, so the call counts print beside the money for the
+   * reader to judge comparability before judging the trend.
+   */
+  const againstPath = stringFlag(args, 'against');
+  if (againstPath !== undefined) {
+    const previous = profileUsage(await readFile(againstPath, 'utf8'), { catalogue: pricing });
+    console.log();
+    console.log(c.bold(t.profile.againstHeading()));
+    if (previous.total.calls === 0) {
+      console.log(`  ${c.dim(wrap(t.profile.againstNothingPriced(), 74, '  '))}`);
+    } else {
+      const delta = report.total.totalUsd - previous.total.totalUsd;
+      const growthPct =
+        previous.total.totalUsd > 0
+          ? `${delta >= 0 ? '+' : ''}${((delta / previous.total.totalUsd) * 100).toFixed(1)}%`
+          : '—';
+      console.log(
+        `  ${c.bold(wrap(t.profile.againstTotals(formatUsd(previous.total.totalUsd), formatUsd(report.total.totalUsd), formatSignedUsd(delta), growthPct, t.profile.calls(previous.total.calls), t.profile.calls(report.total.calls)), 74, '  '))}`,
+      );
+
+      // Drivers: per-label contribution to the change, largest magnitude first.
+      // Derived over the union of labels so an appeared or vanished workload is
+      // named rather than folded silently into the total.
+      const before = new Map(previous.byLabel.map((r) => [r.label, r.breakdown]));
+      const after = new Map(report.byLabel.map((r) => [r.label, r.breakdown]));
+      const labels = [...new Set([...before.keys(), ...after.keys()])];
+      const drivers = labels
+        .map((label) => ({
+          label,
+          was: before.get(label)?.totalUsd ?? null,
+          now: after.get(label)?.totalUsd ?? null,
+        }))
+        .map((d) => ({ ...d, delta: (d.now ?? 0) - (d.was ?? 0) }))
+        .filter((d) => Math.abs(d.delta) > 1e-9)
+        .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+
+      console.log();
+      for (const d of drivers.slice(0, 5)) {
+        const shown = d.label === UNLABELLED ? t.profile.unlabelled() : d.label;
+        const line =
+          d.was === null
+            ? t.profile.againstDriverNew(formatSignedUsd(d.delta), shown)
+            : d.now === null
+              ? t.profile.againstDriverGone(formatSignedUsd(d.delta), shown)
+              : t.profile.againstDriver(formatSignedUsd(d.delta), shown, formatUsd(d.was), formatUsd(d.now));
+        console.log(`  ${d.delta > 0 ? c.yellow(line) : c.dim(line)}`);
+      }
+      if (drivers.length > 5) {
+        console.log(`  ${c.dim(t.profile.andMoreLabels(drivers.length - 5))}`);
       }
     }
   }

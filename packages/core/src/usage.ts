@@ -114,6 +114,16 @@ export interface UsageRecord {
    * carries no content, and nothing identifying comes back out of it either.
    */
   session: string | null;
+  /**
+   * Whether the answer hit the output ceiling, when the log says.
+   *
+   * `true` for Anthropic's `stop_reason: "max_tokens"` and OpenAI's
+   * `finish_reason: "length"`; `false` for any other recorded reason; `null`
+   * when the log does not carry the field. Three states, because "no truncation
+   * recorded" and "no truncation happened" are different answers — the report
+   * must not congratulate a log that never measured.
+   */
+  truncated: boolean | null;
 }
 
 /** What a set of calls cost, split by where the money went. */
@@ -156,6 +166,18 @@ export interface UsageBreakdown {
    * behind it states the flattering half as a fact.
    */
   cacheWriteUsdIfAssumed1h: number;
+  /**
+   * Calls whose answer hit the output ceiling, and what their output cost.
+   *
+   * The one category of a bill that is waste without a counterpart: an answer
+   * cut off mid-generation was paid for in full, is frequently retried — billed
+   * again — and the truncated attempt bought nothing. Output is the largest
+   * line on most bills, and this is the slice of it nobody sees.
+   */
+  truncatedCalls: number;
+  truncatedOutputUsd: number;
+  /** Calls that recorded a stop reason at all, truncated or not. */
+  stopReasonCalls: number;
 }
 
 export interface UsageProfileReport {
@@ -247,6 +269,9 @@ const EMPTY = (): UsageBreakdown => ({
   totalUsd: 0,
   cachedTokensAtInputRateUsd: 0,
   cacheWriteUsdIfAssumed1h: 0,
+  truncatedCalls: 0,
+  truncatedOutputUsd: 0,
+  stopReasonCalls: 0,
 });
 
 /**
@@ -400,6 +425,17 @@ export function parseUsageLine(line: string): UsageRecord | null {
      * nobody sets measures nothing.
      */
     session: nameOf(record.session) ?? nameOf(record.conversation_id),
+    /**
+     * Anthropic spells it `stop_reason: "max_tokens"`, OpenAI
+     * `finish_reason: "length"`. Any other recorded reason is a completed
+     * answer; an absent field is `null`, which is "not measured" and not "did
+     * not happen" — the report treats those differently on purpose.
+     */
+    truncated: (() => {
+      const reason = record.stop_reason ?? record.finish_reason;
+      if (typeof reason !== 'string') return null;
+      return reason === 'max_tokens' || reason === 'length';
+    })(),
   };
 }
 
@@ -447,6 +483,10 @@ function countInto(into: UsageBreakdown, record: UsageRecord): void {
   into.cacheWriteTokens += record.cacheWrite5mTokens + record.cacheWrite1hTokens;
   if (!record.writeTtlKnown) into.assumedWriteTtlCalls += 1;
   into.outputTokens += record.outputTokens;
+  if (record.truncated !== null) {
+    into.stopReasonCalls += 1;
+    if (record.truncated) into.truncatedCalls += 1;
+  }
 }
 
 function add(into: UsageBreakdown, record: UsageRecord, catalogue: PricingCatalogue, on: Date): boolean {
@@ -495,6 +535,9 @@ function add(into: UsageBreakdown, record: UsageRecord, catalogue: PricingCatalo
   into.cacheWriteUsdIfAssumed1h += per(record.cacheWrite5mTokens, inputPerMTok * writeRateIfWrong);
   into.cacheWriteUsdIfAssumed1h += per(record.cacheWrite1hTokens, inputPerMTok * rates.cacheWrite1h);
   into.outputUsd += per(record.outputTokens, outputPerMTok);
+  if (record.truncated === true) {
+    into.truncatedOutputUsd += per(record.outputTokens, outputPerMTok);
+  }
   /**
    * The same cache-touched tokens at the plain input rate, banked here because
    * `inputPerMTok` is per model and is gone by the time anybody reads the total.
