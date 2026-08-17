@@ -59,6 +59,18 @@ export interface TrazumConfig {
    * leaving it to be inferred.
    */
   budgets?: Record<string, number>;
+  /**
+   * Which prompt file each usage-log label sends, so `profile` can close the
+   * loop it opens.
+   *
+   * `profile` can say "caching loses money on `support-rag`" and nothing more —
+   * the log carries counts, not content. With this map it reads the named file
+   * and says *why*: where the first placeholder sits, how many stable tokens
+   * never reach the cacheable prefix, and whether the model's minimum is met at
+   * all. The file is whatever is in the repository today, which may not be what
+   * produced the log, and the report says so.
+   */
+  labels?: Record<string, string>;
   /** Default for `trazum diff --max-growth`, in tokens. */
   maxGrowth?: number;
   /**
@@ -94,6 +106,7 @@ export const CONFIG_KEYS = [
   'disable',
   'usage',
   'budgets',
+  'labels',
   'maxGrowth',
   'baseline',
   'extensions',
@@ -216,6 +229,31 @@ function parseUsage(raw: unknown, source: string): Partial<UsageProfile> {
  * nothing. A config should be judged the same way everywhere it is checked.
  */
 const IS_ABSOLUTE = /^(?:[/\\]|[A-Za-z]:[/\\])/;
+
+function parseLabels(raw: unknown, source: string): Record<string, string> {
+  if (!isPlainObject(raw)) throw new ConfigError('"labels" must be an object', source);
+
+  const labels: Record<string, string> = {};
+  for (const [label, value] of Object.entries(raw)) {
+    if (label.length === 0) {
+      throw new ConfigError('"labels" has an empty label', source);
+    }
+    if (typeof value !== 'string' || value.length === 0) {
+      throw new ConfigError(`labels["${label}"] must be a file path`, source);
+    }
+    // Same boundary as budgets, for the same reason: an absolute path or one
+    // that climbs out with ".." points outside the project, and both are
+    // mistakes worth naming rather than files worth reading.
+    if (IS_ABSOLUTE.test(value) || value.includes('..')) {
+      throw new ConfigError(
+        `labels["${label}"] must be a relative path inside the project`,
+        source,
+      );
+    }
+    labels[label] = value;
+  }
+  return labels;
+}
 
 function parseBudgets(raw: unknown, source: string): Record<string, number> {
   if (!isPlainObject(raw)) throw new ConfigError('"budgets" must be an object', source);
@@ -390,6 +428,7 @@ export function parseConfig(raw: string, source = CONFIG_FILENAME): TrazumConfig
 
   if (document.usage !== undefined) config.usage = parseUsage(document.usage, source);
   if (document.budgets !== undefined) config.budgets = parseBudgets(document.budgets, source);
+  if (document.labels !== undefined) config.labels = parseLabels(document.labels, source);
   if (document.baseline !== undefined) {
     config.baseline = parseBaselineConfig(document.baseline, source);
   }

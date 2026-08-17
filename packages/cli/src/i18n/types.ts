@@ -557,6 +557,19 @@ export interface CliMessages {
     againstDriverGone(delta: string, label: string): string;
     againstNothingPriced(): string;
     /**
+     * Why a label's cache is failing, read from its mapped prompt file.
+     *
+     * `profile` alone can only say *that* caching loses money on a label — the
+     * log carries counts, not content. With `labels` in the config it reads the
+     * named file and says why. The file is whatever the repository holds today,
+     * which may not be what produced the log, and the sentence says so rather
+     * than presenting a fresh file as the history's explanation.
+     */
+    labelPrefixBelowMinimum(file: string, prefix: string, minimum: string, model: string): string;
+    labelPrefixMovable(file: string, movable: string, prefix: string): string;
+    labelPrefixHealthy(file: string, prefix: string, minimum: string): string;
+    labelFileMissing(label: string, file: string): string;
+    /**
      * Where the output spend concentrates — the actionable half of "output
      * dominates". A tail worth hunting and a task whose answers are inherently
      * long produce the same total, and only the shape tells them apart.
