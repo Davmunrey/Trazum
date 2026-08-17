@@ -200,6 +200,22 @@ ${bold('OPCIONES DE eval')}
   una. Esa base es la vara de medir: sin ella, un porcentaje de divergencia no
   significa nada. Sale con código 1 cuando las respuestas divergen de verdad.
 
+${bold('OPCIONES DE profile')}
+  --against <log.jsonl>       Compara esta factura con un registro anterior.
+                              Positivo significa que creció; los drivers van
+                              ordenados por su contribución al cambio. No se
+                              asume ningún periodo — juzga las llamadas antes
+                              que el dinero.
+  --markdown-out <fichero>    Escribe además el informe en Markdown, para el
+                              resumen de un job de CI o un comentario de PR.
+  --pricing <fichero>         Overlay local de precios, como en el resto.
+  --json                      El informe completo como datos, palancas incluidas.
+
+  Lee lo que el proveedor cobró de verdad. Campos opcionales desbloquean
+  hallazgos: "label" (qué carga), "session" (qué conversación — se agrupa y
+  nunca se imprime), "stop_reason"/"finish_reason" (respuestas cortadas en
+  max_tokens).
+
 ${bold('OPCIONES DE route')}
   --prompt-file <fichero>     El prompt que mandan esas llamadas. No --prompt,
                               que nombra un prompt marcado dentro de un fuente.
@@ -904,6 +920,18 @@ ${bold('EJEMPLOS')}
       `${label} en ${model}: la entrada va de ${first} tokens en el turno más pequeño a ${last} en el más grande, en conversaciones de hasta ${turns} turnos.`,
     historyCeiling: (usd, pct, flat, spent) =>
       `Si cada turno hubiera tenido el tamaño del más pequeño, esa entrada habría costado ${flat} en vez de ${spent} — así que como mucho ${usd} de esta factura es crecimiento de la conversación (${pct}). Es un techo y no un ahorro: parte de eso son los mensajes nuevos del propio usuario, que nada puede truncar, y esto lee cuentas y no contenido, así que no puede separarlos. Lo que lo mueve es limitar el historial que reproduces, o resumirlo.`,
+    truncatedWaste: (calls, usd, pct) =>
+      `${calls} chocaron con el techo de max_tokens: ${usd} del gasto en salida (${pct}) compró respuestas cortadas a medias — pagadas enteras, a menudo reintentadas y facturadas otra vez. Donde la respuesta de verdad necesite el espacio, sube max_tokens; donde no, pide menos. En cualquier caso este es el único trozo de una factura que es desperdicio sin contrapartida.`,
+    againstHeading: () => 'Contra el registro anterior',
+    againstTotals: (before, after, delta, pct, callsBefore, callsAfter) =>
+      `${before} → ${after}   ${delta} (${pct})   ${callsBefore} → ${callsAfter}. Positivo significa que la factura creció. Las dos cifras son exactamente lo que contiene cada fichero — no se asume ningún periodo, así que juzga las llamadas antes de juzgar el dinero.`,
+    againstDriver: (delta, label, before, after) => `${delta}  ${label}  (${before} → ${after})`,
+    againstDriverNew: (delta, label) => `${delta}  ${label}  (nuevo desde el registro anterior)`,
+    againstDriverGone: (delta, label) => `${delta}  ${label}  (desaparecido desde el registro anterior)`,
+    againstNothingPriced: () =>
+      'El registro anterior no tiene nada que el catálogo de precios conozca, así que no hay comparación que hacer.',
+    truncatedNotRecorded: () =>
+      'No se pudo medir si alguna respuesta quedó cortada — ninguna llamada de este registro lleva stop reason. Añade "stop_reason" (Anthropic) o "finish_reason" (OpenAI) al registro; la API ya lo devuelve junto a "usage".',
     historyNoSessions: () =>
       'Ninguna llamada de este registro llevaba sesión, así que no se pudo medir lo que cuesta reenviar la conversación — normalmente la línea más grande de una factura de chat o de agente. Añade "session" (o "conversation_id") al registro y vuelve a ejecutarlo. Trazum agrupa por ese campo y nunca lo imprime.',
     leversUnlabelled: () =>

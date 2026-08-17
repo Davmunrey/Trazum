@@ -207,6 +207,20 @@ ${bold('OPTIONS FOR eval')}
   optimised once. That baseline is the yardstick — without it, a divergence
   figure means nothing. Exits with code 1 when the answers genuinely diverge.
 
+${bold('OPTIONS FOR profile')}
+  --against <log.jsonl>       Compare this bill to a previous log. Positive
+                              means the bill grew; drivers are ranked by their
+                              contribution to the change. No period is assumed —
+                              judge the call counts before judging the money.
+  --markdown-out <file>       Also write the report as Markdown, for a CI job
+                              summary or a pull request comment.
+  --pricing <file>            Local price overlay, as everywhere else.
+  --json                      The full report as data, including the levers.
+
+  Reads what the provider actually charged. Optional fields unlock findings:
+  "label" (which workload), "session" (which conversation — grouped by, never
+  printed), "stop_reason"/"finish_reason" (answers cut off at max_tokens).
+
 ${bold('OPTIONS FOR route')}
   --prompt-file <file>        The prompt those calls send. Not --prompt, which
                               names a marked prompt inside a source file.
@@ -900,6 +914,18 @@ ${bold('EXAMPLES')}
       `${label} on ${model}: input ranges from ${first} tokens on the smallest turn to ${last} on the largest, over conversations of up to ${turns} turns.`,
     historyCeiling: (usd, pct, flat, spent) =>
       `If every turn had been the size of its smallest one, that input would have cost ${flat} instead of ${spent} — so at most ${usd} of this bill is conversation growth (${pct}). It is a ceiling and not a saving: some of that is the user's own new messages, which nothing can truncate away, and this reads counts rather than content so it cannot tell the two apart. What moves it is capping the history you replay, or summarising it.`,
+    truncatedWaste: (calls, usd, pct) =>
+      `${calls} hit the max_tokens ceiling: ${usd} of the output spend (${pct}) bought answers that were cut off mid-generation — paid in full, frequently retried and billed again. Where the answer genuinely needs the room, raise max_tokens; where it does not, ask for less. Either way this is the one slice of a bill that is waste without a counterpart.`,
+    againstHeading: () => 'Against the previous log',
+    againstTotals: (before, after, delta, pct, callsBefore, callsAfter) =>
+      `${before} → ${after}   ${delta} (${pct})   ${callsBefore} → ${callsAfter}. Positive means the bill grew. Both figures are exactly what each file holds — no period is assumed, so judge the call counts before judging the money.`,
+    againstDriver: (delta, label, before, after) => `${delta}  ${label}  (${before} → ${after})`,
+    againstDriverNew: (delta, label) => `${delta}  ${label}  (new since the previous log)`,
+    againstDriverGone: (delta, label) => `${delta}  ${label}  (gone since the previous log)`,
+    againstNothingPriced: () =>
+      'The previous log has nothing the pricing catalogue knows, so there is no comparison to make.',
+    truncatedNotRecorded: () =>
+      'Whether any answers were cut off could not be measured — no call in this log carries a stop reason. Add "stop_reason" (Anthropic) or "finish_reason" (OpenAI) to the record; the API already returns it beside "usage".',
     historyNoSessions: () =>
       'No call in this log carried a session, so what re-sending the conversation costs could not be measured — usually the largest line on a chat or agent bill. Add "session" (or "conversation_id") to the record and run this again. Trazum groups by it and never prints it.',
     leversUnlabelled: () =>

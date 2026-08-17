@@ -10,6 +10,34 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+**`profile` prices the answers that were cut off.** With `stop_reason`
+(Anthropic) or `finish_reason` (OpenAI) in the log — the API returns both beside
+`usage` — the report names the one category of a bill that is waste without a
+counterpart: answers that hit the `max_tokens` ceiling were paid in full, are
+frequently retried and billed again, and the truncated attempt bought nothing.
+Three states, kept apart: waste found, none found on a log that measured, and a
+log that never recorded a stop reason — which gets the missing-field message,
+because silence there reads as a clean bill of health on a question the log
+never asked.
+
+**`profile --against <previous.jsonl>` — the bill as a watched metric.** Nobody
+adds five thousand a month in one day; bills grow four percent a week while
+every snapshot looks reasonable. The comparison prints the delta with the diff
+convention — positive means the bill grew — and ranks the drivers by their
+contribution to the change, not by bill size, because the second-biggest
+workload can be the whole story of the growth. Appeared and vanished workloads
+are named. No period is assumed: the call counts print beside the money so the
+reader judges comparability first.
+
+**`profile --markdown-out <file>`** writes the report as GitHub-flavoured
+markdown for a job summary or a PR comment, rendered from the same message
+catalogue as the terminal — two renderings of one finding drift the moment they
+are worded twice, and the sign conventions here have each already produced a bug
+when restated by hand.
+
+
 ### Fixed
 
 **Cache billing noise was reported as conversation growth.** Found by adversarial
