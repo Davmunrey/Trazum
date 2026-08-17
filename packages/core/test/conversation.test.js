@@ -267,3 +267,56 @@ describe('what the session key is allowed to do', () => {
     assert.ok(!JSON.stringify(report).includes('4471'), 'part of the session key survived');
   });
 });
+
+describe('growth is a fact about tokens, not about billing rates', () => {
+  it('reports zero growth for a flat conversation however each turn was billed', () => {
+    /**
+     * The adversarial review's finding, confirmed against the cost-anchored
+     * version: an ordinary 5-minute-TTL agent whose user replies after the TTL
+     * expires alternates cache writes and cache reads — identical 10,000-token
+     * turns billed 12.5x apart ($0.0625 as a write, $0.0050 as a read). The
+     * cheapest-cost anchor took the cache-hit turn as the baseline and reported
+     * 77.5% of the bill as "conversation growth", recommending history trimming
+     * on a conversation whose input never grew. The report's own min/max token
+     * figures — 10,000 to 10,000 — proved the claim false on the same screen.
+     *
+     * Growth is measured in tokens now: exact, order-independent, and identical
+     * however each turn happened to be billed.
+     */
+    const flat = Array.from({ length: 5 }, (_, t) => ({
+      model: 'claude-opus-5',
+      label: 'agent',
+      session: 's1',
+      usage:
+        t % 2 === 0
+          ? { output_tokens: 200, cache_creation: { ephemeral_5m_input_tokens: 10_000, ephemeral_1h_input_tokens: 0 } }
+          : { output_tokens: 200, cache_read_input_tokens: 10_000 },
+    }));
+    assert.deepEqual(profile(flat).conversations, [], 'billing-rate variation was reported as growth');
+  });
+
+  it('still measures a growing cached conversation, at its own blended rate', () => {
+    /**
+     * The other half — the fix must not silence real growth on cached workloads.
+     * Growth tokens are exact; the dollars are that share of what the session
+     * actually spent, so they can never exceed the session's own bill nor invent
+     * a rate the workload was not billed at.
+     */
+    const growing = Array.from({ length: 8 }, (_, t) => ({
+      model: 'claude-opus-5',
+      label: 'agent',
+      session: 's1',
+      usage:
+        t === 0
+          ? { input_tokens: 400, output_tokens: 200, cache_creation: { ephemeral_5m_input_tokens: 2000, ephemeral_1h_input_tokens: 0 } }
+          : { input_tokens: 400 + t * 600, output_tokens: 200, cache_read_input_tokens: 2000 },
+    }));
+    const [growth] = profile(growing).conversations;
+
+    assert.ok(growth, 'real growth on a cached workload went unreported');
+    assert.equal(growth.minTurnTokens, 2400);
+    assert.equal(growth.maxTurnTokens, 6600);
+    assert.ok(growth.growthUsd > 0);
+    assert.ok(growth.growthUsd < growth.inputUsd, 'growth exceeded the input spend');
+  });
+});

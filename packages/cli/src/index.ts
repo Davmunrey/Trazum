@@ -2412,6 +2412,23 @@ async function commandRoute(args: Args, pricing: PricingCatalogue, t: CliMessage
   const report = profileUsage(await readFile(path, 'utf8'), { catalogue: pricing });
   const levers = billLevers(report, { catalogue: pricing });
   const wanted = stringFlag(args, 'label');
+  /**
+   * A `--label` nothing carries is a typo, and it gets the typo answer.
+   *
+   * Falling through to the generic "no route clears 1% of the bill: these calls
+   * are already on the cheapest model of their family" asserted two falsehoods
+   * at once when the log had a 60% route under a different name — a verdict
+   * about calls the flag never selected.
+   */
+  if (wanted !== undefined && !report.byLabel.some((r) => r.label === wanted)) {
+    const available = report.byLabel
+      .map((r) => (r.label === UNLABELLED ? t.profile.unlabelled() : r.label))
+      .join(', ');
+    console.log();
+    console.log(c.dim(wrap(t.route.labelNotFound(wanted, available), 74, '  ')));
+    console.log();
+    return;
+  }
   const slice = levers.slices.find(
     (s) => s.route !== null && (wanted === undefined || s.label === wanted),
   );

@@ -899,7 +899,7 @@ ${bold('EXAMPLES')}
     historyGrowth: (label, model, first, last, turns) =>
       `${label} on ${model}: input ranges from ${first} tokens on the smallest turn to ${last} on the largest, over conversations of up to ${turns} turns.`,
     historyCeiling: (usd, pct, flat, spent) =>
-      `If every turn had cost what its cheapest turn cost, that input would have been ${flat} instead of ${spent} — so at most ${usd} of this bill is conversation growth (${pct}). It is a ceiling and not a saving: some of that is the user's own new messages, which nothing can truncate away, and this reads counts rather than content so it cannot tell the two apart. What moves it is capping the history you replay, or summarising it.`,
+      `If every turn had been the size of its smallest one, that input would have cost ${flat} instead of ${spent} — so at most ${usd} of this bill is conversation growth (${pct}). It is a ceiling and not a saving: some of that is the user's own new messages, which nothing can truncate away, and this reads counts rather than content so it cannot tell the two apart. What moves it is capping the history you replay, or summarising it.`,
     historyNoSessions: () =>
       'No call in this log carried a session, so what re-sending the conversation costs could not be measured — usually the largest line on a chat or agent bill. Add "session" (or "conversation_id") to the record and run this again. Trazum groups by it and never prints it.',
     leversUnlabelled: () =>
@@ -924,6 +924,8 @@ ${bold('EXAMPLES')}
       'Point this at a usage log and a prompt: trazum route usage.jsonl --prompt-file prompts/support.txt --cases cases.txt --yes. It finds the slice worth the most, then measures whether the cheaper model still does the job. The flag is --prompt-file and not --prompt, because --prompt names a marked prompt inside a source file everywhere else in this tool.',
     needsPrompt: () =>
       '--prompt and --cases are both required. The log says which route is worth money; only the prompt and the cases can say whether it works.',
+    labelNotFound: (label, available) =>
+      `No call in this log carries the label "${label}". The labels here are: ${available}.`,
     noRoute: () =>
       'No route on this log clears 1% of the bill. These calls are already on the cheapest model of their family, or the catalogue has nothing below them.',
     picked: (label, model, candidate, usd, pct) =>

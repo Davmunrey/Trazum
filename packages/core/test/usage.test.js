@@ -570,3 +570,34 @@ describe('a label is data, not structure', () => {
     assert.equal(report.byLabelAndModel[0].model, 'claude-opus-5', 'the injected label mangled the model half of the key');
   });
 });
+
+describe('numeric identifiers', () => {
+  it('takes a numeric session id, which is what half the databases produce', () => {
+    /**
+     * `session: 12345` — an auto-incremented conversation id — was dropped
+     * silently by the string-only reader, and the report then printed "No call
+     * in this log carried a session": a false claim about a log that carried one
+     * on every line, steering the reader away from the feature their log already
+     * supported.
+     */
+    const report = profile(
+      Array.from({ length: 4 }, (_, t) => ({
+        model: 'claude-opus-5', label: 'agent', session: 12345,
+        input_tokens: 600 + t * 400, output_tokens: 200,
+      })),
+    );
+    assert.equal(report.hasSessions, true, 'a numeric session was dropped');
+    assert.equal(report.conversations.length, 1);
+  });
+
+  it('takes a numeric label, and keeps booleans and objects out', () => {
+    const report = profile([
+      { model: 'claude-opus-5', label: 7, input_tokens: 100, output_tokens: 10 },
+      { model: 'claude-opus-5', label: true, input_tokens: 100, output_tokens: 10 },
+      { model: 'claude-opus-5', label: { a: 1 }, input_tokens: 100, output_tokens: 10 },
+    ]);
+    const labels = report.byLabel.map((r) => r.label).sort();
+    // `7` is a name; `true` and an object name nothing and land unlabelled.
+    assert.deepEqual(labels, ['', '7']);
+  });
+});

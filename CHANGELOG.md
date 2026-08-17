@@ -12,6 +12,33 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**Cache billing noise was reported as conversation growth.** Found by adversarial
+review, against a fix made the same day: the growth baseline was the cheapest
+turn's billed *cost*, and per-turn cost varies with the cache multiplier even when
+the input never grows — an identical 10,000-token turn costs 12.5x more as a cache
+write than as a cache read. An ordinary 5-minute-TTL agent whose conversation
+stayed completely flat reported **77.5% of its bill as "conversation growth"** and
+was told to trim history that was not there, while the report's own min/max token
+figures proved the claim false on the same screen. Growth is measured in
+**tokens** now — exact, order-independent, immune to billing rates — and the
+dollars are that token share of what the session actually spent.
+
+**A numeric session id was dropped and then denied.** `session: 12345` — an
+auto-incremented conversation id, which is what half the databases in existence
+produce — was silently ignored by the string-only reader, and the report printed
+"No call in this log carried a session": a false claim about a log that carried
+one on every line. Finite numbers are identifiers now, for `label` and `session`
+both; booleans and objects stay out, because `session: true` names nothing.
+
+**`route --label` with a misspelt label asserted a verdict about calls it never
+selected.** The fall-through answer was "no route on this log clears 1% of the
+bill: these calls are already on the cheapest model of their family" — two
+falsehoods at once when the log had a 60% route under a different name. A label
+nothing carries now gets the typo answer: the labels that exist.
+
+
+### Fixed
+
 **A workload literally named `unlabelled` merged into the missing-label bucket.**
 The sentinel was the string `'unlabelled'`, so 200 calls somebody had given that
 name and 200 calls with no label at all reported as one row of 400 — a figure

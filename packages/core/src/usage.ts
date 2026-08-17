@@ -392,23 +392,36 @@ export function parseUsageLine(line: string): UsageRecord | null {
      * and mis-file every figure under a truncated name; normalising at the one
      * boundary where labels enter keeps every consumer honest at once.
      */
-    label:
-      typeof record.label === 'string' && record.label.trim() !== ''
-        ? record.label.trim().replace(/\s+/g, ' ')
-        : null,
+    label: nameOf(record.label),
     /**
      * Read from either spelling, because both are what people already have:
      * `session` in a hand-rolled log, `conversation_id` in most chat schemas.
      * Refusing one of them would make the field's adoption a chore, and a field
      * nobody sets measures nothing.
      */
-    session:
-      typeof record.session === 'string' && record.session.trim() !== ''
-        ? record.session.trim()
-        : typeof record.conversation_id === 'string' && record.conversation_id.trim() !== ''
-          ? record.conversation_id.trim()
-          : null,
+    session: nameOf(record.session) ?? nameOf(record.conversation_id),
   };
+}
+
+/**
+ * A label or session identifier, from whatever a real log holds.
+ *
+ * **Numbers are identifiers too.** A conversation id is an auto-incremented
+ * integer in half the databases in existence, and the string-only version
+ * dropped `session: 12345` silently and then printed "No call in this log
+ * carried a session" — a false claim about a log that carried one on every
+ * line. A finite number is taken by its decimal form; booleans, objects and
+ * non-finite numbers stay out, because `session: true` names nothing.
+ *
+ * Strings are trimmed and internally normalised — any whitespace run becomes
+ * one space — because labels are half of structured keys that split on a
+ * newline, and a label carrying one would mis-file every figure it touches.
+ */
+function nameOf(value: unknown): string | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim().replace(/\s+/g, ' ');
+  return trimmed === '' ? null : trimmed;
 }
 
 /**
