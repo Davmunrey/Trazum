@@ -8,7 +8,8 @@ import type {
   PromptProfile,
   RuleLevel,
 } from '@trazum/core';
-import { formatSignedUsd, formatUsd, getMessages, getModel } from '@trazum/core';
+import { UNLABELLED, formatSignedUsd, formatUsd, getMessages, getModel, sharesOf } from '@trazum/core';
+import type { BillLevers, CacheEconomics, UsageProfileReport } from '@trazum/core';
 
 /**
  * Markdown for the places a pull request is actually read.
@@ -714,4 +715,113 @@ export function renderBlameMarkdown(input: BlameMarkdownInput): string {
   lines.push(`<sub>${mdText(t.blame.estimateNote())}</sub>`);
 
   return lines.join('\n');
+}
+
+export interface ProfileMarkdownInput {
+  report: UsageProfileReport;
+  levers: BillLevers;
+  cache: CacheEconomics;
+  t: CliMessages;
+}
+
+/**
+ * `trazum profile` as GitHub-flavoured markdown, for a job summary or a
+ * pull-request comment.
+ *
+ * The terminal report is the source of truth and this reuses its message
+ * catalogue line for line, because two renderings of the same finding drift the
+ * moment they are worded twice — the sign conventions here (`positive means
+ * worse` on the cache delta, ceilings that must be named as ceilings) have each
+ * already produced a bug when restated by hand.
+ *
+ * A finding that only exists in a terminal is a finding the reader's tooling
+ * never surfaces; this is the other half of the `--json` lesson, for humans
+ * reading CI instead of machines.
+ */
+export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
+  const { report, levers, cache, t } = input;
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
+  const shares = sharesOf(report.total);
+  const showLabel = (label: string): string =>
+    label === UNLABELLED ? t.profile.unlabelled() : label;
+
+  const lines: string[] = [];
+  lines.push(`### ${t.profile.heading()}`);
+  lines.push('');
+  lines.push(`**${t.profile.spent(t.profile.calls(report.total.calls), formatUsd(report.total.totalUsd))}**`);
+  lines.push('');
+  lines.push('| | USD | % | tokens |');
+  lines.push('|---|---:|---:|---:|');
+  const parts: Array<[string, number, number, number]> = [
+    [t.profile.partInput(), report.total.inputUsd, shares.input, report.total.inputTokens],
+    [t.profile.partCacheRead(), report.total.cacheReadUsd, shares.cacheRead, report.total.cacheReadTokens],
+    [t.profile.partCacheWrite(), report.total.cacheWriteUsd, shares.cacheWrite, report.total.cacheWriteTokens],
+    [t.profile.partOutput(), report.total.outputUsd, shares.output, report.total.outputTokens],
+  ];
+  for (const [name, usd, share, tokens] of parts) {
+    // Catalogue text, not user data: no escaping into a code cell needed.
+    lines.push(`| ${name} | ${formatUsd(usd)} | ${pct(share)} | ${n(tokens)} |`);
+  }
+  lines.push('');
+
+  lines.push(`#### ${t.profile.leversHeading()}`);
+  lines.push('');
+  if (levers.slices.length === 0) {
+    lines.push(mdText(t.profile.leversNone()));
+  } else {
+    for (const slice of levers.slices.slice(0, 5)) {
+      lines.push(
+        `- **${mdText(t.profile.leverSlice(showLabel(slice.label), slice.modelName, formatUsd(slice.combinedUsd), pct(slice.shareOfBill)))}** — ${mdText(t.profile.leverCalls(t.profile.calls(slice.calls), formatUsd(slice.spentUsd)))}`,
+      );
+      if (slice.route) {
+        lines.push(`  - ${mdText(t.profile.leverRoute(slice.route.candidate.displayName, formatUsd(slice.route.savingUsd)))}`);
+      }
+      if (slice.batch) {
+        lines.push(`  - ${mdText(t.profile.leverBatch(formatUsd(slice.batch.savingUsd)))}`);
+      }
+    }
+  }
+  lines.push('');
+  lines.push(`_${mdText(t.profile.leverPromptCeiling(formatUsd(levers.promptCeilingUsd), pct(levers.promptCeilingShare)))}_`);
+  lines.push('');
+
+  // The cache verdict, with the same refusal to answer an unsettled question.
+  const unsettled = cache.worstCaseVerdict !== cache.verdict && report.total.assumedWriteTtlCalls > 0;
+  if (unsettled) {
+    lines.push(`> ⚠️ ${mdText(t.profile.cacheTtlUnsettled(report.total.assumedWriteTtlCalls, formatUsd(-cache.deltaUsd), formatUsd(cache.worstCaseDeltaUsd)))}`);
+    lines.push('');
+  } else if (cache.verdict === 'lost-money') {
+    lines.push(`> ⚠️ ${mdText(t.profile.cacheLost(formatUsd(cache.deltaUsd), n(report.total.cacheWriteTokens), n(report.total.cacheReadTokens)))}`);
+    lines.push('');
+  } else if (cache.verdict === 'paid-off') {
+    lines.push(mdText(t.profile.cachePaidOff(formatUsd(-cache.deltaUsd))));
+    lines.push('');
+  }
+
+  for (const growth of report.conversations.slice(0, 3)) {
+    lines.push(
+      `- ${mdText(t.profile.historyGrowth(showLabel(growth.label), growth.modelName, n(Math.round(growth.minTurnTokens)), n(Math.round(growth.maxTurnTokens)), n(growth.longestSession)))} ${mdText(t.profile.historyCeiling(formatUsd(growth.growthUsd), pct(growth.shareOfBill), formatUsd(growth.flatUsd), formatUsd(growth.inputUsd)))}`,
+    );
+  }
+  if (report.conversations.length > 0) lines.push('');
+
+  if (report.total.truncatedCalls > 0 && report.total.outputUsd > 0) {
+    lines.push(
+      `> ⚠️ ${mdText(t.profile.truncatedWaste(t.profile.calls(report.total.truncatedCalls), formatUsd(report.total.truncatedOutputUsd), pct(report.total.truncatedOutputUsd / report.total.outputUsd)))}`,
+    );
+    lines.push('');
+  }
+
+  if (report.unpricedModels.length > 0) {
+    lines.push(`> ⚠️ ${mdText(t.profile.unpriced(report.unpricedModels.join(', '), report.unpriced.calls))}`);
+    lines.push('');
+  }
+  if (report.skippedLines.length > 0) {
+    const shown = report.skippedLines.slice(0, 5).join(', ');
+    lines.push(`_${mdText(t.profile.skipped(report.skippedLines.length, report.skippedLines.length > 5 ? `${shown}…` : shown))}_`);
+    lines.push('');
+  }
+
+  return `${lines.join('\n').trimEnd()}\n`;
 }

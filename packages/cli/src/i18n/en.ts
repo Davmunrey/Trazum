@@ -207,6 +207,20 @@ ${bold('OPTIONS FOR eval')}
   optimised once. That baseline is the yardstick — without it, a divergence
   figure means nothing. Exits with code 1 when the answers genuinely diverge.
 
+${bold('OPTIONS FOR profile')}
+  --against <log.jsonl>       Compare this bill to a previous log. Positive
+                              means the bill grew; drivers are ranked by their
+                              contribution to the change. No period is assumed —
+                              judge the call counts before judging the money.
+  --markdown-out <file>       Also write the report as Markdown, for a CI job
+                              summary or a pull request comment.
+  --pricing <file>            Local price overlay, as everywhere else.
+  --json                      The full report as data, including the levers.
+
+  Reads what the provider actually charged. Optional fields unlock findings:
+  "label" (which workload), "session" (which conversation — grouped by, never
+  printed), "stop_reason"/"finish_reason" (answers cut off at max_tokens).
+
 ${bold('OPTIONS FOR route')}
   --prompt-file <file>        The prompt those calls send. Not --prompt, which
                               names a marked prompt inside a source file.

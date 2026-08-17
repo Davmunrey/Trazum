@@ -200,6 +200,22 @@ ${bold('OPCIONES DE eval')}
   una. Esa base es la vara de medir: sin ella, un porcentaje de divergencia no
   significa nada. Sale con código 1 cuando las respuestas divergen de verdad.
 
+${bold('OPCIONES DE profile')}
+  --against <log.jsonl>       Compara esta factura con un registro anterior.
+                              Positivo significa que creció; los drivers van
+                              ordenados por su contribución al cambio. No se
+                              asume ningún periodo — juzga las llamadas antes
+                              que el dinero.
+  --markdown-out <fichero>    Escribe además el informe en Markdown, para el
+                              resumen de un job de CI o un comentario de PR.
+  --pricing <fichero>         Overlay local de precios, como en el resto.
+  --json                      El informe completo como datos, palancas incluidas.
+
+  Lee lo que el proveedor cobró de verdad. Campos opcionales desbloquean
+  hallazgos: "label" (qué carga), "session" (qué conversación — se agrupa y
+  nunca se imprime), "stop_reason"/"finish_reason" (respuestas cortadas en
+  max_tokens).
+
 ${bold('OPCIONES DE route')}
   --prompt-file <fichero>     El prompt que mandan esas llamadas. No --prompt,
                               que nombra un prompt marcado dentro de un fuente.

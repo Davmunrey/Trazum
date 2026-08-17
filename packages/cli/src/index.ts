@@ -114,6 +114,7 @@ import {
   renderCheckMarkdown,
   renderDiffMarkdown,
   renderRankMarkdown,
+  renderProfileMarkdown,
 } from './markdown.js';
 import type { CliMessages } from './i18n/index.js';
 
@@ -2431,6 +2432,17 @@ async function commandProfile(args: Args, pricing: PricingCatalogue, t: CliMessa
   }
 
   reportProfileGaps(report, t, n);
+
+  /**
+   * The same report as GitHub-flavoured markdown, for a job summary or a PR
+   * comment. Written from the same message catalogue the terminal used, because
+   * two renderings of one finding drift the moment they are worded twice.
+   */
+  const markdownOut = stringFlag(args, 'markdown-out');
+  if (markdownOut !== undefined) {
+    await writeFile(markdownOut, renderProfileMarkdown({ report, levers, cache, t }), 'utf8');
+    console.log(c.dim(t.report.wroteTo(markdownOut)));
+  }
 }
 
 /**

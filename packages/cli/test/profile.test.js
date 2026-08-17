@@ -861,3 +861,36 @@ describe('this bill against the previous one', () => {
     assert.match(out, /chat \(new since the previous log\)/);
   });
 });
+
+describe('--markdown-out', () => {
+  it('writes the same findings the terminal shows, from the same catalogue', async () => {
+    /**
+     * Two renderings of one finding drift the moment they are worded twice —
+     * the sign conventions here have each already produced a bug when restated.
+     * So the markdown reuses the terminal's message functions, and this asserts
+     * the load-bearing sections all made it across.
+     */
+    const { mkdtemp } = await import('node:fs/promises');
+    const { readFileSync } = await import('node:fs');
+    const dir = await mkdtemp(join(tmpdir(), 'trazum-md-'));
+    const out = join(dir, 'report.md');
+
+    const records = [
+      ...Array.from({ length: 400 }, () => call({ label: 'rag', usage: { input_tokens: 9000, output_tokens: 300 } })),
+      ...Array.from({ length: 12 }, () => ({
+        model: 'claude-opus-5', label: 'rag', stop_reason: 'max_tokens',
+        usage: { input_tokens: 2000, output_tokens: 1024 },
+      })),
+    ];
+    const result = run(await logOf(records), ['--markdown-out', out]);
+    assert.equal(result.status, 0, result.stderr);
+    const md = readFileSync(out, 'utf8').replace(/\s+/g, ' ');
+
+    assert.match(md, /### Where the money went/);
+    assert.match(md, /What would actually move this bill/);
+    assert.match(md, /route it to Claude Sonnet 5/);
+    assert.match(md, /shortening the prompt text can touch/, 'the prompt ceiling is missing');
+    // mdText escapes underscores for markdown, so the literal is max\_tokens.
+    assert.match(md, /hit the max\\_tokens ceiling/, 'the truncation waste is missing');
+  });
+});

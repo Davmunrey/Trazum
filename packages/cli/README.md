@@ -20,7 +20,7 @@ npm install -g @trazum/cli
 | `trazum optimize <file>` | shorten it, and price what that is worth |
 | `trazum check <file\|dir>` | does it fit its budget, and has the repo drifted past its baseline — exits 1 when either fails |
 | `trazum baseline [dir]` | what the prompts cost now, recorded to a file you commit |
-| `trazum profile <log.jsonl>` | where the money actually went — reads a usage log, not a prompt |
+| `trazum profile <log.jsonl>` | where the money actually went — reads a usage log, not a prompt. `--against` compares to the previous log; `--markdown-out` posts it to CI |
 | `trazum route <log.jsonl>` | is the cheaper model good enough? — measured, and it asks before spending |
 | `trazum doctor [dir]` | the whole workspace: what nothing is watching, and what fixing would be worth |
 | `trazum rank <dir>` | of these forty prompts, which is worth an afternoon |
