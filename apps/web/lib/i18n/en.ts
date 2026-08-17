@@ -261,6 +261,137 @@ export const en: WebMessages = {
     reorderDeclinedMore: (count) => `…and ${count} more.`,
   },
 
+  bill: {
+    tab: 'Your bill',
+    lede:
+      'Reads a usage log — one JSON object per line, each with a "model" and the "usage" object '
+      + 'the API returned — and says where the money went: which workload, which model, whether '
+      + 'caching paid for itself, and which levers would actually move the bill.',
+    privacy:
+      'The log is read entirely in this browser tab. Nothing is uploaded, stored or sent '
+      + 'anywhere — close the page and it is gone.',
+    dropLabel: 'Drop a usage log here',
+    chooseFile: 'Choose a file',
+    orPaste: 'or paste the log below',
+    pasteAriaLabel: 'Usage log to analyse',
+    analyze: 'Read the bill',
+    recipe:
+      'Recording the log is three lines in your own code: after each API call, append one JSON '
+      + 'line with the model, the usage object the response carried, a "label" naming the '
+      + 'workload and a "session" naming the conversation. It never contains prompt text, and '
+      + 'the session key is grouped by and never shown.',
+    empty: 'No usage records in that log.',
+    nothingPriced:
+      'None of the models in that log are in the pricing catalogue, so there is no bill to '
+      + 'report. The CLI can price unknown models with a pricing overlay: trazum profile '
+      + '--pricing.',
+    heading: 'Where the money went',
+    headline: (calls, total) => `${calls} calls · ${total}`,
+    partInput: 'Input',
+    partCacheRead: 'Cache reads',
+    partCacheWrite: 'Cache writes',
+    partOutput: 'Output',
+    spendColumn: 'Spend',
+    shareColumn: 'Share',
+    tokensColumn: 'Tokens',
+    callsColumn: 'Calls',
+    cacheHeading: 'Did caching pay for itself?',
+    cacheHit: (pct) => `Cache hit rate ${pct} of billable input.`,
+    cacheNever:
+      'Caching was never used on these calls. If any prefix repeats, that is the largest saving '
+      + 'available.',
+    cachePaidOff: (usd) => `Caching took ${usd} off this bill, against the same tokens uncached.`,
+    cacheLost: (usd) =>
+      `Caching added ${usd} to this bill instead of taking it off. A cache write costs more than `
+      + 'plain input — 1.25x, or 2x at the 1-hour TTL — so a prefix that changes faster than it '
+      + 'is reused pays that premium for nothing. Either cache a prefix that holds still, or '
+      + 'turn caching off here.',
+    cacheNoDifference:
+      'Caching came out level on this bill: what it charged for these tokens is what they would '
+      + 'have cost as ordinary input.',
+    cacheUnpriced:
+      'Tokens went through the cache on models the pricing catalogue does not know, so there is '
+      + 'no comparison to make.',
+    cacheUnsettled: (calls, asRecorded, atLongTtl) =>
+      `This log cannot say whether caching paid for itself. ${calls} calls did not record which `
+      + `cache-write TTL was used: at the 5-minute rate caching took ${asRecorded} off this `
+      + `bill, and at the 1-hour rate the same calls added ${atLongTtl} to it. Neither is `
+      + 'reported as the answer. Record the "cache_creation" object the API returns and this '
+      + 'settles itself.',
+    cacheTtlBound: (calls, atLongTtl) =>
+      `That figure is a bound, not a measurement: ${calls} calls did not record a cache-write `
+      + `TTL, and at the 1-hour rate it is ${atLongTtl}.`,
+    cacheHiddenLoss: (usd, labels) =>
+      `The total hides a loss: caching costs ${usd} across ${labels}.`,
+    leversHeading: 'What would actually move this bill',
+    leverSlice: (label, model, usd, pct) => `${label} on ${model} — up to ${usd} (${pct})`,
+    leverRoute: (candidate, usd) => `route it to ${candidate}: ${usd}`,
+    leverBatch: (usd) => `send it through the Batch API: ${usd}`,
+    leverCalls: (calls, spent) => `${calls} calls, ${spent} spent`,
+    routeVerify:
+      'Whether a route holds is an evaluation question, not an arithmetic one — nothing here '
+      + 'has seen a single answer. The CLI measures it: trazum route <log> --prompt-file '
+      + '<prompt> --cases <cases>.',
+    leverPromptCeiling: (usd, pct) =>
+      `For comparison: shortening the prompt text can touch ${usd} at the very most — ${pct} of `
+      + 'this bill, and only if you deleted every input token. The real figure is far below '
+      + 'that, because most of those tokens are retrieved context, conversation history and '
+      + 'tool results that no prompt file contains.',
+    leversNone:
+      'Nothing here clears 1% of the bill: these calls are already on the cheapest model of '
+      + 'their family, or their provider has no batch API. That is a real answer, not an empty '
+      + 'section.',
+    leversUnlabelled:
+      'None of these calls carried a label, so this is every workload in one row — a classifier '
+      + 'and a RAG pipeline merged into a single figure, with one route suggested for both. Add '
+      + '"label" to the record and the levers split by workload, which is the grouping a '
+      + 'decision is actually made at.',
+    historyHeading: 'What re-sending the conversation costs',
+    historyGrowth: (label, model, first, last, turns) =>
+      `${label} on ${model}: input ranges from ${first} tokens on the smallest turn to ${last} `
+      + `on the largest, over conversations of up to ${turns} turns.`,
+    historyCeiling: (usd, pct, flat, spent) =>
+      `If every turn had been the size of its smallest one, that input would have cost ${flat} `
+      + `instead of ${spent} — so at most ${usd} of this bill is conversation growth (${pct}). `
+      + "It is a ceiling and not a saving: some of that is the user's own new messages, which "
+      + 'nothing can truncate away. What moves it is capping the history you replay, or '
+      + 'summarising it.',
+    historyNoSessions:
+      'No call in this log carried a session, so what re-sending the conversation costs could '
+      + 'not be measured — usually the largest line on a chat or agent bill. Add "session" (or '
+      + '"conversation_id") to the record. Trazum groups by it and never shows it.',
+    outputHeading: 'Where the output spend concentrates',
+    outputTail: (label, model, callPct, spendPct, above, usd) =>
+      `${label} on ${model}: ${callPct} of calls hold ${spendPct} of the output spend — the `
+      + `ones answering with more than ${above} tokens, out of ${usd} of output on this slice. `
+      + 'That is a tail, and a tail has a cause: a path through the prompt that invites an '
+      + 'essay, a call with no max_tokens, a retrieval that returned a book.',
+    outputFlat: (label, model, callPct, spendPct, usd) =>
+      `${label} on ${model}: the output spend sits where the calls are — ${callPct} of them `
+      + `hold ${spendPct} of ${usd}. There is no tail to hunt; ask for shorter answers and cap `
+      + 'max_tokens.',
+    truncatedHeading: 'Answers cut off mid-generation',
+    truncatedWaste: (calls, usd, pct) =>
+      `${calls} calls hit the max_tokens ceiling: ${usd} of the output spend (${pct}) bought `
+      + 'answers that were cut off mid-generation — paid in full, frequently retried and billed '
+      + 'again. Where the answer genuinely needs the room, raise max_tokens; where it does not, '
+      + 'ask for less.',
+    truncatedNone: 'Stop reasons were recorded, and no answer hit the max_tokens ceiling.',
+    truncatedNotRecorded:
+      'Whether any answers were cut off could not be measured — no call in this log carries a '
+      + 'stop reason. Add "stop_reason" (Anthropic) or "finish_reason" (OpenAI) to the record; '
+      + 'the API already returns it beside "usage".',
+    byLabelHeading: 'By label',
+    byModelHeading: 'By model',
+    unlabelled: '(no label)',
+    moreRows: (count) => `…and ${count} more.`,
+    unpriced: (models, calls) =>
+      `${calls} calls are not in these totals — the pricing catalogue does not know: ${models}. `
+      + 'The CLI can price them with a pricing overlay (trazum profile --pricing).',
+    skipped: (count, lines) =>
+      `${count} lines could not be read and were left out (lines ${lines}).`,
+  },
+
   errors: {
     requestFailed: 'The prompt could not be optimised.',
     unreachable: 'Could not reach the server.',
