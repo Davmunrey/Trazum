@@ -144,9 +144,9 @@ invisible to everything else here. Add `session` (or `conversation_id`) to the l
 and `profile` measures it:
 
 ```
-  agent on Claude Opus 5: input goes from 600 tokens on the opening turn to
-  5,000 on the closing one, over conversations of up to 12 turns.
-  If every turn had cost what its own first turn cost, that input would have
+  agent on Claude Opus 5: input ranges from 600 tokens on the smallest turn
+  to 5,000 on the largest, over conversations of up to 12 turns.
+  If every turn had cost what its cheapest turn cost, that input would have
   been $7.20 instead of $33.60 — so at most $26.40 of this bill is
   conversation growth (57.9%).
 ```

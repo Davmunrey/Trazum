@@ -21,10 +21,14 @@ import type { UsageRecord } from './usage.js';
  *
  * ## What it will and will not claim
  *
- * The honest figure is a **ceiling**, and it is exact: what this workload would
- * have cost if every turn had cost what its own first turn cost. Subtract that from
- * what was actually spent and you have the most that eliminating conversation
- * growth could ever be worth.
+ * The honest figure is a **ceiling**, and the token half of it is exact: the
+ * input tokens beyond every turn being the size of the session's smallest turn.
+ * That quantity is order-independent — the first-seen anchor made the identical
+ * workload vanish when exported newest-first — and it is immune to billing
+ * rates: a cost-based anchor charged an ordinary 5-minute-TTL agent 77.5%
+ * "growth" on a conversation that never grew, because a cache-miss turn costs
+ * 12.5x a cache-hit turn of the same size. The dollars are that token share of
+ * what the session actually spent, at its own blended rate.
  *
  * It is a ceiling and not a saving because part of that growth is the user's own
  * new messages, which nobody can truncate away, and this module cannot tell those
@@ -50,15 +54,15 @@ export interface ConversationGrowth {
   /** How many distinct conversations were seen. Never which ones. */
   sessions: number;
   calls: number;
-  /** Mean input tokens on the opening turn of a conversation. */
-  firstTurnTokens: number;
-  /** Mean input tokens on the closing turn. */
-  lastTurnTokens: number;
+  /** Mean input tokens on the smallest turn of a conversation. */
+  minTurnTokens: number;
+  /** Mean input tokens on the largest turn. */
+  maxTurnTokens: number;
   /** Turns in the longest conversation seen. */
   longestSession: number;
   /** Input-side spend: plain input, cache reads and cache writes. */
   inputUsd: number;
-  /** What that would have been if every turn had cost what its own first turn did. */
+  /** What that would have been if every turn had cost what its cheapest turn did. */
   flatUsd: number;
   /**
    * `inputUsd - flatUsd`. **A ceiling on what removing conversation growth could
@@ -108,9 +112,25 @@ const inputTokensOf = (r: UsageRecord): number =>
 
 interface Session {
   turns: number;
-  firstCostUsd: number;
-  firstTokens: number;
-  lastTokens: number;
+  /**
+   * The smallest turn by **tokens**, not by billed cost.
+   *
+   * Two faults taught this shape. Anchoring on the first record seen made the
+   * measurement depend on the order of the log: the identical workload exported
+   * newest-first computed a *negative* growth and the section silently vanished.
+   * Anchoring on the cheapest turn's *cost* fixed the ordering and introduced
+   * the second fault: per-turn cost varies with the cache multiplier even when
+   * the input never grows — an identical 10,000-token turn costs 12.5x more as
+   * a cache write than as a cache read — so an ordinary 5-minute-TTL agent
+   * whose conversation stayed flat reported 77.5% of its bill as "conversation
+   * growth", and the report recommended trimming history that was not there.
+   *
+   * Tokens are what growth *is*, and they are immune to both: order-independent,
+   * and identical however each turn happened to be billed.
+   */
+  minTokens: number;
+  maxTokens: number;
+  totalTokens: number;
   totalUsd: number;
 }
 
@@ -167,15 +187,17 @@ export function createConversationTracker(options: ConversationOptions): Convers
     if (!existing) {
       sessions.set(record.session, {
         turns: 1,
-        firstCostUsd: cost,
-        firstTokens: tokens,
-        lastTokens: tokens,
+        minTokens: tokens,
+        maxTokens: tokens,
+        totalTokens: tokens,
         totalUsd: cost,
       });
       return;
     }
     existing.turns += 1;
-    existing.lastTokens = tokens;
+    existing.minTokens = Math.min(existing.minTokens, tokens);
+    existing.maxTokens = Math.max(existing.maxTokens, tokens);
+    existing.totalTokens += tokens;
     existing.totalUsd += cost;
   };
 
@@ -200,17 +222,29 @@ export function createConversationTracker(options: ConversationOptions): Convers
 
     let inputUsd = 0;
     let flatUsd = 0;
-    let firstTokens = 0;
-    let lastTokens = 0;
+    let minTokens = 0;
+    let maxTokens = 0;
     let calls = 0;
     let longestSession = 0;
 
     for (const session of long) {
       inputUsd += session.totalUsd;
-      // What every turn would have cost at this conversation's own opening price.
-      flatUsd += session.firstCostUsd * session.turns;
-      firstTokens += session.firstTokens;
-      lastTokens += session.lastTokens;
+      /**
+       * The growth is measured in tokens — `totalTokens - minTokens·turns`,
+       * which is exact, order-independent, and zero for a conversation whose
+       * turns never change size however each one was billed. The money is that
+       * token share of what the session actually spent: pricing the excess at
+       * any single rate would either overstate it (full input rate, when most
+       * re-sent history is cache-read cheap) or move with billing noise (the
+       * cheapest turn's rate, which is what mis-billed a flat cached agent).
+       */
+      const flatTokens = session.minTokens * session.turns;
+      flatUsd +=
+        session.totalTokens > 0
+          ? session.totalUsd * (flatTokens / session.totalTokens)
+          : session.totalUsd;
+      minTokens += session.minTokens;
+      maxTokens += session.maxTokens;
       calls += session.turns;
       longestSession = Math.max(longestSession, session.turns);
     }
@@ -239,8 +273,8 @@ export function createConversationTracker(options: ConversationOptions): Convers
       modelName: model.displayName,
       sessions: long.length,
       calls,
-      firstTurnTokens: firstTokens / long.length,
-      lastTurnTokens: lastTokens / long.length,
+      minTurnTokens: minTokens / long.length,
+      maxTurnTokens: maxTokens / long.length,
       longestSession,
       inputUsd,
       flatUsd,

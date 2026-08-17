@@ -553,6 +553,15 @@ export interface CliMessages {
     noTarget(): string;
     needsPrompt(): string;
     noRoute(): string;
+    /**
+     * `--label` named something no call carries — almost always a typo.
+     *
+     * The generic answer here was "no route clears 1% of the bill: these calls
+     * are already on the cheapest model of their family" — false on both counts
+     * when the log had a 60% route under a different name. A wrong label gets
+     * the labels that exist, not a verdict about ones that do not.
+     */
+    labelNotFound(label: string, available: string): string;
     /** The slice picked, and what taking it is worth. */
     picked(label: string, model: string, candidate: string, usd: string, pct: string): string;
     /** What the measurement will cost, before a single call is made. */

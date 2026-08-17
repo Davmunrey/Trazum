@@ -47,8 +47,8 @@ describe('measuring conversation growth', () => {
     assert.equal(growth.label, 'agent');
     assert.equal(growth.sessions, 200);
     assert.equal(growth.longestSession, 12);
-    assert.equal(growth.firstTurnTokens, 600);
-    assert.equal(growth.lastTurnTokens, 5000);
+    assert.equal(growth.minTurnTokens, 600);
+    assert.equal(growth.maxTurnTokens, 5000);
     assert.ok(Math.abs(growth.inputUsd - 33.6) < 1e-9, `spent ${growth.inputUsd}`);
     assert.ok(Math.abs(growth.flatUsd - 7.2) < 1e-9, `flat ${growth.flatUsd}`);
     assert.ok(Math.abs(growth.growthUsd - 26.4) < 1e-9, `growth ${growth.growthUsd}`);
@@ -62,6 +62,46 @@ describe('measuring conversation growth', () => {
       const [growth] = profile(conversation(20, turns)).conversations;
       assert.ok(growth.growthUsd < growth.inputUsd, `${turns} turns: ${growth.growthUsd} of ${growth.inputUsd}`);
       assert.ok(growth.flatUsd > 0);
+    }
+  });
+
+  it('measures the same workload identically whatever order the log is in', () => {
+    /**
+     * The fault this exists to pin. Growth was anchored on the first record seen
+     * per session, which is a fact about the log's ordering and not about the
+     * conversation: the identical workload exported newest-first — an ordinary
+     * shape for a warehouse export — computed a negative growth and the section
+     * silently vanished. The largest line on an agent bill, gone because
+     * somebody's log was sorted the other way.
+     *
+     * Anchoring on the cheapest turn is order-independent and equal on any
+     * genuinely growing conversation, and the figure stays an exact ceiling: no
+     * truncation strategy can pay less than the cheapest turn per turn.
+     */
+    const records = conversation(50, 8);
+    const forward = profile(records).conversations;
+    const backward = profile([...records].reverse()).conversations;
+    const shuffled = profile(
+      [...records].sort((a, b) => (a.session < b.session ? 1 : a.session > b.session ? -1 : 0)),
+    ).conversations;
+
+    assert.ok(forward.length === 1, 'the forward log did not measure');
+    // Equal up to floating-point associativity: the sums accumulate in a
+    // different order, so the last bits of a double can differ. Anything larger
+    // than an ulp-scale difference is a real order dependence.
+    const near = (a, b, what) =>
+      assert.ok(Math.abs(a - b) < 1e-9, `${what}: ${a} vs ${b}`);
+    for (const other of [backward, shuffled]) {
+      assert.equal(other.length, 1);
+      const [f, o] = [forward[0], other[0]];
+      assert.equal(o.sessions, f.sessions);
+      assert.equal(o.calls, f.calls);
+      assert.equal(o.longestSession, f.longestSession);
+      near(o.inputUsd, f.inputUsd, 'inputUsd');
+      near(o.flatUsd, f.flatUsd, 'flatUsd');
+      near(o.growthUsd, f.growthUsd, 'growthUsd');
+      near(o.minTurnTokens, f.minTurnTokens, 'minTurnTokens');
+      near(o.maxTurnTokens, f.maxTurnTokens, 'maxTurnTokens');
     }
   });
 
@@ -83,35 +123,57 @@ describe('measuring conversation growth', () => {
     assert.deepEqual(flat.conversations, []);
   });
 
-  it('never reports a conversation that shrank as growth', () => {
+  it('treats a shrinking log and its growing mirror identically, claiming no order', () => {
     /**
-     * Reachable, and the guard for it was invisible until this test existed: with
-     * the default threshold a negative figure is dropped for being below 1% of the
-     * bill, so removing the check broke nothing. `minShare: 0` is the setting that
-     * separates the two, and a caller can pass it.
+     * This replaces a test that demanded the impossible. It required a shrinking
+     * conversation — 20,000 tokens down to 10,000 — never be reported as growth,
+     * and under the first-seen anchoring that held. But that anchoring also made
+     * the measurement depend on the log's ordering, and the same growing workload
+     * exported newest-first vanished from the report entirely.
      *
-     * A workload whose first turn is the biggest is ordinary — an attachment, a
-     * retrieved document, a system prompt that later turns cache instead of
-     * resending. Reporting that as "conversation growth" would be a negative
-     * ceiling presented as an opportunity.
+     * Once the anchor is the cheapest turn — the only order-independent choice —
+     * a shrinking conversation is *literally indistinguishable* from its growing
+     * mirror: same turns, same sizes, order unknown. The tool cannot claim to
+     * know which one happened, so the honest behaviour is to report both the
+     * same and to word the report without temporal claims — smallest turn and
+     * largest turn, never first and last. The ceiling stays true either way: no
+     * truncation strategy can pay less than the cheapest turn per turn.
      */
-    const shrinking = Array.from({ length: 6 }, (_, t) => ({
-      model: 'claude-opus-5',
-      inputTokens: 20_000 - t * 2_000,
-      cacheReadTokens: 0,
-      cacheWrite5mTokens: 0,
-      cacheWrite1hTokens: 0,
-      writeTtlKnown: true,
-      outputTokens: 200,
-      label: 'agent',
-      session: 'one',
-    }));
-    const rows = conversationGrowth(shrinking, 100, {
+    const shape = (tokens) =>
+      tokens.map((inputTokens) => ({
+        model: 'claude-opus-5',
+        inputTokens,
+        cacheReadTokens: 0,
+        cacheWrite5mTokens: 0,
+        cacheWrite1hTokens: 0,
+        writeTtlKnown: true,
+        outputTokens: 200,
+        label: 'agent',
+        session: 'one',
+      }));
+    const options = {
       catalogue: BUNDLED_CATALOGUE,
       on: new Date('2026-08-16T00:00:00Z'),
       minShare: 0,
-    });
-    assert.deepEqual(rows, [], 'a shrinking conversation was reported as growing');
+    };
+    const sizes = [20_000, 18_000, 16_000, 14_000, 12_000, 10_000];
+    const shrinking = conversationGrowth(shape(sizes), 100, options);
+    const growing = conversationGrowth(shape([...sizes].reverse()), 100, options);
+
+    // Equal up to floating-point associativity, as in the ordering test above.
+    assert.equal(shrinking.length, 1);
+    assert.equal(growing.length, 1);
+    for (const key of ['sessions', 'calls', 'longestSession', 'minTurnTokens', 'maxTurnTokens']) {
+      assert.equal(shrinking[0][key], growing[0][key], key);
+    }
+    for (const key of ['inputUsd', 'flatUsd', 'growthUsd', 'shareOfBill']) {
+      assert.ok(
+        Math.abs(shrinking[0][key] - growing[0][key]) < 1e-9,
+        `${key}: ${shrinking[0][key]} vs ${growing[0][key]}`,
+      );
+    }
+    assert.equal(shrinking[0].minTurnTokens, 10_000);
+    assert.equal(shrinking[0].maxTurnTokens, 20_000);
   });
 
   it('separates "nothing recorded" from "nothing to report"', () => {
@@ -203,5 +265,58 @@ describe('what the session key is allowed to do', () => {
       'the session key reached the report',
     );
     assert.ok(!JSON.stringify(report).includes('4471'), 'part of the session key survived');
+  });
+});
+
+describe('growth is a fact about tokens, not about billing rates', () => {
+  it('reports zero growth for a flat conversation however each turn was billed', () => {
+    /**
+     * The adversarial review's finding, confirmed against the cost-anchored
+     * version: an ordinary 5-minute-TTL agent whose user replies after the TTL
+     * expires alternates cache writes and cache reads — identical 10,000-token
+     * turns billed 12.5x apart ($0.0625 as a write, $0.0050 as a read). The
+     * cheapest-cost anchor took the cache-hit turn as the baseline and reported
+     * 77.5% of the bill as "conversation growth", recommending history trimming
+     * on a conversation whose input never grew. The report's own min/max token
+     * figures — 10,000 to 10,000 — proved the claim false on the same screen.
+     *
+     * Growth is measured in tokens now: exact, order-independent, and identical
+     * however each turn happened to be billed.
+     */
+    const flat = Array.from({ length: 5 }, (_, t) => ({
+      model: 'claude-opus-5',
+      label: 'agent',
+      session: 's1',
+      usage:
+        t % 2 === 0
+          ? { output_tokens: 200, cache_creation: { ephemeral_5m_input_tokens: 10_000, ephemeral_1h_input_tokens: 0 } }
+          : { output_tokens: 200, cache_read_input_tokens: 10_000 },
+    }));
+    assert.deepEqual(profile(flat).conversations, [], 'billing-rate variation was reported as growth');
+  });
+
+  it('still measures a growing cached conversation, at its own blended rate', () => {
+    /**
+     * The other half — the fix must not silence real growth on cached workloads.
+     * Growth tokens are exact; the dollars are that share of what the session
+     * actually spent, so they can never exceed the session's own bill nor invent
+     * a rate the workload was not billed at.
+     */
+    const growing = Array.from({ length: 8 }, (_, t) => ({
+      model: 'claude-opus-5',
+      label: 'agent',
+      session: 's1',
+      usage:
+        t === 0
+          ? { input_tokens: 400, output_tokens: 200, cache_creation: { ephemeral_5m_input_tokens: 2000, ephemeral_1h_input_tokens: 0 } }
+          : { input_tokens: 400 + t * 600, output_tokens: 200, cache_read_input_tokens: 2000 },
+    }));
+    const [growth] = profile(growing).conversations;
+
+    assert.ok(growth, 'real growth on a cached workload went unreported');
+    assert.equal(growth.minTurnTokens, 2400);
+    assert.equal(growth.maxTurnTokens, 6600);
+    assert.ok(growth.growthUsd > 0);
+    assert.ok(growth.growthUsd < growth.inputUsd, 'growth exceeded the input spend');
   });
 });

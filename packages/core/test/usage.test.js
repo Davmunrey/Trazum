@@ -177,6 +177,7 @@ describe('profiling a log', () => {
     // is annotated is how a tool goes unused.
     const report = profile([{ model: 'claude-opus-5', input_tokens: 100, output_tokens: 10 }]);
     assert.equal(report.byLabel[0].label, UNLABELLED);
+    assert.equal(UNLABELLED, '', 'the sentinel must be a value no parsed label can be');
     assert.equal(report.total.calls, 1);
   });
 
@@ -529,5 +530,74 @@ describe('the cache verdict under an unstated write TTL', () => {
     );
     assert.equal(cache.deltaUsd, cache.worstCaseDeltaUsd);
     assert.equal(cache.worstCaseVerdict, 'no-difference');
+  });
+});
+
+describe('a label is data, not structure', () => {
+  it('keeps a workload literally named "unlabelled" apart from the missing-label bucket', () => {
+    /**
+     * The sentinel was the string 'unlabelled', and a workload somebody had
+     * actually given that name merged silently into the missing-label bucket:
+     * 200 labelled calls and 200 unlabelled ones reported as one row of 400 —
+     * a figure attributed to something it does not describe. The sentinel is the
+     * empty string now, which is the one value a parsed label can never be.
+     */
+    const report = profile([
+      ...Array.from({ length: 200 }, () => ({ model: 'claude-opus-5', label: 'unlabelled', input_tokens: 5000, output_tokens: 300 })),
+      ...Array.from({ length: 200 }, () => ({ model: 'claude-opus-5', input_tokens: 100, output_tokens: 20 })),
+    ]);
+
+    assert.equal(report.byLabel.length, 2, 'the named workload merged into the missing bucket');
+    const named = report.byLabel.find((r) => r.label === 'unlabelled');
+    const missing = report.byLabel.find((r) => r.label === UNLABELLED);
+    assert.equal(named.breakdown.calls, 200);
+    assert.equal(missing.breakdown.calls, 200);
+  });
+
+  it('normalises whitespace inside a label, so it cannot corrupt a structured key', () => {
+    /**
+     * Labels are half of keys that split on a newline — byLabelAndModel, the
+     * conversation tracker, the output-shape tracker. A label carrying one would
+     * make the split truncate the label and mangle the model, mis-filing every
+     * figure under names nobody wrote. Normalised at the one boundary where
+     * labels enter, so every consumer is protected at once.
+     */
+    const report = profile([
+      { model: 'claude-opus-5', label: 'rag\nclaude-haiku-4-5', input_tokens: 5000, output_tokens: 300 },
+    ]);
+    assert.equal(report.byLabelAndModel.length, 1);
+    assert.equal(report.byLabelAndModel[0].label, 'rag claude-haiku-4-5');
+    assert.equal(report.byLabelAndModel[0].model, 'claude-opus-5', 'the injected label mangled the model half of the key');
+  });
+});
+
+describe('numeric identifiers', () => {
+  it('takes a numeric session id, which is what half the databases produce', () => {
+    /**
+     * `session: 12345` — an auto-incremented conversation id — was dropped
+     * silently by the string-only reader, and the report then printed "No call
+     * in this log carried a session": a false claim about a log that carried one
+     * on every line, steering the reader away from the feature their log already
+     * supported.
+     */
+    const report = profile(
+      Array.from({ length: 4 }, (_, t) => ({
+        model: 'claude-opus-5', label: 'agent', session: 12345,
+        input_tokens: 600 + t * 400, output_tokens: 200,
+      })),
+    );
+    assert.equal(report.hasSessions, true, 'a numeric session was dropped');
+    assert.equal(report.conversations.length, 1);
+  });
+
+  it('takes a numeric label, and keeps booleans and objects out', () => {
+    const report = profile([
+      { model: 'claude-opus-5', label: 7, input_tokens: 100, output_tokens: 10 },
+      { model: 'claude-opus-5', label: true, input_tokens: 100, output_tokens: 10 },
+      { model: 'claude-opus-5', label: { a: 1 }, input_tokens: 100, output_tokens: 10 },
+    ]);
+    const labels = report.byLabel.map((r) => r.label).sort();
+    // `7` is a name; `true` and an object name nothing and land unlabelled.
+    assert.deepEqual(labels, ['', '7']);
   });
 });

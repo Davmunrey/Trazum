@@ -181,3 +181,22 @@ describe('when the slice is a mixture', () => {
     assert.doesNotMatch(out, /carry no label/);
   });
 });
+
+describe('a --label nothing carries', () => {
+  it('gets the typo answer, not a verdict about calls the flag never selected', async () => {
+    /**
+     * The fall-through answer was "no route on this log clears 1% of the bill:
+     * these calls are already on the cheapest model of their family" — two
+     * falsehoods at once when the log had a 60% route under a different name,
+     * and the actual problem was a misspelt flag.
+     */
+    const { log, prompt, cases } = await fixture();
+    const result = run([log, '--prompt-file', prompt, '--cases', cases, '--label', 'does-not-exist']);
+
+    assert.equal(result.status, 0, result.stderr);
+    const out = flat(result);
+    assert.match(out, /No call in this log carries the label "does-not-exist"/);
+    assert.match(out, /The labels here are: support-rag/);
+    assert.doesNotMatch(out, /already on the cheapest model/, 'asserted a verdict about unselected calls');
+  });
+});

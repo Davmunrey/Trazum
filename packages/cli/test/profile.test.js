@@ -563,7 +563,9 @@ describe('what re-sending the conversation costs', () => {
     assert.equal(result.status, 0, result.stderr);
     const out = flat(result);
 
-    assert.match(out, /input goes from 600 tokens on the opening turn to 5,000/);
+    // "smallest"/"largest", never "opening"/"closing": the measurement is
+    // order-independent now and the wording must not claim an order it cannot know.
+    assert.match(out, /input ranges from 600 tokens on the smallest turn to 5,000 on the largest/);
     assert.match(out, /at most \$26\.40 of this bill is conversation growth/);
     assert.match(out, /ceiling and not a saving/, 'presented a bound as an opportunity');
   });
@@ -735,5 +737,37 @@ describe('where the output spend concentrates', () => {
     assert.match(out, /There is no tail to hunt/);
     assert.match(out, /cap max_tokens/);
     assert.doesNotMatch(out, /a tail has a cause/, 'a flat workload was sent tail-hunting');
+  });
+});
+
+describe('--json carries everything the terminal says', () => {
+  it('includes the levers, the cache verdict, the conversations and the shapes', async () => {
+    /**
+     * The levers were missing, and that made the flagship section terminal-only:
+     * "What would actually move this bill" — the reason the command exists — was
+     * invisible to any pipeline, dashboard or CI step reading the JSON. A finding
+     * the machine-readable output omits is a finding the reader's tooling will
+     * never surface.
+     *
+     * Asserted as presence-and-shape for each section the terminal renders, so
+     * the next section added fails here until it is exported too.
+     */
+    const records = Array.from({ length: 400 }, (_, i) =>
+      call({
+        label: 'rag',
+        session: `c${Math.floor(i / 8)}`,
+        usage: { input_tokens: 600 + (i % 8) * 400, output_tokens: 300 },
+      }),
+    );
+    const result = run(await logOf(records), ['--json']);
+    assert.equal(result.status, 0, result.stderr);
+    const json = JSON.parse(result.stdout);
+
+    assert.ok(Array.isArray(json.levers?.slices), 'the levers are not in the JSON');
+    assert.ok(json.levers.slices.length > 0, 'the levers are empty on a log that has one');
+    assert.equal(typeof json.levers.promptCeilingUsd, 'number');
+    assert.equal(typeof json.cache?.verdict, 'string');
+    assert.ok(Array.isArray(json.conversations));
+    assert.ok(Array.isArray(json.outputShapes));
   });
 });

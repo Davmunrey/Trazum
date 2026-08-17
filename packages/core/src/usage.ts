@@ -384,27 +384,60 @@ export function parseUsageLine(line: string): UsageRecord | null {
     cacheWrite1hTokens: hasSplit ? split1h : 0,
     writeTtlKnown: hasSplit || flatWrite === 0,
     outputTokens: valueOf(counts.output!),
-    label:
-      typeof record.label === 'string' && record.label.trim() !== ''
-        ? record.label.trim()
-        : null,
+    /**
+     * Trimmed and internally normalised: any whitespace run becomes one space.
+     * A label is a workload name, and it is also used as half of structured keys
+     * that split on `\n` — `byLabelAndModel`, the conversation tracker, the
+     * output-shape tracker. A label carrying a newline would corrupt that split
+     * and mis-file every figure under a truncated name; normalising at the one
+     * boundary where labels enter keeps every consumer honest at once.
+     */
+    label: nameOf(record.label),
     /**
      * Read from either spelling, because both are what people already have:
      * `session` in a hand-rolled log, `conversation_id` in most chat schemas.
      * Refusing one of them would make the field's adoption a chore, and a field
      * nobody sets measures nothing.
      */
-    session:
-      typeof record.session === 'string' && record.session.trim() !== ''
-        ? record.session.trim()
-        : typeof record.conversation_id === 'string' && record.conversation_id.trim() !== ''
-          ? record.conversation_id.trim()
-          : null,
+    session: nameOf(record.session) ?? nameOf(record.conversation_id),
   };
 }
 
-/** The bucket unlabelled calls land in, named so a report can say so. */
-export const UNLABELLED = 'unlabelled';
+/**
+ * A label or session identifier, from whatever a real log holds.
+ *
+ * **Numbers are identifiers too.** A conversation id is an auto-incremented
+ * integer in half the databases in existence, and the string-only version
+ * dropped `session: 12345` silently and then printed "No call in this log
+ * carried a session" — a false claim about a log that carried one on every
+ * line. A finite number is taken by its decimal form; booleans, objects and
+ * non-finite numbers stay out, because `session: true` names nothing.
+ *
+ * Strings are trimmed and internally normalised — any whitespace run becomes
+ * one space — because labels are half of structured keys that split on a
+ * newline, and a label carrying one would mis-file every figure it touches.
+ */
+function nameOf(value: unknown): string | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim().replace(/\s+/g, ' ');
+  return trimmed === '' ? null : trimmed;
+}
+
+/**
+ * The bucket unlabelled calls land in.
+ *
+ * The empty string, because it is the one value a parsed label can never be —
+ * `parseUsageLine` trims and rejects empty. The first version used the literal
+ * string `'unlabelled'`, and a workload somebody had actually named `unlabelled`
+ * merged silently into the missing-label bucket: 200 labelled calls and 200
+ * unlabelled ones reported as one row of 400, and the "none of these calls
+ * carried a label" warning fired over a log where half of them had.
+ *
+ * Presentation stays in the CLI, which translates this sentinel through the
+ * message catalogue; data consumers can tell `''` from any real label.
+ */
+export const UNLABELLED = '';
 
 /** Token counts only. Used for both halves, because both need them. */
 function countInto(into: UsageBreakdown, record: UsageRecord): void {

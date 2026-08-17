@@ -10,6 +10,86 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**Cache billing noise was reported as conversation growth.** Found by adversarial
+review, against a fix made the same day: the growth baseline was the cheapest
+turn's billed *cost*, and per-turn cost varies with the cache multiplier even when
+the input never grows — an identical 10,000-token turn costs 12.5x more as a cache
+write than as a cache read. An ordinary 5-minute-TTL agent whose conversation
+stayed completely flat reported **77.5% of its bill as "conversation growth"** and
+was told to trim history that was not there, while the report's own min/max token
+figures proved the claim false on the same screen. Growth is measured in
+**tokens** now — exact, order-independent, immune to billing rates — and the
+dollars are that token share of what the session actually spent.
+
+**A numeric session id was dropped and then denied.** `session: 12345` — an
+auto-incremented conversation id, which is what half the databases in existence
+produce — was silently ignored by the string-only reader, and the report printed
+"No call in this log carried a session": a false claim about a log that carried
+one on every line. Finite numbers are identifiers now, for `label` and `session`
+both; booleans and objects stay out, because `session: true` names nothing.
+
+**`route --label` with a misspelt label asserted a verdict about calls it never
+selected.** The fall-through answer was "no route on this log clears 1% of the
+bill: these calls are already on the cheapest model of their family" — two
+falsehoods at once when the log had a 60% route under a different name. A label
+nothing carries now gets the typo answer: the labels that exist.
+
+
+### Fixed
+
+**A workload literally named `unlabelled` merged into the missing-label bucket.**
+The sentinel was the string `'unlabelled'`, so 200 calls somebody had given that
+name and 200 calls with no label at all reported as one row of 400 — a figure
+attributed to something it does not describe — and the "none of these calls
+carried a label" logic could fire over a log where half of them had. The sentinel
+is the empty string now, the one value a parsed label can never be; the terminal
+shows the missing bucket as `(no label)` so the two cannot read identically
+either.
+
+**A label containing a newline corrupted the structured keys.** Labels are half of
+keys that split on `\n` — `byLabelAndModel`, the conversation tracker, the
+output-shape tracker — so `label: "rag\nclaude-haiku-4-5"` truncated the label to
+`rag` and mangled the model half. Whitespace inside a label is normalised to a
+single space at the parse boundary, protecting every consumer at once.
+
+
+### Fixed
+
+**The conversation measurement depended on the order of the log.** Growth was
+anchored on the first record seen per session — a fact about the log's ordering,
+not about the conversation. The identical workload exported newest-first, an
+ordinary shape for a warehouse export, computed a *negative* growth and the whole
+section silently vanished: the largest line on an agent bill, gone because
+somebody's log was sorted the other way.
+
+The anchor is the **cheapest turn** now, which is order-independent, equals the
+opening turn on any genuinely growing conversation, and keeps the figure an exact
+ceiling — no truncation strategy can pay less than the cheapest turn per turn. A
+test runs the same workload forward, reversed and re-sorted and requires identical
+results up to floating-point associativity.
+
+The wording followed: *smallest turn* and *largest turn*, never *opening* and
+*closing*, because the report must not claim an order it cannot know. For the same
+reason a shrinking conversation and its growing mirror — literally
+indistinguishable once order is unknown — now produce the same report, which
+replaces a test that demanded the impossible. `ConversationGrowth` renames
+`firstTurnTokens`/`lastTurnTokens` to `minTurnTokens`/`maxTurnTokens` (unreleased
+API).
+
+
+### Fixed
+
+**`profile --json` omitted the levers.** The flagship section — "What would
+actually move this bill", the reason the command exists — was terminal-only, so
+any pipeline, dashboard or CI step reading the JSON never saw it. A finding the
+machine-readable output omits is a finding the reader's tooling will never
+surface. The JSON now carries `levers` beside the cache verdict, the
+conversations and the output shapes, and a test asserts every section the
+terminal renders has a machine-readable counterpart.
+
+
 ### Added
 
 **`trazum profile` now says where the output spend concentrates** — the actionable

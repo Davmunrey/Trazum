@@ -861,7 +861,7 @@ ${bold('EJEMPLOS')}
     byLabelHeading: () => 'Por etiqueta',
     byModelHeading: () => 'Por modelo',
     row: (name, usd, pct, calls) => `${usd.padStart(11)}  ${pct.padStart(5)}   ${name}  (${calls})`,
-    unlabelled: () => 'sin etiqueta',
+    unlabelled: () => '(sin label)',
     cacheHit: (pct) => `Tasa de acierto de caché: ${pct} de la entrada facturable.`,
     cacheNever: () => 'No se usó caché en estas llamadas. Si algún prefijo se repite, ese es el mayor ahorro disponible.',
     cacheLost: (usd, writes, reads) =>
@@ -901,9 +901,9 @@ ${bold('EJEMPLOS')}
       `Para comparar: acortar el texto del prompt puede tocar ${usd} como mucho — el ${pct} de esta factura, y solo si borraras hasta el último token de entrada. La cifra real está muy por debajo, porque la mayoría de esos tokens son contexto recuperado, historial de conversación y resultados de herramientas que no están en ningún fichero de prompt.`,
     historyHeading: () => 'Lo que cuesta reenviar la conversación',
     historyGrowth: (label, model, first, last, turns) =>
-      `${label} en ${model}: la entrada pasa de ${first} tokens en el primer turno a ${last} en el último, en conversaciones de hasta ${turns} turnos.`,
+      `${label} en ${model}: la entrada va de ${first} tokens en el turno más pequeño a ${last} en el más grande, en conversaciones de hasta ${turns} turnos.`,
     historyCeiling: (usd, pct, flat, spent) =>
-      `Si cada turno hubiera costado lo que costó su propio primer turno, esa entrada habrían sido ${flat} en vez de ${spent} — así que como mucho ${usd} de esta factura es crecimiento de la conversación (${pct}). Es un techo y no un ahorro: parte de eso son los mensajes nuevos del propio usuario, que nada puede truncar, y esto lee cuentas y no contenido, así que no puede separarlos. Lo que lo mueve es limitar el historial que reproduces, o resumirlo.`,
+      `Si cada turno hubiera tenido el tamaño del más pequeño, esa entrada habría costado ${flat} en vez de ${spent} — así que como mucho ${usd} de esta factura es crecimiento de la conversación (${pct}). Es un techo y no un ahorro: parte de eso son los mensajes nuevos del propio usuario, que nada puede truncar, y esto lee cuentas y no contenido, así que no puede separarlos. Lo que lo mueve es limitar el historial que reproduces, o resumirlo.`,
     historyNoSessions: () =>
       'Ninguna llamada de este registro llevaba sesión, así que no se pudo medir lo que cuesta reenviar la conversación — normalmente la línea más grande de una factura de chat o de agente. Añade "session" (o "conversation_id") al registro y vuelve a ejecutarlo. Trazum agrupa por ese campo y nunca lo imprime.',
     leversUnlabelled: () =>
@@ -928,6 +928,8 @@ ${bold('EJEMPLOS')}
       'Apunta esto a un registro de uso y a un prompt: trazum route usage.jsonl --prompt-file prompts/soporte.txt --cases casos.txt --yes. Busca la porción que más vale y mide si el modelo más barato sigue haciendo el trabajo. El flag es --prompt-file y no --prompt, porque en el resto de la herramienta --prompt nombra un prompt marcado dentro de un fichero fuente.',
     needsPrompt: () =>
       '--prompt y --cases son los dos obligatorios. El registro dice qué ruta vale dinero; solo el prompt y los casos pueden decir si funciona.',
+    labelNotFound: (label, available) =>
+      `Ninguna llamada de este registro lleva el label "${label}". Los labels que hay son: ${available}.`,
     noRoute: () =>
       'Ninguna ruta de este registro llega al 1% de la factura. Estas llamadas ya van al modelo más barato de su familia, o el catálogo no tiene nada por debajo.',
     picked: (label, model, candidate, usd, pct) =>

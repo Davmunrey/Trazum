@@ -1961,12 +1961,18 @@ async function commandProfile(args: Args, pricing: PricingCatalogue, t: CliMessa
 
   if (boolFlag(args, 'json')) {
     /**
-     * The report, plus the cache verdict the human output leads on.
+     * The report, plus everything the human output leads on.
      *
      * Additive rather than a reshape: `report` keeps the shape `@trazum/core`
-     * returns. Leaving a consumer to re-derive the verdict means two
-     * implementations of a sign convention where positive means *worse*, and one
-     * of them will eventually get it backwards.
+     * returns. The cache verdict is included because leaving a consumer to
+     * re-derive it means two implementations of a sign convention where positive
+     * means *worse*, and one of them will eventually get it backwards.
+     *
+     * `levers` is included because it was not, and that made the flagship
+     * section terminal-only: "What would actually move this bill" — the reason
+     * the command exists — was invisible to any pipeline, dashboard or CI step
+     * reading the JSON. A finding the machine-readable output omits is a finding
+     * the reader's tooling will never surface.
      */
     console.log(
       JSON.stringify(
@@ -1977,6 +1983,7 @@ async function commandProfile(args: Args, pricing: PricingCatalogue, t: CliMessa
             label: r.label,
             cache: cacheEconomics(r.breakdown),
           })),
+          levers: billLevers(report, { catalogue: pricing }),
         },
         null,
         2,
@@ -2279,7 +2286,7 @@ async function commandProfile(args: Args, pricing: PricingCatalogue, t: CliMessa
       const label = growth.label === UNLABELLED ? t.profile.unlabelled() : growth.label;
       console.log();
       console.log(
-        `  ${c.bold(wrap(t.profile.historyGrowth(label, growth.modelName, n(Math.round(growth.firstTurnTokens)), n(Math.round(growth.lastTurnTokens)), n(growth.longestSession)), 74, '  '))}`,
+        `  ${c.bold(wrap(t.profile.historyGrowth(label, growth.modelName, n(Math.round(growth.minTurnTokens)), n(Math.round(growth.maxTurnTokens)), n(growth.longestSession)), 74, '  '))}`,
       );
       console.log(
         `  ${c.dim(wrap(t.profile.historyCeiling(formatUsd(growth.growthUsd), pct(growth.shareOfBill), formatUsd(growth.flatUsd), formatUsd(growth.inputUsd)), 74, '  '))}`,
@@ -2405,6 +2412,23 @@ async function commandRoute(args: Args, pricing: PricingCatalogue, t: CliMessage
   const report = profileUsage(await readFile(path, 'utf8'), { catalogue: pricing });
   const levers = billLevers(report, { catalogue: pricing });
   const wanted = stringFlag(args, 'label');
+  /**
+   * A `--label` nothing carries is a typo, and it gets the typo answer.
+   *
+   * Falling through to the generic "no route clears 1% of the bill: these calls
+   * are already on the cheapest model of their family" asserted two falsehoods
+   * at once when the log had a 60% route under a different name — a verdict
+   * about calls the flag never selected.
+   */
+  if (wanted !== undefined && !report.byLabel.some((r) => r.label === wanted)) {
+    const available = report.byLabel
+      .map((r) => (r.label === UNLABELLED ? t.profile.unlabelled() : r.label))
+      .join(', ');
+    console.log();
+    console.log(c.dim(wrap(t.route.labelNotFound(wanted, available), 74, '  ')));
+    console.log();
+    return;
+  }
   const slice = levers.slices.find(
     (s) => s.route !== null && (wanted === undefined || s.label === wanted),
   );
