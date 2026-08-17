@@ -10,12 +10,12 @@ export const en: WebMessages = {
     title: 'Trazum — where your prompt spend goes',
     tagline: 'prompt cost analyser',
     description:
-      'Cut the cost of your AI calls: shorten the prompt without changing what it asks for, and see what that is worth per month. Code, URLs and templates stay untouched.',
+      'Cut the cost of your AI calls: shorten the prompt without changing what it asks for, and see what that is worth per month. Or read your usage log — entirely in the browser, nothing uploaded — and see where the money actually went.',
     ogLocale: 'en_US',
   },
 
   page: {
-    lede: 'Prices every way this prompt costs more than it needs to — caching, model tier, the Batch API — and shortens the text itself without changing what it asks for. Code, URLs and template placeholders stay exactly as they were.',
+    lede: 'Prices every way this prompt costs more than it needs to — caching, model tier, the Batch API — and shortens the text itself without changing what it asks for. Code, URLs and template placeholders stay exactly as they were. The Your bill tab reads a usage log instead, entirely in this browser, and says where the money actually went.',
     footerLead: (pricingReviewed) =>
       `Pricing reviewed on ${pricingReviewed}. Token counts are estimates (±10%); for exact figures use the official counting endpoint from the CLI with `,
     footerTail:

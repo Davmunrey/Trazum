@@ -1234,6 +1234,16 @@ many the checks threw out, because "four did not survive" is the useful fact and
 which four is noise unless you are debugging the model. Nothing is applied unless
 the second switch is on, and turning the first one off clears it.
 
+**And a "Your bill" tab**, which is [`trazum profile`](#where-the-money-actually-went-trazum-profile)
+in the browser: drop or paste a usage log and read where the money went — the
+spend split, whether caching paid for itself, the levers that would actually
+move the bill, conversation growth, and the answers that were cut off
+mid-generation. The log is parsed entirely in the page against the bundled
+pricing catalogue. **Nothing is uploaded**: there is no fetch in that
+component, a test fails if one appears, and the only analytics event carries
+two booleans. A usage log names your workloads, spend and conversation counts —
+exactly the file nobody should have to hand to a server to see a report on it.
+
 The HTTP API behind it is public and small:
 
 ```bash
@@ -1825,6 +1835,9 @@ invoice.
 ```bash
 trazum profile usage.jsonl
 ```
+
+The same report renders in the web app's **Your bill** tab, parsed entirely in
+the browser — nothing is uploaded.
 
 ```
 Where the money went

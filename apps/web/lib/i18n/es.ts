@@ -10,12 +10,12 @@ export const es: WebMessages = {
     title: 'Trazum — a dónde va el gasto de tus prompts',
     tagline: 'analizador de coste de prompts',
     description:
-      'Reduce el coste de tus llamadas a la IA: acorta el prompt sin cambiar lo que pide y ve cuánto dinero supone al mes. Código, URLs y plantillas quedan intactos.',
+      'Reduce el coste de tus llamadas a la IA: acorta el prompt sin cambiar lo que pide y ve cuánto dinero supone al mes. O lee tu registro de uso — por completo en el navegador, sin subir nada — y ve adónde fue el dinero de verdad.',
     ogLocale: 'es_ES',
   },
 
   page: {
-    lede: 'Calcula todo lo que hace que este prompt cueste más de lo necesario —el caching, la gama de modelo, la Batch API— y acorta el texto sin cambiar lo que pide. El código, las URLs y los marcadores de plantilla se quedan intactos.',
+    lede: 'Calcula todo lo que hace que este prompt cueste más de lo necesario —el caching, la gama de modelo, la Batch API— y acorta el texto sin cambiar lo que pide. El código, las URLs y los marcadores de plantilla se quedan intactos. La pestaña Tu factura lee en cambio un registro de uso, por completo en este navegador, y dice adónde fue el dinero de verdad.',
     footerLead: (pricingReviewed) =>
       `Precios revisados el ${pricingReviewed}. El recuento de tokens es una estimación (±10%); para cifras exactas usa el endpoint oficial de recuento desde la CLI con `,
     footerTail: '. Los ahorros son proyecciones sobre el escenario que indiques, no facturación.',
