@@ -27,6 +27,65 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.18.0 — "The bill, where the decisions are made"
+
+**Three additions about where a cost report actually gets used: in a repository,
+in a spreadsheet, and over the month of logs you already have.**
+
+### Budgets that live in the repository
+
+```json
+{ "spend": { "maxUsd": 200, "byLabel": { "chat": 40, "batch": 120 } } }
+```
+
+```bash
+trazum profile logs/yesterday.jsonl     # no flags — the policy is in the repo
+```
+
+`budgets` gates the tokens a prompt file may hold; `spend` gates the dollars a
+usage log records. A per-workload budget is a policy several people agree on,
+and a policy that lives in one CI invocation is a policy nobody can read.
+Flags still beat the config, as everywhere.
+
+Two refusals keep it honest. A budgeted label with **no calls in the log** is
+reported as *not measured*, never as a pass — a workload that did not appear
+is not one that came in under budget. And per-label budgets are **not applied
+under `--since`/`--until`**, because a window makes "what this label spent"
+mean a slice, and a budget written for the whole period would gate against
+something it does not describe.
+
+### The report as a spreadsheet
+
+```bash
+trazum profile usage.jsonl --csv-out spend.csv
+```
+
+One row per label and model — the grain a routing or budget decision is made
+at. **No total row**, because a total inside a data file gets summed with the
+data and doubles every figure downstream. **Empty dollar cells for unpriced
+models**, never zeros, because their tokens are real and a `0` would claim the
+calls were free. And a label starting with `=`, `+`, `-` or `@` gets an
+apostrophe: a usage log is data, and a spreadsheet would otherwise run it.
+
+Writing that flag found two real defects, both fixed: under `--json` neither
+`--csv-out` nor `--markdown-out` wrote anything at all, and the "wrote to"
+notice went to stdout and turned a parseable JSON document into a parse error.
+
+### A month of rotated logs, read as one bill
+
+```bash
+trazum profile logs/ --max-usd 500
+```
+
+Logs rotate one file per day; `cat`-ing them together before a profile will
+read them is the kind of setup cost that gets a tool skipped. A directory is
+read in name order as one bill, the number of files stated — a report over
+"the logs" that silently skipped one is a total wrong by an unknown amount —
+and a directory with nothing readable is an error naming the extensions it
+looked for, never an empty report that reads as "you spent nothing".
+
+---
+
 ## 1.17.0 — "What the report cannot see"
 
 **A report is only as good as what it admits it missed.** This release closes
