@@ -149,12 +149,38 @@ export interface UsageBreakdown {
   inputTokens: number;
   cacheReadTokens: number;
   cacheWriteTokens: number;
+  /**
+   * The two write TTLs kept apart, because they are billed at different rates
+   * — 1.25x input for a 5-minute entry and **2x** for a 1-hour one.
+   *
+   * `cacheWriteTokens` is their sum and stays the figure to read for volume.
+   * These exist so the same tokens can be priced again at another model's
+   * rates without the ratio between the two being invented: it is not a
+   * constant across providers, so a total that has lost the split cannot be
+   * repriced, only guessed at.
+   *
+   * Writes whose TTL the log did not state are in the 5-minute bucket, the
+   * same assumption `cacheWriteUsdIfAssumed1h` measures the cost of.
+   */
+  cacheWrite5mTokens: number;
+  cacheWrite1hTokens: number;
   outputTokens: number;
   /**
    * Calls whose cache-write TTL the log did not state, so the cheaper rate was
    * assumed. Non-zero means this total is a floor on those calls, not a figure.
    */
   assumedWriteTtlCalls: number;
+  /**
+   * The largest single call's input, cache reads and writes included — the one
+   * number that says whether these calls would fit somewhere else.
+   *
+   * A cheaper model with a smaller context window does not make this traffic
+   * cheaper; it makes some of it impossible, and a price comparison that only
+   * multiplies rates would call that a saving. The maximum is the right
+   * statistic rather than the mean: one call over the ceiling is a failed
+   * call, and an average hides it.
+   */
+  maxCallInputTokens: number;
   inputUsd: number;
   cacheReadUsd: number;
   cacheWriteUsd: number;
@@ -419,8 +445,11 @@ const EMPTY = (): UsageBreakdown => ({
   inputTokens: 0,
   cacheReadTokens: 0,
   cacheWriteTokens: 0,
+  cacheWrite5mTokens: 0,
+  cacheWrite1hTokens: 0,
   outputTokens: 0,
   assumedWriteTtlCalls: 0,
+  maxCallInputTokens: 0,
   inputUsd: 0,
   cacheReadUsd: 0,
   cacheWriteUsd: 0,
@@ -687,8 +716,14 @@ function countInto(into: UsageBreakdown, record: UsageRecord): void {
   into.inputTokens += record.inputTokens;
   into.cacheReadTokens += record.cacheReadTokens;
   into.cacheWriteTokens += record.cacheWrite5mTokens + record.cacheWrite1hTokens;
+  into.cacheWrite5mTokens += record.cacheWrite5mTokens;
+  into.cacheWrite1hTokens += record.cacheWrite1hTokens;
   if (!record.writeTtlKnown) into.assumedWriteTtlCalls += 1;
   into.outputTokens += record.outputTokens;
+  into.maxCallInputTokens = Math.max(
+    into.maxCallInputTokens,
+    record.inputTokens + record.cacheReadTokens + record.cacheWrite5mTokens + record.cacheWrite1hTokens,
+  );
   if (record.truncated !== null) {
     into.stopReasonCalls += 1;
     if (record.truncated) into.truncatedCalls += 1;

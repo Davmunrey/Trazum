@@ -736,6 +736,27 @@ export interface CliMessages {
     budgetVsWire(label: string, file: string, budget: string, perCall: string, share: string): string;
     /** `--csv-shape` naming a table that does not exist. */
     badCsvShape(value: string): string;
+    /**
+     * `--what-if <model>`: these exact calls at another model's rates.
+     *
+     * The assumption line prints before the figure on purpose — a dollar
+     * amount with the caveat underneath is read as a recommendation with
+     * small print, and this comparison knows nothing about whether the
+     * cheaper model could do the work.
+     */
+    whatIfHeading(model: string): string;
+    whatIfAssumption(): string;
+    whatIfTotal(current: string, target: string, delta: string): string;
+    whatIfCheaper(): string;
+    whatIfDearer(): string;
+    whatIfSlice(label: string, model: string, current: string, target: string): string;
+    /** A call the target's context window could not have accepted. */
+    whatIfOverContext(label: string, tokens: string, window: string, usd: string): string;
+    whatIfAlreadyThere(calls: string, usd: string): string;
+    whatIfUnpriced(calls: string, models: string): string;
+    whatIfNothingToMove(): string;
+    /** `--what-if` naming a model the catalogue does not price. */
+    whatIfUnknown(value: string, available: string): string;
     coverageHeading(): string;
     needsLabel(seen: string): string;
     needsSession(seen: string): string;

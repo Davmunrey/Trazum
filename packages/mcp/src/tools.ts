@@ -11,6 +11,7 @@ import {
   listModels,
   optimize,
   profileUsage,
+  repriceProfile,
 } from '@trazum/core';
 import type { RuleLevel } from '@trazum/core';
 
@@ -319,6 +320,16 @@ const PROFILE: ToolDefinition = {
           + 'means the bill grew. Drivers of the change are named per label and per model, '
           + 'appeared and vanished workloads included; label/since/until filter both logs, '
           + 'so the comparison stays one workload and one period.',
+      },
+      what_if: {
+        type: 'string',
+        minLength: 1,
+        description:
+          'Price these exact calls on another model id. The same token counts at a different '
+          + 'rate card — multiplication, not advice: it says nothing about whether that model '
+          + 'could do the work. Calls larger than that model\'s context window are named as '
+          + 'impossible rather than priced as cheap, and spend already on that model stays out '
+          + 'of the difference. An id this catalogue cannot price is an error, never silence.',
       },
     },
     required: ['log'],
@@ -808,6 +819,73 @@ const PROFILE: ToolDefinition = {
           lines.push('The same change, by model — where the mix moved:');
           for (const d of modelDrivers.slice(0, 3)) lines.push(describe(d, d.key));
         }
+      }
+    }
+
+    /**
+     * `what_if`: the same tokens at another model's rates.
+     *
+     * The caveat leads, because an agent relaying only the dollar figure would
+     * turn multiplication into a recommendation. What cannot move is stated
+     * next to what would: calls over the target's context window would fail
+     * rather than cost less, and money already on the target is not a saving.
+     */
+    const whatIfModel = args.what_if;
+    if (whatIfModel !== undefined) {
+      if (typeof whatIfModel !== 'string') throw new InvalidArguments('what_if must be a string');
+      const whatIf = repriceProfile(report, whatIfModel, BUNDLED_CATALOGUE);
+      if (whatIf === null) {
+        throw new InvalidArguments(
+          `what_if names a model this catalogue cannot price: "${whatIfModel}". Priced models: `
+            + BUNDLED_CATALOGUE.models.map((m) => m.id).join(', '),
+        );
+      }
+      lines.push('');
+      lines.push(
+        `These exact calls on ${whatIf.target.displayName}. This is multiplication, not advice: `
+          + 'the same token counts at another rate card. It says nothing about whether that '
+          + 'model could do the work, and a model that answers at greater length or gets '
+          + 'retried would not send these counts at all.',
+      );
+      if (whatIf.slices.length === 0) {
+        lines.push(
+          'Nothing to compare: every priced call is already on that model, or too large for '
+            + 'its context window.',
+        );
+      } else {
+        const direction = whatIf.deltaUsd < 0 ? 'less' : 'more';
+        lines.push(
+          `${formatUsd(whatIf.currentUsd)} of movable spend would have been `
+            + `${formatUsd(whatIf.targetUsd)} — ${formatUsd(Math.abs(whatIf.deltaUsd))} ${direction}.`,
+        );
+        for (const slice of whatIf.slices.slice(0, 5)) {
+          const shown = slice.label === UNLABELLED ? 'unlabelled' : slice.label;
+          lines.push(
+            `  ${shown} on ${slice.model}: ${formatUsd(slice.currentUsd)} → ${formatUsd(slice.targetUsd)}`,
+          );
+        }
+      }
+      for (const slice of whatIf.overContext.slice(0, 3)) {
+        const shown = slice.label === UNLABELLED ? 'unlabelled' : slice.label;
+        lines.push(
+          `${shown} cannot move: its largest call carries ${slice.maxCallInputTokens.toLocaleString('en-US')} `
+            + `input tokens and that model's window is ${whatIf.target.contextWindow.toLocaleString('en-US')}. `
+            + `Those calls would fail, not cost less, so their ${formatUsd(slice.currentUsd)} is excluded above.`,
+        );
+      }
+      if (whatIf.alreadyOnTarget.calls > 0) {
+        lines.push(
+          `Already on that model: ${whatIf.alreadyOnTarget.calls} calls worth `
+            + `${formatUsd(whatIf.alreadyOnTarget.usd)}, left out of the figures above — money that `
+            + 'cannot move would make the difference look smaller than it is.',
+        );
+      }
+      if (whatIf.unpricedCalls > 0) {
+        lines.push(
+          `Excluded: ${whatIf.unpricedCalls} calls whose model has no price here `
+            + `(${whatIf.unpricedModels.join(', ')}). Their cost on the target is knowable; the `
+            + 'difference is not, because there is no current figure to subtract from.',
+        );
       }
     }
 

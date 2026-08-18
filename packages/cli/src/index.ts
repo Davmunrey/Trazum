@@ -49,6 +49,7 @@ import {
   refineWithLlm,
   rejectionText,
   reorderForCache,
+  repriceProfile,
   reviewAgeDays,
   reviewExamples,
   RULES,
@@ -178,6 +179,7 @@ const VALUE_FLAGS = new Set([
   'max-cache-loss-usd',
   'csv-out',
   'csv-shape',
+  'what-if',
   'since',
   'until',
   'export',
@@ -430,7 +432,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
-  profile: ['json', 'pricing', 'pricing-live', 'against', 'markdown-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'label', 'since', 'until'],
+  profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'label', 'since', 'until'],
   route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
@@ -2127,6 +2129,23 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
     previous !== null && previous.total.calls > 0
       ? report.total.totalUsd - previous.total.totalUsd
       : null;
+
+  /**
+   * The same tokens at another model's rates, computed before the output paths
+   * split so `--json` carries it too.
+   *
+   * An unknown id **throws** rather than printing nothing. A flag that silently
+   * does nothing is worse than a missing feature: the reader typed a question,
+   * got a report with no answer in it, and has no way to tell a typo from a
+   * model this comparison had nothing to say about.
+   */
+  const whatIfModel = stringFlag(args, 'what-if');
+  const whatIf = whatIfModel !== undefined ? repriceProfile(report, whatIfModel, pricing) : null;
+  if (whatIfModel !== undefined && whatIf === null) {
+    throw new Error(
+      t.profile.whatIfUnknown(whatIfModel, pricing.models.map((m) => m.id).join(', ')),
+    );
+  }
   /**
    * The drivers of the change, per label and per model, computed once here so
    * the terminal, the JSON and any future rendering describe the same change.
@@ -2434,6 +2453,10 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
                 },
               }
             : {}),
+          // Present only when --what-if was passed. `sameTokensAssumed` rides
+          // along inside it so a consumer cannot print the dollar figure
+          // without the caveat being in the same object.
+          ...(whatIf !== null ? { whatIf } : {}),
         },
         null,
         2,
@@ -3025,6 +3048,73 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
   console.log(
     `  ${c.dim(wrap(t.profile.leverPromptCeiling(formatUsd(levers.promptCeilingUsd), pct(levers.promptCeilingShare)), 74, '  '))}`,
   );
+
+  /**
+   * `--what-if <model>`: these exact calls, at another model's rates.
+   *
+   * The levers above pick their own candidate; this answers the question the
+   * reader arrived with. It is multiplication, not advice, and every part of
+   * this section is built so it cannot be read as advice:
+   *
+   * - the caveat line prints **before** the figure, not after it;
+   * - calls the target's context window could not have accepted are named as
+   *   impossible rather than priced as cheap, and their money is in none of
+   *   the totals;
+   * - spend already on the target is stated separately, because a difference
+   *   computed over money that cannot move is a percentage of the wrong
+   *   denominator.
+   */
+  if (whatIf !== null) {
+    console.log();
+    console.log(c.bold(t.profile.whatIfHeading(whatIf.target.displayName)));
+    console.log(`  ${c.dim(wrap(t.profile.whatIfAssumption(), 74, '  '))}`);
+    console.log();
+    if (whatIf.slices.length === 0) {
+      console.log(`  ${c.dim(wrap(t.profile.whatIfNothingToMove(), 74, '  '))}`);
+    } else {
+      const cheaper = whatIf.deltaUsd < 0;
+      const line = t.profile.whatIfTotal(
+        formatUsd(whatIf.currentUsd),
+        formatUsd(whatIf.targetUsd),
+        formatUsd(Math.abs(whatIf.deltaUsd)),
+      );
+      console.log(`  ${cheaper ? c.green('→') : c.yellow('!')} ${c.bold(wrap(line, 74, '    '))}`);
+      console.log(
+        `  ${c.dim(wrap(cheaper ? t.profile.whatIfCheaper() : t.profile.whatIfDearer(), 74, '  '))}`,
+      );
+      for (const slice of whatIf.slices.slice(0, 5)) {
+        const label = slice.label === UNLABELLED ? t.profile.unlabelled() : slice.label;
+        console.log(
+          `    ${c.dim('·')} ${c.dim(wrap(t.profile.whatIfSlice(label, slice.model, formatUsd(slice.currentUsd), formatUsd(slice.targetUsd)), 74, '      '))}`,
+        );
+      }
+    }
+    /**
+     * The refusal, and it is loud. A call larger than the target's window is
+     * not a cheaper call, and a comparison that priced it anyway would report
+     * a saving for traffic that would have failed outright.
+     */
+    for (const slice of whatIf.overContext.slice(0, 3)) {
+      const label = slice.label === UNLABELLED ? t.profile.unlabelled() : slice.label;
+      console.log(
+        `  ${c.yellow('!')} ${c.bold(wrap(t.profile.whatIfOverContext(label, n(slice.maxCallInputTokens), n(whatIf.target.contextWindow), formatUsd(slice.currentUsd)), 74, '    '))}`,
+      );
+    }
+    // Money that is already there cannot move, and leaving it out of the
+    // totals above is only honest if the reader is told it exists.
+    if (whatIf.alreadyOnTarget.calls > 0) {
+      console.log(
+        `  ${c.dim(wrap(t.profile.whatIfAlreadyThere(t.profile.calls(whatIf.alreadyOnTarget.calls), formatUsd(whatIf.alreadyOnTarget.usd)), 74, '  '))}`,
+      );
+    }
+    // Models with no current price have no difference to state — their target
+    // cost is knowable and the subtraction is not.
+    if (whatIf.unpricedCalls > 0) {
+      console.log(
+        `  ${c.dim(wrap(t.profile.whatIfUnpriced(t.profile.calls(whatIf.unpricedCalls), whatIf.unpricedModels.join(', ')), 74, '  '))}`,
+      );
+    }
+  }
 
   /**
    * What re-sending the conversation costs — the line nothing here could see.

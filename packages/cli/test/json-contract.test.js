@@ -55,14 +55,16 @@ describe('the --json contract', () => {
   });
 
   it('documents every field it emits', async () => {
-    const emitted = Object.keys(await report(['--against', '<previous>']));
+    const emitted = Object.keys(await report(['--against', '<previous>', '--what-if', 'claude-haiku-4-5']));
     const promised = await documented();
     const undocumented = emitted.filter((key) => !promised.has(key));
     assert.deepEqual(undocumented, [], `fields emitted with no line in docs/json-output.md`);
   });
 
   it('emits every field it documents', async () => {
-    const emitted = new Set(Object.keys(await report(['--against', '<previous>'])));
+    const emitted = new Set(
+      Object.keys(await report(['--against', '<previous>', '--what-if', 'claude-haiku-4-5'])),
+    );
     const missing = [...(await documented())].filter((key) => !emitted.has(key));
     assert.deepEqual(missing, [], 'fields promised by docs/json-output.md and not emitted');
   });

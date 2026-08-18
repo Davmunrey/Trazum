@@ -272,7 +272,7 @@ describe('profile_usage', () => {
   it('takes text only — the schema has no path-shaped property', async () => {
     const answer = await client.send('tools/list', {});
     const tool = answer.result.tools.find((t) => t.name === 'profile_usage');
-    assert.deepEqual(Object.keys(tool.inputSchema.properties), ['log', 'label', 'since', 'until', 'previous_log']);
+    assert.deepEqual(Object.keys(tool.inputSchema.properties), ['log', 'label', 'since', 'until', 'previous_log', 'what_if']);
     assert.match(tool.inputSchema.properties.previous_log.description, /never a file path/);
     assert.equal(tool.inputSchema.additionalProperties, false);
     assert.match(tool.inputSchema.properties.log.description, /Never a file path/);
@@ -360,6 +360,39 @@ describe('profile_usage', () => {
       await client.call('profile_usage', { log: now, previous_log: line({ model: 'ft:unknown', usage: { input_tokens: 5 } }) }),
     );
     assert.match(empty, /no comparison to make — a different answer from zero growth/);
+  });
+
+  it('prices the same calls on another model, with the refusals attached', async () => {
+    // Five 200k-token calls: $5.00 on Claude Opus 5, $1.00 on Claude Haiku 4.5.
+    // Five calls rather than one of 1M tokens because a single 1M-token call
+    // does not fit Haiku's 200k window — the ceiling is judged per call.
+    const log = Array.from({ length: 5 }, () =>
+      line({ model: 'claude-opus-5', label: 'chat', usage: { input_tokens: 200_000, output_tokens: 0 } }),
+    ).join('\n');
+    const body = bodyOf(
+      await client.call('profile_usage', { log, what_if: 'claude-haiku-4-5' }),
+    );
+    assert.match(body, /These exact calls on Claude Haiku 4\.5/);
+    assert.match(body, /multiplication, not advice/);
+    assert.match(body, /\$5\.00 of movable spend would have been \$1\.00 — \$4\.00 less/);
+
+    // A call larger than the target's window would fail, not cost less — and
+    // an agent handed a saving for a failed call would act on it.
+    const huge = line({
+      model: 'claude-opus-5',
+      label: 'huge',
+      usage: { input_tokens: 250_000, output_tokens: 0 },
+    });
+    const refused = bodyOf(await client.call('profile_usage', { log: huge, what_if: 'claude-haiku-4-5' }));
+    assert.match(refused, /huge cannot move/);
+    assert.match(refused, /Those calls would fail, not cost less/);
+    assert.ok(!refused.includes('of movable spend'), 'an impossible move was priced as a saving');
+
+    // An id with no price is an error, never a section that quietly says nothing.
+    const unknown = await client.call('profile_usage', { log, what_if: 'gpt-imaginary' });
+    assert.ok(unknown.result?.isError || unknown.error, 'an unpriced what_if model was accepted');
+    const text = unknown.result?.content?.map((p) => p.text).join('\n') ?? JSON.stringify(unknown);
+    assert.match(text, /cannot price: "gpt-imaginary"/);
   });
 
   it('names the fields the log is missing, with counts an agent can act on', async () => {

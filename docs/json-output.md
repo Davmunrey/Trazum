@@ -53,6 +53,7 @@ key that disappears fails, and a key added without a line here fails too.
 | `pricing` | Which price table produced these dollars, and how many days old it is. |
 | `levers` | What would actually move the bill: routing, the Batch API, and the ceiling on prompt shortening. |
 | `against` | Present only with `--against`: the previous total, the delta, and the drivers per label and per model. |
+| `whatIf` | Present only with `--what-if <model>`: the same tokens at that model's rates, the slices too large for its context window, and `sameTokensAssumed` — the caveat travels inside the object so a consumer cannot print the figure without it. |
 
 ## What it deliberately does not contain
 

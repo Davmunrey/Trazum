@@ -38,6 +38,10 @@ export {
 export type { ProfileCsvOptions, ProfileCsvShape } from './csv.js';
 export { driversBetween } from './against.js';
 export type { AgainstDriver } from './against.js';
+// The same tokens at another model's rates — arithmetic, not advice, and it
+// refuses to price a call the target could not have accepted. See reprice.ts.
+export { priceTokensOn, repriceProfile } from './reprice.js';
+export type { OverContextSlice, RepriceReport, RepricedSlice } from './reprice.js';
 export { createSessionLedgerTracker, singleTurnCacheWrites } from './session-ledger.js';
 // What one conversation costs — median and p95, exact. See session-cost.ts.
 export { createSessionCostTracker, sessionCostShapes } from './session-cost.js';
