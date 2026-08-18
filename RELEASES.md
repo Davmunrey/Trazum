@@ -27,6 +27,53 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.17.0 — "What the report cannot see"
+
+**A report is only as good as what it admits it missed.** This release closes
+the last places where Trazum could hand back a confident number over partial
+data — and adds the per-conversation figure a price is actually set from.
+
+### A gate that judges part of a bill says so
+
+```
+Note: the gated figure is a floor, not the bill — 1 line was unreadable and
+left out. Whatever those calls cost is not in the number the gate just judged.
+Within budget: $5.00 spent against --max-usd $9.00.
+```
+
+Three things hide spend from a gate: unreadable lines, models the price table
+does not know, and clockless calls dropped by a `--since`/`--until` window.
+The pass still prints — a floor is a legitimate thing to gate on — but it now
+means "the part I could read fits", never "the bill fits".
+
+### `--against` warns when the two logs overlap
+
+Two logs that both cover the same day put the same calls on both sides of the
+subtraction, so part of the reported growth is the same money counted twice.
+Warned between the totals line and the drivers built from it, and only when
+both logs carry a clock: unknown stays silent rather than reassuring. The
+whole comparison — totals, warning, drivers per label and per model — also
+reaches `--markdown-out`, which had been showing one log out of two.
+
+### What one conversation costs
+
+```
+chat on Claude Opus 5: across 4,812 conversations, the median one costs $0.02
+over 6 turns, 95% come in under $1.80, and the most expensive was $46.10.
+```
+
+"Support cost $4,000" does not say whether that is forty thousand cheap
+conversations or four hundred expensive ones, and a per-seat price, a quota or
+a runaway-loop alarm all need the answer. The **median** is what a typical
+conversation costs; the **p95** is what a quota has to survive; a mean is
+refused, because one runaway loop drags it up and hides the ordinary case. A
+p95 past ten times the median is called out as a tail a quota can catch — and
+a p95 beside the median gets the opposite advice, because there is no tail to
+hunt. Exact billed counts, on the terminal, in `--json`, in the MCP and in the
+browser. Session keys group turns and never appear.
+
+---
+
 ## 1.16.0 — "The worst case, on the record"
 
 **Three additions, one posture: when the report cannot be certain, it says
