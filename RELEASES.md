@@ -27,6 +27,53 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.15.0 — "The same answer on every surface"
+
+**1.14.0 added the drill-downs and the drive-by finding; this release makes
+every surface give the same answer about them — and adds the one question the
+per-workload rows cannot answer.**
+
+### The change by model — where the mix moved
+
+```
+  +$4.00  chat  ($1.00 → $5.00)
+
+  The same change, by model — where the mix moved:
+  +$5.00  claude-opus-5  (new since the previous log)
+  -$1.00  claude-haiku-4-5  (gone since the previous log)
+```
+
+A workload that keeps its name and switches from Haiku to Opus reads as "chat
+grew" in the per-label drivers — true, and not the reason. `--against` now
+splits the same change by model, appeared and vanished models named; one model
+on both sides stays silent, because it would restate the totals line. Both
+driver sets ride `--json` as `against.byLabel` / `against.byModel`.
+
+Underneath, the union-and-subtract is now **one implementation in
+`@trazum/core`** (`driversBetween`), imported by the CLI, the web and the MCP
+— its sign convention (positive means the bill grew) flipped once in this
+repository's history when restated by hand, and that class of bug dies with
+the duplication.
+
+### The comparison reaches the MCP
+
+`profile_usage` gains `previous_log` — the totals with the convention stated
+before the first figure, the drivers per label and per model, and a previous
+log with nothing priced reported as its own answer rather than zero growth.
+`label`, `since` and `until` filter **both** logs, so the comparison stays one
+workload and one period.
+
+### The drill-downs reach the Action and the browser
+
+The spend gate takes `label`, `since` and `until` — one workload's budget, or
+one period's, in a workflow — with the CLI's refusals intact and self-tested
+in CI on hand-checkable arithmetic. The web Bill tab grows two date fields
+with the same reading (a bare date is that whole UTC day; the same window on
+both logs of a comparison; clockless calls counted out loud), verified in a
+real browser with zero network requests.
+
+---
+
 ## 1.14.0 — "Drill-downs and drive-bys"
 
 **Two new questions the profile can answer: "what did *this week* cost?" and
