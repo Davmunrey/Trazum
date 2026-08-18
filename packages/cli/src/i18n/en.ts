@@ -1052,6 +1052,8 @@ ${bold('EXAMPLES')}
       `${label} has a budget in trazum.config.json and no calls in this log, so nothing was measured for it. Not a pass: a workload that did not appear is not a workload that came in under budget.`,
     labelBudgetWindowed: () =>
       'Per-label budgets in trazum.config.json were not applied: --since/--until make "what this label spent" mean a slice, and a budget written for the whole period would be gating against something it does not describe.',
+    duplicateLines: (count, usd) =>
+      `${count} lines are exact duplicates of an earlier line — same counts, same label and session, same millisecond — and they add ${usd} to the total above. If a log was exported twice or two files in a directory overlap, this bill is overstated by that much. Two real calls colliding on all of that is possible; it is just unlikely.`,
     budgetVsWire: (label, file, budget, perCall, share) =>
       `The budget on ${file} is ${budget} tokens, and calls labelled ${label} carry about ${perCall} input tokens each — so that gate governs roughly ${share} of what actually goes up the wire. The rest is retrieved context, conversation history and tool results, which no prompt file contains and no budget on one can see. The budget is not wrong; it is just smaller than the bill.`,
     badCsvShape: (value) =>

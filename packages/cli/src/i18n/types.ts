@@ -727,6 +727,12 @@ export interface CliMessages {
      * wide the gate is real but tiny, and a green build says nothing about
      * the other 96%.
      */
+    /**
+     * Lines identical to an earlier one, with a clock to make the claim safe.
+     * States the count and the money and stops: whether it is a double export
+     * or a busy millisecond is the reader's to know.
+     */
+    duplicateLines(count: string, usd: string): string;
     budgetVsWire(label: string, file: string, budget: string, perCall: string, share: string): string;
     /** `--csv-shape` naming a table that does not exist. */
     badCsvShape(value: string): string;

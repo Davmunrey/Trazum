@@ -2499,6 +2499,22 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
   }
 
   /**
+   * A doubled bill, said before anything is believed.
+   *
+   * Reading a directory of rotated logs makes double-counting easy — a log
+   * exported twice, an overlapping export, a copy left in the folder — and
+   * the total then reads high with nothing else able to see it. Only counted
+   * over records with a clock, where an identical line is a claim worth
+   * making. It states the count and the money and stops: whether it is a
+   * double export or a genuinely busy millisecond is the reader's to know.
+   */
+  if (report.duplicateLines.count > 0) {
+    console.log(
+      `  ${c.yellow('!')} ${c.dim(wrap(t.profile.duplicateLines(n(report.duplicateLines.count), formatUsd(report.duplicateLines.usd)), 74, '    '))}`,
+    );
+  }
+
+  /**
    * The window, said before any figure is trusted as "the log": everything
    * below describes a slice, and a slice presented as the whole is a figure
    * attributed to something it does not describe. The undated count is loud —

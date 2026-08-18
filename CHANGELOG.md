@@ -9,6 +9,26 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**A doubled bill, caught.** Reading a directory of rotated logs — which 1.18
+made easy — makes double-counting easy too: a log exported twice, an
+overlapping export, a copy left in the folder. The total then reads high and
+nothing else in the report can see it. `duplicateLines` counts lines identical
+to an earlier one and prices exactly what they added, so the reader knows how
+much to distrust the figure above.
+
+Counted **only over records with a clock**: same counts, same label and
+session, *same millisecond*. Two real calls colliding on all of that is
+possible and unlikely; without a timestamp it is ordinary, so clockless
+records are excluded rather than guessed at. The comparison is over the raw
+line rather than a hash, because a hash collision would report a duplicate
+that is not one — and this figure exists to make somebody distrust a total.
+It states the count and the money and stops: whether it is a double export or
+a genuinely busy millisecond is the reader's to know.
+
 ## 1.22.0 — "The gate, the window and the spreadsheet"
 
 ### Added
