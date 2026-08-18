@@ -41,6 +41,7 @@ key that disappears fails, and a key added without a line here fails too.
 | `outputShapes` | Where output spend concentrates, with the `max_tokens` ceilings the measured answers fit within. |
 | `span` | The period the log covers, or `null`. Stated, never extrapolated. |
 | `spendByDay` | Exact dollars per UTC day, with the day's biggest label. |
+| `duplicateLines` | Lines identical to an earlier one (timestamped records only), and what they added to the total — the shape a doubled export has. |
 | `fieldCoverage` | How many parsed records carried each optional field — the counts behind "what this log cannot answer yet". |
 | `spendByHour` | Exact dollars per hour of the UTC day — the shape that says whether the Batch API applies. |
 | `cacheTtlFit` | Whether each slice's cache TTL fits how fast its turns arrive. |

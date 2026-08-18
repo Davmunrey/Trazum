@@ -297,6 +297,28 @@ export interface UsageProfileReport {
     topLabelUsd: number;
   }>;
   /**
+   * Lines that are exact duplicates of an earlier line, and what they added
+   * to the total.
+   *
+   * Reading a directory of rotated logs — or catting them together by hand —
+   * makes double-counting easy: a log exported twice, an overlapping export,
+   * a copy left in the folder. The bill then reads high, and nothing else in
+   * this report can see it, because two identical calls are indistinguishable
+   * from one call recorded twice *unless* the record carries a clock.
+   *
+   * So this counts only records with a `ts`: identical token counts, identical
+   * label and session, and the same millisecond. Two real calls colliding on
+   * all of that is possible and vanishingly unlikely; without a clock it is
+   * ordinary, which is why clockless records are excluded rather than guessed
+   * at. The report states the count and the money and stops — whether it is a
+   * double export or a busy millisecond is the reader's to know.
+   *
+   * The comparison is over the **raw line**, not a hash of it: a hash
+   * collision would report a duplicate that is not one, and this figure exists
+   * to make somebody distrust a total.
+   */
+  duplicateLines: { count: number; usd: number };
+  /**
    * How many parsed records carried each optional field.
    *
    * Every finding this module makes beyond the totals needs a field the log
@@ -797,6 +819,13 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
   const sessionCosts = createSessionCostTracker({ catalogue, on });
   let hasSessions = false;
   const coverage = { label: 0, session: 0, ts: 0, stopReason: 0, cacheTtl: 0, cacheWrites: 0, parsed: 0 };
+  /**
+   * Raw lines already seen, for the duplicate check. Bounded by the number of
+   * *timestamped* lines — the price of catching a doubled bill, paid only on
+   * logs that carry a clock.
+   */
+  const seenLines = new Set<string>();
+  const duplicates = { count: 0, usd: 0 };
   let spanFrom = Infinity;
   let spanTo = -Infinity;
   let spanCalls = 0;
@@ -872,6 +901,20 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
       if (!byModel.has(record.model)) byModel.set(record.model, EMPTY());
       countInto(byModel.get(record.model)!, record);
       continue;
+    }
+
+    /**
+     * A line identical to one already read, with a clock to make the claim
+     * safe. Counted after pricing so the money is the exact delta this line
+     * added, which is what a doubled bill is overstated by.
+     */
+    if (record.ts !== null) {
+      if (seenLines.has(line)) {
+        duplicates.count += 1;
+        duplicates.usd += total.totalUsd - usdBefore;
+      } else {
+        seenLines.add(line);
+      }
     }
 
     /**
@@ -955,6 +998,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
         }
         return { day, usd: entry.usd, calls: entry.calls, topLabel, topLabelUsd };
       }),
+    duplicateLines: duplicates,
     fieldCoverage: coverage,
     spendByHour: [...hours.entries()]
       .sort((a, b) => a[0] - b[0])
