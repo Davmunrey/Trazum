@@ -1020,6 +1020,16 @@ ${bold('EXAMPLES')}
     dayTableTop: () => 'biggest that day',
     dayTableEarlier: (days) =>
       `…and ${count(days)} earlier ${days === 1 ? 'day' : 'days'} not shown here. The full series rides --json as spendByDay.`,
+    gateOnFloor: (reasons) =>
+      `Note: the gated figure is a floor, not the bill — ${reasons}. Whatever those calls cost is not in the number the gate just judged, so a pass here means "the part I could read fits", never "the bill fits".`,
+    floorSkipped: (lines) =>
+      `${count(lines)} ${lines === 1 ? 'line was' : 'lines were'} unreadable and left out`,
+    floorUnpriced: (calls) =>
+      `${count(calls)} ${calls === 1 ? 'call is' : 'calls are'} on models the price table does not know`,
+    floorUndated: (calls) =>
+      `${count(calls)} ${calls === 1 ? 'call carries' : 'calls carry'} no timestamp and fell outside the window`,
+    againstOverlap: (from, to) =>
+      `These two logs both cover ${from} → ${to}, so some of the same calls sit on both sides of this subtraction and part of the change is the same money counted twice. Compare periods that do not overlap — or window both logs with --since/--until.`,
     windowLine: (since, until) =>
       `Filtered to --since ${since} --until ${until}. Everything below describes this window, not the whole log; a bare date means the whole of that UTC day.`,
     windowUndated: (calls) =>

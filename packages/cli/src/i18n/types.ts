@@ -656,6 +656,22 @@ export interface CliMessages {
     dayTableTop(): string;
     dayTableEarlier(days: number): string;
     /**
+     * A gate can only judge the money it can see. When lines were unreadable,
+     * models unpriced, or clockless calls left outside a window, the gated
+     * figure is a floor — and passing on a floor silently is the flattering
+     * omission this repository refuses.
+     */
+    gateOnFloor(reasons: string): string;
+    floorSkipped(lines: number): string;
+    floorUnpriced(calls: number): string;
+    floorUndated(calls: number): string;
+    /**
+     * Two logs whose periods intersect: part of the "growth" is the same
+     * money on both sides of the subtraction. Only decidable when both logs
+     * carry a clock; unknown stays silent rather than reassuring.
+     */
+    againstOverlap(from: string, to: string): string;
+    /**
      * The time window — the drill-down in time. Every figure below the line
      * describes a slice, so the line prints before any of them; clockless
      * calls under a window are excluded and *counted out loud*, because

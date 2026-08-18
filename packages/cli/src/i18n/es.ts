@@ -1030,6 +1030,16 @@ ${bold('EJEMPLOS')}
     dayTableTop: () => 'lo más caro del día',
     dayTableEarlier: (days) =>
       `…y ${count(days)} ${days === 1 ? 'día anterior que no se muestra' : 'días anteriores que no se muestran'} aquí. La serie completa va en --json como spendByDay.`,
+    gateOnFloor: (reasons) =>
+      `Aviso: la cifra vigilada es un suelo, no la factura — ${reasons}. Lo que costaran esas llamadas no está en el número que la puerta acaba de juzgar, así que pasar aquí significa "cabe la parte que pude leer", nunca "cabe la factura".`,
+    floorSkipped: (lines) =>
+      `${count(lines)} ${lines === 1 ? 'línea resultó ilegible y quedó fuera' : 'líneas resultaron ilegibles y quedaron fuera'}`,
+    floorUnpriced: (calls) =>
+      `${count(calls)} ${calls === 1 ? 'llamada usa un modelo' : 'llamadas usan modelos'} que la tabla de precios no conoce`,
+    floorUndated: (calls) =>
+      `${count(calls)} ${calls === 1 ? 'llamada no lleva marca de tiempo y cayó' : 'llamadas no llevan marca de tiempo y cayeron'} fuera de la ventana`,
+    againstOverlap: (from, to) =>
+      `Estos dos registros cubren ambos ${from} → ${to}, así que algunas de las mismas llamadas están a los dos lados de esta resta y parte del cambio es el mismo dinero contado dos veces. Compara periodos que no se solapen — o acota ambos registros con --since/--until.`,
     windowLine: (since, until) =>
       `Filtrado con --since ${since} --until ${until}. Todo lo de abajo describe esta ventana, no el registro completo; una fecha sola significa ese día UTC entero.`,
     windowUndated: (calls) =>

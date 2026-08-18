@@ -9,6 +9,28 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**A gate says when its figure is a floor.** A gate can only judge the money
+it can see, and three things hide spend from it: unreadable lines, models the
+price table does not know, and clockless calls dropped by a time window. When
+any of them is present the gates now say so beside the verdict — a pass means
+"the part I could read fits", never "the bill fits". Silent passes on partial
+data were the flattering omission still left in the money gates.
+
+**`--against` warns when the two logs cover the same days.** Comparing
+overlapping periods puts the same calls on both sides of the subtraction, so
+part of the reported growth is the same money counted twice. Warned between
+the totals line and the drivers built from it, and only when both logs carry
+a clock — unknown stays silent rather than reassuring.
+
+**The comparison reaches `--markdown-out`.** The section the terminal has had
+since 1.11: totals with the sign convention, the overlap warning, drivers per
+label and per model, and a previous log with nothing priced reported as its
+own answer. A CI summary that compared two logs was showing only one of them.
+
 ## 1.16.0 — "The worst case, on the record"
 
 ### Added

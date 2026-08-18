@@ -10,7 +10,7 @@ import type {
 } from '@trazum/core';
 import { TTL_1H_MS, UNLABELLED, formatSignedUsd, formatUsd, getMessages, getModel, sharesOf } from '@trazum/core';
 import { dayOf, formatGap, median, spanDays } from './time.js';
-import type { BillLevers, CacheEconomics, UsageProfileReport } from '@trazum/core';
+import type { AgainstDriver, BillLevers, CacheEconomics, UsageProfileReport } from '@trazum/core';
 
 /**
  * Markdown for the places a pull request is actually read.
@@ -737,6 +737,23 @@ export interface ProfileMarkdownInput {
    * does not name its own size the way a skipped line does.
    */
   stalePricing?: { date: string; days: number };
+  /**
+   * The comparison, when `--against` was given — the section the terminal
+   * has had since 1.11 and the markdown did not, so a CI summary reporting
+   * on two logs showed only one of them. The drivers arrive computed (core's
+   * `driversBetween`) rather than derived here: the sign convention has one
+   * implementation, and this is a rendering.
+   */
+  against?: {
+    previousTotalUsd: number;
+    previousCalls: number;
+    labelDrivers: AgainstDriver[];
+    modelDrivers: AgainstDriver[];
+    /** True when both spans are known and intersect. */
+    overlap: { from: string; to: string } | null;
+    /** Nothing in the previous log could be priced — its own answer. */
+    nothingPriced: boolean;
+  };
 }
 
 /**
@@ -754,7 +771,7 @@ export interface ProfileMarkdownInput {
  * reading CI instead of machines.
  */
 export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
-  const { report, levers, cache, t, window, stalePricing } = input;
+  const { report, levers, cache, t, window, stalePricing, against } = input;
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
   const shares = sharesOf(report.total);
@@ -922,6 +939,52 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
       `> ⚠️ ${mdText(t.profile.truncatedWaste(t.profile.calls(report.total.truncatedCalls), formatUsd(report.total.truncatedOutputUsd), pct(report.total.truncatedOutputUsd / report.total.outputUsd)))}`,
     );
     lines.push('');
+  }
+
+  /**
+   * This bill against the previous one. The convention prints before the
+   * first figure it governs, and the overlap warning between the figure and
+   * the drivers built from it — the terminal's order, for the terminal's
+   * reason: a caveat below a number is a number somebody already acted on.
+   */
+  if (against !== undefined) {
+    lines.push(`#### ${t.profile.againstHeading()}`);
+    lines.push('');
+    if (against.nothingPriced) {
+      lines.push(mdText(t.profile.againstNothingPriced()));
+      lines.push('');
+    } else {
+      const delta = report.total.totalUsd - against.previousTotalUsd;
+      const growthPct =
+        against.previousTotalUsd > 0
+          ? `${delta >= 0 ? '+' : ''}${((delta / against.previousTotalUsd) * 100).toFixed(1)}%`
+          : '—';
+      lines.push(
+        `**${mdText(t.profile.againstTotals(formatUsd(against.previousTotalUsd), formatUsd(report.total.totalUsd), formatSignedUsd(delta), growthPct, t.profile.calls(against.previousCalls), t.profile.calls(report.total.calls)))}**`,
+      );
+      lines.push('');
+      if (against.overlap !== null) {
+        lines.push(`> ⚠️ ${mdText(t.profile.againstOverlap(against.overlap.from, against.overlap.to))}`);
+        lines.push('');
+      }
+      const describe = (driver: AgainstDriver, shown: string): string =>
+        driver.was === null
+          ? t.profile.againstDriverNew(formatSignedUsd(driver.delta), shown)
+          : driver.now === null
+            ? t.profile.againstDriverGone(formatSignedUsd(driver.delta), shown)
+            : t.profile.againstDriver(formatSignedUsd(driver.delta), shown, formatUsd(driver.was), formatUsd(driver.now));
+      for (const driver of against.labelDrivers.slice(0, 5)) {
+        lines.push(`- ${mdText(describe(driver, showLabel(driver.key)))}`);
+      }
+      if (against.modelDrivers.length > 0) {
+        lines.push('');
+        lines.push(`_${mdText(t.profile.againstByModel())}_`);
+        for (const driver of against.modelDrivers.slice(0, 3)) {
+          lines.push(`- ${mdText(describe(driver, driver.key))}`);
+        }
+      }
+      lines.push('');
+    }
   }
 
   // The provenance caveat before the data gaps: a stale table qualifies every
