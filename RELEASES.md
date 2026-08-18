@@ -27,6 +27,45 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.19.0 — "Which workload, and at what rate"
+
+**A total tells you something is wrong; this release tells you whose it is.**
+
+### Truncation, with suspects
+
+```
+! 3 calls hit the max_tokens ceiling: $3.00 of output (12%) bought answers cut
+  off mid-generation — paid in full and frequently retried.
+    chat: 1 of 2 calls that recorded a stop reason were cut off (50.0%), $1.00
+    of output. The denominator is the calls that measured, not every call.
+    95% of the answers that finished fit within 4,096 output tokens.
+```
+
+The report could say a bill paid for cut-off answers and not which workload
+was paying. It names them now, ranked by wasted output — and the **rate** is
+the finding: 40% is a `max_tokens` setting that is simply wrong, 1% is a long
+tail, and the two call for opposite responses.
+
+The denominator is stated because it is the honest part: calls that *recorded
+a stop reason*, never every call, since a workload logging the field half the
+time is not a workload whose other half completed. Beside it, the ceiling the
+finished answers actually needed — the number a cap wants, next to the
+evidence that the current cap is too low.
+
+### Click a workload, see it alone
+
+The web Bill tab's per-label table became clickable: the CLI's `--label`
+without retyping the command. The banner carries the awkward half out loud —
+every share below is a share of *that workload's* bill, not of the log — and a
+drill-down inside a drill-down is not offered, because it would filter an
+already-filtered report and quietly produce an empty one. Verified in a real
+browser, zero network requests.
+
+Every finding in this release renders the same way in the terminal, in
+`--markdown-out`, in the MCP and in the browser.
+
+---
+
 ## 1.18.0 — "The bill, where the decisions are made"
 
 **Three additions about where a cost report actually gets used: in a repository,
