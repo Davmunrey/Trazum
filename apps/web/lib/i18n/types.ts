@@ -365,6 +365,16 @@ export interface WebMessages {
      * Batch API as the lever a flat day points at, and never claims the
      * saving — whether a workload can wait is a product decision.
      */
+    /**
+     * What the log cannot answer yet, from exact counts. Booleans would call
+     * twelve labelled records out of forty thousand a labelled log.
+     */
+    coverageHeading: string;
+    needsLabel(seen: string): string;
+    needsSession(seen: string): string;
+    needsTs(seen: string): string;
+    needsStopReason(seen: string): string;
+    needsCacheTtl(seen: string): string;
     hourChartLabel: string;
     hoursConcentrated(hours: number): string;
     hoursFlat(hours: number): string;

@@ -811,6 +811,37 @@ const PROFILE: ToolDefinition = {
       }
     }
 
+    /**
+     * What this log cannot answer yet — the fields that unlock the findings
+     * an agent would otherwise ask for and not receive. Counts rather than
+     * booleans: twelve labelled records out of forty thousand is not a
+     * labelled log, and an agent told "labelled" would stop asking.
+     */
+    const coverage = report.fieldCoverage;
+    if (coverage.parsed > 0) {
+      const missing: string[] = [];
+      const seen = (count_: number): string => `${count_}/${coverage.parsed}`;
+      if (coverage.label < coverage.parsed) {
+        missing.push(`"label" on ${seen(coverage.label)} records — per-workload spend and the drill-down`);
+      }
+      if (coverage.session < coverage.parsed) {
+        missing.push(`"session" on ${seen(coverage.session)} records — conversation growth, per-conversation cost, cache-TTL fit (grouped by, never shown)`);
+      }
+      if (coverage.ts < coverage.parsed) {
+        missing.push(`"ts" on ${seen(coverage.ts)} records — the period, the per-day and per-hour shape, and the cache-TTL question`);
+      }
+      if (coverage.stopReason < coverage.parsed) {
+        missing.push(`"stop_reason"/"finish_reason" on ${seen(coverage.stopReason)} records — answers cut off at max_tokens`);
+      }
+      if (coverage.cacheWrites > 0 && coverage.cacheTtl < coverage.cacheWrites) {
+        missing.push(`the "cache_creation" object on ${coverage.cacheTtl}/${coverage.cacheWrites} of the records that wrote to the cache — otherwise the cheaper rate is assumed and those totals are a floor`);
+      }
+      if (missing.length > 0) {
+        lines.push('', '--- what this log cannot answer yet ---');
+        for (const line of missing) lines.push(line);
+      }
+    }
+
     if (report.unpricedModels.length > 0 || report.skippedLines.length > 0) {
       lines.push('', '--- gaps ---');
       gaps();

@@ -362,6 +362,28 @@ describe('profile_usage', () => {
     assert.match(empty, /no comparison to make — a different answer from zero growth/);
   });
 
+  it('names the fields the log is missing, with counts an agent can act on', async () => {
+    const bare = line({ model: 'claude-opus-5', usage: { input_tokens: 200_000, output_tokens: 100 } });
+    const body = bodyOf(await client.call('profile_usage', { log: [bare, bare].join('\n') }));
+    assert.match(body, /what this log cannot answer yet/);
+    assert.match(body, /"label" on 0\/2 records/);
+    assert.match(body, /"session" on 0\/2 records/);
+    assert.match(body, /"ts" on 0\/2 records/);
+
+    // A complete log gets no section: an agent reading a list of things that
+    // are fine learns to skip the list.
+    const complete = line({
+      model: 'claude-opus-5',
+      label: 'chat',
+      session: 's1',
+      ts: '2026-08-01T10:00:00Z',
+      stop_reason: 'end_turn',
+      usage: { input_tokens: 200_000, output_tokens: 100 },
+    });
+    const quiet = bodyOf(await client.call('profile_usage', { log: [complete, complete].join('\n') }));
+    assert.ok(!quiet.includes('cannot answer yet'));
+  });
+
   it('names which workload pays for truncated answers, over measured calls', async () => {
     const log = [
       line({ model: 'claude-opus-5', label: 'chat', stop_reason: 'max_tokens', usage: { input_tokens: 100, output_tokens: 40_000 } }),

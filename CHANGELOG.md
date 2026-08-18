@@ -13,6 +13,12 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**The coverage section reaches the MCP and the browser.** `profile_usage`
+lists the missing fields with counts an agent can act on, and the web Bill
+tab shows them in the gaps footer — same counts, same silence on a complete
+log. An agent told "labelled" by a boolean would stop asking; told "12/40,000"
+it does the right thing.
+
 **"What this log cannot answer yet."** Every finding past the totals needs a
 field the log format does not require, and a reader who never adds them sees a
 report quietly missing half of itself — with no way to tell "nothing to

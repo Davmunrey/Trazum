@@ -140,6 +140,16 @@ describe('the bill tab reads the log in the browser and nowhere else', () => {
     assert.match(bill, /profileUsage\(previous, \{\s*catalogue: BUNDLED_CATALOGUE,\s*sinceMs,\s*untilMs,/);
   });
 
+  it('names the fields the log is missing, from counts rather than booleans', () => {
+    assert.match(bill, /t\.bill\.coverageHeading/);
+    assert.match(bill, /t\.bill\.needsLabel/);
+    assert.match(bill, /t\.bill\.needsSession/);
+    assert.match(bill, /t\.bill\.needsTs/);
+    // Counts, and the cache-TTL denominator is the records that wrote.
+    assert.match(bill, /fieldCoverage\.label < fieldCoverage\.parsed/);
+    assert.match(bill, /fieldCoverage\.cacheTtl < fieldCoverage\.cacheWrites/);
+  });
+
   it('draws the shape of the day and points at the lever without claiming it', () => {
     /**
      * Twenty-four bars, gaps included: a chart that closed the gaps would
