@@ -522,6 +522,57 @@ function Report({
                 </div>
               );
             })()}
+            {/*
+              The shape of the day: twenty-four bars, one per UTC hour, drawn
+              with divs like the day chart above. Hours with no traffic are
+              drawn as empty rather than skipped — a gap is the finding when
+              the question is whether the spend is concentrated, and a chart
+              that closed the gaps would make every workload look flat.
+            */}
+            {report.spendByHour.length >= 4 && total.totalUsd > 0 && (() => {
+              const byHour = new Map(report.spendByHour.map((entry) => [entry.hour, entry.usd]));
+              const max = Math.max(...report.spendByHour.map((entry) => entry.usd));
+              if (max <= 0) return null;
+              // The fewest hours holding 80% of the spend — the CLI's measure,
+              // stated the same way so the two surfaces cannot disagree.
+              const ranked = [...report.spendByHour].sort((a, b) => b.usd - a.usd);
+              let covered = 0;
+              let hoursForMost = 0;
+              for (const entry of ranked) {
+                covered += entry.usd;
+                hoursForMost += 1;
+                if (covered >= 0.8 * total.totalUsd) break;
+              }
+              const busiest = new Set(ranked.slice(0, hoursForMost).map((entry) => entry.hour));
+              return (
+                <div className="flex flex-col gap-1.5">
+                  <div
+                    role="img"
+                    aria-label={t.bill.hourChartLabel}
+                    className="flex h-12 items-end gap-px"
+                  >
+                    {Array.from({ length: 24 }, (_, hour) => {
+                      const usd = byHour.get(hour) ?? 0;
+                      return (
+                        <div
+                          key={`hour:${hour}`}
+                          title={`${String(hour).padStart(2, '0')}:00 UTC: ${formatUsd(usd)}`}
+                          className={`min-w-[2px] flex-1 rounded-t-[2px] ${
+                            busiest.has(hour) ? 'bg-terracotta' : 'bg-muted-foreground/30'
+                          }`}
+                          style={{ height: `${usd > 0 ? Math.max(6, (usd / max) * 100) : 0}%` }}
+                        />
+                      );
+                    })}
+                  </div>
+                  <span className="text-[13px] text-muted-foreground">
+                    {hoursForMost <= 8
+                      ? t.bill.hoursConcentrated(hoursForMost)
+                      : t.bill.hoursFlat(hoursForMost)}
+                  </span>
+                </div>
+              );
+            })()}
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="text-left text-muted-foreground">

@@ -457,6 +457,14 @@ export const en: WebMessages = {
       + 'past the 45 this tool considers current. If the provider changed prices since, this '
       + 'report is wrong by exactly that change. The CLI can fetch current prices '
       + '(trazum profile --pricing-live).',
+    hourChartLabel: 'Spend per hour of the UTC day, midnight to midnight',
+    hoursConcentrated: (hours) =>
+      `80% of this spend lands in ${hours} hours of the UTC day — interactive traffic somebody is `
+      + "waiting on, where the Batch API's 24-hour turnaround does not fit. Hours are UTC.",
+    hoursFlat: (hours) =>
+      `It takes ${hours} hours of the UTC day to cover 80% of this spend. That is the shape `
+      + 'background work has, and background work is what the Batch API halves the price of. '
+      + 'Whether these calls can wait is yours to say; the log only shows when they happened.',
     truncatedBy: (label, calls, measured, rate, usd) =>
       `${label}: ${calls} of ${measured} calls that recorded a stop reason were cut off (${rate}), `
       + `${usd} of output. The denominator is the calls that measured, not every call.`,

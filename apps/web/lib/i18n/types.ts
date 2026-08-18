@@ -360,6 +360,14 @@ export interface WebMessages {
      * Which workloads pay for truncated answers, at a rate over calls that
      * recorded a stop reason — never over every call.
      */
+    /**
+     * The shape of the UTC day, drawn: which hours hold the spend. Names the
+     * Batch API as the lever a flat day points at, and never claims the
+     * saving — whether a workload can wait is a product decision.
+     */
+    hourChartLabel: string;
+    hoursConcentrated(hours: number): string;
+    hoursFlat(hours: number): string;
     truncatedBy(label: string, calls: number, measured: number, rate: string, usd: string): string;
     drillActive(label: string): string;
     drillClear: string;
