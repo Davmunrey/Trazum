@@ -244,6 +244,10 @@ ${bold('OPCIONES DE profile')}
   --pricing <fichero>         Overlay local de precios, como en el resto.
   --json                      El informe completo como datos, palancas incluidas.
 
+  Acepta un fichero de registro o un directorio de ellos — los registros
+  rotados por día se leen en orden de nombre como una sola factura, y se dice
+  cuántos se leyeron.
+
   Lee lo que el proveedor cobró de verdad. Campos opcionales desbloquean
   hallazgos: "label" (qué carga), "session" (qué conversación — se agrupa y
   nunca se imprime), "stop_reason"/"finish_reason" (respuestas cortadas en
@@ -1057,6 +1061,10 @@ ${bold('EJEMPLOS')}
       `${label} tiene presupuesto en trazum.config.json y ninguna llamada en este registro, así que no se midió nada para esa carga. No es un aprobado: una carga que no apareció no es una carga que quedó por debajo del presupuesto.`,
     labelBudgetWindowed: () =>
       'Los presupuestos por etiqueta de trazum.config.json no se aplicaron: --since/--until hacen que "lo que gastó esta etiqueta" signifique una porción, y un presupuesto escrito para el periodo completo estaría vigilando algo que no describe.',
+    readFiles: (files, directory) =>
+      `Leídos ${count(files)} ficheros de registro de ${directory}, en orden de nombre, como una sola factura. Todas las cifras de abajo los cubren todos.`,
+    noLogsInDirectory: (directory, extensions) =>
+      `No hay registros de uso en "${directory}". Se buscaron ficheros terminados en ${extensions}. Un directorio sin nada legible es un error, no un informe vacío, que se leería como "no has gastado nada".`,
     sessionCostTail: (ratio) =>
       `El percentil 95 es ${ratio}x la mediana ahí: casi todas las conversaciones son baratas y unas pocas no, y esa es una cola que una cuota puede cazar. Cuando mediana y p95 quedan cerca, la carga es cara sin más y no hay cola que perseguir.`,
     againstOverlap: (from, to) =>

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readFile, stat, writeFile } from 'node:fs/promises';
+import { readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join, resolve as resolvePath } from 'node:path';
 
 import {
@@ -1967,7 +1967,37 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
     return;
   }
 
-  const raw = await readFile(path, 'utf8');
+  /**
+   * A log, or a directory of them.
+   *
+   * Usage logs rotate: `logs/2026-08-01.jsonl`, `logs/2026-08-02.jsonl`, one
+   * per day for a month. Making somebody `cat` them together before a profile
+   * will read them is a setup cost that gets a tool skipped, and doing it for
+   * them is a directory listing.
+   *
+   * Files are read in name order — which for dated names is time order — and
+   * how many were read is stated, because a report over "the logs" that
+   * silently skipped one is a total that is wrong by an unknown amount. A
+   * directory holding nothing readable is an error naming what it looked for,
+   * not an empty report.
+   */
+  const LOG_EXTENSIONS = ['.jsonl', '.ndjson', '.log', '.json'];
+  const target = await stat(path).catch(() => null);
+  let logFiles: string[] = [path];
+  if (target?.isDirectory()) {
+    const entries = await readdir(path, { withFileTypes: true });
+    logFiles = entries
+      .filter((entry) => entry.isFile() && LOG_EXTENSIONS.some((ext) => entry.name.endsWith(ext)))
+      .map((entry) => join(path, entry.name))
+      .sort((a, b) => a.localeCompare(b));
+    if (logFiles.length === 0) {
+      throw new Error(t.profile.noLogsInDirectory(path, LOG_EXTENSIONS.join(', ')));
+    }
+  }
+  const logTexts = await Promise.all(logFiles.map((file) => readFile(file, 'utf8')));
+  // A file that does not end in a newline would otherwise glue its last record
+  // to the next file's first one, and both would be reported as unreadable.
+  const raw = logTexts.map((text) => (text.endsWith('\n') ? text : `${text}\n`)).join('');
   /**
    * The drill-down. A label that matches nothing is an error naming the labels
    * that exist — the route command's rule, for the route command's reason: a
@@ -2415,6 +2445,12 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
       `  ${c.dim(wrap(`${t.profile.spanLine(dayOf(report.span.fromMs), dayOf(report.span.toMs), spanDays(report.span.fromMs, report.span.toMs))}${partial}`, 74, '  '))}`,
     );
   }
+  // How many files this report covers, when it covers more than one: a total
+  // over "the logs" that silently skipped one is wrong by an unknown amount.
+  if (logFiles.length > 1) {
+    console.log(`  ${c.dim(wrap(t.profile.readFiles(logFiles.length, path), 74, '  '))}`);
+  }
+
   /**
    * The window, said before any figure is trusted as "the log": everything
    * below describes a slice, and a slice presented as the whole is a figure

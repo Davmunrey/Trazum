@@ -245,6 +245,9 @@ ${bold('OPTIONS FOR profile')}
   --pricing <file>            Local price overlay, as everywhere else.
   --json                      The full report as data, including the levers.
 
+  Takes a log file or a directory of them — rotated daily logs are read in
+  name order as one bill, and how many were read is stated.
+
   Reads what the provider actually charged. Optional fields unlock findings:
   "label" (which workload), "session" (which conversation — grouped by, never
   printed), "stop_reason"/"finish_reason" (answers cut off at max_tokens).
@@ -1045,6 +1048,10 @@ ${bold('EXAMPLES')}
       `${label} has a budget in trazum.config.json and no calls in this log, so nothing was measured for it. Not a pass: a workload that did not appear is not a workload that came in under budget.`,
     labelBudgetWindowed: () =>
       'Per-label budgets in trazum.config.json were not applied: --since/--until make "what this label spent" mean a slice, and a budget written for the whole period would be gating against something it does not describe.',
+    readFiles: (files, directory) =>
+      `Read ${count(files)} log files from ${directory}, in name order, as one bill. Every figure below covers all of them.`,
+    noLogsInDirectory: (directory, extensions) =>
+      `No usage logs in "${directory}". Looked for files ending in ${extensions}. A directory with nothing readable in it is an error rather than an empty report, which would read as "you spent nothing".`,
     sessionCostTail: (ratio) =>
       `The 95th percentile is ${ratio}x the median there: most conversations are cheap and a few are not, which is a tail a quota can catch. Where median and p95 sit close together the workload is simply expensive and there is no tail to hunt.`,
     againstOverlap: (from, to) =>
