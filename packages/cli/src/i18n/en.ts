@@ -237,6 +237,11 @@ ${bold('OPTIONS FOR profile')}
                               With --against, both logs get the same window.
   --markdown-out <file>       Also write the report as Markdown, for a CI job
                               summary or a pull request comment.
+  --csv-out <file>            Also write the report as CSV, one row per label
+                              and model. No total row, on purpose: a total
+                              inside a data file gets summed with the data.
+                              Unpriced models keep their tokens and get empty
+                              dollar cells, never zeros.
   --pricing <file>            Local price overlay, as everywhere else.
   --json                      The full report as data, including the levers.
 

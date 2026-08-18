@@ -13,6 +13,23 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`profile --csv-out`, the report for whoever signs off the bill.** One row
+per label and model — the grain a routing or budget decision is made at —
+written from `@trazum/core`'s `profileToCsv`. Three deliberate refusals:
+**no total row**, because a total inside a data file gets summed with the data
+and doubles every figure downstream; **empty dollar cells for unpriced
+models**, never zeros, because `0` would claim those calls were free while
+their tokens are real; and a label that starts with `=`, `+`, `-` or `@` is
+prefixed with an apostrophe, because a usage log is data and a spreadsheet
+would otherwise run it.
+
+Two bugs the feature's own tests caught, both now fixed: under `--json` the
+side files (`--csv-out`, `--markdown-out`) were never written at all — a flag
+that silently did nothing — and the "wrote to" notice went to stdout, turning
+a parseable JSON document into a parse error. Both output paths now write the
+files, and the notice goes to stderr under `--json`, the rule the money gates
+already followed.
+
 **Money budgets that live in the repository: `spend` in `trazum.config.json`.**
 `budgets` gates the tokens a prompt file may hold; `spend` gates the dollars a
 usage log records — `maxUsd` for the whole log, `byLabel` for each named
