@@ -333,6 +333,22 @@ export interface WebMessages {
      */
     singleTurnConfirmed(label: string, model: string, single: number, sessions: number, usd: string): string;
     singleTurnCeiling(label: string, model: string, single: number, sessions: number, usd: string): string;
+    /**
+     * The time window — the CLI's --since/--until in the browser, under the
+     * CLI's rules: a bare date is that whole UTC day; clockless calls are
+     * excluded and counted out loud; a window matching nothing is an error
+     * naming what the log covers, never a $0 report.
+     */
+    windowLabel: string;
+    windowSinceAria: string;
+    windowUntilAria: string;
+    windowClear: string;
+    windowHint: string;
+    windowLine: string;
+    windowUndated(calls: number): string;
+    windowMatchesNothing(from: string, to: string): string;
+    windowNeedsClock: string;
+    windowOrder: string;
     byLabelHeading: string;
     byModelHeading: string;
     unlabelled: string;

@@ -13,6 +13,16 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**The window reaches the browser.** Two date fields on the web Bill tab —
+`--since`/`--until` under the CLI's exact rules: a bare date is that whole UTC
+day, the same window applies to both logs of a comparison, clockless calls
+are excluded and counted out loud, and the CLI's refusals are kept in step (a
+window matching nothing names what the log covers instead of rendering a $0
+report; a clockless log cannot be windowed; a window that starts after it
+ends is an error). Verified in a real browser: $11.00 → $1.00 when windowed
+to the cheap day, the refusal naming the span, clearing restoring the whole
+log, zero network requests throughout.
+
 **The change by model — where the mix moved.** A workload that keeps its name
 and switches from Haiku to Opus reads as "chat grew" in the per-label drivers,
 and the reason is the model. `--against` now splits the same change by model —

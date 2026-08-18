@@ -446,6 +446,24 @@ export const es: WebMessages = {
       + 'conversación nunca hizo. Otra conversación con el mismo prefijo dentro del TTL pudo '
       + 'haberlas leído; el registro no puede ver de quién era la escritura que una lectura '
       + 'encontró, así que esa cifra es un techo del desperdicio, no una factura.',
+    windowLabel: 'Solo entre',
+    windowSinceAria: 'Perfilar solo llamadas desde este día UTC incluido',
+    windowUntilAria: 'Perfilar solo llamadas hasta este día UTC incluido',
+    windowClear: 'Quitar la ventana',
+    windowHint: 'Días UTC, ambos extremos incluidos. Aplica también al registro anterior.',
+    windowLine: 'Todo lo de abajo describe esta ventana, no el registro completo.',
+    windowUndated: (calls) =>
+      `${calls === 1 ? '1 llamada no lleva' : `${calls} llamadas no llevan`} marca de tiempo y no se `
+      + `${calls === 1 ? 'puede situar' : 'pueden situar'} dentro o fuera de esta ventana, así que `
+      + `${calls === 1 ? 'quedó fuera' : 'quedaron fuera'}. Su gasto está en el registro y no en este `
+      + 'informe — las cifras de la ventana son un suelo del periodo.',
+    windowMatchesNothing: (from, to) =>
+      `Ningún registro cae dentro de esta ventana. El registro cubre ${from} → ${to}. Una ventana `
+      + 'que no encuentra nada no debe volverse un informe de $0.',
+    windowNeedsClock:
+      'Ningún registro lleva marca de tiempo, así que la ventana no tiene por qué filtrar. '
+      + 'Añade "ts" a los registros — la receta de abajo dice dónde.',
+    windowOrder: 'La ventana empieza después de terminar. Revisa las dos fechas.',
     byLabelHeading: 'Por etiqueta',
     byModelHeading: 'Por modelo',
     unlabelled: '(sin etiqueta)',
