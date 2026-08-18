@@ -13,6 +13,19 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**Cache writes by conversations that never came back.** A one-turn session
+pays the write premium for reuse its own conversation never makes, and it
+hides inside healthy totals: long sessions' reads pay for the cache overall
+while every drive-by bleeds. `singleTurnCacheWrites` names the slices, prices
+those writes at the bill's own rates, and the rendering makes the honesty
+split the provider's prefix-keyed cache forces: with cache reads anywhere in
+the slice the figure is a **ceiling named as one** — another conversation
+sharing the prefix may have read the write, and the log cannot see whose
+write a read hit — and with zero reads the ceiling collapses into a loud
+fact: those writes bought nothing. Session keys group turns and are never
+printed, as everywhere. The guard is mutation-tested and every dollar is hand
+arithmetic.
+
 **`profile --since` / `--until`, the drill-down in time.** A UTC day or a full
 ISO 8601 timestamp; a bare `--until` date includes that whole day, because a
 window that excludes the day it names is a trap sprung on everyone who reads

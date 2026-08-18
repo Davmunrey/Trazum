@@ -2460,6 +2460,36 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
   }
 
   /**
+   * Cache writes by conversations that never came back.
+   *
+   * Two sentences for the same tokens, and which one prints is decided by the
+   * slice's own reads: with zero cache reads anywhere in the slice, nothing
+   * read those writes — within the session, across sessions, at all — and the
+   * ceiling collapses into a fact said loudly. With reads present, another
+   * conversation sharing the prefix may have read them, the log cannot see
+   * whose write a read hit, and the figure prints as the ceiling it is.
+   */
+  const LEDGER_SHOWN = 3;
+  if (report.singleTurnCacheWrites.length > 0) {
+    const readsBySlice = new Map(
+      report.byLabelAndModel.map((r) => [`${r.label}\n${r.model}`, r.breakdown.cacheReadTokens]),
+    );
+    for (const row of report.singleTurnCacheWrites.slice(0, LEDGER_SHOWN)) {
+      const name = row.label === UNLABELLED ? t.profile.unlabelled() : row.label;
+      const reads = readsBySlice.get(`${row.label}\n${row.model}`) ?? 0;
+      if (reads === 0) {
+        console.log(
+          `  ${c.yellow('!')} ${c.bold(wrap(t.profile.singleTurnConfirmed(name, row.modelName, n(row.singleTurnSessions), n(row.sessions), formatUsd(row.singleTurnWriteUsd)), 74, '    '))}`,
+        );
+      } else {
+        console.log(
+          `  ${c.dim(wrap(t.profile.singleTurnCeiling(name, row.modelName, n(row.singleTurnSessions), n(row.sessions), formatUsd(row.singleTurnWriteUsd)), 74, '    '))}`,
+        );
+      }
+    }
+  }
+
+  /**
    * A total that assumed a cache-write rate is a floor, and says so.
    *
    * Anthropic's 1-hour entry costs 2x input against the 5-minute entry's 1.25x. A

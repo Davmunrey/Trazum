@@ -1012,6 +1012,10 @@ ${bold('EXAMPLES')}
       '--since is at or after --until, so the window contains no time at all. Check the two dates.',
     badWhen: (flag, value) =>
       `--${flag} could not read "${value}". It takes a UTC day (2026-08-14) or a full ISO 8601 timestamp (2026-08-14T09:30:00Z).`,
+    singleTurnCeiling: (label, model, single, sessions, usd) =>
+      `${label} on ${model}: ${single} of ${sessions} conversations ended after their first turn, and their cache writes — ${usd} — paid for reuse their own conversation never made. Another conversation sharing the same prefix within the TTL could have read them; the log cannot see whose write a read hit, so that figure is a ceiling on the waste, not a bill.`,
+    singleTurnConfirmed: (label, model, single, sessions, usd) =>
+      `${label} on ${model}: ${single} of ${sessions} conversations ended after their first turn and spent ${usd} writing a cache that nothing in this log ever read. Within the conversation, across conversations — no read anywhere, so those writes bought nothing. Caching a one-shot call is pure write premium; stop marking these calls with cache_control.`,
   },
 
   route: {

@@ -22,6 +22,14 @@ export { conversationGrowth, createConversationTracker } from './conversation.js
 // losing cache, readable only when the log carries a clock. See ttl-fit.ts.
 export { TTL_1H_MS, TTL_5M_MS, cacheTtlFit, createTtlFitTracker } from './ttl-fit.js';
 export type { CacheTtlFit, TtlFitOptions, TtlFitTracker, TtlFitVerdict } from './ttl-fit.js';
+// Cache writes by conversations that never came back — a ceiling on waste,
+// named as one, and a fact when the slice read nothing. See session-ledger.ts.
+export { createSessionLedgerTracker, singleTurnCacheWrites } from './session-ledger.js';
+export type {
+  SessionLedgerOptions,
+  SessionLedgerTracker,
+  SingleTurnCacheWrites,
+} from './session-ledger.js';
 export { createOutputShapeTracker, outputShapes } from './output-shape.js';
 export type { OutputShape, OutputShapeOptions, OutputShapeTracker } from './output-shape.js';
 export type { ConversationGrowth, ConversationOptions, ConversationTracker } from './conversation.js';
