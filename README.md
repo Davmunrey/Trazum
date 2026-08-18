@@ -127,20 +127,16 @@ it is a change to the code that sends the prompt. A rule that deleted the schema
 would leave a prompt asking for a shape it no longer describes, sent by a client
 nobody updated — strictly worse than what it started from.
 
-**The one way this could do harm, and what stops it.** A fenced JSON block is one
-of two entirely different things. `Output format: {...}` is a contract and moving
-it is free. `Input: {...}` inside a few-shot example is *data the prompt needs*,
-and moving it breaks the prompt. So nothing is guessed: a block counts only when a
-phrase from the output-cue dictionary appears in the text immediately before it,
-in one of the seven languages the rules cover. A schema with no such phrase is
-left alone, and a prompt in an uncovered language raises nothing — a false
-negative, which is the right direction to be wrong in.
+**The one way this could do harm, and what stops it.** `Output format: {...}` is
+a contract and moving it is free; `Input: {...}` inside a few-shot example is
+*data the prompt needs*, and moving it breaks the prompt. So nothing is guessed:
+a block counts only when a phrase from the output-cue dictionary appears
+immediately before it, in one of the seven languages the rules cover. No phrase,
+no finding — a false negative, which is the right direction to be wrong in.
 
-The example detector finds near-copies — the way few-shot blocks actually grow,
-by copy-paste-and-tweak. It deliberately does not flag *paraphrases*: the same
-lesson in different words scores close enough to two genuinely distinct
-examples that catching it would mean flagging examples that teach different
-things. That case needs a model, and is on the roadmap for the LLM pass.
+The example detector finds near-copies — the way few-shot blocks actually grow.
+It deliberately does not flag *paraphrases*: that case needs a model, and is on
+the roadmap for the LLM pass.
 
 **2. Then it trims the prompt itself.** Twelve deterministic rules: courtesy,
 filler, verbose phrasing, duplicated paragraphs, decorative separators, shouting
@@ -174,23 +170,10 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of fourteen commands, and the others
-exist because knowing a prompt is wasteful is not the same as knowing *which*
-prompt, *whose* change made it so, or whether the shorter version still works:
-
-| Command | Answers |
-|---|---|
-| `optimize` | what can come out of this prompt, and what that is worth per month |
-| `rank <dir>` | which of these forty prompts is worth an afternoon |
-| `doctor [dir]` | what is wrong with this whole workspace, and what fixing it is worth |
-| `blame <file>` | who made this prompt expensive, and in which commit |
-| `diff <a> <b>` | did this edit make it worse — every figure `after - before` |
-| `diff --all <d> <d>` | the same question across a whole prompt library |
-| `check --max-tokens` | does it fit a budget; exits 1 when it does not, so CI catches it |
-| `baseline [dir]` | what the estate costs now, recorded to a file you commit, so `check` can fail on drift |
-| `eval --cases` | does the shorter prompt still get the same answers |
-| `where [file]` | which provider this file's prompts are actually sent to, and how it knows |
-| `models`, `rules` | the pricing table; what each rule does and its id |
+is the smallest thing here. `optimize` is one of fourteen commands — [the table
+above](#the-fourteen-commands) names what each answers — because knowing a prompt
+is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
+or whether the shorter version still works.
 
 `check`, `diff`, `rank` and `blame` all take `--markdown-out`, so the answer can
 land in a pull request comment rather than a terminal nobody is looking at.
@@ -302,23 +285,13 @@ trazum: these prompts are over their token budget:
   Shorten them, raise the budget in trazum.config.json, or commit with --no-verify.
 ```
 
-**It blocks only on prompts your commit actually touches**, and that is the whole
-reason it asks `trazum doctor --json` rather than running `trazum check prompts/`.
-`check` exits 1 when anything under that directory is over budget — right for CI,
-wrong for a hook, because it would refuse a commit that touches one file over a
-*different* prompt somebody else committed last month. A hook that fails for
-reasons outside the commit is a hook people learn to pass `--no-verify` to, and
-then it is worse than no hook at all, because it also taught them the habit.
-
-`TRAZUM_HOOK=0` disables it; `TRAZUM` overrides the command it runs. It gets out of
-the way rather than guessing: nothing staged, no Trazum installed, no prompts, an
-unreadable config — none of those are a budget failure, so none of them block a
-commit. Each one says so once and exits 0.
-
-**One limitation, because it is real:** Trazum reads the working tree, not the
-staged blobs. `git add` a prompt and then edit it further and the hook judges the
-newer text. It cannot let through a commit whose staged prompt is over budget, but
-it can stop one whose staged prompt is fine and whose unstaged edit is not.
+**It blocks only on prompts your commit actually touches.** A hook that refuses a
+commit over a *different* prompt somebody else committed last month is one people
+learn to pass `--no-verify` to — and then it is worse than no hook at all.
+`TRAZUM_HOOK=0` disables it; nothing staged, no Trazum installed, no prompts or an
+unreadable config each say so once and exit 0. One real limitation: it reads the
+working tree, not the staged blobs, so it judges a prompt's newest edit even when
+an older version is what is staged.
 
 In GitHub Actions, use the packaged action — nothing to install:
 
@@ -343,20 +316,14 @@ with:
   github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
-**A suggestion, not a commit, and that is deliberate.** Committing the fix would need
-`contents: write` on your workflow, and [SECURITY.md](SECURITY.md) documents
-`contents: read` with no `pull_request_target`. Widening that is your decision, not
-something an action should help itself to for convenience — and a suggestion lands in
-the same place with the same one click, needing only the `pull-requests: write` the
-comment mode already uses. You stay the one who commits.
-
-Two limits, stated because both are real. It uses the **safe** level only: the
-aggressive level is defensible when a human is reading the diff it produced, and a
-one-click apply is not that moment. And a suggestion can only anchor to lines **in the
-pull request's diff**, while the rules operate on a whole prompt — so a pull request
-that edits three lines of a forty-line prompt gets a notice explaining why there is no
-suggestion, rather than a partial rewrite that means something different from what the
-rules produced.
+**A suggestion, not a commit, and that is deliberate.** Committing the fix would
+need `contents: write`; a suggestion lands in the same place with the same one
+click on the `pull-requests: write` the comment mode already uses, and you stay
+the one who commits. Two limits, both real: it uses the **safe** level only — a
+one-click apply is not the moment for a diff that wants reading — and a
+suggestion can only anchor to lines in the pull request's diff, so a PR that
+edits three lines of a forty-line prompt gets a notice explaining why there is
+no suggestion rather than a partial rewrite.
 
 **Pinned to a commit SHA, not a tag** — the same rule
 [SECURITY.md](SECURITY.md) states and `security.test.js` enforces on every
@@ -470,21 +437,15 @@ Reordered for caching
 
 That distinction is the point of reporting refusals at all: *"no saving here"* and
 *"there was a saving and it was not safe to take"* are different answers, and only
-the second one is actionable. The backward-reference list is deliberately
-generous — a false positive costs a saving that was available, a false negative
-silently changes what the prompt asks for. Every language's phrases are matched
-against every prompt rather than detecting the language first: detection is one
-more thing to get wrong, and the cost of checking a French prompt for German
+the second is actionable. The backward-reference list is deliberately generous,
+and every language's phrases are matched against every prompt rather than
+detecting the language first — the cost of checking a French prompt for German
 phrases is a saving not taken, which is the direction this errs in anyway.
 
-Redirect the output and stdout stays the prompt alone, as it does for every
-command — but the move and the refusals go to **stderr** rather than vanishing. A
-deletion is visible in the diff; a rearrangement you were never told about is not.
-
-`--diff` compares against **what you wrote**, not against the rearrangement, so
-the move is visible rather than hidden behind the deletions. With `--json` the
-whole decision is in `reorder`, refusals included. `check` does not accept the
-flag: it is a gate, and a gate does not rewrite.
+`--diff` compares against **what you wrote**, so the move is visible rather than
+hidden behind deletions; redirected, stdout stays the prompt alone and the move
+and refusals go to **stderr**. With `--json` the whole decision is in `reorder`.
+`check` does not accept the flag: it is a gate, and a gate does not rewrite.
 
 ### Prompts where they actually live
 
@@ -513,26 +474,15 @@ src/prompts.ts#support-system   43 / 2,000   OK
 src/prompts.ts#classifier       23 / 2,000   OK
 ```
 
-**It reads a marker, it does not guess.** Guessing which string in a file is a
-prompt is a heuristic, and a heuristic inside a CI gate fails builds over log
-messages. One line of comment buys never being wrong about what it picked up. The
-marker works in `//`, `#`, `--` and `<!-- -->` comments, so TypeScript, Python,
-SQL and YAML are all covered.
-
-**`${x}` needs no special handling** — it is exactly the placeholder shape the
-masking pass already protects, so an embedded prompt gets the same cache-prefix
-analysis, the same protection from the rules and the same `--reorder` treatment
-as a `{{x}}` template.
-
-**Each prompt is budgeted on its own**, not summed into the file: a file holding
-four prompts is four things to govern, and the code around them is not tokens the
-model will ever see. The id is path-prefixed (`src/prompts.ts#support-system`, or
-`src/prompts.ts:12` when the marker is bare) so existing `budgets` globs cover
-embedded prompts without learning a new syntax — `src/**` matches, and so does the
-full id if you want to budget one prompt tightly.
-
-Source files are scanned automatically alongside prompt files; one with no marker
-is skipped silently, because it was never something you asked to govern.
+**It reads a marker, it does not guess.** A heuristic inside a CI gate fails
+builds over log messages; one line of comment buys never being wrong about what
+it picked up. The marker works in `//`, `#`, `--` and `<!-- -->` comments, so
+TypeScript, Python, SQL and YAML are covered, and `${x}` gets the same
+protection, cache-prefix analysis and `--reorder` treatment as a `{{x}}`
+template. **Each prompt is budgeted on its own**, with a path-prefixed id
+(`src/prompts.ts#support-system`) that existing `budgets` globs already match. A
+source file with no marker is skipped silently — it was never something you
+asked to govern.
 
 **The honest limit.** A prompt assembled by concatenation cannot be read this way:
 
@@ -596,18 +546,12 @@ template variable, the same provider on both sides — and leaves
 `defaultTest.assert` for you.
 
 It makes **no API call and needs no key**: the whole point is to hand the run
-over. It also warns about the things that would quietly make the run
-meaningless — a `${x}` placeholder promptfoo will not substitute, a prompt with
-three placeholders and one value per case, a provider it had to guess an id for.
-
-The one assertion it seeds is `is-json`, and only when the prompt shows a fenced
-JSON block. That is not an opinion about your task: the prompt already demands
-it.
-
-It emits JSON rather than YAML, which promptfoo reads just as happily. This
-package has no dependencies and is not acquiring a YAML emitter; a hand-rolled
-one is a quoting bug waiting for the first prompt containing a colon, a tab, or
-a line ending in a space.
+over. It warns about what would quietly make the run meaningless — a `${x}`
+placeholder promptfoo will not substitute, a provider it had to guess an id for —
+and the one assertion it seeds is `is-json`, only when the prompt already shows a
+fenced JSON block. It emits JSON rather than YAML: this package has no
+dependencies, and a hand-rolled YAML emitter is a quoting bug waiting for its
+first colon.
 
 ### The CI gate: a budget is a ceiling, a baseline is a gate
 
@@ -662,26 +606,14 @@ the limit that was actually crossed.
 
 #### Why the threshold is in tokens when the point is money
 
-A dollar figure comes from three things — the token count, the usage scenario,
-and the price list — and two of them move for reasons that have nothing to do
-with your prompts. A baseline holding dollars would fail a build the day a model
-was repriced, calling a price change a regression, and **a gate that cries wolf
-is a gate somebody deletes.**
-
-So the threshold is in tokens, which depend on the text and nothing else. The
-monthly figure is recomputed and shown next to it, and when it is not comparable
-Trazum says so instead of subtracting two different measurements:
-
-```
-  Prices were reviewed 2025-01-01 when the baseline was recorded and 2026-06-24
-  now, so the monthly figures are not the same measurement. The token comparison
-  is unaffected.
-```
-
-**A missing or corrupt baseline fails the run.** A gate the config asked for and
-could not execute is not a pass — otherwise deleting one file silently switches
-CI off. That includes a hand-edited `totals.tokens` that disagrees with its own
-per-file counts, which is the corruption that otherwise looks completely normal.
+A dollar figure moves when a model is repriced, and a baseline holding dollars
+would call a price change a regression — **a gate that cries wolf is a gate
+somebody deletes**. So the threshold is in tokens, which depend on the text and
+nothing else; the monthly figure is recomputed beside it, and when it is not
+comparable Trazum says so instead of subtracting two different measurements.
+**A missing or corrupt baseline fails the run** — a gate the config asked for
+and could not execute is not a pass, or deleting one file would silently switch
+CI off.
 
 ### A whole repository of prompts
 
@@ -716,17 +648,12 @@ It does not follow symlinks, caps how deep and how wide it walks, and says so
 when a cap stopped it early.
 
 `--markdown-out <file>` writes the same report as GitHub-flavoured markdown, for
-a step summary or a PR comment. `check`, `diff`, `rank` and `blame` all take it,
-it is written before any exit code is set and independently of `--json`, and a
-failure to write it is reported rather than turned into a failing build.
-
-Every value that reaches a table cell is escaped by encoding `&`, `<`, `>` and
-`|` as entities, so **there is no `|` character in the output at all** and a row
-cannot split under any scanner. That matters most for `blame`: an author's name
-and a commit subject are the least trusted strings Trazum renders — on a pull
-request from a fork they are written by whoever opened it — and they land in a
-table maintainers read. Paths and shas are `<code>`; names and subjects are not,
-because a person's name typeset as a code span is a different kind of wrong.
+a step summary or a PR comment. `check`, `diff`, `rank`, `blame` and `profile`
+all take it, and a failure to write it is reported rather than turned into a
+failing build. Every value that reaches a table cell is entity-escaped — there is
+no `|` character in the output at all — which matters most for `blame`: an
+author's name and a commit subject are the least trusted strings Trazum renders,
+and they land in a table maintainers read.
 
 ### Charting it: `doctor --otlp-out`
 
@@ -737,22 +664,16 @@ curl -X POST -H 'content-type: application/json' \
 ```
 
 Five gauges — tokens per prompt, over-budget per prompt, the unbudgeted count, and
-each advisory's monthly figure and prompt count — with the model and call volume as
-resource attributes, because a dollar figure whose scenario is not stored beside it
-is a number nobody can check three months later.
+each advisory's monthly figure and prompt count — with the model and call volume
+as resource attributes, because a dollar figure whose scenario is not stored
+beside it is a number nobody can check three months later.
 
-**Trazum writes the payload; it does not send it.** That is a decision. Pushing to a
-collector means holding an endpoint and a credential, and this project has twice
-shipped an SSRF where a URL reached `fetch` without being the URL that was checked.
-A command that writes a file has no such failure mode, and the pipeline that already
-holds your collector credential can post it in one line.
-
-No `@opentelemetry/*` dependency either: the JSON encoding is a documented wire
-format and this package has no runtime dependencies. Two rules in it fail silently
-and are pinned by tests — **64-bit integers are JSON strings** (a collector reading
-`timeUnixNano` as a double loses the last digits of every timestamp), and **money is
-`asDouble`** (`asInt` would report `$4,912.40` as `4912`, and the chart would look
-perfectly reasonable).
+**Trazum writes the payload; it does not send it.** Pushing to a collector means
+holding an endpoint and a credential, and this project has twice shipped an SSRF;
+a command that writes a file has no such failure mode. No `@opentelemetry/*`
+dependency either — the JSON encoding is a documented wire format, and the two
+rules in it that fail silently are pinned by tests: 64-bit integers are JSON
+strings, and money is `asDouble`.
 
 ### A whole library, before and after: `diff --all`
 
@@ -778,18 +699,12 @@ Every figure is after minus before, so positive means worse — the opposite of 
 +$0.7500/month at 50,000 calls with Claude Opus 5
 ```
 
-Two decisions worth naming, because both are the kind that mislead quietly.
-
-**A prompt on only one side is named, never counted.** A refactor that deletes a
-prompt and one that renames it look identical from a token count. Folding the
-deletion into the total would report a library getting cheaper when what actually
-happened is that a file went missing and somebody has to say whether that was
-deliberate.
-
-**`--max-growth` applies per prompt, not to the total** — the same rule `check`
-states about budgets. In the run above the total is `+3`, and `--max-growth 10`
-still fails, because `a.txt` grew by 14 while `b.txt` shrank by 11. A gate on the
-total would pass that and the prompt that doubled would ship unlooked-at.
+Two decisions worth naming. **A prompt on only one side is named, never
+counted** — folding a vanished file into the total would report a library
+getting cheaper when somebody has to say whether the deletion was deliberate.
+And **`--max-growth` applies per prompt, not to the total**: above, the total is
+`+3` and `--max-growth 10` still fails, because `a.txt` grew by 14 while `b.txt`
+shrank by 11 — a gate on the total would ship the doubled prompt unlooked-at.
 
 ### The whole workspace at once: `trazum doctor`
 
@@ -818,22 +733,13 @@ What it would be worth fixing
            Your cost is in the output, not the prompt  16 prompts
 ```
 
-**There is no score, and that is the whole design.** A health check invites one —
-a number out of a hundred, a grade, a traffic light — and a number assembled from
-weights nobody can reproduce gets quietly tuned until the output looks right.
-`rank` refused it for the same reason.
-
-So `doctor` invents nothing. **Every line is an advisory `trazum optimize` raises
-on those prompts on its own, summed**, which means any figure here can be checked
-against a single file — and there is a test that adds up the individual runs and
-requires the total to match to the last float. "16 prompts only need a cheaper
-model" is sixteen copies of one advisory, each with a file name you can go and
-look at.
-
-Two things it reports that no other command does: **which prompts no budget
-pattern matches**, because an unwatched prompt is how the money got there in the
-first place, and **which are already over budget** — before a red build tells you,
-which is too late to think about it.
+**There is no score, and that is the whole design.** A number assembled from
+weights nobody can reproduce gets quietly tuned until the output looks right, so
+`doctor` invents nothing: **every line is an advisory `trazum optimize` raises on
+those prompts on its own, summed** — a test adds up the individual runs and
+requires the total to match to the last float. Two things it reports that no
+other command does: which prompts no budget pattern matches, and which are
+already over budget — before a red build tells you.
 
 #### Preambles that could share a cache entry and do not
 
@@ -849,36 +755,18 @@ Preambles that could share a cache entry and do not
       A formatter fixes this: the text already agrees, only the spacing does not.
 ```
 
-Prompt caching is a byte-for-byte prefix match. Twelve prompts assembled from the
-same system preamble — identical except that one has a trailing tab, another
-reordered two bullets, and a third writes `E-Commerce` where the rest write
-`e-commerce` — occupy **twelve cache entries and share nothing**. Every one of
-those files is individually fine, which is why no per-prompt analysis finds it.
+Prompt caching is a byte-for-byte prefix match, so twelve prompts assembled from
+the same preamble — identical but for a trailing tab or an `E-Commerce` against
+`e-commerce` — occupy **twelve cache entries and share nothing**. Each file is
+individually fine, which is why no per-prompt analysis finds it. `drift` says
+which kind of work fixes it: `whitespace` means a formatter, `wording` means
+somebody has to pick one. Gated on the model's own cacheable minimum, and
+deliberately carrying **no dollar figure**: pricing it would mean inventing how
+your calls are spread across the group, which is the one thing only you know.
 
-`drift` says which kind of work it is: `whitespace` means a formatter fixes it,
-because the text already agrees; `wording` means somebody has to pick one.
-
-**Gated on the model's own cacheable minimum**, so a shared preamble too short to
-cache is not reported at all — the same refusal `--reorder` makes. Run the same
-directory against Haiku 4.5, whose minimum is 4,096, and a 1,398-token preamble
-produces nothing, because unifying it would buy nothing.
-
-**No dollar figure, deliberately.** The saving lives in the cache hit rate, and
-that is an *input* to Trazum's cost model rather than something it derives:
-`--cache-hit-rate` applies one value to every prompt, so the model has no term for
-how many distinct cache entries exist. Pricing this would mean inventing how your
-calls are spread across the group, which is the one thing here only you know. It
-names the mechanism instead.
-
-**It exits 0 even when it finds things.** `trazum check` is the gate. The model
-recommendation is a keyword heuristic, and a build gated on a keyword heuristic
-teaches people to re-run until it goes green, which costs more than the tool ever
-saves.
-
-It is offline and free, like the rules. Nothing here calls a model — which is why
-it deliberately does *not* check prompts against their own `--suggest`
-recommendations: that would be an LLM call per prompt, and `doctor` is the command
-you run across forty files before deciding to spend anything.
+**It exits 0 even when it finds things** — `trazum check` is the gate, and a
+build gated on a keyword heuristic teaches people to re-run until it goes green.
+Offline and free, like the rules: nothing here calls a model.
 
 ### Project defaults: `trazum.config.json`
 
@@ -966,31 +854,13 @@ Nothing is applied unless you ask. Eight surviving suggestions out of ten is a
 useful result; a wholesale rewrite that fails one check is not.
 
 **The model proposes; the prompt decides.** Every suggestion is checked against
-your text before it is shown, and dropped rather than reconciled:
-
-- **`before` must appear byte for byte.** A model asked to quote will sometimes
-  tidy the punctuation as it goes, and the resulting suggestion is about text
-  that does not exist.
-- **It must not touch protected content.** Code, URLs, placeholders and tags are
-  copied verbatim everywhere else in this project, and here too.
-- **`after` must not introduce any.** A replacement that adds a `{{placeholder}}`
-  is proposing new semantics, not shorter phrasing.
-- **It must actually save tokens.** A rephrasing that costs the same is a change
-  of style, and this is not a style guide.
-- **Overlapping suggestions are dropped.** Applying two edits that share
-  characters produces text neither of them described.
-
-A phrase that occurs several times is rewritten everywhere it appears *outside*
-protected content — the `×2` above — rather than the whole suggestion being
-refused because one occurrence sits in a code block.
-
-The model is asked about the **optimised** prompt, not the one you wrote:
-re-finding what the deterministic rules already took would spend a call to be
-told what Trazum knew for free.
-
-`--apply-suggestions` takes them, and the headline figures move with the change.
-On its own it is an error rather than a no-op, for the same reason a misspelled
-flag is: a flag that runs silently and changes nothing is not an answer.
+your text before it is shown, and dropped rather than reconciled: `before` must
+appear byte for byte, it must not touch protected content, `after` must not
+introduce any, it must actually save tokens, and overlapping suggestions are
+dropped. A phrase that occurs several times is rewritten everywhere it appears
+*outside* protected content — the `×2` above. The model is asked about the
+**optimised** prompt, not the one you wrote. `--apply-suggestions` takes them; on
+its own it is an error rather than a no-op.
 
 #### Not asking twice: `--cache-suggestions`
 
@@ -1012,35 +882,17 @@ happen. That notice goes to stderr, so it never lands in `--json`, and it is
 always printed: a cache hit is a week-old answer from something that is not a
 pure function, and it should never be silent.
 
-Four decisions worth knowing about:
-
-- **Off by default.** Every other model-touching feature here makes you ask
-  twice. Answering from a stale response without being asked would be the one
-  surprise in a tool built on not producing any.
-- **The raw response is cached, not the checked result.** All five checks above
-  run again on a hit, so an answer stored last week is judged by this week's
-  rules rather than replaying an older version's verdict.
-- **Seven days, then it is asked again.** Long enough for a working week, short
-  enough that a model alias which started pointing somewhere new does not keep
-  answering in the old model's words.
-- **Mode 0600 in a 0700 directory** under `$XDG_CACHE_HOME/trazum/suggestions`
-  (or `~/.cache`). The cache holds prompt text, which is the most sensitive
-  thing this tool ever touches; a world-readable copy in a shared home would
-  publish somebody's unreleased product behaviour to every account on the box.
+Four decisions worth knowing about: **off by default** — answering from a stale
+response without being asked would be the one surprise in a tool built on not
+producing any; **the raw response is cached, not the checked result**, so an
+answer stored last week is judged by this week's checks; **seven days, then it
+is asked again**; and **mode 0600 in a 0700 directory** under
+`$XDG_CACHE_HOME/trazum/suggestions` (or `~/.cache`), because the cache holds
+prompt text — the most sensitive thing this tool touches.
 
 `trazum --clear-suggestion-cache` empties it and says how much went. It needs no
-command and reads no config — a cache you cannot empty because an unrelated
-`trazum.config.json` fails to parse is a cache somebody deletes by hand,
-guessing at the path.
-
-**This is not the API's prompt caching, and that is not an oversight.** Marking
-Trazum's suggest system prompt with `cache_control` would cache nothing: the
-minimum cacheable prefix is 512 tokens on the most generous model and 4,096 on
-others, that prompt is 291 tokens, and a prefix below the minimum is *silently*
-not cached — no error, `cache_creation_input_tokens: 0`. Everything after the
-system prompt is your text, which differs on every call, so there is no
-placement of `cache_control` that helps. A test measures the prompt against the
-published minima, so if that ever stops being true it stops loudly.
+command and reads no config, so an unparseable `trazum.config.json` cannot stop
+you emptying it.
 
 ### Which prompt to fix first: `trazum rank`
 
@@ -1127,19 +979,12 @@ directory is telling you the wrong story. `--limit` walks further back (20 by
 default, 500 at most — each revision is a `git show` and a token count).
 `--json` gives the same history as data.
 
-It reads history and nothing else: no writes, no network. Running git at all is
-new for this project, so it happens in exactly one module,
-[`git.ts`](packages/cli/src/git.ts), written as though it were the whole attack
-surface — no shell, every path after a `--` separator so a file called
-`--upload-pack=…` stays a filename, object names validated as 40 hex digits
-before they are glued to anything, and a bounded timeout and buffer. Those rules
-are asserted in `security.test.js` rather than promised in a comment.
-
-Paths are taken literally after `--`, for the files whose names are the problem:
-
-```bash
-trazum blame -- --odd-name.txt
-```
+It reads history and nothing else: no writes, no network. Running git happens in
+exactly one module, [`git.ts`](packages/cli/src/git.ts), written as though it
+were the whole attack surface — no shell, every path after a `--` separator so a
+file called `--upload-pack=…` stays a filename, object names validated as 40 hex
+digits, a bounded timeout and buffer — and those rules are asserted in
+`security.test.js` rather than promised in a comment.
 
 ### Did this edit make it worse?
 
@@ -1265,25 +1110,13 @@ curl -X POST https://your-deployment/api/optimize \
 ```
 
 `reorder`, `suggest` and `applySuggestions` are honoured only on a literal `true`
-— a string or a number is ignored, because the body is untrusted and a truthy
-check would let `"false"` rearrange somebody's prompt or hand it to a model for
-rewriting.
-
-When `reorder` is set, the response carries a `reorder` object with what moved and
-what was declined, and `original` stays the text you sent so a diff shows the move
-rather than hiding it behind the deletions.
-
-When `suggest` is set, the response carries a `suggestions` object — every
-proposal that survived the checks, everything rejected and why, and `applied`
-saying whether the text you are holding was rewritten. It is present even when the
-model proposed nothing, so "nothing was found" is distinguishable from "you did
-not ask". Needs an LLM configured, and runs its own call.
-
-`applySuggestions` without `suggest` is a **`400`**, not a no-op. On its own it
-would have returned a complete report and quietly applied nothing, which is the
-same failure as a misspelled field being accepted — and the endpoint already
-refuses those for `disableRules` and `usage.model`. The refusal comes before any
-call to the model, so a malformed request never costs one.
+— the body is untrusted, and a truthy check would let `"false"` rearrange
+somebody's prompt. With `reorder`, the response carries what moved and what was
+declined, and `original` stays the text you sent so a diff shows the move. With
+`suggest`, it carries every proposal that survived the checks and everything
+rejected and why — present even when the model proposed nothing, so "nothing was
+found" is distinguishable from "you did not ask". `applySuggestions` without
+`suggest` is a **`400`**, not a no-op, refused before any call to the model.
 
 ```bash
 # Compare two versions: what did this edit cost?
@@ -1297,28 +1130,12 @@ curl -X POST https://your-deployment/api/compare \
   }'
 ```
 
-`POST /api/compare` answers a different question from `/api/optimize`, which is
-why it is a different route. **Every figure it returns is `after - before`, so
-positive means worse.** `tokenDelta`, `deltaPct`, `monthlyDeltaUsd` and
-`perCallDeltaUsd` all follow that convention; `rules` come back with titles and
-`advisories` as ids. `optimizeBoth` is honoured only on a literal `true`, and a
-missing `before` and a missing `after` are told apart — one message for two fields
-leaves the caller guessing.
-
-Both endpoints are rate limited (30/min per IP), with a bucket each: sharing one
-would let a burst of comparisons spend somebody else's optimise budget.
-
-`/api/optimize` will not fetch an LLM endpoint
-a caller names: a request may only **select** one from
-`TRAZUM_ALLOWED_LLM_ENDPOINTS`, a comma-separated list the operator sets on the
-server, and what gets fetched is the entry from that list. The list is empty by
-default, so out of the box a deployment calls only the LLM its own environment
-configured (`TRAZUM_LLM_BASE_URL`) — or none at all. `GET /api/optimize` returns
-the list so the UI offers exactly what the server will accept.
-
-That is stricter than filtering the URL, and deliberately so: the filter reads a
-hostname, and a hostname an attacker registered can resolve wherever they like.
-See [SECURITY.md](SECURITY.md) for the full reasoning.
+`POST /api/compare` returns every figure as `after - before`, so **positive
+means worse**. Both endpoints are rate limited (30/min per IP), with a bucket
+each. And `/api/optimize` will not fetch an LLM endpoint a caller names: a
+request may only **select** one from `TRAZUM_ALLOWED_LLM_ENDPOINTS`, empty by
+default — stricter than filtering the URL, because a hostname an attacker
+registered can resolve wherever they like. See [SECURITY.md](SECURITY.md).
 
 ### Signing in (optional)
 
@@ -1333,42 +1150,22 @@ TRAZUM_GITHUB_CLIENT_SECRET=xxxx
 TRAZUM_PUBLIC_URL=https://trazum.example
 ```
 
-A fourth, `TRAZUM_DATABASE_URL`, points it at any Postgres so the sign-in
-survives a restart. Without it sessions live in memory, which works and says so:
-the header renders "temporary session", because on a platform that runs more
-than one instance the alternative is being signed out at random with no
-explanation.
-
-Trazum asks GitHub for `read:user` and nothing else, and **never stores the
-access token** — it is exchanged, used once to read your login and avatar, and
-dropped. Session cookies are opaque random tokens stored only as their SHA-256,
-so a database dump is a list of hashes rather than a list of live logins.
-
-Misconfigure any of it and sign-in simply stays off: no button, and
-`/api/auth/*` answers 503 naming the variable to set.
+A fourth, `TRAZUM_DATABASE_URL`, points it at any Postgres so sign-in survives a
+restart; without it sessions live in memory and the header says "temporary
+session". Trazum asks GitHub for `read:user` and nothing else, **never stores
+the access token**, and stores session cookies only as their SHA-256.
+Misconfigure any of it and sign-in simply stays off, with `/api/auth/*`
+answering 503 naming the variable to set.
 
 Signed in, a **Library** tab appears: prompts you saved and every version of
-each. History is append-only, saving unedited text saves nothing and says so,
-and token counts are recomputed on read rather than stored — two versions priced
-by two different estimators would make the trend line move when the prompts did
-not.
-
-On the Compare tab, **Create share link** publishes a comparison at `/c/<token>`
-that anyone holding the URL can read without signing in — for showing a
-colleague what a prompt edit cost. Links expire after thirty days by default,
-can be revoked, are kept out of search engines two different ways, and say
-plainly what they publish *before* the button rather than after.
-
-Set `TRAZUM_ADMINS` and `/admin` shows what every prompt on the deployment adds
-up to — input tokens, and how many of them the rules would remove, measured by
-running them. Deliberately **not** a spend report: Trazum has never seen a bill,
-so the page says so above the first number, shows no score, and shows prompt
-names but never anybody's prompt text. Unset means the page does not exist.
-
-Every share link doubles as a **README badge** at `/badge/<token>.svg` — the
-token change, recomputed on every load rather than frozen the day it was made.
-The image is inert: no script, no external font, nothing fetched, and no prompt
-text ever reaches it.
+each, append-only, token counts recomputed on read rather than stored. On the
+Compare tab, **Create share link** publishes a comparison at `/c/<token>` for
+anyone holding the URL — expiring after thirty days by default, revocable, kept
+out of search engines, and saying what it publishes *before* the button. Every
+share link doubles as a **README badge** at `/badge/<token>.svg`, recomputed on
+every load, with no script and no prompt text. Set `TRAZUM_ADMINS` and `/admin`
+totals what every prompt on the deployment adds up to — names and token counts,
+never anybody's prompt text, and deliberately not a spend report.
 
 [docs/accounts.md](docs/accounts.md) has the setup, the schema, every security
 decision and why, the limits, and an explicit list of what is **not** covered.
@@ -1503,12 +1300,9 @@ the coverage cannot be.
 **Adding a language is adding entries to
 [`phrases.ts`](packages/core/src/phrases.ts)**, and one rule about doing it: a
 dictionary translated word by word looks complete and changes meaning. Spanish
-has `muy` and deliberately not `mucho`. The first pass at the other five lost that
-distinction and shipped `muito`, `molto` and `heel` — each an intensifier *and* a
-quantifier, so `Hai molto tempo per rispondere` became `Hai tempo per
-rispondere`: "you have much time" turned into "you have time". A test keeps those
-three out, and another counts entries per language per dictionary, because a
-behavioural test passes on whatever the fixture happens to contain.
+has `muy` and deliberately not `mucho` — words that are an intensifier *and* a
+quantifier (`muito`, `molto`, `heel`) turn "you have much time" into "you have
+time", and a test keeps them out.
 
 ```bash
 trazum optimize prompt.txt --locale es      # flag
@@ -1516,26 +1310,13 @@ TRAZUM_LOCALE=es trazum optimize prompt.txt # environment
 ```
 
 The CLI resolves `--locale`, then `TRAZUM_LOCALE`, then `LC_ALL`/`LC_MESSAGES`/
-`LANG`, and last `locale` in `trazum.config.json`. The web app negotiates
-`Accept-Language` on the server and offers a switcher that remembers your
-choice. The library takes `locale` directly.
-
-**The config comes last on purpose**, and it is the one setting where it does. A
-repository writing `"locale": "es"` is choosing the language its CI logs read
-in, where `LANG` is usually unset or `C`. A contributor whose own machine says
-otherwise should still get their own language. The project sets the floor; the
-person at the keyboard wins.
-
-Two things are deliberately not localised: **USD amounts** stay formatted as
-`en-US`, because they come from a US price list and a report shared across a
-team should show the same number to everyone; and **rule and advisory ids**,
-which are stable across locales precisely so you can branch on them.
-
-Adding a language is a message catalogue per package — see
-[CONTRIBUTING.md](CONTRIBUTING.md). Note that
-`packages/core/src/phrases.ts` is a separate matter: those dictionaries are the
-vocabulary Trazum looks for *inside* prompts, and are unrelated to the language
-of the report.
+`LANG`, and last `locale` in `trazum.config.json` — **the config comes last on
+purpose**, the one setting where it does: the project sets the floor, the person
+at the keyboard wins. Two things are deliberately not localised: **USD amounts**
+stay `en-US`, so a report shared across a team shows the same number to
+everyone, and **rule and advisory ids** are stable across locales precisely so
+you can branch on them. Adding a report language is a message catalogue per
+package — see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ---
 
@@ -1576,22 +1357,14 @@ bedrockProvider({ model: 'anthropic.claude-v2:1', region: 'us-east-1', accessKey
 vertexProvider({ serviceAccount: JSON.parse(keyJson), project: 'p', location: 'us-central1' });
 ```
 
-Bedrock goes through **Converse**, not `InvokeModel` — `InvokeModel` takes each
-model family's own body shape, so supporting "Bedrock" through it means a 400 for
-every model nobody thought about. Signed with SigV4 by hand; Vertex's
-service-account JWT is signed by hand too. Both on WebCrypto, both because this
-library has zero runtime dependencies and the AWS and Google SDKs are two
-hundred packages between them to authenticate one request.
-
-**Neither has been run against the real service.** The signer is tested against
-the canonical strings and against an independent implementation of the key
-chain; the first real call is what proves it.
-
-`anthropic` and `gemini` are separate because their APIs are separate documents,
-not because they are favoured. Gemini's needs its own handling for a reason
-worth knowing: **a blocked prompt, a truncated answer and an empty candidate all
-come back as HTTP 200**, so a client that checks only the status code treats a
-half-written rewrite as a finished one. Trazum refuses all three.
+Bedrock goes through **Converse**, not `InvokeModel`, and both signatures —
+SigV4 and Vertex's service-account JWT — are written by hand on WebCrypto,
+because this library has zero runtime dependencies and the AWS and Google SDKs
+are two hundred packages between them to authenticate one request. **Neither has
+been run against the real service**: the signers are tested against canonical
+strings, and the first real call is what proves them. Gemini needs its own
+handling for a reason worth knowing — **a blocked prompt, a truncated answer and
+an empty candidate all come back as HTTP 200** — and Trazum refuses all three.
 
 Deploying the web app for other people to use? One more, and only if you want
 visitors to be able to pick:
@@ -1763,22 +1536,14 @@ Priced as
   Claude Sonnet 5 (read from the source)
 ```
 
-**Every answer names the line it came from.** A detection that cannot be checked
-is a guess, and the dollar figure that follows from it would be a guess too.
-
-Four kinds of evidence, strongest first: `model=` on a `trazum:prompt` marker,
-a quoted model id, a base URL, an SDK import. A stronger kind overrides a weaker
-one — **a base URL beats the SDK it was pointed at**, because Moonshot, DeepSeek,
-xAI and Groq are all called through the OpenAI SDK with a different `base_url`,
-and calling that a contradiction would refuse to price an ordinary client.
-
-**It refuses when a file names two providers.** Two answers is not a weaker
-version of one answer, and picking silently is how somebody budgets against the
-wrong provider for a month. Both are named and nothing is assumed.
-
-Detection sits between config and defaults in the usual layering: **a flag beats
-config, config beats detection, detection beats the built-in default.** Reading
-the code is better than assuming, and worse than being told.
+**Every answer names the line it came from.** Four kinds of evidence, strongest
+first: `model=` on a `trazum:prompt` marker, a quoted model id, a base URL, an
+SDK import — and **a base URL beats the SDK it was pointed at**, because
+Moonshot, DeepSeek, xAI and Groq are all called through the OpenAI SDK with a
+different `base_url`. **It refuses when a file names two providers**: picking
+silently is how somebody budgets against the wrong provider for a month.
+Detection sits in the usual layering — a flag beats config, config beats
+detection, detection beats the built-in default.
 
 With no file it reports only the host — useful because that is what decides
 whether a monthly saving is money at all:
@@ -2105,23 +1870,14 @@ measured for it:
 Use `--exact-tokens` for figures you can budget from.
 
 **That band is measured, and it was false when it was not.** For eight releases
-`±10%` was a design target nobody had checked. The first run against the official
+`±10%` was a design target nobody had checked; the first run against the official
 counting endpoint found two of eight samples outside it, both underestimating —
-which is the direction that under-reports cost. Two faults came out of it: digits
-were counted at three per token where Claude splits them far more finely, and the
-estimator was calibrated **for English** while one divisor served every language
-(German measured −37.3%). Both are fixed; `±10%` is now the measured worst case
-across the corpus, rounded up.
-
-The corpus is 21 samples across seven languages and six text types, and the
-harness that measures it against the counting endpoint is committed:
-
-```bash
-ANTHROPIC_API_KEY=... npm run measure:tokens
-```
-
-The endpoint is free — it does not run the model — so re-measuring costs nothing
-but time.
+the direction that under-reports cost. The corpus is now 21 samples across seven
+languages and six text types, the harness is committed
+(`ANTHROPIC_API_KEY=... npm run measure:tokens` — the endpoint is free), and
+`token-band.test.js` asserts the band per text type against that ground truth: a
+sample edited since it was measured **fails**, and one never measured **skips out
+loud**.
 
 | what | worst error |
 |---|---|
@@ -2130,28 +1886,12 @@ but time.
 | every language divisor, on a held-out sample in another register | 3.8% |
 | samples outside `±10%` | 0 of 21 |
 
-**The published band is 10 and the worst measurement is 6.4.** That gap is
-deliberate. Twenty-one samples across six text types cannot bound a seventh —
-there is no Korean here, no Cyrillic prose, no mixed-script document — and a band
-that becomes false the moment somebody measures something new is exactly the fault
-this exercise was fixing. Overstating the uncertainty is the safe direction for a
-tool that reports money.
-
-`token-band.test.js` asserts the band per text type against that ground truth, and
-carries a per-sample digest: a sample edited since it was measured **fails**, and
-a sample never measured **skips out loud** and is named. Numbers describing text
-that has moved on cannot pass quietly.
-
-**Kana and han do not cost the same, and that was the largest error left.** Every
-CJK character was charged one token, which put Japanese at +11.2% — the worst
-figure in the corpus — while Chinese sat at −3.2% under the identical rule. The
-Japanese sample is 58% kana and the Chinese one is 0%, so the signal needs no
-detector: kana measure 0.75 tokens per character and han 1.05, and that pair takes
-both samples inside 1.5%.
-
-One caveat stated rather than buried: the Latin-language divisors were calibrated
-on the samples they are measured against, so those residuals are optimistic by
-construction. The band rests on the samples nothing was fitted to.
+**The published band is 10 and the worst measurement is 6.4**, deliberately:
+twenty-one samples across six text types cannot bound a seventh — no Korean, no
+Cyrillic prose, no mixed-script document — and overstating the uncertainty is the
+safe direction for a tool that reports money. One caveat stated rather than
+buried: the Latin-language divisors were calibrated on the samples they are
+measured against, so the band rests on the samples nothing was fitted to.
 
 For exact numbers, the official counting endpoint does not charge tokens:
 
@@ -2213,6 +1953,10 @@ packages/core/     dependency-free library (rules, tokens, pricing, LLM)
   src/net.ts         endpoint validation, the allowlist, safe fetch defaults
   src/i18n/          message catalogues (report language)
   src/shared-prefix.ts  preambles that could share a cache entry and do not
+  src/usage.ts       the usage-log profiler: where the money actually went
+  src/levers.ts      what would move the bill, priced from tokens that were billed
+  src/conversation.ts   what re-sending the conversation costs, a ceiling
+  src/output-shape.ts   where the output spend concentrates: tail or task
   src/prune.ts       leave-one-out over few-shot examples, against the noise floor
   src/aws-sigv4.ts   Bedrock's signature, by hand, on WebCrypto
   src/gcp-auth.ts    Vertex's service-account JWT, same reasoning
@@ -2220,10 +1964,10 @@ packages/core/     dependency-free library (rules, tokens, pricing, LLM)
 packages/cli/      dependency-free CLI
   src/markdown.ts    the report as markdown, and the three escapers
   src/git.ts         the only module here that runs another program
-packages/mcp/      dependency-free MCP server — three tools over stdio
+packages/mcp/      dependency-free MCP server — four tools over stdio
   src/rpc.ts         JSON-RPC 2.0 by hand; the invariant beat the SDK
   src/tools.ts       the whole surface an agent can reach, in one file
-apps/web/          Next.js (App Router) — Optimise, Compare, and the Library
+apps/web/          Next.js (App Router) — Optimise, Compare, Your bill, Library
 action/            the packaged GitHub Action that comments on pull requests
 scripts/           release notes, the token-band harness, rollback recovery
 ```
@@ -2263,31 +2007,22 @@ What each example is doing, measured on claude-opus-5
       Input: I want my money back
 ```
 
-**Leave-one-out against the prompt's own noise floor.** Ask the full prompt twice to
-find out how much the model disagrees with *itself*, then remove one example and ask
-again. A removal that moves the answer less than the model already moves on its own
-did not do observable work. The thresholds come from `evaluate`'s `verdictFor`, not a
-second set — a repository where two of them disagreed about "within the noise" would
-be one where the answer depends on which you ran.
-
-**It is the only command that asks before spending.** The bill is
-`(2 + examples) × cases`, which for a nine-example prompt over twenty cases is 220
-calls — a number to agree to rather than discover. Without `--yes` it prints the
-figure and stops, and it prints it *before* looking for a provider, so you can see
-the cost without a key configured.
-
-**It reports "no effect on these inputs" and never "delete this."** An example may
-exist for a case your inputs do not contain — the boundary condition somebody hit in
-production last March and added a demonstration for. Removing it would change nothing
-measurable and break that case. Nothing is edited; the strength of the claim is
-bounded by the inputs you gave it, and only you know whether those cover what
-matters.
+**Leave-one-out against the prompt's own noise floor.** Ask the full prompt twice
+to find how much the model disagrees with *itself*, then remove one example and
+ask again — a removal that moves the answer less than the model already moves on
+its own did not do observable work. The bill is `(2 + examples) × cases`, printed
+before any call goes out, and without `--yes` it stops there. And it reports
+**"no effect on these inputs" and never "delete this"**: an example may exist for
+the boundary case your inputs do not contain, and only you know whether they
+cover what matters.
 
 ### An MCP server, so an agent can budget its own prompts
 
-`@trazum/mcp` exposes three tools over stdio. Every other surface here answers
-"what does this prompt cost" for a human after the fact; this answers it for the
-thing composing the prompt, before it sends anything.
+`@trazum/mcp` exposes four tools over stdio — `optimize_prompt`, `check_prompt`,
+`profile_usage` and `list_models`. Every other surface here answers "what does
+this prompt cost" for a human after the fact; this answers it for the thing
+composing the prompts — before it sends one, and over the bill its calls already
+ran up.
 
 ```jsonc
 { "mcpServers": { "trazum": { "command": "npx", "args": ["-y", "@trazum/mcp"] } } }
@@ -2307,9 +2042,17 @@ which fits. Optimise rather than cut.
 "Over budget" and "over budget but the rules would fix it" are different
 instructions. A boolean throws away the actionable half.
 
+`profile_usage` is `trazum profile` for an agent: it takes a usage log **as
+text**, and answers with the spend split, the per-label and per-model tables, the
+cache verdict — including the unsettled one, when the log cannot say — the levers,
+conversation growth, and the gaps. The one tool here whose figures are exact
+rather than ±10%: they are the provider's own billed counts. The session key is
+grouped by and never echoed, and a test feeds one through to prove it.
+
 **What it cannot do is the design.** No paths — every tool takes text, and the
 package imports only the browser-safe entry point, so it cannot read a file even if
-somebody adds a parameter for one. No network: `--suggest` and `eval` are
+somebody adds a parameter for one; the agent reads the log in its own sandbox,
+where its own permissions apply. No network: `--suggest` and `eval` are
 deliberately not exposed, because a tool an agent can invoke in a loop must not be
 able to spend money. No writes.
 
@@ -2341,17 +2084,13 @@ repos:
 `doctor` exits 0 by design — a hook that blocks on somebody else's prompt is one
 people learn to bypass.
 
-**It needs `@trazum/cli` published, and it is not yet.** The executable comes from
-`additional_dependencies`, not from installing this repository: `language: node`
-installs the hook repo, this repo's root is a private workspace root with no `bin`,
-and pre-commit reports `Executable trazum not found`. Giving the root a `bin` and a
-`prepare` that builds does not help either — pre-commit installs with
-`npm install -g`, and npm answers `Workspaces not supported for global packages`.
-Both were tried rather than reasoned about.
-
-The mechanism itself is verified: with locally packed tarballs standing in for the
-registry, the gate fails a prompt over budget, passes one inside it, and the survey
-hook exits 0. What remains untested is the registry lookup.
+**The executable comes from `additional_dependencies`** — `@trazum/cli` on npm —
+not from installing this repository, whose root is a private workspace with no
+`bin`: pre-commit installs hook repos with `npm install -g`, and npm answers
+`Workspaces not supported for global packages`. That was tried rather than
+reasoned about. The mechanism is verified with packed tarballs standing in for the
+registry: the gate fails a prompt over budget, passes one inside it, and the
+survey hook exits 0.
 
 ## Analytics and privacy
 
@@ -2371,16 +2110,11 @@ prompt library shipped and made that conditional.
   until you save, and the database is the operator's rather than ours.
   [docs/accounts.md](docs/accounts.md) is the full account, including the row
   level security the schema turns on and why it uses `ENABLE` and not `FORCE`.
-- Analytics (PostHog) is **off by default**. It only switches on if the
-  operator sets `NEXT_PUBLIC_POSTHOG_KEY`, and even then it never sends prompt
-  content — only aggregate metrics (reduction percentage, level, model,
-  locale). Setting that key also adds the analytics host to `connect-src` in
-  the Content-Security-Policy, because otherwise the browser blocks every
-  request it makes and the page gives no sign of it. With no key the policy is
-  unchanged: `connect-src 'self'`, one origin.
-- `NEXT_PUBLIC_POSTHOG_HOST` overrides the destination, defaulting to
-  `https://eu.i.posthog.com`. It must be `https` and only its origin reaches
-  the policy — a value that does not parse widens nothing.
+- Analytics (PostHog) is **off by default** and never sends prompt content —
+  only aggregate metrics (reduction percentage, level, model, locale). It
+  switches on only when the operator sets `NEXT_PUBLIC_POSTHOG_KEY`, which also
+  adds the analytics origin to the Content-Security-Policy; with no key the
+  policy stays `connect-src 'self'`.
 - LLM keys entered in the UI are used for that request and discarded; they are
   neither logged nor persisted.
 
