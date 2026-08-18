@@ -27,6 +27,43 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.20.0 — "When, and what you can build on"
+
+### The shape of the day
+
+```
+80% of this spend lands in 2 hours of the UTC day (09:00, 10:00) — interactive
+traffic somebody is waiting on, where the Batch API's 24-hour turnaround does
+not fit.
+```
+
+The total says how much and the per-day series says which days. Neither says
+*when in the day*, and that is what decides whether the Batch API — a flat 50%
+— applies at all. `spendByHour` buckets exact per-record dollars by hour of
+the UTC day, and the report states the measure that needs no threshold to
+explain: **the fewest hours holding 80% of the spend**. Two hours is
+interactive; twenty is background work, which is what the Batch API halves.
+
+It names the lever and never claims the saving: whether a workload can wait a
+day is a product decision counts cannot make. The browser draws the same
+thing as twenty-four bars — with empty hours drawn empty, because a chart that
+closed the gaps would make every workload look flat.
+
+### `--json` becomes a contract
+
+`docs/json-output.md` documents every top-level field, the output carries a
+`schemaVersion`, and a test enforces the promise **in both directions**: a
+documented field that disappears fails the build, and a field emitted without
+a line in the doc fails it too.
+
+The promises are the ones a dashboard needs: fields are added without a
+version bump, so ignoring unknown keys keeps working; dollars are unrounded
+numbers — the terminal rounds, the JSON does not; **absence is `null` or `[]`
+and never zero**, because "not measured" and "measured as none" are different
+answers; and nothing in the document carries a session key or prompt text.
+
+---
+
 ## 1.19.0 — "Which workload, and at what rate"
 
 **A total tells you something is wrong; this release tells you whose it is.**
