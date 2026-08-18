@@ -625,6 +625,20 @@ export interface CliMessages {
     maxUsdFailed(total: string, max: string): string;
     maxGrowthUsdFailed(delta: string, max: string): string;
     maxGrowthNeedsAgainst(): string;
+    /**
+     * The time window — the drill-down in time. Every figure below the line
+     * describes a slice, so the line prints before any of them; clockless
+     * calls under a window are excluded and *counted out loud*, because
+     * dropping them silently would understate the period's bill invisibly.
+     */
+    windowLine(since: string, until: string): string;
+    windowUndated(calls: number): string;
+    /** A window over a log with no clock gates nothing, which is an error. */
+    windowNeedsClock(): string;
+    /** A window matching nothing must not become a passing $0 gate. */
+    windowMatchesNothing(from: string, to: string): string;
+    sinceAfterUntil(): string;
+    badWhen(flag: string, value: string): string;
   };
   /**
    * `trazum route` — the loop the levers section could only point at.

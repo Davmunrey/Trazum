@@ -9,6 +9,24 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**`profile --since` / `--until`, the drill-down in time.** A UTC day or a full
+ISO 8601 timestamp; a bare `--until` date includes that whole day, because a
+window that excludes the day it names is a trap sprung on everyone who reads
+dates the way humans do. Internally half-open `[since, until)`, so adjacent
+windows share no record. The honesty rules carry the feature: a call with no
+`ts` cannot be placed inside or outside a window, so it is excluded and
+**counted out loud** — the window's figures are a floor on the period, and the
+report says so; a window matching nothing is an error naming what the log does
+cover, never a $0 report that would pass a `--max-usd` gate over a period the
+log does not contain; a window over a clockless log is an error for the
+`--max-growth-usd`-without-`--against` reason. With `--against`, both logs get
+the same window, and the gates gate the window — profile yesterday against the
+day before, with a budget, in one line of CI.
+
 ## 1.13.0 — "The bill learns to say no"
 
 ### Added

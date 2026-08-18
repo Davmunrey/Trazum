@@ -220,6 +220,13 @@ ${bold('OPCIONES DE profile')}
   --max-growth-usd <n>        Con --against: sale con 1 si la factura creció
                               más de n dólares sobre el registro anterior. Solo,
                               es un error, no un flag que vigila nada en silencio.
+  --since <cuándo>            Perfila solo llamadas desde/hasta ese momento. Un
+  --until <cuándo>            día UTC (2026-08-14) o una marca ISO 8601 completa;
+                              --until con fecha sola incluye ese día entero. Las
+                              llamadas sin "ts" no se pueden situar y quedan
+                              fuera — contadas en voz alta, nunca en silencio.
+                              Con --against, ambos registros llevan la misma
+                              ventana.
   --markdown-out <fichero>    Escribe además el informe en Markdown, para el
                               resumen de un job de CI o un comentario de PR.
   --pricing <fichero>         Overlay local de precios, como en el resto.
@@ -1002,6 +1009,18 @@ ${bold('EJEMPLOS')}
       `FALLO — la factura creció ${delta} respecto al registro anterior, por encima del límite --max-growth-usd de ${max}.`,
     maxGrowthNeedsAgainst: () =>
       '--max-growth-usd no tiene con qué comparar sin --against <anterior.jsonl>. Por sí solo habría corrido en silencio sin vigilar nada, y eso no es una respuesta.',
+    windowLine: (since, until) =>
+      `Filtrado con --since ${since} --until ${until}. Todo lo de abajo describe esta ventana, no el registro completo; una fecha sola significa ese día UTC entero.`,
+    windowUndated: (calls) =>
+      `${count(calls)} ${calls === 1 ? 'llamada no lleva' : 'llamadas no llevan'} marca de tiempo y no se ${calls === 1 ? 'puede situar' : 'pueden situar'} dentro o fuera de esta ventana, así que ${calls === 1 ? 'quedó fuera' : 'quedaron fuera'}. Su gasto está en el registro y no en este informe — las cifras de la ventana son un suelo del periodo.`,
+    windowNeedsClock: () =>
+      'Ningún registro lleva marca de tiempo, así que --since/--until no tienen por qué filtrar. Una ventana temporal sobre un registro sin reloj no vigilaría nada, y eso no es una respuesta. Añade "ts" a los registros — la receta del README dice dónde.',
+    windowMatchesNothing: (from, to) =>
+      `Ningún registro cae dentro de esta ventana. El registro cubre ${from} → ${to}. Una ventana que no encuentra nada no debe volverse un informe de $0 — bajo --max-usd pasaría una puerta de presupuesto sobre un periodo que el registro no cubre.`,
+    sinceAfterUntil: () =>
+      '--since es igual o posterior a --until, así que la ventana no contiene tiempo alguno. Revisa las dos fechas.',
+    badWhen: (flag, value) =>
+      `--${flag} no pudo leer "${value}". Acepta un día UTC (2026-08-14) o una marca ISO 8601 completa (2026-08-14T09:30:00Z).`,
   },
 
   route: {

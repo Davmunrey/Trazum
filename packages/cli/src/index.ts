@@ -172,6 +172,8 @@ const VALUE_FLAGS = new Set([
   'max-growth',
   'max-usd',
   'max-growth-usd',
+  'since',
+  'until',
   'export',
   'limit',
   'locale',
@@ -422,7 +424,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
-  profile: ['json', 'pricing', 'pricing-live', 'against', 'markdown-out', 'max-usd', 'max-growth-usd', 'label'],
+  profile: ['json', 'pricing', 'pricing-live', 'against', 'markdown-out', 'max-usd', 'max-growth-usd', 'label', 'since', 'until'],
   route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
@@ -1969,13 +1971,60 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
    * free".
    */
   const onlyLabel = stringFlag(args, 'label');
-  const report = profileUsage(raw, { catalogue: pricing, label: onlyLabel });
-  if (onlyLabel !== undefined && report.total.calls === 0 && report.unpriced.calls === 0) {
-    const unfiltered = profileUsage(raw, { catalogue: pricing });
-    const available = unfiltered.byLabel
-      .map((r) => (r.label === UNLABELLED ? t.profile.unlabelled() : r.label))
-      .join(', ');
-    throw new Error(t.route.labelNotFound(onlyLabel, available || '—'));
+  /**
+   * The drill-down in time. `--since`/`--until` take a UTC day or a full
+   * timestamp; a bare day means the whole of it — since its first instant,
+   * until its last — because "--until 2026-08-14" excluding the named day is
+   * a trap sprung on everyone who reads dates the way humans do. Internally
+   * the window is half-open `[since, until)`, so two adjacent windows share
+   * no record.
+   */
+  const parseWhen = (flag: string, endOfDay: boolean): number | undefined => {
+    const value = stringFlag(args, flag);
+    if (value === undefined) return undefined;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      const midnight = Date.parse(`${value}T00:00:00Z`);
+      if (Number.isFinite(midnight)) return endOfDay ? midnight + 86_400_000 : midnight;
+    }
+    const exact = Date.parse(value);
+    if (Number.isFinite(exact)) return exact;
+    throw new Error(t.profile.badWhen(flag, value));
+  };
+  const sinceMs = parseWhen('since', false);
+  const untilMs = parseWhen('until', true);
+  if (sinceMs !== undefined && untilMs !== undefined && sinceMs >= untilMs) {
+    throw new Error(t.profile.sinceAfterUntil());
+  }
+  const windowed = sinceMs !== undefined || untilMs !== undefined;
+
+  const report = profileUsage(raw, { catalogue: pricing, label: onlyLabel, sinceMs, untilMs });
+  if (report.total.calls === 0 && report.unpriced.calls === 0) {
+    if (onlyLabel !== undefined || windowed) {
+      // Diagnose against the log without the failed filter, so the error can
+      // name what does exist instead of describing an absence.
+      const unfiltered = profileUsage(raw, { catalogue: pricing });
+      if (unfiltered.total.calls > 0 || unfiltered.unpriced.calls > 0) {
+        if (onlyLabel !== undefined && !unfiltered.byLabel.some((r) => r.label === onlyLabel)) {
+          const available = unfiltered.byLabel
+            .map((r) => (r.label === UNLABELLED ? t.profile.unlabelled() : r.label))
+            .join(', ');
+          throw new Error(t.route.labelNotFound(onlyLabel, available || '—'));
+        }
+        if (windowed) {
+          /**
+           * A window that matches nothing must not become a $0 report — under
+           * `--max-usd` it would pass a budget gate over a period the log
+           * simply does not cover, which is the flattering non-answer. The
+           * error names what the log *does* cover, or says it has no clock at
+           * all, so the fix is visible in the message.
+           */
+          if (unfiltered.span === null) throw new Error(t.profile.windowNeedsClock());
+          throw new Error(
+            t.profile.windowMatchesNothing(dayOf(unfiltered.span.fromMs), dayOf(unfiltered.span.toMs)),
+          );
+        }
+      }
+    }
   }
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
@@ -1991,7 +2040,15 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
   // whole previous log would report every sibling workload as vanished savings.
   const previous =
     againstPath !== undefined
-      ? profileUsage(await readFile(againstPath, 'utf8'), { catalogue: pricing, label: onlyLabel })
+      ? profileUsage(await readFile(againstPath, 'utf8'), {
+          catalogue: pricing,
+          label: onlyLabel,
+          // The same window on both sides, for the same reason as the label:
+          // a windowed bill against an unwindowed one compares a slice to a
+          // whole and calls the difference growth.
+          sinceMs,
+          untilMs,
+        })
       : null;
   const againstDelta =
     previous !== null && previous.total.calls > 0
@@ -2118,6 +2175,23 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
     console.log(
       `  ${c.dim(wrap(`${t.profile.spanLine(dayOf(report.span.fromMs), dayOf(report.span.toMs), spanDays(report.span.fromMs, report.span.toMs))}${partial}`, 74, '  '))}`,
     );
+  }
+  /**
+   * The window, said before any figure is trusted as "the log": everything
+   * below describes a slice, and a slice presented as the whole is a figure
+   * attributed to something it does not describe. The undated count is loud —
+   * those calls' spend is in the log and not in this report, so the window's
+   * figures are a floor on the period, and only this line says so.
+   */
+  if (report.timeWindow !== null) {
+    console.log(
+      `  ${c.dim(wrap(t.profile.windowLine(stringFlag(args, 'since') ?? '—', stringFlag(args, 'until') ?? '—'), 74, '  '))}`,
+    );
+    if (report.timeWindow.undatedExcluded > 0) {
+      console.log(
+        `  ${c.yellow(wrap(t.profile.windowUndated(report.timeWindow.undatedExcluded), 74, '  '))}`,
+      );
+    }
   }
   console.log();
   // Every part, including the zero ones. A row missing because it was zero reads

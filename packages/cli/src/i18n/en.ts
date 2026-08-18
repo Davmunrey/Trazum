@@ -224,6 +224,12 @@ ${bold('OPTIONS FOR profile')}
   --max-growth-usd <n>        With --against: exit 1 when the bill grew more
                               than n dollars over the previous log. Alone it is
                               an error, not a flag that silently gates nothing.
+  --since <when>              Profile only calls at or after this moment. A UTC
+  --until <when>              day (2026-08-14) or a full ISO 8601 timestamp;
+                              --until with a bare date includes that whole day.
+                              Calls with no "ts" cannot be placed and are left
+                              out — counted out loud, never dropped silently.
+                              With --against, both logs get the same window.
   --markdown-out <file>       Also write the report as Markdown, for a CI job
                               summary or a pull request comment.
   --pricing <file>            Local price overlay, as everywhere else.
@@ -994,6 +1000,18 @@ ${bold('EXAMPLES')}
       `FAILED — the bill grew ${delta} against the previous log, over the --max-growth-usd limit of ${max}.`,
     maxGrowthNeedsAgainst: () =>
       '--max-growth-usd has nothing to compare without --against <previous.jsonl>. On its own it would have run silently and gated nothing, which is not an answer.',
+    windowLine: (since, until) =>
+      `Filtered to --since ${since} --until ${until}. Everything below describes this window, not the whole log; a bare date means the whole of that UTC day.`,
+    windowUndated: (calls) =>
+      `${count(calls)} ${calls === 1 ? 'call carries' : 'calls carry'} no timestamp and cannot be placed inside or outside this window, so ${calls === 1 ? 'it was' : 'they were'} left out. Their spend is in the log and not in this report — the window's figures are a floor on the period.`,
+    windowNeedsClock: () =>
+      'No record in this log carries a timestamp, so --since/--until have nothing to filter by. A time window over a clockless log would gate nothing, which is not an answer. Add "ts" to the records — the recipe in the README shows where.',
+    windowMatchesNothing: (from, to) =>
+      `No record falls inside this window. The log covers ${from} → ${to}. A window matching nothing must not become a $0 report — under --max-usd it would pass a budget gate over a period the log does not cover.`,
+    sinceAfterUntil: () =>
+      '--since is at or after --until, so the window contains no time at all. Check the two dates.',
+    badWhen: (flag, value) =>
+      `--${flag} could not read "${value}". It takes a UTC day (2026-08-14) or a full ISO 8601 timestamp (2026-08-14T09:30:00Z).`,
   },
 
   route: {
