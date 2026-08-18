@@ -148,7 +148,7 @@ describe('a tool failure is a result, not a protocol error', () => {
 describe('tools/list', () => {
   it('describes every tool with a schema a client can validate against', () => {
     const { tools } = call(request('tools/list', {})).result;
-    assert.equal(tools.length, 3);
+    assert.equal(tools.length, 4);
     for (const tool of tools) {
       assert.ok(tool.name && tool.title && tool.description, `${tool.name} is under-described`);
       assert.equal(tool.inputSchema.type, 'object');
@@ -163,6 +163,7 @@ describe('tools/list', () => {
     const byName = new Map(tools.map((tool) => [tool.name, tool]));
     assert.deepEqual(byName.get('optimize_prompt').inputSchema.required, ['prompt']);
     assert.deepEqual(byName.get('check_prompt').inputSchema.required, ['prompt', 'maxTokens']);
+    assert.deepEqual(byName.get('profile_usage').inputSchema.required, ['log']);
   });
 });
 

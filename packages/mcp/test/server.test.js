@@ -110,15 +110,17 @@ describe('the handshake', () => {
     fresh.close();
   });
 
-  it('lists exactly the three tools, and no more', async () => {
+  it('lists exactly the four tools, and no more', async () => {
     /**
      * Asserted as an exact set. This package's whole security argument is what it
      * *cannot* do — no paths, no network, no writes — and the way that argument
-     * decays is a fourth tool arriving without anyone re-reading it.
+     * decays is a tool arriving without anyone re-reading it. profile_usage was
+     * added under exactly that review: it takes log *text*, never a path, and the
+     * import test below still refuses the Node entry point that could read one.
      */
     const answer = await client.send('tools/list', {});
     const names = answer.result.tools.map((tool) => tool.name).sort();
-    assert.deepEqual(names, ['check_prompt', 'list_models', 'optimize_prompt']);
+    assert.deepEqual(names, ['check_prompt', 'list_models', 'optimize_prompt', 'profile_usage']);
   });
 });
 
@@ -190,6 +192,89 @@ describe('list_models', () => {
     assert.match(body, /prices reviewed \d{4}-\d{2}-\d{2}/);
     assert.match(body, /claude-opus-5/);
     assert.match(body, /verify before budgeting/);
+  });
+});
+
+describe('profile_usage', () => {
+  const line = (record) => JSON.stringify(record);
+
+  it('prices a log and says the figures are exact, not estimates', async () => {
+    const log = [
+      line({ model: 'claude-opus-5', label: 'support', usage: { input_tokens: 10_000, output_tokens: 500 }, stop_reason: 'end_turn' }),
+      line({ model: 'claude-opus-5', label: 'support', usage: { input_tokens: 12_000, output_tokens: 700 }, stop_reason: 'max_tokens' }),
+    ].join('\n');
+    const body = bodyOf(await client.call('profile_usage', { log }));
+    assert.match(body, /2 calls · \$/);
+    assert.match(body, /exact billed token counts/);
+    // Hand arithmetic, not a snapshot: 22,000 input at $5/MTok + 1,200 output
+    // at $25/MTok = $0.14 exactly.
+    assert.match(body, /\$0\.1400/);
+    assert.match(body, /support/);
+    // One of the two calls hit the ceiling, and its output was 700 of 1,200
+    // output tokens: 700 × $25/MTok = $0.0175.
+    assert.match(body, /1 call hit the max_tokens ceiling/);
+    assert.match(body, /\$0\.0175/);
+    // No period in the log, no "per month" in the answer.
+    assert.ok(!/per month|\/month/.test(body), 'a monthly figure appeared from a period-less log');
+  });
+
+  it('never echoes a session key, which is the product guarantee', async () => {
+    const secret = 'sess-8f3e-CUSTOMER-ALPHA';
+    const log = [1, 2, 3]
+      .map((turn) =>
+        line({
+          model: 'claude-opus-5',
+          label: 'chat',
+          session: secret,
+          usage: { input_tokens: 8_000 * turn, output_tokens: 200 },
+        }),
+      )
+      .join('\n');
+    const body = bodyOf(await client.call('profile_usage', { log }));
+    assert.ok(!body.includes(secret), 'the session key was printed');
+    assert.ok(!body.includes('CUSTOMER'), 'part of the session key was printed');
+    // The sessions were used, though: conversation growth is reported.
+    assert.match(body, /conversation growth/);
+  });
+
+  it('reports an unsettled cache verdict as unsettled, never the flattering half', async () => {
+    // Reads per write inside the band where the TTL flips the verdict:
+    // paid-off at the assumed 5-minute rate, lost-money at 1 hour.
+    const log = line({
+      model: 'claude-opus-5',
+      usage: {
+        input_tokens: 100,
+        cache_read_input_tokens: 600_000,
+        cache_creation_input_tokens: 1_000_000,
+        output_tokens: 10,
+      },
+    });
+    const body = bodyOf(await client.call('profile_usage', { log }));
+    assert.match(body, /cannot say whether caching paid for itself/);
+    assert.ok(!/Caching took .* off this bill, against/.test(body), 'the flattering half was stated');
+  });
+
+  it('names what it could not read or price, out loud', async () => {
+    const log = [
+      line({ model: 'some-internal-model', usage: { input_tokens: 500, output_tokens: 50 } }),
+      'not json at all',
+    ].join('\n');
+    const body = bodyOf(await client.call('profile_usage', { log }));
+    assert.match(body, /some-internal-model/);
+    assert.match(body, /1 line could not be read and was left out \(line 2\)/);
+  });
+
+  it('refuses a log past the size cap rather than working through it', async () => {
+    const answer = await client.call('profile_usage', { log: 'a'.repeat(2_000_001) });
+    assert.ok(answer.result?.isError || answer.error, 'an oversized log was accepted');
+  });
+
+  it('takes text only — the schema has no path-shaped property', async () => {
+    const answer = await client.send('tools/list', {});
+    const tool = answer.result.tools.find((t) => t.name === 'profile_usage');
+    assert.deepEqual(Object.keys(tool.inputSchema.properties), ['log']);
+    assert.equal(tool.inputSchema.additionalProperties, false);
+    assert.match(tool.inputSchema.properties.log.description, /Never a file path/);
   });
 });
 

@@ -1,11 +1,12 @@
 # @trazum/mcp
 
 Trazum as an [MCP](https://modelcontextprotocol.io) server, so an agent can price
-and budget a prompt **before** it sends it.
+and budget a prompt **before** it sends it — and read a usage log to see where the
+money already went.
 
-Every other Trazum surface answers that question for a human after the fact — a CLI
-you run, a page you paste into, a check that fails a build. This answers it for the
-thing actually composing the prompt.
+Every other Trazum surface answers those questions for a human after the fact — a
+CLI you run, a page you paste into, a check that fails a build. This answers them
+for the thing actually composing the prompts.
 
 ## It runs on your machine and costs nothing to host
 
@@ -28,6 +29,7 @@ because "MCP server" reads like infrastructure and this is not.
 | --- | --- |
 | `check_prompt` | Does this prompt fit `maxTokens`? And if not, would optimising it fit? |
 | `optimize_prompt` | The shorter text, the token counts either side, what the difference is worth per month, and any advisories. |
+| `profile_usage` | Where the money went, from a usage log passed as text: the spend split, per label and per model, whether caching paid for itself, and the levers that would actually move the bill. The one tool whose figures are exact — they are the provider's own billed counts. |
 | `list_models` | Prices, context windows and cacheable minimums, with the date the table was reviewed. |
 
 `check_prompt` is the one worth wiring up. It has **three** outcomes rather than
@@ -43,11 +45,12 @@ instructions. A boolean throws away the actionable half.
 
 ## What it cannot do, which is the design
 
-**No paths.** Every tool takes prompt text. A tool that accepted a filename would
-be a file-read primitive reachable by whatever the model decided to ask for. This
-package imports `@trazum/core`, the browser-safe entry point, and never
-`@trazum/core/node` — the capability is *absent* rather than unused, and a test
-enforces it.
+**No paths.** Every tool takes text — the prompt itself, the log itself. A tool
+that accepted a filename would be a file-read primitive reachable by whatever the
+model decided to ask for. This package imports `@trazum/core`, the browser-safe
+entry point, and never `@trazum/core/node` — the capability is *absent* rather
+than unused, and a test enforces it. The agent reads the file in its own sandbox,
+where its own permissions apply, and hands over the content.
 
 **No network.** Nothing here calls a model. `--suggest` and `eval` exist in the CLI
 and are deliberately not exposed: they spend your money, and a tool an agent can

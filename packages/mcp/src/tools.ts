@@ -1,9 +1,14 @@
 import {
   BUNDLED_CATALOGUE,
   PRICING_LAST_REVIEWED,
+  UNLABELLED,
+  billLevers,
+  cacheEconomics,
+  cacheHitRate,
   formatUsd,
   listModels,
   optimize,
+  profileUsage,
 } from '@trazum/core';
 import type { RuleLevel } from '@trazum/core';
 
@@ -245,5 +250,250 @@ const MODELS: ToolDefinition = {
   },
 };
 
+/**
+ * Larger than the prompt cap because a usage log is a different object: a month
+ * of calls at one JSON line each. Two million characters is a few MB of log —
+ * far beyond what an agent realistically holds in context, so the cap exists to
+ * refuse the accident, not to invite the maximum.
+ */
+export const MAX_LOG_CHARS = 2_000_000;
+
+/** `<1%` for a real but sub-half-percent share, never a rounded-to-zero "0%". */
+const pct = (fraction: number): string =>
+  fraction > 0 && fraction < 0.005 ? '<1%' : `${(fraction * 100).toFixed(0)}%`;
+
+const count = (n: number, word: string): string =>
+  `${n.toLocaleString('en-US')} ${n === 1 ? word : `${word}s`}`;
+
+const PROFILE: ToolDefinition = {
+  name: 'profile_usage',
+  title: 'Where the money went, from a usage log',
+  description:
+    'Reads a usage log — one JSON object per line, each with a "model" and the "usage" object '
+    + 'the API returned — and says where the money went: the spend split, per label and per '
+    + 'model, whether caching paid for itself, and which levers would actually move the bill. '
+    + 'These are the provider\'s own billed token counts, not estimates. Pass the log text '
+    + 'itself: this server never reads files. Add "label" and "session" fields to the records '
+    + 'to unlock the per-workload and conversation-growth findings; the session key is grouped '
+    + 'by and never shown.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      log: {
+        type: 'string',
+        minLength: 1,
+        maxLength: MAX_LOG_CHARS,
+        description: 'The usage log text, one JSON object per line. Never a file path.',
+      },
+    },
+    required: ['log'],
+    additionalProperties: false,
+  },
+  run: (args) => {
+    const log = args.log;
+    if (typeof log !== 'string') throw new InvalidArguments('log must be a string');
+    if (log.length === 0) throw new InvalidArguments('log is empty');
+    if (log.length > MAX_LOG_CHARS) {
+      throw new InvalidArguments(
+        `log is ${log.length} characters, over the ${MAX_LOG_CHARS} limit`,
+      );
+    }
+
+    const report = profileUsage(log, { catalogue: BUNDLED_CATALOGUE });
+    const { total } = report;
+    const lines: string[] = [];
+
+    const gaps = (): void => {
+      if (report.unpricedModels.length > 0) {
+        lines.push(
+          `${count(report.unpriced.calls, 'call')} are not in these totals — the pricing `
+            + `catalogue does not know: ${report.unpricedModels.join(', ')}. The CLI can price `
+            + 'them with a pricing overlay (trazum profile --pricing).',
+        );
+      }
+      if (report.skippedLines.length > 0) {
+        const shown = report.skippedLines.slice(0, 10).join(', ');
+        const more = report.skippedLines.length > 10 ? ', …' : '';
+        lines.push(
+          `${count(report.skippedLines.length, 'line')} could not be read and`
+            + ` ${report.skippedLines.length === 1 ? 'was' : 'were'} left out`
+            + ` (line${report.skippedLines.length === 1 ? '' : 's'} ${shown}${more}).`,
+        );
+      }
+    };
+
+    if (total.calls === 0) {
+      lines.push(
+        report.unpriced.calls > 0
+          ? 'None of the models in that log are in the pricing catalogue, so there is no bill '
+            + 'to report.'
+          : 'No usage records in that log.',
+      );
+      gaps();
+      return lines.join('\n');
+    }
+
+    // The one Trazum surface whose figures are NOT estimates, said out loud
+    // because every sibling tool here carries the ±10% band.
+    lines.push(
+      `${count(total.calls, 'call')} · ${formatUsd(total.totalUsd)} — exact billed token`
+        + ` counts from the log, not estimates; prices reviewed ${PRICING_LAST_REVIEWED}.`
+        + ' Figures are "on this bill" — the log states no period, so nothing here is per-month.',
+      `input ${formatUsd(total.inputUsd)} · cache reads ${formatUsd(total.cacheReadUsd)}`
+        + ` · cache writes ${formatUsd(total.cacheWriteUsd)}`
+        + ` · output ${formatUsd(total.outputUsd)} (${pct(total.outputUsd / total.totalUsd)})`,
+    );
+
+    const name = (label: string): string => (label === UNLABELLED ? '(no label)' : label);
+    const table = (heading: string, rows: Array<{ key: string; usd: number; calls: number }>) => {
+      lines.push('', `--- ${heading} ---`);
+      for (const row of rows.slice(0, 10)) {
+        lines.push(
+          `${formatUsd(row.usd).padStart(11)}  ${pct(row.usd / total.totalUsd).padStart(4)}`
+            + `  ${row.key}  (${count(row.calls, 'call')})`,
+        );
+      }
+      if (rows.length > 10) lines.push(`…and ${rows.length - 10} more.`);
+    };
+    table('by label', report.byLabel.map((e) => ({
+      key: name(e.label), usd: e.breakdown.totalUsd, calls: e.breakdown.calls,
+    })));
+    table('by model', report.byModel.map((e) => ({
+      key: e.model, usd: e.breakdown.totalUsd, calls: e.breakdown.calls,
+    })));
+
+    lines.push('', '--- did caching pay for itself? ---');
+    const cache = cacheEconomics(total);
+    /**
+     * The verdict is unsettled when the TTL assumption alone flips it: neither
+     * end may be stated as the answer, and the flattering half least of all.
+     * Same gate as the CLI and the web viewer.
+     */
+    const unsettled = cache.worstCaseVerdict !== cache.verdict && total.assumedWriteTtlCalls > 0;
+    if (unsettled) {
+      lines.push(
+        `This log cannot say whether caching paid for itself. ${count(total.assumedWriteTtlCalls, 'call')}`
+          + ' did not record which cache-write TTL was used: at the 5-minute rate caching took'
+          + ` ${formatUsd(Math.abs(cache.deltaUsd))} off this bill, and at the 1-hour rate the`
+          + ` same calls added ${formatUsd(Math.abs(cache.worstCaseDeltaUsd))} to it. Neither is`
+          + ' the answer. Record the "cache_creation" object the API returns and this settles itself.',
+      );
+    } else if (cache.verdict === 'not-attempted') {
+      lines.push(
+        'Caching was never used on these calls. If any prefix repeats, that is the largest '
+          + 'saving available.',
+      );
+    } else if (cache.verdict === 'unpriced') {
+      lines.push('Cache tokens exist on models the catalogue cannot price; no comparison to make.');
+    } else if (cache.verdict === 'lost-money') {
+      lines.push(
+        `Caching added ${formatUsd(cache.deltaUsd)} to this bill instead of taking it off — a`
+          + ' write costs 1.25x plain input (2x at the 1-hour TTL), so a prefix that changes'
+          + ' faster than it is reused pays that premium for nothing.',
+      );
+    } else if (cache.verdict === 'paid-off') {
+      lines.push(
+        `Caching took ${formatUsd(Math.abs(cache.deltaUsd))} off this bill, against the same`
+          + ' tokens uncached.',
+      );
+    } else {
+      lines.push('Caching came out level: it charged what the same tokens cost as plain input.');
+    }
+    if (!unsettled && total.assumedWriteTtlCalls > 0) {
+      lines.push(
+        `That figure is a bound, not a measurement: ${count(total.assumedWriteTtlCalls, 'call')}`
+          + ' did not record a cache-write TTL.',
+      );
+    }
+    const losing = report.byLabel.filter(
+      (e) => cacheEconomics(e.breakdown).verdict === 'lost-money',
+    );
+    if (cache.verdict !== 'lost-money' && losing.length > 0) {
+      lines.push(`The total hides a loss: caching loses money on ${losing.map((e) => name(e.label)).join(', ')}.`);
+    }
+    const hit = cacheHitRate(total);
+    if (hit !== null) lines.push(`Cache hit rate ${pct(hit)} of billable input.`);
+
+    lines.push('', '--- what would actually move this bill ---');
+    const levers = billLevers(report, { catalogue: BUNDLED_CATALOGUE });
+    if (report.byLabel.length === 1 && report.byLabel[0]!.label === UNLABELLED) {
+      lines.push(
+        'None of these calls carried a label, so this is every workload in one row. Add "label" '
+          + 'to the record and the levers split by workload, the grouping a decision is made at.',
+      );
+    }
+    if (levers.slices.length === 0) {
+      lines.push(
+        'Nothing here clears 1% of the bill: these calls are already on the cheapest model of '
+          + 'their family, or their provider has no batch API. A real answer, not an empty section.',
+      );
+    }
+    for (const slice of levers.slices.slice(0, 5)) {
+      lines.push(
+        `${name(slice.label)} on ${slice.modelName} — up to ${formatUsd(slice.combinedUsd)}`
+          + ` (${pct(slice.shareOfBill)}); ${count(slice.calls, 'call')}, ${formatUsd(slice.spentUsd)} spent`,
+      );
+      if (slice.route !== null) {
+        lines.push(
+          `  route to ${slice.route.candidate.displayName}: ${formatUsd(slice.route.savingUsd)}`
+            + ' — an evaluation question, not arithmetic; the CLI measures it: trazum route',
+        );
+      }
+      if (slice.batch !== null) {
+        lines.push(`  batch API: ${formatUsd(slice.batch.savingUsd)}`);
+      }
+    }
+    lines.push(
+      `For comparison, shortening prompt text can touch ${formatUsd(levers.promptCeilingUsd)}`
+        + ` at the very most (${pct(levers.promptCeilingShare)}) — a ceiling, and the real figure`
+        + ' is far below it: most input tokens are context, history and tool results no prompt'
+        + ' file contains.',
+    );
+
+    lines.push('', '--- conversations ---');
+    if (!report.hasSessions) {
+      lines.push(
+        'No call carried a session, so re-sending-the-conversation costs could not be measured '
+          + '— usually the largest line on a chat or agent bill. Add "session" to the record; '
+          + 'it is grouped by and never shown.',
+      );
+    }
+    for (const growth of report.conversations.slice(0, 3)) {
+      lines.push(
+        `${name(growth.label)} on ${growth.modelName}: at most ${formatUsd(growth.growthUsd)}`
+          + ` of this bill is conversation growth (${pct(growth.shareOfBill)}) — a ceiling, not a`
+          + " saving; part is the user's own new messages. Input runs"
+          + ` ${Math.round(growth.minTurnTokens).toLocaleString('en-US')} to`
+          + ` ${Math.round(growth.maxTurnTokens).toLocaleString('en-US')} tokens per turn over`
+          + ` conversations up to ${growth.longestSession} turns.`,
+      );
+    }
+
+    lines.push('', '--- truncation ---');
+    if (total.stopReasonCalls === 0) {
+      lines.push(
+        'Whether any answers were cut off could not be measured — no call carries a stop '
+          + 'reason. Add "stop_reason" (Anthropic) or "finish_reason" (OpenAI) to the record.',
+      );
+    } else if (total.truncatedCalls > 0) {
+      lines.push(
+        `${count(total.truncatedCalls, 'call')} hit the max_tokens ceiling:`
+          + ` ${formatUsd(total.truncatedOutputUsd)} of output`
+          + ` (${pct(total.outputUsd > 0 ? total.truncatedOutputUsd / total.outputUsd : 0)})`
+          + ' bought answers cut off mid-generation — paid in full and frequently retried.',
+      );
+    } else {
+      lines.push('Stop reasons were recorded, and no answer hit the max_tokens ceiling.');
+    }
+
+    if (report.unpricedModels.length > 0 || report.skippedLines.length > 0) {
+      lines.push('', '--- gaps ---');
+      gaps();
+    }
+
+    return lines.join('\n');
+  },
+};
+
 /** The whole surface. An exact list, asserted as one by the tests. */
-export const TOOLS: readonly ToolDefinition[] = [OPTIMIZE, CHECK, MODELS];
+export const TOOLS: readonly ToolDefinition[] = [OPTIMIZE, CHECK, MODELS, PROFILE];
