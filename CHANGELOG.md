@@ -13,6 +13,14 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**The change by model — where the mix moved.** A workload that keeps its name
+and switches from Haiku to Opus reads as "chat grew" in the per-label drivers,
+and the reason is the model. `--against` now splits the same change by model —
+appeared and vanished models named, one model on both sides deliberately
+silent because it would restate the totals line — and both driver sets ride
+`--json` as `against.byLabel` / `against.byModel`, computed once beside the
+gates so no rendering derives its own.
+
 **The drill-downs reach the GitHub Action.** `label`, `since` and `until`
 inputs on the spend gate — one workload's budget, or one period's, in a
 workflow. The CLI owns the honesty rules, so a label or window matching

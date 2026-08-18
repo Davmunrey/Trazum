@@ -952,6 +952,8 @@ ${bold('EJEMPLOS')}
     againstDriver: (delta, label, before, after) => `${delta}  ${label}  (${before} → ${after})`,
     againstDriverNew: (delta, label) => `${delta}  ${label}  (nuevo desde el registro anterior)`,
     againstDriverGone: (delta, label) => `${delta}  ${label}  (desaparecido desde el registro anterior)`,
+    againstByModel: () =>
+      'El mismo cambio, por modelo — hacia dónde se movió la mezcla:',
     labelPrefixBelowMinimum: (file, prefix, minimum, model) =>
       `${file} (tal y como está hoy — el registro puede ser anterior): el prefijo estable son ${prefix} tokens y ${model} no cachea nada por debajo de ${minimum}. Poner cache_control ahí no da error, simplemente nunca cachea — que es exactamente el aspecto que tiene en la factura una caché que solo escribe.`,
     labelPrefixMovable: (file, movable, prefix) =>

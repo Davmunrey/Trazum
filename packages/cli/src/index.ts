@@ -1954,6 +1954,29 @@ function isoDate(): string {
  * metered API calls somebody was actually billed for — the bill exists wherever
  * Trazum happens to be running, so the host has no bearing on it.
  */
+/**
+ * Per-key contribution to the change between two bills, over the union of
+ * keys so an appeared or vanished workload is named rather than folded
+ * silently into the total. Computed once and handed to every rendering and
+ * to `--json` alike — a sign convention restated by hand is how it flips.
+ */
+function driversBetween(
+  before: Array<{ key: string; usd: number }>,
+  after: Array<{ key: string; usd: number }>,
+): Array<{ key: string; was: number | null; now: number | null; delta: number }> {
+  const wasBy = new Map(before.map((r) => [r.key, r.usd]));
+  const nowBy = new Map(after.map((r) => [r.key, r.usd]));
+  return [...new Set([...wasBy.keys(), ...nowBy.keys()])]
+    .map((key) => ({
+      key,
+      was: wasBy.has(key) ? wasBy.get(key)! : null,
+      now: nowBy.has(key) ? nowBy.get(key)! : null,
+    }))
+    .map((d) => ({ ...d, delta: (d.now ?? 0) - (d.was ?? 0) }))
+    .filter((d) => Math.abs(d.delta) > 1e-9)
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+}
+
 async function commandProfile(args: Args, config: TrazumConfig, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
   const path = args.positional[0];
   if (path === undefined) {
@@ -2054,6 +2077,27 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
     previous !== null && previous.total.calls > 0
       ? report.total.totalUsd - previous.total.totalUsd
       : null;
+  /**
+   * The drivers of the change, per label and per model, computed once here so
+   * the terminal, the JSON and any future rendering describe the same change.
+   * The model half answers the question the label half cannot: "the growth is
+   * traffic moving from Haiku to Opus" is a fact about the mix, invisible in
+   * per-workload rows whose names did not change.
+   */
+  const labelDrivers =
+    previous !== null && previous.total.calls > 0
+      ? driversBetween(
+          previous.byLabel.map((r) => ({ key: r.label, usd: r.breakdown.totalUsd })),
+          report.byLabel.map((r) => ({ key: r.label, usd: r.breakdown.totalUsd })),
+        )
+      : [];
+  const modelDrivers =
+    previous !== null && previous.total.calls > 0
+      ? driversBetween(
+          previous.byModel.map((r) => ({ key: r.model, usd: r.breakdown.totalUsd })),
+          report.byModel.map((r) => ({ key: r.model, usd: r.breakdown.totalUsd })),
+        )
+      : [];
   // A gate flag that silently does nothing is not an answer — same rule as
   // --apply-suggestions without --suggest.
   if (typeof args.flags.get('max-growth-usd') === 'string' && againstPath === undefined) {
@@ -2117,7 +2161,17 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
           // previous log had nothing priced, which is a different answer from
           // zero growth.
           ...(previous !== null
-            ? { against: { previousTotalUsd: previous.total.totalUsd, deltaUsd: againstDelta } }
+            ? {
+                against: {
+                  previousTotalUsd: previous.total.totalUsd,
+                  deltaUsd: againstDelta,
+                  // The same drivers the terminal names, as data. A finding
+                  // the machine-readable output omits is a finding the
+                  // reader's tooling will never surface.
+                  byLabel: labelDrivers,
+                  byModel: modelDrivers,
+                },
+              }
             : {}),
         },
         null,
@@ -2705,35 +2759,42 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
         `  ${c.bold(wrap(t.profile.againstTotals(formatUsd(previous.total.totalUsd), formatUsd(report.total.totalUsd), formatSignedUsd(delta), growthPct, t.profile.calls(previous.total.calls), t.profile.calls(report.total.calls)), 74, '  '))}`,
       );
 
-      // Drivers: per-label contribution to the change, largest magnitude first.
-      // Derived over the union of labels so an appeared or vanished workload is
-      // named rather than folded silently into the total.
-      const before = new Map(previous.byLabel.map((r) => [r.label, r.breakdown]));
-      const after = new Map(report.byLabel.map((r) => [r.label, r.breakdown]));
-      const labels = [...new Set([...before.keys(), ...after.keys()])];
-      const drivers = labels
-        .map((label) => ({
-          label,
-          was: before.get(label)?.totalUsd ?? null,
-          now: after.get(label)?.totalUsd ?? null,
-        }))
-        .map((d) => ({ ...d, delta: (d.now ?? 0) - (d.was ?? 0) }))
-        .filter((d) => Math.abs(d.delta) > 1e-9)
-        .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+      // Drivers: per-key contribution to the change, largest magnitude first,
+      // computed once beside the gates so no rendering derives its own.
+      const driverLine = (d: { key: string; was: number | null; now: number | null; delta: number }, shown: string): string =>
+        d.was === null
+          ? t.profile.againstDriverNew(formatSignedUsd(d.delta), shown)
+          : d.now === null
+            ? t.profile.againstDriverGone(formatSignedUsd(d.delta), shown)
+            : t.profile.againstDriver(formatSignedUsd(d.delta), shown, formatUsd(d.was), formatUsd(d.now));
 
       console.log();
-      for (const d of drivers.slice(0, 5)) {
-        const shown = d.label === UNLABELLED ? t.profile.unlabelled() : d.label;
-        const line =
-          d.was === null
-            ? t.profile.againstDriverNew(formatSignedUsd(d.delta), shown)
-            : d.now === null
-              ? t.profile.againstDriverGone(formatSignedUsd(d.delta), shown)
-              : t.profile.againstDriver(formatSignedUsd(d.delta), shown, formatUsd(d.was), formatUsd(d.now));
+      for (const d of labelDrivers.slice(0, 5)) {
+        const line = driverLine(d, d.key === UNLABELLED ? t.profile.unlabelled() : d.key);
         console.log(`  ${d.delta > 0 ? c.yellow(line) : c.dim(line)}`);
       }
-      if (drivers.length > 5) {
-        console.log(`  ${c.dim(t.profile.andMoreLabels(drivers.length - 5))}`);
+      if (labelDrivers.length > 5) {
+        console.log(`  ${c.dim(t.profile.andMoreLabels(labelDrivers.length - 5))}`);
+      }
+
+      /**
+       * The same change, by model — where the mix moved. The label rows cannot
+       * show it: a workload that kept its name and switched from Haiku to Opus
+       * reads as "chat grew", and the reason is the model. Only printed when
+       * more than one model is involved; with one model on both sides, this
+       * section restates the totals line and says nothing new.
+       */
+      const modelsInvolved = new Set([
+        ...previous.byModel.map((r) => r.model),
+        ...report.byModel.map((r) => r.model),
+      ]);
+      if (modelDrivers.length > 0 && modelsInvolved.size > 1) {
+        console.log();
+        console.log(`  ${c.dim(t.profile.againstByModel())}`);
+        for (const d of modelDrivers.slice(0, 3)) {
+          const line = driverLine(d, d.key);
+          console.log(`  ${d.delta > 0 ? c.yellow(line) : c.dim(line)}`);
+        }
       }
     }
   }

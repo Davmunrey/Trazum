@@ -943,6 +943,8 @@ ${bold('EXAMPLES')}
     againstDriver: (delta, label, before, after) => `${delta}  ${label}  (${before} → ${after})`,
     againstDriverNew: (delta, label) => `${delta}  ${label}  (new since the previous log)`,
     againstDriverGone: (delta, label) => `${delta}  ${label}  (gone since the previous log)`,
+    againstByModel: () =>
+      'The same change, by model — where the mix moved:',
     labelPrefixBelowMinimum: (file, prefix, minimum, model) =>
       `${file} (as it is today — the log may predate it): the stable prefix is ${prefix} tokens and ${model} caches nothing under ${minimum}. Setting cache_control there does not error, it simply never caches — which is what a cache that only writes looks like from the bill.`,
     labelPrefixMovable: (file, movable, prefix) =>
