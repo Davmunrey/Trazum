@@ -40,6 +40,7 @@ import {
   plannedCalls,
   PRICING_LAST_REVIEWED,
   profilePrompt,
+  profileToCsv,
   profileUsage,
   promptId,
   providerFromEnv,
@@ -174,6 +175,7 @@ const VALUE_FLAGS = new Set([
   'max-usd',
   'max-growth-usd',
   'max-cache-loss-usd',
+  'csv-out',
   'since',
   'until',
   'export',
@@ -426,7 +428,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
-  profile: ['json', 'pricing', 'pricing-live', 'against', 'markdown-out', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'label', 'since', 'until'],
+  profile: ['json', 'pricing', 'pricing-live', 'against', 'markdown-out', 'csv-out', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'label', 'since', 'until'],
   route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
@@ -2235,6 +2237,83 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
     }
   };
 
+  /**
+   * The side files the caller asked for. Written on **both** output paths:
+   * under --json the human rendering returns early, and the first version of
+   * --csv-out therefore wrote nothing at all there — a flag that silently did
+   * nothing, which is the fault this repository keeps refusing elsewhere.
+   */
+  const writeSideFiles = async (): Promise<void> => {
+    /**
+     * Where the "wrote to" notice goes. Under `--json`, stdout carries the
+     * report and nothing else — a status line there turns a parseable
+     * document into a parse error, which is how a pipeline discovers the
+     * feature. The gates already route their verdicts to stderr for the same
+     * reason.
+     */
+    const notice = boolFlag(args, 'json')
+      ? (message: string): void => console.error(message)
+      : (message: string): void => console.log(message);
+  /**
+     * The same report as GitHub-flavoured markdown, for a job summary or a PR
+     * comment. Written from the same message catalogue the terminal used, because
+     * two renderings of one finding drift the moment they are worded twice.
+     */
+      const markdownOut = stringFlag(args, 'markdown-out');
+    if (markdownOut !== undefined) {
+      await writeFile(
+        markdownOut,
+        renderProfileMarkdown({
+          report,
+          levers,
+          cache,
+          t,
+          ...(windowed
+            ? { window: { since: stringFlag(args, 'since') ?? '—', until: stringFlag(args, 'until') ?? '—' } }
+            : {}),
+          ...(pricingStale !== null ? { stalePricing: pricingStale } : {}),
+          // The comparison, when there was one — the same figures and the same
+          // drivers the terminal printed, never re-derived here.
+          ...(previous !== null
+            ? {
+                against: {
+                  previousTotalUsd: previous.total.totalUsd,
+                  previousCalls: previous.total.calls,
+                  labelDrivers,
+                  modelDrivers:
+                    new Set([
+                      ...previous.byModel.map((r) => r.model),
+                      ...report.byModel.map((r) => r.model),
+                    ]).size > 1
+                      ? modelDrivers
+                      : [],
+                  overlap:
+                    againstOverlap !== null
+                      ? { from: dayOf(againstOverlap.fromMs), to: dayOf(againstOverlap.toMs) }
+                      : null,
+                  nothingPriced: previous.total.calls === 0,
+                },
+              }
+            : {}),
+        }),
+        'utf8',
+      );
+      notice(c.dim(t.report.wroteTo(markdownOut)));
+    }
+
+    /**
+     * The same report as a spreadsheet, one row per label and model — the grain
+     * a routing or budget decision is made at. Deliberately without a total
+     * row: a total inside a data file is summed with the data and doubles every
+     * figure downstream.
+     */
+    const csvOut = stringFlag(args, 'csv-out');
+    if (csvOut !== undefined) {
+      await writeFile(csvOut, profileToCsv(report, { unlabelled: t.profile.unlabelled() }), 'utf8');
+      notice(c.dim(t.report.wroteTo(csvOut)));
+    }
+  };
+
   if (boolFlag(args, 'json')) {
     /**
      * The report, plus everything the human output leads on.
@@ -2283,6 +2362,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
         2,
       ),
     );
+    await writeSideFiles();
     applyGates();
     return;
   }
@@ -2952,52 +3032,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
 
   reportProfileGaps(report, t, n, pricingStale);
 
-  /**
-   * The same report as GitHub-flavoured markdown, for a job summary or a PR
-   * comment. Written from the same message catalogue the terminal used, because
-   * two renderings of one finding drift the moment they are worded twice.
-   */
-  const markdownOut = stringFlag(args, 'markdown-out');
-  if (markdownOut !== undefined) {
-    await writeFile(
-      markdownOut,
-      renderProfileMarkdown({
-        report,
-        levers,
-        cache,
-        t,
-        ...(windowed
-          ? { window: { since: stringFlag(args, 'since') ?? '—', until: stringFlag(args, 'until') ?? '—' } }
-          : {}),
-        ...(pricingStale !== null ? { stalePricing: pricingStale } : {}),
-        // The comparison, when there was one — the same figures and the same
-        // drivers the terminal printed, never re-derived here.
-        ...(previous !== null
-          ? {
-              against: {
-                previousTotalUsd: previous.total.totalUsd,
-                previousCalls: previous.total.calls,
-                labelDrivers,
-                modelDrivers:
-                  new Set([
-                    ...previous.byModel.map((r) => r.model),
-                    ...report.byModel.map((r) => r.model),
-                  ]).size > 1
-                    ? modelDrivers
-                    : [],
-                overlap:
-                  againstOverlap !== null
-                    ? { from: dayOf(againstOverlap.fromMs), to: dayOf(againstOverlap.toMs) }
-                    : null,
-                nothingPriced: previous.total.calls === 0,
-              },
-            }
-          : {}),
-      }),
-      'utf8',
-    );
-    console.log(c.dim(t.report.wroteTo(markdownOut)));
-  }
+  await writeSideFiles();
 
   applyGates();
 }

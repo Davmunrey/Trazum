@@ -27,6 +27,10 @@ export type { CacheTtlFit, TtlFitOptions, TtlFitTracker, TtlFitVerdict } from '.
 // The drivers of a change between two bills — one implementation, because the
 // sign convention (positive means the bill grew) has flipped once already
 // when restated by hand. See against.ts.
+// The profile as a spreadsheet — one row per label and model, no total row,
+// empty cells where dollars are unknown. See csv.ts.
+export { PROFILE_CSV_COLUMNS, profileToCsv } from './csv.js';
+export type { ProfileCsvOptions } from './csv.js';
 export { driversBetween } from './against.js';
 export type { AgainstDriver } from './against.js';
 export { createSessionLedgerTracker, singleTurnCacheWrites } from './session-ledger.js';

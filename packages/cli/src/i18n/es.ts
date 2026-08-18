@@ -235,6 +235,12 @@ ${bold('OPCIONES DE profile')}
                               ventana.
   --markdown-out <fichero>    Escribe además el informe en Markdown, para el
                               resumen de un job de CI o un comentario de PR.
+  --csv-out <fichero>         Escribe además el informe en CSV, una fila por
+                              etiqueta y modelo. Sin fila de total, a propósito:
+                              un total dentro de un fichero de datos acaba
+                              sumado con los datos. Los modelos sin precio
+                              conservan sus tokens y dejan las celdas de
+                              dólares vacías, nunca a cero.
   --pricing <fichero>         Overlay local de precios, como en el resto.
   --json                      El informe completo como datos, palancas incluidas.
 
