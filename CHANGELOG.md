@@ -13,6 +13,15 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**The README catches up with eight releases.** The profile section now
+documents what the tool actually reports: the shape of the day and the Batch
+API question it answers, what one conversation costs (median against p95),
+conversations that never came back and the ceiling/fact split their figure
+carries, and the coverage section. The CI-gate section gains the third gate
+(`--max-cache-loss-usd`, reading the worst case), `spend` budgets in the
+config, and the floor note every gate now prints; the output section names
+`--csv-out`, directory mode and the documented `--json` contract.
+
 **The coverage section reaches the MCP and the browser.** `profile_usage`
 lists the missing fields with counts an agent can act on, and the web Bill
 tab shows them in the gaps footer — same counts, same silence on a complete
