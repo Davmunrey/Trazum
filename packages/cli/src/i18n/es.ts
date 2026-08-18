@@ -964,6 +964,8 @@ ${bold('EJEMPLOS')}
       `${label} en ${model}: el gasto en salida está donde están las llamadas — el ${callPct} concentra el ${spendPct} de ${usd}. No hay cola que cazar.`,
     outputFlatAdvice: () =>
       'Aquí la longitud de la respuesta es la tarea, así que las palancas son las bastas: pide respuestas más cortas en el prompt, y limita max_tokens.',
+    outputPercentiles: (p50, p95) =>
+      `La mitad de las respuestas medidas caben en ${p50} tokens de salida, y el 95% en ${p95} — el número que un límite de max_tokens quiere de verdad. Medido en estas llamadas, prometido para ninguna.`,
     leversNone: () =>
       'Aquí no hay nada que llegue al 1% de la factura: estas llamadas ya van al modelo más barato de su familia, o su proveedor no tiene Batch API. Eso es una respuesta de verdad, no una sección vacía.',
     assumedWriteTtl: (calls) =>

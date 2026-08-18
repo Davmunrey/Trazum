@@ -61,6 +61,22 @@ export interface OutputShape {
   heavySpendShare: number;
   /** This slice's output spend as a fraction of the whole bill. */
   shareOfBill: number;
+  /**
+   * The bucket ceiling that at least half the measured answers fit within.
+   *
+   * A ceiling by construction, never an interpolation: the histogram knows
+   * which bucket the median call landed in, and the honest sentence is "half
+   * the answers fit within N tokens" where N is that bucket's upper edge.
+   * `null` only when the covering bucket is the open-ended last one, which has
+   * no ceiling to name.
+   */
+  medianWithinTokens: number | null;
+  /**
+   * The same ceiling for 95% of the measured answers — the number somebody
+   * setting `max_tokens` actually wants. Measured on these calls, promised for
+   * nothing.
+   */
+  p95WithinTokens: number | null;
 }
 
 export interface OutputShapeOptions {
@@ -91,6 +107,32 @@ function bucketOf(tokens: number): number {
   if (tokens >= EDGES[EDGES.length - 1]!) return EDGES.length - 1;
   if (tokens < 8192) return Math.floor(tokens / 64);
   return 128 + Math.floor((tokens - 8192) / 1024);
+}
+
+/** A bucket's upper edge, or `null` for the open-ended last one. */
+function upperEdgeOf(bucket: number): number | null {
+  if (bucket >= EDGES.length - 1) return null;
+  return EDGES[bucket + 1]!;
+}
+
+/**
+ * The bucket ceiling covering `share` of the calls, walking up from the
+ * shortest answers. Exact over the histogram: every call at or below the
+ * returned ceiling is counted, none is interpolated.
+ */
+function ceilingFor(
+  buckets: Map<number, { calls: number; tokens: number }>,
+  totalCalls: number,
+  share: number,
+): number | null {
+  const ascending = [...buckets.keys()].sort((a, b) => a - b);
+  const target = totalCalls * share;
+  let covered = 0;
+  for (const b of ascending) {
+    covered += buckets.get(b)!.calls;
+    if (covered >= target) return upperEdgeOf(b);
+  }
+  return upperEdgeOf(ascending[ascending.length - 1]!);
 }
 
 interface Slice {
@@ -189,6 +231,8 @@ export function createOutputShapeTracker(options: OutputShapeOptions): OutputSha
         heavyCallShare: heavyCalls / slice.calls,
         heavySpendShare: tokens / slice.outputTokens,
         shareOfBill,
+        medianWithinTokens: ceilingFor(slice.buckets, slice.calls, 0.5),
+        p95WithinTokens: ceilingFor(slice.buckets, slice.calls, 0.95),
       });
     }
 

@@ -581,6 +581,12 @@ export interface CliMessages {
     /** Flat: the spend is where the calls are, and the length is the task. */
     outputFlat(label: string, model: string, callPct: string, spendPct: string, usd: string): string;
     outputFlatAdvice(): string;
+    /**
+     * Bucket ceilings, exact over the histogram: the number somebody setting
+     * max_tokens actually wants, measured on these calls and promised for
+     * nothing.
+     */
+    outputPercentiles(p50: string, p95: string): string;
     assumedWriteTtl(calls: number): string;
     /**
      * The period the log covers, when its records carry a clock. Stated and
