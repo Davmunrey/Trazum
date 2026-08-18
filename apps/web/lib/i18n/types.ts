@@ -351,6 +351,21 @@ export interface WebMessages {
     windowOrder: string;
     /** The price table's age, said only when past the 45-day threshold. */
     pricesStale(date: string, days: number): string;
+    /**
+     * What one conversation costs — median against p95, never a mean: one
+     * runaway loop hides the ordinary case, which is the figure a per-seat
+     * price or a quota is set from.
+     */
+    sessionCost(
+      label: string,
+      model: string,
+      sessions: number,
+      median: string,
+      medianTurns: number,
+      p95: string,
+      max: string,
+    ): string;
+    sessionCostTail(ratio: string): string;
     byLabelHeading: string;
     byModelHeading: string;
     unlabelled: string;

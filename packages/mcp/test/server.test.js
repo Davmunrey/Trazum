@@ -362,6 +362,21 @@ describe('profile_usage', () => {
     assert.match(empty, /no comparison to make — a different answer from zero growth/);
   });
 
+  it('reports what one conversation costs, median against p95', async () => {
+    // Nine $1.00 conversations and one $50.00: the median describes the
+    // ordinary case, the mean ($5.90) would describe none of them.
+    const turns = [];
+    for (let i = 0; i < 9; i += 1) {
+      turns.push(line({ model: 'claude-opus-5', session: `s${i}`, usage: { input_tokens: 200_000, output_tokens: 0 } }));
+    }
+    turns.push(line({ model: 'claude-opus-5', session: 'spike', usage: { input_tokens: 10_000_000, output_tokens: 0 } }));
+    const body = bodyOf(await client.call('profile_usage', { log: turns.join('\n') }));
+    assert.match(body, /the median costs \$1\.00 over 1 turns/);
+    assert.match(body, /95% come in under \$50\.00/);
+    assert.match(body, /50x the median/);
+    assert.ok(!body.includes('spike'), 'a session key reached the output');
+  });
+
   it('names the conversations that never came back, as fact or as ceiling', async () => {
     const driveBy = (session, extra = {}) =>
       line({

@@ -457,6 +457,14 @@ export const en: WebMessages = {
       + 'past the 45 this tool considers current. If the provider changed prices since, this '
       + 'report is wrong by exactly that change. The CLI can fetch current prices '
       + '(trazum profile --pricing-live).',
+    sessionCost: (label, model, sessions, median, medianTurns, p95, max) =>
+      `${label} on ${model}: across ${sessions} conversations, the median one costs ${median} `
+      + `over ${medianTurns} turns, 95% come in under ${p95}, and the dearest was ${max}. Exact `
+      + 'billed counts per conversation; one that started before this log or continues after it '
+      + 'counts only for the turns recorded here.',
+    sessionCostTail: (ratio) =>
+      `The 95th percentile is ${ratio}x the median: most conversations are cheap and a few are `
+      + 'not, which is a tail a quota can catch rather than a workload that is uniformly expensive.',
     byLabelHeading: 'By label',
     byModelHeading: 'By model',
     unlabelled: '(no label)',

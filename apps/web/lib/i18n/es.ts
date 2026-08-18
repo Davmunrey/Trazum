@@ -469,6 +469,14 @@ export const es: WebMessages = {
       + `hace ${days} días, más de los 45 que esta herramienta considera vigentes. Si el `
       + 'proveedor cambió precios desde entonces, este informe se equivoca exactamente en ese '
       + 'cambio. La CLI puede traer precios actuales (trazum profile --pricing-live).',
+    sessionCost: (label, model, sessions, median, medianTurns, p95, max) =>
+      `${label} en ${model}: en ${sessions} conversaciones, la mediana cuesta ${median} a lo `
+      + `largo de ${medianTurns} turnos, el 95% queda por debajo de ${p95} y la más cara fue `
+      + `${max}. Recuentos facturados exactos por conversación; una que empezó antes de este `
+      + 'registro o sigue después solo cuenta por los turnos aquí registrados.',
+    sessionCostTail: (ratio) =>
+      `El percentil 95 es ${ratio}x la mediana: casi todas las conversaciones son baratas y unas `
+      + 'pocas no, y esa es una cola que una cuota puede cazar, no una carga cara de manera uniforme.',
     byLabelHeading: 'Por etiqueta',
     byModelHeading: 'Por modelo',
     unlabelled: '(sin etiqueta)',

@@ -678,6 +678,27 @@ const PROFILE: ToolDefinition = {
       );
     }
 
+    /**
+     * What one conversation costs — median against p95, the figure a per-seat
+     * price or a quota is set from. A mean is refused for the reason it is
+     * refused everywhere: one runaway loop hides the ordinary case.
+     */
+    for (const shape of report.sessionCosts.slice(0, 3)) {
+      lines.push(
+        `${name(shape.label)} on ${shape.modelName}: across ${shape.sessions} conversations the`
+          + ` median costs ${formatUsd(shape.medianUsd)} over ${shape.medianTurns} turns, 95% come`
+          + ` in under ${formatUsd(shape.p95Usd)}, the dearest was ${formatUsd(shape.maxUsd)}.`
+          + ' Exact billed counts per conversation; one that started before this log or continues'
+          + ' after it counts only for the turns recorded here.',
+      );
+      if (shape.medianUsd > 0 && shape.p95Usd > 10 * shape.medianUsd) {
+        lines.push(
+          `That p95 is ${(shape.p95Usd / shape.medianUsd).toFixed(0)}x the median — a tail a quota`
+            + ' can catch, rather than a workload that is uniformly expensive.',
+        );
+      }
+    }
+
     lines.push('', '--- truncation ---');
     if (total.stopReasonCalls === 0) {
       lines.push(
