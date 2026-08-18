@@ -2091,6 +2091,26 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
           report.byModel.map((r) => ({ key: r.model, usd: r.breakdown.totalUsd })),
         )
       : [];
+  /**
+   * Whether the two logs share any time at all. This comparison is meant for
+   * disjoint periods or snapshots of different systems; when both spans are
+   * known and intersect, the same calls may sit on both sides of the
+   * subtraction and the "growth" is partly the same money counted twice.
+   * Only decidable when both logs carry a clock — three states, as always:
+   * warned, clear, or unknown, and unknown stays silent rather than clear.
+   */
+  const againstOverlap =
+    previous !== null &&
+    previous.total.calls > 0 &&
+    previous.span !== null &&
+    report.span !== null &&
+    Math.min(report.span.toMs, previous.span.toMs) >=
+      Math.max(report.span.fromMs, previous.span.fromMs)
+      ? {
+          fromMs: Math.max(report.span.fromMs, previous.span.fromMs),
+          toMs: Math.min(report.span.toMs, previous.span.toMs),
+        }
+      : null;
   // A gate flag that silently does nothing is not an answer — same rule as
   // --apply-suggestions without --suggest.
   if (typeof args.flags.get('max-growth-usd') === 'string' && againstPath === undefined) {
@@ -2107,6 +2127,29 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
    * guessing what a day is.
    */
   const applyGates = (): void => {
+    /**
+     * Before any verdict: whether the gated figure is the whole bill. A gate
+     * can only judge the money it can see, and three things hide money from
+     * it — unreadable lines, unpriced models, and clockless calls left
+     * outside a window. Passing on a floor is acceptable; passing on a floor
+     * *silently* is the flattering omission this repository refuses, because
+     * an over-budget bill with three corrupt lines would read as green.
+     */
+    const anyGate =
+      typeof args.flags.get('max-usd') === 'string' ||
+      typeof args.flags.get('max-growth-usd') === 'string' ||
+      typeof args.flags.get('max-cache-loss-usd') === 'string';
+    if (anyGate) {
+      const reasons: string[] = [];
+      if (report.skippedLines.length > 0) reasons.push(t.profile.floorSkipped(report.skippedLines.length));
+      if (report.unpriced.calls > 0) reasons.push(t.profile.floorUnpriced(report.unpriced.calls));
+      if (report.timeWindow !== null && report.timeWindow.undatedExcluded > 0) {
+        reasons.push(t.profile.floorUndated(report.timeWindow.undatedExcluded));
+      }
+      if (reasons.length > 0) {
+        console.error(c.yellow(t.profile.gateOnFloor(reasons.join('; '))));
+      }
+    }
     if (typeof args.flags.get('max-usd') === 'string') {
       const maxUsd = numberFlag(args, 'max-usd', 0, t);
       if (report.total.totalUsd > maxUsd) {
@@ -2786,6 +2829,14 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
       console.log(
         `  ${c.bold(wrap(t.profile.againstTotals(formatUsd(previous.total.totalUsd), formatUsd(report.total.totalUsd), formatSignedUsd(delta), growthPct, t.profile.calls(previous.total.calls), t.profile.calls(report.total.calls)), 74, '  '))}`,
       );
+      // Overlapping spans mean part of this "growth" is the same money on
+      // both sides of the subtraction. Said after the figure it qualifies
+      // and before the drivers built from it.
+      if (againstOverlap !== null) {
+        console.log(
+          `  ${c.yellow('!')} ${c.dim(wrap(t.profile.againstOverlap(dayOf(againstOverlap.fromMs), dayOf(againstOverlap.toMs)), 74, '    '))}`,
+        );
+      }
 
       // Drivers: per-key contribution to the change, largest magnitude first,
       // computed once beside the gates so no rendering derives its own.
@@ -2860,6 +2911,29 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
           ? { window: { since: stringFlag(args, 'since') ?? '—', until: stringFlag(args, 'until') ?? '—' } }
           : {}),
         ...(pricingStale !== null ? { stalePricing: pricingStale } : {}),
+        // The comparison, when there was one — the same figures and the same
+        // drivers the terminal printed, never re-derived here.
+        ...(previous !== null
+          ? {
+              against: {
+                previousTotalUsd: previous.total.totalUsd,
+                previousCalls: previous.total.calls,
+                labelDrivers,
+                modelDrivers:
+                  new Set([
+                    ...previous.byModel.map((r) => r.model),
+                    ...report.byModel.map((r) => r.model),
+                  ]).size > 1
+                    ? modelDrivers
+                    : [],
+                overlap:
+                  againstOverlap !== null
+                    ? { from: dayOf(againstOverlap.fromMs), to: dayOf(againstOverlap.toMs) }
+                    : null,
+                nothingPriced: previous.total.calls === 0,
+              },
+            }
+          : {}),
       }),
       'utf8',
     );
