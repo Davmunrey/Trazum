@@ -457,6 +457,9 @@ export const en: WebMessages = {
       + 'past the 45 this tool considers current. If the provider changed prices since, this '
       + 'report is wrong by exactly that change. The CLI can fetch current prices '
       + '(trazum profile --pricing-live).',
+    drillActive: (label) =>
+      `Showing ${label} alone. Every share below is a share of this workload's bill, not of the whole log, and the comparison — if there is one — filters both logs the same way.`,
+    drillClear: 'Show the whole log',
     sessionCost: (label, model, sessions, median, medianTurns, p95, max) =>
       `${label} on ${model}: across ${sessions} conversations, the median one costs ${median} `
       + `over ${medianTurns} turns, 95% come in under ${p95}, and the dearest was ${max}. Exact `

@@ -67,6 +67,13 @@ export function Bill({ t }: { t: WebMessages }) {
    * two surfaces refuse the same things.
    */
   const [windowError, setWindowError] = useState<string | null>(null);
+  /**
+   * The workload being looked at alone, or null for the whole log — the
+   * CLI's `--label`, reached by clicking a row instead of retyping the
+   * command. Only labels the report already listed can be selected, so the
+   * CLI's "a label matching nothing is an error" case cannot arise here.
+   */
+  const [drillLabel, setDrillLabel] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const previousInput = useRef<HTMLInputElement>(null);
 
@@ -74,7 +81,13 @@ export function Bill({ t }: { t: WebMessages }) {
   const pct = (fraction: number): string =>
     fraction > 0 && fraction < 0.005 ? '<1%' : `${(fraction * 100).toFixed(0)}%`;
 
-  function analyze(text: string, previous: string | null, sinceStr = since, untilStr = until) {
+  function analyze(
+    text: string,
+    previous: string | null,
+    sinceStr = since,
+    untilStr = until,
+    label: string | null = drillLabel,
+  ) {
     /**
      * A bare date is that whole UTC day — since its first instant, until its
      * last — with the half-open `[since, until)` window underneath, exactly
@@ -89,7 +102,12 @@ export function Bill({ t }: { t: WebMessages }) {
       setAnalysis(null);
       return;
     }
-    const report = profileUsage(text, { catalogue: BUNDLED_CATALOGUE, sinceMs, untilMs });
+    const report = profileUsage(text, {
+      catalogue: BUNDLED_CATALOGUE,
+      sinceMs,
+      untilMs,
+      ...(label !== null ? { label } : {}),
+    });
     const windowed = sinceMs !== undefined || untilMs !== undefined;
     if (windowed && report.total.calls === 0 && report.unpriced.calls === 0) {
       // The CLI's refusals, kept in step: a window matching nothing names
@@ -117,17 +135,33 @@ export function Bill({ t }: { t: WebMessages }) {
       cache,
       // The same window on both sides: a windowed bill against an unwindowed
       // one compares a slice to a whole and calls the difference growth.
+      // The same filters on both sides, as on the CLI: comparing one
+      // workload's bill against the whole previous log would report every
+      // sibling workload as a vanished saving.
       previous:
         previous !== null
-          ? profileUsage(previous, { catalogue: BUNDLED_CATALOGUE, sinceMs, untilMs })
+          ? profileUsage(previous, {
+              catalogue: BUNDLED_CATALOGUE,
+              sinceMs,
+              untilMs,
+              ...(label !== null ? { label } : {}),
+            })
           : null,
     });
-    // Shape only, never content: no label names, no spend, no counts.
+    /**
+     * Shape only, never content: no label names, no spend, no counts. The
+     * drill-down is reported as a boolean computed *before* the call, so the
+     * telemetry expression contains no identifier that could ever be read as
+     * carrying one — the guard in bill-ui.test.mjs checks the call site
+     * textually, and a guard worth having is one worth writing around.
+     */
+    const drilled = label !== null;
     track('bill', {
       priced: report.total.calls > 0,
       sessions: report.hasSessions,
       compared: previous !== null,
       windowed,
+      drilled,
     });
   }
 
@@ -156,6 +190,15 @@ export function Bill({ t }: { t: WebMessages }) {
   );
 
   const labelName = (label: string): string => (label === UNLABELLED ? t.bill.unlabelled : label);
+
+  /**
+   * Look at one workload alone, or go back to the whole log. Re-profiles the
+   * text already in hand — the log never leaves the page, drill-down included.
+   */
+  function drillTo(label: string | null) {
+    setDrillLabel(label);
+    if (logText !== null) analyze(logText, previousText, since, until, label);
+  }
 
   return (
     <div className="flex flex-col gap-[18px]">
@@ -297,7 +340,17 @@ export function Bill({ t }: { t: WebMessages }) {
         </CardContent>
       </Card>
 
-      {analysis !== null && <Report analysis={analysis} t={t} n={n} pct={pct} labelName={labelName} />}
+      {analysis !== null && (
+        <Report
+          analysis={analysis}
+          t={t}
+          n={n}
+          pct={pct}
+          labelName={labelName}
+          drillLabel={drillLabel}
+          onDrill={drillTo}
+        />
+      )}
     </div>
   );
 }
@@ -308,8 +361,12 @@ function Report({
   n,
   pct,
   labelName,
+  drillLabel,
+  onDrill,
 }: {
   analysis: Analysis;
+  drillLabel: string | null;
+  onDrill: (label: string | null) => void;
   t: WebMessages;
   n: (value: number) => string;
   pct: (fraction: number) => string;
@@ -401,6 +458,21 @@ function Report({
             {report.timeWindow !== null && (
               <span className="text-[13px] text-muted-foreground">{t.bill.windowLine}</span>
             )}
+            {/*
+              Looking at one workload alone. Said before the figures it
+              governs, and it says the awkward half out loud: every share
+              below is a share of *this* workload's bill, not of the log —
+              the same property the CLI's --label has, and the one a reader
+              would otherwise misread as "chat is 100% of our spend".
+            */}
+            {drillLabel !== null && (
+              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-l-[3px] border-l-warn px-3.5 py-3 text-[13px] leading-snug text-warn">
+                <span>{t.bill.drillActive(labelName(drillLabel))}</span>
+                <Button type="button" variant="ghost" size="sm" onClick={() => onDrill(null)}>
+                  {t.bill.drillClear}
+                </Button>
+              </div>
+            )}
             {report.timeWindow !== null && report.timeWindow.undatedExcluded > 0 && (
               <span className="text-terracotta">
                 {t.bill.windowUndated(report.timeWindow.undatedExcluded)}
@@ -472,11 +544,16 @@ function Report({
             </table>
             <BreakdownTable
               heading={t.bill.byLabelHeading}
-              rows={report.byLabel.map((e) => ({ name: labelName(e.label), breakdown: e.breakdown }))}
+              rows={report.byLabel.map((e) => ({
+                name: labelName(e.label),
+                breakdown: e.breakdown,
+                key: e.label,
+              }))}
               totalUsd={total.totalUsd}
               t={t}
               n={n}
               pct={pct}
+              onSelect={drillLabel === null ? onDrill : undefined}
             />
             <BreakdownTable
               heading={t.bill.byModelHeading}
@@ -893,13 +970,20 @@ function BreakdownTable({
   t,
   n,
   pct,
+  onSelect,
 }: {
   heading: string;
-  rows: Array<{ name: string; breakdown: { totalUsd: number; calls: number } }>;
+  rows: Array<{ name: string; breakdown: { totalUsd: number; calls: number }; key?: string }>;
   totalUsd: number;
   t: WebMessages;
   n: (value: number) => string;
   pct: (fraction: number) => string;
+  /**
+   * When given, each row becomes a button that profiles that workload alone.
+   * Absent while already drilled in: a drill-down inside a drill-down would
+   * filter an already-filtered report and quietly produce an empty one.
+   */
+  onSelect?: (key: string) => void;
 }) {
   if (rows.length === 0) return null;
   const shown = rows.slice(0, MAX_ROWS);
@@ -919,7 +1003,17 @@ function BreakdownTable({
           {shown.map((row) => (
             <tr key={row.name} className="border-t">
               <td className="max-w-[18ch] truncate py-1 pr-2" title={row.name}>
-                {row.name}
+                {onSelect !== undefined && row.key !== undefined ? (
+                  <button
+                    type="button"
+                    onClick={() => onSelect(row.key!)}
+                    className="cursor-pointer underline decoration-dotted underline-offset-2 hover:decoration-solid"
+                  >
+                    {row.name}
+                  </button>
+                ) : (
+                  row.name
+                )}
               </td>
               <td className="py-1 pr-2 text-right font-mono">{formatUsd(row.breakdown.totalUsd)}</td>
               <td className="py-1 pr-2 text-right">

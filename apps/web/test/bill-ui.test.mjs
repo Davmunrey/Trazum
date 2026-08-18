@@ -137,7 +137,22 @@ describe('the bill tab reads the log in the browser and nowhere else', () => {
     assert.match(bill, /T00:00:00Z`\) \+ 86_400_000/);
     // The same window on both sides of the comparison — a windowed bill
     // against an unwindowed one compares a slice to a whole.
-    assert.match(bill, /profileUsage\(previous, \{ catalogue: BUNDLED_CATALOGUE, sinceMs, untilMs \}\)/);
+    assert.match(bill, /profileUsage\(previous, \{\s*catalogue: BUNDLED_CATALOGUE,\s*sinceMs,\s*untilMs,/);
+  });
+
+  it('drills into one workload by clicking it, and says what that does to the shares', () => {
+    /**
+     * The CLI's --label, reached by clicking a row. The banner has to carry
+     * the awkward half — every share below is a share of *this* workload's
+     * bill — or a reader takes "100%" as a statement about the whole log.
+     */
+    assert.match(bill, /t\.bill\.drillActive/);
+    assert.match(bill, /t\.bill\.drillClear/);
+    // Both logs of a comparison are filtered the same way, as on the CLI.
+    assert.match(bill, /label !== null \? \{ label \} : \{\}/);
+    // No drill-down inside a drill-down: it would filter an already-filtered
+    // report and quietly produce an empty one.
+    assert.match(bill, /drillLabel === null \? onDrill : undefined/);
   });
 
   it('renders what one conversation costs, tail sentence and all', () => {
