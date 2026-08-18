@@ -27,6 +27,44 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.21.0 — "What the log does not say"
+
+**A report that quietly omits half of itself is worse than one that admits
+what it is missing.**
+
+Every finding past the totals needs a field the log format does not require —
+`label`, `session`, `ts`, `stop_reason`, the `cache_creation` object. A reader
+who never adds them sees a shorter report and has no way to tell "nothing to
+report" from "nothing recorded". The report now ends by naming each missing
+field with what it would unlock:
+
+```
+What this log cannot answer yet
+  "session" on 12/40,000 records: without it there is no conversation growth,
+  no per-conversation cost, and no cache-TTL fit. It is grouped by and never
+  printed.
+```
+
+**Counts, never booleans.** Twelve labelled records out of forty thousand is
+not a labelled log — a boolean would call it one, and the other 39,988 would
+never be found. Coverage is counted over records that *parsed*, priced or not,
+because whether a field is present is a property of the log rather than of the
+price catalogue; the cache-TTL line is counted only over records that actually
+wrote to the cache, the one place its absence means anything.
+
+A complete log gets **no section at all**: a paragraph of things that are fine
+is the paragraph readers learn to skip. The same section, from the same
+counts, reaches the MCP — where an agent told "labelled" by a boolean would
+stop asking — and the browser.
+
+**And the README caught up with eight releases**, so the first file anybody
+reads finally describes the tool that exists: the conversation cost, the shape
+of the day, the never-came-back ceiling, the third money gate, `spend` budgets
+in the config, `--csv-out`, directory mode and the documented `--json`
+contract.
+
+---
+
 ## 1.20.0 — "When, and what you can build on"
 
 ### The shape of the day
