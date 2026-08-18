@@ -41,6 +41,18 @@ inputs:
   github-token:
     description: 'Token used to post the comment and any suggestions. Only read when comment or suggest-fixes is true.'
     required: false
+  usage-log:
+    description: 'Usage log (JSONL) to profile instead of checking prompts — the spend gate. Mutually exclusive with target: a run gates either tokens before the money is spent, or the spend itself, and saying which is the caller''s job.'
+    required: false
+  max-usd:
+    description: 'With usage-log: fail the build when the log spent more than this many dollars. No period is assumed — the budget applies to exactly the log handed in, so profiling yesterday''s log nightly is a daily budget.'
+    required: false
+  against:
+    description: 'With usage-log: a previous log to compare against. Drivers are ranked in the report; pair with max-growth-usd to gate on growth.'
+    required: false
+  max-growth-usd:
+    description: 'With usage-log and against: fail the build when the bill grew more than this many dollars over the previous log.'
+    required: false
 
 runs:
   using: 'composite'
@@ -73,6 +85,10 @@ runs:
         TRAZUM_CONFIG: ${{ inputs.config }}
         TRAZUM_LEVEL: ${{ inputs.level }}
         TRAZUM_REPORT_LOCALE: ${{ inputs.locale }}
+        TRAZUM_USAGE_LOG: ${{ inputs.usage-log }}
+        TRAZUM_MAX_USD: ${{ inputs.max-usd }}
+        TRAZUM_AGAINST: ${{ inputs.against }}
+        TRAZUM_MAX_GROWTH_USD: ${{ inputs.max-growth-usd }}
         TRAZUM_ACTION_PATH: ${{ github.action_path }}
       # Every optional flag is added only when it was actually given. Passing
       # `--level safe` unconditionally is what made a config file's `level` and
@@ -88,8 +104,17 @@ runs:
         set -uo pipefail
 
         target="${TRAZUM_TARGET:-$TRAZUM_FILE}"
-        if [ -z "$target" ]; then
-          echo "::error title=Trazum::Set the 'target' input to the prompt file or directory to check."
+        # Two modes, mutually exclusive: gate the tokens before the money is
+        # spent (check), or gate the spend itself (profile). A run doing both
+        # would fold two verdicts into one exit code, and saying which gate
+        # fired is the whole point of having one.
+        if [ -n "$TRAZUM_USAGE_LOG" ] && [ -n "$target" ]; then
+          echo "::error title=Trazum::Set 'target' or 'usage-log', not both — one run gates prompts or the spend, and saying which is the caller's job."
+          echo "outcome=1" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        if [ -z "$target" ] && [ -z "$TRAZUM_USAGE_LOG" ]; then
+          echo "::error title=Trazum::Set the 'target' input to the prompt file or directory to check, or 'usage-log' to gate the spend."
           echo "outcome=1" >> "$GITHUB_OUTPUT"
           exit 0
         fi
@@ -97,10 +122,17 @@ runs:
           echo "::warning title=Trazum::The 'file' input is deprecated; rename it to 'target'."
         fi
 
-        args=(check "$target")
-        [ -n "$TRAZUM_MAX_TOKENS" ] && args+=(--max-tokens "$TRAZUM_MAX_TOKENS")
+        if [ -n "$TRAZUM_USAGE_LOG" ]; then
+          args=(profile "$TRAZUM_USAGE_LOG")
+          [ -n "$TRAZUM_MAX_USD" ] && args+=(--max-usd "$TRAZUM_MAX_USD")
+          [ -n "$TRAZUM_AGAINST" ] && args+=(--against "$TRAZUM_AGAINST")
+          [ -n "$TRAZUM_MAX_GROWTH_USD" ] && args+=(--max-growth-usd "$TRAZUM_MAX_GROWTH_USD")
+        else
+          args=(check "$target")
+          [ -n "$TRAZUM_MAX_TOKENS" ] && args+=(--max-tokens "$TRAZUM_MAX_TOKENS")
+          [ -n "$TRAZUM_LEVEL" ] && args+=(--level "$TRAZUM_LEVEL")
+        fi
         [ -n "$TRAZUM_CONFIG" ] && args+=(--config "$TRAZUM_CONFIG")
-        [ -n "$TRAZUM_LEVEL" ] && args+=(--level "$TRAZUM_LEVEL")
         [ -n "$TRAZUM_REPORT_LOCALE" ] && args+=(--locale "$TRAZUM_REPORT_LOCALE")
         args+=(--markdown-out "$RUNNER_TEMP/trazum-report.md")
 
@@ -155,9 +187,14 @@ runs:
       if: always()
       env:
         TRAZUM_OUTCOME: ${{ steps.check.outputs.outcome }}
+        TRAZUM_USAGE_LOG: ${{ inputs.usage-log }}
       run: |
         if [ "${TRAZUM_OUTCOME:-1}" != "0" ]; then
-          echo "::error title=Trazum::A prompt busts its token budget, or the check could not run. See the run summary."
+          if [ -n "$TRAZUM_USAGE_LOG" ]; then
+            echo "::error title=Trazum::The spend gate failed — the log is over its budget or grew past its limit, or the profile could not run. See the run summary."
+          else
+            echo "::error title=Trazum::A prompt busts its token budget, or the check could not run. See the run summary."
+          fi
           exit 1
         fi
 
