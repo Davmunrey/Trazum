@@ -9,6 +9,40 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## 1.12.0 — "The log gets a clock"
+
+### Added
+
+**A `ts` field on the usage record, and the two findings only a clock can make.**
+ISO 8601, epoch seconds or milliseconds, or OpenAI's `created`; parsed under the
+same three-state rule as the counts — absent is null, present-and-unreadable
+rejects the line into `skippedLines`, because a silently dropped timestamp would
+mis-measure every gap it touches.
+
+**The span.** The report states what period the log covers — `This log covers
+2026-08-01 → 2026-08-14 (13.0 days)` — and deliberately stops there. Stated,
+never extrapolated: the span makes the reader's own monthly arithmetic valid,
+while a per-month figure from a partial month would be Trazum doing the guessing
+it exists to end. Partial coverage is said in the same breath, and a test asserts
+the span alone conjures no monthly figure anywhere.
+
+**Does the cache TTL fit how fast the turns come?** A cache entry lives 5
+minutes, or an hour at 2x the write price, and whether either fits depends on a
+number the bill never shows: how long the workload waits between turns. Measured
+as the median gap between consecutive turns of the same conversation, sorted by
+the recorded clock so the answer is independent of the order of the log. Five
+states: **expires before reuse** — the mechanism behind a losing cache, with
+both honest ways out named; **overlong TTL** — turns seconds apart paying 2x for
+an hour of endurance they never use, priced exactly as the same tokens at the
+other published rate; **unsettled** when the unrecorded TTL decides it; **fits**
+said out loud; and **could not be measured** over writes with no clock, rather
+than silence. Rendered in the CLI (both locales), the MCP `profile_usage` tool
+and the web Bill tab; `--json` carries `span` and `cacheTtlFit`.
+
+The recording recipe gains `ts` in the README, the onboarding message and the
+docs-pinned fixture, so following the documented recipe still produces a report
+that asks for nothing more.
+
 ## 1.11.0 — "What actually moves the bill"
 
 ### Added

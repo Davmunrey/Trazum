@@ -7,8 +7,9 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.9.0**, published 2026-08-13: `@trazum/core`,
-`@trazum/cli` and `@trazum/mcp`.
+**All three packages are on npm at 1.10.0**: `@trazum/core`, `@trazum/cli` and
+`@trazum/mcp`. 1.10.0 went out by hand — its tag ran a pre-fix workflow — so it
+carries no provenance attestation; releases from 1.11.0 on go through the tag.
 
 **1.9.1 was prepared and never published.** Its tag failed three times against a
 trusted-publisher configuration npm kept refusing, nothing reached the registry, and
@@ -25,6 +26,52 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.12.0 — "The log gets a clock"
+
+**One field, and the single most common reason a cache loses money becomes
+visible.** Add `ts` to the usage record — ISO 8601, an epoch number, or the
+`created` OpenAI already returns — and `trazum profile` reads the clock.
+
+### Does the cache TTL fit how fast the turns come?
+
+```
+  ! chat on Claude Opus 5: turns arrive a median of 9m apart and the 5-minute
+    entry is gone by then — writes expire before the next turn reads them,
+    which from the bill is a cache that only writes.
+```
+
+A cache entry lives 5 minutes, or an hour at 2x the write price. Whether either
+is right depends on how long the workload waits between turns — and a support
+flow whose users answer in nine minutes writes a 5-minute entry on every turn
+and reads it back on none. `cacheEconomics` could say *that* money was lost;
+the clock says *why*, and the why decides the fix: the 1-hour TTL, or caching
+switched off.
+
+The opposite mistake is quieter and visible nowhere else: turns seconds apart
+paying the 1-hour rate. Those writes work — the cache verdict reads `paid-off` —
+and every one pays 2x input for endurance the gaps never use. **Switching them
+to the 5-minute TTL is priced exactly**: the same tokens at the other published
+rate, the same counterfactual line `cacheEconomics` draws.
+
+The gap is the **median between consecutive turns of the same conversation**,
+sorted by the recorded clock so the answer is independent of the order of the
+log. Five states — expires, overlong, unsettled when the unrecorded TTL decides
+it, fits said out loud, and could-not-be-measured over writes with no clock —
+because "no data" and "fine" are different answers.
+
+### The span, stated and never extrapolated
+
+`This log covers 2026-08-01 → 2026-08-14 (13.0 days).` The span makes your own
+monthly arithmetic valid; a per-month figure from a partial month would be
+Trazum doing the guessing it exists to end. When only some calls carry a clock
+it says how many, so a span over a slice is never presented as the period.
+
+Everything renders in the CLI (English and Spanish), the MCP `profile_usage`
+tool and the web app's Your bill tab, and rides `--json` as `span` and
+`cacheTtlFit`. The recording recipe gains `ts` everywhere it is written, and
+the fixture that pins the docs against the tool now proves that following the
+recipe produces a report that asks for nothing more.
 
 ## 1.11.0 — "What actually moves the bill"
 
