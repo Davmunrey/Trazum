@@ -121,6 +121,25 @@ describe('the bill tab reads the log in the browser and nowhere else', () => {
     assert.match(bill, /reads === 0/);
   });
 
+  it('drills into one period under the CLI’s rules, refusals included', () => {
+    // The window line and the loud undated count, before any figure is
+    // trusted as "the log".
+    assert.match(bill, /t\.bill\.windowLine/);
+    assert.match(bill, /t\.bill\.windowUndated/);
+    // The refusals, kept in step with the CLI: a window matching nothing
+    // names what the log covers; a clockless log cannot be windowed; a
+    // window that starts after it ends is an error.
+    assert.match(bill, /t\.bill\.windowMatchesNothing/);
+    assert.match(bill, /t\.bill\.windowNeedsClock/);
+    assert.match(bill, /t\.bill\.windowOrder/);
+    // A bare date is that whole UTC day: the until bound adds a day to the
+    // half-open window rather than excluding the day it names.
+    assert.match(bill, /T00:00:00Z`\) \+ 86_400_000/);
+    // The same window on both sides of the comparison — a windowed bill
+    // against an unwindowed one compares a slice to a whole.
+    assert.match(bill, /profileUsage\(previous, \{ catalogue: BUNDLED_CATALOGUE, sinceMs, untilMs \}\)/);
+  });
+
   it('renders all three truncation states, not two', () => {
     // "Not recorded" and "none truncated" are different answers. Dropping
     // either collapses them into the flattering one.

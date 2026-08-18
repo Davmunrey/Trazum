@@ -56,6 +56,15 @@ export function Bill({ t }: { t: WebMessages }) {
   const [logText, setLogText] = useState<string | null>(null);
   const [previousText, setPreviousText] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
+  /** The time window, as `YYYY-MM-DD` strings; `''` is no bound. */
+  const [since, setSince] = useState('');
+  const [until, setUntil] = useState('');
+  /**
+   * Why the window produced no report, when it did not. A window matching
+   * nothing must not become a $0 report — the CLI's rule, kept here so the
+   * two surfaces refuse the same things.
+   */
+  const [windowError, setWindowError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const previousInput = useRef<HTMLInputElement>(null);
 
@@ -63,22 +72,60 @@ export function Bill({ t }: { t: WebMessages }) {
   const pct = (fraction: number): string =>
     fraction > 0 && fraction < 0.005 ? '<1%' : `${(fraction * 100).toFixed(0)}%`;
 
-  function analyze(text: string, previous: string | null) {
-    const report = profileUsage(text, { catalogue: BUNDLED_CATALOGUE });
+  function analyze(text: string, previous: string | null, sinceStr = since, untilStr = until) {
+    /**
+     * A bare date is that whole UTC day — since its first instant, until its
+     * last — with the half-open `[since, until)` window underneath, exactly
+     * the CLI's reading. The two surfaces must not disagree about which days
+     * a window covers.
+     */
+    const sinceMs = sinceStr !== '' ? Date.parse(`${sinceStr}T00:00:00Z`) : undefined;
+    const untilMs = untilStr !== '' ? Date.parse(`${untilStr}T00:00:00Z`) + 86_400_000 : undefined;
+    setLogText(text);
+    if (sinceMs !== undefined && untilMs !== undefined && sinceMs >= untilMs) {
+      setWindowError(t.bill.windowOrder);
+      setAnalysis(null);
+      return;
+    }
+    const report = profileUsage(text, { catalogue: BUNDLED_CATALOGUE, sinceMs, untilMs });
+    const windowed = sinceMs !== undefined || untilMs !== undefined;
+    if (windowed && report.total.calls === 0 && report.unpriced.calls === 0) {
+      // The CLI's refusals, kept in step: a window matching nothing names
+      // what the log does cover; a clockless log cannot be windowed at all.
+      const unfiltered = profileUsage(text, { catalogue: BUNDLED_CATALOGUE });
+      if (unfiltered.total.calls > 0 || unfiltered.unpriced.calls > 0) {
+        setWindowError(
+          unfiltered.span === null
+            ? t.bill.windowNeedsClock
+            : t.bill.windowMatchesNothing(
+                new Date(unfiltered.span.fromMs).toISOString().slice(0, 10),
+                new Date(unfiltered.span.toMs).toISOString().slice(0, 10),
+              ),
+        );
+        setAnalysis(null);
+        return;
+      }
+    }
+    setWindowError(null);
     const levers = billLevers(report, { catalogue: BUNDLED_CATALOGUE });
     const cache = cacheEconomics(report.total);
-    setLogText(text);
     setAnalysis({
       report,
       levers,
       cache,
-      previous: previous !== null ? profileUsage(previous, { catalogue: BUNDLED_CATALOGUE }) : null,
+      // The same window on both sides: a windowed bill against an unwindowed
+      // one compares a slice to a whole and calls the difference growth.
+      previous:
+        previous !== null
+          ? profileUsage(previous, { catalogue: BUNDLED_CATALOGUE, sinceMs, untilMs })
+          : null,
     });
     // Shape only, never content: no label names, no spend, no counts.
     track('bill', {
       priced: report.total.calls > 0,
       sessions: report.hasSessions,
       compared: previous !== null,
+      windowed,
     });
   }
 
@@ -198,6 +245,52 @@ export function Bill({ t }: { t: WebMessages }) {
             />
           </div>
 
+          {/* The time window: one period of the same log, the CLI's --since/--until. */}
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span>{t.bill.windowLabel}</span>
+            <input
+              type="date"
+              value={since}
+              aria-label={t.bill.windowSinceAria}
+              onChange={(event) => {
+                setSince(event.target.value);
+                if (logText !== null) analyze(logText, previousText, event.target.value, until);
+              }}
+              className="rounded-md border bg-muted px-2 py-1 text-[13px]"
+            />
+            <span aria-hidden>→</span>
+            <input
+              type="date"
+              value={until}
+              aria-label={t.bill.windowUntilAria}
+              onChange={(event) => {
+                setUntil(event.target.value);
+                if (logText !== null) analyze(logText, previousText, since, event.target.value);
+              }}
+              className="rounded-md border bg-muted px-2 py-1 text-[13px]"
+            />
+            {(since !== '' || until !== '') && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSince('');
+                  setUntil('');
+                  if (logText !== null) analyze(logText, previousText, '', '');
+                }}
+              >
+                {t.bill.windowClear}
+              </Button>
+            )}
+            <span>{t.bill.windowHint}</span>
+          </div>
+          {windowError !== null && (
+            <div className="rounded-lg border border-l-[3px] border-l-warn px-3.5 py-3 text-[13px] leading-snug text-warn">
+              {windowError}
+            </div>
+          )}
+
           <p className="m-0 max-w-[72ch] text-xs text-muted-foreground">{t.bill.recipe}</p>
         </CardContent>
       </Card>
@@ -295,6 +388,20 @@ function Report({
                 )}
                 {report.span.calls < total.calls + report.unpriced.calls &&
                   ` ${t.bill.spanPartial(report.span.calls, total.calls + report.unpriced.calls)}`}
+              </span>
+            )}
+            {/*
+              The window before any figure is trusted as "the log": everything
+              below describes a slice. The undated count is loud — those calls'
+              spend is in the log and not in this report, so the window's
+              figures are a floor on the period, and only this line says so.
+            */}
+            {report.timeWindow !== null && (
+              <span className="text-[13px] text-muted-foreground">{t.bill.windowLine}</span>
+            )}
+            {report.timeWindow !== null && report.timeWindow.undatedExcluded > 0 && (
+              <span className="text-terracotta">
+                {t.bill.windowUndated(report.timeWindow.undatedExcluded)}
               </span>
             )}
             {/*

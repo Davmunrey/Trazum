@@ -434,6 +434,24 @@ export const en: WebMessages = {
       + `and their cache writes — ${usd} — paid for reuse their own conversation never made. `
       + 'Another conversation sharing the same prefix within the TTL could have read them; the '
       + 'log cannot see whose write a read hit, so that figure is a ceiling on the waste, not a bill.',
+    windowLabel: 'Only between',
+    windowSinceAria: 'Profile only calls on or after this UTC day',
+    windowUntilAria: 'Profile only calls up to and including this UTC day',
+    windowClear: 'Clear the window',
+    windowHint: 'UTC days, both ends included. Applies to the previous log too.',
+    windowLine:
+      'Everything below describes this window, not the whole log.',
+    windowUndated: (calls) =>
+      `${calls === 1 ? '1 call carries' : `${calls} calls carry`} no timestamp and cannot be placed `
+      + `inside or outside this window, so ${calls === 1 ? 'it was' : 'they were'} left out. `
+      + "Their spend is in the log and not in this report — the window's figures are a floor on the period.",
+    windowMatchesNothing: (from, to) =>
+      `No record falls inside this window. The log covers ${from} → ${to}. A window matching `
+      + 'nothing must not become a $0 report.',
+    windowNeedsClock:
+      'No record in this log carries a timestamp, so the window has nothing to filter by. '
+      + 'Add "ts" to the records — the recipe below shows where.',
+    windowOrder: 'The window starts after it ends. Check the two dates.',
     byLabelHeading: 'By label',
     byModelHeading: 'By model',
     unlabelled: '(no label)',
