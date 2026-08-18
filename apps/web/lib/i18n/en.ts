@@ -482,6 +482,7 @@ export const en: WebMessages = {
     againstNothingPriced:
       'The previous log has nothing the pricing catalogue knows, so there is no comparison to '
       + 'make.',
+    againstByModel: 'The same change, by model — where the mix moved:',
   },
 
   errors: {

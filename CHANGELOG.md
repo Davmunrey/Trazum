@@ -13,6 +13,17 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**The comparison is computed once, and reaches the MCP.** `driversBetween`
+moves to `@trazum/core` — one implementation of the union-and-subtract whose
+sign convention (positive means the bill grew) has flipped once already when
+restated by hand — and the CLI, the web and now the MCP all import it. The
+MCP's `profile_usage` gains `previous_log`: totals with the convention stated
+first, drivers per label and per model with appeared and vanished workloads
+named, `label`/`since`/`until` filtering both logs so the comparison stays one
+workload and one period, and a previous log with nothing priced reported as
+its own answer rather than zero growth. The web comparison gains the same
+by-model split the CLI got, from the same shared code.
+
 **The window reaches the browser.** Two date fields on the web Bill tab —
 `--since`/`--until` under the CLI's exact rules: a bare date is that whole UTC
 day, the same window applies to both logs of a comparison, clockless calls

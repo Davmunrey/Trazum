@@ -494,6 +494,7 @@ export const es: WebMessages = {
     againstNothingPriced:
       'El registro anterior no tiene nada que el catálogo de precios conozca, así que no hay '
       + 'comparación posible.',
+    againstByModel: 'El mismo cambio, por modelo — hacia dónde se movió la mezcla:',
   },
 
   errors: {

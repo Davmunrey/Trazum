@@ -18,6 +18,7 @@ import {
   countTokensAnthropic,
   DEFAULT_USAGE,
   detectFromSource,
+  driversBetween,
   estimateTokens,
   evaluate,
   extractPrompts,
@@ -1954,29 +1955,6 @@ function isoDate(): string {
  * metered API calls somebody was actually billed for — the bill exists wherever
  * Trazum happens to be running, so the host has no bearing on it.
  */
-/**
- * Per-key contribution to the change between two bills, over the union of
- * keys so an appeared or vanished workload is named rather than folded
- * silently into the total. Computed once and handed to every rendering and
- * to `--json` alike — a sign convention restated by hand is how it flips.
- */
-function driversBetween(
-  before: Array<{ key: string; usd: number }>,
-  after: Array<{ key: string; usd: number }>,
-): Array<{ key: string; was: number | null; now: number | null; delta: number }> {
-  const wasBy = new Map(before.map((r) => [r.key, r.usd]));
-  const nowBy = new Map(after.map((r) => [r.key, r.usd]));
-  return [...new Set([...wasBy.keys(), ...nowBy.keys()])]
-    .map((key) => ({
-      key,
-      was: wasBy.has(key) ? wasBy.get(key)! : null,
-      now: nowBy.has(key) ? nowBy.get(key)! : null,
-    }))
-    .map((d) => ({ ...d, delta: (d.now ?? 0) - (d.was ?? 0) }))
-    .filter((d) => Math.abs(d.delta) > 1e-9)
-    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
-}
-
 async function commandProfile(args: Args, config: TrazumConfig, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
   const path = args.positional[0];
   if (path === undefined) {
