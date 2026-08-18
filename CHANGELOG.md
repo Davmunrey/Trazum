@@ -13,6 +13,16 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`profile` reads a directory of rotated logs.** Logs rotate — one file per
+day for a month — and making somebody `cat` them together before a profile
+will read them is a setup cost that gets a tool skipped. A directory is read
+in name order (which for dated names is time order) as one bill, with the
+number of files stated: a report over "the logs" that silently skipped one is
+a total wrong by an unknown amount. A file with no trailing newline is joined
+without gluing its last record to the next file's first. A directory with
+nothing readable is an error naming the extensions it looked for, never an
+empty report that would read as "you spent nothing".
+
 **`profile --csv-out`, the report for whoever signs off the bill.** One row
 per label and model — the grain a routing or budget decision is made at —
 written from `@trazum/core`'s `profileToCsv`. Three deliberate refusals:

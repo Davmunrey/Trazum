@@ -697,6 +697,13 @@ export interface CliMessages {
     labelBudgetMissing(label: string): string;
     labelBudgetWindowed(): string;
     /**
+     * A directory of rotated logs, read as one. How many files were read is
+     * stated: a report over "the logs" that silently skipped one is a total
+     * wrong by an unknown amount.
+     */
+    readFiles(files: number, directory: string): string;
+    noLogsInDirectory(directory: string, extensions: string): string;
+    /**
      * The time window — the drill-down in time. Every figure below the line
      * describes a slice, so the line prints before any of them; clockless
      * calls under a window are excluded and *counted out loud*, because
