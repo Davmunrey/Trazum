@@ -1115,7 +1115,32 @@ function Gaps({
   t: WebMessages;
   n: (value: number) => string;
 }) {
-  const { skippedLines, unpricedModels, unpriced } = report;
+  const { skippedLines, unpricedModels, unpriced, fieldCoverage } = report;
+  /**
+   * What this log cannot answer yet. Counts rather than booleans — twelve
+   * labelled records out of forty thousand is not a labelled log — and
+   * nothing at all when the log is complete, because a paragraph of things
+   * that are fine is the paragraph readers learn to skip.
+   */
+  const seen = (count: number): string => `${count}/${fieldCoverage.parsed}`;
+  const missingFields =
+    fieldCoverage.parsed === 0
+      ? []
+      : [
+          fieldCoverage.label < fieldCoverage.parsed
+            ? t.bill.needsLabel(seen(fieldCoverage.label))
+            : null,
+          fieldCoverage.session < fieldCoverage.parsed
+            ? t.bill.needsSession(seen(fieldCoverage.session))
+            : null,
+          fieldCoverage.ts < fieldCoverage.parsed ? t.bill.needsTs(seen(fieldCoverage.ts)) : null,
+          fieldCoverage.stopReason < fieldCoverage.parsed
+            ? t.bill.needsStopReason(seen(fieldCoverage.stopReason))
+            : null,
+          fieldCoverage.cacheWrites > 0 && fieldCoverage.cacheTtl < fieldCoverage.cacheWrites
+            ? t.bill.needsCacheTtl(`${fieldCoverage.cacheTtl}/${fieldCoverage.cacheWrites}`)
+            : null,
+        ].filter((line): line is string => line !== null);
   /**
    * The provenance caveat, said only when old enough to matter and loud
    * then: a stale price table qualifies every dollar above, and unlike a
@@ -1124,7 +1149,14 @@ function Gaps({
    */
   const staleDays = reviewAgeDays(BUNDLED_CATALOGUE.lastReviewed, new Date());
   const stale = staleDays !== null && staleDays > 45;
-  if (unpricedModels.length === 0 && skippedLines.length === 0 && !stale) return null;
+  if (
+    unpricedModels.length === 0 &&
+    skippedLines.length === 0 &&
+    !stale &&
+    missingFields.length === 0
+  ) {
+    return null;
+  }
   const shownLines = skippedLines.slice(0, 8).join(', ') + (skippedLines.length > 8 ? '…' : '');
   return (
     <div className="flex flex-col gap-1 text-[13px] text-terracotta">
@@ -1133,6 +1165,14 @@ function Gaps({
         <span>{t.bill.unpriced(unpricedModels.join(', '), unpriced.calls)}</span>
       )}
       {skippedLines.length > 0 && <span>{t.bill.skipped(skippedLines.length, shownLines)}</span>}
+      {missingFields.length > 0 && (
+        <div className="mt-1 flex flex-col gap-1 text-muted-foreground">
+          <span className="font-semibold">{t.bill.coverageHeading}</span>
+          {missingFields.map((line) => (
+            <span key={line.slice(0, 24)}>{line}</span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

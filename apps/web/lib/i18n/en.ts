@@ -457,6 +457,17 @@ export const en: WebMessages = {
       + 'past the 45 this tool considers current. If the provider changed prices since, this '
       + 'report is wrong by exactly that change. The CLI can fetch current prices '
       + '(trazum profile --pricing-live).',
+    coverageHeading: 'What this log cannot answer yet',
+    needsLabel: (seen) =>
+      `"label" on ${seen} records: without it every workload is one row — no per-workload spend, no drill-down.`,
+    needsSession: (seen) =>
+      `"session" on ${seen} records: without it there is no conversation growth, no per-conversation cost and no cache-TTL fit. It is grouped by and never shown.`,
+    needsTs: (seen) =>
+      `"ts" on ${seen} records: without it the log has no period, no per-day or per-hour shape, and the cache-TTL question cannot be asked.`,
+    needsStopReason: (seen) =>
+      `"stop_reason" or "finish_reason" on ${seen} records: without it, answers cut off at max_tokens are invisible — and silence is not the same as none.`,
+    needsCacheTtl: (seen) =>
+      `the "cache_creation" object on ${seen} of the records that wrote to the cache: without it the cheaper rate is assumed, so those totals are a floor.`,
     hourChartLabel: 'Spend per hour of the UTC day, midnight to midnight',
     hoursConcentrated: (hours) =>
       `80% of this spend lands in ${hours} hours of the UTC day — interactive traffic somebody is `

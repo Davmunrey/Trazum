@@ -469,6 +469,17 @@ export const es: WebMessages = {
       + `hace ${days} días, más de los 45 que esta herramienta considera vigentes. Si el `
       + 'proveedor cambió precios desde entonces, este informe se equivoca exactamente en ese '
       + 'cambio. La CLI puede traer precios actuales (trazum profile --pricing-live).',
+    coverageHeading: 'Lo que este registro todavía no puede responder',
+    needsLabel: (seen) =>
+      `"label" en ${seen} registros: sin él todas las cargas son una fila — no hay gasto por carga ni zoom.`,
+    needsSession: (seen) =>
+      `"session" en ${seen} registros: sin él no hay crecimiento de conversación, ni coste por conversación, ni encaje del TTL. Se agrupa por él y nunca se muestra.`,
+    needsTs: (seen) =>
+      `"ts" en ${seen} registros: sin él el registro no tiene periodo, ni forma por día o por hora, y la pregunta del TTL no se puede plantear.`,
+    needsStopReason: (seen) =>
+      `"stop_reason" o "finish_reason" en ${seen} registros: sin él las respuestas cortadas en max_tokens son invisibles — y el silencio no es lo mismo que ninguna.`,
+    needsCacheTtl: (seen) =>
+      `el objeto "cache_creation" en ${seen} de los registros que escribieron en caché: sin él se asume la tarifa barata, así que esos totales son un suelo.`,
     hourChartLabel: 'Gasto por hora del día UTC, de medianoche a medianoche',
     hoursConcentrated: (hours) =>
       `El 80% de este gasto cae en ${hours} horas del día UTC — tráfico interactivo con alguien `
