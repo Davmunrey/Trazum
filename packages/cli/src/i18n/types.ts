@@ -728,6 +728,8 @@ export interface CliMessages {
      * the other 96%.
      */
     budgetVsWire(label: string, file: string, budget: string, perCall: string, share: string): string;
+    /** `--csv-shape` naming a table that does not exist. */
+    badCsvShape(value: string): string;
     coverageHeading(): string;
     needsLabel(seen: string): string;
     needsSession(seen: string): string;

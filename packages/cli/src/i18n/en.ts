@@ -238,6 +238,9 @@ ${bold('OPTIONS FOR profile')}
                               With --against, both logs get the same window.
   --markdown-out <file>       Also write the report as Markdown, for a CI job
                               summary or a pull request comment.
+  --csv-shape <shape>         Which table --csv-out writes: slice (default),
+                              day or hour. One row shape per file, so nothing
+                              has to be filtered before it can be summed.
   --csv-out <file>            Also write the report as CSV, one row per label
                               and model. No total row, on purpose: a total
                               inside a data file gets summed with the data.
@@ -1051,6 +1054,8 @@ ${bold('EXAMPLES')}
       'Per-label budgets in trazum.config.json were not applied: --since/--until make "what this label spent" mean a slice, and a budget written for the whole period would be gating against something it does not describe.',
     budgetVsWire: (label, file, budget, perCall, share) =>
       `The budget on ${file} is ${budget} tokens, and calls labelled ${label} carry about ${perCall} input tokens each — so that gate governs roughly ${share} of what actually goes up the wire. The rest is retrieved context, conversation history and tool results, which no prompt file contains and no budget on one can see. The budget is not wrong; it is just smaller than the bill.`,
+    badCsvShape: (value) =>
+      `--csv-shape does not know "${value}". It takes "slice" (one row per label and model, the default), "day" or "hour".`,
     coverageHeading: () => 'What this log cannot answer yet',
     needsLabel: (seen) =>
       `"label" on ${seen} records: without it every workload is one row, so no per-workload spend, no drill-down, and the levers describe a mixture rather than a decision.`,

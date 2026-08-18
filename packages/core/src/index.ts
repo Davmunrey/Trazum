@@ -29,8 +29,13 @@ export type { CacheTtlFit, TtlFitOptions, TtlFitTracker, TtlFitVerdict } from '.
 // when restated by hand. See against.ts.
 // The profile as a spreadsheet — one row per label and model, no total row,
 // empty cells where dollars are unknown. See csv.ts.
-export { PROFILE_CSV_COLUMNS, profileToCsv } from './csv.js';
-export type { ProfileCsvOptions } from './csv.js';
+export {
+  PROFILE_CSV_COLUMNS,
+  PROFILE_CSV_DAY_COLUMNS,
+  PROFILE_CSV_HOUR_COLUMNS,
+  profileToCsv,
+} from './csv.js';
+export type { ProfileCsvOptions, ProfileCsvShape } from './csv.js';
 export { driversBetween } from './against.js';
 export type { AgainstDriver } from './against.js';
 export { createSessionLedgerTracker, singleTurnCacheWrites } from './session-ledger.js';
