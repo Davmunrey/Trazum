@@ -27,6 +27,46 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.16.0 — "The worst case, on the record"
+
+**Three additions, one posture: when the report cannot be certain, it says
+the uncomfortable half out loud — and gates on it.**
+
+### `--max-cache-loss-usd`, the third money gate
+
+```
+trazum profile usage.jsonl --max-cache-loss-usd 5
+```
+
+Exit 1 when caching **added** more than the limit to this bill — the
+`cacheEconomics` counterfactual as a CI gate; exact, the same tokens at the
+published input rate. And it reads the **worst case** on purpose: a log
+carrying only the flat cache-write count cannot say which TTL was paid, the
+settled figure and the 1-hour worst case can straddle the limit, and a gate
+reading the flattering half would pass exactly the bills it exists to catch.
+The failure message says which claim fired — a settled loss, or a ceiling
+only the missing `cache_creation` field can settle. In the Action as
+`max-cache-loss-usd`, self-tested in CI on a +$1.25 loss.
+
+### The price table's age, said out loud
+
+Every dollar a profile prints uses the bundled price table, and the one fact
+that silently invalidates all of them is a table the provider has re-priced
+since — an error that does not name its own size. Past 45 days, the terminal,
+the markdown, the MCP and the web all say so loudly, with `--pricing-live` as
+the fix; `--json` always carries `pricing.lastReviewed` / `pricing.ageDays`
+as provenance. The tests pin the rule, not the calendar: a freshly reviewed
+table asserts the opposite behaviour and passes the same suite.
+
+### The day series in the markdown
+
+The spend-per-day table the peak sentence summarises — day, exact dollars,
+calls, biggest label — capped at the most recent 14 days with the earlier
+ones counted out loud, absent for a single day because one row is the total
+again. The full series still rides `--json` as `spendByDay`.
+
+---
+
 ## 1.15.0 — "The same answer on every surface"
 
 **1.14.0 added the drill-downs and the drive-by finding; this release makes
