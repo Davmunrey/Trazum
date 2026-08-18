@@ -297,6 +297,37 @@ export interface UsageProfileReport {
     topLabelUsd: number;
   }>;
   /**
+   * How many parsed records carried each optional field.
+   *
+   * Every finding this module makes beyond the totals needs a field the log
+   * format does not require, and a reader who never adds them sees a report
+   * quietly missing half of itself. Counting them turns "Trazum did not tell
+   * me about conversation growth" into "none of your 40,000 records carry a
+   * session", which is a fact somebody can act on in an afternoon.
+   *
+   * Counted over records that **parsed**, priced or not: whether a field is
+   * present is a property of the log, not of the price catalogue. Partial
+   * coverage is the interesting case and is why these are counts rather than
+   * booleans — 12 records out of 40,000 carrying a label is not "labelled",
+   * and a boolean would call it that.
+   */
+  fieldCoverage: {
+    /** Records with a usable `label`. */
+    label: number;
+    /** Records with a usable `session` or `conversation_id`. */
+    session: number;
+    /** Records with a readable timestamp. */
+    ts: number;
+    /** Records with a `stop_reason` or `finish_reason`. */
+    stopReason: number;
+    /** Records whose cache writes stated which TTL they used. */
+    cacheTtl: number;
+    /** Records that wrote to the cache at all — the denominator for `cacheTtl`. */
+    cacheWrites: number;
+    /** Every record that parsed, priced or not — the denominator for the rest. */
+    parsed: number;
+  };
+  /**
    * Spend per hour of the UTC day, 0–23, over priced records that carry a
    * clock — and only the hours that saw traffic.
    *
@@ -765,6 +796,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
   const ledger = createSessionLedgerTracker({ catalogue, on });
   const sessionCosts = createSessionCostTracker({ catalogue, on });
   let hasSessions = false;
+  const coverage = { label: 0, session: 0, ts: 0, stopReason: 0, cacheTtl: 0, cacheWrites: 0, parsed: 0 };
   let spanFrom = Infinity;
   let spanTo = -Infinity;
   let spanCalls = 0;
@@ -802,6 +834,21 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
       }
       if (sinceMs !== undefined && record.ts < sinceMs) continue;
       if (untilMs !== undefined && record.ts >= untilMs) continue;
+    }
+
+    /**
+     * Coverage is counted before pricing: whether a field is present is a
+     * property of the log, and a record on an unknown model still says
+     * whether somebody set `label`.
+     */
+    coverage.parsed += 1;
+    if (record.label !== null) coverage.label += 1;
+    if (record.session !== null) coverage.session += 1;
+    if (record.ts !== null) coverage.ts += 1;
+    if (record.truncated !== null) coverage.stopReason += 1;
+    if (record.cacheWrite5mTokens + record.cacheWrite1hTokens > 0) {
+      coverage.cacheWrites += 1;
+      if (record.writeTtlKnown) coverage.cacheTtl += 1;
     }
 
     if (record.session !== null) hasSessions = true;
@@ -908,6 +955,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
         }
         return { day, usd: entry.usd, calls: entry.calls, topLabel, topLabelUsd };
       }),
+    fieldCoverage: coverage,
     spendByHour: [...hours.entries()]
       .sort((a, b) => a[0] - b[0])
       .map(([hour, entry]) => ({ hour, usd: entry.usd, calls: entry.calls })),
