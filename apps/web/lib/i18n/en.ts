@@ -437,6 +437,24 @@ export const en: WebMessages = {
       `${count.toLocaleString('en-US')} ${count === 1 ? 'line' : 'lines'} could not be read `
       + `and ${count === 1 ? 'was' : 'were'} left out `
       + `(${count === 1 ? 'line' : 'lines'} ${lines}).`,
+    againstLabel: 'Compare against a previous log (optional)',
+    againstHint:
+      'A second usage log — last week\'s, yesterday\'s — read in this browser tab like the '
+      + 'first one. Nothing is uploaded.',
+    againstClear: 'Remove the previous log',
+    againstHeading: 'Against the previous log',
+    againstConvention:
+      'Positive means the bill grew. Both figures are exactly what each log holds — no period '
+      + 'is assumed, so judge the call counts before judging the money.',
+    againstTotals: (before, after, delta, pct) => `${before} → ${after}   ${delta} (${pct})`,
+    againstCalls: (before, after) =>
+      `${before.toLocaleString('en-US')} → ${after.toLocaleString('en-US')} calls.`,
+    againstDriver: (delta, label, before, after) => `${delta}  ${label}  (${before} → ${after})`,
+    againstDriverNew: (delta, label) => `${delta}  ${label}  (new since the previous log)`,
+    againstDriverGone: (delta, label) => `${delta}  ${label}  (gone since the previous log)`,
+    againstNothingPriced:
+      'The previous log has nothing the pricing catalogue knows, so there is no comparison to '
+      + 'make.',
   },
 
   errors: {

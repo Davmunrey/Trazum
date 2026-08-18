@@ -447,6 +447,25 @@ export const es: WebMessages = {
     skipped: (count, lines) =>
       `${count.toLocaleString('es-ES')} ${count === 1 ? 'línea no se pudo leer y quedó' : 'líneas no se pudieron leer y quedaron'} `
       + `fuera (${count === 1 ? 'línea' : 'líneas'} ${lines}).`,
+    againstLabel: 'Comparar con un registro anterior (opcional)',
+    againstHint:
+      'Un segundo registro de uso — el de la semana pasada, el de ayer — leído en esta pestaña '
+      + 'como el primero. No se sube nada.',
+    againstClear: 'Quitar el registro anterior',
+    againstHeading: 'Contra el registro anterior',
+    againstConvention:
+      'Positivo significa que la factura creció. Ambas cifras son exactamente lo que contiene '
+      + 'cada registro — no se asume ningún periodo, así que juzga las llamadas antes que el '
+      + 'dinero.',
+    againstTotals: (before, after, delta, pct) => `${before} → ${after}   ${delta} (${pct})`,
+    againstCalls: (before, after) =>
+      `${before.toLocaleString('es-ES')} → ${after.toLocaleString('es-ES')} llamadas.`,
+    againstDriver: (delta, label, before, after) => `${delta}  ${label}  (${before} → ${after})`,
+    againstDriverNew: (delta, label) => `${delta}  ${label}  (nueva desde el registro anterior)`,
+    againstDriverGone: (delta, label) => `${delta}  ${label}  (desaparecida desde el registro anterior)`,
+    againstNothingPriced:
+      'El registro anterior no tiene nada que el catálogo de precios conozca, así que no hay '
+      + 'comparación posible.',
   },
 
   errors: {

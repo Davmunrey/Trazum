@@ -78,6 +78,22 @@ describe('the bill tab reads the log in the browser and nowhere else', () => {
     assert.ok(gate !== -1 && confident !== -1 && gate < confident);
   });
 
+  it('states the against convention before the first figure it governs', () => {
+    // The Compare tab's rule for the Compare tab's reason: positive means the
+    // bill grew, and a reader arriving from the rest of the report has the
+    // opposite expectation loaded.
+    const convention = bill.indexOf('t.bill.againstConvention');
+    const totals = bill.indexOf('t.bill.againstTotals');
+    assert.notEqual(convention, -1, 'the convention is not rendered at all');
+    assert.ok(convention < totals, 'the convention renders after the figure it applies to');
+    // Drivers are derived over the union, so appeared and vanished workloads
+    // are named rather than folded silently.
+    assert.match(bill, /t\.bill\.againstDriverNew/);
+    assert.match(bill, /t\.bill\.againstDriverGone/);
+    // A previous log with nothing priced is its own answer, not zero growth.
+    assert.match(bill, /t\.bill\.againstNothingPriced/);
+  });
+
   it('renders every TTL-fit state, including "could not be measured"', () => {
     // Four verdicts plus the unmeasured line, gated on writes existing — the
     // same discipline as truncation: silence over writes with no clock would
