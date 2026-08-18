@@ -72,7 +72,26 @@ const usd = (value: number): string => value.toFixed(6);
 export interface ProfileCsvOptions {
   /** What to call the bucket for calls carrying no label. */
   unlabelled: string;
+  /**
+   * Which table to write.
+   *
+   * `slice` is one row per label and model — the grain a routing or budget
+   * decision is made at. `day` and `hour` are the time series, which is what
+   * a spreadsheet gets asked to chart; keeping them behind a choice rather
+   * than in extra columns means every file has one row shape, and a
+   * spreadsheet that has to filter before it can sum is a spreadsheet
+   * somebody sums wrong.
+   */
+  shape?: ProfileCsvShape;
 }
+
+export type ProfileCsvShape = 'slice' | 'day' | 'hour';
+
+/** Columns for the per-day series. */
+export const PROFILE_CSV_DAY_COLUMNS = ['day', 'usd', 'calls', 'top_label', 'top_label_usd'] as const;
+
+/** Columns for the per-hour-of-UTC-day series. */
+export const PROFILE_CSV_HOUR_COLUMNS = ['hour_utc', 'usd', 'calls'] as const;
 
 /**
  * The report as CSV text, one row per label and model.
@@ -82,6 +101,35 @@ export interface ProfileCsvOptions {
  * expensive workload at the top either way.
  */
 export function profileToCsv(report: UsageProfileReport, options: ProfileCsvOptions): string {
+  if (options.shape === 'day') {
+    const rows: string[] = [PROFILE_CSV_DAY_COLUMNS.join(',')];
+    for (const day of report.spendByDay) {
+      rows.push(
+        [
+          day.day,
+          usd(day.usd),
+          String(day.calls),
+          // A day whose calls carried no label at all has no top label, and an
+          // empty cell is that absence. Naming the unlabelled bucket here
+          // would claim a label the log never carried.
+          day.topLabel === null
+            ? ''
+            : field(day.topLabel === UNLABELLED ? options.unlabelled : day.topLabel),
+          day.topLabel === null ? '' : usd(day.topLabelUsd),
+        ].join(','),
+      );
+    }
+    return `${rows.join('\n')}\n`;
+  }
+
+  if (options.shape === 'hour') {
+    const rows: string[] = [PROFILE_CSV_HOUR_COLUMNS.join(',')];
+    for (const hour of report.spendByHour) {
+      rows.push([String(hour.hour), usd(hour.usd), String(hour.calls)].join(','));
+    }
+    return `${rows.join('\n')}\n`;
+  }
+
   const rows: string[] = [PROFILE_CSV_COLUMNS.join(',')];
 
   for (const { label, model, breakdown } of report.byLabelAndModel) {

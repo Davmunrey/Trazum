@@ -13,6 +13,15 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`--csv-shape day|hour`, the series a spreadsheet gets asked to chart.**
+`--csv-out` wrote one table: label and model. The time series is what somebody
+actually pastes into a chart, so it is now a choice rather than extra columns
+— **one row shape per file**, because a spreadsheet that has to filter before
+it can sum is a spreadsheet somebody sums wrong. The day table carries each
+day's biggest label; a day whose calls carried no label at all leaves those
+cells empty rather than inventing a name. No total row in any shape, still,
+and a shape it does not know is refused by name.
+
 **Relative windows: `--since 7d`, `--until now`.** "The last week" is what a
 nightly job asks for, and computing a date in a shell to say it is the step
 that gets skipped. Days and hours (`7d`, `24h`), plus `now` for the other

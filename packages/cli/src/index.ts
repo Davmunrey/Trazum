@@ -177,6 +177,7 @@ const VALUE_FLAGS = new Set([
   'max-growth-usd',
   'max-cache-loss-usd',
   'csv-out',
+  'csv-shape',
   'since',
   'until',
   'export',
@@ -429,7 +430,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
-  profile: ['json', 'pricing', 'pricing-live', 'against', 'markdown-out', 'csv-out', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'label', 'since', 'until'],
+  profile: ['json', 'pricing', 'pricing-live', 'against', 'markdown-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'label', 'since', 'until'],
   route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
@@ -2363,7 +2364,20 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
      */
     const csvOut = stringFlag(args, 'csv-out');
     if (csvOut !== undefined) {
-      await writeFile(csvOut, profileToCsv(report, { unlabelled: t.profile.unlabelled() }), 'utf8');
+      /**
+       * Which table the file holds. One row shape per file on purpose: a
+       * spreadsheet that has to filter before it can sum is a spreadsheet
+       * somebody sums wrong.
+       */
+      const shape = stringFlag(args, 'csv-shape') ?? 'slice';
+      if (shape !== 'slice' && shape !== 'day' && shape !== 'hour') {
+        throw new Error(t.profile.badCsvShape(shape));
+      }
+      await writeFile(
+        csvOut,
+        profileToCsv(report, { unlabelled: t.profile.unlabelled(), shape }),
+        'utf8',
+      );
       notice(c.dim(t.report.wroteTo(csvOut)));
     }
   };

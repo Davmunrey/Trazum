@@ -79,3 +79,56 @@ describe('the profile as CSV', () => {
     assert.match(rows[1], /^\(no label\),/);
   });
 });
+
+describe('the time-series shapes', () => {
+  const at = (day, hour, usd, label = 'chat') => ({
+    model: 'claude-opus-5',
+    label,
+    ts: `${day}T${String(hour).padStart(2, '0')}:30:00Z`,
+    usage: { input_tokens: usd * 200_000, output_tokens: 0 },
+  });
+
+  const shaped = (records, shape) =>
+    profileToCsv(
+      profileUsage(records.map((r) => JSON.stringify(r)).join('\n'), {
+        catalogue: BUNDLED_CATALOGUE,
+        on: ON,
+      }),
+      { unlabelled: '(no label)', shape },
+    );
+
+  it('writes one row per UTC day, with the day’s biggest label', () => {
+    const rows = rowsOf(
+      shaped([at('2026-08-01', 9, 1), at('2026-08-02', 9, 1), at('2026-08-02', 10, 3, 'batch')], 'day'),
+    );
+    assert.equal(rows[0], 'day,usd,calls,top_label,top_label_usd');
+    assert.equal(rows[1], '2026-08-01,1.000000,1,chat,1.000000');
+    assert.equal(rows[2], '2026-08-02,4.000000,2,batch,3.000000');
+  });
+
+  it('writes one row per hour that saw traffic', () => {
+    const rows = rowsOf(shaped([at('2026-08-01', 9, 1), at('2026-08-01', 9, 2), at('2026-08-01', 17, 1)], 'hour'));
+    assert.equal(rows[0], 'hour_utc,usd,calls');
+    assert.equal(rows[1], '9,3.000000,2');
+    assert.equal(rows[2], '17,1.000000,1');
+  });
+
+  it('leaves the top-label cells empty when a day carried no label', () => {
+    const unlabelled = {
+      model: 'claude-opus-5',
+      ts: '2026-08-01T09:30:00Z',
+      usage: { input_tokens: 200_000, output_tokens: 0 },
+    };
+    const rows = rowsOf(shaped([unlabelled], 'day'));
+    // The unlabelled bucket is a real bucket, so it *is* the day's top label:
+    // what must never happen is inventing a name the log did not carry.
+    assert.match(rows[1], /^2026-08-01,1\.000000,1,\(no label\),1\.000000$/);
+  });
+
+  it('still has no total row in any shape', () => {
+    for (const shape of ['slice', 'day', 'hour']) {
+      const csv = shaped([at('2026-08-01', 9, 1), at('2026-08-02', 9, 2)], shape);
+      assert.doesNotMatch(csv.toLowerCase(), /^total,/m);
+    }
+  });
+});
