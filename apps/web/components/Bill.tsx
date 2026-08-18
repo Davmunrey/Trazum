@@ -9,6 +9,7 @@ import {
   billLevers,
   cacheEconomics,
   cacheHitRate,
+  driversBetween,
   formatSignedUsd,
   formatUsd,
   profileUsage,
@@ -503,22 +504,25 @@ function Report({
                       prev.total.totalUsd > 0
                         ? `${delta >= 0 ? '+' : ''}${((delta / prev.total.totalUsd) * 100).toFixed(1)}%`
                         : '—';
-                    // Drivers over the union of labels, so an appeared or
-                    // vanished workload is named rather than folded silently —
-                    // the CLI's rule, re-stated here because the web computes
-                    // its own comparison.
-                    const before = new Map(prev.byLabel.map((r) => [r.label, r.breakdown.totalUsd]));
-                    const after = new Map(report.byLabel.map((r) => [r.label, r.breakdown.totalUsd]));
-                    const drivers = [...new Set([...before.keys(), ...after.keys()])]
-                      .map((label) => ({
-                        label,
-                        was: before.has(label) ? before.get(label)! : null,
-                        now: after.has(label) ? after.get(label)! : null,
-                      }))
-                      .map((d) => ({ ...d, delta: (d.now ?? 0) - (d.was ?? 0) }))
-                      .filter((d) => Math.abs(d.delta) > 1e-9)
-                      .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
-                      .slice(0, 5);
+                    // Drivers over the union of keys — core's one
+                    // implementation, shared with the CLI and the MCP, so
+                    // three surfaces cannot disagree about what a vanished
+                    // workload contributed.
+                    const drivers = driversBetween(
+                      prev.byLabel.map((r) => ({ key: r.label, usd: r.breakdown.totalUsd })),
+                      report.byLabel.map((r) => ({ key: r.label, usd: r.breakdown.totalUsd })),
+                    ).slice(0, 5);
+                    // The same change by model — where the mix moved. One
+                    // model on both sides restates the totals line, so it
+                    // stays silent, exactly as on the CLI.
+                    const modelDrivers = driversBetween(
+                      prev.byModel.map((r) => ({ key: r.model, usd: r.breakdown.totalUsd })),
+                      report.byModel.map((r) => ({ key: r.model, usd: r.breakdown.totalUsd })),
+                    ).slice(0, 3);
+                    const modelsInvolved = new Set([
+                      ...prev.byModel.map((r) => r.model),
+                      ...report.byModel.map((r) => r.model),
+                    ]);
                     return (
                       <>
                         {/* The convention, before the first figure it governs. */}
@@ -540,20 +544,46 @@ function Report({
                         </span>
                         <ul className="m-0 list-none p-0 text-[13px]">
                           {drivers.map((d) => (
-                            <li key={d.label} className={`py-px ${d.delta > 0 ? 'text-terracotta' : 'text-muted-foreground'}`}>
+                            <li key={d.key} className={`py-px ${d.delta > 0 ? 'text-terracotta' : 'text-muted-foreground'}`}>
                               {d.was === null
-                                ? t.bill.againstDriverNew(formatSignedUsd(d.delta), labelName(d.label))
+                                ? t.bill.againstDriverNew(formatSignedUsd(d.delta), labelName(d.key))
                                 : d.now === null
-                                  ? t.bill.againstDriverGone(formatSignedUsd(d.delta), labelName(d.label))
+                                  ? t.bill.againstDriverGone(formatSignedUsd(d.delta), labelName(d.key))
                                   : t.bill.againstDriver(
                                       formatSignedUsd(d.delta),
-                                      labelName(d.label),
+                                      labelName(d.key),
                                       formatUsd(d.was),
                                       formatUsd(d.now),
                                     )}
                             </li>
                           ))}
                         </ul>
+                        {modelDrivers.length > 0 && modelsInvolved.size > 1 && (
+                          <>
+                            <span className="text-[13px] text-muted-foreground">
+                              {t.bill.againstByModel}
+                            </span>
+                            <ul className="m-0 list-none p-0 text-[13px]">
+                              {modelDrivers.map((d) => (
+                                <li
+                                  key={`model:${d.key}`}
+                                  className={`py-px ${d.delta > 0 ? 'text-terracotta' : 'text-muted-foreground'}`}
+                                >
+                                  {d.was === null
+                                    ? t.bill.againstDriverNew(formatSignedUsd(d.delta), d.key)
+                                    : d.now === null
+                                      ? t.bill.againstDriverGone(formatSignedUsd(d.delta), d.key)
+                                      : t.bill.againstDriver(
+                                          formatSignedUsd(d.delta),
+                                          d.key,
+                                          formatUsd(d.was),
+                                          formatUsd(d.now),
+                                        )}
+                                </li>
+                              ))}
+                            </ul>
+                          </>
+                        )}
                       </>
                     );
                   })()

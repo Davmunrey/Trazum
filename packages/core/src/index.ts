@@ -24,6 +24,11 @@ export { TTL_1H_MS, TTL_5M_MS, cacheTtlFit, createTtlFitTracker } from './ttl-fi
 export type { CacheTtlFit, TtlFitOptions, TtlFitTracker, TtlFitVerdict } from './ttl-fit.js';
 // Cache writes by conversations that never came back — a ceiling on waste,
 // named as one, and a fact when the slice read nothing. See session-ledger.ts.
+// The drivers of a change between two bills — one implementation, because the
+// sign convention (positive means the bill grew) has flipped once already
+// when restated by hand. See against.ts.
+export { driversBetween } from './against.js';
+export type { AgainstDriver } from './against.js';
 export { createSessionLedgerTracker, singleTurnCacheWrites } from './session-ledger.js';
 export type {
   SessionLedgerOptions,

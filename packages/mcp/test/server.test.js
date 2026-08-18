@@ -272,7 +272,8 @@ describe('profile_usage', () => {
   it('takes text only — the schema has no path-shaped property', async () => {
     const answer = await client.send('tools/list', {});
     const tool = answer.result.tools.find((t) => t.name === 'profile_usage');
-    assert.deepEqual(Object.keys(tool.inputSchema.properties), ['log', 'label', 'since', 'until']);
+    assert.deepEqual(Object.keys(tool.inputSchema.properties), ['log', 'label', 'since', 'until', 'previous_log']);
+    assert.match(tool.inputSchema.properties.previous_log.description, /never a file path/);
     assert.equal(tool.inputSchema.additionalProperties, false);
     assert.match(tool.inputSchema.properties.log.description, /Never a file path/);
   });
@@ -326,6 +327,39 @@ describe('profile_usage', () => {
     assert.match(body, /1 call carry no timestamp|1 call carries no timestamp|1 call carry no/);
     assert.match(body, /floor on the period/);
     assert.match(body, /\$1\.00/);
+  });
+
+  it('compares against a previous log, mix move named, per-workload filters shared', async () => {
+    const previous = line({ model: 'claude-haiku-4-5', label: 'chat', usage: { input_tokens: 1_000_000, output_tokens: 0 } });
+    const now = line({ model: 'claude-opus-5', label: 'chat', usage: { input_tokens: 1_000_000, output_tokens: 0 } });
+
+    // $1.00 → $5.00: +$4.00 on the label, and the model split says why.
+    const body = bodyOf(await client.call('profile_usage', { log: now, previous_log: previous }));
+    assert.match(body, /Positive means the bill grew\. \$1\.00 → \$5\.00: \+\$4\.00 \(\+400\.0%\)/);
+    assert.match(body, /\+\$4\.00 chat \(\$1\.00 → \$5\.00\)/);
+    assert.match(body, /The same change, by model/);
+    assert.match(body, /\+\$5\.00 claude-opus-5 \(new since the previous log\)/);
+    assert.match(body, /-\$1\.00 claude-haiku-4-5 \(gone since the previous log\)/);
+
+    // The label filter reaches both sides: a drill-down that filtered only
+    // one log would call every sibling workload a vanished saving.
+    const twoWorkloads = [
+      line({ model: 'claude-opus-5', label: 'chat', usage: { input_tokens: 1_000_000, output_tokens: 0 } }),
+      line({ model: 'claude-opus-5', label: 'batch', usage: { input_tokens: 1_000_000, output_tokens: 0 } }),
+    ].join('\n');
+    const drilled = bodyOf(
+      await client.call('profile_usage', { log: twoWorkloads, previous_log: twoWorkloads, label: 'chat' }),
+    );
+    // The leak check is the money, not the word: "Batch API" appears in the
+    // levers prose, so the sibling would betray itself as the $10.00 total.
+    assert.match(drilled, /\$5\.00 → \$5\.00/);
+    assert.ok(!drilled.includes('$10.00'), 'the sibling workload leaked into the drilled comparison');
+
+    // Nothing priced in the previous log is its own answer, not zero growth.
+    const empty = bodyOf(
+      await client.call('profile_usage', { log: now, previous_log: line({ model: 'ft:unknown', usage: { input_tokens: 5 } }) }),
+    );
+    assert.match(empty, /no comparison to make — a different answer from zero growth/);
   });
 
   it('names the conversations that never came back, as fact or as ceiling', async () => {

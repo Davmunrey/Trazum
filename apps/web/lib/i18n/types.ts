@@ -371,6 +371,8 @@ export interface WebMessages {
     againstDriverNew(delta: string, label: string): string;
     againstDriverGone(delta: string, label: string): string;
     againstNothingPriced: string;
+    /** Lead-in for the change split by model — where the mix moved. */
+    againstByModel: string;
   };
 
   errors: {

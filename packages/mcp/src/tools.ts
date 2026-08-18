@@ -5,6 +5,7 @@ import {
   billLevers,
   cacheEconomics,
   cacheHitRate,
+  driversBetween,
   formatUsd,
   listModels,
   optimize,
@@ -307,6 +308,16 @@ const PROFILE: ToolDefinition = {
         description:
           'Profile only calls up to this moment; a bare date includes that whole UTC day. '
           + 'A window matching nothing is an error naming what the log does cover.',
+      },
+      previous_log: {
+        type: 'string',
+        minLength: 1,
+        maxLength: MAX_LOG_CHARS,
+        description:
+          'A previous usage log to compare against, as text — never a file path. Positive '
+          + 'means the bill grew. Drivers of the change are named per label and per model, '
+          + 'appeared and vanished workloads included; label/since/until filter both logs, '
+          + 'so the comparison stays one workload and one period.',
       },
     },
     required: ['log'],
@@ -668,6 +679,75 @@ const PROFILE: ToolDefinition = {
       );
     } else {
       lines.push('Stop reasons were recorded, and no answer hit the max_tokens ceiling.');
+    }
+
+    /**
+     * This bill against the previous one. The same section the CLI prints,
+     * over the same shared `driversBetween` — appeared and vanished workloads
+     * named, the model split only when more than one model is involved, and a
+     * previous log with nothing priced reported as its own answer rather than
+     * as zero growth.
+     */
+    const previousLog = args.previous_log;
+    if (previousLog !== undefined) {
+      if (typeof previousLog !== 'string') throw new InvalidArguments('previous_log must be a string');
+      if (previousLog.length > MAX_LOG_CHARS) {
+        throw new InvalidArguments(
+          `previous_log is ${previousLog.length} characters, over the ${MAX_LOG_CHARS} limit`,
+        );
+      }
+      // The same filters on both sides: a windowed or drilled-down bill
+      // against the whole previous log would call every sibling workload a
+      // vanished saving.
+      const previous = profileUsage(previousLog, {
+        catalogue: BUNDLED_CATALOGUE,
+        label: onlyLabel,
+        sinceMs,
+        untilMs,
+      });
+      lines.push('', '--- against the previous log ---');
+      if (previous.total.calls === 0) {
+        lines.push(
+          'The previous log has nothing the pricing catalogue knows (under the same filters), '
+            + 'so there is no comparison to make — a different answer from zero growth.',
+        );
+      } else {
+        const delta = total.totalUsd - previous.total.totalUsd;
+        const growthPct =
+          previous.total.totalUsd > 0
+            ? ` (${delta >= 0 ? '+' : ''}${((delta / previous.total.totalUsd) * 100).toFixed(1)}%)`
+            : '';
+        lines.push(
+          `Positive means the bill grew. ${formatUsd(previous.total.totalUsd)} → `
+            + `${formatUsd(total.totalUsd)}: ${delta >= 0 ? '+' : '-'}${formatUsd(Math.abs(delta))}${growthPct}, `
+            + `over ${count(previous.total.calls, 'call')} then and ${count(total.calls, 'call')} now `
+            + '— judge the call counts before the money.',
+        );
+        const describe = (d: { key: string; was: number | null; now: number | null; delta: number }, shown: string): string =>
+          d.was === null
+            ? `${d.delta >= 0 ? '+' : '-'}${formatUsd(Math.abs(d.delta))} ${shown} (new since the previous log)`
+            : d.now === null
+              ? `${d.delta >= 0 ? '+' : '-'}${formatUsd(Math.abs(d.delta))} ${shown} (gone since the previous log)`
+              : `${d.delta >= 0 ? '+' : '-'}${formatUsd(Math.abs(d.delta))} ${shown} (${formatUsd(d.was)} → ${formatUsd(d.now)})`;
+        for (const d of driversBetween(
+          previous.byLabel.map((e) => ({ key: e.label, usd: e.breakdown.totalUsd })),
+          report.byLabel.map((e) => ({ key: e.label, usd: e.breakdown.totalUsd })),
+        ).slice(0, 5)) {
+          lines.push(describe(d, name(d.key)));
+        }
+        const modelsInvolved = new Set([
+          ...previous.byModel.map((e) => e.model),
+          ...report.byModel.map((e) => e.model),
+        ]);
+        const modelDrivers = driversBetween(
+          previous.byModel.map((e) => ({ key: e.model, usd: e.breakdown.totalUsd })),
+          report.byModel.map((e) => ({ key: e.model, usd: e.breakdown.totalUsd })),
+        );
+        if (modelDrivers.length > 0 && modelsInvolved.size > 1) {
+          lines.push('The same change, by model — where the mix moved:');
+          for (const d of modelDrivers.slice(0, 3)) lines.push(describe(d, d.key));
+        }
+      }
     }
 
     if (report.unpricedModels.length > 0 || report.skippedLines.length > 0) {
