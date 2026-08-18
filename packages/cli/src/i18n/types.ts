@@ -672,6 +672,22 @@ export interface CliMessages {
      */
     againstOverlap(from: string, to: string): string;
     /**
+     * What one conversation costs — median against p95, never a mean: one
+     * runaway loop would drag a mean up and hide the ordinary case, which is
+     * the figure a per-seat price is set from.
+     */
+    sessionCost(
+      label: string,
+      model: string,
+      sessions: string,
+      median: string,
+      medianTurns: string,
+      p95: string,
+      max: string,
+    ): string;
+    /** Said only when the p95 clears ten times the median — a real tail. */
+    sessionCostTail(ratio: string): string;
+    /**
      * The time window — the drill-down in time. Every figure below the line
      * describes a slice, so the line prints before any of them; clockless
      * calls under a window are excluded and *counted out loud*, because

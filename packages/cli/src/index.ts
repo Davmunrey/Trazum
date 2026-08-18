@@ -2615,6 +2615,31 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
   }
 
   /**
+   * What one conversation costs — the question a total cannot answer, and the
+   * one a per-seat price or a quota is set from. Median against p95, never a
+   * mean: one runaway agent loop would drag a mean up and hide the ordinary
+   * case, which is the figure somebody is actually pricing.
+   */
+  for (const shape of report.sessionCosts.slice(0, 3)) {
+    const name = shape.label === UNLABELLED ? t.profile.unlabelled() : shape.label;
+    console.log();
+    console.log(
+      `  ${c.dim(wrap(t.profile.sessionCost(name, shape.modelName, n(shape.sessions), formatUsd(shape.medianUsd), n(shape.medianTurns), formatUsd(shape.p95Usd), formatUsd(shape.maxUsd)), 74, '  '))}`,
+    );
+    /**
+     * The tail, when there is one. A p95 far above the median is a shape a
+     * quota can fix; a p95 beside it is a workload that is simply expensive,
+     * and saying "hunt the tail" there would send somebody after nothing.
+     * The threshold is in the sentence rather than hidden here.
+     */
+    if (shape.medianUsd > 0 && shape.p95Usd > 10 * shape.medianUsd) {
+      console.log(
+        `  ${c.yellow('!')} ${c.dim(wrap(t.profile.sessionCostTail((shape.p95Usd / shape.medianUsd).toFixed(0)), 74, '    '))}`,
+      );
+    }
+  }
+
+  /**
    * A total that assumed a cache-write rate is a floor, and says so.
    *
    * Anthropic's 1-hour entry costs 2x input against the 5-minute entry's 1.25x. A

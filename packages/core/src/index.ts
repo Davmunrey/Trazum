@@ -30,6 +30,9 @@ export type { CacheTtlFit, TtlFitOptions, TtlFitTracker, TtlFitVerdict } from '.
 export { driversBetween } from './against.js';
 export type { AgainstDriver } from './against.js';
 export { createSessionLedgerTracker, singleTurnCacheWrites } from './session-ledger.js';
+// What one conversation costs — median and p95, exact. See session-cost.ts.
+export { createSessionCostTracker, sessionCostShapes } from './session-cost.js';
+export type { SessionCostOptions, SessionCostShape, SessionCostTracker } from './session-cost.js';
 export type {
   SessionLedgerOptions,
   SessionLedgerTracker,
