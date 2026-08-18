@@ -647,6 +647,15 @@ export interface CliMessages {
      */
     pricesStale(date: string, days: number): string;
     /**
+     * The spend-per-day table in the markdown rendering — the series the
+     * peak sentence summarises. Truncation is counted out loud: silent
+     * truncation reads as "covered everything" when it did not.
+     */
+    dayTableDay(): string;
+    dayTableCalls(): string;
+    dayTableTop(): string;
+    dayTableEarlier(days: number): string;
+    /**
      * The time window — the drill-down in time. Every figure below the line
      * describes a slice, so the line prints before any of them; clockless
      * calls under a window are excluded and *counted out loud*, because
