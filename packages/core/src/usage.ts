@@ -2,7 +2,9 @@ import { effectivePricing, multipliersFor } from './pricing.js';
 import { createConversationTracker } from './conversation.js';
 import { createOutputShapeTracker } from './output-shape.js';
 import { createTtlFitTracker } from './ttl-fit.js';
+import { createSessionLedgerTracker } from './session-ledger.js';
 import type { CacheTtlFit } from './ttl-fit.js';
+import type { SingleTurnCacheWrites } from './session-ledger.js';
 import type { ConversationGrowth } from './conversation.js';
 import type { OutputShape } from './output-shape.js';
 import type { PricingCatalogue } from './pricing.js';
@@ -311,6 +313,16 @@ export interface UsageProfileReport {
    * floor on the period, and every rendering says so out loud.
    */
   timeWindow: { sinceMs: number | null; untilMs: number | null; undatedExcluded: number } | null;
+  /**
+   * Cache writes made by conversations that ended after one turn — reuse paid
+   * for that their own conversation never made. A ceiling named as one: the
+   * provider's cache is keyed by prefix, so another session sharing the
+   * prefix within the TTL could have read these writes, and the log cannot
+   * see whose write a read hit. When the slice's `cacheReadTokens` is zero
+   * the ceiling collapses into a fact — nothing read those writes at all —
+   * and the renderings say which of the two they are stating.
+   */
+  singleTurnCacheWrites: SingleTurnCacheWrites[];
 }
 
 /** The share of the bill each part accounts for, as fractions of 1. */
@@ -722,6 +734,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
   const conversations = createConversationTracker({ catalogue, on });
   const output = createOutputShapeTracker({ catalogue, on });
   const ttlFit = createTtlFitTracker({ catalogue, on });
+  const ledger = createSessionLedgerTracker({ catalogue, on });
   let hasSessions = false;
   let spanFrom = Infinity;
   let spanTo = -Infinity;
@@ -769,6 +782,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
     conversations.add(record);
     output.add(record);
     ttlFit.add(record);
+    ledger.add(record);
 
     const usdBefore = total.totalUsd;
     if (!add(total, record, catalogue, on)) {
@@ -856,6 +870,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
     timeWindow: windowed
       ? { sinceMs: sinceMs ?? null, untilMs: untilMs ?? null, undatedExcluded }
       : null,
+    singleTurnCacheWrites: ledger.finish(),
   };
 }
 

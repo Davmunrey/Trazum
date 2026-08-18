@@ -639,6 +639,14 @@ export interface CliMessages {
     windowMatchesNothing(from: string, to: string): string;
     sinceAfterUntil(): string;
     badWhen(flag: string, value: string): string;
+    /**
+     * Cache writes by conversations that ended after one turn. Two sentences
+     * for the same tokens: a ceiling when the slice has reads (another
+     * conversation sharing the prefix may have read the write — the log
+     * cannot see whose write a read hit), a fact when it has none.
+     */
+    singleTurnCeiling(label: string, model: string, single: string, sessions: string, usd: string): string;
+    singleTurnConfirmed(label: string, model: string, single: string, sessions: string, usd: string): string;
   };
   /**
    * `trazum route` — the loop the levers section could only point at.
