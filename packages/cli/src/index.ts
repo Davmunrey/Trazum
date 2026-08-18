@@ -1999,6 +1999,20 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
   }
   const windowed = sinceMs !== undefined || untilMs !== undefined;
 
+  /**
+   * How old the price table behind every dollar below is. Stated only when it
+   * is old enough to matter: `models` and `doctor` always print the date, but
+   * a profile is read for its figures, and the one fact that silently
+   * invalidates all of them is a table the provider has re-priced since.
+   * The threshold is in the sentence, not hidden here.
+   */
+  const STALE_PRICING_DAYS = 45;
+  const pricingAgeDays = reviewAgeDays(pricing.lastReviewed, new Date());
+  const pricingStale =
+    pricingAgeDays !== null && pricingAgeDays > STALE_PRICING_DAYS
+      ? { date: pricing.lastReviewed, days: pricingAgeDays }
+      : null;
+
   const report = profileUsage(raw, { catalogue: pricing, label: onlyLabel, sinceMs, untilMs });
   if (report.total.calls === 0 && report.unpriced.calls === 0) {
     if (onlyLabel !== undefined || windowed) {
@@ -2168,6 +2182,8 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
             label: r.label,
             cache: cacheEconomics(r.breakdown),
           })),
+          // The provenance of every dollar above: which price table, how old.
+          pricing: { lastReviewed: pricing.lastReviewed, ageDays: pricingAgeDays },
           levers: billLevers(report, { catalogue: pricing }),
           // Present only when --against was passed: null delta means the
           // previous log had nothing priced, which is a different answer from
@@ -2209,7 +2225,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
   if (report.total.calls === 0) {
     console.log();
     console.log(c.dim(report.unpriced.calls === 0 ? t.profile.empty() : t.profile.nothingPriced()));
-    reportProfileGaps(report, t, n);
+    reportProfileGaps(report, t, n, pricingStale);
     return;
   }
 
@@ -2824,7 +2840,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
     }
   }
 
-  reportProfileGaps(report, t, n);
+  reportProfileGaps(report, t, n, pricingStale);
 
   /**
    * The same report as GitHub-flavoured markdown, for a job summary or a PR
@@ -2843,6 +2859,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
         ...(windowed
           ? { window: { since: stringFlag(args, 'since') ?? '—', until: stringFlag(args, 'until') ?? '—' } }
           : {}),
+        ...(pricingStale !== null ? { stalePricing: pricingStale } : {}),
       }),
       'utf8',
     );
@@ -2863,7 +2880,20 @@ function reportProfileGaps(
   report: ReturnType<typeof profileUsage>,
   t: CliMessages,
   n: (value: number) => string,
+  stalePricing: { date: string; days: number } | null = null,
 ): void {
+  /**
+   * The one fact that silently invalidates every dollar above: a price table
+   * the provider may have re-priced since. Loud, because unlike a skipped
+   * line it does not name its own size — the error is exactly whatever the
+   * provider changed, and only refreshing the table can say.
+   */
+  if (stalePricing !== null) {
+    console.log();
+    console.log(
+      `  ${c.yellow('!')} ${c.dim(wrap(t.profile.pricesStale(stalePricing.date, stalePricing.days), 74, '    '))}`,
+    );
+  }
   if (report.unpricedModels.length > 0) {
     console.log();
     console.log(

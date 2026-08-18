@@ -452,6 +452,11 @@ export const en: WebMessages = {
       'No record in this log carries a timestamp, so the window has nothing to filter by. '
       + 'Add "ts" to the records — the recipe below shows where.',
     windowOrder: 'The window starts after it ends. Check the two dates.',
+    pricesStale: (date, days) =>
+      `The price table behind every dollar here was last reviewed ${date} — ${days} days ago, `
+      + 'past the 45 this tool considers current. If the provider changed prices since, this '
+      + 'report is wrong by exactly that change. The CLI can fetch current prices '
+      + '(trazum profile --pricing-live).',
     byLabelHeading: 'By label',
     byModelHeading: 'By model',
     unlabelled: '(no label)',

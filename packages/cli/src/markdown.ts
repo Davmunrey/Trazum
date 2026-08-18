@@ -731,6 +731,12 @@ export interface ProfileMarkdownInput {
    * disagree with the terminal about which window this was.
    */
   window?: { since: string; until: string };
+  /**
+   * Passed only when the price table is old enough to matter, so the
+   * threshold lives once, beside the terminal's. Rendered loud: staleness
+   * does not name its own size the way a skipped line does.
+   */
+  stalePricing?: { date: string; days: number };
 }
 
 /**
@@ -748,7 +754,7 @@ export interface ProfileMarkdownInput {
  * reading CI instead of machines.
  */
 export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
-  const { report, levers, cache, t, window } = input;
+  const { report, levers, cache, t, window, stalePricing } = input;
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
   const shares = sharesOf(report.total);
@@ -898,6 +904,12 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
     lines.push('');
   }
 
+  // The provenance caveat before the data gaps: a stale table qualifies every
+  // dollar above, and it does not name its own size the way a skipped line does.
+  if (stalePricing !== undefined) {
+    lines.push(`> ⚠️ ${mdText(t.profile.pricesStale(stalePricing.date, stalePricing.days))}`);
+    lines.push('');
+  }
   if (report.unpricedModels.length > 0) {
     lines.push(`> ⚠️ ${mdText(t.profile.unpriced(report.unpricedModels.join(', '), report.unpriced.calls))}`);
     lines.push('');

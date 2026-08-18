@@ -7,6 +7,7 @@ import {
   cacheHitRate,
   driversBetween,
   formatUsd,
+  reviewAgeDays,
   listModels,
   optimize,
   profileUsage,
@@ -432,6 +433,19 @@ const PROFILE: ToolDefinition = {
       `${count(total.calls, 'call')} · ${formatUsd(total.totalUsd)} — exact billed token`
         + ` counts from the log, not estimates; prices reviewed ${PRICING_LAST_REVIEWED}.`,
     );
+    /**
+     * Said only when old enough to matter, and loud then: a stale table
+     * qualifies every dollar above, and unlike a skipped line it does not
+     * name its own size — the error is exactly whatever the provider changed.
+     */
+    const pricingAge = reviewAgeDays(PRICING_LAST_REVIEWED, new Date());
+    if (pricingAge !== null && pricingAge > 45) {
+      lines.push(
+        `That review was ${pricingAge} days ago, past the 45 this tool considers current. If the`
+          + ' provider changed prices since, every figure here is off by exactly that change —'
+          + ' the CLI can fetch current prices (trazum profile --pricing-live).',
+      );
+    }
     if (report.span !== null) {
       const day = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
       const days = ((report.span.toMs - report.span.fromMs) / 86_400_000).toFixed(1);

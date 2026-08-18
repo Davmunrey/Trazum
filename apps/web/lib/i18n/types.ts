@@ -349,6 +349,8 @@ export interface WebMessages {
     windowMatchesNothing(from: string, to: string): string;
     windowNeedsClock: string;
     windowOrder: string;
+    /** The price table's age, said only when past the 45-day threshold. */
+    pricesStale(date: string, days: number): string;
     byLabelHeading: string;
     byModelHeading: string;
     unlabelled: string;

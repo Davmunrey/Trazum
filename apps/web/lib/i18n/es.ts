@@ -464,6 +464,11 @@ export const es: WebMessages = {
       'Ningún registro lleva marca de tiempo, así que la ventana no tiene por qué filtrar. '
       + 'Añade "ts" a los registros — la receta de abajo dice dónde.',
     windowOrder: 'La ventana empieza después de terminar. Revisa las dos fechas.',
+    pricesStale: (date, days) =>
+      `La tabla de precios detrás de cada dólar de aquí se revisó por última vez el ${date} — `
+      + `hace ${days} días, más de los 45 que esta herramienta considera vigentes. Si el `
+      + 'proveedor cambió precios desde entonces, este informe se equivoca exactamente en ese '
+      + 'cambio. La CLI puede traer precios actuales (trazum profile --pricing-live).',
     byLabelHeading: 'Por etiqueta',
     byModelHeading: 'Por modelo',
     unlabelled: '(sin etiqueta)',
