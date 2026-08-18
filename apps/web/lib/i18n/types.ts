@@ -304,6 +304,20 @@ export interface WebMessages {
     truncatedWaste(calls: number, usd: string, pct: string): string;
     truncatedNone: string;
     truncatedNotRecorded: string;
+    /** The period the log covers — stated, never extrapolated. */
+    span(from: string, to: string, days: string): string;
+    spanPartial(withTs: number, total: number): string;
+    /**
+     * Whether the cache TTL fits the median gap between turns. Four verdicts
+     * plus "could not be measured" — the same three-state discipline as
+     * truncation, because "no data" and "fits" are different answers.
+     */
+    ttlExpires(label: string, model: string, gap: string): string;
+    ttlExpiresBoth(label: string, model: string, gap: string): string;
+    ttlOverlong(label: string, model: string, gap: string, usd: string): string;
+    ttlUnsettled(label: string, model: string, gap: string): string;
+    ttlFits(label: string, model: string, gap: string): string;
+    ttlUnmeasured: string;
     byLabelHeading: string;
     byModelHeading: string;
     unlabelled: string;

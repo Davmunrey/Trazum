@@ -1,6 +1,8 @@
 import { effectivePricing, multipliersFor } from './pricing.js';
 import { createConversationTracker } from './conversation.js';
 import { createOutputShapeTracker } from './output-shape.js';
+import { createTtlFitTracker } from './ttl-fit.js';
+import type { CacheTtlFit } from './ttl-fit.js';
 import type { ConversationGrowth } from './conversation.js';
 import type { OutputShape } from './output-shape.js';
 import type { PricingCatalogue } from './pricing.js';
@@ -114,6 +116,17 @@ export interface UsageRecord {
    * carries no content, and nothing identifying comes back out of it either.
    */
   session: string | null;
+  /**
+   * When the call happened, as epoch milliseconds, or `null` when the log does
+   * not say.
+   *
+   * Read from `ts`, `timestamp`, `created_at` or OpenAI's `created`; ISO 8601
+   * strings and epoch numbers both work, with seconds told from milliseconds by
+   * magnitude. The clock unlocks the two findings counts alone cannot make:
+   * what period this log actually covers, and whether the cache TTL fits how
+   * fast the turns arrive — the single most common reason a cache loses money.
+   */
+  ts: number | null;
   /**
    * Whether the answer hit the output ceiling, when the log says.
    *
@@ -245,6 +258,27 @@ export interface UsageProfileReport {
    * whose answers are inherently long — and the total cannot tell them apart.
    */
   outputShapes: OutputShape[];
+  /**
+   * The period the log covers, when its records carry a clock, over every
+   * parsed record — priced and unpriced alike, because when a call happened is
+   * a fact about the log rather than about the catalogue.
+   *
+   * `calls` is how many records carried a timestamp; compared against the
+   * parsed total it says whether the span describes the whole log or a slice
+   * of it, and the report states which. **The span is stated, never
+   * extrapolated**: "this log covers 13 days" makes the reader's own monthly
+   * arithmetic valid, while a per-month figure printed from a partial month
+   * would be this module doing the guessing it exists to end.
+   */
+  span: { fromMs: number; toMs: number; calls: number } | null;
+  /**
+   * Whether each slice's cache TTL fits how fast its turns arrive — the
+   * mechanism behind a losing cache verdict, and the one place an overlong TTL
+   * (2x writes surviving gaps measured in seconds) is ever visible. Needs
+   * `session` and a timestamp on the records; empty otherwise, which the
+   * report distinguishes from "measured and fine".
+   */
+  cacheTtlFit: CacheTtlFit[];
 }
 
 /** The share of the bill each part accounts for, as fractions of 1. */
@@ -327,6 +361,43 @@ const valueOf = (count: Count): number => (count.kind === 'ok' ? count.value : 0
  *    corruption, and a corrupt line belongs in `skippedLines` where the report
  *    names it, not in the totals as a silent zero.
  */
+/**
+ * A moment, from whatever a real log holds, in epoch milliseconds.
+ *
+ * The same three-state discipline as the counts: absent is fine (`null`),
+ * present-and-unreadable is corruption and rejects the line. A timestamp of
+ * `null` out of a Postgres round-trip, or `"yesterday"`, silently dropped would
+ * mis-measure every gap that record participates in — and unlike a wrong total,
+ * a wrong gap has nothing downstream to disagree with it.
+ *
+ * Numbers are epoch seconds or milliseconds, told apart by magnitude: anything
+ * from 1e12 up is milliseconds (September 2001 onward), anything from 1e8 up is
+ * seconds (March 1973 onward), and anything smaller names no real moment a
+ * usage log could contain. Strings go through `Date.parse`, which reads ISO
+ * 8601 — the format both `new Date().toISOString()` and every structured
+ * logger emit.
+ */
+type Moment = { kind: 'ok'; ms: number } | { kind: 'absent' } | { kind: 'corrupt' };
+
+function readMoment(...candidates: unknown[]): Moment {
+  let sawCorrupt = false;
+  for (const value of candidates) {
+    if (value === undefined) continue;
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      if (value >= 1e12) return { kind: 'ok', ms: value };
+      if (value >= 1e8) return { kind: 'ok', ms: value * 1000 };
+      sawCorrupt = true;
+      continue;
+    }
+    if (typeof value === 'string') {
+      const parsed = Date.parse(value);
+      if (Number.isFinite(parsed)) return { kind: 'ok', ms: parsed };
+    }
+    sawCorrupt = true;
+  }
+  return sawCorrupt ? { kind: 'corrupt' } : { kind: 'absent' };
+}
+
 export function parseUsageLine(line: string): UsageRecord | null {
   let raw: unknown;
   try {
@@ -390,6 +461,15 @@ export function parseUsageLine(line: string): UsageRecord | null {
   // Nothing to count at all.
   if (Object.values(counts).every((c) => c.kind === 'absent')) return null;
 
+  /**
+   * The clock, under the same rule as the counts: a timestamp that is present
+   * and unreadable rejects the line rather than becoming a silent absence.
+   * `created` is where OpenAI responses carry it (epoch seconds), so a log
+   * written by spreading the response already has one.
+   */
+  const moment = readMoment(record.ts, record.timestamp, record.created_at, record.created);
+  if (moment.kind === 'corrupt') return null;
+
   const cached = valueOf(counts.openAiCached!);
   const flatWrite = valueOf(counts.cacheWrite!);
   const split5m = valueOf(counts.write5m!);
@@ -425,6 +505,7 @@ export function parseUsageLine(line: string): UsageRecord | null {
      * nobody sets measures nothing.
      */
     session: nameOf(record.session) ?? nameOf(record.conversation_id),
+    ts: moment.kind === 'ok' ? moment.ms : null,
     /**
      * Anthropic spells it `stop_reason: "max_tokens"`, OpenAI
      * `finish_reason: "length"`. Any other recorded reason is a completed
@@ -584,7 +665,11 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
    */
   const conversations = createConversationTracker({ catalogue, on });
   const output = createOutputShapeTracker({ catalogue, on });
+  const ttlFit = createTtlFitTracker({ catalogue, on });
   let hasSessions = false;
+  let spanFrom = Infinity;
+  let spanTo = -Infinity;
+  let spanCalls = 0;
 
   const lines = text.split('\n');
   for (let i = 0; i < lines.length; i += 1) {
@@ -598,8 +683,14 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
     }
 
     if (record.session !== null) hasSessions = true;
+    if (record.ts !== null) {
+      spanFrom = Math.min(spanFrom, record.ts);
+      spanTo = Math.max(spanTo, record.ts);
+      spanCalls += 1;
+    }
     conversations.add(record);
     output.add(record);
+    ttlFit.add(record);
 
     if (!add(total, record, catalogue, on)) {
       unpricedModels.add(record.model);
@@ -649,6 +740,8 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
     conversations: conversations.finish(total.totalUsd),
     hasSessions,
     outputShapes: output.finish(total.totalUsd),
+    span: spanCalls > 0 ? { fromMs: spanFrom, toMs: spanTo, calls: spanCalls } : null,
+    cacheTtlFit: ttlFit.finish(),
   };
 }
 

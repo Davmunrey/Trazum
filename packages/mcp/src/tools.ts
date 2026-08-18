@@ -273,9 +273,10 @@ const PROFILE: ToolDefinition = {
     + 'the API returned — and says where the money went: the spend split, per label and per '
     + 'model, whether caching paid for itself, and which levers would actually move the bill. '
     + 'These are the provider\'s own billed token counts, not estimates. Pass the log text '
-    + 'itself: this server never reads files. Add "label" and "session" fields to the records '
-    + 'to unlock the per-workload and conversation-growth findings; the session key is grouped '
-    + 'by and never shown.',
+    + 'itself: this server never reads files. Add "label", "session" and "ts" fields to the '
+    + 'records to unlock the per-workload findings, conversation growth, the period the log '
+    + 'covers, and whether the cache TTL fits how fast the turns arrive; the session key is '
+    + 'grouped by and never shown.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -337,8 +338,28 @@ const PROFILE: ToolDefinition = {
     // because every sibling tool here carries the ±10% band.
     lines.push(
       `${count(total.calls, 'call')} · ${formatUsd(total.totalUsd)} — exact billed token`
-        + ` counts from the log, not estimates; prices reviewed ${PRICING_LAST_REVIEWED}.`
-        + ' Figures are "on this bill" — the log states no period, so nothing here is per-month.',
+        + ` counts from the log, not estimates; prices reviewed ${PRICING_LAST_REVIEWED}.`,
+    );
+    if (report.span !== null) {
+      const day = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
+      const days = ((report.span.toMs - report.span.fromMs) / 86_400_000).toFixed(1);
+      const parsed = total.calls + report.unpriced.calls;
+      const partial =
+        report.span.calls < parsed
+          ? ` Only ${count(report.span.calls, 'call')} of ${parsed} carry a timestamp; the span describes those.`
+          : '';
+      lines.push(
+        `This log covers ${day(report.span.fromMs)} → ${day(report.span.toMs)} (${days} days).`
+          + ' The span is stated, never extrapolated — the monthly arithmetic is yours to do.'
+          + partial,
+      );
+    } else {
+      lines.push(
+        'Figures are "on this bill" — the log carries no timestamps, so no period is known'
+          + ' and nothing here is per-month. Add "ts" to the record and the span is stated.',
+      );
+    }
+    lines.push(
       `input ${formatUsd(total.inputUsd)} · cache reads ${formatUsd(total.cacheReadUsd)}`
         + ` · cache writes ${formatUsd(total.cacheWriteUsd)}`
         + ` · output ${formatUsd(total.outputUsd)} (${pct(total.outputUsd / total.totalUsd)})`,
@@ -413,6 +434,48 @@ const PROFILE: ToolDefinition = {
     }
     const hit = cacheHitRate(total);
     if (hit !== null) lines.push(`Cache hit rate ${pct(hit)} of billable input.`);
+    /**
+     * Whether the TTL fits how fast the turns arrive — the mechanism behind the
+     * verdict above. Four verdicts plus "could not be measured": the same
+     * three-state discipline as truncation, because for an agent acting on this
+     * report "no data" and "fits" are different instructions.
+     */
+    const gapOf = (ms: number): string => {
+      if (ms < 90_000) return `${Math.round(ms / 1000)}s`;
+      if (ms < 90 * 60_000) return `${Math.round(ms / 60_000)}m`;
+      return `${(ms / 3_600_000).toFixed(1)}h`;
+    };
+    for (const fit of report.cacheTtlFit.slice(0, 3)) {
+      const who = `${name(fit.label)} on ${fit.modelName}`;
+      const gap = gapOf(fit.medianGapMs);
+      if (fit.verdict === 'expires-before-reuse') {
+        lines.push(
+          `${who}: turns arrive a median of ${gap} apart and the cache entry is gone by then —`
+            + ' writes expire before the next turn reads them. Use the 1-hour TTL if it survives'
+            + ' these gaps, or turn caching off here.',
+        );
+      } else if (fit.verdict === 'overlong-ttl') {
+        lines.push(
+          `${who}: turns arrive a median of ${gap} apart — inside the 5-minute window — and these`
+            + ` writes pay the 1-hour rate (2x input) for endurance they never use. The same writes`
+            + ` at the 5-minute TTL are ${formatUsd(fit.overpayUsd)} cheaper on this log, exactly.`,
+        );
+      } else if (fit.verdict === 'unsettled') {
+        lines.push(
+          `${who}: median gap ${gap} — a 5-minute entry is gone by then, a 1-hour one survives,`
+            + ' and the log did not record which these writes were. Record the "cache_creation"'
+            + ' object and this settles itself.',
+        );
+      } else {
+        lines.push(`${who}: median gap ${gap}, inside the lifetime these writes use. The TTL fits.`);
+      }
+    }
+    if (total.cacheWriteTokens > 0 && report.cacheTtlFit.length === 0) {
+      lines.push(
+        'Whether the cache TTL fits how fast the turns arrive could not be measured — it needs'
+          + ' both "session" and "ts" on the record.',
+      );
+    }
 
     lines.push('', '--- what would actually move this bill ---');
     const levers = billLevers(report, { catalogue: BUNDLED_CATALOGUE });

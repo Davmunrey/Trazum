@@ -385,6 +385,37 @@ export const en: WebMessages = {
       'Whether any answers were cut off could not be measured — no call in this log carries a '
       + 'stop reason. Add "stop_reason" (Anthropic) or "finish_reason" (OpenAI) to the record; '
       + 'the API already returns it beside "usage".',
+    span: (from, to, days) =>
+      `This log covers ${from} → ${to} (${days} days). The span is stated, never `
+      + 'extrapolated — the monthly arithmetic is yours to do, and now it is valid.',
+    spanPartial: (withTs, total) =>
+      `Only ${withTs.toLocaleString('en-US')} of ${total.toLocaleString('en-US')} calls carry `
+      + 'a timestamp; the span describes those.',
+    ttlExpires: (label, model, gap) =>
+      `${label} on ${model}: turns arrive a median of ${gap} apart and the 5-minute entry is `
+      + 'gone by then — writes expire before the next turn reads them, which from the bill is '
+      + 'a cache that only writes. The 1-hour TTL costs 2x input to write and would survive '
+      + 'these gaps; the other honest option is caching switched off here.',
+    ttlExpiresBoth: (label, model, gap) =>
+      `${label} on ${model}: turns arrive a median of ${gap} apart, and no cache entry lives `
+      + 'that long — even the 1-hour TTL is gone by the next turn. Caching cannot work at this '
+      + 'pace; turn it off here and stop paying the write premium.',
+    ttlOverlong: (label, model, gap, usd) =>
+      `${label} on ${model}: turns arrive a median of ${gap} apart — comfortably inside the `
+      + '5-minute window — and these writes pay the 1-hour rate, 2x input against 1.25x, for '
+      + `endurance the gaps never use. The same writes at the 5-minute TTL are ${usd} cheaper `
+      + 'on this log, and that figure is exact: the same tokens at the other published rate.',
+    ttlUnsettled: (label, model, gap) =>
+      `${label} on ${model}: turns arrive a median of ${gap} apart — a 5-minute entry is gone `
+      + 'by then and a 1-hour one survives — and the log did not record which these writes '
+      + 'were. Record the "cache_creation" object the API returns and this settles itself.',
+    ttlFits: (label, model, gap) =>
+      `${label} on ${model}: turns arrive a median of ${gap} apart, inside the lifetime these `
+      + 'writes use. The TTL is not the problem here.',
+    ttlUnmeasured:
+      'Whether the cache TTL fits how fast the turns arrive could not be measured — it needs '
+      + 'both "session" and "ts" on the record. A 5-minute entry on turns nine minutes apart '
+      + 'expires unread on every write, and only the clock can see it.',
     byLabelHeading: 'By label',
     byModelHeading: 'By model',
     unlabelled: '(no label)',

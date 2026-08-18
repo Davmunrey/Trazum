@@ -470,9 +470,9 @@ ${bold('EXAMPLES')}
     windowUnmoved: (share, model, window) =>
       `${share} of ${model}'s ${window}-token window, before and after: this change is too small to move it.`,
     beyondThisPromptTokensOnly: () =>
-      'Shortening a prompt is the smallest lever there is: measured on an ordinary support prompt, the rules recover about 1% of a monthly bill. If any of your prompts go to a metered API, "trazum profile <usage.jsonl>" reads what the provider actually charged and prices the levers that are not the prompt. Recording that log is three lines and it never contains prompt text.',
+      'Shortening a prompt is the smallest lever there is: measured on an ordinary support prompt, the rules recover about 1% of a monthly bill. If any of your prompts go to a metered API, "trazum profile <usage.jsonl>" reads what the provider actually charged and prices the levers that are not the prompt. Recording that log is a few lines and it never contains prompt text.',
     beyondThisPrompt: () =>
-      'Shortening a prompt is the smallest lever there is: measured on an ordinary support prompt, the rules recover about 1% of a monthly bill. On a metered API the things that move 40% to 80% are which model the call goes to, the Batch API, prompt caching, and what re-sending the conversation costs — and "trazum profile <usage.jsonl>" prices all four from what the provider actually charged. Recording that log is three lines and it never contains prompt text.',
+      'Shortening a prompt is the smallest lever there is: measured on an ordinary support prompt, the rules recover about 1% of a monthly bill. On a metered API the things that move 40% to 80% are which model the call goes to, the Batch API, prompt caching, and what re-sending the conversation costs — and "trazum profile <usage.jsonl>" prices all four from what the provider actually charged. Recording that log is a few lines and it never contains prompt text.',
     windowUse: (before, after, model, window) =>
       `Context window: ${before} → ${after} of ${model}'s ${window} tokens — room the conversation gets instead.`,
     tokensOnlyAskedFor: () =>
@@ -860,7 +860,7 @@ ${bold('EXAMPLES')}
   },
   profile: {
     noTarget: () =>
-      'Point this at a usage log: trazum profile usage.jsonl — one JSON object per line, each with a "model" and the "usage" object the API returned. Add "label" (which workload) and "session" (which conversation) while you are there: without them every call looks alike, and the two largest findings this command makes cannot be made at all. Recording it is three lines in your own code, it never contains prompt text, and the session key is grouped by and never printed.',
+      'Point this at a usage log: trazum profile usage.jsonl — one JSON object per line, each with a "model" and the "usage" object the API returned. Add "label" (which workload), "session" (which conversation) and "ts" (when) while you are there: without them every call looks alike, and the largest findings this command makes — conversation growth, and whether the cache TTL fits how fast your turns come — cannot be made at all. Recording it is four lines in your own code, it never contains prompt text, and the session key is grouped by and never printed.',
     heading: () => 'Where the money went',
     calls: (n) => plural(n, 'call'),
     spent: (calls, total) => `${calls} · ${total}`,
@@ -954,6 +954,22 @@ ${bold('EXAMPLES')}
       'Nothing here clears 1% of the bill: these calls are already on the cheapest model of their family, or their provider has no batch API. That is a real answer, not an empty section.',
     assumedWriteTtl: (calls) =>
       `${count(calls)} ${calls === 1 ? 'call did' : 'calls did'} not say which cache-write TTL was used, so the cheaper 5-minute rate was assumed. A 1-hour entry costs 2x input rather than 1.25x, so this total is a floor for those calls. Record the "cache_creation" object the API returns to remove the assumption.`,
+    spanLine: (from, to, days) =>
+      `This log covers ${from} → ${to} (${days} days). The span is stated, never extrapolated — the monthly arithmetic is yours to do, and now it is valid.`,
+    spanPartial: (withTs, total) =>
+      `Only ${withTs} of ${total} calls carry a timestamp; the span describes those.`,
+    ttlFitExpires: (label, model, gap) =>
+      `${label} on ${model}: turns arrive a median of ${gap} apart and the 5-minute entry is gone by then — writes expire before the next turn reads them, which from the bill is a cache that only writes. The 1-hour TTL costs 2x input to write and would survive these gaps; the other honest option is caching switched off here.`,
+    ttlFitExpiresBoth: (label, model, gap) =>
+      `${label} on ${model}: turns arrive a median of ${gap} apart, and no cache entry lives that long — even the 1-hour TTL is gone by the next turn. Caching cannot work at this pace; turn it off here and stop paying the write premium.`,
+    ttlFitOverlong: (label, model, gap, usd) =>
+      `${label} on ${model}: turns arrive a median of ${gap} apart — comfortably inside the 5-minute window — and these writes pay the 1-hour rate, 2x input against 1.25x, for endurance the gaps never use. The same writes at the 5-minute TTL are ${usd} cheaper on this log, and that figure is exact: the same tokens at the other published rate.`,
+    ttlFitUnsettledGap: (label, model, gap) =>
+      `${label} on ${model}: turns arrive a median of ${gap} apart — a 5-minute entry is gone by then and a 1-hour one survives — and the log did not record which these writes were, so whether they ever get read back cannot be settled. Record the "cache_creation" object the API returns and it settles itself.`,
+    ttlFitFits: (label, model, gap) =>
+      `${label} on ${model}: turns arrive a median of ${gap} apart, inside the lifetime these writes use. The TTL is not the problem here.`,
+    ttlFitUnmeasured: () =>
+      'Whether the cache TTL fits how fast the turns arrive could not be measured — it needs both "session" and "ts" on the record. A 5-minute entry on a workload whose turns come nine minutes apart expires unread on every write, and only the clock can see it. Trazum groups by the session and never shows it.',
   },
 
   route: {

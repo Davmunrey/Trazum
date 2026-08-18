@@ -18,6 +18,10 @@ export type {
   UsageShares,
 } from './usage.js';
 export { conversationGrowth, createConversationTracker } from './conversation.js';
+// Whether the cache TTL fits how fast the turns arrive — the mechanism behind a
+// losing cache, readable only when the log carries a clock. See ttl-fit.ts.
+export { TTL_1H_MS, TTL_5M_MS, cacheTtlFit, createTtlFitTracker } from './ttl-fit.js';
+export type { CacheTtlFit, TtlFitOptions, TtlFitTracker, TtlFitVerdict } from './ttl-fit.js';
 export { createOutputShapeTracker, outputShapes } from './output-shape.js';
 export type { OutputShape, OutputShapeOptions, OutputShapeTracker } from './output-shape.js';
 export type { ConversationGrowth, ConversationOptions, ConversationTracker } from './conversation.js';

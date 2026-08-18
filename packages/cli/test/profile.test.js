@@ -671,6 +671,8 @@ describe('the recipe this tool tells you to record', () => {
         model: 'claude-opus-5',
         label: 'support-rag',
         session: `conversation-${s}`,
+        // Turns a minute apart: the shape of an ordinary live conversation.
+        ts: new Date(Date.parse('2026-08-01T00:00:00Z') + s * 3_600_000 + t * 60_000).toISOString(),
         usage: {
           input_tokens: 300 + t * 400,
           output_tokens: 250,
@@ -689,12 +691,15 @@ describe('the recipe this tool tells you to record', () => {
       /None of these calls carried a label/,
       /did not say which cache-write TTL was used/,
       /could not be read/,
+      // The clock: a recipe without "ts" would trigger this on its first run.
+      /could not be measured — it needs both/,
+      /Only \d+ of .* carry a timestamp/,
     ]) {
       assert.doesNotMatch(out, complaint, `the documented recipe still triggers: ${complaint}`);
     }
   });
 
-  it('names both fields when there is no log to read yet', async () => {
+  it('names all three fields when there is no log to read yet', async () => {
     /**
      * The no-argument message is the first thing a reader sees. It used to
      * describe a log with neither field — the exact log the report then complains
@@ -703,6 +708,7 @@ describe('the recipe this tool tells you to record', () => {
     const out = flat(run(null));
     assert.match(out, /"label"/, 'the onboarding message does not mention label');
     assert.match(out, /"session"/, 'the onboarding message does not mention session');
+    assert.match(out, /"ts"/, 'the onboarding message does not mention the clock');
     assert.match(out, /never printed/, 'asked for a session key without saying what happens to it');
   });
 });

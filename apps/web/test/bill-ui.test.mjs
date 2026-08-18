@@ -78,6 +78,18 @@ describe('the bill tab reads the log in the browser and nowhere else', () => {
     assert.ok(gate !== -1 && confident !== -1 && gate < confident);
   });
 
+  it('renders every TTL-fit state, including "could not be measured"', () => {
+    // Four verdicts plus the unmeasured line, gated on writes existing — the
+    // same discipline as truncation: silence over writes with no clock would
+    // read as fine.
+    for (const key of ['ttlExpires', 'ttlExpiresBoth', 'ttlOverlong', 'ttlUnsettled', 'ttlFits', 'ttlUnmeasured']) {
+      assert.match(bill, new RegExp(`t\\.bill\\.${key}`), `${key} is never rendered`);
+    }
+    assert.match(bill, /cacheWriteTokens > 0 && report\.cacheTtlFit\.length === 0/);
+    // The overlong verdict carries its exact figure, never the spend.
+    assert.match(bill, /ttlOverlong\([^)]*fit\.overpayUsd/s);
+  });
+
   it('renders all three truncation states, not two', () => {
     // "Not recorded" and "none truncated" are different answers. Dropping
     // either collapses them into the flattering one.

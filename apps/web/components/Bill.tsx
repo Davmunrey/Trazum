@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 
 import {
   BUNDLED_CATALOGUE,
+  TTL_1H_MS,
   UNLABELLED,
   billLevers,
   cacheEconomics,
@@ -194,6 +195,12 @@ function Report({
    */
   const unsettled = cache.worstCaseVerdict !== cache.verdict && total.assumedWriteTtlCalls > 0;
   const hitRate = cacheHitRate(total);
+  const gapOf = (ms: number): string => {
+    if (ms < 90_000) return `${Math.round(ms / 1000)}s`;
+    if (ms < 90 * 60_000) return `${Math.round(ms / 60_000)}m`;
+    if (ms < 36 * 3_600_000) return `${(ms / 3_600_000).toFixed(1)}h`;
+    return `${(ms / 86_400_000).toFixed(1)}d`;
+  };
   const lostLabels = report.byLabel
     .map((entry) => ({ label: entry.label, economics: cacheEconomics(entry.breakdown) }))
     .filter((entry) => entry.economics.verdict === 'lost-money');
@@ -216,6 +223,24 @@ function Report({
             <div className="font-display text-[26px] leading-tight font-semibold">
               {t.bill.headline(total.calls, formatUsd(total.totalUsd))}
             </div>
+            {/*
+              The period, stated and never extrapolated: the span makes the
+              reader's own monthly arithmetic valid. Partial coverage is said
+              in the same breath — a span over a slice of the log presented as
+              the log's period would be a figure attributed to something it
+              does not describe.
+            */}
+            {report.span !== null && (
+              <span className="text-[13px] text-muted-foreground">
+                {t.bill.span(
+                  new Date(report.span.fromMs).toISOString().slice(0, 10),
+                  new Date(report.span.toMs).toISOString().slice(0, 10),
+                  ((report.span.toMs - report.span.fromMs) / 86_400_000).toFixed(1),
+                )}
+                {report.span.calls < total.calls + report.unpriced.calls &&
+                  ` ${t.bill.spanPartial(report.span.calls, total.calls + report.unpriced.calls)}`}
+              </span>
+            )}
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="text-left text-muted-foreground">
@@ -303,6 +328,38 @@ function Report({
               )}
               {hitRate !== null && (
                 <span className="text-[13px] text-muted-foreground">{t.bill.cacheHit(pct(hitRate))}</span>
+              )}
+              {/*
+                Whether the TTL fits how fast the turns arrive — the mechanism
+                behind the verdict above. Four verdicts plus "could not be
+                measured", the same three-state discipline as truncation:
+                silence over writes with no clock would read as fine.
+              */}
+              {report.cacheTtlFit.slice(0, 3).map((fit) => {
+                const who = labelName(fit.label);
+                const gap = gapOf(fit.medianGapMs);
+                const text =
+                  fit.verdict === 'expires-before-reuse'
+                    ? fit.medianGapMs > TTL_1H_MS
+                      ? t.bill.ttlExpiresBoth(who, fit.modelName, gap)
+                      : t.bill.ttlExpires(who, fit.modelName, gap)
+                    : fit.verdict === 'overlong-ttl'
+                      ? t.bill.ttlOverlong(who, fit.modelName, gap, formatUsd(fit.overpayUsd))
+                      : fit.verdict === 'unsettled'
+                        ? t.bill.ttlUnsettled(who, fit.modelName, gap)
+                        : t.bill.ttlFits(who, fit.modelName, gap);
+                const tone =
+                  fit.verdict === 'expires-before-reuse' || fit.verdict === 'overlong-ttl'
+                    ? 'text-terracotta'
+                    : 'text-[13px] text-muted-foreground';
+                return (
+                  <span key={`${fit.label}\n${fit.model}`} className={tone}>
+                    {text}
+                  </span>
+                );
+              })}
+              {total.cacheWriteTokens > 0 && report.cacheTtlFit.length === 0 && (
+                <span className="text-[13px] text-muted-foreground">{t.bill.ttlUnmeasured}</span>
               )}
             </CardContent>
           </Card>
