@@ -13,6 +13,15 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`--json` becomes a contract.** `docs/json-output.md` documents every
+top-level field, the output carries a `schemaVersion` to branch on, and
+`json-contract.test.js` enforces the promise **in both directions**: a
+documented field that disappears fails, and a field emitted without a line in
+the doc fails too. Anything built on the machine-readable report could not
+previously tell "old Trazum" from "no data"; the promise is now explicit —
+fields are added without a version bump, dollars are unrounded numbers,
+absence is `null` or `[]` and never zero, and nothing carries a session key.
+
 **The shape of the day, and the lever it points at.** `spendByHour` buckets
 exact per-record dollars by hour of the UTC day, and the report states the
 measure that needs no threshold to explain: the **fewest hours holding 80% of

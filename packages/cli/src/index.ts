@@ -2362,6 +2362,15 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
     console.log(
       JSON.stringify(
         {
+          /**
+           * The contract version, documented in docs/json-output.md and
+           * enforced by json-contract.test.js. It changes only when a
+           * field's meaning changes or one is removed — new findings arrive
+           * as new keys, so a consumer that ignores unknown ones keeps
+           * working. Without it, every dashboard built on this output has to
+           * guess whether a missing key means "old Trazum" or "no data".
+           */
+          schemaVersion: 1,
           ...report,
           cache: cacheEconomics(report.total),
           cacheByLabel: report.byLabel.map((r) => ({
