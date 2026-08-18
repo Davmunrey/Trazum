@@ -146,3 +146,40 @@ describe('the clock reaches the markdown rendering', () => {
     assert.match(md, /> ⚠️ .*5-minute entry is gone/);
   });
 });
+
+describe('--label, the drill-down', () => {
+  const mixed = () => [
+    { model: 'claude-opus-5', label: 'chat', usage: { input_tokens: 1_000_000, output_tokens: 0 } },
+    { model: 'claude-opus-5', label: 'rag', usage: { input_tokens: 200_000, output_tokens: 0 } },
+  ];
+
+  it('profiles one workload, and the totals are that workload alone', async () => {
+    const log = await write('usage.jsonl', mixed());
+    const result = run([log, '--label', 'rag', '--json']);
+    assert.equal(result.status, 0, result.stderr);
+    const parsed = JSON.parse(result.stdout);
+    // $1.00: 200k input tokens at $5/MTok, and nothing of chat's $5.00.
+    assert.equal(parsed.total.totalUsd.toFixed(2), '1.00');
+    assert.equal(parsed.total.calls, 1);
+  });
+
+  it('a label that matches nothing is an error naming the labels that exist', async () => {
+    const log = await write('usage.jsonl', mixed());
+    const result = run([log, '--label', 'ragg']);
+    assert.notEqual(result.status, 0);
+    assert.match(flat(result), /No call in this log carries the label "ragg"/);
+    assert.match(flat(result), /chat/);
+  });
+
+  it('filters both sides of --against, so the comparison stays one workload', async () => {
+    const before = await write('before.jsonl', mixed());
+    const after = await write('after.jsonl', [
+      { model: 'claude-opus-5', label: 'chat', usage: { input_tokens: 1_000_000, output_tokens: 0 } },
+      { model: 'claude-opus-5', label: 'rag', usage: { input_tokens: 600_000, output_tokens: 0 } },
+    ]);
+    // rag grew $1.00 → $3.00; chat is unchanged and must not appear.
+    const result = run([after, '--against', before, '--label', 'rag', '--max-growth-usd', '1']);
+    assert.equal(result.status, 1);
+    assert.match(flat(result), /grew \+\$2\.00/);
+  });
+});

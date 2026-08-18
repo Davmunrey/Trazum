@@ -206,6 +206,12 @@ ${bold('OPCIONES DE profile')}
                               ordenados por su contribución al cambio. No se
                               asume ningún periodo — juzga las llamadas antes
                               que el dinero.
+  --label <nombre>            Perfila solo las llamadas con esta etiqueta — el
+                              zoom una vez que el informe completo nombró al
+                              sospechoso. Una etiqueta sin llamadas es un error
+                              que nombra las que existen. Con --against se
+                              filtran los dos registros, así que la comparación
+                              sigue siendo una sola carga.
   --max-usd <n>               Sale con código 1 si este registro gastó más de n
                               dólares. El presupuesto aplica exactamente al
                               registro entregado: perfila el log de ayer cada
