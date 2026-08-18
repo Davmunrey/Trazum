@@ -27,6 +27,46 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.22.0 — "The gate, the window and the spreadsheet"
+
+### The bridge between the two halves of the product
+
+`check` gates what you **wrote**; `profile` measures what you **sent**.
+Nothing told a reader those are different quantities — so when `labels` maps a
+workload to a prompt file and a budget covers that file, the report now says
+how much of the call that gate can actually see:
+
+```
+! The budget on prompts/support.txt is 2,000 tokens, and calls labelled support
+  carry about 50,000 input tokens each — so that gate governs roughly 4.0% of
+  what actually goes up the wire. The budget is not wrong; it is just smaller
+  than the bill.
+```
+
+Only when the budget covers less than half the call — a budget doing its job
+is not news — with the share named as approximate, because a file is counted
+by the estimator and a call by the provider. Cached tokens count towards the
+call: a cached token was still sent and still filled the window.
+
+### `--since 7d`
+
+"The last week" is what a nightly job asks for, and computing a date in a
+shell to say it is the step that gets skipped. Days and hours on either bound,
+plus `now`. Measured against **this machine's clock, not the log's** — said
+out loud beside the window line, and named as the likely reason when a
+relative window finds nothing.
+
+### `--csv-shape day|hour`
+
+The CSV wrote one table: label and model. The time series is what somebody
+pastes into a chart, so it is a choice now rather than extra columns — one row
+shape per file, because a spreadsheet that has to filter before it can sum is
+a spreadsheet somebody sums wrong. The day table carries each day's biggest
+label; a day whose calls carried no label leaves those cells empty rather than
+inventing a name.
+
+---
+
 ## 1.21.0 — "What the log does not say"
 
 **A report that quietly omits half of itself is worse than one that admits
