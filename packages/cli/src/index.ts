@@ -33,6 +33,7 @@ import {
   LOCALES,
   MAX_BASELINE_BYTES,
   moneyIsComparable,
+  mostSpecificMatch,
   nearestName,
   optimize,
   parseBaseline,
@@ -2741,6 +2742,51 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
     } else {
       console.log(
         `  ${c.dim(wrap(t.profile.labelPrefixHealthy(file, n(analysis.stablePrefixTokens), n(minimum ?? 0)), 74, '    '))}`,
+      );
+    }
+  }
+
+  /**
+   * The token budget against what actually goes up the wire.
+   *
+   * `budgets` gates a prompt *file*; the log records what the *call* carried —
+   * system prompt, retrieved context, conversation history, tool results. The
+   * two are related only through `labels`, and when the gap is large the gate
+   * is real but tiny: a 2,000-token budget on a workload sending 47,000
+   * tokens a call governs four per cent of what is sent, and nobody looking
+   * at a green build would know it.
+   *
+   * Only stated when both ends are known — a label mapped to a file, and a
+   * budget covering that file — and the share is named as approximate,
+   * because the budget counts the file's tokens with the estimator while the
+   * log counts what the provider billed. It says which part of the bill the
+   * gate can see, and never that the budget is wrong.
+   */
+  const budgetPatterns = Object.keys(config.budgets ?? {});
+  if (budgetPatterns.length > 0) {
+    for (const row of report.byLabel) {
+      const file = labelMap[row.label];
+      if (file === undefined || row.breakdown.calls === 0) continue;
+      const pattern = mostSpecificMatch(budgetPatterns, file);
+      if (pattern === null) continue;
+      const budget = config.budgets![pattern]!;
+      if (budget <= 0) continue;
+      /**
+       * Input tokens per call over this label — every class that is billed
+       * as input, because a cached token was still sent and still counted
+       * against the model's window.
+       */
+      const perCall =
+        (row.breakdown.inputTokens + row.breakdown.cacheReadTokens + row.breakdown.cacheWriteTokens) /
+        row.breakdown.calls;
+      if (perCall <= 0) continue;
+      const share = budget / perCall;
+      // Only when the gap is wide enough to change what somebody believes.
+      // A budget covering most of the call is doing its job quietly.
+      if (share >= 0.5) continue;
+      console.log();
+      console.log(
+        `  ${c.yellow('!')} ${c.dim(wrap(t.profile.budgetVsWire(row.label === UNLABELLED ? t.profile.unlabelled() : row.label, file, n(budget), n(Math.round(perCall)), pct(share)), 74, '    '))}`,
       );
     }
   }
