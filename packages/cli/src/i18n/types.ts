@@ -701,6 +701,15 @@ export interface CliMessages {
      * stated: a report over "the logs" that silently skipped one is a total
      * wrong by an unknown amount.
      */
+    /**
+     * Which workloads pay for truncated answers, and at what rate. The rate
+     * is over calls that recorded a stop reason, never over all calls: a
+     * workload that logs the field on half its traffic must not be reported
+     * as though the unmeasured half completed.
+     */
+    truncatedBy(label: string, calls: string, measured: string, rate: string, usd: string): string;
+    /** What the answers that finished actually needed, for setting the cap. */
+    truncatedCeiling(p95: string): string;
     readFiles(files: number, directory: string): string;
     noLogsInDirectory(directory: string, extensions: string): string;
     /**
