@@ -1912,6 +1912,26 @@ yesterday's log has a daily budget without Trazum ever guessing what a day is.
 silently gates nothing — and both fire under `--json` too, because CI reads the
 exit code there.
 
+**The drill-downs compose with the gates.** `--label` profiles one workload;
+`--since`/`--until` profile one period (a UTC day or a full ISO timestamp — a
+bare `--until` date includes that whole day):
+
+```bash
+trazum profile usage.jsonl --since 2026-08-11 --until 2026-08-17 --max-usd 200
+```
+
+A call with no `ts` cannot be placed inside or outside a window, so it is
+excluded and counted out loud — the window's figures are a floor on the
+period. A window matching nothing is an error naming what the log does cover,
+never a $0 report that would pass a budget gate over a period the log does not
+contain.
+
+**And the clock is not needed for every finding**: with only `session` on the
+records, `profile` names the conversations that ended after one turn and what
+their cache writes cost — reuse paid for that their own conversation never
+made, a ceiling when the slice has reads (another conversation sharing the
+prefix may have read them), a plain fact when it has none.
+
 
 ## Where this fits, said at the front door
 
