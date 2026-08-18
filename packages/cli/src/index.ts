@@ -2975,6 +2975,41 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
     console.log(
       `  ${c.yellow('!')} ${c.bold(wrap(t.profile.truncatedWaste(t.profile.calls(report.total.truncatedCalls), formatUsd(report.total.truncatedOutputUsd), pct(report.total.truncatedOutputUsd / report.total.outputUsd)), 74, '    '))}`,
     );
+    /**
+     * Which workloads are paying for it, and at what rate — the actionable
+     * half the total hides. A 40% truncation rate is a max_tokens setting
+     * that is simply wrong; 1% is a long tail, and the two call for opposite
+     * responses.
+     *
+     * The rate is over calls that **recorded a stop reason**, never over all
+     * calls: a workload that logs the field on half its traffic must not be
+     * reported as though the unmeasured half completed. Both numbers print,
+     * so the denominator is visible rather than implied.
+     */
+    const truncatedLabels = report.byLabel
+      .filter((row) => row.breakdown.truncatedCalls > 0)
+      .sort((a, b) => b.breakdown.truncatedOutputUsd - a.breakdown.truncatedOutputUsd);
+    if (truncatedLabels.length > 0 && report.byLabel.length > 1) {
+      for (const row of truncatedLabels.slice(0, 3)) {
+        const name = row.label === UNLABELLED ? t.profile.unlabelled() : row.label;
+        console.log(
+          `    ${c.dim(wrap(t.profile.truncatedBy(name, n(row.breakdown.truncatedCalls), n(row.breakdown.stopReasonCalls), pct(row.breakdown.truncatedCalls / row.breakdown.stopReasonCalls), formatUsd(row.breakdown.truncatedOutputUsd)), 74, '    '))}`,
+        );
+      }
+    }
+    /**
+     * The ceiling the completed answers actually needed, when the output
+     * shapes measured it: "95% of the answers that finished fit within N
+     * tokens" is the number a max_tokens cap wants, and it sits next to the
+     * evidence that the current cap is too low. Measured on these calls,
+     * promised for nothing.
+     */
+    const ceiling = report.outputShapes.find((shape) => shape.p95WithinTokens !== null);
+    if (ceiling !== undefined) {
+      console.log(
+        `    ${c.dim(wrap(t.profile.truncatedCeiling(n(ceiling.p95WithinTokens!)), 74, '    '))}`,
+      );
+    }
   } else if (report.total.stopReasonCalls === 0) {
     console.log();
     console.log(`  ${c.dim(wrap(t.profile.truncatedNotRecorded(), 74, '  '))}`);

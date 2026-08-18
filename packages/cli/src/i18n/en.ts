@@ -1048,6 +1048,10 @@ ${bold('EXAMPLES')}
       `${label} has a budget in trazum.config.json and no calls in this log, so nothing was measured for it. Not a pass: a workload that did not appear is not a workload that came in under budget.`,
     labelBudgetWindowed: () =>
       'Per-label budgets in trazum.config.json were not applied: --since/--until make "what this label spent" mean a slice, and a budget written for the whole period would be gating against something it does not describe.',
+    truncatedBy: (label, calls, measured, rate, usd) =>
+      `${label}: ${calls} of ${measured} calls that recorded a stop reason were cut off (${rate}), ${usd} of output. The denominator is the calls that measured, not every call — a workload logging the field half the time is not a workload whose other half completed.`,
+    truncatedCeiling: (p95) =>
+      `95% of the answers that finished fit within ${p95} output tokens, so a cap around there would stop cutting them off. Measured on these calls, promised for nothing.`,
     readFiles: (files, directory) =>
       `Read ${count(files)} log files from ${directory}, in name order, as one bill. Every figure below covers all of them.`,
     noLogsInDirectory: (directory, extensions) =>

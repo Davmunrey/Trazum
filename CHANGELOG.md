@@ -13,6 +13,16 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**Truncation, with suspects.** The report could say a bill paid for answers
+cut off at `max_tokens` and not which workload was paying. It now names them,
+ranked by wasted output, with the rate stated over **calls that recorded a
+stop reason** — never over every call, because a workload logging the field
+half the time is not a workload whose other half completed, and both numbers
+print so the denominator is visible. A 40% rate is a `max_tokens` setting
+that is wrong; 1% is a long tail, and the two call for opposite responses.
+Beside them, the ceiling the finished answers actually needed — 95% fit
+within N output tokens — measured on these calls and promised for nothing.
+
 **The drill-down reaches the browser: click a workload, see it alone.** The
 web Bill tab's per-label table becomes clickable — the CLI's `--label`,
 without retyping the command. The banner carries the awkward half out loud:

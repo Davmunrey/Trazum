@@ -1061,6 +1061,10 @@ ${bold('EJEMPLOS')}
       `${label} tiene presupuesto en trazum.config.json y ninguna llamada en este registro, así que no se midió nada para esa carga. No es un aprobado: una carga que no apareció no es una carga que quedó por debajo del presupuesto.`,
     labelBudgetWindowed: () =>
       'Los presupuestos por etiqueta de trazum.config.json no se aplicaron: --since/--until hacen que "lo que gastó esta etiqueta" signifique una porción, y un presupuesto escrito para el periodo completo estaría vigilando algo que no describe.',
+    truncatedBy: (label, calls, measured, rate, usd) =>
+      `${label}: ${calls} de ${measured} llamadas que registraron motivo de parada quedaron cortadas (${rate}), ${usd} de salida. El denominador son las llamadas que midieron, no todas — una carga que registra el campo la mitad de las veces no es una carga cuya otra mitad terminó.`,
+    truncatedCeiling: (p95) =>
+      `El 95% de las respuestas que sí terminaron cabe en ${p95} tokens de salida, así que un tope por ahí dejaría de cortarlas. Medido en estas llamadas, prometido para ninguna.`,
     readFiles: (files, directory) =>
       `Leídos ${count(files)} ficheros de registro de ${directory}, en orden de nombre, como una sola factura. Todas las cifras de abajo los cubren todos.`,
     noLogsInDirectory: (directory, extensions) =>
