@@ -53,6 +53,9 @@ inputs:
   max-growth-usd:
     description: 'With usage-log and against: fail the build when the bill grew more than this many dollars over the previous log.'
     required: false
+  max-cache-loss-usd:
+    description: 'With usage-log: fail the build when caching added more than this many dollars to the bill. Reads the worst case when the log did not record the write TTL — a gate reading the flattering half would pass the bills it exists to catch.'
+    required: false
   label:
     description: 'With usage-log: profile only the calls carrying this label — one workload''s budget. A label matching nothing fails the run naming the labels that exist.'
     required: false
@@ -98,6 +101,7 @@ runs:
         TRAZUM_MAX_USD: ${{ inputs.max-usd }}
         TRAZUM_AGAINST: ${{ inputs.against }}
         TRAZUM_MAX_GROWTH_USD: ${{ inputs.max-growth-usd }}
+        TRAZUM_MAX_CACHE_LOSS_USD: ${{ inputs.max-cache-loss-usd }}
         TRAZUM_LABEL: ${{ inputs.label }}
         TRAZUM_SINCE: ${{ inputs.since }}
         TRAZUM_UNTIL: ${{ inputs.until }}
@@ -139,6 +143,7 @@ runs:
           [ -n "$TRAZUM_MAX_USD" ] && args+=(--max-usd "$TRAZUM_MAX_USD")
           [ -n "$TRAZUM_AGAINST" ] && args+=(--against "$TRAZUM_AGAINST")
           [ -n "$TRAZUM_MAX_GROWTH_USD" ] && args+=(--max-growth-usd "$TRAZUM_MAX_GROWTH_USD")
+          [ -n "$TRAZUM_MAX_CACHE_LOSS_USD" ] && args+=(--max-cache-loss-usd "$TRAZUM_MAX_CACHE_LOSS_USD")
           # The drill-downs compose with the gates: one workload's budget, or
           # one period's. The CLI owns the honesty rules (a label or window
           # matching nothing is an error, clockless calls are counted out

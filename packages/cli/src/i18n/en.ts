@@ -224,6 +224,11 @@ ${bold('OPTIONS FOR profile')}
   --max-growth-usd <n>        With --against: exit 1 when the bill grew more
                               than n dollars over the previous log. Alone it is
                               an error, not a flag that silently gates nothing.
+  --max-cache-loss-usd <n>    Exit 1 when caching added more than n dollars to
+                              this bill. Reads the worst case when the log did
+                              not record the write TTL — a gate reading the
+                              flattering half would pass the bills it exists
+                              to catch — and says which claim fired.
   --since <when>              Profile only calls at or after this moment. A UTC
   --until <when>              day (2026-08-14) or a full ISO 8601 timestamp;
                               --until with a bare date includes that whole day.
@@ -1002,6 +1007,12 @@ ${bold('EXAMPLES')}
       `FAILED — the bill grew ${delta} against the previous log, over the --max-growth-usd limit of ${max}.`,
     maxGrowthNeedsAgainst: () =>
       '--max-growth-usd has nothing to compare without --against <previous.jsonl>. On its own it would have run silently and gated nothing, which is not an answer.',
+    maxCacheLossOk: (worst, max) =>
+      `Cache within budget: caching cost at most ${worst} against --max-cache-loss-usd ${max}, worst case included.`,
+    maxCacheLossFailed: (delta, max) =>
+      `FAILED — caching added ${delta} to this bill (the same tokens as plain input would have cost less), over the --max-cache-loss-usd limit of ${max}. The counterfactual is exact: the same tokens at the published input rate.`,
+    maxCacheLossWorstCase: (calls, worst, max) =>
+      `FAILED — ${count(calls)} ${calls === 1 ? 'call' : 'calls'} did not record which cache-write TTL was paid, and at the 1-hour rate caching added up to ${worst}, over the --max-cache-loss-usd limit of ${max}. The gate reads the worst case on purpose: a gate reading the flattering half would pass exactly the bills it exists to catch. Record the "cache_creation" object the API returns and the ceiling becomes a figure.`,
     windowLine: (since, until) =>
       `Filtered to --since ${since} --until ${until}. Everything below describes this window, not the whole log; a bare date means the whole of that UTC day.`,
     windowUndated: (calls) =>

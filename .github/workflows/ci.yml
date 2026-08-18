@@ -327,6 +327,35 @@ jobs:
           echo "The action should have failed \$10.00 of day 2 against a \$9 budget"
           exit 1
 
+      # The cache gate, on its own hand arithmetic: a million 5-minute write
+      # tokens nothing reads back cost $6.25 against $5.00 as plain input —
+      # a +$1.25 loss, exactly.
+      - name: Write a log whose cache only writes
+        run: |
+          printf '%s\n' \
+            '{"model":"claude-opus-5","usage":{"input_tokens":0,"output_tokens":0,"cache_creation_input_tokens":1000000,"cache_creation":{"ephemeral_5m_input_tokens":1000000,"ephemeral_1h_input_tokens":0}}}' \
+            > fixture/writes-only.jsonl
+
+      - name: A cache loss under its budget passes
+        uses: ./
+        with:
+          usage-log: fixture/writes-only.jsonl
+          max-cache-loss-usd: '1.50'
+
+      - name: A cache loss over its budget fails the build
+        id: cacheloss
+        uses: ./
+        continue-on-error: true
+        with:
+          usage-log: fixture/writes-only.jsonl
+          max-cache-loss-usd: '1'
+
+      - name: Verify the cache gate failed
+        if: steps.cacheloss.outcome != 'failure'
+        run: |
+          echo "The action should have failed a \$1.25 cache loss against a \$1 limit"
+          exit 1
+
       - name: A window the log does not cover is an error, not a passing $0 gate
         id: emptywindow
         uses: ./
