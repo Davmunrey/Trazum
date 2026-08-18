@@ -366,6 +366,24 @@ A passing report is collapsed; a failing one is not. A green table that stays
 green on every push is the thing you learn to skip — and then you skip the red
 one too.
 
+**The spend gate, packaged.** The same action gates the bill itself when handed
+a usage log instead of prompts — mutually exclusive with `target`, because one
+run gates tokens before the money is spent or the spend itself, and saying
+which is the caller's job:
+
+```yaml
+- uses: Davmunrey/Trazum@80dc285be275613b95b946bef60f2abb3fc65be9  # 1.10.0
+  with:
+    usage-log: logs/yesterday.jsonl
+    max-usd: '50'            # exit 1 over budget — no period assumed
+    # against: logs/day-before.jsonl
+    # max-growth-usd: '10'
+```
+
+The profile report lands in the run summary either way, and a failing gate
+still writes it — a red build with no report is a mystery, and mysteries get
+deleted from pipelines.
+
 Or by hand, if you already have the repo checked out:
 
 ```yaml

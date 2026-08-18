@@ -42,6 +42,16 @@ error naming the labels that exist, never a silent report over zero calls that
 would read as "this workload is free". With `--against`, both logs are
 filtered, so the comparison stays one workload.
 
+**The spend gate, packaged into the GitHub Action.** Hand the action a
+`usage-log` instead of a `target` and it runs `profile` with `max-usd`,
+`against` and `max-growth-usd` — the money gates in a workflow, with the report
+in the run summary and a failing gate still writing it. The two modes are
+mutually exclusive: one run gates tokens before the money is spent or the
+spend itself, and folding both verdicts into one exit code would leave nobody
+knowing which gate fired. Self-tested in CI with hand-checkable arithmetic: a
+$5.00 log passes a $9 budget, a $15.00 log fails it, +$10.00 growth fails a $5
+limit, and naming both modes at once is refused.
+
 ## 1.12.0 — "The log gets a clock"
 
 ### Added
