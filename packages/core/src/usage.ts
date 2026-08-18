@@ -300,6 +300,17 @@ export interface UsageProfileReport {
    * report distinguishes from "measured and fine".
    */
   cacheTtlFit: CacheTtlFit[];
+  /**
+   * The time filter this report was computed under, or `null` when there was
+   * none — so a rendering can say "this is a window, not the log" instead of
+   * presenting a slice as the whole.
+   *
+   * `undatedExcluded` is the honesty cost of filtering by a clock some records
+   * do not carry: calls that passed every other filter but could not be
+   * placed in or out of the window. Non-zero means the window's figures are a
+   * floor on the period, and every rendering says so out loud.
+   */
+  timeWindow: { sinceMs: number | null; untilMs: number | null; undatedExcluded: number } | null;
 }
 
 /** The share of the bill each part accounts for, as fractions of 1. */
@@ -665,6 +676,20 @@ export interface UsageProfileOptions {
    * make corruption disappear.
    */
   label?: string;
+  /**
+   * Profile only the records whose clock falls in `[sinceMs, untilMs)` — the
+   * drill-down in time, once the peak day or the span has named a period.
+   *
+   * Epoch milliseconds, half-open on the right so two adjacent windows share
+   * no record. Either bound alone works. **A record with no clock cannot be
+   * placed inside or outside a window**, so under a time filter it is
+   * excluded and counted in `timeWindow.undatedExcluded` — excluded, because
+   * including it would put unknown-time spend inside a window it may not
+   * belong to; counted, because dropping it silently would understate the
+   * period's bill by an invisible amount, which is the flattering direction.
+   */
+  sinceMs?: number;
+  untilMs?: number;
 }
 
 /**
@@ -676,7 +701,9 @@ export interface UsageProfileOptions {
  * lives, and it can chunk if it ever needs to.
  */
 export function profileUsage(text: string, options: UsageProfileOptions): UsageProfileReport {
-  const { catalogue, on = new Date(), label: onlyLabel } = options;
+  const { catalogue, on = new Date(), label: onlyLabel, sinceMs, untilMs } = options;
+  const windowed = sinceMs !== undefined || untilMs !== undefined;
+  let undatedExcluded = 0;
 
   const total = EMPTY();
   const unpriced = EMPTY();
@@ -716,6 +743,22 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
     // The drill-down: after the skip accounting, so a corrupt line is reported
     // whatever it might have been labelled.
     if (onlyLabel !== undefined && (record.label ?? UNLABELLED) !== onlyLabel) continue;
+
+    /**
+     * The time window, after the label filter so `undatedExcluded` counts only
+     * the selected workload's clockless calls — a count polluted by every other
+     * label's records would overstate how much of *this* answer is missing.
+     * Records outside the window are simply not the question; records with no
+     * clock are the question left unanswerable, so they are counted.
+     */
+    if (windowed) {
+      if (record.ts === null) {
+        undatedExcluded += 1;
+        continue;
+      }
+      if (sinceMs !== undefined && record.ts < sinceMs) continue;
+      if (untilMs !== undefined && record.ts >= untilMs) continue;
+    }
 
     if (record.session !== null) hasSessions = true;
     if (record.ts !== null) {
@@ -810,6 +853,9 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
         return { day, usd: entry.usd, calls: entry.calls, topLabel, topLabelUsd };
       }),
     cacheTtlFit: ttlFit.finish(),
+    timeWindow: windowed
+      ? { sinceMs: sinceMs ?? null, untilMs: untilMs ?? null, undatedExcluded }
+      : null,
   };
 }
 
