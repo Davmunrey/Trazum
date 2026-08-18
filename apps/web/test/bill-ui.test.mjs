@@ -140,6 +140,15 @@ describe('the bill tab reads the log in the browser and nowhere else', () => {
     assert.match(bill, /profileUsage\(previous, \{ catalogue: BUNDLED_CATALOGUE, sinceMs, untilMs \}\)/);
   });
 
+  it('renders what one conversation costs, tail sentence and all', () => {
+    // Median against p95, never a mean — and the tail sentence only past
+    // ten times the median, so a uniformly expensive workload is not sent
+    // hunting for a tail it does not have.
+    assert.match(bill, /t\.bill\.sessionCost\(/);
+    assert.match(bill, /t\.bill\.sessionCostTail/);
+    assert.match(bill, /p95Usd > 10 \* shape\.medianUsd/);
+  });
+
   it('renders all three truncation states, not two', () => {
     // "Not recorded" and "none truncated" are different answers. Dropping
     // either collapses them into the flattering one.

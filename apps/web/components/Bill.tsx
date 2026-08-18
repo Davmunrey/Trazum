@@ -796,6 +796,32 @@ function Report({
                   </div>
                 </div>
               ))}
+              {/*
+                What one conversation costs, in the same card as the growth
+                it belongs beside. Median against p95, never a mean: one
+                runaway loop would drag a mean up and hide the ordinary
+                case, which is the figure a per-seat price is set from.
+              */}
+              {report.sessionCosts.slice(0, MAX_SECTIONS).map((shape) => (
+                <div key={`cost:${shape.label}\n${shape.model}`} className="rounded-lg border px-3.5 py-3">
+                  <div className="text-[13px]">
+                    {t.bill.sessionCost(
+                      labelName(shape.label),
+                      shape.modelName,
+                      shape.sessions,
+                      formatUsd(shape.medianUsd),
+                      shape.medianTurns,
+                      formatUsd(shape.p95Usd),
+                      formatUsd(shape.maxUsd),
+                    )}
+                  </div>
+                  {shape.medianUsd > 0 && shape.p95Usd > 10 * shape.medianUsd && (
+                    <div className="mt-1 text-[13px] text-warn">
+                      {t.bill.sessionCostTail((shape.p95Usd / shape.medianUsd).toFixed(0))}
+                    </div>
+                  )}
+                </div>
+              ))}
             </CardContent>
           </Card>
 

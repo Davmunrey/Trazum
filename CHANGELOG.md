@@ -13,6 +13,11 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**The conversation cost reaches the MCP and the browser.** `profile_usage`
+speaks the median, the p95 and the tail sentence; the web Bill tab renders
+them in the conversation card, the tail in the warning colour. Same
+thresholds, same refusal of a mean, from the same core measurement.
+
 **What one conversation costs.** The question a total cannot answer: whether
 $4,000 is forty thousand cheap conversations or four hundred expensive ones —
 the figure a per-seat price or a quota is set from. `sessionCosts` reports the
