@@ -13,6 +13,44 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`--what-if <model>`: these exact calls at another rate card.** The levers
+section picks its own candidate; this answers the question the reader arrived
+with — "`classify` spent $4,000 on the frontier model, what would those calls
+have cost on the small one?". Every token in the answer was actually billed,
+so this is the same move `cacheEconomics` makes: arithmetic, not the guess
+about content that `profile` refuses to make.
+
+It is built so it cannot be read as advice. The caveat prints **before** the
+figure, because a dollar amount with small print underneath is a
+recommendation. It says outright that it knows nothing about whether the
+cheaper model could do the work, and that a model answering at greater length
+or getting retried would not send these counts at all.
+
+Three refusals carry the honesty:
+
+- **Calls the target could not have accepted are named, not priced.** A
+  250k-token call against a 200k window fails; it does not get cheaper. Those
+  slices are listed as impossible and their money is excluded from every
+  total. The ceiling is judged on the **largest single call**, never a mean —
+  one call over the line is a failed call, and an average hides it.
+- **Spend already on the target stays out of the difference.** A $10,000 bill
+  of which $9,900 is already cheap would otherwise report a 1% difference and
+  read as "not worth doing". It is stated separately instead.
+- **Models with no current price are named.** Their cost on the target is
+  knowable; the difference is not, because there is no current figure to
+  subtract from.
+
+Available as `trazum profile <log> --what-if <model>`, in `--json` as `whatIf`
+(with `sameTokensAssumed` inside the object, so a consumer cannot print the
+figure without the caveat), and as `what_if` on the MCP `profile_usage` tool.
+An id the catalogue cannot price is an error in all three: a flag that
+silently does nothing is worse than a missing feature.
+
+`UsageBreakdown` gained the fields that make it possible — `cacheWrite5mTokens`
+and `cacheWrite1hTokens` (the two write TTLs are billed at 1.25x and 2x input,
+and the ratio is not constant across providers, so a combined total cannot be
+repriced) and `maxCallInputTokens`.
+
 **A doubled bill, caught.** Reading a directory of rotated logs — which 1.18
 made easy — makes double-counting easy too: a log exported twice, an
 overlapping export, a copy left in the folder. The total then reads high and

@@ -234,6 +234,12 @@ ${bold('OPCIONES DE profile')}
                               fuera — contadas en voz alta, nunca en silencio.
                               Con --against, ambos registros llevan la misma
                               ventana.
+  --what-if <modelo>          Pone precio a estas mismas llamadas en otro
+                              modelo. Los mismos recuentos de tokens con otra
+                              tarifa — una multiplicación, no un consejo, y lo
+                              dice. Las llamadas mayores que la ventana de
+                              contexto de ese modelo se nombran como
+                              imposibles, no se cobran como baratas.
   --markdown-out <fichero>    Escribe además el informe en Markdown, para el
                               resumen de un job de CI o un comentario de PR.
   --csv-shape <forma>         Qué tabla escribe --csv-out: slice (por defecto),
@@ -1071,6 +1077,25 @@ ${bold('EJEMPLOS')}
       `El presupuesto de ${file} son ${budget} tokens, y las llamadas con etiqueta ${label} llevan unos ${perCall} tokens de entrada cada una — así que esa puerta vigila alrededor del ${share} de lo que realmente sale por el cable. El resto es contexto recuperado, historial de conversación y resultados de herramientas, que ningún fichero de prompt contiene y ningún presupuesto sobre uno puede ver. El presupuesto no está mal; simplemente es más pequeño que la factura.`,
     badCsvShape: (value) =>
       `--csv-shape no conoce "${value}". Acepta "slice" (una fila por etiqueta y modelo, el valor por defecto), "day" u "hour".`,
+    whatIfHeading: (model) => `Estas mismas llamadas en ${model}`,
+    whatIfAssumption: () =>
+      'Esto es una multiplicación, no un consejo: los mismos recuentos de tokens con otra tarifa. No dice nada sobre si ese modelo podría hacer el trabajo, y un modelo que responda más largo o al que haya que reintentar no enviaría estos recuentos.',
+    whatIfTotal: (current, target, delta) =>
+      `${current} de gasto movible habrían sido ${target} — una diferencia de ${delta}.`,
+    whatIfCheaper: () =>
+      'Compruébalo antes de mover nada: trazum route mide un prompt contra ambos modelos con tus propios ejemplos.',
+    whatIfDearer: () => 'Esa dirección cuesta más. La aritmética está aquí para que el número no sea una suposición.',
+    whatIfSlice: (label, model, current, target) => `${label} en ${model}: ${current} → ${target}`,
+    whatIfOverContext: (label, tokens, window, usd) =>
+      `${label} no puede moverse: su llamada más grande lleva ${tokens} tokens de entrada y la ventana de ese modelo es de ${window}. Esas llamadas fallarían, no costarían menos, así que sus ${usd} quedan fuera de las cifras de arriba.`,
+    whatIfAlreadyThere: (calls, usd) =>
+      `Ya en ese modelo: ${calls} por valor de ${usd}, fuera de las cifras de arriba — dinero que no puede moverse haría que la diferencia pareciera menor de lo que es.`,
+    whatIfUnpriced: (calls, models) =>
+      `Fuera de la comparación: ${calls} cuyo modelo no tiene precio aquí (${models}). Su coste en el modelo destino sí se puede calcular; la diferencia no, porque no hay cifra actual de la que restar.`,
+    whatIfNothingToMove: () =>
+      'Nada que comparar: todas las llamadas con precio de este registro ya están en ese modelo, o son demasiado grandes para su ventana de contexto.',
+    whatIfUnknown: (value, available) =>
+      `--what-if no conoce "${value}". Modelos con precio: ${available}. Añádelo con --pricing si tienes sus tarifas.`,
     coverageHeading: () => 'Lo que este registro todavía no puede responder',
     needsLabel: (seen) =>
       `"label" en ${seen} registros: sin él todas las cargas son una sola fila, así que no hay gasto por carga, ni zoom, y las palancas describen una mezcla en vez de una decisión.`,

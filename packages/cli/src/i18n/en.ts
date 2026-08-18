@@ -236,6 +236,11 @@ ${bold('OPTIONS FOR profile')}
                               Calls with no "ts" cannot be placed and are left
                               out — counted out loud, never dropped silently.
                               With --against, both logs get the same window.
+  --what-if <model>           Price these exact calls on another model. The
+                              same token counts at a different rate card —
+                              multiplication, not advice, and it says so.
+                              Calls larger than that model's context window
+                              are named as impossible, not priced as cheap.
   --markdown-out <file>       Also write the report as Markdown, for a CI job
                               summary or a pull request comment.
   --csv-shape <shape>         Which table --csv-out writes: slice (default),
@@ -1058,6 +1063,25 @@ ${bold('EXAMPLES')}
       `The budget on ${file} is ${budget} tokens, and calls labelled ${label} carry about ${perCall} input tokens each — so that gate governs roughly ${share} of what actually goes up the wire. The rest is retrieved context, conversation history and tool results, which no prompt file contains and no budget on one can see. The budget is not wrong; it is just smaller than the bill.`,
     badCsvShape: (value) =>
       `--csv-shape does not know "${value}". It takes "slice" (one row per label and model, the default), "day" or "hour".`,
+    whatIfHeading: (model) => `These exact calls on ${model}`,
+    whatIfAssumption: () =>
+      'This is multiplication, not advice: the same token counts at another rate card. It says nothing about whether that model could do the work, and a model that answers at greater length or gets retried would not send these counts at all.',
+    whatIfTotal: (current, target, delta) =>
+      `${current} of movable spend would have been ${target} — a difference of ${delta}.`,
+    whatIfCheaper: () =>
+      'Verify before you move anything: trazum route measures one prompt against both models on your own examples.',
+    whatIfDearer: () => 'That direction costs more. The arithmetic is here so the number is not a guess.',
+    whatIfSlice: (label, model, current, target) => `${label} on ${model}: ${current} → ${target}`,
+    whatIfOverContext: (label, tokens, window, usd) =>
+      `${label} cannot move: its largest call carries ${tokens} input tokens and that model's window is ${window}. Those calls would fail, not cost less, so their ${usd} is excluded from the figures above.`,
+    whatIfAlreadyThere: (calls, usd) =>
+      `Already on that model: ${calls} worth ${usd}, left out of the figures above — money that cannot move would make the difference look smaller than it is.`,
+    whatIfUnpriced: (calls, models) =>
+      `Excluded: ${calls} whose model has no price here (${models}). Their cost on the target is knowable; the difference is not, because there is no current figure to subtract from.`,
+    whatIfNothingToMove: () =>
+      'Nothing to compare: every priced call in this log is already on that model, or too large for its context window.',
+    whatIfUnknown: (value, available) =>
+      `--what-if does not know "${value}". Priced models: ${available}. Add it with --pricing if you have its rates.`,
     coverageHeading: () => 'What this log cannot answer yet',
     needsLabel: (seen) =>
       `"label" on ${seen} records: without it every workload is one row, so no per-workload spend, no drill-down, and the levers describe a mixture rather than a decision.`,
