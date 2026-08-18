@@ -721,6 +721,13 @@ export interface CliMessages {
      * listed — a paragraph of things that are fine is the paragraph readers
      * learn to skip.
      */
+    /**
+     * The token budget against what the call actually carried. `budgets`
+     * gates a prompt file; the log records the whole call. When the gap is
+     * wide the gate is real but tiny, and a green build says nothing about
+     * the other 96%.
+     */
+    budgetVsWire(label: string, file: string, budget: string, perCall: string, share: string): string;
     coverageHeading(): string;
     needsLabel(seen: string): string;
     needsSession(seen: string): string;

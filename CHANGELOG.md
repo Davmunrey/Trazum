@@ -9,6 +9,22 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**The token budget, against what actually goes up the wire.** `budgets` gates
+a prompt *file*; the log records what the *call* carried — system prompt,
+retrieved context, conversation history, tool results. When `labels` maps a
+workload to a file and a budget covers it, the report now states the gap: a
+2,000-token budget on calls carrying 50,000 input tokens governs roughly 4% of
+what is sent, and nobody looking at a green build would know it. Only said
+when the budget covers less than half the call, because a budget doing its job
+is not news; the share is named as approximate, since the budget counts a
+file with the estimator while the log counts what the provider billed; and it
+never says the budget is wrong — only that it is smaller than the bill.
+Cached tokens count towards the call, because a cached token was still sent.
+
 ## 1.21.0 — "What the log does not say"
 
 ### Added

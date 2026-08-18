@@ -1048,6 +1048,8 @@ ${bold('EXAMPLES')}
       `${label} has a budget in trazum.config.json and no calls in this log, so nothing was measured for it. Not a pass: a workload that did not appear is not a workload that came in under budget.`,
     labelBudgetWindowed: () =>
       'Per-label budgets in trazum.config.json were not applied: --since/--until make "what this label spent" mean a slice, and a budget written for the whole period would be gating against something it does not describe.',
+    budgetVsWire: (label, file, budget, perCall, share) =>
+      `The budget on ${file} is ${budget} tokens, and calls labelled ${label} carry about ${perCall} input tokens each — so that gate governs roughly ${share} of what actually goes up the wire. The rest is retrieved context, conversation history and tool results, which no prompt file contains and no budget on one can see. The budget is not wrong; it is just smaller than the bill.`,
     coverageHeading: () => 'What this log cannot answer yet',
     needsLabel: (seen) =>
       `"label" on ${seen} records: without it every workload is one row, so no per-workload spend, no drill-down, and the levers describe a mixture rather than a decision.`,
