@@ -272,6 +272,27 @@ export interface UsageProfileReport {
    */
   span: { fromMs: number; toMs: number; calls: number } | null;
   /**
+   * Spend per UTC day, oldest first, over priced records that carry a clock.
+   *
+   * The shape of a bill over time is the finding the total hides: a steady $3 a
+   * day and a quiet week broken by one $40 spike sum to the same number and
+   * call for opposite responses. Each day carries its most expensive label so a
+   * spike arrives with a suspect attached — per *label*, never per session.
+   *
+   * UTC deliberately: the log's timestamps carry no zone once parsed, and
+   * bucketing by the reader's local midnight would make the same log answer
+   * differently in two offices.
+   */
+  spendByDay: Array<{
+    /** `YYYY-MM-DD`, UTC. */
+    day: string;
+    usd: number;
+    calls: number;
+    /** The label that spent the most this day, or null when nothing had one. */
+    topLabel: string | null;
+    topLabelUsd: number;
+  }>;
+  /**
    * Whether each slice's cache TTL fits how fast its turns arrive — the
    * mechanism behind a losing cache verdict, and the one place an overlong TTL
    * (2x writes surviving gaps measured in seconds) is ever visible. Needs
@@ -670,6 +691,8 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
   let spanFrom = Infinity;
   let spanTo = -Infinity;
   let spanCalls = 0;
+  /** Per UTC day: spend, calls, and spend per label. Bounded by days × labels. */
+  const days = new Map<string, { usd: number; calls: number; byLabel: Map<string, number> }>();
 
   const lines = text.split('\n');
   for (let i = 0; i < lines.length; i += 1) {
@@ -692,6 +715,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
     output.add(record);
     ttlFit.add(record);
 
+    const usdBefore = total.totalUsd;
     if (!add(total, record, catalogue, on)) {
       unpricedModels.add(record.model);
       countInto(unpriced, record);
@@ -700,6 +724,25 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
       if (!byModel.has(record.model)) byModel.set(record.model, EMPTY());
       countInto(byModel.get(record.model)!, record);
       continue;
+    }
+
+    /**
+     * The day's spend, as the exact delta this record just added to the total —
+     * the one place the per-record dollar exists without re-deriving the rate
+     * arithmetic a second time, where the two could drift apart.
+     */
+    if (record.ts !== null) {
+      const day = new Date(record.ts).toISOString().slice(0, 10);
+      const usd = total.totalUsd - usdBefore;
+      let entry = days.get(day);
+      if (!entry) {
+        entry = { usd: 0, calls: 0, byLabel: new Map() };
+        days.set(day, entry);
+      }
+      entry.usd += usd;
+      entry.calls += 1;
+      const labelKey = record.label ?? UNLABELLED;
+      entry.byLabel.set(labelKey, (entry.byLabel.get(labelKey) ?? 0) + usd);
     }
 
     const labelKey = record.label ?? UNLABELLED;
@@ -741,6 +784,19 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
     hasSessions,
     outputShapes: output.finish(total.totalUsd),
     span: spanCalls > 0 ? { fromMs: spanFrom, toMs: spanTo, calls: spanCalls } : null,
+    spendByDay: [...days.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([day, entry]) => {
+        let topLabel: string | null = null;
+        let topLabelUsd = 0;
+        for (const [label, usd] of entry.byLabel) {
+          if (usd > topLabelUsd) {
+            topLabel = label;
+            topLabelUsd = usd;
+          }
+        }
+        return { day, usd: entry.usd, calls: entry.calls, topLabel, topLabelUsd };
+      }),
     cacheTtlFit: ttlFit.finish(),
   };
 }

@@ -206,6 +206,14 @@ ${bold('OPCIONES DE profile')}
                               ordenados por su contribución al cambio. No se
                               asume ningún periodo — juzga las llamadas antes
                               que el dinero.
+  --max-usd <n>               Sale con código 1 si este registro gastó más de n
+                              dólares. El presupuesto aplica exactamente al
+                              registro entregado: perfila el log de ayer cada
+                              noche y tienes presupuesto diario sin que Trazum
+                              adivine qué es un día.
+  --max-growth-usd <n>        Con --against: sale con 1 si la factura creció
+                              más de n dólares sobre el registro anterior. Solo,
+                              es un error, no un flag que vigila nada en silencio.
   --markdown-out <fichero>    Escribe además el informe en Markdown, para el
                               resumen de un job de CI o un comentario de PR.
   --pricing <fichero>         Overlay local de precios, como en el resto.
@@ -976,6 +984,16 @@ ${bold('EJEMPLOS')}
       `${label} en ${model}: los turnos llegan con una mediana de ${gap} entre sí, dentro de la vida útil que usan estas escrituras. El TTL no es el problema aquí.`,
     ttlFitUnmeasured: () =>
       'No se pudo medir si el TTL de la caché encaja con el ritmo de los turnos: hacen falta "session" y "ts" en el registro. Una entrada de 5 minutos en una carga cuyos turnos llegan cada nueve caduca sin leerse en cada escritura, y solo el reloj puede verlo. Trazum agrupa por la sesión y nunca la muestra.',
+    dayPeak: (day, usd, xMedian) =>
+      `El día más caro de este registro fue ${day}: ${usd}, ${xMedian}x el día mediano.`,
+    dayPeakLabel: (label, usd) => `Casi todo fue ${label} (${usd}).`,
+    maxUsdOk: (total, max) => `Dentro del presupuesto: ${total} gastados contra --max-usd ${max}.`,
+    maxUsdFailed: (total, max) =>
+      `FALLO — este registro gastó ${total} contra un --max-usd de ${max}. Las cifras son los recuentos facturados por el proveedor sobre exactamente este registro; no se asumió ningún periodo.`,
+    maxGrowthUsdFailed: (delta, max) =>
+      `FALLO — la factura creció ${delta} respecto al registro anterior, por encima del límite --max-growth-usd de ${max}.`,
+    maxGrowthNeedsAgainst: () =>
+      '--max-growth-usd no tiene con qué comparar sin --against <anterior.jsonl>. Por sí solo habría corrido en silencio sin vigilar nada, y eso no es una respuesta.',
   },
 
   route: {

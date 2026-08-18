@@ -212,6 +212,13 @@ ${bold('OPTIONS FOR profile')}
                               means the bill grew; drivers are ranked by their
                               contribution to the change. No period is assumed —
                               judge the call counts before judging the money.
+  --max-usd <n>               Exit 1 when this log spent more than n dollars.
+                              The budget applies to exactly the log handed in:
+                              profile yesterday's log nightly and this is a
+                              daily budget without Trazum guessing what a day is.
+  --max-growth-usd <n>        With --against: exit 1 when the bill grew more
+                              than n dollars over the previous log. Alone it is
+                              an error, not a flag that silently gates nothing.
   --markdown-out <file>       Also write the report as Markdown, for a CI job
                               summary or a pull request comment.
   --pricing <file>            Local price overlay, as everywhere else.
@@ -970,6 +977,16 @@ ${bold('EXAMPLES')}
       `${label} on ${model}: turns arrive a median of ${gap} apart, inside the lifetime these writes use. The TTL is not the problem here.`,
     ttlFitUnmeasured: () =>
       'Whether the cache TTL fits how fast the turns arrive could not be measured — it needs both "session" and "ts" on the record. A 5-minute entry on a workload whose turns come nine minutes apart expires unread on every write, and only the clock can see it. Trazum groups by the session and never shows it.',
+    dayPeak: (day, usd, xMedian) =>
+      `The most expensive day in this log was ${day}: ${usd}, ${xMedian}x the median day.`,
+    dayPeakLabel: (label, usd) => `Most of it was ${label} (${usd}).`,
+    maxUsdOk: (total, max) => `Within budget: ${total} spent against --max-usd ${max}.`,
+    maxUsdFailed: (total, max) =>
+      `FAILED — this log spent ${total} against a --max-usd of ${max}. The figures are the provider's own billed counts over exactly this log; no period was assumed.`,
+    maxGrowthUsdFailed: (delta, max) =>
+      `FAILED — the bill grew ${delta} against the previous log, over the --max-growth-usd limit of ${max}.`,
+    maxGrowthNeedsAgainst: () =>
+      '--max-growth-usd has nothing to compare without --against <previous.jsonl>. On its own it would have run silently and gated nothing, which is not an answer.',
   },
 
   route: {

@@ -219,3 +219,57 @@ describe('whether the TTL fits the gaps', () => {
     assert.equal(TTL_1H_MS, 3_600_000);
   });
 });
+
+describe('spend by day', () => {
+  const dayLine = (day, label, inputTokens) =>
+    line({
+      model: 'claude-opus-5',
+      label,
+      ts: `${day}T12:00:00Z`,
+      usage: { input_tokens: inputTokens, output_tokens: 0 },
+    });
+
+  it('buckets exact dollars per UTC day, oldest first, with the top label attached', () => {
+    const report = profile([
+      dayLine('2026-08-02', 'chat', 1_000_000),
+      dayLine('2026-08-01', 'chat', 200_000),
+      dayLine('2026-08-02', 'rag', 400_000),
+    ]);
+    // Hand arithmetic at $5/MTok input on Claude Opus 5: $1.00 the 1st,
+    // $5.00 + $2.00 the 2nd, chat on top of the 2nd.
+    assert.equal(report.spendByDay.length, 2);
+    assert.equal(report.spendByDay[0].day, '2026-08-01');
+    assert.equal(report.spendByDay[0].usd.toFixed(2), '1.00');
+    assert.equal(report.spendByDay[1].day, '2026-08-02');
+    assert.equal(report.spendByDay[1].usd.toFixed(2), '7.00');
+    assert.equal(report.spendByDay[1].calls, 2);
+    assert.equal(report.spendByDay[1].topLabel, 'chat');
+    assert.equal(report.spendByDay[1].topLabelUsd.toFixed(2), '5.00');
+  });
+
+  it('is empty without a clock, and independent of log order with one', () => {
+    const noClock = profile([
+      line({ model: 'claude-opus-5', usage: { input_tokens: 10, output_tokens: 1 } }),
+    ]);
+    assert.deepEqual(noClock.spendByDay, []);
+
+    const lines = [
+      dayLine('2026-08-02', 'chat', 1_000_000),
+      dayLine('2026-08-01', 'chat', 200_000),
+      dayLine('2026-08-02', 'rag', 400_000),
+    ];
+    assert.deepEqual(
+      profile([...lines].reverse()).spendByDay,
+      profile(lines).spendByDay,
+    );
+  });
+
+  it('keeps unpriced calls out: a day of unknown models adds no silent zero', () => {
+    const report = profile([
+      dayLine('2026-08-01', 'chat', 1_000_000),
+      line({ model: 'unknown-model-x', ts: '2026-08-03T00:00:00Z', usage: { input_tokens: 500, output_tokens: 1 } }),
+    ]);
+    assert.equal(report.spendByDay.length, 1);
+    assert.equal(report.spendByDay[0].day, '2026-08-01');
+  });
+});
