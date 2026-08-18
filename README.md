@@ -1624,7 +1624,7 @@ By label
 ```
 
 **The format is the one the API already returns.** One JSON object per line, each
-with a `model` and the `usage` object from the response. Recording it is three
+with a `model` and the `usage` object from the response. Recording it is a few
 lines and no transformer:
 
 ```ts
@@ -1632,6 +1632,7 @@ appendFileSync('usage.jsonl', JSON.stringify({
   model: response.model,
   label: 'support-rag',       // which workload — without it every call looks alike
   session: conversationId,    // which conversation — grouped by, never printed
+  ts: new Date().toISOString(), // when — unlocks the span and the TTL check below
   ...response.usage,
 }) + '\n');
 ```
@@ -1722,6 +1723,7 @@ appendFileSync('usage.jsonl', JSON.stringify({
   model: response.model,
   label: 'agent',
   session: conversationId,   // or conversation_id — either is read
+  ts: new Date().toISOString(),
   ...response.usage,
 }) + '\n');
 ```
@@ -1832,6 +1834,41 @@ warning disappears.
 `--json` carries the verdict as `cache` and `cacheByLabel` rather than leaving it
 to be re-derived. **Positive `deltaUsd` means worse**, the opposite of every other
 figure Trazum emits, which is why the verdict is a word and not just a number.
+
+### Does the TTL fit how fast the turns come?
+
+Add `ts` to the record — ISO 8601, or epoch seconds or milliseconds; OpenAI's
+`created` is read too — and two findings unlock that no count can make.
+
+**The span.** The report states what period the log covers — `This log covers
+2026-08-01 → 2026-08-14 (13.0 days)` — and deliberately stops there: the span
+makes your own monthly arithmetic valid, while a per-month figure printed from a
+partial month would be Trazum doing the guessing it exists to end. When only some
+calls carry a clock, it says how many, so a span over a slice of the log is never
+presented as the log's period.
+
+**The TTL check.** A cache entry lives 5 minutes, or an hour at 2x the write
+price — and whether either fits depends on one number the bill never shows: how
+long this workload waits between turns. Measured as the **median gap between
+consecutive turns of the same conversation**, sorted by the recorded clock so the
+answer is independent of the order of the log:
+
+```
+  ! chat on Claude Opus 5: turns arrive a median of 9m apart and the 5-minute
+    entry is gone by then — writes expire before the next turn reads them,
+    which from the bill is a cache that only writes.
+```
+
+Four verdicts, and each one is a different instruction. **Expires before
+reuse**: the mechanism behind the lost-money verdict above, with both honest
+ways out named — the 1-hour TTL, or caching switched off. **Overlong TTL**: the
+quiet mistake visible nowhere else — turns seconds apart paying 2x for an hour
+of endurance they never use, priced exactly, the same tokens at the other
+published rate. **Unsettled**: a gap between the two lifetimes on writes whose
+TTL the log did not record — neither half is asserted. **Fits**: said out loud,
+because silence would be indistinguishable from unmeasured. Writes with no
+clock or no session get the fifth sentence — *could not be measured* — rather
+than nothing.
 
 
 ## Where this fits, said at the front door

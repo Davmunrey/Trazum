@@ -55,6 +55,7 @@ import {
   suggestRewrites,
   toOtlpMetrics,
   toPromptfoo,
+  TTL_1H_MS,
   UNLABELLED,
   withExactTokenCounts,
 } from '@trazum/core';
@@ -2025,6 +2026,26 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
   console.log();
   console.log(c.bold(t.profile.heading()));
   console.log(`  ${t.profile.spent(t.profile.calls(report.total.calls), formatUsd(report.total.totalUsd))}`);
+  /**
+   * The period, when the log carries a clock — stated, never extrapolated. A
+   * span makes the reader's own monthly arithmetic valid; a per-month figure
+   * printed from a partial month would be this tool doing the guessing it
+   * exists to end. Partial coverage is said in the same breath, because a span
+   * over a third of the calls silently presented as the log's period is a
+   * figure attributed to something it does not describe.
+   */
+  if (report.span !== null) {
+    const day = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
+    const days = ((report.span.toMs - report.span.fromMs) / 86_400_000).toFixed(1);
+    const totalParsed = report.total.calls + report.unpriced.calls;
+    const partial =
+      report.span.calls < totalParsed
+        ? ` ${t.profile.spanPartial(n(report.span.calls), n(totalParsed))}`
+        : '';
+    console.log(
+      `  ${c.dim(wrap(`${t.profile.spanLine(day(report.span.fromMs), day(report.span.toMs), days)}${partial}`, 74, '  '))}`,
+    );
+  }
   console.log();
   // Every part, including the zero ones. A row missing because it was zero reads
   // as a row somebody forgot, and "you are not caching at all" is a finding.
@@ -2230,6 +2251,46 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
         `  ${c.dim(wrap(t.profile.labelPrefixHealthy(file, n(analysis.stablePrefixTokens), n(minimum ?? 0)), 74, '    '))}`,
       );
     }
+  }
+
+  /**
+   * Whether the TTL fits how fast the turns arrive — the mechanism behind the
+   * verdict above, readable only when the log carries a clock and a session.
+   *
+   * Rendered as four verdicts plus "could not be measured", the same
+   * three-state discipline truncation uses: a workload with cache writes and no
+   * clock has not been cleared, and silence here would read as fine.
+   */
+  const gapOf = (ms: number): string => {
+    if (ms < 90_000) return `${Math.round(ms / 1000)}s`;
+    if (ms < 90 * 60_000) return `${Math.round(ms / 60_000)}m`;
+    if (ms < 36 * 3_600_000) return `${(ms / 3_600_000).toFixed(1)}h`;
+    return `${(ms / 86_400_000).toFixed(1)}d`;
+  };
+  const TTL_SHOWN = 3;
+  for (const fit of report.cacheTtlFit.slice(0, TTL_SHOWN)) {
+    const name = fit.label === UNLABELLED ? t.profile.unlabelled() : fit.label;
+    const gap = gapOf(fit.medianGapMs);
+    if (fit.verdict === 'expires-before-reuse') {
+      const line =
+        fit.medianGapMs > TTL_1H_MS
+          ? t.profile.ttlFitExpiresBoth(name, fit.modelName, gap)
+          : t.profile.ttlFitExpires(name, fit.modelName, gap);
+      console.log(`  ${c.yellow('!')} ${c.bold(wrap(line, 74, '    '))}`);
+    } else if (fit.verdict === 'overlong-ttl') {
+      console.log(
+        `  ${c.yellow('!')} ${c.bold(wrap(t.profile.ttlFitOverlong(name, fit.modelName, gap, formatUsd(fit.overpayUsd)), 74, '    '))}`,
+      );
+    } else if (fit.verdict === 'unsettled') {
+      console.log(
+        `  ${c.dim(wrap(t.profile.ttlFitUnsettledGap(name, fit.modelName, gap), 74, '    '))}`,
+      );
+    } else {
+      console.log(`  ${c.dim(wrap(t.profile.ttlFitFits(name, fit.modelName, gap), 74, '    '))}`);
+    }
+  }
+  if (report.total.cacheWriteTokens > 0 && report.cacheTtlFit.length === 0) {
+    console.log(`  ${c.dim(wrap(t.profile.ttlFitUnmeasured(), 74, '  '))}`);
   }
 
   /**

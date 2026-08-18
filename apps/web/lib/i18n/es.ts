@@ -391,6 +391,41 @@ export const es: WebMessages = {
       'No se pudo medir si alguna respuesta quedó cortada: ninguna llamada de este registro '
       + 'lleva motivo de parada. Añade "stop_reason" (Anthropic) o "finish_reason" (OpenAI) al '
       + 'registro; la API ya lo devuelve junto a "usage".',
+    span: (from, to, days) =>
+      `Este registro abarca ${from} → ${to} (${days} días). El periodo se declara, nunca se `
+      + 'extrapola: la aritmética mensual es tuya, y ahora es válida.',
+    spanPartial: (withTs, total) =>
+      `Solo ${withTs.toLocaleString('es-ES')} de ${total.toLocaleString('es-ES')} llamadas `
+      + 'llevan marca de tiempo; el periodo describe esas.',
+    ttlExpires: (label, model, gap) =>
+      `${label} en ${model}: los turnos llegan con una mediana de ${gap} entre sí y la entrada `
+      + 'de 5 minutos ya no existe para entonces — las escrituras caducan antes de que el '
+      + 'siguiente turno las lea, que visto desde la factura es una caché que solo escribe. El '
+      + 'TTL de 1 hora cuesta 2x la entrada al escribir y sobreviviría a estos huecos; la otra '
+      + 'opción honesta es apagar la caché aquí.',
+    ttlExpiresBoth: (label, model, gap) =>
+      `${label} en ${model}: los turnos llegan con una mediana de ${gap} entre sí, y ninguna `
+      + 'entrada de caché vive tanto — hasta el TTL de 1 hora ha caducado para el siguiente '
+      + 'turno. La caché no puede funcionar a este ritmo; apágala aquí y deja de pagar la '
+      + 'prima de escritura.',
+    ttlOverlong: (label, model, gap, usd) =>
+      `${label} en ${model}: los turnos llegan con una mediana de ${gap} entre sí — de sobra `
+      + 'dentro de la ventana de 5 minutos — y estas escrituras pagan la tarifa de 1 hora, 2x '
+      + 'la entrada frente a 1.25x, por una resistencia que los huecos nunca usan. Las mismas '
+      + `escrituras con el TTL de 5 minutos salen ${usd} más baratas en este registro, y esa `
+      + 'cifra es exacta: los mismos tokens a la otra tarifa publicada.',
+    ttlUnsettled: (label, model, gap) =>
+      `${label} en ${model}: los turnos llegan con una mediana de ${gap} entre sí — una entrada `
+      + 'de 5 minutos ya no existe para entonces y una de 1 hora sobrevive — y el registro no '
+      + 'anotó cuáles eran estas escrituras. Registra el objeto "cache_creation" que devuelve '
+      + 'la API y esto se resuelve solo.',
+    ttlFits: (label, model, gap) =>
+      `${label} en ${model}: los turnos llegan con una mediana de ${gap} entre sí, dentro de la `
+      + 'vida útil que usan estas escrituras. El TTL no es el problema aquí.',
+    ttlUnmeasured:
+      'No se pudo medir si el TTL de la caché encaja con el ritmo de los turnos: hacen falta '
+      + '"session" y "ts" en el registro. Una entrada de 5 minutos con turnos cada nueve '
+      + 'minutos caduca sin leerse en cada escritura, y solo el reloj puede verlo.',
     byLabelHeading: 'Por etiqueta',
     byModelHeading: 'Por modelo',
     unlabelled: '(sin etiqueta)',

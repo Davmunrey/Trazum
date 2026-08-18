@@ -582,6 +582,28 @@ export interface CliMessages {
     outputFlat(label: string, model: string, callPct: string, spendPct: string, usd: string): string;
     outputFlatAdvice(): string;
     assumedWriteTtl(calls: number): string;
+    /**
+     * The period the log covers, when its records carry a clock. Stated and
+     * never extrapolated: naming the span makes the reader's own monthly
+     * arithmetic valid, while a per-month figure from a partial month would be
+     * this tool doing the guessing it exists to end.
+     */
+    spanLine(from: string, to: string, days: string): string;
+    /** Appended when only part of the log carries a timestamp. */
+    spanPartial(withTs: string, total: string): string;
+    /**
+     * Whether the cache TTL fits how fast the turns arrive — the mechanism
+     * behind a losing cache, and the only place an overlong TTL is visible.
+     * Four verdicts plus "could not be measured": the same three-state
+     * discipline as truncation, because "no data" and "fits" are different
+     * answers.
+     */
+    ttlFitExpires(label: string, model: string, gap: string): string;
+    ttlFitExpiresBoth(label: string, model: string, gap: string): string;
+    ttlFitOverlong(label: string, model: string, gap: string, usd: string): string;
+    ttlFitUnsettledGap(label: string, model: string, gap: string): string;
+    ttlFitFits(label: string, model: string, gap: string): string;
+    ttlFitUnmeasured(): string;
   };
   /**
    * `trazum route` — the loop the levers section could only point at.
