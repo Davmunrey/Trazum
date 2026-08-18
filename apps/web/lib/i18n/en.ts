@@ -425,6 +425,15 @@ export const en: WebMessages = {
       'Whether the cache TTL fits how fast the turns arrive could not be measured — it needs '
       + 'both "session" and "ts" on the record. A 5-minute entry on turns nine minutes apart '
       + 'expires unread on every write, and only the clock can see it.',
+    singleTurnConfirmed: (label, model, single, sessions, usd) =>
+      `${label} on ${model}: ${single} of ${sessions} conversations ended after their first turn `
+      + `and spent ${usd} writing a cache that nothing in this log ever read. Those writes bought `
+      + 'nothing — stop marking one-shot calls with cache_control.',
+    singleTurnCeiling: (label, model, single, sessions, usd) =>
+      `${label} on ${model}: ${single} of ${sessions} conversations ended after their first turn, `
+      + `and their cache writes — ${usd} — paid for reuse their own conversation never made. `
+      + 'Another conversation sharing the same prefix within the TTL could have read them; the '
+      + 'log cannot see whose write a read hit, so that figure is a ceiling on the waste, not a bill.',
     byLabelHeading: 'By label',
     byModelHeading: 'By model',
     unlabelled: '(no label)',

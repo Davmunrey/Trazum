@@ -13,6 +13,16 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**The window and the ledger reach every rendering.** `--markdown-out` states
+the window as the user typed it — rendering the internal exclusive bound would
+print the next day and disagree with the terminal — with the undated count as
+a loud blockquote, and carries the never-came-back claims with the same
+fact/ceiling split, decided by the slice's own reads. The MCP's
+`profile_usage` gains `since`/`until` under the CLI's rules (a window matching
+nothing is an error naming what the log covers; clockless calls counted out
+loud) and speaks both single-turn claims. The web Bill tab renders them in the
+cache card, loud only when the slice read nothing.
+
 **Cache writes by conversations that never came back.** A one-turn session
 pays the write premium for reuse its own conversation never makes, and it
 hides inside healthy totals: long sessions' reads pay for the cache overall

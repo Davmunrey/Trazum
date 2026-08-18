@@ -325,6 +325,14 @@ export interface WebMessages {
     ttlUnsettled(label: string, model: string, gap: string): string;
     ttlFits(label: string, model: string, gap: string): string;
     ttlUnmeasured: string;
+    /**
+     * Cache writes by conversations that ended after one turn. Two claims for
+     * the same tokens: a fact when the slice recorded zero cache reads, a
+     * ceiling named as one otherwise — the provider's cache is keyed by
+     * prefix, and the log cannot see whose write a read hit.
+     */
+    singleTurnConfirmed(label: string, model: string, single: number, sessions: number, usd: string): string;
+    singleTurnCeiling(label: string, model: string, single: number, sessions: number, usd: string): string;
     byLabelHeading: string;
     byModelHeading: string;
     unlabelled: string;

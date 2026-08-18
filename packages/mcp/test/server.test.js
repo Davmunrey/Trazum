@@ -272,7 +272,7 @@ describe('profile_usage', () => {
   it('takes text only — the schema has no path-shaped property', async () => {
     const answer = await client.send('tools/list', {});
     const tool = answer.result.tools.find((t) => t.name === 'profile_usage');
-    assert.deepEqual(Object.keys(tool.inputSchema.properties), ['log', 'label']);
+    assert.deepEqual(Object.keys(tool.inputSchema.properties), ['log', 'label', 'since', 'until']);
     assert.equal(tool.inputSchema.additionalProperties, false);
     assert.match(tool.inputSchema.properties.log.description, /Never a file path/);
   });
@@ -294,6 +294,69 @@ describe('profile_usage', () => {
     const text = missing.result?.content?.map((p) => p.text).join('\n') ?? JSON.stringify(missing);
     assert.match(text, /labels here are/);
     assert.match(text, /chat/);
+  });
+
+  it('drills down to a time window, and refuses one the log does not cover', async () => {
+    const log = [
+      line({ model: 'claude-opus-5', ts: '2026-08-01T10:00:00Z', usage: { input_tokens: 1_000_000, output_tokens: 0 } }),
+      line({ model: 'claude-opus-5', ts: '2026-08-02T10:00:00Z', usage: { input_tokens: 200_000, output_tokens: 0 } }),
+    ].join('\n');
+
+    // $1.00: day 2 alone, and none of day 1's $5.00. A bare until date
+    // includes that whole UTC day.
+    const windowed = bodyOf(
+      await client.call('profile_usage', { log, since: '2026-08-02', until: '2026-08-02' }),
+    );
+    assert.match(windowed, /1 call · \$1\.00/);
+    assert.ok(!windowed.includes('$5.00'), 'the other day leaked into the window');
+    assert.match(windowed, /window, not the whole log/);
+
+    const empty = await client.call('profile_usage', { log, since: '2026-09-01' });
+    assert.ok(empty.result?.isError || empty.error, 'a window matching nothing was accepted');
+    const text = empty.result?.content?.map((p) => p.text).join('\n') ?? JSON.stringify(empty);
+    assert.match(text, /log covers 2026-08-01 → 2026-08-02/);
+  });
+
+  it('counts clockless calls left outside a window, out loud', async () => {
+    const log = [
+      line({ model: 'claude-opus-5', ts: '2026-08-01T10:00:00Z', usage: { input_tokens: 200_000, output_tokens: 0 } }),
+      line({ model: 'claude-opus-5', usage: { input_tokens: 1_000_000, output_tokens: 0 } }),
+    ].join('\n');
+    const body = bodyOf(await client.call('profile_usage', { log, since: '2026-08-01' }));
+    assert.match(body, /1 call carry no timestamp|1 call carries no timestamp|1 call carry no/);
+    assert.match(body, /floor on the period/);
+    assert.match(body, /\$1\.00/);
+  });
+
+  it('names the conversations that never came back, as fact or as ceiling', async () => {
+    const driveBy = (session, extra = {}) =>
+      line({
+        model: 'claude-opus-5',
+        session,
+        usage: {
+          input_tokens: 1_000,
+          output_tokens: 0,
+          cache_creation_input_tokens: 1_000_000,
+          cache_creation: { ephemeral_5m_input_tokens: 1_000_000, ephemeral_1h_input_tokens: 0 },
+        },
+        ...extra,
+      });
+
+    // Zero reads anywhere in the slice: the ceiling collapses into a fact.
+    const fact = bodyOf(await client.call('profile_usage', { log: driveBy('s1') }));
+    // $6.25 exactly: 1M 5-minute write tokens at $5/MTok × 1.25.
+    assert.match(fact, /\$6\.25/);
+    assert.match(fact, /bought nothing/);
+
+    // With reads in the slice, the same tokens are a ceiling, named as one.
+    const withReads = [
+      driveBy('s1'),
+      line({ model: 'claude-opus-5', session: 's2', usage: { input_tokens: 100, output_tokens: 0, cache_read_input_tokens: 400_000 } }),
+      line({ model: 'claude-opus-5', session: 's2', usage: { input_tokens: 100, output_tokens: 0, cache_read_input_tokens: 400_000 } }),
+    ].join('\n');
+    const ceiling = bodyOf(await client.call('profile_usage', { log: withReads }));
+    assert.match(ceiling, /ceiling on the waste, not a bill/);
+    assert.ok(!/bought nothing/.test(ceiling));
   });
 });
 

@@ -2760,7 +2760,19 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
    */
   const markdownOut = stringFlag(args, 'markdown-out');
   if (markdownOut !== undefined) {
-    await writeFile(markdownOut, renderProfileMarkdown({ report, levers, cache, t }), 'utf8');
+    await writeFile(
+      markdownOut,
+      renderProfileMarkdown({
+        report,
+        levers,
+        cache,
+        t,
+        ...(windowed
+          ? { window: { since: stringFlag(args, 'since') ?? '—', until: stringFlag(args, 'until') ?? '—' } }
+          : {}),
+      }),
+      'utf8',
+    );
     console.log(c.dim(t.report.wroteTo(markdownOut)));
   }
 

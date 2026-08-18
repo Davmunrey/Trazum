@@ -106,6 +106,21 @@ describe('the bill tab reads the log in the browser and nowhere else', () => {
     assert.match(bill, /ttlOverlong\([^)]*fit\.overpayUsd/s);
   });
 
+  it('renders both claims about conversations that never came back, decided by the reads', () => {
+    /**
+     * The same tokens are a loud fact when the slice recorded zero cache reads
+     * (nothing read those writes, anywhere) and a quiet ceiling when it has
+     * reads — the provider's cache is keyed by prefix, so the log cannot see
+     * whose write a read hit. Rendering only one claim would either state a
+     * conditional as a fact or soften a fact into a maybe.
+     */
+    assert.match(bill, /t\.bill\.singleTurnConfirmed/);
+    assert.match(bill, /t\.bill\.singleTurnCeiling/);
+    // The branch is the slice's own reads, not a threshold invented here.
+    assert.match(bill, /cacheReadTokens \?\? 0/);
+    assert.match(bill, /reads === 0/);
+  });
+
   it('renders all three truncation states, not two', () => {
     // "Not recorded" and "none truncated" are different answers. Dropping
     // either collapses them into the flattering one.
