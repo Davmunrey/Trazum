@@ -286,6 +286,13 @@ const PROFILE: ToolDefinition = {
         maxLength: MAX_LOG_CHARS,
         description: 'The usage log text, one JSON object per line. Never a file path.',
       },
+      label: {
+        type: 'string',
+        minLength: 1,
+        description:
+          'Profile only the calls carrying this label — the drill-down once the full report '
+          + 'named a suspect. A label matching nothing is an error naming the labels that exist.',
+      },
     },
     required: ['log'],
     additionalProperties: false,
@@ -299,8 +306,30 @@ const PROFILE: ToolDefinition = {
         `log is ${log.length} characters, over the ${MAX_LOG_CHARS} limit`,
       );
     }
+    const onlyLabel = args.label;
+    if (onlyLabel !== undefined && typeof onlyLabel !== 'string') {
+      throw new InvalidArguments('label must be a string');
+    }
 
-    const report = profileUsage(log, { catalogue: BUNDLED_CATALOGUE });
+    const report = profileUsage(log, { catalogue: BUNDLED_CATALOGUE, label: onlyLabel });
+    /**
+     * The drill-down's one rule, same as the CLI: a label matching nothing is
+     * an error naming the labels that exist, never a silent report over zero
+     * calls that an agent would read as "this workload is free".
+     */
+    if (
+      onlyLabel !== undefined &&
+      report.total.calls === 0 &&
+      report.unpriced.calls === 0
+    ) {
+      const unfiltered = profileUsage(log, { catalogue: BUNDLED_CATALOGUE });
+      const available = unfiltered.byLabel
+        .map((e) => (e.label === UNLABELLED ? '(no label)' : e.label))
+        .join(', ');
+      throw new InvalidArguments(
+        `no call in this log carries the label "${onlyLabel}". The labels here are: ${available || '—'}`,
+      );
+    }
     const { total } = report;
     const lines: string[] = [];
 
