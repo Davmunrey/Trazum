@@ -53,6 +53,15 @@ inputs:
   max-growth-usd:
     description: 'With usage-log and against: fail the build when the bill grew more than this many dollars over the previous log.'
     required: false
+  label:
+    description: 'With usage-log: profile only the calls carrying this label — one workload''s budget. A label matching nothing fails the run naming the labels that exist.'
+    required: false
+  since:
+    description: 'With usage-log: profile only calls at or after this moment — a UTC day (2026-08-14) or a full ISO 8601 timestamp. Calls with no "ts" are excluded and counted out loud in the report.'
+    required: false
+  until:
+    description: 'With usage-log: profile only calls up to this moment; a bare date includes that whole UTC day. A window the log does not cover fails the run naming what it does.'
+    required: false
 
 runs:
   using: 'composite'
@@ -89,6 +98,9 @@ runs:
         TRAZUM_MAX_USD: ${{ inputs.max-usd }}
         TRAZUM_AGAINST: ${{ inputs.against }}
         TRAZUM_MAX_GROWTH_USD: ${{ inputs.max-growth-usd }}
+        TRAZUM_LABEL: ${{ inputs.label }}
+        TRAZUM_SINCE: ${{ inputs.since }}
+        TRAZUM_UNTIL: ${{ inputs.until }}
         TRAZUM_ACTION_PATH: ${{ github.action_path }}
       # Every optional flag is added only when it was actually given. Passing
       # `--level safe` unconditionally is what made a config file's `level` and
@@ -127,6 +139,13 @@ runs:
           [ -n "$TRAZUM_MAX_USD" ] && args+=(--max-usd "$TRAZUM_MAX_USD")
           [ -n "$TRAZUM_AGAINST" ] && args+=(--against "$TRAZUM_AGAINST")
           [ -n "$TRAZUM_MAX_GROWTH_USD" ] && args+=(--max-growth-usd "$TRAZUM_MAX_GROWTH_USD")
+          # The drill-downs compose with the gates: one workload's budget, or
+          # one period's. The CLI owns the honesty rules (a label or window
+          # matching nothing is an error, clockless calls are counted out
+          # loud), so this only forwards.
+          [ -n "$TRAZUM_LABEL" ] && args+=(--label "$TRAZUM_LABEL")
+          [ -n "$TRAZUM_SINCE" ] && args+=(--since "$TRAZUM_SINCE")
+          [ -n "$TRAZUM_UNTIL" ] && args+=(--until "$TRAZUM_UNTIL")
         else
           args=(check "$target")
           [ -n "$TRAZUM_MAX_TOKENS" ] && args+=(--max-tokens "$TRAZUM_MAX_TOKENS")

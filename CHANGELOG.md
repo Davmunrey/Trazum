@@ -9,6 +9,19 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**The drill-downs reach the GitHub Action.** `label`, `since` and `until`
+inputs on the spend gate — one workload's budget, or one period's, in a
+workflow. The CLI owns the honesty rules, so a label or window matching
+nothing fails the run naming what exists, and clockless calls under a window
+are counted out loud in the report. Self-tested in CI with the same hand
+arithmetic as the gates: a $5.00 workload passes a $9 budget the $15.00 log
+would fail, one day passes it, the dear day fails it, and a window the log
+does not cover is refused rather than passing a $0 gate.
+
 ## 1.14.0 — "Drill-downs and drive-bys"
 
 ### Added
