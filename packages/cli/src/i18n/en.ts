@@ -212,6 +212,11 @@ ${bold('OPTIONS FOR profile')}
                               means the bill grew; drivers are ranked by their
                               contribution to the change. No period is assumed —
                               judge the call counts before judging the money.
+  --label <name>              Profile only the calls carrying this label — the
+                              drill-down once the full report named a suspect.
+                              A label that matches nothing is an error naming
+                              the labels that exist. With --against, both logs
+                              are filtered, so the comparison stays one workload.
   --max-usd <n>               Exit 1 when this log spent more than n dollars.
                               The budget applies to exactly the log handed in:
                               profile yesterday's log nightly and this is a

@@ -657,6 +657,14 @@ export interface UsageProfileOptions {
   catalogue: PricingCatalogue;
   /** Date the prices are read at, so a promotional rate resolves the same way. */
   on?: Date;
+  /**
+   * Profile only the records carrying this label — the drill-down, once the
+   * full report has named a suspect. `UNLABELLED` (the empty string) selects
+   * the records with no label at all. Unreadable lines still land in
+   * `skippedLines` whatever they might have been labelled: a filter must not
+   * make corruption disappear.
+   */
+  label?: string;
 }
 
 /**
@@ -668,7 +676,7 @@ export interface UsageProfileOptions {
  * lives, and it can chunk if it ever needs to.
  */
 export function profileUsage(text: string, options: UsageProfileOptions): UsageProfileReport {
-  const { catalogue, on = new Date() } = options;
+  const { catalogue, on = new Date(), label: onlyLabel } = options;
 
   const total = EMPTY();
   const unpriced = EMPTY();
@@ -704,6 +712,10 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
       skippedLines.push(i + 1);
       continue;
     }
+
+    // The drill-down: after the skip accounting, so a corrupt line is reported
+    // whatever it might have been labelled.
+    if (onlyLabel !== undefined && (record.label ?? UNLABELLED) !== onlyLabel) continue;
 
     if (record.session !== null) hasSessions = true;
     if (record.ts !== null) {

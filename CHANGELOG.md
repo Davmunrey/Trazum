@@ -9,6 +9,39 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**The most expensive day, and the bill as a CI gate.** `spendByDay` buckets
+exact per-record dollars per UTC day — the delta each record adds to the total,
+so the day arithmetic can never drift from the bill's — with the top label
+attached. The report names the peak day against the **median** day (a mean
+would let the spike inflate its own yardstick), loud only past twice it. And
+`--max-usd` exits 1 when the log spent more than its budget, `--max-growth-usd`
+(with `--against`) when the bill grew past the limit — no period assumed, both
+firing under `--json` because CI reads the exit code there. Alone,
+`--max-growth-usd` is an error rather than a flag that silently gates nothing.
+
+**The clock reaches every rendering.** `--markdown-out` gains the span line,
+the peak day and the TTL verdicts with the failing ones loud; the gap, day and
+median helpers live once, shared by both renderings, so they cannot drift. The
+web Bill tab draws spend per day — a bar per UTC day, divs rather than a chart
+library, the peak bar in the warning colour — verified in a real browser.
+
+**The ceilings a max_tokens cap actually wants.** `OutputShape` gains
+`medianWithinTokens` and `p95WithinTokens`: the bucket ceiling at least half
+and 95% of the measured answers fit within. Exact over the histogram, `null`
+for the open-ended last bucket rather than an invented ceiling, and said in one
+line per slice: measured on these calls, promised for nothing.
+
+**`profile --label`, the drill-down.** Once the full report has named a
+suspect, the same command profiles that workload alone — every section, the
+gates included, over one label's calls. A label that matches nothing is an
+error naming the labels that exist, never a silent report over zero calls that
+would read as "this workload is free". With `--against`, both logs are
+filtered, so the comparison stays one workload.
+
 ## 1.12.0 — "The log gets a clock"
 
 ### Added

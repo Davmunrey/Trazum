@@ -422,7 +422,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
-  profile: ['json', 'pricing', 'pricing-live', 'against', 'markdown-out', 'max-usd', 'max-growth-usd'],
+  profile: ['json', 'pricing', 'pricing-live', 'against', 'markdown-out', 'max-usd', 'max-growth-usd', 'label'],
   route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
@@ -1962,7 +1962,21 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
   }
 
   const raw = await readFile(path, 'utf8');
-  const report = profileUsage(raw, { catalogue: pricing });
+  /**
+   * The drill-down. A label that matches nothing is an error naming the labels
+   * that exist — the route command's rule, for the route command's reason: a
+   * report over zero calls silently filtered would read as "this workload is
+   * free".
+   */
+  const onlyLabel = stringFlag(args, 'label');
+  const report = profileUsage(raw, { catalogue: pricing, label: onlyLabel });
+  if (onlyLabel !== undefined && report.total.calls === 0 && report.unpriced.calls === 0) {
+    const unfiltered = profileUsage(raw, { catalogue: pricing });
+    const available = unfiltered.byLabel
+      .map((r) => (r.label === UNLABELLED ? t.profile.unlabelled() : r.label))
+      .join(', ');
+    throw new Error(t.route.labelNotFound(onlyLabel, available || '—'));
+  }
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
 
@@ -1973,9 +1987,11 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
    * had.
    */
   const againstPath = stringFlag(args, 'against');
+  // The same filter on both sides: comparing one workload's bill against the
+  // whole previous log would report every sibling workload as vanished savings.
   const previous =
     againstPath !== undefined
-      ? profileUsage(await readFile(againstPath, 'utf8'), { catalogue: pricing })
+      ? profileUsage(await readFile(againstPath, 'utf8'), { catalogue: pricing, label: onlyLabel })
       : null;
   const againstDelta =
     previous !== null && previous.total.calls > 0
