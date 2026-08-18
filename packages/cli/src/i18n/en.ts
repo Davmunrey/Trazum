@@ -1048,6 +1048,17 @@ ${bold('EXAMPLES')}
       `${label} has a budget in trazum.config.json and no calls in this log, so nothing was measured for it. Not a pass: a workload that did not appear is not a workload that came in under budget.`,
     labelBudgetWindowed: () =>
       'Per-label budgets in trazum.config.json were not applied: --since/--until make "what this label spent" mean a slice, and a budget written for the whole period would be gating against something it does not describe.',
+    coverageHeading: () => 'What this log cannot answer yet',
+    needsLabel: (seen) =>
+      `"label" on ${seen} records: without it every workload is one row, so no per-workload spend, no drill-down, and the levers describe a mixture rather than a decision.`,
+    needsSession: (seen) =>
+      `"session" on ${seen} records: without it there is no conversation growth, no per-conversation cost, and no cache-TTL fit. It is grouped by and never printed.`,
+    needsTs: (seen) =>
+      `"ts" on ${seen} records: without it the log has no period, no per-day or per-hour shape, and the cache-TTL question cannot be asked at all.`,
+    needsStopReason: (seen) =>
+      `"stop_reason" (Anthropic) or "finish_reason" (OpenAI) on ${seen} records: without it, answers cut off at max_tokens are invisible — and silence there is not the same as none.`,
+    needsCacheTtl: (seen) =>
+      `the "cache_creation" object on ${seen} of the records that wrote to the cache: without it the 5-minute rate is assumed, so those totals are a floor and some cache verdicts cannot be settled.`,
     hoursConcentrated: (hours, list) =>
       `80% of this spend lands in ${hours} hours of the UTC day (${list}) — interactive traffic somebody is waiting on, where the Batch API's 24-hour turnaround does not fit. Hours are UTC; shift them yourself if your traffic sits in one region.`,
     hoursFlat: (hours) =>

@@ -9,6 +9,23 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**"What this log cannot answer yet."** Every finding past the totals needs a
+field the log format does not require, and a reader who never adds them sees a
+report quietly missing half of itself — with no way to tell "nothing to
+report" from "nothing recorded". The report now names each missing field with
+what it would unlock, from exact counts: `"label" on 0/40,000 records`,
+`"session" on 12/40,000`. **Counts rather than booleans**, because twelve
+labelled records out of forty thousand is not a labelled log and a boolean
+would call it one. Coverage is counted over records that *parsed*, priced or
+not — whether a field is present is a property of the log, not of the price
+catalogue — and the cache-TTL line is counted only over records that actually
+wrote to the cache. A complete log gets no section at all: a paragraph of
+things that are fine is the paragraph readers learn to skip.
+
 ## 1.20.0 — "When, and what you can build on"
 
 ### Added

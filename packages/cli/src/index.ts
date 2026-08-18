@@ -3146,6 +3146,45 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
     }
   }
 
+  /**
+   * What this log cannot answer, and what would fix it.
+   *
+   * Every finding past the totals needs a field the format does not require,
+   * and a reader who never adds them sees a report quietly missing half of
+   * itself — with no way to tell "nothing to report" from "nothing recorded".
+   * Named with counts rather than booleans: twelve labelled records out of
+   * forty thousand is not a labelled log, and a boolean would call it one.
+   *
+   * Only fields that are actually missing are listed. A complete log gets no
+   * section at all, because a paragraph of things that are fine is the
+   * paragraph readers learn to skip.
+   */
+  const coverage = report.fieldCoverage;
+  if (coverage.parsed > 0) {
+    const missing: string[] = [];
+    const partial = (seen: number): string => `${n(seen)}/${n(coverage.parsed)}`;
+    if (coverage.label < coverage.parsed) {
+      missing.push(t.profile.needsLabel(partial(coverage.label)));
+    }
+    if (coverage.session < coverage.parsed) {
+      missing.push(t.profile.needsSession(partial(coverage.session)));
+    }
+    if (coverage.ts < coverage.parsed) {
+      missing.push(t.profile.needsTs(partial(coverage.ts)));
+    }
+    if (coverage.stopReason < coverage.parsed) {
+      missing.push(t.profile.needsStopReason(partial(coverage.stopReason)));
+    }
+    if (coverage.cacheWrites > 0 && coverage.cacheTtl < coverage.cacheWrites) {
+      missing.push(t.profile.needsCacheTtl(`${n(coverage.cacheTtl)}/${n(coverage.cacheWrites)}`));
+    }
+    if (missing.length > 0) {
+      console.log();
+      console.log(c.bold(t.profile.coverageHeading()));
+      for (const line of missing) console.log(`  ${c.dim(wrap(line, 74, '  '))}`);
+    }
+  }
+
   reportProfileGaps(report, t, n, pricingStale);
 
   await writeSideFiles();

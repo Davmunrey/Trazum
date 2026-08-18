@@ -714,6 +714,19 @@ export interface CliMessages {
      * never claims the saving — whether a workload can wait is a product
      * decision counts cannot make.
      */
+    /**
+     * What the log cannot answer, and what would fix it. Counts rather than
+     * booleans: twelve labelled records out of forty thousand is not a
+     * labelled log, and a boolean would call it one. Only missing fields are
+     * listed — a paragraph of things that are fine is the paragraph readers
+     * learn to skip.
+     */
+    coverageHeading(): string;
+    needsLabel(seen: string): string;
+    needsSession(seen: string): string;
+    needsTs(seen: string): string;
+    needsStopReason(seen: string): string;
+    needsCacheTtl(seen: string): string;
     hoursConcentrated(hours: string, list: string): string;
     hoursFlat(hours: string): string;
     truncatedBy(label: string, calls: string, measured: string, rate: string, usd: string): string;
