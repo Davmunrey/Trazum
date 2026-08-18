@@ -378,6 +378,10 @@ export const es: WebMessages = {
       `${label} en ${model}: el gasto de salida está donde están las llamadas — el ${callPct} `
       + `concentra el ${spendPct} de ${usd}. No hay cola que cazar; pide respuestas más cortas `
       + 'y limita max_tokens.',
+    outputPercentiles: (p50, p95) =>
+      `La mitad de las respuestas medidas caben en ${p50} tokens de salida, y el 95% en ${p95} `
+      + '— el número que un límite de max_tokens quiere de verdad. Medido en estas llamadas, '
+      + 'prometido para ninguna.',
     truncatedHeading: 'Respuestas cortadas a medias',
     truncatedWaste: (calls, usd, pct) =>
       `${calls.toLocaleString('es-ES')} ${calls === 1 ? 'llamada chocó' : 'llamadas chocaron'} `

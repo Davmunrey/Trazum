@@ -517,6 +517,15 @@ function Report({
                           pct(shape.heavySpendShare),
                           formatUsd(shape.outputUsd),
                         )}
+                    {/*
+                      The max_tokens ceilings, omitted when the covering bucket
+                      is the open-ended last one — no honest number to name.
+                    */}
+                    {shape.medianWithinTokens !== null && shape.p95WithinTokens !== null && (
+                      <span className="mt-1 block text-muted-foreground">
+                        {t.bill.outputPercentiles(n(shape.medianWithinTokens), n(shape.p95WithinTokens))}
+                      </span>
+                    )}
                   </span>
                 ))}
               </CardContent>

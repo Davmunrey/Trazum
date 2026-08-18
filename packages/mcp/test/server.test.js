@@ -272,9 +272,28 @@ describe('profile_usage', () => {
   it('takes text only — the schema has no path-shaped property', async () => {
     const answer = await client.send('tools/list', {});
     const tool = answer.result.tools.find((t) => t.name === 'profile_usage');
-    assert.deepEqual(Object.keys(tool.inputSchema.properties), ['log']);
+    assert.deepEqual(Object.keys(tool.inputSchema.properties), ['log', 'label']);
     assert.equal(tool.inputSchema.additionalProperties, false);
     assert.match(tool.inputSchema.properties.log.description, /Never a file path/);
+  });
+
+  it('drills down to one label, and refuses one that matches nothing by name', async () => {
+    const log = [
+      line({ model: 'claude-opus-5', label: 'chat', usage: { input_tokens: 1_000_000, output_tokens: 0 } }),
+      line({ model: 'claude-opus-5', label: 'rag', usage: { input_tokens: 200_000, output_tokens: 0 } }),
+    ].join('\n');
+
+    const filtered = bodyOf(await client.call('profile_usage', { log, label: 'rag' }));
+    // $1.00: 200k input tokens at $5/MTok, and none of chat's $5.00. ("chat"
+    // the word appears in fixed prose, so the leak check is the money.)
+    assert.match(filtered, /1 call · \$1\.00/);
+    assert.ok(!filtered.includes('$5.00'), 'the sibling workload leaked into the drill-down');
+
+    const missing = await client.call('profile_usage', { log, label: 'ragg' });
+    assert.ok(missing.result?.isError || missing.error, 'a label matching nothing was accepted');
+    const text = missing.result?.content?.map((p) => p.text).join('\n') ?? JSON.stringify(missing);
+    assert.match(text, /labels here are/);
+    assert.match(text, /chat/);
   });
 });
 

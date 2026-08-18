@@ -300,6 +300,8 @@ export interface WebMessages {
       usd: string,
     ): string;
     outputFlat(label: string, model: string, callPct: string, spendPct: string, usd: string): string;
+    /** Bucket ceilings, exact over the histogram — what a max_tokens cap wants. */
+    outputPercentiles(p50: string, p95: string): string;
     truncatedHeading: string;
     truncatedWaste(calls: number, usd: string, pct: string): string;
     truncatedNone: string;

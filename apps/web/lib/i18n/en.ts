@@ -373,6 +373,9 @@ export const en: WebMessages = {
       `${label} on ${model}: the output spend sits where the calls are — ${callPct} of them `
       + `hold ${spendPct} of ${usd}. There is no tail to hunt; ask for shorter answers and cap `
       + 'max_tokens.',
+    outputPercentiles: (p50, p95) =>
+      `Half the measured answers fit within ${p50} output tokens, and 95% within ${p95} — the `
+      + 'number a max_tokens cap actually wants. Measured on these calls, promised for nothing.',
     truncatedHeading: 'Answers cut off mid-generation',
     truncatedWaste: (calls, usd, pct) =>
       `${calls.toLocaleString('en-US')} ${calls === 1 ? 'call' : 'calls'} hit the max_tokens `
