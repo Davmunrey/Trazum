@@ -287,3 +287,57 @@ jobs:
         run: |
           echo "target and usage-log together should be an error"
           exit 1
+
+      # The drill-downs compose with the gates. Same hand arithmetic: chat is
+      # one $5.00 call on day 1, batch is two more on day 2 — $15.00 in all.
+      - name: Write a labelled, dated usage log
+        run: |
+          printf '%s\n' \
+            '{"model":"claude-opus-5","label":"chat","ts":"2026-08-01T10:00:00Z","usage":{"input_tokens":1000000,"output_tokens":0}}' \
+            '{"model":"claude-opus-5","label":"batch","ts":"2026-08-02T10:00:00Z","usage":{"input_tokens":1000000,"output_tokens":0}}' \
+            '{"model":"claude-opus-5","label":"batch","ts":"2026-08-02T11:00:00Z","usage":{"input_tokens":1000000,"output_tokens":0}}' \
+            > fixture/mixed.jsonl
+
+      - name: One workload's budget passes where the whole log would fail
+        uses: ./
+        with:
+          usage-log: fixture/mixed.jsonl
+          label: chat
+          max-usd: '9'
+
+      - name: One day's budget passes where the whole log would fail
+        uses: ./
+        with:
+          usage-log: fixture/mixed.jsonl
+          until: '2026-08-01'
+          max-usd: '9'
+
+      - name: The same budget over the dear day fails
+        id: dearday
+        uses: ./
+        continue-on-error: true
+        with:
+          usage-log: fixture/mixed.jsonl
+          since: '2026-08-02'
+          max-usd: '9'
+
+      - name: Verify the windowed gate failed
+        if: steps.dearday.outcome != 'failure'
+        run: |
+          echo "The action should have failed \$10.00 of day 2 against a \$9 budget"
+          exit 1
+
+      - name: A window the log does not cover is an error, not a passing $0 gate
+        id: emptywindow
+        uses: ./
+        continue-on-error: true
+        with:
+          usage-log: fixture/mixed.jsonl
+          since: '2026-09-01'
+          max-usd: '9'
+
+      - name: Verify the empty window was refused
+        if: steps.emptywindow.outcome != 'failure'
+        run: |
+          echo "A window matching nothing should be an error naming the log's span"
+          exit 1

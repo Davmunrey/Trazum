@@ -378,6 +378,9 @@ which is the caller's job:
     max-usd: '50'            # exit 1 over budget — no period assumed
     # against: logs/day-before.jsonl
     # max-growth-usd: '10'
+    # label: chat            # one workload's budget
+    # since: '2026-08-11'    # one period's — until includes its whole day
+    # until: '2026-08-17'
 ```
 
 The profile report lands in the run summary either way, and a failing gate
