@@ -52,6 +52,16 @@ knowing which gate fired. Self-tested in CI with hand-checkable arithmetic: a
 $5.00 log passes a $9 budget, a $15.00 log fails it, +$10.00 growth fails a $5
 limit, and naming both modes at once is refused.
 
+**The comparison reaches the browser, and the drill-down reaches the MCP.**
+The web Bill tab takes a second usage log and renders "against the previous
+log" — the sign convention stated before the first figure, drivers derived over
+the union of labels so appeared and vanished workloads are named, and a
+previous log with nothing priced reported as its own answer rather than zero
+growth. Verified in a real browser with exact arithmetic and zero network
+requests. `profile_usage` on the MCP gains the optional `label`, with the
+drill-down's rule riding along; the web output shapes gain the max_tokens
+ceilings.
+
 ## 1.12.0 — "The log gets a clock"
 
 ### Added

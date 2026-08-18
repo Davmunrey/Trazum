@@ -331,6 +331,22 @@ export interface WebMessages {
     moreRows(count: number): string;
     unpriced(models: string, calls: number): string;
     skipped(count: number, lines: string): string;
+    /**
+     * This bill against a previous log, in the browser. The sign convention —
+     * positive means the bill grew — is stated before the first figure, the
+     * Compare tab's rule for the Compare tab's reason.
+     */
+    againstLabel: string;
+    againstHint: string;
+    againstClear: string;
+    againstHeading: string;
+    againstConvention: string;
+    againstTotals(before: string, after: string, delta: string, pct: string): string;
+    againstCalls(before: number, after: number): string;
+    againstDriver(delta: string, label: string, before: string, after: string): string;
+    againstDriverNew(delta: string, label: string): string;
+    againstDriverGone(delta: string, label: string): string;
+    againstNothingPriced: string;
   };
 
   errors: {

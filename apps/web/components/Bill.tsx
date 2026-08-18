@@ -42,6 +42,8 @@ interface Analysis {
   report: UsageProfileReport;
   levers: BillLevers;
   cache: CacheEconomics;
+  /** The previous log's report, when one was handed over to compare against. */
+  previous: UsageProfileReport | null;
 }
 
 /** Rows shown per table before "…and N more". Enough to act on, short enough to read. */
@@ -51,25 +53,51 @@ const MAX_SECTIONS = 3;
 
 export function Bill({ t }: { t: WebMessages }) {
   const [pasted, setPasted] = useState('');
+  const [logText, setLogText] = useState<string | null>(null);
+  const [previousText, setPreviousText] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const previousInput = useRef<HTMLInputElement>(null);
 
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (fraction: number): string =>
     fraction > 0 && fraction < 0.005 ? '<1%' : `${(fraction * 100).toFixed(0)}%`;
 
-  function analyze(text: string) {
+  function analyze(text: string, previous: string | null) {
     const report = profileUsage(text, { catalogue: BUNDLED_CATALOGUE });
     const levers = billLevers(report, { catalogue: BUNDLED_CATALOGUE });
     const cache = cacheEconomics(report.total);
-    setAnalysis({ report, levers, cache });
+    setLogText(text);
+    setAnalysis({
+      report,
+      levers,
+      cache,
+      previous: previous !== null ? profileUsage(previous, { catalogue: BUNDLED_CATALOGUE }) : null,
+    });
     // Shape only, never content: no label names, no spend, no counts.
-    track('bill', { priced: report.total.calls > 0, sessions: report.hasSessions });
+    track('bill', {
+      priced: report.total.calls > 0,
+      sessions: report.hasSessions,
+      compared: previous !== null,
+    });
   }
 
   async function readFile(file: File | undefined) {
     if (!file) return;
-    analyze(await file.text());
+    analyze(await file.text(), previousText);
+  }
+
+  /** The second log, re-analysing in place when a report is already on screen. */
+  async function readPrevious(file: File | undefined) {
+    if (!file) return;
+    const text = await file.text();
+    setPreviousText(text);
+    if (logText !== null) analyze(logText, text);
+  }
+
+  function clearPrevious() {
+    setPreviousText(null);
+    if (logText !== null) analyze(logText, null);
   }
 
   const Eyebrow = ({ children }: { children: React.ReactNode }) => (
@@ -138,9 +166,37 @@ export function Bill({ t }: { t: WebMessages }) {
             placeholder='{"model":"claude-sonnet-5","label":"support","session":"a1","usage":{"input_tokens":1200,"output_tokens":300}}'
             className="min-h-28 resize-y bg-muted font-mono text-[13px] leading-relaxed"
           />
-          <Button onClick={() => analyze(pasted)} disabled={pasted.trim() === ''}>
+          <Button onClick={() => analyze(pasted, previousText)} disabled={pasted.trim() === ''}>
             {t.bill.analyze}
           </Button>
+
+          {/* The second log, read in this tab exactly like the first. */}
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => previousInput.current?.click()}
+            >
+              {t.bill.againstLabel}
+            </Button>
+            {previousText !== null && (
+              <Button type="button" variant="ghost" size="sm" onClick={clearPrevious}>
+                {t.bill.againstClear}
+              </Button>
+            )}
+            <span>{t.bill.againstHint}</span>
+            <input
+              ref={previousInput}
+              type="file"
+              accept=".jsonl,.json,.txt,.log"
+              className="hidden"
+              onChange={(event) => {
+                void readPrevious(event.target.files?.[0]);
+                event.target.value = '';
+              }}
+            />
+          </div>
 
           <p className="m-0 max-w-[72ch] text-xs text-muted-foreground">{t.bill.recipe}</p>
         </CardContent>
@@ -326,6 +382,78 @@ function Report({
         </Card>
 
         <div className="flex flex-col gap-5">
+          {analysis.previous !== null && (
+            <Card className="gap-4 py-[18px]">
+              <CardHeader className="px-[18px]">{eyebrow(t.bill.againstHeading)}</CardHeader>
+              <CardContent className="flex flex-col gap-3 px-[18px] text-sm">
+                {analysis.previous.total.calls === 0 ? (
+                  <span className="text-muted-foreground">{t.bill.againstNothingPriced}</span>
+                ) : (
+                  (() => {
+                    const prev = analysis.previous!;
+                    const delta = total.totalUsd - prev.total.totalUsd;
+                    const growthPct =
+                      prev.total.totalUsd > 0
+                        ? `${delta >= 0 ? '+' : ''}${((delta / prev.total.totalUsd) * 100).toFixed(1)}%`
+                        : '—';
+                    // Drivers over the union of labels, so an appeared or
+                    // vanished workload is named rather than folded silently —
+                    // the CLI's rule, re-stated here because the web computes
+                    // its own comparison.
+                    const before = new Map(prev.byLabel.map((r) => [r.label, r.breakdown.totalUsd]));
+                    const after = new Map(report.byLabel.map((r) => [r.label, r.breakdown.totalUsd]));
+                    const drivers = [...new Set([...before.keys(), ...after.keys()])]
+                      .map((label) => ({
+                        label,
+                        was: before.has(label) ? before.get(label)! : null,
+                        now: after.has(label) ? after.get(label)! : null,
+                      }))
+                      .map((d) => ({ ...d, delta: (d.now ?? 0) - (d.was ?? 0) }))
+                      .filter((d) => Math.abs(d.delta) > 1e-9)
+                      .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta))
+                      .slice(0, 5);
+                    return (
+                      <>
+                        {/* The convention, before the first figure it governs. */}
+                        <div className="rounded-lg border border-l-[3px] border-l-warn px-3.5 py-3 text-[13px] leading-snug text-warn">
+                          {t.bill.againstConvention}
+                        </div>
+                        <div
+                          className={`text-[19px] font-semibold ${delta > 0 ? 'text-terracotta' : delta < 0 ? 'text-good' : ''}`}
+                        >
+                          {t.bill.againstTotals(
+                            formatUsd(prev.total.totalUsd),
+                            formatUsd(total.totalUsd),
+                            formatSignedUsd(delta),
+                            growthPct,
+                          )}
+                        </div>
+                        <span className="text-[13px] text-muted-foreground">
+                          {t.bill.againstCalls(prev.total.calls, total.calls)}
+                        </span>
+                        <ul className="m-0 list-none p-0 text-[13px]">
+                          {drivers.map((d) => (
+                            <li key={d.label} className={`py-px ${d.delta > 0 ? 'text-terracotta' : 'text-muted-foreground'}`}>
+                              {d.was === null
+                                ? t.bill.againstDriverNew(formatSignedUsd(d.delta), labelName(d.label))
+                                : d.now === null
+                                  ? t.bill.againstDriverGone(formatSignedUsd(d.delta), labelName(d.label))
+                                  : t.bill.againstDriver(
+                                      formatSignedUsd(d.delta),
+                                      labelName(d.label),
+                                      formatUsd(d.was),
+                                      formatUsd(d.now),
+                                    )}
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    );
+                  })()
+                )}
+              </CardContent>
+            </Card>
+          )}
           <Card className="gap-4 py-[18px]">
             <CardHeader className="px-[18px]">{eyebrow(t.bill.cacheHeading)}</CardHeader>
             <CardContent className="flex flex-col gap-2 px-[18px] text-sm">
