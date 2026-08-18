@@ -362,6 +362,18 @@ describe('profile_usage', () => {
     assert.match(empty, /no comparison to make — a different answer from zero growth/);
   });
 
+  it('names which workload pays for truncated answers, over measured calls', async () => {
+    const log = [
+      line({ model: 'claude-opus-5', label: 'chat', stop_reason: 'max_tokens', usage: { input_tokens: 100, output_tokens: 40_000 } }),
+      line({ model: 'claude-opus-5', label: 'chat', stop_reason: 'end_turn', usage: { input_tokens: 100, output_tokens: 40_000 } }),
+      line({ model: 'claude-opus-5', label: 'batch', stop_reason: 'end_turn', usage: { input_tokens: 100, output_tokens: 40_000 } }),
+    ].join('\n');
+    const body = bodyOf(await client.call('profile_usage', { log }));
+    // One of chat's two measured calls: 50%, $1.00 of output at $25/MTok.
+    assert.match(body, /chat: 1 of 2 calls that recorded a stop reason were cut off \(50%\), \$1\.00/);
+    assert.match(body, /denominator is the calls that measured/);
+  });
+
   it('reports what one conversation costs, median against p95', async () => {
     // Nine $1.00 conversations and one $50.00: the median describes the
     // ordinary case, the mean ($5.90) would describe none of them.

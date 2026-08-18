@@ -941,7 +941,7 @@ function Report({
 
           <Card className="gap-4 py-[18px]">
             <CardHeader className="px-[18px]">{eyebrow(t.bill.truncatedHeading)}</CardHeader>
-            <CardContent className="px-[18px] text-sm">
+            <CardContent className="flex flex-col gap-2 px-[18px] text-sm">
               {total.stopReasonCalls === 0 ? (
                 <span className="text-muted-foreground">{t.bill.truncatedNotRecorded}</span>
               ) : total.truncatedCalls > 0 ? (
@@ -955,6 +955,30 @@ function Report({
               ) : (
                 <span className="text-good">{t.bill.truncatedNone}</span>
               )}
+              {/*
+                Which workloads pay for it, at a rate over calls that recorded
+                a stop reason — never over every call, because a workload
+                logging the field half the time is not one whose other half
+                completed. Silent when one label is the whole log, where
+                naming it restates the total.
+              */}
+              {total.truncatedCalls > 0 &&
+                report.byLabel.length > 1 &&
+                report.byLabel
+                  .filter((entry) => entry.breakdown.truncatedCalls > 0)
+                  .sort((a, b) => b.breakdown.truncatedOutputUsd - a.breakdown.truncatedOutputUsd)
+                  .slice(0, MAX_SECTIONS)
+                  .map((entry) => (
+                    <span key={`truncated:${entry.label}`} className="text-[13px] text-muted-foreground">
+                      {t.bill.truncatedBy(
+                        labelName(entry.label),
+                        entry.breakdown.truncatedCalls,
+                        entry.breakdown.stopReasonCalls,
+                        pct(entry.breakdown.truncatedCalls / entry.breakdown.stopReasonCalls),
+                        formatUsd(entry.breakdown.truncatedOutputUsd),
+                      )}
+                    </span>
+                  ))}
             </CardContent>
           </Card>
         </div>

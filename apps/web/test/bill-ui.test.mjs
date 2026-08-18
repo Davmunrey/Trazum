@@ -164,6 +164,14 @@ describe('the bill tab reads the log in the browser and nowhere else', () => {
     assert.match(bill, /p95Usd > 10 \* shape\.medianUsd/);
   });
 
+  it('names which workload pays for truncated answers, over measured calls', () => {
+    assert.match(bill, /t\.bill\.truncatedBy/);
+    // The denominator is the calls that recorded a stop reason, never all of
+    // them: a workload logging the field half the time is not one whose other
+    // half completed.
+    assert.match(bill, /truncatedCalls \/ entry\.breakdown\.stopReasonCalls/);
+  });
+
   it('renders all three truncation states, not two', () => {
     // "Not recorded" and "none truncated" are different answers. Dropping
     // either collapses them into the flattering one.

@@ -469,6 +469,9 @@ export const es: WebMessages = {
       + `hace ${days} días, más de los 45 que esta herramienta considera vigentes. Si el `
       + 'proveedor cambió precios desde entonces, este informe se equivoca exactamente en ese '
       + 'cambio. La CLI puede traer precios actuales (trazum profile --pricing-live).',
+    truncatedBy: (label, calls, measured, rate, usd) =>
+      `${label}: ${calls} de ${measured} llamadas que registraron motivo de parada quedaron `
+      + `cortadas (${rate}), ${usd} de salida. El denominador son las llamadas que midieron, no todas.`,
     drillActive: (label) =>
       `Mostrando solo ${label}. Cada porcentaje de abajo es una parte de la factura de esta carga, no del registro completo, y la comparación — si la hay — filtra los dos registros igual.`,
     drillClear: 'Ver el registro completo',
