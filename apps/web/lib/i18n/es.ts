@@ -469,6 +469,14 @@ export const es: WebMessages = {
       + `hace ${days} días, más de los 45 que esta herramienta considera vigentes. Si el `
       + 'proveedor cambió precios desde entonces, este informe se equivoca exactamente en ese '
       + 'cambio. La CLI puede traer precios actuales (trazum profile --pricing-live).',
+    hourChartLabel: 'Gasto por hora del día UTC, de medianoche a medianoche',
+    hoursConcentrated: (hours) =>
+      `El 80% de este gasto cae en ${hours} horas del día UTC — tráfico interactivo con alguien `
+      + 'esperando, donde las 24 horas de la Batch API no encajan. Las horas son UTC.',
+    hoursFlat: (hours) =>
+      `Hacen falta ${hours} horas del día UTC para cubrir el 80% de este gasto. Esa es la forma `
+      + 'del trabajo de fondo, y el trabajo de fondo es lo que la Batch API abarata a la mitad. '
+      + 'Si estas llamadas pueden esperar lo dices tú; el registro solo enseña cuándo ocurrieron.',
     truncatedBy: (label, calls, measured, rate, usd) =>
       `${label}: ${calls} de ${measured} llamadas que registraron motivo de parada quedaron `
       + `cortadas (${rate}), ${usd} de salida. El denominador son las llamadas que midieron, no todas.`,

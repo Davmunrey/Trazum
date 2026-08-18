@@ -13,6 +13,14 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**The shape of the day, drawn.** The web Bill tab gains a 24-bar chart of
+spend per UTC hour — divs, like the day chart, no library — with the hours
+holding 80% of the spend in the warning colour and the same sentence the
+terminal prints. Hours with no traffic are drawn as **empty rather than
+skipped**: a chart that closed the gaps would make every workload look flat,
+and flat is exactly the finding that points at the Batch API. Verified in a
+real browser, zero network requests.
+
 **`--json` becomes a contract.** `docs/json-output.md` documents every
 top-level field, the output carries a `schemaVersion` to branch on, and
 `json-contract.test.js` enforces the promise **in both directions**: a

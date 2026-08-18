@@ -140,6 +140,21 @@ describe('the bill tab reads the log in the browser and nowhere else', () => {
     assert.match(bill, /profileUsage\(previous, \{\s*catalogue: BUNDLED_CATALOGUE,\s*sinceMs,\s*untilMs,/);
   });
 
+  it('draws the shape of the day and points at the lever without claiming it', () => {
+    /**
+     * Twenty-four bars, gaps included: a chart that closed the gaps would
+     * make every workload look flat, and flat is the finding that points at
+     * the Batch API. The sentence names the lever and leaves the decision
+     * with the reader.
+     */
+    assert.match(bill, /t\.bill\.hourChartLabel/);
+    assert.match(bill, /t\.bill\.hoursConcentrated/);
+    assert.match(bill, /t\.bill\.hoursFlat/);
+    assert.match(bill, /Array\.from\(\{ length: 24 \}/);
+    // The same 80% measure the CLI states, so the two cannot disagree.
+    assert.match(bill, /covered >= 0\.8 \* total\.totalUsd/);
+  });
+
   it('drills into one workload by clicking it, and says what that does to the shares', () => {
     /**
      * The CLI's --label, reached by clicking a row. The banner has to carry
