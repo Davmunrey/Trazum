@@ -9,6 +9,24 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**Money budgets that live in the repository: `spend` in `trazum.config.json`.**
+`budgets` gates the tokens a prompt file may hold; `spend` gates the dollars a
+usage log records — `maxUsd` for the whole log, `byLabel` for each named
+workload against its own limit in the same run. A per-workload budget is a
+policy several people agree on, and a policy that lives in one CI invocation
+is a policy nobody can read. Flags still win over the config, as everywhere.
+
+Two refusals keep it honest. A budgeted label with **no calls in the log** is
+reported as *not measured*, never as a pass: a workload that did not appear is
+not a workload that came in under budget. And per-label budgets are **not
+applied under `--since`/`--until`**, because a window makes "what this label
+spent" mean a slice, and a budget written for the whole period would be gating
+against something it does not describe.
+
 ## 1.17.0 — "What the report cannot see"
 
 ### Added

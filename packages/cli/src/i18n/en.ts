@@ -311,6 +311,9 @@ ${bold('CONFIG FILE')}
     labels    { "support-rag": "prompts/support.txt" } — which prompt file each
               usage-log label sends, so "trazum profile" can read the file and
               say why a failing cache fails
+    spend     { "maxUsd": 200, "byLabel": { "chat": 40 } } — money budgets for
+              "trazum profile", in dollars. A budgeted label with no calls in
+              the log is reported as not measured, never as a pass
 
   Flags beat the config; the config beats the defaults. Budgets resolve to the
   most specific matching pattern — most literal characters wins. A boolean the
@@ -1030,6 +1033,13 @@ ${bold('EXAMPLES')}
       `${count(calls)} ${calls === 1 ? 'call carries' : 'calls carry'} no timestamp and fell outside the window`,
     sessionCost: (label, model, sessions, median, medianTurns, p95, max) =>
       `${label} on ${model}: across ${sessions} conversations, the median one costs ${median} over ${medianTurns} turns, 95% come in under ${p95}, and the most expensive was ${max}. Exact billed counts, per conversation — the figure a per-seat price or a quota is set from. A conversation that started before this log or continues after it is counted only for the turns recorded here.`,
+    labelBudgetOk: (label, usd, max) => `Within budget: ${label} spent ${usd} against ${max}.`,
+    labelBudgetFailed: (label, usd, max) =>
+      `FAILED — ${label} spent ${usd} against its budget of ${max} in trazum.config.json.`,
+    labelBudgetMissing: (label) =>
+      `${label} has a budget in trazum.config.json and no calls in this log, so nothing was measured for it. Not a pass: a workload that did not appear is not a workload that came in under budget.`,
+    labelBudgetWindowed: () =>
+      'Per-label budgets in trazum.config.json were not applied: --since/--until make "what this label spent" mean a slice, and a budget written for the whole period would be gating against something it does not describe.',
     sessionCostTail: (ratio) =>
       `The 95th percentile is ${ratio}x the median there: most conversations are cheap and a few are not, which is a tail a quota can catch. Where median and p95 sit close together the workload is simply expensive and there is no tail to hunt.`,
     againstOverlap: (from, to) =>

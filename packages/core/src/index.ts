@@ -269,4 +269,4 @@ export {
   budgetFor,
   parseConfig,
 } from './config-schema.js';
-export type { ResolvedBudget, TrazumConfig } from './config-schema.js';
+export type { ResolvedBudget, SpendConfig, TrazumConfig } from './config-schema.js';

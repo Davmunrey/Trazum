@@ -48,6 +48,21 @@ export interface BaselineConfig {
   maxGrowthPct?: number;
 }
 
+/**
+ * Money budgets, in dollars, for the log-reading side of the tool.
+ *
+ * A budget for a workload that made no calls is **not** a pass and not a
+ * failure: it is a measurement that did not happen, and the report says so
+ * rather than reporting green over an absence. That is the same three-state
+ * rule the counts, the timestamps and the stop reasons all follow.
+ */
+export interface SpendConfig {
+  /** Whole-log budget. `--max-usd` overrides it. */
+  maxUsd?: number;
+  /** Per-label budgets, each gated against that label's own spend. */
+  byLabel?: Record<string, number>;
+}
+
 export interface TrazumConfig {
   level?: RuleLevel;
   locale?: Locale;
@@ -71,6 +86,20 @@ export interface TrazumConfig {
    * produced the log, and the report says so.
    */
   labels?: Record<string, string>;
+  /**
+   * Money budgets for `trazum profile`, in dollars.
+   *
+   * `budgets` gates the tokens a prompt file may hold; this gates the dollars
+   * a usage log records — the same difference `check` and `profile` have
+   * everywhere else. Written in the repository rather than passed as a flag
+   * because a per-workload budget is a policy several people agree on, and a
+   * policy that lives in one CI invocation is a policy nobody can read.
+   *
+   * `maxUsd` is the default for `--max-usd`; `byLabel` gates each named
+   * workload against its own limit in the same run. A flag still wins over
+   * the config, as everywhere in this tool.
+   */
+  spend?: SpendConfig;
   /** Default for `trazum diff --max-growth`, in tokens. */
   maxGrowth?: number;
   /**
@@ -107,6 +136,7 @@ export const CONFIG_KEYS = [
   'usage',
   'budgets',
   'labels',
+  'spend',
   'maxGrowth',
   'baseline',
   'extensions',
@@ -114,6 +144,8 @@ export const CONFIG_KEYS = [
 ] as const;
 
 export const CONFIG_BASELINE_KEYS = ['path', 'maxGrowthTokens', 'maxGrowthPct'] as const;
+
+export const CONFIG_SPEND_KEYS = ['maxUsd', 'byLabel'] as const;
 
 export const CONFIG_USAGE_KEYS = [
   'model',
@@ -282,6 +314,40 @@ function parseBudgets(raw: unknown, source: string): Record<string, number> {
 }
 
 /**
+ * Validates the `spend` block.
+ *
+ * Dollars, not tokens, so non-integers are legitimate — $0.50 is a budget
+ * somebody means. Negative is not: a budget below zero can only fail, which
+ * makes it a mistake dressed as a policy. An empty label is rejected for the
+ * reason the empty string is the unlabelled bucket's sentinel: a config that
+ * meant "calls with no label" should say so through a real key, not through a
+ * value that collides with an internal one.
+ */
+function parseSpend(raw: unknown, source: string): SpendConfig {
+  if (!isPlainObject(raw)) throw new ConfigError('"spend" must be an object', source);
+  rejectUnknownKeys(raw, CONFIG_SPEND_KEYS, source, 'spend.');
+
+  const spend: SpendConfig = {};
+  if (raw.maxUsd !== undefined) {
+    spend.maxUsd = requireNonNegativeNumber(raw.maxUsd, 'spend.maxUsd', source);
+  }
+  if (raw.byLabel !== undefined) {
+    if (!isPlainObject(raw.byLabel)) {
+      throw new ConfigError('"spend.byLabel" must be an object', source);
+    }
+    const byLabel: Record<string, number> = {};
+    for (const [label, value] of Object.entries(raw.byLabel)) {
+      if (label.trim().length === 0) {
+        throw new ConfigError('"spend.byLabel" has an empty label', source);
+      }
+      byLabel[label] = requireNonNegativeNumber(value, `spend.byLabel["${label}"]`, source);
+    }
+    spend.byLabel = byLabel;
+  }
+  return spend;
+}
+
+/**
  * Validates the `baseline` block.
  *
  * **A baseline with no threshold is an error, not a default.** Either default is
@@ -429,6 +495,7 @@ export function parseConfig(raw: string, source = CONFIG_FILENAME): TrazumConfig
   if (document.usage !== undefined) config.usage = parseUsage(document.usage, source);
   if (document.budgets !== undefined) config.budgets = parseBudgets(document.budgets, source);
   if (document.labels !== undefined) config.labels = parseLabels(document.labels, source);
+  if (document.spend !== undefined) config.spend = parseSpend(document.spend, source);
   if (document.baseline !== undefined) {
     config.baseline = parseBaselineConfig(document.baseline, source);
   }
