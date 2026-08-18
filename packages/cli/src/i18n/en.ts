@@ -230,7 +230,8 @@ ${bold('OPTIONS FOR profile')}
                               flattering half would pass the bills it exists
                               to catch — and says which claim fired.
   --since <when>              Profile only calls at or after this moment. A UTC
-  --until <when>              day (2026-08-14) or a full ISO 8601 timestamp;
+  --until <when>              day (2026-08-14), a full ISO 8601 timestamp, a
+                              relative window (7d, 24h) or "now";
                               --until with a bare date includes that whole day.
                               Calls with no "ts" cannot be placed and are left
                               out — counted out loud, never dropped silently.
@@ -1081,6 +1082,10 @@ ${bold('EXAMPLES')}
       `Filtered to --since ${since} --until ${until}. Everything below describes this window, not the whole log; a bare date means the whole of that UTC day.`,
     windowUndated: (calls) =>
       `${count(calls)} ${calls === 1 ? 'call carries' : 'calls carry'} no timestamp and cannot be placed inside or outside this window, so ${calls === 1 ? 'it was' : 'they were'} left out. Their spend is in the log and not in this report — the window's figures are a floor on the period.`,
+    windowRelative: () =>
+      'That window is relative to this machine\'s clock, not to the log\'s last record — a log exported a month ago will answer "the last 7 days" with nothing.',
+    windowRelativeEmpty: () =>
+      'A relative window is measured from this machine\'s clock: if this log was exported earlier, ask for the dates it covers instead.',
     windowNeedsClock: () =>
       'No record in this log carries a timestamp, so --since/--until have nothing to filter by. A time window over a clockless log would gate nothing, which is not an answer. Add "ts" to the records — the recipe in the README shows where.',
     windowMatchesNothing: (from, to) =>

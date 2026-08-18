@@ -227,7 +227,8 @@ ${bold('OPCIONES DE profile')}
                               facturas que existe para cazar — y dice qué
                               afirmación disparó.
   --since <cuándo>            Perfila solo llamadas desde/hasta ese momento. Un
-  --until <cuándo>            día UTC (2026-08-14) o una marca ISO 8601 completa;
+  --until <cuándo>            día UTC (2026-08-14), una marca ISO 8601 completa,
+                              una ventana relativa (7d, 24h) o "now";
                               --until con fecha sola incluye ese día entero. Las
                               llamadas sin "ts" no se pueden situar y quedan
                               fuera — contadas en voz alta, nunca en silencio.
@@ -1094,6 +1095,10 @@ ${bold('EJEMPLOS')}
       `Filtrado con --since ${since} --until ${until}. Todo lo de abajo describe esta ventana, no el registro completo; una fecha sola significa ese día UTC entero.`,
     windowUndated: (calls) =>
       `${count(calls)} ${calls === 1 ? 'llamada no lleva' : 'llamadas no llevan'} marca de tiempo y no se ${calls === 1 ? 'puede situar' : 'pueden situar'} dentro o fuera de esta ventana, así que ${calls === 1 ? 'quedó fuera' : 'quedaron fuera'}. Su gasto está en el registro y no en este informe — las cifras de la ventana son un suelo del periodo.`,
+    windowRelative: () =>
+      'Esa ventana es relativa al reloj de esta máquina, no al último registro del log — un registro exportado hace un mes responderá "los últimos 7 días" con nada.',
+    windowRelativeEmpty: () =>
+      'Una ventana relativa se mide desde el reloj de esta máquina: si este registro se exportó antes, pide las fechas que cubre.',
     windowNeedsClock: () =>
       'Ningún registro lleva marca de tiempo, así que --since/--until no tienen por qué filtrar. Una ventana temporal sobre un registro sin reloj no vigilaría nada, y eso no es una respuesta. Añade "ts" a los registros — la receta del README dice dónde.',
     windowMatchesNothing: (from, to) =>
