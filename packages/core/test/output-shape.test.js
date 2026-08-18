@@ -135,3 +135,35 @@ describe('finding the group that holds half the output spend', () => {
     }
   });
 });
+
+describe('the ceilings a max_tokens cap actually wants', () => {
+  // Buckets are 64 tokens wide below 8,192, so the ceilings are exact edges:
+  // 100 → within 128, 500 → within 512, 9,000 → within 9,216.
+  const lineOf = (outputTokens) =>
+    JSON.stringify({
+      model: 'claude-opus-5',
+      label: 'chat',
+      usage: { input_tokens: 10, output_tokens: outputTokens },
+    });
+
+  it('names the bucket edge covering half and 95% of the measured answers', () => {
+    const log = [
+      ...Array.from({ length: 10 }, () => lineOf(100)),
+      ...Array.from({ length: 9 }, () => lineOf(500)),
+      lineOf(9_000),
+    ].join('\n');
+    const report = profileUsage(log, { catalogue: BUNDLED_CATALOGUE });
+    const shape = report.outputShapes[0];
+    // 10 of 20 calls fit within the 128 edge; 19 of 20 within 512.
+    assert.equal(shape.medianWithinTokens, 128);
+    assert.equal(shape.p95WithinTokens, 512);
+  });
+
+  it('refuses a ceiling for the open-ended bucket instead of inventing one', () => {
+    const log = Array.from({ length: 4 }, () => lineOf(200_000)).join('\n');
+    const report = profileUsage(log, { catalogue: BUNDLED_CATALOGUE });
+    const shape = report.outputShapes[0];
+    assert.equal(shape.medianWithinTokens, null);
+    assert.equal(shape.p95WithinTokens, null);
+  });
+});

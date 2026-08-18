@@ -2526,6 +2526,17 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
         );
         console.log(`  ${c.dim(wrap(t.profile.outputFlatAdvice(), 74, '  '))}`);
       }
+      /**
+       * The ceilings a max_tokens cap actually wants, exact over the
+       * histogram: every measured answer at or under the named number is
+       * counted, none interpolated. Omitted when the covering bucket is the
+       * open-ended last one, which has no ceiling to name honestly.
+       */
+      if (shape.medianWithinTokens !== null && shape.p95WithinTokens !== null) {
+        console.log(
+          `  ${c.dim(wrap(t.profile.outputPercentiles(n(shape.medianWithinTokens), n(shape.p95WithinTokens)), 74, '  '))}`,
+        );
+      }
     }
   }
 

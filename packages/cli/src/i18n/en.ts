@@ -957,6 +957,8 @@ ${bold('EXAMPLES')}
       `${label} on ${model}: the output spend sits where the calls are — ${callPct} of them hold ${spendPct} of ${usd}. There is no tail to hunt.`,
     outputFlatAdvice: () =>
       'The answer length is the task here, so the levers are the blunt ones: ask for shorter answers in the prompt, and cap max_tokens.',
+    outputPercentiles: (p50, p95) =>
+      `Half the measured answers fit within ${p50} output tokens, and 95% within ${p95} — the number a max_tokens cap actually wants. Measured on these calls, promised for nothing.`,
     leversNone: () =>
       'Nothing here clears 1% of the bill: these calls are already on the cheapest model of their family, or their provider has no batch API. That is a real answer, not an empty section.',
     assumedWriteTtl: (calls) =>
