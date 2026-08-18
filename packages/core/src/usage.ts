@@ -297,6 +297,23 @@ export interface UsageProfileReport {
     topLabelUsd: number;
   }>;
   /**
+   * Spend per hour of the UTC day, 0–23, over priced records that carry a
+   * clock — and only the hours that saw traffic.
+   *
+   * The shape a day has says what kind of workload this is. Spend packed into
+   * the hours a country is awake is interactive traffic somebody is waiting
+   * on; spend spread evenly across all twenty-four is background work, and
+   * background work is exactly what the Batch API halves the price of. The
+   * total cannot tell those apart, and neither can the per-day series.
+   *
+   * UTC deliberately, like `spendByDay`: bucketing by the reader's local hour
+   * would make the same log answer differently in two offices, and the log's
+   * timestamps carry no zone once parsed. A reader who knows their traffic is
+   * in one region can shift the hours themselves; Trazum inventing an offset
+   * would be guessing.
+   */
+  spendByHour: Array<{ hour: number; usd: number; calls: number }>;
+  /**
    * Whether each slice's cache TTL fits how fast its turns arrive — the
    * mechanism behind a losing cache verdict, and the one place an overlong TTL
    * (2x writes surviving gaps measured in seconds) is ever visible. Needs
@@ -753,6 +770,8 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
   let spanCalls = 0;
   /** Per UTC day: spend, calls, and spend per label. Bounded by days × labels. */
   const days = new Map<string, { usd: number; calls: number; byLabel: Map<string, number> }>();
+  /** Per hour of the UTC day. Bounded by twenty-four entries, whatever the log. */
+  const hours = new Map<number, { usd: number; calls: number }>();
 
   const lines = text.split('\n');
   for (let i = 0; i < lines.length; i += 1) {
@@ -825,6 +844,16 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
       entry.calls += 1;
       const labelKey = record.label ?? UNLABELLED;
       entry.byLabel.set(labelKey, (entry.byLabel.get(labelKey) ?? 0) + usd);
+
+      // The same exact per-record dollar, bucketed by hour of the UTC day.
+      const hour = new Date(record.ts).getUTCHours();
+      const hourEntry = hours.get(hour);
+      if (hourEntry) {
+        hourEntry.usd += usd;
+        hourEntry.calls += 1;
+      } else {
+        hours.set(hour, { usd, calls: 1 });
+      }
     }
 
     const labelKey = record.label ?? UNLABELLED;
@@ -879,6 +908,9 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
         }
         return { day, usd: entry.usd, calls: entry.calls, topLabel, topLabelUsd };
       }),
+    spendByHour: [...hours.entries()]
+      .sort((a, b) => a[0] - b[0])
+      .map(([hour, entry]) => ({ hour, usd: entry.usd, calls: entry.calls })),
     cacheTtlFit: ttlFit.finish(),
     timeWindow: windowed
       ? { sinceMs: sinceMs ?? null, untilMs: untilMs ?? null, undatedExcluded }

@@ -2517,6 +2517,42 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
   }
 
   /**
+   * The shape of the day, and what it says about batching.
+   *
+   * Spend packed into the hours a country is awake is interactive traffic
+   * somebody is waiting on; spend spread evenly across twenty-four is
+   * background work — and background work is what the Batch API halves. The
+   * measure is exact and needs no threshold to state: the **fewest hours that
+   * hold 80% of the spend**. Two or three means concentrated; sixteen means
+   * flat.
+   *
+   * It says what the shape is and stops. Whether a workload can wait is a
+   * product decision Trazum cannot make from counts, so the sentence names
+   * the lever and never claims the saving — the batch figure the levers
+   * section already prints is the one with money attached.
+   */
+  if (report.spendByHour.length >= 4 && report.total.totalUsd > 0) {
+    const sorted = [...report.spendByHour].sort((a, b) => b.usd - a.usd);
+    let covered = 0;
+    let hoursForMost = 0;
+    for (const hour of sorted) {
+      covered += hour.usd;
+      hoursForMost += 1;
+      if (covered >= 0.8 * report.total.totalUsd) break;
+    }
+    const busiest = sorted
+      .slice(0, hoursForMost)
+      .map((hour) => hour.hour)
+      .sort((a, b) => a - b)
+      .map((hour) => `${String(hour).padStart(2, '0')}:00`)
+      .join(', ');
+    console.log();
+    console.log(
+      `  ${c.dim(wrap(hoursForMost <= 8 ? t.profile.hoursConcentrated(n(hoursForMost), busiest) : t.profile.hoursFlat(n(hoursForMost)), 74, '  '))}`,
+    );
+  }
+
+  /**
    * The hit rate, and then the question the hit rate does not answer.
    *
    * `cacheNever()` is keyed off the **verdict**, not off a null hit rate. Those

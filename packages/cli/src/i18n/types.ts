@@ -707,6 +707,15 @@ export interface CliMessages {
      * workload that logs the field on half its traffic must not be reported
      * as though the unmeasured half completed.
      */
+    /**
+     * The shape of the UTC day: the fewest hours holding 80% of the spend.
+     * Concentrated means somebody is waiting on those calls; flat means
+     * background work, which is what the Batch API halves. Names the lever,
+     * never claims the saving — whether a workload can wait is a product
+     * decision counts cannot make.
+     */
+    hoursConcentrated(hours: string, list: string): string;
+    hoursFlat(hours: string): string;
     truncatedBy(label: string, calls: string, measured: string, rate: string, usd: string): string;
     /** What the answers that finished actually needed, for setting the cap. */
     truncatedCeiling(p95: string): string;

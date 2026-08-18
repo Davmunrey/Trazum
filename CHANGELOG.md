@@ -9,6 +9,22 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**The shape of the day, and the lever it points at.** `spendByHour` buckets
+exact per-record dollars by hour of the UTC day, and the report states the
+measure that needs no threshold to explain: the **fewest hours holding 80% of
+the spend**. Two hours is interactive traffic somebody is waiting on, where
+the Batch API's 24-hour turnaround does not fit; twenty is the shape
+background work has, and background work is exactly what the Batch API halves
+the price of. The sentence names the lever and **never claims the saving** —
+whether a workload can wait is a product decision counts cannot make, and the
+levers section already prices the batch route for whoever decides it. UTC,
+stated, for the reason `spendByDay` is: a local-hour bucket would make the
+same log answer differently in two offices.
+
 ## 1.19.0 — "Which workload, and at what rate"
 
 ### Added
