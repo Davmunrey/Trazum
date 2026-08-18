@@ -9,6 +9,22 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**`--max-cache-loss-usd`, the third money gate — and it reads the worst case
+on purpose.** Exit 1 when caching added more than the limit to the bill. When
+the log did not record which write TTL was paid, the settled figure and the
+1-hour worst case can straddle the limit, and a gate reading the flattering
+half would pass exactly the bills it exists to catch — so the gate reads the
+ceiling and its failure message says which claim fired: a settled loss
+(exact, the same tokens at the published input rate), or a ceiling only the
+missing `cache_creation` field can settle. Fires under `--json` too; wired
+into the Action as `max-cache-loss-usd` and self-tested in CI on a +$1.25
+loss ($6.25 of 5-minute writes nothing reads back, against $5.00 as plain
+input). The read-the-worst-case guard is mutation-tested.
+
 ## 1.15.0 — "The same answer on every surface"
 
 ### Added

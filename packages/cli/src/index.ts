@@ -173,6 +173,7 @@ const VALUE_FLAGS = new Set([
   'max-growth',
   'max-usd',
   'max-growth-usd',
+  'max-cache-loss-usd',
   'since',
   'until',
   'export',
@@ -425,7 +426,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
-  profile: ['json', 'pricing', 'pricing-live', 'against', 'markdown-out', 'max-usd', 'max-growth-usd', 'label', 'since', 'until'],
+  profile: ['json', 'pricing', 'pricing-live', 'against', 'markdown-out', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'label', 'since', 'until'],
   route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
@@ -2106,6 +2107,39 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
       if (againstDelta > maxGrowth) {
         console.error(c.red(t.profile.maxGrowthUsdFailed(formatSignedUsd(againstDelta), formatUsd(maxGrowth))));
         process.exitCode = 1;
+      }
+    }
+    /**
+     * The cache gate, and it reads the worst case on purpose. A log carrying
+     * only the flat cache-write count cannot say which TTL was paid, and the
+     * two verdicts can straddle the limit — a gate reading the flattering
+     * half would pass exactly the bills it exists to catch. The failure
+     * message says which claim fired: a settled loss, or a ceiling only the
+     * missing "cache_creation" field can settle.
+     */
+    if (typeof args.flags.get('max-cache-loss-usd') === 'string') {
+      const maxLoss = numberFlag(args, 'max-cache-loss-usd', 0, t);
+      const gateCache = cacheEconomics(report.total);
+      if (gateCache.deltaUsd > maxLoss) {
+        console.error(
+          c.red(t.profile.maxCacheLossFailed(formatUsd(gateCache.deltaUsd), formatUsd(maxLoss))),
+        );
+        process.exitCode = 1;
+      } else if (gateCache.worstCaseDeltaUsd > maxLoss) {
+        console.error(
+          c.red(
+            t.profile.maxCacheLossWorstCase(
+              report.total.assumedWriteTtlCalls,
+              formatUsd(gateCache.worstCaseDeltaUsd),
+              formatUsd(maxLoss),
+            ),
+          ),
+        );
+        process.exitCode = 1;
+      } else {
+        console.error(
+          c.dim(t.profile.maxCacheLossOk(formatUsd(Math.max(0, gateCache.worstCaseDeltaUsd)), formatUsd(maxLoss))),
+        );
       }
     }
   };

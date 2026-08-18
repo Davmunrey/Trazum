@@ -220,6 +220,12 @@ ${bold('OPCIONES DE profile')}
   --max-growth-usd <n>        Con --against: sale con 1 si la factura creció
                               más de n dólares sobre el registro anterior. Solo,
                               es un error, no un flag que vigila nada en silencio.
+  --max-cache-loss-usd <n>    Sale con 1 si cachear añadió más de n dólares a
+                              esta factura. Lee el peor caso cuando el registro
+                              no anotó el TTL de escritura — una puerta que
+                              leyera la mitad halagadora dejaría pasar las
+                              facturas que existe para cazar — y dice qué
+                              afirmación disparó.
   --since <cuándo>            Perfila solo llamadas desde/hasta ese momento. Un
   --until <cuándo>            día UTC (2026-08-14) o una marca ISO 8601 completa;
                               --until con fecha sola incluye ese día entero. Las
@@ -1011,6 +1017,12 @@ ${bold('EJEMPLOS')}
       `FALLO — la factura creció ${delta} respecto al registro anterior, por encima del límite --max-growth-usd de ${max}.`,
     maxGrowthNeedsAgainst: () =>
       '--max-growth-usd no tiene con qué comparar sin --against <anterior.jsonl>. Por sí solo habría corrido en silencio sin vigilar nada, y eso no es una respuesta.',
+    maxCacheLossOk: (worst, max) =>
+      `Caché dentro del presupuesto: cachear costó como mucho ${worst} contra --max-cache-loss-usd ${max}, peor caso incluido.`,
+    maxCacheLossFailed: (delta, max) =>
+      `FALLO — cachear añadió ${delta} a esta factura (los mismos tokens como entrada normal habrían costado menos), por encima del límite --max-cache-loss-usd de ${max}. El contrafactual es exacto: los mismos tokens a la tarifa de entrada publicada.`,
+    maxCacheLossWorstCase: (calls, worst, max) =>
+      `FALLO — ${count(calls)} ${calls === 1 ? 'llamada no registró' : 'llamadas no registraron'} qué TTL de escritura se pagó, y a la tarifa de 1 hora cachear añadió hasta ${worst}, por encima del límite --max-cache-loss-usd de ${max}. La puerta lee el peor caso a propósito: una puerta que leyera la mitad halagadora dejaría pasar exactamente las facturas que existe para cazar. Registra el objeto "cache_creation" que devuelve la API y el techo se vuelve una cifra.`,
     windowLine: (since, until) =>
       `Filtrado con --since ${since} --until ${until}. Todo lo de abajo describe esta ventana, no el registro completo; una fecha sola significa ese día UTC entero.`,
     windowUndated: (calls) =>

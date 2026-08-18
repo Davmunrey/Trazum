@@ -632,6 +632,15 @@ export interface CliMessages {
     maxGrowthUsdFailed(delta: string, max: string): string;
     maxGrowthNeedsAgainst(): string;
     /**
+     * The cache gate reads the worst case on purpose: a gate reading the
+     * flattering half of an unsettled verdict would pass exactly the bills
+     * it exists to catch. Two failure messages, because a settled loss and a
+     * ceiling the missing TTL field could settle are different instructions.
+     */
+    maxCacheLossOk(worst: string, max: string): string;
+    maxCacheLossFailed(delta: string, max: string): string;
+    maxCacheLossWorstCase(calls: number, worst: string, max: string): string;
+    /**
      * The time window — the drill-down in time. Every figure below the line
      * describes a slice, so the line prints before any of them; clockless
      * calls under a window are excluded and *counted out loud*, because
