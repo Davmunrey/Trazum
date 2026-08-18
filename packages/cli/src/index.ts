@@ -60,6 +60,7 @@ import {
   withExactTokenCounts,
 } from '@trazum/core';
 import { cacheDir, cacheStats, cachingProvider, clearCache } from './suggest-cache.js';
+import { dayOf, formatGap, median, spanDays } from './time.js';
 import type {
   BaselineBreach,
   BaselineChange,
@@ -2093,15 +2094,13 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
    * figure attributed to something it does not describe.
    */
   if (report.span !== null) {
-    const day = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
-    const days = ((report.span.toMs - report.span.fromMs) / 86_400_000).toFixed(1);
     const totalParsed = report.total.calls + report.unpriced.calls;
     const partial =
       report.span.calls < totalParsed
         ? ` ${t.profile.spanPartial(n(report.span.calls), n(totalParsed))}`
         : '';
     console.log(
-      `  ${c.dim(wrap(`${t.profile.spanLine(day(report.span.fromMs), day(report.span.toMs), days)}${partial}`, 74, '  '))}`,
+      `  ${c.dim(wrap(`${t.profile.spanLine(dayOf(report.span.fromMs), dayOf(report.span.toMs), spanDays(report.span.fromMs, report.span.toMs))}${partial}`, 74, '  '))}`,
     );
   }
   console.log();
@@ -2137,10 +2136,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
    * the median, a threshold stated in the sentence rather than hidden in code.
    */
   if (report.spendByDay.length >= 2) {
-    const sortedUsd = report.spendByDay.map((d) => d.usd).sort((a, b) => a - b);
-    const mid = Math.floor(sortedUsd.length / 2);
-    const medianUsd =
-      sortedUsd.length % 2 === 1 ? sortedUsd[mid]! : (sortedUsd[mid - 1]! + sortedUsd[mid]!) / 2;
+    const medianUsd = median(report.spendByDay.map((d) => d.usd));
     const peak = report.spendByDay.reduce((a, b) => (b.usd > a.usd ? b : a));
     if (medianUsd > 0) {
       const ratio = (peak.usd / medianUsd).toFixed(1);
@@ -2347,16 +2343,10 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
    * three-state discipline truncation uses: a workload with cache writes and no
    * clock has not been cleared, and silence here would read as fine.
    */
-  const gapOf = (ms: number): string => {
-    if (ms < 90_000) return `${Math.round(ms / 1000)}s`;
-    if (ms < 90 * 60_000) return `${Math.round(ms / 60_000)}m`;
-    if (ms < 36 * 3_600_000) return `${(ms / 3_600_000).toFixed(1)}h`;
-    return `${(ms / 86_400_000).toFixed(1)}d`;
-  };
   const TTL_SHOWN = 3;
   for (const fit of report.cacheTtlFit.slice(0, TTL_SHOWN)) {
     const name = fit.label === UNLABELLED ? t.profile.unlabelled() : fit.label;
-    const gap = gapOf(fit.medianGapMs);
+    const gap = formatGap(fit.medianGapMs);
     if (fit.verdict === 'expires-before-reuse') {
       const line =
         fit.medianGapMs > TTL_1H_MS

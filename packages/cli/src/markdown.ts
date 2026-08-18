@@ -8,7 +8,8 @@ import type {
   PromptProfile,
   RuleLevel,
 } from '@trazum/core';
-import { UNLABELLED, formatSignedUsd, formatUsd, getMessages, getModel, sharesOf } from '@trazum/core';
+import { TTL_1H_MS, UNLABELLED, formatSignedUsd, formatUsd, getMessages, getModel, sharesOf } from '@trazum/core';
+import { dayOf, formatGap, median, spanDays } from './time.js';
 import type { BillLevers, CacheEconomics, UsageProfileReport } from '@trazum/core';
 
 /**
@@ -751,6 +752,19 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
   lines.push('');
   lines.push(`**${t.profile.spent(t.profile.calls(report.total.calls), formatUsd(report.total.totalUsd))}**`);
   lines.push('');
+  // The span, under the same rule as the terminal: stated, never extrapolated,
+  // with partial coverage said in the same breath.
+  if (report.span !== null) {
+    const totalParsed = report.total.calls + report.unpriced.calls;
+    const partial =
+      report.span.calls < totalParsed
+        ? ` ${mdText(t.profile.spanPartial(n(report.span.calls), n(totalParsed)))}`
+        : '';
+    lines.push(
+      `_${mdText(t.profile.spanLine(dayOf(report.span.fromMs), dayOf(report.span.toMs), spanDays(report.span.fromMs, report.span.toMs)))}${partial}_`,
+    );
+    lines.push('');
+  }
   lines.push('| | USD | % | tokens |');
   lines.push('|---|---:|---:|---:|');
   const parts: Array<[string, number, number, number]> = [
@@ -764,6 +778,23 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
     lines.push(`| ${name} | ${formatUsd(usd)} | ${pct(share)} | ${n(tokens)} |`);
   }
   lines.push('');
+
+  // The most expensive day against the median day, loud past twice it — the
+  // same sentence and the same yardstick the terminal prints.
+  if (report.spendByDay.length >= 2) {
+    const medianUsd = median(report.spendByDay.map((d) => d.usd));
+    const peak = report.spendByDay.reduce((a, b) => (b.usd > a.usd ? b : a));
+    if (medianUsd > 0) {
+      const sentence = t.profile.dayPeak(peak.day, formatUsd(peak.usd), (peak.usd / medianUsd).toFixed(1));
+      const labelClause =
+        peak.topLabel !== null && report.byLabel.length > 1
+          ? ` ${t.profile.dayPeakLabel(showLabel(peak.topLabel), formatUsd(peak.topLabelUsd))}`
+          : '';
+      const loud = peak.usd > 2 * medianUsd;
+      lines.push(loud ? `> ⚠️ ${mdText(`${sentence}${labelClause}`)}` : `_${mdText(`${sentence}${labelClause}`)}_`);
+      lines.push('');
+    }
+  }
 
   lines.push(`#### ${t.profile.leversHeading()}`);
   lines.push('');
@@ -796,6 +827,26 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
     lines.push('');
   } else if (cache.verdict === 'paid-off') {
     lines.push(mdText(t.profile.cachePaidOff(formatUsd(-cache.deltaUsd))));
+    lines.push('');
+  }
+
+  // Whether the TTL fits the gaps — the mechanism behind the verdict above,
+  // with the two failing verdicts loud and the rest quiet, as on the terminal.
+  for (const fit of report.cacheTtlFit.slice(0, 3)) {
+    const who = showLabel(fit.label);
+    const gap = formatGap(fit.medianGapMs);
+    const sentence =
+      fit.verdict === 'expires-before-reuse'
+        ? fit.medianGapMs > TTL_1H_MS
+          ? t.profile.ttlFitExpiresBoth(who, fit.modelName, gap)
+          : t.profile.ttlFitExpires(who, fit.modelName, gap)
+        : fit.verdict === 'overlong-ttl'
+          ? t.profile.ttlFitOverlong(who, fit.modelName, gap, formatUsd(fit.overpayUsd))
+          : fit.verdict === 'unsettled'
+            ? t.profile.ttlFitUnsettledGap(who, fit.modelName, gap)
+            : t.profile.ttlFitFits(who, fit.modelName, gap);
+    const loud = fit.verdict === 'expires-before-reuse' || fit.verdict === 'overlong-ttl';
+    lines.push(loud ? `> ⚠️ ${mdText(sentence)}` : `_${mdText(sentence)}_`);
     lines.push('');
   }
 

@@ -241,6 +241,50 @@ function Report({
                   ` ${t.bill.spanPartial(report.span.calls, total.calls + report.unpriced.calls)}`}
               </span>
             )}
+            {/*
+              Spend per day, drawn with divs rather than a chart library — the
+              zero-dependency posture reaches the pixels too. The peak bar takes
+              the warning colour; the sentence beside it names the day, its
+              multiple of the median (a mean would let the spike inflate its
+              own yardstick) and the label that drove it.
+            */}
+            {report.spendByDay.length >= 2 && (() => {
+              const days = report.spendByDay;
+              const max = Math.max(...days.map((d) => d.usd));
+              const sorted = [...days.map((d) => d.usd)].sort((a, b) => a - b);
+              const mid = Math.floor(sorted.length / 2);
+              const medianUsd =
+                sorted.length % 2 === 1 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
+              const peak = days.reduce((a, b) => (b.usd > a.usd ? b : a));
+              if (max <= 0 || medianUsd <= 0) return null;
+              return (
+                <div className="flex flex-col gap-1.5">
+                  <div
+                    role="img"
+                    aria-label={t.bill.dayChartLabel(days.length)}
+                    className="flex h-12 items-end gap-px"
+                  >
+                    {days.map((d) => (
+                      <div
+                        key={d.day}
+                        title={`${d.day}: ${formatUsd(d.usd)}`}
+                        className={`min-w-[2px] flex-1 rounded-t-[2px] ${
+                          d.day === peak.day ? 'bg-terracotta' : 'bg-muted-foreground/30'
+                        }`}
+                        style={{ height: `${Math.max(6, (d.usd / max) * 100)}%` }}
+                      />
+                    ))}
+                  </div>
+                  <span
+                    className={`text-[13px] ${peak.usd > 2 * medianUsd ? 'text-terracotta' : 'text-muted-foreground'}`}
+                  >
+                    {t.bill.dayPeak(peak.day, formatUsd(peak.usd), (peak.usd / medianUsd).toFixed(1))}
+                    {peak.topLabel !== null && report.byLabel.length > 1 &&
+                      ` ${t.bill.dayPeakLabel(labelName(peak.topLabel), formatUsd(peak.topLabelUsd))}`}
+                  </span>
+                </div>
+              );
+            })()}
             <table className="w-full text-[13px]">
               <thead>
                 <tr className="text-left text-muted-foreground">

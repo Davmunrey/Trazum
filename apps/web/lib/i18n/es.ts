@@ -397,6 +397,12 @@ export const es: WebMessages = {
     spanPartial: (withTs, total) =>
       `Solo ${withTs.toLocaleString('es-ES')} de ${total.toLocaleString('es-ES')} llamadas `
       + 'llevan marca de tiempo; el periodo describe esas.',
+    dayPeak: (day, usd, xMedian) =>
+      `El día más caro de este registro fue ${day}: ${usd}, ${xMedian}x el día mediano.`,
+    dayPeakLabel: (label, usd) => `Casi todo fue ${label} (${usd}).`,
+    dayChartLabel: (days) =>
+      `Gasto por día a lo largo de ${days.toLocaleString('es-ES')} días; la barra más alta es `
+      + 'el día más caro.',
     ttlExpires: (label, model, gap) =>
       `${label} en ${model}: los turnos llegan con una mediana de ${gap} entre sí y la entrada `
       + 'de 5 minutos ya no existe para entonces — las escrituras caducan antes de que el '

@@ -307,6 +307,11 @@ export interface WebMessages {
     /** The period the log covers — stated, never extrapolated. */
     span(from: string, to: string, days: string): string;
     spanPartial(withTs: number, total: number): string;
+    /** The most expensive day against the median day — a spike with a suspect. */
+    dayPeak(day: string, usd: string, xMedian: string): string;
+    dayPeakLabel(label: string, usd: string): string;
+    /** Accessible summary of the per-day bar chart. */
+    dayChartLabel(days: number): string;
     /**
      * Whether the cache TTL fits the median gap between turns. Four verdicts
      * plus "could not be measured" — the same three-state discipline as
