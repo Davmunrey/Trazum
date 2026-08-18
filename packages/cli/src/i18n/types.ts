@@ -750,6 +750,13 @@ export interface CliMessages {
     windowLine(since: string, until: string): string;
     windowUndated(calls: number): string;
     /** A window over a log with no clock gates nothing, which is an error. */
+    /**
+     * A relative window is measured against the machine's clock, not the
+     * log's — a real difference on an exported log, and one a reader who did
+     * not name the dates would otherwise misread.
+     */
+    windowRelative(): string;
+    windowRelativeEmpty(): string;
     windowNeedsClock(): string;
     /** A window matching nothing must not become a passing $0 gate. */
     windowMatchesNothing(from: string, to: string): string;

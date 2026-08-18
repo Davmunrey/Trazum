@@ -2014,13 +2014,36 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
    * the window is half-open `[since, until)`, so two adjacent windows share
    * no record.
    */
+  const now = Date.now();
+  let relativeWindow = false;
   const parseWhen = (flag: string, endOfDay: boolean): number | undefined => {
     const value = stringFlag(args, flag);
     if (value === undefined) return undefined;
+    /**
+     * A relative window — `7d`, `24h` — because "the last week" is what a
+     * nightly job actually wants, and computing a date in a shell to say it
+     * is the step that gets skipped.
+     *
+     * Relative to **the machine's clock, not the log's**, which is a real
+     * difference: a log exported last month answers `--since 7d` with
+     * nothing, and the report says so rather than reporting $0. That caveat
+     * is stated beside the window line, because a period the reader did not
+     * name is a period they will misread.
+     */
+    const relative = /^(\d+)([dh])$/.exec(value);
+    if (relative) {
+      const amount = Number(relative[1]);
+      if (amount > 0) {
+        relativeWindow = true;
+        const span = relative[2] === 'd' ? 86_400_000 : 3_600_000;
+        return now - amount * span;
+      }
+    }
     if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
       const midnight = Date.parse(`${value}T00:00:00Z`);
       if (Number.isFinite(midnight)) return endOfDay ? midnight + 86_400_000 : midnight;
     }
+    if (value === 'now') return now;
     const exact = Date.parse(value);
     if (Number.isFinite(exact)) return exact;
     throw new Error(t.profile.badWhen(flag, value));
@@ -2069,7 +2092,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
            */
           if (unfiltered.span === null) throw new Error(t.profile.windowNeedsClock());
           throw new Error(
-            t.profile.windowMatchesNothing(dayOf(unfiltered.span.fromMs), dayOf(unfiltered.span.toMs)),
+            `${t.profile.windowMatchesNothing(dayOf(unfiltered.span.fromMs), dayOf(unfiltered.span.toMs))}${relativeWindow ? ` ${t.profile.windowRelativeEmpty()}` : ''}`,
           );
         }
       }
@@ -2472,6 +2495,9 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
     console.log(
       `  ${c.dim(wrap(t.profile.windowLine(stringFlag(args, 'since') ?? '—', stringFlag(args, 'until') ?? '—'), 74, '  '))}`,
     );
+    if (relativeWindow) {
+      console.log(`  ${c.dim(wrap(t.profile.windowRelative(), 74, '  '))}`);
+    }
     if (report.timeWindow.undatedExcluded > 0) {
       console.log(
         `  ${c.yellow(wrap(t.profile.windowUndated(report.timeWindow.undatedExcluded), 74, '  '))}`,

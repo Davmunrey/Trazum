@@ -13,6 +13,14 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**Relative windows: `--since 7d`, `--until now`.** "The last week" is what a
+nightly job asks for, and computing a date in a shell to say it is the step
+that gets skipped. Days and hours (`7d`, `24h`), plus `now` for the other
+bound. Measured against **this machine's clock, not the log's** — a real
+difference on an exported log — and said out loud beside the window line; when
+a relative window finds nothing, the refusal names the clock difference as the
+likely reason instead of leaving the reader to guess.
+
 **The token budget, against what actually goes up the wire.** `budgets` gates
 a prompt *file*; the log records what the *call* carried — system prompt,
 retrieved context, conversation history, tool results. When `labels` maps a
