@@ -555,6 +555,12 @@ export interface CliMessages {
     againstDriver(delta: string, label: string, before: string, after: string): string;
     againstDriverNew(delta: string, label: string): string;
     againstDriverGone(delta: string, label: string): string;
+    /**
+     * Lead-in for the change split by model — where the mix moved. A workload
+     * that kept its name and switched models reads as "chat grew" in the
+     * label rows; only this section can say the reason is the model.
+     */
+    againstByModel(): string;
     againstNothingPriced(): string;
     /**
      * Why a label's cache is failing, read from its mapped prompt file.
