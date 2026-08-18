@@ -27,6 +27,59 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.14.0 — "Drill-downs and drive-bys"
+
+**Two new questions the profile can answer: "what did *this week* cost?" and
+"what do the conversations that never come back cost?"**
+
+### One period, honestly
+
+```
+trazum profile usage.jsonl --since 2026-08-11 --until 2026-08-17 --max-usd 200
+```
+
+`--label` drilled into one workload; `--since`/`--until` drill into one
+period. A UTC day or a full ISO 8601 timestamp — and a bare `--until` date
+includes the whole day it names, because a window that excludes the day it
+names is a trap for everyone who reads dates the way humans do.
+
+The honesty rules carry the feature. A call with no `ts` cannot be placed
+inside or outside a window, so it is excluded and **counted out loud**: the
+window's figures are a floor on the period, and the report says so. A window
+matching nothing is an error naming what the log does cover — never a $0
+report, which under `--max-usd` would pass a budget gate over a period the log
+does not contain. With `--against`, both logs get the same window, and the
+money gates gate the window: yesterday against the day before, with a budget,
+in one line of CI.
+
+### The drive-bys
+
+A cache write is a bet: pay 1.25x input now (2x at the 1-hour TTL) so the next
+turn reads the prefix at 0.1x. A conversation that ends after its first turn
+never places that next call — and on a workload with many short sessions this
+leaks steadily while the totals look healthy, because the long sessions' reads
+pay for the cache overall.
+
+```
+  ! chat on Claude Opus 5: 12 of 42 conversations ended after their first
+    turn and spent $6.25 writing a cache that nothing in this log ever read.
+```
+
+The figure is stated with the precision the provider's cache actually allows:
+it is keyed by **prefix**, not by conversation, so another session sharing the
+prefix within the TTL could have read those writes and the log cannot see
+whose write a read hit. With reads anywhere in the slice, the figure is a
+**ceiling, named as one**. With zero reads, the ceiling collapses into a fact,
+said loudly: those writes bought nothing. Needs only `session` on the records
+— no clock — and the session key is grouped by and never shown, as everywhere.
+
+Both findings reach every rendering: terminal, `--markdown-out` (the window
+stated as you typed it, the undated count as a loud blockquote), `--json`,
+the MCP's `profile_usage` (which gains `since`/`until` under the same rules),
+and the web Bill tab.
+
+---
+
 ## 1.13.0 — "The bill learns to say no"
 
 **The profile stops being a report you read and becomes a check that can fail
