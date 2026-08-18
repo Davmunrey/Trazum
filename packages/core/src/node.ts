@@ -32,7 +32,7 @@ export {
   parseConfig,
   validateConfigModel,
 } from './config-schema.js';
-export type { ResolvedBudget, TrazumConfig } from './config-schema.js';
+export type { ResolvedBudget, SpendConfig, TrazumConfig } from './config-schema.js';
 
 // Local price corrections. Pure, so also on the main entry point; re-exported
 // here so the CLI has one import for everything it needs to resolve a run.

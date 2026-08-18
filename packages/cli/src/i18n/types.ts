@@ -688,6 +688,15 @@ export interface CliMessages {
     /** Said only when the p95 clears ten times the median — a real tail. */
     sessionCostTail(ratio: string): string;
     /**
+     * Per-workload budgets from the config. A budgeted label with no calls in
+     * the log is "not measured", never a pass: a workload that did not appear
+     * is not one that came in under budget.
+     */
+    labelBudgetOk(label: string, usd: string, max: string): string;
+    labelBudgetFailed(label: string, usd: string, max: string): string;
+    labelBudgetMissing(label: string): string;
+    labelBudgetWindowed(): string;
+    /**
      * The time window — the drill-down in time. Every figure below the line
      * describes a slice, so the line prints before any of them; clockless
      * calls under a window are excluded and *counted out loud*, because

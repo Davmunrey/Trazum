@@ -2138,7 +2138,8 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
     const anyGate =
       typeof args.flags.get('max-usd') === 'string' ||
       typeof args.flags.get('max-growth-usd') === 'string' ||
-      typeof args.flags.get('max-cache-loss-usd') === 'string';
+      typeof args.flags.get('max-cache-loss-usd') === 'string' ||
+      config.spend !== undefined;
     if (anyGate) {
       const reasons: string[] = [];
       if (report.skippedLines.length > 0) reasons.push(t.profile.floorSkipped(report.skippedLines.length));
@@ -2150,8 +2151,41 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
         console.error(c.yellow(t.profile.gateOnFloor(reasons.join('; '))));
       }
     }
-    if (typeof args.flags.get('max-usd') === 'string') {
-      const maxUsd = numberFlag(args, 'max-usd', 0, t);
+    /**
+     * Per-workload budgets from the config — the policy in the repository
+     * rather than in one CI invocation. Each label is gated against its own
+     * spend in the same run, and a budgeted label with no calls in this log
+     * is reported as **not measured**: a workload that did not appear is not
+     * a workload that came in under budget, and printing green over an
+     * absence is exactly the flattering direction this tool refuses.
+     */
+    const byLabel = config.spend?.byLabel;
+    if (byLabel !== undefined && !windowed) {
+      const spent = new Map(report.byLabel.map((r) => [r.label, r.breakdown.totalUsd]));
+      for (const [label, limit] of Object.entries(byLabel)) {
+        const usd = spent.get(label);
+        if (usd === undefined) {
+          console.error(c.dim(t.profile.labelBudgetMissing(label)));
+          continue;
+        }
+        if (usd > limit) {
+          console.error(c.red(t.profile.labelBudgetFailed(label, formatUsd(usd), formatUsd(limit))));
+          process.exitCode = 1;
+        } else {
+          console.error(c.dim(t.profile.labelBudgetOk(label, formatUsd(usd), formatUsd(limit))));
+        }
+      }
+    } else if (byLabel !== undefined && windowed) {
+      // A window changes what "this label spent" means, and a budget written
+      // for a period the caller did not name would gate against a slice.
+      console.error(c.dim(t.profile.labelBudgetWindowed()));
+    }
+
+    if (typeof args.flags.get('max-usd') === 'string' || config.spend?.maxUsd !== undefined) {
+      const maxUsd =
+        typeof args.flags.get('max-usd') === 'string'
+          ? numberFlag(args, 'max-usd', 0, t)
+          : config.spend!.maxUsd!;
       if (report.total.totalUsd > maxUsd) {
         console.error(c.red(t.profile.maxUsdFailed(formatUsd(report.total.totalUsd), formatUsd(maxUsd))));
         process.exitCode = 1;
