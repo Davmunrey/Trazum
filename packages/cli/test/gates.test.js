@@ -120,3 +120,29 @@ describe('the most expensive day', () => {
     assert.doesNotMatch(flat(run([log])), /most expensive day/i);
   });
 });
+
+describe('the clock reaches the markdown rendering', () => {
+  it('writes the span, the peak day and the TTL verdict into --markdown-out', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const turn = (offsetMin, writes) => ({
+      model: 'claude-opus-5',
+      label: 'chat',
+      session: 'a',
+      ts: new Date(Date.parse('2026-08-01T10:00:00Z') + offsetMin * 60_000).toISOString(),
+      usage: {
+        input_tokens: 500,
+        output_tokens: 50,
+        cache_creation: { ephemeral_5m_input_tokens: writes, ephemeral_1h_input_tokens: 0 },
+      },
+    });
+    const log = await write('usage.jsonl', [turn(0, 10_000), turn(9, 10_000), turn(18, 10_000)]);
+    const out = join(log, '..', 'report.md');
+    const result = run([log, '--markdown-out', out]);
+    assert.equal(result.status, 0, result.stderr);
+    const md = await readFile(out, 'utf8');
+    assert.match(md, /covers 2026-08-01 → 2026-08-01/);
+    assert.match(md, /median of 9m apart/);
+    // The failing verdict is loud in markdown the way it is on the terminal.
+    assert.match(md, /> ⚠️ .*5-minute entry is gone/);
+  });
+});

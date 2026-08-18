@@ -391,6 +391,12 @@ export const en: WebMessages = {
     spanPartial: (withTs, total) =>
       `Only ${withTs.toLocaleString('en-US')} of ${total.toLocaleString('en-US')} calls carry `
       + 'a timestamp; the span describes those.',
+    dayPeak: (day, usd, xMedian) =>
+      `The most expensive day in this log was ${day}: ${usd}, ${xMedian}x the median day.`,
+    dayPeakLabel: (label, usd) => `Most of it was ${label} (${usd}).`,
+    dayChartLabel: (days) =>
+      `Spend per day across ${days.toLocaleString('en-US')} days; the tallest bar is the most `
+      + 'expensive day.',
     ttlExpires: (label, model, gap) =>
       `${label} on ${model}: turns arrive a median of ${gap} apart and the 5-minute entry is `
       + 'gone by then — writes expire before the next turn reads them, which from the bill is '
