@@ -387,6 +387,14 @@ The profile report lands in the run summary either way, and a failing gate
 still writes it — a red build with no report is a mystery, and mysteries get
 deleted from pipelines.
 
+**The report leaves the terminal in three shapes.** `--markdown-out` for a CI
+summary or a PR comment, `--csv-out` for whoever signs off the bill (one row
+per workload and model, no total row, empty cells where dollars are unknown),
+and `--json` for anything built on top — documented field by field in
+[docs/json-output.md](docs/json-output.md), with a `schemaVersion` and a test
+that fails if the two ever disagree. Point `profile` at a **directory** and a
+month of rotated logs is read in name order as one bill.
+
 Or by hand, if you already have the repo checked out:
 
 ```yaml
@@ -1898,6 +1906,56 @@ day in this log was 2026-08-12: $9.40, 3.1x the median day. Most of it was chat
 ($7.10).` — against the median rather than a mean the spike would inflate, and
 per label, never per session. The full series rides `--json` as `spendByDay`.
 
+**And the shape of the day says whether the Batch API applies at all.** Spend
+bucketed by hour of the UTC day, stated as the fewest hours holding 80% of it:
+two hours is interactive traffic somebody is waiting on, where a 24-hour
+turnaround does not fit; twenty is the shape background work has, and
+background work is what the Batch API halves. Trazum names the lever and stops
+— whether a workload can wait is a decision counts cannot make.
+
+### What one conversation costs
+
+```
+  chat on Claude Opus 5: across 4,812 conversations, the median one costs $0.02
+  over 6 turns, 95% come in under $1.80, and the most expensive was $46.10.
+```
+
+"Support cost $4,000" does not say whether that is forty thousand cheap
+conversations or four hundred expensive ones — and a per-seat price, a quota
+or a runaway-loop alarm all need the answer. The **median** is what a typical
+conversation costs; the **p95** is what a quota has to survive. A mean is
+refused: one runaway agent loop drags it up and hides the ordinary case. A p95
+past ten times the median is called out as a tail worth catching, and a p95
+beside the median gets the opposite advice, because there is no tail to hunt.
+
+Session keys group turns and never appear in any figure, here or anywhere.
+
+### Conversations that never came back
+
+A cache write is a bet: pay the premium now so the next turn reads the prefix
+at 0.1x. A conversation that ends after its first turn never places that call.
+On a workload with many short sessions this leaks steadily while the totals
+look healthy, because the long sessions' reads pay for the cache overall.
+
+The figure is stated with the precision the provider's cache allows: it is
+keyed by **prefix**, not by conversation, so another session sharing the
+prefix could have read those writes and the log cannot see whose write a read
+hit. With reads anywhere in the slice it is a **ceiling, named as one**; with
+zero reads the ceiling collapses into a fact — those writes bought nothing.
+
+### What this log cannot answer yet
+
+Every finding past the totals needs a field the format does not require, so
+the report ends by naming the ones that are missing, with counts:
+
+```
+  "session" on 12/40,000 records: without it there is no conversation growth,
+  no per-conversation cost, and no cache-TTL fit.
+```
+
+Counts rather than booleans — twelve labelled records out of forty thousand is
+not a labelled log. A complete log gets no section at all.
+
 ### The bill as a CI gate
 
 `check` gates tokens before the money is spent. These gate the spend itself,
@@ -1914,6 +1972,22 @@ yesterday's log has a daily budget without Trazum ever guessing what a day is.
 `--max-growth-usd` needs `--against` — alone it is an error, not a flag that
 silently gates nothing — and both fire under `--json` too, because CI reads the
 exit code there.
+
+**A third gate, and it reads the worst case.** `--max-cache-loss-usd` exits 1
+when caching *added* more than the limit to the bill. When the log did not
+record which write TTL was paid, the settled figure and the 1-hour worst case
+can straddle the limit — and a gate reading the flattering half would pass
+exactly the bills it exists to catch, so it reads the ceiling and says which
+claim fired.
+
+**The budgets can live in the repository.** `spend` in `trazum.config.json`
+takes `maxUsd` for the whole log and `byLabel` for each workload, so CI runs
+`trazum profile logs/yesterday.jsonl` with no flags at all. A budgeted label
+with no calls in the log is reported as *not measured*, never as a pass.
+
+**Every gate says when its figure is a floor.** Unreadable lines, unpriced
+models and clockless calls dropped by a window all hide spend from a gate, and
+a pass then means "the part I could read fits", never "the bill fits".
 
 **The drill-downs compose with the gates.** `--label` profiles one workload;
 `--since`/`--until` profile one period (a UTC day or a full ISO timestamp — a
