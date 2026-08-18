@@ -13,6 +13,17 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**What one conversation costs.** The question a total cannot answer: whether
+$4,000 is forty thousand cheap conversations or four hundred expensive ones —
+the figure a per-seat price or a quota is set from. `sessionCosts` reports the
+**median** conversation, its p95 and its maximum per label and model, exact
+billed counts summed per conversation, with a mean deliberately refused (one
+runaway agent loop drags a mean up and hides the ordinary case). A p95 past
+ten times the median is called out as a tail a quota can catch; a p95 beside
+the median is a workload that is simply expensive, and the report says that
+instead. Slices with fewer than five conversations are dropped — a median over
+four is one of the four. Session keys group turns and never appear.
+
 **A gate says when its figure is a floor.** A gate can only judge the money
 it can see, and three things hide spend from it: unreadable lines, models the
 price table does not know, and clockless calls dropped by a time window. When

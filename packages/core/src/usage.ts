@@ -3,6 +3,8 @@ import { createConversationTracker } from './conversation.js';
 import { createOutputShapeTracker } from './output-shape.js';
 import { createTtlFitTracker } from './ttl-fit.js';
 import { createSessionLedgerTracker } from './session-ledger.js';
+import { createSessionCostTracker } from './session-cost.js';
+import type { SessionCostShape } from './session-cost.js';
 import type { CacheTtlFit } from './ttl-fit.js';
 import type { SingleTurnCacheWrites } from './session-ledger.js';
 import type { ConversationGrowth } from './conversation.js';
@@ -323,6 +325,15 @@ export interface UsageProfileReport {
    * and the renderings say which of the two they are stating.
    */
   singleTurnCacheWrites: SingleTurnCacheWrites[];
+  /**
+   * What one conversation costs — median, p95 and maximum per slice, exact
+   * and billed. The question a total cannot answer: whether $4,000 is forty
+   * thousand cheap conversations or four hundred expensive ones, which is
+   * what a per-seat price or a quota is set from. Empty when the log carries
+   * no session, or when no slice has enough conversations for a median to
+   * mean anything.
+   */
+  sessionCosts: SessionCostShape[];
 }
 
 /** The share of the bill each part accounts for, as fractions of 1. */
@@ -735,6 +746,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
   const output = createOutputShapeTracker({ catalogue, on });
   const ttlFit = createTtlFitTracker({ catalogue, on });
   const ledger = createSessionLedgerTracker({ catalogue, on });
+  const sessionCosts = createSessionCostTracker({ catalogue, on });
   let hasSessions = false;
   let spanFrom = Infinity;
   let spanTo = -Infinity;
@@ -783,6 +795,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
     output.add(record);
     ttlFit.add(record);
     ledger.add(record);
+    sessionCosts.add(record);
 
     const usdBefore = total.totalUsd;
     if (!add(total, record, catalogue, on)) {
@@ -871,6 +884,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
       ? { sinceMs: sinceMs ?? null, untilMs: untilMs ?? null, undatedExcluded }
       : null,
     singleTurnCacheWrites: ledger.finish(),
+    sessionCosts: sessionCosts.finish(),
   };
 }
 

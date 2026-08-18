@@ -1028,6 +1028,10 @@ ${bold('EXAMPLES')}
       `${count(calls)} ${calls === 1 ? 'call is' : 'calls are'} on models the price table does not know`,
     floorUndated: (calls) =>
       `${count(calls)} ${calls === 1 ? 'call carries' : 'calls carry'} no timestamp and fell outside the window`,
+    sessionCost: (label, model, sessions, median, medianTurns, p95, max) =>
+      `${label} on ${model}: across ${sessions} conversations, the median one costs ${median} over ${medianTurns} turns, 95% come in under ${p95}, and the most expensive was ${max}. Exact billed counts, per conversation — the figure a per-seat price or a quota is set from. A conversation that started before this log or continues after it is counted only for the turns recorded here.`,
+    sessionCostTail: (ratio) =>
+      `The 95th percentile is ${ratio}x the median there: most conversations are cheap and a few are not, which is a tail a quota can catch. Where median and p95 sit close together the workload is simply expensive and there is no tail to hunt.`,
     againstOverlap: (from, to) =>
       `These two logs both cover ${from} → ${to}, so some of the same calls sit on both sides of this subtraction and part of the change is the same money counted twice. Compare periods that do not overlap — or window both logs with --since/--until.`,
     windowLine: (since, until) =>
