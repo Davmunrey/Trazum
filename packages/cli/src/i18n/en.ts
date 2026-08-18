@@ -1048,6 +1048,10 @@ ${bold('EXAMPLES')}
       `${label} has a budget in trazum.config.json and no calls in this log, so nothing was measured for it. Not a pass: a workload that did not appear is not a workload that came in under budget.`,
     labelBudgetWindowed: () =>
       'Per-label budgets in trazum.config.json were not applied: --since/--until make "what this label spent" mean a slice, and a budget written for the whole period would be gating against something it does not describe.',
+    hoursConcentrated: (hours, list) =>
+      `80% of this spend lands in ${hours} hours of the UTC day (${list}) — interactive traffic somebody is waiting on, where the Batch API's 24-hour turnaround does not fit. Hours are UTC; shift them yourself if your traffic sits in one region.`,
+    hoursFlat: (hours) =>
+      `The spend is spread across the day: it takes ${hours} hours of the UTC day to cover 80% of it. That is the shape background work has, and background work is what the Batch API halves the price of — see the levers above for what it would be worth here. Whether these calls can wait is yours to say; the log only shows when they happened.`,
     truncatedBy: (label, calls, measured, rate, usd) =>
       `${label}: ${calls} of ${measured} calls that recorded a stop reason were cut off (${rate}), ${usd} of output. The denominator is the calls that measured, not every call — a workload logging the field half the time is not a workload whose other half completed.`,
     truncatedCeiling: (p95) =>
