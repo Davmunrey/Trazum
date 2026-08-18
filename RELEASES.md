@@ -113,6 +113,45 @@ cannot be settled and gives both figures rather than the flattering one. That
 assumption moves the verdict, not just the total: between 0.28 and 1.11 reads per
 write the same calls pay for themselves at 1.25x and lose money at 2x.
 
+### The bill as a watched metric
+
+`trazum profile --against previous.jsonl` compares two logs and ranks what drove
+the difference, with the convention stated before the first figure: positive
+means the bill grew, both files are exactly what they hold, and no period is
+assumed. `--markdown-out` writes the whole profile as markdown for a PR comment
+or a dashboard.
+
+Three more findings from the same log. **Answers cut off mid-generation** are the
+one slice of a bill that is waste without a counterpart — paid in full,
+frequently retried, billed again — and the report prices them from `stop_reason`,
+with "not recorded" kept distinct from "none truncated". **Where the output spend
+concentrates**: six per cent of calls holding half the output spend is a tail
+with a cause; forty-five per cent is a task whose answers are long — and the
+total cannot tell them apart. And **conversation growth** now anchors on the
+smallest turn by tokens, after billing noise at cache rates was caught reporting
+77.5% fake growth on a flat conversation.
+
+### `labels` in the config close the cache loop
+
+Map a usage-log label to the prompt file it sends —
+`{ "labels": { "support-rag": "prompts/support.txt" } }` — and `profile` reads
+the file when that label's cache lost money, and says *why* it fails: a stable
+prefix below the model's cache minimum (setting `cache_control` there does not
+error, it simply never caches), stable tokens stranded behind the first
+placeholder (`trazum optimize --reorder` moves them), or a healthy prefix, which
+points at byte-identity instead. Every diagnosis carries "as it is today — the
+log may predate it".
+
+### The bill in the browser, and for agents
+
+The web app grew a **Your bill** tab: drop or paste a usage log and read the
+whole profile — parsed entirely in the browser against the bundled catalogue.
+**Nothing is uploaded**: there is no fetch in that component, a test fails if one
+appears, and the analytics event carries two booleans. And `@trazum/mcp` grew
+`profile_usage`, the same report for an agent — the log passed as text, never a
+path, with a test feeding a customer-named session key through to assert no
+fragment of it comes back out.
+
 ### Ten faults found by adversarial review, and five by using the tool
 
 Sixteen agents over four lenses, every finding handed to an independent verifier
