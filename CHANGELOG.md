@@ -8,7 +8,38 @@ alters nothing installable — a test, a document — still lands there rather t
 nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
-## Unreleased
+
+## 1.11.0 — "What actually moves the bill"
+
+### Added
+
+**`profile_usage` on the MCP server: an agent can read the bill.** The fourth
+tool, and the surface's first with exact figures — they are the provider's own
+billed counts, not ±10% estimates. The log is passed as text, never a path, so
+the no-paths security design holds; the TTL-unsettled cache verdict, the levers
+with the prompt ceiling named as a ceiling, all three truncation states and the
+gaps carry over from the CLI; and a test feeds a customer-named session key
+through three turns to assert no fragment of it comes back out.
+
+**"Your bill" in the web app: the profile report, read where it was pasted.**
+Drop or paste a usage log and the whole report renders — parsed entirely in the
+browser against the bundled catalogue. Nothing is uploaded: there is no fetch in
+the component, a source test fails if one appears, and the one analytics event
+carries two booleans. Verified live by driving the built page in a browser and
+counting network requests during analysis: zero.
+
+### Fixed
+
+**The web lever line glued the slice's spend to the saving's share.** "up to
+$0.4669 (72%)" against a by-label table calling the same slice 100% of the bill
+— `shareOfBill` describes the combined saving, and the render passed `spentUsd`
+beside it. Caught on a screenshot, not by any source assertion; it now carries
+`combinedUsd` as the CLI always has, and a test pins which field feeds which
+line. The same screenshot surfaced "1 calls are not in these totals": every
+counted web message now takes its count as a number and conjugates the singular
+in both locales, pinned by a test that walks all seven counted messages in both
+catalogues.
+
 
 ### Added
 
@@ -175,7 +206,6 @@ distribution mixed across two prices describes neither. `outputShapes` and
 `createOutputShapeTracker` are exported from `@trazum/core`.
 
 
-## 1.11.0 — "What actually moves the bill"
 
 ### Fixed
 
