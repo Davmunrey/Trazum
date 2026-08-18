@@ -469,6 +469,9 @@ export const es: WebMessages = {
       + `hace ${days} días, más de los 45 que esta herramienta considera vigentes. Si el `
       + 'proveedor cambió precios desde entonces, este informe se equivoca exactamente en ese '
       + 'cambio. La CLI puede traer precios actuales (trazum profile --pricing-live).',
+    drillActive: (label) =>
+      `Mostrando solo ${label}. Cada porcentaje de abajo es una parte de la factura de esta carga, no del registro completo, y la comparación — si la hay — filtra los dos registros igual.`,
+    drillClear: 'Ver el registro completo',
     sessionCost: (label, model, sessions, median, medianTurns, p95, max) =>
       `${label} en ${model}: en ${sessions} conversaciones, la mediana cuesta ${median} a lo `
       + `largo de ${medianTurns} turnos, el 95% queda por debajo de ${p95} y la más cara fue `

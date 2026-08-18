@@ -9,6 +9,21 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**The drill-down reaches the browser: click a workload, see it alone.** The
+web Bill tab's per-label table becomes clickable — the CLI's `--label`,
+without retyping the command. The banner carries the awkward half out loud:
+every share below is a share of *that workload's* bill, not of the log, which
+is otherwise read as "chat is 100% of our spend". Both logs of a comparison
+are filtered the same way, as on the CLI, and a drill-down inside a
+drill-down is not offered — it would filter an already-filtered report and
+quietly produce an empty one. Verified in a real browser: $7.00 → $5.00 on
+clicking `chat`, the sibling workload gone from the table, the whole log
+restored on clearing, and zero network requests throughout.
+
 ## 1.18.0 — "The bill, where the decisions are made"
 
 ### Added

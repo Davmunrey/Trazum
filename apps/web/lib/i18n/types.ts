@@ -352,6 +352,14 @@ export interface WebMessages {
     /** The price table's age, said only when past the 45-day threshold. */
     pricesStale(date: string, days: number): string;
     /**
+     * Looking at one workload alone — the CLI's --label, by clicking a row.
+     * The banner says the awkward half: shares below are shares of this
+     * workload's bill, not of the log.
+     */
+    drillActive(label: string): string;
+    drillClear: string;
+
+    /**
      * What one conversation costs — median against p95, never a mean: one
      * runaway loop hides the ordinary case, which is the figure a per-seat
      * price or a quota is set from.
