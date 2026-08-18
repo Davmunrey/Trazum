@@ -356,6 +356,11 @@ export interface WebMessages {
      * The banner says the awkward half: shares below are shares of this
      * workload's bill, not of the log.
      */
+    /**
+     * Which workloads pay for truncated answers, at a rate over calls that
+     * recorded a stop reason — never over every call.
+     */
+    truncatedBy(label: string, calls: number, measured: number, rate: string, usd: string): string;
     drillActive(label: string): string;
     drillClear: string;
 

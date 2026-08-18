@@ -457,6 +457,9 @@ export const en: WebMessages = {
       + 'past the 45 this tool considers current. If the provider changed prices since, this '
       + 'report is wrong by exactly that change. The CLI can fetch current prices '
       + '(trazum profile --pricing-live).',
+    truncatedBy: (label, calls, measured, rate, usd) =>
+      `${label}: ${calls} of ${measured} calls that recorded a stop reason were cut off (${rate}), `
+      + `${usd} of output. The denominator is the calls that measured, not every call.`,
     drillActive: (label) =>
       `Showing ${label} alone. Every share below is a share of this workload's bill, not of the whole log, and the comparison — if there is one — filters both logs the same way.`,
     drillClear: 'Show the whole log',

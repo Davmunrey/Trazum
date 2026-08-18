@@ -74,6 +74,31 @@ describe('truncation, with suspects', () => {
     assert.doesNotMatch(text, /only: 1 of/);
   });
 
+  it('carries the suspects into the markdown rendering', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const dir = await mkdtemp(join(tmpdir(), 'trazum-trunc-md-'));
+    const log = join(dir, 'usage.jsonl');
+    await writeFile(
+      log,
+      [
+        call('chat', { stop_reason: 'max_tokens' }),
+        call('chat', { stop_reason: 'end_turn' }),
+        call('batch', { stop_reason: 'end_turn' }),
+      ]
+        .map((r) => JSON.stringify(r))
+        .join('\n') + '\n',
+    );
+    const out = join(dir, 'report.md');
+    const result = spawnSync(process.execPath, [CLI, 'profile', log, '--markdown-out', out], {
+      encoding: 'utf8',
+      env: SPAWN_ENV,
+      timeout: 30000,
+    });
+    assert.equal(result.status, 0);
+    const markdown = await readFile(out, 'utf8');
+    assert.match(markdown, /- chat: 1 of 2 calls that recorded a stop reason/);
+  });
+
   it('speaks Spanish', async () => {
     const result = await run(
       [call('chat', { stop_reason: 'max_tokens' }), call('batch', { stop_reason: 'end_turn' })],

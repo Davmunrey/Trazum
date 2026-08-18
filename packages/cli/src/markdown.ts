@@ -939,6 +939,25 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
       `> ⚠️ ${mdText(t.profile.truncatedWaste(t.profile.calls(report.total.truncatedCalls), formatUsd(report.total.truncatedOutputUsd), pct(report.total.truncatedOutputUsd / report.total.outputUsd)))}`,
     );
     lines.push('');
+    // The suspects, with the rate over calls that measured — the terminal's
+    // denominator, because a workload logging the field half the time is not
+    // one whose other half completed.
+    const truncatedLabels = report.byLabel
+      .filter((row) => row.breakdown.truncatedCalls > 0)
+      .sort((a, b) => b.breakdown.truncatedOutputUsd - a.breakdown.truncatedOutputUsd);
+    if (truncatedLabels.length > 0 && report.byLabel.length > 1) {
+      for (const row of truncatedLabels.slice(0, 3)) {
+        lines.push(
+          `- ${mdText(t.profile.truncatedBy(showLabel(row.label), n(row.breakdown.truncatedCalls), n(row.breakdown.stopReasonCalls), pct(row.breakdown.truncatedCalls / row.breakdown.stopReasonCalls), formatUsd(row.breakdown.truncatedOutputUsd)))}`,
+        );
+      }
+      lines.push('');
+    }
+    const truncationCeiling = report.outputShapes.find((shape) => shape.p95WithinTokens !== null);
+    if (truncationCeiling !== undefined) {
+      lines.push(`_${mdText(t.profile.truncatedCeiling(n(truncationCeiling.p95WithinTokens!)))}_`);
+      lines.push('');
+    }
   }
 
   /**

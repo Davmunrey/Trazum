@@ -712,6 +712,32 @@ const PROFILE: ToolDefinition = {
           + ` (${pct(total.outputUsd > 0 ? total.truncatedOutputUsd / total.outputUsd : 0)})`
           + ' bought answers cut off mid-generation — paid in full and frequently retried.',
       );
+      /**
+       * Which workloads pay for it, at a rate over calls that **recorded a
+       * stop reason** — never over every call, because a workload logging
+       * the field half the time is not one whose other half completed.
+       */
+      const truncating = report.byLabel
+        .filter((entry) => entry.breakdown.truncatedCalls > 0)
+        .sort((a, b) => b.breakdown.truncatedOutputUsd - a.breakdown.truncatedOutputUsd);
+      if (truncating.length > 0 && report.byLabel.length > 1) {
+        for (const entry of truncating.slice(0, 3)) {
+          lines.push(
+            `${name(entry.label)}: ${entry.breakdown.truncatedCalls} of`
+              + ` ${entry.breakdown.stopReasonCalls} calls that recorded a stop reason were cut off`
+              + ` (${pct(entry.breakdown.truncatedCalls / entry.breakdown.stopReasonCalls)}),`
+              + ` ${formatUsd(entry.breakdown.truncatedOutputUsd)} of output. The denominator is`
+              + ' the calls that measured, not every call.',
+          );
+        }
+      }
+      const ceiling = report.outputShapes.find((shape) => shape.p95WithinTokens !== null);
+      if (ceiling !== undefined) {
+        lines.push(
+          `95% of the answers that finished fit within ${ceiling.p95WithinTokens} output tokens —`
+            + ' the number a max_tokens cap wants. Measured on these calls, promised for nothing.',
+        );
+      }
     } else {
       lines.push('Stop reasons were recorded, and no answer hit the max_tokens ceiling.');
     }

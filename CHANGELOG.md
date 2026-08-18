@@ -13,6 +13,12 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**The truncation suspects reach every rendering.** `--markdown-out`, the MCP's
+`profile_usage` and the web Bill tab all name which workloads pay for answers
+cut off at `max_tokens`, with the same denominator — calls that recorded a
+stop reason — and the same silence when one label is the whole log. The
+markdown and the MCP also carry the ceiling the finished answers needed.
+
 **Truncation, with suspects.** The report could say a bill paid for answers
 cut off at `max_tokens` and not which workload was paying. It now names them,
 ranked by wasted output, with the rate stated over **calls that recorded a
