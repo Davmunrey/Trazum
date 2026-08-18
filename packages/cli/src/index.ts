@@ -169,6 +169,8 @@ const VALUE_FLAGS = new Set([
   'cases',
   'concurrency',
   'max-growth',
+  'max-usd',
+  'max-growth-usd',
   'export',
   'limit',
   'locale',
@@ -419,7 +421,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
-  profile: ['json', 'pricing', 'pricing-live', 'against', 'markdown-out'],
+  profile: ['json', 'pricing', 'pricing-live', 'against', 'markdown-out', 'max-usd', 'max-growth-usd'],
   route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
@@ -1963,6 +1965,55 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
 
+  /**
+   * The previous log, loaded before the output paths split so the growth gate
+   * exists under `--json` too — a CI step reads the JSON and trusts the exit
+   * code, and a gate that only arms in the human rendering is a gate CI never
+   * had.
+   */
+  const againstPath = stringFlag(args, 'against');
+  const previous =
+    againstPath !== undefined
+      ? profileUsage(await readFile(againstPath, 'utf8'), { catalogue: pricing })
+      : null;
+  const againstDelta =
+    previous !== null && previous.total.calls > 0
+      ? report.total.totalUsd - previous.total.totalUsd
+      : null;
+  // A gate flag that silently does nothing is not an answer — same rule as
+  // --apply-suggestions without --suggest.
+  if (typeof args.flags.get('max-growth-usd') === 'string' && againstPath === undefined) {
+    throw new Error(t.profile.maxGrowthNeedsAgainst());
+  }
+
+  /**
+   * The money gates, armed by flags and applied on every output path.
+   *
+   * `check` gates tokens before the money is spent; these gate the spend
+   * itself, from the provider's own billed counts. No period is assumed —
+   * the budget applies to exactly the log handed in, so a nightly job that
+   * profiles yesterday's log has a daily budget without Trazum ever
+   * guessing what a day is.
+   */
+  const applyGates = (): void => {
+    if (typeof args.flags.get('max-usd') === 'string') {
+      const maxUsd = numberFlag(args, 'max-usd', 0, t);
+      if (report.total.totalUsd > maxUsd) {
+        console.error(c.red(t.profile.maxUsdFailed(formatUsd(report.total.totalUsd), formatUsd(maxUsd))));
+        process.exitCode = 1;
+      } else {
+        console.error(c.dim(t.profile.maxUsdOk(formatUsd(report.total.totalUsd), formatUsd(maxUsd))));
+      }
+    }
+    if (typeof args.flags.get('max-growth-usd') === 'string' && againstDelta !== null) {
+      const maxGrowth = numberFlag(args, 'max-growth-usd', 0, t);
+      if (againstDelta > maxGrowth) {
+        console.error(c.red(t.profile.maxGrowthUsdFailed(formatSignedUsd(againstDelta), formatUsd(maxGrowth))));
+        process.exitCode = 1;
+      }
+    }
+  };
+
   if (boolFlag(args, 'json')) {
     /**
      * The report, plus everything the human output leads on.
@@ -1988,11 +2039,18 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
             cache: cacheEconomics(r.breakdown),
           })),
           levers: billLevers(report, { catalogue: pricing }),
+          // Present only when --against was passed: null delta means the
+          // previous log had nothing priced, which is a different answer from
+          // zero growth.
+          ...(previous !== null
+            ? { against: { previousTotalUsd: previous.total.totalUsd, deltaUsd: againstDelta } }
+            : {}),
         },
         null,
         2,
       ),
     );
+    applyGates();
     return;
   }
 
@@ -2067,6 +2125,34 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
     console.log(`  ${c.bold(wrap(t.profile.outputDominates(pct(shares.output)), 74, '  '))}`);
   } else {
     console.log(`  ${c.bold(t.profile.biggestPart(biggestName, pct(biggestShare)))}`);
+  }
+
+  /**
+   * The most expensive day, with a suspect attached.
+   *
+   * The shape of a bill over time is the finding the total hides: a steady $3 a
+   * day and a quiet week broken by one $40 spike sum to the same number and call
+   * for opposite responses. Rendered against the **median** day — a mean would
+   * let the spike inflate its own yardstick — and loud only when it clears twice
+   * the median, a threshold stated in the sentence rather than hidden in code.
+   */
+  if (report.spendByDay.length >= 2) {
+    const sortedUsd = report.spendByDay.map((d) => d.usd).sort((a, b) => a - b);
+    const mid = Math.floor(sortedUsd.length / 2);
+    const medianUsd =
+      sortedUsd.length % 2 === 1 ? sortedUsd[mid]! : (sortedUsd[mid - 1]! + sortedUsd[mid]!) / 2;
+    const peak = report.spendByDay.reduce((a, b) => (b.usd > a.usd ? b : a));
+    if (medianUsd > 0) {
+      const ratio = (peak.usd / medianUsd).toFixed(1);
+      const line = t.profile.dayPeak(peak.day, formatUsd(peak.usd), ratio);
+      const labelClause =
+        peak.topLabel !== null && report.byLabel.length > 1
+          ? ` ${t.profile.dayPeakLabel(peak.topLabel === UNLABELLED ? t.profile.unlabelled() : peak.topLabel, formatUsd(peak.topLabelUsd))}`
+          : '';
+      const loud = peak.usd > 2 * medianUsd;
+      const text = wrap(`${line}${labelClause}`, 74, '  ');
+      console.log(`  ${loud ? c.yellow(text) : c.dim(text)}`);
+    }
   }
 
   /**
@@ -2483,9 +2569,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
    * no period is assumed, so the call counts print beside the money for the
    * reader to judge comparability before judging the trend.
    */
-  const againstPath = stringFlag(args, 'against');
-  if (againstPath !== undefined) {
-    const previous = profileUsage(await readFile(againstPath, 'utf8'), { catalogue: pricing });
+  if (previous !== null) {
     console.log();
     console.log(c.bold(t.profile.againstHeading()));
     if (previous.total.calls === 0) {
@@ -2558,6 +2642,8 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
     await writeFile(markdownOut, renderProfileMarkdown({ report, levers, cache, t }), 'utf8');
     console.log(c.dim(t.report.wroteTo(markdownOut)));
   }
+
+  applyGates();
 }
 
 /**

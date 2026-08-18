@@ -604,6 +604,21 @@ export interface CliMessages {
     ttlFitUnsettledGap(label: string, model: string, gap: string): string;
     ttlFitFits(label: string, model: string, gap: string): string;
     ttlFitUnmeasured(): string;
+    /**
+     * The most expensive day against the median day — the shape of the bill
+     * over time, which the total hides. The 2x-median threshold that makes it
+     * loud is stated in the sentence, never hidden in code.
+     */
+    dayPeak(day: string, usd: string, xMedian: string): string;
+    dayPeakLabel(label: string, usd: string): string;
+    /**
+     * The money gates. `check` gates tokens before spending; these gate the
+     * spend itself, over exactly the log handed in — no period assumed.
+     */
+    maxUsdOk(total: string, max: string): string;
+    maxUsdFailed(total: string, max: string): string;
+    maxGrowthUsdFailed(delta: string, max: string): string;
+    maxGrowthNeedsAgainst(): string;
   };
   /**
    * `trazum route` — the loop the levers section could only point at.

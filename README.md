@@ -1870,6 +1870,30 @@ because silence would be indistinguishable from unmeasured. Writes with no
 clock or no session get the fifth sentence — *could not be measured* — rather
 than nothing.
 
+**The clock also names the most expensive day.** A steady $3 a day and a quiet
+week broken by one $40 spike sum to the same total and call for opposite
+responses, so the report says which shape this bill has — `The most expensive
+day in this log was 2026-08-12: $9.40, 3.1x the median day. Most of it was chat
+($7.10).` — against the median rather than a mean the spike would inflate, and
+per label, never per session. The full series rides `--json` as `spendByDay`.
+
+### The bill as a CI gate
+
+`check` gates tokens before the money is spent. These gate the spend itself,
+from the provider's own billed counts:
+
+```bash
+trazum profile yesterday.jsonl --max-usd 50                       # exit 1 over budget
+trazum profile this-week.jsonl --against last-week.jsonl --max-growth-usd 100
+```
+
+**No period is assumed, and that is what makes the budget honest**: `--max-usd`
+applies to exactly the log handed in, so a nightly job that profiles
+yesterday's log has a daily budget without Trazum ever guessing what a day is.
+`--max-growth-usd` needs `--against` — alone it is an error, not a flag that
+silently gates nothing — and both fire under `--json` too, because CI reads the
+exit code there.
+
 
 ## Where this fits, said at the front door
 
