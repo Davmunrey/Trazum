@@ -1023,6 +1023,8 @@ ${bold('EJEMPLOS')}
       `FALLO — cachear añadió ${delta} a esta factura (los mismos tokens como entrada normal habrían costado menos), por encima del límite --max-cache-loss-usd de ${max}. El contrafactual es exacto: los mismos tokens a la tarifa de entrada publicada.`,
     maxCacheLossWorstCase: (calls, worst, max) =>
       `FALLO — ${count(calls)} ${calls === 1 ? 'llamada no registró' : 'llamadas no registraron'} qué TTL de escritura se pagó, y a la tarifa de 1 hora cachear añadió hasta ${worst}, por encima del límite --max-cache-loss-usd de ${max}. La puerta lee el peor caso a propósito: una puerta que leyera la mitad halagadora dejaría pasar exactamente las facturas que existe para cazar. Registra el objeto "cache_creation" que devuelve la API y el techo se vuelve una cifra.`,
+    pricesStale: (date, days) =>
+      `La tabla de precios detrás de cada dólar de aquí se revisó por última vez el ${date} — hace ${count(days)} días, más de los 45 que esta herramienta considera vigentes. Si el proveedor cambió precios desde entonces, este informe se equivoca exactamente en ese cambio. --pricing-live trae los precios de hoy; --pricing superpone los tuyos.`,
     windowLine: (since, until) =>
       `Filtrado con --since ${since} --until ${until}. Todo lo de abajo describe esta ventana, no el registro completo; una fecha sola significa ese día UTC entero.`,
     windowUndated: (calls) =>

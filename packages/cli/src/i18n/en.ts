@@ -1013,6 +1013,8 @@ ${bold('EXAMPLES')}
       `FAILED — caching added ${delta} to this bill (the same tokens as plain input would have cost less), over the --max-cache-loss-usd limit of ${max}. The counterfactual is exact: the same tokens at the published input rate.`,
     maxCacheLossWorstCase: (calls, worst, max) =>
       `FAILED — ${count(calls)} ${calls === 1 ? 'call' : 'calls'} did not record which cache-write TTL was paid, and at the 1-hour rate caching added up to ${worst}, over the --max-cache-loss-usd limit of ${max}. The gate reads the worst case on purpose: a gate reading the flattering half would pass exactly the bills it exists to catch. Record the "cache_creation" object the API returns and the ceiling becomes a figure.`,
+    pricesStale: (date, days) =>
+      `The price table behind every dollar here was last reviewed ${date} — ${count(days)} days ago, past the 45 this tool considers current. If the provider changed prices since, this report is wrong by exactly that change. --pricing-live fetches today's prices; --pricing overlays your own.`,
     windowLine: (since, until) =>
       `Filtered to --since ${since} --until ${until}. Everything below describes this window, not the whole log; a bare date means the whole of that UTC day.`,
     windowUndated: (calls) =>

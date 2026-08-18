@@ -13,6 +13,17 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**The price table's age, said out loud when it matters.** Every dollar a
+profile prints uses the bundled price table, and the one fact that silently
+invalidates all of them is a table the provider has re-priced since. Past 45
+days — the threshold is in the sentence — the terminal, the markdown, the MCP
+and the web all say so loudly: the review date, the age, and that the report
+is wrong by exactly whatever changed, with `--pricing-live` as the fix.
+`--json` carries `pricing.lastReviewed`/`pricing.ageDays` always, as
+provenance. The tests pin the rule rather than the calendar: whether the line
+appears is derived from the table's own date at run time, so a freshly
+reviewed table asserts the opposite behaviour and passes the same suite.
+
 **`--max-cache-loss-usd`, the third money gate — and it reads the worst case
 on purpose.** Exit 1 when caching added more than the limit to the bill. When
 the log did not record which write TTL was paid, the settled figure and the

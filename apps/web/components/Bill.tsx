@@ -13,6 +13,7 @@ import {
   formatSignedUsd,
   formatUsd,
   profileUsage,
+  reviewAgeDays,
   sharesOf,
 } from '@trazum/core';
 import type { BillLevers, CacheEconomics, UsageProfileReport } from '@trazum/core';
@@ -920,10 +921,19 @@ function Gaps({
   n: (value: number) => string;
 }) {
   const { skippedLines, unpricedModels, unpriced } = report;
-  if (unpricedModels.length === 0 && skippedLines.length === 0) return null;
+  /**
+   * The provenance caveat, said only when old enough to matter and loud
+   * then: a stale price table qualifies every dollar above, and unlike a
+   * skipped line it does not name its own size — the error is exactly
+   * whatever the provider changed. The 45-day threshold matches the CLI's.
+   */
+  const staleDays = reviewAgeDays(BUNDLED_CATALOGUE.lastReviewed, new Date());
+  const stale = staleDays !== null && staleDays > 45;
+  if (unpricedModels.length === 0 && skippedLines.length === 0 && !stale) return null;
   const shownLines = skippedLines.slice(0, 8).join(', ') + (skippedLines.length > 8 ? '…' : '');
   return (
     <div className="flex flex-col gap-1 text-[13px] text-terracotta">
+      {stale && <span>{t.bill.pricesStale(BUNDLED_CATALOGUE.lastReviewed, staleDays)}</span>}
       {unpricedModels.length > 0 && (
         <span>{t.bill.unpriced(unpricedModels.join(', '), unpriced.calls)}</span>
       )}

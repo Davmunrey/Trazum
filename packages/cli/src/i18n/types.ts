@@ -641,6 +641,12 @@ export interface CliMessages {
     maxCacheLossFailed(delta: string, max: string): string;
     maxCacheLossWorstCase(calls: number, worst: string, max: string): string;
     /**
+     * The price table behind every dollar in the report, when it is old
+     * enough to matter. Unlike a skipped line, staleness does not name its
+     * own size — the error is exactly whatever the provider changed.
+     */
+    pricesStale(date: string, days: number): string;
+    /**
      * The time window — the drill-down in time. Every figure below the line
      * describes a slice, so the line prints before any of them; clockless
      * calls under a window are excluded and *counted out loud*, because
