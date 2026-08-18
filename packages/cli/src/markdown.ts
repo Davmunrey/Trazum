@@ -818,6 +818,26 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
       lines.push(loud ? `> ⚠️ ${mdText(`${sentence}${labelClause}`)}` : `_${mdText(`${sentence}${labelClause}`)}_`);
       lines.push('');
     }
+
+    /**
+     * The series itself, most recent days last — the shape the peak sentence
+     * summarises, for the reader who wants to see the week. Capped at 14
+     * days with the earlier ones counted out loud: silent truncation reads
+     * as "covered everything" when it did not.
+     */
+    const DAYS_SHOWN = 14;
+    const shown = report.spendByDay.slice(-DAYS_SHOWN);
+    lines.push(`| ${t.profile.dayTableDay()} | USD | ${t.profile.dayTableCalls()} | ${t.profile.dayTableTop()} |`);
+    lines.push('|---|---:|---:|---|');
+    for (const day of shown) {
+      const top = day.topLabel === null ? '—' : mdTextCell(showLabel(day.topLabel));
+      lines.push(`| ${day.day} | ${formatUsd(day.usd)} | ${n(day.calls)} | ${top} |`);
+    }
+    if (report.spendByDay.length > DAYS_SHOWN) {
+      lines.push('');
+      lines.push(`_${mdText(t.profile.dayTableEarlier(report.spendByDay.length - DAYS_SHOWN))}_`);
+    }
+    lines.push('');
   }
 
   lines.push(`#### ${t.profile.leversHeading()}`);

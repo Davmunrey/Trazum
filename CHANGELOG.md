@@ -13,6 +13,14 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**The day series reaches the markdown.** The spend-per-day table the peak
+sentence summarises — day, exact dollars, calls, and the biggest label of the
+day — for the CI summary and PR comment readers who want to see the week.
+Capped at the most recent 14 days with the earlier ones counted out loud
+(silent truncation reads as "covered everything"), absent for a single day
+because one row is the total again, and the full series still rides `--json`
+as `spendByDay`.
+
 **The price table's age, said out loud when it matters.** Every dollar a
 profile prints uses the bundled price table, and the one fact that silently
 invalidates all of them is a table the provider has re-priced since. Past 45
