@@ -27,6 +27,68 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.13.0 — "The bill learns to say no"
+
+**The profile stops being a report you read and becomes a check that can fail
+your build.** Two flags, two exit codes:
+
+```
+trazum profile usage.jsonl --max-usd 50
+trazum profile usage.jsonl --against last-week.jsonl --max-growth-usd 10
+```
+
+`--max-usd` exits 1 when the log spent more than its budget. `--max-growth-usd`
+exits 1 when the bill grew past the limit against the previous log — and used
+alone it is an error, because a growth gate with nothing to grow *from* would be
+a flag that silently gates nothing. Both fire under `--json` too: CI reads the
+exit code there, and a gate that only worked in the human rendering would be a
+gate that CI never sees. No period is assumed by either — the gate is over what
+the log records, and the span line says what that was.
+
+**The same gates run in the GitHub Action.** Hand it a `usage-log` instead of a
+`target` and it gates the spend itself rather than the tokens about to be spent
+— report in the run summary, a failing gate still writing it. Self-tested in CI
+with hand-checkable arithmetic: a $5.00 log passes a $9 budget, a $15.00 log
+fails it, +$10.00 growth fails a $5 limit.
+
+### The most expensive day
+
+The report names the peak day against the **median** day — a mean would let the
+spike inflate its own yardstick — loud only past twice it, with the label that
+drove it when there is more than one:
+
+```
+  ! 2026-08-09 spent $31.20 across 41 calls — 4.2x the median day ($7.41).
+    Biggest that day: batch-eval ($24.80).
+```
+
+Exact per-record dollars per UTC day: each day's figure is the delta that day's
+records added to the total, so the day arithmetic can never drift from the bill.
+
+### `--label`, the drill-down
+
+Once the full report has named a suspect, the same command profiles that
+workload alone — every section, the gates included, over one label's calls.
+A label that matches nothing is an error naming the labels that exist, never a
+silent report over zero calls that would read as "this workload is free". With
+`--against`, both logs are filtered, so the comparison stays one workload. The
+MCP's `profile_usage` gains the same `label` under the same rule.
+
+### Everywhere the bill renders
+
+The clock reached `--markdown-out` (span, peak day, TTL verdicts, failing ones
+loud) with the gap and day helpers shared between renderings so they cannot
+drift. The web Bill tab draws spend per day — a bar per UTC day, plain divs,
+the peak in the warning colour — and takes a **second log** to render the
+comparison in the browser: sign convention stated before the first figure,
+drivers over the union of labels so appeared and vanished workloads are named,
+zero network requests, verified in a real browser. Output shapes gain the
+max_tokens ceilings (`medianWithinTokens`, `p95WithinTokens`): the histogram
+ceiling at least half and 95% of measured answers fit within, `null` for the
+open-ended bucket rather than an invented number.
+
+---
+
 ## 1.12.0 — "The log gets a clock"
 
 **One field, and the single most common reason a cache loses money becomes
