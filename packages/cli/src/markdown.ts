@@ -723,6 +723,14 @@ export interface ProfileMarkdownInput {
   levers: BillLevers;
   cache: CacheEconomics;
   t: CliMessages;
+  /**
+   * The `--since`/`--until` values as the user typed them, when a window was
+   * applied. Passed through rather than re-derived from `timeWindow`'s epoch
+   * bounds, because a bare `--until 2026-08-14` includes that whole day —
+   * rendering the internal exclusive bound would print the *next* day and
+   * disagree with the terminal about which window this was.
+   */
+  window?: { since: string; until: string };
 }
 
 /**
@@ -740,7 +748,7 @@ export interface ProfileMarkdownInput {
  * reading CI instead of machines.
  */
 export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
-  const { report, levers, cache, t } = input;
+  const { report, levers, cache, t, window } = input;
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
   const shares = sharesOf(report.total);
@@ -764,6 +772,16 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
       `_${mdText(t.profile.spanLine(dayOf(report.span.fromMs), dayOf(report.span.toMs), spanDays(report.span.fromMs, report.span.toMs)))}${partial}_`,
     );
     lines.push('');
+  }
+  // The window before any figure, and the undated count loud — the same order
+  // and the same volume as the terminal, for the same reasons.
+  if (report.timeWindow !== null) {
+    lines.push(`_${mdText(t.profile.windowLine(window?.since ?? '—', window?.until ?? '—'))}_`);
+    lines.push('');
+    if (report.timeWindow.undatedExcluded > 0) {
+      lines.push(`> ⚠️ ${mdText(t.profile.windowUndated(report.timeWindow.undatedExcluded))}`);
+      lines.push('');
+    }
   }
   lines.push('| | USD | % | tokens |');
   lines.push('|---|---:|---:|---:|');
@@ -847,6 +865,22 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
             : t.profile.ttlFitFits(who, fit.modelName, gap);
     const loud = fit.verdict === 'expires-before-reuse' || fit.verdict === 'overlong-ttl';
     lines.push(loud ? `> ⚠️ ${mdText(sentence)}` : `_${mdText(sentence)}_`);
+    lines.push('');
+  }
+
+  // Conversations that never came back: the fact loud, the ceiling quiet —
+  // decided by the slice's own reads, exactly as on the terminal.
+  const readsBySlice = new Map(
+    report.byLabelAndModel.map((r) => [`${r.label}\n${r.model}`, r.breakdown.cacheReadTokens]),
+  );
+  for (const row of report.singleTurnCacheWrites.slice(0, 3)) {
+    const who = showLabel(row.label);
+    const reads = readsBySlice.get(`${row.label}\n${row.model}`) ?? 0;
+    const sentence =
+      reads === 0
+        ? t.profile.singleTurnConfirmed(who, row.modelName, n(row.singleTurnSessions), n(row.sessions), formatUsd(row.singleTurnWriteUsd))
+        : t.profile.singleTurnCeiling(who, row.modelName, n(row.singleTurnSessions), n(row.sessions), formatUsd(row.singleTurnWriteUsd));
+    lines.push(reads === 0 ? `> ⚠️ ${mdText(sentence)}` : `_${mdText(sentence)}_`);
     lines.push('');
   }
 

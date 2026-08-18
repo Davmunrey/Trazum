@@ -97,6 +97,18 @@ describe('conversations that never came back, on screen', () => {
     assert.equal(report.singleTurnCacheWrites[0].singleTurnSessions, 1);
   });
 
+  it('carries the same two claims into the markdown rendering', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const log = await write('usage.jsonl', [driveBy('a')]);
+    const out = `${log}.md`;
+    const result = run([log, '--markdown-out', out]);
+    assert.equal(result.status, 0);
+    const markdown = await readFile(out, 'utf8');
+    // Zero reads in the slice: the fact, loud — a blockquote, not italics.
+    assert.match(markdown, /> ⚠️ .*bought nothing/);
+    assert.match(markdown, /\$6\.25/);
+  });
+
   it('speaks Spanish', async () => {
     const log = await write('usage.jsonl', [driveBy('a')]);
     const result = run([log], ['--locale', 'es']);

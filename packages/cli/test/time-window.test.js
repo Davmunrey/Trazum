@@ -115,6 +115,21 @@ describe('the window filters and says so', () => {
   });
 });
 
+describe('the window in the markdown rendering', () => {
+  it('states the window as typed and the undated count loud, like the terminal', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const log = await write('usage.jsonl', [call('2026-08-01'), call(null)]);
+    const out = `${log}.md`;
+    const result = run([log, '--since', '2026-08-01', '--until', '2026-08-01', '--markdown-out', out]);
+    assert.equal(result.status, 0);
+    const markdown = await readFile(out, 'utf8');
+    // The typed date, not the internal exclusive bound — rendering the epoch
+    // bound would print the next day and disagree with the terminal.
+    assert.match(markdown, /--since 2026-08-01 --until 2026-08-01/);
+    assert.match(markdown, /> ⚠️ .*carries no timestamp|> ⚠️ .*carry no timestamp/);
+  });
+});
+
 describe('what the window refuses', () => {
   it('a window matching nothing, naming what the log does cover', async () => {
     const log = await write('usage.jsonl', [call('2026-08-01'), call('2026-08-03')]);

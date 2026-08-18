@@ -533,6 +533,44 @@ function Report({
               {total.cacheWriteTokens > 0 && report.cacheTtlFit.length === 0 && (
                 <span className="text-[13px] text-muted-foreground">{t.bill.ttlUnmeasured}</span>
               )}
+              {/*
+                Conversations that never came back. Two claims for the same
+                tokens, decided by the slice's own reads: with zero cache reads
+                anywhere in the slice nothing read those writes — a fact, loud;
+                with reads present another conversation sharing the prefix may
+                have read them, the log cannot see whose write a read hit, and
+                the figure renders as the ceiling it is.
+              */}
+              {report.singleTurnCacheWrites.slice(0, 3).map((row) => {
+                const who = labelName(row.label);
+                const reads =
+                  report.byLabelAndModel.find(
+                    (e) => e.label === row.label && e.model === row.model,
+                  )?.breakdown.cacheReadTokens ?? 0;
+                const confirmed = reads === 0;
+                return (
+                  <span
+                    key={`ledger:${row.label}\n${row.model}`}
+                    className={confirmed ? 'text-terracotta' : 'text-[13px] text-muted-foreground'}
+                  >
+                    {confirmed
+                      ? t.bill.singleTurnConfirmed(
+                          who,
+                          row.modelName,
+                          row.singleTurnSessions,
+                          row.sessions,
+                          formatUsd(row.singleTurnWriteUsd),
+                        )
+                      : t.bill.singleTurnCeiling(
+                          who,
+                          row.modelName,
+                          row.singleTurnSessions,
+                          row.sessions,
+                          formatUsd(row.singleTurnWriteUsd),
+                        )}
+                  </span>
+                );
+              })}
             </CardContent>
           </Card>
 

@@ -436,6 +436,16 @@ export const es: WebMessages = {
       'No se pudo medir si el TTL de la caché encaja con el ritmo de los turnos: hacen falta '
       + '"session" y "ts" en el registro. Una entrada de 5 minutos con turnos cada nueve '
       + 'minutos caduca sin leerse en cada escritura, y solo el reloj puede verlo.',
+    singleTurnConfirmed: (label, model, single, sessions, usd) =>
+      `${label} en ${model}: ${single} de ${sessions} conversaciones terminaron tras su primer `
+      + `turno y gastaron ${usd} escribiendo una caché que nada en este registro leyó jamás. `
+      + 'Esas escrituras no compraron nada — deja de marcar llamadas de un solo uso con cache_control.',
+    singleTurnCeiling: (label, model, single, sessions, usd) =>
+      `${label} en ${model}: ${single} de ${sessions} conversaciones terminaron tras su primer `
+      + `turno, y sus escrituras de caché — ${usd} — pagaron una reutilización que su propia `
+      + 'conversación nunca hizo. Otra conversación con el mismo prefijo dentro del TTL pudo '
+      + 'haberlas leído; el registro no puede ver de quién era la escritura que una lectura '
+      + 'encontró, así que esa cifra es un techo del desperdicio, no una factura.',
     byLabelHeading: 'Por etiqueta',
     byModelHeading: 'Por modelo',
     unlabelled: '(sin etiqueta)',

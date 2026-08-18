@@ -293,6 +293,21 @@ const PROFILE: ToolDefinition = {
           'Profile only the calls carrying this label — the drill-down once the full report '
           + 'named a suspect. A label matching nothing is an error naming the labels that exist.',
       },
+      since: {
+        type: 'string',
+        minLength: 1,
+        description:
+          'Profile only calls at or after this moment: a UTC day (2026-08-14) or a full ISO '
+          + '8601 timestamp. Calls with no "ts" cannot be placed and are excluded, counted out '
+          + 'loud — never dropped silently.',
+      },
+      until: {
+        type: 'string',
+        minLength: 1,
+        description:
+          'Profile only calls up to this moment; a bare date includes that whole UTC day. '
+          + 'A window matching nothing is an error naming what the log does cover.',
+      },
     },
     required: ['log'],
     additionalProperties: false,
@@ -310,25 +325,62 @@ const PROFILE: ToolDefinition = {
     if (onlyLabel !== undefined && typeof onlyLabel !== 'string') {
       throw new InvalidArguments('label must be a string');
     }
-
-    const report = profileUsage(log, { catalogue: BUNDLED_CATALOGUE, label: onlyLabel });
     /**
-     * The drill-down's one rule, same as the CLI: a label matching nothing is
-     * an error naming the labels that exist, never a silent report over zero
-     * calls that an agent would read as "this workload is free".
+     * The window, under the CLI's rules: a bare day is that whole UTC day —
+     * since its first instant, until its last — and the window is half-open
+     * `[since, until)` internally, so adjacent windows share no record.
      */
-    if (
-      onlyLabel !== undefined &&
-      report.total.calls === 0 &&
-      report.unpriced.calls === 0
-    ) {
-      const unfiltered = profileUsage(log, { catalogue: BUNDLED_CATALOGUE });
-      const available = unfiltered.byLabel
-        .map((e) => (e.label === UNLABELLED ? '(no label)' : e.label))
-        .join(', ');
+    const parseWhen = (key: 'since' | 'until'): number | undefined => {
+      const value = args[key];
+      if (value === undefined) return undefined;
+      if (typeof value !== 'string') throw new InvalidArguments(`${key} must be a string`);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        const midnight = Date.parse(`${value}T00:00:00Z`);
+        if (Number.isFinite(midnight)) return key === 'until' ? midnight + 86_400_000 : midnight;
+      }
+      const exact = Date.parse(value);
+      if (Number.isFinite(exact)) return exact;
       throw new InvalidArguments(
-        `no call in this log carries the label "${onlyLabel}". The labels here are: ${available || '—'}`,
+        `${key} could not be read: "${value}". Pass a UTC day (2026-08-14) or a full ISO 8601 timestamp.`,
       );
+    };
+    const sinceMs = parseWhen('since');
+    const untilMs = parseWhen('until');
+    if (sinceMs !== undefined && untilMs !== undefined && sinceMs >= untilMs) {
+      throw new InvalidArguments('since is at or after until, so the window contains no time at all');
+    }
+    const windowed = sinceMs !== undefined || untilMs !== undefined;
+
+    const report = profileUsage(log, { catalogue: BUNDLED_CATALOGUE, label: onlyLabel, sinceMs, untilMs });
+    /**
+     * The drill-downs' one rule, same as the CLI: a filter matching nothing is
+     * an error naming what exists, never a silent report over zero calls that
+     * an agent would read as "this workload is free" or "this period is free".
+     */
+    if ((onlyLabel !== undefined || windowed) && report.total.calls === 0 && report.unpriced.calls === 0) {
+      const unfiltered = profileUsage(log, { catalogue: BUNDLED_CATALOGUE });
+      if (unfiltered.total.calls > 0 || unfiltered.unpriced.calls > 0) {
+        if (onlyLabel !== undefined && !unfiltered.byLabel.some((e) => e.label === onlyLabel)) {
+          const available = unfiltered.byLabel
+            .map((e) => (e.label === UNLABELLED ? '(no label)' : e.label))
+            .join(', ');
+          throw new InvalidArguments(
+            `no call in this log carries the label "${onlyLabel}". The labels here are: ${available || '—'}`,
+          );
+        }
+        if (windowed) {
+          if (unfiltered.span === null) {
+            throw new InvalidArguments(
+              'no record in this log carries a timestamp, so since/until have nothing to filter by. '
+                + 'Add "ts" to the records.',
+            );
+          }
+          const day = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
+          throw new InvalidArguments(
+            `no record falls inside this window. The log covers ${day(unfiltered.span.fromMs)} → ${day(unfiltered.span.toMs)}.`,
+          );
+        }
+      }
     }
     const { total } = report;
     const lines: string[] = [];
@@ -387,6 +439,18 @@ const PROFILE: ToolDefinition = {
         'Figures are "on this bill" — the log carries no timestamps, so no period is known'
           + ' and nothing here is per-month. Add "ts" to the record and the span is stated.',
       );
+    }
+    // The window before any figure is trusted as "the log", with the undated
+    // count said out loud: those calls' spend is in the log and not here.
+    if (report.timeWindow !== null) {
+      lines.push('Everything below describes the since/until window, not the whole log.');
+      if (report.timeWindow.undatedExcluded > 0) {
+        lines.push(
+          `${count(report.timeWindow.undatedExcluded, 'call')} carry no timestamp and cannot be`
+            + ' placed inside or outside the window, so they were left out. The window\'s figures'
+            + ' are a floor on the period.',
+        );
+      }
     }
     lines.push(
       `input ${formatUsd(total.inputUsd)} · cache reads ${formatUsd(total.cacheReadUsd)}`
@@ -504,6 +568,34 @@ const PROFILE: ToolDefinition = {
         'Whether the cache TTL fits how fast the turns arrive could not be measured — it needs'
           + ' both "session" and "ts" on the record.',
       );
+    }
+    /**
+     * Conversations that never came back. The same two-claim split as the CLI:
+     * a fact when the slice recorded zero cache reads (nothing read those
+     * writes at all), a ceiling named as one otherwise — the provider's cache
+     * is keyed by prefix, and the log cannot see whose write a read hit.
+     */
+    const readsBySlice = new Map(
+      report.byLabelAndModel.map((e) => [`${e.label}\n${e.model}`, e.breakdown.cacheReadTokens]),
+    );
+    for (const row of report.singleTurnCacheWrites.slice(0, 3)) {
+      const who = `${name(row.label)} on ${row.modelName}`;
+      const opening =
+        `${who}: ${count(row.singleTurnSessions, 'conversation')} of ${row.sessions} ended after`
+        + ` the first turn and spent ${formatUsd(row.singleTurnWriteUsd)} on cache writes their`
+        + ' own conversation never read back.';
+      if ((readsBySlice.get(`${row.label}\n${row.model}`) ?? 0) === 0) {
+        lines.push(
+          `${opening} Nothing in this log ever read this slice's cache at all, so those writes`
+            + ' bought nothing — stop marking one-shot calls with cache_control.',
+        );
+      } else {
+        lines.push(
+          `${opening} Another conversation sharing the same prefix within the TTL could have read`
+            + ' them; the log cannot see whose write a read hit, so that figure is a ceiling on'
+            + ' the waste, not a bill.',
+        );
+      }
     }
 
     lines.push('', '--- what would actually move this bill ---');
