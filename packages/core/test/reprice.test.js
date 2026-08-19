@@ -161,4 +161,35 @@ describe('repricing a profile onto another model', () => {
   it('says out loud that the token counts are assumed to survive the move', () => {
     assert.equal(reprice([call()]).sameTokensAssumed, true);
   });
+
+  it('flags cache traffic the target could not grant, with the no-cache price', () => {
+    // A 400-token call with cache reads, against Haiku's 4,096-token cache
+    // minimum: no call in the slice could create an entry, so the standard
+    // repriced figure grants rates the target would refuse — an error in the
+    // flattering direction. The no-cache figure is the honest one: all 400
+    // tokens at Haiku's full $1/MTok input rate = $0.0004 per call.
+    const [slice] = reprice([
+      call({ usage: { input_tokens: 100, cache_read_input_tokens: 300, output_tokens: 0 } }),
+    ]).slices;
+    assert.notEqual(slice.cacheBeyondTarget, null);
+    assert.equal(slice.cacheBeyondTarget.minTokens, 4096);
+    near(slice.cacheBeyondTarget.noCacheUsd, 400 / 1_000_000, 'no-cache price');
+    // And the no-cache figure is above the discounted one, as it must be:
+    // cache reads at 0.1x are the cheaper lie.
+    assert.ok(slice.cacheBeyondTarget.noCacheUsd > slice.targetUsd);
+  });
+
+  it('stays silent when the calls clear the minimum, or never cached at all', () => {
+    // 200k tokens clear any minimum in the catalogue.
+    const [cleared] = reprice([
+      call({ usage: { input_tokens: 100_000, cache_read_input_tokens: 100_000, output_tokens: 0 } }),
+    ]).slices;
+    assert.equal(cleared.cacheBeyondTarget, null);
+
+    // No cache traffic: nothing for the minimum to refuse.
+    const [uncached] = reprice([
+      call({ usage: { input_tokens: 400, output_tokens: 0 } }),
+    ]).slices;
+    assert.equal(uncached.cacheBeyondTarget, null);
+  });
 });

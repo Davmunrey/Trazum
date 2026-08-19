@@ -1059,6 +1059,12 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
       lines.push('');
       for (const slice of whatIf.slices.slice(0, 5)) {
         lines.push(`- ${mdText(t.profile.whatIfSlice(showLabel(slice.label), slice.model, formatUsd(slice.currentUsd), formatUsd(slice.targetUsd)))}`);
+        // The cache-minimum caveat, in place — the row above flatters the move.
+        if (slice.cacheBeyondTarget !== null) {
+          lines.push(
+            `  - ⚠️ ${mdText(t.profile.whatIfCacheBeyond(n(slice.maxCallInputTokens), n(slice.cacheBeyondTarget.minTokens), formatUsd(slice.cacheBeyondTarget.noCacheUsd)))}`,
+          );
+        }
       }
       lines.push('');
     }

@@ -9,6 +9,21 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**`--what-if` corrects the figure the target would refuse to bill.** A cache
+entry only forms above a model's minimum prompt size, and a slice whose
+largest call sits under the target's minimum could not create one — so the
+standard repriced figure grants cache traffic discounted rates the target
+would never concede, an error in exactly the flattering direction. Each
+affected slice now carries the correction in place, on every surface and in
+the JSON (`cacheBeyondTarget`: the target's minimum and the no-cache price —
+the figure the target would actually bill). Silent when the calls clear the
+minimum, when there was no cache traffic, or when the target's minimum is
+unknown: nothing is claimed against a threshold nobody stated.
+
 ## 1.31.0 — "The gate that explains itself"
 
 ### Added

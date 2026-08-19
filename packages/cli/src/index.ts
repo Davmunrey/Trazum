@@ -3377,6 +3377,17 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
         console.log(
           `    ${c.dim('·')} ${c.dim(wrap(t.profile.whatIfSlice(label, slice.model, formatUsd(slice.currentUsd), formatUsd(slice.targetUsd)), 74, '      '))}`,
         );
+        /**
+         * Cache traffic the target could not grant, said loudly and beside
+         * the figure it corrects. The standard row prices cache entries the
+         * target's minimum would refuse to create — an error that flatters
+         * the move, which is the direction this repository refuses.
+         */
+        if (slice.cacheBeyondTarget !== null) {
+          console.log(
+            `    ${c.yellow('!')} ${c.dim(wrap(t.profile.whatIfCacheBeyond(n(slice.maxCallInputTokens), n(slice.cacheBeyondTarget.minTokens), formatUsd(slice.cacheBeyondTarget.noCacheUsd)), 74, '      '))}`,
+          );
+        }
       }
     }
     /**
