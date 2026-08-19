@@ -514,6 +514,16 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.39.0 — Did it work?
+
+`trazum verify` holds a saved plan to the log that came after it, with three
+outcomes and never two: arrived, did not arrive, or cannot be told — a
+vanished workload, fields that stopped being recorded, or a tier tokens
+cannot see. Differences carry the world's measured movement from the plan's
+recorded baseline, a repricing is flagged instead of silently priced
+through, and `--gate` fails CI on broken promises and on a log that degraded
+itself. Fourth of the five in docs/plan-1.36-1.40.md.
+
 ### 1.38.0 — The plan
 
 `trazum plan` turns the report's findings into a ranked plan: route and batch
