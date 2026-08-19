@@ -27,6 +27,57 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.25.0 — "The retry, the archive and the shape in the tab"
+
+### The same request, sent again
+
+A conversation's input grows with every turn. So two consecutive calls in one
+conversation carrying *exactly* the same input size, seconds apart, is the
+shape of something going wrong:
+
+```
+  ! agent on Claude Opus 5: 5 of 6 calls re-sent the previous call's exact
+    input size within 60 seconds, in the same conversation, costing $5.00.
+```
+
+A retry after a timeout, an agent step repeating because a tool call failed, a
+loop that re-sends the whole context and gets nowhere — the call is billed in
+full, and on an agent workload the input *is* the bill. 1.23's
+`duplicateLines` catches the same line recorded twice; this catches two
+different calls that sent the same thing.
+
+Each call is compared only to the one immediately before it in the same
+session, inside a one-minute window, and only where the log carries both a
+session and a clock. It cannot see content, so it names the pattern and stops:
+every rendering says *usually* a retry or a loop, never that it is one. A lone
+repeat is not reported at all — a single retry after a timeout is ordinary.
+
+### Rotated logs are read as they are
+
+`logrotate`, Docker's json-file driver and every cloud log export compress
+yesterday's file, so a directory of a month's logs is one plain file and
+twenty-nine gzipped ones. Directory mode read the plain one and said nothing:
+a month's bill reported from a day of it.
+
+```bash
+trazum profile /var/log/llm/    # today.jsonl + 2026-08-*.jsonl.gz, one bill
+```
+
+Decided by extension rather than by sniffing the first two bytes — a `.jsonl`
+starting with `0x1f8b` is far more likely a corrupt log than a mislabelled
+archive — and a `.gz` that will not decompress is an error naming the file,
+never a bill quietly missing a day. `--against` accepts them too.
+
+### The input shape, in the browser
+
+The Bill tab gained the card the terminal and the CI summary already had: how
+big a slice's calls are, whether the large ones dwarf the ordinary one, and
+how much of that size was billed at the cache-read rate. Same threshold, same
+sentences — two surfaces summarising one log differently is a second opinion
+nobody asked for. Measured in your own tab, like everything else there.
+
+---
+
 ## 1.24.0 — "How big, how uneven, and the day it spiked"
 
 ### How big these calls actually are
