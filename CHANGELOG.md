@@ -13,6 +13,15 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**The same repricing in the browser.** The Bill tab gained the `--what-if`
+card: pick a model and this bill is repriced onto it in the page, with the
+same refusals the CLI makes — the assumption above the figure, calls too large
+for the target's context window named as impossible rather than priced as
+cheap, spend already on that model kept out of the difference. Repriced
+client-side like everything else in the tab: the log does not leave it to be
+compared. Verified by driving the built page in Chromium, with zero network
+requests recorded.
+
 **`--what-if <model>`: these exact calls at another rate card.** The levers
 section picks its own candidate; this answers the question the reader arrived
 with — "`classify` spent $4,000 on the frontier model, what would those calls

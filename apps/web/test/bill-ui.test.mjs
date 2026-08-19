@@ -217,6 +217,35 @@ describe('the bill tab reads the log in the browser and nowhere else', () => {
     assert.match(en, /grouped by and never shown|groups by it and never shows it/);
   });
 
+  it('reprices onto another model in the page, with the caveat above the figure', () => {
+    /**
+     * `--what-if` in the tab. The comparison is repriced client-side like
+     * everything else here, and the assumption has to render *before* the
+     * dollar figure: a number with the caveat underneath is a recommendation
+     * with small print, and this comparison has never seen a prompt.
+     */
+    assert.match(bill, /repriceProfile\(report, whatIfModel, BUNDLED_CATALOGUE\)/);
+    const assumption = bill.indexOf('t.bill.whatIfAssumption');
+    const total = bill.indexOf('t.bill.whatIfTotal');
+    assert.notEqual(assumption, -1, 'the what-if assumption is not rendered at all');
+    assert.ok(assumption < total, 'the assumption renders after the figure it qualifies');
+  });
+
+  it('names a call too large for the target model instead of pricing it', () => {
+    // A call over the target's context window would fail, not cost less, and
+    // the refusal is a warn-styled block rather than a line of muted prose.
+    assert.match(bill, /t\.bill\.whatIfOverContext/);
+    assert.match(bill, /whatIf\.overContext\.slice/);
+    const en = read('lib/i18n/en.ts');
+    assert.match(en, /Those calls would fail, not cost less/);
+    assert.match(en, /multiplication, not advice/);
+  });
+
+  it('keeps spend already on the target out of the difference', () => {
+    assert.match(bill, /whatIf\.alreadyOnTarget\.calls > 0/);
+    assert.match(bill, /t\.bill\.whatIfUnpriced/);
+  });
+
   it('does not redefine what the core already exports', () => {
     assert.equal(/function formatUsd/.test(bill), false);
     assert.match(bill, /formatUsd,\n\s*profileUsage|formatUsd/, 'formatUsd comes from @trazum/core');

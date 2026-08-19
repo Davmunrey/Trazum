@@ -349,6 +349,35 @@ export const en: WebMessages = {
       + 'and a RAG pipeline merged into a single figure, with one route suggested for both. Add '
       + '"label" to the record and the levers split by workload, which is the grouping a '
       + 'decision is actually made at.',
+    whatIfHeading: 'These same calls on another model',
+    whatIfPick: 'Price this bill on…',
+    whatIfNone: 'No model chosen.',
+    whatIfAssumption:
+      'This is multiplication, not advice: the same token counts at another rate card. It says '
+      + 'nothing about whether that model could do the work, and a model that answers at greater '
+      + 'length or gets retried would not send these counts at all.',
+    whatIfTotal: (current, target, delta) =>
+      `${current} of movable spend would have been ${target} — a difference of ${delta}.`,
+    whatIfCheaper:
+      'Verify before moving anything: the CLI measures one prompt against both models on your '
+      + 'own examples with trazum route.',
+    whatIfDearer: 'That direction costs more. The arithmetic is here so the number is not a guess.',
+    whatIfSlice: (label, model, current, target) => `${label} on ${model}: ${current} → ${target}`,
+    whatIfOverContext: (label, tokens, window, usd) =>
+      `${label} cannot move: its largest call carries ${tokens} input tokens and that model's `
+      + `window is ${window}. Those calls would fail, not cost less, so their ${usd} is excluded `
+      + 'from the figures above.',
+    whatIfAlreadyThere: (calls, usd) =>
+      `Already on that model: ${calls.toLocaleString('en-US')} `
+      + `${calls === 1 ? 'call' : 'calls'} worth ${usd}, left out of the figures above — money `
+      + 'that cannot move would make the difference look smaller than it is.',
+    whatIfUnpriced: (calls, models) =>
+      `Excluded: ${calls.toLocaleString('en-US')} ${calls === 1 ? 'call' : 'calls'} whose model `
+      + `has no price here (${models}). Their cost on the target is knowable; the difference is `
+      + 'not, because there is no current figure to subtract from.',
+    whatIfNothingToMove:
+      'Nothing to compare: every priced call in this log is already on that model, or too large '
+      + 'for its context window.',
     historyHeading: 'What re-sending the conversation costs',
     historyGrowth: (label, model, first, last, turns) =>
       `${label} on ${model}: input ranges from ${first} tokens on the smallest turn to ${last} `
