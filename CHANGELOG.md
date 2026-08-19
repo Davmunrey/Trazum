@@ -9,6 +9,20 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**Coverage drift in `--against`: what the comparison stopped being able to
+see.** The drivers name the dollars that moved; nothing named the findings
+that stopped being measurable. A log where `session` was on 98% of calls and
+is now on 4% has not fixed its conversation growth — it stopped recording the
+field that would show it, and every session-shaped finding went quiet for a
+reason that has nothing to do with the bill. A fixed finding and a blinded log
+are opposite facts that the dollars render identically; only coverage tells
+them apart, so the comparison now states any field whose share moved by 20
+points or more, in either direction, loud on a collapse and quiet on a gain.
+
 ## 1.29.0 — "The budget, the overlay and the small log"
 
 ### Added

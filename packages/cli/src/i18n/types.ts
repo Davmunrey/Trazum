@@ -769,6 +769,14 @@ export interface CliMessages {
      * money on both sides of the subtraction. Only decidable when both logs
      * carry a clock; unknown stays silent rather than reassuring.
      */
+    /**
+     * What the comparison stopped being able to see. Dollars cannot tell a
+     * fixed finding from a field the log stopped recording; only coverage can,
+     * so the copy names the threshold and states the distinction.
+     */
+    coverageField(field: string): string;
+    coverageDrift(field: string, was: string, now: string): string;
+    coverageDriftWhy(): string;
     againstOverlap(from: string, to: string): string;
     /**
      * What one conversation costs — median against p95, never a mean: one

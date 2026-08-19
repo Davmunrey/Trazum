@@ -1173,6 +1173,12 @@ ${bold('EXAMPLES')}
       `The 95th percentile is ${ratio}x the median there: most conversations are cheap and a few are not, which is a tail a quota can catch. Where median and p95 sit close together the workload is simply expensive and there is no tail to hunt.`,
     sessionSpendOnly: (sessions, max) =>
       `${sessions} ${sessions === '1' ? 'conversation' : 'conversations'} in this log; the most expensive cost ${max}. Too few per workload for a percentile — a maximum is a fact at any count, and it is the figure --max-session-usd judges.`,
+    coverageField: (field) =>
+      ({ label: 'label', session: 'session', ts: 'timestamp', stopReason: 'stop reason' })[field] ?? field,
+    coverageDrift: (field, was, now) =>
+      `Coverage moved: ${field} was on ${was} of records and is now on ${now}.`,
+    coverageDriftWhy: () =>
+      'A field the log stopped recording is not a finding that got fixed — every finding that needed it has gone quiet for a reason that has nothing to do with the bill. Reported from a 20-point move in either direction; a field that appeared means this report can see what the previous one could not.',
     againstOverlap: (from, to) =>
       `These two logs both cover ${from} → ${to}, so some of the same calls sit on both sides of this subtraction and part of the change is the same money counted twice. Compare periods that do not overlap — or window both logs with --since/--until.`,
     windowLine: (since, until) =>

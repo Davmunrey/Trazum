@@ -20,6 +20,7 @@ import {
   countTokensAnthropic,
   DEFAULT_USAGE,
   detectFromSource,
+  coverageDrift,
   driversBetween,
   estimateTokens,
   evaluate,
@@ -3641,6 +3642,36 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
         for (const d of modelDrivers.slice(0, 3)) {
           const line = driverLine(d, d.key);
           console.log(`  ${d.delta > 0 ? c.yellow(line) : c.dim(line)}`);
+        }
+      }
+
+      /**
+       * What the comparison stopped being able to see.
+       *
+       * Every figure above is dollars, and dollars cannot tell a finding that
+       * was fixed from a finding whose field the log stopped recording — both
+       * are silence. This is the only section that can, so it is loud: a
+       * collapse in coverage invalidates whichever findings depended on it,
+       * and reading the drop as good news is the specific mistake it exists
+       * to prevent.
+       */
+      const drifts = coverageDrift(previous.fieldCoverage, report.fieldCoverage);
+      if (drifts.length > 0) {
+        console.log();
+        for (const drift of drifts) {
+          const line = t.profile.coverageDrift(
+            t.profile.coverageField(drift.field),
+            pct(drift.was),
+            pct(drift.now),
+          );
+          console.log(
+            drift.delta < 0
+              ? `  ${c.yellow('!')} ${c.bold(wrap(line, 74, '    '))}`
+              : `  ${c.dim(wrap(line, 74, '  '))}`,
+          );
+        }
+        if (drifts.some((d) => d.delta < 0)) {
+          console.log(`  ${c.dim(wrap(t.profile.coverageDriftWhy(), 74, '    '))}`);
         }
       }
     }

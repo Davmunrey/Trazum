@@ -1188,6 +1188,12 @@ ${bold('EJEMPLOS')}
       `El percentil 95 es ${ratio}x la mediana ahí: casi todas las conversaciones son baratas y unas pocas no, y esa es una cola que una cuota puede cazar. Cuando mediana y p95 quedan cerca, la carga es cara sin más y no hay cola que perseguir.`,
     sessionSpendOnly: (sessions, max) =>
       `${sessions} ${sessions === '1' ? 'conversación' : 'conversaciones'} en este registro; la más cara costó ${max}. Demasiado pocas por carga para un percentil — un máximo es un hecho con cualquier recuento, y es la cifra que juzga --max-session-usd.`,
+    coverageField: (field) =>
+      ({ label: 'etiqueta', session: 'sesión', ts: 'marca de tiempo', stopReason: 'razón de parada' })[field] ?? field,
+    coverageDrift: (field, was, now) =>
+      `La cobertura se movió: ${field} estaba en el ${was} de los registros y ahora está en el ${now}.`,
+    coverageDriftWhy: () =>
+      'Un campo que el registro dejó de grabar no es un hallazgo arreglado — todo hallazgo que lo necesitaba se ha callado por un motivo que nada tiene que ver con la factura. Se informa a partir de 20 puntos de movimiento en cualquier dirección; un campo que aparece significa que este informe ve lo que el anterior no podía.',
     againstOverlap: (from, to) =>
       `Estos dos registros cubren ambos ${from} → ${to}, así que algunas de las mismas llamadas están a los dos lados de esta resta y parte del cambio es el mismo dinero contado dos veces. Compara periodos que no se solapen — o acota ambos registros con --since/--until.`,
     windowLine: (since, until) =>
