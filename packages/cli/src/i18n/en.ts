@@ -345,6 +345,11 @@ ${bold('CONFIG FILE')}
     spend     { "maxUsd": 200, "byLabel": { "chat": 40 } } — money budgets for
               "trazum profile", in dollars. A budgeted label with no calls in
               the log is reported as not measured, never as a pass
+    waive     [{ "gate": "maxUsd", "reason": "August migration", "until":
+              "2026-09-15" }] — a gate failure decided about, on the record.
+              All three fields required: a waiver with no end date is a
+              finding deleted with extra steps. Waived failures still print,
+              and the day the waiver expires the gate fails again
 
   Flags beat the config; the config beats the defaults. Budgets resolve to the
   most specific matching pattern — most literal characters wins. A boolean the
@@ -1199,6 +1204,10 @@ ${bold('EXAMPLES')}
       `The 95th percentile is ${ratio}x the median there: most conversations are cheap and a few are not, which is a tail a quota can catch. Where median and p95 sit close together the workload is simply expensive and there is no tail to hunt.`,
     sessionSpendOnly: (sessions, max) =>
       `${sessions} ${sessions === '1' ? 'conversation' : 'conversations'} in this log; the most expensive cost ${max}. Too few per workload for a percentile — a maximum is a fact at any count, and it is the figure --max-session-usd judges.`,
+    waiveActive: (gate, reason, until, daysLeft) =>
+      `WAIVED — the ${gate} failure above is on the record and silenced until ${until} (${daysLeft} days left): "${reason}". The bill still counts it; only the exit code is quiet, and the day the waiver expires this gate fails again.`,
+    waiveExpired: (gate, until, reason) =>
+      `The waiver on ${gate} expired on ${until} and no longer silences anything. It was written for: "${reason}". Renew it with a new date and a current reason, or fix what it was covering — an expired waiver left in place is a finding deleted with extra steps.`,
     gateLargest: (label, model, usd, share) =>
       `Most of it is ${label} on ${model}: ${usd}, ${share} of the bill. That is where the money is, not necessarily where the fix is.`,
     gateLever: (label, action, saving, overage, covers) =>

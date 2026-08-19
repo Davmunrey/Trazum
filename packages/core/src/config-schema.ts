@@ -56,6 +56,15 @@ export interface BaselineConfig {
  * rather than reporting green over an absence. That is the same three-state
  * rule the counts, the timestamps and the stop reasons all follow.
  */
+export interface WaiveEntry {
+  /** One of `WAIVABLE_GATES`, or `byLabel:<label>` for one label's budget. */
+  gate: string;
+  /** Why, in prose. Required: a silence nobody can audit is not a decision. */
+  reason: string;
+  /** The day the waiver stops silencing, `YYYY-MM-DD`, judged in UTC at run time. */
+  until: string;
+}
+
 export interface SpendConfig {
   /** Whole-log budget. `--max-usd` overrides it. */
   maxUsd?: number;
@@ -112,6 +121,17 @@ export interface TrazumConfig {
    * the config, as everywhere in this tool.
    */
   spend?: SpendConfig;
+  /**
+   * Findings as policy: a gate failure the team has looked at and decided to
+   * live with, on the record, for a bounded time.
+   *
+   * All three fields are required, and the expiry is the entire mechanism by
+   * which a waiver stays a decision instead of becoming a habit: a waiver
+   * with no end date is a finding deleted with extra steps, and a reasonless
+   * one is a silence nobody can audit. Waived failures render as waived,
+   * never hidden — the bill still counts them; only the exit code is quiet.
+   */
+  waive?: WaiveEntry[];
   /** Default for `trazum diff --max-growth`, in tokens. */
   maxGrowth?: number;
   /**
@@ -149,6 +169,7 @@ export const CONFIG_KEYS = [
   'budgets',
   'labels',
   'spend',
+  'waive',
   'maxGrowth',
   'baseline',
   'extensions',
@@ -158,6 +179,21 @@ export const CONFIG_KEYS = [
 export const CONFIG_BASELINE_KEYS = ['path', 'maxGrowthTokens', 'maxGrowthPct'] as const;
 
 export const CONFIG_SPEND_KEYS = ['maxUsd', 'maxDayUsd', 'maxSessionUsd', 'byLabel'] as const;
+
+export const CONFIG_WAIVE_KEYS = ['gate', 'reason', 'until'] as const;
+
+/**
+ * The gates a waiver can silence. The list is closed on purpose: a waiver
+ * naming a gate that does not exist is a decision about nothing, and the
+ * error names what does exist. `byLabel:<label>` waives one label's budget.
+ */
+export const WAIVABLE_GATES = [
+  'maxUsd',
+  'maxDayUsd',
+  'maxSessionUsd',
+  'maxCacheLossUsd',
+  'maxGrowthUsd',
+] as const;
 
 export const CONFIG_USAGE_KEYS = [
   'model',
@@ -366,6 +402,53 @@ function parseSpend(raw: unknown, source: string): SpendConfig {
 }
 
 /**
+ * Validates the `waive` list.
+ *
+ * Every field is required, and the refusals are the design: a waiver with no
+ * expiry is a finding deleted with extra steps, a reasonless one is a silence
+ * nobody can audit, and one naming an unknown gate is a decision about
+ * nothing. The expiry is *not* checked against today here — a config file is
+ * timeless, and whether a waiver is expired is judged where the gate runs.
+ */
+function parseWaive(raw: unknown, source: string): WaiveEntry[] {
+  if (!Array.isArray(raw)) throw new ConfigError('"waive" must be an array', source);
+  return raw.map((entry, index) => {
+    const at = `waive[${index}]`;
+    if (!isPlainObject(entry)) throw new ConfigError(`"${at}" must be an object`, source);
+    rejectUnknownKeys(entry, CONFIG_WAIVE_KEYS, source, `${at}.`);
+
+    const gate = entry.gate;
+    if (typeof gate !== 'string' || gate.trim().length === 0) {
+      throw new ConfigError(`"${at}.gate" is required`, source);
+    }
+    const known =
+      (WAIVABLE_GATES as readonly string[]).includes(gate) ||
+      (gate.startsWith('byLabel:') && gate.length > 'byLabel:'.length);
+    if (!known) {
+      throw new ConfigError(
+        `"${at}.gate" names no gate: "${gate}". Waivable: ${WAIVABLE_GATES.join(', ')}, or byLabel:<label>.`,
+        source,
+      );
+    }
+    const reason = entry.reason;
+    if (typeof reason !== 'string' || reason.trim().length === 0) {
+      throw new ConfigError(
+        `"${at}.reason" is required, in prose. A silence nobody can audit is not a decision.`,
+        source,
+      );
+    }
+    const until = entry.until;
+    if (typeof until !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(until) || !Number.isFinite(Date.parse(`${until}T00:00:00Z`))) {
+      throw new ConfigError(
+        `"${at}.until" is required and must be a date like 2026-09-15. A waiver with no end date is a finding deleted with extra steps.`,
+        source,
+      );
+    }
+    return { gate, reason: reason.trim(), until };
+  });
+}
+
+/**
  * Validates the `baseline` block.
  *
  * **A baseline with no threshold is an error, not a default.** Either default is
@@ -514,6 +597,7 @@ export function parseConfig(raw: string, source = CONFIG_FILENAME): TrazumConfig
   if (document.budgets !== undefined) config.budgets = parseBudgets(document.budgets, source);
   if (document.labels !== undefined) config.labels = parseLabels(document.labels, source);
   if (document.spend !== undefined) config.spend = parseSpend(document.spend, source);
+  if (document.waive !== undefined) config.waive = parseWaive(document.waive, source);
   if (document.baseline !== undefined) {
     config.baseline = parseBaselineConfig(document.baseline, source);
   }

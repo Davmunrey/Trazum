@@ -348,6 +348,12 @@ ${bold('FICHERO DE CONFIGURACIÓN')}
     spend     { "maxUsd": 200, "byLabel": { "chat": 40 } } — presupuestos en
               dólares para "trazum profile". Una etiqueta con presupuesto y sin
               llamadas se informa como no medida, nunca como aprobada
+    waive     [{ "gate": "maxUsd", "reason": "migración de agosto", "until":
+              "2026-09-15" }] — un fallo de gate sobre el que se ha decidido,
+              registrado. Los tres campos son obligatorios: un waiver sin
+              fecha de fin es un hallazgo borrado con pasos extra. Los fallos
+              waived se siguen imprimiendo, y el día que caduca el gate
+              vuelve a fallar
 
   Las opciones ganan al config; el config gana a los valores por defecto. Los
   presupuestos se resuelven con el patrón más específico que encaje — gana el
@@ -1214,6 +1220,10 @@ ${bold('EJEMPLOS')}
       `El percentil 95 es ${ratio}x la mediana ahí: casi todas las conversaciones son baratas y unas pocas no, y esa es una cola que una cuota puede cazar. Cuando mediana y p95 quedan cerca, la carga es cara sin más y no hay cola que perseguir.`,
     sessionSpendOnly: (sessions, max) =>
       `${sessions} ${sessions === '1' ? 'conversación' : 'conversaciones'} en este registro; la más cara costó ${max}. Demasiado pocas por carga para un percentil — un máximo es un hecho con cualquier recuento, y es la cifra que juzga --max-session-usd.`,
+    waiveActive: (gate, reason, until, daysLeft) =>
+      `WAIVED — el fallo de ${gate} de arriba queda registrado y silenciado hasta ${until} (${daysLeft} días restantes): "${reason}". La factura lo sigue contando; solo el código de salida calla, y el día que caduque el waiver este gate vuelve a fallar.`,
+    waiveExpired: (gate, until, reason) =>
+      `El waiver de ${gate} caducó el ${until} y ya no silencia nada. Se escribió por: "${reason}". Renuévalo con fecha nueva y razón vigente, o arregla lo que cubría — un waiver caducado dejado ahí es un hallazgo borrado con pasos extra.`,
     gateLargest: (label, model, usd, share) =>
       `La mayor parte es ${label} en ${model}: ${usd}, el ${share} de la factura. Ahí está el dinero, no necesariamente el arreglo.`,
     gateLever: (label, action, saving, overage, covers) =>

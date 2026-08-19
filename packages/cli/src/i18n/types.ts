@@ -784,6 +784,13 @@ export interface CliMessages {
      * computed. Nothing here recommends: whether the cheaper model can do the
      * work is the reader's to judge, and the copy says so.
      */
+    /**
+     * Findings as policy. An active waiver silences one gate's exit code, on
+     * the record, with the reason and the days left; an expired one silences
+     * nothing and says so beside the failure it used to cover.
+     */
+    waiveActive(gate: string, reason: string, until: string, daysLeft: string): string;
+    waiveExpired(gate: string, until: string, reason: string): string;
     gateLargest(label: string, model: string, usd: string, share: string): string;
     gateLever(label: string, action: string, saving: string, overage: string, covers: boolean): string;
     /**

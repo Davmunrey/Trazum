@@ -2312,6 +2312,46 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
    */
   const gateVerdicts: string[] = [];
   let gateFailed = false;
+  /**
+   * Findings as policy. A waiver silences one gate's exit code for a bounded
+   * time, on the record: the failure still prints (waived is shown as
+   * waived, never hidden — the bill still counts it), the reason and the
+   * days left print beside it, and the day the waiver expires the gate
+   * fails again louder, naming the date and the reason somebody wrote.
+   * That expiry is the entire mechanism by which a waiver stays a decision
+   * instead of becoming a habit.
+   */
+  const waiverFor = (gate: string): { entry: { gate: string; reason: string; until: string }; expired: boolean } | null => {
+    const entry = (config.waive ?? []).find((w) => w.gate === gate);
+    if (entry === undefined) return null;
+    // The waiver covers its named day whole: expiry begins the next UTC day.
+    const expiresMs = Date.parse(`${entry.until}T00:00:00Z`) + 86_400_000;
+    return { entry, expired: Date.now() >= expiresMs };
+  };
+  /**
+   * Applies a waiver to one failing gate. Returns true when the failure is
+   * silenced — the caller skips its exitCode — and prints the record either
+   * way, because a waived failure that vanished from the output would be a
+   * finding deleted with extra steps.
+   */
+  const waived = (gate: string): boolean => {
+    const found = waiverFor(gate);
+    if (found === null) return false;
+    if (found.expired) {
+      console.error(
+        c.red(t.profile.waiveExpired(gate, found.entry.until, found.entry.reason)),
+      );
+      return false;
+    }
+    const daysLeft = Math.max(
+      0,
+      Math.ceil((Date.parse(`${found.entry.until}T00:00:00Z`) + 86_400_000 - Date.now()) / 86_400_000),
+    );
+    console.error(
+      c.yellow(t.profile.waiveActive(gate, found.entry.reason, found.entry.until, String(daysLeft))),
+    );
+    return true;
+  };
   const applyGates = (): void => {
     /**
      * Before any verdict: whether the gated figure is the whole bill. A gate
@@ -2358,7 +2398,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
         }
         if (usd > limit) {
           console.error(c.red(t.profile.labelBudgetFailed(label, formatUsd(usd), formatUsd(limit))));
-          process.exitCode = 1;
+          if (!waived(`byLabel:${label}`)) process.exitCode = 1;
         } else {
           console.error(c.dim(t.profile.labelBudgetOk(label, formatUsd(usd), formatUsd(limit))));
         }
@@ -2431,7 +2471,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
          * copy says so.
          */
         explainFailure(report.total.totalUsd - maxUsd);
-        process.exitCode = 1;
+        if (!waived('maxUsd')) process.exitCode = 1;
       } else {
         console.error(c.dim(t.profile.maxUsdOk(formatUsd(report.total.totalUsd), formatUsd(maxUsd))));
         explainMargin(report.total.totalUsd, maxUsd);
@@ -2465,10 +2505,13 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
             ),
           ),
         );
+        // Deliberately unwaivable: this failure is "the comparison cannot
+        // be made", and a waiver on unmeasurability would be a decision to
+        // stop measuring — not a budget decision with an end date.
         process.exitCode = 1;
       } else if (againstDelta > maxGrowth) {
         console.error(c.red(t.profile.maxGrowthUsdFailed(formatSignedUsd(againstDelta), formatUsd(maxGrowth))));
-        process.exitCode = 1;
+        if (!waived('maxGrowthUsd')) process.exitCode = 1;
       }
     }
     /**
@@ -2486,7 +2529,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
         console.error(
           c.red(t.profile.maxCacheLossFailed(formatUsd(gateCache.deltaUsd), formatUsd(maxLoss))),
         );
-        process.exitCode = 1;
+        if (!waived('maxCacheLossUsd')) process.exitCode = 1;
       } else if (gateCache.worstCaseDeltaUsd > maxLoss) {
         console.error(
           c.red(
@@ -2497,7 +2540,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
             ),
           ),
         );
-        process.exitCode = 1;
+        if (!waived('maxCacheLossUsd')) process.exitCode = 1;
       } else {
         console.error(
           c.dim(t.profile.maxCacheLossOk(formatUsd(Math.max(0, gateCache.worstCaseDeltaUsd)), formatUsd(maxLoss))),
@@ -2546,7 +2589,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
             c.red(`${t.profile.maxDayFailed(worst.day, formatUsd(worst.usd), formatUsd(maxDay))}${suspect}`),
           );
           explainFailure(worst.usd - maxDay, { namesLargest: true });
-          process.exitCode = 1;
+          if (!waived('maxDayUsd')) process.exitCode = 1;
         } else {
           console.error(c.dim(t.profile.maxDayOk(worst.day, formatUsd(worst.usd), formatUsd(maxDay))));
           explainMargin(worst.usd, maxDay);
@@ -2588,7 +2631,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
           c.red(t.profile.maxSessionFailed(formatUsd(report.sessionSpend.maxUsd), formatUsd(maxSession), n(report.sessionSpend.sessions))),
         );
         explainFailure(report.sessionSpend.maxUsd - maxSession);
-        process.exitCode = 1;
+        if (!waived('maxSessionUsd')) process.exitCode = 1;
       } else {
         console.error(
           c.dim(t.profile.maxSessionOk(formatUsd(report.sessionSpend.maxUsd), formatUsd(maxSession), n(report.sessionSpend.sessions))),
