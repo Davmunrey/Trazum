@@ -731,6 +731,15 @@ export interface CliMessages {
     maxDayNoClock(): string;
     maxDayUndated(calls: string): string;
     /**
+     * The per-conversation gate. The single most expensive conversation is
+     * the number a per-conversation policy judges; a log with no sessions
+     * fails, and a conversation that started before the log makes the pass
+     * a floor — said in the pass message. The session key never appears.
+     */
+    maxSessionOk(worst: string, max: string, sessions: string): string;
+    maxSessionFailed(worst: string, max: string, sessions: string): string;
+    maxSessionNoSessions(): string;
+    /**
      * The price table behind every dollar in the report, when it is old
      * enough to matter. Unlike a skipped line, staleness does not name its
      * own size — the error is exactly whatever the provider changed.

@@ -52,6 +52,7 @@ key that disappears fails, and a key added without a line here fails too.
 | `timeWindow` | The `--since`/`--until` filter applied, with the clockless calls it excluded. `null` when unfiltered. |
 | `singleTurnCacheWrites` | Cache writes by conversations that never came back — a ceiling, or a fact when the slice read nothing. |
 | `sessionCosts` | What one conversation costs: median, p95 and maximum per slice. |
+| `sessionSpend` | The whole log's conversations summarised for a per-conversation budget: how many, and what the single most expensive one cost. `null` when no record carried a session. |
 | `cache` | Whether caching paid for itself over the whole log, with the worst case when the TTL was not recorded. |
 | `cacheByLabel` | The same verdict per workload — where a total hides a loss. |
 | `pricing` | Which price table produced these dollars, and how many days old it is. |
