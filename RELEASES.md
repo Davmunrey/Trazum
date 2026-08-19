@@ -40,6 +40,51 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.30.0 — "The report as a diff"
+
+### What the comparison stopped being able to see
+
+`--against` names the dollars that moved. Nothing named the findings that
+stopped being *measurable* — and those look exactly like good news:
+
+```
+$4.00 → $4.00 · +0.0%
+! Coverage moved: session was on 100.0% of records and is now on 0.0%.
+  Gone quiet with it: conversation growth, per-conversation cost, repeated
+  turns, truncation retries and the cache-TTL fit.
+```
+
+The bill is identical on both sides, which is exactly why this exists: a log
+that stopped recording `session` has not fixed its conversation growth, it
+went blind to it. A fixed finding and a blinded log are opposite facts the
+dollars render identically, and coverage is the only thing that tells them
+apart. Shares rather than counts, so two logs of different sizes compare;
+20 points in either direction, stated in the copy; loud on a collapse, quiet
+on a gain, because seeing more is not a regression.
+
+### The gate refuses a comparison it cannot make
+
+`--max-growth-usd` now fails when this log stopped recording a field the
+previous one carried, before it judges the dollars at all:
+
+```
+FAILED — this log stopped recording session (100.0% of records before, 0.0%
+now), so the comparison cannot be made. That is not a pass: a bill whose
+growth nobody could measure is not a bill that stayed flat.
+```
+
+The same refusal `--max-day-usd` makes on a clockless log and
+`--max-session-usd` on a sessionless one. A field that *appeared* never
+refuses.
+
+### The same finding on all three surfaces
+
+The CLI, the MCP's `profile_usage` and the web bill render the drift at the
+same threshold with the same split, so an agent relaying "spend flat, all
+clear" cannot do it off a log that stopped measuring.
+
+---
+
 ## 1.29.0 — "The budget, the overlay and the small log"
 
 ### The unit an agent product blows up in
