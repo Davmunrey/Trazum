@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.27.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.28.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the
 release PR, authenticated by the token fallback and carrying an OIDC-signed
 provenance attestation. 1.25.0 before it went out by hand on 2026-08-19, after
@@ -37,6 +37,42 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.28.0 — "The retry bill, the series and the standing word"
+
+### The billed-again half, measured
+
+The truncation finding has always said cut-off answers are *frequently
+retried — billed again*, and that half was an assertion. Now it is a count
+and two dollar figures:
+
+```
+  ! draft on Claude Opus 5: 2 of 3 truncated answers were followed within
+    120 seconds by another call in the same conversation — $4.00 spent on
+    the cut attempts, plus $4.00 on the follow-ups.
+```
+
+Attributed to the truncated call's slice — where the `max_tokens` ceiling
+that caused the pair lives — with the checkable denominator, a two-minute
+window, and the hedge in every rendering: the log cannot see content, so
+the pair is a shape, not a certainty. A single pair is not reported.
+
+### The drift, day by day
+
+`--csv-shape model-day` writes one row per UTC day *and* model — the long
+format a pivot table or a chart takes as-is — and `spendByDay` in `--json`
+carries the same per-model split, so `modelMixDrift` stays the summary and
+the raw series is available whole. No total row, model ids formula-defused,
+unpriced models absent.
+
+### The standing word
+
+`spend.maxDayUsd` in `trazum.config.json` arms the per-day gate from the
+repository instead of one CI invocation. The flag still wins when both are
+present, and the config path inherits the refusal: a log with no timestamps
+fails the day budget, because "not measured" is not "under budget".
 
 ---
 

@@ -514,6 +514,15 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.28.0 — The retry bill, the series and the standing word
+
+`truncationRetries` measures the "billed again" half of truncation — cut
+answers followed inside two minutes by another call in the same
+conversation, priced on both sides, with the checkable denominator.
+`--csv-shape model-day` ships the mix as a day-by-day series, and
+`spend.maxDayUsd` moves the day budget into the repository's standing
+config.
+
 ### 1.27.0 — The ceiling, the drift and the tab in step
 
 `contextPressure` reports each slice's largest call against its own model's
