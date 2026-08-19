@@ -367,6 +367,11 @@ export const es: WebMessages = {
       + 'propios ejemplos, con trazum route.',
     whatIfDearer:
       'Esa dirección cuesta más. La aritmética está aquí para que el número no sea una suposición.',
+    whatIfCacheBeyond: (largest, min, noCache) =>
+      `Su tráfico de caché no podría existir allí: la llamada más grande tiene ${largest} tokens `
+      + `frente al mínimo de caché de ${min} tokens del destino, así que ninguna llamada de este `
+      + `slice podría crear una entrada. Sin la caché los mismos tokens cuestan ${noCache} — la `
+      + 'cifra que el destino facturaría de verdad; la fila de arriba favorece el traslado.',
     whatIfSlice: (label, model, current, target) => `${label} en ${model}: ${current} → ${target}`,
     whatIfOverContext: (label, tokens, window, usd) =>
       `${label} no puede moverse: su llamada más grande lleva ${tokens} tokens de entrada y la `

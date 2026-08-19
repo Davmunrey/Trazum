@@ -189,6 +189,13 @@ describe('the bill tab reads the log in the browser and nowhere else', () => {
     assert.match(bill, /p95Usd > 10 \* shape\.medianUsd/);
   });
 
+  it('corrects the what-if figure the target would refuse to bill', () => {
+    // The discounted row prices cache entries the target's minimum would
+    // refuse to create; the correction renders beside it, never instead of it.
+    assert.match(bill, /t\.bill\.whatIfCacheBeyond\(/);
+    assert.match(bill, /slice\.cacheBeyondTarget !== null && \(/);
+  });
+
   it('names what the comparison stopped being able to see', () => {
     // The dollars render a fixed finding and a blinded log identically; the
     // card exists because only coverage tells them apart, and the silenced

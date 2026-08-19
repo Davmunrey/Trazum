@@ -74,6 +74,23 @@ export interface RepricedSlice {
   deltaUsd: number;
   /** The slice's largest single call, cache reads and writes included. */
   maxCallInputTokens: number;
+  /**
+   * Present when the slice's cache traffic could not exist on the target.
+   *
+   * A cache entry only forms above the model's minimum prompt size, and when
+   * even this slice's largest call sits under the target's minimum, none of
+   * its calls could create one — so `targetUsd`, which grants the cache
+   * traffic the target's discounted rates, is priced on entries the target
+   * would refuse to create. That error flatters the move, which is exactly
+   * the direction this repository refuses. `noCacheUsd` is the same tokens
+   * with every cache token at the full input rate: the figure the target
+   * would actually bill if the entries cannot form. The truth sits at
+   * `noCacheUsd` (no entries) — not between the two by interpolation.
+   *
+   * Null when the slice has no cache traffic, or when its calls clear the
+   * target's minimum — where the standard figure stands unqualified.
+   */
+  cacheBeyondTarget: { minTokens: number; noCacheUsd: number } | null;
 }
 
 /** A slice holding a call the target model could not have accepted. */
@@ -194,6 +211,38 @@ export function repriceProfile(
     }
     const targetUsd = priceTokensOn(breakdown, target, on);
     assumedWriteTtlCalls += breakdown.assumedWriteTtlCalls;
+    /**
+     * Cache traffic the target could not grant. The comparison is against the
+     * slice's *largest* call: if even that one sits under the target's cache
+     * minimum, no call in the slice could create an entry, and that is a fact
+     * rather than a guess. A slice whose largest call clears the minimum may
+     * still hold smaller calls that do not — undecidable per call from an
+     * aggregate, so nothing is claimed there.
+     */
+    const cacheTokens =
+      breakdown.cacheReadTokens + breakdown.cacheWrite5mTokens + breakdown.cacheWrite1hTokens;
+    // A null minimum is an *unknown* one — overlay-added models leave it null
+    // rather than invent a number — and nothing can be claimed against a
+    // threshold nobody stated. Unqualified is the only honest rendering there.
+    const cacheBeyondTarget =
+      cacheTokens > 0 &&
+      target.cacheMinTokens !== null &&
+      breakdown.maxCallInputTokens < target.cacheMinTokens
+        ? {
+            minTokens: target.cacheMinTokens,
+            noCacheUsd: priceTokensOn(
+              {
+                inputTokens: breakdown.inputTokens + cacheTokens,
+                cacheReadTokens: 0,
+                cacheWrite5mTokens: 0,
+                cacheWrite1hTokens: 0,
+                outputTokens: breakdown.outputTokens,
+              },
+              target,
+              on,
+            ),
+          }
+        : null;
     slices.push({
       label: slice.label,
       model: slice.model,
@@ -202,6 +251,7 @@ export function repriceProfile(
       targetUsd,
       deltaUsd: targetUsd - breakdown.totalUsd,
       maxCallInputTokens: breakdown.maxCallInputTokens,
+      cacheBeyondTarget,
     });
   }
 

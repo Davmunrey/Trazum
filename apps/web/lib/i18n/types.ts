@@ -301,6 +301,12 @@ export interface WebMessages {
     whatIfTotal(current: string, target: string, delta: string): string;
     whatIfCheaper: string;
     whatIfDearer: string;
+    /**
+     * Cache traffic the target's minimum would refuse: the standard repriced
+     * figure grants discounted rates to entries that could not form — an
+     * error in the flattering direction, corrected beside the figure.
+     */
+    whatIfCacheBeyond(largest: string, min: string, noCache: string): string;
     whatIfSlice(label: string, model: string, current: string, target: string): string;
     whatIfOverContext(label: string, tokens: string, window: string, usd: string): string;
     whatIfAlreadyThere(calls: number, usd: string): string;

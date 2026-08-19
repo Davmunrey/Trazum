@@ -119,6 +119,26 @@ describe('trazum profile --what-if', () => {
     assert.ok(Math.abs(whatIf.deltaUsd + 0.8) < 1e-9, String(whatIf.deltaUsd));
   });
 
+  it('flags cache traffic the target could not grant, on every surface', async () => {
+    // 400-token calls with cache reads against Haiku's 4,096-token cache
+    // minimum: no entry could form, and the standard row flatters the move.
+    const tiny = call({ usage: { input_tokens: 100, cache_read_input_tokens: 300, output_tokens: 0 } });
+    const text = await run([tiny, tiny], ['--what-if', HAIKU]);
+    assert.equal(text.status, 0, text.stderr);
+    const out = `${text.stdout}${text.stderr}`.replace(/\s+/g, ' ');
+    assert.match(out, /cache traffic could not exist there/);
+    assert.match(out, /4,096-token cache minimum/);
+    assert.match(out, /the row above flatters the move/);
+
+    // The JSON carries the same caveat inside the slice, so a consumer
+    // cannot print the discounted figure without the correction beside it.
+    const json = await run([tiny, tiny], ['--what-if', HAIKU, '--json']);
+    const { whatIf } = JSON.parse(json.stdout);
+    const [slice] = whatIf.slices;
+    assert.equal(slice.cacheBeyondTarget.minTokens, 4096);
+    assert.ok(slice.cacheBeyondTarget.noCacheUsd > slice.targetUsd);
+  });
+
   it('applies the same window as the report it compares', async () => {
     // A windowed bill compared against an unwindowed repricing would state a
     // difference over calls the report above does not contain.

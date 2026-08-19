@@ -1086,6 +1086,18 @@ const PROFILE: ToolDefinition = {
           lines.push(
             `  ${shown} on ${slice.model}: ${formatUsd(slice.currentUsd)} → ${formatUsd(slice.targetUsd)}`,
           );
+          // Cache traffic the target's minimum would refuse: the row above
+          // grants discounted rates to entries that could not form — an error
+          // in the flattering direction, so it is corrected in place.
+          if (slice.cacheBeyondTarget !== null) {
+            lines.push(
+              `  Its cache traffic could not exist there: the largest call is `
+                + `${slice.maxCallInputTokens.toLocaleString('en-US')} tokens against the target's `
+                + `${slice.cacheBeyondTarget.minTokens.toLocaleString('en-US')}-token cache minimum, so no call in `
+                + `this slice could create an entry. Without the cache the same tokens cost `
+                + `${formatUsd(slice.cacheBeyondTarget.noCacheUsd)} — the figure the target would actually bill.`,
+            );
+          }
         }
       }
       for (const slice of whatIf.overContext.slice(0, 3)) {
