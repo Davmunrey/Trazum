@@ -198,18 +198,35 @@ asserts no workflow reaches for one.
    it: no tag was pushed, so the repository went on telling visitors nothing was
    installable while three packages sat on the registry. Publication does not
    reverse, so the assertion is one-directional now.
-6. `npm run verify`, and read the exit code rather than the output.
-7. Merge, then tag the merge commit and push it:
+6. **Sweep every `.md` in the repository** — the standing rule: a release is
+   not cut until all the documentation says so. Three of them are enforced by
+   `publish.test.js` (`RELEASES.md` must have the version's section,
+   `CHANGELOG.md` its heading, `ROADMAP.md` a mention), so `verify` fails a
+   release prep that skipped them. The rest is a two-minute grep for what the
+   tests cannot know is stale:
 
    ```bash
-   git tag v1.2.0 && git push origin v1.2.0
+   git grep -nE "<previous version>" -- '*.md' ':!CHANGELOG.md' ':!RELEASES.md'
    ```
 
-   **While the trusted publisher stays broken (step 3), invert this**: publish
-   by hand first, *then* push the tag. The workflow's preflight finds every
-   version already on the registry, skips the uploads, and still creates the
-   GitHub release from `RELEASES.md` — a green run instead of a red one. That
-   is exactly how 1.25.0 shipped.
+   Anything that surfaces is either history (fine where it is) or a claim
+   about the present (update it). The README's action pin is the known
+   straggler: it can only advance to the release commit *after* that commit
+   exists, so it moves in the next PR — `security.test.js` keeps the label
+   honest either way.
+7. `npm run verify`, and read the exit code rather than the output.
+8. **Merge. That is the release.** The push to main triggers the workflow's
+   `decide` job, which sees a manifest version the registry does not have and
+   hands it to the release job: verify again, publish all three packages,
+   create the `v<version>` tag on the merge commit, and publish the GitHub
+   release from `RELEASES.md`. No tag to type, no second step to remember.
+
+   A pushed tag still works as the manual override — for re-running a release
+   whose publish failed, or releasing a commit that is not the newest merge:
+
+   ```bash
+   git tag v1.2.0 <commit> && git push origin v1.2.0
+   ```
 
 The workflow does the rest. It will refuse if the tag and the manifests disagree,
 and it runs the same `verify` a pull request runs before anything is published —
@@ -220,10 +237,42 @@ what the tag was for.
 other order leaves a window where installing the CLI fails on a dependency that
 does not exist yet.
 
+## The token fallback
+
+The publish steps authenticate with OIDC when nothing else is configured, and
+with an **environment-scoped npm token when one is** — the fallback that keeps
+a merge from failing while npm's trusted publishing stays broken. Setting it
+up, once:
+
+1. On npm (as the account that owns `@trazum`): *Access Tokens → Generate New
+   Token → Granular Access Token*. Permissions **Read and write**, scoped to
+   **only** the three `@trazum` packages, with an expiry — 90 days is a fine
+   default. Do not create a classic automation token; granular is the one
+   whose blast radius is three packages instead of the account.
+2. On GitHub: *Settings → Environments → release → Environment secrets → Add
+   secret*, name **`NPM_TOKEN`**, value the token. An *environment* secret on
+   purpose: only jobs that enter the `release` environment can read it, which
+   is exactly one job in one workflow.
+
+What the trade costs, honestly: a long-lived credential now exists, and a
+leak of it is not recoverable by rotation alone — whatever was published
+under it stays published. What it does **not** cost is provenance: the
+attestation is signed with the job's OIDC identity, which is independent of
+how the upload authenticates, so releases through the workflow carry
+provenance with either auth. `security.test.js` pins the containment: only
+`release.yml` may reference the secret, only in the one shape, and token
+material committed anywhere fails the build.
+
+When the token expires, a release fails with the same `E404` as a missing
+trusted publisher — generate a new token and update the secret. When trusted
+publishing finally works, delete the secret; the same workflow reverts to
+pure OIDC with no edit.
+
 ## Releasing by hand
 
-The fallback while trusted publishing stays broken, and the exact procedure
-1.25.0 used. The cost is stated first because it is the only one: **a manual
+The last resort — for when the workflow itself is broken, not just npm's
+authentication (the token fallback above covers that without leaving GitHub).
+It is the exact procedure 1.25.0 used, before the fallback existed. The cost is stated first because it is the only one: **a manual
 publish carries no provenance attestation** — nobody can verify the tarball was
 built from this repository at this commit. Users notice nothing.
 
@@ -245,8 +294,9 @@ npm publish -w @trazum/cli  --access public
 npm publish -w @trazum/mcp  --access public
 ```
 
-Then push the tag, and let the workflow create the GitHub release — its
-preflight sees the versions on the registry and skips the uploads. Two
+Then push the tag by hand (this is the one path where the tag comes second),
+and let the workflow create the GitHub release — its preflight sees the
+versions on the registry and skips the uploads. Two
 reminders from doing this for real: `npm view` 404s for several minutes after a
 successful publish (fetch `registry.npmjs.org/@trazum%2fcore/<version>` to
 check instead), and `npm logout` afterwards revokes the session token, which is

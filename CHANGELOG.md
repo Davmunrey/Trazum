@@ -13,6 +13,35 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+**Merging the release PR is now the release.** The workflow gained a `decide`
+job: every push to main runs a seconds-long registry preflight, and the one
+push whose manifests name an unpublished version — a merged release PR — goes
+on to verify, publish all three packages, create the `v<version>` tag on the
+merge commit, and publish the GitHub release from `RELEASES.md`. Ordinary
+merges skip in seconds; a pushed tag remains the manual override;
+`workflow_dispatch` stays dry-run only. One release at a time, enforced by a
+non-cancelling concurrency group — cancelling a publish mid-flight is how a
+half-released set of packages happens.
+
+**The publish can no longer fail on npm's broken trusted publishing.** The
+publish steps accept an environment-scoped `secrets.NPM_TOKEN` as the
+authentication fallback: absent, OIDC is the auth exactly as before; present,
+the token authenticates and the release goes out either way. Provenance
+survives both paths — the attestation is signed with the job's OIDC identity,
+which is independent of how the upload authenticates. The `security.test.js`
+rule narrowed rather than vanished: only `release.yml` may reference the
+secret, only as `NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}`, and npm token
+*material* committed anywhere still fails the build. The old absolute rule
+had forced four releases onto a laptop, which protects the secret by moving
+the publish to the least auditable place available.
+
+**The documentation sweep is enforced, not remembered.** `publish.test.js`
+now requires the manifest version to appear as a heading in `CHANGELOG.md`
+and by name in `ROADMAP.md` — `RELEASES.md` was already enforced — so a
+release prep that skips the docs fails `verify` before it can merge. The
+release checklist in `docs/releasing.md` adds the grep sweep for the stale
+references no test can know about.
+
 **The documentation caught up with the registry.** 1.25.0 is on npm — published
 by hand from a clean clone of the tag after npm's trusted publishing rejected
 the workflow's OIDC token on four real attempts against `v1.11.0`, with every

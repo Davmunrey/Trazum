@@ -736,6 +736,40 @@ describe('a release cannot ship without notes', () => {
     );
   });
 
+  it('every prose surface names the current version', () => {
+    /**
+     * The standing rule this repository was given out loud: a release is not
+     * cut until the documentation says so — all of it. `RELEASES.md` is
+     * enforced above. These are the two that actually drifted: `ROADMAP.md`
+     * stopped at 1.9.0 for sixteen releases while npm moved to 1.25.0, and a
+     * roadmap whose "Released" section ends fifteen versions ago reads as a
+     * project that stalled, to exactly the visitor deciding whether to
+     * depend on it.
+     *
+     * `CHANGELOG.md` needs the version as a heading — the fold from
+     * `Unreleased` is a release-prep step, not an afterthought. `ROADMAP.md`
+     * needs the version named anywhere, so a range entry ("1.10.0 through
+     * 1.25.0") satisfies it without forcing a full section per release —
+     * the point is that the file was *touched with intent*, not that it has
+     * a particular shape.
+     */
+    const version = manifestOf('.').version;
+    const heading = new RegExp(`^## ${version.replace(/\./g, '\\.')}`, 'm');
+
+    const changelogText = readFileSync(join(repoRoot, 'CHANGELOG.md'), 'utf8');
+    assert.match(
+      changelogText,
+      heading,
+      `CHANGELOG.md has no "## ${version}" heading — fold Unreleased into the version before tagging`,
+    );
+
+    const roadmap = readFileSync(join(repoRoot, 'ROADMAP.md'), 'utf8');
+    assert.ok(
+      roadmap.includes(version),
+      `ROADMAP.md never mentions ${version} — carry the release into the Released section (a range entry counts)`,
+    );
+  });
+
   it('the newest section is either the pending release or the current version', () => {
     // Nothing is published yet, so the top section is `Unreleased`. Once a
     // version ships it becomes that version, and the next unreleased work opens
@@ -1596,8 +1630,9 @@ describe('the publish preflight', () => {
     );
 
     // The version check must run before anything is uploaded, or it is a
-    // post-mortem rather than a preflight.
-    assert.match(versionStep, /if:\s*startsWith\(github\.ref, 'refs\/tags\/'\)/);
+    // post-mortem rather than a preflight. It runs on every push — a tag or a
+    // merge to main — because both can publish now; only the dry run skips it.
+    assert.match(versionStep, /if:\s*github\.event_name == 'push'/);
     assert.ok(
       release.indexOf('preflight.mjs versions') < release.indexOf('run: npm publish'),
       'the version check runs after a publish, which is not a preflight',
