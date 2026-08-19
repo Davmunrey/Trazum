@@ -46,6 +46,8 @@ export { measuredUsage, labelCoverage, MIN_SCALE_DAYS, SCALE_TO_DAYS } from './m
 export { assignSources, fleetRollup } from './fleet.js';
 export { buildPlan, planLabelName } from './plan.js';
 export type { PlanAction, PlanActionKind, PlanAssumption, PlanDocument } from './plan.js';
+export { verifyPlan } from './verify.js';
+export type { CannotTellReason, PlanVerification, VerifiedAction, VerifyOutcome } from './verify.js';
 export type { FleetSource, FleetRollup } from './fleet.js';
 export type { MeasuredUsage, LabelCoverage } from './measured-profile.js';
 export type { GateExplanation } from './gate-explain.js';

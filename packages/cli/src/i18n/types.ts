@@ -1,4 +1,4 @@
-import type { EvalVerdict, Locale, PlanActionKind, PlanAssumption, RuleLevel } from '@trazum/core';
+import type { CannotTellReason, EvalVerdict, Locale, PlanActionKind, PlanAssumption, RuleLevel, VerifyOutcome } from '@trazum/core';
 
 /**
  * The CLI's own message catalogue.
@@ -1070,6 +1070,38 @@ export interface CliMessages {
     footer(): string;
     /** The plan saved as dated JSON — what 1.39's verify will hold it to. */
     wrote(path: string): string;
+  };
+
+  /**
+   * `trazum verify` — the plan held to the log that came after it.
+   *
+   * Three outcomes and never two: arrived, did not arrive, cannot be told.
+   * The third is the honest one, and the one every other tool renders as
+   * the first. Differences carry the world's measured movement, and a plan
+   * priced under another catalogue says so rather than blaming a team for
+   * a saving that arithmetic revoked.
+   */
+  verify: {
+    noTarget(): string;
+    needsAgainst(): string;
+    /** Not a plan document: wrong shape, wrong version, or not JSON at all. */
+    badPlan(path: string): string;
+    heading(actions: string, planDate: string | null): string;
+    counts(arrived: string, notArrived: string, cannotTell: string): string;
+    /** Two price lists are two measurements; every dollar line inherits this. */
+    pricesChanged(planReviewed: string, nowReviewed: string): string;
+    action(kind: PlanActionKind, label: string, model: string, outcome: VerifyOutcome): string;
+    reason(reason: CannotTellReason): string;
+    routeObserved(dearestModel: string, onTargetUsd: string, onOldUsd: string): string;
+    /** Tokens do not say which tier billed them; named, never assumed arrived. */
+    batchUnobservable(): string;
+    truncationObserved(retryBillUsd: string): string;
+    cacheObserved(deltaUsd: string, outcome: VerifyOutcome): string;
+    /** The world's movement, measured: never a verdict, always both numbers. */
+    attribution(callsBefore: string, callsAfter: string, outBefore: string, outAfter: string): string;
+    gateFailed(failures: string, total: string): string;
+    gateOk(): string;
+    footer(): string;
   };
 
   /**

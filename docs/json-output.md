@@ -97,7 +97,24 @@ is not a report:
 | `actions[]` | Ranked, largest money first. Each has `kind` (`route`, `batch`, `route+batch`, `fix-truncation`, `fix-caching`), `label`, `model`, and exactly one of `savingUsd` (projected) or `stakeUsd` (already spent, measured) — never both, because a projection and a measurement in one field is a number that is neither. |
 | `actions[].assumes[]` | What the log cannot confirm, as typed objects (`{"kind": "model-capability", "model": ...}`, `{"kind": "batch-window"}`, ...) rather than prose — renderers localize them, and a verification can match them structurally. |
 | `actions[].check` | The Trazum command that can check the assumption, when one exists. |
-| `actions[].detail` | `routeTo` for the moved calls; `measured` for the pieces behind a stake (the wasted and retry dollars, the cache counterfactual). |
+| `actions[].detail` | `routeTo` for the moved calls; `measured` for the pieces behind a stake (the wasted and retry dollars, the cache counterfactual); `baseline` — the slice as the plan saw it (calls, dollars, tokens per call), the "before" a later verification attributes the world's movement against. |
 | `projectedSavingUsd` | Projected savings summed. Additive by construction: same-slice compositions arrive pre-combined inside one action. With `--min-usd` it covers only the actions the document holds — the file never contradicts itself; what was dropped is stated on the terminal with its worth. |
 | `measuredStakeUsd` | Measured stakes summed — money already paid to problems this plan names, kept apart from the projections. Filtered the same way. |
 | `totalUsd` | The bill the plan was made against. |
+
+## The verification document
+
+`trazum verify --json` is the plan's reckoning — its own contract:
+
+| Field | What it holds |
+| --- | --- |
+| `schemaVersion` | `1`. |
+| `planCreatedAt` | When the plan was made, carried through — or null for an undated plan. |
+| `planPricing` | The catalogue that priced the plan, and the one pricing this check. When they differ, `pricesChanged` is true and every dollar comparison is two price lists, not one measurement. |
+| `currentPricing` | See above. |
+| `pricesChanged` | See above. |
+| `actions[]` | One verdict per plan action: the action verbatim, `outcome` (`arrived`, `not-arrived`, `cannot-tell` — three, never two), `reason` for the third (`workload-vanished`, `fields-stopped`, `tier-not-recorded`), `observed` (what this log measured: where the money sits, the new retry bill, the new cache delta), `attribution` (the world's movement from the plan's baseline — calls and tokens per call, before and after, never a verdict), and `gateFailing`. |
+| `arrived` | The three counts. They always sum to `actions.length`. |
+| `notArrived` | See above. |
+| `cannotTell` | See above. |
+| `gateFailures` | Actions that fail `--gate`: every `not-arrived`, plus `cannot-tell` with reason `fields-stopped` — a team must not pass on the strength of its own log's silence. A vanished workload and an unrecordable tier fail nothing. |

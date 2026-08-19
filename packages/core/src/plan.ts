@@ -78,6 +78,13 @@ export interface PlanAction {
     routeTo?: { id: string; displayName: string };
     /** The measured pieces behind a stake. */
     measured?: Record<string, number>;
+    /**
+     * The slice as it was when the plan was made — what a later verification
+     * compares the newer log against. Without this the plan is a prediction
+     * with no record of the world it was made in, and "calls doubled" could
+     * never be told from "the prediction was wrong".
+     */
+    baseline?: { calls: number; usd: number; inputPerCallTokens: number; outputPerCallTokens: number };
   };
 }
 
@@ -116,6 +123,19 @@ export function buildPlan(
 ): PlanDocument {
   const actions: PlanAction[] = [];
 
+  /** The slice as the plan saw it, recorded so verification has a "before". */
+  const baselineOf = (label: string, model: string) => {
+    const slice = report.byLabelAndModel.find((s) => s.label === label && s.model === model);
+    if (slice === undefined || slice.breakdown.calls === 0) return undefined;
+    const b = slice.breakdown;
+    return {
+      calls: b.calls,
+      usd: b.totalUsd,
+      inputPerCallTokens: (b.inputTokens + b.cacheReadTokens + b.cacheWriteTokens) / b.calls,
+      outputPerCallTokens: b.outputTokens / b.calls,
+    };
+  };
+
   for (const slice of levers.slices) {
     const assumes: PlanAssumption[] = [];
     let kind: PlanActionKind;
@@ -140,7 +160,10 @@ export function buildPlan(
       stakeUsd: null,
       assumes,
       check: slice.route !== null ? 'trazum route <log> --prompt-file <prompt> --cases <cases>' : null,
-      detail: slice.route !== null ? { routeTo: slice.route.candidate } : {},
+      detail: {
+        ...(slice.route !== null ? { routeTo: slice.route.candidate } : {}),
+        baseline: baselineOf(slice.label, slice.model),
+      },
     });
   }
 
@@ -160,6 +183,7 @@ export function buildPlan(
           retried: row.retried,
           truncatedCalls: row.truncatedCalls,
         },
+        baseline: baselineOf(row.label, row.model),
       },
     });
   }
@@ -182,6 +206,7 @@ export function buildPlan(
           spentUsd: economics.spentUsd,
           withoutCachingUsd: economics.withoutCachingUsd,
         },
+        baseline: baselineOf(slice.label, slice.model),
       },
     });
   }
