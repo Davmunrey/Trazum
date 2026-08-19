@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.37.0 — "The fleet"
+
 ### Added
 
 **`profile --by-source`: the fleet.** One service's logs merge into one

@@ -40,6 +40,118 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.37.0 — "The fleet"
+
+The second of the five planned in `docs/plan-1.36-1.40.md`. `profile` merges
+a directory of logs into one honest bill, which is right for one service and
+wrong for twelve: the merged report hides which service the money is coming
+from, per-service budgets cannot exist at all, and the findings a comparison
+*between* services could make are invisible. This release is the comparison.
+
+### `profile <dir> --by-source` — one summary per service, and the bleeder named
+
+The config gains a `sources` block — a name per service, each with glob
+patterns over log paths — and `--by-source` walks the directory recursively
+(the fleet's whole point is one directory per service, so this is the one
+mode where the walk descends), assigns each file to the most specific
+matching pattern, and renders the fleet:
+
+```
+The fleet: 2 sources · $21.00 · 3 calls
+  api  $20.00  95.2% of the fleet · 2 calls · 9.0 days
+  web  $1.00  4.8% of the fleet · 1 call · 0.0 days
+
+  ! api is where the money is: $20.00, 95.2% of the fleet's total.
+  These sources cover different periods, so the shares above compare totals,
+  not rates — a 3-day log looks cheap next to a 30-day one for reasons that
+  have nothing to do with cost. Each row states its own span.
+
+  ! The same workload runs on different models in different sources — support:
+    api → claude-opus-5 ($20.00), web → claude-haiku-4-5 ($1.00). Same job,
+    different rate cards; whether that is a decision or an accident is not in
+    the logs.
+  ! logs/stray.jsonl matched no source pattern, so it is in no report above —
+    spend missing from every bill until a pattern covers it.
+```
+
+Pattern precedence is the budget patterns' own most-specific-wins rule,
+applied across sources — two rules for pattern precedence in one tool is one
+rule too many. `services/api/**` beats `services/**` on the same file, whoever
+owns each pattern.
+
+**The findings are the ones a merged bill cannot make:**
+
+- **Split brains.** The same workload label running on different models in
+  different sources — one team on Opus, another on Haiku, same job. Judged on
+  each source's *dearest* model for the label, so a single stray experiment
+  call does not report a team as migrated. Only splits where both sides carry
+  real spend are reported, dearest gap first. Whether the split is a decision
+  or an accident is not in the logs, and the copy says so instead of guessing.
+- **Cache underwater in a named source.** Caching that pays for the fleet in
+  aggregate while losing money in one service — the aggregate verdict is the
+  flattering rendering when a source is quietly underwater, so each one is
+  named with its own delta. Reported *only when the aggregate pays off*: when
+  the aggregate itself loses money, the whole-fleet report already shouts,
+  and repeating it per source would be the same alarm in pieces.
+- **Mismatched spans, in the copy.** Shares of the fleet's total are shares
+  of a sum, and stay valid — but reading them as *rate* comparisons is the
+  mistake the flag exists to stop. When sources' logs cover meaningfully
+  different periods (spans more than a day apart, or some with no clock at
+  all), the report says so and each row states its own span.
+
+### `spend.bySource` — a budget per service, failing by name
+
+```
+FAILED — api spent $20.00 against its budget of $5.00 in spend.bySource. The
+fleet total can be fine while one service bleeds; this gate names which.
+Within budget: web spent $1.00 against its $10.00 in spend.bySource.
+```
+
+The fleet total can be fine while one service bleeds — that is the whole
+reason per-service budgets exist. Each source is gated against its own figure
+in the same run, exit 1 naming the failing service.
+
+**The refusals, each with its reason:**
+
+- **A budgeted source with no logs is named, not passed.** "Did not appear"
+  is not "under budget" — a service whose logs stopped arriving would
+  otherwise pass forever on the strength of the silence.
+- **Files matching no source pattern are named loudly.** A log in no report
+  is spend missing from every bill, which is the flattering omission this
+  repository refuses everywhere it can occur.
+- **`--by-source` without a `sources` block is an error naming the fix**,
+  not an empty fleet — a report over zero sources would be "nothing is
+  bleeding" said about nothing being measured.
+
+### The JSON document
+
+`profile <dir> --by-source --json` emits the fleet document: the full
+per-source reports (each one exactly what `profile` would say about that
+service alone), the rollup — totals, shares, the worst source, split brains,
+cache-underwater sources, the mismatched-spans flag — and the unmatched
+files. Documented field by field in docs/json-output.md.
+
+### The module underneath
+
+`@trazum/core` gains `fleet.ts`: `assignSources()` (file-to-source assignment
+by most specific glob, unmatched files returned rather than dropped) and
+`fleetRollup()` (the rollup with every finding above). Browser-safe — it
+reads no files and runs no globs against a filesystem; the caller hands it
+file names and per-source reports, so the CLI keeps its monopoly on I/O.
+`sources` and `spend.bySource` validate in the config schema with the same
+discipline as everything else there: non-empty pattern lists, no empty names,
+and no filesystem checks — which files exist is the CLI's question.
+
+### What stayed out, and why
+
+A `source` column on `--csv-out`. The CSV contract is one row shape per file
+so nothing has to be filtered before it can be summed; a source column would
+make the slice shape mean different things with and without `--by-source`,
+and a chart summing across it would double-count the fleet. Per-source CSV is
+a run of `profile` per source directory, which needs no new contract.
+
+---
+
 ## 1.36.0 — "The estimate stops guessing"
 
 The first of the five planned in `docs/plan-1.36-1.40.md`, and the one that
