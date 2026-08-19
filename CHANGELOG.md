@@ -9,7 +9,7 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
-## Unreleased
+## 1.28.0 — "The retry bill, the series and the standing word"
 
 ### Added
 
