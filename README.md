@@ -748,6 +748,43 @@ no `|` character in the output at all — which matters most for `blame`: an
 author's name and a commit subject are the least trusted strings Trazum renders,
 and they land in a table maintainers read.
 
+### The fleet: `profile --by-source`
+
+One service's logs merge into one honest bill. Twelve services' logs merge
+into a bill that hides which one is bleeding. Name your services in the
+config —
+
+```json
+{
+  "sources": { "api": ["logs/api/**"], "web": ["logs/web/**"] },
+  "spend": { "bySource": { "api": 200, "web": 50 } }
+}
+```
+
+— and `--by-source` builds one summary per service plus the rollup:
+
+```
+The fleet: 2 sources · $21.00 · 3 calls
+  api  $20.00  95.2% of the fleet · 2 calls · 9.0 days
+  web  $1.00   4.8% of the fleet · 1 call · 0.0 days
+
+  ! api is where the money is: $20.00, 95.2% of the fleet's total.
+  ! The same workload runs on different models in different sources —
+    support: api → claude-opus-5 ($20.00), web → claude-haiku-4-5 ($1.00).
+  ! logs/stray.jsonl matched no source pattern, so it is in no report above.
+
+FAILED — api spent $20.00 against its budget of $5.00 in spend.bySource.
+```
+
+The findings here are the ones a merged bill cannot make: the same workload
+on different rate cards in different teams, caching that pays in aggregate
+while losing money in one source, and per-service budgets that fail the run
+*naming the service*. Sources whose logs cover different periods are said to
+— the shares compare totals, not rates, and a 3-day log looking cheap beside
+a 30-day one is the mistake the warning exists to stop. Files matching no
+pattern are named rather than silently joining no report. `--json` carries
+the full per-source reports plus the rollup.
+
 ### Charting it: `doctor --otlp-out`
 
 ```bash

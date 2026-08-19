@@ -66,6 +66,18 @@ ${bold('OPCIONES DE rank')}
   --model, --calls,           Calcula el coste de los tokens recuperables, como
   --output-tokens, --batch    en optimize.
   --prompt <nombre>           Qué prompt marcado tomar de cada fichero de código.
+  --by-source                 La flota: un resumen por servicio desde el
+                              bloque "sources" de la config (nombre → patrones
+                              glob sobre rutas de registros), más un rollup
+                              que nombra la fuente donde está el dinero. Los
+                              porcentajes comparan totales, y cuando los
+                              registros cubren periodos distintos el informe
+                              lo dice en vez de dejar que un registro de 3
+                              días parezca barato junto a uno de 30. Los
+                              presupuestos por servicio viven en
+                              spend.bySource y hacen fallar la ejecución
+                              nombrando el servicio. Los ficheros sin patrón
+                              se nombran, nunca se descartan en silencio.
   --markdown-out <fichero>    Escribe además el ranking en Markdown, para el
                               resumen de un job de CI o un comentario de PR.
   --json                      El ranking como datos.
@@ -1243,6 +1255,31 @@ ${bold('EJEMPLOS')}
       'Una ✗ no es un defecto del registro; es un hallazgo que este registro aún no puede sostener. La receta de registro del README lleva todos los campos de arriba.',
     dryRunNoGates: () =>
       '--dry-run no produce factura, así que un gate a su lado saldría en verde sin haber juzgado nada. Corre los gates sin --dry-run.',
+    bySourceNeedsConfig: () =>
+      '--by-source lee el bloque "sources" de trazum.config.json — un nombre por servicio, cada uno con patrones glob sobre rutas de registros — y esta config no tiene ninguno. Nombra al menos una fuente.',
+    bySourceNothingMatched: (sources) =>
+      'Ningún fichero de registro coincidió con ningún patrón de fuente. Las fuentes configuradas: ${sources}. Los patrones casan con las rutas tal como se dan en la línea de comandos.'.replace('${sources}', sources),
+    fleetHeading: (count, total, calls) => `La flota: ${count} fuentes · ${total} · ${calls}`,
+    fleetRow: (name, usd, share, calls, span) => `${name}  ${usd}  ${share} de la flota · ${calls} · ${span}`,
+    fleetSpan: (days) => `${days} días`,
+    fleetNoClock: () => 'sin reloj',
+    fleetWorst: (name, usd, share) =>
+      `${name} es donde está el dinero: ${usd}, el ${share} del total de la flota.`,
+    fleetMismatchedSpans: () =>
+      'Estas fuentes cubren periodos distintos, así que los porcentajes de arriba comparan totales, no ritmos — un registro de 3 días parece barato junto a uno de 30 por motivos que nada tienen que ver con el coste. Cada fila indica su propio periodo.',
+    fleetSplitBrain: (label, detail) =>
+      `La misma carga corre en modelos distintos en fuentes distintas — ${label}: ${detail}. Mismo trabajo, tarifas distintas; si es una decisión o un accidente no está en los registros.`,
+    fleetCacheUnderwater: (name, usd) =>
+      `La caché es rentable para la flota en conjunto pero pierde ${usd} en ${name} — el veredicto agregado lo escondía.`,
+    fleetUnmatched: (file) =>
+      `${file} no coincidió con ningún patrón de fuente, así que no está en ningún informe de arriba — gasto ausente de todas las facturas hasta que un patrón lo cubra.`,
+    fleetFooter: () =>
+      'Resúmenes por fuente; el informe completo de un servicio es "trazum profile <sus registros>". Mismos umbrales, mismos hallazgos, una fuente cada vez.',
+    fleetBudgetOk: (name, usd, max) => `Dentro de presupuesto: ${name} gastó ${usd} contra su ${max} en spend.bySource.`,
+    fleetBudgetFailed: (name, usd, max) =>
+      `FALLÓ — ${name} gastó ${usd} contra su presupuesto de ${max} en spend.bySource. El total de la flota puede estar bien mientras un servicio sangra; este gate nombra cuál.`,
+    fleetBudgetMissing: (name) =>
+      `${name} tiene presupuesto en spend.bySource y ningún registro coincidió con él en esta ejecución, así que no se midió nada. No es un aprobado: un servicio que no apareció no es un servicio dentro de presupuesto.`,
     coverageHeading: () => 'Lo que este registro todavía no puede responder',
     needsLabel: (seen) =>
       `"label" en ${seen} registros: sin él todas las cargas son una sola fila, así que no hay gasto por carga, ni zoom, y las palancas describen una mezcla en vez de una decisión.`,

@@ -78,6 +78,16 @@ ${bold('OPTIONS FOR rank')}
   --model, --calls,           Price the recoverable tokens, as in optimize.
   --output-tokens, --batch
   --prompt <name>             Which marked prompt to take from each source file.
+  --by-source                 The fleet: one summary per service from the
+                              config's "sources" block (name → glob patterns
+                              over log paths), plus a rollup naming the source
+                              where the money is. Shares compare totals, and
+                              when the sources' logs cover different periods
+                              the report says so rather than letting a 3-day
+                              log look cheap beside a 30-day one. Budgets per
+                              service live in spend.bySource and fail the run
+                              naming the service. Files matching no pattern
+                              are named, never silently dropped.
   --markdown-out <file>       Also write the ranking as Markdown, for a CI job
                               summary or a pull request comment.
   --json                      The ranking as data.
@@ -1227,6 +1237,31 @@ ${bold('EXAMPLES')}
       'A ✗ is not a defect in the log; it is a finding this log cannot support yet. The README\'s recording recipe carries every field above.',
     dryRunNoGates: () =>
       '--dry-run produces no bill, so a gate beside it would exit green having judged nothing. Run the gates without --dry-run.',
+    bySourceNeedsConfig: () =>
+      '--by-source reads the "sources" block in trazum.config.json — a name per service, each with glob patterns over log paths — and this config has none. Name at least one source.',
+    bySourceNothingMatched: (sources) =>
+      'No log file matched any source pattern. The sources configured: ${sources}. Patterns match the paths as given on the command line.'.replace('${sources}', sources),
+    fleetHeading: (count, total, calls) => `The fleet: ${count} sources · ${total} · ${calls}`,
+    fleetRow: (name, usd, share, calls, span) => `${name}  ${usd}  ${share} of the fleet · ${calls} · ${span}`,
+    fleetSpan: (days) => `${days} days`,
+    fleetNoClock: () => 'no clock',
+    fleetWorst: (name, usd, share) =>
+      `${name} is where the money is: ${usd}, ${share} of the fleet's total.`,
+    fleetMismatchedSpans: () =>
+      'These sources cover different periods, so the shares above compare totals, not rates — a 3-day log looks cheap next to a 30-day one for reasons that have nothing to do with cost. Each row states its own span.',
+    fleetSplitBrain: (label, detail) =>
+      `The same workload runs on different models in different sources — ${label}: ${detail}. Same job, different rate cards; whether that is a decision or an accident is not in the logs.`,
+    fleetCacheUnderwater: (name, usd) =>
+      `Caching pays for the fleet overall but loses ${usd} in ${name} — the aggregate verdict was hiding it.`,
+    fleetUnmatched: (file) =>
+      `${file} matched no source pattern, so it is in no report above — spend missing from every bill until a pattern covers it.`,
+    fleetFooter: () =>
+      'Summaries per source; the full report for one service is "trazum profile <its logs>". Same thresholds, same findings, one source at a time.',
+    fleetBudgetOk: (name, usd, max) => `Within budget: ${name} spent ${usd} against its ${max} in spend.bySource.`,
+    fleetBudgetFailed: (name, usd, max) =>
+      `FAILED — ${name} spent ${usd} against its budget of ${max} in spend.bySource. The fleet total can be fine while one service bleeds; this gate names which.`,
+    fleetBudgetMissing: (name) =>
+      `${name} has a budget in spend.bySource and no logs matched it in this run, so nothing was measured for it. Not a pass: a service that did not appear is not a service under budget.`,
     coverageHeading: () => 'What this log cannot answer yet',
     needsLabel: (seen) =>
       `"label" on ${seen} records: without it every workload is one row, so no per-workload spend, no drill-down, and the levers describe a mixture rather than a decision.`,
