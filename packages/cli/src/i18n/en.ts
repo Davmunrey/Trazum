@@ -41,6 +41,7 @@ ${bold('USAGE')}
   trazum route <log.jsonl> --prompt-file <file> --cases <file> --yes
   trazum plan <log.jsonl|dir> [options]
   trazum verify <plan.json> --against <newer.jsonl|dir> [options]
+  trazum history <dir-of-stored-reports> [options]
   trazum diff <before> <after> [options]
   trazum diff --all <dir> <dir> [options]
   trazum rank <dir> [options]
@@ -317,6 +318,20 @@ ${bold('OPTIONS FOR plan')}
   never summed — and every action names what the log cannot confirm, because
   a plan that hides its assumptions is advice pretending to be arithmetic.
   Projected savings and money already spent are separate totals throughout.
+
+${bold('OPTIONS FOR history')}
+  --markdown-out <file>       Also write the series as Markdown, for a CI job
+                              summary or a pull request comment.
+  --json                      The history as data.
+
+  Takes a directory of stored reports — the --json documents profile already
+  writes — plus any saved plans beside them, and builds the series no
+  pairwise comparison can see: a workload climbing a little every period, a
+  model share rising since a date, a cache share decaying slowly enough that
+  no single week's report called it a finding, and the same action planned
+  again and again with nothing executing it. Derived from stored reports,
+  never re-parsed logs, so a year of JSON is enough and the raw logs can be
+  thrown away. Shapes are named; nothing is forecast.
 
 ${bold('OPTIONS FOR verify')}
   --against <log|dir>         The newer usage log the plan is held to. Required.
@@ -1430,6 +1445,39 @@ ${bold('EXAMPLES')}
       'Ranked by money, projected or already spent alike. The assumptions are yours to answer: this plan is arithmetic over the log, not knowledge of your product.',
     wrote: (path) =>
       `Plan written to ${path}, dated. Keep it: a prediction nobody wrote down is a prediction nobody can be held to.`,
+  },
+
+  history: {
+    noTarget: () =>
+      'Point this at a directory of stored reports: trazum history reports/. It reads the --json documents "trazum profile" writes (and any saved plans beside them) and builds the series no pairwise comparison can see.',
+    needsThree: (count) =>
+      `A series needs at least three dated reports, and this directory has ${count}. Two reports is a comparison, and "trazum profile --against" already does that better.`,
+    heading: (periods, from, to) => `The long run: ${periods} periods, ${from} → ${to}`,
+    periodRow: (name, usd, calls, days) => `${name}  ${usd} · ${calls} calls · ${days} days`,
+    runLabel: (label, periods, sinceName, from, to) =>
+      `${label} has climbed for ${periods} consecutive periods since ${sinceName}: ${from} → ${to}. A shape, not a forecast.`,
+    runModel: (model, periods, sinceName, from, to) =>
+      `${model}'s share of the bill has climbed for ${periods} consecutive periods since ${sinceName}: ${from} → ${to}. The totals can look flat while the mix moves under them.`,
+    runCache: (periods, sinceName, from, to) =>
+      `The cache share has decayed for ${periods} consecutive periods since ${sinceName}: ${from} → ${to} — slowly enough that no single report called it a finding, which is exactly why a series exists.`,
+    repeated: (kind, label, model, appearances, first, last) => {
+      const what =
+        kind === 'route'
+          ? `Routing ${label} (${model})`
+          : kind === 'batch'
+            ? `Batching ${label} (${model})`
+            : kind === 'route+batch'
+              ? `Routing and batching ${label} (${model})`
+              : kind === 'fix-truncation'
+                ? `Fixing the truncation retries on ${label} (${model})`
+                : `Fixing the cache on ${label} (${model})`;
+      const span = first !== null && last !== null ? ` (${first} → ${last})` : '';
+      return `${what} has been planned ${appearances} times${span} and is still in the newest plan — a decision nobody is revisiting.`;
+    },
+    undated: (name) => `${name} carries no span, so it is on no timeline above — named, never silently absorbed.`,
+    unrecognized: (name) => `${name} is neither a stored report nor a saved plan, so it is in no series above.`,
+    footer: () =>
+      'A series names shapes, not futures. Twenty points make a trend visible; they do not make next month knowable — where these lines go next is yours to judge.',
   },
 
   verify: {

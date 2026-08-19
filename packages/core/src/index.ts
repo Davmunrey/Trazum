@@ -47,6 +47,8 @@ export { assignSources, fleetRollup } from './fleet.js';
 export { buildPlan, planLabelName } from './plan.js';
 export type { PlanAction, PlanActionKind, PlanAssumption, PlanDocument } from './plan.js';
 export { verifyPlan } from './verify.js';
+export { buildHistory, storedReportFrom, MIN_RUN } from './history.js';
+export type { HistoryDocument, HistoryRun, RepeatedPlanAction, StoredReport } from './history.js';
 export type { CannotTellReason, PlanVerification, VerifiedAction, VerifyOutcome } from './verify.js';
 export type { FleetSource, FleetRollup } from './fleet.js';
 export type { MeasuredUsage, LabelCoverage } from './measured-profile.js';

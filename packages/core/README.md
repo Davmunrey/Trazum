@@ -119,6 +119,19 @@ silently priced through, and each verdict says whether it fails a gate:
 `not-arrived` always, `fields-stopped` too — a team must not pass on the
 strength of its own log's silence — and a vanished workload never.
 
+## The long run
+
+`buildHistory(reports, plans)` turns stored reports into the series no
+pairwise comparison can see: per-label spend, per-model share and cache
+share per period, with consecutive movement named as runs (`MIN_RUN` rises
+or falls at least — two is a comparison, one is noise) and the same plan
+action appearing in two or more plans reported as a decision nobody is
+executing. `storedReportFrom(name, parsed)` reads one stored `profile`
+document into the slice history needs, returning null for anything else so
+the caller names the file instead of absorbing it. No forecasts anywhere:
+shapes are stated with their first and last values, and where they go next
+is the reader's.
+
 ## Comparing two versions
 
 ```ts

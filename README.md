@@ -43,11 +43,11 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- sixteen commands  MCP server      Next.js     comments on pull requests
+ seventeen commands MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
-## The sixteen commands
+## The seventeen commands
 
 | Command | What it answers |
 |---|---|
@@ -66,6 +66,7 @@ never runs unless you ask.
 | [`trazum route`](#is-the-cheaper-model-good-enough-trazum-route) | Is the cheaper model good enough? *Measured, and it asks before spending.* |
 | [`trazum plan`](#the-plan-trazum-plan) | Of everything the log shows, what do I do first, and what is each move worth? |
 | [`trazum verify`](#did-it-work-trazum-verify) | Did the plan's savings actually arrive? *Three outcomes, never two.* |
+| [`trazum history`](#the-long-run-trazum-history) | What have twenty reports been saying that no two of them could? *Shapes, never forecasts.* |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
 
 ## Contents
@@ -172,8 +173,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of sixteen commands — [the table
-above](#the-sixteen-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of seventeen commands — [the table
+above](#the-seventeen-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -237,12 +238,13 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other fifteen commands, each with its own section below:
+The other sixteen commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
 trazum plan usage.jsonl              # the findings as a ranked plan
 trazum verify plan.json --against new.jsonl   # did it work?
+trazum history reports/              # the long run, from stored reports
 trazum rank prompts/                 # which one to fix first
 trazum blame prompts/system.txt      # who made it expensive, and when
 trazum diff old.txt new.txt          # what this edit cost
@@ -854,6 +856,33 @@ revoked.
 promised *or became unverifiable because the team's own log dropped the
 fields* — "not recorded" must not read as "fixed". A workload that merely
 vanished fails nothing.
+
+### The long run: `trazum history`
+
+A cost problem is rarely visible in two logs — it is visible in twenty.
+`history` reads a directory of stored reports (the `--json` documents
+`profile` already writes) and any saved plans beside them:
+
+```
+The long run: 4 periods, 2026-07-01 → 2026-07-27
+  w0.report.json  $9.40 · 5 calls · 5.0 days
+  w3.report.json  $21.10 · 11 calls · 5.0 days
+
+  ! support has climbed for 3 consecutive periods since w0.report.json:
+    $8.40 → $20.10. A shape, not a forecast.
+  ! The cache share has decayed for 3 consecutive periods since
+    w0.report.json: 23.5% → 3.8% — slowly enough that no single report
+    called it a finding, which is exactly why a series exists.
+  ! Routing and batching support (claude-opus-5) has been planned 2 times
+    and is still in the newest plan — a decision nobody is revisiting.
+```
+
+Shapes are named as consecutive movement — never a line fitted through the
+points, and never a word about next month. Derived from stored reports, not
+re-parsed logs, so a year of JSON is enough and the raw logs can be thrown
+away. Reports with no span are on no timeline and say so; files that are
+neither a report nor a plan are named; two reports is a refusal pointing at
+`profile --against`.
 
 ### Charting it: `doctor --otlp-out`
 

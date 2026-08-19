@@ -28,6 +28,7 @@ ${bold('USO')}
   trazum route <log.jsonl> --prompt-file <fichero> --cases <fichero> --yes
   trazum plan <log.jsonl|dir> [opciones]
   trazum verify <plan.json> --against <nuevo.jsonl|dir> [opciones]
+  trazum history <dir-de-informes-guardados> [opciones]
   trazum diff <antes> <después> [opciones]
   trazum diff --all <dir> <dir> [opciones]
   trazum rank <dir> [opciones]
@@ -324,6 +325,21 @@ ${bold('OPCIONES DE plan')}
   registro no puede confirmar, porque un plan que esconde sus supuestos es un
   consejo haciéndose pasar por aritmética. El ahorro proyectado y el dinero ya
   gastado son totales separados en todas partes.
+
+${bold('OPCIONES DE history')}
+  --markdown-out <fichero>    Escribe además la serie como Markdown, para un
+                              resumen de CI o un comentario de pull request.
+  --json                      La historia como datos.
+
+  Toma un directorio de informes guardados — los documentos --json que
+  profile ya escribe — más los planes guardados que haya al lado, y construye
+  la serie que ninguna comparación por pares puede ver: una carga que sube un
+  poco cada período, una cuota de modelo creciendo desde una fecha, una cuota
+  de caché decayendo tan despacio que ningún informe semanal lo llamó
+  hallazgo, y la misma acción planificada una y otra vez sin que nadie la
+  ejecute. Derivada de informes guardados, nunca de registros re-parseados:
+  un año de JSON basta y los registros crudos pueden tirarse. Las formas se
+  nombran; nada se pronostica.
 
 ${bold('OPCIONES DE verify')}
   --against <log|dir>         El registro de uso posterior al que se somete el
@@ -1452,6 +1468,39 @@ ${bold('EJEMPLOS')}
       'Ordenado por dinero, proyectado o ya gastado por igual. Los supuestos los respondes tú: este plan es aritmética sobre el registro, no conocimiento de tu producto.',
     wrote: (path) =>
       `Plan escrito en ${path}, con fecha. Guárdalo: una predicción que nadie apuntó es una predicción que no se le puede exigir a nadie.`,
+  },
+
+  history: {
+    noTarget: () =>
+      'Apunta esto a un directorio de informes guardados: trazum history informes/. Lee los documentos --json que escribe "trazum profile" (y los planes guardados que haya al lado) y construye la serie que ninguna comparación por pares puede ver.',
+    needsThree: (count) =>
+      `Una serie necesita al menos tres informes con fecha, y este directorio tiene ${count}. Dos informes son una comparación, y "trazum profile --against" ya la hace mejor.`,
+    heading: (periods, from, to) => `La larga distancia: ${periods} períodos, ${from} → ${to}`,
+    periodRow: (name, usd, calls, days) => `${name}  ${usd} · ${calls} llamadas · ${days} días`,
+    runLabel: (label, periods, sinceName, from, to) =>
+      `${label} lleva ${periods} períodos consecutivos subiendo desde ${sinceName}: ${from} → ${to}. Una forma, no un pronóstico.`,
+    runModel: (model, periods, sinceName, from, to) =>
+      `La cuota de ${model} en la factura lleva ${periods} períodos consecutivos subiendo desde ${sinceName}: ${from} → ${to}. Los totales pueden parecer planos mientras la mezcla se mueve debajo.`,
+    runCache: (periods, sinceName, from, to) =>
+      `La cuota de caché lleva ${periods} períodos consecutivos decayendo desde ${sinceName}: ${from} → ${to} — tan despacio que ningún informe suelto lo llamó hallazgo, que es exactamente para lo que existe una serie.`,
+    repeated: (kind, label, model, appearances, first, last) => {
+      const what =
+        kind === 'route'
+          ? `Enrutar ${label} (${model})`
+          : kind === 'batch'
+            ? `Agrupar en batch ${label} (${model})`
+            : kind === 'route+batch'
+              ? `Enrutar y agrupar ${label} (${model})`
+              : kind === 'fix-truncation'
+                ? `Arreglar los reintentos por truncado de ${label} (${model})`
+                : `Arreglar la caché de ${label} (${model})`;
+      const span = first !== null && last !== null ? ` (${first} → ${last})` : '';
+      return `${what} se ha planificado ${appearances} veces${span} y sigue en el plan más reciente — una decisión que nadie está revisando.`;
+    },
+    undated: (name) => `${name} no lleva período, así que no está en ninguna línea de tiempo de arriba — nombrado, nunca absorbido en silencio.`,
+    unrecognized: (name) => `${name} no es ni un informe guardado ni un plan guardado, así que no está en ninguna serie de arriba.`,
+    footer: () =>
+      'Una serie nombra formas, no futuros. Veinte puntos hacen visible una tendencia; no hacen conocible el mes que viene — adónde van estas líneas después lo juzgas tú.',
   },
 
   verify: {

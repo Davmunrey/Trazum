@@ -118,3 +118,19 @@ is not a report:
 | `notArrived` | See above. |
 | `cannotTell` | See above. |
 | `gateFailures` | Actions that fail `--gate`: every `not-arrived`, plus `cannot-tell` with reason `fields-stopped` — a team must not pass on the strength of its own log's silence. A vanished workload and an unrecordable tier fail nothing. |
+
+## The history document
+
+`trazum history --json` — the long run as data, its own contract:
+
+| Field | What it holds |
+| --- | --- |
+| `schemaVersion` | `1`. |
+| `periods[]` | The stored reports that carry a span, oldest first: name, `fromMs`/`toMs`, `totalUsd`, `calls`. |
+| `labelSeries[]` | Per label, dollars per period — null where the label had no traffic that period, which is absence and not zero. |
+| `modelShareSeries[]` | Per model, its share of that period's total — null where absent. The totals can look flat while the mix moves under them. |
+| `cacheShareSeries[]` | The share of input tokens served from cache, per period — null where unknowable. |
+| `runs[]` | The findings only a series can make: consecutive movement, named — `label-spend-climbing`, `model-share-climbing`, `cache-share-decaying` — each with how many consecutive periods, since which report, and the first and last values. Shapes, never forecasts: nothing here extrapolates. |
+| `repeatedPlanActions[]` | The same action (kind, label, model) in two or more saved plans, with first and last planned dates — a decision nobody is executing. |
+| `undatedReports[]` | Reports with no span: on no timeline above, named rather than silently absorbed. |
+| `unrecognizedFiles[]` | JSON files that are neither a stored report nor a saved plan — in no series, named. |
