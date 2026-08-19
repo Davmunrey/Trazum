@@ -22,6 +22,9 @@ import {
   detectFromSource,
   coverageDrift,
   driversBetween,
+  explainGateFailure,
+  gateMargin,
+  GATE_MARGIN_TIGHT,
   estimateTokens,
   evaluate,
   extractPrompts,
@@ -2250,6 +2253,19 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
    * profiles yesterday's log has a daily budget without Trazum ever
    * guessing what a day is.
    */
+  /**
+   * The gate verdicts, kept so the markdown summary can carry them.
+   *
+   * Collected by wrapping `console.error` for the duration of `applyGates`
+   * rather than by threading a return value through every gate. That is the
+   * unusual choice here and it is deliberate: a gate added later reaches the
+   * summary without anyone remembering to register it, and the alternative —
+   * one push per verdict at a dozen call sites — is a list that goes stale
+   * silently. Colour is stripped, because a summary is markdown and an
+   * escape sequence in it is noise a reader has to look past.
+   */
+  const gateVerdicts: string[] = [];
+  let gateFailed = false;
   const applyGates = (): void => {
     /**
      * Before any verdict: whether the gated figure is the whole bill. A gate
@@ -2307,6 +2323,52 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
       console.error(c.dim(t.profile.labelBudgetWindowed()));
     }
 
+    /**
+     * Why a gate failed and how much room a pass had — written once, called by
+     * every gate, because four hand-rolled copies of the same three sentences
+     * is four chances for one of them to soften.
+     */
+    const explainFailure = (overUsd: number, { namesLargest = false } = {}): void => {
+      const why = explainGateFailure(report, levers, overUsd);
+      // The day gate already names its own day's biggest label; repeating the
+      // whole bill's biggest slice under it reads as the same sentence twice.
+      if (why.largest !== null && !namesLargest) {
+        const name = why.largest.label === UNLABELLED ? t.profile.unlabelled() : why.largest.label;
+        console.error(
+          c.dim(wrap(t.profile.gateLargest(name, why.largest.model, formatUsd(why.largest.usd), pct(why.largest.share)), 74, '  ')),
+        );
+      }
+      if (why.lever !== null) {
+        const leverName = why.lever.label === UNLABELLED ? t.profile.unlabelled() : why.lever.label;
+        // The action, not the slice's current model: a slice with only a batch
+        // price has no destination, and naming the model it already runs on as
+        // somewhere to move it would be plainly false.
+        const route = why.lever.route;
+        const action =
+          route !== null && why.lever.batch !== null
+            ? t.profile.gateLeverBoth(route.candidate.displayName)
+            : route !== null
+              ? t.profile.gateLeverRoute(route.candidate.displayName)
+              : t.profile.gateLeverBatch();
+        console.error(
+          c.dim(
+            wrap(
+              t.profile.gateLever(leverName, action, formatUsd(why.lever.combinedUsd), formatUsd(why.overageUsd), why.coversIt),
+              74,
+              '  ',
+            ),
+          ),
+        );
+      }
+    };
+    /** How much room a pass had, said only when tight, threshold in the copy. */
+    const explainMargin = (judgedUsd: number, limitUsd: number): void => {
+      const margin = gateMargin(judgedUsd, limitUsd);
+      if (margin !== null && margin < GATE_MARGIN_TIGHT) {
+        console.error(c.yellow(wrap(t.profile.gateMarginTight(pct(margin), formatUsd(limitUsd - judgedUsd)), 74, '  ')));
+      }
+    };
+
     if (typeof args.flags.get('max-usd') === 'string' || config.spend?.maxUsd !== undefined) {
       const maxUsd =
         typeof args.flags.get('max-usd') === 'string'
@@ -2314,9 +2376,19 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
           : config.spend!.maxUsd!;
       if (report.total.totalUsd > maxUsd) {
         console.error(c.red(t.profile.maxUsdFailed(formatUsd(report.total.totalUsd), formatUsd(maxUsd))));
+        /**
+         * What to change, next to the fact that something must. A red build in
+         * CI is the one place nobody opens the full report, so the failure
+         * carries its own next step: which slice holds the money, and the one
+         * lever the report already priced. Nothing here is a recommendation —
+         * whether that model can do the work is the reader's to judge, and the
+         * copy says so.
+         */
+        explainFailure(report.total.totalUsd - maxUsd);
         process.exitCode = 1;
       } else {
         console.error(c.dim(t.profile.maxUsdOk(formatUsd(report.total.totalUsd), formatUsd(maxUsd))));
+        explainMargin(report.total.totalUsd, maxUsd);
       }
     }
     if (typeof args.flags.get('max-growth-usd') === 'string' && againstDelta !== null) {
@@ -2427,9 +2499,11 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
           console.error(
             c.red(`${t.profile.maxDayFailed(worst.day, formatUsd(worst.usd), formatUsd(maxDay))}${suspect}`),
           );
+          explainFailure(worst.usd - maxDay, { namesLargest: true });
           process.exitCode = 1;
         } else {
           console.error(c.dim(t.profile.maxDayOk(worst.day, formatUsd(worst.usd), formatUsd(maxDay))));
+          explainMargin(worst.usd, maxDay);
           /**
            * Calls with no clock are in the bill above and in no day below, so
            * the worst day is a floor by exactly that much. Said only on a
@@ -2467,12 +2541,38 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
         console.error(
           c.red(t.profile.maxSessionFailed(formatUsd(report.sessionSpend.maxUsd), formatUsd(maxSession), n(report.sessionSpend.sessions))),
         );
+        explainFailure(report.sessionSpend.maxUsd - maxSession);
         process.exitCode = 1;
       } else {
         console.error(
           c.dim(t.profile.maxSessionOk(formatUsd(report.sessionSpend.maxUsd), formatUsd(maxSession), n(report.sessionSpend.sessions))),
         );
+        explainMargin(report.sessionSpend.maxUsd, maxSession);
       }
+    }
+  };
+
+  /**
+   * Run the gates, keeping what they said. Exit codes and stderr behave
+   * exactly as before — this only also remembers, so `--markdown-out` can put
+   * the verdict where the person reading CI will actually see it.
+   */
+  const recordGates = (): void => {
+    const original = console.error;
+    console.error = (...parts: unknown[]): void => {
+      const text = parts.map((part) => String(part)).join(' ');
+      // Colour stripped and the terminal's wrap collapsed: markdown re-wraps
+      // to its own width, and the escape sequences and hanging indents that
+      // make a terminal readable are noise a summary reader looks past.
+      // eslint-disable-next-line no-control-regex
+      gateVerdicts.push(text.replace(/\u001b\[[0-9;]*m/g, '').replace(/\s+/g, ' ').trim());
+      original(...(parts as []));
+    };
+    try {
+      applyGates();
+    } finally {
+      console.error = original;
+      gateFailed = process.exitCode === 1;
     }
   };
 
@@ -2511,6 +2611,9 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
             ? { window: { since: stringFlag(args, 'since') ?? '—', until: stringFlag(args, 'until') ?? '—' } }
             : {}),
           ...(pricingStale !== null ? { stalePricing: pricingStale } : {}),
+          // The verdict, where the person reading CI will see it. recordGates()
+          // runs before the side files for exactly this.
+          ...(gateVerdicts.length > 0 ? { gates: { failed: gateFailed, lines: gateVerdicts } } : {}),
           // The repricing, when --what-if was given: computed once above and
           // handed over, so the summary in a pull request cannot disagree
           // with the terminal about what a move would cost.
@@ -2636,8 +2739,8 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
         2,
       ),
     );
+    recordGates();
     await writeSideFiles();
-    applyGates();
     return;
   }
 
@@ -3768,9 +3871,9 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
 
   reportProfileGaps(report, t, n, pricingStale);
 
-  await writeSideFiles();
+  recordGates();
 
-  applyGates();
+  await writeSideFiles();
 }
 
 /**

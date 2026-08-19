@@ -779,6 +779,22 @@ export interface CliMessages {
      * the previous one carried, so "did not grow" is a claim nobody could
      * check. "Not measured" is not "did not grow", as everywhere here.
      */
+    /**
+     * Why a gate failed and what would move it, from figures the report already
+     * computed. Nothing here recommends: whether the cheaper model can do the
+     * work is the reader's to judge, and the copy says so.
+     */
+    gateLargest(label: string, model: string, usd: string, share: string): string;
+    gateLever(label: string, action: string, saving: string, overage: string, covers: boolean): string;
+    /**
+     * What the lever actually is. Split from the sentence because a slice with
+     * only a batch price has no destination model, and naming the model it is
+     * already on as somewhere to move it would be false.
+     */
+    gateLeverRoute(model: string): string;
+    gateLeverBatch(): string;
+    gateLeverBoth(model: string): string;
+    gateMarginTight(margin: string, room: string): string;
     maxGrowthCoverageLost(fields: string, was: string, now: string): string;
     coverageField(field: string): string;
     /**

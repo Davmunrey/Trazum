@@ -9,6 +9,38 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**A failing gate says what to change.** A gate printed a verdict and an exit
+code, and the person reading it is in CI — the one place nobody opens the
+full report. Every failure now carries the slice holding the money, its share
+of the bill, and the largest lever the report already priced, with whether
+that lever covers the overage stated rather than left to be inferred. It
+points and does not recommend: whether the cheaper model can do the work, and
+whether those calls can wait for a batch window, is the reader's to judge, and
+the copy says so on every surface.
+
+Written once and called by all four spend gates, because four hand-rolled
+copies of the same three sentences is four chances for one of them to soften.
+The day gate skips the contributor line it already prints for itself.
+
+**`--max-usd` says how much room a pass had, when it was tight.** A pass 2%
+under budget and a pass 60% under are different states of the world and only
+one of them is quiet news. Said under a tenth of the budget, with the
+threshold in the sentence, on the whole-bill, per-day and per-conversation
+gates alike.
+
+**The verdict reaches the CI summary.** The gates spoke on stderr and stopped
+there, so a run summary carried the whole report and not the one sentence
+explaining why the build was red — the reader had to open the raw log to find
+it. `--markdown-out` now leads with the verdict: a failure quoted and bold so
+it survives being skimmed, its explanation beneath it unmarked, a pass stated
+plainly without shouting. Collected by wrapping the gates' own stderr rather
+than by a list each gate must remember to join, so a gate added later reaches
+the summary automatically.
+
 ## 1.30.0 — "The report as a diff"
 
 ### Added

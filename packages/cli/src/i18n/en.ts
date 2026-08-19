@@ -1173,6 +1173,15 @@ ${bold('EXAMPLES')}
       `The 95th percentile is ${ratio}x the median there: most conversations are cheap and a few are not, which is a tail a quota can catch. Where median and p95 sit close together the workload is simply expensive and there is no tail to hunt.`,
     sessionSpendOnly: (sessions, max) =>
       `${sessions} ${sessions === '1' ? 'conversation' : 'conversations'} in this log; the most expensive cost ${max}. Too few per workload for a percentile — a maximum is a fact at any count, and it is the figure --max-session-usd judges.`,
+    gateLargest: (label, model, usd, share) =>
+      `Most of it is ${label} on ${model}: ${usd}, ${share} of the bill. That is where the money is, not necessarily where the fix is.`,
+    gateLever: (label, action, saving, overage, covers) =>
+      `The largest lever the report priced would save ${saving} on ${label} by ${action} — ${covers ? `enough to cover the ${overage} this is over by` : `short of the ${overage} this is over by, so it is part of the answer rather than all of it`}. Whether that is the right call for this workload is yours to judge; the figure is arithmetic, not advice.`,
+    gateLeverRoute: (model) => `moving it to ${model}`,
+    gateLeverBatch: () => 'sending it through the Batch API',
+    gateLeverBoth: (model) => `moving it to ${model} and sending it through the Batch API`,
+    gateMarginTight: (margin, room) =>
+      `Passed with ${margin} of the budget left — ${room}. Under a tenth is close enough that an ordinary week crosses it; a pass this tight is worth knowing about before it becomes a failure.`,
     maxGrowthCoverageLost: (fields, was, now) =>
       `FAILED — this log stopped recording ${fields} (${was} of records before, ${now} now), so the comparison cannot be made. That is not a pass: a bill whose growth nobody could measure is not a bill that stayed flat, and every finding that needed the field went quiet for a reason that has nothing to do with spend.`,
     coverageField: (field) =>

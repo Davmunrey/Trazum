@@ -1188,6 +1188,15 @@ ${bold('EJEMPLOS')}
       `El percentil 95 es ${ratio}x la mediana ahí: casi todas las conversaciones son baratas y unas pocas no, y esa es una cola que una cuota puede cazar. Cuando mediana y p95 quedan cerca, la carga es cara sin más y no hay cola que perseguir.`,
     sessionSpendOnly: (sessions, max) =>
       `${sessions} ${sessions === '1' ? 'conversación' : 'conversaciones'} en este registro; la más cara costó ${max}. Demasiado pocas por carga para un percentil — un máximo es un hecho con cualquier recuento, y es la cifra que juzga --max-session-usd.`,
+    gateLargest: (label, model, usd, share) =>
+      `La mayor parte es ${label} en ${model}: ${usd}, el ${share} de la factura. Ahí está el dinero, no necesariamente el arreglo.`,
+    gateLever: (label, action, saving, overage, covers) =>
+      `La mayor palanca que el informe ha valorado ahorraría ${saving} en ${label} ${action} — ${covers ? `suficiente para cubrir los ${overage} de exceso` : `menos que los ${overage} de exceso, así que es parte de la respuesta y no toda`}. Si es la decisión correcta para esta carga lo juzgas tú; la cifra es aritmética, no consejo.`,
+    gateLeverRoute: (model) => `moviéndola a ${model}`,
+    gateLeverBatch: () => 'pasándola por la Batch API',
+    gateLeverBoth: (model) => `moviéndola a ${model} y pasándola por la Batch API`,
+    gateMarginTight: (margin, room) =>
+      `Aprobado con el ${margin} del presupuesto libre — ${room}. Por debajo de una décima es lo bastante justo como para que una semana normal lo cruce; un aprobado así conviene saberlo antes de que sea un fallo.`,
     maxGrowthCoverageLost: (fields, was, now) =>
       `FALLÓ — este registro dejó de grabar ${fields} (${was} de los registros antes, ${now} ahora), así que la comparación no se puede hacer. Eso no es un aprobado: una factura cuyo crecimiento nadie pudo medir no es una factura que se mantuvo plana, y todo hallazgo que necesitaba ese campo se calló por un motivo que nada tiene que ver con el gasto.`,
     coverageField: (field) =>
