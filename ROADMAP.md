@@ -514,6 +514,14 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.31.0 — The gate that explains itself
+
+Every spend gate failure names the slice holding the money and the largest
+lever the report already priced, with whether it covers the overage stated
+rather than inferred — pointing, never recommending. A pass within a tenth of
+the budget says how much room was left. And the verdict leads the markdown
+summary, so a red build in CI carries its reason where the reader actually is.
+
 ### 1.30.0 — The report as a diff
 
 `--against` gained the half the dollars cannot carry: coverage drift. A field
