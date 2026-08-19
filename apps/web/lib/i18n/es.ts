@@ -367,6 +367,10 @@ export const es: WebMessages = {
       + 'propios ejemplos, con trazum route.',
     whatIfDearer:
       'Esa dirección cuesta más. La aritmética está aquí para que el número no sea una suposición.',
+    whatIfBatchOnTarget: (batched, moved) =>
+      `Si esas llamadas además pueden esperar, la Batch API del destino deja la factura `
+      + `trasladada de ${moved} en ${batched} — el descuento aplica a las tarifas del destino, `
+      + 'no a las que dejas. Si pueden esperar no está en el registro; esa mitad de la decisión es tuya.',
     whatIfCacheBeyond: (largest, min, noCache) =>
       `Su tráfico de caché no podría existir allí: la llamada más grande tiene ${largest} tokens `
       + `frente al mínimo de caché de ${min} tokens del destino, así que ninguna llamada de este `

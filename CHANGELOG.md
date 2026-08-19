@@ -27,6 +27,16 @@ unknown: nothing is claimed against a threshold nobody stated.
 The web bill renders the same correction beside the same row, at the same
 threshold — surface parity, as everywhere.
 
+**The move, batched — the decision's other half.** `--what-if` now states
+what the moved bill becomes with the target's Batch API on top, discounted on
+the *target's* rates and never summed with the move (the same rule the levers
+learned when two added savings exceeded the slice they came from). Over-context
+money stays out of the batched figure exactly as it stays out of the moved
+one. Hedged the only honest way: whether these calls can wait for a batch
+window is not in the log, and every surface says so. In the JSON as
+`whatIf.batchOnTarget`, null when the target sells no batch discount — a
+different statement from a $0 saving.
+
 ## 1.31.0 — "The gate that explains itself"
 
 ### Added

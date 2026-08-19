@@ -306,6 +306,8 @@ export interface WebMessages {
      * figure grants discounted rates to entries that could not form — an
      * error in the flattering direction, corrected beside the figure.
      */
+    /** The moved bill batched on the target's rates — never summed with the move. */
+    whatIfBatchOnTarget(batched: string, moved: string): string;
     whatIfCacheBeyond(largest: string, min: string, noCache: string): string;
     whatIfSlice(label: string, model: string, current: string, target: string): string;
     whatIfOverContext(label: string, tokens: string, window: string, usd: string): string;

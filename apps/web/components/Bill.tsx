@@ -994,6 +994,20 @@ function Report({
                       <span className="text-[13px] text-muted-foreground">
                         {whatIf.deltaUsd < 0 ? t.bill.whatIfCheaper : t.bill.whatIfDearer}
                       </span>
+                      {/*
+                        The decision's other half: the same move with the
+                        target's Batch API on top — discounted on the target's
+                        rates, never summed with the move, and hedged: whether
+                        the calls can wait is not in the log.
+                      */}
+                      {whatIf.batchOnTarget !== null && (
+                        <span className="text-[13px] text-muted-foreground">
+                          {t.bill.whatIfBatchOnTarget(
+                            formatUsd(whatIf.batchOnTarget.targetUsd),
+                            formatUsd(whatIf.targetUsd),
+                          )}
+                        </span>
+                      )}
                       <ul className="m-0 list-disc pl-5 text-[13px]">
                         {whatIf.slices.slice(0, MAX_SLICES).map((slice) => (
                           <li key={`${slice.label}\n${slice.model}`}>

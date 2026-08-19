@@ -3372,6 +3372,17 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
       console.log(
         `  ${c.dim(wrap(cheaper ? t.profile.whatIfCheaper() : t.profile.whatIfDearer(), 74, '  '))}`,
       );
+      /**
+       * The other half of the whole decision: the same move with the target's
+       * Batch API on top. Computed against the target's rates, never by
+       * adding two savings, and hedged the only honest way — whether these
+       * calls can wait is not in the log.
+       */
+      if (whatIf.batchOnTarget !== null) {
+        console.log(
+          `  ${c.dim(wrap(t.profile.whatIfBatchOnTarget(formatUsd(whatIf.batchOnTarget.targetUsd), formatUsd(whatIf.targetUsd)), 74, '  '))}`,
+        );
+      }
       for (const slice of whatIf.slices.slice(0, 5)) {
         const label = slice.label === UNLABELLED ? t.profile.unlabelled() : slice.label;
         console.log(

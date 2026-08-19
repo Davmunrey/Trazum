@@ -179,6 +179,29 @@ describe('repricing a profile onto another model', () => {
     assert.ok(slice.cacheBeyondTarget.noCacheUsd > slice.targetUsd);
   });
 
+  it('prices the move batched on the target, never summed', () => {
+    // 200k input + 20k output on Haiku: $0.20 + $0.10 = $0.30 moved; the
+    // batch discount halves both rates, so $0.15 — checkable by hand.
+    const out = reprice([
+      call({ usage: { input_tokens: 100_000, output_tokens: 10_000 } }),
+      call({ usage: { input_tokens: 100_000, output_tokens: 10_000 } }),
+    ]);
+    near(out.targetUsd, 0.3, 'moved');
+    near(out.batchOnTarget.targetUsd, 0.15, 'batched on target');
+  });
+
+  it('keeps over-context money out of the batched figure too', () => {
+    // One movable call and one over Haiku's window: the batched figure must
+    // cover exactly the movable spend, or it reports a discount on traffic
+    // that would have failed outright.
+    const out = reprice([
+      call({ usage: { input_tokens: 100_000, output_tokens: 0 } }),
+      call({ label: 'huge', usage: { input_tokens: 500_000, output_tokens: 0 } }),
+    ]);
+    near(out.targetUsd, 0.1, 'moved');
+    near(out.batchOnTarget.targetUsd, 0.05, 'batched');
+  });
+
   it('stays silent when the calls clear the minimum, or never cached at all', () => {
     // 200k tokens clear any minimum in the catalogue.
     const [cleared] = reprice([

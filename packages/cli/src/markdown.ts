@@ -1057,6 +1057,11 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
         `**${mdText(t.profile.whatIfTotal(formatUsd(whatIf.currentUsd), formatUsd(whatIf.targetUsd), formatUsd(Math.abs(whatIf.deltaUsd))))}**`,
       );
       lines.push('');
+      // The decision's other half, on the target's rates, never summed.
+      if (whatIf.batchOnTarget !== null) {
+        lines.push(`_${mdText(t.profile.whatIfBatchOnTarget(formatUsd(whatIf.batchOnTarget.targetUsd), formatUsd(whatIf.targetUsd)))}_`);
+        lines.push('');
+      }
       for (const slice of whatIf.slices.slice(0, 5)) {
         lines.push(`- ${mdText(t.profile.whatIfSlice(showLabel(slice.label), slice.model, formatUsd(slice.currentUsd), formatUsd(slice.targetUsd)))}`);
         // The cache-minimum caveat, in place — the row above flatters the move.

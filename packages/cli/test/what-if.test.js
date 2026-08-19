@@ -139,6 +139,18 @@ describe('trazum profile --what-if', () => {
     assert.ok(slice.cacheBeyondTarget.noCacheUsd > slice.targetUsd);
   });
 
+  it('states the move batched on the target, hedged, on text and JSON alike', async () => {
+    const moved = call({ usage: { input_tokens: 100_000, output_tokens: 10_000 } });
+    const text = await run([moved, moved], ['--what-if', HAIKU]);
+    const out = `${text.stdout}${text.stderr}`.replace(/\s+/g, ' ');
+    assert.match(out, /Batch API takes the moved bill from \$0\.3000 to \$0\.1500/);
+    assert.match(out, /Whether they can wait is not in the log/);
+
+    const json = await run([moved, moved], ['--what-if', HAIKU, '--json']);
+    const { whatIf } = JSON.parse(json.stdout);
+    assert.ok(Math.abs(whatIf.batchOnTarget.targetUsd - 0.15) < 1e-9);
+  });
+
   it('applies the same window as the report it compares', async () => {
     // A windowed bill compared against an unwindowed repricing would state a
     // difference over calls the report above does not contain.
