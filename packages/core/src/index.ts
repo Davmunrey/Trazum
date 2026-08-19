@@ -40,6 +40,10 @@ export { driversBetween } from './against.js';
 export type { AgainstDriver } from './against.js';
 // The same tokens at another model's rates — arithmetic, not advice, and it
 // refuses to price a call the target could not have accepted. See reprice.ts.
+// The shape of a call's input — the half of the bill a total could only name.
+// See input-shape.ts.
+export { createInputShapeTracker, inputShapes } from './input-shape.js';
+export type { InputShape, InputShapeOptions, InputShapeTracker } from './input-shape.js';
 export { priceTokensOn, repriceProfile } from './reprice.js';
 export type { OverContextSlice, RepriceReport, RepricedSlice } from './reprice.js';
 export { createSessionLedgerTracker, singleTurnCacheWrites } from './session-ledger.js';

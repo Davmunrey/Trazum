@@ -1002,6 +1002,21 @@ ${bold('EXAMPLES')}
       'The answer length is the task here, so the levers are the blunt ones: ask for shorter answers in the prompt, and cap max_tokens.',
     outputPercentiles: (p50, p95) =>
       `Half the measured answers fit within ${p50} output tokens, and 95% within ${p95} — the number a max_tokens cap actually wants. Measured on these calls, promised for nothing.`,
+    inputShapeHeading: () => 'How big these calls are',
+    inputSkewed: (label, model, p50, p95, ratio, usd) =>
+      `${label} on ${model} is uneven: half its calls fit within ${p50} input tokens and 95% within ${p95} — about ${ratio}x the ordinary call, over ${usd} of input spend.`,
+    inputSkewedAdvice: () =>
+      'Past four times the median, the ordinary call is fine and something is growing on top of it: a conversation nobody truncates, a retrieval with no cap, a tool result pasted in whole. The fix is a limit on the large calls, not a rewrite of the prompt every call sends.',
+    inputEven: (label, model, p50, p95, usd) =>
+      `${label} on ${model} is even: half its calls fit within ${p50} input tokens and 95% within ${p95}, over ${usd} of input spend.`,
+    inputEvenAdvice: () =>
+      'The large calls are not much larger than the ordinary one, so there is no tail to cap — the prompt is simply big. The levers are fewer retrieved documents, a shorter system block, and caching if the prefix repeats.',
+    inputHuge: (label, model, calls, usd) =>
+      `${label} on ${model}: every one of its ${calls} is larger than this tool measures precisely, over ${usd} of input spend. No ceiling is named because there is none to name honestly — that size is itself the finding.`,
+    inputMostlyCached: (share) =>
+      `${share} of those tokens were cache reads, billed at a tenth of the input rate — the size is real and most of it is cheap.`,
+    inputFullRate: () =>
+      'Almost none of that was a cache read, so every one of those tokens was billed at the full input rate. If any prefix repeats across these calls, caching is the lever with the largest ceiling here.',
     leversNone: () =>
       'Nothing here clears 1% of the bill: these calls are already on the cheapest model of their family, or their provider has no batch API. That is a real answer, not an empty section.',
     assumedWriteTtl: (calls) =>

@@ -3251,6 +3251,72 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
   }
 
   /**
+   * How big the calls themselves are — the other half of the bill.
+   *
+   * The section above describes output; on a RAG or agent workload input is
+   * most of the invoice, and a total could only ever say "input is 63% of
+   * this bill", which nobody can act on. The actionable question is whether
+   * the ordinary call is large or a few calls are enormous, and those two
+   * shapes want opposite responses: a cap on something, or a shorter prompt.
+   *
+   * Loud past **four times** the median — far enough from an even
+   * distribution that a bucket boundary cannot flip the message, and stated
+   * in the sentence rather than hidden here. Both figures are bucket
+   * ceilings, so the ratio is coarse by construction and the copy says so.
+   */
+  if (report.inputShapes.length > 0) {
+    console.log();
+    console.log(c.bold(t.profile.inputShapeHeading()));
+    for (const shape of report.inputShapes.slice(0, 3)) {
+      const label = shape.label === UNLABELLED ? t.profile.unlabelled() : shape.label;
+      console.log();
+      if (shape.medianWithinTokens === null || shape.p95WithinTokens === null || shape.p95OverMedian === null) {
+        /**
+         * The covering bucket is the open-ended last one, so there is no
+         * ceiling to name. Said rather than skipped: a slice whose calls are
+         * all above a million tokens is a finding, and silence would drop it.
+         */
+        console.log(
+          `  ${c.bold(wrap(t.profile.inputHuge(label, shape.modelName, t.profile.calls(shape.calls), formatUsd(shape.inputUsd)), 74, '  '))}`,
+        );
+        continue;
+      }
+      const skewed = shape.p95OverMedian >= 4;
+      const line = skewed
+        ? t.profile.inputSkewed(
+            label,
+            shape.modelName,
+            n(shape.medianWithinTokens),
+            n(shape.p95WithinTokens),
+            shape.p95OverMedian.toFixed(1),
+            formatUsd(shape.inputUsd),
+          )
+        : t.profile.inputEven(
+            label,
+            shape.modelName,
+            n(shape.medianWithinTokens),
+            n(shape.p95WithinTokens),
+            formatUsd(shape.inputUsd),
+          );
+      console.log(`  ${c.bold(wrap(line, 74, '  '))}`);
+      console.log(
+        `  ${c.dim(wrap(skewed ? t.profile.inputSkewedAdvice() : t.profile.inputEvenAdvice(), 74, '  '))}`,
+      );
+      /**
+       * What that size actually costs. A cache read is a tenth of input on
+       * Anthropic, so a large slice reading almost everything from cache is a
+       * very different bill from one paying full rate — and the token counts
+       * alone cannot tell them apart.
+       */
+      if (shape.cachedShare >= 0.5) {
+        console.log(`  ${c.dim(wrap(t.profile.inputMostlyCached(pct(shape.cachedShare)), 74, '  '))}`);
+      } else if (shape.cachedShare < 0.1) {
+        console.log(`  ${c.dim(wrap(t.profile.inputFullRate(), 74, '  '))}`);
+      }
+    }
+  }
+
+  /**
    * Output spend that bought answers cut off mid-generation — the one slice of
    * a bill that is waste without a counterpart. Paid in full, frequently
    * retried and billed again, and the truncated attempt bought nothing.

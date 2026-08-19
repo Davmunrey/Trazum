@@ -39,6 +39,7 @@ key that disappears fails, and a key added without a line here fails too.
 | `conversations` | What re-sending history costs per slice — a ceiling, never a saving. |
 | `hasSessions` | Whether any record carried a session at all. Distinguishes "no growth" from "not measured". |
 | `outputShapes` | Where output spend concentrates, with the `max_tokens` ceilings the measured answers fit within. |
+| `inputShapes` | How big a slice's calls are: the ceilings half and 95% of them fit within, their ratio, and how much of the size was cache reads. Slices with too few calls for a percentile are absent, not zeroed. |
 | `span` | The period the log covers, or `null`. Stated, never extrapolated. |
 | `spendByDay` | Exact dollars per UTC day, with the day's biggest label. |
 | `duplicateLines` | Lines identical to an earlier one (timestamped records only), and what they added to the total — the shape a doubled export has. |

@@ -593,6 +593,29 @@ export interface CliMessages {
      * nothing.
      */
     outputPercentiles(p50: string, p95: string): string;
+    /**
+     * How big the calls themselves are — the other half of the bill.
+     *
+     * Both figures are bucket ceilings, so the ratio between them is coarse
+     * by construction; the copy says "about". Loud past four times the
+     * median, a presentation threshold stated in the sentence.
+     */
+    inputShapeHeading(): string;
+    inputSkewed(
+      label: string,
+      model: string,
+      p50: string,
+      p95: string,
+      ratio: string,
+      usd: string,
+    ): string;
+    inputSkewedAdvice(): string;
+    inputEven(label: string, model: string, p50: string, p95: string, usd: string): string;
+    inputEvenAdvice(): string;
+    /** Every call above the widest bucket edge, so no ceiling can be named. */
+    inputHuge(label: string, model: string, calls: string, usd: string): string;
+    inputMostlyCached(share: string): string;
+    inputFullRate(): string;
     assumedWriteTtl(calls: number): string;
     /**
      * The period the log covers, when its records carry a clock. Stated and

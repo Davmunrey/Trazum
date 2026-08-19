@@ -823,6 +823,45 @@ const PROFILE: ToolDefinition = {
     }
 
     /**
+     * How big the calls are, and how uneven that is.
+     *
+     * The agent asking "why is input 63% of this bill" needs the shape, not
+     * the share: an even slice wants a shorter prompt and a skewed one wants
+     * a cap on whatever is growing. Both figures are bucket ceilings, so the
+     * ratio is stated as approximate.
+     */
+    if (report.inputShapes.length > 0) {
+      lines.push('');
+      lines.push('How big these calls are:');
+      for (const shape of report.inputShapes.slice(0, 3)) {
+        const shown = shape.label === UNLABELLED ? 'unlabelled' : shape.label;
+        if (shape.medianWithinTokens === null || shape.p95WithinTokens === null || shape.p95OverMedian === null) {
+          lines.push(
+            `  ${shown} on ${shape.model}: every call is larger than this tool measures precisely `
+              + `(${formatUsd(shape.inputUsd)} of input spend). That size is itself the finding.`,
+          );
+          continue;
+        }
+        const cached = `${Math.round(shape.cachedShare * 100)}% of those tokens were cache reads`;
+        lines.push(
+          `  ${shown} on ${shape.model}: half its calls fit within `
+            + `${shape.medianWithinTokens.toLocaleString('en-US')} input tokens and 95% within `
+            + `${shape.p95WithinTokens.toLocaleString('en-US')} — about `
+            + `${shape.p95OverMedian.toFixed(1)}x the ordinary call, over `
+            + `${formatUsd(shape.inputUsd)} of input spend. ${cached}.`,
+        );
+        lines.push(
+          shape.p95OverMedian >= 4
+            ? '    Past four times the median the ordinary call is fine and something is growing on '
+              + 'top of it — a conversation nobody truncates, a retrieval with no cap. The fix is a '
+              + 'limit on the large calls, not a rewrite of the prompt every call sends.'
+            : '    The large calls are not much larger than the ordinary one, so there is no tail to '
+              + 'cap: the prompt is simply big.',
+        );
+      }
+    }
+
+    /**
      * `what_if`: the same tokens at another model's rates.
      *
      * The caveat leads, because an agent relaying only the dollar figure would
