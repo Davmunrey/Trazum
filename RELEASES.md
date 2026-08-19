@@ -40,6 +40,111 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.40.0 — "The long run"
+
+The fifth and last of the five planned in `docs/plan-1.36-1.40.md` — the
+arc is delivered. Every comparison in Trazum is between two logs, and a
+product's cost problem is rarely visible in two: it is visible in twenty.
+This release is the twenty.
+
+### `trazum history <dir>` — many reports, one series
+
+```
+The long run: 4 periods, 2026-07-01 → 2026-07-27
+  w0.report.json  $9.40 · 5 calls · 5.0 days
+  w1.report.json  $13.42 · 7 calls · 5.0 days
+  w2.report.json  $17.32 · 9 calls · 5.0 days
+  w3.report.json  $21.10 · 11 calls · 5.0 days
+
+  ! support has climbed for 3 consecutive periods since w0.report.json:
+    $8.40 → $20.10. A shape, not a forecast.
+  ! claude-opus-5's share of the bill has climbed for 3 consecutive periods
+    since w0.report.json: 89.4% → 95.3%. The totals can look flat while the
+    mix moves under them.
+  ! The cache share has decayed for 3 consecutive periods since
+    w0.report.json: 23.5% → 3.8% — slowly enough that no single report
+    called it a finding, which is exactly why a series exists.
+
+  ! Routing and batching support (claude-opus-5) has been planned 2 times
+    and is still in the newest plan — a decision nobody is revisiting.
+```
+
+**Derived from stored reports, never re-parsed logs.** The input is a
+directory of the `--json` documents `profile` already writes, plus any saved
+plans beside them. A team can keep a year of reports and throw the raw logs
+away — which is what the privacy story requires anyway: the stored documents
+carry no prompt text, no session keys and no per-call rows, so the long run
+is built from data that was already safe to keep.
+
+**The consecutive-movement rule.** A finding needs at least `MIN_RUN` (3)
+consecutive rises or falls — a run of 3 spans four reports. Two rises is
+what `profile --against` already shows, and one is noise wearing a trend's
+clothes. The run is named with where it started (*since w0.report.json*) and
+its first and last values, so the reader judges the size — never a
+percentage per period, which would be a fitted line in disguise.
+
+**The findings only a series can make:**
+
+- **A label climbing.** 4% a week for eleven weeks never trips a weekly
+  gate; eleven consecutive rises in a series is unmissable.
+- **A model share climbing under flat totals.** The bill holds steady while
+  the mix underneath moves toward the expensive model — invisible to every
+  total, visible to a share series.
+- **The cache share decaying.** Slowly enough that no single week's report
+  called it a finding, which is exactly why a series exists.
+- **The same action planned again and again.** Saved plans in the directory
+  are held against each other: an action appearing in two or more plans is
+  named as *a decision nobody is revisiting*, with first and last planned
+  dates. 1.38 made plans files and 1.39 made them checkable; this makes
+  ignoring them visible.
+
+**Still no forecasts.** Twenty points make a trend visible; they do not make
+next month knowable. The series is stated, the shape is named, and where it
+goes next remains the reader's to judge — the same refusal `modelMixDrift`
+has carried since 1.27, now at series length. The refusal is printed in the
+report's own footer.
+
+**The refusals, each with its reason:**
+
+- **A report with no span is on no timeline** — named, never silently
+  absorbed, because a period that cannot be placed would have to be guessed
+  into position.
+- **A JSON file that is neither a stored report nor a saved plan is named**
+  rather than skipped: a directory of "all my reports" that quietly ignored
+  one file would be a series wrong by an unknown amount.
+- **Fewer than three dated reports is an error naming the right tool**: two
+  reports is a comparison, and `profile --against` already does that better,
+  with drivers attributed.
+
+### The document
+
+`history --json` emits the history document — the ordered periods, the three
+series (label dollars, model shares, cache share, with null for absence
+because absence is not zero), the runs, the repeated plan actions, and both
+named exclusion lists — contracted in docs/json-output.md and enforced in
+both directions by a parity test. `--markdown-out` writes the series for a
+CI summary.
+
+### The module underneath
+
+`@trazum/core` gains `history.ts` (`buildHistory`, `storedReportFrom`,
+`MIN_RUN`), browser-safe: documents in, series out. `storedReportFrom`
+returns null for anything that is not a profile document, so the caller
+names the file instead of absorbing it.
+
+### What stayed out, and why
+
+**Waiver history.** The plan called for "a finding waived three times in a
+row is a decision nobody is revisiting" — but no document stores *past*
+waivers: the config holds only the waivers currently in force, and a history
+invented from the current config would be a guess presented as a record.
+The shape of the feature is right and the data for it does not exist yet;
+when waivers are recorded somewhere with dates, the series can be built the
+same way the plan series is. Plan history shipped instead, because plans
+*are* dated documents already.
+
+---
+
 ## 1.39.0 — "Did it work?"
 
 The fourth of the five planned in `docs/plan-1.36-1.40.md`, and the release
