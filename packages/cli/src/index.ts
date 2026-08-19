@@ -2321,7 +2321,34 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
     }
     if (typeof args.flags.get('max-growth-usd') === 'string' && againstDelta !== null) {
       const maxGrowth = numberFlag(args, 'max-growth-usd', 0, t);
-      if (againstDelta > maxGrowth) {
+      /**
+       * A comparison that went blind fails before it is judged.
+       *
+       * The dollars can hold flat while the current log stopped recording a
+       * field the previous one carried — and every finding that needed the
+       * field is now silent for a reason that has nothing to do with spend.
+       * A gate passing there would be certifying a comparison it could not
+       * make: "not measured" is not "did not grow", the same refusal
+       * --max-day-usd makes on a clockless log and --max-session-usd on a
+       * sessionless one. Only a collapse fails; a field that appeared means
+       * this side can see more, which is never a reason to refuse.
+       */
+      const blinded = previous !== null
+        ? coverageDrift(previous.fieldCoverage, report.fieldCoverage).filter((d) => d.delta < 0)
+        : [];
+      const worst = blinded[0];
+      if (worst !== undefined) {
+        console.error(
+          c.red(
+            t.profile.maxGrowthCoverageLost(
+              blinded.map((d) => t.profile.coverageField(d.field)).join(', '),
+              pct(worst.was),
+              pct(worst.now),
+            ),
+          ),
+        );
+        process.exitCode = 1;
+      } else if (againstDelta > maxGrowth) {
         console.error(c.red(t.profile.maxGrowthUsdFailed(formatSignedUsd(againstDelta), formatUsd(maxGrowth))));
         process.exitCode = 1;
       }
@@ -3669,6 +3696,16 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
               ? `  ${c.yellow('!')} ${c.bold(wrap(line, 74, '    '))}`
               : `  ${c.dim(wrap(line, 74, '  '))}`,
           );
+          /**
+           * Which findings went with it, named. "Some findings are silent" is
+           * not something a reader can act on; knowing that conversation
+           * growth and the cache-TTL fit are now silence rather than absence
+           * tells them exactly which sections of this report to distrust.
+           */
+          if (drift.delta < 0) {
+            const silenced = t.profile.coverageSilenced(drift.field);
+            if (silenced !== '') console.log(`    ${c.dim(wrap(silenced, 72, '    '))}`);
+          }
         }
         if (drifts.some((d) => d.delta < 0)) {
           console.log(`  ${c.dim(wrap(t.profile.coverageDriftWhy(), 74, '    '))}`);

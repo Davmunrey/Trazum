@@ -574,6 +574,17 @@ export const es: WebMessages = {
     drillActive: (label) =>
       `Mostrando solo ${label}. Cada porcentaje de abajo es una parte de la factura de esta carga, no del registro completo, y la comparación — si la hay — filtra los dos registros igual.`,
     drillClear: 'Ver el registro completo',
+    coverageField: (field) =>
+      ({ label: 'etiqueta', session: 'sesión', ts: 'marca de tiempo', stopReason: 'razón de parada' })[field] ?? field,
+    coverageDrift: (field, was, now) =>
+      `La cobertura se movió: ${field} estaba en el ${was} de los registros y ahora está en el ${now}. Se informa a partir de 20 puntos de movimiento en cualquier dirección.`,
+    coverageSilenced: (field) =>
+      ({
+        label: 'Un campo que el registro dejó de grabar no es un hallazgo arreglado. Se callaron con él: el gasto por carga, el desglose y unas palancas que describan una decisión y no una mezcla.',
+        session: 'Un campo que el registro dejó de grabar no es un hallazgo arreglado. Se callaron con él: el crecimiento de conversación, el coste por conversación, los turnos repetidos, los reintentos por truncado y el ajuste del TTL de caché.',
+        ts: 'Un campo que el registro dejó de grabar no es un hallazgo arreglado. Se callaron con él: el periodo, la forma por día y por hora, la deriva de mezcla de modelos y la pregunta del TTL de caché por completo.',
+        stopReason: 'Un campo que el registro dejó de grabar no es un hallazgo arreglado. Se callaron con él: las respuestas cortadas en max_tokens y los reintentos facturados después.',
+      })[field] ?? '',
     sessionCost: (label, model, sessions, median, medianTurns, p95, max) =>
       `${label} en ${model}: en ${sessions} conversaciones, la mediana cuesta ${median} a lo `
       + `largo de ${medianTurns} turnos, el 95% queda por debajo de ${p95} y la más cara fue `

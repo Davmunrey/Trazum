@@ -189,6 +189,15 @@ describe('the bill tab reads the log in the browser and nowhere else', () => {
     assert.match(bill, /p95Usd > 10 \* shape\.medianUsd/);
   });
 
+  it('names what the comparison stopped being able to see', () => {
+    // The dollars render a fixed finding and a blinded log identically; the
+    // card exists because only coverage tells them apart, and the silenced
+    // list only belongs to a collapse.
+    assert.match(bill, /coverageDrift\(prev\.fieldCoverage, report\.fieldCoverage\)/);
+    assert.match(bill, /t\.bill\.coverageSilenced\(drift\.field\)/);
+    assert.match(bill, /drift\.delta < 0 && \(/);
+  });
+
   it('states the worst conversation when the percentiles refused a small log', () => {
     // A maximum is a fact at any count; the card appears exactly when the
     // per-slice percentiles have nothing to say and the log still has

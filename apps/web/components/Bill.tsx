@@ -10,6 +10,7 @@ import {
   cacheEconomics,
   cacheHitRate,
   contextPressure,
+  coverageDrift,
   driversBetween,
   formatSignedUsd,
   formatUsd,
@@ -736,6 +737,29 @@ function Report({
                             </ul>
                           </>
                         )}
+                        {/*
+                          What the comparison stopped being able to see. The
+                          dollars above render a fixed finding and a blinded
+                          log identically; only coverage tells them apart, so
+                          a collapse is loud and names what went quiet with it.
+                        */}
+                        {coverageDrift(prev.fieldCoverage, report.fieldCoverage).map((drift) => (
+                          <div
+                            key={`coverage:${drift.field}`}
+                            className={`rounded-lg border px-3.5 py-3 text-[13px] ${
+                              drift.delta < 0 ? 'border-l-[3px] border-l-warn text-warn' : 'text-muted-foreground'
+                            }`}
+                          >
+                            {t.bill.coverageDrift(
+                              t.bill.coverageField(drift.field),
+                              pct(drift.was),
+                              pct(drift.now),
+                            )}
+                            {drift.delta < 0 && (
+                              <div className="mt-1">{t.bill.coverageSilenced(drift.field)}</div>
+                            )}
+                          </div>
+                        ))}
                       </>
                     );
                   })()

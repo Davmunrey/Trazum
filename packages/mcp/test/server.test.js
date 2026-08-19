@@ -363,6 +363,29 @@ describe('profile_usage', () => {
     assert.match(empty, /no comparison to make — a different answer from zero growth/);
   });
 
+  it('names what the comparison stopped being able to see', async () => {
+    // Identical bills; the second log stopped recording the session. An agent
+    // relaying "spend flat, all clear" off this would be relaying a claim
+    // nobody could check.
+    const sessioned = [0, 1, 2, 3]
+      .map((i) => line({ model: 'claude-opus-5', session: `s${i}`, ts: `2026-08-01T0${i}:00:00Z`, usage: { input_tokens: 200_000, output_tokens: 0 } }))
+      .join('\n');
+    const blind = [0, 1, 2, 3]
+      .map((i) => line({ model: 'claude-opus-5', ts: `2026-08-08T0${i}:00:00Z`, usage: { input_tokens: 200_000, output_tokens: 0 } }))
+      .join('\n');
+
+    const body = bodyOf(await client.call('profile_usage', { log: blind, previous_log: sessioned }));
+    assert.match(body, /Coverage moved: session was on 100\.0% of records and is now on 0\.0%/);
+    assert.match(body, /is not a finding that got fixed/);
+    assert.match(body, /conversation growth, per-conversation cost/);
+    for (const key of ['"s0"', '"s1"']) assert.ok(!body.includes(key), `session key ${key} leaked`);
+
+    // The other direction is stated, not warned about: the report can see more.
+    const gained = bodyOf(await client.call('profile_usage', { log: sessioned, previous_log: blind }));
+    assert.match(gained, /this report can see what the previous one could not/);
+    assert.doesNotMatch(gained, /is not a finding that got fixed/);
+  });
+
   it('prices the retry bill of truncation, hedged', async () => {
     const turn = (seconds, over = {}) =>
       line({ model: 'claude-opus-5', label: 'chat', session: 's1',

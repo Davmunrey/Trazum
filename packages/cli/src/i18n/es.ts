@@ -1188,8 +1188,17 @@ ${bold('EJEMPLOS')}
       `El percentil 95 es ${ratio}x la mediana ahí: casi todas las conversaciones son baratas y unas pocas no, y esa es una cola que una cuota puede cazar. Cuando mediana y p95 quedan cerca, la carga es cara sin más y no hay cola que perseguir.`,
     sessionSpendOnly: (sessions, max) =>
       `${sessions} ${sessions === '1' ? 'conversación' : 'conversaciones'} en este registro; la más cara costó ${max}. Demasiado pocas por carga para un percentil — un máximo es un hecho con cualquier recuento, y es la cifra que juzga --max-session-usd.`,
+    maxGrowthCoverageLost: (fields, was, now) =>
+      `FALLÓ — este registro dejó de grabar ${fields} (${was} de los registros antes, ${now} ahora), así que la comparación no se puede hacer. Eso no es un aprobado: una factura cuyo crecimiento nadie pudo medir no es una factura que se mantuvo plana, y todo hallazgo que necesitaba ese campo se calló por un motivo que nada tiene que ver con el gasto.`,
     coverageField: (field) =>
       ({ label: 'etiqueta', session: 'sesión', ts: 'marca de tiempo', stopReason: 'razón de parada' })[field] ?? field,
+    coverageSilenced: (field) =>
+      ({
+        label: 'Se callaron con él: el gasto por carga, el desglose y unas palancas que describan una decisión y no una mezcla.',
+        session: 'Se callaron con él: el crecimiento de conversación, el coste por conversación, los turnos repetidos, los reintentos por truncado y el ajuste del TTL de caché.',
+        ts: 'Se callaron con él: el periodo, la forma por día y por hora, la deriva de mezcla de modelos y la pregunta del TTL de caché por completo.',
+        stopReason: 'Se callaron con él: las respuestas cortadas en max_tokens y los reintentos facturados después.',
+      })[field] ?? '',
     coverageDrift: (field, was, now) =>
       `La cobertura se movió: ${field} estaba en el ${was} de los registros y ahora está en el ${now}.`,
     coverageDriftWhy: () =>

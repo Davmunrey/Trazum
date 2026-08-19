@@ -774,7 +774,19 @@ export interface CliMessages {
      * fixed finding from a field the log stopped recording; only coverage can,
      * so the copy names the threshold and states the distinction.
      */
+    /**
+     * The comparison gate's refusal: the current log stopped recording a field
+     * the previous one carried, so "did not grow" is a claim nobody could
+     * check. "Not measured" is not "did not grow", as everywhere here.
+     */
+    maxGrowthCoverageLost(fields: string, was: string, now: string): string;
     coverageField(field: string): string;
+    /**
+     * Which findings a collapsed field took with it. Named rather than left as
+     * "some findings": a reader deciding whether to trust this report needs to
+     * know exactly which sections are now silence rather than absence.
+     */
+    coverageSilenced(field: string): string;
     coverageDrift(field: string, was: string, now: string): string;
     coverageDriftWhy(): string;
     againstOverlap(from: string, to: string): string;
