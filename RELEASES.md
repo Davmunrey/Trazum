@@ -40,6 +40,122 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.39.0 — "Did it work?"
+
+The fourth of the five planned in `docs/plan-1.36-1.40.md`, and the release
+that makes Trazum accountable to its own predictions. Every optimisation
+tool says what you *would* save; almost none says what you *did*. From this
+release, a plan saved with `trazum plan -o` is a promise the repository can
+be held to.
+
+### `trazum verify <plan.json> --against <newer.jsonl|dir>` — the reckoning
+
+```
+Did it work? 5 actions from the plan of 2026-08-19, against this log
+  1 arrived · 2 did not arrive · 2 cannot be told. The third is not a soft
+    version of the second: it means this log cannot answer, which is its own
+    finding.
+
+  → Route and batch support (claude-opus-5) — ARRIVED
+  · the label's dearest model is now claude-sonnet-5 · $8.12 on the target,
+    $0 still on the old model
+  · the batch half of this action cannot be seen in token counts; the
+    verdict above is the route half alone
+  · the world moved too: calls 5 → 10, output/call 1,000 → 1,200 tokens —
+    stated so the verdict is not read as the whole story
+
+  → Fix the truncation retries on digest (claude-opus-5) — DID NOT ARRIVE
+  · this log still shows $8.00 of truncation waste and retries
+
+  → Fix the cache on rag (claude-opus-5) — CANNOT BE TOLD
+  · the label carries no priced traffic in this log — a vanished workload is
+    not a fixed one, and not a broken one either
+```
+
+**Three outcomes, never two.** Arrived and did-not-arrive are measurements;
+*cannot be told* is the log refusing to guess — the workload vanished, the
+fields the detection needs stopped being recorded, or the thing is invisible
+to token counts. The third outcome is the honest one, and the one every
+other tool renders as the first: a dashboard that shows a vanished workload
+as "saving achieved" is congratulating a team for turning a feature off.
+
+**The verification rules, per action kind:**
+
+- **A route is judged on the label's dearest model in the newer log** — the
+  same rule the fleet's split-brain detection uses, so one stray call on the
+  old model does not un-verify a completed migration, and one experiment on
+  the target does not verify an incomplete one. The money still sitting on
+  the old model is printed either way.
+- **A truncation fix is judged on the measured retry bill** — zero pairs is
+  arrived, a persisting bill is not-arrived with the new figure. The
+  detection needs sessions and timestamps: a newer log that dropped them
+  reads "no retries" for the wrong reason, so it is *cannot be told* — and
+  it fails the gate, because a team must not pass on the strength of its own
+  log's silence.
+- **A cache fix is judged on the settled verdict only.** Paid-off is
+  arrived; a settled loss is not-arrived with the new delta; a verdict that
+  can no longer settle (the TTL field is gone) is cannot-be-told and fails
+  the gate for the same reason.
+- **A pure batch action is always *cannot be told*: tokens do not say which
+  tier billed them.** The Batch API is invisible in usage logs, and saying
+  so beats assuming the discount happened. It fails no gate — the silence is
+  the provider's log format, not the team's. On a route+batch action the
+  route half is judged and the batch half is named as unobservable, never
+  counted as arrived.
+
+**Differences are attributed, not just stated.** Every plan action records
+its baseline since this release — calls, dollars, tokens per call at plan
+time — and the verification prints the world's movement beside each verdict:
+`calls 5 → 10, output/call 1,000 → 1,200`. "The prediction was wrong" and
+"the traffic doubled" are different sentences, and a verdict without the
+second is read as the first.
+
+**A repricing is named, not priced through.** A plan made under one
+catalogue and verified under another sets `pricesChanged`, and the rendering
+says every dollar comparison is two price lists rather than one measurement
+— the tool must not blame a team for a saving that arithmetic revoked.
+
+### `--gate` — promises, checkable in CI
+
+```
+GATE FAILED — 2 of 5 actions did not produce what the plan promised, or
+stopped being measurable by the team's own log.
+```
+
+Exit 1 on any `not-arrived`, and on `cannot-tell` when the reason is
+`fields-stopped` — "not recorded" must not read as "fixed". A vanished
+workload and an unrecordable tier fail nothing: the first is the world's
+doing, the second is the log format's. This is a different and more useful
+gate than "spend went up": it fails when a change a team committed to did
+not produce what it promised.
+
+**The refusals, each with its reason:**
+
+- **A missing `--against` is an error naming why**: a plan can only be
+  verified against a log that came after it — without one there is nothing
+  to hold the prediction to.
+- **A file that is not a plan document is refused by shape** (`schemaVersion
+  1` with an `actions` array), naming what `trazum plan -o` writes — not
+  parsed optimistically into empty verdicts.
+
+### The document
+
+`verify --json` emits the verification document — the three counts (always
+summing to the action count), the verdicts with `observed` and
+`attribution`, the `pricesChanged` flag, and `gateFailures` — contracted in
+docs/json-output.md and enforced in both directions by a parity test.
+`--markdown-out` writes the verdicts for a CI summary.
+
+### The module underneath
+
+`@trazum/core` gains `verify.ts` (`verifyPlan`, typed `VerifyOutcome` and
+`CannotTellReason`), browser-safe: two documents in, one verdict out. The
+plan module's actions now carry `detail.baseline`, which is what makes
+attribution possible — a prediction with no record of the world it was made
+in could never separate its own error from the world's movement.
+
+---
+
 ## 1.38.0 — "The plan"
 
 The third of the five planned in `docs/plan-1.36-1.40.md`. The report names

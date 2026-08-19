@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.39.0 — "Did it work?"
+
 ### Added
 
 **`trazum verify <plan.json> --against <newer.jsonl>`: did it work?** Every
