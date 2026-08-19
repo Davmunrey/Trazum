@@ -416,6 +416,29 @@ export const en: WebMessages = {
       'Almost none of that was a cache read, so every one of those tokens was billed at the full '
       + 'input rate. If any prefix repeats across these calls, caching is the lever with the '
       + 'largest ceiling here.',
+    duplicateLines: (count, usd) =>
+      `${count.toLocaleString('en-US')} ${count === 1 ? 'line is an exact duplicate' : 'lines are exact duplicates'} of an earlier line — same counts, same label and session, same millisecond — adding ${usd} to the total above. If a log was exported twice, this bill is overstated by that much.`,
+    repeatsHeading: 'The same request, sent again',
+    repeatsLine: (label, model, repeats, checked, seconds, usd) =>
+      `${label} on ${model}: ${repeats} of ${checked} calls re-sent the previous call's exact input size within ${seconds} seconds, in the same conversation, costing ${usd}.`,
+    repeatsNote:
+      'A conversation\u2019s input grows with every turn, so the same size twice in a row seconds '
+      + 'apart is usually a retry after a timeout, an agent step repeating, or a loop — this reads '
+      + 'counts and cannot see content, so it names the pattern and stops.',
+    pressureHeading: 'Approaching the context window',
+    pressureLine: (label, model, tokens, window, share) =>
+      `${label} on ${model}: the largest call carried ${tokens} input tokens against a ${window}-token window — ${share} of the ceiling.`,
+    pressureAdvice:
+      'At 100% the call fails outright, and nothing on the bill changes until that day. The levers '
+      + 'are a cap on retrieved context, truncating conversation history, or a larger-window model. '
+      + 'When it crosses is not predicted here.',
+    mixDriftHeading: 'The mix moved inside this log',
+    mixDriftLine: (model, firstShare, lastShare, firstDays, lastDays, usd) =>
+      `${model} went from ${firstShare} of the spend in the first ${firstDays} days to ${lastShare} in the last ${lastDays} — ${usd} of the recent half.`,
+    mixDriftNote:
+      'A bill can grow with no workload growing: traffic migrating between models, a deploy that '
+      + 'flipped a default, a fallback that became the main path. Shown past fifteen points of '
+      + 'movement. Where the mix goes next is not in this log.',
     outputHeading: 'Where the output spend concentrates',
     outputTail: (label, model, callPct, spendPct, above, usd) =>
       `${label} on ${model}: ${callPct} of calls hold ${spendPct} of the output spend — the `

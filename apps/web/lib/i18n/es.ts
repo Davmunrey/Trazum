@@ -424,6 +424,30 @@ export const es: WebMessages = {
       'Casi nada de eso fue lectura de caché, así que cada uno de esos tokens se facturó a tarifa '
       + 'de entrada completa. Si algún prefijo se repite entre estas llamadas, la caché es la '
       + 'palanca con el techo más alto aquí.',
+    duplicateLines: (count, usd) =>
+      `${count.toLocaleString('es-ES')} ${count === 1 ? 'línea es un duplicado exacto' : 'líneas son duplicados exactos'} de una línea anterior — mismos recuentos, misma etiqueta y sesión, mismo milisegundo — que suma ${usd} al total de arriba. Si un registro se exportó dos veces, esta factura está inflada en esa cantidad.`,
+    repeatsHeading: 'La misma petición, otra vez',
+    repeatsLine: (label, model, repeats, checked, seconds, usd) =>
+      `${label} en ${model}: ${repeats} de ${checked} llamadas reenviaron el tamaño de entrada exacto de la anterior en menos de ${seconds} segundos, en la misma conversación, costando ${usd}.`,
+    repeatsNote:
+      'La entrada de una conversación crece en cada turno, así que el mismo tamaño dos veces '
+      + 'seguidas con segundos de diferencia suele ser un reintento, un paso de agente que se '
+      + 'repite o un bucle — esto lee recuentos y no ve el contenido, así que nombra el patrón y para.',
+    pressureHeading: 'Acercándose a la ventana de contexto',
+    pressureLine: (label, model, tokens, window, share) =>
+      `${label} en ${model}: la llamada más grande llevó ${tokens} tokens de entrada contra una ventana de ${window} — el ${share} del techo.`,
+    pressureAdvice:
+      'Al 100% la llamada falla sin más, y nada en la factura cambia hasta ese día. Las palancas '
+      + 'son un tope al contexto recuperado, truncar el historial o un modelo con ventana mayor. '
+      + 'Cuándo se cruza no se predice aquí.',
+    mixDriftHeading: 'La mezcla se movió dentro de este registro',
+    mixDriftLine: (model, firstShare, lastShare, firstDays, lastDays, usd) =>
+      `${model} pasó del ${firstShare} del gasto en los primeros ${firstDays} días al ${lastShare} en los últimos ${lastDays} — ${usd} de la mitad reciente.`,
+    mixDriftNote:
+      'Una factura puede crecer sin que crezca ninguna carga: tráfico migrando entre modelos, un '
+      + 'deploy que cambió un valor por defecto, un fallback convertido en camino principal. Se '
+      + 'muestra a partir de quince puntos de movimiento. Hacia dónde va la mezcla después no está '
+      + 'en este registro.',
     outputHeading: 'Dónde se concentra el gasto de salida',
     outputTail: (label, model, callPct, spendPct, above, usd) =>
       `${label} en ${model}: el ${callPct} de las llamadas concentra el ${spendPct} del gasto `
