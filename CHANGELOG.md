@@ -9,9 +9,30 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
-## Unreleased
+## 1.29.0 — "The budget, the overlay and the small log"
 
 ### Added
+
+**`pricing_overlay` on the MCP's `profile_usage`: the CLI's price table,
+as text.** The MCP report could name an unpriced model and then point at
+the CLI to price it — a dead end for the agent already holding the answer
+in its context. The new argument takes the same JSON document a
+`--pricing` overlay file holds, passed as text because this server takes
+no paths (that absence is the security design, and it stays). Models the
+overlay adds or overrides price the whole report — `what_if` included —
+and the report says the overlay is in effect, with the overlay's own
+`lastReviewed` date, so its dollars are never mistaken for the bundled
+table's. A malformed overlay is refused with the parser's own reason,
+never a report quietly priced as if nothing had been asked.
+
+**The figure that survives a small log.** `sessionCosts` refuses slices
+under five conversations, and rightly — a percentile over four is the
+largest of four wearing a percentile's name. But a log of three
+conversations still has a most expensive one, and a maximum is a fact at
+any count. When the percentiles refused and the log still carries
+sessions, the CLI, the MCP report and the web bill now state the count
+and the single worst cost — the same figure `--max-session-usd` judges —
+and stand the line down the moment the percentiles can speak.
 
 **`--max-session-usd`: the unit an agent product blows up in.** A month's
 budget and a day's budget both pass while one conversation loops its way

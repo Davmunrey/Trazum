@@ -514,6 +514,16 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.29.0 — The budget, the overlay and the small log
+
+`--max-session-usd` (and `spend.maxSessionUsd`) judges the single most
+expensive conversation — the unit an agent product blows up in — failing
+loudly on a log with no sessions. The MCP's `profile_usage` gained
+`pricing_overlay`, the CLI's `--pricing` document as text, pricing the
+whole report including `what_if`. And where the session percentiles refuse
+a small log, every surface now states the count and the single worst cost
+instead of going silent.
+
 ### 1.28.0 — The retry bill, the series and the standing word
 
 `truncationRetries` measures the "billed again" half of truncation — cut
@@ -982,7 +992,13 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-Nothing scheduled. The next thing this needs is users, and what they report.
+Six releases are planned in order through 1.35.0, with the reasoning attached:
+[docs/plan-1.30-1.35.md](docs/plan-1.30-1.35.md). The short version — the bill
+is close to complete, and the next arc is the loop: from a finding, to a
+decision, to a decision that survives the next report.
+
+The ordering is a commitment and the calendar is not. What users report
+reorders it; that is the one input allowed to.
 
 ## Under consideration
 

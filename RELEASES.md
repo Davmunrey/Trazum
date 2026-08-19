@@ -40,6 +40,48 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.29.0 — "The budget, the overlay and the small log"
+
+### The unit an agent product blows up in
+
+A month's budget and a day's budget both pass while one conversation loops
+its way through $400. `--max-session-usd` — or `spend.maxSessionUsd` in
+`trazum.config.json`, flag winning — judges the single most expensive
+conversation in the log:
+
+```
+FAILED — the most expensive of 3 conversations cost $8.00, over the
+--max-session-usd limit of $5.00.
+```
+
+The report gained `sessionSpend` (`sessions` and `maxUsd`, no minimum)
+alongside the percentile-gated `sessionCosts`, because a maximum is a fact
+at any count. The refusals travel with it: a log with no sessions fails
+rather than passes, a conversation that started before the log makes the
+pass a floor and the message says so, and the session key never appears in
+any output — pinned by tests on both the text and `--json` paths.
+
+### The CLI's price table, in the MCP, as text
+
+`profile_usage` gained `pricing_overlay`: the same JSON document a
+`--pricing` overlay file holds, passed as text because this server takes
+no paths — that absence is the security design, and it stays. Models the
+overlay adds or overrides price the whole report, `what_if` included, and
+the report says the overlay is in effect with the overlay's own
+`lastReviewed` date. A malformed overlay is refused with the parser's own
+reason, never a report quietly priced from the bundled table.
+
+### The figure that survives a small log
+
+`sessionCosts` refuses slices under five conversations — a percentile over
+four is the largest of four wearing a percentile's name. Now, where the
+percentiles refused and the log still carries sessions, the CLI, the MCP
+report and the web bill state the count and the single worst cost — the
+same figure `--max-session-usd` judges — and stand the line down the
+moment the percentiles can speak.
+
+---
+
 ## 1.28.0 — "The retry bill, the series and the standing word"
 
 ### The billed-again half, measured
