@@ -39,6 +39,7 @@ ${bold('USAGE')}
   trazum eval <file> --cases <file> [options]
   trazum eval <file> --cases <file> --export promptfoo -o suite.json
   trazum route <log.jsonl> --prompt-file <file> --cases <file> --yes
+  trazum plan <log.jsonl|dir> [options]
   trazum diff <before> <after> [options]
   trazum diff --all <dir> <dir> [options]
   trazum rank <dir> [options]
@@ -298,6 +299,23 @@ ${bold('OPTIONS FOR profile')}
   Reads what the provider actually charged. Optional fields unlock findings:
   "label" (which workload), "session" (which conversation — grouped by, never
   printed), "stop_reason"/"finish_reason" (answers cut off at max_tokens).
+
+${bold('OPTIONS FOR plan')}
+  --min-usd <n>               Leave out actions worth less than n dollars. How
+                              many were left out is stated, never silent.
+  -o, --out <file>            Save the plan as dated JSON — the file
+                              "trazum verify" will later hold it to.
+  --markdown-out <file>       Also write the plan as Markdown, for a CI job
+                              summary or a pull request comment.
+  --pricing <file>            Local price overlay, as everywhere else.
+  --json                      The plan as data.
+
+  Reads a usage log and turns the report's findings into a ranked plan: route
+  this, batch that, fix the truncation pair, look at the cache. The money is
+  composed correctly — route and batch on the same slice arrive combined,
+  never summed — and every action names what the log cannot confirm, because
+  a plan that hides its assumptions is advice pretending to be arithmetic.
+  Projected savings and money already spent are separate totals throughout.
 
 ${bold('OPTIONS FOR route')}
   --prompt-file <file>        The prompt those calls send. Not --prompt, which
@@ -1343,6 +1361,55 @@ ${bold('EXAMPLES')}
       `${label} on ${model}: ${single} of ${sessions} conversations ended after their first turn, and their cache writes — ${usd} — paid for reuse their own conversation never made. Another conversation sharing the same prefix within the TTL could have read them; the log cannot see whose write a read hit, so that figure is a ceiling on the waste, not a bill.`,
     singleTurnConfirmed: (label, model, single, sessions, usd) =>
       `${label} on ${model}: ${single} of ${sessions} conversations ended after their first turn and spent ${usd} writing a cache that nothing in this log ever read. Within the conversation, across conversations — no read anywhere, so those writes bought nothing. Caching a one-shot call is pure write premium; stop marking these calls with cache_control.`,
+  },
+
+  plan: {
+    noTarget: () =>
+      'Point this at a usage log or a directory of them: trazum plan usage.jsonl. It turns the report into a ranked plan — what to do first, what each action is worth, and what the log cannot confirm about it.',
+    nothingPriced: () =>
+      'This log priced nothing — no call in it matched a model in the catalogue. A plan over zero dollars would be advice about nothing; check the log with "trazum profile" first.',
+    heading: (actions, total) => `The plan: ${actions} actions against a ${total} bill`,
+    totals: (projected, staked) =>
+      `${projected} projected savings, on assumptions listed below. ${staked} already spent on problems this plan names — measured, not projected.`,
+    noClock: () =>
+      'No timestamps in this log, so every figure is per this log, not per any period.',
+    projected: (usd) => `${usd} projected`,
+    staked: (usd) => `${usd} already spent`,
+    action: (kind, label, model) => {
+      const verb =
+        kind === 'route'
+          ? 'Route'
+          : kind === 'batch'
+            ? 'Batch'
+            : kind === 'route+batch'
+              ? 'Route and batch'
+              : kind === 'fix-truncation'
+                ? 'Fix the truncation retries on'
+                : 'Look at the cache on';
+      return `${verb} ${label} (${model})`;
+    },
+    routeTo: (model) => `to ${model} — combined with batching where both apply, never summed`,
+    assume: (assumption) => {
+      switch (assumption.kind) {
+        case 'model-capability':
+          return `assumes ${assumption.model} can do this work — the log prices the move, it cannot judge the answers`;
+        case 'batch-window':
+          return 'assumes these calls can wait for a batch window';
+        case 'retry-pattern-real':
+          return 'assumes the retry pattern is real — the log sees shapes, not content';
+        case 'max-tokens-fits':
+          return 'assumes a max_tokens the answers fit in removes the pair';
+        case 'traffic-pattern-holds':
+          return 'assumes the traffic pattern holds — a cache that lost money on this log may pay on different traffic';
+      }
+    },
+    check: (command) => `check it: ${command}`,
+    filtered: (count, minUsd, worth) =>
+      `${count} actions under ${minUsd}, worth ${worth} together, left out by --min-usd — left out of this document entirely, not disproved.`,
+    footer: () =>
+      'Ranked by money, projected or already spent alike. The assumptions are yours to answer: this plan is arithmetic over the log, not knowledge of your product.',
+    wrote: (path) =>
+      `Plan written to ${path}, dated. Keep it: a prediction nobody wrote down is a prediction nobody can be held to.`,
   },
 
   route: {

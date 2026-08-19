@@ -11,7 +11,36 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**`trazum plan <log>`: not a list of findings, a ranked plan.** The report
+names findings; a person then decides what to do first by adding savings in
+their head — and savings on the same slice do not add ($12.60 plus $10.50
+against a $21.00 slice, the arithmetic the levers module has documented as
+wrong since it shipped). `plan` does the composition once, correctly: route
+and batch on one slice arrive as a single pre-combined action, never a sum,
+so the plan's total is additive by construction.
+
+Projected savings and money already spent are separate columns everywhere:
+the truncation action's stake is the measured retry bill, the cache action's
+stake is the cache module's own delta (and it exists only for a settled loss
+— an unsettled verdict is a missing field, and "add the field" is the
+report's advice, not a plan's). Every action carries what the log cannot
+confirm — typed assumptions, localized at render time, matchable
+structurally by a later verification — and the command that can check one
+when it exists.
+
+`-o plan.json` saves the plan dated, with the catalogue that priced it on
+record, so a later log can be held to it and "the prediction was wrong" can
+be told from "the prices changed". `--min-usd` names how many actions it
+dropped and their combined worth, and the saved document's totals cover
+exactly the actions it holds — the file never contradicts itself.
+`--markdown-out` and `--json` as everywhere else; the document is in
+docs/json-output.md.
+
+New core module `plan.ts` (`buildPlan`, `planLabelName`, typed
+`PlanAssumption`), browser-safe: everything is derived from figures the
+report and levers already computed.
 
 ## 1.37.0 — "The fleet"
 

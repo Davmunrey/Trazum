@@ -82,3 +82,22 @@ not one report:
 | `rollup.splitBrains[]` | The same label on different models in different sources, judged on each source's dearest model for that label. |
 | `rollup.cacheUnderwater[]` | Sources where caching lost money while the fleet's aggregate paid off. Empty when the aggregate itself lost — the whole-fleet report already says so. |
 | `rollup.unmatchedFiles[]` | Log files matching no source pattern — in no report above, named rather than silently dropped. |
+
+## The plan document
+
+`trazum plan --json` (and the file `-o` writes) is its own contract — a plan
+is not a report:
+
+| Field | What it holds |
+| --- | --- |
+| `schemaVersion` | `1`. Same discipline as the profile document: renames and meaning changes bump it. |
+| `createdAt` | When the plan was made (ISO 8601). A prediction nobody dated is a prediction nobody can be held to. |
+| `span` | The period the figures cover, or null when the log carried no clock. |
+| `pricingLastReviewed` | The price catalogue behind every dollar — the overlay's date when one was in effect, so a later check can tell "the prediction was wrong" from "the prices changed". |
+| `actions[]` | Ranked, largest money first. Each has `kind` (`route`, `batch`, `route+batch`, `fix-truncation`, `fix-caching`), `label`, `model`, and exactly one of `savingUsd` (projected) or `stakeUsd` (already spent, measured) — never both, because a projection and a measurement in one field is a number that is neither. |
+| `actions[].assumes[]` | What the log cannot confirm, as typed objects (`{"kind": "model-capability", "model": ...}`, `{"kind": "batch-window"}`, ...) rather than prose — renderers localize them, and a verification can match them structurally. |
+| `actions[].check` | The Trazum command that can check the assumption, when one exists. |
+| `actions[].detail` | `routeTo` for the moved calls; `measured` for the pieces behind a stake (the wasted and retry dollars, the cache counterfactual). |
+| `projectedSavingUsd` | Projected savings summed. Additive by construction: same-slice compositions arrive pre-combined inside one action. With `--min-usd` it covers only the actions the document holds — the file never contradicts itself; what was dropped is stated on the terminal with its worth. |
+| `measuredStakeUsd` | Measured stakes summed — money already paid to problems this plan names, kept apart from the projections. Filtered the same way. |
+| `totalUsd` | The bill the plan was made against. |

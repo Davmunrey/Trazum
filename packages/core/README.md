@@ -92,6 +92,20 @@ running on different models in different sources (judged on each source's
 dearest model, so a stray experiment is not a migration), and names sources
 where caching loses money while the aggregate pays off.
 
+## The plan
+
+`buildPlan(report, levers, pricingLastReviewed)` turns a report and its
+levers into a ranked `PlanDocument`: route and batch on one slice arrive as a
+single pre-combined action (`combinedUsd`, never a sum), the truncation
+action's stake is the measured retry bill, and a cache action exists only for
+a settled loss — an unsettled verdict is a missing field, and "add the field"
+is the report's advice, not a plan's. Projected savings and measured stakes
+are totalled separately; every action carries typed assumptions
+(`PlanAssumption`) the log cannot confirm, as data rather than prose, so the
+renderer localizes them and a later verification can match them
+structurally. `planLabelName` renders the unlabelled bucket without leaking
+the sentinel.
+
 ## Comparing two versions
 
 ```ts
