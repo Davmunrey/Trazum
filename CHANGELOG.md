@@ -19,8 +19,11 @@ which provider a field belongs to. `promptTokenCount`, `candidatesTokenCount`
 and `cachedContentTokenCount` are read, with the cached half subtracted from
 the prompt count through the same mechanism as OpenAI's `cached_tokens`,
 because Gemini sets the same double-charge trap. `finishReason: "MAX_TOKENS"`
-joins the truncation contract's three-way reading. Gemini models still need a
-pricing overlay to carry dollars; the tokens now parse either way.
+joins the truncation contract's three-way reading. The bundled catalogue has
+priced `gemini-2.5-pro` and `gemini-2.5-flash` since the seven-provider work —
+what was missing was reading the log their SDK actually writes, and a Gemini
+model the catalogue does not know still parses and lands in `unpricedModels`
+as everywhere.
 
 ## 1.32.0 — "The routing decision, priced whole"
 
