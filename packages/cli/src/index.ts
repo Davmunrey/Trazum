@@ -22,6 +22,9 @@ import {
   detectFromSource,
   coverageDrift,
   driversBetween,
+  explainGateFailure,
+  gateMargin,
+  GATE_MARGIN_TIGHT,
   estimateTokens,
   evaluate,
   extractPrompts,
@@ -2307,6 +2310,52 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
       console.error(c.dim(t.profile.labelBudgetWindowed()));
     }
 
+    /**
+     * Why a gate failed and how much room a pass had — written once, called by
+     * every gate, because four hand-rolled copies of the same three sentences
+     * is four chances for one of them to soften.
+     */
+    const explainFailure = (overUsd: number, { namesLargest = false } = {}): void => {
+      const why = explainGateFailure(report, levers, overUsd);
+      // The day gate already names its own day's biggest label; repeating the
+      // whole bill's biggest slice under it reads as the same sentence twice.
+      if (why.largest !== null && !namesLargest) {
+        const name = why.largest.label === UNLABELLED ? t.profile.unlabelled() : why.largest.label;
+        console.error(
+          c.dim(wrap(t.profile.gateLargest(name, why.largest.model, formatUsd(why.largest.usd), pct(why.largest.share)), 74, '  ')),
+        );
+      }
+      if (why.lever !== null) {
+        const leverName = why.lever.label === UNLABELLED ? t.profile.unlabelled() : why.lever.label;
+        // The action, not the slice's current model: a slice with only a batch
+        // price has no destination, and naming the model it already runs on as
+        // somewhere to move it would be plainly false.
+        const route = why.lever.route;
+        const action =
+          route !== null && why.lever.batch !== null
+            ? t.profile.gateLeverBoth(route.candidate.displayName)
+            : route !== null
+              ? t.profile.gateLeverRoute(route.candidate.displayName)
+              : t.profile.gateLeverBatch();
+        console.error(
+          c.dim(
+            wrap(
+              t.profile.gateLever(leverName, action, formatUsd(why.lever.combinedUsd), formatUsd(why.overageUsd), why.coversIt),
+              74,
+              '  ',
+            ),
+          ),
+        );
+      }
+    };
+    /** How much room a pass had, said only when tight, threshold in the copy. */
+    const explainMargin = (judgedUsd: number, limitUsd: number): void => {
+      const margin = gateMargin(judgedUsd, limitUsd);
+      if (margin !== null && margin < GATE_MARGIN_TIGHT) {
+        console.error(c.yellow(wrap(t.profile.gateMarginTight(pct(margin), formatUsd(limitUsd - judgedUsd)), 74, '  ')));
+      }
+    };
+
     if (typeof args.flags.get('max-usd') === 'string' || config.spend?.maxUsd !== undefined) {
       const maxUsd =
         typeof args.flags.get('max-usd') === 'string'
@@ -2314,9 +2363,19 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
           : config.spend!.maxUsd!;
       if (report.total.totalUsd > maxUsd) {
         console.error(c.red(t.profile.maxUsdFailed(formatUsd(report.total.totalUsd), formatUsd(maxUsd))));
+        /**
+         * What to change, next to the fact that something must. A red build in
+         * CI is the one place nobody opens the full report, so the failure
+         * carries its own next step: which slice holds the money, and the one
+         * lever the report already priced. Nothing here is a recommendation —
+         * whether that model can do the work is the reader's to judge, and the
+         * copy says so.
+         */
+        explainFailure(report.total.totalUsd - maxUsd);
         process.exitCode = 1;
       } else {
         console.error(c.dim(t.profile.maxUsdOk(formatUsd(report.total.totalUsd), formatUsd(maxUsd))));
+        explainMargin(report.total.totalUsd, maxUsd);
       }
     }
     if (typeof args.flags.get('max-growth-usd') === 'string' && againstDelta !== null) {
@@ -2427,9 +2486,11 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
           console.error(
             c.red(`${t.profile.maxDayFailed(worst.day, formatUsd(worst.usd), formatUsd(maxDay))}${suspect}`),
           );
+          explainFailure(worst.usd - maxDay, { namesLargest: true });
           process.exitCode = 1;
         } else {
           console.error(c.dim(t.profile.maxDayOk(worst.day, formatUsd(worst.usd), formatUsd(maxDay))));
+          explainMargin(worst.usd, maxDay);
           /**
            * Calls with no clock are in the bill above and in no day below, so
            * the worst day is a floor by exactly that much. Said only on a
@@ -2467,11 +2528,13 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
         console.error(
           c.red(t.profile.maxSessionFailed(formatUsd(report.sessionSpend.maxUsd), formatUsd(maxSession), n(report.sessionSpend.sessions))),
         );
+        explainFailure(report.sessionSpend.maxUsd - maxSession);
         process.exitCode = 1;
       } else {
         console.error(
           c.dim(t.profile.maxSessionOk(formatUsd(report.sessionSpend.maxUsd), formatUsd(maxSession), n(report.sessionSpend.sessions))),
         );
+        explainMargin(report.sessionSpend.maxUsd, maxSession);
       }
     }
   };
