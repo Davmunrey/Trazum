@@ -189,6 +189,14 @@ describe('the bill tab reads the log in the browser and nowhere else', () => {
     assert.match(bill, /p95Usd > 10 \* shape\.medianUsd/);
   });
 
+  it('states the worst conversation when the percentiles refused a small log', () => {
+    // A maximum is a fact at any count; the card appears exactly when the
+    // per-slice percentiles have nothing to say and the log still has
+    // conversations to count.
+    assert.match(bill, /t\.bill\.sessionSpendOnly\(/);
+    assert.match(bill, /report\.sessionCosts\.length === 0 && report\.sessionSpend !== null/);
+  });
+
   it('names which workload pays for truncated answers, over measured calls', () => {
     assert.match(bill, /t\.bill\.truncatedBy/);
     // The denominator is the calls that recorded a stop reason, never all of

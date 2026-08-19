@@ -86,4 +86,23 @@ describe('the cost of one conversation, on screen', () => {
     });
     assert.match(flat(result), /la mediana cuesta \$1\.00/);
   });
+
+  it('states the worst conversation when a small log refuses the percentiles', async () => {
+    // Three conversations: under the five the percentiles require, so the
+    // sessionCost section stays silent — but the maximum is a fact at any
+    // count, and it is the figure --max-session-usd judges, so the report
+    // says it rather than nothing. The session keys stay grouped, unprinted.
+    const log = await write([turn('a', 1), turn('b', 2), turn('c', 8)]);
+    const out = flat(run([log]));
+    assert.doesNotMatch(out, /the median one costs/);
+    assert.match(out, /3 conversations in this log; the most expensive cost \$8\.00/);
+    assert.match(out, /--max-session-usd/);
+    for (const key of ['"a"', '"b"', '"c"']) assert.ok(!out.includes(key), `session key ${key} leaked`);
+
+    // With five or more, the percentiles speak and this line stands down.
+    const bigger = await write([1, 2, 3, 4, 5].map((i) => turn(`s${i}`, i)));
+    const spoken = flat(run([bigger]));
+    assert.match(spoken, /the median one costs/);
+    assert.doesNotMatch(spoken, /conversations in this log; the most expensive/);
+  });
 });

@@ -1068,6 +1068,21 @@ function Report({
                   )}
                 </div>
               ))}
+              {/*
+                The figure that survives a small log: the percentiles above
+                refuse thin slices, but a maximum is a fact at any count —
+                and it is the number a per-conversation budget judges.
+              */}
+              {report.sessionCosts.length === 0 && report.sessionSpend !== null && (
+                <div className="rounded-lg border px-3.5 py-3">
+                  <div className="text-[13px]">
+                    {t.bill.sessionSpendOnly(
+                      report.sessionSpend.sessions,
+                      formatUsd(report.sessionSpend.maxUsd),
+                    )}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 

@@ -1171,6 +1171,8 @@ ${bold('EXAMPLES')}
       `No usage logs in "${directory}". Looked for files ending in ${extensions}. A directory with nothing readable in it is an error rather than an empty report, which would read as "you spent nothing".`,
     sessionCostTail: (ratio) =>
       `The 95th percentile is ${ratio}x the median there: most conversations are cheap and a few are not, which is a tail a quota can catch. Where median and p95 sit close together the workload is simply expensive and there is no tail to hunt.`,
+    sessionSpendOnly: (sessions, max) =>
+      `${sessions} ${sessions === '1' ? 'conversation' : 'conversations'} in this log; the most expensive cost ${max}. Too few per workload for a percentile — a maximum is a fact at any count, and it is the figure --max-session-usd judges.`,
     againstOverlap: (from, to) =>
       `These two logs both cover ${from} → ${to}, so some of the same calls sit on both sides of this subtraction and part of the change is the same money counted twice. Compare periods that do not overlap — or window both logs with --since/--until.`,
     windowLine: (since, until) =>

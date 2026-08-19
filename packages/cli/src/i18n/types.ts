@@ -787,6 +787,13 @@ export interface CliMessages {
     /** Said only when the p95 clears ten times the median — a real tail. */
     sessionCostTail(ratio: string): string;
     /**
+     * The whole log's conversations when the per-slice percentiles refused:
+     * count and single worst cost, stated because a maximum is a fact at any
+     * count while a percentile over four conversations would be the largest
+     * of four wearing a percentile's name.
+     */
+    sessionSpendOnly(sessions: string, max: string): string;
+    /**
      * Per-workload budgets from the config. A budgeted label with no calls in
      * the log is "not measured", never a pass: a workload that did not appear
      * is not one that came in under budget.
