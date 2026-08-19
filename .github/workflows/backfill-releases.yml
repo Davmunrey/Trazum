@@ -1,0 +1,93 @@
+name: backfill-releases
+
+# One-shot archive job: gives every version RELEASES.md documents a GitHub
+# release, so the releases page is the complete history rather than the part
+# of it the automation happened to witness.
+#
+# Run by hand (workflow_dispatch), idempotent — a version that already has a
+# release is skipped, so re-running after a partial failure finishes the rest.
+#
+# Why this runs in a workflow instead of from a laptop: tags created here are
+# made by the workflow's own token, and tag pushes from that token do not
+# trigger other workflows — so the historical release.yml at each old commit
+# stays asleep. The same tags pushed from a developer machine would start
+# fourteen doomed runs against a registry state that no longer exists.
+#
+# Every release is created with --latest=false: "Latest" must keep pointing at
+# the newest published version, not at whichever archive entry was written last.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+      - name: Create the missing releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          # version|commit|npm-status. The commit is the merge that set the
+          # version — verified against the manifest at that commit. Versions
+          # whose tag already exists carry "-" and release against the tag.
+          entries='
+          1.0.0|ee7bd9f20b154554daf6c633621b3bb6b3710ca6|pre-npm
+          1.8.0|b2e862debcee6c398169f2bfda2fad057a73891b|published
+          1.9.1|-|unpublished
+          1.10.0|-|published
+          1.11.0|24d5916e3d74477b524946ff374e518d001295a2|unpublished
+          1.12.0|f4771fe2bd72031eb5fc21e67c340a97ab95989c|unpublished
+          1.13.0|96486ff4cb81730b8e2cb99f8fbeb991fdc554eb|unpublished
+          1.14.0|b86ce6ef9d7da650063e240104f777e1f7ea8113|unpublished
+          1.15.0|1171550bb527554cc68d0642a8f865966bbcf971|unpublished
+          1.16.0|d6df1b2895d851cab64723e9a17ef44f1a3c4563|unpublished
+          1.17.0|e47cbf04c6e18e392fe7ebe9cf0eb80fa72f874a|unpublished
+          1.18.0|574fe9dace7474bb7d016021a2bd09560b35ac97|unpublished
+          1.19.0|b9834bcc98ae3c4004928ca1ea87575318441801|unpublished
+          1.20.0|af090f57d267f5b858c89c35583dc47036554008|unpublished
+          1.21.0|5d106850df49d8ced6aca96b345c668308428317|unpublished
+          1.22.0|8ce469ab62668c090f6eb91083c9e8fc743b103a|unpublished
+          1.23.0|e110f28e21de12a420e9b3d8d72699177c35ff22|unpublished
+          1.24.0|54719c103ba524bb399bb8fe1a43df1530bcaacf|unpublished
+          '
+
+          echo "$entries" | while IFS='|' read -r version commit npm; do
+            version="$(echo "$version" | tr -d ' ')"
+            [ -z "$version" ] && continue
+            tag="v$version"
+
+            if gh release view "$tag" --json tagName > /dev/null 2>&1; then
+              echo "$tag: release exists, skipping"
+              continue
+            fi
+
+            notes="$(mktemp)"
+            case "$npm" in
+              pre-npm)
+                printf '> **Archive note.** This version predates the first npm publish (1.8.0) and was never installable from the registry. This release exists so the releases page carries the whole history.\n\n' > "$notes"
+                ;;
+              unpublished)
+                printf '> **Archive note.** This version was never published to npm — the publishing path was broken at the time. Its changes first reached the registry inside 1.25.0. This release exists so the releases page carries the whole history.\n\n' > "$notes"
+                ;;
+              *)
+                : > "$notes"
+                ;;
+            esac
+            node scripts/release-notes.mjs "$version" >> "$notes"
+
+            if [ "$commit" = "-" ]; then
+              gh release create "$tag" --title "$tag" --notes-file "$notes" --latest=false --verify-tag
+            else
+              gh release create "$tag" --target "$commit" --title "$tag" --notes-file "$notes" --latest=false
+            fi
+            echo "$tag: created"
+          done
