@@ -71,6 +71,41 @@ describe('coverage drift in --against', () => {
     assert.doesNotMatch(flat(run([current, '--against', previous])), /Coverage moved/);
   });
 
+  it('names which findings went quiet with the field', async () => {
+    const previous = await write(sessioned());
+    const current = await write(blind());
+    const out = flat(run([current, '--against', previous]));
+    // "Some findings are silent" is not actionable; which ones is.
+    assert.match(out, /Gone quiet with it: conversation growth, per-conversation cost/);
+  });
+
+  it('fails the growth gate rather than passing a comparison it cannot make', async () => {
+    const previous = await write(sessioned());
+    const current = await write(blind());
+    // The bill is flat, so the growth gate would pass on the dollars alone —
+    // and would be certifying a comparison the log went blind to.
+    const result = run([current, '--against', previous, '--max-growth-usd', '100']);
+    assert.equal(result.status, 1);
+    assert.match(flat(result), /FAILED — this log stopped recording session/);
+    assert.match(flat(result), /is not a bill that stayed flat/);
+  });
+
+  it('passes the growth gate when coverage held', async () => {
+    const previous = await write(sessioned());
+    const current = await write([0, 1, 2, 3].map((i) => call('2026-08-08', 9 + i, { session: `t${i}` })));
+    const result = run([current, '--against', previous, '--max-growth-usd', '100']);
+    assert.equal(result.status, 0);
+    assert.doesNotMatch(flat(result), /stopped recording/);
+  });
+
+  it('does not refuse the gate over a field that appeared', async () => {
+    // More coverage than before is never a reason to refuse a comparison.
+    const previous = await write(blind());
+    const current = await write(sessioned());
+    const result = run([current, '--against', previous, '--max-growth-usd', '100']);
+    assert.equal(result.status, 0);
+  });
+
   it('speaks Spanish', async () => {
     const previous = await write(sessioned());
     const current = await write(blind());

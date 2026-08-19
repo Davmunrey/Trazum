@@ -558,6 +558,17 @@ export const en: WebMessages = {
     drillActive: (label) =>
       `Showing ${label} alone. Every share below is a share of this workload's bill, not of the whole log, and the comparison — if there is one — filters both logs the same way.`,
     drillClear: 'Show the whole log',
+    coverageField: (field) =>
+      ({ label: 'label', session: 'session', ts: 'timestamp', stopReason: 'stop reason' })[field] ?? field,
+    coverageDrift: (field, was, now) =>
+      `Coverage moved: ${field} was on ${was} of records and is now on ${now}. Reported from a 20-point move in either direction.`,
+    coverageSilenced: (field) =>
+      ({
+        label: 'A field the log stopped recording is not a finding that got fixed. Gone quiet with it: per-workload spend, the drill-down, and levers that describe a decision rather than a mixture.',
+        session: 'A field the log stopped recording is not a finding that got fixed. Gone quiet with it: conversation growth, per-conversation cost, repeated turns, truncation retries and the cache-TTL fit.',
+        ts: 'A field the log stopped recording is not a finding that got fixed. Gone quiet with it: the period, the per-day and per-hour shape, the model mix drift, and the cache-TTL question entirely.',
+        stopReason: 'A field the log stopped recording is not a finding that got fixed. Gone quiet with it: answers cut off at max_tokens, and the retries billed after them.',
+      })[field] ?? '',
     sessionCost: (label, model, sessions, median, medianTurns, p95, max) =>
       `${label} on ${model}: across ${sessions} conversations, the median one costs ${median} `
       + `over ${medianTurns} turns, 95% come in under ${p95}, and the dearest was ${max}. Exact `

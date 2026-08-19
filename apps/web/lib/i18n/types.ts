@@ -437,6 +437,14 @@ export interface WebMessages {
      * runaway loop hides the ordinary case, which is the figure a per-seat
      * price or a quota is set from.
      */
+    /**
+     * What the comparison stopped being able to see. Dollars render a fixed
+     * finding and a blinded log identically; only coverage tells them apart,
+     * and the silenced list names which sections to distrust.
+     */
+    coverageField(field: string): string;
+    coverageDrift(field: string, was: string, now: string): string;
+    coverageSilenced(field: string): string;
     sessionCost(
       label: string,
       model: string,

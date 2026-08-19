@@ -1173,8 +1173,17 @@ ${bold('EXAMPLES')}
       `The 95th percentile is ${ratio}x the median there: most conversations are cheap and a few are not, which is a tail a quota can catch. Where median and p95 sit close together the workload is simply expensive and there is no tail to hunt.`,
     sessionSpendOnly: (sessions, max) =>
       `${sessions} ${sessions === '1' ? 'conversation' : 'conversations'} in this log; the most expensive cost ${max}. Too few per workload for a percentile — a maximum is a fact at any count, and it is the figure --max-session-usd judges.`,
+    maxGrowthCoverageLost: (fields, was, now) =>
+      `FAILED — this log stopped recording ${fields} (${was} of records before, ${now} now), so the comparison cannot be made. That is not a pass: a bill whose growth nobody could measure is not a bill that stayed flat, and every finding that needed the field went quiet for a reason that has nothing to do with spend.`,
     coverageField: (field) =>
       ({ label: 'label', session: 'session', ts: 'timestamp', stopReason: 'stop reason' })[field] ?? field,
+    coverageSilenced: (field) =>
+      ({
+        label: 'Gone quiet with it: per-workload spend, the drill-down, and levers that describe a decision rather than a mixture.',
+        session: 'Gone quiet with it: conversation growth, per-conversation cost, repeated turns, truncation retries and the cache-TTL fit.',
+        ts: 'Gone quiet with it: the period, the per-day and per-hour shape, the model mix drift, and the cache-TTL question entirely.',
+        stopReason: 'Gone quiet with it: answers cut off at max_tokens, and the retries billed after them.',
+      })[field] ?? '',
     coverageDrift: (field, was, now) =>
       `Coverage moved: ${field} was on ${was} of records and is now on ${now}.`,
     coverageDriftWhy: () =>

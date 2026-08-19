@@ -8,6 +8,7 @@ import {
   cacheEconomics,
   cacheHitRate,
   catalogueFromOverlay,
+  coverageDrift,
   driversBetween,
   formatUsd,
   reviewAgeDays,
@@ -887,6 +888,42 @@ const PROFILE: ToolDefinition = {
         if (modelDrivers.length > 0 && modelsInvolved.size > 1) {
           lines.push('The same change, by model — where the mix moved:');
           for (const d of modelDrivers.slice(0, 3)) lines.push(describe(d, d.key));
+        }
+
+        /**
+         * What the comparison stopped being able to see. The dollars render a
+         * fixed finding and a blinded log identically; only coverage tells
+         * them apart, and an agent relaying "spend flat, all clear" off a log
+         * that stopped recording a field would be relaying a claim nobody
+         * could check.
+         */
+        const silenced: Record<string, string> = {
+          label: 'per-workload spend, the drill-down, and levers that describe a decision rather than a mixture',
+          session: 'conversation growth, per-conversation cost, repeated turns, truncation retries and the cache-TTL fit',
+          ts: 'the period, the per-day and per-hour shape, the model mix drift, and the cache-TTL question entirely',
+          stopReason: 'answers cut off at max_tokens, and the retries billed after them',
+        };
+        const fieldName: Record<string, string> = {
+          label: 'label',
+          session: 'session',
+          ts: 'timestamp',
+          stopReason: 'stop reason',
+        };
+        for (const drift of coverageDrift(previous.fieldCoverage, report.fieldCoverage)) {
+          const was = `${(drift.was * 100).toFixed(1)}%`;
+          const now = `${(drift.now * 100).toFixed(1)}%`;
+          if (drift.delta < 0) {
+            lines.push(
+              `Coverage moved: ${fieldName[drift.field]} was on ${was} of records and is now on `
+                + `${now}. A field the log stopped recording is not a finding that got fixed — gone `
+                + `quiet with it: ${silenced[drift.field]}. Reported from a 20-point move.`,
+            );
+          } else {
+            lines.push(
+              `Coverage moved: ${fieldName[drift.field]} was on ${was} of records and is now on `
+                + `${now} — this report can see what the previous one could not.`,
+            );
+          }
         }
       }
     }

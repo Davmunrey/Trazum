@@ -23,6 +23,25 @@ are opposite facts that the dollars render identically; only coverage tells
 them apart, so the comparison now states any field whose share moved by 20
 points or more, in either direction, loud on a collapse and quiet on a gain.
 
+**The findings a collapsed field took with it, named.** "Some findings are
+silent" is not something a reader can act on; knowing that conversation
+growth, per-conversation cost, repeated turns, truncation retries and the
+cache-TTL fit are now silence rather than absence tells them exactly which
+sections of the report to distrust. One list per field, on all three surfaces.
+
+**The comparison gate refuses a comparison it cannot make.** `--max-growth-usd`
+now fails when the current log stopped recording a field the previous one
+carried, before it judges the dollars at all. The bill can hold perfectly flat
+while the log went blind, and a gate passing there would be certifying a
+comparison nobody could check — the same refusal `--max-day-usd` makes on a
+clockless log and `--max-session-usd` on a sessionless one. A field that
+*appeared* never refuses: seeing more is not a reason to stop.
+
+**Coverage drift on every surface.** The MCP's `profile_usage` and the web
+bill render the same finding at the same 20-point threshold, so an agent
+relaying "spend flat, all clear" cannot do so off a log that stopped
+measuring.
+
 ## 1.29.0 — "The budget, the overlay and the small log"
 
 ### Added
