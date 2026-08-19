@@ -41,7 +41,7 @@ describe('lines that are duplicates of an earlier line', () => {
   it('counts them and prices what they added', async () => {
     const text = flat(await run([call(), call(), call()]));
     assert.match(text, /2 lines are exact duplicates of an earlier line/);
-    assert.match(text, /they add \$2\.00 to the total above/);
+    assert.match(text, /that adds \$2\.00 to the total above/);
     assert.match(text, /this bill is overstated by that much/);
   });
 
@@ -76,7 +76,7 @@ describe('lines that are duplicates of an earlier line', () => {
     const text = flat(result);
     assert.match(text, /2 lines are exact duplicates/);
     // The whole second file: $2.00 of the $4.00 total.
-    assert.match(text, /add \$2\.00 to the total/);
+    assert.match(text, /adds \$2\.00 to the total/);
   });
 
   it('rides --json', async () => {
@@ -88,6 +88,6 @@ describe('lines that are duplicates of an earlier line', () => {
 
   it('speaks Spanish', async () => {
     const text = flat(await run([call(), call()], ['--locale', 'es']));
-    assert.match(text, /duplicados exactos de una línea anterior/);
+    assert.match(text, /duplicados? exactos? de una línea anterior/);
   });
 });

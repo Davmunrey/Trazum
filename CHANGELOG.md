@@ -13,6 +13,28 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**The CI summary says what the terminal says.** `--markdown-out` is what a
+pull request comment and a GitHub job summary show, which is where most people
+will ever read this report — and three findings the terminal makes were
+missing from it. A finding the summary omits is a finding nobody sees.
+
+- **The doubled-bill warning**, above the figures it would inflate rather than
+  below them: a summary showing a total nobody can trust is worse than one
+  showing no total.
+- **How big the calls are**, with the same four-times-the-median threshold and
+  the same two sentences, because a summary that words a finding differently
+  is a second opinion nobody asked for.
+- **The `--what-if` repricing**, with the assumption *above* the figure here
+  too. A pull request comment is exactly where a dollar amount with the caveat
+  underneath would be read as a recommendation and merged.
+
+### Fixed
+
+**"1 lines are exact duplicates".** The duplicate-line sentence took a
+pre-formatted count and could not agree with its own verb. It takes a number
+now and reads "1 line is an exact duplicate" — in both languages, where the
+Spanish had the same fault.
+
 **`inputShapes`: how big the calls actually are.** `outputShapes` said where
 the *output* spend concentrates; input had a total and nothing else — and on a
 RAG or agent workload input is most of the invoice. "Input is 63% of this

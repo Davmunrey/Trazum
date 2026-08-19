@@ -10,7 +10,7 @@ import type {
 } from '@trazum/core';
 import { TTL_1H_MS, UNLABELLED, formatSignedUsd, formatUsd, getMessages, getModel, sharesOf } from '@trazum/core';
 import { dayOf, formatGap, median, spanDays } from './time.js';
-import type { AgainstDriver, BillLevers, CacheEconomics, UsageProfileReport } from '@trazum/core';
+import type { AgainstDriver, BillLevers, CacheEconomics, RepriceReport, UsageProfileReport } from '@trazum/core';
 
 /**
  * Markdown for the places a pull request is actually read.
@@ -744,6 +744,12 @@ export interface ProfileMarkdownInput {
    * `driversBetween`) rather than derived here: the sign convention has one
    * implementation, and this is a rendering.
    */
+  /**
+   * The repricing, when `--what-if` was given. Arrives computed from core's
+   * `repriceProfile` rather than derived here: three surfaces must not
+   * disagree about what a move would cost, and this is a rendering.
+   */
+  whatIf?: RepriceReport | null;
   against?: {
     previousTotalUsd: number;
     previousCalls: number;
@@ -771,7 +777,7 @@ export interface ProfileMarkdownInput {
  * reading CI instead of machines.
  */
 export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
-  const { report, levers, cache, t, window, stalePricing, against } = input;
+  const { report, levers, cache, t, window, stalePricing, against, whatIf } = input;
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
   const shares = sharesOf(report.total);
@@ -819,6 +825,17 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
     lines.push(`| ${name} | ${formatUsd(usd)} | ${pct(share)} | ${n(tokens)} |`);
   }
   lines.push('');
+
+  /**
+   * A doubled bill, said before anything above is believed. A CI summary
+   * showing a total nobody can trust is worse than one showing no total.
+   */
+  if (report.duplicateLines.count > 0) {
+    lines.push(
+      `> ⚠️ ${mdText(t.profile.duplicateLines(report.duplicateLines.count, formatUsd(report.duplicateLines.usd)))}`,
+    );
+    lines.push('');
+  }
 
   // The most expensive day against the median day, loud past twice it — the
   // same sentence and the same yardstick the terminal prints.
@@ -877,6 +894,76 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
   lines.push('');
   lines.push(`_${mdText(t.profile.leverPromptCeiling(formatUsd(levers.promptCeilingUsd), pct(levers.promptCeilingShare)))}_`);
   lines.push('');
+
+  /**
+   * How big the calls are — the half of the bill the totals table can only
+   * name. Same threshold and same two sentences as the terminal, because a
+   * CI summary that summarises differently is a second opinion nobody asked
+   * for.
+   */
+  if (report.inputShapes.length > 0) {
+    lines.push(`#### ${t.profile.inputShapeHeading()}`);
+    lines.push('');
+    for (const shape of report.inputShapes.slice(0, 3)) {
+      const who = showLabel(shape.label);
+      if (shape.medianWithinTokens === null || shape.p95WithinTokens === null || shape.p95OverMedian === null) {
+        lines.push(`- ${mdText(t.profile.inputHuge(who, shape.modelName, t.profile.calls(shape.calls), formatUsd(shape.inputUsd)))}`);
+        continue;
+      }
+      const skewed = shape.p95OverMedian >= 4;
+      lines.push(
+        `- **${mdText(skewed
+          ? t.profile.inputSkewed(who, shape.modelName, n(shape.medianWithinTokens), n(shape.p95WithinTokens), shape.p95OverMedian.toFixed(1), formatUsd(shape.inputUsd))
+          : t.profile.inputEven(who, shape.modelName, n(shape.medianWithinTokens), n(shape.p95WithinTokens), formatUsd(shape.inputUsd)))}**`,
+      );
+      lines.push(`  - ${mdText(skewed ? t.profile.inputSkewedAdvice() : t.profile.inputEvenAdvice())}`);
+      if (shape.cachedShare >= 0.5) {
+        lines.push(`  - ${mdText(t.profile.inputMostlyCached(pct(shape.cachedShare)))}`);
+      } else if (shape.cachedShare < 0.1) {
+        lines.push(`  - ${mdText(t.profile.inputFullRate())}`);
+      }
+    }
+    lines.push('');
+  }
+
+  /**
+   * The repricing, with the assumption above the figure here too — a pull
+   * request comment is exactly where a dollar amount with the caveat
+   * underneath would be read as a recommendation and merged.
+   */
+  if (whatIf !== undefined && whatIf !== null) {
+    lines.push(`#### ${t.profile.whatIfHeading(whatIf.target.displayName)}`);
+    lines.push('');
+    lines.push(`_${mdText(t.profile.whatIfAssumption())}_`);
+    lines.push('');
+    if (whatIf.slices.length === 0) {
+      lines.push(mdText(t.profile.whatIfNothingToMove()));
+      lines.push('');
+    } else {
+      lines.push(
+        `**${mdText(t.profile.whatIfTotal(formatUsd(whatIf.currentUsd), formatUsd(whatIf.targetUsd), formatUsd(Math.abs(whatIf.deltaUsd))))}**`,
+      );
+      lines.push('');
+      for (const slice of whatIf.slices.slice(0, 5)) {
+        lines.push(`- ${mdText(t.profile.whatIfSlice(showLabel(slice.label), slice.model, formatUsd(slice.currentUsd), formatUsd(slice.targetUsd)))}`);
+      }
+      lines.push('');
+    }
+    for (const slice of whatIf.overContext.slice(0, 3)) {
+      lines.push(
+        `> ⚠️ ${mdText(t.profile.whatIfOverContext(showLabel(slice.label), n(slice.maxCallInputTokens), n(whatIf.target.contextWindow), formatUsd(slice.currentUsd)))}`,
+      );
+      lines.push('');
+    }
+    if (whatIf.alreadyOnTarget.calls > 0) {
+      lines.push(`_${mdText(t.profile.whatIfAlreadyThere(t.profile.calls(whatIf.alreadyOnTarget.calls), formatUsd(whatIf.alreadyOnTarget.usd)))}_`);
+      lines.push('');
+    }
+    if (whatIf.unpricedCalls > 0) {
+      lines.push(`_${mdText(t.profile.whatIfUnpriced(t.profile.calls(whatIf.unpricedCalls), whatIf.unpricedModels.join(', ')))}_`);
+      lines.push('');
+    }
+  }
 
   // The cache verdict, with the same refusal to answer an unsettled question.
   const unsettled = cache.worstCaseVerdict !== cache.verdict && report.total.assumedWriteTtlCalls > 0;
