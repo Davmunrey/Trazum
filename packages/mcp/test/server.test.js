@@ -272,10 +272,11 @@ describe('profile_usage', () => {
   it('takes text only — the schema has no path-shaped property', async () => {
     const answer = await client.send('tools/list', {});
     const tool = answer.result.tools.find((t) => t.name === 'profile_usage');
-    assert.deepEqual(Object.keys(tool.inputSchema.properties), ['log', 'label', 'since', 'until', 'previous_log', 'what_if']);
+    assert.deepEqual(Object.keys(tool.inputSchema.properties), ['log', 'label', 'since', 'until', 'previous_log', 'what_if', 'pricing_overlay']);
     assert.match(tool.inputSchema.properties.previous_log.description, /never a file path/);
     assert.equal(tool.inputSchema.additionalProperties, false);
     assert.match(tool.inputSchema.properties.log.description, /Never a file path/);
+    assert.match(tool.inputSchema.properties.pricing_overlay.description, /never a\s+file path/);
   });
 
   it('drills down to one label, and refuses one that matches nothing by name', async () => {
@@ -474,6 +475,62 @@ describe('profile_usage', () => {
     assert.ok(unknown.result?.isError || unknown.error, 'an unpriced what_if model was accepted');
     const text = unknown.result?.content?.map((p) => p.text).join('\n') ?? JSON.stringify(unknown);
     assert.match(text, /cannot price: "gpt-imaginary"/);
+  });
+
+  it('prices under a caller-supplied overlay, and says so in the report', async () => {
+    // The CLI's --pricing, as text: same layering, same refusals, no file.
+    const overlay = JSON.stringify({
+      lastReviewed: '2026-08-14',
+      models: {
+        'acme-fast-1': {
+          displayName: 'Acme Fast 1',
+          inputPerMTok: 2,
+          outputPerMTok: 8,
+          contextWindow: 200_000,
+          cacheMinTokens: 1024,
+          tier: 'sonnet',
+          capability: 'mid',
+          caching: 'automatic',
+        },
+      },
+    });
+    const log = line({
+      model: 'acme-fast-1',
+      label: 'chat',
+      usage: { input_tokens: 1_000_000, output_tokens: 0 },
+    });
+
+    // Without the overlay this model is a gap; with it, a bill — and the
+    // report must say which table produced the dollars.
+    const bare = bodyOf(await client.call('profile_usage', { log }));
+    assert.match(bare, /catalogue does not know: acme-fast-1/);
+    assert.match(bare, /pricing_overlay argument can price them/);
+
+    const priced = bodyOf(await client.call('profile_usage', { log, pricing_overlay: overlay }));
+    assert.match(priced, /1 call · \$2\.00/);
+    assert.match(priced, /A pricing overlay is in effect: 1 model added, 0 overridden/);
+    assert.match(priced, /prices reviewed 2026-08-14/);
+
+    // what_if reprices under the same overlay: $2.00 on the added model.
+    const moved = bodyOf(
+      await client.call('profile_usage', {
+        log: line({ model: 'claude-haiku-4-5', label: 'chat', usage: { input_tokens: 100_000, output_tokens: 0 } }),
+        pricing_overlay: overlay,
+        what_if: 'acme-fast-1',
+      }),
+    );
+    assert.match(moved, /These exact calls on Acme Fast 1/);
+    assert.match(moved, /would have been \$0\.20/);
+
+    // A malformed overlay is a refusal naming the problem, never a report
+    // quietly priced from the bundled table as if nothing had been asked.
+    const bad = await client.call('profile_usage', {
+      log,
+      pricing_overlay: JSON.stringify({ models: {} }),
+    });
+    assert.ok(bad.result?.isError || bad.error, 'a malformed overlay was accepted');
+    const reason = bad.result?.content?.map((p) => p.text).join('\n') ?? JSON.stringify(bad);
+    assert.match(reason, /lastReviewed/);
   });
 
   it('names the fields the log is missing, with counts an agent can act on', async () => {
