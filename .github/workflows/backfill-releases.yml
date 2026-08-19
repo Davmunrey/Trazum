@@ -30,20 +30,30 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
           node-version: 22
+      - name: Rulesets in force, for the log
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Read-only context for diagnosing a refusal: if a tag ruleset blocks
+          # creation, the failure below should be read next to this.
+          gh api "repos/$GITHUB_REPOSITORY/rulesets" --jq '.[] | {name, target, enforcement}' || echo "rulesets not readable with this token"
+
       - name: Create the missing releases
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
 
           # version|commit|npm-status. The commit is the merge that set the
           # version — verified against the manifest at that commit. Versions
-          # whose tag already exists carry "-" and release against the tag.
+          # whose tag already exists carry "-" and release against the tag —
+          # those go first, so one run separates "cannot create releases" from
+          # "cannot create tags" if the API refuses one and not the other.
           entries='
-          1.0.0|ee7bd9f20b154554daf6c633621b3bb6b3710ca6|pre-npm
-          1.8.0|b2e862debcee6c398169f2bfda2fad057a73891b|published
           1.9.1|-|unpublished
           1.10.0|-|published
+          1.0.0|ee7bd9f20b154554daf6c633621b3bb6b3710ca6|pre-npm
+          1.8.0|b2e862debcee6c398169f2bfda2fad057a73891b|published
           1.11.0|24d5916e3d74477b524946ff374e518d001295a2|unpublished
           1.12.0|f4771fe2bd72031eb5fc21e67c340a97ab95989c|unpublished
           1.13.0|96486ff4cb81730b8e2cb99f8fbeb991fdc554eb|unpublished
@@ -60,7 +70,11 @@ jobs:
           1.24.0|54719c103ba524bb399bb8fe1a43df1530bcaacf|unpublished
           '
 
-          echo "$entries" | while IFS='|' read -r version commit npm; do
+          # One refusal must not hide whether the other seventeen work: each
+          # entry reports its own outcome and the job fails at the end if any
+          # failed, with the full per-entry picture in the log.
+          failures=0
+          while IFS='|' read -r version commit npm; do
             version="$(echo "$version" | tr -d ' ')"
             [ -z "$version" ] && continue
             tag="v$version"
@@ -85,9 +99,19 @@ jobs:
             node scripts/release-notes.mjs "$version" >> "$notes"
 
             if [ "$commit" = "-" ]; then
-              gh release create "$tag" --title "$tag" --notes-file "$notes" --latest=false --verify-tag
+              args=(--verify-tag)
             else
-              gh release create "$tag" --target "$commit" --title "$tag" --notes-file "$notes" --latest=false
+              args=(--target "$commit")
             fi
-            echo "$tag: created"
-          done
+            if out="$(gh release create "$tag" --title "$tag" --notes-file "$notes" --latest=false "${args[@]}" 2>&1)"; then
+              echo "$tag: created"
+            else
+              echo "$tag: FAILED — $out"
+              failures=$((failures + 1))
+            fi
+          done <<< "$entries"
+
+          if [ "$failures" -gt 0 ]; then
+            echo "$failures release(s) could not be created; the lines above say which and why"
+            exit 1
+          fi
