@@ -514,6 +514,16 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.37.0 — The fleet
+
+`profile --by-source` splits a directory of logs by the config's `sources`
+globs and names the service where the money is: split brains (one workload on
+different models in different sources, judged on each source's dearest model),
+caching underwater in a named source while the aggregate pays, mismatched
+spans said in the copy, and per-service budgets in `spend.bySource` that fail
+naming the service. Files matching no pattern are named, never dropped.
+Second of the five in docs/plan-1.36-1.40.md.
+
 ### 1.36.0 — The estimate stops guessing
 
 `optimize --from-log` measures the call count, output size, cache share and
