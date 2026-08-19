@@ -40,6 +40,46 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.31.0 — "The gate that explains itself"
+
+### A failing gate says what to change
+
+A gate printed a verdict and an exit code, and the person reading it is in
+CI — the one place nobody opens the full report. Every spend gate failure now
+carries its own next step:
+
+```
+FAILED — this log spent $12.00 against a --max-usd of $8.00.
+  Most of it is rag on claude-opus-5: $10.00, 83.3% of the bill. That is
+  where the money is, not necessarily where the fix is.
+  The largest lever the report priced would save $5.00 on rag by sending it
+  through the Batch API — enough to cover the $4.00 this is over by.
+```
+
+Nothing is invented: the overage is subtraction, the contributor is the
+biggest slice already in the report, the lever is the report's own
+arithmetic. Whether the lever covers the overage is stated rather than
+inferred, and nothing recommends — whether that model can do the work is the
+reader's to judge, and the copy says so. Written once, called by all four
+gates.
+
+### A tight pass says so
+
+`Passed with 4.0% of the budget left`. A pass 2% under budget and a pass 60%
+under are different states of the world, and only one of them is quiet news.
+Said under a tenth of the budget, with the threshold in the sentence.
+
+### The verdict reaches the CI summary
+
+The gates spoke on stderr and stopped there, so a run summary carried the
+whole report and not the one sentence explaining why the build was red.
+`--markdown-out` now leads with the verdict — a failure quoted and bold, its
+explanation beneath it, a pass stated plainly — and the GitHub Action already
+pipes that file into the step summary, so red builds carry their reason with
+no workflow change.
+
+---
+
 ## 1.30.0 — "The report as a diff"
 
 ### What the comparison stopped being able to see
