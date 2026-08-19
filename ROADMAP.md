@@ -514,6 +514,14 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.30.0 — The report as a diff
+
+`--against` gained the half the dollars cannot carry: coverage drift. A field
+the log stopped recording is not a finding that got fixed, and the report now
+names which findings went quiet with it. `--max-growth-usd` refuses the
+comparison outright rather than passing on a bill nobody could measure. All
+three surfaces render it at the same threshold.
+
 ### 1.29.0 — The budget, the overlay and the small log
 
 `--max-session-usd` (and `spend.maxSessionUsd`) judges the single most
