@@ -269,6 +269,23 @@ describe('the bill tab reads the log in the browser and nowhere else', () => {
     assert.match(en, /No ceiling is named because there is none to name honestly/);
   });
 
+  it('carries the CLI’s newest findings, with the CLI’s thresholds', () => {
+    // repeatedTurns, contextPressure, modelMixDrift and duplicateLines — the
+    // findings the CLI grew that the tab lacked. The thresholds must match
+    // the CLI's (85% loud on pressure, fifteen points on drift): two
+    // surfaces summarising one log differently is a second opinion nobody
+    // asked for.
+    assert.match(bill, /report\.repeatedTurns\.length > 0/);
+    assert.match(bill, /contextPressure\(report, BUNDLED_CATALOGUE\)/);
+    assert.match(bill, /row\.share >= 0\.85/);
+    assert.match(bill, /Math\.abs\(m\.lastShare - m\.firstShare\) >= 0\.15/);
+    assert.match(bill, /report\.duplicateLines\.count > 0/);
+    const en = read('lib/i18n/en.ts');
+    assert.match(en, /names the pattern and stops/);
+    assert.match(en, /When it crosses is not predicted here/);
+    assert.match(en, /Where the mix goes next is not in this log/);
+  });
+
   it('does not redefine what the core already exports', () => {
     assert.equal(/function formatUsd/.test(bill), false);
     assert.match(bill, /formatUsd,\n\s*profileUsage|formatUsd/, 'formatUsd comes from @trazum/core');

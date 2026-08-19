@@ -13,6 +13,17 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**The Bill tab catches up, four findings at once.** The browser lacked the
+CLI's newest sections: the doubled-bill warning (`duplicateLines`, placed
+above the totals it would inflate), the same request sent again
+(`repeatedTurns`), the ceiling in sight (`contextPressure`) and the moving
+mix (`modelMixDrift`). All four render in the tab now, computed in the page
+like everything else there, with the CLI's own thresholds — 85% loud on
+pressure, fifteen points on drift — because two surfaces summarising one log
+differently is a second opinion nobody asked for. Verified by driving the
+built page in Chromium with a log that triggers all four at once, zero
+network requests recorded.
+
 **`modelMixDrift`: the migration a total cannot show.** A bill can grow with
 no workload growing — traffic quietly moving from the cheap model to the
 expensive one, a deploy that flipped a default, a fallback that became the

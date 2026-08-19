@@ -323,6 +323,23 @@ export interface WebMessages {
     inputHuge(label: string, model: string, calls: number, usd: string): string;
     inputMostlyCached(share: string): string;
     inputFullRate: string;
+    /** A doubled bill, said before anything above is believed. */
+    duplicateLines(count: number, usd: string): string;
+    /**
+     * The same request sent again, the ceiling in sight, and the mix moving —
+     * the three findings the CLI grew that this tab lacked. Same thresholds,
+     * same hedges: two surfaces summarising one log differently is a second
+     * opinion nobody asked for.
+     */
+    repeatsHeading: string;
+    repeatsLine(label: string, model: string, repeats: string, checked: string, seconds: string, usd: string): string;
+    repeatsNote: string;
+    pressureHeading: string;
+    pressureLine(label: string, model: string, tokens: string, window: string, share: string): string;
+    pressureAdvice: string;
+    mixDriftHeading: string;
+    mixDriftLine(model: string, firstShare: string, lastShare: string, firstDays: number, lastDays: number, usd: string): string;
+    mixDriftNote: string;
     outputHeading: string;
     outputTail(
       label: string,

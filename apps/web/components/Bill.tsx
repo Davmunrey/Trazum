@@ -9,6 +9,7 @@ import {
   billLevers,
   cacheEconomics,
   cacheHitRate,
+  contextPressure,
   driversBetween,
   formatSignedUsd,
   formatUsd,
@@ -490,6 +491,15 @@ function Report({
               <span className="text-terracotta">
                 {t.bill.windowUndated(report.timeWindow.undatedExcluded)}
               </span>
+            )}
+            {/*
+              A doubled bill, said before anything above is believed — the
+              same placement rule as the CLI and the CI summary.
+            */}
+            {report.duplicateLines.count > 0 && (
+              <div className="rounded-lg border border-l-[3px] border-l-warn px-3.5 py-3 text-[13px] leading-snug text-warn">
+                {t.bill.duplicateLines(report.duplicateLines.count, formatUsd(report.duplicateLines.usd))}
+              </div>
             )}
             {/*
               Spend per day, drawn with divs rather than a chart library — the
@@ -1128,6 +1138,83 @@ function Report({
               </CardContent>
             </Card>
           )}
+
+          {/*
+            The same request sent again, the ceiling in sight, and the mix
+            moving — the CLI's newest findings, with the CLI's thresholds.
+            All three computed in the page, like everything else here.
+          */}
+          {report.repeatedTurns.length > 0 && (
+            <Card className="gap-4 py-[18px]">
+              <CardHeader className="px-[18px]">{eyebrow(t.bill.repeatsHeading)}</CardHeader>
+              <CardContent className="flex flex-col gap-2 px-[18px] text-[13px]">
+                {report.repeatedTurns.slice(0, MAX_SECTIONS).map((row) => (
+                  <div
+                    key={`${row.label}\n${row.model}`}
+                    className="rounded-lg border border-l-[3px] border-l-warn px-3.5 py-3 leading-snug text-warn"
+                  >
+                    {t.bill.repeatsLine(
+                      labelName(row.label),
+                      row.modelName,
+                      n(row.repeats),
+                      n(row.checkedCalls),
+                      n(Math.round(row.withinMs / 1000)),
+                      formatUsd(row.usd),
+                    )}
+                  </div>
+                ))}
+                <span className="text-muted-foreground">{t.bill.repeatsNote}</span>
+              </CardContent>
+            </Card>
+          )}
+
+          {(() => {
+            const pressures = contextPressure(report, BUNDLED_CATALOGUE);
+            if (pressures.length === 0) return null;
+            return (
+              <Card className="gap-4 py-[18px]">
+                <CardHeader className="px-[18px]">{eyebrow(t.bill.pressureHeading)}</CardHeader>
+                <CardContent className="flex flex-col gap-2 px-[18px] text-[13px]">
+                  {pressures.slice(0, MAX_SECTIONS).map((row) => (
+                    <span
+                      key={`${row.label}\n${row.model}`}
+                      className={row.share >= 0.85 ? 'font-semibold text-warn' : 'text-muted-foreground'}
+                    >
+                      {t.bill.pressureLine(
+                        labelName(row.label),
+                        row.modelName,
+                        n(row.maxCallInputTokens),
+                        n(row.contextWindow),
+                        pct(row.share),
+                      )}
+                    </span>
+                  ))}
+                  {pressures.some((row) => row.share >= 0.85) && (
+                    <span className="text-muted-foreground">{t.bill.pressureAdvice}</span>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })()}
+
+          {report.modelMixDrift !== null && (() => {
+            const drift = report.modelMixDrift;
+            const moved = drift.models.filter((m) => Math.abs(m.lastShare - m.firstShare) >= 0.15);
+            if (moved.length === 0) return null;
+            return (
+              <Card className="gap-4 py-[18px]">
+                <CardHeader className="px-[18px]">{eyebrow(t.bill.mixDriftHeading)}</CardHeader>
+                <CardContent className="flex flex-col gap-2 px-[18px] text-[13px]">
+                  {moved.slice(0, MAX_SECTIONS).map((m) => (
+                    <span key={m.model} className="font-semibold text-warn">
+                      {t.bill.mixDriftLine(m.model, pct(m.firstShare), pct(m.lastShare), drift.firstDays, drift.lastDays, formatUsd(m.lastUsd))}
+                    </span>
+                  ))}
+                  <span className="text-muted-foreground">{t.bill.mixDriftNote}</span>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {report.outputShapes.length > 0 && (
             <Card className="gap-4 py-[18px]">
