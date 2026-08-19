@@ -249,8 +249,10 @@ ${bold('OPCIONES DE profile')}
   --markdown-out <fichero>    Escribe además el informe en Markdown, para el
                               resumen de un job de CI o un comentario de PR.
   --csv-shape <forma>         Qué tabla escribe --csv-out: slice (por defecto),
-                              day u hour. Una sola forma de fila por fichero,
-                              para que nada haya que filtrar antes de sumarlo.
+                              day, hour o model-day (una fila por día y
+                              modelo — dibuja la mezcla moviéndose). Una sola
+                              forma de fila por fichero, para que nada haya
+                              que filtrar antes de sumarlo.
   --csv-out <fichero>         Escribe además el informe en CSV, una fila por
                               etiqueta y modelo. Sin fila de total, a propósito:
                               un total dentro de un fichero de datos acaba
@@ -1127,7 +1129,7 @@ ${bold('EJEMPLOS')}
     budgetVsWire: (label, file, budget, perCall, share) =>
       `El presupuesto de ${file} son ${budget} tokens, y las llamadas con etiqueta ${label} llevan unos ${perCall} tokens de entrada cada una — así que esa puerta vigila alrededor del ${share} de lo que realmente sale por el cable. El resto es contexto recuperado, historial de conversación y resultados de herramientas, que ningún fichero de prompt contiene y ningún presupuesto sobre uno puede ver. El presupuesto no está mal; simplemente es más pequeño que la factura.`,
     badCsvShape: (value) =>
-      `--csv-shape no conoce "${value}". Acepta "slice" (una fila por etiqueta y modelo, el valor por defecto), "day" u "hour".`,
+      `--csv-shape no conoce "${value}". Acepta "slice" (una fila por etiqueta y modelo, el valor por defecto), "day", "hour" o "model-day" (una fila por día y modelo — el formato largo que quiere una tabla dinámica).`,
     whatIfHeading: (model) => `Estas mismas llamadas en ${model}`,
     whatIfAssumption: () =>
       'Esto es una multiplicación, no un consejo: los mismos recuentos de tokens con otra tarifa. No dice nada sobre si ese modelo podría hacer el trabajo, y un modelo que responda más largo o al que haya que reintentar no enviaría estos recuentos.',

@@ -13,6 +13,14 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`--csv-shape model-day`: the drift, day by day.** `modelMixDrift` states
+two halves; a chart wants the whole series. The new shape writes one row per
+UTC day *and model* — `day,model,usd,calls`, the long format a pivot table
+or a plotting library takes as-is — and `spendByDay` in `--json` now carries
+the same per-model split on every day. Model ids are formula-defused like
+every other untrusted cell, no total row as in every shape, and the
+unpriced stay out because their dollars were never computed.
+
 **`truncationRetries`: the "billed again" half, measured.** The truncation
 finding has always said cut-off answers are *frequently retried, billed
 again* — and that second half was an assertion, because nothing counted the

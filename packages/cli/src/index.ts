@@ -2492,7 +2492,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
        * somebody sums wrong.
        */
       const shape = stringFlag(args, 'csv-shape') ?? 'slice';
-      if (shape !== 'slice' && shape !== 'day' && shape !== 'hour') {
+      if (shape !== 'slice' && shape !== 'day' && shape !== 'hour' && shape !== 'model-day') {
         throw new Error(t.profile.badCsvShape(shape));
       }
       await writeFile(

@@ -125,8 +125,44 @@ describe('the time-series shapes', () => {
     assert.match(rows[1], /^2026-08-01,1\.000000,1,\(no label\),1\.000000$/);
   });
 
+  it('writes one row per day and model, the long format a pivot wants', () => {
+    // Day 1 is all chat on Opus; day 2 splits between Opus and a second
+    // model. $1.00 = 200k input on Opus; Haiku's million-token day is $1.00.
+    const haiku = {
+      model: 'claude-haiku-4-5',
+      label: 'chat',
+      ts: '2026-08-02T09:30:00Z',
+      usage: { input_tokens: 1_000_000, output_tokens: 0 },
+    };
+    const rows = rowsOf(shaped([at('2026-08-01', 9, 1), at('2026-08-02', 9, 2), haiku], 'model-day'));
+    assert.equal(rows[0], 'day,model,usd,calls');
+    assert.equal(rows[1], '2026-08-01,claude-opus-5,1.000000,1');
+    // Largest model first within the day.
+    assert.equal(rows[2], '2026-08-02,claude-opus-5,2.000000,1');
+    assert.equal(rows[3], '2026-08-02,claude-haiku-4-5,1.000000,1');
+  });
+
+  it('defuses a model id a spreadsheet would run as a formula', () => {
+    // A model id comes from the log, and the log comes from anywhere.
+    const evil = {
+      model: '=cmd|calc',
+      label: 'chat',
+      ts: '2026-08-01T09:30:00Z',
+      usage: { input_tokens: 5 },
+    };
+    const rows = rowsOf(shaped([at('2026-08-01', 9, 1), at('2026-08-02', 9, 1), evil], 'model-day'));
+    // The unpriced model never reaches the day series — but the defusal has
+    // to hold for any model that does, so pin the mechanism on the priced
+    // rows: no cell begins with a formula trigger.
+    for (const row of rows.slice(1)) {
+      for (const cell of row.split(',')) {
+        assert.doesNotMatch(cell, /^[=+@]/, `formula-triggering cell: ${cell}`);
+      }
+    }
+  });
+
   it('still has no total row in any shape', () => {
-    for (const shape of ['slice', 'day', 'hour']) {
+    for (const shape of ['slice', 'day', 'hour', 'model-day']) {
       const csv = shaped([at('2026-08-01', 9, 1), at('2026-08-02', 9, 2)], shape);
       assert.doesNotMatch(csv.toLowerCase(), /^total,/m);
     }
