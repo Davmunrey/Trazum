@@ -734,6 +734,20 @@ export interface ProfileMarkdownInput {
    */
   gates?: { failed: boolean; lines: string[] };
   /**
+   * `--markdown-summary`: the short form, for a pull-request body or a weekly
+   * note rather than a full report.
+   *
+   * The person who owns the budget usually does not run the CLI, and handing
+   * them the whole report is handing them a document to skim — where the one
+   * figure that changed is as easy to miss as it was in the terminal. The
+   * summary states what changed, the single lever worth the most, and stops.
+   *
+   * It is a *view*, never a different set of figures: every number in it is
+   * taken from the same report the full rendering uses, so a reader who opens
+   * both cannot find them disagreeing.
+   */
+  summary?: boolean;
+  /**
    * The `--since`/`--until` values as the user typed them, when a window was
    * applied. Passed through rather than re-derived from `timeWindow`'s epoch
    * bounds, because a bare `--until 2026-08-14` includes that whole day —
@@ -793,7 +807,7 @@ export interface ProfileMarkdownInput {
  * reading CI instead of machines.
  */
 export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
-  const { report, levers, cache, t, window, stalePricing, against, whatIf, pressure = [], gates } = input;
+  const { report, levers, cache, t, window, stalePricing, against, whatIf, pressure = [], gates, summary = false } = input;
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
   const shares = sharesOf(report.total);
@@ -812,6 +826,85 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
    * surface further out. A failure is quoted so it survives being skimmed; a
    * pass is stated plainly and does not shout.
    */
+  /**
+   * The summary: what changed, the biggest lever, and nothing else.
+   *
+   * Returned before the full rendering rather than filtered out of it, so a
+   * section added later cannot leak into the short form by forgetting to opt
+   * out. Every figure here comes from the same report the long form uses.
+   */
+  if (summary) {
+    const short: string[] = [];
+    short.push(`### ${t.profile.heading()}`);
+    short.push('');
+    if (gates !== undefined && gates.lines.length > 0) {
+      const [verdict] = gates.lines;
+      short.push(gates.failed ? `> ❌ **${mdText(verdict!)}**` : `_${mdText(verdict!)}_`);
+      short.push('');
+    }
+    short.push(`**${mdText(t.profile.spent(t.profile.calls(report.total.calls), formatUsd(report.total.totalUsd)))}**`);
+    short.push('');
+    // What changed, when there is a previous log to change from. Without one
+    // the summary states the bill and says so, rather than implying stability
+    // nobody measured.
+    if (against !== undefined) {
+      const delta = report.total.totalUsd - against.previousTotalUsd;
+      const growthPct =
+        against.previousTotalUsd > 0
+          ? `${delta >= 0 ? '+' : ''}${((delta / against.previousTotalUsd) * 100).toFixed(1)}%`
+          : '—';
+      short.push(
+        mdText(
+          t.profile.againstTotals(
+            formatUsd(against.previousTotalUsd),
+            formatUsd(report.total.totalUsd),
+            formatSignedUsd(delta),
+            growthPct,
+            t.profile.calls(against.previousCalls),
+            t.profile.calls(report.total.calls),
+          ),
+        ),
+      );
+      short.push('');
+      // The one driver that moved most — not five, because a summary that
+      // lists everything is the report again with a shorter heading.
+      const [driver] = against.labelDrivers;
+      if (driver !== undefined) {
+        const shown = driver.key === UNLABELLED ? t.profile.unlabelled() : driver.key;
+        short.push(
+          `- ${mdText(
+            driver.was === null
+              ? t.profile.againstDriverNew(formatSignedUsd(driver.delta), shown)
+              : driver.now === null
+                ? t.profile.againstDriverGone(formatSignedUsd(driver.delta), shown)
+                : t.profile.againstDriver(formatSignedUsd(driver.delta), shown, formatUsd(driver.was), formatUsd(driver.now)),
+          )}`,
+        );
+        short.push('');
+      }
+    } else {
+      short.push(`_${mdText(t.profile.summaryNoComparison())}_`);
+      short.push('');
+    }
+    // The single lever worth the most, with the hedge every lever carries.
+    const [lever] = levers.slices;
+    if (lever !== undefined) {
+      short.push(
+        `- ${mdText(
+          t.profile.leverSlice(
+            showLabel(lever.label),
+            lever.modelName,
+            formatUsd(lever.combinedUsd),
+            pct(lever.shareOfBill),
+          ),
+        )}`,
+      );
+      short.push('');
+    }
+    short.push(`_${mdText(t.profile.summaryFooter())}_`);
+    return short.join('\n');
+  }
+
   if (gates !== undefined && gates.lines.length > 0) {
     // One mark, on the verdict. The lines under it explain that verdict and
     // are not themselves failures — marking each would turn one red build
