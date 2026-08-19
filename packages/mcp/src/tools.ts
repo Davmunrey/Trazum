@@ -1,10 +1,13 @@
 import {
   BUNDLED_CATALOGUE,
+  MAX_PRICING_BYTES,
   PRICING_LAST_REVIEWED,
+  PricingOverlayError,
   UNLABELLED,
   billLevers,
   cacheEconomics,
   cacheHitRate,
+  catalogueFromOverlay,
   driversBetween,
   formatUsd,
   reviewAgeDays,
@@ -332,6 +335,18 @@ const PROFILE: ToolDefinition = {
           + 'impossible rather than priced as cheap, and spend already on that model stays out '
           + 'of the difference. An id this catalogue cannot price is an error, never silence.',
       },
+      pricing_overlay: {
+        type: 'string',
+        minLength: 1,
+        maxLength: MAX_PRICING_BYTES,
+        description:
+          'The same JSON document a --pricing overlay file holds, passed as text — never a '
+          + 'file path. Adds models the bundled catalogue does not know and overrides prices '
+          + 'for ones it does; every figure in the report, including what_if, is then priced '
+          + 'under it, and the report says the overlay is in effect. Requires "lastReviewed" '
+          + 'and a non-empty "models" object; a malformed overlay is an error naming the '
+          + 'problem, never a report silently priced from the bundled table.',
+      },
     },
     required: ['log'],
     additionalProperties: false,
@@ -375,14 +390,39 @@ const PROFILE: ToolDefinition = {
     }
     const windowed = sinceMs !== undefined || untilMs !== undefined;
 
-    const report = profileUsage(log, { catalogue: BUNDLED_CATALOGUE, label: onlyLabel, sinceMs, untilMs });
+    /**
+     * The catalogue for this run: the caller's overlay applied over the
+     * bundled table, or the bundled table alone — the same layering as the
+     * CLI's `--pricing`, minus the file. The overlay travels as text because
+     * this server takes no paths, and a bad one is refused with the parser's
+     * own reason rather than priced from the bundled table as if nothing had
+     * been asked.
+     */
+    const overlayRaw = args.pricing_overlay;
+    let catalogue = BUNDLED_CATALOGUE;
+    if (overlayRaw !== undefined) {
+      if (typeof overlayRaw !== 'string') throw new InvalidArguments('pricing_overlay must be a string');
+      if (overlayRaw.length > MAX_PRICING_BYTES) {
+        throw new InvalidArguments(
+          `pricing_overlay is ${overlayRaw.length} characters, over the ${MAX_PRICING_BYTES} limit`,
+        );
+      }
+      try {
+        catalogue = catalogueFromOverlay(overlayRaw, 'pricing_overlay');
+      } catch (error) {
+        if (error instanceof PricingOverlayError) throw new InvalidArguments(error.message);
+        throw error;
+      }
+    }
+
+    const report = profileUsage(log, { catalogue, label: onlyLabel, sinceMs, untilMs });
     /**
      * The drill-downs' one rule, same as the CLI: a filter matching nothing is
      * an error naming what exists, never a silent report over zero calls that
      * an agent would read as "this workload is free" or "this period is free".
      */
     if ((onlyLabel !== undefined || windowed) && report.total.calls === 0 && report.unpriced.calls === 0) {
-      const unfiltered = profileUsage(log, { catalogue: BUNDLED_CATALOGUE });
+      const unfiltered = profileUsage(log, { catalogue });
       if (unfiltered.total.calls > 0 || unfiltered.unpriced.calls > 0) {
         if (onlyLabel !== undefined && !unfiltered.byLabel.some((e) => e.label === onlyLabel)) {
           const available = unfiltered.byLabel
@@ -413,8 +453,10 @@ const PROFILE: ToolDefinition = {
       if (report.unpricedModels.length > 0) {
         lines.push(
           `${count(report.unpriced.calls, 'call')} are not in these totals — the pricing `
-            + `catalogue does not know: ${report.unpricedModels.join(', ')}. The CLI can price `
-            + 'them with a pricing overlay (trazum profile --pricing).',
+            + `catalogue does not know: ${report.unpricedModels.join(', ')}. `
+            + (catalogue === BUNDLED_CATALOGUE
+              ? 'A pricing_overlay argument can price them.'
+              : 'The overlay in effect does not name them either.'),
         );
       }
       if (report.skippedLines.length > 0) {
@@ -443,14 +485,27 @@ const PROFILE: ToolDefinition = {
     // because every sibling tool here carries the ±10% band.
     lines.push(
       `${count(total.calls, 'call')} · ${formatUsd(total.totalUsd)} — exact billed token`
-        + ` counts from the log, not estimates; prices reviewed ${PRICING_LAST_REVIEWED}.`,
+        + ` counts from the log, not estimates; prices reviewed ${catalogue.lastReviewed}.`,
     );
+    /**
+     * The overlay is part of the answer, not plumbing: every dollar above was
+     * priced under it, so a reader comparing this report against one priced
+     * from the bundled table must be able to see they are not the same table.
+     */
+    if (catalogue !== BUNDLED_CATALOGUE) {
+      const added = catalogue.addedModels.length;
+      const overridden = catalogue.overriddenModels.length;
+      lines.push(
+        `A pricing overlay is in effect: ${count(added, 'model')} added, `
+          + `${overridden} overridden. Figures are priced under it, not the bundled table.`,
+      );
+    }
     /**
      * Said only when old enough to matter, and loud then: a stale table
      * qualifies every dollar above, and unlike a skipped line it does not
      * name its own size — the error is exactly whatever the provider changed.
      */
-    const pricingAge = reviewAgeDays(PRICING_LAST_REVIEWED, new Date());
+    const pricingAge = reviewAgeDays(catalogue.lastReviewed, new Date());
     if (pricingAge !== null && pricingAge > 45) {
       lines.push(
         `That review was ${pricingAge} days ago, past the 45 this tool considers current. If the`
@@ -636,7 +691,7 @@ const PROFILE: ToolDefinition = {
     }
 
     lines.push('', '--- what would actually move this bill ---');
-    const levers = billLevers(report, { catalogue: BUNDLED_CATALOGUE });
+    const levers = billLevers(report, { catalogue });
     if (report.byLabel.length === 1 && report.byLabel[0]!.label === UNLABELLED) {
       lines.push(
         'None of these calls carried a label, so this is every workload in one row. Add "label" '
@@ -773,7 +828,7 @@ const PROFILE: ToolDefinition = {
       // against the whole previous log would call every sibling workload a
       // vanished saving.
       const previous = profileUsage(previousLog, {
-        catalogue: BUNDLED_CATALOGUE,
+        catalogue,
         label: onlyLabel,
         sinceMs,
         untilMs,
@@ -864,7 +919,7 @@ const PROFILE: ToolDefinition = {
      * the caller that can stop growing before the window refuses a call.
      */
     {
-      const pressures = contextPressure(report, BUNDLED_CATALOGUE);
+      const pressures = contextPressure(report, catalogue);
       if (pressures.length > 0) {
         lines.push('');
         lines.push('Approaching the context window:');
@@ -951,11 +1006,11 @@ const PROFILE: ToolDefinition = {
     const whatIfModel = args.what_if;
     if (whatIfModel !== undefined) {
       if (typeof whatIfModel !== 'string') throw new InvalidArguments('what_if must be a string');
-      const whatIf = repriceProfile(report, whatIfModel, BUNDLED_CATALOGUE);
+      const whatIf = repriceProfile(report, whatIfModel, catalogue);
       if (whatIf === null) {
         throw new InvalidArguments(
           `what_if names a model this catalogue cannot price: "${whatIfModel}". Priced models: `
-            + BUNDLED_CATALOGUE.models.map((m) => m.id).join(', '),
+            + catalogue.models.map((m) => m.id).join(', '),
         );
       }
       lines.push('');
