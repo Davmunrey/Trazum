@@ -9,6 +9,31 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Changed
+
+**The documentation caught up with the registry.** 1.25.0 is on npm — published
+by hand from a clean clone of the tag after npm's trusted publishing rejected
+the workflow's OIDC token on four real attempts against `v1.11.0`, with every
+GitHub-side claim verified correct. The docs now say so instead of describing
+the state of a week ago:
+
+- `RELEASES.md` header: all three packages at 1.25.0; 1.11.0–1.24.0 named as
+  real releases the registry never saw; no provenance on 1.25.0, and why.
+- `docs/releasing.md`: the trusted-publisher section downgraded from "reported
+  done" to **still not working**, with the v1.11.0 evidence that the mismatch
+  lives on npm's side; a *Releasing by hand* procedure added — the one 1.25.0
+  actually used — including publishing **before** pushing the tag, so the
+  workflow's preflight skips the uploads and still creates the GitHub release.
+- `README.md`: the three action pins advanced from the 1.10.0 commit to the
+  1.25.0 one, labels verified against the pinned commit by `security.test.js`.
+- `ROADMAP.md`: the Released section no longer stops at 1.9.0 — the
+  1.10.0→1.25.0 arc is recorded, with the registry gap stated.
+- `packages/cli/README.md`, `packages/mcp/README.md` and the Claude skill:
+  `profile`'s rows now name the surface that exists — directories and `.gz`,
+  `--what-if`, the drill-downs, the four money gates, the three output formats.
+
 ## 1.25.0 — "The retry, the archive and the shape in the tab"
 
 ### Added

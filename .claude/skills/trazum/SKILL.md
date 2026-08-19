@@ -81,7 +81,19 @@ node packages/cli/dist/index.js profile usage.jsonl
 The log is one JSON object per line, each with a `model` and the `usage` object
 the API returned. If the user does not have one, tell them it is three lines to
 record and that it never contains prompt text — the record shape has no field for
-content.
+content. A directory of rotated logs works too, gzipped files included, read in
+name order as one bill.
+
+The drill-downs and gates, when the user's question calls for them:
+`--label <name>` profiles one workload; `--since`/`--until` one period (a UTC
+day, a full timestamp, or `7d`/`24h`); `--against <previous.jsonl>` names the
+drivers of a change per label and per model; `--what-if <model>` prices these
+exact calls at another rate card — quote its caveat with its figure, because it
+is multiplication and knows nothing about whether the model could do the work.
+For CI, `--max-usd`, `--max-day-usd` (the worst single UTC day — the gate a
+total cannot arm), `--max-growth-usd` and `--max-cache-loss-usd` exit 1 over
+budget, and `--json`, `--csv-out` and `--markdown-out` carry the same report
+into pipelines.
 
 **Lead with "What would actually move this bill".** It is the section the command
 exists for, and the one that answers the fair complaint that Trazum saves 1%. The

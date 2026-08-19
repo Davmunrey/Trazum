@@ -80,16 +80,27 @@ also where a required reviewer goes if you ever want publishing to need a second
 pair of eyes — the environment gate runs before the job starts, so an approval
 there blocks the publish rather than interrupting it halfway.
 
-### 3. Configure this repository as a trusted publisher — reported done
+### 3. Configure this repository as a trusted publisher — **still not working**
 
 The step that decides whether a tag publishes or fails at the last stage. It has
-failed that way twice: 1.8.0 because the packages did not exist yet, and 1.9.0
-because this had not been done — both releases went out by hand, and neither has
-provenance as a result.
+now failed that way on **six real publish attempts across three versions**:
+1.8.0 because the packages did not exist yet, 1.9.0 because this had not been
+done, and `v1.11.0` four times on 2026-08-19 — after the settings had been
+reported filled in. Every one of those releases that shipped went out by hand,
+and none has provenance as a result. 1.25.0 is the latest: published from a
+clean clone of the tag, with the workflow's own preflight and `verify` run
+first by hand.
 
-All three were configured on **2026-08-13**. The preflight below still reports
-`rejected`, which is either a setting that does not match or the preflight being
-wrong — see *when to disbelieve it*. Nothing settles it but a tag.
+The v1.11.0 failures settled one thing the 2026-08-13 attempt could not: the
+GitHub side is **not** the problem. The failing run prints the claims its token
+actually carried, and all of them matched what these instructions say to type —
+repository `Davmunrey/Trazum`, user `Davmunrey`, workflow `release.yml`, an
+environment present. The mismatch, whatever it is, lives on npm's side of the
+form: a configuration that did not save, saved onto the wrong package, or an
+account-level restriction this document does not know about. Until someone
+confirms the three package pages *display* a saved trusted publisher — not that
+the form accepts one — assume tags will not publish and release by hand (see
+*Releasing by hand*, below).
 
 For **each** of `@trazum/core`, `@trazum/cli` and `@trazum/mcp`, on the package's npm settings
 page under *Publishing access → Trusted publisher*, enter exactly:
@@ -194,6 +205,12 @@ asserts no workflow reaches for one.
    git tag v1.2.0 && git push origin v1.2.0
    ```
 
+   **While the trusted publisher stays broken (step 3), invert this**: publish
+   by hand first, *then* push the tag. The workflow's preflight finds every
+   version already on the registry, skips the uploads, and still creates the
+   GitHub release from `RELEASES.md` — a green run instead of a red one. That
+   is exactly how 1.25.0 shipped.
+
 The workflow does the rest. It will refuse if the tag and the manifests disagree,
 and it runs the same `verify` a pull request runs before anything is published —
 a release gate that checks less than the pull-request gate lets through exactly
@@ -202,6 +219,38 @@ what the tag was for.
 `@trazum/core` publishes first. The CLI and the MCP server depend on it at an exact version, so the
 other order leaves a window where installing the CLI fails on a dependency that
 does not exist yet.
+
+## Releasing by hand
+
+The fallback while trusted publishing stays broken, and the exact procedure
+1.25.0 used. The cost is stated first because it is the only one: **a manual
+publish carries no provenance attestation** — nobody can verify the tarball was
+built from this repository at this commit. Users notice nothing.
+
+Publish from a clean clone, never from a working tree — a local checkout can be
+behind, dirty, or missing files, and what `npm publish` packs is whatever is on
+disk:
+
+```bash
+cd /tmp && rm -rf trazum-release
+git clone --depth 1 https://github.com/Davmunrey/Trazum.git trazum-release
+cd trazum-release
+node -p "require('./package.json').version"        # read it: this is what ships
+npm ci
+node scripts/npm-publish-preflight.mjs versions    # aborts if any number is spent
+npm run verify
+npm whoami || npm login                            # and `npm logout` when done
+npm publish -w @trazum/core --access public        # core first: the others pin it exactly
+npm publish -w @trazum/cli  --access public
+npm publish -w @trazum/mcp  --access public
+```
+
+Then push the tag, and let the workflow create the GitHub release — its
+preflight sees the versions on the registry and skips the uploads. Two
+reminders from doing this for real: `npm view` 404s for several minutes after a
+successful publish (fetch `registry.npmjs.org/@trazum%2fcore/<version>` to
+check instead), and `npm logout` afterwards revokes the session token, which is
+the closest a manual publish gets to not holding a credential.
 
 ## Checking a release without publishing one
 
