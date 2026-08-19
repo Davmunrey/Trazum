@@ -514,6 +514,16 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.29.0 — The budget, the overlay and the small log
+
+`--max-session-usd` (and `spend.maxSessionUsd`) judges the single most
+expensive conversation — the unit an agent product blows up in — failing
+loudly on a log with no sessions. The MCP's `profile_usage` gained
+`pricing_overlay`, the CLI's `--pricing` document as text, pricing the
+whole report including `what_if`. And where the session percentiles refuse
+a small log, every surface now states the count and the single worst cost
+instead of going silent.
+
 ### 1.28.0 — The retry bill, the series and the standing word
 
 `truncationRetries` measures the "billed again" half of truncation — cut
