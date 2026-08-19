@@ -514,6 +514,15 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.33.0 — The log it could not read yet
+
+Gemini's `usageMetadata` shape recognised — unambiguous, cached half
+subtracted through the same mechanism as OpenAI's, `MAX_TOKENS` in the
+truncation contract — and `--dry-run`, which states what the log could
+answer per capability, produces no dollar figure, and refuses to coexist
+with a gate. Bedrock's camelCase and OpenRouter's OpenAI shape were already
+readable, stated for the record.
+
 ### 1.32.0 — The routing decision, priced whole
 
 `--what-if` corrects the figure the target would refuse to bill — cache

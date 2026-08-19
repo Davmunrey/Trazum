@@ -40,6 +40,42 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.33.0 — "The log it could not read yet"
+
+### Gemini's shape, recognised because it is unambiguous
+
+`usageMetadata` appears in no other provider's response — that is the
+recognition bar, and ambiguous shapes stay refused rather than mapped
+hopefully. `promptTokenCount` and `candidatesTokenCount` read as input and
+output; `cachedContentTokenCount` is subtracted from the prompt count through
+the same mechanism as OpenAI's `cached_tokens`, because Gemini sets the same
+double-charge trap; `finishReason: "MAX_TOKENS"` joins the truncation
+contract. The catalogue has priced `gemini-2.5-pro` and `-flash` since the
+seven-provider work — what was missing was reading the log their SDK writes.
+
+Already true, stated for the record: Bedrock's camelCase counts
+(`inputTokens`/`outputTokens`) and OpenRouter's OpenAI-shaped usage were
+readable before this release. Nothing new shipped for them; the sentence is
+here so nobody discovers it by experiment.
+
+### `--dry-run`: what the log could answer, before you wire it in
+
+```
+What this log can answer — no bill was produced
+  ✓ The bill itself: totals, per-model split, cache economics, the levers.
+  ✓ Per-workload findings and label budgets — "label" on 100.0% of records.
+  ✗ Truncated answers and their retry bill — a stop reason on 0.0% of records.
+```
+
+Readiness per capability and no dollar figure at all, so nothing in it can be
+mistaken for spend. It refuses to run beside a gate — a gate over a report
+that was never produced would exit green having judged nothing — and it
+distinguishes "nothing wrote to the cache" from a missing split, because
+absent traffic and an absent field are different facts. Nothing parsing exits
+non-zero: an unreadable log is not a ready one.
+
+---
+
 ## 1.32.0 — "The routing decision, priced whole"
 
 ### The figure the target would refuse to bill, corrected in place
