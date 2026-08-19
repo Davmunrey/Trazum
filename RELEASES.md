@@ -40,6 +40,124 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.38.0 — "The plan"
+
+The third of the five planned in `docs/plan-1.36-1.40.md`. The report names
+findings; a person then decides what to do first by doing arithmetic in
+their head — and head-arithmetic on savings gets done by *adding* them,
+which the levers module has documented as wrong since it shipped: $12.60 for
+the route plus $10.50 for the batch, against a slice that costs $21.00 in
+total. This release does the composition once, correctly, and writes the
+result down where it can later be held to account.
+
+### `trazum plan <log|dir>` — what to do first, costed and ranked
+
+```
+The plan: 5 actions against a $53.56 bill
+  $41.60 projected savings, on assumptions listed below. $20.50 already
+  spent on problems this plan names — measured, not projected.
+
+  → Route and batch rag (claude-opus-5)  $19.00 projected
+    to Claude Sonnet 5 — combined with batching where both apply, never summed
+    ? assumes Claude Sonnet 5 can do this work — the log prices the move, it
+      cannot judge the answers
+    ? assumes these calls can wait for a batch window
+    check it: trazum route <log> --prompt-file <prompt> --cases <cases>
+
+  → Look at the cache on rag (claude-opus-5)  $12.50 already spent
+    ? assumes the traffic pattern holds — a cache that lost money on this log
+      may pay on different traffic
+
+  → Fix the truncation retries on digest (claude-opus-5)  $8.00 already spent
+    ? assumes the retry pattern is real — the log sees shapes, not content
+    ? assumes a max_tokens the answers fit in removes the pair
+
+  Ranked by money, projected or already spent alike. The assumptions are
+  yours to answer: this plan is arithmetic over the log, not knowledge of
+  your product.
+```
+
+**Non-additive by construction.** Route and batch on the same slice arrive
+as a single pre-combined action carrying the levers module's `combinedUsd` —
+batch applies to the *cheaper* model's price after the route, not to the one
+you left. Actions on different slices add cleanly, so the plan's totals are
+sums of non-overlapping figures by construction rather than by hope.
+
+**Projections and stakes never merge.** Every action carries exactly one of
+`savingUsd` (projected — the route, the batch) or `stakeUsd` (already spent,
+measured — the truncation retry bill, a settled cache loss), and the two are
+totalled apart. "What you would save" and "what you already paid" folded
+into one figure is a number that is neither.
+
+**Every action names what the log cannot confirm.** The cheaper model's
+competence, the batch window's tolerability, the retry pattern being real —
+typed assumptions attached per action, with the Trazum command that can
+check one where a command exists (`trazum route` for the route's competence
+question). A plan that hides its assumptions is advice pretending to be
+arithmetic. The assumptions travel as data, not prose — `{"kind":
+"model-capability", "model": "Claude Sonnet 5"}` — so the terminal localizes
+them and 1.39's verification will match them structurally.
+
+**The plan is a dated file.** `-o plan.json` writes the document with
+`createdAt` and `pricingLastReviewed` on record — the catalogue that
+actually priced it, an overlay's date when one was in effect — which is what
+lets a later check tell "the prediction was wrong" from "the prices
+changed". A prediction nobody wrote down is a prediction nobody can be held
+to, and 1.39 exists to hold them. `--markdown-out` writes the same plan for
+a CI summary or a pull-request comment; `--json` prints the document.
+
+**`--min-usd <n>` cuts the noise floor honestly.** How many actions were
+dropped and what they were worth *together* is stated, never silent — and
+the saved document recomputes its totals over the actions it actually holds,
+so a filtered plan never contradicts itself. Dropped is dropped, not
+disproved, and the copy says so.
+
+**The refusals, each with its reason:**
+
+- **A cache action exists only for a settled loss.** When the log did not
+  record the write TTL, the verdict is unsettled — and "add the field" is
+  the report's advice, not a plan's. An action built on an unsettled verdict
+  would be a recommendation resting on a guess about which rate applied.
+- **A log that priced nothing is an error naming the next step** (`trazum
+  profile`), not an empty plan — a plan over zero dollars is advice about
+  nothing.
+- **No target names the usage in full**, including that the argument can be
+  a directory of rotated logs.
+
+### The document
+
+`docs/json-output.md` gains the plan document as its own contract —
+`schemaVersion`, the dated stamp, the span or its honest null, the ranked
+actions with their typed assumptions, the two totals kept apart, and the
+bill the plan was made against. Enforced in both directions by a parity
+test: a documented field that vanishes fails, and a field added without a
+line in the doc fails too. The profile document's own contract test is now
+scoped to its own table, since the file describes three shapes.
+
+### The module underneath
+
+`@trazum/core` gains `plan.ts`: `buildPlan(report, levers,
+pricingLastReviewed)` and `planLabelName`, browser-safe — everything is
+derived from figures the report and the levers already computed. Nothing is
+invented: route and batch come from `billLevers` (combined, never summed),
+the truncation stake is the measured retry bill, the cache stake is
+`cacheEconomics`' own delta.
+
+### What stayed out, and why
+
+The plan document deliberately spans one log. Comparing a plan against a
+*newer* log — did the routed slice actually shrink, did the retries stop —
+is 1.39.0's verification, and building half of it here would have shipped a
+comparison with no attribution rules.
+
+The spec's "actions needing no human judgement" filter for `--effort`. In
+this design every action carries at least one assumption — that is the
+point of the plan — so a filter for assumption-free actions would return an
+empty plan on every log, a flag that always says nothing. The effort dial
+that exists is `--min-usd`, named for what it actually filters by.
+
+---
+
 ## 1.37.0 — "The fleet"
 
 The second of the five planned in `docs/plan-1.36-1.40.md`. `profile` merges

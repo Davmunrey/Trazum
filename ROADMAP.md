@@ -514,6 +514,16 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.38.0 — The plan
+
+`trazum plan` turns the report's findings into a ranked plan: route and batch
+on one slice pre-combined (never summed), projections and money already spent
+totalled apart, typed assumptions per action with the command that can check
+them, and the plan saved as a dated file with the catalogue that priced it —
+what makes 1.39's verification possible. `--min-usd` names what it drops and
+its worth, and the saved document never contradicts itself. Third of the five
+in docs/plan-1.36-1.40.md.
+
 ### 1.37.0 — The fleet
 
 `profile --by-source` splits a directory of logs by the config's `sources`
