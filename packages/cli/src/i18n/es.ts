@@ -1027,6 +1027,11 @@ ${bold('EJEMPLOS')}
       'Las llamadas grandes no son mucho mayores que la normal, así que no hay cola que capar — el prompt simplemente es grande. Las palancas son menos documentos recuperados, un bloque de sistema más corto y caché si el prefijo se repite.',
     inputHuge: (label, model, calls, usd) =>
       `${label} en ${model}: cada una de sus ${calls} es mayor de lo que esta herramienta mide con precisión, sobre ${usd} de gasto de entrada. No se nombra techo porque no hay ninguno que nombrar con honestidad — ese tamaño es ya el hallazgo.`,
+    repeatsHeading: () => 'La misma petición, otra vez',
+    repeatsFound: (label, model, repeats, checked, seconds, usd) =>
+      `${label} en ${model}: ${repeats} de ${checked} llamadas reenviaron el tamaño de entrada exacto de la llamada anterior en menos de ${seconds} segundos, en la misma conversación, costando ${usd}.`,
+    repeatsAdvice: () =>
+      'La entrada de una conversación crece en cada turno, así que el mismo tamaño dos veces seguidas con segundos de diferencia suele ser un reintento tras un timeout, un paso de agente que se repite o un bucle — esto lee recuentos y no puede ver el contenido, así que nombra el patrón y para. Sea lo que sea, ese dinero no compró nada que la llamada anterior no hubiera pagado ya.',
     inputMostlyCached: (share) =>
       `El ${share} de esos tokens fueron lecturas de caché, facturadas a una décima parte de la tarifa de entrada — el tamaño es real y la mayor parte es barata.`,
     inputFullRate: () =>

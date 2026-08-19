@@ -615,6 +615,22 @@ export interface CliMessages {
     /** Every call above the widest bucket edge, so no ceiling can be named. */
     inputHuge(label: string, model: string, calls: string, usd: string): string;
     inputMostlyCached(share: string): string;
+    /**
+     * Consecutive calls in one conversation carrying the same input size,
+     * seconds apart — a retry or a loop. Hedged on purpose: this reads counts
+     * and cannot see content, so the pattern is stated and the conclusion is
+     * left to the reader.
+     */
+    repeatsHeading(): string;
+    repeatsFound(
+      label: string,
+      model: string,
+      repeats: string,
+      checked: string,
+      seconds: string,
+      usd: string,
+    ): string;
+    repeatsAdvice(): string;
     inputFullRate(): string;
     assumedWriteTtl(calls: number): string;
     /**

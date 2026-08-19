@@ -362,6 +362,23 @@ describe('profile_usage', () => {
     assert.match(empty, /no comparison to make — a different answer from zero growth/);
   });
 
+  it('names a request sent again, as a pattern and not a cause', async () => {
+    const turn = (seconds) =>
+      line({
+        model: 'claude-opus-5',
+        label: 'agent',
+        session: 's1',
+        ts: new Date(Date.UTC(2026, 7, 1, 10, 0, seconds)).toISOString(),
+        usage: { input_tokens: 200_000, output_tokens: 0 },
+      });
+    const body = bodyOf(await client.call('profile_usage', { log: [turn(0), turn(5), turn(10)].join('\n') }));
+    assert.match(body, /The same request, sent again/);
+    assert.match(body, /2 of 3 calls re-sent the previous call's exact input size within 60 seconds/);
+    assert.match(body, /the pattern is the claim and not the cause/);
+    // The session key groups the turns and never appears.
+    assert.ok(!body.includes('s1'), 'a session key reached the output');
+  });
+
   it('describes how big the calls are, and points at the matching fix', async () => {
     // Forty calls of 1,000 input tokens and five of 100,000: the ordinary
     // call is unremarkable and the tail is two orders of magnitude bigger.

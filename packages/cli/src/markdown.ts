@@ -896,6 +896,24 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
   lines.push('');
 
   /**
+   * The same request sent again — money that bought nothing the call before
+   * it had not already paid for. Loud in a summary, and hedged in the same
+   * words the terminal uses.
+   */
+  if (report.repeatedTurns.length > 0) {
+    lines.push(`#### ${t.profile.repeatsHeading()}`);
+    lines.push('');
+    for (const row of report.repeatedTurns.slice(0, 3)) {
+      lines.push(
+        `> ⚠️ ${mdText(t.profile.repeatsFound(showLabel(row.label), row.modelName, n(row.repeats), n(row.checkedCalls), n(Math.round(row.withinMs / 1000)), formatUsd(row.usd)))}`,
+      );
+      lines.push('');
+    }
+    lines.push(`_${mdText(t.profile.repeatsAdvice())}_`);
+    lines.push('');
+  }
+
+  /**
    * How big the calls are — the half of the bill the totals table can only
    * name. Same threshold and same two sentences as the terminal, because a
    * CI summary that summarises differently is a second opinion nobody asked

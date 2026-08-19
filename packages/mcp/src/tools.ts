@@ -823,6 +823,26 @@ const PROFILE: ToolDefinition = {
     }
 
     /**
+     * The same request sent again a moment later — the pattern an agent
+     * harness produces when a step retries or loops. Named as a pattern:
+     * this reads counts and cannot see content.
+     */
+    if (report.repeatedTurns.length > 0) {
+      lines.push('');
+      lines.push('The same request, sent again:');
+      for (const row of report.repeatedTurns.slice(0, 3)) {
+        const shown = row.label === UNLABELLED ? 'unlabelled' : row.label;
+        lines.push(
+          `  ${shown} on ${row.model}: ${row.repeats} of ${row.checkedCalls} calls re-sent the `
+            + `previous call's exact input size within ${Math.round(row.withinMs / 1000)} seconds, `
+            + `in the same conversation, costing ${formatUsd(row.usd)}. A conversation's input `
+            + 'grows with every turn, so that is usually a retry, an agent step repeating, or a '
+            + 'loop — the log cannot see content, so the pattern is the claim and not the cause.',
+        );
+      }
+    }
+
+    /**
      * How big the calls are, and how uneven that is.
      *
      * The agent asking "why is input 63% of this bill" needs the shape, not

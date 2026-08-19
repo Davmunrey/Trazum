@@ -13,6 +13,33 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`repeatedTurns`: the same request, sent again.** A conversation's input
+grows with every turn — that is the whole point of `conversations`. So two
+consecutive calls in one conversation carrying *exactly* the same input size,
+seconds apart, is the shape of something going wrong rather than something
+working: a retry after a timeout, an agent step repeating because a tool call
+failed, a loop that re-sends the whole context and gets nowhere. The retried
+call is billed in full, and on an agent workload the input is the bill.
+
+`duplicateLines` catches the same line recorded twice; this catches two
+*different* calls that sent the same thing.
+
+Each call is compared only to **the one immediately before it in the same
+session**, inside a one-minute window, and only when the log carries both a
+session and a clock. Not to every earlier call: a workload legitimately
+sending a fixed-size prompt would light up under a looser rule, and holding
+every size a session ever sent would grow without bound. A negative gap is
+skipped rather than counted — a log out of time order is not a repeated call.
+
+It cannot see content, so it cannot tell a retry from two genuinely identical
+requests a second apart. Every rendering says the pattern is *usually* a retry
+or a loop, never that it is one, and one lone repeat is not reported at all —
+a single retry after a timeout is ordinary.
+
+In the terminal, in `--json` as `repeatedTurns`, in the CI summary, and in the
+MCP `profile_usage` tool. The session key groups the turns and never appears
+in any of them, which a test enforces.
+
 **The input shape, in the browser.** The Bill tab gained the card the terminal
 and the CI summary already had: how big a slice's calls are, whether the large
 ones are much larger than the ordinary one, and how much of that size was

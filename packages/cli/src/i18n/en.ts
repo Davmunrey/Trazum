@@ -1013,6 +1013,11 @@ ${bold('EXAMPLES')}
       'The large calls are not much larger than the ordinary one, so there is no tail to cap — the prompt is simply big. The levers are fewer retrieved documents, a shorter system block, and caching if the prefix repeats.',
     inputHuge: (label, model, calls, usd) =>
       `${label} on ${model}: every one of its ${calls} is larger than this tool measures precisely, over ${usd} of input spend. No ceiling is named because there is none to name honestly — that size is itself the finding.`,
+    repeatsHeading: () => 'The same request, sent again',
+    repeatsFound: (label, model, repeats, checked, seconds, usd) =>
+      `${label} on ${model}: ${repeats} of ${checked} calls re-sent the previous call's exact input size within ${seconds} seconds, in the same conversation, costing ${usd}.`,
+    repeatsAdvice: () =>
+      'A conversation\'s input grows with every turn, so the same size twice in a row seconds apart is usually a retry after a timeout, an agent step repeating, or a loop — this reads counts and cannot see content, so it names the pattern and stops. Whatever it is, the money bought nothing the call before it had not already paid for.',
     inputMostlyCached: (share) =>
       `${share} of those tokens were cache reads, billed at a tenth of the input rate — the size is real and most of it is cheap.`,
     inputFullRate: () =>
