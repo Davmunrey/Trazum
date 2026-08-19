@@ -1,7 +1,12 @@
-# The plan through 1.35
+# The plan through 1.35 — delivered
 
-Six releases, in order, with the reasoning attached. The ordering is a
-commitment; the calendar is not, and no dates appear here for the reason
+**All six shipped.** This file is kept as written rather than rewritten in
+hindsight: a plan that quietly edits itself to match what happened is a plan
+with no record of having been a plan. What changed along the way is noted
+under each release below.
+
+Six releases, in order, with the reasoning attached. The ordering was a
+commitment; the calendar was not, and no dates appear here for the reason
 [ROADMAP.md](../ROADMAP.md) gives.
 
 Every item is judged against the same sentence the roadmap uses: *Trazum
@@ -19,14 +24,28 @@ finding and a human decides what to do about it, every time, from scratch.
 The next six releases are about **the loop**: from a finding, to a decision,
 to a decision that survives the next report.
 
-| Version | Theme | The sentence it earns |
-| --- | --- | --- |
-| 1.30.0 | The report as a diff | What changed since the last report, and what it cost. |
-| 1.31.0 | The gate that explains itself | A failing build says what to change, not only that it failed. |
-| 1.32.0 | The routing decision, priced whole | What if this workload moved — including what would break. |
-| 1.33.0 | The log Trazum cannot read yet | Every provider's shape, or an honest refusal per field. |
-| 1.34.0 | The findings as policy | A finding accepted or waived, in the repository, with a reason. |
-| 1.35.0 | The reader who is not in the terminal | The report where the decision is actually made. |
+| Version | Theme | The sentence it earns | |
+| --- | --- | --- | --- |
+| 1.30.0 | The report as a diff | What changed since the last report, and what it cost. | shipped |
+| 1.31.0 | The gate that explains itself | A failing build says what to change, not only that it failed. | shipped |
+| 1.32.0 | The routing decision, priced whole | What if this workload moved — including what would break. | shipped |
+| 1.33.0 | The log Trazum cannot read yet | Every provider's shape, or an honest refusal per field. | shipped |
+| 1.34.0 | The findings as policy | A finding accepted or waived, in the repository, with a reason. | shipped |
+| 1.35.0 | The reader who is not in the terminal | The report where the decision is actually made. | shipped |
+
+## What the plan got wrong, kept on the record
+
+- **1.32.0 planned a `max_tokens`-above-target-limit check.** It did not ship:
+  the catalogue carries no output ceilings, and inventing them would be this
+  tool doing the guessing it exists to end. The check waits for the data.
+- **1.33.0 planned Bedrock and OpenRouter as new recognised shapes.** Both
+  were already readable — Bedrock's camelCase counts and OpenRouter's
+  OpenAI-shaped usage. Gemini's `usageMetadata` was the shape actually
+  missing, and it shipped instead.
+- **1.35.0 planned "the web bill accepts a comparison".** It had since 1.11.
+  Nothing was invented to fill the slot; the one real gap found while checking
+  was the privacy sentence's singular "the log" on a page that takes two
+  files, and that was fixed.
 
 Patch releases (`X.Y.1`, `X.Y.2`) sit between these whenever a batch is thin —
 a fix, one small finding, a documentation correction. A minor is earned by

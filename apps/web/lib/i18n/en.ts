@@ -268,8 +268,9 @@ export const en: WebMessages = {
       + 'the API returned — and says where the money went: which workload, which model, whether '
       + 'caching paid for itself, and which levers would actually move the bill.',
     privacy:
-      'The log is read entirely in this browser tab. Nothing is uploaded, stored or sent '
-      + 'anywhere — close the page and it is gone.',
+      'Every log you open here — the bill, and a second one to compare against — is read '
+      + 'entirely in this browser tab. Nothing is uploaded, stored or sent anywhere; close '
+      + 'the page and it is gone.',
     dropLabel: 'Drop a usage log here',
     chooseFile: 'Choose a file',
     orPaste: 'or paste the log below',
