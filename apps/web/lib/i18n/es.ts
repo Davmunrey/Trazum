@@ -399,6 +399,31 @@ export const es: WebMessages = {
       + 'reenviar la conversación — normalmente la mayor línea de una factura de chat o de '
       + 'agentes. Añade "session" (o "conversation_id") al registro. Trazum agrupa por esa '
       + 'clave y nunca la muestra.',
+    inputShapeHeading: 'Cómo de grandes son estas llamadas',
+    inputSkewed: (label, model, p50, p95, ratio, usd) =>
+      `${label} en ${model} es desigual: la mitad de sus llamadas caben en ${p50} tokens de entrada y el 95% en ${p95} — unas ${ratio} veces la llamada normal, sobre ${usd} de gasto de entrada.`,
+    inputSkewedAdvice:
+      'Por encima de cuatro veces la mediana, la llamada normal está bien y algo crece encima: '
+      + 'una conversación que nadie corta, una recuperación sin tope, un resultado de herramienta '
+      + 'pegado entero. El arreglo es un límite en las llamadas grandes, no reescribir el prompt '
+      + 'que mandan todas.',
+    inputEven: (label, model, p50, p95, usd) =>
+      `${label} en ${model} es pareja: la mitad de sus llamadas caben en ${p50} tokens de entrada y el 95% en ${p95}, sobre ${usd} de gasto de entrada.`,
+    inputEvenAdvice:
+      'Las llamadas grandes no son mucho mayores que la normal, así que no hay cola que capar — el '
+      + 'prompt simplemente es grande. Las palancas son menos documentos recuperados, un bloque de '
+      + 'sistema más corto y caché si el prefijo se repite.',
+    inputHuge: (label, model, calls, usd) =>
+      `${label} en ${model}: cada una de sus ${calls.toLocaleString('es-ES')} `
+      + `${calls === 1 ? 'llamada' : 'llamadas'} es mayor de lo que esta herramienta mide con `
+      + `precisión, sobre ${usd} de gasto de entrada. No se nombra techo porque no hay ninguno que `
+      + 'nombrar con honestidad — ese tamaño es ya el hallazgo.',
+    inputMostlyCached: (share) =>
+      `El ${share} de esos tokens fueron lecturas de caché, facturadas a una décima parte de la tarifa de entrada — el tamaño es real y la mayor parte es barata.`,
+    inputFullRate:
+      'Casi nada de eso fue lectura de caché, así que cada uno de esos tokens se facturó a tarifa '
+      + 'de entrada completa. Si algún prefijo se repite entre estas llamadas, la caché es la '
+      + 'palanca con el techo más alto aquí.',
     outputHeading: 'Dónde se concentra el gasto de salida',
     outputTail: (label, model, callPct, spendPct, above, usd) =>
       `${label} en ${model}: el ${callPct} de las llamadas concentra el ${spendPct} del gasto `

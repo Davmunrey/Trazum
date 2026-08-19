@@ -9,6 +9,18 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**The input shape, in the browser.** The Bill tab gained the card the terminal
+and the CI summary already had: how big a slice's calls are, whether the large
+ones are much larger than the ordinary one, and how much of that size was
+billed at the cache-read rate. Same four-times-the-median threshold and the
+same two sentences — two surfaces summarising one log differently is a second
+opinion nobody asked for. Measured in the page like everything else in that
+tab; verified in Chromium against both shapes, with zero network requests.
+
 ## 1.24.0 — "How big, how uneven, and the day it spiked"
 
 ### Added
