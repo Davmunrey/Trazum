@@ -11,7 +11,9 @@ import {
   cacheableMinimum,
   analyzeCachePrefix,
   billLevers,
+  buildHistory,
   buildPlan,
+  storedReportFrom,
   verifyPlan,
   cacheEconomics,
   cacheHitRate,
@@ -79,8 +81,10 @@ import { cacheDir, cacheStats, cachingProvider, clearCache } from './suggest-cac
 import { dayOf, formatGap, median, spanDays } from './time.js';
 import type {
   FleetSource,
+  HistoryRun,
   MeasuredUsage,
   PlanDocument,
+  StoredReport,
   VerifiedAction,
   BaselineBreach,
   BaselineChange,
@@ -479,6 +483,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd', 'label', 'since', 'until', 'dry-run', 'markdown-summary', 'by-source'],
   plan: ['json', 'out', 'markdown-out', 'min-usd', 'pricing', 'pricing-live'],
   verify: ['against', 'gate', 'json', 'markdown-out', 'pricing', 'pricing-live'],
+  history: ['json', 'markdown-out'],
   route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
@@ -2218,6 +2223,126 @@ function isoDate(): string {
  * metered API calls somebody was actually billed for — the bill exists wherever
  * Trazum happens to be running, so the host has no bearing on it.
  */
+/**
+ * `trazum history <dir>` — many reports over many periods, as one series.
+ *
+ * Derived from *stored* `--json` documents, never re-parsed logs: a team can
+ * keep a year of reports and throw the raw logs away, which is what the
+ * privacy story requires anyway. Shapes are named — a climb, a decay, the
+ * same action planned twice — and no series, however long, becomes a
+ * forecast.
+ */
+async function commandHistory(args: Args, t: CliMessages): Promise<void> {
+  const path = args.positional[0];
+  if (path === undefined) throw new Error(t.history.noTarget());
+  const target = await stat(path).catch(() => null);
+  if (!target?.isDirectory()) throw new Error(t.history.noTarget());
+
+  const entries = await readdir(path, { withFileTypes: true });
+  const files = entries
+    .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
+    .map((entry) => join(path, entry.name))
+    .sort((a, b) => a.localeCompare(b));
+
+  const reports: StoredReport[] = [];
+  const plans: (PlanDocument & { createdAt?: string })[] = [];
+  const unrecognized: string[] = [];
+  for (const file of files) {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(await readFile(file, 'utf8'));
+    } catch {
+      unrecognized.push(file);
+      continue;
+    }
+    const report = storedReportFrom(file, parsed);
+    if (report !== null) {
+      reports.push(report);
+      continue;
+    }
+    const maybePlan = parsed as PlanDocument & { createdAt?: string };
+    if (maybePlan?.schemaVersion === 1 && Array.isArray(maybePlan.actions)) {
+      plans.push(maybePlan);
+      continue;
+    }
+    unrecognized.push(file);
+  }
+
+  const history = buildHistory(reports, plans);
+  if (history.periods.length < 3) {
+    throw new Error(t.history.needsThree(String(history.periods.length)));
+  }
+
+  const stamped = { ...history, unrecognizedFiles: unrecognized };
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const day = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
+  const pct = (value: number): string => `${(value * 100).toFixed(1)}%`;
+
+  const runLine = (run: HistoryRun): string => {
+    if (run.kind === 'label-spend-climbing') {
+      const name = run.subject === UNLABELLED ? t.profile.unlabelled() : run.subject;
+      return t.history.runLabel(name, n(run.periods), run.sinceName, formatUsd(run.from), formatUsd(run.to));
+    }
+    if (run.kind === 'model-share-climbing') {
+      return t.history.runModel(run.subject, n(run.periods), run.sinceName, pct(run.from), pct(run.to));
+    }
+    return t.history.runCache(n(run.periods), run.sinceName, pct(run.from), pct(run.to));
+  };
+
+  const lines = (md: boolean): string[] => {
+    const out: string[] = [];
+    const first = history.periods[0]!;
+    const last = history.periods[history.periods.length - 1]!;
+    const heading = t.history.heading(n(history.periods.length), day(first.fromMs), day(last.toMs));
+    out.push(md ? `## ${heading}` : heading);
+    for (const period of history.periods) {
+      const row = t.history.periodRow(
+        period.name,
+        formatUsd(period.totalUsd),
+        n(period.calls),
+        ((period.toMs - period.fromMs) / 86_400_000).toFixed(1),
+      );
+      out.push(md ? `- ${row}` : `  ${row}`);
+    }
+    if (history.runs.length > 0) out.push('');
+    for (const run of history.runs) {
+      out.push(md ? `- ${runLine(run)}` : `  ! ${runLine(run)}`);
+    }
+    if (history.repeatedPlanActions.length > 0) out.push('');
+    for (const repeat of history.repeatedPlanActions) {
+      const name = repeat.label === UNLABELLED ? t.profile.unlabelled() : repeat.label;
+      const row = t.history.repeated(
+        repeat.kind,
+        name,
+        repeat.model,
+        n(repeat.appearances),
+        repeat.firstPlanned?.slice(0, 10) ?? null,
+        repeat.lastPlanned?.slice(0, 10) ?? null,
+      );
+      out.push(md ? `- ${row}` : `  ! ${row}`);
+    }
+    for (const name of history.undatedReports) {
+      out.push(md ? `- ${t.history.undated(name)}` : `  ${t.history.undated(name)}`);
+    }
+    for (const name of unrecognized) {
+      out.push(md ? `- ${t.history.unrecognized(name)}` : `  ${t.history.unrecognized(name)}`);
+    }
+    out.push('');
+    out.push(md ? `_${t.history.footer()}_` : `  ${t.history.footer()}`);
+    return out;
+  };
+
+  await writeMarkdown(args, () => lines(true).join('\n'));
+
+  if (boolFlag(args, 'json')) {
+    console.log(JSON.stringify(stamped, null, 2));
+    return;
+  }
+  const [head, ...rest] = lines(false);
+  console.log(c.bold(head!));
+  for (const row of rest) console.log(row === '' ? '' : wrap(row, 76, '    '));
+}
+
 /**
  * `trazum verify <plan.json> --against <newer.jsonl|dir>` — did it work?
  *
@@ -6301,6 +6426,9 @@ async function main(): Promise<void> {
       break;
     case 'verify':
       await commandVerify(args, pricing, t);
+      break;
+    case 'history':
+      await commandHistory(args, t);
       break;
     case 'route':
       await commandRoute(args, pricing, t);

@@ -11,7 +11,34 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**`trazum history <dir>`: the long run.** Every comparison in Trazum is
+between two logs, and a product's cost problem is rarely visible in two — it
+is visible in twenty. `history` reads a directory of *stored reports* (the
+`--json` documents `profile` already writes) plus any saved plans beside
+them, and builds the series no pairwise comparison can see: a workload that
+climbed a little every period, a model share rising since a named report
+while the totals look flat, a cache share decaying slowly enough that no
+single week's report called it a finding — and the same action planned again
+and again with nobody executing it, dated.
+
+**Still no forecasts.** Shapes are named as consecutive movement — at least
+three consecutive rises or falls, since a named report, with the first and
+last values — never a line fitted through the points, and never a word about
+next month. The same refusal `modelMixDrift` has carried since 1.27, now at
+series length.
+
+**Derived from stored reports, never re-parsed logs**, so a year of JSON
+output is enough and the raw logs can be thrown away — which is what the
+privacy story requires anyway. Reports with no span are on no timeline and
+say so; JSON files that are neither a report nor a plan are named, never
+absorbed; fewer than three dated reports is a refusal naming
+`profile --against` as the right tool for a pair. The history document is
+contracted in docs/json-output.md.
+
+New core module `history.ts` (`buildHistory`, `storedReportFrom`, `MIN_RUN`),
+browser-safe: documents in, series out.
 
 ## 1.39.0 — "Did it work?"
 

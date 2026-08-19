@@ -122,7 +122,9 @@ describe('verify', () => {
 
   it('is a contract: the doc and the document promise each other every top-level field', async () => {
     const doc = await readFile(new URL('../../../docs/json-output.md', import.meta.url).pathname, 'utf8');
-    const section = doc.slice(doc.indexOf('## The verification document'));
+    const start = doc.indexOf('## The verification document');
+    const end = doc.indexOf('## The history document');
+    const section = doc.slice(start, end === -1 ? undefined : end);
     const promised = new Set(
       [...section.matchAll(/^\| `([a-zA-Z]+)(?:\[\])?`/gm)].map((m) => m[1]),
     );

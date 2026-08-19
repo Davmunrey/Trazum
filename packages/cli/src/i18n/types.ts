@@ -1073,6 +1073,28 @@ export interface CliMessages {
   };
 
   /**
+   * `trazum history` — many reports over many periods, as one series.
+   *
+   * Shapes are named as consecutive movement, never a fitted line, and no
+   * series becomes a forecast: where the line goes next stays the reader's.
+   */
+  history: {
+    noTarget(): string;
+    /** Under three dated reports there is no series — only the comparison --against already does. */
+    needsThree(count: string): string;
+    heading(periods: string, from: string, to: string): string;
+    periodRow(name: string, usd: string, calls: string, days: string): string;
+    runLabel(label: string, periods: string, sinceName: string, from: string, to: string): string;
+    runModel(model: string, periods: string, sinceName: string, from: string, to: string): string;
+    runCache(periods: string, sinceName: string, from: string, to: string): string;
+    /** The same action in plan after plan: a decision nobody is executing. */
+    repeated(kind: PlanActionKind, label: string, model: string, appearances: string, first: string | null, last: string | null): string;
+    undated(name: string): string;
+    unrecognized(name: string): string;
+    footer(): string;
+  };
+
+  /**
    * `trazum verify` — the plan held to the log that came after it.
    *
    * Three outcomes and never two: arrived, did not arrive, cannot be told.
