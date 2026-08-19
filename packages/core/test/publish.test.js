@@ -754,12 +754,15 @@ describe('a release cannot ship without notes', () => {
      * a particular shape.
      */
     const version = manifestOf('.').version;
-    const heading = new RegExp(`^## ${version.replace(/\./g, '\\.')}`, 'm');
-
+    // Line comparison rather than a regex built from data — a version string
+    // is trusted here, but CodeQL is right that escaping only the dots is the
+    // habit that goes wrong the day the input is not.
     const changelogText = readFileSync(join(repoRoot, 'CHANGELOG.md'), 'utf8');
-    assert.match(
-      changelogText,
-      heading,
+    const hasHeading = changelogText
+      .split('\n')
+      .some((line) => line === `## ${version}` || line.startsWith(`## ${version} `));
+    assert.ok(
+      hasHeading,
       `CHANGELOG.md has no "## ${version}" heading — fold Unreleased into the version before tagging`,
     );
 
