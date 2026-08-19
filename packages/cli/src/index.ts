@@ -23,6 +23,8 @@ import {
   coverageDrift,
   driversBetween,
   explainGateFailure,
+  assignSources,
+  fleetRollup,
   labelCoverage,
   measuredUsage,
   gateMargin,
@@ -74,6 +76,7 @@ import {
 import { cacheDir, cacheStats, cachingProvider, clearCache } from './suggest-cache.js';
 import { dayOf, formatGap, median, spanDays } from './time.js';
 import type {
+  FleetSource,
   MeasuredUsage,
   BaselineBreach,
   BaselineChange,
@@ -461,7 +464,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
-  profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd', 'label', 'since', 'until', 'dry-run', 'markdown-summary'],
+  profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd', 'label', 'since', 'until', 'dry-run', 'markdown-summary', 'by-source'],
   route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
@@ -2241,10 +2244,17 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
   const target = await stat(path).catch(() => null);
   let logFiles: string[] = [path];
   if (target?.isDirectory()) {
-    const entries = await readdir(path, { withFileTypes: true });
+    /**
+     * Recursive under `--by-source`, flat otherwise. The fleet's whole point
+     * is one directory per service, so the walk must descend; the flat mode
+     * keeps its long-standing behaviour because a directory of rotated logs
+     * with an unrelated subfolder should not quietly absorb it.
+     */
+    const bySourceMode = boolFlag(args, 'by-source');
+    const entries = await readdir(path, { withFileTypes: true, recursive: bySourceMode });
     logFiles = entries
       .filter((entry) => entry.isFile() && READABLE.some((ext) => entry.name.endsWith(ext)))
-      .map((entry) => join(path, entry.name))
+      .map((entry) => join(entry.parentPath ?? path, entry.name))
       .sort((a, b) => a.localeCompare(b));
     if (logFiles.length === 0) {
       throw new Error(t.profile.noLogsInDirectory(path, READABLE.join(', ')));
@@ -2266,6 +2276,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
   // A file that does not end in a newline would otherwise glue its last record
   // to the next file's first one, and both would be reported as unreadable.
   const raw = logTexts.map((text) => (text.endsWith('\n') ? text : `${text}\n`)).join('');
+
   /**
    * The drill-down. A label that matches nothing is an error naming the labels
    * that exist — the route command's rule, for the route command's reason: a
@@ -2367,6 +2378,123 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
   }
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
+
+  /**
+   * `--by-source`: one report per service, plus the rollup — the fleet.
+   *
+   * A merged bill is right for one service and wrong for twelve: it hides
+   * which service the money comes from, per-service budgets cannot exist,
+   * and the findings a comparison between services could make are invisible.
+   * Files are assigned to sources by the most specific matching glob from the
+   * config's `sources` block; a file matching no source is named loudly,
+   * because a log that silently joined no report is spend missing from every
+   * bill.
+   */
+  if (boolFlag(args, 'by-source')) {
+    const sourceDefs = config.sources;
+    if (sourceDefs === undefined || Object.keys(sourceDefs).length === 0) {
+      throw new Error(t.profile.bySourceNeedsConfig());
+    }
+    const { bySource, unmatched } = assignSources(logFiles, sourceDefs);
+    if (bySource.size === 0) {
+      throw new Error(t.profile.bySourceNothingMatched(Object.keys(sourceDefs).join(', ')));
+    }
+
+    const textByFile = new Map(logFiles.map((file, i) => [file, logTexts[i]!]));
+    const fleetSources: FleetSource[] = [];
+    const cacheDeltas = new Map<string, number>();
+    for (const [name, files] of [...bySource.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+      const text = files
+        .map((file) => textByFile.get(file)!)
+        .map((chunk) => (chunk.endsWith('\n') ? chunk : `${chunk}\n`))
+        .join('');
+      const sourceReport = profileUsage(text, { catalogue: pricing, label: onlyLabel, sinceMs, untilMs });
+      fleetSources.push({ name, report: sourceReport });
+      cacheDeltas.set(name, cacheEconomics(sourceReport.total).deltaUsd);
+    }
+    const aggregate = profileUsage(raw, { catalogue: pricing, label: onlyLabel, sinceMs, untilMs });
+    const rollup = fleetRollup(fleetSources, {
+      cacheDeltas,
+      aggregateCacheDelta: cacheEconomics(aggregate.total).deltaUsd,
+    });
+
+    if (boolFlag(args, 'json')) {
+      console.log(
+        JSON.stringify(
+          {
+            schemaVersion: 1,
+            bySource: fleetSources.map((source) => ({ name: source.name, report: source.report })),
+            rollup: {
+              totalUsd: rollup.totalUsd,
+              calls: rollup.calls,
+              sources: rollup.sources,
+              worst: rollup.worst,
+              mismatchedSpans: rollup.mismatchedSpans,
+              splitBrains: rollup.splitBrains,
+              cacheUnderwater: rollup.cacheUnderwater,
+              unmatchedFiles: unmatched,
+            },
+          },
+          (key, value) => (value instanceof Map ? undefined : value),
+          2,
+        ),
+      );
+    } else {
+      console.log(c.bold(t.profile.fleetHeading(n(rollup.sources.length), formatUsd(rollup.totalUsd), t.profile.calls(rollup.calls))));
+      for (const row of rollup.sources) {
+        const span = row.spanDays === null ? t.profile.fleetNoClock() : t.profile.fleetSpan(row.spanDays.toFixed(1));
+        console.log(
+          `  ${t.profile.fleetRow(row.name, formatUsd(row.usd), pct(row.share), t.profile.calls(row.calls), span)}`,
+        );
+      }
+      if (rollup.worst !== null && rollup.sources.length > 1) {
+        console.log();
+        console.log(`  ${c.yellow('!')} ${c.bold(wrap(t.profile.fleetWorst(rollup.worst.name, formatUsd(rollup.worst.usd), pct(rollup.worst.share)), 74, '    '))}`);
+      }
+      if (rollup.mismatchedSpans) {
+        console.log(`  ${c.dim(wrap(t.profile.fleetMismatchedSpans(), 74, '  '))}`);
+      }
+      for (const split of rollup.splitBrains.slice(0, 3)) {
+        console.log();
+        console.log(
+          `  ${c.yellow('!')} ${wrap(t.profile.fleetSplitBrain(split.label, split.sources.map((v) => `${v.name} → ${v.model} (${formatUsd(v.usd)})`).join(', ')), 74, '    ')}`,
+        );
+      }
+      for (const under of rollup.cacheUnderwater.slice(0, 3)) {
+        console.log(
+          `  ${c.yellow('!')} ${wrap(t.profile.fleetCacheUnderwater(under.name, formatUsd(under.deltaUsd)), 74, '    ')}`,
+        );
+      }
+      for (const file of unmatched) {
+        console.log(`  ${c.yellow('!')} ${wrap(t.profile.fleetUnmatched(file), 74, '    ')}`);
+      }
+      console.log();
+      console.log(`  ${c.dim(wrap(t.profile.fleetFooter(), 74, '  '))}`);
+    }
+
+    /**
+     * The per-source gates. Each budget judges its own service and the run
+     * fails naming the service — a total that hides which source crossed its
+     * line is the rendering this mode exists to end. Waivable per source
+     * through `bySource:<name>`, under the same expiry discipline.
+     */
+    const bySourceBudgets = config.spend?.bySource ?? {};
+    for (const [name, limit] of Object.entries(bySourceBudgets)) {
+      const found = fleetSources.find((source) => source.name === name);
+      if (found === undefined) {
+        console.error(c.dim(t.profile.fleetBudgetMissing(name)));
+        continue;
+      }
+      const usd = found.report.total.totalUsd;
+      if (usd > limit) {
+        console.error(c.red(t.profile.fleetBudgetFailed(name, formatUsd(usd), formatUsd(limit))));
+        process.exitCode = 1;
+      } else {
+        console.error(c.dim(t.profile.fleetBudgetOk(name, formatUsd(usd), formatUsd(limit))));
+      }
+    }
+    return;
+  }
 
   /**
    * `--dry-run`: what this log could and could not answer, and no bill.

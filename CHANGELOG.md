@@ -9,6 +9,39 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**`profile --by-source`: the fleet.** One service's logs merge into one
+honest bill; twelve services' logs merge into a bill that hides which one is
+bleeding. The config's new `sources` block names services as glob patterns
+over log paths; `--by-source` walks the directory recursively, assigns each
+file to the most specific matching pattern (the budget patterns' own
+precedence rule), and renders one summary per service plus a rollup that
+names the source where the money is.
+
+The findings are the ones a merged bill cannot make: the same workload
+running on different models in different sources (judged on each source's
+dearest model for the label, so one stray experiment call is not reported as
+a migration); caching that pays for the fleet in aggregate while losing money
+in a named source (reported only when the aggregate pays — when the aggregate
+itself loses, the whole-fleet report already shouts, and repeating it per
+source would be the same alarm in pieces); and sources whose logs cover
+different periods flagged in the copy, because the shares compare totals and
+a 3-day log looking cheap beside a 30-day one has nothing to do with cost.
+
+`spend.bySource` gates each service against its own budget in the same run,
+failing with the service named — the fleet total can be fine while one
+service bleeds. A budgeted source with no logs is named, not passed: a
+service that did not appear is not a service under budget. Files matching no
+source pattern are named loudly — a log in no report is spend missing from
+every bill. `--json` emits the fleet document: full per-source reports plus
+the rollup, documented in docs/json-output.md.
+
+New core module `fleet.ts` (`assignSources`, `fleetRollup`), browser-safe —
+it reads no files; the CLI keeps its monopoly on I/O.
+
 ## 1.36.0 — "The estimate stops guessing"
 
 ### Added

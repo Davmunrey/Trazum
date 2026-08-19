@@ -82,6 +82,14 @@ export interface SpendConfig {
   maxSessionUsd?: number;
   /** Per-label budgets, each gated against that label's own spend. */
   byLabel?: Record<string, number>;
+  /**
+   * Money budgets per source, in dollars — the fleet's version of `byLabel`.
+   * A source is a named service from the top-level `sources` block, and a
+   * budget written here fails `profile --by-source` when that service alone
+   * crosses it, with the failing service named rather than a total that
+   * hides which.
+   */
+  bySource?: Record<string, number>;
 }
 
 export interface TrazumConfig {
@@ -120,6 +128,14 @@ export interface TrazumConfig {
    * workload against its own limit in the same run. A flag still wins over
    * the config, as everywhere in this tool.
    */
+  /**
+   * The fleet: named services, each a list of glob patterns over usage-log
+   * paths. `profile --by-source` builds one report per source plus a rollup,
+   * assigning each file to the most specific matching pattern — the same
+   * precedence rule the budget patterns use. A file matching no source is
+   * named in the output rather than silently joining no report.
+   */
+  sources?: Record<string, string[]>;
   spend?: SpendConfig;
   /**
    * Findings as policy: a gate failure the team has looked at and decided to
@@ -169,6 +185,7 @@ export const CONFIG_KEYS = [
   'budgets',
   'labels',
   'spend',
+  'sources',
   'waive',
   'maxGrowth',
   'baseline',
@@ -178,7 +195,7 @@ export const CONFIG_KEYS = [
 
 export const CONFIG_BASELINE_KEYS = ['path', 'maxGrowthTokens', 'maxGrowthPct'] as const;
 
-export const CONFIG_SPEND_KEYS = ['maxUsd', 'maxDayUsd', 'maxSessionUsd', 'byLabel'] as const;
+export const CONFIG_SPEND_KEYS = ['maxUsd', 'maxDayUsd', 'maxSessionUsd', 'byLabel', 'bySource'] as const;
 
 export const CONFIG_WAIVE_KEYS = ['gate', 'reason', 'until'] as const;
 
@@ -385,6 +402,19 @@ function parseSpend(raw: unknown, source: string): SpendConfig {
   if (raw.maxSessionUsd !== undefined) {
     spend.maxSessionUsd = requireNonNegativeNumber(raw.maxSessionUsd, 'spend.maxSessionUsd', source);
   }
+  if (raw.bySource !== undefined) {
+    if (!isPlainObject(raw.bySource)) {
+      throw new ConfigError('"spend.bySource" must be an object', source);
+    }
+    const bySource: Record<string, number> = {};
+    for (const [name, value] of Object.entries(raw.bySource)) {
+      if (name.trim().length === 0) {
+        throw new ConfigError('"spend.bySource" has an empty source name', source);
+      }
+      bySource[name] = requireNonNegativeNumber(value, `spend.bySource["${name}"]`, source);
+    }
+    spend.bySource = bySource;
+  }
   if (raw.byLabel !== undefined) {
     if (!isPlainObject(raw.byLabel)) {
       throw new ConfigError('"spend.byLabel" must be an object', source);
@@ -399,6 +429,32 @@ function parseSpend(raw: unknown, source: string): SpendConfig {
     spend.byLabel = byLabel;
   }
   return spend;
+}
+
+/**
+ * Validates the `sources` block: named services, each a non-empty list of
+ * glob patterns. Patterns are not checked against a filesystem here — a
+ * config file is validated wherever it is read, browser included, and which
+ * files exist is the CLI's question at run time.
+ */
+function parseSources(raw: unknown, source: string): Record<string, string[]> {
+  if (!isPlainObject(raw)) throw new ConfigError('"sources" must be an object', source);
+  const sources: Record<string, string[]> = {};
+  for (const [name, value] of Object.entries(raw)) {
+    if (name.trim().length === 0) {
+      throw new ConfigError('"sources" has an empty source name', source);
+    }
+    if (!Array.isArray(value) || value.length === 0) {
+      throw new ConfigError(`"sources.${name}" must be a non-empty array of glob patterns`, source);
+    }
+    for (const pattern of value) {
+      if (typeof pattern !== 'string' || pattern.trim().length === 0) {
+        throw new ConfigError(`"sources.${name}" has an empty pattern`, source);
+      }
+    }
+    sources[name] = value as string[];
+  }
+  return sources;
 }
 
 /**
@@ -597,6 +653,7 @@ export function parseConfig(raw: string, source = CONFIG_FILENAME): TrazumConfig
   if (document.budgets !== undefined) config.budgets = parseBudgets(document.budgets, source);
   if (document.labels !== undefined) config.labels = parseLabels(document.labels, source);
   if (document.spend !== undefined) config.spend = parseSpend(document.spend, source);
+  if (document.sources !== undefined) config.sources = parseSources(document.sources, source);
   if (document.waive !== undefined) config.waive = parseWaive(document.waive, source);
   if (document.baseline !== undefined) {
     config.baseline = parseBaselineConfig(document.baseline, source);

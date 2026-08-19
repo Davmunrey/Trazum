@@ -18,6 +18,7 @@ npm install -g @trazum/cli
 | | |
 |---|---|
 | `trazum optimize <file>` | shorten it, and price what that is worth |
+| `trazum profile <logs> --by-source` | the fleet: one summary per service, the rollup, per-service budgets |
 | `trazum check <file\|dir>` | does it fit its budget, and has the repo drifted past its baseline — exits 1 when either fails |
 | `trazum baseline [dir]` | what the prompts cost now, recorded to a file you commit |
 | `trazum profile <log\|dir>` | where the money actually went — reads a usage log (or a directory of rotated ones, `.gz` included), not a prompt. `--against` compares to the previous log; `--what-if <model>` prices these exact calls at another rate card; `--label`/`--since`/`--until` drill down; `--max-usd`/`--max-day-usd`/`--max-growth-usd`/`--max-cache-loss-usd` gate the spend; `--json`/`--csv-out`/`--markdown-out` for pipelines and CI |

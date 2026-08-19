@@ -975,6 +975,26 @@ export interface CliMessages {
     dryRunNoCacheTraffic(): string;
     dryRunFooter(): string;
     dryRunNoGates(): string;
+    /**
+     * `--by-source`: the fleet. One summary per service, the rollup naming
+     * the worst offender, cross-source findings a merged bill cannot make,
+     * and per-source budgets that fail naming the service.
+     */
+    bySourceNeedsConfig(): string;
+    bySourceNothingMatched(sources: string): string;
+    fleetHeading(count: string, total: string, calls: string): string;
+    fleetRow(name: string, usd: string, share: string, calls: string, span: string): string;
+    fleetSpan(days: string): string;
+    fleetNoClock(): string;
+    fleetWorst(name: string, usd: string, share: string): string;
+    fleetMismatchedSpans(): string;
+    fleetSplitBrain(label: string, detail: string): string;
+    fleetCacheUnderwater(name: string, usd: string): string;
+    fleetUnmatched(file: string): string;
+    fleetFooter(): string;
+    fleetBudgetOk(name: string, usd: string, max: string): string;
+    fleetBudgetFailed(name: string, usd: string, max: string): string;
+    fleetBudgetMissing(name: string): string;
     coverageHeading(): string;
     needsLabel(seen: string): string;
     needsSession(seen: string): string;

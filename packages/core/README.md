@@ -81,6 +81,17 @@ labels)` names both mismatches between a config's label→prompt map and the
 log: prompts mapped to labels with no traffic, and labels carrying money with
 no prompt mapped.
 
+## The fleet
+
+`assignSources(files, sources)` assigns log files to named services by the
+most specific matching glob — the budget patterns' own precedence rule — and
+returns the files matching no source rather than dropping them.
+`fleetRollup(sources)` sums the fleet, names the dearest source with its
+share, flags spans too different to compare as rates, finds the same label
+running on different models in different sources (judged on each source's
+dearest model, so a stray experiment is not a migration), and names sources
+where caching loses money while the aggregate pays off.
+
 ## Comparing two versions
 
 ```ts

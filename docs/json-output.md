@@ -66,3 +66,19 @@ key that disappears fails, and a key added without a line here fails too.
 No prompt text, no session keys, no per-call rows. The report is aggregate by
 construction: a usage log handed to Trazum carries no content, and nothing
 identifying comes back out of it either.
+
+## The `--by-source` document
+
+`profile --by-source --json` emits a different top-level shape — a fleet is
+not one report:
+
+| Field | What it holds |
+| --- | --- |
+| `bySource[]` | One entry per configured source with traffic: its `name` and its full `report`, each identical in shape to the single-log document above. |
+| `rollup.totalUsd`, `rollup.calls` | The sum over every source. A total is a total, whatever the spans. |
+| `rollup.sources[]` | Every source, dearest first: `usd`, `calls`, `share` of the fleet, and `spanDays` (null when its logs carry no clock). |
+| `rollup.worst` | The dearest source with its share, or null when the fleet spent nothing — "nothing is bleeding" and "the worst of nothing" are different statements. |
+| `rollup.mismatchedSpans` | True when the sources' logs cover meaningfully different periods. Shares remain shares of a sum; reading them as rate comparisons is the mistake this flag names. |
+| `rollup.splitBrains[]` | The same label on different models in different sources, judged on each source's dearest model for that label. |
+| `rollup.cacheUnderwater[]` | Sources where caching lost money while the fleet's aggregate paid off. Empty when the aggregate itself lost — the whole-fleet report already says so. |
+| `rollup.unmatchedFiles[]` | Log files matching no source pattern — in no report above, named rather than silently dropped. |
