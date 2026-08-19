@@ -13,6 +13,7 @@ export type {
   CacheVerdict,
   UsageProfileOptions,
   UsageBreakdown,
+  FieldCoverage,
   UsageProfileReport,
   UsageRecord,
   UsageShares,
@@ -39,6 +40,8 @@ export {
 export type { ProfileCsvOptions, ProfileCsvShape } from './csv.js';
 export { driversBetween } from './against.js';
 export type { AgainstDriver } from './against.js';
+export { coverageDrift, COVERAGE_FIELDS, COVERAGE_DRIFT_MIN } from './coverage-drift.js';
+export type { CoverageDrift, CoverageField } from './coverage-drift.js';
 // The same tokens at another model's rates — arithmetic, not advice, and it
 // refuses to price a call the target could not have accepted. See reprice.ts.
 // The shape of a call's input — the half of the bill a total could only name.

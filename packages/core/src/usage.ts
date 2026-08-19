@@ -229,6 +229,30 @@ export interface UsageBreakdown {
   stopReasonCalls: number;
 }
 
+/**
+ * How many parsed records carried each optional field.
+ *
+ * Named rather than inline because `coverageDrift` compares two of these: what
+ * a comparison can no longer see is a property of the pair, and a shape only
+ * one module can spell is a shape the other has to restate by hand.
+ */
+export interface FieldCoverage {
+  /** Records with a usable `label`. */
+  label: number;
+  /** Records with a usable `session` or `conversation_id`. */
+  session: number;
+  /** Records with a readable timestamp. */
+  ts: number;
+  /** Records with a `stop_reason` or `finish_reason`. */
+  stopReason: number;
+  /** Records whose cache writes stated which TTL they used. */
+  cacheTtl: number;
+  /** Records that wrote to the cache at all — the denominator for `cacheTtl`. */
+  cacheWrites: number;
+  /** Every record that parsed, priced or not — the denominator for the rest. */
+  parsed: number;
+}
+
 export interface UsageProfileReport {
   /** Everything, combined. */
   total: UsageBreakdown;
@@ -401,22 +425,7 @@ export interface UsageProfileReport {
    * booleans — 12 records out of 40,000 carrying a label is not "labelled",
    * and a boolean would call it that.
    */
-  fieldCoverage: {
-    /** Records with a usable `label`. */
-    label: number;
-    /** Records with a usable `session` or `conversation_id`. */
-    session: number;
-    /** Records with a readable timestamp. */
-    ts: number;
-    /** Records with a `stop_reason` or `finish_reason`. */
-    stopReason: number;
-    /** Records whose cache writes stated which TTL they used. */
-    cacheTtl: number;
-    /** Records that wrote to the cache at all — the denominator for `cacheTtl`. */
-    cacheWrites: number;
-    /** Every record that parsed, priced or not — the denominator for the rest. */
-    parsed: number;
-  };
+  fieldCoverage: FieldCoverage;
   /**
    * Spend per hour of the UTC day, 0–23, over priced records that carry a
    * clock — and only the hours that saw traffic.
