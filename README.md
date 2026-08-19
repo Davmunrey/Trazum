@@ -1981,9 +1981,12 @@ exactly the bills it exists to catch, so it reads the ceiling and says which
 claim fired.
 
 **The budgets can live in the repository.** `spend` in `trazum.config.json`
-takes `maxUsd` for the whole log and `byLabel` for each workload, so CI runs
+takes `maxUsd` for the whole log, `maxDayUsd` for the worst single UTC day
+inside it, and `byLabel` for each workload — so CI runs
 `trazum profile logs/yesterday.jsonl` with no flags at all. A budgeted label
-with no calls in the log is reported as *not measured*, never as a pass.
+with no calls in the log is reported as *not measured*, never as a pass, and
+the day budget inherits `--max-day-usd`'s refusal: a log with no timestamps
+fails it rather than passing.
 
 **Rotated logs are read as they are.** `profile` takes a file or a directory,
 and a directory of a month's logs is normally one plain file and twenty-nine

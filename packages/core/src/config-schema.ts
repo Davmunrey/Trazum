@@ -59,6 +59,12 @@ export interface BaselineConfig {
 export interface SpendConfig {
   /** Whole-log budget. `--max-usd` overrides it. */
   maxUsd?: number;
+  /**
+   * Per-day budget — the gate a whole-log total cannot arm. `--max-day-usd`
+   * overrides it, and it inherits that flag's refusals: a log with no clock
+   * fails rather than passes, because "not measured" is not "under budget".
+   */
+  maxDayUsd?: number;
   /** Per-label budgets, each gated against that label's own spend. */
   byLabel?: Record<string, number>;
 }
@@ -145,7 +151,7 @@ export const CONFIG_KEYS = [
 
 export const CONFIG_BASELINE_KEYS = ['path', 'maxGrowthTokens', 'maxGrowthPct'] as const;
 
-export const CONFIG_SPEND_KEYS = ['maxUsd', 'byLabel'] as const;
+export const CONFIG_SPEND_KEYS = ['maxUsd', 'maxDayUsd', 'byLabel'] as const;
 
 export const CONFIG_USAGE_KEYS = [
   'model',
@@ -330,6 +336,9 @@ function parseSpend(raw: unknown, source: string): SpendConfig {
   const spend: SpendConfig = {};
   if (raw.maxUsd !== undefined) {
     spend.maxUsd = requireNonNegativeNumber(raw.maxUsd, 'spend.maxUsd', source);
+  }
+  if (raw.maxDayUsd !== undefined) {
+    spend.maxDayUsd = requireNonNegativeNumber(raw.maxDayUsd, 'spend.maxDayUsd', source);
   }
   if (raw.byLabel !== undefined) {
     if (!isPlainObject(raw.byLabel)) {
