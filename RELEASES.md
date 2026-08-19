@@ -7,9 +7,19 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.10.0**: `@trazum/core`, `@trazum/cli` and
-`@trazum/mcp`. 1.10.0 went out by hand — its tag ran a pre-fix workflow — so it
-carries no provenance attestation; releases from 1.11.0 on go through the tag.
+**All three packages are on npm at 1.25.0**: `@trazum/core`, `@trazum/cli` and
+`@trazum/mcp`. 1.25.0 went out by hand on 2026-08-19 — npm's trusted publishing
+rejected the workflow's OIDC token on four real publish attempts against
+`v1.11.0`, with every claim on the GitHub side verified correct — so, like
+1.8.0, 1.9.0 and 1.10.0 before it, **1.25.0 carries no provenance attestation**.
+The GitHub release was still created by the tag, whose workflow found the
+versions already on the registry and correctly skipped the uploads.
+
+**1.11.0 through 1.24.0 were never published to npm.** They are real releases
+of this repository — each has its notes below, its changelog entries and its
+merge commit — but the registry went straight from 1.10.0 to 1.25.0, which
+contains all of them. `v1.11.0` is the one tag in that range that exists, spent
+on diagnosing the trusted-publisher refusal; it published nothing.
 
 **1.9.1 was prepared and never published.** Its tag failed three times against a
 trusted-publisher configuration npm kept refusing, nothing reached the registry, and

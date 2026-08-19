@@ -29,7 +29,7 @@ because "MCP server" reads like infrastructure and this is not.
 | --- | --- |
 | `check_prompt` | Does this prompt fit `maxTokens`? And if not, would optimising it fit? |
 | `optimize_prompt` | The shorter text, the token counts either side, what the difference is worth per month, and any advisories. |
-| `profile_usage` | Where the money went, from a usage log passed as text: the spend split, per label and per model, whether caching paid for itself, and the levers that would actually move the bill. The one tool whose figures are exact — they are the provider's own billed counts. |
+| `profile_usage` | Where the money went, from a usage log passed as text: the spend split, per label and per model, whether caching paid for itself, and the levers that would actually move the bill. `label`, `since`/`until` and `previous_log` drill down and compare; `what_if` prices the same calls on another model — arithmetic, not advice, and it says so. The one tool whose figures are exact — they are the provider's own billed counts. |
 | `list_models` | Prices, context windows and cacheable minimums, with the date the table was reviewed. |
 
 `check_prompt` is the one worth wiring up. It has **three** outcomes rather than

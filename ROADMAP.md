@@ -471,6 +471,55 @@ distribution, so the band is still a worst case rather than a percentile. Going
 further needs samples from real prompts rather than written for the purpose —
 more of the same hand is more of the same bias, however many files it fills.
 
+### 1.10.0 through 1.25.0 — The other half of the product
+
+Sixteen releases in six days, and one sentence explains all of them: `optimize`
+recovers about **1%** of a real bill, and everything that moves 40–80% —
+which model, the Batch API, caching, re-sent conversation history — is only
+visible in what the provider actually charged. So the product grew a second
+half: `trazum profile` reads a usage log (counts, never content — the record
+shape has no field for prompt text) and says where the money went and which
+lever would actually move it.
+
+The full account of each release is in [RELEASES.md](RELEASES.md) and
+[CHANGELOG.md](CHANGELOG.md); the arc, compressed:
+
+- **1.10.0 — every hard edge, both sides.** The groundwork release.
+- **1.11.0–1.13.0 — the bill itself.** `profile` with exact billed splits,
+  per-workload labels, cache economics with the verdict read at its worst case,
+  the levers section, and the first money gates (`--max-usd`,
+  `--max-growth-usd`, `--max-cache-loss-usd`).
+- **1.14.0–1.17.0 — drill-downs and the same answer on every surface.**
+  `--label`, `--against` with drivers per label and per model, truncation
+  waste, conversation growth as a ceiling, and the web Bill tab reading the
+  log entirely in the browser — no fetch in the file, asserted by test.
+- **1.18.0–1.20.0 — where the decisions are made.** Directory mode for rotated
+  logs, `--since`/`--until` windows with clockless calls counted out loud,
+  per-day and per-hour spend shapes, session ledgers, and the `--json`
+  contract documented and enforced in both directions.
+- **1.21.0–1.22.0 — what the log does not say.** Field coverage counted rather
+  than boolean, per-conversation cost (median/p95/max), single-turn cache
+  writes as ceiling-or-fact, budget-vs-wire, CSV exports with no total row and
+  formula defusal, per-label spend budgets in `trazum.config.json`.
+- **1.23.0 — "What if it were the other model?"** `--what-if` reprices the
+  same tokens at another rate card — multiplication, not advice, with the
+  caveat printed above the figure and calls too large for the target's context
+  window named as impossible rather than priced as cheap. Plus
+  `duplicateLines`: a doubled bill, caught.
+- **1.24.0 — how big, how uneven, and the day it spiked.** `inputShapes`
+  (bucket ceilings, never interpolated percentiles), `--max-day-usd` — the
+  gate a total cannot arm — and the CI summary saying what the terminal says.
+- **1.25.0 — the retry, the archive and the shape in the tab.**
+  `repeatedTurns` (the same request sent again, named as a pattern and never a
+  cause), gzipped rotated logs read as they are, and the input shape in the
+  browser.
+
+**On npm, the registry went straight from 1.10.0 to 1.25.0.** The versions
+between are real releases of this repository — notes, changelog, merge commits
+— but npm's trusted publishing rejected the workflow on every attempt, so
+nothing shipped until 1.25.0 went out by hand. See
+[docs/releasing.md](docs/releasing.md) for the state of that fight.
+
 ## Collapsed into 1.8.0
 
 **Everything below shipped as 1.8.0, and none of these numbers is on npm.** They
