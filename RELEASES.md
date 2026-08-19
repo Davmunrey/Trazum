@@ -7,13 +7,16 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.25.0**: `@trazum/core`, `@trazum/cli` and
-`@trazum/mcp`. 1.25.0 went out by hand on 2026-08-19 — npm's trusted publishing
-rejected the workflow's OIDC token on four real publish attempts against
-`v1.11.0`, with every claim on the GitHub side verified correct — so, like
-1.8.0, 1.9.0 and 1.10.0 before it, **1.25.0 carries no provenance attestation**.
-The GitHub release was still created by the tag, whose workflow found the
-versions already on the registry and correctly skipped the uploads.
+**All three packages are on npm at 1.26.0**: `@trazum/core`, `@trazum/cli` and
+`@trazum/mcp` — published by the workflow itself, from the merge of the
+release PR, authenticated by the token fallback and carrying an OIDC-signed
+provenance attestation. 1.25.0 before it went out by hand on 2026-08-19, after
+npm's trusted publishing rejected the workflow's OIDC token on four real
+publish attempts against `v1.11.0` with every GitHub-side claim verified
+correct — so 1.25.0, like 1.8.0, 1.9.0 and 1.10.0, **carries no provenance
+attestation**. If the sentence above turns out to be premature — the fallback's
+first live run is exactly this release — this paragraph is the first thing to
+correct.
 
 **1.11.0 through 1.24.0 were never published to npm.** They are real releases
 of this repository — each has its notes below, its changelog entries and its
@@ -34,6 +37,52 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.26.0 — "The release that releases itself"
+
+### Merging the release PR is now the release
+
+This version contains no product change. It changes what a version *is*: from
+here on, merging the release PR publishes the packages, creates the
+`v<version>` tag on the merge commit, and publishes the GitHub release from
+this file — no tag to type, no second step to remember, no laptop involved.
+
+A `decide` job fronts it: every push to main runs a seconds-long registry
+preflight, and only the one push whose manifests name a version the registry
+does not have goes on to release. Ordinary merges skip in nine seconds
+(measured, on the first live run). A pushed tag remains the manual override,
+and the Actions-tab dry run stays a dry run.
+
+### npm can no longer fail the publish
+
+Trusted publishing rejected this workflow's OIDC token on six real publish
+attempts across three versions, and four releases went out from a laptop
+because of it — which protects nothing and audits worse. The publish steps now
+accept an environment-scoped npm token as the authentication fallback: absent,
+OIDC is the auth exactly as before; present, the release goes out either way.
+
+**Provenance survives both paths.** The attestation is signed with the job's
+OIDC identity, which is independent of how the upload authenticates — so this
+release, unlike every one before it, carries a verifiable provenance
+statement. The security suite pins the containment: only `release.yml` may
+reference the secret, only in one exact shape, and npm token material
+committed anywhere fails the build.
+
+### The documentation sweep is enforced, not remembered
+
+A release is not cut until all the documentation says so. `verify` now fails
+when the manifest version is missing from `CHANGELOG.md` (as a heading),
+`ROADMAP.md` (by name) or this file (as a section) — so a release prep that
+skips the docs cannot merge. The checklist in `docs/releasing.md` adds the
+grep sweep for the stale references no test can know about.
+
+Also in this version: every repository document caught up with the registry —
+the README's action pins advanced to the 1.25.0 commit, the roadmap's Released
+section no longer stops at 1.9.0, and `docs/releasing.md` tells the truth
+about the trusted-publisher fight, including the by-hand procedure 1.25.0
+used.
 
 ---
 

@@ -87,9 +87,11 @@ now failed that way on **six real publish attempts across three versions**:
 1.8.0 because the packages did not exist yet, 1.9.0 because this had not been
 done, and `v1.11.0` four times on 2026-08-19 — after the settings had been
 reported filled in. Every one of those releases that shipped went out by hand,
-and none has provenance as a result. 1.25.0 is the latest: published from a
-clean clone of the tag, with the workflow's own preflight and `verify` run
-first by hand.
+and none has provenance as a result. 1.25.0 was the last of those: published
+from a clean clone of the tag, with the workflow's own preflight and `verify`
+run first by hand. Since then the token fallback (below) authenticates the
+workflow's own publishes, so a broken trusted publisher no longer forces a
+release onto a laptop.
 
 The v1.11.0 failures settled one thing the 2026-08-13 attempt could not: the
 GitHub side is **not** the problem. The failing run prints the claims its token

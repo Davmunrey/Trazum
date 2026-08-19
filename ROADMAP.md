@@ -514,6 +514,16 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.26.0 — The release that releases itself
+
+No product change; a process one. Merging the release PR now publishes the
+packages, tags the merge commit and creates the GitHub release — with a
+registry preflight in front so ordinary merges skip in seconds, a token
+fallback so npm's broken trusted publishing cannot fail the publish, and
+OIDC-signed provenance on the tarballs either way. The documentation sweep
+became a test: a release whose version is missing from the changelog, the
+release notes or this file fails `verify`.
+
 **On npm, the registry went straight from 1.10.0 to 1.25.0.** The versions
 between are real releases of this repository — notes, changelog, merge commits
 — but npm's trusted publishing rejected the workflow on every attempt, so
