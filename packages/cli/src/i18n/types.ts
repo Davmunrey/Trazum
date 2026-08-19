@@ -916,6 +916,23 @@ export interface CliMessages {
       * a skip: a total quietly missing a day is the failure this refuses.
       */
     badGzip(file: string, detail: string): string;
+    /**
+     * `--dry-run`: readiness per capability, no bill. The question somebody
+     * has before wiring CI, answered without making them read a report to
+     * discover a missing field.
+     */
+    dryRunHeading(): string;
+    dryRunParsed(parsed: string, skipped: string): string;
+    dryRunUnpriced(models: string): string;
+    dryRunTotals(): string;
+    dryRunLabels(share: string): string;
+    dryRunClock(share: string): string;
+    dryRunSessions(share: string): string;
+    dryRunStopReason(share: string): string;
+    dryRunCacheTtl(ttl: string, writes: string): string;
+    dryRunNoCacheTraffic(): string;
+    dryRunFooter(): string;
+    dryRunNoGates(): string;
     coverageHeading(): string;
     needsLabel(seen: string): string;
     needsSession(seen: string): string;

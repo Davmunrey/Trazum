@@ -1165,6 +1165,28 @@ ${bold('EJEMPLOS')}
       `--what-if no conoce "${value}". Modelos con precio: ${available}. Añádelo con --pricing si tienes sus tarifas.`,
     badGzip: (file, detail) =>
       `${file} está comprimido con gzip y no se ha podido descomprimir: ${detail}. Leer el resto y no decir nada daría una factura a la que le falta lo que hubiera en ese fichero, así que se para aquí. Revisa el fichero, o sácalo del directorio.`,
+    dryRunHeading: () => 'Qué puede responder este registro — no se ha producido factura',
+    dryRunParsed: (parsed, skipped) =>
+      `${parsed} registros se leen; ${skipped} líneas no se pudieron leer. Un dry run no valora nada: el punto es sobre qué se apoyarían los gates que vas a cablear.`,
+    dryRunUnpriced: (models) =>
+      `Modelos que la tabla de precios no conoce: ${models}. Sus tokens se leen; sus dólares necesitan un overlay --pricing.`,
+    dryRunTotals: () => 'La factura en sí: totales, desglose por modelo, economía de caché, las palancas.',
+    dryRunLabels: (share) =>
+      `Hallazgos por carga y presupuestos por etiqueta — "label" en el ${share} de los registros.`,
+    dryRunClock: (share) =>
+      `El periodo, la forma por día y por hora, --max-day-usd, --since/--until — marca de tiempo en el ${share} de los registros.`,
+    dryRunSessions: (share) =>
+      `Crecimiento de conversación, coste por conversación, --max-session-usd — sesión en el ${share} de los registros. Se agrupa por ella, nunca se imprime.`,
+    dryRunStopReason: (share) =>
+      `Respuestas truncadas y su factura de reintentos — razón de parada en el ${share} de los registros.`,
+    dryRunCacheTtl: (ttl, writes) =>
+      `Veredictos de caché resueltos — el desglose "cache_creation" en ${ttl} de ${writes} registros que escriben caché.`,
+    dryRunNoCacheTraffic: () =>
+      'Veredictos de caché: nada escribió en la caché en este registro, así que no hay nada que resolver — no es un campo ausente.',
+    dryRunFooter: () =>
+      'Una ✗ no es un defecto del registro; es un hallazgo que este registro aún no puede sostener. La receta de registro del README lleva todos los campos de arriba.',
+    dryRunNoGates: () =>
+      '--dry-run no produce factura, así que un gate a su lado saldría en verde sin haber juzgado nada. Corre los gates sin --dry-run.',
     coverageHeading: () => 'Lo que este registro todavía no puede responder',
     needsLabel: (seen) =>
       `"label" en ${seen} registros: sin él todas las cargas son una sola fila, así que no hay gasto por carga, ni zoom, y las palancas describen una mezcla en vez de una decisión.`,

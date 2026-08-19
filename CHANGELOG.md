@@ -25,6 +25,18 @@ what was missing was reading the log their SDK actually writes, and a Gemini
 model the catalogue does not know still parses and lands in `unpricedModels`
 as everywhere.
 
+**`--dry-run`: what the log could answer, before you wire it in.** The
+question somebody has before putting Trazum in CI is not "what did we spend"
+but "will this log support the gates I want" — and answering it with a full
+report makes them read a bill to discover a field is missing. `trazum profile
+<log> --dry-run` states readiness per capability (totals, per-workload,
+clock, sessions, stop reasons, the cache split), names unpriced models, and
+produces no dollar figure at all, so nothing in it can be mistaken for spend.
+It refuses to run beside a gate — a gate over a report that was never
+produced would exit green having judged nothing — distinguishes "nothing
+wrote to the cache" from a missing split, and exits non-zero when nothing
+parses, because an unreadable log is not a ready one.
+
 ## 1.32.0 — "The routing decision, priced whole"
 
 ### Added
