@@ -119,6 +119,12 @@ ${bold('OPTIONS FOR optimize')}
   --calls <n>                 Calls per month. Default: ${d.callsPerMonth}.
   --output-tokens <n>         Average output tokens. Default: ${d.avgOutputTokens}.
   --cache-hit-rate <0-1>      Estimated cache hit rate. Default: ${d.cacheHitRate}.
+  --all-labels                With --from-log: every prompt in the config's
+                              "labels" map, optimised and priced against its
+                              own measured traffic, ranked by what the change
+                              is worth — plus the mismatches in both
+                              directions (mapped prompts with no traffic,
+                              traffic with no mapped prompt).
   --from-log <usage.jsonl>    Measure the three figures above from a usage log
                               instead of typing them: real call count, real
                               output size, real cache share, and the model the
@@ -452,6 +458,10 @@ ${bold('EXAMPLES')}
     mustBeNonNegative: (name, raw) =>
       `--${name} must be a non-negative number (received: "${raw}").`,
     badLevel: (received) => `--level must be "safe" or "aggressive" (received: "${received}").`,
+    allLabelsNeedsLog: () =>
+      '--all-labels ranks prompts by measured traffic, so it needs --from-log <usage.jsonl>. Without a log every saving would be multiplied by the same typed guess, which ranks prompts by length and calls it a priority.',
+    allLabelsNeedsMap: () =>
+      '--all-labels reads the "labels" map in trazum.config.json — label to prompt file — and this config has none. Map at least one workload to its prompt.',
     fromLogConflict: (flag) =>
       `--from-log measures the figure --${flag} types, and merging a measurement with a guess produces a number that is neither. Pass one or the other.`,
     fromLogNeedsLabel: (available) =>
@@ -526,6 +536,17 @@ ${bold('EXAMPLES')}
     costWith: (modelName) => `Cost with ${modelName}`,
     usageLine: (calls, outputTokens, batch) =>
       `${calls} calls/month · ${outputTokens} output tokens per call${batch ? ' · Batch API' : ''}`,
+    allLabelsHeading: (count) => `Every mapped prompt against its own measured traffic — ${count} ranked by what the change is worth`,
+    allLabelsRow: (saving) => `${saving}/month if optimised`,
+    allLabelsRowPeriod: (saving) => `${saving} over the measured period if optimised`,
+    allLabelsFooter: () =>
+      'Ranked by measured traffic, not by prompt length: a big prompt on a dead workload is worth less than a small one on a busy one. Each figure is this prompt\'s token delta at its own label\'s measured rate.',
+    allLabelsUnmapped: (label, usd) =>
+      `${label} carries ${usd} of measured spend and no prompt file is mapped to it — the workload nobody can optimise because nobody said where it lives. Map it under "labels" in trazum.config.json.`,
+    allLabelsDead: (label, path) =>
+      `${label} is mapped to ${path} and has no traffic in this log — a retired workload, a renamed label, or a typo that has been silently doing nothing.`,
+    allLabelsUnreadable: (label, path) =>
+      `${label} is mapped to ${path}, which could not be read. The mapping exists; the file does not.`,
     usageLineMeasured: (calls, days, scaled, outputTokens, batch) =>
       `${calls} calls measured over ${days} days — ${scaled}/month at that rate · ${outputTokens} output tokens per call, measured${batch ? ' · Batch API' : ''}`,
     usageLineMeasuredPeriod: (calls, days, outputTokens, batch) =>

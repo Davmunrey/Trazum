@@ -23,6 +23,7 @@ import {
   coverageDrift,
   driversBetween,
   explainGateFailure,
+  labelCoverage,
   measuredUsage,
   gateMargin,
   GATE_MARGIN_TIGHT,
@@ -456,7 +457,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
     'level', 'model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch',
     'disable', 'llm', 'exact-tokens', 'diff', 'reorder', 'out', 'o',
     'tokens-only', 'cost', 'prompt', 'suggest', 'apply-suggestions',
-    'cache-suggestions', 'from-log', 'label',
+    'cache-suggestions', 'from-log', 'label', 'all-labels',
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
@@ -1448,6 +1449,97 @@ async function commandOptimize(
   t: CliMessages,
   locale: Locale,
 ): Promise<void> {
+  /**
+   * `--all-labels`: every mapped prompt against its own measured traffic,
+   * ranked by what the change is worth — the list a person actually wants,
+   * which is "which prompt do I edit first".
+   *
+   * Requires `--from-log`, because ranking estimated savings that were all
+   * multiplied by the same typed guess ranks the prompts by length, and calls
+   * that a priority. And it renders both coverage mismatches at the end: a
+   * prompt mapped to a label with no traffic is dead weight or a rename, and
+   * a label carrying real money with no prompt mapped is the workload nobody
+   * can optimise because nobody said where it lives.
+   */
+  if (boolFlag(args, 'all-labels')) {
+    const fromLogPath = stringFlag(args, 'from-log');
+    if (fromLogPath === undefined) throw new Error(t.errors.allLabelsNeedsLog());
+    const labelsMap = config.labels ?? {};
+    if (Object.keys(labelsMap).length === 0) throw new Error(t.errors.allLabelsNeedsMap());
+    const report = profileUsage(await readUsageLog(fromLogPath, t), { catalogue: pricing });
+    const coverage = labelCoverage(report, labelsMap);
+    const level = levelFlag(args, config, t);
+
+    interface Row {
+      label: string;
+      path: string;
+      tokensBefore: number;
+      tokensAfter: number;
+      savingUsd: number;
+      periodOnly: boolean;
+      spentUsd: number;
+    }
+    const rows: Row[] = [];
+    const unreadable: { label: string; path: string }[] = [];
+    for (const { label, promptPath } of coverage.joined) {
+      const m = measuredUsage(report, label, { batchEligible: config.usage?.batchEligible ?? false });
+      if (m === null) continue;
+      let text: string;
+      try {
+        text = await readFile(promptPath, 'utf8');
+      } catch {
+        unreadable.push({ label, path: promptPath });
+        continue;
+      }
+      const r = optimize(text, { level, usage: m.profile, locale, pricing });
+      rows.push({
+        label,
+        path: promptPath,
+        tokensBefore: r.tokensBefore,
+        tokensAfter: r.tokensAfter,
+        savingUsd: r.savings.monthlySavingsUsd,
+        periodOnly: m.scaled === null,
+        spentUsd: m.spentUsd,
+      });
+    }
+    rows.sort((a, b) => b.savingUsd - a.savingUsd);
+
+    const n = (value: number): string => value.toLocaleString(t.numberLocale);
+    console.log(c.bold(t.report.allLabelsHeading(n(rows.length))));
+    for (const row of rows) {
+      const saving = row.periodOnly
+        ? t.report.allLabelsRowPeriod(formatUsd(row.savingUsd))
+        : t.report.allLabelsRow(formatUsd(row.savingUsd));
+      console.log(
+        `  ${row.savingUsd > 0 ? c.green('→') : c.dim('·')} ${c.bold(row.label)}  ${saving}  ${c.dim(`${row.path} · ${n(row.tokensBefore)} → ${n(row.tokensAfter)} tokens · ${formatUsd(row.spentUsd)} measured`)}`,
+      );
+    }
+    if (rows.length > 0) {
+      console.log(`  ${c.dim(wrap(t.report.allLabelsFooter(), 74, '  '))}`);
+    }
+
+    /**
+     * The mismatches, both directions, never silently. These are the two
+     * failures neither side can see alone.
+     */
+    for (const gap of coverage.trafficWithoutPrompt.slice(0, 5)) {
+      console.log(
+        `  ${c.yellow('!')} ${wrap(t.report.allLabelsUnmapped(gap.label, formatUsd(gap.spentUsd)), 74, '    ')}`,
+      );
+    }
+    for (const dead of coverage.mappedWithoutTraffic) {
+      console.log(
+        `  ${c.dim(wrap(t.report.allLabelsDead(dead.label, dead.promptPath), 74, '    '))}`,
+      );
+    }
+    for (const miss of unreadable) {
+      console.log(
+        `  ${c.yellow('!')} ${wrap(t.report.allLabelsUnreadable(miss.label, miss.path), 74, '    ')}`,
+      );
+    }
+    return;
+  }
+
   const target = args.positional[0];
   const raw = await readInput(target, t);
   const level = levelFlag(args, config, t);

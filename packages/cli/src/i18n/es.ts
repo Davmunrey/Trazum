@@ -109,6 +109,12 @@ ${bold('OPCIONES DE optimize')}
   --calls <n>                 Llamadas al mes. Por defecto: ${d.callsPerMonth}.
   --output-tokens <n>         Tokens de salida medios. Por defecto: ${d.avgOutputTokens}.
   --cache-hit-rate <0-1>      Tasa de acierto de caché estimada. Por defecto: ${d.cacheHitRate}.
+  --all-labels                Con --from-log: cada prompt del mapa "labels"
+                              de la config, optimizado y valorado contra su
+                              propio tráfico medido, ordenado por lo que vale
+                              el cambio — más los desajustes en ambos sentidos
+                              (prompts mapeados sin tráfico, tráfico sin
+                              prompt mapeado).
   --from-log <usage.jsonl>    Mide las tres cifras de arriba desde un registro
                               de uso en vez de teclearlas: llamadas reales,
                               tamaño de salida real, cuota de caché real y el
@@ -459,6 +465,10 @@ ${bold('EJEMPLOS')}
     mustBeNonNegative: (name, raw) =>
       `--${name} debe ser un número no negativo (recibido: "${raw}").`,
     badLevel: (received) => `--level debe ser "safe" o "aggressive" (recibido: "${received}").`,
+    allLabelsNeedsLog: () =>
+      '--all-labels ordena los prompts por tráfico medido, así que necesita --from-log <usage.jsonl>. Sin registro cada ahorro se multiplicaría por la misma suposición tecleada, lo que ordena los prompts por longitud y lo llama prioridad.',
+    allLabelsNeedsMap: () =>
+      '--all-labels lee el mapa "labels" de trazum.config.json — etiqueta a fichero de prompt — y esta config no tiene ninguno. Mapea al menos una carga a su prompt.',
     fromLogConflict: (flag) =>
       `--from-log mide la cifra que --${flag} teclea, y mezclar una medición con una suposición produce un número que no es ninguna de las dos. Pasa una u otra.`,
     fromLogNeedsLabel: (available) =>
@@ -535,6 +545,17 @@ ${bold('EJEMPLOS')}
       `${calls} llamadas/mes · ${outputTokens} tokens de salida por llamada${
         batch ? ' · Batch API' : ''
       }`,
+    allLabelsHeading: (count) => `Cada prompt mapeado contra su propio tráfico medido — ${count} ordenados por lo que vale el cambio`,
+    allLabelsRow: (saving) => `${saving}/mes si se optimiza`,
+    allLabelsRowPeriod: (saving) => `${saving} en el periodo medido si se optimiza`,
+    allLabelsFooter: () =>
+      'Ordenado por tráfico medido, no por longitud del prompt: un prompt grande en una carga muerta vale menos que uno pequeño en una ocupada. Cada cifra es el delta de tokens de este prompt al ritmo medido de su propia etiqueta.',
+    allLabelsUnmapped: (label, usd) =>
+      `${label} lleva ${usd} de gasto medido y ningún fichero de prompt está mapeado a ella — la carga que nadie puede optimizar porque nadie dijo dónde vive. Mapéala en "labels" de trazum.config.json.`,
+    allLabelsDead: (label, path) =>
+      `${label} está mapeada a ${path} y no tiene tráfico en este registro — una carga retirada, una etiqueta renombrada, o una errata que lleva sin hacer nada en silencio.`,
+    allLabelsUnreadable: (label, path) =>
+      `${label} está mapeada a ${path}, que no se pudo leer. El mapeo existe; el fichero no.`,
     usageLineMeasured: (calls, days, scaled, outputTokens, batch) =>
       `${calls} llamadas medidas en ${days} días — ${scaled}/mes a ese ritmo · ${outputTokens} tokens de salida por llamada, medidos${batch ? ' · Batch API' : ''}`,
     usageLineMeasuredPeriod: (calls, days, outputTokens, batch) =>

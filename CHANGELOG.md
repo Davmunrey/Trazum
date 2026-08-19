@@ -38,6 +38,18 @@ slices that never recorded output say their output half is $0 measured, not
 $0 assumed. New core module `measured-profile.ts` with `measuredUsage()` and
 `labelCoverage()`, both exported.
 
+**`optimize --all-labels`: which prompt to edit first.** Every prompt in the
+config's `labels` map, optimised and priced against its own measured traffic,
+ranked by what the change is worth — ranked by traffic and not by prompt
+length, because a big prompt on a dead workload is worth less than a small one
+on a busy one. Requires `--from-log`: ranking savings that were all multiplied
+by the same typed guess ranks prompts by length and calls it a priority. Both
+coverage mismatches are named at the end: a label carrying measured spend with
+no prompt mapped (the workload nobody can optimise because nobody said where
+it lives), and a mapped prompt whose label has no traffic (retired, renamed,
+or a typo silently doing nothing). A mapped file that cannot be read is named
+too — the mapping exists; the file does not.
+
 ## 1.35.0 — "The reader who is not in the terminal"
 
 ### Added

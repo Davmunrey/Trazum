@@ -131,6 +131,58 @@ describe('optimize --from-log', () => {
     assert.match(flat(run([prompt, '--from-log', log, '--label', 'chat'])), /\$0 measured — not \$0 assumed/);
   });
 
+  it('--all-labels ranks every mapped prompt by its own measured traffic', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'trazum-alllabels-'));
+    await writeFile(join(dir, 'support.txt'), PROMPT);
+    await writeFile(join(dir, 'chat.txt'), 'It is very important to note that you should basically be concise.\n');
+    const log = join(dir, 'usage.jsonl');
+    await writeFile(log, [
+      // support is the busy workload; chat barely runs; orphan has no prompt.
+      call('2026-08-01', { label: 'support', usage: { input_tokens: 2_000_000, output_tokens: 1_000 } }),
+      call('2026-08-11', { label: 'support', usage: { input_tokens: 2_000_000, output_tokens: 1_000 } }),
+      call('2026-08-05', { usage: { input_tokens: 100_000, output_tokens: 500 } }),
+      call('2026-08-06', { label: 'orphan', usage: { input_tokens: 500_000, output_tokens: 100 } }),
+    ].map((r) => JSON.stringify(r)).join('\n') + '\n');
+    const config = join(dir, 'trazum.config.json');
+    await writeFile(config, JSON.stringify({
+      labels: { support: 'support.txt', chat: 'chat.txt', retired: 'gone.txt' },
+    }));
+
+    const result = spawnSync(
+      process.execPath,
+      [CLI, 'optimize', '--all-labels', '--from-log', log, '--config', config],
+      { encoding: 'utf8', env: SPAWN_ENV, timeout: 30000, cwd: dir },
+    );
+    assert.equal(result.status, 0, result.stderr);
+    const out = flat(result);
+    // Ranked by measured traffic: support first despite similar prompts.
+    assert.ok(out.indexOf('support') < out.indexOf('chat'), 'the busy workload did not rank first');
+    assert.match(out, /Ranked by measured traffic, not by prompt length/);
+    // Both mismatches, named: money nobody can optimise, and a dead mapping.
+    assert.match(out, /orphan carries \$2\.50 of measured spend and no prompt file is mapped/);
+    assert.match(out, /retired is mapped to gone\.txt and has no traffic/);
+  });
+
+  it('--all-labels refuses to rank without a log or without a map', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'trazum-alllabels-ref-'));
+    await writeFile(join(dir, 'usage.jsonl'), JSON.stringify(call('2026-08-01')) + '\n');
+    const noLog = spawnSync(process.execPath, [CLI, 'optimize', '--all-labels'], {
+      encoding: 'utf8', env: SPAWN_ENV, timeout: 30000, cwd: dir,
+    });
+    assert.equal(noLog.status, 1);
+    assert.match(flat(noLog), /ranks prompts by measured traffic, so it needs --from-log/);
+
+    const config = join(dir, 'trazum.config.json');
+    await writeFile(config, JSON.stringify({}));
+    const noMap = spawnSync(
+      process.execPath,
+      [CLI, 'optimize', '--all-labels', '--from-log', 'usage.jsonl', '--config', config],
+      { encoding: 'utf8', env: SPAWN_ENV, timeout: 30000, cwd: dir },
+    );
+    assert.equal(noMap.status, 1);
+    assert.match(flat(noMap), /this config has none/);
+  });
+
   it('speaks Spanish', async () => {
     const { prompt, log } = await setup([call('2026-08-01'), call('2026-08-11')]);
     const out = flat(run([prompt, '--from-log', log, '--label', 'chat', '--locale', 'es']));

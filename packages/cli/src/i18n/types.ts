@@ -38,6 +38,8 @@ export interface CliMessages {
     mustBeNonNegative(name: string, raw: string): string;
     badLevel(received: string): string;
     /** `--from-log`'s refusals: contradiction, missing label, ambiguity, emptiness. */
+    allLabelsNeedsLog(): string;
+    allLabelsNeedsMap(): string;
     fromLogConflict(flag: string): string;
     fromLogNeedsLabel(available: string): string;
     fromLogAmbiguousLabel(target: string, labels: string): string;
@@ -92,6 +94,17 @@ export interface CliMessages {
      * are different claims about the same multiplication, and under the week
      * floor nothing says "month".
      */
+    /**
+     * `--all-labels`: every mapped prompt against its own measured traffic,
+     * ranked by what the change is worth, with both coverage mismatches named.
+     */
+    allLabelsHeading(count: string): string;
+    allLabelsRow(saving: string): string;
+    allLabelsRowPeriod(saving: string): string;
+    allLabelsFooter(): string;
+    allLabelsUnmapped(label: string, usd: string): string;
+    allLabelsDead(label: string, path: string): string;
+    allLabelsUnreadable(label: string, path: string): string;
     usageLineMeasured(calls: string, days: string, scaled: string, outputTokens: number, batch: boolean): string;
     usageLineMeasuredPeriod(calls: string, days: string | null, outputTokens: number, batch: boolean): string;
     measuredModelShare(model: string, share: string, count: string): string;

@@ -444,6 +444,28 @@ guessed" are different claims about the same dollar sign. The rules:
 is proof the prompt's traffic goes to a metered API, whatever the terminal
 running the command bills like.
 
+And `--all-labels` turns it into the list a person actually wants — which
+prompt to edit first:
+
+```bash
+trazum optimize --all-labels --from-log usage.jsonl
+```
+
+```
+Every mapped prompt against its own measured traffic — 2 ranked by what the
+change is worth
+  → support  $57.80/month if optimised   prompts/support.txt · 1,178 → 742 tokens · $402.11 measured
+  → chat     $3.20/month if optimised    prompts/chat.txt · 310 → 296 tokens · $12.40 measured
+  ! orphan carries $250.10 of measured spend and no prompt file is mapped to
+    it — the workload nobody can optimise because nobody said where it lives.
+  retired is mapped to prompts/old.txt and has no traffic in this log.
+```
+
+Ranked by measured traffic, not by prompt length — a big prompt on a dead
+workload is worth less than a small one on a busy one — and the mismatches in
+both directions are named: labels carrying money with no mapped prompt, and
+mapped prompts whose label no longer runs.
+
 ### Reordering for the cache: `--reorder`
 
 Trimming a prompt saves a few percent of its tokens. Moving its stable
