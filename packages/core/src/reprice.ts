@@ -139,6 +139,23 @@ export interface RepriceReport {
    */
   unpricedModels: string[];
   unpricedCalls: number;
+  /**
+   * The moved bill with the target's Batch API on top, over the same movable
+   * slices — or null when the target sells no batch discount, which is a
+   * different statement from a $0 saving.
+   *
+   * The other half of "priced whole": routing and batching combine by
+   * discounting the *target's* rates, not by adding two savings — the same
+   * never-summed rule the levers learned when $12.60 plus $10.50 exceeded
+   * the $21.00 slice they came from. The discount covers input and output,
+   * cache traffic priced unchanged, matching the levers' convention exactly
+   * so the two surfaces cannot disagree about what batching is worth.
+   *
+   * Whether these calls can wait for a batch window is not knowable from a
+   * log, and nothing here claims it — the field is arithmetic, the decision
+   * is the reader's.
+   */
+  batchOnTarget: { targetUsd: number } | null;
   /** Always true. A field, not a comment, so a rendering can print it. */
   sameTokensAssumed: true;
 }
@@ -261,6 +278,29 @@ export function repriceProfile(
   const currentUsd = slices.reduce((sum, s) => sum + s.currentUsd, 0);
   const targetUsd = slices.reduce((sum, s) => sum + s.targetUsd, 0);
 
+  /**
+   * The same movable tokens, batched on the target. Computed from the token
+   * aggregates rather than by discounting `targetUsd`, because the discount
+   * covers input and output while cache traffic rides through unchanged.
+   */
+  const batchRate = multipliersFor(target).batch;
+  let batchOnTarget: { targetUsd: number } | null = null;
+  if (batchRate !== null && batchRate < 1 && slices.length > 0) {
+    const { inputPerMTok, outputPerMTok } = effectivePricing(target, on);
+    const movable = report.byLabelAndModel.filter(
+      (slice) =>
+        slice.model !== target.id && slice.breakdown.maxCallInputTokens <= target.contextWindow,
+    );
+    const inOutUsd = movable.reduce(
+      (sum, slice) =>
+        sum +
+        (slice.breakdown.inputTokens / 1_000_000) * inputPerMTok +
+        (slice.breakdown.outputTokens / 1_000_000) * outputPerMTok,
+      0,
+    );
+    batchOnTarget = { targetUsd: targetUsd - inOutUsd * (1 - batchRate) };
+  }
+
   return {
     target: { id: target.id, displayName: target.displayName, contextWindow: target.contextWindow },
     slices,
@@ -272,6 +312,7 @@ export function repriceProfile(
     assumedWriteTtlCalls,
     unpricedModels: report.unpricedModels,
     unpricedCalls: report.unpriced.calls,
+    batchOnTarget,
     sameTokensAssumed: true,
   };
 }

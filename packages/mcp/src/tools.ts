@@ -1081,6 +1081,16 @@ const PROFILE: ToolDefinition = {
           `${formatUsd(whatIf.currentUsd)} of movable spend would have been `
             + `${formatUsd(whatIf.targetUsd)} — ${formatUsd(Math.abs(whatIf.deltaUsd))} ${direction}.`,
         );
+        // The decision's other half: the same move batched, discounted on
+        // the target's rates and never summed with the move. Whether the
+        // calls can wait is not in the log, and the sentence says so.
+        if (whatIf.batchOnTarget !== null) {
+          lines.push(
+            `If those calls can also wait, the target's Batch API takes the moved bill from `
+              + `${formatUsd(whatIf.targetUsd)} to ${formatUsd(whatIf.batchOnTarget.targetUsd)}. `
+              + 'Whether they can wait is not in the log; that half of the decision is the caller\'s.',
+          );
+        }
         for (const slice of whatIf.slices.slice(0, 5)) {
           const shown = slice.label === UNLABELLED ? 'unlabelled' : slice.label;
           lines.push(

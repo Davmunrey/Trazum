@@ -59,7 +59,7 @@ key that disappears fails, and a key added without a line here fails too.
 | `levers` | What would actually move the bill: routing, the Batch API, and the ceiling on prompt shortening. |
 | `against` | Present only with `--against`: the previous total, the delta, and the drivers per label and per model. |
 | `contextPressure` | Slices whose largest call is past half its model's context window: the call, the window, and the share. The failure a bill cannot show until the day it happens. |
-| `whatIf` | Present only with `--what-if <model>`: the same tokens at that model's rates, the slices too large for its context window, and `sameTokensAssumed` — the caveat travels inside the object so a consumer cannot print the figure without it. Each slice carries `cacheBeyondTarget` — null, or the target's cache minimum and the no-cache price when the slice's cache traffic could not exist there, because the standard figure would otherwise flatter the move. |
+| `whatIf` | Present only with `--what-if <model>`: the same tokens at that model's rates, the slices too large for its context window, and `sameTokensAssumed` — the caveat travels inside the object so a consumer cannot print the figure without it. `batchOnTarget` holds the moved bill with the target's Batch API on top (null when the target sells none — a different statement from a $0 saving). Each slice carries `cacheBeyondTarget` — null, or the target's cache minimum and the no-cache price when the slice's cache traffic could not exist there, because the standard figure would otherwise flatter the move. |
 
 ## What it deliberately does not contain
 

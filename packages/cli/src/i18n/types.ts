@@ -896,6 +896,12 @@ export interface CliMessages {
      * figure grants discounted rates to entries that could not form, an error
      * in the flattering direction. The no-cache figure is the honest one.
      */
+    /**
+     * The moved bill with the target's Batch API on top — the routing
+     * decision's other half, discounted on the target's rates and never
+     * summed with the move.
+     */
+    whatIfBatchOnTarget(batched: string, moved: string): string;
     whatIfCacheBeyond(largest: string, min: string, noCache: string): string;
     whatIfSlice(label: string, model: string, current: string, target: string): string;
     /** A call the target's context window could not have accepted. */

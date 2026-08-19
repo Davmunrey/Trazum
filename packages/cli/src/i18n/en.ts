@@ -1133,6 +1133,8 @@ ${bold('EXAMPLES')}
     whatIfCheaper: () =>
       'Verify before you move anything: trazum route measures one prompt against both models on your own examples.',
     whatIfDearer: () => 'That direction costs more. The arithmetic is here so the number is not a guess.',
+    whatIfBatchOnTarget: (batched, moved) =>
+      `If those calls can also wait, the target's Batch API takes the moved bill from ${moved} to ${batched} — the discount applies to the target's rates, not the ones you left. Whether they can wait is not in the log; that half of the decision is yours.`,
     whatIfCacheBeyond: (largest, min, noCache) =>
       `Its cache traffic could not exist there: the largest call is ${largest} tokens against the target's ${min}-token cache minimum, so no call in this slice could create an entry. Without the cache the same tokens cost ${noCache} — that is the figure the target would actually bill, and the row above flatters the move.`,
     whatIfSlice: (label, model, current, target) => `${label} on ${model}: ${current} → ${target}`,

@@ -189,6 +189,11 @@ describe('the bill tab reads the log in the browser and nowhere else', () => {
     assert.match(bill, /p95Usd > 10 \* shape\.medianUsd/);
   });
 
+  it('states the move batched on the target, hedged and never summed', () => {
+    assert.match(bill, /t\.bill\.whatIfBatchOnTarget\(/);
+    assert.match(bill, /whatIf\.batchOnTarget !== null && \(/);
+  });
+
   it('corrects the what-if figure the target would refuse to bill', () => {
     // The discounted row prices cache entries the target's minimum would
     // refuse to create; the correction renders beside it, never instead of it.
