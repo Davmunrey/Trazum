@@ -9,6 +9,32 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**`truncationRetries`: the "billed again" half, measured.** The truncation
+finding has always said cut-off answers are *frequently retried, billed
+again* — and that second half was an assertion, because nothing counted the
+retries. Now it is a measurement: a truncated answer followed within two
+minutes by another call in the same conversation is the shape a retry has,
+and both sides of the pair are in the log. The wasted attempt's full price
+and the follow-up's travel together, with the checkable denominator —
+"2 of 3 truncated answers" and "2 of 2" are different sentences, and the
+reader gets the right one.
+
+Attributed to the **truncated call's slice**, because that is where the
+`max_tokens` ceiling that caused the pair lives and where the fix is
+applied. Compared only against the immediately previous call in the session
+(the bounded-memory design `repeatedTurns` uses); a single pair is not
+reported — one retry is an anecdote; and the hedge is in every rendering:
+the log cannot see content, so whether each pair was a retry is the
+reader's to know. Needs a session, a clock and a stop reason.
+
+In the terminal (inside the truncation section, next to the ceiling the
+answers actually needed), in `--json`, in the CI summary and in the MCP
+`profile_usage` tool.
+
 ## 1.27.0 — "The ceiling, the drift and the tab in step"
 
 ### Added

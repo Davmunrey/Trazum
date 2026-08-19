@@ -902,6 +902,21 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
   lines.push('');
 
   /**
+   * The retry bill of truncation — loud in a summary, because the fix (a
+   * max_tokens the answers fit in) is a one-line PR of its own.
+   */
+  for (const row of report.truncationRetries.slice(0, 3)) {
+    lines.push(
+      `> ⚠️ ${mdText(t.profile.truncationRetryLine(showLabel(row.label), row.modelName, n(row.retried), n(row.truncatedCalls), n(Math.round(row.withinMs / 1000)), formatUsd(row.wastedUsd), formatUsd(row.retryUsd)))}`,
+    );
+    lines.push('');
+  }
+  if (report.truncationRetries.length > 0) {
+    lines.push(`_${mdText(t.profile.truncationRetryNote())}_`);
+    lines.push('');
+  }
+
+  /**
    * The mix moving inside the log — same fifteen-point threshold as the
    * terminal, because two surfaces disagreeing about "moved" is a second
    * opinion nobody asked for.
