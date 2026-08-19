@@ -40,6 +40,7 @@ ${bold('USAGE')}
   trazum eval <file> --cases <file> --export promptfoo -o suite.json
   trazum route <log.jsonl> --prompt-file <file> --cases <file> --yes
   trazum plan <log.jsonl|dir> [options]
+  trazum verify <plan.json> --against <newer.jsonl|dir> [options]
   trazum diff <before> <after> [options]
   trazum diff --all <dir> <dir> [options]
   trazum rank <dir> [options]
@@ -316,6 +317,25 @@ ${bold('OPTIONS FOR plan')}
   never summed — and every action names what the log cannot confirm, because
   a plan that hides its assumptions is advice pretending to be arithmetic.
   Projected savings and money already spent are separate totals throughout.
+
+${bold('OPTIONS FOR verify')}
+  --against <log|dir>         The newer usage log the plan is held to. Required.
+  --gate                      Exit 1 when an action did not produce what the
+                              plan promised, or its fields stopped being
+                              recorded — "not recorded" must not read as
+                              "fixed". A vanished workload fails nothing.
+  --markdown-out <file>       Also write the verdicts as Markdown, for a CI
+                              job summary or a pull request comment.
+  --pricing <file>            Local price overlay, as everywhere else.
+  --json                      The verification as data.
+
+  Holds a saved plan to the log that came after it, with three outcomes and
+  never two: the change arrived, it did not, or it cannot be told — because
+  the workload vanished, the fields the detection needs stopped being
+  recorded, or tokens cannot say which tier billed them. Differences carry
+  the world's measured movement (calls, output per call) from the plan's own
+  baseline, and a plan priced under a different catalogue says so rather
+  than blaming a team for a saving that arithmetic revoked.
 
 ${bold('OPTIONS FOR route')}
   --prompt-file <file>        The prompt those calls send. Not --prompt, which
@@ -1410,6 +1430,61 @@ ${bold('EXAMPLES')}
       'Ranked by money, projected or already spent alike. The assumptions are yours to answer: this plan is arithmetic over the log, not knowledge of your product.',
     wrote: (path) =>
       `Plan written to ${path}, dated. Keep it: a prediction nobody wrote down is a prediction nobody can be held to.`,
+  },
+
+  verify: {
+    noTarget: () =>
+      'Point this at a saved plan and a newer log: trazum verify plan.json --against usage.jsonl. It says, per action, whether the change arrived, did not arrive, or cannot be told — and never fewer than those three.',
+    needsAgainst: () =>
+      '--against <newer.jsonl|dir> is required. A plan can only be verified against a log that came after it; without one there is nothing to hold the prediction to.',
+    badPlan: (path) =>
+      `${path} is not a plan document this tool can verify — expected the JSON that "trazum plan -o" writes (schemaVersion 1, with an actions array).`,
+    heading: (actions, planDate) =>
+      planDate === null
+        ? `Did it work? ${actions} actions from an undated plan, against this log`
+        : `Did it work? ${actions} actions from the plan of ${planDate}, against this log`,
+    counts: (arrived, notArrived, cannotTell) =>
+      `${arrived} arrived · ${notArrived} did not arrive · ${cannotTell} cannot be told. The third is not a soft version of the second: it means this log cannot answer, which is its own finding.`,
+    pricesChanged: (planReviewed, nowReviewed) =>
+      `Prices were reviewed ${planReviewed} when the plan was made and ${nowReviewed} now, so every dollar comparison here is two price lists, not one measurement — a team must not be blamed for a saving that arithmetic revoked.`,
+    action: (kind, label, model, outcome) => {
+      const what =
+        kind === 'route'
+          ? `Route ${label} (${model})`
+          : kind === 'batch'
+            ? `Batch ${label} (${model})`
+            : kind === 'route+batch'
+              ? `Route and batch ${label} (${model})`
+              : kind === 'fix-truncation'
+                ? `Fix the truncation retries on ${label} (${model})`
+                : `Fix the cache on ${label} (${model})`;
+      const verdict =
+        outcome === 'arrived' ? 'ARRIVED' : outcome === 'not-arrived' ? 'DID NOT ARRIVE' : 'CANNOT BE TOLD';
+      return `${what} — ${verdict}`;
+    },
+    reason: (reason) =>
+      reason === 'workload-vanished'
+        ? 'the label carries no priced traffic in this log — a vanished workload is not a fixed one, and not a broken one either'
+        : reason === 'fields-stopped'
+          ? 'the fields the detection needs are not in this log — "not recorded" must not read as "fixed", so with --gate this fails'
+          : 'the log records tokens, and tokens do not say which tier billed them — the Batch API cannot be seen from here',
+    routeObserved: (dearestModel, onTargetUsd, onOldUsd) =>
+      `the label's dearest model is now ${dearestModel} · ${onTargetUsd} on the target, ${onOldUsd} still on the old model`,
+    batchUnobservable: () =>
+      'the batch half of this action cannot be seen in token counts; the verdict above is the route half alone',
+    truncationObserved: (retryBillUsd) =>
+      `this log still shows ${retryBillUsd} of truncation waste and retries`,
+    cacheObserved: (deltaUsd, outcome) =>
+      outcome === 'arrived'
+        ? `caching now pays for itself on this slice (${deltaUsd} against the no-cache bill)`
+        : `caching still adds ${deltaUsd} to this slice's bill`,
+    attribution: (callsBefore, callsAfter, outBefore, outAfter) =>
+      `the world moved too: calls ${callsBefore} → ${callsAfter}, output/call ${outBefore} → ${outAfter} tokens — stated so the verdict is not read as the whole story`,
+    gateFailed: (failures, total) =>
+      `GATE FAILED — ${failures} of ${total} actions did not produce what the plan promised, or stopped being measurable by the team's own log.`,
+    gateOk: () => 'Gate passed: every verifiable action arrived, and nothing became unverifiable.',
+    footer: () =>
+      'Arrived and did-not-arrive are measurements; cannot-be-told is the log refusing to guess. All three are the verification working, not failing.',
   },
 
   route: {

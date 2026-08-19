@@ -24,6 +24,7 @@ npm install -g @trazum/cli
 | `trazum profile <log\|dir>` | where the money actually went — reads a usage log (or a directory of rotated ones, `.gz` included), not a prompt. `--against` compares to the previous log; `--what-if <model>` prices these exact calls at another rate card; `--label`/`--since`/`--until` drill down; `--max-usd`/`--max-day-usd`/`--max-growth-usd`/`--max-cache-loss-usd` gate the spend; `--json`/`--csv-out`/`--markdown-out` for pipelines and CI |
 | `trazum route <log.jsonl>` | is the cheaper model good enough? — measured, and it asks before spending |
 | `trazum plan <log\|dir>` | the findings as a ranked plan: what to do first, route+batch combined never summed, projections and money already spent totalled apart, every assumption named. `-o` saves it dated for a later verify; `--min-usd` names what it drops |
+| `trazum verify <plan.json> --against <log>` | did the plan's savings arrive? Three outcomes, never two — arrived, did not, cannot be told — with the world's movement named beside each verdict. `--gate` fails CI on broken promises |
 | `trazum doctor [dir]` | the whole workspace: what nothing is watching, and what fixing would be worth |
 | `trazum rank <dir>` | of these forty prompts, which is worth an afternoon |
 | `trazum prune <file> --cases <file>` | which few-shot examples earn their tokens — measured, and it asks before spending |

@@ -27,6 +27,7 @@ ${bold('USO')}
   trazum eval <fichero> --cases <fichero> --export promptfoo -o suite.json
   trazum route <log.jsonl> --prompt-file <fichero> --cases <fichero> --yes
   trazum plan <log.jsonl|dir> [opciones]
+  trazum verify <plan.json> --against <nuevo.jsonl|dir> [opciones]
   trazum diff <antes> <después> [opciones]
   trazum diff --all <dir> <dir> [opciones]
   trazum rank <dir> [opciones]
@@ -323,6 +324,27 @@ ${bold('OPCIONES DE plan')}
   registro no puede confirmar, porque un plan que esconde sus supuestos es un
   consejo haciéndose pasar por aritmética. El ahorro proyectado y el dinero ya
   gastado son totales separados en todas partes.
+
+${bold('OPCIONES DE verify')}
+  --against <log|dir>         El registro de uso posterior al que se somete el
+                              plan. Obligatorio.
+  --gate                      Sale con 1 cuando una acción no produjo lo que el
+                              plan prometió, o sus campos dejaron de
+                              registrarse — "no registrado" no puede leerse
+                              como "arreglado". Una carga de trabajo
+                              desaparecida no suspende nada.
+  --markdown-out <fichero>    Escribe además los veredictos como Markdown, para
+                              un resumen de CI o un comentario de pull request.
+  --pricing <fichero>         Tarifas locales superpuestas, como en el resto.
+  --json                      La verificación como datos.
+
+  Somete un plan guardado al registro que vino después, con tres resultados y
+  nunca dos: el cambio llegó, no llegó, o no se puede saber — porque la carga
+  desapareció, los campos que la detección necesita dejaron de registrarse, o
+  los tokens no dicen con qué tarifa se facturaron. Las diferencias llevan el
+  movimiento medido del mundo (llamadas, salida por llamada) desde la línea
+  base del propio plan, y un plan tasado con otro catálogo lo dice en vez de
+  culpar a un equipo por un ahorro que la aritmética revocó.
 
 ${bold('OPCIONES DE route')}
   --prompt-file <fichero>     El prompt que mandan esas llamadas. No --prompt,
@@ -1430,6 +1452,61 @@ ${bold('EJEMPLOS')}
       'Ordenado por dinero, proyectado o ya gastado por igual. Los supuestos los respondes tú: este plan es aritmética sobre el registro, no conocimiento de tu producto.',
     wrote: (path) =>
       `Plan escrito en ${path}, con fecha. Guárdalo: una predicción que nadie apuntó es una predicción que no se le puede exigir a nadie.`,
+  },
+
+  verify: {
+    noTarget: () =>
+      'Apunta esto a un plan guardado y a un registro posterior: trazum verify plan.json --against usage.jsonl. Dice, por acción, si el cambio llegó, no llegó o no se puede saber — y nunca menos de esos tres.',
+    needsAgainst: () =>
+      '--against <nuevo.jsonl|dir> es obligatorio. Un plan solo puede verificarse contra un registro posterior; sin uno no hay nada a lo que someter la predicción.',
+    badPlan: (path) =>
+      `${path} no es un documento de plan que esta herramienta pueda verificar — se esperaba el JSON que escribe "trazum plan -o" (schemaVersion 1, con un array actions).`,
+    heading: (actions, planDate) =>
+      planDate === null
+        ? `¿Funcionó? ${actions} acciones de un plan sin fecha, contra este registro`
+        : `¿Funcionó? ${actions} acciones del plan del ${planDate}, contra este registro`,
+    counts: (arrived, notArrived, cannotTell) =>
+      `${arrived} llegaron · ${notArrived} no llegaron · ${cannotTell} no se puede saber. Lo tercero no es una versión suave de lo segundo: significa que este registro no puede responder, y eso es un hallazgo en sí.`,
+    pricesChanged: (planReviewed, nowReviewed) =>
+      `Las tarifas se revisaron el ${planReviewed} cuando se hizo el plan y el ${nowReviewed} ahora, así que cada comparación en dólares aquí son dos listas de precios, no una medición — no se puede culpar a un equipo por un ahorro que la aritmética revocó.`,
+    action: (kind, label, model, outcome) => {
+      const what =
+        kind === 'route'
+          ? `Enrutar ${label} (${model})`
+          : kind === 'batch'
+            ? `Agrupar en batch ${label} (${model})`
+            : kind === 'route+batch'
+              ? `Enrutar y agrupar ${label} (${model})`
+              : kind === 'fix-truncation'
+                ? `Arreglar los reintentos por truncado de ${label} (${model})`
+                : `Arreglar la caché de ${label} (${model})`;
+      const verdict =
+        outcome === 'arrived' ? 'LLEGÓ' : outcome === 'not-arrived' ? 'NO LLEGÓ' : 'NO SE PUEDE SABER';
+      return `${what} — ${verdict}`;
+    },
+    reason: (reason) =>
+      reason === 'workload-vanished'
+        ? 'el label no lleva tráfico tasado en este registro — una carga desaparecida no está arreglada, y tampoco rota'
+        : reason === 'fields-stopped'
+          ? 'los campos que la detección necesita no están en este registro — "no registrado" no puede leerse como "arreglado", así que con --gate esto suspende'
+          : 'el registro guarda tokens, y los tokens no dicen con qué tarifa se facturaron — el Batch API no se puede ver desde aquí',
+    routeObserved: (dearestModel, onTargetUsd, onOldUsd) =>
+      `el modelo más caro del label ahora es ${dearestModel} · ${onTargetUsd} en el destino, ${onOldUsd} todavía en el modelo antiguo`,
+    batchUnobservable: () =>
+      'la mitad batch de esta acción no se puede ver en los recuentos de tokens; el veredicto de arriba es solo la mitad de la ruta',
+    truncationObserved: (retryBillUsd) =>
+      `este registro todavía muestra ${retryBillUsd} de desperdicio y reintentos por truncado`,
+    cacheObserved: (deltaUsd, outcome) =>
+      outcome === 'arrived'
+        ? `la caché ahora se paga sola en esta porción (${deltaUsd} contra la factura sin caché)`
+        : `la caché todavía añade ${deltaUsd} a la factura de esta porción`,
+    attribution: (callsBefore, callsAfter, outBefore, outAfter) =>
+      `el mundo también se movió: llamadas ${callsBefore} → ${callsAfter}, salida/llamada ${outBefore} → ${outAfter} tokens — dicho para que el veredicto no se lea como toda la historia`,
+    gateFailed: (failures, total) =>
+      `GATE SUSPENDIDO — ${failures} de ${total} acciones no produjeron lo que el plan prometió, o dejaron de poder medirse por el propio registro del equipo.`,
+    gateOk: () => 'Gate superado: toda acción verificable llegó, y nada se volvió inverificable.',
+    footer: () =>
+      'Llegó y no-llegó son mediciones; no-se-puede-saber es el registro negándose a adivinar. Los tres son la verificación funcionando, no fallando.',
   },
 
   route: {

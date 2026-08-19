@@ -43,11 +43,11 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- fifteen commands  MCP server      Next.js     comments on pull requests
+ sixteen commands  MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
-## The fifteen commands
+## The sixteen commands
 
 | Command | What it answers |
 |---|---|
@@ -65,6 +65,7 @@ never runs unless you ask.
 | [`trazum profile`](#where-the-money-actually-went-trazum-profile) | Where did the money actually go? *Reads a usage log, not a prompt.* |
 | [`trazum route`](#is-the-cheaper-model-good-enough-trazum-route) | Is the cheaper model good enough? *Measured, and it asks before spending.* |
 | [`trazum plan`](#the-plan-trazum-plan) | Of everything the log shows, what do I do first, and what is each move worth? |
+| [`trazum verify`](#did-it-work-trazum-verify) | Did the plan's savings actually arrive? *Three outcomes, never two.* |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
 
 ## Contents
@@ -171,8 +172,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of fifteen commands — [the table
-above](#the-fifteen-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of sixteen commands — [the table
+above](#the-sixteen-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -236,11 +237,12 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other fourteen commands, each with its own section below:
+The other fifteen commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
 trazum plan usage.jsonl              # the findings as a ranked plan
+trazum verify plan.json --against new.jsonl   # did it work?
 trazum rank prompts/                 # which one to fix first
 trazum blame prompts/system.txt      # who made it expensive, and when
 trazum diff old.txt new.txt          # what this edit cost
@@ -820,6 +822,38 @@ it when one exists. `--min-usd` drops the noise floor and says how many
 actions it dropped and what they were worth together. `-o plan.json` saves
 the plan dated, so a later log can be held against it; `--markdown-out` and
 `--json` as everywhere else.
+
+### Did it work? `trazum verify`
+
+Every optimisation tool says what you *would* save; almost none says what you
+*did*. `verify` holds a saved plan to the log that came after it:
+
+```
+Did it work? 5 actions from the plan of 2026-08-19, against this log
+  1 arrived · 2 did not arrive · 2 cannot be told.
+
+  → Route and batch support (claude-opus-5) — ARRIVED
+    · the label's dearest model is now claude-sonnet-5 · $8.12 on the target
+    · the world moved too: calls 3 → 6, output/call 1,000 → 1,200 tokens
+
+  → Fix the truncation retries on digest (claude-opus-5) — DID NOT ARRIVE
+    · this log still shows $8.00 of truncation waste and retries
+```
+
+**Three outcomes, never two**: arrived, did not arrive, or *cannot be told* —
+because the workload vanished, the fields the detection needs stopped being
+recorded, or tokens cannot say which tier billed them. The third is the
+honest one, and the one every other tool renders as the first. Differences
+carry the world's measured movement from the plan's own recorded baseline —
+calls doubled and output grew are facts printed beside the verdict, so a
+verdict is never read as the whole story. A plan priced under a different
+catalogue says so rather than blaming a team for a saving that arithmetic
+revoked.
+
+`--gate` makes it CI: exit 1 when an action did not produce what the plan
+promised *or became unverifiable because the team's own log dropped the
+fields* — "not recorded" must not read as "fixed". A workload that merely
+vanished fails nothing.
 
 ### Charting it: `doctor --otlp-out`
 

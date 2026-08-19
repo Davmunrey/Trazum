@@ -12,6 +12,7 @@ import {
   analyzeCachePrefix,
   billLevers,
   buildPlan,
+  verifyPlan,
   cacheEconomics,
   cacheHitRate,
   contextPressure,
@@ -79,6 +80,8 @@ import { dayOf, formatGap, median, spanDays } from './time.js';
 import type {
   FleetSource,
   MeasuredUsage,
+  PlanDocument,
+  VerifiedAction,
   BaselineBreach,
   BaselineChange,
   BaselineComparison,
@@ -475,6 +478,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
   profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd', 'label', 'since', 'until', 'dry-run', 'markdown-summary', 'by-source'],
   plan: ['json', 'out', 'markdown-out', 'min-usd', 'pricing', 'pricing-live'],
+  verify: ['against', 'gate', 'json', 'markdown-out', 'pricing', 'pricing-live'],
   route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
@@ -2214,6 +2218,140 @@ function isoDate(): string {
  * metered API calls somebody was actually billed for — the bill exists wherever
  * Trazum happens to be running, so the host has no bearing on it.
  */
+/**
+ * `trazum verify <plan.json> --against <newer.jsonl|dir>` — did it work?
+ *
+ * The plan predicted; this holds the prediction to the log that came after
+ * it. Three outcomes and never two — arrived, did not arrive, cannot be told
+ * — because "cannot be told" rendered as "arrived" is how every other tool
+ * congratulates a team for a workload that merely vanished. With `--gate`,
+ * a broken promise is a failing exit code: a different and more useful gate
+ * than "spend went up".
+ */
+async function commandVerify(
+  args: Args,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
+  const planPath = args.positional[0];
+  if (planPath === undefined) throw new Error(t.verify.noTarget());
+  const againstPath = stringFlag(args, 'against');
+  if (againstPath === undefined) throw new Error(t.verify.needsAgainst());
+
+  let plan: PlanDocument & { createdAt?: string };
+  try {
+    const parsed = JSON.parse(await readFile(planPath, 'utf8'));
+    if (parsed?.schemaVersion !== 1 || !Array.isArray(parsed.actions)) {
+      throw new Error(t.verify.badPlan(planPath));
+    }
+    plan = parsed;
+  } catch (error) {
+    if (error instanceof SyntaxError) throw new Error(t.verify.badPlan(planPath));
+    throw error;
+  }
+
+  const GZ = LOG_EXTENSIONS.map((ext) => `${ext}.gz`);
+  const READABLE = [...LOG_EXTENSIONS, ...GZ];
+  const target = await stat(againstPath).catch(() => null);
+  let files: string[] = [againstPath];
+  if (target?.isDirectory()) {
+    const entries = await readdir(againstPath, { withFileTypes: true });
+    files = entries
+      .filter((entry) => entry.isFile() && READABLE.some((ext) => entry.name.endsWith(ext)))
+      .map((entry) => join(againstPath, entry.name))
+      .sort((a, b) => a.localeCompare(b));
+    if (files.length === 0) throw new Error(t.profile.noLogsInDirectory(againstPath, READABLE.join(', ')));
+  }
+  const texts = await Promise.all(files.map((file) => readUsageLog(file, t)));
+  const raw = texts.map((text) => (text.endsWith('\n') ? text : `${text}\n`)).join('');
+  const report = profileUsage(raw, { catalogue: pricing });
+
+  const verification = verifyPlan(plan, report, { currentPricingLastReviewed: pricing.lastReviewed });
+  const gate = boolFlag(args, 'gate');
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+
+  const lines = (md: boolean): string[] => {
+    const out: string[] = [];
+    const actionLine = (v: VerifiedAction): string[] => {
+      const name = v.action.label === UNLABELLED ? t.profile.unlabelled() : v.action.label;
+      const rows: string[] = [];
+      rows.push(t.verify.action(v.action.kind, name, v.action.model, v.outcome));
+      if (v.outcome === 'cannot-tell' && v.reason !== null) rows.push(t.verify.reason(v.reason));
+      if (v.action.kind === 'route' || v.action.kind === 'route+batch') {
+        if (v.outcome !== 'cannot-tell') {
+          rows.push(
+            t.verify.routeObserved(
+              String(v.observed.dearestModel ?? ''),
+              formatUsd(Number(v.observed.onTargetUsd ?? 0)),
+              formatUsd(Number(v.observed.onOldModelUsd ?? 0)),
+            ),
+          );
+        }
+        if (v.action.kind === 'route+batch' && v.outcome !== 'cannot-tell') rows.push(t.verify.batchUnobservable());
+      }
+      if (v.action.kind === 'fix-truncation' && v.outcome === 'not-arrived') {
+        rows.push(t.verify.truncationObserved(formatUsd(Number(v.observed.retryBillUsd ?? 0))));
+      }
+      if (v.action.kind === 'fix-caching' && v.outcome !== 'cannot-tell') {
+        rows.push(t.verify.cacheObserved(formatUsd(Number(v.observed.deltaUsd ?? 0)), v.outcome));
+      }
+      if (v.attribution?.calls !== undefined) {
+        rows.push(
+          t.verify.attribution(
+            n(Math.round(v.attribution.calls.before)),
+            n(Math.round(v.attribution.calls.after)),
+            n(Math.round(v.attribution.outputPerCallTokens?.before ?? 0)),
+            n(Math.round(v.attribution.outputPerCallTokens?.after ?? 0)),
+          ),
+        );
+      }
+      return rows;
+    };
+
+    const heading = t.verify.heading(
+      n(verification.actions.length),
+      verification.planCreatedAt === null ? null : verification.planCreatedAt.slice(0, 10),
+    );
+    out.push(md ? `## ${heading}` : heading);
+    out.push(
+      t.verify.counts(n(verification.arrived), n(verification.notArrived), n(verification.cannotTell)),
+    );
+    if (verification.pricesChanged) {
+      out.push(t.verify.pricesChanged(verification.planPricing, verification.currentPricing));
+    }
+    for (const v of verification.actions) {
+      out.push('');
+      const [head, ...rest] = actionLine(v);
+      out.push(md ? `### ${head}` : `→ ${head}`);
+      for (const row of rest) out.push(md ? `- ${row}` : `  · ${row}`);
+    }
+    out.push('');
+    out.push(t.verify.footer());
+    return out;
+  };
+
+  await writeMarkdown(args, () => lines(true).join('\n'));
+
+  if (boolFlag(args, 'json')) {
+    console.log(JSON.stringify(verification, null, 2));
+  } else {
+    const [head, ...rest] = lines(false);
+    console.log(c.bold(head!));
+    for (const row of rest) {
+      console.log(row === '' ? '' : `  ${wrap(row, 74, '    ')}`);
+    }
+  }
+
+  if (gate) {
+    if (verification.gateFailures > 0) {
+      console.error(c.red(t.verify.gateFailed(n(verification.gateFailures), n(verification.actions.length))));
+      process.exitCode = 1;
+    } else {
+      console.log(c.green(t.verify.gateOk()));
+    }
+  }
+}
+
 /**
  * `trazum plan <log>` — not a list of findings, a ranked plan of what to do.
  *
@@ -6160,6 +6298,9 @@ async function main(): Promise<void> {
       break;
     case 'plan':
       await commandPlan(args, pricing, t);
+      break;
+    case 'verify':
+      await commandVerify(args, pricing, t);
       break;
     case 'route':
       await commandRoute(args, pricing, t);

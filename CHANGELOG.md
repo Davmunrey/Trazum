@@ -11,7 +11,35 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**`trazum verify <plan.json> --against <newer.jsonl>`: did it work?** Every
+optimisation tool says what you *would* save; almost none says what you
+*did*. This holds a saved plan to the log that came after it, with **three
+outcomes and never two**: the change arrived, it did not arrive, or it
+cannot be told — because the workload vanished, the fields the detection
+needs stopped being recorded, or tokens cannot say which tier billed them
+(the Batch API is invisible in token counts, and the verification says so
+instead of assuming it happened). The third outcome is the honest one and
+the one every other tool renders as the first.
+
+Differences are attributed, not just stated: every plan action now records
+its baseline (calls, dollars, tokens per call at plan time), and the
+verification prints the world's movement beside each verdict — calls 3 → 6,
+output/call 1,000 → 1,200 — so "the prediction was wrong" can be told from
+"the traffic doubled". A plan priced under one catalogue and verified under
+another is flagged (`pricesChanged`): the tool must not blame a team for a
+saving that arithmetic revoked.
+
+`--gate` makes promises checkable in CI: exit 1 when an action did not
+produce what the plan promised, or became unverifiable because the team's
+own log dropped the fields the detection needs — "not recorded" must not
+read as "fixed". A workload that merely vanished fails nothing. `--json`
+emits the verification document (contracted in docs/json-output.md);
+`--markdown-out` writes the verdicts for a CI summary.
+
+New core module `verify.ts` (`verifyPlan`, typed outcomes and reasons),
+browser-safe: two documents in, one verdict out.
 
 ## 1.38.0 — "The plan"
 

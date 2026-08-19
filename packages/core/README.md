@@ -106,6 +106,19 @@ renderer localizes them and a later verification can match them
 structurally. `planLabelName` renders the unlabelled bucket without leaking
 the sentinel.
 
+## Did it work?
+
+`verifyPlan(plan, newerReport, { currentPricingLastReviewed })` holds a saved
+plan to the report of a later log, with three outcomes and never two:
+`arrived`, `not-arrived`, or `cannot-tell` — the workload vanished, the
+fields the detection needs stopped being recorded, or tokens cannot say
+which tier billed them. Differences carry the world's measured movement from
+the plan's recorded baseline (calls, tokens per call, both numbers and never
+a verdict), a repricing between the two documents is flagged rather than
+silently priced through, and each verdict says whether it fails a gate:
+`not-arrived` always, `fields-stopped` too — a team must not pass on the
+strength of its own log's silence — and a vanished workload never.
+
 ## Comparing two versions
 
 ```ts
