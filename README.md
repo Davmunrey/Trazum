@@ -1985,6 +1985,19 @@ takes `maxUsd` for the whole log and `byLabel` for each workload, so CI runs
 `trazum profile logs/yesterday.jsonl` with no flags at all. A budgeted label
 with no calls in the log is reported as *not measured*, never as a pass.
 
+**Rotated logs are read as they are.** `profile` takes a file or a directory,
+and a directory of a month's logs is normally one plain file and twenty-nine
+gzipped ones — so `.jsonl.gz` and its siblings are read too, in name order, as
+one bill:
+
+```bash
+trazum profile /var/log/llm/          # today.jsonl + 2026-08-*.jsonl.gz
+```
+
+A `.gz` that will not decompress is an **error naming the file**. Reading the
+rest and saying nothing would report a bill missing whatever that file held,
+which is the flattering silence this tool refuses everywhere else.
+
 **And one gate a total cannot arm.** `--max-day-usd` fails when any single
 UTC day inside the log spent more than the limit:
 

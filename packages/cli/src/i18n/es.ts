@@ -262,7 +262,10 @@ ${bold('OPCIONES DE profile')}
 
   Acepta un fichero de registro o un directorio de ellos — los registros
   rotados por día se leen en orden de nombre como una sola factura, y se dice
-  cuántos se leyeron.
+  cuántos se leyeron. También lee los comprimidos (.jsonl.gz y los demás),
+  porque es lo que es un registro rotado un día después; uno que no se pueda
+  descomprimir es un error que nombra el fichero, nunca una factura a la que
+  le falta un día en silencio.
 
   Lee lo que el proveedor cobró de verdad. Campos opcionales desbloquean
   hallazgos: "label" (qué carga), "session" (qué conversación — se agrupa y
@@ -1130,6 +1133,8 @@ ${bold('EJEMPLOS')}
       'Nada que comparar: todas las llamadas con precio de este registro ya están en ese modelo, o son demasiado grandes para su ventana de contexto.',
     whatIfUnknown: (value, available) =>
       `--what-if no conoce "${value}". Modelos con precio: ${available}. Añádelo con --pricing si tienes sus tarifas.`,
+    badGzip: (file, detail) =>
+      `${file} está comprimido con gzip y no se ha podido descomprimir: ${detail}. Leer el resto y no decir nada daría una factura a la que le falta lo que hubiera en ese fichero, así que se para aquí. Revisa el fichero, o sácalo del directorio.`,
     coverageHeading: () => 'Lo que este registro todavía no puede responder',
     needsLabel: (seen) =>
       `"label" en ${seen} registros: sin él todas las cargas son una sola fila, así que no hay gasto por carga, ni zoom, y las palancas describen una mezcla en vez de una decisión.`,

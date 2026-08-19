@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join, resolve as resolvePath } from 'node:path';
+import { gunzipSync } from 'node:zlib';
 
 import {
   applyRewrites,
@@ -1987,19 +1988,53 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
    * not an empty report.
    */
   const LOG_EXTENSIONS = ['.jsonl', '.ndjson', '.log', '.json'];
+  /**
+   * The same names, gzipped — which is what a rotated log actually looks like
+   * a day after it rotates.
+   *
+   * `logrotate`, Docker's json-file driver and every cloud log export compress
+   * yesterday's file, so a directory of a month's logs is one plain file and
+   * twenty-nine `.gz` ones. Reading only the plain one and saying nothing
+   * would report a month's bill from a day of it, in the flattering
+   * direction, which is exactly the failure directory mode was added to
+   * prevent.
+   */
+  const GZ_EXTENSIONS = LOG_EXTENSIONS.map((ext) => `${ext}.gz`);
+  const READABLE = [...LOG_EXTENSIONS, ...GZ_EXTENSIONS];
   const target = await stat(path).catch(() => null);
   let logFiles: string[] = [path];
   if (target?.isDirectory()) {
     const entries = await readdir(path, { withFileTypes: true });
     logFiles = entries
-      .filter((entry) => entry.isFile() && LOG_EXTENSIONS.some((ext) => entry.name.endsWith(ext)))
+      .filter((entry) => entry.isFile() && READABLE.some((ext) => entry.name.endsWith(ext)))
       .map((entry) => join(path, entry.name))
       .sort((a, b) => a.localeCompare(b));
     if (logFiles.length === 0) {
-      throw new Error(t.profile.noLogsInDirectory(path, LOG_EXTENSIONS.join(', ')));
+      throw new Error(t.profile.noLogsInDirectory(path, READABLE.join(', ')));
     }
   }
-  const logTexts = await Promise.all(logFiles.map((file) => readFile(file, 'utf8')));
+  /**
+   * Gzipped files are decompressed in memory; everything else is read as text.
+   *
+   * Decided by **extension**, not by sniffing the first two bytes: a file
+   * named `.jsonl` whose contents happen to start with 0x1f8b is far more
+   * likely to be a corrupt log than a mislabelled archive, and silently
+   * treating it as one would turn a diagnosable error into an empty report.
+   *
+   * A `.gz` that will not decompress is an error naming the file. The
+   * alternative — skipping it — is a total quietly missing a day, which is
+   * the failure this repository refuses in every other place it can occur.
+   */
+  const readLog = async (file: string): Promise<string> => {
+    if (!file.endsWith('.gz')) return readFile(file, 'utf8');
+    const compressed = await readFile(file);
+    try {
+      return gunzipSync(compressed).toString('utf8');
+    } catch (error) {
+      throw new Error(t.profile.badGzip(file, error instanceof Error ? error.message : String(error)));
+    }
+  };
+  const logTexts = await Promise.all(logFiles.map((file) => readLog(file)));
   // A file that does not end in a newline would otherwise glue its last record
   // to the next file's first one, and both would be reported as unreadable.
   const raw = logTexts.map((text) => (text.endsWith('\n') ? text : `${text}\n`)).join('');
@@ -2116,7 +2151,10 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
   // whole previous log would report every sibling workload as vanished savings.
   const previous =
     againstPath !== undefined
-      ? profileUsage(await readFile(againstPath, 'utf8'), {
+      // The same reader as the log itself, so `--against last-month.jsonl.gz`
+      // works: a comparison that could only read one of the two formats would
+      // be a flag that fails on exactly the rotated file it exists to read.
+      ? profileUsage(await readLog(againstPath), {
           catalogue: pricing,
           label: onlyLabel,
           // The same window on both sides, for the same reason as the label:

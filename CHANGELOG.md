@@ -13,6 +13,21 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**Rotated logs are read as they are: `.gz` included.** `logrotate`, Docker's
+json-file driver and every cloud log export compress yesterday's file, so a
+directory of a month's logs is one plain file and twenty-nine gzipped ones.
+Directory mode read the plain one and said nothing about the rest — a month's
+bill reported from a day of it, in the flattering direction, which is exactly
+the failure directory mode was added to prevent. `.jsonl.gz`, `.ndjson.gz`,
+`.log.gz` and `.json.gz` are now read in the same pass, and `--against`
+accepts them too.
+
+Decided by **extension, not by sniffing the first two bytes**: a `.jsonl`
+whose contents happen to start with `0x1f8b` is far more likely a corrupt log
+than a mislabelled archive, and silently treating it as one would turn a
+diagnosable error into an empty report. A `.gz` that will not decompress is an
+error naming the file, never a skip.
+
 **`repeatedTurns`: the same request, sent again.** A conversation's input
 grows with every turn — that is the whole point of `conversations`. So two
 consecutive calls in one conversation carrying *exactly* the same input size,
