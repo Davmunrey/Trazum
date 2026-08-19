@@ -1,4 +1,4 @@
-import type { EvalVerdict, Locale, RuleLevel } from '@trazum/core';
+import type { EvalVerdict, Locale, PlanActionKind, PlanAssumption, RuleLevel } from '@trazum/core';
 
 /**
  * The CLI's own message catalogue.
@@ -1038,6 +1038,40 @@ export interface CliMessages {
     singleTurnCeiling(label: string, model: string, single: string, sessions: string, usd: string): string;
     singleTurnConfirmed(label: string, model: string, single: string, sessions: string, usd: string): string;
   };
+  /**
+   * `trazum plan <log>` — not a list of findings, a ranked plan of what to do.
+   *
+   * The report names what it found; the plan ranks what to do about it, with
+   * the money composed correctly (route and batch on one slice combined,
+   * never summed) and every action carrying what the log cannot confirm.
+   * Projected savings and measured stakes are separate columns throughout:
+   * "what you would save" and "what you already paid" merged into one number
+   * is a number that is neither.
+   */
+  plan: {
+    noTarget(): string;
+    /** The log priced nothing — a plan over zero calls would be advice about nothing. */
+    nothingPriced(): string;
+    heading(actions: string, total: string): string;
+    totals(projected: string, staked: string): string;
+    /** No timestamps: the figures are per this log, not per any period. */
+    noClock(): string;
+    projected(usd: string): string;
+    staked(usd: string): string;
+    /** One action line: what to do, to which workload, on which model. */
+    action(kind: PlanActionKind, label: string, model: string): string;
+    routeTo(model: string): string;
+    /** One assumption the log cannot confirm, localized from its typed form. */
+    assume(assumption: PlanAssumption): string;
+    /** The command that can check the assumption, when one exists. */
+    check(command: string): string;
+    /** Actions below --min-usd, counted out loud rather than dropped silently. */
+    filtered(count: string, minUsd: string, worth: string): string;
+    footer(): string;
+    /** The plan saved as dated JSON — what 1.39's verify will hold it to. */
+    wrote(path: string): string;
+  };
+
   /**
    * `trazum route` — the loop the levers section could only point at.
    *

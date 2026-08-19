@@ -26,6 +26,7 @@ ${bold('USO')}
   trazum eval <fichero> --cases <fichero> [opciones]
   trazum eval <fichero> --cases <fichero> --export promptfoo -o suite.json
   trazum route <log.jsonl> --prompt-file <fichero> --cases <fichero> --yes
+  trazum plan <log.jsonl|dir> [opciones]
   trazum diff <antes> <después> [opciones]
   trazum diff --all <dir> <dir> [opciones]
   trazum rank <dir> [opciones]
@@ -303,6 +304,25 @@ ${bold('OPCIONES DE profile')}
   hallazgos: "label" (qué carga), "session" (qué conversación — se agrupa y
   nunca se imprime), "stop_reason"/"finish_reason" (respuestas cortadas en
   max_tokens).
+
+${bold('OPCIONES DE plan')}
+  --min-usd <n>               Deja fuera las acciones que valen menos de n
+                              dólares. Cuántas quedaron fuera se dice, nunca
+                              en silencio.
+  -o, --out <fichero>         Guarda el plan como JSON fechado — el fichero al
+                              que "trazum verify" lo atará después.
+  --markdown-out <fichero>    Escribe además el plan como Markdown, para un
+                              resumen de CI o un comentario de pull request.
+  --pricing <fichero>         Tarifas locales superpuestas, como en el resto.
+  --json                      El plan como datos.
+
+  Lee un registro de uso y convierte los hallazgos del informe en un plan
+  ordenado: enruta esto, agrupa aquello, arregla el par de truncados, mira la
+  caché. El dinero está compuesto correctamente — ruta y batch sobre la misma
+  porción llegan combinados, nunca sumados — y cada acción nombra lo que el
+  registro no puede confirmar, porque un plan que esconde sus supuestos es un
+  consejo haciéndose pasar por aritmética. El ahorro proyectado y el dinero ya
+  gastado son totales separados en todas partes.
 
 ${bold('OPCIONES DE route')}
   --prompt-file <fichero>     El prompt que mandan esas llamadas. No --prompt,
@@ -1361,6 +1381,55 @@ ${bold('EJEMPLOS')}
       `${label} en ${model}: ${single} de ${sessions} conversaciones terminaron tras su primer turno, y sus escrituras de caché — ${usd} — pagaron una reutilización que su propia conversación nunca hizo. Otra conversación con el mismo prefijo dentro del TTL pudo haberlas leído; el registro no puede ver de quién era la escritura que una lectura encontró, así que esa cifra es un techo del desperdicio, no una factura.`,
     singleTurnConfirmed: (label, model, single, sessions, usd) =>
       `${label} en ${model}: ${single} de ${sessions} conversaciones terminaron tras su primer turno y gastaron ${usd} escribiendo una caché que nada en este registro leyó jamás. Dentro de la conversación, entre conversaciones — ninguna lectura en ningún sitio, así que esas escrituras no compraron nada. Cachear una llamada de un solo uso es puro sobreprecio de escritura; deja de marcar estas llamadas con cache_control.`,
+  },
+
+  plan: {
+    noTarget: () =>
+      'Apunta esto a un registro de uso o a un directorio de ellos: trazum plan usage.jsonl. Convierte el informe en un plan ordenado — qué hacer primero, cuánto vale cada acción y qué no puede confirmar el registro sobre ella.',
+    nothingPriced: () =>
+      'Este registro no tasó nada — ninguna llamada coincide con un modelo del catálogo. Un plan sobre cero dólares sería un consejo sobre nada; revisa el registro primero con "trazum profile".',
+    heading: (actions, total) => `El plan: ${actions} acciones contra una factura de ${total}`,
+    totals: (projected, staked) =>
+      `${projected} de ahorro proyectado, sobre los supuestos listados abajo. ${staked} ya gastados en problemas que este plan nombra — medido, no proyectado.`,
+    noClock: () =>
+      'Este registro no tiene marcas de tiempo, así que cada cifra es por este registro, no por ningún período.',
+    projected: (usd) => `${usd} proyectados`,
+    staked: (usd) => `${usd} ya gastados`,
+    action: (kind, label, model) => {
+      const verb =
+        kind === 'route'
+          ? 'Enruta'
+          : kind === 'batch'
+            ? 'Agrupa en batch'
+            : kind === 'route+batch'
+              ? 'Enruta y agrupa'
+              : kind === 'fix-truncation'
+                ? 'Arregla los reintentos por truncado de'
+                : 'Mira la caché de';
+      return `${verb} ${label} (${model})`;
+    },
+    routeTo: (model) => `a ${model} — combinado con el batch donde aplican los dos, nunca sumado`,
+    assume: (assumption) => {
+      switch (assumption.kind) {
+        case 'model-capability':
+          return `supone que ${assumption.model} puede hacer este trabajo — el registro tasa el cambio, no puede juzgar las respuestas`;
+        case 'batch-window':
+          return 'supone que estas llamadas pueden esperar una ventana de batch';
+        case 'retry-pattern-real':
+          return 'supone que el patrón de reintentos es real — el registro ve formas, no contenido';
+        case 'max-tokens-fits':
+          return 'supone que un max_tokens en el que quepan las respuestas elimina el par';
+        case 'traffic-pattern-holds':
+          return 'supone que el patrón de tráfico se mantiene — una caché que perdió dinero en este registro puede rendir con otro tráfico';
+      }
+    },
+    check: (command) => `compruébalo: ${command}`,
+    filtered: (count, minUsd, worth) =>
+      `${count} acciones por debajo de ${minUsd}, que juntas valen ${worth}, quedaron fuera por --min-usd — fuera de este documento por completo, no refutadas.`,
+    footer: () =>
+      'Ordenado por dinero, proyectado o ya gastado por igual. Los supuestos los respondes tú: este plan es aritmética sobre el registro, no conocimiento de tu producto.',
+    wrote: (path) =>
+      `Plan escrito en ${path}, con fecha. Guárdalo: una predicción que nadie apuntó es una predicción que no se le puede exigir a nadie.`,
   },
 
   route: {

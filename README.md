@@ -43,11 +43,11 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- fourteen commands MCP server      Next.js     comments on pull requests
+ fifteen commands  MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
-## The fourteen commands
+## The fifteen commands
 
 | Command | What it answers |
 |---|---|
@@ -64,6 +64,7 @@ never runs unless you ask.
 | [`trazum models`](#every-model-you-pay-for-by-the-token) | What does each model cost, and what is its cache minimum? |
 | [`trazum profile`](#where-the-money-actually-went-trazum-profile) | Where did the money actually go? *Reads a usage log, not a prompt.* |
 | [`trazum route`](#is-the-cheaper-model-good-enough-trazum-route) | Is the cheaper model good enough? *Measured, and it asks before spending.* |
+| [`trazum plan`](#the-plan-trazum-plan) | Of everything the log shows, what do I do first, and what is each move worth? |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
 
 ## Contents
@@ -170,8 +171,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of fourteen commands — [the table
-above](#the-fourteen-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of fifteen commands — [the table
+above](#the-fifteen-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -235,10 +236,11 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other thirteen commands, each with its own section below:
+The other fourteen commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
+trazum plan usage.jsonl              # the findings as a ranked plan
 trazum rank prompts/                 # which one to fix first
 trazum blame prompts/system.txt      # who made it expensive, and when
 trazum diff old.txt new.txt          # what this edit cost
@@ -784,6 +786,40 @@ while losing money in one source, and per-service budgets that fail the run
 a 30-day one is the mistake the warning exists to stop. Files matching no
 pattern are named rather than silently joining no report. `--json` carries
 the full per-source reports plus the rollup.
+
+### The plan: `trazum plan`
+
+The report names findings; a person then decides what to do first by adding
+savings in their head — and savings on the same slice do not add. `trazum plan
+<log>` does the composition once, correctly, and hands back a ranked plan:
+
+```
+The plan: 3 actions against a $53.56 bill
+  $41.60 projected savings, on assumptions listed below. $20.50 already
+  spent on problems this plan names — measured, not projected.
+
+  → Route and batch rag (claude-opus-5)  $19.00 projected
+    to Claude Sonnet 5 — combined with batching where both apply, never summed
+    ? assumes Claude Sonnet 5 can do this work — the log prices the move, it
+      cannot judge the answers
+    ? assumes these calls can wait for a batch window
+    check it: trazum route <log> --prompt-file <prompt> --cases <cases>
+
+  → Fix the truncation retries on digest (claude-opus-5)  $8.00 already spent
+    ? assumes the retry pattern is real — the log sees shapes, not content
+```
+
+Route and batch on the same slice arrive **combined, never summed** — $12.60
+plus $10.50 against a $21.00 slice is the arithmetic this command exists to
+end. Projected savings and money already spent (the retry bill, a settled
+cache loss) are separate totals throughout, because "what you would save" and
+"what you already paid" merged into one figure is a number that is neither.
+Every action carries what the log cannot confirm — the cheaper model's
+competence, the batch window's tolerability — and the command that can check
+it when one exists. `--min-usd` drops the noise floor and says how many
+actions it dropped and what they were worth together. `-o plan.json` saves
+the plan dated, so a later log can be held against it; `--markdown-out` and
+`--json` as everywhere else.
 
 ### Charting it: `doctor --otlp-out`
 

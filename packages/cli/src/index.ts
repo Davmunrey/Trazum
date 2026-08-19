@@ -11,6 +11,7 @@ import {
   cacheableMinimum,
   analyzeCachePrefix,
   billLevers,
+  buildPlan,
   cacheEconomics,
   cacheHitRate,
   contextPressure,
@@ -172,6 +173,7 @@ interface Args {
 const VALUE_FLAGS = new Set([
   'against',
   'from-log',
+  'min-usd',
   // `route` takes a path here, and the flag is deliberately not `--prompt`:
   // everywhere else in this tool `--prompt` names a marked prompt *inside* a
   // source file, and reusing it for a path would be a trap laid for the reader.
@@ -312,6 +314,13 @@ function levelFlag(args: Args, config: TrazumConfig, t: CliMessages): RuleLevel 
  * model id. It beats the default because reading the code is better than
  * assuming, and loses to config because being told is better than reading.
  */
+/**
+ * The file names a usage log answers to, shared by every command that reads a
+ * directory of them. One list, because two commands disagreeing on what counts
+ * as a log would be the same directory billing differently by verb.
+ */
+const LOG_EXTENSIONS = ['.jsonl', '.ndjson', '.log', '.json'];
+
 /**
  * One usage log, gzip included, shared by every command that reads one.
  *
@@ -465,6 +474,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
   profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd', 'label', 'since', 'until', 'dry-run', 'markdown-summary', 'by-source'],
+  plan: ['json', 'out', 'markdown-out', 'min-usd', 'pricing', 'pricing-live'],
   route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
@@ -2204,6 +2214,140 @@ function isoDate(): string {
  * metered API calls somebody was actually billed for — the bill exists wherever
  * Trazum happens to be running, so the host has no bearing on it.
  */
+/**
+ * `trazum plan <log>` — not a list of findings, a ranked plan of what to do.
+ *
+ * The composition (route and batch on one slice never summed) happens in
+ * core's `buildPlan`; this command owns the I/O and the rendering. The plan
+ * saves as a dated JSON file on request, which is what makes verifying it
+ * against a later log possible at all — a prediction nobody wrote down is a
+ * prediction nobody can be held to.
+ */
+async function commandPlan(
+  args: Args,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
+  const path = args.positional[0];
+  if (path === undefined) throw new Error(t.plan.noTarget());
+
+  const GZ = LOG_EXTENSIONS.map((ext) => `${ext}.gz`);
+  const READABLE = [...LOG_EXTENSIONS, ...GZ];
+  const target = await stat(path).catch(() => null);
+  let files: string[] = [path];
+  if (target?.isDirectory()) {
+    const entries = await readdir(path, { withFileTypes: true });
+    files = entries
+      .filter((entry) => entry.isFile() && READABLE.some((ext) => entry.name.endsWith(ext)))
+      .map((entry) => join(path, entry.name))
+      .sort((a, b) => a.localeCompare(b));
+    if (files.length === 0) throw new Error(t.profile.noLogsInDirectory(path, READABLE.join(', ')));
+  }
+  const texts = await Promise.all(files.map((file) => readUsageLog(file, t)));
+  const raw = texts.map((text) => (text.endsWith('\n') ? text : `${text}\n`)).join('');
+
+  const report = profileUsage(raw, { catalogue: pricing });
+  if (report.total.calls === 0) throw new Error(t.plan.nothingPriced());
+  const levers = billLevers(report, { catalogue: pricing });
+  const plan = buildPlan(report, levers, pricing.lastReviewed);
+
+  const minUsd = typeof args.flags.get('min-usd') === 'string' ? numberFlag(args, 'min-usd', 0, t) : 0;
+  const actions = plan.actions.filter((a) => (a.savingUsd ?? a.stakeUsd ?? 0) >= minUsd);
+  const filtered = plan.actions.length - actions.length;
+  const droppedUsd = plan.actions
+    .filter((a) => (a.savingUsd ?? a.stakeUsd ?? 0) < minUsd)
+    .reduce((sum, a) => sum + (a.savingUsd ?? a.stakeUsd ?? 0), 0);
+
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  /**
+   * The document's totals cover the actions the document holds — a filtered
+   * plan whose totals still counted the filtered actions would be a file
+   * that contradicts itself, and 1.39's verify would hold it to money it
+   * cannot see. What --min-usd dropped is stated with its worth, never
+   * silently.
+   */
+  const stamped = {
+    ...plan,
+    actions,
+    projectedSavingUsd: actions.reduce((sum, a) => sum + (a.savingUsd ?? 0), 0),
+    measuredStakeUsd: actions.reduce((sum, a) => sum + (a.stakeUsd ?? 0), 0),
+    createdAt: new Date().toISOString(),
+  };
+
+  const outPath = stringFlag(args, 'out');
+  if (outPath !== undefined) {
+    await writeFile(outPath, `${JSON.stringify(stamped, null, 2)}\n`);
+  }
+
+  await writeMarkdown(args, () => {
+    const lines: string[] = [];
+    lines.push(`## ${t.plan.heading(n(actions.length), formatUsd(plan.totalUsd))}`);
+    lines.push('');
+    lines.push(t.plan.totals(formatUsd(stamped.projectedSavingUsd), formatUsd(stamped.measuredStakeUsd)));
+    if (plan.span === null) {
+      lines.push('');
+      lines.push(`_${t.plan.noClock()}_`);
+    }
+    for (const action of actions) {
+      const name = action.label === UNLABELLED ? t.profile.unlabelled() : action.label;
+      const money =
+        action.savingUsd !== null
+          ? t.plan.projected(formatUsd(action.savingUsd))
+          : t.plan.staked(formatUsd(action.stakeUsd ?? 0));
+      lines.push('');
+      lines.push(`### ${t.plan.action(action.kind, name, action.model)} — ${money}`);
+      if (action.detail.routeTo !== undefined) lines.push(`- ${t.plan.routeTo(action.detail.routeTo.displayName)}`);
+      for (const assumption of action.assumes) lines.push(`- ${t.plan.assume(assumption)}`);
+      if (action.check !== null) lines.push(`- ${t.plan.check(action.check)}`);
+    }
+    if (filtered > 0) {
+      lines.push('');
+      lines.push(`_${t.plan.filtered(n(filtered), formatUsd(minUsd), formatUsd(droppedUsd))}_`);
+    }
+    lines.push('');
+    lines.push(`_${t.plan.footer()}_`);
+    return lines.join('\n');
+  });
+
+  if (boolFlag(args, 'json')) {
+    console.log(JSON.stringify(stamped, null, 2));
+    return;
+  }
+
+  console.log(c.bold(t.plan.heading(n(actions.length), formatUsd(plan.totalUsd))));
+  console.log(
+    `  ${wrap(t.plan.totals(formatUsd(stamped.projectedSavingUsd), formatUsd(stamped.measuredStakeUsd)), 74, '  ')}`,
+  );
+  if (plan.span === null) {
+    console.log(`  ${c.dim(wrap(t.plan.noClock(), 74, '  '))}`);
+  }
+  for (const action of actions) {
+    const name = action.label === UNLABELLED ? t.profile.unlabelled() : action.label;
+    const money =
+      action.savingUsd !== null
+        ? t.plan.projected(formatUsd(action.savingUsd))
+        : t.plan.staked(formatUsd(action.stakeUsd ?? 0));
+    console.log();
+    console.log(`  ${c.green('→')} ${c.bold(t.plan.action(action.kind, name, action.model))}  ${money}`);
+    if (action.detail.routeTo !== undefined) {
+      console.log(`    ${c.dim(t.plan.routeTo(action.detail.routeTo.displayName))}`);
+    }
+    for (const assumption of action.assumes) {
+      console.log(`    ${c.yellow('?')} ${c.dim(wrap(t.plan.assume(assumption), 72, '      '))}`);
+    }
+    if (action.check !== null) {
+      console.log(`    ${c.dim(wrap(t.plan.check(action.check), 72, '      '))}`);
+    }
+  }
+  if (filtered > 0) {
+    console.log();
+    console.log(`  ${c.dim(wrap(t.plan.filtered(n(filtered), formatUsd(minUsd), formatUsd(droppedUsd)), 74, '  '))}`);
+  }
+  console.log();
+  console.log(`  ${c.dim(wrap(t.plan.footer(), 74, '  '))}`);
+  if (outPath !== undefined) console.log(c.dim(wrap(t.plan.wrote(outPath), 74, '')));
+}
+
 async function commandProfile(args: Args, config: TrazumConfig, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
   const path = args.positional[0];
   if (path === undefined) {
@@ -2227,7 +2371,6 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
    * directory holding nothing readable is an error naming what it looked for,
    * not an empty report.
    */
-  const LOG_EXTENSIONS = ['.jsonl', '.ndjson', '.log', '.json'];
   /**
    * The same names, gzipped — which is what a rotated log actually looks like
    * a day after it rotates.
@@ -6014,6 +6157,9 @@ async function main(): Promise<void> {
       break;
     case 'profile':
       await commandProfile(args, config, pricing, t);
+      break;
+    case 'plan':
+      await commandPlan(args, pricing, t);
       break;
     case 'route':
       await commandRoute(args, pricing, t);

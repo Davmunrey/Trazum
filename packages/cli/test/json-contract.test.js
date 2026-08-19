@@ -43,10 +43,21 @@ const report = async (extra = []) => {
   return JSON.parse(result.stdout);
 };
 
-/** The field names the doc's table promises. */
+/**
+ * The field names the doc promises for the *profile* document.
+ *
+ * The file now documents three contracts — the profile report, the fleet
+ * document and the plan document — so the harvest stops at the first heading
+ * after the top-level table: the fleet's and the plan's fields belong to
+ * their own shapes, and holding `profile --json` to `createdAt` would be
+ * enforcing the wrong contract on the right command.
+ */
 const documented = async () => {
   const doc = await readFile(DOC, 'utf8');
-  return new Set([...doc.matchAll(/^\| `([a-zA-Z]+)` \|/gm)].map((match) => match[1]));
+  const start = doc.indexOf('## Top-level fields');
+  const end = doc.indexOf('## The `--by-source` document');
+  const scope = doc.slice(start, end === -1 ? undefined : end);
+  return new Set([...scope.matchAll(/^\| `([a-zA-Z]+)` \|/gm)].map((match) => match[1]));
 };
 
 describe('the --json contract', () => {
