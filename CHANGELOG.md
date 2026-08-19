@@ -9,6 +9,24 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**`--max-day-usd`: the gate a total cannot arm.** A month at $3,000 against a
+$4,000 budget passes while one afternoon's runaway loop burned $900 of it.
+`--max-usd` gates the sum handed in; this gates the worst single UTC day
+inside it, which is the shape a loop, a bad deploy or a retry storm actually
+has — and it names that day's biggest label, so the spike arrives with a
+suspect attached.
+
+Two refusals it inherits from the rest of the tool. A log with **no clock at
+all** cannot be judged by day and **fails**: "not measured" is not "under
+budget", and a gate that silently green-lights an unmeasurable log is worse
+than one that was never armed. And calls with no `ts` are in the bill and in
+none of the days, so a *pass* says how many were left out — the worst day is a
+floor by whatever they held, while a failure stands regardless.
+
 ## 1.23.0 — "What if it were the other model?"
 
 ### Added

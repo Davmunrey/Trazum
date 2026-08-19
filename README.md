@@ -1985,6 +1985,21 @@ takes `maxUsd` for the whole log and `byLabel` for each workload, so CI runs
 `trazum profile logs/yesterday.jsonl` with no flags at all. A budgeted label
 with no calls in the log is reported as *not measured*, never as a pass.
 
+**And one gate a total cannot arm.** `--max-day-usd` fails when any single
+UTC day inside the log spent more than the limit:
+
+```bash
+trazum profile month.jsonl --max-usd 4000 --max-day-usd 300
+```
+
+A month at $3,000 against a $4,000 budget passes while one afternoon's runaway
+loop burned $900 of it — `--max-usd` cannot see that shape, and a per-day gate
+is exactly the wrong thing to approximate by dividing a monthly budget by
+thirty. A log with **no timestamps at all** fails this gate rather than passing
+it: a bill nobody could measure by day is not a bill that stayed under a daily
+budget. Calls with no `ts` are in the total and in none of the days, so a pass
+says how many were left out — a failure stands regardless.
+
 **Every gate says when its figure is a floor.** Unreadable lines, unpriced
 models and clockless calls dropped by a window all hide spend from a gate, and
 a pass then means "the part I could read fits", never "the bill fits".

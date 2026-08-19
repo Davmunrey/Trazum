@@ -641,6 +641,16 @@ export interface CliMessages {
     maxCacheLossFailed(delta: string, max: string): string;
     maxCacheLossWorstCase(calls: number, worst: string, max: string): string;
     /**
+     * The per-day gate — the one a total cannot arm. A month under budget
+     * hides the afternoon a loop burned a quarter of it, and the worst single
+     * UTC day is the shape that has. A log with no clock cannot be judged by
+     * day and fails: "not measured" is not "under budget".
+     */
+    maxDayOk(day: string, usd: string, max: string): string;
+    maxDayFailed(day: string, usd: string, max: string): string;
+    maxDayNoClock(): string;
+    maxDayUndated(calls: string): string;
+    /**
      * The price table behind every dollar in the report, when it is old
      * enough to matter. Unlike a skipped line, staleness does not name its
      * own size — the error is exactly whatever the provider changed.

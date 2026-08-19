@@ -229,6 +229,11 @@ ${bold('OPTIONS FOR profile')}
                               not record the write TTL — a gate reading the
                               flattering half would pass the bills it exists
                               to catch — and says which claim fired.
+  --max-day-usd <n>           Fail when any single UTC day inside the log spent
+                              more than this. A month under budget can hide the
+                              afternoon a loop burned a quarter of it. A log
+                              with no timestamps fails: not measured is not
+                              under budget.
   --since <when>              Profile only calls at or after this moment. A UTC
   --until <when>              day (2026-08-14), a full ISO 8601 timestamp, a
                               relative window (7d, 24h) or "now";
@@ -1031,6 +1036,14 @@ ${bold('EXAMPLES')}
       `Cache within budget: caching cost at most ${worst} against --max-cache-loss-usd ${max}, worst case included.`,
     maxCacheLossFailed: (delta, max) =>
       `FAILED — caching added ${delta} to this bill (the same tokens as plain input would have cost less), over the --max-cache-loss-usd limit of ${max}. The counterfactual is exact: the same tokens at the published input rate.`,
+    maxDayOk: (day, usd, max) =>
+      `No single day over budget: the worst was ${day} at ${usd}, against --max-day-usd ${max}.`,
+    maxDayFailed: (day, usd, max) =>
+      `FAILED — ${day} spent ${usd}, over the --max-day-usd limit of ${max}. A total under budget can hide a single runaway day, which is what this gate exists to catch.`,
+    maxDayNoClock: () =>
+      'FAILED — --max-day-usd was asked for and no record in this log carries a timestamp, so there are no days to judge. That is not a pass: a bill nobody could measure by day is not a bill that stayed under a daily budget. Add "ts" to the record and the gate arms.',
+    maxDayUndated: (calls) =>
+      `${calls} calls carry no timestamp, so they are in the bill and in none of the days above — the worst day is a floor by whatever they held. A failure would stand regardless; this pass is over the part that could be dated.`,
     maxCacheLossWorstCase: (calls, worst, max) =>
       `FAILED — ${count(calls)} ${calls === 1 ? 'call' : 'calls'} did not record which cache-write TTL was paid, and at the 1-hour rate caching added up to ${worst}, over the --max-cache-loss-usd limit of ${max}. The gate reads the worst case on purpose: a gate reading the flattering half would pass exactly the bills it exists to catch. Record the "cache_creation" object the API returns and the ceiling becomes a figure.`,
     pricesStale: (date, days) =>
