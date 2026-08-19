@@ -13,6 +13,30 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`inputShapes`: how big the calls actually are.** `outputShapes` said where
+the *output* spend concentrates; input had a total and nothing else — and on a
+RAG or agent workload input is most of the invoice. "Input is 63% of this
+bill" is true and unactionable. Whether the p95 call carries twelve times the
+median call's input is the part somebody can act on, and the two shapes want
+opposite responses: a cap on whatever is growing, or a shorter prompt every
+call sends.
+
+Everything the model read counts as input — fresh tokens, cache reads and
+cache writes — because that is the size of the request, which is what a
+context window and a retrieval cap are about. `cachedShare` then says how much
+of it was billed at the cache-read rate, so a large slice that is caching
+correctly does not read as an emergency.
+
+Every figure is a **bucket ceiling**, never an interpolated percentile: "half
+the calls fit within 1,024 input tokens" is exact for the number named, where
+interpolating between buckets would invent a call nobody made. Slices with
+fewer than twenty calls are left out entirely rather than reported at a
+precision they do not have — a p95 over four calls is the largest of the four
+wearing a percentile's name.
+
+In the terminal, in `--json` as `inputShapes`, and in the MCP `profile_usage`
+tool.
+
 **`--max-day-usd`: the gate a total cannot arm.** A month at $3,000 against a
 $4,000 budget passes while one afternoon's runaway loop burned $900 of it.
 `--max-usd` gates the sum handed in; this gates the worst single UTC day

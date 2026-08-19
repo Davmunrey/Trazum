@@ -1,6 +1,7 @@
 import { effectivePricing, multipliersFor } from './pricing.js';
 import { createConversationTracker } from './conversation.js';
 import { createOutputShapeTracker } from './output-shape.js';
+import { createInputShapeTracker } from './input-shape.js';
 import { createTtlFitTracker } from './ttl-fit.js';
 import { createSessionLedgerTracker } from './session-ledger.js';
 import { createSessionCostTracker } from './session-cost.js';
@@ -9,6 +10,7 @@ import type { CacheTtlFit } from './ttl-fit.js';
 import type { SingleTurnCacheWrites } from './session-ledger.js';
 import type { ConversationGrowth } from './conversation.js';
 import type { OutputShape } from './output-shape.js';
+import type { InputShape } from './input-shape.js';
 import type { PricingCatalogue } from './pricing.js';
 
 /**
@@ -288,6 +290,17 @@ export interface UsageProfileReport {
    * whose answers are inherently long — and the total cannot tell them apart.
    */
   outputShapes: OutputShape[];
+  /**
+   * How big a call's input is, and how uneven that is across a slice — the
+   * half of the bill a total could only name. "Input is 63% of this bill" is
+   * unactionable; whether the p95 call carries twelve times the median call's
+   * input decides between capping something and rewriting a prompt.
+   *
+   * Every figure is a bucket ceiling rather than an interpolated percentile,
+   * and slices with too few calls for a percentile to mean anything are left
+   * out entirely rather than reported at a precision they do not have.
+   */
+  inputShapes: InputShape[];
   /**
    * The period the log covers, when its records carry a clock, over every
    * parsed record — priced and unpriced alike, because when a call happened is
@@ -849,6 +862,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
    */
   const conversations = createConversationTracker({ catalogue, on });
   const output = createOutputShapeTracker({ catalogue, on });
+  const input = createInputShapeTracker({ catalogue, on });
   const ttlFit = createTtlFitTracker({ catalogue, on });
   const ledger = createSessionLedgerTracker({ catalogue, on });
   const sessionCosts = createSessionCostTracker({ catalogue, on });
@@ -923,6 +937,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
     }
     conversations.add(record);
     output.add(record);
+    input.add(record);
     ttlFit.add(record);
     ledger.add(record);
     sessionCosts.add(record);
@@ -1019,6 +1034,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
     conversations: conversations.finish(total.totalUsd),
     hasSessions,
     outputShapes: output.finish(total.totalUsd),
+    inputShapes: input.finish(total.totalUsd),
     span: spanCalls > 0 ? { fromMs: spanFrom, toMs: spanTo, calls: spanCalls } : null,
     spendByDay: [...days.entries()]
       .sort((a, b) => a[0].localeCompare(b[0]))

@@ -362,6 +362,26 @@ describe('profile_usage', () => {
     assert.match(empty, /no comparison to make — a different answer from zero growth/);
   });
 
+  it('describes how big the calls are, and points at the matching fix', async () => {
+    // Forty calls of 1,000 input tokens and five of 100,000: the ordinary
+    // call is unremarkable and the tail is two orders of magnitude bigger.
+    const small = line({ model: 'claude-opus-5', label: 'rag', usage: { input_tokens: 1_000, output_tokens: 0 } });
+    const large = line({ model: 'claude-opus-5', label: 'rag', usage: { input_tokens: 100_000, output_tokens: 0 } });
+    const log = [
+      ...Array.from({ length: 40 }, () => small),
+      ...Array.from({ length: 5 }, () => large),
+    ].join('\n');
+    const body = bodyOf(await client.call('profile_usage', { log }));
+    assert.match(body, /How big these calls are/);
+    assert.match(body, /half its calls fit within 1,024 input tokens and 95% within 106,496/);
+    assert.match(body, /The fix is a limit on the large calls, not a rewrite/);
+
+    // Nineteen calls cannot carry a p95, and the section stays silent rather
+    // than naming the largest of nineteen as a percentile.
+    const thin = Array.from({ length: 19 }, () => large).join('\n');
+    assert.ok(!bodyOf(await client.call('profile_usage', { log: thin })).includes('How big these calls are'));
+  });
+
   it('prices the same calls on another model, with the refusals attached', async () => {
     // Five 200k-token calls: $5.00 on Claude Opus 5, $1.00 on Claude Haiku 4.5.
     // Five calls rather than one of 1M tokens because a single 1M-token call
