@@ -305,4 +305,5 @@ export {
   budgetFor,
   parseConfig,
 } from './config-schema.js';
-export type { ResolvedBudget, SpendConfig, TrazumConfig } from './config-schema.js';
+export type { ResolvedBudget, SpendConfig, TrazumConfig, WaiveEntry } from './config-schema.js';
+export { WAIVABLE_GATES } from './config-schema.js';

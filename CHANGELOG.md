@@ -9,6 +9,32 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**`waive` in `trazum.config.json`: a finding decided about, on the record.**
+Trazum finds the same thing every run, and a team that has looked at a
+failure and chosen to live with it had no way to say so — so the finding
+shouted forever and the report lost authority. A waiver names a gate, a
+reason in prose, and an expiry date. All three are required: a waiver with no
+end date is a finding deleted with extra steps, and a reasonless one is a
+silence nobody can audit.
+
+**Waived is shown as waived, never hidden.** The failure still prints in full,
+the bill still counts it, and the waiver prints beneath it with the reason and
+the days remaining. Only the exit code goes quiet.
+
+**An expired waiver fails the gate it silenced**, naming the date it expired
+and the reason somebody wrote — that expiry is the entire mechanism by which a
+waiver stays a decision rather than becoming a habit.
+
+Waivable: `maxUsd`, `maxDayUsd`, `maxSessionUsd`, `maxCacheLossUsd`,
+`maxGrowthUsd`, and `byLabel:<label>` for one label's budget. Deliberately
+**not** waivable: the growth gate's coverage refusal. That failure says the
+comparison cannot be made, and a waiver on unmeasurability would be a
+decision to stop measuring rather than a budget decision with an end date.
+
 ## 1.33.0 — "The log it could not read yet"
 
 ### Added
