@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.38.0 — "The plan"
+
 ### Added
 
 **`trazum plan <log>`: not a list of findings, a ranked plan.** The report
