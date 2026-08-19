@@ -27,6 +27,71 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.23.0 — "What if it were the other model?"
+
+### `--what-if <model>`: these exact calls at another rate card
+
+The levers section picks its own candidate. This answers the question you
+arrived with — *`classify` spent $4,000 on the frontier model, what would
+those calls have cost on the small one?*
+
+```
+trazum profile usage.jsonl --what-if claude-haiku-4-5
+```
+
+```
+  These exact calls on Claude Haiku 4.5
+  This is multiplication, not advice: the same token counts at another rate
+  card. It says nothing about whether that model could do the work, and a
+  model that answers at greater length or gets retried would not send these
+  counts at all.
+
+  → $1.00 of movable spend would have been $0.2000 — a difference of $0.8000.
+    · chat on claude-opus-5: $1.00 → $0.2000
+  ! huge cannot move: its largest call carries 250,000 input tokens and that
+    model's window is 200,000. Those calls would fail, not cost less, so
+    their $1.25 is excluded from the figures above.
+```
+
+Every token in that answer was actually billed — only the rate card changed —
+so it is arithmetic rather than the guess about content `profile` refuses to
+make. What makes it usable is what it declines to say:
+
+- **A call the target could not have accepted is named, not priced.** It would
+  fail, not cost less, and its money is in none of the totals. The ceiling is
+  judged on the largest single call: one call over the line is a failed call,
+  and an average hides it.
+- **Spend already on that model stays out of the difference**, so a bill that
+  is mostly already cheap does not report a 1% change and read as "not worth
+  doing".
+- **Models with no price here are named.** Their cost on the target is
+  knowable; the difference is not.
+
+The same comparison is in `--json` as `whatIf` — with `sameTokensAssumed`
+inside the object, so a dashboard cannot print the figure without the caveat —
+in the MCP `profile_usage` tool as `what_if`, and in the web Bill tab as a
+model picker that reprices in your own browser tab. A model id nothing can
+price is an error on all three, never a section that quietly says nothing.
+
+### A doubled bill, caught
+
+Reading a directory of rotated logs makes double-counting easy: a log exported
+twice, an overlapping export, a copy left in the folder. The total then reads
+high and nothing else in the report can see it.
+
+```
+  ! 2 lines are exact duplicates of an earlier line — same counts, same label
+    and session, same millisecond — and they add $2.00 to the total above.
+```
+
+Counted only over records carrying a clock, comparing the raw line rather than
+a hash, because a hash collision would report a duplicate that is not one and
+this figure exists to make you distrust a total. It states the count and the
+money and stops: whether it is a double export or a genuinely busy millisecond
+is yours to know.
+
+---
+
 ## 1.22.0 — "The gate, the window and the spreadsheet"
 
 ### The bridge between the two halves of the product
