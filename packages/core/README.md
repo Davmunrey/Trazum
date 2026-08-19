@@ -69,6 +69,18 @@ The last three structural findings are **advisory only**. A contradiction has a
 right answer only you know, and an example that looks redundant may be
 demonstrating a boundary case on purpose. Trazum points; it does not cut.
 
+## Measured usage
+
+`measuredUsage(report, label)` turns one label's slice of a `profileUsage()`
+report into the `UsageProfile` that `optimize()` multiplies by — the real call
+count, output size and cache-read share instead of typed guesses — with the
+provenance attached: the span, the scaling factor when a month was derived
+(never under seven days of data), the chosen model's share when the label ran
+on several, and whether output was ever recorded. `labelCoverage(report,
+labels)` names both mismatches between a config's label→prompt map and the
+log: prompts mapped to labels with no traffic, and labels carrying money with
+no prompt mapped.
+
 ## Comparing two versions
 
 ```ts

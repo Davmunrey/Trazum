@@ -514,6 +514,15 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.36.0 — The estimate stops guessing
+
+`optimize --from-log` measures the call count, output size, cache share and
+model from a usage log instead of multiplying by typed guesses, names which
+figures are measured, refuses typed flags beside it, and scales to a month
+only past a full week of data. `--all-labels` ranks every mapped prompt by
+what optimising it is worth on its own measured traffic, with both coverage
+mismatches named. First of the five in docs/plan-1.36-1.40.md.
+
 ### 1.35.0 — The reader who is not in the terminal
 
 `--markdown-summary` gives a pull-request body or a weekly note the three
@@ -1041,14 +1050,16 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-All six releases planned through 1.35.0 have shipped — the plan and what each
-one delivered is in [docs/plan-1.30-1.35.md](docs/plan-1.30-1.35.md). The loop
-it set out to close is closed: a finding names what to change, a gate explains
-itself, a decision about a finding lives in the repository with an expiry, and
-the result reaches somebody who never opens a terminal.
+Five releases are planned in order through 1.40.0, with the reasoning
+attached: [docs/plan-1.36-1.40.md](docs/plan-1.36-1.40.md). The short version
+— Trazum's estimating half and measuring half had never met, and this arc
+introduces them: measured usage under every estimate (1.36), the fleet
+(1.37), the plan (1.38), verification against predictions (1.39), and the
+long series (1.40). The previous arc, delivered in full with its errata on
+the record, is in [docs/plan-1.30-1.35.md](docs/plan-1.30-1.35.md).
 
-Nothing is scheduled next. The next thing this needs is users, and what they
-report — that is the one input allowed to set the order.
+The ordering is a commitment and the calendar is not. What users report
+reorders it; that is the one input allowed to.
 
 ## Under consideration
 
