@@ -765,7 +765,7 @@ export interface CliMessages {
      * States the count and the money and stops: whether it is a double export
      * or a busy millisecond is the reader's to know.
      */
-    duplicateLines(count: string, usd: string): string;
+    duplicateLines(count: number, usd: string): string;
     budgetVsWire(label: string, file: string, budget: string, perCall: string, share: string): string;
     /** `--csv-shape` naming a table that does not exist. */
     badCsvShape(value: string): string;

@@ -2399,6 +2399,10 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
             ? { window: { since: stringFlag(args, 'since') ?? '—', until: stringFlag(args, 'until') ?? '—' } }
             : {}),
           ...(pricingStale !== null ? { stalePricing: pricingStale } : {}),
+          // The repricing, when --what-if was given: computed once above and
+          // handed over, so the summary in a pull request cannot disagree
+          // with the terminal about what a move would cost.
+          ...(whatIf !== null ? { whatIf } : {}),
           // The comparison, when there was one — the same figures and the same
           // drivers the terminal printed, never re-derived here.
           ...(previous !== null
@@ -2586,7 +2590,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
    */
   if (report.duplicateLines.count > 0) {
     console.log(
-      `  ${c.yellow('!')} ${c.dim(wrap(t.profile.duplicateLines(n(report.duplicateLines.count), formatUsd(report.duplicateLines.usd)), 74, '    '))}`,
+      `  ${c.yellow('!')} ${c.dim(wrap(t.profile.duplicateLines(report.duplicateLines.count, formatUsd(report.duplicateLines.usd)), 74, '    '))}`,
     );
   }
 
