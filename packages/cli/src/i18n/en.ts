@@ -234,6 +234,10 @@ ${bold('OPTIONS FOR profile')}
                               afternoon a loop burned a quarter of it. A log
                               with no timestamps fails: not measured is not
                               under budget.
+  --max-session-usd <n>       Fail when any single conversation in the log
+                              cost more than this — the unit an agent product
+                              blows up in. A log with no sessions fails: not
+                              measured is not under budget.
   --since <when>              Profile only calls at or after this moment. A UTC
   --until <when>              day (2026-08-14), a full ISO 8601 timestamp, a
                               relative window (7d, 24h) or "now";
@@ -1081,6 +1085,12 @@ ${bold('EXAMPLES')}
       `FAILED — ${day} spent ${usd}, over the --max-day-usd limit of ${max}. A total under budget can hide a single runaway day, which is what this gate exists to catch.`,
     maxDayNoClock: () =>
       'FAILED — --max-day-usd was asked for and no record in this log carries a timestamp, so there are no days to judge. That is not a pass: a bill nobody could measure by day is not a bill that stayed under a daily budget. Add "ts" to the record and the gate arms.',
+    maxSessionOk: (worst, max, sessions) =>
+      `No conversation over budget: the most expensive of ${sessions} cost ${worst}, against --max-session-usd ${max}. A conversation that started before this log is counted only for the turns recorded here, so this is a floor.`,
+    maxSessionFailed: (worst, max, sessions) =>
+      `FAILED — the most expensive of ${sessions} conversations cost ${worst}, over the --max-session-usd limit of ${max}. A month's budget and a day's budget both pass while one conversation loops its way through this; the per-conversation figure is the one that catches it.`,
+    maxSessionNoSessions: () =>
+      'FAILED — --max-session-usd was asked for and no record in this log carries a session, so there are no conversations to judge. That is not a pass. Add "session" (or "conversation_id") to the record and the gate arms; Trazum groups by it and never prints it.',
     maxDayUndated: (calls) =>
       `${calls} calls carry no timestamp, so they are in the bill and in none of the days above — the worst day is a floor by whatever they held. A failure would stand regardless; this pass is over the part that could be dated.`,
     maxCacheLossWorstCase: (calls, worst, max) =>

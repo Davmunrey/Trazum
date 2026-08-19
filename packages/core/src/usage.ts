@@ -501,6 +501,16 @@ export interface UsageProfileReport {
    * mean anything.
    */
   sessionCosts: SessionCostShape[];
+  /**
+   * The whole log's conversations, summarised to the two numbers a
+   * per-conversation budget needs: how many there were, and what the single
+   * most expensive one cost. Unlike `sessionCosts` this has no minimum —
+   * a maximum is a fact at any count — and like everywhere the field is
+   * touched, the session key itself never appears. `null` when no record
+   * carried a session: "no conversations to judge" is a different answer
+   * from "the worst conversation cost nothing".
+   */
+  sessionSpend: { sessions: number; maxUsd: number } | null;
 }
 
 /** The share of the bill each part accounts for, as fractions of 1. */
@@ -934,6 +944,14 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
    * logs that carry a clock.
    */
   const seenLines = new Set<string>();
+  /**
+   * Priced spend per conversation, for the report-level summary the gates
+   * need. `sessionCosts` refuses slices with too few conversations for a
+   * percentile; a *maximum* has no such need — the single most expensive
+   * conversation in the log is a fact at any count, and it is exactly what a
+   * per-conversation budget has to judge. Keys never leave this function.
+   */
+  const sessionUsd = new Map<string, number>();
   const duplicates = { count: 0, usd: 0 };
   let spanFrom = Infinity;
   let spanTo = -Infinity;
@@ -1034,6 +1052,9 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
      * the one place the per-record dollar exists without re-deriving the rate
      * arithmetic a second time, where the two could drift apart.
      */
+    if (record.session !== null) {
+      sessionUsd.set(record.session, (sessionUsd.get(record.session) ?? 0) + (total.totalUsd - usdBefore));
+    }
     if (record.ts !== null) {
       const day = new Date(record.ts).toISOString().slice(0, 10);
       const usd = total.totalUsd - usdBefore;
@@ -1174,6 +1195,10 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
       : null,
     singleTurnCacheWrites: ledger.finish(),
     sessionCosts: sessionCosts.finish(),
+    sessionSpend:
+      sessionUsd.size > 0
+        ? { sessions: sessionUsd.size, maxUsd: Math.max(...sessionUsd.values()) }
+        : null,
   };
 }
 

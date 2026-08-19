@@ -180,6 +180,7 @@ const VALUE_FLAGS = new Set([
   'max-growth-usd',
   'max-cache-loss-usd',
   'max-day-usd',
+  'max-session-usd',
   'csv-out',
   'csv-shape',
   'what-if',
@@ -435,7 +436,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
-  profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'label', 'since', 'until'],
+  profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd', 'label', 'since', 'until'],
   route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
@@ -2262,6 +2263,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
       typeof args.flags.get('max-growth-usd') === 'string' ||
       typeof args.flags.get('max-cache-loss-usd') === 'string' ||
       typeof args.flags.get('max-day-usd') === 'string' ||
+      typeof args.flags.get('max-session-usd') === 'string' ||
       config.spend !== undefined;
     if (anyGate) {
       const reasons: string[] = [];
@@ -2410,6 +2412,38 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
             console.error(c.yellow(t.profile.maxDayUndated(n(undated))));
           }
         }
+      }
+    }
+    /**
+     * The per-conversation gate — the unit an agent product actually blows
+     * up in. A month's budget and a day's budget both pass while one
+     * conversation loops its way through $400; the single most expensive
+     * conversation is the number a per-conversation policy has to judge,
+     * and the log already carries it.
+     *
+     * The refusals it inherits: a log with **no sessions** fails rather
+     * than passes ("not measured" is not "under budget"), and a
+     * conversation that started before this log is counted only for the
+     * turns recorded here — so a pass is a floor, and the pass message says
+     * so. The session key itself is never printed, here or anywhere.
+     */
+    if (typeof args.flags.get('max-session-usd') === 'string' || config.spend?.maxSessionUsd !== undefined) {
+      const maxSession =
+        typeof args.flags.get('max-session-usd') === 'string'
+          ? numberFlag(args, 'max-session-usd', 0, t)
+          : config.spend!.maxSessionUsd!;
+      if (report.sessionSpend === null) {
+        console.error(c.red(t.profile.maxSessionNoSessions()));
+        process.exitCode = 1;
+      } else if (report.sessionSpend.maxUsd > maxSession) {
+        console.error(
+          c.red(t.profile.maxSessionFailed(formatUsd(report.sessionSpend.maxUsd), formatUsd(maxSession), n(report.sessionSpend.sessions))),
+        );
+        process.exitCode = 1;
+      } else {
+        console.error(
+          c.dim(t.profile.maxSessionOk(formatUsd(report.sessionSpend.maxUsd), formatUsd(maxSession), n(report.sessionSpend.sessions))),
+        );
       }
     }
   };

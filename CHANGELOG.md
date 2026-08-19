@@ -9,6 +9,24 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**`--max-session-usd`: the unit an agent product blows up in.** A month's
+budget and a day's budget both pass while one conversation loops its way
+through $400. The new gate judges the single most expensive conversation in
+the log — a fact at any session count, which is why the report gained
+`sessionSpend` (`sessions` and `maxUsd`, no minimum) alongside the
+percentile-gated `sessionCosts`. Arms from the flag or from
+`spend.maxSessionUsd` in `trazum.config.json`, flag winning.
+
+The refusals: a log with **no sessions fails** rather than passes — "not
+measured" is not "under budget" — and a conversation that started before
+the log is counted only for its recorded turns, so a pass is a floor and
+the pass message says so. The session key never appears in any output,
+including the failure, and a test pins it.
+
 ## 1.28.0 — "The retry bill, the series and the standing word"
 
 ### Added

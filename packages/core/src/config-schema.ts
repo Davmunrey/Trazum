@@ -65,6 +65,12 @@ export interface SpendConfig {
    * fails rather than passes, because "not measured" is not "under budget".
    */
   maxDayUsd?: number;
+  /**
+   * Per-conversation budget — the unit an agent product actually blows up
+   * in. `--max-session-usd` overrides it; a log with no sessions fails it,
+   * for the day budget's reason.
+   */
+  maxSessionUsd?: number;
   /** Per-label budgets, each gated against that label's own spend. */
   byLabel?: Record<string, number>;
 }
@@ -151,7 +157,7 @@ export const CONFIG_KEYS = [
 
 export const CONFIG_BASELINE_KEYS = ['path', 'maxGrowthTokens', 'maxGrowthPct'] as const;
 
-export const CONFIG_SPEND_KEYS = ['maxUsd', 'maxDayUsd', 'byLabel'] as const;
+export const CONFIG_SPEND_KEYS = ['maxUsd', 'maxDayUsd', 'maxSessionUsd', 'byLabel'] as const;
 
 export const CONFIG_USAGE_KEYS = [
   'model',
@@ -339,6 +345,9 @@ function parseSpend(raw: unknown, source: string): SpendConfig {
   }
   if (raw.maxDayUsd !== undefined) {
     spend.maxDayUsd = requireNonNegativeNumber(raw.maxDayUsd, 'spend.maxDayUsd', source);
+  }
+  if (raw.maxSessionUsd !== undefined) {
+    spend.maxSessionUsd = requireNonNegativeNumber(raw.maxSessionUsd, 'spend.maxSessionUsd', source);
   }
   if (raw.byLabel !== undefined) {
     if (!isPlainObject(raw.byLabel)) {

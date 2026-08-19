@@ -1981,8 +1981,10 @@ exactly the bills it exists to catch, so it reads the ceiling and says which
 claim fired.
 
 **The budgets can live in the repository.** `spend` in `trazum.config.json`
-takes `maxUsd` for the whole log, `maxDayUsd` for the worst single UTC day
-inside it, and `byLabel` for each workload — so CI runs
+takes `maxUsd` for the whole log, `maxDayUsd` for the worst single UTC day,
+`maxSessionUsd` for the most expensive single conversation — the unit an
+agent product actually blows up in — and `byLabel` for each workload, so CI
+runs
 `trazum profile logs/yesterday.jsonl` with no flags at all. A budgeted label
 with no calls in the log is reported as *not measured*, never as a pass, and
 the day budget inherits `--max-day-usd`'s refusal: a log with no timestamps

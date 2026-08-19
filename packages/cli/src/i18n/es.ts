@@ -232,6 +232,10 @@ ${bold('OPCIONES DE profile')}
                               una cuarta parte. Un registro sin marcas de
                               tiempo falla: no medido no es dentro de
                               presupuesto.
+  --max-session-usd <n>       Falla cuando una sola conversación del registro
+                              costó más que esto — la unidad en la que revienta
+                              un producto de agentes. Un registro sin sesiones
+                              falla: no medido no es dentro de presupuesto.
   --since <cuándo>            Perfila solo llamadas desde/hasta ese momento. Un
   --until <cuándo>            día UTC (2026-08-14), una marca ISO 8601 completa,
                               una ventana relativa (7d, 24h) o "now";
@@ -1095,6 +1099,12 @@ ${bold('EJEMPLOS')}
       `FALLO — ${day} gastó ${usd}, por encima del límite --max-day-usd de ${max}. Un total dentro de presupuesto puede esconder un solo día desbocado, que es justo lo que vigila esta puerta.`,
     maxDayNoClock: () =>
       'FALLO — se pidió --max-day-usd y ningún registro de este fichero lleva marca de tiempo, así que no hay días que juzgar. Eso no es un aprobado: una factura que nadie pudo medir por días no es una factura que se mantuvo bajo un presupuesto diario. Añade "ts" al registro y la puerta se arma.',
+    maxSessionOk: (worst, max, sessions) =>
+      `Ninguna conversación por encima del presupuesto: la más cara de ${sessions} costó ${worst}, contra --max-session-usd ${max}. Una conversación que empezó antes de este registro solo cuenta los turnos grabados aquí, así que esto es un suelo.`,
+    maxSessionFailed: (worst, max, sessions) =>
+      `FALLO — la más cara de ${sessions} conversaciones costó ${worst}, por encima del límite --max-session-usd de ${max}. El presupuesto del mes y el del día aprueban mientras una conversación en bucle se come esto; la cifra por conversación es la que lo caza.`,
+    maxSessionNoSessions: () =>
+      'FALLO — se pidió --max-session-usd y ningún registro lleva sesión, así que no hay conversaciones que juzgar. Eso no es un aprobado. Añade "session" (o "conversation_id") al registro y la puerta se arma; Trazum agrupa por ella y nunca la imprime.',
     maxDayUndated: (calls) =>
       `${calls} llamadas no llevan marca de tiempo, así que están en la factura y en ninguno de los días de arriba — el peor día es un suelo por lo que valieran esas llamadas. Un fallo se sostendría igual; este aprobado cubre la parte que se pudo fechar.`,
     maxCacheLossWorstCase: (calls, worst, max) =>
