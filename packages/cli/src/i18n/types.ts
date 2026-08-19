@@ -806,6 +806,11 @@ export interface CliMessages {
     whatIfNothingToMove(): string;
     /** `--what-if` naming a model the catalogue does not price. */
     whatIfUnknown(value: string, available: string): string;
+    /**
+      * A gzipped log that will not decompress. An error naming the file, not
+      * a skip: a total quietly missing a day is the failure this refuses.
+      */
+    badGzip(file: string, detail: string): string;
     coverageHeading(): string;
     needsLabel(seen: string): string;
     needsSession(seen: string): string;

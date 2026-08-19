@@ -260,7 +260,10 @@ ${bold('OPTIONS FOR profile')}
   --json                      The full report as data, including the levers.
 
   Takes a log file or a directory of them — rotated daily logs are read in
-  name order as one bill, and how many were read is stated.
+  name order as one bill, and how many were read is stated. Gzipped files
+  (.jsonl.gz and the rest) are read too, because that is what a rotated log
+  looks like a day later; one that will not decompress is an error naming the
+  file, never a bill quietly missing a day.
 
   Reads what the provider actually charged. Optional fields unlock findings:
   "label" (which workload), "session" (which conversation — grouped by, never
@@ -1115,6 +1118,8 @@ ${bold('EXAMPLES')}
       'Nothing to compare: every priced call in this log is already on that model, or too large for its context window.',
     whatIfUnknown: (value, available) =>
       `--what-if does not know "${value}". Priced models: ${available}. Add it with --pricing if you have its rates.`,
+    badGzip: (file, detail) =>
+      `${file} is gzipped and would not decompress: ${detail}. Reading the rest and saying nothing would report a bill missing whatever that file held, so this stops instead. Check the file, or move it out of the directory.`,
     coverageHeading: () => 'What this log cannot answer yet',
     needsLabel: (seen) =>
       `"label" on ${seen} records: without it every workload is one row, so no per-workload spend, no drill-down, and the levers describe a mixture rather than a decision.`,
