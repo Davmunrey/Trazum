@@ -514,6 +514,16 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.27.0 — The ceiling, the drift and the tab in step
+
+`contextPressure` reports each slice's largest call against its own model's
+context window — the failure a bill cannot show until the day the product
+breaks — loud from 85% and never predicting the crossing. `modelMixDrift`
+splits the log's days in half and states each model's exact share of each
+half's spend: the migration day totals and per-model totals both hide. And
+the web Bill tab caught up with all four of the CLI's newest findings, at
+the CLI's own thresholds.
+
 ### 1.26.0 — The release that releases itself
 
 No product change; a process one. Merging the release PR now publishes the

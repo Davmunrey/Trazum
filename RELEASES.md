@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.26.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.27.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the
 release PR, authenticated by the token fallback and carrying an OIDC-signed
 provenance attestation. 1.25.0 before it went out by hand on 2026-08-19, after
@@ -37,6 +37,52 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.27.0 — "The ceiling, the drift and the tab in step"
+
+### The ceiling, seen coming
+
+Input grows turn by turn or document by document, costs nothing extra to
+grow — and then one call crosses the model's context window and the API
+refuses it outright. The bill looks fine right up to the day the product
+breaks.
+
+```
+  ! chat on Claude Haiku 4.5: the largest call carried 190,000 input tokens
+    against a 200,000-token window — 95.0% of the ceiling.
+```
+
+Each slice's largest call (input, cache reads and writes — the model read
+all of it) against **its own model's** window: the same 170k-token call is
+an emergency on Haiku and irrelevant on Opus. Silent below half the window,
+quiet from 50%, loud from 85%. Never a date for the crossing: a straight
+line through two points is a guess wearing arithmetic's clothes.
+
+### The migration a total cannot show
+
+A bill can grow with no workload growing — traffic quietly moving from the
+cheap model to the expensive one, a deploy that flipped a default, a
+fallback that became the main path.
+
+```
+  ! claude-opus-5 went from 0.0% of the spend in the first 2 days to 100.0%
+    in the last 2 — $2.00 of the recent half.
+```
+
+The log's days are split chronologically in half and each model's exact
+share of each half's spend is stated. `null` under four dated days — one
+day against one day is weather presented as climate. The renderings speak
+past fifteen points of movement; `--json` carries every share either way.
+And never a forecast: where the mix goes next is not in the log.
+
+### The tab in step
+
+The browser Bill tab picked up the four findings it lacked — the
+doubled-bill warning, the same request sent again, the ceiling and the
+drift — with the CLI's own thresholds, computed in the page, verified in
+Chromium with zero network requests.
 
 ---
 
