@@ -3321,6 +3321,29 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
   }
 
   /**
+   * The same request, sent again a moment later.
+   *
+   * A conversation's input grows with every turn, so two consecutive calls in
+   * one conversation carrying the same size seconds apart is a thing going
+   * wrong rather than a thing working — a retry after a timeout, an agent
+   * step repeating, a loop. Loud, because the money bought nothing, and
+   * hedged, because this reads counts and cannot see content: the sentence
+   * says the pattern is *usually* a retry, never that it is one.
+   */
+  if (report.repeatedTurns.length > 0) {
+    console.log();
+    console.log(c.bold(t.profile.repeatsHeading()));
+    for (const row of report.repeatedTurns.slice(0, 3)) {
+      const label = row.label === UNLABELLED ? t.profile.unlabelled() : row.label;
+      console.log();
+      console.log(
+        `  ${c.yellow('!')} ${c.bold(wrap(t.profile.repeatsFound(label, row.modelName, n(row.repeats), n(row.checkedCalls), n(Math.round(row.withinMs / 1000)), formatUsd(row.usd)), 74, '    '))}`,
+      );
+      console.log(`  ${c.dim(wrap(t.profile.repeatsAdvice(), 74, '  '))}`);
+    }
+  }
+
+  /**
    * Output spend that bought answers cut off mid-generation — the one slice of
    * a bill that is waste without a counterpart. Paid in full, frequently
    * retried and billed again, and the truncated attempt bought nothing.

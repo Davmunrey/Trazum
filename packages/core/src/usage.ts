@@ -2,6 +2,7 @@ import { effectivePricing, multipliersFor } from './pricing.js';
 import { createConversationTracker } from './conversation.js';
 import { createOutputShapeTracker } from './output-shape.js';
 import { createInputShapeTracker } from './input-shape.js';
+import { createRepeatsTracker } from './repeats.js';
 import { createTtlFitTracker } from './ttl-fit.js';
 import { createSessionLedgerTracker } from './session-ledger.js';
 import { createSessionCostTracker } from './session-cost.js';
@@ -11,6 +12,7 @@ import type { SingleTurnCacheWrites } from './session-ledger.js';
 import type { ConversationGrowth } from './conversation.js';
 import type { OutputShape } from './output-shape.js';
 import type { InputShape } from './input-shape.js';
+import type { RepeatedTurns } from './repeats.js';
 import type { PricingCatalogue } from './pricing.js';
 
 /**
@@ -301,6 +303,16 @@ export interface UsageProfileReport {
    * out entirely rather than reported at a precision they do not have.
    */
   inputShapes: InputShape[];
+  /**
+   * Calls that re-sent the previous call's exact input size, in the same
+   * conversation, seconds later — the shape of a retry or a loop.
+   *
+   * A conversation's input grows with every turn, so two consecutive calls
+   * carrying the same size a moment apart is a thing going wrong rather than
+   * a thing working. Needs both a session and a clock; empty when the log
+   * carries neither, which is a different statement from "none happened".
+   */
+  repeatedTurns: RepeatedTurns[];
   /**
    * The period the log covers, when its records carry a clock, over every
    * parsed record — priced and unpriced alike, because when a call happened is
@@ -863,6 +875,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
   const conversations = createConversationTracker({ catalogue, on });
   const output = createOutputShapeTracker({ catalogue, on });
   const input = createInputShapeTracker({ catalogue, on });
+  const repeats = createRepeatsTracker({ catalogue, on });
   const ttlFit = createTtlFitTracker({ catalogue, on });
   const ledger = createSessionLedgerTracker({ catalogue, on });
   const sessionCosts = createSessionCostTracker({ catalogue, on });
@@ -938,6 +951,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
     conversations.add(record);
     output.add(record);
     input.add(record);
+    repeats.add(record);
     ttlFit.add(record);
     ledger.add(record);
     sessionCosts.add(record);
@@ -1035,6 +1049,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
     hasSessions,
     outputShapes: output.finish(total.totalUsd),
     inputShapes: input.finish(total.totalUsd),
+    repeatedTurns: repeats.finish(),
     span: spanCalls > 0 ? { fromMs: spanFrom, toMs: spanTo, calls: spanCalls } : null,
     spendByDay: [...days.entries()]
       .sort((a, b) => a[0].localeCompare(b[0]))

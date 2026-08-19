@@ -80,6 +80,20 @@ describe('the profile as a CI summary', () => {
     assert.doesNotMatch(md, /of movable spend would have been/);
   });
 
+  it('flags a request sent again, in the summary too', async () => {
+    const turn = (seconds) => ({
+      model: 'claude-opus-5',
+      label: 'agent',
+      session: 's1',
+      ts: new Date(Date.UTC(2026, 7, 1, 10, 0, seconds)).toISOString(),
+      usage: { input_tokens: 200_000, output_tokens: 0 },
+    });
+    const md = await render([turn(0), turn(5), turn(10)]);
+    assert.match(md, /⚠️ .*2 of 3 calls re-sent the previous call's exact input size within 60 seconds/);
+    assert.match(md, /costing \$2\.00/);
+    assert.match(md, /the pattern and stops/);
+  });
+
   it('says nothing about a repricing nobody asked for', async () => {
     const md = await render(many(2));
     assert.doesNotMatch(md, /movable spend/);

@@ -44,6 +44,10 @@ export type { AgainstDriver } from './against.js';
 // See input-shape.ts.
 export { createInputShapeTracker, inputShapes } from './input-shape.js';
 export type { InputShape, InputShapeOptions, InputShapeTracker } from './input-shape.js';
+// The same request sent again a moment later — a retry or a loop, named as
+// the pattern it is and never as a certainty. See repeats.ts.
+export { createRepeatsTracker, repeatedTurns } from './repeats.js';
+export type { RepeatedTurns, RepeatsOptions, RepeatsTracker } from './repeats.js';
 export { priceTokensOn, repriceProfile } from './reprice.js';
 export type { OverContextSlice, RepriceReport, RepricedSlice } from './reprice.js';
 export { createSessionLedgerTracker, singleTurnCacheWrites } from './session-ledger.js';
