@@ -362,6 +362,11 @@ export const en: WebMessages = {
       'Verify before moving anything: the CLI measures one prompt against both models on your '
       + 'own examples with trazum route.',
     whatIfDearer: 'That direction costs more. The arithmetic is here so the number is not a guess.',
+    whatIfCacheBeyond: (largest, min, noCache) =>
+      `Its cache traffic could not exist there: the largest call is ${largest} tokens against `
+      + `the target's ${min}-token cache minimum, so no call in this slice could create an entry. `
+      + `Without the cache the same tokens cost ${noCache} — the figure the target would actually `
+      + 'bill; the row above flatters the move.',
     whatIfSlice: (label, model, current, target) => `${label} on ${model}: ${current} → ${target}`,
     whatIfOverContext: (label, tokens, window, usd) =>
       `${label} cannot move: its largest call carries ${tokens} input tokens and that model's `

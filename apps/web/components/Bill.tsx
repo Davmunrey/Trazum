@@ -1003,6 +1003,21 @@ function Report({
                               formatUsd(slice.currentUsd),
                               formatUsd(slice.targetUsd),
                             )}
+                            {/*
+                              Cache traffic the target's minimum would refuse:
+                              the row above grants discounted rates to entries
+                              that could not form — an error in the flattering
+                              direction, corrected beside the figure.
+                            */}
+                            {slice.cacheBeyondTarget !== null && (
+                              <div className="mt-1 text-warn">
+                                {t.bill.whatIfCacheBeyond(
+                                  n(slice.maxCallInputTokens),
+                                  n(slice.cacheBeyondTarget.minTokens),
+                                  formatUsd(slice.cacheBeyondTarget.noCacheUsd),
+                                )}
+                              </div>
+                            )}
                           </li>
                         ))}
                       </ul>

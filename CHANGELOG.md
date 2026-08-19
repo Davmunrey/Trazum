@@ -24,6 +24,9 @@ the figure the target would actually bill). Silent when the calls clear the
 minimum, when there was no cache traffic, or when the target's minimum is
 unknown: nothing is claimed against a threshold nobody stated.
 
+The web bill renders the same correction beside the same row, at the same
+threshold — surface parity, as everywhere.
+
 ## 1.31.0 — "The gate that explains itself"
 
 ### Added
