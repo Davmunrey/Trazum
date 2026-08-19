@@ -310,6 +310,19 @@ export interface WebMessages {
     historyGrowth(label: string, model: string, first: string, last: string, turns: string): string;
     historyCeiling(usd: string, pct: string, flat: string, spent: string): string;
     historyNoSessions: string;
+    /**
+     * How big the calls are — the other half of the bill. Same threshold and
+     * same sentences as the CLI: two surfaces summarising one log differently
+     * is a second opinion nobody asked for.
+     */
+    inputShapeHeading: string;
+    inputSkewed(label: string, model: string, p50: string, p95: string, ratio: string, usd: string): string;
+    inputSkewedAdvice: string;
+    inputEven(label: string, model: string, p50: string, p95: string, usd: string): string;
+    inputEvenAdvice: string;
+    inputHuge(label: string, model: string, calls: number, usd: string): string;
+    inputMostlyCached(share: string): string;
+    inputFullRate: string;
     outputHeading: string;
     outputTail(
       label: string,

@@ -246,6 +246,29 @@ describe('the bill tab reads the log in the browser and nowhere else', () => {
     assert.match(bill, /t\.bill\.whatIfUnpriced/);
   });
 
+  it('describes how big the calls are, with the CLI’s threshold', () => {
+    // Two surfaces summarising one log differently is a second opinion nobody
+    // asked for, so the threshold lives in both and the copy matches.
+    assert.match(bill, /report\.inputShapes\.length > 0/);
+    assert.match(bill, /shape\.p95OverMedian! >= 4/);
+    const en = read('lib/i18n/en.ts');
+    assert.match(en, /The fix is a limit on the large calls, not a rewrite/);
+    assert.match(en, /there is no tail to cap/);
+  });
+
+  it('says what the size costs, not only what it is', () => {
+    // A large slice reading almost everything from cache is a very different
+    // bill from one paying full rate, and the token counts cannot say which.
+    assert.match(bill, /shape\.cachedShare >= 0\.5/);
+    assert.match(bill, /t\.bill\.inputFullRate/);
+  });
+
+  it('names no ceiling when the calls are past what the buckets measure', () => {
+    assert.match(bill, /t\.bill\.inputHuge/);
+    const en = read('lib/i18n/en.ts');
+    assert.match(en, /No ceiling is named because there is none to name honestly/);
+  });
+
   it('does not redefine what the core already exports', () => {
     assert.equal(/function formatUsd/.test(bill), false);
     assert.match(bill, /formatUsd,\n\s*profileUsage|formatUsd/, 'formatUsd comes from @trazum/core');

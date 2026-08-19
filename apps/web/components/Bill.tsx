@@ -1061,6 +1061,74 @@ function Report({
             </CardContent>
           </Card>
 
+          {/*
+            How big the calls are — the other half of the bill. The card above
+            describes output; on a RAG or agent workload input is most of the
+            invoice, and "input is 63% of this bill" is a share nobody can act
+            on. Same four-times-the-median threshold as the CLI: the two
+            surfaces must not summarise the same log differently.
+          */}
+          {report.inputShapes.length > 0 && (
+            <Card className="gap-4 py-[18px]">
+              <CardHeader className="px-[18px]">{eyebrow(t.bill.inputShapeHeading)}</CardHeader>
+              <CardContent className="flex flex-col gap-3 px-[18px] text-[13px]">
+                {report.inputShapes.slice(0, MAX_SECTIONS).map((shape) => {
+                  const measured =
+                    shape.medianWithinTokens !== null &&
+                    shape.p95WithinTokens !== null &&
+                    shape.p95OverMedian !== null;
+                  const skewed = measured && shape.p95OverMedian! >= 4;
+                  return (
+                    <span key={`${shape.label}\n${shape.model}`}>
+                      <span className="font-semibold">
+                        {!measured
+                          ? t.bill.inputHuge(
+                              labelName(shape.label),
+                              shape.modelName,
+                              shape.calls,
+                              formatUsd(shape.inputUsd),
+                            )
+                          : skewed
+                            ? t.bill.inputSkewed(
+                                labelName(shape.label),
+                                shape.modelName,
+                                n(shape.medianWithinTokens!),
+                                n(shape.p95WithinTokens!),
+                                shape.p95OverMedian!.toFixed(1),
+                                formatUsd(shape.inputUsd),
+                              )
+                            : t.bill.inputEven(
+                                labelName(shape.label),
+                                shape.modelName,
+                                n(shape.medianWithinTokens!),
+                                n(shape.p95WithinTokens!),
+                                formatUsd(shape.inputUsd),
+                              )}
+                      </span>
+                      {measured && (
+                        <span className="mt-1 block text-muted-foreground">
+                          {skewed ? t.bill.inputSkewedAdvice : t.bill.inputEvenAdvice}
+                        </span>
+                      )}
+                      {/*
+                        What that size costs. A cache read is a tenth of input,
+                        so a large slice reading from cache is a very different
+                        bill — and the token counts cannot tell them apart.
+                      */}
+                      {shape.cachedShare >= 0.5 ? (
+                        <span className="mt-1 block text-muted-foreground">
+                          {t.bill.inputMostlyCached(pct(shape.cachedShare))}
+                        </span>
+                      ) : shape.cachedShare < 0.1 ? (
+                        <span className="mt-1 block text-muted-foreground">{t.bill.inputFullRate}</span>
+                      ) : null}
+                    </span>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+
           {report.outputShapes.length > 0 && (
             <Card className="gap-4 py-[18px]">
               <CardHeader className="px-[18px]">{eyebrow(t.bill.outputHeading)}</CardHeader>
