@@ -23,6 +23,8 @@ import {
   coverageDrift,
   driversBetween,
   explainGateFailure,
+  labelCoverage,
+  measuredUsage,
   gateMargin,
   GATE_MARGIN_TIGHT,
   estimateTokens,
@@ -72,6 +74,7 @@ import {
 import { cacheDir, cacheStats, cachingProvider, clearCache } from './suggest-cache.js';
 import { dayOf, formatGap, median, spanDays } from './time.js';
 import type {
+  MeasuredUsage,
   BaselineBreach,
   BaselineChange,
   BaselineComparison,
@@ -165,6 +168,7 @@ interface Args {
 
 const VALUE_FLAGS = new Set([
   'against',
+  'from-log',
   // `route` takes a path here, and the flag is deliberately not `--prompt`:
   // everywhere else in this tool `--prompt` names a marked prompt *inside* a
   // source file, and reusing it for a path would be a trap laid for the reader.
@@ -305,6 +309,23 @@ function levelFlag(args: Args, config: TrazumConfig, t: CliMessages): RuleLevel 
  * model id. It beats the default because reading the code is better than
  * assuming, and loses to config because being told is better than reading.
  */
+/**
+ * One usage log, gzip included, shared by every command that reads one.
+ *
+ * A `.gz` that will not decompress is an error naming the file — skipping it
+ * would be a figure quietly missing a day, the failure this repository
+ * refuses everywhere it can occur.
+ */
+async function readUsageLog(file: string, t: CliMessages): Promise<string> {
+  if (!file.endsWith('.gz')) return readFile(file, 'utf8');
+  const compressed = await readFile(file);
+  try {
+    return gunzipSync(compressed).toString('utf8');
+  } catch (error) {
+    throw new Error(t.profile.badGzip(file, error instanceof Error ? error.message : String(error)));
+  }
+}
+
 function usageFrom(
   args: Args,
   config: TrazumConfig,
@@ -436,7 +457,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
     'level', 'model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch',
     'disable', 'llm', 'exact-tokens', 'diff', 'reorder', 'out', 'o',
     'tokens-only', 'cost', 'prompt', 'suggest', 'apply-suggestions',
-    'cache-suggestions',
+    'cache-suggestions', 'from-log', 'label', 'all-labels',
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
@@ -629,6 +650,8 @@ function printReport(
   suggestions: { result: SuggestResult; applied: boolean; locale: Locale } | null = null,
   /** They named a scenario, and the host is suppressing the money anyway. */
   namedScenario = false,
+  /** Present when the usage came from a log rather than from typing. */
+  measured: MeasuredUsage | null = null,
 ): void {
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const sourceNote =
@@ -776,7 +799,7 @@ function printReport(
   if (tokensOnly) {
     printTokensOnly(result, host, t, n, namedScenario);
   } else {
-    printMoney(result, t, n);
+    printMoney(result, t, n, measured);
   }
 
   // On a subscription, an advisory whose entire pitch is money is not weaker
@@ -852,17 +875,61 @@ function printReport(
 }
 
 /** The cost section, for anyone billed by the token. */
-function printMoney(result: OptimizationResult, t: CliMessages, n: (v: number) => string): void {
+function printMoney(
+  result: OptimizationResult,
+  t: CliMessages,
+  n: (v: number) => string,
+  /** Present when the usage came from a log rather than from typing. */
+  measured: MeasuredUsage | null = null,
+): void {
   const { savings } = result;
   console.log();
   console.log(c.bold(t.report.costWith(savings.modelDisplayName)));
-  console.log(
-    `  ${t.report.usageLine(
-      n(result.usage.callsPerMonth),
-      result.usage.avgOutputTokens,
-      result.usage.batchEligible,
-    )}`,
-  );
+  /**
+   * The usage line names its provenance. "1,000 calls/month" typed and
+   * "1,043 calls measured over 12 days, scaled" are different claims about
+   * the same multiplication, and the reader budgeting on the result must
+   * know which one they are holding. Under the week floor nothing is scaled
+   * and nothing says "month": the figures cover exactly the period measured.
+   */
+  if (measured !== null) {
+    if (measured.scaled !== null) {
+      console.log(
+        `  ${t.report.usageLineMeasured(
+          n(measured.calls),
+          measured.scaled.fromDays.toFixed(1),
+          n(result.usage.callsPerMonth),
+          result.usage.avgOutputTokens,
+          result.usage.batchEligible,
+        )}`,
+      );
+    } else {
+      console.log(
+        `  ${t.report.usageLineMeasuredPeriod(
+          n(measured.calls),
+          measured.spanDays === null ? null : measured.spanDays.toFixed(1),
+          result.usage.avgOutputTokens,
+          result.usage.batchEligible,
+        )}`,
+      );
+    }
+    if (measured.models.count > 1) {
+      console.log(
+        `  ${c.dim(wrap(t.report.measuredModelShare(measured.models.chosen, `${(measured.models.chosenShareOfSpend * 100).toFixed(0)}%`, n(measured.models.count)), 74, '  '))}`,
+      );
+    }
+    if (measured.outputUnmeasured) {
+      console.log(`  ${c.dim(wrap(t.report.measuredNoOutput(), 74, '  '))}`);
+    }
+  } else {
+    console.log(
+      `  ${t.report.usageLine(
+        n(result.usage.callsPerMonth),
+        result.usage.avgOutputTokens,
+        result.usage.batchEligible,
+      )}`,
+    );
+  }
   // Said, not assumed. Once prices can be overlaid locally, a figure from the
   // bundled catalogue and a figure from somebody's JSON file look identical, and
   // the reader has to be able to tell which one they are about to budget against.
@@ -875,17 +942,27 @@ function printMoney(result: OptimizationResult, t: CliMessages, n: (v: number) =
       `  ${c.yellow(t.report.pricingOverlaid(touched.join(', '), result.pricingSource.lastReviewed))}`,
     );
   }
+  const periodOnly = measured !== null && measured.scaled === null;
   console.log(
     `  ${formatUsd(savings.perMonth.before.totalUsd)} → ` +
       `${c.green(formatUsd(savings.perMonth.after.totalUsd))}   ` +
       c.bold(
-        t.report.perMonthSaving(
-          formatUsd(savings.monthlySavingsUsd),
-          savings.monthlySavingsPct.toFixed(1),
-        ),
+        periodOnly
+          ? t.report.perPeriodSaving(
+              formatUsd(savings.monthlySavingsUsd),
+              savings.monthlySavingsPct.toFixed(1),
+            )
+          : t.report.perMonthSaving(
+              formatUsd(savings.monthlySavingsUsd),
+              savings.monthlySavingsPct.toFixed(1),
+            ),
       ),
   );
-
+  if (periodOnly) {
+    console.log(
+      `  ${c.dim(wrap(t.report.periodNotScaled(measured!.spanDays === null ? null : measured!.spanDays.toFixed(1)), 74, '  '))}`,
+    );
+  }
 }
 
 /**
@@ -1372,6 +1449,97 @@ async function commandOptimize(
   t: CliMessages,
   locale: Locale,
 ): Promise<void> {
+  /**
+   * `--all-labels`: every mapped prompt against its own measured traffic,
+   * ranked by what the change is worth — the list a person actually wants,
+   * which is "which prompt do I edit first".
+   *
+   * Requires `--from-log`, because ranking estimated savings that were all
+   * multiplied by the same typed guess ranks the prompts by length, and calls
+   * that a priority. And it renders both coverage mismatches at the end: a
+   * prompt mapped to a label with no traffic is dead weight or a rename, and
+   * a label carrying real money with no prompt mapped is the workload nobody
+   * can optimise because nobody said where it lives.
+   */
+  if (boolFlag(args, 'all-labels')) {
+    const fromLogPath = stringFlag(args, 'from-log');
+    if (fromLogPath === undefined) throw new Error(t.errors.allLabelsNeedsLog());
+    const labelsMap = config.labels ?? {};
+    if (Object.keys(labelsMap).length === 0) throw new Error(t.errors.allLabelsNeedsMap());
+    const report = profileUsage(await readUsageLog(fromLogPath, t), { catalogue: pricing });
+    const coverage = labelCoverage(report, labelsMap);
+    const level = levelFlag(args, config, t);
+
+    interface Row {
+      label: string;
+      path: string;
+      tokensBefore: number;
+      tokensAfter: number;
+      savingUsd: number;
+      periodOnly: boolean;
+      spentUsd: number;
+    }
+    const rows: Row[] = [];
+    const unreadable: { label: string; path: string }[] = [];
+    for (const { label, promptPath } of coverage.joined) {
+      const m = measuredUsage(report, label, { batchEligible: config.usage?.batchEligible ?? false });
+      if (m === null) continue;
+      let text: string;
+      try {
+        text = await readFile(promptPath, 'utf8');
+      } catch {
+        unreadable.push({ label, path: promptPath });
+        continue;
+      }
+      const r = optimize(text, { level, usage: m.profile, locale, pricing });
+      rows.push({
+        label,
+        path: promptPath,
+        tokensBefore: r.tokensBefore,
+        tokensAfter: r.tokensAfter,
+        savingUsd: r.savings.monthlySavingsUsd,
+        periodOnly: m.scaled === null,
+        spentUsd: m.spentUsd,
+      });
+    }
+    rows.sort((a, b) => b.savingUsd - a.savingUsd);
+
+    const n = (value: number): string => value.toLocaleString(t.numberLocale);
+    console.log(c.bold(t.report.allLabelsHeading(n(rows.length))));
+    for (const row of rows) {
+      const saving = row.periodOnly
+        ? t.report.allLabelsRowPeriod(formatUsd(row.savingUsd))
+        : t.report.allLabelsRow(formatUsd(row.savingUsd));
+      console.log(
+        `  ${row.savingUsd > 0 ? c.green('→') : c.dim('·')} ${c.bold(row.label)}  ${saving}  ${c.dim(`${row.path} · ${n(row.tokensBefore)} → ${n(row.tokensAfter)} tokens · ${formatUsd(row.spentUsd)} measured`)}`,
+      );
+    }
+    if (rows.length > 0) {
+      console.log(`  ${c.dim(wrap(t.report.allLabelsFooter(), 74, '  '))}`);
+    }
+
+    /**
+     * The mismatches, both directions, never silently. These are the two
+     * failures neither side can see alone.
+     */
+    for (const gap of coverage.trafficWithoutPrompt.slice(0, 5)) {
+      console.log(
+        `  ${c.yellow('!')} ${wrap(t.report.allLabelsUnmapped(gap.label, formatUsd(gap.spentUsd)), 74, '    ')}`,
+      );
+    }
+    for (const dead of coverage.mappedWithoutTraffic) {
+      console.log(
+        `  ${c.dim(wrap(t.report.allLabelsDead(dead.label, dead.promptPath), 74, '    '))}`,
+      );
+    }
+    for (const miss of unreadable) {
+      console.log(
+        `  ${c.yellow('!')} ${wrap(t.report.allLabelsUnreadable(miss.label, miss.path), 74, '    ')}`,
+      );
+    }
+    return;
+  }
+
   const target = args.positional[0];
   const raw = await readInput(target, t);
   const level = levelFlag(args, config, t);
@@ -1393,7 +1561,61 @@ async function commandOptimize(
   // Detection sits between config and defaults, as everywhere: a flag beats
   // config, config beats what the code says, and what the code says beats a
   // built-in default that has no idea which provider you use.
-  const usage = usageFrom(args, config, t, source?.model);
+  let usage = usageFrom(args, config, t, source?.model);
+
+  /**
+   * `--from-log`: the multiplication stops guessing.
+   *
+   * The saving printed below is `token delta × usage`, and until now every
+   * part of `usage` was typed by a human. A usage log knows the real call
+   * count, the real output size, the real cache share and the model the
+   * calls actually went to — so `--from-log` measures them, and the typed
+   * flags are refused beside it rather than merged: measuring and typing the
+   * same figure is a contradiction, not a preference order.
+   */
+  const fromLog = stringFlag(args, 'from-log');
+  let measured: MeasuredUsage | null = null;
+  if (fromLog !== undefined) {
+    for (const flag of ['calls', 'output-tokens', 'cache-hit-rate', 'model']) {
+      if (args.flags.get(flag) !== undefined) {
+        throw new Error(t.errors.fromLogConflict(flag));
+      }
+    }
+    const report = profileUsage(await readUsageLog(fromLog, t), { catalogue: pricing });
+
+    /**
+     * Which label this prompt is. `--label` says it outright; otherwise the
+     * config's `labels` map is read in reverse — it maps labels to prompt
+     * files, and the file on the command line is looked up among its values.
+     * Ambiguity (two labels mapped to one file) is an error naming both,
+     * never a silent first match.
+     */
+    let label = stringFlag(args, 'label');
+    if (label === undefined && target !== undefined && config.labels !== undefined) {
+      const hits = Object.entries(config.labels)
+        .filter(([, path]) => resolvePath(path) === resolvePath(target))
+        .map(([name]) => name);
+      if (hits.length > 1) throw new Error(t.errors.fromLogAmbiguousLabel(target, hits.join(', ')));
+      label = hits[0];
+    }
+    if (label === undefined) {
+      const available = report.byLabel
+        .map((row) => (row.label === UNLABELLED ? t.profile.unlabelled() : row.label))
+        .join(', ');
+      throw new Error(t.errors.fromLogNeedsLabel(available || '—'));
+    }
+
+    measured = measuredUsage(report, label, {
+      batchEligible: boolFlag(args, 'batch', config.usage?.batchEligible ?? false),
+    });
+    if (measured === null) {
+      const available = report.byLabel
+        .map((row) => (row.label === UNLABELLED ? t.profile.unlabelled() : row.label))
+        .join(', ');
+      throw new Error(t.errors.fromLogLabelEmpty(label, available || '—'));
+    }
+    usage = measured.profile;
+  }
 
   const disableRules = disabledRules(args, config) ?? [];
   for (const id of disableRules) {
@@ -1586,7 +1808,15 @@ async function commandOptimize(
   // Cursor wants the dollars, and they should not have to leave the editor to
   // see them.
   const host = detectHost();
-  const tokensOnly = boolFlag(args, 'cost')
+  /**
+   * `--from-log` implies `--cost`, and the reasoning is different from the
+   * `--calls` case documented below: `--calls` is a typed scenario parameter,
+   * but a usage log with billed token counts is *evidence* — proof this
+   * prompt's traffic goes to a metered API, whatever the terminal running
+   * the command bills like. Withholding the money there would suppress
+   * exactly the figures the person measured in order to see.
+   */
+  const tokensOnly = boolFlag(args, 'cost') || measured !== null
     ? false
     : boolFlag(args, 'tokens-only') || host.billing === 'subscription';
   /**
@@ -1609,6 +1839,7 @@ async function commandOptimize(
       ? { result: suggestions, applied: boolFlag(args, 'apply-suggestions'), locale }
       : null,
     namedScenario,
+    measured,
   );
   if (outPath) {
     console.log(c.dim(t.report.wroteTo(outPath)));
@@ -2031,16 +2262,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
    * alternative — skipping it — is a total quietly missing a day, which is
    * the failure this repository refuses in every other place it can occur.
    */
-  const readLog = async (file: string): Promise<string> => {
-    if (!file.endsWith('.gz')) return readFile(file, 'utf8');
-    const compressed = await readFile(file);
-    try {
-      return gunzipSync(compressed).toString('utf8');
-    } catch (error) {
-      throw new Error(t.profile.badGzip(file, error instanceof Error ? error.message : String(error)));
-    }
-  };
-  const logTexts = await Promise.all(logFiles.map((file) => readLog(file)));
+  const logTexts = await Promise.all(logFiles.map((file) => readUsageLog(file, t)));
   // A file that does not end in a newline would otherwise glue its last record
   // to the next file's first one, and both would be reported as unreadable.
   const raw = logTexts.map((text) => (text.endsWith('\n') ? text : `${text}\n`)).join('');
@@ -2206,7 +2428,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
       // The same reader as the log itself, so `--against last-month.jsonl.gz`
       // works: a comparison that could only read one of the two formats would
       // be a flag that fails on exactly the rotated file it exists to read.
-      ? profileUsage(await readLog(againstPath), {
+      ? profileUsage(await readUsageLog(againstPath, t), {
           catalogue: pricing,
           label: onlyLabel,
           // The same window on both sides, for the same reason as the label:

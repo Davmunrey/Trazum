@@ -37,6 +37,13 @@ export interface CliMessages {
     optionNeedsValue(name: string): string;
     mustBeNonNegative(name: string, raw: string): string;
     badLevel(received: string): string;
+    /** `--from-log`'s refusals: contradiction, missing label, ambiguity, emptiness. */
+    allLabelsNeedsLog(): string;
+    allLabelsNeedsMap(): string;
+    fromLogConflict(flag: string): string;
+    fromLogNeedsLabel(available: string): string;
+    fromLogAmbiguousLabel(target: string, labels: string): string;
+    fromLogLabelEmpty(label: string, available: string): string;
     unknownRuleInDisable(id: string): string;
     unknownCommand(command: string): string;
     unknownFlag(name: string, allowed: string): string;
@@ -82,6 +89,28 @@ export interface CliMessages {
     llmRejected(reason: string): string;
     costWith(modelName: string): string;
     usageLine(calls: string, outputTokens: number, batch: boolean): string;
+    /**
+     * `--from-log`: the usage line names its provenance. Measured and typed
+     * are different claims about the same multiplication, and under the week
+     * floor nothing says "month".
+     */
+    /**
+     * `--all-labels`: every mapped prompt against its own measured traffic,
+     * ranked by what the change is worth, with both coverage mismatches named.
+     */
+    allLabelsHeading(count: string): string;
+    allLabelsRow(saving: string): string;
+    allLabelsRowPeriod(saving: string): string;
+    allLabelsFooter(): string;
+    allLabelsUnmapped(label: string, usd: string): string;
+    allLabelsDead(label: string, path: string): string;
+    allLabelsUnreadable(label: string, path: string): string;
+    usageLineMeasured(calls: string, days: string, scaled: string, outputTokens: number, batch: boolean): string;
+    usageLineMeasuredPeriod(calls: string, days: string | null, outputTokens: number, batch: boolean): string;
+    measuredModelShare(model: string, share: string, count: string): string;
+    measuredNoOutput(): string;
+    perPeriodSaving(saving: string, pct: string): string;
+    periodNotScaled(days: string | null): string;
     perMonthSaving(saving: string, pct: string): string;
     beyondShortening(): string;
     biggestLever(): string;
