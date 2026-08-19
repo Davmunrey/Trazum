@@ -40,6 +40,99 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.36.0 — "The estimate stops guessing"
+
+The first of the five planned in `docs/plan-1.36-1.40.md`, and the one that
+introduces Trazum's two halves to each other. The estimating half (`optimize`,
+`check`, `diff`, `rank`) multiplies a token delta by a call volume, an output
+size and a cache hit rate that somebody typed into a config file. The
+measuring half (`profile`) reads the provider's own billed counts and knows
+all three exactly. Until this release they had never met.
+
+### `optimize --from-log <usage.jsonl>` — the multiplication measured
+
+```
+Cost with Claude Opus 5
+  1,043 calls measured over 12.0 days — 2,608/month at that rate · 512 output
+  tokens per call, measured
+  $161.20 → $103.40   saving $57.80/month (35.9%)
+```
+
+The token delta stays an estimate with its ±10% band; everything it is
+multiplied by stops being a guess. The rendering names which figures are
+measured on every line, because "measured × estimated" and "estimated ×
+guessed" are different claims about the same dollar sign, and the reader
+budgeting on the result must know which one they are holding.
+
+Which workload the prompt is comes from `--label`, or from the config's
+`labels` map read in reverse — the file on the command line looked up among
+its values, with two labels mapped to one file refused by name rather than
+resolved by silent first match.
+
+**The refusals, each with its reason:**
+
+- **Typed flags are refused beside it.** `--from-log --calls 5000` is a
+  contradiction, not a preference order: measuring and typing the same figure
+  cannot both be the answer. The same for `--output-tokens`,
+  `--cache-hit-rate` and `--model`.
+- **Nothing scales to a month under a week of data.** The week is the cycle
+  traffic actually has, and a span shorter than one cycle scaled up
+  multiplies whichever part of the cycle it caught — three weekdays scaled to
+  a month is a Tuesday with a multiplier. Under the floor, the saving is
+  stated over the exact period measured, every "month" disappears from the
+  wording, and the refusal explains itself in the output.
+- **A label with no priced traffic is an error naming the labels that have
+  some.** A zero-call profile would price the change as *worthless* when the
+  truth is *unmeasured*, and those read very differently in a review.
+- **A label that ran on several models says so**: the figures use the model
+  that carried the most spend, and the report states which share of the
+  label's money that model covered.
+- **Output never recorded renders as $0 measured, not $0 assumed** — the
+  difference between "these calls produced nothing billable" and "nobody
+  wrote the field down".
+
+`--from-log` implies `--cost`: a log with billed token counts is proof the
+prompt's traffic goes to a metered API, whatever the terminal running the
+command bills like — without this, a subscription-billed host would suppress
+exactly the figures the person measured in order to see.
+
+### `optimize --all-labels` — which prompt to edit first
+
+```
+Every mapped prompt against its own measured traffic — 2 ranked by what the
+change is worth
+  → support  $57.80/month if optimised   prompts/support.txt · 1,178 → 742 tokens · $402.11 measured
+  → chat     $3.20/month if optimised    prompts/chat.txt · 310 → 296 tokens · $12.40 measured
+  ! orphan carries $250.10 of measured spend and no prompt file is mapped to
+    it — the workload nobody can optimise because nobody said where it lives.
+  retired is mapped to prompts/old.txt and has no traffic in this log.
+```
+
+Every prompt in the config's `labels` map, optimised and priced against its
+own measured traffic, ranked by what the change is worth. Ranked by traffic
+and never by prompt length — a big prompt on a dead workload is worth less
+than a small one on a busy one — which is also why it requires `--from-log`:
+ranking savings that were all multiplied by the same typed guess ranks the
+prompts by length and calls it a priority.
+
+Both coverage mismatches are named at the end, because neither side can see
+them alone: a label carrying measured spend with no prompt mapped, and a
+mapped prompt whose label has no traffic (retired, renamed, or a typo that
+has been silently doing nothing). A mapped file that cannot be read is named
+too — the mapping exists; the file does not.
+
+### The module underneath
+
+`@trazum/core` gains `measured-profile.ts`: `measuredUsage()` returns the
+profile with its provenance attached — the span, the scaling factor when one
+was applied, the chosen model's share, whether output was ever recorded — and
+`labelCoverage()` returns both mismatch lists. The cache figure is documented
+as what it is: a share of input *tokens* served from cache, not the share of
+*calls* the config field was defined as. A measured token share beats a typed
+call share, and the module says so rather than renaming one into the other.
+
+---
+
 ## 1.35.0 — "The reader who is not in the terminal"
 
 The last of the six planned in `docs/plan-1.30-1.35.md`, and the one aimed at

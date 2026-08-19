@@ -40,6 +40,17 @@ Spanish (`--locale es`); the locale changes the report, never the optimisation.
 trazum optimize prompt.txt --calls 50000 --diff
 ```
 
+Or stop typing the figures and measure them — `--from-log` reads the call
+count, output size, cache share and model from a usage log, names which
+figures are measured, and refuses the typed flags beside it. `--all-labels`
+ranks every prompt in the config's `labels` map by what optimising it is
+worth on its own measured traffic:
+
+```bash
+trazum optimize prompt.txt --from-log usage.jsonl --label support
+trazum optimize --all-labels --from-log usage.jsonl
+```
+
 ```
 Input tokens
   190 → 137   -27.9% (estimated, ±10%)

@@ -1,6 +1,6 @@
 {
   "name": "trazum",
-  "version": "1.35.0",
+  "version": "1.36.0",
   "private": true,
   "description": "Where your LLM bill actually goes: thirteen priced findings per prompt — caching, model tier, batching — offline and deterministic.",
   "license": "MIT",
