@@ -286,6 +286,26 @@ export interface WebMessages {
     leverPromptCeiling(usd: string, pct: string): string;
     leversNone: string;
     leversUnlabelled: string;
+    /**
+     * `--what-if` in the browser: the same tokens at another model's rates.
+     *
+     * The assumption is a separate string from the figure so it can be
+     * rendered above it — a dollar amount with the caveat underneath reads as
+     * a recommendation with small print, and this comparison has never seen a
+     * prompt.
+     */
+    whatIfHeading: string;
+    whatIfPick: string;
+    whatIfNone: string;
+    whatIfAssumption: string;
+    whatIfTotal(current: string, target: string, delta: string): string;
+    whatIfCheaper: string;
+    whatIfDearer: string;
+    whatIfSlice(label: string, model: string, current: string, target: string): string;
+    whatIfOverContext(label: string, tokens: string, window: string, usd: string): string;
+    whatIfAlreadyThere(calls: number, usd: string): string;
+    whatIfUnpriced(calls: number, models: string): string;
+    whatIfNothingToMove: string;
     historyHeading: string;
     historyGrowth(label: string, model: string, first: string, last: string, turns: string): string;
     historyCeiling(usd: string, pct: string, flat: string, spent: string): string;

@@ -353,6 +353,37 @@ export const es: WebMessages = {
       + 'en una sola fila — un clasificador y un pipeline RAG fundidos en una cifra, con una '
       + 'única ruta sugerida para ambos. Añade "label" al registro y las palancas se separan '
       + 'por carga de trabajo, que es el nivel al que se decide de verdad.',
+    whatIfHeading: 'Estas mismas llamadas en otro modelo',
+    whatIfPick: 'Poner precio a esta factura en…',
+    whatIfNone: 'Ningún modelo elegido.',
+    whatIfAssumption:
+      'Esto es una multiplicación, no un consejo: los mismos recuentos de tokens con otra '
+      + 'tarifa. No dice nada sobre si ese modelo podría hacer el trabajo, y un modelo que '
+      + 'responda más largo o al que haya que reintentar no enviaría estos recuentos.',
+    whatIfTotal: (current, target, delta) =>
+      `${current} de gasto movible habrían sido ${target} — una diferencia de ${delta}.`,
+    whatIfCheaper:
+      'Compruébalo antes de mover nada: la CLI mide un prompt contra ambos modelos con tus '
+      + 'propios ejemplos, con trazum route.',
+    whatIfDearer:
+      'Esa dirección cuesta más. La aritmética está aquí para que el número no sea una suposición.',
+    whatIfSlice: (label, model, current, target) => `${label} en ${model}: ${current} → ${target}`,
+    whatIfOverContext: (label, tokens, window, usd) =>
+      `${label} no puede moverse: su llamada más grande lleva ${tokens} tokens de entrada y la `
+      + `ventana de ese modelo es de ${window}. Esas llamadas fallarían, no costarían menos, así `
+      + `que sus ${usd} quedan fuera de las cifras de arriba.`,
+    whatIfAlreadyThere: (calls, usd) =>
+      `Ya en ese modelo: ${calls.toLocaleString('es-ES')} `
+      + `${calls === 1 ? 'llamada' : 'llamadas'} por valor de ${usd}, fuera de las cifras de `
+      + 'arriba — dinero que no puede moverse haría que la diferencia pareciera menor de lo que es.',
+    whatIfUnpriced: (calls, models) =>
+      `Fuera de la comparación: ${calls.toLocaleString('es-ES')} `
+      + `${calls === 1 ? 'llamada' : 'llamadas'} cuyo modelo no tiene precio aquí (${models}). Su `
+      + 'coste en el modelo destino sí se puede calcular; la diferencia no, porque no hay cifra '
+      + 'actual de la que restar.',
+    whatIfNothingToMove:
+      'Nada que comparar: todas las llamadas con precio de este registro ya están en ese modelo, '
+      + 'o son demasiado grandes para su ventana de contexto.',
     historyHeading: 'Qué cuesta reenviar la conversación',
     historyGrowth: (label, model, first, last, turns) =>
       `${label} en ${model}: la entrada va de ${first} tokens en el turno más pequeño a ${last} `

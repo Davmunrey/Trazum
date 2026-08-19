@@ -13,6 +13,7 @@ import {
   formatSignedUsd,
   formatUsd,
   profileUsage,
+  repriceProfile,
   reviewAgeDays,
   sharesOf,
 } from '@trazum/core';
@@ -374,6 +375,18 @@ function Report({
 }) {
   const { report, levers, cache } = analysis;
   const { total } = report;
+  /**
+   * The model this bill is being repriced on, or `''` for none — the CLI's
+   * `--what-if`, reached from a list instead of typed, so the "a model the
+   * catalogue cannot price" error the CLI has to raise cannot arise here.
+   *
+   * Repriced on every render rather than memoised: it is one pass over the
+   * label-and-model slices, and a stale comparison beside a fresh bill would
+   * be a wrong number rather than a slow one.
+   */
+  const [whatIfModel, setWhatIfModel] = useState('');
+  const whatIf =
+    whatIfModel === '' ? null : repriceProfile(report, whatIfModel, BUNDLED_CATALOGUE);
 
   if (total.calls === 0) {
     return (
@@ -894,6 +907,101 @@ function Report({
                   pct(levers.promptCeilingShare),
                 )}
               </span>
+            </CardContent>
+          </Card>
+
+          {/*
+            The CLI's --what-if, in the tab. The levers card above picks its
+            own candidate; this answers the question the reader arrived with,
+            and every part of it is arranged so it cannot be read as advice:
+            the assumption sits above the figure, calls too large for the
+            target's context window are named as impossible rather than priced
+            as cheap, and spend already on that model stays out of the
+            difference. Repriced in the page, like everything else here — the
+            log does not leave the tab to be compared.
+          */}
+          <Card className="gap-4 py-[18px]">
+            <CardHeader className="px-[18px]">{eyebrow(t.bill.whatIfHeading)}</CardHeader>
+            <CardContent className="flex flex-col gap-3 px-[18px] text-sm">
+              <label className="flex flex-wrap items-center gap-2 text-[13px] text-muted-foreground">
+                {t.bill.whatIfPick}
+                <select
+                  aria-label={t.bill.whatIfPick}
+                  className="rounded-md border bg-background px-2 py-1 text-[13px] text-foreground"
+                  value={whatIfModel}
+                  onChange={(event) => setWhatIfModel(event.target.value)}
+                >
+                  <option value="">{t.bill.whatIfNone}</option>
+                  {BUNDLED_CATALOGUE.models.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.displayName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {whatIf !== null && (
+                <>
+                  {/*
+                    Above the figure, never below it: a dollar amount with the
+                    caveat underneath is a recommendation with small print.
+                  */}
+                  <span className="text-[13px] text-muted-foreground">{t.bill.whatIfAssumption}</span>
+                  {whatIf.slices.length === 0 ? (
+                    <span className="text-muted-foreground">{t.bill.whatIfNothingToMove}</span>
+                  ) : (
+                    <>
+                      <div className="font-semibold">
+                        {t.bill.whatIfTotal(
+                          formatUsd(whatIf.currentUsd),
+                          formatUsd(whatIf.targetUsd),
+                          formatUsd(Math.abs(whatIf.deltaUsd)),
+                        )}
+                      </div>
+                      <span className="text-[13px] text-muted-foreground">
+                        {whatIf.deltaUsd < 0 ? t.bill.whatIfCheaper : t.bill.whatIfDearer}
+                      </span>
+                      <ul className="m-0 list-disc pl-5 text-[13px]">
+                        {whatIf.slices.slice(0, MAX_SLICES).map((slice) => (
+                          <li key={`${slice.label}\n${slice.model}`}>
+                            {t.bill.whatIfSlice(
+                              labelName(slice.label),
+                              slice.model,
+                              formatUsd(slice.currentUsd),
+                              formatUsd(slice.targetUsd),
+                            )}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  {whatIf.overContext.slice(0, MAX_SECTIONS).map((slice) => (
+                    <div
+                      key={`${slice.label}\n${slice.model}`}
+                      className="rounded-lg border border-l-[3px] border-l-warn px-3.5 py-3 text-[13px] leading-snug text-warn"
+                    >
+                      {t.bill.whatIfOverContext(
+                        labelName(slice.label),
+                        n(slice.maxCallInputTokens),
+                        n(whatIf.target.contextWindow),
+                        formatUsd(slice.currentUsd),
+                      )}
+                    </div>
+                  ))}
+                  {whatIf.alreadyOnTarget.calls > 0 && (
+                    <span className="text-[13px] text-muted-foreground">
+                      {t.bill.whatIfAlreadyThere(
+                        whatIf.alreadyOnTarget.calls,
+                        formatUsd(whatIf.alreadyOnTarget.usd),
+                      )}
+                    </span>
+                  )}
+                  {whatIf.unpricedCalls > 0 && (
+                    <span className="text-[13px] text-muted-foreground">
+                      {t.bill.whatIfUnpriced(whatIf.unpricedCalls, whatIf.unpricedModels.join(', '))}
+                    </span>
+                  )}
+                </>
+              )}
             </CardContent>
           </Card>
 
