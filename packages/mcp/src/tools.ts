@@ -765,6 +765,19 @@ const PROFILE: ToolDefinition = {
         );
       }
     }
+    /**
+     * The figure that survives a small log: the percentiles above refuse thin
+     * slices, but a maximum is a fact at any count — and it is the number a
+     * per-conversation budget judges.
+     */
+    if (report.sessionCosts.length === 0 && report.sessionSpend !== null) {
+      lines.push(
+        `${report.sessionSpend.sessions} conversation${report.sessionSpend.sessions === 1 ? '' : 's'}`
+          + ` in this log; the most expensive cost ${formatUsd(report.sessionSpend.maxUsd)}. Too few`
+          + ' per workload for a percentile — a maximum is a fact at any count, and it is the figure'
+          + ' a per-conversation budget (--max-session-usd) judges.',
+      );
+    }
 
     lines.push('', '--- truncation ---');
     if (total.stopReasonCalls === 0) {

@@ -3104,6 +3104,19 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
       );
     }
   }
+  /**
+   * The figure that survives a small log. `sessionCosts` refuses slices too
+   * thin for a percentile, and rightly — but a log of four conversations
+   * still has a most expensive one, and that maximum is a fact at any count.
+   * It is also exactly the number `--max-session-usd` judges, so the report
+   * states it rather than going silent where the gate would speak.
+   */
+  if (report.sessionCosts.length === 0 && report.sessionSpend !== null) {
+    console.log();
+    console.log(
+      `  ${c.dim(wrap(t.profile.sessionSpendOnly(n(report.sessionSpend.sessions), formatUsd(report.sessionSpend.maxUsd)), 74, '  '))}`,
+    );
+  }
 
   /**
    * A total that assumed a cache-write rate is a floor, and says so.

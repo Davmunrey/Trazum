@@ -447,6 +447,12 @@ export interface WebMessages {
       max: string,
     ): string;
     sessionCostTail(ratio: string): string;
+    /**
+     * The whole log's conversations when the per-slice percentiles refused:
+     * a maximum is a fact at any count, and it is the number a
+     * per-conversation budget judges.
+     */
+    sessionSpendOnly(sessions: number, max: string): string;
     byLabelHeading: string;
     byModelHeading: string;
     unlabelled: string;

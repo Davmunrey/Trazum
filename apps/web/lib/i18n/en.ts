@@ -566,6 +566,10 @@ export const en: WebMessages = {
     sessionCostTail: (ratio) =>
       `The 95th percentile is ${ratio}x the median: most conversations are cheap and a few are `
       + 'not, which is a tail a quota can catch rather than a workload that is uniformly expensive.',
+    sessionSpendOnly: (sessions, max) =>
+      `${sessions} conversation${sessions === 1 ? '' : 's'} in this log; the most expensive cost `
+      + `${max}. Too few per workload for a percentile — a maximum is a fact at any count, and it `
+      + 'is the figure a per-conversation budget judges.',
     byLabelHeading: 'By label',
     byModelHeading: 'By model',
     unlabelled: '(no label)',

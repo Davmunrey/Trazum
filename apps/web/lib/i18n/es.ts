@@ -582,6 +582,10 @@ export const es: WebMessages = {
     sessionCostTail: (ratio) =>
       `El percentil 95 es ${ratio}x la mediana: casi todas las conversaciones son baratas y unas `
       + 'pocas no, y esa es una cola que una cuota puede cazar, no una carga cara de manera uniforme.',
+    sessionSpendOnly: (sessions, max) =>
+      `${sessions} conversaci${sessions === 1 ? 'ón' : 'ones'} en este registro; la más cara costó `
+      + `${max}. Demasiado pocas por carga para un percentil — un máximo es un hecho con cualquier `
+      + 'recuento, y es la cifra que juzga un presupuesto por conversación.',
     byLabelHeading: 'Por etiqueta',
     byModelHeading: 'Por modelo',
     unlabelled: '(sin etiqueta)',

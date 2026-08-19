@@ -580,6 +580,18 @@ describe('profile_usage', () => {
     assert.match(body, /95% come in under \$50\.00/);
     assert.match(body, /50x the median/);
     assert.ok(!body.includes('spike'), 'a session key reached the output');
+
+    // Under five conversations the percentiles refuse — and the report still
+    // states the count and the single worst cost, because a maximum is a
+    // fact at any count and it is the figure a per-conversation budget judges.
+    const few = [
+      line({ model: 'claude-opus-5', session: 'a', usage: { input_tokens: 200_000, output_tokens: 0 } }),
+      line({ model: 'claude-opus-5', session: 'b', usage: { input_tokens: 1_600_000, output_tokens: 0 } }),
+    ].join('\n');
+    const small = bodyOf(await client.call('profile_usage', { log: few }));
+    assert.doesNotMatch(small, /the median costs/);
+    assert.match(small, /2 conversations in this log; the most expensive cost \$8\.00/);
+    assert.ok(!small.includes('"a"') && !small.includes('"b"'), 'a session key reached the output');
   });
 
   it('names the conversations that never came back, as fact or as ceiling', async () => {
