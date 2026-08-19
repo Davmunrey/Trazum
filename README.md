@@ -2003,6 +2003,24 @@ period. A window matching nothing is an error naming what the log does cover,
 never a $0 report that would pass a budget gate over a period the log does not
 contain.
 
+**And it prices the same calls somewhere else.** `--what-if <model>` puts this
+bill on another rate card — the same token counts, nothing about the content
+imagined:
+
+```bash
+trazum profile usage.jsonl --what-if claude-haiku-4-5
+```
+
+It is multiplication, not advice, and it says so above the figure rather than
+underneath it: nothing here has seen a prompt, so it cannot know whether the
+cheaper model could do the work. A slice whose largest call is bigger than the
+target's context window is named as **impossible** rather than priced as
+cheap, and its money is excluded from every total — a comparison that priced
+it would report a saving for calls that would have failed. Spend already on
+that model is stated separately, so the difference is a percentage of what can
+actually move. The same figures are in `--json` as `whatIf`, in the MCP tool
+as `what_if`, and in the web Bill tab as a model picker.
+
 **And the clock is not needed for every finding**: with only `session` on the
 records, `profile` names the conversations that ended after one turn and what
 their cache writes cost — reuse paid for that their own conversation never
