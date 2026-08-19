@@ -1150,6 +1150,28 @@ ${bold('EXAMPLES')}
       `--what-if does not know "${value}". Priced models: ${available}. Add it with --pricing if you have its rates.`,
     badGzip: (file, detail) =>
       `${file} is gzipped and would not decompress: ${detail}. Reading the rest and saying nothing would report a bill missing whatever that file held, so this stops instead. Check the file, or move it out of the directory.`,
+    dryRunHeading: () => 'What this log can answer — no bill was produced',
+    dryRunParsed: (parsed, skipped) =>
+      `${parsed} records parse; ${skipped} lines could not be read. A dry run prices nothing: the point is what the gates you are about to wire would stand on.`,
+    dryRunUnpriced: (models) =>
+      `Models the price table does not know: ${models}. Their tokens parse; their dollars need a --pricing overlay.`,
+    dryRunTotals: () => 'The bill itself: totals, per-model split, cache economics, the levers.',
+    dryRunLabels: (share) =>
+      `Per-workload findings and label budgets — "label" on ${share} of records.`,
+    dryRunClock: (share) =>
+      `The period, per-day and per-hour shape, --max-day-usd, --since/--until — a timestamp on ${share} of records.`,
+    dryRunSessions: (share) =>
+      `Conversation growth, per-conversation cost, --max-session-usd — a session on ${share} of records. Grouped by, never printed.`,
+    dryRunStopReason: (share) =>
+      `Truncated answers and their retry bill — a stop reason on ${share} of records.`,
+    dryRunCacheTtl: (ttl, writes) =>
+      `Settled cache verdicts — the "cache_creation" split on ${ttl} of ${writes} cache-writing records.`,
+    dryRunNoCacheTraffic: () =>
+      'Cache verdicts: nothing wrote to the cache in this log, so there is nothing to settle — not a missing field.',
+    dryRunFooter: () =>
+      'A ✗ is not a defect in the log; it is a finding this log cannot support yet. The README\'s recording recipe carries every field above.',
+    dryRunNoGates: () =>
+      '--dry-run produces no bill, so a gate beside it would exit green having judged nothing. Run the gates without --dry-run.',
     coverageHeading: () => 'What this log cannot answer yet',
     needsLabel: (seen) =>
       `"label" on ${seen} records: without it every workload is one row, so no per-workload spend, no drill-down, and the levers describe a mixture rather than a decision.`,

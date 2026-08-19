@@ -85,6 +85,31 @@ describe('reading a usage line', () => {
     assert.equal(record.outputTokens, 400);
   });
 
+  it("reads Gemini's usageMetadata, cached half subtracted like OpenAI's", () => {
+    /**
+     * Gemini's shape is unambiguous — `usageMetadata` appears in no other
+     * provider's response — and it sets the same double-charge trap as
+     * OpenAI: `promptTokenCount` includes `cachedContentTokenCount`.
+     */
+    const record = parseUsageLine(
+      JSON.stringify({
+        model: 'gemini-2.5-pro',
+        usageMetadata: {
+          promptTokenCount: 10_000,
+          candidatesTokenCount: 400,
+          cachedContentTokenCount: 9_000,
+          totalTokenCount: 10_400,
+        },
+        finishReason: 'MAX_TOKENS',
+      }),
+    );
+    assert.equal(record.inputTokens, 1000, 'the cached tokens were billed twice');
+    assert.equal(record.cacheReadTokens, 9000);
+    assert.equal(record.outputTokens, 400);
+    // Gemini spells truncation MAX_TOKENS; the three-way contract holds.
+    assert.equal(record.truncated, true);
+  });
+
   it('refuses a line whose count is present but unreadable', () => {
     /**
      * Absent and corrupt are different, and conflating them cost the whole bill.

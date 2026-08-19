@@ -690,12 +690,39 @@ export function parseUsageLine(line: string): UsageRecord | null {
   const write5m = creation ? readCount(creation.ephemeral_5m_input_tokens) : ({ kind: 'absent' } as Count);
   const write1h = creation ? readCount(creation.ephemeral_1h_input_tokens) : ({ kind: 'absent' } as Count);
 
+  /**
+   * Gemini's shape, recognised because it is unambiguous: `usageMetadata`
+   * appears in no other provider's response, and its field names collide with
+   * nothing above. `promptTokenCount` **includes** `cachedContentTokenCount`,
+   * the same double-charge trap OpenAI's `prompt_tokens` sets — so the cached
+   * half is subtracted through the same one mechanism rather than a parallel
+   * one that could drift from it.
+   */
+  const geminiMeta =
+    typeof usage.usageMetadata === 'object' && usage.usageMetadata !== null
+      ? (usage.usageMetadata as Record<string, unknown>)
+      : null;
+  const geminiCached = geminiMeta
+    ? readCount(geminiMeta.cachedContentTokenCount)
+    : ({ kind: 'absent' } as Count);
+
   const counts: Record<string, Count> = {
-    input: readCount(usage.input_tokens, usage.inputTokens, usage.prompt_tokens),
-    output: readCount(usage.output_tokens, usage.outputTokens, usage.completion_tokens),
+    input: readCount(
+      usage.input_tokens,
+      usage.inputTokens,
+      usage.prompt_tokens,
+      geminiMeta?.promptTokenCount,
+    ),
+    output: readCount(
+      usage.output_tokens,
+      usage.outputTokens,
+      usage.completion_tokens,
+      geminiMeta?.candidatesTokenCount,
+    ),
     cacheRead: readCount(usage.cache_read_input_tokens, usage.cacheReadTokens),
     cacheWrite: readCount(usage.cache_creation_input_tokens, usage.cacheWriteTokens),
     openAiCached,
+    geminiCached,
     write5m,
     write1h,
   };
@@ -714,7 +741,9 @@ export function parseUsageLine(line: string): UsageRecord | null {
   const moment = readMoment(record.ts, record.timestamp, record.created_at, record.created);
   if (moment.kind === 'corrupt') return null;
 
-  const cached = valueOf(counts.openAiCached!);
+  // Both providers that fold cached tokens into the prompt count, one
+  // subtraction. They cannot coexist on a record: the shapes share no field.
+  const cached = valueOf(counts.openAiCached!) + valueOf(counts.geminiCached!);
   const flatWrite = valueOf(counts.cacheWrite!);
   const split5m = valueOf(counts.write5m!);
   const split1h = valueOf(counts.write1h!);
@@ -757,9 +786,11 @@ export function parseUsageLine(line: string): UsageRecord | null {
      * not happen" — the report treats those differently on purpose.
      */
     truncated: (() => {
-      const reason = record.stop_reason ?? record.finish_reason;
+      // Gemini spells it `finishReason: "MAX_TOKENS"`, at the record level in
+      // any log written by spreading the candidate. Same three-way contract.
+      const reason = record.stop_reason ?? record.finish_reason ?? record.finishReason;
       if (typeof reason !== 'string') return null;
-      return reason === 'max_tokens' || reason === 'length';
+      return reason === 'max_tokens' || reason === 'length' || reason === 'MAX_TOKENS';
     })(),
   };
 }

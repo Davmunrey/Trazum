@@ -440,7 +440,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
-  profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd', 'label', 'since', 'until'],
+  profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd', 'label', 'since', 'until', 'dry-run'],
   route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
@@ -2145,6 +2145,52 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
   }
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
+
+  /**
+   * `--dry-run`: what this log could and could not answer, and no bill.
+   *
+   * The question somebody has *before* wiring Trazum into CI is not "what did
+   * we spend" but "will this log support the gates I want" — and answering it
+   * with a full report makes them read a bill to find out a field is missing.
+   * This path states readiness per capability and produces no dollar figure
+   * at all, so nothing here can be mistaken for spend. It also refuses to
+   * coexist with the gates: a gate over a report that was never produced
+   * would exit green having judged nothing.
+   */
+  if (boolFlag(args, 'dry-run')) {
+    const gateFlags = ['max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd'];
+    if (gateFlags.some((flag) => typeof args.flags.get(flag) === 'string')) {
+      throw new Error(t.profile.dryRunNoGates());
+    }
+    const cov = report.fieldCoverage;
+    const parsed = cov.parsed;
+    console.log(c.bold(t.profile.dryRunHeading()));
+    console.log(`  ${wrap(t.profile.dryRunParsed(n(parsed), n(report.skippedLines.length)), 74, '  ')}`);
+    if (report.unpricedModels.length > 0) {
+      console.log(`  ${c.yellow('!')} ${wrap(t.profile.dryRunUnpriced(report.unpricedModels.join(', ')), 74, '    ')}`);
+    }
+    console.log();
+    const can = (ok: boolean, line: string): void => {
+      console.log(`  ${ok ? c.green('✓') : c.yellow('✗')} ${wrap(line, 74, '    ')}`);
+    };
+    const share = (count: number): string => (parsed > 0 ? pct(count / parsed) : '0%');
+    can(parsed > 0, t.profile.dryRunTotals());
+    can(cov.label > 0, t.profile.dryRunLabels(share(cov.label)));
+    can(cov.ts > 0, t.profile.dryRunClock(share(cov.ts)));
+    can(cov.session > 0, t.profile.dryRunSessions(share(cov.session)));
+    can(cov.stopReason > 0, t.profile.dryRunStopReason(share(cov.stopReason)));
+    // "No cache traffic" is not a missing field: the split can only exist on
+    // records that wrote, and a log that never wrote has nothing to record.
+    if (cov.cacheWrites > 0) {
+      can(cov.cacheTtl > 0, t.profile.dryRunCacheTtl(n(cov.cacheTtl), n(cov.cacheWrites)));
+    } else {
+      console.log(`  ${c.dim('·')} ${wrap(t.profile.dryRunNoCacheTraffic(), 74, '    ')}`);
+    }
+    console.log();
+    console.log(`  ${c.dim(wrap(t.profile.dryRunFooter(), 74, '  '))}`);
+    if (parsed === 0) process.exitCode = 1;
+    return;
+  }
 
   /**
    * The previous log, loaded before the output paths split so the growth gate
