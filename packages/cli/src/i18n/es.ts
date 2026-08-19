@@ -226,6 +226,12 @@ ${bold('OPCIONES DE profile')}
                               leyera la mitad halagadora dejaría pasar las
                               facturas que existe para cazar — y dice qué
                               afirmación disparó.
+  --max-day-usd <n>           Falla cuando un solo día UTC dentro del registro
+                              gastó más que esto. Un mes dentro de presupuesto
+                              puede esconder la tarde en que un bucle se comió
+                              una cuarta parte. Un registro sin marcas de
+                              tiempo falla: no medido no es dentro de
+                              presupuesto.
   --since <cuándo>            Perfila solo llamadas desde/hasta ese momento. Un
   --until <cuándo>            día UTC (2026-08-14), una marca ISO 8601 completa,
                               una ventana relativa (7d, 24h) o "now";
@@ -1044,6 +1050,14 @@ ${bold('EJEMPLOS')}
       `Caché dentro del presupuesto: cachear costó como mucho ${worst} contra --max-cache-loss-usd ${max}, peor caso incluido.`,
     maxCacheLossFailed: (delta, max) =>
       `FALLO — cachear añadió ${delta} a esta factura (los mismos tokens como entrada normal habrían costado menos), por encima del límite --max-cache-loss-usd de ${max}. El contrafactual es exacto: los mismos tokens a la tarifa de entrada publicada.`,
+    maxDayOk: (day, usd, max) =>
+      `Ningún día por encima del presupuesto: el peor fue ${day} con ${usd}, contra --max-day-usd ${max}.`,
+    maxDayFailed: (day, usd, max) =>
+      `FALLO — ${day} gastó ${usd}, por encima del límite --max-day-usd de ${max}. Un total dentro de presupuesto puede esconder un solo día desbocado, que es justo lo que vigila esta puerta.`,
+    maxDayNoClock: () =>
+      'FALLO — se pidió --max-day-usd y ningún registro de este fichero lleva marca de tiempo, así que no hay días que juzgar. Eso no es un aprobado: una factura que nadie pudo medir por días no es una factura que se mantuvo bajo un presupuesto diario. Añade "ts" al registro y la puerta se arma.',
+    maxDayUndated: (calls) =>
+      `${calls} llamadas no llevan marca de tiempo, así que están en la factura y en ninguno de los días de arriba — el peor día es un suelo por lo que valieran esas llamadas. Un fallo se sostendría igual; este aprobado cubre la parte que se pudo fechar.`,
     maxCacheLossWorstCase: (calls, worst, max) =>
       `FALLO — ${count(calls)} ${calls === 1 ? 'llamada no registró' : 'llamadas no registraron'} qué TTL de escritura se pagó, y a la tarifa de 1 hora cachear añadió hasta ${worst}, por encima del límite --max-cache-loss-usd de ${max}. La puerta lee el peor caso a propósito: una puerta que leyera la mitad halagadora dejaría pasar exactamente las facturas que existe para cazar. Registra el objeto "cache_creation" que devuelve la API y el techo se vuelve una cifra.`,
     pricesStale: (date, days) =>

@@ -177,6 +177,7 @@ const VALUE_FLAGS = new Set([
   'max-usd',
   'max-growth-usd',
   'max-cache-loss-usd',
+  'max-day-usd',
   'csv-out',
   'csv-shape',
   'what-if',
@@ -432,7 +433,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
-  profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'label', 'since', 'until'],
+  profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'label', 'since', 'until'],
   route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
@@ -2215,6 +2216,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
       typeof args.flags.get('max-usd') === 'string' ||
       typeof args.flags.get('max-growth-usd') === 'string' ||
       typeof args.flags.get('max-cache-loss-usd') === 'string' ||
+      typeof args.flags.get('max-day-usd') === 'string' ||
       config.spend !== undefined;
     if (anyGate) {
       const reasons: string[] = [];
@@ -2307,6 +2309,57 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
         console.error(
           c.dim(t.profile.maxCacheLossOk(formatUsd(Math.max(0, gateCache.worstCaseDeltaUsd)), formatUsd(maxLoss))),
         );
+      }
+    }
+    /**
+     * The per-day gate — the one a total cannot arm.
+     *
+     * A month at $3,000 against a $4,000 budget passes while one afternoon's
+     * runaway agent loop burned $900 of it in four hours. `--max-usd` gates
+     * the sum handed in; this gates the **worst single UTC day inside it**,
+     * which is the shape a loop, a bad deploy or a retry storm actually has.
+     *
+     * Two refusals it inherits from the rest of the tool:
+     *
+     * A log with **no clock at all** cannot be judged by day, and that is an
+     * error rather than a pass. "Not measured" is not "under budget", and a
+     * gate that silently green-lights an unmeasurable log is worse than one
+     * that was never armed.
+     *
+     * The first and last day of a log are usually **partial**, so a day under
+     * the limit here is under it for the hours the log contains. A day *over*
+     * the limit is over it whatever the missing hours held — the failure is
+     * sound in both directions, the pass is a floor, and the pass message
+     * says so when the span does not start and end on a day boundary.
+     */
+    if (typeof args.flags.get('max-day-usd') === 'string') {
+      const maxDay = numberFlag(args, 'max-day-usd', 0, t);
+      if (report.spendByDay.length === 0) {
+        console.error(c.red(t.profile.maxDayNoClock()));
+        process.exitCode = 1;
+      } else {
+        const worst = report.spendByDay.reduce((a, b) => (b.usd > a.usd ? b : a));
+        const suspect =
+          worst.topLabel !== null && report.byLabel.length > 1
+            ? ` ${t.profile.dayPeakLabel(worst.topLabel === UNLABELLED ? t.profile.unlabelled() : worst.topLabel, formatUsd(worst.topLabelUsd))}`
+            : '';
+        if (worst.usd > maxDay) {
+          console.error(
+            c.red(`${t.profile.maxDayFailed(worst.day, formatUsd(worst.usd), formatUsd(maxDay))}${suspect}`),
+          );
+          process.exitCode = 1;
+        } else {
+          console.error(c.dim(t.profile.maxDayOk(worst.day, formatUsd(worst.usd), formatUsd(maxDay))));
+          /**
+           * Calls with no clock are in the bill above and in no day below, so
+           * the worst day is a floor by exactly that much. Said only on a
+           * pass: a failure stands whatever the undated calls held.
+           */
+          const undated = report.fieldCoverage.parsed - report.fieldCoverage.ts;
+          if (undated > 0) {
+            console.error(c.yellow(t.profile.maxDayUndated(n(undated))));
+          }
+        }
       }
     }
   };
