@@ -13,6 +13,7 @@ import {
   billLevers,
   cacheEconomics,
   cacheHitRate,
+  contextPressure,
   comparePrompts,
   compareToBaseline,
   computeSavings,
@@ -2178,6 +2179,12 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
    * got a report with no answer in it, and has no way to tell a typo from a
    * model this comparison had nothing to say about.
    */
+  /**
+   * The largest call against each model's window, computed once here so the
+   * terminal, the JSON and the markdown state the same ratio — the
+   * denominator lives in the (possibly overlaid) catalogue.
+   */
+  const pressures = contextPressure(report, pricing);
   const whatIfModel = stringFlag(args, 'what-if');
   const whatIf = whatIfModel !== undefined ? repriceProfile(report, whatIfModel, pricing) : null;
   if (whatIfModel !== undefined && whatIf === null) {
@@ -2441,6 +2448,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
           // handed over, so the summary in a pull request cannot disagree
           // with the terminal about what a move would cost.
           ...(whatIf !== null ? { whatIf } : {}),
+          pressure: pressures,
           // The comparison, when there was one — the same figures and the same
           // drivers the terminal printed, never re-derived here.
           ...(previous !== null
@@ -2548,6 +2556,10 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
                 },
               }
             : {}),
+          // How close each slice's largest call is to its model's window —
+          // derived like `cache` and `levers`, so a dashboard need not
+          // re-derive a ratio whose denominator lives in the catalogue.
+          contextPressure: pressures,
           // Present only when --what-if was passed. `sameTokensAssumed` rides
           // along inside it so a consumer cannot print the dollar figure
           // without the caveat being in the same object.
@@ -3354,6 +3366,41 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
         console.log(`  ${c.dim(wrap(t.profile.inputMostlyCached(pct(shape.cachedShare)), 74, '  '))}`);
       } else if (shape.cachedShare < 0.1) {
         console.log(`  ${c.dim(wrap(t.profile.inputFullRate(), 74, '  '))}`);
+      }
+    }
+  }
+
+  /**
+   * How close the largest call is to the model's ceiling.
+   *
+   * The failure a bill cannot show: input grows turn by turn or document by
+   * document, costs nothing extra to grow, and then one call crosses the
+   * context window and the API refuses it. Loud from 85% — close enough
+   * that the next retrieval bump or long conversation plausibly crosses —
+   * and quiet above half, so the reader sees it coming either way. No
+   * prediction of *when*: a straight line through two points is a guess
+   * wearing arithmetic's clothes.
+   */
+  {
+    if (pressures.length > 0) {
+      console.log();
+      console.log(c.bold(t.profile.pressureHeading()));
+      for (const row of pressures.slice(0, 3)) {
+        const label = row.label === UNLABELLED ? t.profile.unlabelled() : row.label;
+        const line = t.profile.pressureLine(
+          label,
+          row.modelName,
+          n(row.maxCallInputTokens),
+          n(row.contextWindow),
+          pct(row.share),
+        );
+        console.log();
+        if (row.share >= 0.85) {
+          console.log(`  ${c.yellow('!')} ${c.bold(wrap(line, 74, '    '))}`);
+          console.log(`  ${c.dim(wrap(t.profile.pressureAdvice(), 74, '  '))}`);
+        } else {
+          console.log(`  ${c.dim(wrap(line, 74, '  '))}`);
+        }
       }
     }
   }

@@ -48,6 +48,11 @@ export type { InputShape, InputShapeOptions, InputShapeTracker } from './input-s
 // the pattern it is and never as a certainty. See repeats.ts.
 export { createRepeatsTracker, repeatedTurns } from './repeats.js';
 export type { RepeatedTurns, RepeatsOptions, RepeatsTracker } from './repeats.js';
+// How close each slice's largest call is to its model's context window —
+// the failure a bill cannot show until the day the product breaks.
+// See context-pressure.ts.
+export { contextPressure } from './context-pressure.js';
+export type { ContextPressure, ContextPressureOptions } from './context-pressure.js';
 export { priceTokensOn, repriceProfile } from './reprice.js';
 export type { OverContextSlice, RepriceReport, RepricedSlice } from './reprice.js';
 export { createSessionLedgerTracker, singleTurnCacheWrites } from './session-ledger.js';

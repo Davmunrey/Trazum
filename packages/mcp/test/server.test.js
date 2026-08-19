@@ -362,6 +362,23 @@ describe('profile_usage', () => {
     assert.match(empty, /no comparison to make — a different answer from zero growth/);
   });
 
+  it('says how close the largest call is to the window, and refuses the date', async () => {
+    // 190k input tokens against Claude Haiku 4.5's 200k window: 95%.
+    const log = line({
+      model: 'claude-haiku-4-5',
+      label: 'chat',
+      usage: { input_tokens: 190_000, output_tokens: 0 },
+    });
+    const body = bodyOf(await client.call('profile_usage', { log }));
+    assert.match(body, /Approaching the context window/);
+    assert.match(body, /the largest call carried 190,000 input tokens against a 200,000-token window — 95% of the ceiling/);
+    assert.match(body, /When it crosses is not predicted here/);
+
+    // 90k is under half the window and must not produce the section at all.
+    const calm = line({ model: 'claude-haiku-4-5', label: 'chat', usage: { input_tokens: 90_000, output_tokens: 0 } });
+    assert.ok(!bodyOf(await client.call('profile_usage', { log: calm })).includes('Approaching the context window'));
+  });
+
   it('names a request sent again, as a pattern and not a cause', async () => {
     const turn = (seconds) =>
       line({

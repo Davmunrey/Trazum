@@ -10,6 +10,7 @@ import {
   reviewAgeDays,
   listModels,
   optimize,
+  contextPressure,
   profileUsage,
   repriceProfile,
 } from '@trazum/core';
@@ -818,6 +819,28 @@ const PROFILE: ToolDefinition = {
         if (modelDrivers.length > 0 && modelsInvolved.size > 1) {
           lines.push('The same change, by model — where the mix moved:');
           for (const d of modelDrivers.slice(0, 3)) lines.push(describe(d, d.key));
+        }
+      }
+    }
+
+    /**
+     * The ceiling in sight. An agent budgeting its own prompts is exactly
+     * the caller that can stop growing before the window refuses a call.
+     */
+    {
+      const pressures = contextPressure(report, BUNDLED_CATALOGUE);
+      if (pressures.length > 0) {
+        lines.push('');
+        lines.push('Approaching the context window:');
+        for (const row of pressures.slice(0, 3)) {
+          const shown = row.label === UNLABELLED ? 'unlabelled' : row.label;
+          lines.push(
+            `  ${shown} on ${row.modelName}: the largest call carried `
+              + `${row.maxCallInputTokens.toLocaleString('en-US')} input tokens against a `
+              + `${row.contextWindow.toLocaleString('en-US')}-token window — `
+              + `${Math.round(row.share * 100)}% of the ceiling. At 100% the call fails outright. `
+              + 'When it crosses is not predicted here: the share is a fact, the trajectory is not.',
+          );
         }
       }
     }

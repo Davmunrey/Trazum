@@ -10,7 +10,7 @@ import type {
 } from '@trazum/core';
 import { TTL_1H_MS, UNLABELLED, formatSignedUsd, formatUsd, getMessages, getModel, sharesOf } from '@trazum/core';
 import { dayOf, formatGap, median, spanDays } from './time.js';
-import type { AgainstDriver, BillLevers, CacheEconomics, RepriceReport, UsageProfileReport } from '@trazum/core';
+import type { AgainstDriver, BillLevers, CacheEconomics, ContextPressure, RepriceReport, UsageProfileReport } from '@trazum/core';
 
 /**
  * Markdown for the places a pull request is actually read.
@@ -750,6 +750,12 @@ export interface ProfileMarkdownInput {
    * disagree about what a move would cost, and this is a rendering.
    */
   whatIf?: RepriceReport | null;
+  /**
+   * The largest call against each model's window, computed once in the CLI —
+   * like `whatIf` — because the ratio's denominator lives in the (possibly
+   * overlaid) catalogue and a summary must not re-derive it differently.
+   */
+  pressure?: ContextPressure[];
   against?: {
     previousTotalUsd: number;
     previousCalls: number;
@@ -777,7 +783,7 @@ export interface ProfileMarkdownInput {
  * reading CI instead of machines.
  */
 export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
-  const { report, levers, cache, t, window, stalePricing, against, whatIf } = input;
+  const { report, levers, cache, t, window, stalePricing, against, whatIf, pressure = [] } = input;
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
   const shares = sharesOf(report.total);
@@ -894,6 +900,29 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
   lines.push('');
   lines.push(`_${mdText(t.profile.leverPromptCeiling(formatUsd(levers.promptCeilingUsd), pct(levers.promptCeilingShare)))}_`);
   lines.push('');
+
+  /**
+   * The ceiling in sight — loud in a summary from 85%, because the reader of
+   * a PR comment is exactly the person who can cap the retrieval today.
+   */
+  {
+    const pressures = pressure;
+    if (pressures.length > 0) {
+      lines.push(`#### ${t.profile.pressureHeading()}`);
+      lines.push('');
+      for (const row of pressures.slice(0, 3)) {
+        const sentence = mdText(
+          t.profile.pressureLine(showLabel(row.label), row.modelName, n(row.maxCallInputTokens), n(row.contextWindow), pct(row.share)),
+        );
+        lines.push(row.share >= 0.85 ? `> ⚠️ ${sentence}` : `- ${sentence}`);
+        if (row.share >= 0.85) lines.push('');
+      }
+      if (pressures.some((row) => row.share >= 0.85)) {
+        lines.push(`_${mdText(t.profile.pressureAdvice())}_`);
+      }
+      lines.push('');
+    }
+  }
 
   /**
    * The same request sent again — money that bought nothing the call before
