@@ -40,6 +40,48 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.34.0 — "Findings as policy"
+
+### A finding decided about, on the record
+
+Trazum finds the same thing every run, and a team that has looked at a failure
+and chosen to live with it had no way to say so — so the finding shouted
+forever and the report lost authority. `waive` in `trazum.config.json` fixes
+that, and its refusals are the design:
+
+```json
+"waive": [{ "gate": "maxUsd", "reason": "August migration doubles traffic", "until": "2026-09-15" }]
+```
+
+```
+FAILED — this log spent $12.00 against a --max-usd of $8.00.
+WAIVED — the maxUsd failure above is on the record and silenced until
+2026-09-15 (28 days left): "August migration doubles traffic". The bill still
+counts it; only the exit code is quiet.
+```
+
+**All three fields are required.** A waiver with no end date is a finding
+deleted with extra steps; a reasonless one is a silence nobody can audit; one
+naming an unknown gate is a decision about nothing, refused with the list of
+what is waivable.
+
+**Waived is shown as waived, never hidden.** The failure prints in full, its
+explanation prints, the bill still counts it. Only the exit code goes quiet.
+
+**An expired waiver fails the gate it silenced**, naming the date it expired
+and the reason somebody wrote. That expiry is the entire mechanism by which a
+waiver stays a decision rather than becoming a habit.
+
+### What cannot be waived, and why
+
+`maxUsd`, `maxDayUsd`, `maxSessionUsd`, `maxCacheLossUsd`, `maxGrowthUsd` and
+`byLabel:<label>` are waivable. The growth gate's **coverage refusal** is not:
+that failure says the comparison cannot be made, and waiving unmeasurability
+would be a decision to stop measuring rather than a budget decision with an
+end date.
+
+---
+
 ## 1.33.0 — "The log it could not read yet"
 
 ### Gemini's shape, recognised because it is unambiguous

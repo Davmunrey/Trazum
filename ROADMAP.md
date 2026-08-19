@@ -514,6 +514,14 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.34.0 — Findings as policy
+
+`waive` in the config records a gate failure the team decided to live with:
+gate, reason in prose and expiry, all three required. Waived is shown as
+waived and never hidden, and an expired waiver fails the gate it silenced —
+the mechanism by which a waiver stays a decision rather than a habit. The
+growth gate's coverage refusal is deliberately unwaivable.
+
 ### 1.33.0 — The log it could not read yet
 
 Gemini's `usageMetadata` shape recognised — unambiguous, cached half
