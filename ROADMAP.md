@@ -514,6 +514,14 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.35.0 — The reader who is not in the terminal
+
+`--markdown-summary` gives a pull-request body or a weekly note the three
+figures that changed and the one lever worth the most, as a view over the same
+report rather than a second set of figures. The web comparison the plan listed
+beside it was already shipped; the privacy promise above the drop zone was
+widened to name the second file it has accepted all along.
+
 ### 1.34.0 — Findings as policy
 
 `waive` in the config records a gate failure the team decided to live with:
@@ -1033,13 +1041,14 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-Six releases are planned in order through 1.35.0, with the reasoning attached:
-[docs/plan-1.30-1.35.md](docs/plan-1.30-1.35.md). The short version — the bill
-is close to complete, and the next arc is the loop: from a finding, to a
-decision, to a decision that survives the next report.
+All six releases planned through 1.35.0 have shipped — the plan and what each
+one delivered is in [docs/plan-1.30-1.35.md](docs/plan-1.30-1.35.md). The loop
+it set out to close is closed: a finding names what to change, a gate explains
+itself, a decision about a finding lives in the repository with an expiry, and
+the result reaches somebody who never opens a terminal.
 
-The ordering is a commitment and the calendar is not. What users report
-reorders it; that is the one input allowed to.
+Nothing is scheduled next. The next thing this needs is users, and what they
+report — that is the one input allowed to set the order.
 
 ## Under consideration
 

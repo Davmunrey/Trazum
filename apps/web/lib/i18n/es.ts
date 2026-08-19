@@ -270,8 +270,9 @@ export const es: WebMessages = {
       + '"usage" que devolvió la API — y dice adónde fue el dinero: qué carga de trabajo, qué '
       + 'modelo, si la caché se pagó sola y qué palancas moverían la factura de verdad.',
     privacy:
-      'El registro se lee por completo en esta pestaña del navegador. No se sube, no se guarda '
-      + 'ni se envía a ninguna parte: cierra la página y desaparece.',
+      'Todo registro que abras aquí — la factura, y un segundo con el que compararla — se lee '
+      + 'por completo en esta pestaña del navegador. No se sube, no se guarda ni se envía a '
+      + 'ninguna parte: cierra la página y desaparece.',
     dropLabel: 'Suelta aquí un registro de uso',
     chooseFile: 'Elegir un archivo',
     orPaste: 'o pega el registro debajo',

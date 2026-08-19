@@ -40,6 +40,39 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.35.0 — "The reader who is not in the terminal"
+
+The last of the six planned in `docs/plan-1.30-1.35.md`, and the one aimed at
+the person who owns the budget and does not run the CLI.
+
+### The short form
+
+`--markdown-summary` states the gate verdict, the bill, what changed against a
+previous log with its largest driver, and the single lever worth the most —
+then stops. Twelve lines against ninety, for a pull-request body or a weekly
+note.
+
+It is a **view over the same report, never a different set of figures**: a
+reader who opens both cannot find them disagreeing. It returns before the full
+rendering rather than filtering it, so a section added later cannot leak into
+the short form by forgetting to opt out. One driver and one lever, because a
+summary that lists everything is the report with a shorter heading. With no
+previous log it says so, rather than implying a stability nobody measured.
+
+### The comparison in the browser was already there
+
+The plan's second item for this release was "the web bill accepts a
+comparison". It has since 1.11, and coverage drift and the what-if
+corrections reached it with their own releases — so the honest answer is that
+nothing was missing, and no work was invented to look busy.
+
+One real gap turned up while checking: the privacy sentence above the drop
+zone said "the log", singular, on a page that has accepted two files for
+twenty releases. The second was always read in the tab like the first; now the
+promise says so where somebody about to open it will read it.
+
+---
+
 ## 1.34.0 — "Findings as policy"
 
 ### A finding decided about, on the record

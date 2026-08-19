@@ -9,7 +9,7 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
-## Unreleased
+## 1.35.0 — "The reader who is not in the terminal"
 
 ### Added
 
@@ -26,6 +26,11 @@ reader who opens both cannot find them disagreeing — and it is returned
 before the full rendering rather than filtered out of it, so a section added
 later cannot leak into the short form by forgetting to opt out. With no
 previous log it says so rather than implying a stability nobody measured.
+
+**The privacy promise covers both files.** The sentence above the drop zone
+said "the log", singular, on a page that has accepted two since the
+comparison shipped. The second one was always read in the tab like the first;
+now the promise says so where somebody about to open it will read it.
 
 ## 1.34.0 — "Findings as policy"
 

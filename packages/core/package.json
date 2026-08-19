@@ -1,6 +1,6 @@
 {
   "name": "@trazum/core",
-  "version": "1.34.0",
+  "version": "1.35.0",
   "description": "Trazum core: priced advisories for LLM prompts (caching, model tier, batching, schemas), plus deterministic trimming, token counting and pricing.",
   "license": "MIT",
   "author": "David Mu\u00f1oz Rey",
