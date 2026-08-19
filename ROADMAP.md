@@ -514,6 +514,16 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.40.0 — The long run
+
+`trazum history` builds the series no pairwise comparison can see, from
+stored `--json` reports rather than re-parsed logs: labels climbing for
+consecutive periods since a named report, model shares rising under flat
+totals, cache shares decaying too slowly for any single report to call, and
+plan actions planned again and again with nobody executing them. Shapes
+named, nothing forecast. Fifth and last of the five in
+docs/plan-1.36-1.40.md — the arc is delivered.
+
 ### 1.39.0 — Did it work?
 
 `trazum verify` holds a saved plan to the log that came after it, with three

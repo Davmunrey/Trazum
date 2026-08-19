@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.40.0 — "The long run"
+
 ### Added
 
 **`trazum history <dir>`: the long run.** Every comparison in Trazum is
