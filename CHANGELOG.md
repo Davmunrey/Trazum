@@ -9,6 +9,19 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**Gemini's log shape, recognised.** `usageMetadata` appears in no other
+provider's response, which is what makes reading it honest — no guessing
+which provider a field belongs to. `promptTokenCount`, `candidatesTokenCount`
+and `cachedContentTokenCount` are read, with the cached half subtracted from
+the prompt count through the same mechanism as OpenAI's `cached_tokens`,
+because Gemini sets the same double-charge trap. `finishReason: "MAX_TOKENS"`
+joins the truncation contract's three-way reading. Gemini models still need a
+pricing overlay to carry dollars; the tokens now parse either way.
+
 ## 1.32.0 — "The routing decision, priced whole"
 
 ### Added
