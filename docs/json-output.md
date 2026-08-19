@@ -43,7 +43,7 @@ key that disappears fails, and a key added without a line here fails too.
 | `repeatedTurns` | Calls that re-sent the previous call's exact input size in the same conversation, seconds apart — the shape of a retry or a loop, with what they cost. Needs a session and a clock. |
 | `truncationRetries` | Truncated answers followed within two minutes by another call in the same conversation — the "billed again" half of the truncation finding, priced on both sides, with the checkable denominator. Needs a session, a clock and a stop reason. |
 | `span` | The period the log covers, or `null`. Stated, never extrapolated. |
-| `spendByDay` | Exact dollars per UTC day, with the day's biggest label. |
+| `spendByDay` | Exact dollars per UTC day, with the day's biggest label and the day's spend per model — the series `modelMixDrift` summarises, whole. |
 | `duplicateLines` | Lines identical to an earlier one (timestamped records only), and what they added to the total — the shape a doubled export has. |
 | `fieldCoverage` | How many parsed records carried each optional field — the counts behind "what this log cannot answer yet". |
 | `spendByHour` | Exact dollars per hour of the UTC day — the shape that says whether the Batch API applies. |

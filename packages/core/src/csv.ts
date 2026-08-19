@@ -85,10 +85,17 @@ export interface ProfileCsvOptions {
   shape?: ProfileCsvShape;
 }
 
-export type ProfileCsvShape = 'slice' | 'day' | 'hour';
+export type ProfileCsvShape = 'slice' | 'day' | 'hour' | 'model-day';
 
 /** Columns for the per-day series. */
 export const PROFILE_CSV_DAY_COLUMNS = ['day', 'usd', 'calls', 'top_label', 'top_label_usd'] as const;
+/**
+ * One row per UTC day *and model* — the long format a pivot table or a chart
+ * wants for drawing the mix moving day by day. The same refusals as every
+ * shape here: no total row, and model ids pass through `field` because a log
+ * can carry any string as a model id.
+ */
+export const PROFILE_CSV_MODEL_DAY_COLUMNS = ['day', 'model', 'usd', 'calls'] as const;
 
 /** Columns for the per-hour-of-UTC-day series. */
 export const PROFILE_CSV_HOUR_COLUMNS = ['hour_utc', 'usd', 'calls'] as const;
@@ -118,6 +125,16 @@ export function profileToCsv(report: UsageProfileReport, options: ProfileCsvOpti
           day.topLabel === null ? '' : usd(day.topLabelUsd),
         ].join(','),
       );
+    }
+    return `${rows.join('\n')}\n`;
+  }
+
+  if (options.shape === 'model-day') {
+    const rows: string[] = [PROFILE_CSV_MODEL_DAY_COLUMNS.join(',')];
+    for (const day of report.spendByDay) {
+      for (const cell of day.byModel) {
+        rows.push([day.day, field(cell.model), usd(cell.usd), String(cell.calls)].join(','));
+      }
     }
     return `${rows.join('\n')}\n`;
   }

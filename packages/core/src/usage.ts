@@ -357,6 +357,12 @@ export interface UsageProfileReport {
     /** The label that spent the most this day, or null when nothing had one. */
     topLabel: string | null;
     topLabelUsd: number;
+    /**
+     * The day's spend per model, largest first — the series `modelMixDrift`
+     * summarises, exposed whole so a spreadsheet or a chart can draw the
+     * migration day by day instead of in two halves.
+     */
+    byModel: Array<{ model: string; usd: number; calls: number }>;
   }>;
   /**
    * Lines that are exact duplicates of an earlier line, and what they added
@@ -933,7 +939,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
   let spanTo = -Infinity;
   let spanCalls = 0;
   /** Per UTC day: spend, calls, and spend per label. Bounded by days × labels. */
-  const days = new Map<string, { usd: number; calls: number; byLabel: Map<string, number>; byModel: Map<string, number> }>();
+  const days = new Map<string, { usd: number; calls: number; byLabel: Map<string, number>; byModel: Map<string, { usd: number; calls: number }> }>();
   /** Per hour of the UTC day. Bounded by twenty-four entries, whatever the log. */
   const hours = new Map<number, { usd: number; calls: number }>();
 
@@ -1040,7 +1046,10 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
       entry.calls += 1;
       const labelKey = record.label ?? UNLABELLED;
       entry.byLabel.set(labelKey, (entry.byLabel.get(labelKey) ?? 0) + usd);
-      entry.byModel.set(record.model, (entry.byModel.get(record.model) ?? 0) + usd);
+      const modelCell = entry.byModel.get(record.model) ?? { usd: 0, calls: 0 };
+      modelCell.usd += usd;
+      modelCell.calls += 1;
+      entry.byModel.set(record.model, modelCell);
 
       // The same exact per-record dollar, bucketed by hour of the UTC day.
       const hour = new Date(record.ts).getUTCHours();
@@ -1106,7 +1115,16 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
             topLabelUsd = usd;
           }
         }
-        return { day, usd: entry.usd, calls: entry.calls, topLabel, topLabelUsd };
+        return {
+          day,
+          usd: entry.usd,
+          calls: entry.calls,
+          topLabel,
+          topLabelUsd,
+          byModel: [...entry.byModel.entries()]
+            .map(([model, cell]) => ({ model, usd: cell.usd, calls: cell.calls }))
+            .sort((a, b) => b.usd - a.usd),
+        };
       }),
     duplicateLines: duplicates,
     fieldCoverage: coverage,
@@ -1122,10 +1140,10 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
       const perModel = new Map<string, { first: number; last: number }>();
       halves.forEach((half, index) => {
         for (const [, entry] of half) {
-          for (const [model, usd] of entry.byModel) {
+          for (const [model, dayCell] of entry.byModel) {
             const cell = perModel.get(model) ?? { first: 0, last: 0 };
-            if (index === 0) cell.first += usd;
-            else cell.last += usd;
+            if (index === 0) cell.first += dayCell.usd;
+            else cell.last += dayCell.usd;
             perModel.set(model, cell);
           }
         }

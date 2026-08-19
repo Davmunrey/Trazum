@@ -33,6 +33,7 @@ export {
   PROFILE_CSV_COLUMNS,
   PROFILE_CSV_DAY_COLUMNS,
   PROFILE_CSV_HOUR_COLUMNS,
+  PROFILE_CSV_MODEL_DAY_COLUMNS,
   profileToCsv,
 } from './csv.js';
 export type { ProfileCsvOptions, ProfileCsvShape } from './csv.js';

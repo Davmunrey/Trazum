@@ -249,8 +249,10 @@ ${bold('OPTIONS FOR profile')}
   --markdown-out <file>       Also write the report as Markdown, for a CI job
                               summary or a pull request comment.
   --csv-shape <shape>         Which table --csv-out writes: slice (default),
-                              day or hour. One row shape per file, so nothing
-                              has to be filtered before it can be summed.
+                              day, hour, or model-day (one row per day and
+                              model — charts the mix moving). One row shape
+                              per file, so nothing has to be filtered before
+                              it can be summed.
   --csv-out <file>            Also write the report as CSV, one row per label
                               and model. No total row, on purpose: a total
                               inside a data file gets summed with the data.
@@ -1112,7 +1114,7 @@ ${bold('EXAMPLES')}
     budgetVsWire: (label, file, budget, perCall, share) =>
       `The budget on ${file} is ${budget} tokens, and calls labelled ${label} carry about ${perCall} input tokens each — so that gate governs roughly ${share} of what actually goes up the wire. The rest is retrieved context, conversation history and tool results, which no prompt file contains and no budget on one can see. The budget is not wrong; it is just smaller than the bill.`,
     badCsvShape: (value) =>
-      `--csv-shape does not know "${value}". It takes "slice" (one row per label and model, the default), "day" or "hour".`,
+      `--csv-shape does not know "${value}". It takes "slice" (one row per label and model, the default), "day", "hour" or "model-day" (one row per day and model — the long format a pivot table wants).`,
     whatIfHeading: (model) => `These exact calls on ${model}`,
     whatIfAssumption: () =>
       'This is multiplication, not advice: the same token counts at another rate card. It says nothing about whether that model could do the work, and a model that answers at greater length or gets retried would not send these counts at all.',
