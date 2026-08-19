@@ -640,6 +640,22 @@ export interface CliMessages {
     pressureHeading(): string;
     pressureLine(label: string, model: string, tokens: string, window: string, share: string): string;
     pressureAdvice(): string;
+    /**
+     * The mix moving inside one log: a model's share of spend in the first
+     * half of the days against the last half. Spoken only past fifteen
+     * points of movement — a presentation threshold, stated in the sentence
+     * — and never as a forecast: where the mix goes next is not in the log.
+     */
+    mixDriftHeading(): string;
+    mixDriftLine(
+      model: string,
+      firstShare: string,
+      lastShare: string,
+      firstDays: string,
+      lastDays: string,
+      lastUsd: string,
+    ): string;
+    mixDriftNote(): string;
     inputFullRate(): string;
     assumedWriteTtl(calls: number): string;
     /**

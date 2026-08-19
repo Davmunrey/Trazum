@@ -1022,6 +1022,11 @@ ${bold('EXAMPLES')}
     pressureHeading: () => 'Approaching the context window',
     pressureLine: (label, model, tokens, window, share) =>
       `${label} on ${model}: the largest call carried ${tokens} input tokens against a ${window}-token window — ${share} of the ceiling.`,
+    mixDriftHeading: () => 'The mix moved inside this log',
+    mixDriftLine: (model, firstShare, lastShare, firstDays, lastDays, lastUsd) =>
+      `${model} went from ${firstShare} of the spend in the first ${firstDays} days to ${lastShare} in the last ${lastDays} — ${lastUsd} of the recent half.`,
+    mixDriftNote: () =>
+      'A bill can grow with no workload growing: traffic migrating between models, a deploy that flipped a default, a fallback that became the main path. Shown past fifteen points of movement. Where the mix goes next is not in this log, so it is not said here.',
     pressureAdvice: () =>
       'At 100% the call fails outright, and nothing on the bill changes until that day. The levers are a cap on retrieved context, truncating conversation history, or a larger-window model. When it crosses is not predicted here: the share is a fact, the trajectory is yours to know.',
     repeatsAdvice: () =>

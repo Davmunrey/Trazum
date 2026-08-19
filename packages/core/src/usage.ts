@@ -418,6 +418,35 @@ export interface UsageProfileReport {
    */
   spendByHour: Array<{ hour: number; usd: number; calls: number }>;
   /**
+   * How the model mix moved across this log's own span — the drift `--against`
+   * can only see with a second log.
+   *
+   * A bill can grow with no workload growing: traffic quietly migrating from
+   * the cheap model to the expensive one, a deploy that flipped a default, a
+   * fallback that became the main path. Day totals cannot show it (both
+   * models land in the same number) and per-model totals cannot either (a
+   * total has no direction). So this splits the log's days into two halves,
+   * chronologically, and states each model's **share of the priced spend** in
+   * each half, exactly.
+   *
+   * `null` — not empty — when the log has fewer than four days with priced,
+   * dated spend: two points per half is the least a "half" can honestly
+   * claim, and a drift computed over one day against one day would be
+   * weather presented as climate. The renderings decide what counts as
+   * "moved"; the data states the shares and stops. No forecast: where the
+   * mix goes next is not in the log.
+   */
+  modelMixDrift: {
+    /** Days in each half. `firstDays + lastDays` = every day with priced spend. */
+    firstDays: number;
+    lastDays: number;
+    /** Priced spend in each half, so a share can be turned back into money. */
+    firstUsd: number;
+    lastUsd: number;
+    /** Per model, every model either half saw. Shares are of that half's spend. */
+    models: Array<{ model: string; firstShare: number; lastShare: number; firstUsd: number; lastUsd: number }>;
+  } | null;
+  /**
    * Whether each slice's cache TTL fits how fast its turns arrive — the
    * mechanism behind a losing cache verdict, and the one place an overlong TTL
    * (2x writes surviving gaps measured in seconds) is ever visible. Needs
@@ -892,7 +921,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
   let spanTo = -Infinity;
   let spanCalls = 0;
   /** Per UTC day: spend, calls, and spend per label. Bounded by days × labels. */
-  const days = new Map<string, { usd: number; calls: number; byLabel: Map<string, number> }>();
+  const days = new Map<string, { usd: number; calls: number; byLabel: Map<string, number>; byModel: Map<string, number> }>();
   /** Per hour of the UTC day. Bounded by twenty-four entries, whatever the log. */
   const hours = new Map<number, { usd: number; calls: number }>();
 
@@ -991,13 +1020,14 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
       const usd = total.totalUsd - usdBefore;
       let entry = days.get(day);
       if (!entry) {
-        entry = { usd: 0, calls: 0, byLabel: new Map() };
+        entry = { usd: 0, calls: 0, byLabel: new Map(), byModel: new Map() };
         days.set(day, entry);
       }
       entry.usd += usd;
       entry.calls += 1;
       const labelKey = record.label ?? UNLABELLED;
       entry.byLabel.set(labelKey, (entry.byLabel.get(labelKey) ?? 0) + usd);
+      entry.byModel.set(record.model, (entry.byModel.get(record.model) ?? 0) + usd);
 
       // The same exact per-record dollar, bucketed by hour of the UTC day.
       const hour = new Date(record.ts).getUTCHours();
@@ -1066,6 +1096,43 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
       }),
     duplicateLines: duplicates,
     fieldCoverage: coverage,
+    modelMixDrift: (() => {
+      const ordered = [...days.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+      if (ordered.length < 4) return null;
+      const mid = Math.floor(ordered.length / 2);
+      const halves = [ordered.slice(0, mid), ordered.slice(mid)] as const;
+      const totals = halves.map((half) => half.reduce((sum, [, e]) => sum + e.usd, 0));
+      // A half with no priced spend has no shares to state — division by zero
+      // is not a drift, and neither is a mix over zero dollars.
+      if (totals[0]! <= 0 || totals[1]! <= 0) return null;
+      const perModel = new Map<string, { first: number; last: number }>();
+      halves.forEach((half, index) => {
+        for (const [, entry] of half) {
+          for (const [model, usd] of entry.byModel) {
+            const cell = perModel.get(model) ?? { first: 0, last: 0 };
+            if (index === 0) cell.first += usd;
+            else cell.last += usd;
+            perModel.set(model, cell);
+          }
+        }
+      });
+      return {
+        firstDays: halves[0].length,
+        lastDays: halves[1].length,
+        firstUsd: totals[0]!,
+        lastUsd: totals[1]!,
+        models: [...perModel.entries()]
+          .map(([model, cell]) => ({
+            model,
+            firstShare: cell.first / totals[0]!,
+            lastShare: cell.last / totals[1]!,
+            firstUsd: cell.first,
+            lastUsd: cell.last,
+          }))
+          // The biggest movement first — the order a reader would act in.
+          .sort((a, b) => Math.abs(b.lastShare - b.firstShare) - Math.abs(a.lastShare - a.firstShare)),
+      };
+    })(),
     spendByHour: [...hours.entries()]
       .sort((a, b) => a[0] - b[0])
       .map(([hour, entry]) => ({ hour, usd: entry.usd, calls: entry.calls })),

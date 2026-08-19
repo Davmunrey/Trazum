@@ -13,6 +13,23 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`modelMixDrift`: the migration a total cannot show.** A bill can grow with
+no workload growing — traffic quietly moving from the cheap model to the
+expensive one, a deploy that flipped a default, a fallback that became the
+main path. Day totals cannot show it (both models land in the same number)
+and per-model totals cannot either (a total has no direction). The log's days
+are split chronologically in half and each model's **share of the priced
+spend** in each half is stated, exactly.
+
+`null` — not empty — under four dated days: one day against one day is
+weather presented as climate. The renderings speak only past fifteen points
+of movement (a presentation threshold, stated in the copy), while `--json`
+carries every model's exact shares either way — the data states, the
+rendering judges. And never a forecast: where the mix goes next is not in the
+log, so it is not said.
+
+In the terminal, `--json`, the CI summary and the MCP `profile_usage` tool.
+
 **`contextPressure`: the ceiling, seen coming.** Input grows turn by turn or
 document by document, costs nothing extra to grow, and then one call crosses
 the model's context window and the API refuses it outright — the bill looks

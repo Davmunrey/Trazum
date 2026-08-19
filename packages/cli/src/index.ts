@@ -3406,6 +3406,28 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
   }
 
   /**
+   * The mix moving inside one log — the drift `--against` needs a second log
+   * to see. Spoken only past fifteen points, a presentation threshold stated
+   * in the copy; the data states exact shares and the JSON carries them all.
+   */
+  if (report.modelMixDrift !== null) {
+    const moved = report.modelMixDrift.models.filter(
+      (m) => Math.abs(m.lastShare - m.firstShare) >= 0.15,
+    );
+    if (moved.length > 0) {
+      console.log();
+      console.log(c.bold(t.profile.mixDriftHeading()));
+      for (const m of moved.slice(0, 3)) {
+        console.log();
+        console.log(
+          `  ${c.yellow('!')} ${c.bold(wrap(t.profile.mixDriftLine(m.model, pct(m.firstShare), pct(m.lastShare), n(report.modelMixDrift.firstDays), n(report.modelMixDrift.lastDays), formatUsd(m.lastUsd)), 74, '    '))}`,
+        );
+      }
+      console.log(`  ${c.dim(wrap(t.profile.mixDriftNote(), 74, '  '))}`);
+    }
+  }
+
+  /**
    * The same request, sent again a moment later.
    *
    * A conversation's input grows with every turn, so two consecutive calls in
