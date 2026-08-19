@@ -90,6 +90,38 @@ describe('a failing gate explains itself', () => {
     assert.ok(!sessionOut.includes('"a"'), 'a session key leaked into the explanation');
   });
 
+  it('puts the verdict in the markdown summary, where CI readers look', async () => {
+    // The report reached the run summary and the reason the build was red did
+    // not — the reader had to open the raw log for the one sentence that
+    // mattered, which is the same failure this whole feature exists to fix.
+    const { mkdtemp: mk, readFile } = await import('node:fs/promises');
+    const dir = await mk(join(tmpdir(), 'trazum-gatemd-'));
+    const out = join(dir, 'report.md');
+    const result = run([await write(lopsided()), '--max-usd', '8', '--markdown-out', out]);
+    assert.equal(result.status, 1);
+    const md = await readFile(out, 'utf8');
+    assert.match(md, /> ❌ \*\*FAILED — this log spent \$12\.00/);
+    // One mark, on the verdict: the lines under it explain it and are not
+    // themselves failures.
+    assert.equal((md.match(/❌/g) ?? []).length, 1);
+    assert.match(md, /> Most of it is rag on claude-opus-5/);
+    // No terminal escape sequences and no hanging indent from the wrap.
+    // eslint-disable-next-line no-control-regex
+    assert.doesNotMatch(md, /\u001b\[/);
+    assert.doesNotMatch(md, /That is {2,}where/);
+  });
+
+  it('states a passing verdict in the summary without shouting', async () => {
+    const { mkdtemp: mk, readFile } = await import('node:fs/promises');
+    const dir = await mk(join(tmpdir(), 'trazum-gatemdok-'));
+    const out = join(dir, 'report.md');
+    const result = run([await write(lopsided()), '--max-usd', '100', '--markdown-out', out]);
+    assert.equal(result.status, 0);
+    const md = await readFile(out, 'utf8');
+    assert.match(md, /_Within budget: \$12\.00 spent against --max-usd \$100\.00\._/);
+    assert.doesNotMatch(md, /❌/);
+  });
+
   it('speaks Spanish', async () => {
     const result = spawnSync(
       process.execPath,

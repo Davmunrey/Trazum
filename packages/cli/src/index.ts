@@ -2253,6 +2253,19 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
    * profiles yesterday's log has a daily budget without Trazum ever
    * guessing what a day is.
    */
+  /**
+   * The gate verdicts, kept so the markdown summary can carry them.
+   *
+   * Collected by wrapping `console.error` for the duration of `applyGates`
+   * rather than by threading a return value through every gate. That is the
+   * unusual choice here and it is deliberate: a gate added later reaches the
+   * summary without anyone remembering to register it, and the alternative —
+   * one push per verdict at a dozen call sites — is a list that goes stale
+   * silently. Colour is stripped, because a summary is markdown and an
+   * escape sequence in it is noise a reader has to look past.
+   */
+  const gateVerdicts: string[] = [];
+  let gateFailed = false;
   const applyGates = (): void => {
     /**
      * Before any verdict: whether the gated figure is the whole bill. A gate
@@ -2540,6 +2553,30 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
   };
 
   /**
+   * Run the gates, keeping what they said. Exit codes and stderr behave
+   * exactly as before — this only also remembers, so `--markdown-out` can put
+   * the verdict where the person reading CI will actually see it.
+   */
+  const recordGates = (): void => {
+    const original = console.error;
+    console.error = (...parts: unknown[]): void => {
+      const text = parts.map((part) => String(part)).join(' ');
+      // Colour stripped and the terminal's wrap collapsed: markdown re-wraps
+      // to its own width, and the escape sequences and hanging indents that
+      // make a terminal readable are noise a summary reader looks past.
+      // eslint-disable-next-line no-control-regex
+      gateVerdicts.push(text.replace(/\u001b\[[0-9;]*m/g, '').replace(/\s+/g, ' ').trim());
+      original(...(parts as []));
+    };
+    try {
+      applyGates();
+    } finally {
+      console.error = original;
+      gateFailed = process.exitCode === 1;
+    }
+  };
+
+  /**
    * The side files the caller asked for. Written on **both** output paths:
    * under --json the human rendering returns early, and the first version of
    * --csv-out therefore wrote nothing at all there — a flag that silently did
@@ -2574,6 +2611,9 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
             ? { window: { since: stringFlag(args, 'since') ?? '—', until: stringFlag(args, 'until') ?? '—' } }
             : {}),
           ...(pricingStale !== null ? { stalePricing: pricingStale } : {}),
+          // The verdict, where the person reading CI will see it. recordGates()
+          // runs before the side files for exactly this.
+          ...(gateVerdicts.length > 0 ? { gates: { failed: gateFailed, lines: gateVerdicts } } : {}),
           // The repricing, when --what-if was given: computed once above and
           // handed over, so the summary in a pull request cannot disagree
           // with the terminal about what a move would cost.
@@ -2699,8 +2739,8 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
         2,
       ),
     );
+    recordGates();
     await writeSideFiles();
-    applyGates();
     return;
   }
 
@@ -3831,9 +3871,9 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
 
   reportProfileGaps(report, t, n, pricingStale);
 
-  await writeSideFiles();
+  recordGates();
 
-  applyGates();
+  await writeSideFiles();
 }
 
 /**

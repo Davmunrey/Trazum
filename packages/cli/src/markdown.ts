@@ -724,6 +724,16 @@ export interface ProfileMarkdownInput {
   cache: CacheEconomics;
   t: CliMessages;
   /**
+   * The gate verdicts, when any gate was armed.
+   *
+   * They reached the terminal on stderr and stopped there, so a CI run
+   * summary carried the whole report and not the one sentence explaining why
+   * the build was red — the reader had to open the raw log to find it. These
+   * arrive already rendered by the caller, which owns the thresholds and the
+   * copy; this is a rendering and must not decide anything a gate decides.
+   */
+  gates?: { failed: boolean; lines: string[] };
+  /**
    * The `--since`/`--until` values as the user typed them, when a window was
    * applied. Passed through rather than re-derived from `timeWindow`'s epoch
    * bounds, because a bare `--until 2026-08-14` includes that whole day —
@@ -783,7 +793,7 @@ export interface ProfileMarkdownInput {
  * reading CI instead of machines.
  */
 export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
-  const { report, levers, cache, t, window, stalePricing, against, whatIf, pressure = [] } = input;
+  const { report, levers, cache, t, window, stalePricing, against, whatIf, pressure = [], gates } = input;
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
   const shares = sharesOf(report.total);
@@ -793,6 +803,24 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
   const lines: string[] = [];
   lines.push(`### ${t.profile.heading()}`);
   lines.push('');
+  /**
+   * The verdict first, when a gate was armed.
+   *
+   * A run summary that carried the whole report and not the sentence
+   * explaining why the build is red made the reader open the raw log to find
+   * it — which is the same failure the explanation itself exists to fix, one
+   * surface further out. A failure is quoted so it survives being skimmed; a
+   * pass is stated plainly and does not shout.
+   */
+  if (gates !== undefined && gates.lines.length > 0) {
+    // One mark, on the verdict. The lines under it explain that verdict and
+    // are not themselves failures — marking each would turn one red build
+    // into a wall of crosses and make the actual verdict harder to find.
+    const [verdict, ...rest] = gates.lines;
+    lines.push(gates.failed ? `> ❌ **${mdText(verdict!)}**` : `_${mdText(verdict!)}_`);
+    for (const line of rest) lines.push(gates.failed ? `> ${mdText(line)}` : `_${mdText(line)}_`);
+    lines.push('');
+  }
   lines.push(`**${t.profile.spent(t.profile.calls(report.total.calls), formatUsd(report.total.totalUsd))}**`);
   lines.push('');
   // The span, under the same rule as the terminal: stated, never extrapolated,

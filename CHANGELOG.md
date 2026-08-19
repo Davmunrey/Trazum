@@ -32,6 +32,15 @@ one of them is quiet news. Said under a tenth of the budget, with the
 threshold in the sentence, on the whole-bill, per-day and per-conversation
 gates alike.
 
+**The verdict reaches the CI summary.** The gates spoke on stderr and stopped
+there, so a run summary carried the whole report and not the one sentence
+explaining why the build was red — the reader had to open the raw log to find
+it. `--markdown-out` now leads with the verdict: a failure quoted and bold so
+it survives being skimmed, its explanation beneath it unmarked, a pass stated
+plainly without shouting. Collected by wrapping the gates' own stderr rather
+than by a list each gate must remember to join, so a gate added later reaches
+the summary automatically.
+
 ## 1.30.0 — "The report as a diff"
 
 ### Added
