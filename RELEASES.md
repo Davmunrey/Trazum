@@ -27,6 +27,69 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.24.0 — "How big, how uneven, and the day it spiked"
+
+### How big these calls actually are
+
+`profile` could say "input is 63% of this bill" and stop there. True, and
+nothing follows from it. The question somebody can act on is whether *every*
+call carries a large prompt or a few calls carry an enormous one — and those
+two want opposite responses:
+
+```
+  rag on Claude Opus 5 is uneven: half its calls fit within 1,024 input
+  tokens and 95% within 106,496 — about 104.0x the ordinary call, over $2.70
+  of input spend.
+  Past four times the median, the ordinary call is fine and something is
+  growing on top of it: a conversation nobody truncates, a retrieval with no
+  cap, a tool result pasted in whole. The fix is a limit on the large calls,
+  not a rewrite of the prompt every call sends.
+  Almost none of that was a cache read, so every one of those tokens was
+  billed at the full input rate.
+```
+
+An even slice gets the other sentence, pointing at the prompt instead. Every
+figure is a **bucket ceiling** rather than an interpolated percentile — "half
+the calls fit within 1,024 input tokens" is exact for the number named — and a
+slice with fewer than twenty calls is left out entirely rather than reported at
+a precision it does not have.
+
+### `--max-day-usd`, the gate a total cannot arm
+
+A month at $3,000 against a $4,000 budget passes while one afternoon's runaway
+loop burned $900 of it.
+
+```bash
+trazum profile month.jsonl --max-usd 4000 --max-day-usd 300
+```
+
+```
+FAILED — 2026-08-14 spent $412.00, over the --max-day-usd limit of $300.00. A total
+under budget can hide a single runaway day, which is what this gate exists to catch.
+agent was the biggest label that day, at $380.00.
+```
+
+A log with **no timestamps fails this gate** rather than passing it: a bill
+nobody could measure by day is not a bill that stayed under a daily budget.
+Calls with no clock are in the total and in none of the days, so a *pass* says
+how many were left out — a failure stands regardless.
+
+### The CI summary says what the terminal says
+
+`--markdown-out` is where most people will ever read this report, and three
+findings were missing from it: the doubled-bill warning (above the figures it
+would inflate, not below them), the input shape, and the `--what-if`
+repricing — with its assumption above the figure there too, because a pull
+request comment is exactly where a dollar amount with the caveat underneath
+gets read as a recommendation and merged.
+
+### Fixed
+
+"1 lines are exact duplicates" could not agree with its own verb. It takes a
+number now and reads "1 line is an exact duplicate", in both languages.
+
+---
+
 ## 1.23.0 — "What if it were the other model?"
 
 ### `--what-if <model>`: these exact calls at another rate card

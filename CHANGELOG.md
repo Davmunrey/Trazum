@@ -9,7 +9,7 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
-## Unreleased
+## 1.24.0 — "How big, how uneven, and the day it spiked"
 
 ### Added
 
