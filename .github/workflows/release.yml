@@ -5,25 +5,70 @@ name: Release
 # good, so everything below is arranged so that a mistake fails the job rather
 # than reaching the registry.
 #
-# Triggered by a tag rather than by a merge: a release is a decision, and the
-# tag is where that decision is recorded.
+# Two ways in, one decision. A release PR — the one that folds the changelog
+# and bumps the manifests — is the decision, and merging it is the act: a push
+# to main whose manifests name a version the registry does not have publishes,
+# tags the merge commit, and creates the GitHub release, with no further human
+# step. A pushed tag still works and is the manual override; every other push
+# to main is skipped by the decide job in seconds.
 on:
   push:
     tags: ['v*.*.*']
+    branches: [main]
   # Manual runs are dry-run only. A workflow_dispatch that could publish would
-  # mean a release with no tag behind it, and nothing to check the version
-  # against.
+  # mean a release with no version decision behind it.
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  # One release at a time and never cancelled: two quick merges to main must
+  # queue rather than race the registry, and cancelling a publish mid-flight
+  # is how a half-released set of packages happens.
+  group: release
+  cancel-in-progress: false
+
 env:
   NEXT_TELEMETRY_DISABLED: '1'
 
 jobs:
+  # The fast gate in front of the environment. Every push to main lands here;
+  # only one carrying an unpublished manifest version — a merged release PR —
+  # goes on to the release job. Deliberately outside `environment: release`:
+  # if a required reviewer is ever added to that environment, ordinary merges
+  # must not queue behind it.
+  decide:
+    name: Anything to release?
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      publish: ${{ steps.versions.outputs.publish }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+
+      # The same preflight the release job runs before uploading, used here as
+      # the routing decision. Dependency-free, so no install is needed. On a
+      # half-published set it fails, which fails the run — the right red. On
+      # workflow_dispatch it is skipped and the release job runs as a dry run.
+      - name: No version may already be on the registry
+        id: versions
+        if: github.event_name == 'push'
+        run: node scripts/npm-publish-preflight.mjs versions
+
   release:
     name: Publish to npm
+    needs: decide
+    # Tags and dry runs always proceed; a push to main proceeds only when the
+    # manifests name a version the registry does not have.
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/') || needs.decide.outputs.publish == 'true'
     runs-on: ubuntu-latest
     environment: release
     permissions:
@@ -36,11 +81,15 @@ jobs:
       # no token to reuse, and the only step touching the API is the one that
       # creates the release from a file already in the commit.
       contents: write
-      # The whole point of the design: this is what npm trusted publishing
-      # exchanges for a short-lived credential. There is no NPM_TOKEN in this
-      # repository's secrets, because a long-lived publish token would be the
-      # highest-value credential the project holds and it would sit there
-      # permanently for something used a few times a year.
+      # What npm trusted publishing exchanges for a short-lived credential,
+      # and what signs the provenance attestation either way. The design
+      # prefers no stored credential at all; npm has refused the OIDC exchange
+      # on six real publish attempts across three versions, so the publish
+      # steps below also accept an environment-scoped secrets.NPM_TOKEN as
+      # the authentication fallback — auth changes, the provenance signature
+      # does not, because it comes from this OIDC identity rather than from
+      # the upload credential. Remove the secret and the same steps revert to
+      # pure OIDC. See docs/releasing.md.
       id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -121,28 +170,44 @@ jobs:
       # version that had shipped, then blame authentication for it.
       - name: No version may already be on the registry
         id: versions
-        if: startsWith(github.ref, 'refs/tags/')
+        if: github.event_name == 'push'
         run: node scripts/npm-publish-preflight.mjs versions
 
       # Provenance comes free with OIDC and is the reason to prefer it beyond
       # not storing a secret: a consumer can verify a published tarball was built
       # from this repository, at this commit, by this workflow.
       - name: Publish @trazum/core
-        if: startsWith(github.ref, 'refs/tags/') && steps.versions.outputs.publish == 'true'
+        if: github.event_name == 'push' && steps.versions.outputs.publish == 'true'
+        env:
+          # Empty when the secret is not set, which leaves OIDC trusted
+          # publishing as the auth — the preferred path. When npm keeps
+          # refusing the OIDC exchange (it has, on six real attempts), a
+          # granular token stored as an environment secret on `release`
+          # takes precedence and the publish succeeds anyway. Provenance
+          # survives either way: the attestation is signed with the job's
+          # OIDC identity, which is independent of how the upload
+          # authenticates.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish -w @trazum/core --provenance --access public
 
       # Second, and only if the first succeeded. @trazum/cli depends on
       # @trazum/core at an exact version, so publishing the CLI first would leave
       # a window where installing it fails on a dependency that does not exist.
       - name: Publish @trazum/cli
-        if: startsWith(github.ref, 'refs/tags/') && steps.versions.outputs.publish == 'true'
+        if: github.event_name == 'push' && steps.versions.outputs.publish == 'true'
+        env:
+          # Same fallback as core's step, documented there.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish -w @trazum/cli --provenance --access public
 
       # Third, for the same reason the CLI is second: @trazum/mcp pins
       # @trazum/core at an exact version too, so publishing it before core exists
       # leaves a window where installing it fails.
       - name: Publish @trazum/mcp
-        if: startsWith(github.ref, 'refs/tags/') && steps.versions.outputs.publish == 'true'
+        if: github.event_name == 'push' && steps.versions.outputs.publish == 'true'
+        env:
+          # Same fallback as core's step, documented there.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: npm publish -w @trazum/mcp --provenance --access public
 
       # npm reports a write you are not authorised for as `404 Not Found`, which
@@ -163,6 +228,8 @@ jobs:
           echo "::error::-> Trusted publisher, with Environment set to 'release'. It is the field people"
           echo "::error::leave blank, and this workflow declares 'environment: release', so a blank one"
           echo "::error::is a claims mismatch. Full procedure in docs/releasing.md."
+          echo "::error::If the release environment carries the npm token secret, auth came from it"
+          echo "::error::and this failure is something else - read the npm error above, not this note."
           echo "::error::Nothing is half-published: the preflight checks all versions before the first upload."
           node scripts/npm-publish-preflight.mjs claims
 
@@ -187,10 +254,27 @@ jobs:
             --notes-file /tmp/release-notes.md \
             --verify-tag
 
-      # Checked on every run, tag or not, so a missing section is caught by the
+      # The same release when the trigger was the merge rather than a tag.
+      # `gh release create --target` creates the tag itself, pointing at the
+      # merged commit — and a tag created with GITHUB_TOKEN does not retrigger
+      # this workflow, so there is no second run racing this one.
+      - name: Publish the GitHub release and the tag (from main)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push' && steps.versions.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          node scripts/release-notes.mjs "$version" > /tmp/release-notes.md
+          gh release create "v$version" \
+            --target "$GITHUB_SHA" \
+            --title "v$version" \
+            --notes-file /tmp/release-notes.md
+
+      # Checked on manual runs, so a missing notes section is caught by the
       # dry run rather than discovered while releasing.
       - name: Dry run finished
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        if: github.event_name == 'workflow_dispatch'
         run: |
           node scripts/release-notes.mjs "$(node -p "require('./package.json').version")" > /dev/null
-          echo "Dry run — no tag, nothing published. Release notes present."
+          echo "Dry run — nothing published. Release notes present."

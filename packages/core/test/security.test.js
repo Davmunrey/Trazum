@@ -798,30 +798,62 @@ describe('the packaged Action', () => {
     }
   });
 
-  it('publishing needs no stored credential', () => {
-    // The design decision in the release workflow, and the reason it uses npm
-    // trusted publishing. A long-lived NPM_TOKEN would be the highest-value
-    // credential this project holds, sitting in repository secrets permanently
-    // for something used a few times a year — and unlike every other secret
-    // here, a leak of it is not recoverable by rotation alone: whatever was
-    // published under it stays published.
+  it('the publish credential lives in one workflow, one way, and never inline', () => {
+    /**
+     * The original rule was "publishing needs no stored credential", and it
+     * was the right rule until npm made it impossible to follow: trusted
+     * publishing rejected this workflow's OIDC token on six real publish
+     * attempts across three versions, with every GitHub-side claim verified
+     * correct, and 1.8.0, 1.9.0, 1.10.0 and 1.25.0 all went out from a
+     * laptop because of it. A rule that forces the release onto somebody's
+     * machine protects the secret by moving the publish to the least
+     * auditable place available.
+     *
+     * So the rule narrows instead of vanishing. `release.yml` — and only it —
+     * may read `secrets.NPM_TOKEN`, only as `NODE_AUTH_TOKEN`, and only from
+     * the secret: an environment-scoped credential behind the `release`
+     * gate, absent by default (OIDC remains the auth when it is unset, and
+     * removing the secret reverts the workflow to pure trusted publishing).
+     * What stays absolute everywhere: no other workflow touches a publish
+     * token, and no token *material* — the `npm_...` string itself — is ever
+     * committed.
+     */
     const offenders = [];
 
     for (const name of readdirSync(join(repoRoot, '.github/workflows'))) {
       if (!/\.ya?ml$/.test(name)) continue;
-      // Comments stripped, for the third time in this file: the release
-      // workflow's own comment explains why there is no NPM_TOKEN, and matching
-      // that would fail the test for documenting the reasoning behind it.
       const source = readFileSync(join(repoRoot, '.github/workflows', name), 'utf8')
         .replace(/^\s*#.*$/gm, '')
         .replace(/\s#.*$/gm, '');
-      if (/NPM_TOKEN|NODE_AUTH_TOKEN|npm_[A-Za-z0-9]/.test(source)) offenders.push(name);
+
+      // Token material is banned everywhere, release.yml included: a real npm
+      // token is `npm_` plus a long body, and one committed is one leaked.
+      if (/npm_[A-Za-z0-9]{20,}/.test(source)) {
+        offenders.push(`${name}: npm token material committed`);
+      }
+
+      if (name === 'release.yml') {
+        // The one permitted reference, in exactly one shape. Anything else —
+        // an inline value, a differently-named secret, an env var smuggled in
+        // at the job level — is an offender.
+        for (const line of source.split('\n')) {
+          if (!/NPM_TOKEN|NODE_AUTH_TOKEN/.test(line)) continue;
+          if (!/^\s*NODE_AUTH_TOKEN:\s*\$\{\{\s*secrets\.NPM_TOKEN\s*\}\}\s*$/.test(line)) {
+            offenders.push(`${name}: ${line.trim()}`);
+          }
+        }
+        continue;
+      }
+
+      if (/NPM_TOKEN|NODE_AUTH_TOKEN/.test(source)) {
+        offenders.push(`${name}: reaches for a publish token`);
+      }
     }
 
     assert.deepEqual(
       offenders,
       [],
-      `a workflow reaches for a publish token instead of OIDC:\n  ${offenders.join('\n  ')}`,
+      `a workflow holds a publish credential it must not:\n  ${offenders.join('\n  ')}`,
     );
   });
 
@@ -835,17 +867,25 @@ describe('the packaged Action', () => {
     assert.match(release, /GITHUB_REF_NAME/, 'nothing reads the tag');
     assert.match(release, /--provenance/, 'published without provenance, which OIDC gives free');
 
-    // Every publish step gated on a tag. A publish reachable from
-    // workflow_dispatch would be a release with no tag to check against.
+    // Every publish step gated on a push event *and* the registry preflight.
+    // `github.event_name == 'push'` covers exactly the two triggers that
+    // carry a version decision — a tag, or a merged release PR on main — and
+    // excludes workflow_dispatch, which stays dry-run only. The preflight
+    // half means nothing uploads until every version is confirmed free.
     const steps = release.split(/^      - /m).filter((s) => /run:\s*npm publish/.test(s));
     assert.ok(steps.length >= 2, 'both packages should have a publish step');
     for (const step of steps) {
       assert.match(
         step,
-        /if:\s*startsWith\(github\.ref, 'refs\/tags\/'\)/,
-        `a publish step is not gated on a tag:\n${step.slice(0, 200)}`,
+        /if:\s*github\.event_name == 'push' && steps\.versions\.outputs\.publish == 'true'/,
+        `a publish step is not gated on push + preflight:\n${step.slice(0, 200)}`,
       );
     }
+
+    // The push trigger itself is the closed set: tags and main, nothing else.
+    // A push to any other branch must not be able to reach those steps.
+    assert.match(release, /tags:\s*\['v\*\.\*\.\*'\]/, 'the tag trigger is gone');
+    assert.match(release, /branches:\s*\[main\]/, 'the main trigger is gone — merges no longer release');
 
     // The gate has to run the same checks the pull-request gate does. A release
     // that verifies less than a PR lets through exactly what the tag was for.
