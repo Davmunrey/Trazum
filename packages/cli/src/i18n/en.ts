@@ -1208,6 +1208,10 @@ ${bold('EXAMPLES')}
       `WAIVED — the ${gate} failure above is on the record and silenced until ${until} (${daysLeft} days left): "${reason}". The bill still counts it; only the exit code is quiet, and the day the waiver expires this gate fails again.`,
     waiveExpired: (gate, until, reason) =>
       `The waiver on ${gate} expired on ${until} and no longer silences anything. It was written for: "${reason}". Renew it with a new date and a current reason, or fix what it was covering — an expired waiver left in place is a finding deleted with extra steps.`,
+    summaryNoComparison: () =>
+      'No previous log was given, so nothing here says whether the bill moved — a summary without a comparison states the bill, not its stability.',
+    summaryFooter: () =>
+      'The short form: what changed and the largest lever, nothing else. Run trazum profile for the full report — every figure here comes from it.',
     gateLargest: (label, model, usd, share) =>
       `Most of it is ${label} on ${model}: ${usd}, ${share} of the bill. That is where the money is, not necessarily where the fix is.`,
     gateLever: (label, action, saving, overage, covers) =>

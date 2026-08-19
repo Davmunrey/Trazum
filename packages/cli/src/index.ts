@@ -440,7 +440,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
-  profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd', 'label', 'since', 'until', 'dry-run'],
+  profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd', 'label', 'since', 'until', 'dry-run', 'markdown-summary'],
   route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
@@ -2703,6 +2703,8 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
           // The verdict, where the person reading CI will see it. recordGates()
           // runs before the side files for exactly this.
           ...(gateVerdicts.length > 0 ? { gates: { failed: gateFailed, lines: gateVerdicts } } : {}),
+          // The short form, for a reader who is not in the terminal.
+          ...(boolFlag(args, 'markdown-summary') ? { summary: true } : {}),
           // The repricing, when --what-if was given: computed once above and
           // handed over, so the summary in a pull request cannot disagree
           // with the terminal about what a move would cost.

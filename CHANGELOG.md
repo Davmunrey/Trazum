@@ -9,6 +9,24 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**`--markdown-summary`: the short form, for a reader who is not in the
+terminal.** The person who owns the budget usually does not run the CLI, and
+handing them the whole report is handing them a document to skim — where the
+one figure that changed is as easy to miss as it was in the terminal. The
+summary states the gate verdict, the bill, what changed against a previous
+log with its largest driver, and the single lever worth the most. Then it
+stops: twelve lines against ninety.
+
+It is a **view over the same report, never a different set of figures** — a
+reader who opens both cannot find them disagreeing — and it is returned
+before the full rendering rather than filtered out of it, so a section added
+later cannot leak into the short form by forgetting to opt out. With no
+previous log it says so rather than implying a stability nobody measured.
+
 ## 1.34.0 — "Findings as policy"
 
 ### Added

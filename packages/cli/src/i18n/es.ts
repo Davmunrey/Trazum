@@ -1224,6 +1224,10 @@ ${bold('EJEMPLOS')}
       `WAIVED — el fallo de ${gate} de arriba queda registrado y silenciado hasta ${until} (${daysLeft} días restantes): "${reason}". La factura lo sigue contando; solo el código de salida calla, y el día que caduque el waiver este gate vuelve a fallar.`,
     waiveExpired: (gate, until, reason) =>
       `El waiver de ${gate} caducó el ${until} y ya no silencia nada. Se escribió por: "${reason}". Renuévalo con fecha nueva y razón vigente, o arregla lo que cubría — un waiver caducado dejado ahí es un hallazgo borrado con pasos extra.`,
+    summaryNoComparison: () =>
+      'No se dio un registro anterior, así que nada de aquí dice si la factura se movió — un resumen sin comparación indica la factura, no su estabilidad.',
+    summaryFooter: () =>
+      'La forma corta: qué cambió y la mayor palanca, nada más. Corre trazum profile para el informe completo — todas las cifras de aquí salen de él.',
     gateLargest: (label, model, usd, share) =>
       `La mayor parte es ${label} en ${model}: ${usd}, el ${share} de la factura. Ahí está el dinero, no necesariamente el arreglo.`,
     gateLever: (label, action, saving, overage, covers) =>

@@ -791,6 +791,12 @@ export interface CliMessages {
      */
     waiveActive(gate: string, reason: string, until: string, daysLeft: string): string;
     waiveExpired(gate: string, until: string, reason: string): string;
+    /**
+     * `--markdown-summary`: the short form for a pull-request body or a weekly
+     * note. A view over the same report, never a different set of figures.
+     */
+    summaryNoComparison(): string;
+    summaryFooter(): string;
     gateLargest(label: string, model: string, usd: string, share: string): string;
     gateLever(label: string, action: string, saving: string, overage: string, covers: boolean): string;
     /**
