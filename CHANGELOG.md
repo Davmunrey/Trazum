@@ -13,6 +13,13 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`spend.maxDayUsd`: the day budget as repository policy.** `--max-day-usd`
+existed as a flag, which makes it one CI invocation's opinion; the config is
+the repository's standing word. The flag still wins when both are present,
+like every gate here, and the config path inherits the flag's refusal: a log
+with no timestamps fails the day budget rather than passing it, because "not
+measured" is not "under budget".
+
 **`--csv-shape model-day`: the drift, day by day.** `modelMixDrift` states
 two halves; a chart wants the whole series. The new shape writes one row per
 UTC day *and model* — `day,model,usd,calls`, the long format a pivot table

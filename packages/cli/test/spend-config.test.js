@@ -80,6 +80,35 @@ describe('spend budgets in trazum.config.json', () => {
     assert.equal(run(dir, [log, '--max-usd', '9']).status, 0);
   });
 
+  it('takes the per-day budget from the config — the policy in the repo', async () => {
+    const at = (day, usd) => ({
+      model: 'claude-opus-5',
+      label: 'chat',
+      ts: `2026-08-0${day}T10:00:00Z`,
+      usage: { input_tokens: usd * 200_000, output_tokens: 0 },
+    });
+    // $12.00 total, one $10.00 day: the whole-log budget passes, the day
+    // budget fails — the gate a total cannot arm, now armed by the config.
+    const { dir, log } = await project(
+      { spend: { maxUsd: 20, maxDayUsd: 5 } },
+      [at(1, 1), at(2, 10), at(3, 1)],
+    );
+    const result = run(dir, [log]);
+    assert.equal(result.status, 1);
+    assert.match(flat(result), /FAILED — 2026-08-02 spent \$10\.00, over the --max-day-usd limit of \$5\.00/);
+
+    // And the flag beats the config, like every gate here.
+    const loose = run(dir, [log, '--max-day-usd', '15']);
+    assert.equal(loose.status, 0, loose.stderr);
+  });
+
+  it('fails the config day budget on a clockless log — not measured is not under budget', async () => {
+    const { dir, log } = await project({ spend: { maxDayUsd: 5 } }, [call('chat', 1)]);
+    const result = run(dir, [log]);
+    assert.equal(result.status, 1);
+    assert.match(flat(result), /no record in this log carries a timestamp, so there are no days to judge/);
+  });
+
   it('refuses to apply per-label budgets under a time window', async () => {
     const { dir, log } = await project({ spend: { byLabel: { chat: 2 } } }, [
       { ...call('chat', 5), ts: '2026-08-01T10:00:00Z' },

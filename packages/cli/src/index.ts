@@ -2377,8 +2377,13 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
      * sound in both directions, the pass is a floor, and the pass message
      * says so when the span does not start and end on a day boundary.
      */
-    if (typeof args.flags.get('max-day-usd') === 'string') {
-      const maxDay = numberFlag(args, 'max-day-usd', 0, t);
+    if (typeof args.flags.get('max-day-usd') === 'string' || config.spend?.maxDayUsd !== undefined) {
+      // The flag beats the config, like every gate here: the config is the
+      // repository's standing policy, the flag is this invocation's word.
+      const maxDay =
+        typeof args.flags.get('max-day-usd') === 'string'
+          ? numberFlag(args, 'max-day-usd', 0, t)
+          : config.spend!.maxDayUsd!;
       if (report.spendByDay.length === 0) {
         console.error(c.red(t.profile.maxDayNoClock()));
         process.exitCode = 1;
