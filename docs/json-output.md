@@ -46,6 +46,7 @@ key that disappears fails, and a key added without a line here fails too.
 | `duplicateLines` | Lines identical to an earlier one (timestamped records only), and what they added to the total — the shape a doubled export has. |
 | `fieldCoverage` | How many parsed records carried each optional field — the counts behind "what this log cannot answer yet". |
 | `spendByHour` | Exact dollars per hour of the UTC day — the shape that says whether the Batch API applies. |
+| `modelMixDrift` | Each model's share of spend in the first half of the log's days against the last half — the migration a total cannot show. `null` under four dated days: one day against one day is weather, not climate. |
 | `cacheTtlFit` | Whether each slice's cache TTL fits how fast its turns arrive. |
 | `timeWindow` | The `--since`/`--until` filter applied, with the clockless calls it excluded. `null` when unfiltered. |
 | `singleTurnCacheWrites` | Cache writes by conversations that never came back — a ceiling, or a fact when the slice read nothing. |

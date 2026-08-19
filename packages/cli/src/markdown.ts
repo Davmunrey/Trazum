@@ -902,6 +902,29 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
   lines.push('');
 
   /**
+   * The mix moving inside the log — same fifteen-point threshold as the
+   * terminal, because two surfaces disagreeing about "moved" is a second
+   * opinion nobody asked for.
+   */
+  if (report.modelMixDrift !== null) {
+    const moved = report.modelMixDrift.models.filter(
+      (m) => Math.abs(m.lastShare - m.firstShare) >= 0.15,
+    );
+    if (moved.length > 0) {
+      lines.push(`#### ${t.profile.mixDriftHeading()}`);
+      lines.push('');
+      for (const m of moved.slice(0, 3)) {
+        lines.push(
+          `> ⚠️ ${mdText(t.profile.mixDriftLine(m.model, pct(m.firstShare), pct(m.lastShare), n(report.modelMixDrift.firstDays), n(report.modelMixDrift.lastDays), formatUsd(m.lastUsd)))}`,
+        );
+        lines.push('');
+      }
+      lines.push(`_${mdText(t.profile.mixDriftNote())}_`);
+      lines.push('');
+    }
+  }
+
+  /**
    * The ceiling in sight — loud in a summary from 85%, because the reader of
    * a PR comment is exactly the person who can cap the retrieval today.
    */

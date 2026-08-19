@@ -1036,6 +1036,11 @@ ${bold('EJEMPLOS')}
     pressureHeading: () => 'Acercándose a la ventana de contexto',
     pressureLine: (label, model, tokens, window, share) =>
       `${label} en ${model}: la llamada más grande llevó ${tokens} tokens de entrada contra una ventana de ${window} — el ${share} del techo.`,
+    mixDriftHeading: () => 'La mezcla se movió dentro de este registro',
+    mixDriftLine: (model, firstShare, lastShare, firstDays, lastDays, lastUsd) =>
+      `${model} pasó del ${firstShare} del gasto en los primeros ${firstDays} días al ${lastShare} en los últimos ${lastDays} — ${lastUsd} de la mitad reciente.`,
+    mixDriftNote: () =>
+      'Una factura puede crecer sin que crezca ninguna carga: tráfico migrando entre modelos, un deploy que cambió un valor por defecto, un fallback convertido en camino principal. Se muestra a partir de quince puntos de movimiento. Hacia dónde va la mezcla después no está en este registro, así que aquí no se dice.',
     pressureAdvice: () =>
       'Al 100% la llamada falla sin más, y nada en la factura cambia hasta ese día. Las palancas son un tope al contexto recuperado, truncar el historial de conversación o un modelo con ventana mayor. Cuándo se cruza no se predice aquí: la proporción es un hecho; la trayectoria es tuya.',
     repeatsAdvice: () =>

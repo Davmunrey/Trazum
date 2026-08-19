@@ -824,6 +824,27 @@ const PROFILE: ToolDefinition = {
     }
 
     /**
+     * The mix moving inside the log. Same fifteen-point threshold as the
+     * CLI; the exact shares are in the report for an agent that wants them.
+     */
+    if (report.modelMixDrift !== null) {
+      const drift = report.modelMixDrift;
+      const moved = drift.models.filter((m) => Math.abs(m.lastShare - m.firstShare) >= 0.15);
+      if (moved.length > 0) {
+        lines.push('');
+        lines.push('The mix moved inside this log:');
+        for (const m of moved.slice(0, 3)) {
+          lines.push(
+            `  ${m.model} went from ${Math.round(m.firstShare * 100)}% of the spend in the first `
+              + `${drift.firstDays} days to ${Math.round(m.lastShare * 100)}% in the last ${drift.lastDays} `
+              + `(${formatUsd(m.lastUsd)} of the recent half). A bill can grow with no workload growing. `
+              + 'Where the mix goes next is not in this log.',
+          );
+        }
+      }
+    }
+
+    /**
      * The ceiling in sight. An agent budgeting its own prompts is exactly
      * the caller that can stop growing before the window refuses a call.
      */

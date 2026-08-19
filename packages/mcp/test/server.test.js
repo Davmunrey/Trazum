@@ -362,6 +362,20 @@ describe('profile_usage', () => {
     assert.match(empty, /no comparison to make — a different answer from zero growth/);
   });
 
+  it('names a mix that moved, and never where it goes next', async () => {
+    const on = (day, model) =>
+      line({ model, label: 'chat', ts: `2026-08-0${day}T10:00:00Z`, usage: { input_tokens: 200_000, output_tokens: 0 } });
+    const log = [on(1, 'claude-haiku-4-5'), on(2, 'claude-haiku-4-5'), on(3, 'claude-opus-5'), on(4, 'claude-opus-5')].join('\n');
+    const body = bodyOf(await client.call('profile_usage', { log }));
+    assert.match(body, /The mix moved inside this log/);
+    assert.match(body, /claude-opus-5 went from 0% of the spend in the first 2 days to 100% in the last 2/);
+    assert.match(body, /Where the mix goes next is not in this log/);
+
+    // A stable mix says nothing: the section firing on every log is noise.
+    const stable = [on(1, 'claude-opus-5'), on(2, 'claude-opus-5'), on(3, 'claude-opus-5'), on(4, 'claude-opus-5')].join('\n');
+    assert.ok(!bodyOf(await client.call('profile_usage', { log: stable })).includes('The mix moved'));
+  });
+
   it('says how close the largest call is to the window, and refuses the date', async () => {
     // 190k input tokens against Claude Haiku 4.5's 200k window: 95%.
     const log = line({
