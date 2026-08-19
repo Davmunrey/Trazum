@@ -402,6 +402,48 @@ Or by hand, if you already have the repo checked out:
 - run: node packages/cli/dist/index.js check prompts/system.txt --max-tokens 2000
 ```
 
+### The multiplication stops guessing: `--from-log`
+
+Every saving `optimize` prints is `token delta × usage` — and until now the
+usage half (`--calls`, `--output-tokens`, `--cache-hit-rate`) was typed by a
+human who was guessing. A usage log knows all three exactly, plus the model
+the calls actually went to:
+
+```bash
+trazum optimize prompts/support.txt --from-log usage.jsonl --label support
+```
+
+```
+Cost with Claude Opus 5
+  1,043 calls measured over 12.0 days — 2,608/month at that rate · 512 output
+  tokens per call, measured
+  $161.20 → $103.40   saving $57.80/month (35.9%)
+```
+
+What stays estimated is the token delta and only that — the usage line names
+which figures are measured, because "measured × estimated" and "estimated ×
+guessed" are different claims about the same dollar sign. The rules:
+
+- **Typed flags are refused beside it.** `--from-log --calls 5000` is a
+  contradiction, not a preference order: measuring and typing the same figure
+  cannot both be the answer.
+- **Scaling to a month needs a full week of data.** Under seven days the
+  figures cover exactly the period measured and nothing says "month" — three
+  weekdays scaled up is a Tuesday with a multiplier, not a monthly figure.
+- **The label comes from `--label`**, or from the `labels` map in
+  `trazum.config.json` read in reverse — the file on the command line looked
+  up among its values. Two labels mapped to one file is an error naming both.
+- **A label with no traffic is an error naming the ones that have some** — a
+  zero-call profile would price the change as worthless rather than as
+  unmeasured.
+- A label that ran on several models says which model the figures use and
+  what share of its spend that model carried; a slice that never recorded
+  output tokens says its output figures are $0 *measured*, not $0 assumed.
+
+`--from-log` also implies `--cost` everywhere: a log with billed token counts
+is proof the prompt's traffic goes to a metered API, whatever the terminal
+running the command bills like.
+
 ### Reordering for the cache: `--reorder`
 
 Trimming a prompt saves a few percent of its tokens. Moving its stable

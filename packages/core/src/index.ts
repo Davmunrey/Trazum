@@ -42,6 +42,8 @@ export { driversBetween } from './against.js';
 export type { AgainstDriver } from './against.js';
 export { coverageDrift, COVERAGE_FIELDS, COVERAGE_DRIFT_MIN } from './coverage-drift.js';
 export { explainGateFailure, gateMargin, GATE_MARGIN_TIGHT } from './gate-explain.js';
+export { measuredUsage, labelCoverage, MIN_SCALE_DAYS, SCALE_TO_DAYS } from './measured-profile.js';
+export type { MeasuredUsage, LabelCoverage } from './measured-profile.js';
 export type { GateExplanation } from './gate-explain.js';
 export type { CoverageDrift, CoverageField } from './coverage-drift.js';
 // The same tokens at another model's rates — arithmetic, not advice, and it

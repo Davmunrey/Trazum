@@ -119,6 +119,14 @@ ${bold('OPTIONS FOR optimize')}
   --calls <n>                 Calls per month. Default: ${d.callsPerMonth}.
   --output-tokens <n>         Average output tokens. Default: ${d.avgOutputTokens}.
   --cache-hit-rate <0-1>      Estimated cache hit rate. Default: ${d.cacheHitRate}.
+  --from-log <usage.jsonl>    Measure the three figures above from a usage log
+                              instead of typing them: real call count, real
+                              output size, real cache share, and the model the
+                              calls actually went to. Refuses the typed flags
+                              beside it, scales to a month only past a full
+                              week of data, and says which figures are
+                              measured. Pair with --label, or map the prompt
+                              under "labels" in trazum.config.json.
   --batch                     The work tolerates latency (Batch API, 50% off).
   --disable <id,id>           Turn off specific rules (see "trazum rules").
   --suggest                   Ask the LLM for phrase-level rewrites and list them
@@ -444,6 +452,14 @@ ${bold('EXAMPLES')}
     mustBeNonNegative: (name, raw) =>
       `--${name} must be a non-negative number (received: "${raw}").`,
     badLevel: (received) => `--level must be "safe" or "aggressive" (received: "${received}").`,
+    fromLogConflict: (flag) =>
+      `--from-log measures the figure --${flag} types, and merging a measurement with a guess produces a number that is neither. Pass one or the other.`,
+    fromLogNeedsLabel: (available) =>
+      `--from-log needs to know which workload this prompt is: pass --label, or map the prompt file under "labels" in trazum.config.json. Labels with traffic in this log: ${available}.`,
+    fromLogAmbiguousLabel: (target, labels) =>
+      `${target} is mapped to more than one label in trazum.config.json (${labels}), so --from-log cannot pick one silently. Pass --label.`,
+    fromLogLabelEmpty: (label, available) =>
+      `No priced call in this log carries the label "${label}", so there is nothing to measure — a zero-call profile would price this change as worthless rather than as unmeasured. Labels with traffic: ${available}.`,
     unknownRuleInDisable: (id) => `Unknown rule in --disable: "${id}". Full list: trazum rules`,
     unknownCommand: (command) => `Unknown command: "${command}". Try "trazum --help".`,
     missingInputFile: () => 'Missing input file. Use "-" to read from standard input.',
@@ -510,6 +526,19 @@ ${bold('EXAMPLES')}
     costWith: (modelName) => `Cost with ${modelName}`,
     usageLine: (calls, outputTokens, batch) =>
       `${calls} calls/month · ${outputTokens} output tokens per call${batch ? ' · Batch API' : ''}`,
+    usageLineMeasured: (calls, days, scaled, outputTokens, batch) =>
+      `${calls} calls measured over ${days} days — ${scaled}/month at that rate · ${outputTokens} output tokens per call, measured${batch ? ' · Batch API' : ''}`,
+    usageLineMeasuredPeriod: (calls, days, outputTokens, batch) =>
+      `${calls} calls measured${days === null ? ' (the log carries no clock)' : ` over ${days} days`} · ${outputTokens} output tokens per call, measured${batch ? ' · Batch API' : ''}`,
+    measuredModelShare: (model, share, count) =>
+      `This label ran on ${count} models; the figures use ${model}, which carried ${share} of its spend.`,
+    measuredNoOutput: () =>
+      'No call in this slice recorded output tokens, so the output half of every figure below is $0 measured — not $0 assumed.',
+    perPeriodSaving: (saving, pct) => `saving ${saving} over the measured period (${pct}%)`,
+    periodNotScaled: (days) =>
+      days === null
+        ? 'Not scaled to a month: the log carries no clock, so there is no rate to scale. These figures cover exactly the calls measured.'
+        : `Not scaled to a month: ${days} days is under the week a scaling needs — shorter than one weekly cycle multiplies whichever part of the cycle it caught. These figures cover exactly the period measured.`,
     perMonthSaving: (saving, pct) => `saving ${saving}/month (${pct}%)`,
     beyondShortening: () => 'Beyond shortening the prompt',
     biggestLever: () => 'Start here:',

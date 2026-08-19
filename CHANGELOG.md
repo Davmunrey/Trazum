@@ -9,6 +9,35 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**`optimize --from-log`: the multiplication stops guessing.** Every saving
+`optimize` prints is `token delta × usage`, and until now every part of the
+usage half was typed by a human — the real call count, output size, cache
+share and model were all guesses with defaults. `--from-log <usage.jsonl>`
+measures all four from the log, and the rendering names which figures are
+measured, because "measured × estimated" and "estimated × guessed" are
+different claims about the same dollar sign.
+
+The refusals are the design: typed flags (`--calls`, `--output-tokens`,
+`--cache-hit-rate`, `--model`) are refused beside it — measuring and typing
+the same figure is a contradiction, not a preference order. Scaling to a
+month requires a full week of data, because three weekdays scaled up is a
+Tuesday with a multiplier; under the floor the figures cover exactly the
+period measured and nothing says "month". A label with no priced traffic is
+an error naming the labels that have some, never a $0 saving that reads as
+"worthless" instead of "unmeasured". The label resolves from `--label` or
+from the config's `labels` map read in reverse, with ambiguity refused by
+name. And `--from-log` implies `--cost`: a log with billed counts is proof of
+a metered API, whatever the terminal bills like.
+
+Multi-model labels say which model the figures use and its share of spend;
+slices that never recorded output say their output half is $0 measured, not
+$0 assumed. New core module `measured-profile.ts` with `measuredUsage()` and
+`labelCoverage()`, both exported.
+
 ## 1.35.0 — "The reader who is not in the terminal"
 
 ### Added
