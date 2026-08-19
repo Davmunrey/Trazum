@@ -1039,6 +1039,10 @@ ${bold('EJEMPLOS')}
     mixDriftHeading: () => 'La mezcla se movió dentro de este registro',
     mixDriftLine: (model, firstShare, lastShare, firstDays, lastDays, lastUsd) =>
       `${model} pasó del ${firstShare} del gasto en los primeros ${firstDays} días al ${lastShare} en los últimos ${lastDays} — ${lastUsd} de la mitad reciente.`,
+    truncationRetryLine: (label, model, retried, truncated, seconds, wasted, retry) =>
+      `${label} en ${model}: ${retried} de ${truncated} respuestas cortadas tuvieron otra llamada en la misma conversación en menos de ${seconds} segundos — ${wasted} gastados en los intentos cortados, más ${retry} en las llamadas siguientes.`,
+    truncationRetryNote: () =>
+      'La pareja tiene la forma de un reintento; el registro no ve el contenido, así que si cada una lo fue es cosa tuya. Los dos lados son dinero real, y el arreglo es el mismo en ambos casos: un max_tokens en el que las respuestas quepan de verdad.',
     mixDriftNote: () =>
       'Una factura puede crecer sin que crezca ninguna carga: tráfico migrando entre modelos, un deploy que cambió un valor por defecto, un fallback convertido en camino principal. Se muestra a partir de quince puntos de movimiento. Hacia dónde va la mezcla después no está en este registro, así que aquí no se dice.',
     pressureAdvice: () =>

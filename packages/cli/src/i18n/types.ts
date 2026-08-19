@@ -656,6 +656,22 @@ export interface CliMessages {
       lastUsd: string,
     ): string;
     mixDriftNote(): string;
+    /**
+     * The "billed again" half of truncation, measured: cut answers followed
+     * inside the window by another call in the same conversation, priced on
+     * both sides, with the checkable denominator. A pattern, not a
+     * certainty — the log cannot see content.
+     */
+    truncationRetryLine(
+      label: string,
+      model: string,
+      retried: string,
+      truncated: string,
+      seconds: string,
+      wasted: string,
+      retry: string,
+    ): string;
+    truncationRetryNote(): string;
     inputFullRate(): string;
     assumedWriteTtl(calls: number): string;
     /**

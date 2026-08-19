@@ -47,6 +47,10 @@ export type { InputShape, InputShapeOptions, InputShapeTracker } from './input-s
 // The same request sent again a moment later — a retry or a loop, named as
 // the pattern it is and never as a certainty. See repeats.ts.
 export { createRepeatsTracker, repeatedTurns } from './repeats.js';
+// The retry bill of truncation — the "billed again" half of the truncation
+// line, measured instead of asserted. See truncation-retry.ts.
+export { createTruncationRetryTracker, truncationRetries } from './truncation-retry.js';
+export type { TruncationRetry, TruncationRetryOptions, TruncationRetryTracker } from './truncation-retry.js';
 export type { RepeatedTurns, RepeatsOptions, RepeatsTracker } from './repeats.js';
 // How close each slice's largest call is to its model's context window —
 // the failure a bill cannot show until the day the product breaks.

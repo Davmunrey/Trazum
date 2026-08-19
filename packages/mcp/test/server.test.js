@@ -362,6 +362,19 @@ describe('profile_usage', () => {
     assert.match(empty, /no comparison to make — a different answer from zero growth/);
   });
 
+  it('prices the retry bill of truncation, hedged', async () => {
+    const turn = (seconds, over = {}) =>
+      line({ model: 'claude-opus-5', label: 'chat', session: 's1',
+        ts: new Date(Date.UTC(2026, 7, 1, 10, 0, seconds)).toISOString(),
+        stop_reason: 'end_turn', usage: { input_tokens: 200_000, output_tokens: 40_000 }, ...over });
+    const cut = (seconds) => turn(seconds, { stop_reason: 'max_tokens' });
+    const log = [cut(0), turn(30), cut(120), turn(150)].join('\n');
+    const body = bodyOf(await client.call('profile_usage', { log }));
+    assert.match(body, /2 of 2 truncated answers were followed within 120 seconds/);
+    assert.match(body, /\$4\.00 spent on the cut attempts, plus \$4\.00 on the follow-ups/);
+    assert.match(body, /The pair is the shape a retry has; the log cannot see content/);
+  });
+
   it('names a mix that moved, and never where it goes next', async () => {
     const on = (day, model) =>
       line({ model, label: 'chat', ts: `2026-08-0${day}T10:00:00Z`, usage: { input_tokens: 200_000, output_tokens: 0 } });

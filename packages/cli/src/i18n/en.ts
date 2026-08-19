@@ -1025,6 +1025,10 @@ ${bold('EXAMPLES')}
     mixDriftHeading: () => 'The mix moved inside this log',
     mixDriftLine: (model, firstShare, lastShare, firstDays, lastDays, lastUsd) =>
       `${model} went from ${firstShare} of the spend in the first ${firstDays} days to ${lastShare} in the last ${lastDays} — ${lastUsd} of the recent half.`,
+    truncationRetryLine: (label, model, retried, truncated, seconds, wasted, retry) =>
+      `${label} on ${model}: ${retried} of ${truncated} truncated answers were followed within ${seconds} seconds by another call in the same conversation — ${wasted} spent on the cut attempts, plus ${retry} on the follow-ups.`,
+    truncationRetryNote: () =>
+      'The pair is the shape a retry has; the log cannot see content, so whether each was one is yours to know. Both sides of it are real money, and the fix is the same either way: a max_tokens the answers actually fit in.',
     mixDriftNote: () =>
       'A bill can grow with no workload growing: traffic migrating between models, a deploy that flipped a default, a fallback that became the main path. Shown past fifteen points of movement. Where the mix goes next is not in this log, so it is not said here.',
     pressureAdvice: () =>

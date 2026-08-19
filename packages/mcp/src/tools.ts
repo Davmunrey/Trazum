@@ -824,6 +824,21 @@ const PROFILE: ToolDefinition = {
     }
 
     /**
+     * The retry bill of truncation — the "billed again" half, measured.
+     */
+    for (const row of report.truncationRetries.slice(0, 3)) {
+      const shown = row.label === UNLABELLED ? 'unlabelled' : row.label;
+      lines.push('');
+      lines.push(
+        `${shown} on ${row.modelName}: ${row.retried} of ${row.truncatedCalls} truncated answers `
+          + `were followed within ${Math.round(row.withinMs / 1000)} seconds by another call in the `
+          + `same conversation — ${formatUsd(row.wastedUsd)} spent on the cut attempts, plus `
+          + `${formatUsd(row.retryUsd)} on the follow-ups. The pair is the shape a retry has; the `
+          + 'log cannot see content. The fix either way is a max_tokens the answers actually fit in.',
+      );
+    }
+
+    /**
      * The mix moving inside the log. Same fifteen-point threshold as the
      * CLI; the exact shares are in the report for an agent that wants them.
      */

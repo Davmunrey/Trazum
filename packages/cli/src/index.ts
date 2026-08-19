@@ -3500,6 +3500,22 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
         `    ${c.dim(wrap(t.profile.truncatedCeiling(n(ceiling.p95WithinTokens!)), 74, '    '))}`,
       );
     }
+    /**
+     * The "billed again" half, measured. The sentence above has always said
+     * truncated answers are frequently retried; this is the count and the
+     * money, when the log can carry it — a pattern, never a certainty, and
+     * attributed to the truncated call's slice, where the ceiling that
+     * caused it lives.
+     */
+    for (const row of report.truncationRetries.slice(0, 3)) {
+      const name = row.label === UNLABELLED ? t.profile.unlabelled() : row.label;
+      console.log(
+        `  ${c.yellow('!')} ${c.bold(wrap(t.profile.truncationRetryLine(name, row.modelName, n(row.retried), n(row.truncatedCalls), n(Math.round(row.withinMs / 1000)), formatUsd(row.wastedUsd), formatUsd(row.retryUsd)), 74, '    '))}`,
+      );
+    }
+    if (report.truncationRetries.length > 0) {
+      console.log(`  ${c.dim(wrap(t.profile.truncationRetryNote(), 74, '  '))}`);
+    }
   } else if (report.total.stopReasonCalls === 0) {
     console.log();
     console.log(`  ${c.dim(wrap(t.profile.truncatedNotRecorded(), 74, '  '))}`);
