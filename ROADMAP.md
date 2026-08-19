@@ -992,7 +992,13 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-Nothing scheduled. The next thing this needs is users, and what they report.
+Six releases are planned in order through 1.35.0, with the reasoning attached:
+[docs/plan-1.30-1.35.md](docs/plan-1.30-1.35.md). The short version — the bill
+is close to complete, and the next arc is the loop: from a finding, to a
+decision, to a decision that survives the next report.
+
+The ordering is a commitment and the calendar is not. What users report
+reorders it; that is the one input allowed to.
 
 ## Under consideration
 
