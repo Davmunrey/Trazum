@@ -1019,6 +1019,11 @@ ${bold('EXAMPLES')}
     repeatsHeading: () => 'The same request, sent again',
     repeatsFound: (label, model, repeats, checked, seconds, usd) =>
       `${label} on ${model}: ${repeats} of ${checked} calls re-sent the previous call's exact input size within ${seconds} seconds, in the same conversation, costing ${usd}.`,
+    pressureHeading: () => 'Approaching the context window',
+    pressureLine: (label, model, tokens, window, share) =>
+      `${label} on ${model}: the largest call carried ${tokens} input tokens against a ${window}-token window — ${share} of the ceiling.`,
+    pressureAdvice: () =>
+      'At 100% the call fails outright, and nothing on the bill changes until that day. The levers are a cap on retrieved context, truncating conversation history, or a larger-window model. When it crosses is not predicted here: the share is a fact, the trajectory is yours to know.',
     repeatsAdvice: () =>
       'A conversation\'s input grows with every turn, so the same size twice in a row seconds apart is usually a retry after a timeout, an agent step repeating, or a loop — this reads counts and cannot see content, so it names the pattern and stops. Whatever it is, the money bought nothing the call before it had not already paid for.',
     inputMostlyCached: (share) =>

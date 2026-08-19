@@ -9,6 +9,32 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**`contextPressure`: the ceiling, seen coming.** Input grows turn by turn or
+document by document, costs nothing extra to grow, and then one call crosses
+the model's context window and the API refuses it outright — the bill looks
+fine right up to the day the product breaks. The distance is knowable from
+what the log already carries: each slice's largest call (input, cache reads
+and writes) against its own model's window, reported from half the window up,
+loud from 85%.
+
+What it refuses: **no prediction of when**. A straight line through two
+points is a guess wearing arithmetic's clothes; the share is a fact and the
+trajectory is the reader's to know. The maximum rather than a percentile,
+for `reprice`'s reason — one call over the window is one failed call, and an
+average hides exactly the call that matters. Unpriced models are absent: a
+model with no catalogue entry has no window to compare against, and
+inventing one would turn a missing fact into a false comfort.
+
+In the terminal, in `--json` as `contextPressure` (computed once in the CLI
+and passed to every rendering, because the denominator lives in the possibly
+overlaid catalogue), in the CI summary, and in the MCP `profile_usage` tool.
+
+Also: the README's action pins advanced to the 1.26.0 commit.
+
 ## 1.26.0 — "The release that releases itself"
 
 ### Changed

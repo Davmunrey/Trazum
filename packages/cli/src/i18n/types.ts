@@ -631,6 +631,15 @@ export interface CliMessages {
       usd: string,
     ): string;
     repeatsAdvice(): string;
+    /**
+     * The largest call against the model's context window. Loud from 85%,
+     * quiet from 50% — thresholds in the rendering, the ratio in core. No
+     * prediction of when the ceiling is crossed, ever: the share is a fact
+     * and the trajectory is the reader's to know.
+     */
+    pressureHeading(): string;
+    pressureLine(label: string, model: string, tokens: string, window: string, share: string): string;
+    pressureAdvice(): string;
     inputFullRate(): string;
     assumedWriteTtl(calls: number): string;
     /**

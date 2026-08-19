@@ -1033,6 +1033,11 @@ ${bold('EJEMPLOS')}
     repeatsHeading: () => 'La misma petición, otra vez',
     repeatsFound: (label, model, repeats, checked, seconds, usd) =>
       `${label} en ${model}: ${repeats} de ${checked} llamadas reenviaron el tamaño de entrada exacto de la llamada anterior en menos de ${seconds} segundos, en la misma conversación, costando ${usd}.`,
+    pressureHeading: () => 'Acercándose a la ventana de contexto',
+    pressureLine: (label, model, tokens, window, share) =>
+      `${label} en ${model}: la llamada más grande llevó ${tokens} tokens de entrada contra una ventana de ${window} — el ${share} del techo.`,
+    pressureAdvice: () =>
+      'Al 100% la llamada falla sin más, y nada en la factura cambia hasta ese día. Las palancas son un tope al contexto recuperado, truncar el historial de conversación o un modelo con ventana mayor. Cuándo se cruza no se predice aquí: la proporción es un hecho; la trayectoria es tuya.',
     repeatsAdvice: () =>
       'La entrada de una conversación crece en cada turno, así que el mismo tamaño dos veces seguidas con segundos de diferencia suele ser un reintento tras un timeout, un paso de agente que se repite o un bucle — esto lee recuentos y no puede ver el contenido, así que nombra el patrón y para. Sea lo que sea, ese dinero no compró nada que la llamada anterior no hubiera pagado ya.',
     inputMostlyCached: (share) =>
