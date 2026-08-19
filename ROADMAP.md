@@ -514,6 +514,14 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.32.0 — The routing decision, priced whole
+
+`--what-if` corrects the figure the target would refuse to bill — cache
+traffic under the target's cache minimum priced at the rates it would
+actually get — and states the move batched on the target's rates, never
+summed. The output-ceiling check stays out: the catalogue carries no output
+ceilings, and inventing them would be guessing.
+
 ### 1.31.0 — The gate that explains itself
 
 Every spend gate failure names the slice holding the money and the largest

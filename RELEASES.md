@@ -40,6 +40,46 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.32.0 — "The routing decision, priced whole"
+
+### The figure the target would refuse to bill, corrected in place
+
+A cache entry only forms above a model's minimum prompt size, and a slice
+whose largest call sits under the target's minimum could not create one — so
+`--what-if`'s standard figure granted cache traffic discounted rates the
+target would never concede, an error in exactly the flattering direction:
+
+```
+· tiny on claude-opus-5: $0.00380 → $0.00076
+! Its cache traffic could not exist there: the largest call is 400 tokens
+  against the target's 4,096-token cache minimum, so no call in this slice
+  could create an entry. Without the cache the same tokens cost $0.00130 —
+  the figure the target would actually bill.
+```
+
+The correction travels inside the slice (`cacheBeyondTarget` in the JSON), so
+a consumer cannot print the discounted figure without it. Silent when the
+calls clear the minimum, when nothing cached, or when the target's minimum is
+unknown — nothing is claimed against a threshold nobody stated.
+
+### The move, batched
+
+The decision usually pairs the move with the Batch API, and the arithmetic in
+a reader's head gets done by adding two savings — the mistake the levers
+module documents. `--what-if` now states the moved bill with the target's
+batch discount on top, computed on the target's rates with over-context money
+excluded, and hedged: whether these calls can wait is not in the log.
+`whatIf.batchOnTarget` in the JSON, null when the target sells no batch
+discount — a different statement from a $0 saving.
+
+### What stays out, and why
+
+The plan named a check for `max_tokens` ceilings above the target's output
+limits. The catalogue carries no output ceilings, and inventing them would be
+this tool doing the guessing it exists to end — the check waits for the data.
+
+---
+
 ## 1.31.0 — "The gate that explains itself"
 
 ### A failing gate says what to change
