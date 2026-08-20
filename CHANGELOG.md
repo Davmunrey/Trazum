@@ -11,7 +11,70 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**`trazum owners` — whose money.** Chapter eight of `docs/plan-1.51.md`. The
+fleet answered *which service* in 1.37; nobody has answered *whose budget*, which
+is the question that decides whether anything on the list gets done. A report
+saying "the bill is $40,000 and here is $9,000 of savings" is read by four people
+who each assume it is one of the other three's problem.
+
+```
+  owner      spend  budget  calls
+  payments  $62.00   $8.00     62  over
+  support   $38.00  $20.00     38  over
+  platform      $0  $10.00      0  not measured
+```
+
+**The unallocated is its own line, and it is never spread.** Splitting
+unattributed spend proportionally across the owners you *do* know is the single
+most common lie in cost reporting. It is attractive because it makes every line
+add up. What it does is make **every team's figure wrong**, by an amount nobody
+can see, in a direction nobody can check — and it does it hardest to whoever
+instruments best, because their known spend is largest and they therefore absorb
+the biggest share of somebody else's mystery.
+
+The labels in it are named: "unallocated: $15" invites somebody to divide it, and
+"unallocated: $15 from `internal-eval`" invites somebody to claim it.
+
+**Shared cost is declared, and the rule travels with the report.** The argument
+then happens about *the rule* — "why is search 60/40?" — rather than about the
+number, which is an argument nobody can win because nobody can see where the
+number came from. Splits are keyed by the exact label rather than by a pattern,
+because a shared split is a negotiated fact about one workload and a glob would
+let a new label silently join somebody's bill.
+
+**A split that does not sum to 1 is a configuration error, not a rounding
+problem** — 0.9 loses a tenth of that workload's money and 1.1 invents a tenth,
+both silently. The workload goes to unallocated **whole** rather than having 90%
+applied and the rest vanish, so it sits somewhere visible next to the problem
+that explains it.
+
+Also caught, all at once: a split naming an owner nobody declared, a "shared"
+workload with a single owner (a pattern written the long way, where reading it as
+a share invites a second owner to be added without the first being adjusted), a
+negative share, and a budget for an owner with no patterns.
+
+**An owner with no measured data is not an owner under budget** — the
+`fleetBudgetMissing` refusal from 1.37, applied to people. A team whose logs never
+arrived passes every budget it has, forever, and a green tick beside their name
+tells somebody the opposite of the truth. Every declared owner gets a line even
+with no traffic, because that refusal cannot be printed for somebody who is not on
+the page.
+
+Attribution is by the most specific matching pattern, the same tie-break sources
+and budgets use — two rules for pattern precedence in one tool is one rule too
+many.
+
+### Fixed
+
+**A test whose arithmetic was wrong, caught by the assertion rather than by
+reading it.** The unallocated share in the CLI suite was written as 13.0%, copied
+from a smoke test with a different fixture; over 85 calls it is 17.6%. The
+assertion failed on its first run, which is the suite working — but it is the
+second time this week a hand-computed figure in a test was wrong, and both times
+the code was right.
+
 
 ## 1.50.9 — "The semantic pass"
 

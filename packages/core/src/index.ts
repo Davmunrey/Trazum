@@ -63,6 +63,16 @@ export type {
   SemanticRejection,
   SemanticResult,
 } from './semantic.js';
+export { allocate, validateOwners } from './owners.js';
+export type {
+  Allocation,
+  LabelSpend,
+  OwnerLine,
+  OwnerProblem,
+  OwnersConfig,
+  OwnerVerdict,
+  SharedSplit,
+} from './owners.js';
 export { runExperiment } from './experiment.js';
 export {
   qualityGate,

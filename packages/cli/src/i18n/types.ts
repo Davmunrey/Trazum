@@ -268,6 +268,21 @@ export interface CliMessages {
    * The ladder. Every line here exists to stop somebody reading "we route to
    * the cheap model first" as a saving without the number that decides it.
    */
+  owners: {
+    heading(): string;
+    noOwners(): string;
+    columns: { owner: string; spend: string; budget: string; calls: string };
+    verdict(kind: string): string;
+    unallocated(usd: string, share: string, labels: string): string;
+    neverSpread(): string;
+    nothingUnallocated(): string;
+    sharedHeading(): string;
+    sharedRule(label: string, rule: string): string;
+    problemsHeading(): string;
+    problem(kind: string, detail: string): string;
+    notMeasured(owner: string): string;
+  };
+
   semantic: {
     heading(path: string): string;
     willCost(usd: string, input: string, output: string, model: string): string;
