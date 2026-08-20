@@ -1554,6 +1554,8 @@ ${bold('EXAMPLES')}
       `WAIVED — the ${gate} failure above is on the record and silenced until ${until} (${daysLeft} days left): "${reason}". The bill still counts it; only the exit code is quiet, and the day the waiver expires this gate fails again.`,
     waiveExpired: (gate, until, reason) =>
       `The waiver on ${gate} expired on ${until} and no longer silences anything. It was written for: "${reason}". Renew it with a new date and a current reason, or fix what it was covering — an expired waiver left in place is a finding deleted with extra steps.`,
+    waiveNotRecorded: (path, because) =>
+      `  (This waiver was not written to ${path}: ${because}. The gate's verdict above is unaffected.)`,
     summaryNoComparison: () =>
       'No previous log was given, so nothing here says whether the bill moved — a summary without a comparison states the bill, not its stability.',
     summaryFooter: () =>
@@ -1807,6 +1809,33 @@ ${bold('EXAMPLES')}
     unrecognized: (name) => `${name} is neither a stored report nor a saved plan, so it is in no series above.`,
     footer: () =>
       'A series names shapes, not futures. Twenty points make a trend visible; they do not make next month knowable — where these lines go next is yours to judge.',
+    waiverHeading: () => 'What this repository has been living with',
+    waiverSince: (day, uses) =>
+      `${uses} recorded ${uses === 1 ? 'use' : 'uses'} since ${day}, when recording started.`,
+    waiverNoneRecorded: () =>
+      'No waiver has silenced a gate since recording started. Nothing here is inferred from the config — a waiver written down and never hit is not a decision anyone is living with.',
+    waiverHabit: (gate, uses, days, firstDay, lastDay) =>
+      `${gate}: ${uses} ${uses === 1 ? 'use' : 'uses'} across ${days} ${days === 1 ? 'day' : 'days'}, ${firstDay} to ${lastDay}`,
+    waiverVerdict: (verdict) =>
+      verdict === 'used-once'
+        ? 'Used once. Nothing to read into it yet.'
+        : verdict === 'recurring'
+          ? 'The same decision, holding. The gate keeps firing and the reason has not moved.'
+          : verdict === 'renewed-without-revisiting'
+            ? 'The expiry has moved and the reason has not. That is the shape a decision takes when nobody is revisiting it — which is sometimes exactly right, and worth saying out loud either way.'
+            : 'The reason changed between uses. Somebody looked again.',
+    waiverReasonNow: (reason) => `Reason: ${reason}`,
+    waiverReasonsChanged: (count) => `${count} different reasons given over that time.`,
+    waiverExpiriesMoved: (from, to, count) =>
+      `Expiry moved ${count} ${count === 1 ? 'time' : 'times'}: ${from} → ${to}.`,
+    waiverNoLongerConfigured: () =>
+      'Not in the config any more. The decision was reversed; the record keeps it.',
+    waiverNeverUsed: (gates) =>
+      `Waived in the config and never hit by a recorded run: ${gates}. Either the gate stopped failing — good news nobody wrote down — or the waiver names a situation that does not arise. Both are worth deleting.`,
+    waiverUnreadable: (count, path) =>
+      `${count} ${count === 1 ? 'line' : 'lines'} in ${path} could not be read and are not counted above.`,
+    waiverStartsHere: () =>
+      'Nothing before that day exists. This record began when recording did, and no past was reconstructed from the config as it stands.',
   },
 
   verify: {

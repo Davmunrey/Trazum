@@ -13,6 +13,61 @@ merged commit with no entry is a change only `git log` remembers.
 
 Nothing yet.
 
+## 1.48.0 — "The cost review"
+
+### Added
+
+**Waivers get their history — the gap 1.40 named and could not fill.** 1.40
+wanted to say *this finding has been waived three times in a row* and refused
+to, because the only material available was the config as it stands, and a past
+reconstructed from a present is a guess wearing a record's clothes. The fix is
+**recording**, not inferring.
+
+When a waiver silences a gate, `trazum profile` appends one dated line to
+`.trazum/waivers.jsonl`: the gate, the reason and expiry **as they stood at that
+moment**, the commit when CI exported one, and the figures the gate actually
+judged. `trazum history` reads them back and reports the habit — how many uses
+across how many days, every reason and expiry in the order first seen, and a
+typed verdict.
+
+The verdict is the point. **`renewed-without-revisiting`** — the expiry moved
+while the reason did not — is the shape a decision takes when nobody is looking
+at it again, and it is kept apart from **`reason-changed`**, which is somebody
+looking. Counting both as "waived four times" would flatten the one signal worth
+having. Neither is called wrong: plenty of real constraints outlive their first
+estimate, and this reports the record, never the team.
+
+Three rules hold it up. **Nothing is back-filled** — the history begins the day
+recording began and says so. **A use is recorded when a waiver silences
+something, not when it is written** — a waiver nobody's build has hit is dead
+config, reported separately, and either the gate stopped failing (good news
+nobody wrote down) or it names a situation that never arises. And **a failure to
+write never fails the build**: the gate's job is the exit code, so a read-only
+checkout or a full disk is reported and the gate's own verdict stands.
+
+There is deliberately no prune, no compaction and no `--clear`. A record of
+decisions the tool can erase is a record nobody can rely on; deleting the file
+is something a person does with `rm`, having seen it.
+
+**docs/ci.md.** Worked recipes for GitLab CI, Jenkins, CircleCI and a
+pre-commit hook — the same binary and the same two exit codes, with every
+example's exit code checked against the built CLI before being written down. No
+vendor plugin: each would be a second code path with its own bugs and its own
+way of drifting from the exit codes it is supposed to relay, and the limitation
+is stated rather than papered over.
+
+### Documentation
+
+**The README documented no waivers at all.** A required config key with an
+expiry mechanism that is the whole point of the feature, and the front door had
+never mentioned it — found while writing the release, not by a guard. It has a
+section now, including the record above.
+
+**`trazum history --json` gains its `waivers` field in the contract**, with the
+habits, the verdicts and the `neverUsed` list that keeps dead config out of the
+habit count.
+
+
 ## 1.47.0 — "The browser sees the bill"
 
 ### Added

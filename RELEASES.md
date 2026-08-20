@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.47.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.48.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,132 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.48.0 — "The cost review"
+
+The eighth of the ten planned in `docs/plan-1.41-1.50.md`, and the one that
+goes back and settles an old debt.
+
+### Waivers get their history
+
+1.40 wanted to say **"this finding has been waived three times in a row"** —
+which is a sentence about a decision nobody is revisiting, and the most useful
+thing a cost tool can say about a team's habits. It refused, and said why: no
+document stored past waivers, and a history invented from the current config
+would be a guess presented as a record.
+
+That refusal was right, and it named its own fix. A config knows only today. It
+cannot say whether the same finding was waived last quarter under a different
+reason, or whether the expiry has been pushed forward four times by four people
+who each assumed somebody else had looked. So: **record**, do not infer.
+
+When a waiver silences a gate, `trazum profile` appends one dated line to
+`.trazum/waivers.jsonl` — the gate, the reason and expiry **as they stood at
+that moment**, the commit when CI exported one, and the figures the gate
+actually judged, so a recorded use is checkable rather than asserted.
+`trazum history` reads those lines back:
+
+```
+What this repository has been living with
+  9 recorded uses since 2026-04-02, when recording started.
+  Nothing before that day exists. This record began when recording did, and no
+  past was reconstructed from the config as it stands.
+
+  maxUsd: 9 uses across 7 days, 2026-04-02 to 2026-08-14
+    The expiry has moved and the reason has not. That is the shape a decision
+    takes when nobody is revisiting it — which is sometimes exactly right, and
+    worth saying out loud either way.
+    Reason: the vendor migration lands in March
+    Expiry moved 3 times: 2026-05-01 → 2026-09-01.
+```
+
+### The verdict is the point, and it has four values
+
+- **`used-once`** — one use. Nothing to read into it yet, and the copy says so
+  rather than filling the space.
+- **`recurring`** — the gate keeps firing under one unchanging reason and one
+  unchanging expiry. A decision, holding.
+- **`renewed-without-revisiting`** — the expiry moved while the reason did not.
+  The same sentence carried forward past its own deadline.
+- **`reason-changed`** — somebody looked again.
+
+The last two are the ones worth separating. Counting both as "waived four
+times" would flatten the single signal this whole feature exists to produce.
+And neither is called *wrong*: plenty of real constraints outlive their first
+estimate. The verdict describes dates and sentences in a file. Whether the call
+was right is a conversation this tool does not get to have.
+
+### Three rules hold the record up
+
+- **Nothing is back-filled.** The history begins the day recording began, and
+  `since` says which day. A reader looking at two uses needs to know whether
+  that is two in the project's life or two since Tuesday — and a fabricated
+  "waived four times" is not a report, it is an accusation.
+- **A use is recorded when a waiver silences something, not when it is
+  written.** A waiver nobody's build has ever hit is not a habit; it is dead
+  config, listed separately. Either the gate stopped failing — good news nobody
+  wrote down — or the waiver names a situation that never arises. Both are
+  worth deleting; neither is a team living with a finding.
+- **A failure to write never fails the build.** The gate's job is the exit
+  code. A read-only checkout, a full disk, a CI job that cannot create the
+  directory — none of those may turn a passing build red on account of
+  bookkeeping. The problem is printed and the gate's own verdict stands.
+
+The reason and expiry are captured at the moment of use rather than read back
+from today's config, which is the same mistake as inventing the past, one layer
+down.
+
+### No prune, no compaction, no `--clear`
+
+Deliberately. A record of decisions the tool can erase is a record nobody can
+rely on, and the one thing a waiver history is for is being awkward six months
+later. Deleting the file is something a person does with `rm`, on purpose,
+having seen it.
+
+The reader is a `.jsonl` file like the store: a line that will not parse is
+counted, named by position and skipped. Losing the whole history to one broken
+line would be the worst possible response; pretending the history is complete
+would be the second worst.
+
+### docs/ci.md — gating in whatever CI you already run
+
+GitLab CI, Jenkins, CircleCI and a pre-commit hook, each a handful of lines
+around **the same binary and the same two exit codes**. Every exit code on that
+page was checked against the built CLI before it was written down.
+
+No vendor plugin, and the page says why: each would be a second code path with
+its own bugs, its own release cadence and its own way of drifting from the exit
+codes it exists to relay. The pre-commit recipe names `--no-verify` on purpose
+— a hook somebody cannot get past is a hook somebody uninstalls, and an
+uninstalled hook gates nothing.
+
+### What this release found wrong in itself
+
+**The README documented no waivers at all.** Not the key, not the three
+required fields, not the expiry mechanism that is the entire reason the feature
+is a decision rather than a deletion. A config key with a whole design behind it
+had never appeared in the front door, through eight releases that touched
+gating.
+
+It was found by writing this release's documentation and going to link the
+existing section, not by any guard — which is worth recording as plainly as the
+gap itself. The `publish.test.js` sweep checks that command counts and version
+claims stay true; it has nothing to say about a feature that is simply absent.
+A guard for "every config key appears in the README" is the obvious next move
+and is deliberately **not** in this release: it wants a real think about what
+counts as documented, and bolting it on at the end of a release is how a guard
+gets written that everyone learns to work around.
+
+### What stayed out, and why
+
+The pull-request comment carrying the plan, and `verify --gate` as a status
+check. Both are real, both are in this release's design note, and both are
+Action work rather than tool work — the comment is a formatting-and-idempotency
+problem (a thread of stale cost figures is worse than none), and neither needs
+the waiver record that was the actual debt outstanding. Splitting them out kept
+this release about one thing.
 
 ---
 

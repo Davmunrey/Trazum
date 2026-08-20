@@ -134,6 +134,7 @@ is not a report:
 | `repeatedPlanActions[]` | The same action (kind, label, model) in two or more saved plans, with first and last planned dates — a decision nobody is executing. |
 | `undatedReports[]` | Reports with no span: on no timeline above, named rather than silently absorbed. |
 | `unrecognizedFiles[]` | JSON files that are neither a stored report nor a saved plan — in no series, named. |
+| `waivers` | The waiver record: `since` (the day recording started, or null), `totalUses`, `habits[]` and `neverUsed[]`. A `habit` carries the gate, `uses`, distinct `days`, `firstDay`/`lastDay`, every `reason` and `expiry` in the order first seen, a `verdict` (`used-once`, `recurring`, `renewed-without-revisiting`, `reason-changed`) and `stillConfigured`. Nothing here is derived from the config: a waiver written down and never hit appears in `neverUsed` with no count, because dead config is not a habit. |
 
 ## The connected report document
 

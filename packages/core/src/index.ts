@@ -49,6 +49,8 @@ export type { PlanParseFailure, PlanParseResult } from './plan.js';
 export type { PlanAction, PlanActionKind, PlanAssumption, PlanDocument } from './plan.js';
 export { verifyPlan } from './verify.js';
 export { buildHistory, storedReportFrom, MIN_RUN } from './history.js';
+export { waiverHistory, waiverDay, isWaiverUse } from './waivers.js';
+export type { WaiverHabit, WaiverHistory, WaiverUse, WaiverVerdict } from './waivers.js';
 export { answerCost } from './answer.js';
 export { guardSpend } from './guard.js';
 export type { GuardAlternative, GuardAnswer, GuardRequest, GuardVerdict } from './guard.js';

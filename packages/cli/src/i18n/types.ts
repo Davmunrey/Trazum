@@ -878,6 +878,14 @@ export interface CliMessages {
     waiveActive(gate: string, reason: string, until: string, daysLeft: string): string;
     waiveExpired(gate: string, until: string, reason: string): string;
     /**
+     * A use that could not be written down.
+     *
+     * Printed dim and never as an error: the gate's verdict is unaffected, and
+     * a read-only checkout must not turn a passing build red on account of
+     * bookkeeping.
+     */
+    waiveNotRecorded(path: string, because: string): string;
+    /**
      * `--markdown-summary`: the short form for a pull-request body or a weekly
      * note. A view over the same report, never a different set of figures.
      */
@@ -1254,6 +1262,19 @@ export interface CliMessages {
     undated(name: string): string;
     unrecognized(name: string): string;
     footer(): string;
+    /** The waiver record — what this team has been living with, and for how long. */
+    waiverHeading(): string;
+    waiverSince(day: string, uses: number): string;
+    waiverNoneRecorded(): string;
+    waiverHabit(gate: string, uses: number, days: number, firstDay: string, lastDay: string): string;
+    waiverVerdict(verdict: string): string;
+    waiverReasonNow(reason: string): string;
+    waiverReasonsChanged(count: number): string;
+    waiverExpiriesMoved(from: string, to: string, count: number): string;
+    waiverNoLongerConfigured(): string;
+    waiverNeverUsed(gates: string): string;
+    waiverUnreadable(count: number, path: string): string;
+    waiverStartsHere(): string;
   };
 
   /**
