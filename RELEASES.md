@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.50.4**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.50.5**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,115 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.50.5 — "Cost per outcome"
+
+Chapter three of `docs/plan-1.51.md`. 1.50.4 recorded the numerator; this
+divides by it — which sounds like arithmetic and is almost entirely a set of
+decisions about when **not** to do the arithmetic.
+
+### The finding a total cannot make
+
+```
+What an outcome costs
+  workload  per call  per success  recorded
+  dear         $1.00        $1.00    100.0%
+  cheap      $0.1000        $2.00    100.0%
+
+  Cheapest per call and cheapest per success are different orders, and both
+    are printed rather than one being picked. A workload can move up one while
+    moving down the other, and somebody optimising on the first number would
+    be moving the wrong one.
+  → cheap is #2 by cost per call and #1 by cost per success.
+```
+
+`dear` costs **ten times more per call and half as much per resolution.**
+
+That is the whole chapter in one table. Every ranking this product has printed
+since 0.1.0 has been the left-hand column, and anybody acting on it in a case
+like this one has been optimising the wrong number — confidently, with a tool
+agreeing with them.
+
+### Which bill is the numerator, and why it is not the obvious one
+
+The obvious implementation divides the **whole** slice bill by its successes.
+It is wrong, and wrong in the flattering-to-nobody direction: a call that
+carried no outcome is spend with no chance of ever appearing in the
+denominator, so the ratio comes out inflated by exactly the uninstrumented
+share — silently, and by an amount invisible from the figure itself.
+
+A team that instruments half its traffic reads a cost per resolution **twice**
+the real one. They conclude the feature is uneconomic. They kill it.
+
+So the numerator is **recorded spend only**. That makes the figure a ratio over
+a sample, which is acceptable for exactly two reasons and no others: the
+coverage is printed beside it every single time, and below a floor it is not
+printed at all.
+
+### Five reasons a figure is withheld, each named where the figure would be
+
+| Cell | Meaning |
+| --- | --- |
+| `3 so far` | Fewer than ten recorded successes. A figure over fewer than ten observations moves more from one more observation than from anything a team could do about it — the refusal `route` makes about small case sets and `history` makes about short runs. |
+| `50.0% covered` | Below the 80% coverage floor, the same one `watch` uses for a measured day. A ratio over an unknown denominator. |
+| `none succeeded` | Money spent, nothing resolved. A real and alarming measurement, reported as one rather than as a division by zero dressed up as a figure. |
+| `not recorded` | This workload carried no outcome, sitting beside one that did. |
+| `no vocabulary` | Nothing declares what success means. |
+
+**A withheld slice has no rank.** It is left out of the per-success ordering
+entirely, because giving it a position would place it on the strength of a
+number this module explicitly declined to state — and a reader who sees a rank
+assumes a rate.
+
+### Two orders, and the product prints both
+
+Cheapest per call and cheapest per outcome are different orders. Picking one
+would be this tool making exactly the judgement it spent 1.50.4 refusing to
+make. Both are returned, and the disagreement between them is reported as the
+finding it is.
+
+### Nothing prints when nothing recorded
+
+With no outcome anywhere in the log the section does not appear. The coverage
+section below already names the missing field and what it would unlock, and a
+table of `not recorded` rows above it would be the same sentence in a grid. The
+case worth showing is the **mixed** one, where a silent workload sits next to a
+measured one and the difference is the point.
+
+### What this release found wrong in itself
+
+**The disagreement test missed the sharpest case there is.** It flagged a slice
+whose two ranks differ by more than one place — and with two rankable slices a
+*complete reversal* is a distance of exactly one. The clearest possible instance
+of the finding was being filed as noise. A change at the top now counts
+regardless of distance: whoever is dearest per call and whoever is dearest per
+resolution are the two names in the conversation, and them being different names
+is the entire point of computing both.
+
+**A fixture whose two ratios were accidentally equal.** The first version of the
+ranking test built a "cheap" workload and a "dear" one that both came to exactly
+$1.00 per resolution, so the test written to prove the two orders diverge proved
+nothing at all. It was caught because the assertion failed, not because anybody
+checked the arithmetic — which is luck, and worth writing down as luck.
+
+### What stayed out, and why
+
+**Per-outcome figures in `plan`, `verify` and `history`.** The chapter lists
+them and they are not here. Each needs a decision this release did not make:
+`plan` ranks actions by money saved, and an action that saves money while
+raising the cost per resolution is a *worse* action that would rank higher —
+so the ranking needs rethinking rather than a column adding. `verify` would need
+to judge whether a promised saving arrived *and* whether the outcome rate
+survived it, which is two verdicts where the document has one. Both are real
+work, and doing either badly here would put a number in front of somebody that
+looks like the ones above and is not.
+
+**Per-source figures for the fleet.** The tally is sliced by label and by model
+and not by source, because source assignment happens over file paths in the CLI
+rather than over records in the core, and threading it through is a change to
+`assignSources` rather than to this module.
 
 ---
 

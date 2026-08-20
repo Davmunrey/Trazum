@@ -844,6 +844,21 @@ value is named rather than counted as a failure. Chapter two of
 docs/plan-1.51.md.
 
 
+### 1.50.5 — Cost per outcome
+
+The finding a total cannot make. With a numerator recorded, `profile` prints
+what a success costs per workload — and prints **both** orders, because
+cheapest per call and cheapest per outcome are different rankings and a
+workload can move up one while moving down the other. The worked example has
+one workload costing ten times more per call and half as much per resolution.
+The numerator is recorded spend and never the whole bill: dividing everything
+charges uninstrumented traffic to measured successes and reports a figure too
+high by exactly the uncovered share, in the direction that gets a working
+feature killed. Five reasons a figure is withheld instead of stated, each named
+in the cell, and a withheld slice gets no rank at all. Chapter three of
+docs/plan-1.51.md.
+
+
 ## Collapsed into 1.8.0
 
 **Everything below shipped as 1.8.0, and none of these numbers is on npm.** They
