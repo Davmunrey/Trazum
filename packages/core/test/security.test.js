@@ -95,6 +95,82 @@ describe('SSRF: endpoint validation', () => {
   });
 });
 
+/**
+ * Provider credentials, introduced by the usage connectors in 1.41.
+ *
+ * The connector reads an admin key from the environment to pull a bill. That
+ * is the first credential this product handles that belongs to *somebody
+ * else's* account, and the two ways to leak it are committing it and printing
+ * it. Both are checked here rather than promised in a comment.
+ */
+describe('provider credentials are borrowed, never held', () => {
+  /** Files a human writes: source, tests, docs, workflows, examples. */
+  const textFiles = () => {
+    const out = [];
+    const skip = new Set(['node_modules', '.git', 'dist', '.next', 'coverage']);
+    const walk = (dir) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        if (skip.has(entry.name)) continue;
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else if (/\.(ts|tsx|js|mjs|cjs|json|md|ya?ml|txt)$/.test(entry.name)) out.push(full);
+      }
+    };
+    walk(repoRoot);
+    return out;
+  };
+
+  it('no real provider key material is committed anywhere in this repository', () => {
+    /**
+     * Shaped against what a *real* key looks like — `sk-ant-api03-` and
+     * `sk-proj-` carry bodies of forty characters and up — so an obviously
+     * fake fixture in a test stays legal and a leaked key does not. A guard
+     * that banned every `sk-` string would be turned off within a week.
+     */
+    const REAL_KEY = /\bsk-(?:ant-[a-z0-9]+-|proj-)?[A-Za-z0-9_-]{40,}\b/;
+    const offenders = [];
+    for (const file of textFiles()) {
+      const source = readFileSync(file, 'utf8');
+      if (REAL_KEY.test(source)) offenders.push(file.slice(repoRoot.length + 1));
+    }
+    assert.deepEqual(offenders, [], 'credential material is committed in these files');
+  });
+
+  it('the module that holds a key cannot print', () => {
+    // Everything reachable from the connector's fetch path runs with the key
+    // in scope. A `console` call there is one refactor away from being handed
+    // the wrong variable, so the module is simply not allowed one.
+    const source = readFileSync(join(repoRoot, 'packages/cli/src/connect.ts'), 'utf8');
+    assert.doesNotMatch(source, /\bconsole\s*\./, 'connect.ts must not write to a terminal');
+    assert.doesNotMatch(source, /writeFile|appendFile/, 'connect.ts must not write to disk');
+  });
+
+  it('every provider response body reaches an error through redaction', () => {
+    // A provider that quotes a key back inside its own error body — the
+    // mistyped one, one from a proxy's log line — leaks it through our output
+    // unless the body is redacted on the way. Checked structurally: any line
+    // interpolating the body must also call redact.
+    const source = readFileSync(join(repoRoot, 'packages/cli/src/connect.ts'), 'utf8');
+    const offenders = source
+      .split('\n')
+      .filter((line) => /\$\{[^}]*\bbody\b/.test(line) && !line.includes('redact('));
+    assert.deepEqual(offenders, [], 'a provider response body reaches an error unredacted');
+  });
+
+  it('the connector endpoints are compiled in, not taken from a flag', () => {
+    // Trazum's SSRF posture since 1.14: a caller selects an endpoint, never
+    // names one. A usage connector that accepted a base URL would hand that
+    // property back.
+    const source = readFileSync(join(repoRoot, 'packages/cli/src/connect.ts'), 'utf8');
+    assert.match(source, /const ENDPOINTS: Record<string, string> = \{/);
+    assert.doesNotMatch(source, /stringFlag\(\s*args\s*,\s*['"]base-url['"]/);
+    const cli = readFileSync(join(repoRoot, 'packages/cli/src/index.ts'), 'utf8');
+    const connectFlags = /connect: \[([^\]]*)\]/.exec(cli);
+    assert.ok(connectFlags, 'the connect command must declare its flags');
+    assert.doesNotMatch(connectFlags[1], /base-url|endpoint|url/);
+  });
+});
+
 describe('no runtime dependencies', () => {
   // Every published package here processes untrusted text. A runtime dependency
   // is code that would run on that text with no review from this project, so

@@ -55,6 +55,15 @@ would be called and which variable the key would come from, sending nothing
 and needing no credential; `--payload <file>` prices a response you already
 have, with no credential and no network.
 
+**Four guards fail the build rather than promising any of this.** No
+real-shaped provider key material may be committed anywhere in the repository
+— shaped against what a real key looks like, so an obviously fake fixture in a
+test stays legal and a leaked key does not. The module that holds a key may
+not call `console` or write a file at all. Every provider response body that
+reaches an error must pass through `redact` on the way. And the connector
+endpoints must stay compiled in, with no flag naming a URL — the SSRF posture
+`checkedEndpoint` has enforced for the LLM layer since 1.14.
+
 New core module `connector.ts` (`CONNECTORS`, `normalizeAnthropicUsage`,
 `normalizeOpenAIUsage`, `bucketedProfile`, `bucketedCacheEconomics`),
 browser-safe: the fetch, the credentials and the pagination live in the CLI,
