@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.49.0 — "The live budget"
+
 ### Added
 
 **The live budget: one measured number, wherever it is asked for.** By 1.48

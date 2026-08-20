@@ -514,6 +514,19 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.49.0 — The live budget
+
+One measured number, wherever it is asked for. `budgetPositions` turns a budget
+into a standing — a limit, a calendar month, the measured spend inside it, and
+how much of that month was measured at all — and `store` and `serve` read the
+same call, so a CI failure and an agent's refusal cannot disagree about what is
+left. `spend.monthlyUsd` is a new key rather than a reuse of `maxUsd`, because
+one gates whatever period a log covers and the other gates a month, and a
+single key carrying both is how `serve` came to compare a year of store records
+against a monthly limit. A period nobody measured is `cannot-tell`, never
+`within`; the burn is a shape and never a date; and a floor can prove *ahead*
+and can never prove *behind*. Ninth of the ten in docs/plan-1.41-1.50.md.
+
 ### 1.48.0 — The cost review
 
 Waivers get their history, closing the gap 1.40 named and refused to fill by
