@@ -980,6 +980,26 @@ plus cross-field rules, because the refusals worth carrying turned out to be
 relational. The doctrine reaches its second edition. Chapter ten of
 docs/plan-1.51.md.
 
+### 1.51.1 — A front door
+
+The documentation gets an index. Twenty-three Markdown files had accumulated
+with no way in: every one reachable from a link inside some other document, none
+of them findable. `docs/README.md` is arranged by what a reader came to do —
+deciding, using, extending, maintaining, reporting a problem — and closes with
+the four planned arcs presented as the delivered history they are.
+
+`CODE_OF_CONDUCT.md` and `.github/PULL_REQUEST_TEMPLATE.md` were both missing.
+The first is explicit that enforcement here is one person rather than implying a
+committee; the second asks what a change refuses to do and whether its guard was
+proven by planting the violation. The three delivered plans now say so at the
+top with their bodies unchanged, and `docs.test.js` asserts that every relative
+link resolves and every file in `docs/` is named by the index.
+
+**Nothing installable changed**, and nothing was deleted: every docs file was
+counted for inbound links first and the loneliest has three. The disorder was
+that there was no way in, not that there was junk. The guard's own probe found
+it blind to untracked files — the moment a document is most likely to be wrong.
+
 
 ## Collapsed into 1.8.0
 

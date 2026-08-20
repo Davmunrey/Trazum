@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.51.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.51.1**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,124 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.51.1 — "A front door"
+
+**Nothing you install changed.** The tarballs differ from 1.51.0 in their
+version number and nothing else — no source moved, no output changed. This
+release is a number attached to a documentation reorganisation, because
+`RELEASES.md` and `ROADMAP.md` are indexed by version and work left under
+`Unreleased` appears in neither. Upgrading gains you nothing; not upgrading
+costs you nothing. Both of those are said here rather than left for somebody to
+work out by diffing two tarballs.
+
+### The documentation has a way in
+
+Twenty-three Markdown files — fifteen under `docs/`, eight at the root — and no
+index. Every one of them was *reachable*, from a link inside some other document
+you had to already be reading. None of them was *findable*. The only path
+through the documentation was whichever one you happened to be standing on.
+
+**[docs/README.md](docs/README.md) is the front door**, and it is arranged by
+what you came here to do rather than by what the files are called:
+
+- **Deciding whether to use this** — the README, then the doctrine and our own
+  medicine, which are the actual argument for why a figure printed by this tool
+  is worth reading.
+- **Using it** — usage logs, provider accounts, the gateway, CI, the plan
+  document, JSON output and the format, in the order somebody actually meets
+  them rather than alphabetically.
+- **Extending it** — authoring a rule, and the two contracts with parity tests.
+- **Maintaining it** — releasing, versioning, the changelog, the release notes,
+  the roadmap.
+- **Reporting a problem** — security, support, code of conduct.
+
+It closes with the four planned arcs — 1.30–1.35, 1.36–1.40, 1.41–1.50 and 1.51
+— presented as what they now are: delivered history, each with its thesis and
+the version it landed at.
+
+### The two documents an open-source project owes a stranger, which were missing
+
+**[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).** There was none, and no file
+mentioned one. It is written in this project's own words rather than adopted
+wholesale, and it is explicit about the part most codes of conduct leave vague:
+**enforcement here is one person, who is also the person most complaints would
+be about.** It says so, and says what to do about it, instead of implying a
+committee exists. It also states the thing this repository actually runs on —
+being wrong in public has to be safe, or nothing else here works.
+
+**[.github/PULL_REQUEST_TEMPLATE.md](.github/PULL_REQUEST_TEMPLATE.md).** The
+issue templates have existed since 1.9.0; the pull request side had nothing. It
+asks for the two things this repository holds a change to that no automated
+check can see: **what the change refuses to do**, and **whether a new guard was
+proven by planting the violation** and watching the test fail naming it.
+
+### The documentation is now checked the way the code is
+
+Prose is the part of this repository nothing compiles. A link that stops
+resolving because a file moved, and an index that stops listing a document
+because somebody added one, both fail silently and stay wrong until a reader
+clicks. `packages/core/test/docs.test.js` closes both:
+
+- **Every relative link in every Markdown file resolves to a file that exists** —
+  Markdown links and `<img src>` alike. Fenced code blocks are excluded, because
+  a path inside an example is text, not a reference.
+- **Every file in `docs/` is named by `docs/README.md`.** An index that adding a
+  document is enough to fall out of has a shelf life. This is the ratchet that
+  keeps the front door from going stale the way the documentation did in the
+  first place.
+
+**Anchors are deliberately not checked.** Heading text drifts for good reasons,
+and a guard that failed every time a section was renamed would be answered by
+deleting the guard rather than by fixing the link.
+
+### What this release found wrong in itself
+
+**The guard was blind exactly when it mattered most.** Proving it the way every
+guard here is proven — planting the violation and watching the test fail naming
+it — a link to a file that does not exist and a document removed from the index
+were planted together. The index half failed by name. **The link half passed.**
+
+`git ls-files` lists what is *committed*. The file whose links had just been
+broken was new and untracked, so it was not in the list the guard walked at all.
+A guard that only sees a document once it has been committed is blind precisely
+at the moment a document is most likely to be wrong: when it is being written.
+It now enumerates with `--cached --others --exclude-standard`, and the same
+planted link fails naming both broken targets. The probe was removed and the
+suite is green — but the useful part is that a guard written to catch drift in
+prose was itself drifting, and only the probe said so.
+
+**Three delivered plans were still written in the future tense.**
+`docs/plan-1.36-1.40.md`, `plan-1.41-1.50.md` and `plan-1.51.md` opened by
+describing work that has entirely shipped, as though it were forthcoming — three
+forward-looking documents narrating a past. Each now carries a banner naming
+what landed and where. **Their bodies are kept exactly as written**, for the
+reason `plan-1.30-1.35.md` already gave when it was retired: a plan that edits
+itself to match what happened is no longer a record of having been a plan.
+
+**Three documents pointed only inward.** `README.md` ended without naming the
+documentation it sits on top of; `CONTRIBUTING.md` and `SUPPORT.md` were
+reachable only from the README, which is the one document a returning
+contributor no longer reads. All three now lead to the index and the code of
+conduct.
+
+### What stayed out, and why
+
+**Nothing was deleted.** The instruction behind this pass was to put the
+documentation in order and remove what does not belong, and the second half was
+checked before it was answered: every `docs/*.md` file was counted for inbound
+links first. The loneliest has three; the median has seven. **Nothing was
+orphaned and nothing was superseded** — the disorder was that there was no way
+*in*, not that there was junk lying around. Deleting a document to make this
+section read like a tidy-up would have cost a reader something real in exchange
+for a tidier release note.
+
+**The README was not split.** It is long — deliberately, one worked example per
+command — and breaking it into a dozen pages would trade a document you can
+search in one place for a set nobody would keep synchronised. What it lacked was
+an exit, and it has one now.
 
 ---
 
