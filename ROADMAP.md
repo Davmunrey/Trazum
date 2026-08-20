@@ -514,6 +514,17 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.43.0 — The watch
+
+`trazum watch` evaluates the spend gates as the money moves rather than when
+somebody runs a command. One cycle is the primitive and the loop is that cycle
+in a timer, so cron, a foreground watcher and every test run the same code.
+Crossings are measured and never projected; a day half-measured is
+not-yet-judgeable rather than passed, while a day already over budget fires at
+any hour; and a restart neither re-alerts nor calls a blown budget clean —
+quiet is not clean. Three transports, and three build-failing guards over the
+new webhook surface. Third of the ten in docs/plan-1.41-1.50.md.
+
 ### 1.42.0 — The store
 
 `connect --store` keeps what it pulled under `.trazum/store`, so a connector
