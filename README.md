@@ -2638,12 +2638,21 @@ on text. What differs is the money, and **that is not one set of numbers**:
 
 | | |
 |---|---|
-| Cache read | 10% of input on Anthropic, OpenAI and Moonshot; **25%** on Google and xAI |
+| Cache read | 10% of input on Anthropic, OpenAI, Moonshot and DeepSeek; **25%** on Google and xAI |
 | Cache write | 125% of input on Anthropic; 100% elsewhere |
-| Cache minimum | 512 on Anthropic, 1,024 on OpenAI and Moonshot, 2,048 on Gemini Pro |
-| How caching starts | You mark the prefix on Anthropic and Google; it is **automatic** on OpenAI, Moonshot and DeepSeek |
+| Cache minimum | **Per model, not per provider.** Anthropic alone spans 512 to 4,096; 1,024 on OpenAI, Moonshot, DeepSeek and xAI; 2,048 on Gemini Pro and 1,024 on Flash |
+| How caching starts | You mark the prefix on Anthropic and Google; it is **automatic** on OpenAI, Moonshot, DeepSeek and xAI |
 | Batch API | 50% on Anthropic, OpenAI, Google and Mistral; **none at all** on Moonshot, DeepSeek and xAI |
 | Prompt caching | **None at all** on Mistral |
+
+**The cache minimum is the row to read twice, and it used to be wrong here.** This
+table said *"512 on Anthropic"* flatly. Anthropic's floor is a property of the
+model: 512 on Fable 5, Mythos 5 and Opus 5; 1,024 on Opus 4.8, Sonnet 5 and
+Sonnet 4.6; 2,048 on Opus 4.7; **4,096 on Opus 4.6 and Haiku 4.5**. A reader on
+Haiku who trusted "512" would have built a prefix eight times too short and been
+told caching would save money that could never arrive — the one direction this
+tool must never be wrong in. `trazum models` prints the real figure per model,
+and every cache advisory has always used it; only this table was wrong.
 
 Those last two rows are why the multipliers had to move onto the model. As global
 constants they offered a batch discount to providers that do not sell one and a

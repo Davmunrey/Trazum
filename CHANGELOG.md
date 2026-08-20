@@ -13,6 +13,55 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**The README told you Anthropic's cache floor was 512. It spans 512 to 4,096,
+and the error ran in the direction that promises money.** The provider-facts
+table under *Every model you pay for by the token* said *"Cache minimum | 512 on
+Anthropic, 1,024 on OpenAI and Moonshot, 2,048 on Gemini Pro"*. `cacheMinTokens`
+is a property of the **model**, not the provider: 512 on Fable 5, Mythos 5 and
+Opus 5; 1,024 on Opus 4.8, Sonnet 5 and Sonnet 4.6; 2,048 on Opus 4.7; **4,096
+on Opus 4.6 and Haiku 4.5**.
+
+A reader on Haiku 4.5 who trusted the table would have built a prefix eight
+times too short and expected a cache saving that could never arrive. This
+project's own rule is that a floor proves over, never under, and its front page
+was breaking it about the floor itself.
+
+**The code was never wrong.** `trazum models` prints the real figure per model
+and every cache advisory has always read `cacheMinTokens` — the 1.14 work on
+`below-cache-minimum` exists precisely because the floor is per model. Only the
+prose summarising it by provider was wrong, which is the failure mode of any
+table that flattens a per-item fact into a per-group one.
+
+**Two more rows had gone stale by omission.** DeepSeek was missing from the
+cache-read row and xAI from the row saying how caching starts. Nothing false was
+written about either; they were added to the catalogue and not to the prose,
+which is how a table stops being a description and becomes a snapshot.
+
+### Added
+
+**`pricing-prose.test.js` — the money table, checked against the catalogue it
+describes.** Six rows of hard numbers about what caching and batching cost, hand
+written, read by nothing until now. Five assertions, all deriving their subjects
+from `BUNDLED_CATALOGUE` rather than from a list typed beside them:
+
+- every priced provider appears in the table at all;
+- every provider with a cache is named in the cache-read row;
+- every provider with a cache is named on one side of the automatic/explicit
+  split;
+- **no single cache minimum is attributed to a provider that has several** —
+  the defect itself, stated as a property;
+- every distinct cache minimum in the catalogue is named somewhere in the row.
+
+Membership is asserted rather than counted, for the reason this repository has
+now learned nine times.
+
+Proven by planting each defect back. The original row fails **two** of them
+independently — *"Anthropic has 4 different cache minimums (512, 1024, 2048,
+4096) and the row states one figure for it"* and *"these cache minimums are in
+the catalogue and named nowhere in the row: 4096"*. Dropping DeepSeek gives
+*"DeepSeek reads cache at 10% and the cache-read row does not name it"*;
+dropping xAI gives the matching failure on the other row.
+
 **A comment saying "the six below" above a list of five — in the change whose
 whole argument was that a gap should be named rather than counted.** The
 `--json` interchange suite explained which commands it could not drive and
