@@ -3640,6 +3640,7 @@ async function commandConnect(
 async function commandHistory(
   args: Args,
   config: TrazumConfig,
+  configDir: string,
   pricing: PricingCatalogue,
   t: CliMessages,
 ): Promise<void> {
@@ -3759,7 +3760,7 @@ async function commandHistory(
    * the waiver record belongs to the repository whose gates fired, and the
    * stored reports may have come from anywhere.
    */
-  const waivers = await readWaiverLog('.');
+  const waivers = await readWaiverLog(configDir);
   const waiverReport = waiverHistory(waivers.uses, config.waive ?? []);
 
   const stamped = { ...history, unrecognizedFiles: unrecognized, waivers: waiverReport };
@@ -4161,7 +4162,13 @@ async function commandPlan(
   if (outPath !== undefined) console.log(c.dim(wrap(t.plan.wrote(outPath), 74, '')));
 }
 
-async function commandProfile(args: Args, config: TrazumConfig, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
+async function commandProfile(
+  args: Args,
+  config: TrazumConfig,
+  configDir: string,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
   const path = args.positional[0];
   if (path === undefined) {
     console.log();
@@ -4985,7 +4992,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
   const recordWaiverUses = async (): Promise<void> => {
     if (waiverUses.length === 0) return;
     for (const use of waiverUses) {
-      const failed = await appendWaiverUse('.', use);
+      const failed = await appendWaiverUse(configDir, use);
       if (failed !== null) {
         console.error(c.dim(t.profile.waiveNotRecorded(WAIVER_LOG, failed)));
         return;
@@ -8014,6 +8021,22 @@ async function main(): Promise<void> {
     };
   }
   const { config } = loaded;
+  /**
+   * Where the waiver record lives: **beside the config that declared it**.
+   *
+   * It used to be the process's working directory, which is a different place
+   * whenever somebody runs `trazum profile ../logs/x.jsonl --config ../repo/
+   * trazum.config.json` — and that is not hypothetical. This repository's own
+   * test suite did exactly that from `packages/cli`, so sixty records of a
+   * fixture's decisions accumulated in a package directory and one of them was
+   * committed to `main`, where it sat for two releases.
+   *
+   * A waiver is a decision a *repository* made. The record of using it belongs
+   * with the file that made it, not with wherever the terminal happened to be.
+   * No config means no waivers, so there is nothing to write and `.` is never
+   * reached.
+   */
+  const configDir = loaded.path === null ? '.' : dirname(loaded.path);
   const pricing = await pricingFor(args, loaded, t);
 
   // The config only gets to choose the locale when nothing more explicit did.
@@ -8033,7 +8056,7 @@ async function main(): Promise<void> {
       await commandBaseline(args, config, pricing, t, locale);
       break;
     case 'profile':
-      await commandProfile(args, config, pricing, t);
+      await commandProfile(args, config, configDir, pricing, t);
       break;
     case 'plan':
       await commandPlan(args, pricing, t);
@@ -8042,7 +8065,7 @@ async function main(): Promise<void> {
       await commandVerify(args, pricing, t);
       break;
     case 'history':
-      await commandHistory(args, config, pricing, t);
+      await commandHistory(args, config, configDir, pricing, t);
       break;
     case 'connect':
       await commandConnect(args, pricing, t);

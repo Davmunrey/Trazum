@@ -25,6 +25,29 @@ and the section says so at the top with the reason: each entry explains what
 the previous one made possible, so it only reads correctly forwards.
 `RELEASES.md` and `CHANGELOG.md` are the newest-first documents.
 
+**The waiver record was written beside the terminal, not beside the config.**
+`trazum profile` recorded a waiver use in the *process's* working directory,
+which is a different place whenever somebody runs
+`trazum profile ../logs/x.jsonl --config ../repo/trazum.config.json`. This
+repository's own test suite does exactly that from `packages/cli`, so sixty
+records of a fixture's decisions accumulated in a package directory — and a
+`git add -A` swept one copy onto `main`, where it has been a tracked file for
+two releases.
+
+A waiver is a decision a *repository* made; the record of using it belongs with
+the file that made it. It is written beside the config now. No config means no
+waivers, so there is nothing to write and the old fallback is never reached.
+
+**Removed: `packages/cli/.trazum/waivers.jsonl`**, which was that stray file.
+It was never anybody's decision — it was a fixture's, recorded in the wrong
+place and committed by accident.
+
+**A guard for the class, proven with a planted file.** Runtime state that a run
+of Trazum can produce — anything under `.trazum/`, a `trazum-summary.md`, a
+`plan.json` — may not be *tracked* in this repository. Checked against the
+tracked tree rather than the working tree, because an untracked file is
+somebody's local mess and a tracked one is everybody's.
+
 **`ROADMAP.md`'s Next section still described a delivered arc as planned.** It
 announced ten releases "planned in order through 1.50.0" — all ten of which had
 shipped — and repeated the 1.50.1-through-1.50.9 pinning that `docs/plan-1.51.md`

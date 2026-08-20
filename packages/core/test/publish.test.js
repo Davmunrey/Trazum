@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -838,6 +838,42 @@ describe('a release cannot ship without notes', () => {
       unregistered,
       [],
       'these are documented as taking a value and would be parsed as booleans, silently',
+    );
+  });
+
+  it('the repository carries no state a run of the tests produced', () => {
+    /**
+     * **A test wrote into the repository for two releases and it got committed.**
+     *
+     * `trazum profile` records a waiver use beside the config that declared it.
+     * It used to record beside the *process's* working directory instead, and
+     * the CLI suite runs `--config <tmpdir>/trazum.config.json` from
+     * `packages/cli` — so sixty records of a fixture's decisions accumulated in
+     * a package directory, and a `git add -A` swept one copy onto `main`, where
+     * it sat through two releases as a tracked file.
+     *
+     * The path bug is fixed. This is the guard for the class: runtime state
+     * that a run of this repository can produce must not be *in* this
+     * repository. It is checked against the tracked tree rather than the
+     * working tree, because an untracked file is somebody's local mess and a
+     * tracked one is everybody's.
+     */
+    const tracked = execFileSync('git', ['ls-files'], { cwd: repoRoot, encoding: 'utf8' })
+      .split('\n')
+      .filter((line) => line !== '');
+
+    const runtimeState = [
+      /(^|\/)\.trazum\//,
+      /(^|\/)trazum-summary\.md$/,
+      /(^|\/)plan\.json$/,
+    ];
+    const strays = tracked.filter((file) =>
+      runtimeState.some((pattern) => pattern.test(file)),
+    );
+    assert.deepEqual(
+      strays,
+      [],
+      'these are files a run of Trazum writes, and they are tracked — a test or a stray `git add -A` put them here',
     );
   });
 
