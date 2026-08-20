@@ -35,6 +35,7 @@ import {
   computeSavings,
   countTokensAnthropic,
   DEFAULT_USAGE,
+  budgetPositions,
   detectFromSource,
   matchLocale,
   parsePlanDocument,
@@ -127,6 +128,7 @@ import type {
   UsageProfile,
 } from '@trazum/core';
 import type {
+  BudgetReport,
   UsageProfileReport,
   WaiverUse,
   InitDecline,
@@ -2747,41 +2749,39 @@ async function commandServe(
   t: CliMessages,
 ): Promise<void> {
   const root = process.cwd();
-  const limitUsd = config.spend?.maxUsd;
 
   const { resolved } = await readStore(root);
-  const measured = resolved.records.length > 0;
+
   /**
-   * The window the measurement covers, carried into every answer.
+   * The live budget, from `budgetPositions` — the same number `store` prints
+   * and the same one the MCP guard consults.
    *
-   * The position is read once at start, so a caller has to be able to see how
-   * old it is. A null window here would let a figure from last month read as
-   * current, which is the staleness this endpoint is otherwise honest about.
+   * **This used to read `spend.maxUsd` against the whole store**, which is a
+   * per-log gate compared against however much history the store happened to
+   * hold. A year of records against a monthly limit reported as a budget
+   * position, with a straight face and no way for a caller to tell. Same
+   * units, different denominators, and the two surfaces disagreed by exactly
+   * as much history as the machine had. `spend.monthlyUsd` is the key for a
+   * calendar month and nothing infers one key from the other: a repository
+   * with a per-log gate and no monthly budget has no monthly position, and
+   * this says so rather than picking a number that is the right shape.
    */
-  const window = measured
-    ? {
-        fromMs: Math.min(...resolved.records.map((record) => record.fromMs)),
-        toMs: Math.max(...resolved.records.map((record) => record.toMs)),
-      }
-    : null;
-  const report = bucketedProfile(
-    {
-      provider: 'store',
-      granularity: 'bucketed',
-      buckets: bucketsFromRecords(resolved.records),
-      window,
-      gaps: [],
-      unavailable: [],
-    },
-    { catalogue: pricing },
-  );
+  const budget = budgetPositions(resolved.records, config.spend, { catalogue: pricing });
+  const standing = budget.positions[0] ?? null;
+  const limitUsd = config.spend?.monthlyUsd;
+  const measured = standing !== null && standing.coverage !== 'none';
 
   const server = buildServer({
     catalogue: pricing,
     position: () => ({
-      consumedUsd: measured ? report.total.totalUsd : undefined,
+      // Nothing measured inside the period is `undefined`, never zero: the
+      // endpoint's `cannot-tell` exists for exactly this, and a $0 consumed
+      // would be the healthiest-looking budget a dead store can produce.
+      consumedUsd: measured ? standing.consumedUsd : undefined,
       limitUsd,
-      window: report.span,
+      // The period, not the store's span. A caller judging staleness needs to
+      // know which month the figure is about.
+      window: standing === null ? null : { fromMs: standing.period.fromMs, toMs: standing.period.toMs },
     }),
   });
 
@@ -2796,8 +2796,13 @@ async function commandServe(
   console.log(c.bold(t.serve.listening(where)));
   console.log(`  ${c.dim(wrap(t.serve.loopbackOnly(), 74, '    '))}`);
   console.log(
-    `  ${c.dim(wrap(measured ? t.serve.measuredFrom(formatUsd(report.total.totalUsd)) : t.serve.nothingMeasured(STORE_DIR), 74, '    '))}`,
+    `  ${c.dim(wrap(measured ? t.serve.measuredFrom(formatUsd(standing.consumedUsd)) : t.serve.nothingMeasured(STORE_DIR), 74, '    '))}`,
   );
+  if (standing !== null && standing.coverage === 'partial') {
+    console.log(
+      `  ${c.yellow(wrap(t.serve.partialCoverage(standing.measuredDays, standing.elapsedDays, standing.period.id), 74, '    '))}`,
+    );
+  }
   if (limitUsd === undefined) {
     console.log(`  ${c.dim(wrap(t.serve.noBudget(), 74, '    '))}`);
   }
@@ -3164,6 +3169,72 @@ async function commandStore(
   console.log(
     `  ${c.dim(wrap(keepDays === undefined ? t.store.noRetention() : t.store.retention(String(keepDays)), 74, '    '))}`,
   );
+
+  /**
+   * The live budget, printed here because this is where the measurement lives.
+   *
+   * The same call `serve` makes and the same call the MCP guard makes, so the
+   * three cannot disagree about how much of the month is gone — which is the
+   * whole point of the number existing in one place.
+   */
+  renderBudget(budgetPositions(resolved.records, config.spend, { catalogue: pricing }), t, n);
+}
+
+/**
+ * One budget standing, rendered.
+ *
+ * Coverage before the money, deliberately. A reader who sees "$61 of $100"
+ * first has already formed a view by the time they reach "over three of
+ * nineteen elapsed days", and the second sentence has to undo the first.
+ */
+function renderBudget(report: BudgetReport, t: CliMessages, n: (value: number) => string): void {
+  const standing = report.positions[0];
+  if (standing === undefined) {
+    if (report.unmeasuredScopes.length > 0) {
+      console.log();
+      console.log(
+        `  ${c.dim(wrap(t.store.budgetScopesUnmeasured(report.unmeasuredScopes.length), 74, '    '))}`,
+      );
+    }
+    return;
+  }
+
+  console.log();
+  console.log(c.bold(t.store.budgetHeading(standing.period.id)));
+
+  if (standing.coverage === 'none') {
+    // Nothing measured is never rendered as nothing spent. A dead store and a
+    // quiet month produce the same zero, and only one of them is good news.
+    console.log(`  ${c.red(wrap(t.store.budgetNothingMeasured(standing.elapsedDays), 74, '    '))}`);
+    return;
+  }
+  if (standing.coverage === 'partial') {
+    console.log(
+      `  ${c.yellow(wrap(t.store.budgetPartial(standing.measuredDays, standing.elapsedDays, standing.unmeasuredDays.join(', ')), 74, '    '))}`,
+    );
+  }
+
+  const share = standing.burn.consumedShare;
+  console.log(
+    `  ${t.store.budgetStanding(
+      formatUsd(standing.consumedUsd),
+      formatUsd(standing.limitUsd),
+      share === null ? '—' : `${Math.round(share * 100)}%`,
+      n(standing.measuredDays),
+      n(standing.period.days),
+    )}`,
+  );
+  const line = t.store.budgetShape(
+    standing.burn.shape,
+    Math.round(standing.burn.elapsedShare * 100),
+    standing.coverage,
+  );
+  console.log(`  ${standing.verdict === 'over' ? c.red(line) : c.dim(wrap(line, 74, '    '))}`);
+  // Only where there is a shape to disclaim. "That is a shape, not a forecast"
+  // under "nothing to compare against" is a disclaimer about nothing.
+  if (standing.burn.shape !== 'cannot-tell') {
+    console.log(`  ${c.dim(wrap(t.store.budgetNeverForecast(), 74, '    '))}`);
+  }
 }
 
 /**

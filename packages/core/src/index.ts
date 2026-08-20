@@ -49,6 +49,17 @@ export type { PlanParseFailure, PlanParseResult } from './plan.js';
 export type { PlanAction, PlanActionKind, PlanAssumption, PlanDocument } from './plan.js';
 export { verifyPlan } from './verify.js';
 export { buildHistory, storedReportFrom, MIN_RUN } from './history.js';
+export { budgetPositions, monthOf, MAX_UNMEASURED_NAMED } from './budget.js';
+export type {
+  BudgetCoverage,
+  BudgetOptions,
+  BudgetPeriod,
+  BudgetStanding,
+  BudgetReport,
+  BudgetScope,
+  BurnDown,
+  BurnShape,
+} from './budget.js';
 export { waiverHistory, waiverDay, isWaiverUse } from './waivers.js';
 export type { WaiverHabit, WaiverHistory, WaiverUse, WaiverVerdict } from './waivers.js';
 export { answerCost } from './answer.js';

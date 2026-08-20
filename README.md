@@ -399,7 +399,7 @@ In GitHub Actions, use the packaged action — nothing to install:
 
 ```yaml
 - uses: actions/checkout@v7
-- uses: Davmunrey/Trazum@f07b02b58aeae444ee16bf8367da89e4e6cc4948  # 1.47.0
+- uses: Davmunrey/Trazum@d3a6999390f02856e1def8b555177a4a26ee65d2  # 1.48.0
   with:
     target: prompts/system.txt
     max-tokens: 2000
@@ -445,7 +445,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v7
-  - uses: Davmunrey/Trazum@f07b02b58aeae444ee16bf8367da89e4e6cc4948  # 1.47.0
+  - uses: Davmunrey/Trazum@d3a6999390f02856e1def8b555177a4a26ee65d2  # 1.48.0
     with:
       target: prompts/            # a directory uses trazum.config.json budgets
       comment: true
@@ -474,7 +474,7 @@ run gates tokens before the money is spent or the spend itself, and saying
 which is the caller's job:
 
 ```yaml
-- uses: Davmunrey/Trazum@f07b02b58aeae444ee16bf8367da89e4e6cc4948  # 1.47.0
+- uses: Davmunrey/Trazum@d3a6999390f02856e1def8b555177a4a26ee65d2  # 1.48.0
   with:
     usage-log: logs/yesterday.jsonl
     max-usd: '50'            # exit 1 over budget — no period assumed
@@ -1312,6 +1312,41 @@ typing it. Absent both, growth alone still exits 0.
 
 `--config <file>` skips the search. `locale` is the one setting the environment
 outranks — see [Languages](#languages).
+
+#### The live budget: `spend.monthlyUsd`
+
+```json
+{ "spend": { "monthlyUsd": 400 } }
+```
+
+The calendar-month budget, spent against **measured** store records. `trazum
+store` prints the position, `trazum serve` answers with it, and an agent reading
+that endpoint gets the same figure at the same instant — one number, so a CI
+failure and an agent's refusal cannot disagree about what is left.
+
+**A separate key from `maxUsd`, and the reason is the point.** `maxUsd` gates
+*this log* — whatever period the file you passed happens to cover. `monthlyUsd`
+gates *this month*. Same units, different denominators, and one key carrying
+both is exactly how two surfaces of one tool come to disagree: `serve` read
+`maxUsd` and compared it against the whole store, which could be a year, and
+reported the result as a budget position. Nothing infers one key from the other.
+
+**A period nobody measured is not a period under budget.** Elapsed days with no
+measurement are counted and named, and a position standing on three days out of
+twenty is reported as a floor on the month rather than as comfortable headroom.
+With nothing measured at all the verdict is `cannot-tell`, never `within` —
+`$0 of $400` is the healthiest-looking budget a dead store can produce.
+
+**The burn is a shape, never a date.** "Thirty per cent of the budget over
+eleven of thirty days" is a measurement; "you run out on the 24th" is a
+prediction, and Trazum has refused those since 1.27 at every scale it works at.
+And a floor can prove *ahead* but never *behind*: partial coverage that has
+already outrun the calendar is unarguable, while a comfortable-looking floor
+proves nothing, because the unmeasured days spent something.
+
+Per-label and per-service budgets are not answered from the store, and it says
+so rather than guessing: a store record carries a provider and a model, not a
+workload label. Gate those with `trazum profile` against a per-call log.
 
 #### Findings as policy: `waive`, and the record it now keeps
 

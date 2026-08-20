@@ -69,6 +69,23 @@ export interface SpendConfig {
   /** Whole-log budget. `--max-usd` overrides it. */
   maxUsd?: number;
   /**
+   * The calendar-month budget, spent against **measured** store records.
+   *
+   * A separate key from `maxUsd` on purpose, and the reason is worth stating
+   * because reusing one would have been so much less code. `maxUsd` gates
+   * *this log* — whatever period the file somebody passed happens to cover.
+   * This gates *this month*. Same units, different denominators, and one key
+   * carrying both is precisely how two surfaces of the same product come to
+   * disagree about how much is left: `serve` read `maxUsd` and compared it
+   * against the whole store, which could be a year, and reported the result as
+   * a budget position with a straight face.
+   *
+   * Nothing infers one from the other. A repository with a per-log gate and no
+   * monthly budget has no monthly position, and the tools say so rather than
+   * picking a number that is the right shape.
+   */
+  monthlyUsd?: number;
+  /**
    * Per-day budget — the gate a whole-log total cannot arm. `--max-day-usd`
    * overrides it, and it inherits that flag's refusals: a log with no clock
    * fails rather than passes, because "not measured" is not "under budget".
@@ -217,7 +234,7 @@ export const CONFIG_KEYS = [
 
 export const CONFIG_BASELINE_KEYS = ['path', 'maxGrowthTokens', 'maxGrowthPct'] as const;
 
-export const CONFIG_SPEND_KEYS = ['maxUsd', 'maxDayUsd', 'maxSessionUsd', 'maxCacheLossUsd', 'byLabel', 'bySource'] as const;
+export const CONFIG_SPEND_KEYS = ['maxUsd', 'monthlyUsd', 'maxDayUsd', 'maxSessionUsd', 'maxCacheLossUsd', 'byLabel', 'bySource'] as const;
 
 export const CONFIG_WAIVE_KEYS = ['gate', 'reason', 'until'] as const;
 
@@ -419,6 +436,9 @@ function parseSpend(raw: unknown, source: string): SpendConfig {
   const spend: SpendConfig = {};
   if (raw.maxUsd !== undefined) {
     spend.maxUsd = requireNonNegativeNumber(raw.maxUsd, 'spend.maxUsd', source);
+  }
+  if (raw.monthlyUsd !== undefined) {
+    spend.monthlyUsd = requireNonNegativeNumber(raw.monthlyUsd, 'spend.monthlyUsd', source);
   }
   if (raw.maxCacheLossUsd !== undefined) {
     spend.maxCacheLossUsd = requireNonNegativeNumber(raw.maxCacheLossUsd, 'spend.maxCacheLossUsd', source);

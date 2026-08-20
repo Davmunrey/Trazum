@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.48.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.49.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,136 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.49.0 — "The live budget"
+
+The ninth of the ten planned in `docs/plan-1.41-1.50.md`. By 1.48 there were
+four ways to ask Trazum about money — a gate in CI, the terminal, the local
+endpoint an agent consults, the browser — and **no guarantee any two of them
+agreed**. Each computed its own answer from whatever it happened to be holding:
+a log, a store, a request body. Four right answers to four slightly different
+questions is how a CI failure and an agent's refusal come to disagree in front
+of a person who then trusts neither.
+
+### A budget becomes a standing
+
+```
+Budget for 2026-08
+  $30.00 of $100.00 (30%), measured over 3 of the month's 31 days.
+  Only 3 of 20 elapsed days carry any measurement, so the figure above is a
+  floor on the month rather than the month.
+  Whether that is fast or slow for the month cannot be told from a floor: the
+  unmeasured days spent something, and only an overrun would be unarguable.
+```
+
+`budgetPositions` in `@trazum/core` takes the store's measured records and a
+calendar month and returns a position: the limit, the spend inside the period,
+what is left — and, the part that makes it honest, **how much of that period
+was measured at all**. `trazum store` prints it, `trazum serve` answers with
+it, and both make the same call, so the two cannot drift.
+
+### `spend.monthlyUsd` is a new key, and that is the whole point
+
+Reusing `maxUsd` would have been far less code, and it is exactly the bug.
+
+`maxUsd` gates *this log* — whatever period the file somebody passed happens to
+cover. The new key gates *this month*. Same units, different denominators. One
+key carrying both is precisely how two surfaces of one product come to disagree
+about how much is left, which brings us to what this release found.
+
+### What this release found wrong in itself
+
+**`trazum serve` was comparing the whole store against a per-log budget.**
+
+It read `spend.maxUsd` and set it against every record the store held. A store
+is append-only and keeps whatever has been pulled into it, so on a machine that
+had been pulling for a year, an agent asking "is there budget left?" was being
+told the answer for the year against a limit somebody wrote for a month. The
+gap between what `serve` said and what CI said was exactly as large as that
+machine's history — invisible from either side, and growing.
+
+It shipped in 1.44, was reviewed carefully enough to get three security guards
+and a documented JSON contract, and nobody looked at the denominator. Reading
+`maxUsd` there was not a shortcut somebody took knowingly; it was the only key
+that existed with the right units.
+
+Two smaller things came with it. `serve`'s answer carried **the store's span**
+as its staleness window, so a caller was told when the oldest record was pulled
+rather than which month the figure covers; it carries the period now. And the
+`serve` test suite's fixture was pinned to a **literal August 2026 date**,
+which happened to be inside the current month — a month-based budget would have
+turned that into a suite that passed for eleven months and then failed for
+reasons nobody remembered. The fixture is relative to the current UTC month.
+
+### A period nobody measured is not a period under budget
+
+The `fleetBudgetMissing` rule from 1.37, applied to time. Elapsed days with no
+measurement are counted and named. With nothing measured at all the verdict is
+`cannot-tell`, never `within`: **`$0 of $400` is the healthiest-looking budget
+a dead store can produce**, and a store that stopped being written to looks
+exactly like a quiet month.
+
+One detail worth stating because it is easy to get backwards: a record whose
+model the catalogue cannot price contributes no dollars — which is right — and
+it must contribute **no measured day** either. Counting the day would report
+the period as covered by money nobody can see.
+
+### The burn is a shape, never a date
+
+`ahead`, `on-pace`, `behind`, `cannot-tell` — a comparison of two shares that
+have **both already happened**: how much of the budget is gone against how much
+of the month is gone. "Thirty per cent over eleven of thirty days" is a
+measurement. "You run out on the 24th" is a prediction, and this product has
+refused those since 1.27 at every scale it operates on.
+
+The type carries `readonly forecast?: never`, with a comment saying why, and a
+test asserts the serialised object contains no field naming such a date. Not
+because anybody plans to add one, but because it is the single most requested
+number this module will ever be asked for, and a comment alone loses that
+argument eventually.
+
+**A floor can prove `ahead` and can never prove `behind`.** Partial coverage
+means the consumed figure is a floor: the unmeasured days spent something and
+nobody knows how much. A floor that has already outrun the calendar is
+unarguable — the real figure is higher still. A comfortable-looking floor
+proves nothing, and calling it `behind` would turn missing measurement into
+good news.
+
+The first version of this file did exactly that: `behind` on three measured
+days out of twenty, printed directly under a warning that the figure was a
+floor. Two sentences contradicting each other on adjacent lines, and the
+reassuring one came second.
+
+### What the store cannot answer for, said rather than guessed
+
+Per-label and per-service budgets get no position. A store record carries a
+provider, a model and the account's own grouping — it does not carry a workload
+label, because labels live in a per-call usage log and a bucketed provider API
+does not serve one. A per-label figure assembled from records that cannot
+distinguish labels would be the right shape over the wrong denominator, which
+is the fault this whole release exists to remove. They are listed as
+unmeasurable from here, with the pointer to `trazum profile` against a per-call
+log.
+
+### What stayed out, and why
+
+**Reservations, so two agents cannot race for the last dollar.** The plan lists
+them and they are not here. Within a single `serve` process an in-memory
+reservation is straightforward and would work; across processes — two CI jobs,
+two machines, a server restarted between the reservation and the spend — it
+needs a lock over a file, an expiry that survives a crash, and a story for a
+reservation whose holder never came back. Shipping the easy half would mean an
+agent being told "reserved" by a guarantee that quietly does not hold the
+moment there are two of anything, which is worse than being told to check
+again. It gets its own release or none.
+
+**The MCP guard still takes the position as an argument.** That is not an
+oversight: the MCP server has promised since it shipped that it reads nothing
+from disk, and the security suite fails the build if it ever does. An agent
+using MCP passes the standing it got from `serve` or from CI, and the seam is
+where it has always been.
 
 ---
 
