@@ -46,6 +46,7 @@ ${bold('USO')}
   trazum rules
   trazum gateway <anthropic|openai> --on-cannot-tell <fail-open|fail-closed>
   trazum experiment <log> --a <label> --b <label> --min-outcomes <n>
+  trazum quality <log> --label <name> --at <iso> [--gate]
   trazum ladder <log>
   trazum feedback
   trazum --version
@@ -121,6 +122,20 @@ ${bold('OPCIONES DE experiment')}
   Juzga resultados registrados y coste a la vez. Tres valores: gana A, gana B,
   o no separables — con cuántos resultados por brazo lo zanjarían, para que
   "déjalo correr más" sea una instrucción y no un encogimiento de hombros.
+
+${bold('OPCIONES DE quality')}
+  --label <nombre>            La carga a juzgar. Obligatorio: una mezcla
+                              promediaría una regresión hasta hacerla
+                              desaparecer.
+  --at <iso>                  Cuándo aterrizó el cambio. Obligatorio: sin
+                              frontera no hay nada que comparar, y elegir una
+                              sería que esta herramienta decida a qué culpar.
+  --gate                      Sale con 1 si hay caída medida, 2 si no se puede
+                              decir. Tres resultados, nunca dos.
+
+  Un antes y después, no un experimento, así que dice "no se puede decir"
+  siempre que la mezcla de modelos, el volumen o la cobertura se movieran a
+  través de la frontera — el prompt no es la única variable y lo dice.
 
 ${bold('OPCIONES DE prune')}
   --cases <fichero>           Una entrada por línea, o un array JSON. Obligatorio.
@@ -1011,6 +1026,43 @@ ${bold('EJEMPLOS')}
       `${path} ya existe y se dejó intacto. Pasa --dry-run para ver qué iría dentro, o --yes para reemplazarlo.`,
     existingUnparseable: (path) =>
       `${path} existe y no se pudo interpretar, así que no se escribió nada encima. Arréglalo o muévelo primero.`,
+  },
+
+  quality: {
+    heading: (label) => `Calidad a trav\u00e9s del cambio: ${label}`,
+    needsLabel: () => 'Nombra la carga con --label: esto compara una etiqueta antes y despu\u00e9s de un cambio, y una mezcla de cargas promediar\u00eda una regresi\u00f3n hasta hacerla desaparecer.',
+    needsAt: () =>
+      '--at es obligatorio: da el momento en que aterriz\u00f3 el cambio, como marca ISO. Sin \u00e9l no hay frontera que comparar, y elegir una del log ser\u00eda que esta herramienta decida a qu\u00e9 cambio culpar.',
+    sides: (beforeRate, afterRate, before, after) =>
+      `antes ${beforeRate} (${before} resultados)   despu\u00e9s ${afterRate} (${after} resultados)`,
+    dropped: (from, to, outcomes, cost) =>
+      `La tasa de resoluci\u00f3n pas\u00f3 de ${from} a ${to} sobre ${outcomes} resultados medidos, y este cambio ${cost}. Las dos mitades son medidas; ninguna es una estimaci\u00f3n.`,
+    held: (from, to, outcomes) =>
+      `La tasa de resoluci\u00f3n pas\u00f3 de ${from} a ${to} sobre ${outcomes} resultados medidos \u2014 arriba, de forma medible.`,
+    cannotTell: (why, need) =>
+      why === 'too-few-before'
+        ? `No se puede decir: solo ${need} resultados antes del cambio, y esta puerta necesita 100 por lado. Falla builds, as\u00ed que el umbral no es el que usa una tasa en otros sitios.`
+        : why === 'too-few-after'
+          ? `A\u00fan no se puede decir: solo ${need} resultados desde el cambio, y esta puerta necesita 100 por lado. Vuelve a correrlo cuando el tr\u00e1fico se ponga al d\u00eda.`
+          : why === 'not-separable'
+            ? 'No se puede decir: la tasa no se movi\u00f3 de forma medible. Eso NO es lo mismo que "se mantuvo" \u2014 una puerta que las escribiera igual dejar\u00eda pasar una regresi\u00f3n real que simplemente no tuvo potencia para ver.'
+            : why === 'no-vocabulary'
+              ? 'No se puede decir: "outcomes.success" no declara nada, as\u00ed que no hay tasa de resoluci\u00f3n que comparar.'
+              : 'No se puede decir: algo que no es el prompt se movi\u00f3 a trav\u00e9s de la frontera. Ver abajo.',
+    confoundersHeading: () => 'El prompt no es lo \u00fanico que cambi\u00f3',
+    confounder: (kind, detail) =>
+      kind === 'model-mix-moved'
+        ? `La mezcla de modelos se movi\u00f3 un ${detail}. La ca\u00edda puede ser enteramente la migraci\u00f3n de otra persona, y esta herramienta no puede separarlas.`
+        : kind === 'volume-moved'
+          ? `El volumen de llamadas se movi\u00f3 ${detail}. Una carga cuyo tr\u00e1fico se mueve tanto suele ser una carga cuya poblaci\u00f3n cambi\u00f3 \u2014 una superficie nueva, un cliente nuevo, una campa\u00f1a \u2014 y las preguntas que se hacen no son las de antes.`
+          : `La cobertura de resultados pas\u00f3 de ${detail}. Las dos tasas describen poblaciones distintas: un equipo que empieza a instrumentar sus casos dif\u00edciles ve caer su tasa medida sin que nada haya empeorado.`,
+    notRandomised: () =>
+      'Esto es un antes y despu\u00e9s, no un experimento. Parte el tr\u00e1fico por tiempo y no al azar, as\u00ed que todo lo dem\u00e1s que cambi\u00f3 a la vez est\u00e1 tambi\u00e9n en la diferencia \u2014 por eso dice "no se puede decir" mucho m\u00e1s f\u00e1cilmente que un A/B.',
+    cannotSee: () =>
+      'No puede ver nada m\u00e1s que desplegaras ese d\u00eda. Un veredicto de "ca\u00edda" dice que la tasa baj\u00f3 y que las tres cosas que puede comprobar no se movieron. Es una afirmaci\u00f3n m\u00e1s peque\u00f1a que "lo hizo el prompt", y es la mayor que sostiene la evidencia.',
+    gateFailed: () => 'Puerta fallada: una ca\u00edda medida sin nada m\u00e1s que la explique.',
+    gateHeldOpen: () =>
+      'Puerta ni pasada ni fallada. "No se puede decir" mantiene la afirmaci\u00f3n abierta en vez de salir en verde \u2014 la postura de verify desde 1.39.',
   },
 
   experiment: {

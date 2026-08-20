@@ -41,6 +41,7 @@ import {
   conform,
   BREAK_EVEN_BAND,
   runExperiment,
+  qualityGate,
   ladderPosition,
   validateLadder,
   outcomeReport,
@@ -141,6 +142,7 @@ import type {
   BudgetReport,
   ContractName,
   ExperimentArm,
+  GateSide,
   FailurePolicy,
   GatewayStanding,
   UsageProfileReport,
@@ -248,6 +250,7 @@ interface Args {
 
 const VALUE_FLAGS = new Set([
   'a',
+  'at',
   'b',
   'min-outcomes',
   'against',
@@ -580,6 +583,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   gateway: ['on-cannot-tell', 'port', 'socket', 'pricing', 'pricing-live'],
   ladder: ['pricing', 'pricing-live', 'since', 'until', 'label'],
   experiment: ['a', 'b', 'min-outcomes', 'pricing', 'pricing-live'],
+  quality: ['label', 'at', 'gate', 'pricing', 'pricing-live'],
   where: [],
   rules: [],
   blame: ['limit', 'model', 'calls', 'output-tokens', 'batch', 'prompt', 'markdown-out'],
@@ -2456,6 +2460,152 @@ async function commandExperiment(
 
   console.log();
   console.log(`  ${c.dim(wrap(t.experiment.neverPromotes(), 74, '    '))}`);
+  console.log();
+}
+
+/**
+ * `trazum quality <log> --label <name> --at <iso> [--gate]`
+ *
+ * The failure that actually matters: a prompt edit that quietly made the
+ * product worse. CI has been able to fail a build for tokens since 1.4 and for
+ * dollars since 1.21, and this has never been gateable — so every saving this
+ * tool has ever recommended went into a repository with its most important
+ * consequence unmeasured.
+ *
+ * **Named `quality` rather than `check --against-outcomes`, which is what the
+ * plan called for.** `check` reads *prompt files* and gates on tokens; it has
+ * never opened a usage log, and a command that takes either a prompt or a log
+ * depending on a flag is two commands wearing one name. The split-by-time this
+ * needs is also not a `check` idea — there is nothing in a prompt file with a
+ * timestamp on it.
+ */
+async function commandQuality(
+  args: Args,
+  config: TrazumConfig,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
+  const path = args.positional[0];
+  if (path === undefined) throw new Error(t.errors.missingInputFile());
+
+  const label = stringFlag(args, 'label');
+  if (label === undefined) throw new Error(t.quality.needsLabel());
+
+  const atRaw = stringFlag(args, 'at');
+  const atMs = atRaw === undefined ? Number.NaN : Date.parse(atRaw);
+  if (!Number.isFinite(atMs)) throw new Error(t.quality.needsAt());
+
+  /**
+   * Two profiles over the same file, split at the boundary — rather than one
+   * profile the caller has to slice.
+   *
+   * The alternative is asking somebody for two logs, which invites the mistake
+   * this whole module exists to avoid: two files gathered under conditions
+   * nobody wrote down.
+   */
+  const raw = await readUsageLog(path, t);
+  const sideOf = (since: number | undefined, until: number | undefined): GateSide => {
+    const report = profileUsage(raw, { catalogue: pricing, label, sinceMs: since, untilMs: until });
+    const slice = report.outcomeTallyByLabel.find((entry) => entry.label === label);
+    return {
+      arm: {
+        name: label,
+        totalUsd: report.total.totalUsd,
+        tally: slice?.tally ?? { byValue: [], recorded: 0, parsed: 0, unrecordedUsd: 0 },
+      },
+      calls: report.total.calls,
+      usdByModel: report.byModel.map((entry) => ({ model: entry.model, usd: entry.breakdown.totalUsd })),
+    };
+  };
+
+  const result = qualityGate(sideOf(undefined, atMs), sideOf(atMs, undefined), config.outcomes ?? null);
+  const pct = (value: number): string => `${(value * 100).toFixed(1)}%`;
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+
+  console.log();
+  console.log(c.bold(t.quality.heading(label)));
+  console.log(`  ${c.dim(wrap(t.quality.notRandomised(), 74, '  '))}`);
+  console.log();
+  console.log(
+    `  ${t.quality.sides(
+      result.before.rate === null ? '—' : pct(result.before.rate),
+      result.after.rate === null ? '—' : pct(result.after.rate),
+      n(result.outcomes.before),
+      n(result.outcomes.after),
+    )}`,
+  );
+  console.log();
+
+  if (result.verdict === 'dropped') {
+    const cost =
+      result.cost === null
+        ? ''
+        : result.cost.deltaUsdPerCall < 0
+          ? `saves ${formatUsd(-result.cost.deltaUsdPerCall)} a call`
+          : `costs ${formatUsd(result.cost.deltaUsdPerCall)} a call more`;
+    console.log(
+      `  ${c.red('✗')} ${wrap(
+        t.quality.dropped(
+          pct(result.before.rate ?? 0),
+          pct(result.after.rate ?? 0),
+          n(result.outcomes.before + result.outcomes.after),
+          cost,
+        ),
+        74,
+        '    ',
+      )}`,
+    );
+  } else if (result.verdict === 'held') {
+    console.log(
+      `  ${c.green('✓')} ${wrap(
+        t.quality.held(pct(result.before.rate ?? 0), pct(result.after.rate ?? 0), n(result.outcomes.before + result.outcomes.after)),
+        74,
+        '    ',
+      )}`,
+    );
+  } else {
+    const need =
+      result.unknown === 'too-few-before' ? n(result.outcomes.before) : n(result.outcomes.after);
+    console.log(`  ${c.yellow('?')} ${wrap(t.quality.cannotTell(result.unknown ?? '', need), 74, '    ')}`);
+  }
+
+  /**
+   * Confounders print on **every** verdict, not only on `cannot-tell`.
+   *
+   * A rate that held while the model changed underneath is not evidence that
+   * the prompt is fine either, and hiding the confounder on a green result is
+   * how a gate teaches people to trust it in exactly the case it should not be
+   * trusted.
+   */
+  if (result.confounders.length > 0) {
+    console.log();
+    console.log(`  ${c.bold(t.quality.confoundersHeading())}`);
+    for (const confounder of result.confounders) {
+      const detail =
+        confounder.kind === 'model-mix-moved'
+          ? `${pct(confounder.drift)} (${confounder.model})`
+          : confounder.kind === 'volume-moved'
+            ? `${n(confounder.beforeCalls)} → ${n(confounder.afterCalls)} calls`
+            : `${pct(confounder.before)} → ${pct(confounder.after)}`;
+      console.log(`    ${c.yellow('!')} ${wrap(t.quality.confounder(confounder.kind, detail), 70, '      ')}`);
+    }
+  }
+
+  console.log();
+  console.log(`  ${c.dim(wrap(t.quality.cannotSee(), 74, '  '))}`);
+
+  if (boolFlag(args, 'gate')) {
+    console.log();
+    if (result.verdict === 'dropped') {
+      console.log(`  ${c.red(t.quality.gateFailed())}`);
+      process.exitCode = 1;
+    } else if (result.verdict === 'cannot-tell') {
+      // Three outcomes, never two. `cannot tell` holds the claim open rather
+      // than exiting green, the posture `verify --gate` has had since 1.39.
+      console.log(`  ${c.yellow(t.quality.gateHeldOpen())}`);
+      process.exitCode = 2;
+    }
+  }
   console.log();
 }
 
@@ -8658,6 +8808,9 @@ async function main(): Promise<void> {
       break;
     case 'models':
       commandModels(t, pricing);
+      break;
+    case 'quality':
+      await commandQuality(args, config, pricing, t);
       break;
     case 'experiment':
       await commandExperiment(args, config, pricing, t);

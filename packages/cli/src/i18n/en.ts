@@ -59,6 +59,7 @@ ${bold('USAGE')}
   trazum rules
   trazum gateway <anthropic|openai> --on-cannot-tell <fail-open|fail-closed>
   trazum experiment <log> --a <label> --b <label> --min-outcomes <n>
+  trazum quality <log> --label <name> --at <iso> [--gate]
   trazum ladder <log>
   trazum feedback
   trazum --version
@@ -131,6 +132,20 @@ ${bold('OPTIONS FOR experiment')}
   Judges recorded outcomes and cost together. Three-valued: A wins, B wins, or
   not separable — with the number of outcomes per arm that would settle it, so
   "run it longer" is an instruction rather than a shrug. Nothing is promoted.
+
+${bold('OPTIONS FOR quality')}
+  --label <name>              The workload to judge. Required: a mixture would
+                              average a regression away.
+  --at <iso>                  When the change landed. Required: without a
+                              boundary there is nothing to compare across, and
+                              picking one would be this tool choosing which
+                              change to blame.
+  --gate                      Exit 1 on a measured drop, 2 on "cannot tell".
+                              Three outcomes, never two.
+
+  A before-and-after rather than an experiment, so it reports "cannot tell"
+  whenever the model mix, the call volume or the outcome coverage moved across
+  the boundary — the prompt is not the only variable and it says so.
 
 ${bold('OPTIONS FOR prune')}
   --cases <file>              One input per line, or a JSON array. Required.
@@ -975,6 +990,43 @@ ${bold('EXAMPLES')}
       `${path} already exists and was left alone. Pass --dry-run to see what would go in it, or --yes to replace it.`,
     existingUnparseable: (path) =>
       `${path} exists and could not be parsed, so nothing was written over it. Fix or move it first.`,
+  },
+
+  quality: {
+    heading: (label) => `Quality across the change: ${label}`,
+    needsLabel: () => 'Name the workload with --label: this compares one label before and after a change, and a mixture of workloads would average a regression away.',
+    needsAt: () =>
+      '--at is required: give the moment the change landed, as an ISO timestamp. Without it there is no boundary to compare across, and picking one from the log would be this tool choosing which change to blame.',
+    sides: (beforeRate, afterRate, before, after) =>
+      `before ${beforeRate} (${before} outcomes)   after ${afterRate} (${after} outcomes)`,
+    dropped: (from, to, outcomes, cost) =>
+      `The resolution rate moved from ${from} to ${to} on ${outcomes} measured outcomes, and this change ${cost}. Both halves are measured; neither is an estimate.`,
+    held: (from, to, outcomes) =>
+      `The resolution rate moved from ${from} to ${to} on ${outcomes} measured outcomes \u2014 up, measurably.`,
+    cannotTell: (why, need) =>
+      why === 'too-few-before'
+        ? `Cannot tell: only ${need} outcomes before the change, and this gate needs 100 a side. It fails builds, so the threshold is not the one a rate uses elsewhere.`
+        : why === 'too-few-after'
+          ? `Cannot tell yet: only ${need} outcomes since the change, and this gate needs 100 a side. Run it again once the traffic has caught up.`
+          : why === 'not-separable'
+            ? 'Cannot tell: the rate did not measurably move. That is NOT the same as "it held" \u2014 a gate that spelled them the same way would pass a real regression it merely lacked the power to see.'
+            : why === 'no-vocabulary'
+              ? 'Cannot tell: "outcomes.success" declares nothing, so there is no resolution rate to compare.'
+              : 'Cannot tell: something other than the prompt moved across the boundary. See below.',
+    confoundersHeading: () => 'The prompt is not the only thing that changed',
+    confounder: (kind, detail) =>
+      kind === 'model-mix-moved'
+        ? `The model mix moved by ${detail}. The drop may be entirely somebody else's migration, and this tool cannot separate the two.`
+        : kind === 'volume-moved'
+          ? `The call volume moved ${detail}. A workload whose traffic moved that much is usually a workload whose population changed \u2014 a new surface, a new customer, a campaign \u2014 and the questions being asked are not the questions from before.`
+          : `Outcome coverage moved from ${detail}. The two rates describe different populations: a team that starts instrumenting its hard cases sees its measured rate fall without anything having got worse.`,
+    notRandomised: () =>
+      'This is a before-and-after, not an experiment. It splits traffic by time rather than at random, so everything else that changed at the same time is in the difference too \u2014 which is why it says "cannot tell" far more readily than an A/B would.',
+    cannotSee: () =>
+      'It cannot see anything else you deployed that day. A "dropped" verdict says the rate fell and the three things it can check did not move. That is a smaller claim than "the prompt did it", and it is the largest one the evidence supports.',
+    gateFailed: () => 'Gate failed: a measured drop with nothing else to explain it.',
+    gateHeldOpen: () =>
+      'Gate not passed and not failed. "Cannot tell" holds the claim open rather than exiting green \u2014 the posture verify has had since 1.39.',
   },
 
   experiment: {

@@ -51,6 +51,14 @@ export { verifyPlan } from './verify.js';
 export { buildHistory, storedReportFrom, MIN_RUN } from './history.js';
 export { outcomeReport, judgeOutcome, OUTCOME_UNLOCKS } from './outcome.js';
 export { runExperiment } from './experiment.js';
+export {
+  qualityGate,
+  MIN_OUTCOMES_EACH_SIDE,
+  MAX_MODEL_MIX_DRIFT,
+  MAX_VOLUME_RATIO,
+  MAX_COVERAGE_DRIFT,
+} from './quality-gate.js';
+export type { Confounder, GateSide, GateUnknown, GateVerdict, QualityGate } from './quality-gate.js';
 export type {
   ArmResult,
   ExperimentArm,
