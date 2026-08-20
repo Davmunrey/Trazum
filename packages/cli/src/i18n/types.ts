@@ -258,6 +258,25 @@ export interface CliMessages {
    * file a report is exactly the shape of a tool that phones home, and the
    * only way to be believed is to say so where somebody is looking.
    */
+  /**
+   * The proxy in the path. Every line here is either a promise about what it
+   * will not do, or the standing it is judging against — because a component
+   * between somebody and their provider is trusted on nothing but what it says
+   * plainly at start-up.
+   */
+  gateway: {
+    badProvider(given: string, known: string): string;
+    needsPolicy(policies: string): string;
+    listening(where: string, provider: string): string;
+    pointYourSdk(where: string): string;
+    credential(): string;
+    neverSubstitutes(): string;
+    standing(consumed: string, limit: string): string;
+    noStanding(): string;
+    policy(policy: string): string;
+    measured(model: string, label: string | null, input: number, output: number, substituted: boolean): string;
+  };
+
   feedback: {
     heading(): string;
     sendsNothing(): string;

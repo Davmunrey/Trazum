@@ -43,11 +43,11 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- 24 commands       MCP server      Next.js     comments on pull requests
+ 25 commands       MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
-## The twenty-four commands
+## The twenty-five commands
 
 | Command | What it answers |
 |---|---|
@@ -72,6 +72,7 @@ never runs unless you ask.
 | [`trazum store`](#keeping-it-trazum-store) | What have I measured and kept? *Aggregates only — no prompt text, ever.* |
 | [`trazum watch`](#the-afternoon-it-happened-trazum-watch) | Has anything crossed a budget? *Measured crossings only — never a forecast.* |
 | [`trazum serve`](#before-the-call-is-sent-trazum-serve) | What will this call cost, and is there budget? *Answered in milliseconds, halves kept apart.* |
+| [`trazum gateway`](#in-the-path-of-the-call-trazum-gateway) | Can it stop the call instead of advising against it? *Refuses; never substitutes.* |
 | [`trazum conform`](#building-on-the-format-trazum-conform) | Does the document my tool emits conform, and what will it not be able to answer? |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
 | [`trazum feedback`](#telling-us-something-trazum-feedback) | Where do I report this, and what will you ask me for? *Sends nothing.* |
@@ -182,8 +183,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of twenty-four commands — [the table
-above](#the-twenty-four-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of twenty-five commands — [the table
+above](#the-twenty-five-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -333,7 +334,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other twenty-three commands, each with its own section below:
+The other twenty-four commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -1145,6 +1146,58 @@ is no auth for the same reason — a token checked over loopback is theatre.
 the call and says the budget half is unknown. Offline is a mode, not a failure.
 The measured position is read once at start, so every answer carries the window
 that figure covers rather than implying it is current to the second.
+
+### In the path of the call: `trazum gateway`
+
+```bash
+trazum gateway anthropic --on-cannot-tell fail-closed
+```
+
+Point your SDK's base URL at what it prints and change nothing else — it speaks
+the provider's own wire format, so no new client and no code change.
+
+Everything else here either answers a question you can ignore or reports on a
+bill after it arrived. **This is the one thing that can say no.** Usage is
+measured from the provider's own response as it comes back: no export, no
+connector lag, no missing day.
+
+**It refuses; it does not substitute.** A call over budget is rejected with
+HTTP 402 and the cheaper alternatives named — never silently swapped, trimmed or
+downgraded. The caller asked for something specific, and a proxy that quietly
+answers a different question is worse than one that fails, because the failure is
+visible and the substitution is not. That is enforced in the type: a decision is
+either `forward`, carrying nothing the caller did not send, or `refuse`, carrying
+no body at all.
+
+402 rather than 429 on purpose. Every provider SDK retries a 429 automatically,
+so answering a refusal with one would turn it into a retry storm driven by the
+caller's own client library.
+
+**`--on-cannot-tell` is required and has no default.** When the gateway cannot
+judge — no budget, nothing measured, an unpriced model — `fail-open` lets the
+call through and records it as *unjudged* (never "within budget"), and
+`fail-closed` refuses it. Both are defensible, and only you know which failure
+your product can survive. Picking one for you would be the most consequential
+decision in your architecture, made silently at install time.
+
+**Substitution exists only where you wrote it down**, in `spend.substitute`,
+with your own reason — required, for the same purpose a waiver's is. Every
+substituted call is marked, so no later report treats it as the call the caller
+made, and it never fires because the gateway could not *judge*.
+
+**Your credential is not even borrowed.** Your headers are forwarded untouched
+and never read; Trazum holds no key here and cannot make a call of its own
+through it. The upstream is compiled in, it binds to loopback, and it forwards
+exactly one path — the one that spends tokens.
+
+**Nothing about the payload is written down.** The body is read to count tokens
+and find the model, then forwarded and dropped: never logged, never stored,
+never in a refusal. Structural rather than disciplinary — the decision function
+is handed a description and never the body, and the recording callback has no
+parameter that could carry text.
+
+[docs/gateway.md](docs/gateway.md) covers all of it, and the refusal body is
+[contracted](docs/json-output.md#the-gateway-refusal-document).
 
 ### Charting it: `doctor --otlp-out`
 

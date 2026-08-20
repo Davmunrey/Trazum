@@ -49,6 +49,18 @@ export type { PlanParseFailure, PlanParseResult } from './plan.js';
 export type { PlanAction, PlanActionKind, PlanAssumption, PlanDocument } from './plan.js';
 export { verifyPlan } from './verify.js';
 export { buildHistory, storedReportFrom, MIN_RUN } from './history.js';
+export { gatewayDecision, usageFromResponse, FAILURE_POLICIES } from './gateway.js';
+export type {
+  CannotTellCause,
+  FailurePolicy,
+  GatewayAlternative,
+  GatewayCall,
+  GatewayDecision,
+  GatewayOptions,
+  GatewayPolicy,
+  GatewayStanding,
+  RefuseReason,
+} from './gateway.js';
 export { conform } from './conform.js';
 export type {
   ConformOptions,

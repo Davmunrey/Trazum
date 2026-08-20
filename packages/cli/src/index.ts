@@ -39,6 +39,7 @@ import {
   DEFAULT_USAGE,
   budgetPositions,
   conform,
+  FAILURE_POLICIES,
   detectFromSource,
   matchLocale,
   parsePlanDocument,
@@ -133,6 +134,8 @@ import type {
 import type {
   BudgetReport,
   ContractName,
+  FailurePolicy,
+  GatewayStanding,
   UsageProfileReport,
   WaiverUse,
   InitDecline,
@@ -179,6 +182,12 @@ import { fetchProviderUsage, findCredential } from './connect.js';
 import { STORE_DIR, appendRecords, readStore, rewriteStore } from './store-fs.js';
 import { WAIVER_LOG, appendWaiverUse, readWaiverLog } from './waiver-log.js';
 import { DEFAULT_PORT, buildServer, listen } from './serve.js';
+import {
+  DEFAULT_GATEWAY_PORT,
+  UPSTREAMS,
+  buildGateway,
+  listenGateway,
+} from './gateway-server.js';
 import {
   WATCH_STATE_VERSION,
   checkWebhook,
@@ -233,6 +242,7 @@ interface Args {
 const VALUE_FLAGS = new Set([
   'against',
   'contract',
+  'on-cannot-tell',
   'from-log',
   'min-usd',
   'payload',
@@ -557,6 +567,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   init: ['dry-run', 'yes', 'json', 'pricing', 'pricing-live'],
   conform: ['contract', 'json'],
   feedback: [],
+  gateway: ['on-cannot-tell', 'port', 'socket', 'pricing', 'pricing-live'],
   where: [],
   rules: [],
   blame: ['limit', 'model', 'calls', 'output-tokens', 'batch', 'prompt', 'markdown-out'],
@@ -2061,6 +2072,119 @@ function commandFeedback(t: CliMessages): void {
 
   console.log(c.bold(t.feedback.linkHeading()));
   console.log(`  ${url}`);
+  console.log();
+}
+
+/**
+ * `trazum gateway <provider>` — in the path, and refusing rather than advising.
+ *
+ * The last thing this product could not do. `serve` answers a question an
+ * implementation may ignore; a connector reports the runaway after it ran.
+ * Standing between the caller and the provider fixes both — usage is measured
+ * from the provider's own response as it comes back, and a refusal is a
+ * refusal.
+ *
+ * **The failure policy is required.** `--on-cannot-tell fail-open` keeps the
+ * product working and lets the bill run; `fail-closed` stops the bill and takes
+ * the product down with it. Both are defensible and there is deliberately no
+ * default: a proxy that picks silently has made the most consequential decision
+ * in somebody's architecture on their behalf, at install time, without saying
+ * so.
+ *
+ * **Substitution is off unless it is written down.** `spend.substitute` in the
+ * config, with the operator's own reason, and every substituted call is marked
+ * so no later report treats it as the call the caller made.
+ */
+async function commandGateway(
+  args: Args,
+  config: TrazumConfig,
+  configDir: string,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
+  const provider = args.positional[0];
+  if (provider === undefined || UPSTREAMS[provider] === undefined) {
+    throw new Error(t.gateway.badProvider(provider ?? '', Object.keys(UPSTREAMS).join(', ')));
+  }
+
+  /**
+   * No default, and the error says why rather than just what.
+   *
+   * The one flag in this product that refuses to guess on the reader's behalf,
+   * because the two answers differ in which failure they accept and nobody but
+   * the operator knows which their product can survive.
+   */
+  const policyFlag = stringFlag(args, 'on-cannot-tell');
+  if (policyFlag === undefined || !FAILURE_POLICIES.includes(policyFlag as FailurePolicy)) {
+    throw new Error(t.gateway.needsPolicy(FAILURE_POLICIES.join(', ')));
+  }
+
+  const { resolved } = await readStore(configDir);
+  const budget = budgetPositions(resolved.records, config.spend, { catalogue: pricing });
+  const position = budget.positions[0] ?? null;
+
+  /**
+   * Read once at start, like `serve`'s.
+   *
+   * A file read in the request path would put Trazum's own latency between a
+   * caller and their provider on every call, which is a cost this product
+   * would otherwise be reporting on somebody else. The staleness is real, so a
+   * refusal carries `asOfMs` and says what it rested on.
+   */
+  const standing: GatewayStanding | null =
+    position === null || position.coverage === 'none'
+      ? null
+      : {
+          limitUsd: position.limitUsd,
+          consumedUsd: position.consumedUsd,
+          provenance: 'measured',
+          asOfMs: Date.now(),
+        };
+
+  const measured: { calls: number; usd: number } = { calls: 0, usd: 0 };
+  const server = buildGateway({
+    provider,
+    catalogue: pricing,
+    policy: {
+      onCannotTell: policyFlag as FailurePolicy,
+      ...(config.spend?.substitute === undefined ? {} : { substitute: config.spend.substitute }),
+    },
+    standing: () => standing,
+    record: (call) => {
+      measured.calls += 1;
+      console.error(
+        c.dim(
+          t.gateway.measured(
+            call.model,
+            call.label,
+            call.inputTokens,
+            call.outputTokens,
+            call.substituted,
+          ),
+        ),
+      );
+    },
+    note: (line) => {
+      console.error(c.yellow(`  ${line}`));
+    },
+  });
+
+  const socket = stringFlag(args, 'socket');
+  const portRaw = stringFlag(args, 'port');
+  const port = portRaw === undefined ? DEFAULT_GATEWAY_PORT : Number(portRaw);
+  if (socket === undefined && (!Number.isInteger(port) || port < 0 || port > 65_535)) {
+    throw new Error(t.serve.badPort(String(portRaw)));
+  }
+
+  const where = await listenGateway(server, socket !== undefined ? { socket } : { port });
+  console.log(c.bold(t.gateway.listening(where, provider)));
+  console.log(`  ${c.dim(wrap(t.gateway.pointYourSdk(where), 74, '    '))}`);
+  console.log(`  ${c.dim(wrap(t.gateway.credential(), 74, '    '))}`);
+  console.log(`  ${c.dim(wrap(t.gateway.neverSubstitutes(), 74, '    '))}`);
+  console.log(
+    `  ${c.dim(wrap(standing === null ? t.gateway.noStanding() : t.gateway.standing(formatUsd(standing.consumedUsd), formatUsd(standing.limitUsd)), 74, '    '))}`,
+  );
+  console.log(`  ${c.dim(wrap(t.gateway.policy(policyFlag), 74, '    '))}`);
   console.log();
 }
 
@@ -8093,6 +8217,9 @@ async function main(): Promise<void> {
       break;
     case 'models':
       commandModels(t, pricing);
+      break;
+    case 'gateway':
+      await commandGateway(args, config, configDir, pricing, t);
       break;
     case 'feedback':
       commandFeedback(t);
