@@ -1584,6 +1584,8 @@ ${bold('EJEMPLOS')}
       `WAIVED — el fallo de ${gate} de arriba queda registrado y silenciado hasta ${until} (${daysLeft} días restantes): "${reason}". La factura lo sigue contando; solo el código de salida calla, y el día que caduque el waiver este gate vuelve a fallar.`,
     waiveExpired: (gate, until, reason) =>
       `El waiver de ${gate} caducó el ${until} y ya no silencia nada. Se escribió por: "${reason}". Renuévalo con fecha nueva y razón vigente, o arregla lo que cubría — un waiver caducado dejado ahí es un hallazgo borrado con pasos extra.`,
+    waiveNotRecorded: (path, because) =>
+      `  (Este waiver no se pudo escribir en ${path}: ${because}. El veredicto de la puerta de arriba no cambia.)`,
     summaryNoComparison: () =>
       'No se dio un registro anterior, así que nada de aquí dice si la factura se movió — un resumen sin comparación indica la factura, no su estabilidad.',
     summaryFooter: () =>
@@ -1837,6 +1839,33 @@ ${bold('EJEMPLOS')}
     unrecognized: (name) => `${name} no es ni un informe guardado ni un plan guardado, así que no está en ninguna serie de arriba.`,
     footer: () =>
       'Una serie nombra formas, no futuros. Veinte puntos hacen visible una tendencia; no hacen conocible el mes que viene — adónde van estas líneas después lo juzgas tú.',
+    waiverHeading: () => 'Con lo que este repositorio ha estado conviviendo',
+    waiverSince: (day, uses) =>
+      `${uses} ${uses === 1 ? 'uso registrado' : 'usos registrados'} desde el ${day}, cuando empezó el registro.`,
+    waiverNoneRecorded: () =>
+      'Ningún waiver ha silenciado una puerta desde que empezó el registro. Nada de aquí se deduce de la configuración — un waiver escrito y nunca usado no es una decisión con la que nadie conviva.',
+    waiverHabit: (gate, uses, days, firstDay, lastDay) =>
+      `${gate}: ${uses} ${uses === 1 ? 'uso' : 'usos'} en ${days} ${days === 1 ? 'día' : 'días'}, del ${firstDay} al ${lastDay}`,
+    waiverVerdict: (verdict) =>
+      verdict === 'used-once'
+        ? 'Usado una vez. Todavía no hay nada que leer en ello.'
+        : verdict === 'recurring'
+          ? 'La misma decisión, sosteniéndose. La puerta sigue saltando y el motivo no ha cambiado.'
+          : verdict === 'renewed-without-revisiting'
+            ? 'La fecha de caducidad se ha movido y el motivo no. Esa es la forma que toma una decisión que nadie está revisando — a veces es exactamente lo correcto, y merece decirse en voz alta igualmente.'
+            : 'El motivo cambió entre usos. Alguien volvió a mirarlo.',
+    waiverReasonNow: (reason) => `Motivo: ${reason}`,
+    waiverReasonsChanged: (count) => `${count} motivos distintos dados en ese tiempo.`,
+    waiverExpiriesMoved: (from, to, count) =>
+      `La caducidad se movió ${count} ${count === 1 ? 'vez' : 'veces'}: ${from} → ${to}.`,
+    waiverNoLongerConfigured: () =>
+      'Ya no está en la configuración. La decisión se revirtió; el registro la conserva.',
+    waiverNeverUsed: (gates) =>
+      `Con waiver en la configuración y nunca usados por una ejecución registrada: ${gates}. O la puerta dejó de fallar — buenas noticias que nadie anotó — o el waiver nombra una situación que no ocurre. Ambos merecen borrarse.`,
+    waiverUnreadable: (count, path) =>
+      `${count} ${count === 1 ? 'línea' : 'líneas'} de ${path} no se pudieron leer y no cuentan arriba.`,
+    waiverStartsHere: () =>
+      'Nada anterior a ese día existe. Este registro empezó cuando empezó a registrarse, y no se reconstruyó ningún pasado a partir de la configuración actual.',
   },
 
   verify: {

@@ -38,6 +38,8 @@ import {
   detectFromSource,
   matchLocale,
   parsePlanDocument,
+  waiverDay,
+  waiverHistory,
   proposeInit,
   MIN_RATE_DAYS,
   parseConfig,
@@ -126,6 +128,7 @@ import type {
 } from '@trazum/core';
 import type {
   UsageProfileReport,
+  WaiverUse,
   InitDecline,
   InitJustification,
   InitObservations,
@@ -168,6 +171,7 @@ import {
 import type { Revision } from './git.js';
 import { fetchProviderUsage, findCredential } from './connect.js';
 import { STORE_DIR, appendRecords, readStore, rewriteStore } from './store-fs.js';
+import { WAIVER_LOG, appendWaiverUse, readWaiverLog } from './waiver-log.js';
 import { DEFAULT_PORT, buildServer, listen } from './serve.js';
 import {
   WATCH_STATE_VERSION,
@@ -3348,7 +3352,12 @@ async function commandConnect(
  * same action planned twice — and no series, however long, becomes a
  * forecast.
  */
-async function commandHistory(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
+async function commandHistory(
+  args: Args,
+  config: TrazumConfig,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
   /**
    * `--store` builds the series from measured spend already on disk.
    *
@@ -3452,7 +3461,23 @@ async function commandHistory(args: Args, pricing: PricingCatalogue, t: CliMessa
     throw new Error(t.history.needsThree(String(history.periods.length)));
   }
 
-  const stamped = { ...history, unrecognizedFiles: unrecognized };
+  /**
+   * The waiver record — closing the gap 1.40 named and could not fill.
+   *
+   * 1.40 wanted to say "this finding has been waived three times in a row" and
+   * refused to, because the only material available was the config as it
+   * stands, and a past reconstructed from a present is a guess wearing a
+   * record's clothes. The material exists now: since 1.48 a waiver that
+   * silences a gate writes down that it did, and this reads those lines back.
+   *
+   * Read from the working directory rather than from the reports directory:
+   * the waiver record belongs to the repository whose gates fired, and the
+   * stored reports may have come from anywhere.
+   */
+  const waivers = await readWaiverLog('.');
+  const waiverReport = waiverHistory(waivers.uses, config.waive ?? []);
+
+  const stamped = { ...history, unrecognizedFiles: unrecognized, waivers: waiverReport };
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const day = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
   const pct = (value: number): string => `${(value * 100).toFixed(1)}%`;
@@ -3506,6 +3531,58 @@ async function commandHistory(args: Args, pricing: PricingCatalogue, t: CliMessa
     for (const name of unrecognized) {
       out.push(md ? `- ${t.history.unrecognized(name)}` : `  ${t.history.unrecognized(name)}`);
     }
+    /**
+     * The waiver record, printed only once something has been recorded.
+     *
+     * Silent on a repository that has never waived anything, rather than a
+     * heading over "0 uses" — an empty section teaches a reader to skip the
+     * section, and this is the one they should not learn to skip.
+     */
+    if (waivers.present) {
+      out.push('');
+      out.push(md ? `### ${t.history.waiverHeading()}` : t.history.waiverHeading());
+      if (waiverReport.totalUses === 0) {
+        out.push(md ? `- ${t.history.waiverNoneRecorded()}` : `  ${t.history.waiverNoneRecorded()}`);
+      } else {
+        const since = t.history.waiverSince(waiverReport.since ?? '', waiverReport.totalUses);
+        out.push(md ? `- ${since}` : `  ${since}`);
+        out.push(md ? `- _${t.history.waiverStartsHere()}_` : `  ${t.history.waiverStartsHere()}`);
+        for (const habit of waiverReport.habits) {
+          out.push('');
+          const head = t.history.waiverHabit(
+            habit.gate,
+            habit.uses,
+            habit.days,
+            habit.firstDay,
+            habit.lastDay,
+          );
+          out.push(md ? `- **${head}**` : `  ${head}`);
+          const rows = [t.history.waiverVerdict(habit.verdict)];
+          // The reason as it stands *now* — never read backwards onto an
+          // older use, which is the same mistake the record exists to avoid.
+          const latest = habit.reasons[habit.reasons.length - 1];
+          if (latest !== undefined) rows.push(t.history.waiverReasonNow(latest));
+          if (habit.reasons.length > 1) rows.push(t.history.waiverReasonsChanged(habit.reasons.length));
+          const firstExpiry = habit.expiries[0];
+          const lastExpiry = habit.expiries[habit.expiries.length - 1];
+          if (habit.expiries.length > 1 && firstExpiry !== undefined && lastExpiry !== undefined) {
+            rows.push(t.history.waiverExpiriesMoved(firstExpiry, lastExpiry, habit.expiries.length - 1));
+          }
+          if (!habit.stillConfigured) rows.push(t.history.waiverNoLongerConfigured());
+          for (const row of rows) out.push(md ? `  - ${row}` : `    ${row}`);
+        }
+      }
+      if (waiverReport.neverUsed.length > 0) {
+        out.push('');
+        const dead = t.history.waiverNeverUsed(waiverReport.neverUsed.join(', '));
+        out.push(md ? `- ${dead}` : `  ${dead}`);
+      }
+      if (waivers.unreadable.length > 0) {
+        const bad = t.history.waiverUnreadable(waivers.unreadable.length, WAIVER_LOG);
+        out.push(md ? `- ${bad}` : `  ${bad}`);
+      }
+    }
+
     if (fromStore) {
       out.push('');
       const note = t.history.storeNoLabels();
@@ -4248,7 +4325,16 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
    * way, because a waived failure that vanished from the output would be a
    * finding deleted with extra steps.
    */
-  const waived = (gate: string): boolean => {
+  /**
+   * Uses recorded this run, flushed after the gates have finished.
+   *
+   * Collected rather than written inline because `waived` is synchronous and
+   * called from seven places inside the gate pass. Writing from each of them
+   * would mean seven awaits threaded through the exit-code logic — the one
+   * part of this command where a mistake turns a red build green.
+   */
+  const waiverUses: WaiverUse[] = [];
+  const waived = (gate: string, measuredUsd: number | null = null, limitUsd: number | null = null): boolean => {
     const found = waiverFor(gate);
     if (found === null) return false;
     if (found.expired) {
@@ -4264,6 +4350,29 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
     console.error(
       c.yellow(t.profile.waiveActive(gate, found.entry.reason, found.entry.until, String(daysLeft))),
     );
+    /**
+     * Recorded **when it silences something**, never when it is configured.
+     *
+     * A waiver nobody's build has ever hit is not a habit — it is dead config
+     * — and the history reports the two apart. This is also the only honest
+     * way to build the record 1.40 refused to invent: it starts today and
+     * says so, rather than reconstructing a past from the present.
+     *
+     * The reason and the expiry are taken from the config **as it stands at
+     * this moment**, because that is the decision that was actually in force.
+     * Reading today's reason back onto last quarter's use is the same mistake
+     * one layer down.
+     */
+    waiverUses.push({
+      schemaVersion: 1,
+      day: waiverDay(new Date()),
+      gate,
+      reason: found.entry.reason,
+      until: found.entry.until,
+      commit: process.env.GITHUB_SHA ?? process.env.CI_COMMIT_SHA ?? null,
+      measuredUsd,
+      limitUsd,
+    });
     return true;
   };
   const applyGates = (): void => {
@@ -4312,7 +4421,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
         }
         if (usd > limit) {
           console.error(c.red(t.profile.labelBudgetFailed(label, formatUsd(usd), formatUsd(limit))));
-          if (!waived(`byLabel:${label}`)) process.exitCode = 1;
+          if (!waived(`byLabel:${label}`, usd, limit)) process.exitCode = 1;
         } else {
           console.error(c.dim(t.profile.labelBudgetOk(label, formatUsd(usd), formatUsd(limit))));
         }
@@ -4385,7 +4494,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
          * copy says so.
          */
         explainFailure(report.total.totalUsd - maxUsd);
-        if (!waived('maxUsd')) process.exitCode = 1;
+        if (!waived('maxUsd', report.total.totalUsd, maxUsd)) process.exitCode = 1;
       } else {
         console.error(c.dim(t.profile.maxUsdOk(formatUsd(report.total.totalUsd), formatUsd(maxUsd))));
         explainMargin(report.total.totalUsd, maxUsd);
@@ -4425,7 +4534,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
         process.exitCode = 1;
       } else if (againstDelta > maxGrowth) {
         console.error(c.red(t.profile.maxGrowthUsdFailed(formatSignedUsd(againstDelta), formatUsd(maxGrowth))));
-        if (!waived('maxGrowthUsd')) process.exitCode = 1;
+        if (!waived('maxGrowthUsd', againstDelta, maxGrowth)) process.exitCode = 1;
       }
     }
     /**
@@ -4443,7 +4552,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
         console.error(
           c.red(t.profile.maxCacheLossFailed(formatUsd(gateCache.deltaUsd), formatUsd(maxLoss))),
         );
-        if (!waived('maxCacheLossUsd')) process.exitCode = 1;
+        if (!waived('maxCacheLossUsd', gateCache.deltaUsd, maxLoss)) process.exitCode = 1;
       } else if (gateCache.worstCaseDeltaUsd > maxLoss) {
         console.error(
           c.red(
@@ -4454,7 +4563,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
             ),
           ),
         );
-        if (!waived('maxCacheLossUsd')) process.exitCode = 1;
+        if (!waived('maxCacheLossUsd', gateCache.worstCaseDeltaUsd, maxLoss)) process.exitCode = 1;
       } else {
         console.error(
           c.dim(t.profile.maxCacheLossOk(formatUsd(Math.max(0, gateCache.worstCaseDeltaUsd)), formatUsd(maxLoss))),
@@ -4503,7 +4612,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
             c.red(`${t.profile.maxDayFailed(worst.day, formatUsd(worst.usd), formatUsd(maxDay))}${suspect}`),
           );
           explainFailure(worst.usd - maxDay, { namesLargest: true });
-          if (!waived('maxDayUsd')) process.exitCode = 1;
+          if (!waived('maxDayUsd', worst.usd, maxDay)) process.exitCode = 1;
         } else {
           console.error(c.dim(t.profile.maxDayOk(worst.day, formatUsd(worst.usd), formatUsd(maxDay))));
           explainMargin(worst.usd, maxDay);
@@ -4545,7 +4654,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
           c.red(t.profile.maxSessionFailed(formatUsd(report.sessionSpend.maxUsd), formatUsd(maxSession), n(report.sessionSpend.sessions))),
         );
         explainFailure(report.sessionSpend.maxUsd - maxSession);
-        if (!waived('maxSessionUsd')) process.exitCode = 1;
+        if (!waived('maxSessionUsd', report.sessionSpend.maxUsd, maxSession)) process.exitCode = 1;
       } else {
         console.error(
           c.dim(t.profile.maxSessionOk(formatUsd(report.sessionSpend.maxUsd), formatUsd(maxSession), n(report.sessionSpend.sessions))),
@@ -4576,6 +4685,26 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
     } finally {
       console.error = original;
       gateFailed = process.exitCode === 1;
+    }
+  };
+
+  /**
+   * Writes down every waiver that silenced something this run.
+   *
+   * **A failure here never fails the build.** The gate's job is the exit code;
+   * a read-only checkout or a full disk must not turn a passing build red on
+   * account of bookkeeping. The problem is reported and the gate's own verdict
+   * stands — which is also why this runs after `recordGates` rather than
+   * inside it: nothing about the exit code depends on the write.
+   */
+  const recordWaiverUses = async (): Promise<void> => {
+    if (waiverUses.length === 0) return;
+    for (const use of waiverUses) {
+      const failed = await appendWaiverUse('.', use);
+      if (failed !== null) {
+        console.error(c.dim(t.profile.waiveNotRecorded(WAIVER_LOG, failed)));
+        return;
+      }
     }
   };
 
@@ -4745,6 +4874,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
       ),
     );
     recordGates();
+    await recordWaiverUses();
     await writeSideFiles();
     return;
   }
@@ -5899,6 +6029,7 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
   reportProfileGaps(report, t, n, pricingStale);
 
   recordGates();
+  await recordWaiverUses();
 
   await writeSideFiles();
 }
@@ -7612,7 +7743,7 @@ async function main(): Promise<void> {
       await commandVerify(args, pricing, t);
       break;
     case 'history':
-      await commandHistory(args, pricing, t);
+      await commandHistory(args, config, pricing, t);
       break;
     case 'connect':
       await commandConnect(args, pricing, t);

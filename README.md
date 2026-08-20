@@ -187,6 +187,11 @@ or whether the shorter version still works.
 `check`, `diff`, `rank` and `blame` all take `--markdown-out`, so the answer can
 land in a pull request comment rather than a terminal nobody is looking at.
 
+**It gates in whatever CI you already run.** One binary, two exit codes, and
+[worked recipes for GitLab CI, Jenkins, CircleCI and a pre-commit hook](docs/ci.md)
+— no vendor plugin, because each one would be a second code path that drifts
+from the exit codes it is supposed to relay.
+
 ---
 
 ## Getting started
@@ -1307,6 +1312,48 @@ typing it. Absent both, growth alone still exits 0.
 
 `--config <file>` skips the search. `locale` is the one setting the environment
 outranks — see [Languages](#languages).
+
+#### Findings as policy: `waive`, and the record it now keeps
+
+A gate failure the team has looked at and decided to live with, on the record,
+for a bounded time:
+
+```json
+{
+  "spend": { "maxUsd": 400 },
+  "waive": [
+    { "gate": "maxUsd", "reason": "the vendor migration lands in March", "until": "2026-04-01" }
+  ]
+}
+```
+
+All three fields are required, and that is the whole mechanism. A waiver with no
+end date is a finding deleted with extra steps; a reasonless one is a silence
+nobody can audit. The failure still prints — **waived is shown as waived, never
+hidden**, and the bill still counts it — only the exit code goes quiet.
+
+**Every use is written down.** When a waiver silences a gate, Trazum appends a
+dated line to `.trazum/waivers.jsonl`: the gate, the reason and expiry *as they
+stood at that moment*, the commit when CI exported one, and the figures the gate
+actually judged. `trazum history` reads them back, so it can finally say that a
+finding has been waived nine times across four months under one unchanging
+sentence whose deadline moved three times — a decision nobody is revisiting, and
+something no config could ever have told you, because a config only knows today.
+
+1.40 wanted to report exactly that and refused, because the only material
+available then was the config as it stands, and a past reconstructed from a
+present is a guess wearing a record's clothes. Two rules keep the record honest
+now that the material exists:
+
+- **Nothing is back-filled.** The history begins the day recording began, and
+  says so out loud.
+- **A waiver nobody's build has ever hit is dead config, not a habit**, and the
+  report keeps the two apart — either the gate stopped failing, which is good
+  news nobody wrote down, or the waiver names a situation that never arises.
+
+Trazum never rewrites that file and offers no command to clear it: a record of
+decisions the tool can erase is a record nobody can rely on. Commit it to share
+it, leave it untracked to keep it local, delete it yourself if you mean to.
 
 ### Rewrites the rules cannot do: `--suggest`
 
