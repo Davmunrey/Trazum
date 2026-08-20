@@ -43,11 +43,11 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- eighteen commands  MCP server      Next.js     comments on pull requests
+ nineteen commands  MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
-## The eighteen commands
+## The nineteen commands
 
 | Command | What it answers |
 |---|---|
@@ -68,6 +68,7 @@ never runs unless you ask.
 | [`trazum verify`](#did-it-work-trazum-verify) | Did the plan's savings actually arrive? *Three outcomes, never two.* |
 | [`trazum history`](#the-long-run-trazum-history) | What have twenty reports been saying that no two of them could? *Shapes, never forecasts.* |
 | [`trazum connect`](#your-bill-without-the-export-trazum-connect) | What did the provider actually bill me? *Read from their API, nothing exported by hand.* |
+| [`trazum store`](#keeping-it-trazum-store) | What have I measured and kept? *Aggregates only — no prompt text, ever.* |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
 
 ## Contents
@@ -174,8 +175,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of eighteen commands — [the table
-above](#the-eighteen-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of nineteen commands — [the table
+above](#the-nineteen-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -239,7 +240,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other seventeen commands, each with its own section below:
+The other eighteen commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -247,6 +248,7 @@ trazum plan usage.jsonl              # the findings as a ranked plan
 trazum verify plan.json --against new.jsonl   # did it work?
 trazum history reports/              # the long run, from stored reports
 trazum connect anthropic             # your bill, read from the provider
+trazum store                         # what is kept, and what a prune takes
 trazum rank prompts/                 # which one to fix first
 trazum blame prompts/system.txt      # who made it expensive, and when
 trazum diff old.txt new.txt          # what this edit cost
@@ -934,6 +936,42 @@ describes less traffic than you asked about. `--dry-run` shows exactly what
 would be called and which variable the key would come from, sending nothing;
 `--payload <file>` prices a response you already have, with no credential at
 all.
+
+### Keeping it: `trazum store`
+
+A connector that re-downloads a month every time it runs is a connector
+nobody leaves on. `connect --store` keeps what it pulled:
+
+```
+The store: 14 measurements · $47.95 · 2026-08-01 → 2026-08-08
+  anthropic  14 measurements · 2026-08-01 → 2026-08-08 · 2 models
+
+  Held in 1 files: token counts, billed dollars and the account's own
+    workspace and key identifiers. Never prompt text, never completion text,
+    never a credential — this is a file you can back up without a privacy
+    review.
+```
+
+**Re-pulling converges instead of doubling.** A record is identified by its
+provider, window, model and grouping, so the same day pulled at noon and again
+at midnight is one fact restated — the later pull wins, because a window pulled
+again is at worst as complete as it was. That is what makes a scheduled hourly
+pull over a rolling day safe.
+
+**Deduplication that cannot lie.** Two records the store cannot tell apart — a
+window of no length, a record naming no model — are kept as *two* and reported
+as possibly-double rather than merged on a guess. A total built on them may
+count the same spend twice, and saying so beats a smaller number nobody can
+check. One line that will not parse costs that line, never the month.
+
+**Pruning is the one thing here that deletes**, so it refuses to run without a
+retention policy — `"store": {"keepDays": 90}` or `--keep 90d` — and says what
+went, with the span it covered and the dollars it held. `--dry-run` shows that
+before doing it.
+
+`trazum history --store` then builds the series straight from what is kept.
+Bucketed sources carry no label, so the label series is **absent and said to
+be**: nothing in that report claims a workload did or did not move.
 
 ### Charting it: `doctor --otlp-out`
 

@@ -29,7 +29,12 @@ export interface StoredReport {
   name: string;
   span: { fromMs: number; toMs: number } | null;
   totalUsd: number;
-  calls: number;
+  /**
+   * null when the source serves no request count — a bucketed usage API. Zero
+   * would read as "no traffic" against real spend, which is the reading this
+   * product refuses everywhere it can occur.
+   */
+  calls: number | null;
   /** Label → dollars this period. */
   byLabel: Map<string, number>;
   /** Model → dollars this period. */
@@ -70,7 +75,7 @@ export interface RepeatedPlanAction {
 export interface HistoryDocument {
   schemaVersion: 1;
   /** Ordered oldest first by span start. */
-  periods: { name: string; fromMs: number; toMs: number; totalUsd: number; calls: number }[];
+  periods: { name: string; fromMs: number; toMs: number; totalUsd: number; calls: number | null }[];
   /** Per label, dollars per period — null where the label had no traffic. */
   labelSeries: { label: string; points: (number | null)[] }[];
   /** Per model, share of that period's total — null where absent. */

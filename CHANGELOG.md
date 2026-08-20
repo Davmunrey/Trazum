@@ -11,7 +11,68 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**The store: a year of measured spend on disk, and not one prompt inside it.**
+A connector that re-downloads a month every time it runs is a connector nobody
+leaves on, and `history` needed a directory somebody curated by hand.
+`connect --store` keeps what it pulled, under `.trazum/store`. Second of the
+ten in docs/plan-1.41-1.50.md.
+
+**Convergence, not accumulation.** A record's identity is its provider,
+window, model and grouping. Re-pulling an overlapping window is the same fact
+restated, so the later pull wins — a window pulled again is at worst as
+complete as it was. Overlapping pulls are therefore idempotent, which is what
+lets a scheduled job run hourly over a rolling day without inventing money.
+
+**Deduplication that cannot lie.** Two records the store cannot tell apart — a
+window of no length, a record naming no model — are kept as *two* and reported
+as possibly-double, never merged on a guess: quietly smaller is the flattering
+direction. A line that will not parse costs that line and is named with its
+file and number, never the month around it. A record from a newer schema is
+kept and counted rather than guessed at.
+
+**What it holds, and what it never holds.** Token counts, billed dollars and
+the account's own workspace and key identifiers — never prompt text, never
+completion text, never a credential. A store a team can back up without a
+privacy review is the only kind worth having, and the inventory says so on
+every run rather than leaving somebody to guess about their own file.
+
+**Append-only, with compaction as an explicit errand.** A pull appends one
+block per month file and rewrites nothing: a crash loses the tail of a block
+rather than a year, and two runs interleave whole blocks rather than
+half-lines. Convergence resolves at read time. Only `store --prune` rewrites,
+because collapsing a log is the one operation that destroys something and it
+must never happen as a side effect of a pull.
+
+**Pruning refuses a policy nobody wrote down.** With neither `store.keepDays`
+in the config nor `--keep`, it refuses and names both — deleting measurements
+on a guessed policy is not a default anybody should get by accident. What went
+is reported with the span it covered and the dollars it held, and `--dry-run`
+says all of that before anything goes. A bucket that *ends* inside the
+retained period is kept whole, because half a bucket measures nothing.
+
+**`trazum history --store`** builds the series straight from what is kept.
+Bucketed sources carry no label — a usage API groups by model and workspace,
+never by workload — so the label series is **absent and said to be**, rather
+than empty and misread as "no workload moved". Reading stored `--json` report
+files keeps working unchanged.
+
+New core module `store.ts` (`resolveStore`, `recordsFromBuckets`,
+`bucketsFromRecords`, `storeInventory`, `pruneRecords`), browser-safe: the
+filesystem half lives in the CLI. New config block `store.keepDays`, with no
+default on purpose.
+
+### Fixed
+
+**An empty store no longer hides what it could not resolve.** Records it
+cannot tell apart, unparseable lines and records from a newer schema are real
+measurements on disk; reporting "the store is empty" over them would hide
+exactly what the reader needs to see.
+
+**A call count that does not exist is no longer printed as zero in a series.**
+`history` periods carry `calls: null` from a source that serves no request
+count, and the row omits the count instead of claiming no traffic.
 
 ## 1.41.0 — "The connector"
 

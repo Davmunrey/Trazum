@@ -49,6 +49,16 @@ export type { PlanAction, PlanActionKind, PlanAssumption, PlanDocument } from '.
 export { verifyPlan } from './verify.js';
 export { buildHistory, storedReportFrom, MIN_RUN } from './history.js';
 export {
+  STORE_SCHEMA_VERSION,
+  identityOf,
+  resolveStore,
+  recordsFromBuckets,
+  bucketsFromRecords,
+  storeInventory,
+  pruneRecords,
+} from './store.js';
+export type { PruneResult, ResolvedStore, StoreInventory, StoreRecord } from './store.js';
+export {
   CONNECTORS,
   connectorFor,
   normalizeAnthropicUsage,

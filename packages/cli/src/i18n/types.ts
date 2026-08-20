@@ -1073,6 +1073,33 @@ export interface CliMessages {
   };
 
   /**
+   * `trazum store` — the measurements kept on disk.
+   *
+   * The one part of this product that deletes something, so its copy is
+   * written to make that visible: what is held, what a prune would take, and
+   * a refusal when no retention policy exists to prune against.
+   */
+  store: {
+    /** Records appended by a pull that asked to keep them. */
+    appended(count: string, dir: string): string;
+    empty(dir: string): string;
+    heading(records: string, usd: string, from: string, to: string): string;
+    providerRow(provider: string, records: string, span: string, models: string): string;
+    /** What the store holds — and what it never holds. */
+    holds(files: string): string;
+    /** Records the store could not tell apart, kept whole rather than merged. */
+    possiblyDouble(count: string): string;
+    unknownVersion(count: string): string;
+    unreadable(file: string, line: string): string;
+    retention(days: string): string;
+    noRetention(): string;
+    /** Deleting on a policy nobody wrote down is refused, never defaulted. */
+    pruneNeedsPolicy(): string;
+    pruneDryRun(count: string, days: string, span: string | null, usd: string): string;
+    pruned(count: string, days: string, span: string | null, usd: string, kept: string): string;
+  };
+
+  /**
    * `trazum connect` — the bill, read from the provider.
    *
    * A usage API serves sums, so the report is restricted on purpose and says
@@ -1115,12 +1142,15 @@ export interface CliMessages {
     /** Under three dated reports there is no series — only the comparison --against already does. */
     needsThree(count: string): string;
     heading(periods: string, from: string, to: string): string;
-    periodRow(name: string, usd: string, calls: string, days: string): string;
+    /** `calls` is null on a source that serves no request count. */
+    periodRow(name: string, usd: string, calls: string | null, days: string): string;
     runLabel(label: string, periods: string, sinceName: string, from: string, to: string): string;
     runModel(model: string, periods: string, sinceName: string, from: string, to: string): string;
     runCache(periods: string, sinceName: string, from: string, to: string): string;
     /** The same action in plan after plan: a decision nobody is executing. */
     repeated(kind: PlanActionKind, label: string, model: string, appearances: string, first: string | null, last: string | null): string;
+    /** A store source carries no labels, so the label series is absent, not empty. */
+    storeNoLabels(): string;
     undated(name: string): string;
     unrecognized(name: string): string;
     footer(): string;

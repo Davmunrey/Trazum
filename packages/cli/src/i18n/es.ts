@@ -30,6 +30,7 @@ ${bold('USO')}
   trazum verify <plan.json> --against <nuevo.jsonl|dir> [opciones]
   trazum history <dir-de-informes-guardados> [opciones]
   trazum connect <anthropic|openai> [opciones]
+  trazum store [--prune] [opciones]
   trazum diff <antes> <después> [opciones]
   trazum diff --all <dir> <dir> [opciones]
   trazum rank <dir> [opciones]
@@ -327,6 +328,26 @@ ${bold('OPCIONES DE plan')}
   consejo haciéndose pasar por aritmética. El ahorro proyectado y el dinero ya
   gastado son totales separados en todas partes.
 
+${bold('OPCIONES DE store')}
+  --prune                     Borra las mediciones más antiguas que la política
+                              de retención y compacta el log a lo que el
+                              almacén ya resuelve. Dice qué se fue.
+  --keep <n>d                 Retención para esta ejecución, si la config no
+                              tiene ninguna.
+  --dry-run                   Con --prune: dice qué se iría y no borra nada.
+  --json                      El inventario como datos.
+
+  Dice qué guarda el almacén local: cuántas mediciones, sobre qué período, por
+  proveedor, y qué se llevaría una poda. El almacén guarda agregados y campos
+  de facturación — nunca texto de prompt, nunca texto de respuesta, nunca una
+  credencial — así que es un fichero que un equipo puede respaldar sin una
+  revisión de privacidad.
+
+  La poda es la única operación de aquí que destruye algo, así que se niega a
+  correr sin política de retención: pon "store": {"keepDays": 90} en la config
+  o pasa --keep. Borrar mediciones con una política que nadie escribió no es un
+  valor por defecto que nadie deba recibir por accidente.
+
 ${bold('OPCIONES DE connect')}
   --since <cuándo>            La ventana que se descarga. Un día UTC, una marca
   --until <cuándo>            ISO, una ventana relativa (7d, 24h) o "now". Por
@@ -337,6 +358,9 @@ ${bold('OPCIONES DE connect')}
   --payload <fichero>         Tasa un payload de uso que ya tengas, en vez de
                               descargar uno. Sin credencial y sin red — la misma
                               aritmética sobre la misma forma.
+  --store                     Guarda lo descargado en el almacén local, para que
+                              la próxima vez no haya que bajarlo otra vez y
+                              "trazum history --store" tenga una serie.
   -o, --out <fichero>         Guarda el informe tasado como JSON.
   --markdown-out <fichero>    Lo escribe además como Markdown, para CI.
   --json                      El informe como datos.
@@ -358,6 +382,12 @@ ${bold('OPCIONES DE connect')}
   que describe en silencio menos tráfico del que pediste.
 
 ${bold('OPCIONES DE history')}
+  --store                     Construye la serie desde el almacén local en vez
+                              de un directorio de informes guardados. Las
+                              fuentes agregadas no llevan label, así que la
+                              serie por label está ausente y se dice — las de
+                              cuota de modelo y de caché son para lo que existe
+                              una serie, y funcionan enteras.
   --markdown-out <fichero>    Escribe además la serie como Markdown, para un
                               resumen de CI o un comentario de pull request.
   --json                      La historia como datos.
@@ -1501,6 +1531,37 @@ ${bold('EJEMPLOS')}
       `Plan escrito en ${path}, con fecha. Guárdalo: una predicción que nadie apuntó es una predicción que no se le puede exigir a nadie.`,
   },
 
+  store: {
+    appended: (count, dir) => `Guardadas ${count} mediciones en ${dir}.`,
+    empty: (dir) =>
+      `El almacén de ${dir} está vacío. Llénalo con "trazum connect <proveedor> --store" — eso es un estado, no un error.`,
+    heading: (records, usd, from, to) =>
+      `El almacén: ${records} mediciones · ${usd} · ${from} → ${to}`,
+    providerRow: (provider, records, span, models) =>
+      `${provider}  ${records} mediciones · ${span} · ${models} modelos`,
+    holds: (files) =>
+      `Guardado en ${files} ficheros: recuentos de tokens, dólares facturados y los identificadores de workspace y clave de la propia cuenta. Nunca texto de prompt, nunca texto de respuesta, nunca una credencial — esto es un fichero que puedes respaldar sin una revisión de privacidad.`,
+    possiblyDouble: (count) =>
+      `${count} registros no se pudieron distinguir de otro — una ventana de longitud cero, o un registro que no nombra modelo. Se guardan enteros en vez de fundirse, así que un total construido sobre ellos puede contar el mismo gasto dos veces. Decirlo es mejor que un número más pequeño que nadie puede comprobar.`,
+    unknownVersion: (count) =>
+      `${count} registros vienen de un esquema más nuevo del que esta versión conoce, así que se conservan y quedan fuera de las cifras de arriba en vez de adivinarse. Actualiza para leerlos.`,
+    unreadable: (file, line) =>
+      `${file} línea ${line} no se pudo parsear, así que no está en las cifras de arriba. El resto del fichero sí se leyó — una línea rota no puede costar un mes.`,
+    retention: (days) => `Retención: ${days} días, de "store.keepDays". Ejecuta "trazum store --prune" para aplicarla.`,
+    noRetention: () =>
+      'No hay política de retención configurada, así que nunca se borra nada por su cuenta. Pon "store": {"keepDays": 90} cuando quieras una.',
+    pruneNeedsPolicy: () =>
+      'Podar necesita una política de retención: pon "store": {"keepDays": 90} en trazum.config.json, o pasa --keep 90d para esta ejecución. Borrar mediciones con una política que nadie escribió no es un valor por defecto que debas recibir por accidente.',
+    pruneDryRun: (count, days, span, usd) =>
+      span === null
+        ? `Nada es más antiguo que ${days} días, así que una poda no borraría nada.`
+        : `Una poda borraría ${count} mediciones de más de ${days} días, que cubren ${span} y ${usd} de gasto medido. No se borró nada — esto era --dry-run.`,
+    pruned: (count, days, span, usd, kept) =>
+      span === null
+        ? `Nada era más antiguo que ${days} días. ${kept} mediciones conservadas, y el log compactado.`
+        : `Borradas ${count} mediciones de más de ${days} días, que cubren ${span} y ${usd} de gasto medido. ${kept} conservadas, y el log compactado a lo que el almacén ya resolvía.`,
+  },
+
   connect: {
     noTarget: (providers) =>
       `Nombra un proveedor del que leer tu factura: trazum connect anthropic. Disponibles: ${providers}. La credencial sale del entorno y nunca se guarda — añade --dry-run para ver exactamente qué se llamaría y de qué variable saldría.`,
@@ -1538,7 +1599,8 @@ ${bold('EJEMPLOS')}
     needsThree: (count) =>
       `Una serie necesita al menos tres informes con fecha, y este directorio tiene ${count}. Dos informes son una comparación, y "trazum profile --against" ya la hace mejor.`,
     heading: (periods, from, to) => `La larga distancia: ${periods} períodos, ${from} → ${to}`,
-    periodRow: (name, usd, calls, days) => `${name}  ${usd} · ${calls} llamadas · ${days} días`,
+    periodRow: (name, usd, calls, days) =>
+      calls === null ? `${name}  ${usd} · ${days} días` : `${name}  ${usd} · ${calls} llamadas · ${days} días`,
     runLabel: (label, periods, sinceName, from, to) =>
       `${label} lleva ${periods} períodos consecutivos subiendo desde ${sinceName}: ${from} → ${to}. Una forma, no un pronóstico.`,
     runModel: (model, periods, sinceName, from, to) =>
@@ -1559,6 +1621,8 @@ ${bold('EJEMPLOS')}
       const span = first !== null && last !== null ? ` (${first} → ${last})` : '';
       return `${what} se ha planificado ${appearances} veces${span} y sigue en el plan más reciente — una decisión que nadie está revisando.`;
     },
+    storeNoLabels: () =>
+      'Esta serie viene del almacén, y una API de uso agrupa por modelo y workspace, no por carga de trabajo — así que aquí no hay serie por label en absoluto. Ausente, no vacía: nada de lo de arriba dice que una carga se moviera o dejara de moverse.',
     undated: (name) => `${name} no lleva período, así que no está en ninguna línea de tiempo de arriba — nombrado, nunca absorbido en silencio.`,
     unrecognized: (name) => `${name} no es ni un informe guardado ni un plan guardado, así que no está en ninguna serie de arriba.`,
     footer: () =>
