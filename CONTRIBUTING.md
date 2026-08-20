@@ -1,5 +1,11 @@
 # Contributing
 
+Two things before the detail. [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) applies
+to everyone taking part here, maintainer included, and it is explicit about what
+a single-maintainer project can and cannot promise about enforcement.
+[docs/README.md](docs/README.md) is the documentation index — if you are looking
+for how something works rather than how to change it, start there.
+
 ## The repository is English
 
 Source, comments, identifiers, tests, documentation, commit messages, issues

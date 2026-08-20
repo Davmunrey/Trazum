@@ -1,4 +1,9 @@
-# The plan through 1.50
+# The plan through 1.50 — delivered
+
+**All ten shipped, landing at 1.50.0.** This file is kept as it was written,
+before the code, rather than rewritten in hindsight. It is history now, not a
+forecast: nothing described below is still forthcoming. What the arc refused to
+ship, and what it got wrong, is in [our own medicine](our-own-medicine.md).
 
 Ten releases, each large on purpose, as one arc. The ordering is a
 commitment; the calendar is not, and no dates appear here for the reason
