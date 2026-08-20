@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.50.0 — "The standard"
+
 ### Added
 
 **`trazum conform` — the contracts become something to build against.** Ten

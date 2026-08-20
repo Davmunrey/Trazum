@@ -514,6 +514,19 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.50.0 — The standard
+
+The close of the arc `docs/plan-1.41-1.50.md` opened. `trazum conform` turns
+the ten documents this project emits into contracts somebody else can build
+against: does this conform (required fields, right types, gates in CI) and what
+can a valid document of this shape not answer, with the field that unlocks each
+— the second never gating, because choosing not to log sessions is a decision
+and not a defect. docs/format.md gathers the contracts, what `schemaVersion`
+promises and what only a version bump may change, and the rules a provider
+connector must follow. And docs/doctrine.md writes down the twenty rules the
+first fifty releases learned by getting each one wrong first, which is the
+actual argument for trusting a cost figure from any tool. Tenth of ten.
+
 ### 1.49.0 — The live budget
 
 One measured number, wherever it is asked for. `budgetPositions` turns a budget
