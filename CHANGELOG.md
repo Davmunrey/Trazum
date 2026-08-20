@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.48.0 — "The cost review"
+
 ### Added
 
 **Waivers get their history — the gap 1.40 named and could not fill.** 1.40

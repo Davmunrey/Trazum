@@ -514,6 +514,19 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.48.0 — The cost review
+
+Waivers get their history, closing the gap 1.40 named and refused to fill by
+inference. A waiver that silences a gate writes down that it did — the gate, the
+reason and expiry as they stood at that moment, the commit, the figures judged —
+and `trazum history` reads those lines back into habits with a typed verdict
+that separates an expiry pushed forward under an unchanged reason from a reason
+somebody rethought. Nothing is back-filled, a waiver nobody's build has hit is
+reported as dead config rather than habit, and a failure to write never fails
+the build. Plus docs/ci.md: GitLab, Jenkins, CircleCI and a pre-commit hook, one
+binary and two exit codes, no vendor plugin. Eighth of the ten in
+docs/plan-1.41-1.50.md.
+
 ### 1.47.0 — The browser sees the bill
 
 The plan and the verification join the bill in the tab, so the web app stops
