@@ -37,6 +37,7 @@ import {
   DEFAULT_USAGE,
   detectFromSource,
   matchLocale,
+  parsePlanDocument,
   proposeInit,
   MIN_RATE_DAYS,
   parseConfig,
@@ -3546,17 +3547,21 @@ async function commandVerify(
   const againstPath = stringFlag(args, 'against');
   if (againstPath === undefined) throw new Error(t.verify.needsAgainst());
 
-  let plan: PlanDocument & { createdAt?: string };
-  try {
-    const parsed = JSON.parse(await readFile(planPath, 'utf8'));
-    if (parsed?.schemaVersion !== 1 || !Array.isArray(parsed.actions)) {
-      throw new Error(t.verify.badPlan(planPath));
-    }
-    plan = parsed;
-  } catch (error) {
-    if (error instanceof SyntaxError) throw new Error(t.verify.badPlan(planPath));
-    throw error;
+  /**
+   * One validator, shared with the browser since 1.47.
+   *
+   * The check here used to be `schemaVersion === 1 && Array.isArray(actions)`
+   * and nothing more, which accepts a file whose actions are arbitrary
+   * objects — `verifyPlan` would then read `label` off `undefined`, match it
+   * against no slice, and report `cannot-tell: workload-vanished` for every
+   * one. A verification of a document that was never a plan, rendered exactly
+   * like a real one.
+   */
+  const parsed = parsePlanDocument(await readFile(planPath, 'utf8'));
+  if (!parsed.ok) {
+    throw new Error(t.verify.badPlan(planPath, t.verify.planRefusal(parsed.why)));
   }
+  const plan = parsed.plan;
 
   const GZ = LOG_EXTENSIONS.map((ext) => `${ext}.gz`);
   const READABLE = [...LOG_EXTENSIONS, ...GZ];

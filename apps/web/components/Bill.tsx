@@ -21,6 +21,7 @@ import {
 } from '@trazum/core';
 import type { BillLevers, CacheEconomics, UsageProfileReport } from '@trazum/core';
 
+import { Plan } from './Plan';
 import { track } from './Analytics';
 import { AnimatedContent } from './motion/AnimatedContent';
 import { Button } from '@/components/ui/button';
@@ -1363,6 +1364,14 @@ function Report({
                   ))}
             </CardContent>
           </Card>
+
+          {/*
+            The rest of the loop, in the tab. The bill has been readable here
+            since 1.36 and everything done *with* a bill — rank the actions,
+            save the decision, come back and ask whether it worked — lived
+            only in a terminal, which made this a demo of the smallest half.
+          */}
+          <Plan report={report} levers={levers} t={t} />
         </div>
       </div>
     </AnimatedContent>

@@ -1814,8 +1814,18 @@ ${bold('EXAMPLES')}
       'Point this at a saved plan and a newer log: trazum verify plan.json --against usage.jsonl. It says, per action, whether the change arrived, did not arrive, or cannot be told — and never fewer than those three.',
     needsAgainst: () =>
       '--against <newer.jsonl|dir> is required. A plan can only be verified against a log that came after it; without one there is nothing to hold the prediction to.',
-    badPlan: (path) =>
-      `${path} is not a plan document this tool can verify — expected the JSON that "trazum plan -o" writes (schemaVersion 1, with an actions array).`,
+    badPlan: (path, why) =>
+      `${path} is not a plan document this tool can verify: ${why}. Expected the JSON that "trazum plan -o" writes.`,
+    planRefusal: (why) =>
+      why.kind === 'not-json'
+        ? 'it is not valid JSON'
+        : why.kind === 'not-an-object'
+          ? 'the top level is not a JSON object'
+          : why.kind === 'wrong-schema-version'
+            ? `schemaVersion is ${JSON.stringify(why.found)} rather than 1`
+            : why.kind === 'actions-not-a-list'
+              ? 'there is no actions array'
+              : `action ${why.index + 1} is malformed (${why.because})`,
     heading: (actions, planDate) =>
       planDate === null
         ? `Did it work? ${actions} actions from an undated plan, against this log`

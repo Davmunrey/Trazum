@@ -1844,8 +1844,18 @@ ${bold('EJEMPLOS')}
       'Apunta esto a un plan guardado y a un registro posterior: trazum verify plan.json --against usage.jsonl. Dice, por acción, si el cambio llegó, no llegó o no se puede saber — y nunca menos de esos tres.',
     needsAgainst: () =>
       '--against <nuevo.jsonl|dir> es obligatorio. Un plan solo puede verificarse contra un registro posterior; sin uno no hay nada a lo que someter la predicción.',
-    badPlan: (path) =>
-      `${path} no es un documento de plan que esta herramienta pueda verificar — se esperaba el JSON que escribe "trazum plan -o" (schemaVersion 1, con un array actions).`,
+    badPlan: (path, why) =>
+      `${path} no es un documento de plan que esta herramienta pueda verificar: ${why}. Se esperaba el JSON que escribe "trazum plan -o".`,
+    planRefusal: (why) =>
+      why.kind === 'not-json'
+        ? 'no es JSON válido'
+        : why.kind === 'not-an-object'
+          ? 'el nivel superior no es un objeto JSON'
+          : why.kind === 'wrong-schema-version'
+            ? `schemaVersion es ${JSON.stringify(why.found)} en vez de 1`
+            : why.kind === 'actions-not-a-list'
+              ? 'no hay un array actions'
+              : `la acción ${why.index + 1} está mal formada (${why.because})`,
     heading: (actions, planDate) =>
       planDate === null
         ? `¿Funcionó? ${actions} acciones de un plan sin fecha, contra este registro`

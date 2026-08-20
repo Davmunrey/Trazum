@@ -230,3 +230,91 @@ export function buildPlan(
 export function planLabelName(label: string, unlabelled: string): string {
   return label === UNLABELLED ? unlabelled : label;
 }
+
+/**
+ * Every action kind a plan may carry, as a value.
+ *
+ * Exported because the validator below needs to reject a kind nobody wrote,
+ * and a second hand-maintained copy of this list is how a kind added in one
+ * place stops being accepted in the other.
+ */
+export const PLAN_ACTION_KINDS: readonly PlanActionKind[] = [
+  'route',
+  'batch',
+  'route+batch',
+  'fix-truncation',
+  'fix-caching',
+];
+
+/** Why a file is not a plan, in a shape a caller can render in its own words. */
+export type PlanParseFailure =
+  | { kind: 'not-json' }
+  | { kind: 'not-an-object' }
+  | { kind: 'wrong-schema-version'; found: unknown }
+  | { kind: 'actions-not-a-list' }
+  | { kind: 'action-malformed'; index: number; because: string };
+
+export type PlanParseResult =
+  | { ok: true; plan: PlanDocument & { createdAt?: string } }
+  | { ok: false; why: PlanParseFailure };
+
+/**
+ * Reads a `plan.json` back, or says exactly why it is not one.
+ *
+ * **One validator, because there were two and they were not the same.** The
+ * CLI checked `schemaVersion === 1 && Array.isArray(actions)` inline and
+ * nothing more — which accepts a file whose `actions` are arbitrary objects,
+ * and `verifyPlan` would then read `action.label` off `undefined` and report a
+ * verification of nothing. The browser needed the same check in 1.47, and a
+ * second copy written beside the first is a guarantee they drift.
+ *
+ * It returns a result rather than throwing. A refusal has to be *rendered* in
+ * the browser and *localised* in the terminal, and an exception with an
+ * English message baked in can be neither.
+ *
+ * Deliberately shallow past the fields verification actually reads. A stricter
+ * check would reject plans written by an older version of this tool over
+ * fields nothing looks at, and a document format that rejects its own past is
+ * one nobody commits.
+ */
+export function parsePlanDocument(text: string): PlanParseResult {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return { ok: false, why: { kind: 'not-json' } };
+  }
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    return { ok: false, why: { kind: 'not-an-object' } };
+  }
+  const doc = parsed as Record<string, unknown>;
+  if (doc.schemaVersion !== 1) {
+    return { ok: false, why: { kind: 'wrong-schema-version', found: doc.schemaVersion } };
+  }
+  if (!Array.isArray(doc.actions)) {
+    return { ok: false, why: { kind: 'actions-not-a-list' } };
+  }
+  for (const [index, raw] of doc.actions.entries()) {
+    if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+      return { ok: false, why: { kind: 'action-malformed', index, because: 'not an object' } };
+    }
+    const action = raw as Record<string, unknown>;
+    // The three fields `verifyPlan` reads on every action, in the order it
+    // reads them. An action missing any of these is not a weaker action; it
+    // is a verification that would report an outcome for a workload it never
+    // identified.
+    if (typeof action.label !== 'string') {
+      return { ok: false, why: { kind: 'action-malformed', index, because: 'label is not a string' } };
+    }
+    if (typeof action.model !== 'string') {
+      return { ok: false, why: { kind: 'action-malformed', index, because: 'model is not a string' } };
+    }
+    if (!PLAN_ACTION_KINDS.includes(action.kind as PlanActionKind)) {
+      return {
+        ok: false,
+        why: { kind: 'action-malformed', index, because: `kind is not one of ${PLAN_ACTION_KINDS.join(', ')}` },
+      };
+    }
+  }
+  return { ok: true, plan: doc as unknown as PlanDocument & { createdAt?: string } };
+}

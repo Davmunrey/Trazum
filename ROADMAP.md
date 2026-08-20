@@ -514,6 +514,19 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.47.0 — The browser sees the bill
+
+The plan and the verification join the bill in the tab, so the web app stops
+being a demo of the smallest half of the product. Ranked actions with the money
+as a projection or a measured stake and never both, each naming what it assumes
+and how to check it; **Save plan.json** writes byte-for-byte what `trazum plan
+-o` writes, so a decision made in a browser is committable, gateable in CI and
+openable back here; and opening a saved plan turns the log in the tab into the
+check on it, three outcomes with their reasons kept distinct. Saved as a file
+rather than a link, because a link means storing somebody's bill. One shared
+validator, `parsePlanDocument`, replaces two checks that were not the same.
+Seventh of the ten in docs/plan-1.41-1.50.md.
+
 ### 1.46.0 — Five minutes
 
 `trazum init` takes somebody from `npx @trazum/cli` to a finding worth money

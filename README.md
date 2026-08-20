@@ -394,7 +394,7 @@ In GitHub Actions, use the packaged action — nothing to install:
 
 ```yaml
 - uses: actions/checkout@v7
-- uses: Davmunrey/Trazum@336f70aa20209567081a5cc4a1fdc6fca0c6fd3a  # 1.45.0
+- uses: Davmunrey/Trazum@acf32d19d69523c36743fb227746dfab56a8b61c  # 1.46.0
   with:
     target: prompts/system.txt
     max-tokens: 2000
@@ -440,7 +440,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v7
-  - uses: Davmunrey/Trazum@336f70aa20209567081a5cc4a1fdc6fca0c6fd3a  # 1.45.0
+  - uses: Davmunrey/Trazum@acf32d19d69523c36743fb227746dfab56a8b61c  # 1.46.0
     with:
       target: prompts/            # a directory uses trazum.config.json budgets
       comment: true
@@ -469,7 +469,7 @@ run gates tokens before the money is spent or the spend itself, and saying
 which is the caller's job:
 
 ```yaml
-- uses: Davmunrey/Trazum@336f70aa20209567081a5cc4a1fdc6fca0c6fd3a  # 1.45.0
+- uses: Davmunrey/Trazum@acf32d19d69523c36743fb227746dfab56a8b61c  # 1.46.0
   with:
     usage-log: logs/yesterday.jsonl
     max-usd: '50'            # exit 1 over budget — no period assumed
@@ -912,7 +912,9 @@ cache loss) are separate totals throughout, because "what you would save" and
 Every action carries what the log cannot confirm — the cheaper model's
 competence, the batch window's tolerability — and the command that can check
 it when one exists. `--min-usd` drops the noise floor and says how many
-actions it dropped and what they were worth together. `-o plan.json` saves
+actions it dropped and what they were worth together. [The document it writes
+is documented field by field](docs/plan-format.md), because a plan is the one
+output here meant to be committed and read back later. `-o plan.json` saves
 the plan dated, so a later log can be held against it; `--markdown-out` and
 `--json` as everywhere else.
 
@@ -1569,6 +1571,17 @@ pricing catalogue. **Nothing is uploaded**: there is no fetch in that
 component, a test fails if one appears, and the only analytics event carries
 two booleans. A usage log names your workloads, spend and conversation counts —
 exactly the file nobody should have to hand to a server to see a report on it.
+
+**Under the report, the rest of the loop.** The ranked plan — each action with
+its money as a projection *or* a measured stake and never both, the typed
+assumption it rests on, and the command that would check that assumption — and
+below it, *Did it work?*. **Save plan.json** writes byte-for-byte what
+`trazum plan -o` writes, so a plan made in a tab can be committed, gated on in
+CI, and opened back here later. Opening a saved plan turns the log in the tab
+into the check on it: three outcomes, never two, with the three cannot-tell
+reasons kept distinct. Saved as a file rather than offered as a link, because a
+link would mean this page storing somebody's bill somewhere — an access-control
+question nobody has designed. [The plan format is documented](docs/plan-format.md).
 
 The HTTP API behind it is public and small:
 
