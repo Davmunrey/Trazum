@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.50.4 — "The outcome"
+
 ### Added
 
 **An `outcome` on the usage record — the counterpart every figure here has been

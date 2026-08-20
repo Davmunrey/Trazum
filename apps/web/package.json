@@ -1,6 +1,6 @@
 {
   "name": "@trazum/web",
-  "version": "1.50.3",
+  "version": "1.50.4",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,7 +13,7 @@
   },
   "dependencies": {
     "@fontsource-variable/fraunces": "^5.3.0",
-    "@trazum/core": "1.50.3",
+    "@trazum/core": "1.50.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.31.0",
