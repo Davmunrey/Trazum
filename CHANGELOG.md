@@ -13,6 +13,50 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**`npm test` said "core + cli test suites". It runs five.** `CONTRIBUTING.md`
+printed four commands with a comment beside each explaining what it covers. Two
+were written before `@trazum/mcp` existed and never revisited:
+
+- `npm run build      # core + cli` — it builds **three** workspaces.
+- `npm test           # core + cli test suites` — it runs **five**: core, the
+  CLI, MCP, the web app and the Action.
+
+**The same omission had reached CI's step names**, from the same cause: *Build
+library and CLI* and *Tests (core, CLI, web, Action)*. So the MCP package's
+tests ran on every pull request under a label that did not mention them, and a
+contributor whose check failed there had to read the workflow to find out what
+had actually run.
+
+**Nothing was broken by this** — every suite ran, and `verify` remains a
+superset of what CI does. What was wrong is the thing a stranger reads to decide
+whether their change is covered. Someone adding an MCP tool could reasonably have
+concluded `npm test` did not reach it, and either skipped it or duplicated it.
+
+Correcting the CI label turned up a smaller one: the build step called
+`@trazum/core` *"library"*. It is not wrong English — core is the library — but
+a step name is what a contributor scans when a check goes red, and the package
+it names should be the package they can grep for. It now says core.
+
+### Added
+
+**`contributing.test.js` — what the documentation says each command runs,
+against what it runs.** Coverage is computed from `package.json` by walking each
+script's `-w @trazum/…` flags **and any script it calls**, so `verify` resolves
+through `build`, `test` and `typecheck` without a list kept anywhere. Four
+assertions: the comment beside `npm run build`, `npm test` and `npm run
+typecheck`, plus the CI step names read out of `ci.yml`.
+
+**Membership, not wording.** The sentence may be phrased however reads best —
+`# all four workspaces` is accepted for `typecheck` because it is a true
+statement about every one of them — as long as each workspace the script really
+drives is named. A count would have gone stale exactly as the prose did.
+
+Proven by restoring all four original texts. `npm run build` reports *"runs
+these and its comment does not name them: @trazum/mcp"*; `npm test` reports
+*"@trazum/mcp, @trazum/web, action"* — three of its five suites hidden by one
+comment; the CI names report *"Build library and CLI" omits @trazum/core* and
+*omits @trazum/mcp*, and *"Tests (core, CLI, web, Action)" omits @trazum/mcp*.
+
 **The README told you Anthropic's cache floor was 512. It spans 512 to 4,096,
 and the error ran in the direction that promises money.** The provider-facts
 table under *Every model you pay for by the token* said *"Cache minimum | 512 on

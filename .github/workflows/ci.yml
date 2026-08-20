@@ -42,14 +42,14 @@ jobs:
       - name: Install dependencies
         run: npm ci --ignore-scripts
 
-      - name: Build library and CLI
+      - name: Build core, CLI and MCP server
         run: npm run build
 
       # Named for what it runs. `npm test` at the root covers core, CLI, web and
       # the Action, and has for a while — a step labelled "Core and CLI tests"
       # invites somebody reading a green build to think the other two are
       # unchecked, or somebody adding a suite to think they need a new step.
-      - name: Tests (core, CLI, web, Action)
+      - name: Tests (core, CLI, MCP, web, Action)
         run: npm test
 
       - name: Typecheck the web app
