@@ -1,6 +1,6 @@
 {
   "name": "@trazum/mcp",
-  "version": "1.40.0",
+  "version": "1.41.0",
   "description": "Trazum as an MCP server: let an agent price and budget its own prompts before it sends them.",
   "license": "MIT",
   "author": "David Mu\u00f1oz Rey",
@@ -37,7 +37,7 @@
     "prepublishOnly": "npm run build && npm test"
   },
   "dependencies": {
-    "@trazum/core": "1.40.0"
+    "@trazum/core": "1.41.0"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",

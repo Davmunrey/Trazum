@@ -514,6 +514,17 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.41.0 — The connector
+
+`trazum connect` reads the bill from Anthropic's and OpenAI's usage APIs, so
+nothing has to be exported by hand. The credential is borrowed from the
+environment and never stored, never printed and never committed — four guards
+fail the build rather than promising it. A connected report is restricted on
+purpose: usage APIs serve sums, so every per-call finding is listed as
+unavailable with what would unlock it, in a document shape of its own so
+nothing can read a zero the connector wrote. First of the ten in
+docs/plan-1.41-1.50.md.
+
 ### 1.40.0 — The long run
 
 `trazum history` builds the series no pairwise comparison can see, from

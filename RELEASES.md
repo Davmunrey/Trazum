@@ -40,6 +40,154 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.41.0 — "The connector"
+
+The first of the ten planned in `docs/plan-1.41-1.50.md`, and the first
+release whose subject is not a finding but an *invocation*. Through 1.40 the
+loop became complete and stayed inert: seventeen commands, all of them reading
+a file somebody produced by hand. The export step is where adoption dies — the
+person who would benefit most from a cost report is the person least likely to
+have a `usage.jsonl` lying around.
+
+### `trazum connect <provider>` — the bill, read from the provider
+
+```
+Anthropic · 2026-08-01 → 2026-08-06 · $136.00
+  claude-opus-5       $106.00   77.9%
+  claude-haiku-4-5     $30.00   22.1%
+
+  Caching added $11.00 to this bill against what the same tokens would have
+    cost as ordinary input.
+
+  Anthropic's usage report serves token sums and no request count, so there
+    is no call count here and no per-call average. A zero would read as "no
+    traffic", so nothing is printed instead.
+
+  ! some-private-model is not in the price catalogue, so its 4,505,000
+    tokens are counted and its money is not. Add it with --pricing rather than
+    reading the total as complete.
+
+  Findings this source cannot support: inputShapes, truncationRetries,
+    repeatedTurns, sessionCosts, contextPressure, duplicateLines, calls. They
+    need one row per call, and a sum has lost the rows — a per-call log still
+    answers them.
+```
+
+Anthropic and OpenAI in this release, over a window `--since`/`--until` name
+with the grammar `profile` already had — a UTC day, an ISO timestamp, `7d`,
+`24h`, `now` — defaulting to the last thirty days.
+
+### The credential is borrowed, never held
+
+This is the first credential Trazum handles that belongs to somebody else's
+*account*, and the discipline is the whole point of the release:
+
+- **Read from the environment at the moment of the call.**
+  `TRAZUM_ANTHROPIC_ADMIN_KEY` and `TRAZUM_OPENAI_ADMIN_KEY`, with each
+  provider's own variable as a fallback. Never written to a config, a cache, a
+  report or an error message; the caller of the credential lookup gets back the
+  *name of the variable*, never the value, so an error handler that prints its
+  source cannot leak a key.
+- **Redaction covers the key we hold and the ones we do not.** A provider that
+  quotes a key back inside its own error body — the mistyped one, one from a
+  proxy's log line — would leak it through Trazum's output; every response body
+  that reaches an error passes through redaction on the way, and the key
+  *shapes* are redacted alongside the exact string.
+- **The narrowest key that works, named in the refusal.** A usage report needs
+  read access and nothing that could spend money. A key the endpoint rejects
+  produces an error naming the key *kind* required, never the key.
+- **The endpoint is compiled in, not accepted from a flag.** Trazum's SSRF
+  posture since 1.14 is that a caller *selects* an endpoint rather than naming
+  one; a usage connector taking `--base-url` would hand that property back for
+  the convenience of a self-hosted proxy nobody has asked for.
+
+**Four guards fail the build rather than promising any of it.** No real-shaped
+key material may be committed anywhere in the repository — the pattern is
+calibrated against what a real key looks like, so an obviously fake fixture in
+a test stays legal and a leak does not. The module that holds a key may not
+call `console` or write a file at all. Every provider response body reaching an
+error must pass through `redact`. And the endpoints must stay compiled in, with
+no flag naming a URL. Each was checked against a planted probe before being
+trusted: a guard that never fires is a guard nobody should believe.
+
+### A connected report is a restricted report, and says so
+
+Usage APIs serve **sums over a window**, not one row per call. The totals, the
+model split, the day series and the cache verdict all work on a sum. Six
+findings do not, and each is listed with why and what would unlock it:
+`inputShapes` (the spread of call sizes is not in a sum), `truncationRetries`
+(pairing needs both calls, their order and their stop reasons), `repeatedTurns`
+(the same request twice is invisible once added together), `sessionCosts`
+(conversations are not a dimension any usage API groups by), `contextPressure`
+(it reads the largest single call, and a total has lost the maximum) and
+`duplicateLines` (a doubled bill is caught by finding identical rows).
+
+**It carries its own document shape**, rather than a `UsageProfileReport` with
+holes in it. That is the load-bearing design decision of the release: with a
+shared shape, a per-call finding would eventually read a zero this code wrote
+and report "nothing found" about something nobody measured. Not recorded is not
+not-happened — here enforced by the type system rather than by care.
+
+### The asymmetry between providers is kept, not papered over
+
+- **OpenAI serves a request count and Anthropic does not.** So a connected
+  OpenAI report carries per-call averages and a connected Anthropic report says
+  why it carries none: `calls` is `null`, never `0`, because zero reads as "no
+  traffic" against real spend. Merged buckets follow the same rule — a known
+  count added to an unknown one is unknown, not a number describing half the
+  traffic.
+- **OpenAI reports cached tokens *inside* the input total.** Read at face
+  value, the same tokens would be billed twice — once at the full input rate
+  and again at the cache rate. The uncached half is the subtraction.
+- **Anthropic's two cache-write TTLs are kept apart**, as everywhere else in
+  this product, because they bill at 1.25x and 2x and a total that has lost the
+  split cannot be repriced. When only the flat legacy field is served, the
+  cheaper rate is assumed for the headline and the worst case is carried, so
+  the cache verdict says *unsettled* rather than settling in your favour.
+
+### A partial pull is a partial pull, out loud
+
+Six gap kinds, each returned with what did arrive rather than thrown away:
+`rate-limited` (the provider stopped us, and the rest of the window was not
+measured), `cursor-expired` (it said there was more and served no cursor to
+reach it), `page-limit` (fifty pages, so the window is incomplete — narrow it),
+`unreadable-entry` (a bucket with no readable window, or a result naming no
+model, is left out and named), `unreadable-field` and `retention-boundary`. A
+bill quietly short by an unknown amount is the failure this repository refuses
+everywhere it can occur, and a paginated API behind a rate limit is exactly
+where it occurs.
+
+### Two ways to run it without spending anything
+
+- **`--dry-run`** prints exactly what would be called and which environment
+  variable the key would come from. It sends nothing and needs no credential —
+  the way to find out what this command wants before giving it anything.
+- **`--payload <file>`** prices a response you already have, with no credential
+  and no network. People save API responses: from a support thread, from a curl
+  in a runbook, from a colleague who has the admin key when they do not.
+
+### The module underneath
+
+`@trazum/core` gains `connector.ts` (`CONNECTORS`, `normalizeAnthropicUsage`,
+`normalizeOpenAIUsage`, `bucketedProfile`, `bucketedCacheEconomics`),
+browser-safe and pure: the fetch, the credentials and the pagination live in
+the CLI, the same split `openrouterOverlay` has had since 1.13. The connected
+document is contracted in docs/json-output.md and enforced in both directions
+by a parity test. `--since`/`--until` parsing moved to one shared parser: two
+parsers for one flag pair is one too many.
+
+### What changed from the plan, on the record
+
+The plan said `--from-provider` on every command that reads a log. **It is not
+in this release**, and the reason is the release's own argument: these sources
+serve aggregates, and wiring an aggregate into a per-call report means
+synthesising rows — inventing the very per-call data the module spends its
+length refusing to invent. Those commands get connected data when a per-call
+source exists, which is the gateway in 1.51. Shipping the flag over synthesised
+rows would have been the flattering version of this release.
+
+---
+
 ## 1.40.0 — "The long run"
 
 The fifth and last of the five planned in `docs/plan-1.36-1.40.md` — the
