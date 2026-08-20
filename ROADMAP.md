@@ -514,6 +514,18 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.50.1 — The numbering
+
+A patch that changes what a patch means. The version number now carries the
+narrative: a chapter of the arc in progress is a patch, and the minor is spent
+only on the release that lands the arc's thesis — so the next arc runs 1.50.1
+through 1.50.9 and finishes at 1.51.0. Major is unchanged and remains the only
+number that carries risk. What it costs somebody pinning `~1.50.0` is stated in
+its own section of VERSIONING.md rather than left to be found in a diff, and
+the reason the field was free to reassign is that inside a frozen 1.x line
+minor and patch are both additions-only, so the distinction was carrying
+nothing.
+
 ### 1.50.0 — The standard
 
 The close of the arc `docs/plan-1.41-1.50.md` opened. `trazum conform` turns
@@ -1220,7 +1232,11 @@ budget (1.49), and the format and guarantees other tools can build on
 (1.50).
 
 After it, ten more are planned as a second arc:
-[docs/plan-1.51-1.60.md](docs/plan-1.51-1.60.md). Its thesis is the gap this
+[docs/plan-1.51.md](docs/plan-1.51.md) — **nine chapters as 1.50.1 through
+1.50.9, landing as 1.51.0**, under the numbering
+[VERSIONING.md](VERSIONING.md#what-the-three-numbers-mean-here) adopted at
+1.50.1: a patch is a chapter, and the minor is spent only on the release that
+finishes the story. Its thesis is the gap this
 product has carried since the beginning — every figure it prints is a
 denominator with no numerator. It can say a workload got 40% cheaper and
 cannot say whether it stopped working. A gateway in the path of the call and

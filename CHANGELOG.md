@@ -13,6 +13,55 @@ merged commit with no entry is a change only `git log` remembers.
 
 Nothing yet.
 
+## 1.50.1 — "The numbering"
+
+**A patch that changes what a patch means**, which is the only release where
+that is not a contradiction.
+
+### Changed
+
+**The version number now carries the narrative.** Work here is planned in arcs
+of about ten releases with a single thesis — `docs/plan-1.41-1.50.md` was *the
+loop is complete and inert*, and everything from the connector to the
+conformance check served it. From now on a **chapter of the arc in progress is
+a patch**, and the **minor is spent only on the release that lands the thesis**.
+So the next arc runs 1.50.1 through 1.50.9 and finishes at 1.51.0 — which is
+not "the release after 1.50.9" but the one where a story ends.
+
+**What that costs, and it is stated rather than buried.** Under strict semver a
+patch adds nothing, and here it will: a patch release can add a command, a flag,
+a document format or a rule. Somebody pinning `~1.50.0` expecting only bug fixes
+will receive features. It cannot *break* them — the 1.x freeze is untouched and
+is the promise that actually matters — but "you get more than you expected" is a
+real surprise, and `VERSIONING.md` now says so in its own section rather than
+leaving it to be discovered from a diff. `^1.50.0` behaves identically under
+either scheme and is the intended range.
+
+The reason the field was available to reassign: inside a frozen 1.x line, minor
+and patch are *both* additions-only, so the distinction between them was never
+load-bearing for safety. It was carrying nothing.
+
+**The deprecation window got longer and stays as written.** "At least two minor
+versions" is now roughly twenty releases rather than two. That is a
+strengthening, and it was not rewritten to preserve the old duration, because
+the old duration was never the thing being promised — the clause exists so a
+deprecation outlives the attention span of whoever wrote it.
+
+### Documentation
+
+**`docs/plan-1.51-1.60.md` is now `docs/plan-1.51.md`**, renumbered: nine
+chapters as 1.50.1 through 1.50.9, landing as 1.51.0. The arc, its thesis and
+every release's content are unchanged — only what they are called.
+
+The 1.40.0 changelog entry below still names the old path. That is deliberate:
+below the first version heading this file is a record, and rewriting a shipped
+entry to match a later rename would be falsifying history to tidy a link.
+
+**`VERSIONING.md` opens with what the three numbers mean** instead of with a
+caveat about a pre-1.0 world nobody is in any more, and `docs/releasing.md`
+answers "which number" before step one rather than assuming the answer is
+obvious.
+
 ## 1.50.0 — "The standard"
 
 ### Added
