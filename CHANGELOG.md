@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.43.0 — "The watch"
+
 ### Added
 
 **`trazum watch`: the afternoon it happened, said that afternoon.** Every gate

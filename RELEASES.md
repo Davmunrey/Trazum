@@ -40,6 +40,119 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.43.0 — "The watch"
+
+The third of the ten planned in `docs/plan-1.41-1.50.md`. 1.41 made the bill
+readable without an export and 1.42 made it stay. Both still wait for somebody
+to type something — and the failures worth catching (a retry loop, a prompt
+that grew, a model swapped in a deploy) happen at 3pm on a Tuesday, where a
+report that arrives three weeks later is an obituary.
+
+### `trazum watch`
+
+```
+CROSSED — Total spend is $50.00 against a limit of $25.00. Measured, not
+  projected.
+CROSSED — Spend on 2026-08-03 is $30.00 against a limit of $15.00. Measured,
+  not projected.
+```
+
+**One cycle is the primitive.** `--once` measures, keeps, evaluates, emits and
+remembers — that is what a cron entry runs, and what every test exercises.
+`--interval 15m` is that same cycle in a timer. One code path, so there is no
+daemon-only behaviour that nobody tests, and the thing that ships is the thing
+the suite proves.
+
+**The interval has a five-minute floor.** Usage APIs are rate limited, and a
+tight loop is how a tool that exists to save somebody money gets their key
+throttled instead.
+
+### An alert fires on a measured crossing, never on a projection
+
+"You have spent $412 of a $400 budget, measured over these calls" is a fact.
+"You will exceed" is a forecast, and this product has refused those at every
+window length since 1.27. That distinction is the only reason an alert at 3am
+can be trusted.
+
+Every crossing carries `provenance: 'measured'` **as a field**, even though it
+can hold exactly one value today. A consumer that cannot see the provenance
+will treat whatever arrives as fact, and a later version of that file must not
+be able to smuggle an estimate past a reader by leaving the question unasked.
+
+### A day still being measured is not judged, and not passed either
+
+At noon, a threshold over that day is a threshold over half a day, so the gate
+reports *not yet judgeable* with how much of the period is covered — three
+states, never two, and a gate silently skipped for a week reads exactly like a
+gate that has been passing for a week.
+
+**A day already over budget fires whatever the hour**, because it does not
+become less over budget at midnight. The coverage floor suppresses an unripe
+verdict and never a real crossing. It sits below perfection deliberately: a
+usage API's last bucket lags minutes behind, and a gate that waits for a whole
+day never judges anything.
+
+### A restart is not amnesia, and quiet is not clean
+
+```
+STILL OVER — Total spend is $50.00 against a limit of $25.00, and was already
+  reported. Quiet is not clean.
+```
+
+**This is the failure the release found in itself.** The first version reported
+*"Within every threshold"* on the cycle after an alert — it had suppressed the
+alert and, in doing so, the fact. That is exactly the flattering reading this
+repository refuses everywhere else. A crossing already reported now comes back
+as `suppressed`, prints as STILL OVER, and **keeps the run failing**: "we
+alerted about this" and "this is fine now" are different sentences.
+
+The stretch between cycles that nobody watched is named once, because a
+watcher that resumes in silence implies coverage it did not have.
+
+### Three transports, all boring
+
+A non-zero exit code so cron mails it, a JSON event on stdout for any pipeline,
+and `--webhook` for wherever the alerts already go. No hosted service, no
+account. **A receiver that is down is reported and swallowed** — the crossing
+already went out through the other two, and losing them because somebody's
+server fell over would make the quietest failure the loudest one.
+
+### The webhook is a new outbound surface, and three guards fail the build
+
+- **A URL carrying credentials is refused.** URLs end up in logs, shell history
+  and error messages; the secret belongs in a header the receiver checks.
+- **Plain http is refused off loopback.** An alert carries spend figures, and
+  sending them in the clear across a network is a leak nobody asked for.
+  Loopback is allowed, because pointing a watcher at your own alerting daemon
+  is the ordinary case rather than the attack.
+- **The payload's shape is pinned** to figures and gate names, and the delivery
+  path may not throw.
+
+This is deliberately **not** the SSRF case `checkedEndpoint` guards. That rule
+exists because a *request body* must never name a host — an anonymous caller
+pointing a shared server at an internal address. Here the URL is in the
+operator's own config on their own machine, which is why loopback is allowed at
+all, and the distinction is written down rather than left to be inferred. Each
+guard was proven with a planted probe before being trusted: a guard that never
+fires is a guard nobody should believe.
+
+### Changed
+
+**`spend.maxCacheLossUsd` is now a config key**, not only a flag. It has gated
+since 1.21 and only from an invocation, which made it a policy `watch` could
+not read — and a policy that lives in one command line is a policy nothing else
+can act on.
+
+### What stayed out, and why
+
+Alerting on anything a usage API cannot serve. `spend.bySource` gates on log
+paths, and a usage API has none; rather than quietly passing that gate on a
+connected source, `watch` reports it as unjudgeable on this source. Making it
+work needs per-call data with its origin attached, which arrives with the
+gateway in 1.51.
+
+---
+
 ## 1.42.0 — "The store"
 
 The second of the ten planned in `docs/plan-1.41-1.50.md`. 1.41 made the bill
