@@ -1666,7 +1666,9 @@ ${bold('EXAMPLES')}
     nothingMeasured: (dir) =>
       `Nothing is measured yet (the store at ${dir} is empty), so the budget half of every answer will say so. The cost half still answers from the catalogue: offline is a mode, not a failure.`,
     noBudget: () =>
-      'No spend.maxUsd is configured, so "is there budget left" has no subject and every answer says so rather than guessing one.',
+      'No spend.monthlyUsd is configured, so "is there budget left" has no subject and every answer says so rather than guessing one. spend.maxUsd is deliberately not read here: it gates whatever period a log covers, and reading it as a monthly limit is how two surfaces of this tool come to disagree.',
+    partialCoverage: (measuredDays, elapsedDays, period) =>
+      `Only ${measuredDays} of the ${elapsedDays} elapsed days of ${period} carry any measurement, so the consumed figure is a floor on the period rather than the period. Pull the missing days with trazum connect before treating what is left as headroom.`,
     badPort: (value) => `"${value}" is not a port. Give a whole number from 0 to 65535, or use --socket.`,
   },
 
@@ -1742,6 +1744,27 @@ ${bold('EXAMPLES')}
       span === null
         ? `Nothing was older than ${days} days. ${kept} measurements kept, and the append log compacted.`
         : `Deleted ${count} measurements older than ${days} days, covering ${span} and ${usd} of measured spend. ${kept} kept, and the append log compacted to what the store already resolved to.`,
+    budgetHeading: (period) => `Budget for ${period}`,
+    budgetStanding: (consumed, limit, share, measuredDays, periodDays) =>
+      `${consumed} of ${limit} (${share}), measured over ${measuredDays} of the month's ${periodDays} days.`,
+    budgetShape: (shape, elapsedPct, coverage) =>
+      shape === 'ahead'
+        ? `The money is going faster than the calendar: ${elapsedPct}% of the month has elapsed.`
+        : shape === 'behind'
+          ? `The money is going slower than the calendar: ${elapsedPct}% of the month has elapsed.`
+          : shape === 'on-pace'
+            ? `Tracking the calendar: ${elapsedPct}% of the month has elapsed.`
+            : coverage === 'partial'
+              ? 'Whether that is fast or slow for the month cannot be told from a floor: the unmeasured days spent something, and only an overrun would be unarguable.'
+              : 'There is nothing to compare the spend against yet.',
+    budgetNeverForecast: () =>
+      'That is a shape, not a forecast. Where this goes next depends on what you do next, and no arithmetic here knows that.',
+    budgetNothingMeasured: (elapsedDays) =>
+      `Nothing has been measured this month, across ${elapsedDays} elapsed ${elapsedDays === 1 ? 'day' : 'days'}. That is not a budget under control — it is a budget nobody is watching. Run trazum connect to pull what the provider has.`,
+    budgetPartial: (measuredDays, elapsedDays, days) =>
+      `Only ${measuredDays} of ${elapsedDays} elapsed days carry any measurement, so the figure below is a floor on the month rather than the month. Missing: ${days}.`,
+    budgetScopesUnmeasured: (count) =>
+      `${count} budgeted ${count === 1 ? 'scope' : 'scopes'} (per label or per service) cannot be answered from the store: a store record carries a provider and a model, not a workload label. Gate those with trazum profile against a per-call log.`,
   },
 
   connect: {

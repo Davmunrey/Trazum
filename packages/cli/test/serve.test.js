@@ -18,15 +18,33 @@ after(() => {
   for (const child of started) child.kill();
 });
 
-const setup = async (spend = { maxUsd: 50 }) => {
+/**
+ * The measured day, dated inside **this** calendar month.
+ *
+ * Since 1.49 the endpoint's budget half is a position on the current month
+ * rather than a total over the whole store, so a fixture pinned to a literal
+ * date would stop being measured the moment the calendar moved past it — a
+ * test that passes for eleven months and then fails for reasons nobody
+ * remembers. The first day of the current UTC month is always inside it.
+ */
+const firstOfThisMonth = () => {
+  const now = new Date();
+  return {
+    from: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString(),
+    to: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 2)).toISOString(),
+  };
+};
+
+const setup = async (spend = { monthlyUsd: 50 }) => {
   const dir = await mkdtemp(join(tmpdir(), 'trazum-serve-'));
+  const day = firstOfThisMonth();
   await writeFile(
     join(dir, 'usage.json'),
     JSON.stringify({
       data: [
         {
-          starting_at: '2026-08-01T00:00:00Z',
-          ending_at: '2026-08-02T00:00:00Z',
+          starting_at: day.from,
+          ending_at: day.to,
           results: [{ model: 'claude-opus-5', uncached_input_tokens: 8_000_000, output_tokens: 0 }],
         },
       ],

@@ -6,3 +6,15 @@
 {"schemaVersion":1,"day":"2026-08-20","gate":"maxUsd","reason":"known and accepted","until":"2099-01-01","commit":null,"measuredUsd":12,"limitUsd":8}
 {"schemaVersion":1,"day":"2026-08-20","gate":"byLabel:rag","reason":"rag rebuild in progress","until":"2099-01-01","commit":null,"measuredUsd":10,"limitUsd":5}
 {"schemaVersion":1,"day":"2026-08-20","gate":"maxUsd","reason":"migración de agosto","until":"2099-01-01","commit":null,"measuredUsd":12,"limitUsd":8}
+{"schemaVersion":1,"day":"2026-08-20","gate":"maxUsd","reason":"August migration doubles traffic","until":"2099-01-01","commit":null,"measuredUsd":12,"limitUsd":8}
+{"schemaVersion":1,"day":"2026-08-20","gate":"maxUsd","reason":"known and accepted","until":"2099-01-01","commit":null,"measuredUsd":12,"limitUsd":8}
+{"schemaVersion":1,"day":"2026-08-20","gate":"byLabel:rag","reason":"rag rebuild in progress","until":"2099-01-01","commit":null,"measuredUsd":10,"limitUsd":5}
+{"schemaVersion":1,"day":"2026-08-20","gate":"maxUsd","reason":"migración de agosto","until":"2099-01-01","commit":null,"measuredUsd":12,"limitUsd":8}
+{"schemaVersion":1,"day":"2026-08-20","gate":"maxUsd","reason":"August migration doubles traffic","until":"2099-01-01","commit":null,"measuredUsd":12,"limitUsd":8}
+{"schemaVersion":1,"day":"2026-08-20","gate":"maxUsd","reason":"known and accepted","until":"2099-01-01","commit":null,"measuredUsd":12,"limitUsd":8}
+{"schemaVersion":1,"day":"2026-08-20","gate":"byLabel:rag","reason":"rag rebuild in progress","until":"2099-01-01","commit":null,"measuredUsd":10,"limitUsd":5}
+{"schemaVersion":1,"day":"2026-08-20","gate":"maxUsd","reason":"migración de agosto","until":"2099-01-01","commit":null,"measuredUsd":12,"limitUsd":8}
+{"schemaVersion":1,"day":"2026-08-20","gate":"maxUsd","reason":"August migration doubles traffic","until":"2099-01-01","commit":null,"measuredUsd":12,"limitUsd":8}
+{"schemaVersion":1,"day":"2026-08-20","gate":"maxUsd","reason":"known and accepted","until":"2099-01-01","commit":null,"measuredUsd":12,"limitUsd":8}
+{"schemaVersion":1,"day":"2026-08-20","gate":"byLabel:rag","reason":"rag rebuild in progress","until":"2099-01-01","commit":null,"measuredUsd":10,"limitUsd":5}
+{"schemaVersion":1,"day":"2026-08-20","gate":"maxUsd","reason":"migración de agosto","until":"2099-01-01","commit":null,"measuredUsd":12,"limitUsd":8}

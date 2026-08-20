@@ -1313,6 +1313,41 @@ typing it. Absent both, growth alone still exits 0.
 `--config <file>` skips the search. `locale` is the one setting the environment
 outranks — see [Languages](#languages).
 
+#### The live budget: `spend.monthlyUsd`
+
+```json
+{ "spend": { "monthlyUsd": 400 } }
+```
+
+The calendar-month budget, spent against **measured** store records. `trazum
+store` prints the position, `trazum serve` answers with it, and an agent reading
+that endpoint gets the same figure at the same instant — one number, so a CI
+failure and an agent's refusal cannot disagree about what is left.
+
+**A separate key from `maxUsd`, and the reason is the point.** `maxUsd` gates
+*this log* — whatever period the file you passed happens to cover. `monthlyUsd`
+gates *this month*. Same units, different denominators, and one key carrying
+both is exactly how two surfaces of one tool come to disagree: `serve` read
+`maxUsd` and compared it against the whole store, which could be a year, and
+reported the result as a budget position. Nothing infers one key from the other.
+
+**A period nobody measured is not a period under budget.** Elapsed days with no
+measurement are counted and named, and a position standing on three days out of
+twenty is reported as a floor on the month rather than as comfortable headroom.
+With nothing measured at all the verdict is `cannot-tell`, never `within` —
+`$0 of $400` is the healthiest-looking budget a dead store can produce.
+
+**The burn is a shape, never a date.** "Thirty per cent of the budget over
+eleven of thirty days" is a measurement; "you run out on the 24th" is a
+prediction, and Trazum has refused those since 1.27 at every scale it works at.
+And a floor can prove *ahead* but never *behind*: partial coverage that has
+already outrun the calendar is unarguable, while a comfortable-looking floor
+proves nothing, because the unmeasured days spent something.
+
+Per-label and per-service budgets are not answered from the store, and it says
+so rather than guessing: a store record carries a provider and a model, not a
+workload label. Gate those with `trazum profile` against a per-call log.
+
 #### Findings as policy: `waive`, and the record it now keeps
 
 A gate failure the team has looked at and decided to live with, on the record,

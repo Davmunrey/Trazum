@@ -1696,7 +1696,9 @@ ${bold('EJEMPLOS')}
     nothingMeasured: (dir) =>
       `Todavía no hay nada medido (el almacén de ${dir} está vacío), así que la mitad de presupuesto de cada respuesta lo dirá. La mitad del coste sigue respondiendo desde el catálogo: sin conexión es un modo, no un fallo.`,
     noBudget: () =>
-      'No hay spend.maxUsd configurado, así que "queda presupuesto" no tiene sujeto y cada respuesta lo dice en vez de inventarse uno.',
+      'No hay spend.monthlyUsd configurado, así que "queda presupuesto" no tiene sujeto y cada respuesta lo dice en vez de inventarse uno. spend.maxUsd no se lee aquí a propósito: ese controla el periodo que cubra un registro, y leerlo como límite mensual es justo como dos superficies de esta herramienta acaban en desacuerdo.',
+    partialCoverage: (measuredDays, elapsedDays, period) =>
+      `Solo ${measuredDays} de los ${elapsedDays} días transcurridos de ${period} tienen alguna medición, así que la cifra consumida es un suelo del periodo y no el periodo. Descarga los días que faltan con trazum connect antes de tratar lo que queda como margen.`,
     badPort: (value) => `"${value}" no es un puerto. Da un número entero de 0 a 65535, o usa --socket.`,
   },
 
@@ -1772,6 +1774,27 @@ ${bold('EJEMPLOS')}
       span === null
         ? `Nada era más antiguo que ${days} días. ${kept} mediciones conservadas, y el log compactado.`
         : `Borradas ${count} mediciones de más de ${days} días, que cubren ${span} y ${usd} de gasto medido. ${kept} conservadas, y el log compactado a lo que el almacén ya resolvía.`,
+    budgetHeading: (period) => `Presupuesto de ${period}`,
+    budgetStanding: (consumed, limit, share, measuredDays, periodDays) =>
+      `${consumed} de ${limit} (${share}), medido sobre ${measuredDays} de los ${periodDays} días del mes.`,
+    budgetShape: (shape, elapsedPct, coverage) =>
+      shape === 'ahead'
+        ? `El dinero va más rápido que el calendario: ha transcurrido el ${elapsedPct}% del mes.`
+        : shape === 'behind'
+          ? `El dinero va más lento que el calendario: ha transcurrido el ${elapsedPct}% del mes.`
+          : shape === 'on-pace'
+            ? `Al ritmo del calendario: ha transcurrido el ${elapsedPct}% del mes.`
+            : coverage === 'partial'
+              ? 'Si eso es rápido o lento para el mes no se puede saber desde un suelo: los días sin medir gastaron algo, y solo un exceso sería incontestable.'
+              : 'Todavía no hay nada con lo que comparar el gasto.',
+    budgetNeverForecast: () =>
+      'Eso es una forma, no un pronóstico. A dónde va esto después depende de lo que hagas después, y ninguna aritmética de aquí lo sabe.',
+    budgetNothingMeasured: (elapsedDays) =>
+      `No se ha medido nada este mes, en ${elapsedDays} ${elapsedDays === 1 ? 'día transcurrido' : 'días transcurridos'}. Eso no es un presupuesto bajo control — es un presupuesto que nadie está mirando. Ejecuta trazum connect para descargar lo que tenga el proveedor.`,
+    budgetPartial: (measuredDays, elapsedDays, days) =>
+      `Solo ${measuredDays} de ${elapsedDays} días transcurridos tienen alguna medición, así que la cifra de abajo es un suelo del mes y no el mes. Faltan: ${days}.`,
+    budgetScopesUnmeasured: (count) =>
+      `${count} ${count === 1 ? 'ámbito presupuestado' : 'ámbitos presupuestados'} (por etiqueta o por servicio) no se pueden responder desde el almacén: un registro del almacén lleva un proveedor y un modelo, no una etiqueta de flujo. Contrólalos con trazum profile contra un registro por llamada.`,
   },
 
   connect: {

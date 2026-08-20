@@ -1151,6 +1151,12 @@ export interface CliMessages {
     measuredFrom(usd: string): string;
     nothingMeasured(dir: string): string;
     noBudget(): string;
+    /**
+     * The period is only partly measured — said out loud, because a position
+     * standing on three days out of thirty must not read as a comfortable
+     * ninety per cent remaining.
+     */
+    partialCoverage(measuredDays: number, elapsedDays: number, period: string): string;
     badPort(value: string): string;
   };
 
@@ -1205,6 +1211,15 @@ export interface CliMessages {
     pruneNeedsPolicy(): string;
     pruneDryRun(count: string, days: string, span: string | null, usd: string): string;
     pruned(count: string, days: string, span: string | null, usd: string, kept: string): string;
+    /** The live budget — the one number `serve` and the MCP guard also read. */
+    budgetHeading(period: string): string;
+    budgetStanding(consumed: string, limit: string, share: string, measuredDays: string, periodDays: string): string;
+    /** The shape of the burn, named. Never a date — see `budgetNeverForecast`. */
+    budgetShape(shape: string, elapsedPct: number, coverage: string): string;
+    budgetNeverForecast(): string;
+    budgetNothingMeasured(elapsedDays: number): string;
+    budgetPartial(measuredDays: number, elapsedDays: number, days: string): string;
+    budgetScopesUnmeasured(count: number): string;
   };
 
   /**

@@ -11,7 +11,62 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**The live budget: one measured number, wherever it is asked for.** By 1.48
+there were four ways to ask Trazum about money — a gate in CI, the terminal,
+the local endpoint an agent consults, the browser — and no guarantee any two
+agreed. Each computed its own answer from whatever it happened to be holding.
+Four right answers to four slightly different questions is how a CI failure and
+an agent's refusal come to disagree in front of somebody.
+
+`budgetPositions` in `@trazum/core` turns a budget into a **standing**: a limit,
+a calendar month, the measured spend inside it, and how much of that month was
+measured at all. `trazum store` prints it and `trazum serve` answers with it, so
+they cannot drift.
+
+**`spend.monthlyUsd`**, a new key and deliberately not a reuse of `maxUsd`.
+`maxUsd` gates whatever period a log happens to cover; this gates a calendar
+month. Same units, different denominators. Nothing infers one from the other: a
+repository with a per-log gate and no monthly budget has no monthly position,
+and the tools say so rather than picking a number of the right shape.
+
+**A period nobody measured is not a period under budget** — the
+`fleetBudgetMissing` rule from 1.37, applied to time. Elapsed days with no
+measurement are counted and named; nothing measured at all is `cannot-tell`,
+never `within`. `$0 of $400` is the healthiest-looking budget a dead store can
+produce.
+
+**The burn is a shape, never a date.** `ahead`, `on-pace`, `behind`,
+`cannot-tell` — a comparison of two shares that have both already happened. The
+type carries `readonly forecast?: never` and a test asserts the serialised
+object contains no field naming a date, because it is the single most requested
+number this module will ever be asked for and every future reader will be
+tempted to add it.
+
+**A floor can prove `ahead` and can never prove `behind`.** Partial coverage
+means the consumed figure is a floor: the unmeasured days spent something and
+nobody knows how much. A floor that has already outrun the calendar is
+unarguable; a comfortable-looking floor proves nothing.
+
+### Fixed
+
+**`trazum serve` was comparing the whole store against a per-log budget.** It
+read `spend.maxUsd` — the gate for one log — and set it against every record the
+store held, which can be a year, then served the result as a budget position
+with no way for a caller to tell. The disagreement between `serve` and CI was
+exactly as large as the machine's history. It reads the month's standing now.
+
+**`serve`'s answer carries the period rather than the store's span**, so a
+caller judging staleness is told which month the figure is about instead of when
+the oldest record was pulled.
+
+**The `serve` test suite was pinned to August 2026.** Its fixture used a literal
+date, which was inside the current month by luck; the budget being a *month*
+would have made it stop being measured the moment the calendar moved on — a
+suite that passes for eleven months and then fails for reasons nobody
+remembers. The fixture is relative to the current UTC month now.
+
 
 ## 1.48.0 — "The cost review"
 
