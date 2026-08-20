@@ -910,6 +910,21 @@ and cannot-tell exits 2. Shipped as `quality` rather than the plan's `check
 usage log. Chapter six of docs/plan-1.51.md.
 
 
+### 1.50.9 — The semantic pass
+
+`trazum semantic`, and the oldest deferred item in the product. The rules engine
+has skipped paraphrase-level findings since 0.1.0 because a dictionary cannot
+see meaning and a hallucinated finding is worse than a missed one. What changed
+is not the model — it is that this arc built a way to check. The price is
+printed before anything is sent and `--yes` is required; without it the price is
+the entire output. Every quoted passage is checked character for character, near
+copies the rules engine already catches are dropped, a near-copy mislabelled a
+contradiction is rejected, and every token figure is counted rather than
+believed. A ceiling, never a saving — and a contradiction gets no figure at all.
+Three guards prove the pass never becomes a prerequisite. Chapter seven of
+docs/plan-1.51.md.
+
+
 ## Collapsed into 1.8.0
 
 **Everything below shipped as 1.8.0, and none of these numbers is on npm.** They

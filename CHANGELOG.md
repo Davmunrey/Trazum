@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.50.9 — "The semantic pass"
+
 ### Added
 
 **`trazum semantic` — the findings a dictionary cannot see.** Chapter seven of
