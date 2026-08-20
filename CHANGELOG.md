@@ -31,6 +31,28 @@ a credential is borrowed, never held; nothing continuous invents a number;
 and a machine reader gets the provenance too, as separate typed fields.
 ROADMAP's "Next" now points at the new arc.
 
+**The plan through 1.60.** `docs/plan-1.51-1.60.md` sets out the arc after
+it, because the one through 1.50 leaves the product's oldest gap untouched:
+every figure Trazum prints is a denominator with no numerator. It can say a
+workload got 40% cheaper and cannot say whether it stopped working, which is
+why "route this to a cheaper model" has been an arithmetic claim with a
+quality question attached since 1.23.
+
+Two things close it, and the arc opens with both: a gateway in the path of
+the call — which refuses, and never silently answers something else — and an
+outcome signal the caller records and Trazum never infers. On top of those:
+cost per resolved outcome through every existing report, the escalation
+ladder priced with its double spend and its break-even rate, experiments on
+real traffic with a three-valued verdict and a declared stopping rule,
+quality gates in CI, chargeback with the unallocated named rather than
+spread, committed-use analysis stated as an as-if over measured months
+rather than a forecast, and finally the semantic findings the rules engine
+has deferred since 0.1.0 — now checkable, and still verified before anybody
+sees them.
+
+Two rules join the doctrine: a proxy refuses and never answers something
+else, and quality is recorded, never inferred.
+
 ## 1.40.0 — "The long run"
 
 ### Added
