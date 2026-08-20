@@ -45,6 +45,7 @@ ${bold('USO')}
   trazum models
   trazum rules
   trazum gateway <anthropic|openai> --on-cannot-tell <fail-open|fail-closed>
+  trazum ladder <log>
   trazum feedback
   trazum --version
 
@@ -617,6 +618,12 @@ ${bold('FICHERO DE CONFIGURACIÓN')}
     spend     { "maxUsd": 200, "byLabel": { "chat": 40 } } — presupuestos en
               dólares para "trazum profile". Una etiqueta con presupuesto y sin
               llamadas se informa como no medida, nunca como aprobada
+    ladders   { "support": { "tiers": ["claude-haiku-4-5", "claude-opus-5"],
+              "escalateOn": ["escalated"] } } — modelo barato primero, escalar
+              un fallo registrado a uno más caro. Los dos campos obligatorios.
+              "trazum ladder <log>" imprime la tasa de escalado de equilibrio
+              junto a la medida: un escalado paga dos veces, así que por encima
+              de esa tasa la escalera cuesta más que no haberla construido
     outcomes  { "values": ["resolved", "escalated"], "success": ["resolved"] } —
               tu propio vocabulario para lo que pasó, y cuál de él cuenta como
               acierto. Los dos son obligatorios: qué palabras significan éxito
@@ -991,6 +998,47 @@ ${bold('EJEMPLOS')}
       `${path} ya existe y se dejó intacto. Pasa --dry-run para ver qué iría dentro, o --yes para reemplazarlo.`,
     existingUnparseable: (path) =>
       `${path} existe y no se pudo interpretar, así que no se escribió nada encima. Arréglalo o muévelo primero.`,
+  },
+
+  ladder: {
+    heading: () => 'Escaleras de escalado',
+    noLadders: () =>
+      'No hay escaleras configuradas. Una escalera manda una carga a un modelo barato primero y escala un fallo registrado a uno m\u00e1s caro — a\u00f1ade "ladders" a trazum.config.json, por ejemplo {"support": {"tiers": ["claude-haiku-4-5", "claude-opus-5"], "escalateOn": ["escalated"]}}.',
+    workload: (label) => label,
+    arithmetic: (cheap, dear, breakEven) =>
+      `${cheap} por llamada barata, ${dear} cara. Tasa de escalado de equilibrio: ${breakEven}.`,
+    measured: (rate, escalations, calls) =>
+      `Medido: ${rate} (${escalations} de ${calls} llamadas escalaron).`,
+    saving: (delta) => `Ahorra ${delta} por llamada frente a no haberla construido.`,
+    costing: (delta) =>
+      `Cuesta ${delta} por llamada M\u00c1S que no haberla construido. Escalar por encima de la tasa de equilibrio significa pagar el intento barato y el caro en la mayor\u00eda de las llamadas.`,
+    atBreakEven: (band) =>
+      `A menos de ${band} del equilibrio, as\u00ed que no se afirma ning\u00fan signo. Dentro de esa banda la respuesta cambia con la variaci\u00f3n normal de una semana a otra, y decir "ahorra" el lunes y "cuesta" el jueves con la misma pol\u00edtica ense\u00f1a a ignorar la cifra.`,
+    cannotTell: (why, calls) =>
+      why === 'too-few-calls'
+        ? `A\u00fan no se puede decir: ${calls} llamadas llevaron un resultado declarado, y una tasa sobre tan pocas se mueve m\u00e1s con una llamada m\u00e1s que con nada que pudieras hacer.`
+        : why === 'no-outcomes-recorded'
+          ? 'No se puede decir: nada en este log registr\u00f3 un resultado para esta carga, as\u00ed que no hay tasa de escalado con la que comparar.'
+          : why === 'tier-unpriced'
+            ? 'No se puede decir: uno de los pelda\u00f1os no est\u00e1 en la tabla de precios, as\u00ed que la tasa de equilibrio no se puede calcular.'
+            : 'No se puede decir: esta escalera no declara valores de escalado.',
+    problemsHeading: (label) => `${label} — esta escalera no va a hacer lo que parece`,
+    problem: (kind, detail) =>
+      kind === 'escalate-on-a-success'
+        ? `escalateOn nombra "${detail}", que "outcomes.success" declara como \u00c9XITO. Esta escalera paga dos veces por trabajo que ya funcion\u00f3, en cada llamada, con el aspecto exacto de una medida de ahorro.`
+        : kind === 'escalate-on-undeclared'
+          ? `escalateOn nombra "${detail}", que "outcomes.values" no declara. Esta escalera no se dispara nunca, en silencio.`
+          : kind === 'tiers-not-cheapest-first'
+            ? `"${detail}" es m\u00e1s barato que el pelda\u00f1o anterior. Eso no es una escalera; es una regla de enrutado que escala a algo m\u00e1s barato y lo reporta como ahorro.`
+            : kind === 'duplicate-tier'
+              ? `"${detail}" aparece dos veces en tiers.`
+              : kind === 'unknown-model'
+                ? `"${detail}" no est\u00e1 en la tabla de precios.`
+                : `una escalera necesita al menos dos pelda\u00f1os; esta tiene ${detail}.`,
+    theDoubleSpend: () =>
+      'Un escalado paga dos veces: el intento barato no se devuelve. As\u00ed que una escalera solo ahorra por debajo de su tasa de escalado de equilibrio, y por encima cuesta m\u00e1s que no haberla construido — por eso la tasa se imprime junto a la medici\u00f3n en vez de dejarla para calcularla de cabeza.',
+    notExecuted: () =>
+      'Trazum no ejecuta el escalado. Una escalera escala despu\u00e9s de conocer un fallo, que es despu\u00e9s de que llegue la respuesta y normalmente despu\u00e9s de que algo la juzgue, as\u00ed que el reintento va en tu propio bucle. Lo que hay aqu\u00ed es la pol\u00edtica y la aritm\u00e9tica que dice si merece la pena.',
   },
 
   gateway: {

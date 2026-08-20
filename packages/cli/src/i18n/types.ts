@@ -264,6 +264,26 @@ export interface CliMessages {
    * between somebody and their provider is trusted on nothing but what it says
    * plainly at start-up.
    */
+  /**
+   * The ladder. Every line here exists to stop somebody reading "we route to
+   * the cheap model first" as a saving without the number that decides it.
+   */
+  ladder: {
+    heading(): string;
+    noLadders(): string;
+    workload(label: string): string;
+    arithmetic(cheap: string, dear: string, breakEven: string): string;
+    measured(rate: string, escalations: string, calls: string): string;
+    saving(delta: string): string;
+    costing(delta: string): string;
+    atBreakEven(band: string): string;
+    cannotTell(why: string, calls: string): string;
+    problem(kind: string, detail: string): string;
+    problemsHeading(label: string): string;
+    theDoubleSpend(): string;
+    notExecuted(): string;
+  };
+
   gateway: {
     badProvider(given: string, known: string): string;
     needsPolicy(policies: string): string;

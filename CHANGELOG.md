@@ -11,7 +11,71 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**`trazum ladder` — is cheap-first-escalate-on-failure saving money, or is it a
+bill?** Chapter four of `docs/plan-1.51.md`.
+
+"Route to the cheap model first and escalate a failure" describes a policy that
+saves money and a policy that costs money **equally well**. One number separates
+them, and nobody works it out in their head because the shape of the arithmetic
+is not obvious: **an escalation pays twice**, since the cheap attempt is not
+refunded.
+
+```
+  support  claude-haiku-4-5 → claude-opus-5
+    $0.2000 a call cheap, $1.00 dear. Break-even escalation rate: 80.0%.
+    Measured: 10.0% (10 of 100 calls escalated).
+    ✓ Saving $0.7000 a call against never having built it.
+
+  triage  claude-haiku-4-5 → claude-opus-5
+    $0.2000 a call cheap, $1.00 dear. Break-even escalation rate: 80.0%.
+    Measured: 90.0% (90 of 100 calls escalated).
+    ✗ Costing $0.1000 a call MORE than never having built it.
+```
+
+Both are configured identically. The only difference is a measured escalation
+rate no configuration file can show you.
+
+**A three-rung ladder is priced against its top rung**, never its middle — the
+alternative is the model that would have been used without a ladder, and
+comparing against the middle reports a saving against a model nobody was going
+to use.
+
+**No sign is claimed within two points of break-even.** Inside that band the
+answer flips on ordinary week-to-week variation, and "saving" on Monday and
+"costing" on Thursday from the same policy teaches a reader to ignore the figure.
+
+**`escalateOn` is required and never defaulted.** "Anything that is not a
+success" is the tempting default and it is wrong: adding a word to the
+vocabulary would silently start sending traffic to a more expensive model. A
+control loop must not change behaviour because somebody documented a new word.
+
+**`validateLadder` catches the most expensive possible typo**: escalating on a
+value the vocabulary declares a *success*, which pays twice for work that already
+worked, on every call, while looking exactly like a cost-saving measure in the
+config. Also a ladder that would silently never fire, rungs that go *down* (not a
+ladder — a routing rule that escalates to something cheaper and reports a saving
+for it), duplicates, unknown models and one-rung ladders. All reported at once
+rather than one per run, and a misconfigured ladder exits 1 because it is the one
+finding here that is wrong *now*.
+
+**An undeclared value stays out of the denominator as well as the numerator.** A
+typo must not move a control loop's break-even: with 90 resolved, 10 escalated
+and 100 misspelled, counting the typos reports a 5% escalation rate instead of
+10%, and a ladder judged on half its real rate is a ladder nobody switches off.
+
+**Trazum does not run the escalation, and says so.** A ladder escalates *after* a
+failure is known — after the answer came back and usually after something
+downstream judged it — so the retry belongs in the caller's own loop. What ships
+is the policy and the arithmetic that says whether the policy is worth running.
+
+**The escalation signal is the caller's, never inferred** from length, latency,
+refusal text, a stop reason or a retry. The same refusal `outcome` makes, for a
+sharper reason: a report built on a guess prints a wrong number, and a control
+loop built on a guess sends real traffic to a more expensive model on the
+strength of that guess, forever, and bills for it.
+
 
 ## 1.50.5 — "Cost per outcome"
 

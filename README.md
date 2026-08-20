@@ -43,11 +43,11 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- 25 commands       MCP server      Next.js     comments on pull requests
+ 26 commands       MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
-## The twenty-five commands
+## The twenty-six commands
 
 | Command | What it answers |
 |---|---|
@@ -73,6 +73,7 @@ never runs unless you ask.
 | [`trazum watch`](#the-afternoon-it-happened-trazum-watch) | Has anything crossed a budget? *Measured crossings only — never a forecast.* |
 | [`trazum serve`](#before-the-call-is-sent-trazum-serve) | What will this call cost, and is there budget? *Answered in milliseconds, halves kept apart.* |
 | [`trazum gateway`](#in-the-path-of-the-call-trazum-gateway) | Can it stop the call instead of advising against it? *Refuses; never substitutes.* |
+| [`trazum ladder`](#is-the-ladder-saving-money-or-is-it-a-bill-trazum-ladder) | Is cheap-first-escalate-on-failure saving money, or costing it? *Break-even rate, stated.* |
 | [`trazum conform`](#building-on-the-format-trazum-conform) | Does the document my tool emits conform, and what will it not be able to answer? |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
 | [`trazum feedback`](#telling-us-something-trazum-feedback) | Where do I report this, and what will you ask me for? *Sends nothing.* |
@@ -183,8 +184,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of twenty-five commands — [the table
-above](#the-twenty-five-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of twenty-six commands — [the table
+above](#the-twenty-six-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -334,7 +335,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other twenty-four commands, each with its own section below:
+The other twenty-five commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -1242,6 +1243,55 @@ fewer than ten recorded successes (`3 so far`), coverage under 80%
 recorded at all, and no vocabulary declared. A withheld slice is left out of the
 per-success ranking entirely — giving it a rank would place it on the strength of
 a number this tool declined to state, and a reader who sees a rank assumes a rate.
+
+### Is the ladder saving money, or is it a bill? `trazum ladder`
+
+"Cheap model first, escalate on failure" describes a policy that saves money
+and a policy that costs money equally well. Only one number separates them, and
+nobody works it out in their head — because **an escalation pays twice**: the
+cheap attempt is not refunded.
+
+```
+Escalation ladders
+
+  support  claude-haiku-4-5 → claude-opus-5
+    $0.2000 a call cheap, $1.00 dear. Break-even escalation rate: 80.0%.
+    Measured: 10.0% (10 of 100 calls escalated).
+    ✓ Saving $0.7000 a call against never having built it.
+
+  triage  claude-haiku-4-5 → claude-opus-5
+    $0.2000 a call cheap, $1.00 dear. Break-even escalation rate: 80.0%.
+    Measured: 90.0% (90 of 100 calls escalated).
+    ✗ Costing $0.1000 a call MORE than never having built it.
+
+  ✗ broken — this ladder will not do what it looks like it does
+      escalateOn names "resolved", which "outcomes.success" declares a SUCCESS.
+      This ladder pays twice for work that already worked, on every call, while
+      looking exactly like a cost-saving measure.
+```
+
+Both ladders are configured identically. One saves 70% a call and the other
+costs 10% more than never having built it, and the only difference is a
+measured escalation rate that no configuration file can show you.
+
+**The escalation signal is yours, never inferred** — not from length, latency,
+refusal text, a stop reason or a retry. The same refusal `outcome` makes, for a
+sharper reason: this is a control loop rather than a report. A report built on a
+guess prints a wrong number; a control loop built on a guess sends real traffic
+to a more expensive model on the strength of that guess, forever, and bills you
+for it.
+
+**`escalateOn` is required and never defaulted.** "Anything that is not a
+success" is the tempting default and it is wrong: adding a word to your
+vocabulary would silently start sending traffic to a dearer model.
+
+**Trazum does not run the escalation.** A ladder escalates *after* a failure is
+known — after the answer came back, usually after something downstream judged it
+— so the retry belongs in your own loop. What lives here is the policy and the
+arithmetic that says whether the policy is worth running.
+
+**A misconfigured ladder exits 1.** It is the one finding here that is wrong
+*now* rather than a measurement to look at.
 
 ### In the path of the call: `trazum gateway`
 
