@@ -13,6 +13,62 @@ merged commit with no entry is a change only `git log` remembers.
 
 Nothing yet.
 
+## 1.50.0 — "The standard"
+
+### Added
+
+**`trazum conform` — the contracts become something to build against.** Ten
+documents, all enforced in both directions by parity tests in this repository,
+and until now no way for anybody else's emitter to find out whether what it
+produces satisfies one short of reading the source and hoping.
+
+It answers **two questions and keeps them apart**. *Does this conform* —
+required fields, present and the right type — exits 1 when they are not, so it
+gates in CI. *What can a valid document of this shape not answer* — with the
+field that would unlock each — never gates, because choosing not to log
+sessions is a decision, not a defect, and a check that failed on it would be
+Trazum telling somebody what to record.
+
+The second half is the useful one. A usage log with a model and token counts
+conforms completely and supports about a third of the product; an emitter that
+only ever hears "valid" ships it and never finds out why the cache verdict never
+appears.
+
+Unknown fields are never a problem: these documents gain fields without a
+version bump, so a checker that rejected tomorrow's field would be one nobody
+upgrades. A zero standing in for absence *is* reported, as its own kind of
+problem, because it is the mistake that produces a wrong report rather than a
+rejected one — and always in the flattering direction.
+
+**docs/doctrine.md.** Twenty rules, each with the release that learned it by
+getting it wrong first: measured never merges with estimated without saying
+which half is which; not-recorded is not not-happened; three outcomes, never
+two; no series becomes a forecast; a floor can prove *over* and never *under*;
+quiet is not clean; a refusal never arrives bare; a credential is borrowed,
+never held; one key, one denominator; record, do not reconstruct; report the
+record, not the team. They had been discovered one release at a time inside a
+changelog. Written down together, they are the argument for why anybody should
+trust a cost figure — from this tool or any other.
+
+**docs/format.md.** The ten contracts in one index, what `schemaVersion`
+promises and what only a version bump may change, what is deliberately in none
+of them, and the rules a provider connector must follow to be one.
+
+### Fixed
+
+**`--contract` was silently a boolean, and so is any value flag nobody
+registers.** A flag missing from `VALUE_FLAGS` parses as `true` and its value
+falls into the positionals — so the command reads `undefined`, ignores the
+argument it was given, and produces a confident answer about the wrong thing.
+Nothing errors: `rejectUnknownFlags` is satisfied, because the flag *is* known.
+
+Caught on the same afternoon it was written, by a test that expected a bad
+contract name to be refused and watched a report come back instead. A guard now
+fails the build when a flag the help documents as `--x <value>` is not
+registered as taking one — the help text being the checkable promise — proven by
+removing `contract` again and watching it fail by name.
+
+
 ## 1.49.0 — "The live budget"
 
 ### Added

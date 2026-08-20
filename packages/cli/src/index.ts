@@ -36,6 +36,7 @@ import {
   countTokensAnthropic,
   DEFAULT_USAGE,
   budgetPositions,
+  conform,
   detectFromSource,
   matchLocale,
   parsePlanDocument,
@@ -129,6 +130,7 @@ import type {
 } from '@trazum/core';
 import type {
   BudgetReport,
+  ContractName,
   UsageProfileReport,
   WaiverUse,
   InitDecline,
@@ -228,6 +230,7 @@ interface Args {
 
 const VALUE_FLAGS = new Set([
   'against',
+  'contract',
   'from-log',
   'min-usd',
   'payload',
@@ -550,6 +553,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   models: [],
   rank: ['level', 'model', 'calls', 'output-tokens', 'batch', 'disable', 'prompt', 'markdown-out'],
   init: ['dry-run', 'yes', 'json', 'pricing', 'pricing-live'],
+  conform: ['contract', 'json'],
   where: [],
   rules: [],
   blame: ['limit', 'model', 'calls', 'output-tokens', 'batch', 'prompt', 'markdown-out'],
@@ -1472,6 +1476,20 @@ const INIT_LOG_CANDIDATES = [
  * nobody has vouched for.
  */
 
+/** Problems listed before the rest are counted. A wall of them helps nobody. */
+const MAX_CONFORM_PROBLEMS = 20;
+
+/** The contracts `--contract` accepts, so a typo is refused with the list. */
+const CONTRACT_NAMES = [
+  'usage-log',
+  'profile',
+  'plan',
+  'verification',
+  'history',
+  'connected',
+  'cost-answer',
+];
+
 /** How many source files, and how large each may be. Both reported when they bite. */
 const INIT_MAX_SOURCE_FILES = 400;
 const INIT_MAX_SOURCE_BYTES = 256 * 1024;
@@ -1847,6 +1865,87 @@ async function commandInit(
   }
   await writeFile(configPath, body, 'utf8');
   console.log(c.green(t.init.wrote(configPath)));
+  console.log();
+}
+
+/**
+ * `trazum conform <file>` — does this document conform, and what will it not
+ * be able to answer?
+ *
+ * The command that makes the five contracts something to build against rather
+ * than something to read about. An emitter — a logging wrapper somebody wrote
+ * this afternoon, a connector for a provider this repository has never heard
+ * of, a dashboard writing profile documents of its own — points this at what
+ * it produced and finds out before shipping.
+ *
+ * **The second half is the useful half.** "Valid" is a yes or no. "Here is
+ * what a valid document of this shape cannot tell you, and the field that
+ * would unlock each" is the answer somebody acts on: a usage log with no
+ * `session` is perfectly conformant and simply has no conversation growth in
+ * it, and an emitter that only ever hears "valid" ships it and never finds out
+ * why half the report is empty.
+ *
+ * Exits 1 on a problem, so it gates. It never exits 1 on an *unavailable
+ * finding*: choosing not to log sessions is a decision, not a defect, and a
+ * gate that failed on it would be this tool telling somebody what to record.
+ */
+async function commandConform(args: Args, t: CliMessages): Promise<void> {
+  const target = args.positional[0];
+  if (target === undefined) throw new Error(t.conform.noTarget());
+
+  const named = stringFlag(args, 'contract');
+  if (named !== undefined && !CONTRACT_NAMES.includes(named)) {
+    throw new Error(t.conform.badContract(named, CONTRACT_NAMES.join(', ')));
+  }
+
+  const text = target === '-' ? await readInput('-', t) : await readUsageLog(target, t);
+  const report = conform(text, named === undefined ? {} : { contract: named as ContractName });
+
+  if (boolFlag(args, 'json')) {
+    console.log(JSON.stringify(report, null, 2));
+    if (!report.conforms) process.exitCode = 1;
+    return;
+  }
+
+  console.log();
+  if (report.contract === null) {
+    console.log(c.red(t.conform.unrecognised(target)));
+    console.log(`  ${c.dim(wrap(report.because ?? '', 74, '    '))}`);
+    console.log();
+    process.exitCode = 1;
+    return;
+  }
+
+  console.log(
+    c.bold(
+      report.records === null
+        ? t.conform.heading(target, report.contract)
+        : t.conform.headingLog(target, report.contract, report.records),
+    ),
+  );
+
+  if (report.problems.length === 0) {
+    console.log(`  ${c.green(t.conform.conforms())}`);
+  } else {
+    for (const problem of report.problems.slice(0, MAX_CONFORM_PROBLEMS)) {
+      console.log(`  ${c.red(t.conform.problem(problem.at, problem.kind, problem.detail))}`);
+    }
+    if (report.problems.length > MAX_CONFORM_PROBLEMS) {
+      console.log(`  ${c.dim(t.conform.moreProblems(report.problems.length - MAX_CONFORM_PROBLEMS))}`);
+    }
+    process.exitCode = 1;
+  }
+
+  if (report.unavailable.length > 0) {
+    console.log();
+    console.log(c.bold(t.conform.unavailableHeading()));
+    for (const gap of report.unavailable) {
+      console.log(`  ${c.dim(wrap(t.conform.unavailable(gap.finding, gap.because, gap.unlockedBy), 74, '    '))}`);
+    }
+    // Said out loud, because the exit code says it silently and somebody
+    // reading a red-and-yellow screen will assume both halves gated.
+    console.log(`  ${c.dim(wrap(t.conform.unavailableNeverGates(), 74, '    '))}`);
+  }
   console.log();
 }
 
@@ -7842,6 +7941,9 @@ async function main(): Promise<void> {
       break;
     case 'models':
       commandModels(t, pricing);
+      break;
+    case 'conform':
+      await commandConform(args, t);
       break;
     case 'init':
       await commandInit(args, config, pricing, t);

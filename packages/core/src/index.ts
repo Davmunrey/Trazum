@@ -49,6 +49,13 @@ export type { PlanParseFailure, PlanParseResult } from './plan.js';
 export type { PlanAction, PlanActionKind, PlanAssumption, PlanDocument } from './plan.js';
 export { verifyPlan } from './verify.js';
 export { buildHistory, storedReportFrom, MIN_RUN } from './history.js';
+export { conform } from './conform.js';
+export type {
+  ConformOptions,
+  ConformanceProblem,
+  ConformanceReport,
+  ContractName,
+} from './conform.js';
 export { budgetPositions, monthOf, MAX_UNMEASURED_NAMED } from './budget.js';
 export type {
   BudgetCoverage,

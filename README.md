@@ -43,11 +43,11 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- 22 commands       MCP server      Next.js     comments on pull requests
+ 23 commands       MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
-## The twenty-two commands
+## The twenty-three commands
 
 | Command | What it answers |
 |---|---|
@@ -72,6 +72,7 @@ never runs unless you ask.
 | [`trazum store`](#keeping-it-trazum-store) | What have I measured and kept? *Aggregates only — no prompt text, ever.* |
 | [`trazum watch`](#the-afternoon-it-happened-trazum-watch) | Has anything crossed a budget? *Measured crossings only — never a forecast.* |
 | [`trazum serve`](#before-the-call-is-sent-trazum-serve) | What will this call cost, and is there budget? *Answered in milliseconds, halves kept apart.* |
+| [`trazum conform`](#building-on-the-format-trazum-conform) | Does the document my tool emits conform, and what will it not be able to answer? |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
 
 ## Contents
@@ -79,6 +80,7 @@ never runs unless you ask.
 - [What it actually does](#what-it-actually-does) — the five things, and what it refuses to touch
 - [Getting started](#getting-started) — CLI, web, the GitHub Action, pre-commit
 - [The first five minutes](#the-first-five-minutes-trazum-init) — `init`, and the four things it refuses to write
+- [Building on the format](#building-on-the-format-trazum-conform) — the contracts, the guarantees, and the doctrine
 - [Which few-shot examples earn their tokens](#which-few-shot-examples-earn-their-tokens-trazum-prune) — measured, and it asks before spending
 - [An MCP server for your agents](#an-mcp-server-so-an-agent-can-budget-its-own-prompts) — budget a prompt before sending it
 - [Languages](#languages) — what the dictionaries cover, and what they deliberately do not
@@ -179,8 +181,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of twenty-two commands — [the table
-above](#the-twenty-two-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of twenty-three commands — [the table
+above](#the-twenty-three-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -330,7 +332,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other twenty-one commands, each with its own section below:
+The other twenty-two commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -399,7 +401,7 @@ In GitHub Actions, use the packaged action — nothing to install:
 
 ```yaml
 - uses: actions/checkout@v7
-- uses: Davmunrey/Trazum@d3a6999390f02856e1def8b555177a4a26ee65d2  # 1.48.0
+- uses: Davmunrey/Trazum@e3e8795a2f478ee36050338d5c811c060c7ff5f8  # 1.49.0
   with:
     target: prompts/system.txt
     max-tokens: 2000
@@ -445,7 +447,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v7
-  - uses: Davmunrey/Trazum@d3a6999390f02856e1def8b555177a4a26ee65d2  # 1.48.0
+  - uses: Davmunrey/Trazum@e3e8795a2f478ee36050338d5c811c060c7ff5f8  # 1.49.0
     with:
       target: prompts/            # a directory uses trazum.config.json budgets
       comment: true
@@ -474,7 +476,7 @@ run gates tokens before the money is spent or the spend itself, and saying
 which is the caller's job:
 
 ```yaml
-- uses: Davmunrey/Trazum@d3a6999390f02856e1def8b555177a4a26ee65d2  # 1.48.0
+- uses: Davmunrey/Trazum@e3e8795a2f478ee36050338d5c811c060c7ff5f8  # 1.49.0
   with:
     usage-log: logs/yesterday.jsonl
     max-usd: '50'            # exit 1 over budget — no period assumed
@@ -1598,6 +1600,55 @@ A tool that fails a build nobody armed gets removed from the pipeline rather
 than fixed. And `--max-growh` is rejected with *"Did you mean --max-growth?"*
 rather than ignored — a silently-swallowed gate flag means CI green while you
 believe a limit is set.
+
+### Building on the format: `trazum conform`
+
+Trazum emits ten documents and every one of them is a contract, enforced in
+both directions by parity tests. [docs/format.md](docs/format.md) is the index;
+this is how you check your own emitter against it.
+
+```bash
+trazum conform your-log.jsonl
+trazum conform report.json --contract profile
+trazum conform - --json < whatever-you-just-wrote
+```
+
+```
+your-log.jsonl reads as a usage-log: 2 records
+  It conforms. Every required field is present and the right type.
+
+What this cannot answer, and what would unlock it
+  per-workload bills, per-label budgets, the ranked plan — no record carries
+  "label". Add a "label" naming the workload on each record.
+  the cache verdict — whether caching is paying for itself — no record carries
+  "cache". Add cache_read_input_tokens and cache_creation_input_tokens.
+  …
+  None of those failed anything.
+```
+
+**Two questions, and the second is the useful one.** "Valid" is a yes or no.
+"Here is what a valid document of this shape cannot tell you, and the field that
+would unlock each" is what somebody acts on — a usage log with no `session` is
+perfectly conformant and simply has no conversation growth in it, and an emitter
+that only ever hears "valid" ships it and never finds out why half the report is
+empty.
+
+**The second half never gates.** Problems exit 1; gaps do not. Choosing not to
+log sessions is a decision, not a defect, and a check that failed on it would be
+Trazum telling you what to record.
+
+Unknown fields are never a problem: these documents gain fields without a
+version bump, so a checker that rejected tomorrow's field would be one nobody
+upgrades. What `schemaVersion` promises — and what only a major may change — is
+[written down](docs/format.md#what-schemaversion-promises).
+
+**And the reasoning behind all of it** is
+[docs/doctrine.md](docs/doctrine.md): measured never merges with estimated;
+not-recorded is not not-happened; three outcomes, never two; no series becomes a
+forecast; a floor can prove *over* and never *under*. Each rule with the release
+that learned it by getting it wrong first. If you are building something that
+reports money from measurements, that page is the one worth reading even if you
+never install this.
 
 ### Web
 

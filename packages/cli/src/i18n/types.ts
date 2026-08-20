@@ -246,6 +246,26 @@ export interface CliMessages {
     existingUnparseable(path: string): string;
   };
 
+  /**
+   * The conformance check.
+   *
+   * Two halves, and the copy keeps them apart everywhere: problems gate, gaps
+   * do not. Choosing not to log sessions is a decision, not a defect.
+   */
+  conform: {
+    noTarget(): string;
+    badContract(given: string, known: string): string;
+    unrecognised(path: string): string;
+    heading(path: string, contract: string): string;
+    headingLog(path: string, contract: string, records: number): string;
+    conforms(): string;
+    problem(at: string, kind: string, detail: string): string;
+    moreProblems(count: number): string;
+    unavailableHeading(): string;
+    unavailable(finding: string, because: string, unlockedBy: string): string;
+    unavailableNeverGates(): string;
+  };
+
   where: {
     hostHeading(): string;
     subscription(host: string): string;

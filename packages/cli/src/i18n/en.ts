@@ -54,6 +54,7 @@ ${bold('USAGE')}
   trazum blame <file> [options]
   trazum prune <file> --cases <file> --yes
   trazum where [file]
+  trazum conform <file|-> [--contract <name>]
   trazum models
   trazum rules
 
@@ -72,6 +73,20 @@ ${bold('OPTIONS FOR init')}
   It never invents a threshold. A budget is a policy, so init hands you the
   measured figure and leaves the limit to you — a generated config full of
   guessed numbers is one nobody trusts.
+
+${bold('OPTIONS FOR conform')}
+  --contract <name>           Check against a named contract instead of
+                              detecting one: usage-log, profile, plan,
+                              verification, history, connected, cost-answer.
+  --json                      The report as data.
+
+  Answers two questions and keeps them apart. Does this document conform —
+  required fields, present and the right type, exits 1 when not. And what can a
+  valid document of this shape not answer, with the field that would unlock
+  each.
+
+  The second never gates. Choosing not to log sessions is a decision, not a
+  defect. See docs/format.md.
 
 ${bold('OPTIONS FOR prune')}
   --cases <file>              One input per line, or a JSON array. Required.
@@ -902,6 +917,23 @@ ${bold('EXAMPLES')}
       `${path} already exists and was left alone. Pass --dry-run to see what would go in it, or --yes to replace it.`,
     existingUnparseable: (path) =>
       `${path} exists and could not be parsed, so nothing was written over it. Fix or move it first.`,
+  },
+
+  conform: {
+    noTarget: () =>
+      'Pass a file to check — a usage log, or any document Trazum emits. Use "-" to read from stdin.',
+    badContract: (given, known) => `"${given}" is not a contract. Known contracts: ${known}.`,
+    unrecognised: (path) => `${path} does not match any contract Trazum knows.`,
+    heading: (path, contract) => `${path} reads as a ${contract} document`,
+    headingLog: (path, contract, records) =>
+      `${path} reads as a ${contract}: ${records} ${records === 1 ? 'record' : 'records'}`,
+    conforms: () => 'It conforms. Every required field is present and the right type.',
+    problem: (at, kind, detail) => `${at}: ${detail} (${kind})`,
+    moreProblems: (count) => `…and ${count} more. Fix these first; they are often the same mistake.`,
+    unavailableHeading: () => 'What this cannot answer, and what would unlock it',
+    unavailable: (finding, because, unlockedBy) => `${finding} — ${because}. Add ${unlockedBy}.`,
+    unavailableNeverGates: () =>
+      'None of those failed anything. Choosing not to record a field is a decision, not a defect, and a gate that failed on it would be this tool telling you what to log.',
   },
 
   where: {

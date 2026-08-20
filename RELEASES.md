@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.49.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.50.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,171 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.50.0 — "The standard"
+
+The tenth of the ten, and the close of the arc `docs/plan-1.41-1.50.md` opened
+at 1.41. That arc's thesis was that the loop was complete and inert — Trazum
+could answer every question it had been taught, and nothing made it act.
+Between then and now it grew a connector, a store, a watch, an endpoint, a
+guard, a first run, a browser that sees the whole loop, a waiver record and one
+live budget every surface reads.
+
+This one is about somebody else's tool.
+
+### `trazum conform`
+
+```
+your-log.jsonl reads as a usage-log: 2 records
+  It conforms. Every required field is present and the right type.
+
+What this cannot answer, and what would unlock it
+  per-workload bills, per-label budgets, the ranked plan — no record carries
+  "label". Add a "label" naming the workload on each record.
+  the cache verdict — whether caching is paying for itself — no record carries
+  "cache". Add cache_read_input_tokens and cache_creation_input_tokens.
+  …
+  None of those failed anything.
+```
+
+Ten documents come out of this project and every one is a contract, enforced
+in both directions by parity tests in this repository. Until now there was no
+way for anybody else's emitter to find out whether what it produced satisfied
+one, short of reading the source and hoping.
+
+### Two questions, kept apart, and the second is the useful one
+
+**Does this conform** is a yes or no: required fields, present and the right
+type. It exits 1, so it gates in CI.
+
+**What can a valid document of this shape not answer** has nothing to do with
+validity. A usage log with a model and token counts conforms *completely* — and
+supports about a third of this product. No `label` means no per-workload bill,
+no per-label budget, no ranked plan. No `session` means no conversation growth,
+which is routinely the largest line on an agent bill. An emitter that only ever
+hears "valid" ships it and never finds out why the cache verdict never appears.
+
+Each gap comes with the field that would unlock it, because a gap named without
+its fix is a complaint.
+
+**And the second half never gates.** Choosing not to log sessions is a
+decision, not a defect. A check that failed on it would be Trazum telling
+somebody what to record, which is not its business — and the output says so out
+loud, because the exit code says it silently and somebody reading a screen of
+yellow will assume both halves gated.
+
+### Two smaller rules that took some thinking
+
+**Unknown fields are never a problem.** These documents gain fields without a
+version bump — that is the whole point of `schemaVersion` — so a checker that
+rejected tomorrow's field would be a checker nobody upgrades.
+
+**A zero standing in for absence is a problem, and its own kind of one.** A
+`span` of `0` reads as a log covering the epoch rather than a log with no clock.
+It is the mistake that produces a *wrong report* rather than a rejected one, and
+it is always in the flattering direction, so it is called out separately from an
+ordinary type error.
+
+The contract is detected by each document's most distinctive field rather than
+by trying each in turn and keeping whichever complains least — that would report
+a broken plan as a slightly-more-broken profile and send somebody to fix the
+wrong file.
+
+### docs/doctrine.md
+
+Twenty rules, each with the release that learned it by getting it wrong first.
+
+Measured never merges with estimated without saying which half is which.
+Not-recorded is not not-happened. Three outcomes, never two. No series becomes
+a forecast. A floor can prove *over* and can never prove *under*. A period
+nobody measured is not one under budget. Quiet is not clean. A refusal never
+arrives bare. Quality is recorded, never inferred. A credential is borrowed,
+never held. Nothing continuous invents a number. A machine reader gets the
+provenance too. A proxy refuses and never answers something else. One key, one
+denominator. What stays out gets its reason on the record. A guard that quietly
+stops guarding is worse than no guard. Prove a guard by breaking it. Record, do
+not reconstruct. Report the record, not the team.
+
+They were discovered one release at a time, each buried in the changelog entry
+of whichever release paid for it. Written down together they are the actual
+argument for why anybody should trust a cost figure — from this tool or any
+other — and none of them is Trazum-specific. If you are building something that
+reports money from measurements, those are the mistakes waiting for you.
+
+### docs/format.md
+
+The ten contracts in one index. What `schemaVersion` promises, in a table: a
+new field arrives in any release, a field's *meaning* changing needs a version
+bump, so does a removal, so does a type change **including a narrowing**, and a
+new value in a documented union is a minor because the unions here are open by
+construction. What is deliberately in none of them — no prompt text, no
+completion text, no session keys, no credentials — and the note that this is
+enforced by the security suite rather than promised in prose. And the four
+rules a provider connector must follow, which are the ones that stop a
+connector nobody here wrote from silently dropping a day.
+
+### What this release found wrong in itself
+
+**`--contract` was silently a boolean, and so is any value flag nobody
+registers.**
+
+A flag missing from `VALUE_FLAGS` parses as `true`, and the value it was given
+falls into the positionals. So `trazum conform report.json --contract profile`
+stored `contract: true`, dropped `profile` into the argument list, and the
+command read `undefined` — ignoring the contract it had been told to check
+against and producing a confident answer about a different one.
+
+Nothing errored. `rejectUnknownFlags` was satisfied, because the flag *is*
+known; it simply is not known to take a value. The only symptom was an answer
+that looked right.
+
+It was caught the same afternoon by a test that expected a bad contract name to
+be refused and watched a conformance report come back instead — which is the
+argument for writing the refusal tests, not just the happy ones.
+
+A guard now fails the build when a flag the help documents as `--x <value>` is
+not registered as taking one. The help text is the checkable promise: a line
+reading `--contract <name>` is a commitment to a reader, and the parser is now
+held to it. Proven by removing `contract` again and watching it fail by name.
+
+The guard is deliberately one-directional and reads only the OPTIONS blocks.
+Its first version also read the USAGE synopsis and failed on `trazum diff --all
+<dir> <dir>` — where the two directories are positionals and `--all` is a real
+boolean. Right about the shape, wrong about the meaning.
+
+### The arc, closed
+
+| | |
+| --- | --- |
+| 1.41 | the connector — read the bill from the provider, not from an export |
+| 1.42 | the store — keep what was measured, and never double-count it |
+| 1.43 | the watch — a measured crossing, and quiet is not clean |
+| 1.44 | the answer in milliseconds — halves kept apart |
+| 1.45 | the agent's budget — a refusal that arrives with the lever |
+| 1.46 | five minutes — the floor, and the four keys it refuses to write |
+| 1.47 | the browser sees the bill — the plan and the check, one document |
+| 1.48 | the cost review — waivers get the record 1.40 refused to invent |
+| 1.49 | the live budget — one measured number, wherever it is asked for |
+| 1.50 | the standard — the contracts, the guarantees, and the doctrine |
+
+### What stayed out, and why
+
+**The conformance suite as a published package.** `trazum conform` is the
+executable check and it ships in the CLI everybody already installs. A separate
+`@trazum/conformance` would be a second artefact to version, release and keep in
+step with contracts that live here — and the first time it lagged by a release
+it would be telling somebody their conforming document does not conform. It is
+worth doing when somebody outside this repository actually needs it, and not
+before.
+
+**A documented rule plugin seam.** The connector seam is documented in
+`format.md` because it already is one — `ConnectorDescriptor` is a public type
+with a real contract behind it. A rule is not: rules reach into the tokenizer,
+the phrase catalogue and the locale machinery, and documenting that surface as
+an extension point would freeze internals that are still moving. Saying so beats
+publishing a seam that breaks every minor.
 
 ---
 
