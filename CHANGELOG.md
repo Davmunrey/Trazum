@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.42.0 — "The store"
+
 ### Added
 
 **The store: a year of measured spend on disk, and not one prompt inside it.**

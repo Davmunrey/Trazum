@@ -514,6 +514,17 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.42.0 — The store
+
+`connect --store` keeps what it pulled under `.trazum/store`, so a connector
+is something you can leave on: re-pulling an overlapping window converges
+instead of doubling, because a window pulled again is the same fact restated.
+Records the store cannot tell apart are kept as two and named, a broken line
+costs that line rather than the month, and pruning refuses without a written
+retention policy and says what went. `history --store` builds the series from
+what is kept, with the label series absent and said to be. Second of the ten
+in docs/plan-1.41-1.50.md.
+
 ### 1.41.0 — The connector
 
 `trazum connect` reads the bill from Anthropic's and OpenAI's usage APIs, so

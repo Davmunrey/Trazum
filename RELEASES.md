@@ -40,6 +40,119 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.42.0 — "The store"
+
+The second of the ten planned in `docs/plan-1.41-1.50.md`. 1.41 made the bill
+readable without an export; a connector that re-downloads a month every time it
+runs is still a connector nobody leaves on. This is where what was pulled
+stays.
+
+### `connect --store` and `trazum store`
+
+```
+The store: 14 measurements · $47.95 · 2026-08-01 → 2026-08-08
+  anthropic  14 measurements · 2026-08-01 → 2026-08-08 · 2 models
+
+  Held in 1 files: token counts, billed dollars and the account's own
+    workspace and key identifiers. Never prompt text, never completion text,
+    never a credential — this is a file you can back up without a privacy
+    review.
+  No retention policy is configured, so nothing is ever deleted on its own.
+    Set "store": {"keepDays": 90} when you want one.
+```
+
+Opt-in rather than automatic: a command that starts writing to a hidden
+directory on its own is a command nobody trusts twice.
+
+### Convergence, not accumulation
+
+A record is identified by its **provider, window, model and grouping**.
+Re-pulling an overlapping window is the *same fact restated*, so the later pull
+wins — a window pulled again is at worst as complete as it was. Three identical
+pulls of the same four days leave four measurements and the same $4.00, which
+is what makes a scheduled hourly pull over a rolling day safe to leave running.
+
+### Deduplication that cannot lie
+
+- **Two records the store cannot tell apart are kept as two.** A window of no
+  length, a record naming no model: there is no honest way to decide whether
+  they are one measurement or two, so both are kept and reported as
+  possibly-double. A total built on them may count the same spend twice, and
+  saying so beats a smaller number nobody can check — quietly smaller is the
+  flattering direction.
+- **A line that will not parse costs that line**, named with its file and
+  number. The store is a file a human may open, a backup may truncate and a
+  merge may mangle; losing the month because one line broke would be the worst
+  possible response, and so would pretending the month is complete.
+- **A record from a newer schema is kept and counted**, left out of the figures
+  rather than guessed at, with an upgrade named.
+- **An unknown call count survives the trip to disk as null** and never becomes
+  zero, because zero reads as "no traffic" against real spend.
+
+### Append-only, with compaction as an explicit errand
+
+A pull appends one block per month file and rewrites nothing. Two consequences
+worth stating: a crash during a write loses the tail of one block rather than a
+year of measurements, and two runs writing at once interleave whole blocks
+rather than half-lines. Convergence resolves when the store is *read*, which
+keeps a write cheap enough to run on a schedule.
+
+Only `store --prune` rewrites, because collapsing a log is the one operation
+that destroys something and it must never happen as a side effect of a pull.
+
+### Retention refuses a policy nobody wrote down
+
+```
+A prune would delete 4 measurements older than 1 days, covering
+2026-08-01 → 2026-08-05 and $4.00 of measured spend. Nothing was deleted —
+this was --dry-run.
+```
+
+With neither `store.keepDays` in the config nor `--keep`, pruning **refuses**
+and names both ways to set one. Deleting measurements on a guessed policy is
+not a default anybody should get by accident. What went is reported with the
+span it covered and the dollars it held; `--dry-run` says all of it before
+anything goes. A bucket that *ends* inside the retained period is kept whole,
+because half a bucket measures nothing.
+
+### `history --store`
+
+The series, built straight from what is kept — no directory for anybody to
+curate. Bucketed sources carry no label, because a usage API groups by model
+and workspace and never by workload, so **the label series is absent and said
+to be** rather than empty and misread as "no workload moved". The model-share
+and cache-share series are exactly what a series exists for, and both work in
+full. Reading stored `--json` report files keeps working unchanged: a year of
+JSON a team already has must not stop working because a store appeared.
+
+### Two failures this work found in itself
+
+- **An empty store was reported over records it could not resolve.** Records it
+  cannot tell apart, unparseable lines and records from a newer schema are real
+  measurements sitting on disk; "the store is empty" over them hid exactly what
+  the reader needed to see. Empty now means *nothing at all*.
+- **A series printed "0 calls" for a source that serves no request count.**
+  The connected report had refused that reading since 1.41 and the series had
+  not; period call counts are nullable now, and the row omits what it does not
+  know.
+
+### The module underneath
+
+`@trazum/core` gains `store.ts` (`resolveStore`, `recordsFromBuckets`,
+`bucketsFromRecords`, `storeInventory`, `pruneRecords`), browser-safe: it
+decides what a record is and when two are the same, and the filesystem half
+lives in the CLI. New config block `store.keepDays`, deliberately with no
+default.
+
+### What stayed out, and why
+
+A store shared over a network, or committed as a team artefact. Both are real
+wants, and both need a decision about who may read another team's spend that
+this release has no basis to make. The store is local, per-checkout, and says
+so; the shared version belongs with the team work in 1.48.
+
+---
+
 ## 1.41.0 — "The connector"
 
 The first of the ten planned in `docs/plan-1.41-1.50.md`, and the first
