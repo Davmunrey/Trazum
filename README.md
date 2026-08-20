@@ -43,11 +43,11 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- 31 commands       MCP server      Next.js     comments on pull requests
+ 32 commands       MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
-## The thirty-one commands
+## The thirty-two commands
 
 | Command | What it answers |
 |---|---|
@@ -79,6 +79,7 @@ never runs unless you ask.
 | [`trazum semantic`](#the-findings-a-dictionary-cannot-see-trazum-semantic) | Does this prompt say the same thing twice, or contradict itself? *The model proposes; the checker disposes.* |
 | [`trazum owners`](#whose-money-trazum-owners) | Whose budget does this land on? *The unallocated is never spread.* |
 | [`trazum commitment`](#should-you-sign-that-commitment-trazum-commitment) | What would that committed-use deal have been worth? *On measured months, both directions priced.* |
+| [`trazum report`](#the-year-from-what-was-already-written-down-trazum-report) | What did the year actually look like? *No new data, and it lists its own blind spots.* |
 | [`trazum conform`](#building-on-the-format-trazum-conform) | Does the document my tool emits conform, and what will it not be able to answer? |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
 | [`trazum feedback`](#telling-us-something-trazum-feedback) | Where do I report this, and what will you ask me for? *Sends nothing.* |
@@ -189,8 +190,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of thirty-one commands — [the table
-above](#the-thirty-one-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of thirty-two commands — [the table
+above](#the-thirty-two-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -340,7 +341,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other thirty commands, each with its own section below:
+The other thirty-one commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -1563,6 +1564,48 @@ settle it — a commitment is signed for a year, and an answer from one month is
 year-long decision made on a fortnight of evidence. A history shorter than the
 term still gets an answer, with the gap marked: six months against a twelve-month
 deal is a real answer about six months.
+
+### The year, from what was already written down: `trazum report`
+
+```
+The year 2026, from what was already written down
+
+  $14,600 across 120 calls, over 4 recorded months.
+  ! No record at all for 2026-05 … 2026-12. Those months are named rather than
+    filled: a year that quietly covers part of itself and prints an annual total
+    is wrong by the rest and says nothing about it.
+
+  14 actions planned. 11 arrived, 1 did not, and 2 could not be judged.
+
+  What this record cannot say
+    · whether some promises were kept — they could not be judged from the logs
+    · how many dollars the kept promises were worth
+    · what any of the money bought
+```
+
+**No new data.** Everything comes from the store and the plans you already keep,
+and nothing is computed that cannot be checked against a document that already
+exists. That constraint is the design: an annual report is the document most
+likely to be quoted out of the room it was written in, and the one nobody goes
+back to verify.
+
+**Three outcomes, never two.** "Eleven of fourteen arrived" reads better than
+"eleven arrived, one did not, and two could not be judged" — and the second
+sentence is the one that tells you your measurement has a hole in it.
+
+**There is deliberately no dollar figure for what arrived.** A verification says
+*whether* each action landed; it has never carried a per-action figure for the
+saving. Assembling one here would mean deciding which of several observed numbers
+is "the saving" — a judgement the verification refused to make, and exactly the
+annual-report arithmetic this document replaces.
+
+**It lists its own blind spots**, which is the only reason the rest is worth
+acting on.
+
+**It reports the record, not the team.** No per-person anything. An annual
+document is exactly where a cost tool starts being used for performance review,
+and the way not to be is to hold no data that could be — a test asserts the
+document contains no field that could name somebody.
 
 ### In the path of the call: `trazum gateway`
 

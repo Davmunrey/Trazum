@@ -33,7 +33,9 @@ export type ContractName =
   | 'verification'
   | 'history'
   | 'connected'
-  | 'cost-answer';
+  | 'cost-answer'
+  | 'outcome-report'
+  | 'annual-record';
 
 export interface ConformanceProblem {
   /** Where: `line 12` for a log, or a dotted path inside a document. */
@@ -249,11 +251,110 @@ const DOCUMENT_RULES: Record<Exclude<ContractName, 'usage-log'>, FieldRule[]> = 
     rule('total', 'an object', isObject),
     rule('unavailable', 'an array of findings this source cannot support', isArray),
   ],
+  /**
+   * The outcome chapter — the standard is only worth something if its
+   * refusals travel with it.
+   *
+   * Another tool emitting this format has to handle a **missing numerator**
+   * the same way this one does: a rate that is `null` rather than `0` when
+   * nothing was recorded, a `noRate` beside it saying which of the two reasons
+   * applies, and undeclared values kept in their own list rather than folded
+   * into the failures. A format that carried the fields and lost the refusals
+   * would be worse than no format, because it would look interoperable.
+   */
+  'outcome-report': [
+    rule('slices', 'an array of declared outcome values, dearest first', isArray),
+    rule('undeclared', 'an array — named, never counted as failures', isArray),
+    rule('coverage', 'an object with recorded, parsed and unrecordedUsd', isObject),
+    rule(
+      'successShareOfRecordedUsd',
+      'a number, or **null** when nothing was recorded — never 0, which is a real and terrible measurement rather than an absence',
+      // `absence-as-zero` is detected from the word "null" in the expected
+      // text, so a tool emitting 0 here is told it emitted an absence as a
+      // measurement rather than merely getting a type wrong.
+      (v) => v === null || isNumber(v),
+    ),
+    rule(
+      'noRate',
+      'a string saying why there is no rate, or null when there is one — a refusal never arrives bare',
+      (v) => v === null || typeof v === 'string',
+    ),
+  ],
+  'annual-record': [
+    rule('months', 'an array, oldest first', isArray),
+    rule('missingMonths', 'an array — named, never interpolated', isArray),
+    rule('promises', 'an object with planned, arrived, notArrived and cannotTell', isObject),
+    rule(
+      'outcomes',
+      'an object, or null when nothing recorded one',
+      (v) => v === null || isObject(v),
+    ),
+    rule('cannotSay', 'an array of what this record cannot answer', isArray),
+  ],
   'cost-answer': [
     rule('verdict', 'one of within, over, cannot-tell', (v) =>
       v === 'within' || v === 'over' || v === 'cannot-tell'),
     rule('call', 'an object, or null when nothing was described', (v) => v === null || isObject(v)),
     rule('budget', 'an object, or null when there is no budget', (v) => v === null || isObject(v)),
+  ],
+};
+
+/**
+ * Rules that read more than one field, because the refusals worth carrying are
+ * relational.
+ *
+ * A per-field contract can say "a number or null". It cannot say **"null when
+ * nothing was recorded, and a number otherwise"** — and that is the whole
+ * refusal. A rate of `0` is perfectly valid when calls were recorded and none
+ * of them succeeded; it is a lie when nothing was recorded at all, and the
+ * difference is in a different field.
+ *
+ * This was found while writing the outcome chapter: the per-field rule accepted
+ * `0` for the rate because zero is a finite number, so the strongest promise in
+ * the format was going uncarried. A standard that shipped the fields and lost
+ * that would be worse than no standard, because it would look interoperable.
+ */
+interface CrossRule {
+  at: string;
+  kind: ConformanceProblem['kind'];
+  /** True when the document is fine. */
+  ok: (doc: Record<string, unknown>) => boolean;
+  detail: string;
+}
+
+const CROSS_RULES: Partial<Record<Exclude<ContractName, 'usage-log'>, CrossRule[]>> = {
+  'outcome-report': [
+    {
+      at: 'successShareOfRecordedUsd',
+      kind: 'absence-as-zero',
+      ok: (doc) => {
+        const coverage = doc.coverage as { recorded?: unknown } | undefined;
+        const recorded = typeof coverage?.recorded === 'number' ? coverage.recorded : null;
+        if (recorded !== 0) return true;
+        return doc.successShareOfRecordedUsd === null;
+      },
+      detail:
+        'nothing was recorded, so the rate must be null — 0 is a real and terrible measurement and this is an absence',
+    },
+    {
+      at: 'noRate',
+      kind: 'missing',
+      ok: (doc) => (doc.successShareOfRecordedUsd === null ? doc.noRate !== null : doc.noRate === null),
+      detail:
+        'a null rate needs a reason beside it and a stated rate must not carry one — a refusal never arrives bare, and a reason attached to an answer is two answers',
+    },
+  ],
+  'annual-record': [
+    {
+      at: 'cannotSay',
+      kind: 'missing',
+      ok: (doc) =>
+        !Array.isArray(doc.missingMonths) ||
+        doc.missingMonths.length === 0 ||
+        (Array.isArray(doc.cannotSay) && doc.cannotSay.includes('months-missing')),
+      detail:
+        'months are missing and cannotSay does not say so — a year that quietly covers nine months and prints an annual total is wrong by a quarter',
+    },
   ],
 };
 
@@ -266,6 +367,8 @@ const DOCUMENT_RULES: Record<Exclude<ContractName, 'usage-log'>, FieldRule[]> = 
  */
 function contractOf(doc: Record<string, unknown>): Exclude<ContractName, 'usage-log'> | null {
   if (Array.isArray(doc.byLabelAndModel)) return 'profile';
+  if (Array.isArray(doc.missingMonths) && isObject(doc.promises)) return 'annual-record';
+  if (Array.isArray(doc.undeclared) && isObject(doc.coverage)) return 'outcome-report';
   if (Array.isArray(doc.periods) && Array.isArray(doc.runs)) return 'history';
   if (Array.isArray(doc.actions) && typeof doc.arrived === 'number') return 'verification';
   if (Array.isArray(doc.actions)) return 'plan';
@@ -403,6 +506,14 @@ export function conform(text: string, options: ConformOptions = {}): Conformance
         kind,
         detail: `expected ${field.expected}, found ${typeOf(value)}`,
       });
+    }
+  }
+
+  // Relational rules last, so a document with a missing field is told about the
+  // field before it is told about a relationship that field is half of.
+  for (const cross of CROSS_RULES[contract] ?? []) {
+    if (!cross.ok(doc)) {
+      problems.push({ at: cross.at, kind: cross.kind, detail: cross.detail });
     }
   }
 

@@ -268,6 +268,21 @@ export interface CliMessages {
    * The ladder. Every line here exists to stop somebody reading "we route to
    * the cheap model first" as a saving without the number that decides it.
    */
+  annual: {
+    heading(year: string): string;
+    needsYear(): string;
+    spent(usd: string, calls: string, months: string): string;
+    missing(months: string): string;
+    promises(planned: string, arrived: string, notArrived: string, cannotTell: string): string;
+    projected(usd: string): string;
+    noArrivedFigure(): string;
+    outcomes(recorded: string, parsed: string, unrecordedUsd: string): string;
+    noOutcomes(): string;
+    cannotSayHeading(): string;
+    cannotSay(kind: string): string;
+    noNewData(): string;
+  };
+
   commitment: {
     heading(floor: string, discount: string, months: string): string;
     needsTerms(): string;

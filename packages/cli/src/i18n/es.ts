@@ -49,6 +49,7 @@ ${bold('USO')}
   trazum quality <log> --label <name> --at <iso> [--gate]
   trazum semantic <prompt> [--yes]
   trazum commitment <log> --floor <usd> --discount <pct> [--months 12]
+  trazum report <log> --year <yyyy>
   trazum owners <log>
   trazum ladder <log>
   trazum feedback
@@ -162,6 +163,15 @@ ${bold('OPCIONES DE commitment')}
   costó el suelo en los meses que se quedaron cortos — como cifra aparte,
   porque metida en el ahorro desaparece. Un cálculo sobre el pasado, nunca una
   previsión.
+
+${bold('OPCIONES DE report')}
+  --year <yyyy>               Obligatorio. Qué año montar.
+  --json                      Emite también el registro como JSON.
+
+  Todo sale del almacén y de los planes que ya guardas — no se calcula nada
+  que no se pueda comprobar contra un documento que ya existe. Los meses sin
+  registro se nombran en vez de rellenarse, las promesas se cuentan en tres
+  resultados y no en dos, y el informe lista lo que no puede decir.
 
 ${bold('OPCIONES DE prune')}
   --cases <fichero>           Una entrada por línea, o un array JSON. Obligatorio.
@@ -1058,6 +1068,40 @@ ${bold('EJEMPLOS')}
       `${path} ya existe y se dejó intacto. Pasa --dry-run para ver qué iría dentro, o --yes para reemplazarlo.`,
     existingUnparseable: (path) =>
       `${path} existe y no se pudo interpretar, así que no se escribió nada encima. Arréglalo o muévelo primero.`,
+  },
+
+  annual: {
+    heading: (year) => `El a\u00f1o ${year}, a partir de lo que ya estaba escrito`,
+    needsYear: () => '--year es obligatorio, con cuatro d\u00edgitos: trazum report <log> --year 2026.',
+    spent: (usd, calls, months) => `${usd} en ${calls} llamadas, sobre ${months} meses registrados.`,
+    missing: (months) =>
+      `Sin ning\u00fan registro de ${months}. Esos meses se nombran en vez de rellenarse: un a\u00f1o que cubre parte de s\u00ed mismo en silencio e imprime un total anual est\u00e1 equivocado en el resto y no dice nada al respecto.`,
+    promises: (planned, arrived, notArrived, cannotTell) =>
+      `${planned} acciones planeadas. ${arrived} llegaron, ${notArrived} no, y ${cannotTell} no se pudieron juzgar. Tres resultados, nunca dos \u2014 el tercero es el que un informe anual normal mete dentro del que favorece.`,
+    projected: (usd) => `Los planes proyectaron ${usd} de ahorro.`,
+    noArrivedFigure: () =>
+      'A prop\u00f3sito no hay una cifra al lado de lo que lleg\u00f3. Una verificaci\u00f3n dice SI cada acci\u00f3n aterriz\u00f3; nunca ha llevado una cifra en d\u00f3lares por acci\u00f3n del ahorro. Montarla aqu\u00ed significar\u00eda decidir cu\u00e1l de varios n\u00fameros observados es "el ahorro" \u2014 un juicio que la verificaci\u00f3n se neg\u00f3 a hacer, y justo la aritm\u00e9tica de informe anual que este documento sustituye.',
+    outcomes: (recorded, parsed, unrecordedUsd) =>
+      `${recorded} de ${parsed} llamadas registraron un resultado; ${unrecordedUsd} del gasto del a\u00f1o no.`,
+    noOutcomes: () =>
+      'No se registr\u00f3 ning\u00fan resultado este a\u00f1o, as\u00ed que nada de esto dice qu\u00e9 compr\u00f3 el dinero. Eso no es una tasa de \u00e9xito de cero \u2014 un a\u00f1o sin instrumentar y un a\u00f1o que falla son frases distintas.',
+    cannotSayHeading: () => 'Lo que este registro no puede decir',
+    cannotSay: (kind) =>
+      kind === 'months-missing'
+        ? 'qu\u00e9 pas\u00f3 en los meses sin registro'
+        : kind === 'nothing-was-planned'
+          ? 'si se prometi\u00f3 algo, porque no se hizo ning\u00fan plan'
+          : kind === 'nothing-was-verified'
+            ? 'si se cumplieron las promesas, porque no se verific\u00f3 ning\u00fan plan'
+            : kind === 'some-promises-unjudgeable'
+              ? 'si algunas promesas se cumplieron \u2014 no se pudieron juzgar con los logs que existen'
+              : kind === 'arrived-savings-not-quantified'
+                ? 'cu\u00e1ntos d\u00f3lares val\u00edan las promesas cumplidas'
+                : kind === 'no-outcomes-recorded'
+                  ? 'qu\u00e9 compr\u00f3 nada de ese dinero'
+                  : 'qu\u00e9 hizo la parte del tr\u00e1fico sin instrumentar',
+    noNewData: () =>
+      'Todas las cifras de arriba salen del almac\u00e9n y de los planes que ya guardas. Aqu\u00ed no se ha calculado nada que no se pueda comprobar contra un documento que ya existe \u2014 que es la \u00fanica raz\u00f3n por la que un informe anual merece confianza, siendo el documento con m\u00e1s probabilidad de acabar citado fuera de la sala donde se escribi\u00f3.',
   },
 
   commitment: {

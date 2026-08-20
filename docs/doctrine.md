@@ -8,6 +8,19 @@ otherwise buried in the changelog entry of the release that learned it.
 They are not Trazum-specific. If you are building something that reports money
 from measurements, these are the mistakes waiting for you.
 
+**Second edition, at 1.51.0.** Three arcs have now been planned in advance and
+delivered, and this is the document they were arguing towards. Two rules joined
+at 1.50.3 and 1.50.4 — *a proxy refuses and never answers something else* and
+*quality is recorded, never inferred* — because putting a tool in the path of the
+call and giving it an opinion about quality are both new ways to do harm, and the
+old rules did not cover either. One joined at 1.50.4 and is the newest thing here:
+*cheaper per call is not cheaper per outcome, and the product prints both
+rankings rather than picking one.*
+
+The record of getting these wrong is [our own
+medicine](our-own-medicine.md), which is the same document this product asks its
+users to keep.
+
 ---
 
 ## Measured never merges with estimated without saying which half is which
@@ -168,6 +181,34 @@ cannot arise.
 Write the check, then plant the violation it exists to catch and watch it fail
 **by name**. Remove the probe, watch it pass. A guard nobody has seen fail is a
 guard nobody knows is connected — and roughly one in five turns out not to be.
+
+## Cheaper per call is not cheaper per outcome
+
+The two are different rankings and a workload can move up one while moving down
+the other. Trazum found a case where one workload cost **ten times more per
+call** and **half as much per resolution** — and every ranking this product had
+printed until then was the first column.
+
+Print both. Picking one is a product judgement about whether cost or quality
+matters more today, and that is not a judgement a cost tool has standing to
+make on somebody's behalf.
+
+*Learned in 1.50.5.*
+
+## An unallocated share is never spread
+
+Dividing unattributed spend proportionally across the owners you *do* know is
+the most common lie in cost reporting. It makes every line add up and every
+figure wrong — by an amount nobody can see, in a direction nobody can check.
+
+It is worst for the teams with the cleanest instrumentation, because their known
+spend is largest, so they absorb the biggest share of somebody else's mystery. A
+tool that behaves that way punishes the only people doing the thing it asked
+for.
+
+Keep it as its own line, name what is in it, and wait for somebody to claim it.
+
+*Learned in 1.50.10.*
 
 ## Bound an assertion by its subject, never by its neighbour
 
