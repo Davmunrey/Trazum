@@ -7,6 +7,8 @@ import { describe, it } from 'node:test';
 
 import { RULES } from '../dist/index.js';
 
+import { sectionOf } from '../../../test-utils/section.mjs';
+
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..', '..', '..');
 
@@ -661,7 +663,20 @@ describe('a count written in prose is a claim like any other', () => {
   });
 
   it('every command is mentioned in the README', () => {
-    // A command nobody documented is a command nobody runs.
+    /**
+     * A command nobody documented is a command nobody runs.
+     *
+     * The second half of this filter used to accept `` `<id> `` — a backtick
+     * followed by the command's name, anywhere in the file. That is satisfied
+     * by any identifier, filename or JSON key that happens to start the same
+     * way, and the README has eighty-nine backticked lowercase words that are
+     * not commands: `batch`, `cache`, `label`, `locale`, `drift`. A command
+     * named after any of them would have been documented nowhere and passed.
+     *
+     * All thirty-two commands satisfy the strict form already, so dropping the
+     * loose one costs nothing today and closes the hole for the command added
+     * next year. `trazum <id>` is what a reader actually types.
+     */
     const readme = readFileSync(join(repoRoot, 'README.md'), 'utf8');
     const cli = readFileSync(join(repoRoot, 'packages/cli/src/index.ts'), 'utf8');
     const block = cli.slice(
@@ -670,9 +685,43 @@ describe('a count written in prose is a claim like any other', () => {
     );
     const missing = [...block.matchAll(/^ {2}([a-z]+):/gm)]
       .map((m) => m[1])
-      .filter((id) => !readme.includes(`trazum ${id}`) && !readme.includes(`\`${id}`));
+      .filter((id) => !readme.includes(`trazum ${id}`));
 
     assert.deepEqual(missing, [], `undocumented commands: ${missing.join(', ')}`);
+  });
+
+  it('no test bounds a section of prose by naming the section after it', () => {
+    /**
+     * The ratchet on the failure that has recurred nine times.
+     *
+     * Every parity test that harvests its promised fields out of a document
+     * used to end the harvest by naming the *next* heading — correct until
+     * somebody inserts a section between the two, at which point the harvest
+     * silently swallows the new one. Documenting two contracts at once broke
+     * four suites in one commit, and the fix each previous time had been to
+     * name the new neighbour, which set the same trap again.
+     *
+     * `test-utils/section.mjs` is the one home for the rule now: it ends at the
+     * next heading, whatever it is. This asserts nothing goes back to naming
+     * one, because the pattern is easy to re-introduce and reads fine in review.
+     */
+    const suites = execFileSync('git', ['ls-files', 'packages/*/test/*.js'], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+    })
+      .split('\n')
+      .filter(Boolean);
+    assert.ok(suites.length > 20, `only ${suites.length} suites found — has the layout moved?`);
+
+    const offenders = suites.filter((file) =>
+      /indexOf\(\s*['"`]#{1,6} /.test(readFileSync(join(repoRoot, file), 'utf8')),
+    );
+    assert.deepEqual(
+      offenders,
+      [],
+      'these bound a section by naming a heading instead of using sectionOf(), ' +
+        `which breaks the moment a section is inserted between them: ${offenders.join(', ')}`,
+    );
   });
 
   it('every route the web app serves is named in the roadmap', () => {
@@ -1193,14 +1242,15 @@ describe('a privacy claim is a claim like any other', () => {
     .map((name) => readFileSync(join(schemaDir, name), 'utf8'))
     .join('\n');
 
-  /** The privacy section, and nothing after it. */
-  const privacySection = () => {
-    const readme = readFileSync(join(repoRoot, 'README.md'), 'utf8');
-    const start = readme.indexOf('## Analytics and privacy');
-    assert.notEqual(start, -1, 'the privacy section has been renamed or removed');
-    const next = readme.indexOf('\n## ', start + 1);
-    return readme.slice(start, next === -1 ? undefined : next);
-  };
+  /**
+   * The privacy section, and nothing after it.
+   *
+   * This one always bounded correctly — by the next heading, whatever it is —
+   * and it is routed through the shared helper anyway so there is one place
+   * the rule lives and the ratchet below has nothing to make an exception for.
+   */
+  const privacySection = () =>
+    sectionOf(readFileSync(join(repoRoot, 'README.md'), 'utf8'), '## Analytics and privacy');
 
   it('the schema still stores prompt text, which is what makes the claim conditional', () => {
     /**
