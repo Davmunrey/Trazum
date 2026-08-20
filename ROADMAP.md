@@ -1434,7 +1434,32 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**The arc through 1.50.0 is delivered in full**, with its errata on the record:
+**Nothing is planned.** Four arcs have been planned in advance and all four are
+delivered; there is no fifth yet. This section says so rather than leaving the
+arc that just finished described as though it were still running, which is what
+it did through 1.51.1 — a roadmap whose forward-looking section narrates a past
+is the same failure the three plan documents had, one file over.
+
+**The arc through 1.51.0 is delivered in full**, with its errata on the record:
+[docs/plan-1.51.md](docs/plan-1.51.md). Its thesis was the gap this product had
+carried since the beginning: **every figure it printed was a denominator with no
+numerator.** It could say a workload got 40% cheaper and could not say whether it
+stopped working. Ten chapters answered that — the gateway in the path of the call
+(1.50.3), the outcome the caller records and nothing infers (1.50.4), cost per
+resolved outcome (1.50.5), the escalation ladder priced in both directions
+(1.50.6), two arms on real traffic (1.50.7), the quality gate that refuses to
+blame what it cannot attribute (1.50.8), the semantic findings deferred since
+0.1.0 (1.50.9), the bill with a name on it and nothing spread (1.50.10), the
+commitment replayed against the measured past (1.50.11), and the year assembled
+from what was already written down (1.51.0).
+
+The plan document deliberately did **not** pin a patch number to each chapter.
+The first draft did, and 1.50.1 (the numbering) and 1.50.2 (the feedback loop)
+both arrived without being in it. Work outside a plan is not a failure of the
+plan; a plan that pretends otherwise goes stale on contact with the first good
+idea. The order is the commitment.
+
+**The arc through 1.50.0 is delivered in full** as well:
 [docs/plan-1.41-1.50.md](docs/plan-1.41-1.50.md). Its thesis was that the loop
 was complete and inert — every command waited for a human to type something, so
 nobody ran it on the afternoon it would have mattered, and the agent actually
@@ -1444,30 +1469,15 @@ the agent's budget (1.45), five-minute onboarding (1.46), the bill in the
 browser (1.47), cost review in CI (1.48), the live budget (1.49), and the
 format, the guarantees and the doctrine other tools can build on (1.50).
 
-**The arc in progress** is [docs/plan-1.51.md](docs/plan-1.51.md): ten chapters
-shipping as `1.50.x` and landing as **1.51.0**, under the numbering
-[VERSIONING.md](VERSIONING.md#what-the-three-numbers-mean-here) adopted at
-1.50.1 — a patch is a chapter, and the minor is spent only on the release that
-finishes the story.
-
-Its thesis is the gap this product has carried since the beginning: **every
-figure it prints is a denominator with no numerator.** It can say a workload got
-40% cheaper and cannot say whether it stopped working. A gateway in the path of
-the call and an outcome signal the caller records (never inferred) give cost per
-resolved outcome, the escalation ladder, experiments on real traffic, quality
-gates in CI, and at last the semantic findings the rules engine has deferred
-since 0.1.0 because it could not check them.
-
-The plan document deliberately does **not** pin a patch number to each chapter.
-The first draft did, and 1.50.1 (the numbering) and 1.50.2 (the feedback loop)
-both arrived without being in it. Work outside a plan is not a failure of the
-plan; a plan that pretends otherwise goes stale on contact with the first good
-idea. The order is the commitment.
-
-The two arcs before these were also delivered in full:
+The two arcs before those were also delivered in full:
 [docs/plan-1.36-1.40.md](docs/plan-1.36-1.40.md) introduced Trazum's estimating
 and measuring halves to each other, and
 [docs/plan-1.30-1.35.md](docs/plan-1.30-1.35.md) precedes it.
+
+Everything under *Under consideration* below stays where it is until something
+moves it. An entry there is not a queue with the front of it hidden — it is the
+reasoning for why the thing is not scheduled, and it is written down so that
+deciding differently later is a visible act.
 
 ## Under consideration
 

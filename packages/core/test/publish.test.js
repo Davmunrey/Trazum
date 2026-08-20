@@ -358,6 +358,23 @@ describe('the record agrees with itself', () => {
     return [...body.matchAll(/^### (\d+\.\d+\.\d+)/gm)].map((m) => m[1]);
   };
 
+  /** The prose under one `##` heading, headings of its own included. */
+  const sectionBody = (heading) => {
+    const start = roadmap.indexOf(`\n## ${heading}`);
+    if (start === -1) return null;
+    const rest = roadmap.slice(start + 1);
+    const end = rest.indexOf('\n## ');
+    return end === -1 ? rest : rest.slice(0, end);
+  };
+
+  /** Numeric, because '1.9.0' sorts above '1.51.0' as a string and that is the trap. */
+  const compareVersions = (a, b) => {
+    const left = a.split('.').map(Number);
+    const right = b.split('.').map(Number);
+    for (let i = 0; i < 3; i += 1) if (left[i] !== right[i]) return left[i] - right[i];
+    return 0;
+  };
+
   const releasedInChangelog = [
     ...changelog.matchAll(/^## (\d+\.\d+\.\d+)/gm),
   ].map((m) => m[1]);
@@ -399,6 +416,41 @@ describe('the record agrees with itself', () => {
       wrong,
       [],
       `these are listed as collapsed but CHANGELOG.md released them separately: ${wrong.join(', ')}`,
+    );
+  });
+
+  it('the section called "Next" points forward, or says it does not', () => {
+    /**
+     * The forward-looking section narrated a past for two releases.
+     *
+     * `## Next` opened with "the arc in progress is docs/plan-1.51.md" after
+     * every chapter of that arc had shipped and the arc had landed at 1.51.0.
+     * It is the same failure the three plan documents carried — a document
+     * written before the work, still written in the future tense after it —
+     * except one section further down and with nothing pointing it out.
+     *
+     * The invariant is not "Next must be full". A project with nothing planned
+     * is a real state and pretending otherwise is worse. It is that the section
+     * either **names a version newer than anything released**, or **says
+     * plainly that nothing is planned**. What it may not do is describe
+     * delivered work as forthcoming, which is the only reading left when it
+     * does neither.
+     */
+    const next = sectionBody('Next');
+    assert.ok(next, 'the roadmap has no "Next" section any more');
+
+    const newestReleased = releasedInChangelog[0];
+    const forward = [...next.matchAll(/\b(\d+\.\d+\.\d+)\b/g)]
+      .map((m) => m[1])
+      .filter((version) => compareVersions(version, newestReleased) > 0);
+
+    if (forward.length > 0) return;
+
+    assert.match(
+      next,
+      /Nothing is planned/,
+      `ROADMAP.md's "Next" names no version newer than ${newestReleased} and does not ` +
+        'say nothing is planned, which leaves delivered work described as forthcoming',
     );
   });
 
