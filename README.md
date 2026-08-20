@@ -43,11 +43,11 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- 28 commands       MCP server      Next.js     comments on pull requests
+ 29 commands       MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
-## The twenty-eight commands
+## The twenty-nine commands
 
 | Command | What it answers |
 |---|---|
@@ -76,6 +76,7 @@ never runs unless you ask.
 | [`trazum ladder`](#is-the-ladder-saving-money-or-is-it-a-bill-trazum-ladder) | Is cheap-first-escalate-on-failure saving money, or costing it? *Break-even rate, stated.* |
 | [`trazum experiment`](#two-arms-on-real-traffic-trazum-experiment) | Which of two arms is better on real traffic? *A winner only when there is one.* |
 | [`trazum quality`](#the-gate-that-fails-a-build-for-quality-trazum-quality) | Did that prompt change quietly make the product worse? *Refuses to blame what it cannot attribute.* |
+| [`trazum semantic`](#the-findings-a-dictionary-cannot-see-trazum-semantic) | Does this prompt say the same thing twice, or contradict itself? *The model proposes; the checker disposes.* |
 | [`trazum conform`](#building-on-the-format-trazum-conform) | Does the document my tool emits conform, and what will it not be able to answer? |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
 | [`trazum feedback`](#telling-us-something-trazum-feedback) | Where do I report this, and what will you ask me for? *Sends nothing.* |
@@ -186,8 +187,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of twenty-eight commands — [the table
-above](#the-twenty-eight-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of twenty-nine commands — [the table
+above](#the-twenty-nine-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -337,7 +338,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other twenty-seven commands, each with its own section below:
+The other twenty-eight commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -1417,6 +1418,53 @@ are not symmetric and the threshold is not either.
 **What it cannot see, it says.** A `dropped` verdict means the rate fell and the
 three things it can check did not move. That is a smaller claim than "the prompt
 did it", and it is the largest one the evidence supports.
+
+### The findings a dictionary cannot see: `trazum semantic`
+
+The rules engine has deferred the same findings since 0.1.0 for one honest
+reason: **a dictionary cannot see meaning, and a model that hallucinates a
+finding is worse than a rule that misses one.** A missed finding costs you
+nothing. An invented one costs you an afternoon and the next finding's
+credibility.
+
+```
+Semantic pass on prompts/support.txt
+
+  This will send the prompt to Claude Opus 5: about 440 tokens in and 800 out,
+  roughly $0.0222. Estimated, not measured — a tool that spends your money to
+  tell you how to spend less should be the first thing audited by its own
+  arithmetic. Pass --yes to run it.
+
+  Nothing was sent. Add --yes once you have read the price above.
+```
+
+**The price is printed before anything is sent**, and without `--yes` that price
+is the entire output of a run.
+
+**The model proposes; the deterministic layer disposes.** Every quoted passage is
+checked **character for character** against the prompt — a model reporting on a
+prompt while paraphrasing what it quotes has stopped reading and started writing,
+and everything else in that response is suspect. Then: the two spans must be
+distinct and must not overlap; pairs the rules engine already catches at 0.92
+similarity are dropped rather than charged for twice; a near-copy labelled a
+contradiction is rejected, because two passages that say the same thing cannot
+disagree; and **every token figure is counted here, not believed**.
+
+What did not survive is printed too, with its reason. A pass that showed only its
+accepted findings would hide its own hit rate, which is the most useful thing you
+can know about whether to run it again.
+
+**A ceiling, never a saving.** Merging a paraphrase pair means writing one
+passage that does the work of both, and nobody knows yet how long that is — so
+the figure is what deleting the smaller half would recover, named as the ceiling
+it is. A **contradiction gets no figure at all**: it is worth fixing because the
+prompt is wrong, not because it is long, and a dollar amount would sell the wrong
+reason.
+
+**It stays optional and always will be.** Trazum works with no key, no network
+and no model — true since 0.1.0, and this does not change it. That is why the
+verification lives in `@trazum/core`, which has no network, and only the call
+lives in the CLI.
 
 ### In the path of the call: `trazum gateway`
 

@@ -50,6 +50,19 @@ export type { PlanAction, PlanActionKind, PlanAssumption, PlanDocument } from '.
 export { verifyPlan } from './verify.js';
 export { buildHistory, storedReportFrom, MIN_RUN } from './history.js';
 export { outcomeReport, judgeOutcome, OUTCOME_UNLOCKS } from './outcome.js';
+export {
+  verifySemanticProposals,
+  semanticPassCost,
+  SEMANTIC_SYSTEM_PROMPT,
+  ALREADY_DETECTED_SIMILARITY,
+} from './semantic.js';
+export type {
+  SemanticFinding,
+  SemanticKind,
+  SemanticProposal,
+  SemanticRejection,
+  SemanticResult,
+} from './semantic.js';
 export { runExperiment } from './experiment.js';
 export {
   qualityGate,
