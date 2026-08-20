@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.44.0 — "The answer in milliseconds"
+
 ### Added
 
 **`trazum serve`: the answer in milliseconds.** Everything this tool knows sat

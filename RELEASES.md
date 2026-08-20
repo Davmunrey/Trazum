@@ -40,6 +40,115 @@ file being here rather than pasted into a GitHub form at release time.
 
 ---
 
+## 1.44.0 — "The answer in milliseconds"
+
+The fourth of the ten planned in `docs/plan-1.41-1.50.md`, and the pivot the
+rest of the arc rests on. Everything this tool knows sat behind a process
+launch, a config walk and a log parse. That is fine for a report and useless
+for a decision being made right now: by the time the report exists, the call
+has been paid for.
+
+### `trazum serve`
+
+```bash
+trazum serve                 # 127.0.0.1:7317, or --socket /tmp/trazum.sock
+curl -s localhost:7317/cost -d '{"model":"claude-opus-5","inputTokens":200000}'
+```
+
+```json
+{
+  "call":   { "estimatedUsd": 1.00, "provenance": "estimated" },
+  "budget": { "consumedUsd": 40.00, "limitUsd": 50.00, "provenance": "measured" },
+  "verdict": "within",
+  "restsOn": "measured+estimated",
+  "afterCall": { "usd": 41.00, "halves": { "measuredUsd": 40, "estimatedUsd": 1 } }
+}
+```
+
+Measured at about two milliseconds an answer, and the suite asserts a ceiling
+rather than trusting the number in this paragraph.
+
+### The shape is the release
+
+This is where the temptation to merge halves is strongest, and the answer
+refuses to:
+
+- **The budget consumed is `measured`** — the provider billed those tokens.
+- **The cost of the described call is `estimated`** — nobody has sent it, and
+  the token count behind it is a count of something that has not happened.
+- **The composed figure exists**, because a caller deciding one call genuinely
+  needs it — and it never travels without both halves beside it, so nobody can
+  mistake the composition for a measurement.
+- **`restsOn` says whether the verdict needed the estimate at all.** `measured`
+  means the budget is already past its limit and a caller can act with full
+  confidence; `measured+estimated` means it takes this call to cross, and the
+  verdict is only as good as the token count. A caller reading nothing but the
+  verdict can still tell those apart.
+
+### Three outcomes, and three reasons kept apart
+
+`within`, `over`, `cannot-tell` — and the three ways of not being able to tell
+are distinct because their fixes are: **no budget configured** (set
+`spend.maxUsd`), **nothing measured** (connect a source), **model unpriced**
+(add it with a pricing overlay). Answering "within" for a model the catalogue
+cannot price would answer whether *current* spend fits, which is a different
+question from the one asked.
+
+### It degrades rather than failing
+
+With no store and no budget the endpoint still prices the call and says the
+budget half is unknown. Offline is a mode, not a failure — an oracle that
+refuses to speak when half its inputs are missing is an oracle nobody wires
+into a hot path.
+
+The measured position is read **once at start**, because a file read in the
+request path cannot promise milliseconds. That staleness is real, so every
+answer carries the window its measurement covers rather than implying it is
+current to the second.
+
+### The first time Trazum listens
+
+- **Loopback, compiled in, with no way to say otherwise.** Not a flag, not an
+  environment variable, not a config key. This endpoint holds a company's
+  spend, its model mix and its budgets, and answers whoever asks.
+  `checkedEndpoint` has guarded *outbound* requests since 1.14 on the
+  principle that a caller selects an endpoint rather than naming one; this is
+  the inbound counterpart, enforced the same way — by there being no way to
+  say otherwise.
+- **No auth, on purpose.** A token checked over loopback is theatre: whoever
+  can reach the socket can read it out of the process that holds it. The
+  honest posture is a surface small enough not to need one.
+- **Bodies over a megabyte are refused unread.** A prompt is text and text is
+  unbounded; a hot-path oracle that buffers whatever it is handed is one
+  request away from taking down the caller that was asking how to spend less.
+- **Everything but `/health` and `/cost` is a 404.**
+
+Three guards fail the build over it, each proven with a planted probe.
+
+### Two failures this work found in itself
+
+- **The answer carried a `null` window.** The copy promised that every answer
+  says what period its measurement covers; the code passed a null through, so a
+  figure from last month would have read as current. Fixed, and covered by a
+  test that says why.
+- **The README command-count guard had been blind since "sixteen".** Its word
+  list stopped there, and an unknown number word is *skipped* rather than
+  failed — so the count claim went unchecked for five releases, exactly while
+  it changed in every one of them. Extended past thirty with hyphenated forms,
+  and proven against a wrong count. A guard that quietly stops guarding is
+  worse than no guard, because it still reads like one.
+
+### What stayed out, and why
+
+A remote mode, with or without a token. Every version of it trades a large new
+attack surface — spend, model mix, budgets, answered over a network — for the
+convenience of not running a process per machine. If a team needs one endpoint
+for several machines, that is a hosted collector with an access-control story
+somebody designed on purpose, which is a different product decision than a
+flag on this one.
+
+---
+
 ## 1.43.0 — "The watch"
 
 The third of the ten planned in `docs/plan-1.41-1.50.md`. 1.41 made the bill

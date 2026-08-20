@@ -514,6 +514,16 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.44.0 — The answer in milliseconds
+
+`trazum serve` answers what a call will cost and whether there is budget, from
+loopback, in single-digit milliseconds — so a decision being made right now can
+consult what the reports know. The measured half and the estimated half stay
+apart and the verdict says which it rests on; three outcomes with their three
+distinct reasons; and it degrades to pricing the call alone when there is no
+store or no budget. Bound to 127.0.0.1 with no flag to change it and no auth
+theatre. Fourth of the ten in docs/plan-1.41-1.50.md.
+
 ### 1.43.0 — The watch
 
 `trazum watch` evaluates the spend gates as the money moves rather than when
