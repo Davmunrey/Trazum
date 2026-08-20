@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.50.11**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.51.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,177 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.51.0 — "The record, and the minor"
+
+Chapter ten, and the release that closes the arc. The minor is spent here
+because this is where the arc's thesis lands, not because ten things happened —
+the numbering adopted at 1.50.1 says a chapter is a patch and the minor belongs
+to the release that finishes the story.
+
+### The thesis, and whether it was answered
+
+The arc opened with one sentence: **every figure this product prints is a
+denominator with no numerator.** It could say a workload got forty per cent
+cheaper and could not say whether it stopped working.
+
+Ten chapters later:
+
+| | |
+|---|---|
+| 1.50.3 | It can stand in the path of the call and refuse |
+| 1.50.4 | It has a numerator, recorded and never inferred |
+| 1.50.5 | It can divide by it, and prints both rankings |
+| 1.50.6 | It prices a ladder in both directions |
+| 1.50.7 | It compares two arms and refuses a winner where there is none |
+| 1.50.8 | It fails a build for quality, and refuses to blame what it cannot attribute |
+| 1.50.9 | It finds what a dictionary cannot, and throws most of it away |
+| 1.50.10 | It puts a name on the bill and never spreads the unallocated |
+| 1.50.11 | It replays a contract on measured months, both directions |
+| 1.51.0 | It audits itself in public |
+
+### `trazum report --year`
+
+```
+The year 2026, from what was already written down
+
+  $14,600 across 120 calls, over 4 recorded months.
+  ! No record at all for 2026-05, 2026-06, 2026-07, 2026-08, 2026-09,
+    2026-10, 2026-11, 2026-12. Those months are named rather than filled: a
+    year that quietly covers part of itself and prints an annual total is
+    wrong by the rest and says nothing about it.
+
+  14 actions planned. 11 arrived, 1 did not, and 2 could not be judged.
+
+  What this record cannot say
+    · whether some promises were kept — they could not be judged from the logs
+    · how many dollars the kept promises were worth
+    · what any of the money bought
+```
+
+**No new data.** Everything comes from the store and the plans a team already
+keeps, and nothing is computed that cannot be checked against a document that
+already exists.
+
+That constraint is the whole design rather than a limitation somebody accepted.
+An annual report is the document most likely to be quoted out of the room it was
+written in, and the one nobody goes back to verify — so it may not contain a
+single figure this tool would refuse to print anywhere else. Which makes it,
+correctly, mostly a summing exercise with a great many refusals attached.
+
+### The figure it refuses to produce
+
+**There is deliberately no `arrivedUsd` beside `projectedUsd`.**
+
+A verification says whether each action *arrived*, and its `observed` map carries
+where the money sits now — but the document has never carried a per-action figure
+for the saving that actually landed. Summing one out of the observations would
+mean deciding which of several numbers per action is "the saving", which is a
+judgement the verification refused to make and this module has no standing to
+make on its behalf.
+
+So the year says what was promised and how many promises were kept, and says
+plainly that it cannot put a dollar figure on the kept ones. The alternative — a
+plausible number assembled here — is precisely the annual-report arithmetic this
+document exists to replace.
+
+### Three outcomes, never two, at the scale where it is hardest
+
+"Eleven of fourteen actions arrived" reads better than "eleven arrived, one did
+not, and two could not be judged". A year is where the temptation to collapse
+them is strongest, and the second sentence is the one that tells somebody their
+measurement has a hole in it.
+
+Missing months are named rather than filled, for the same reason.
+
+### It reports the record, not the team
+
+No per-person anything, no velocity, no ranking of who planned well. The doctrine
+rule from 1.44, and it matters most here: **an annual document is exactly where a
+cost tool starts being used for performance review, and the way to not be is to
+hold no data that could be.** A test asserts the document carries no field that
+could name somebody.
+
+### Our own medicine, in public
+
+`docs/our-own-medicine.md`. This project gates other people's promises; a tool
+that does that and never shows its own record has a double standard.
+
+It lists what each arc **refused** to ship — because "did the chapters ship" is
+the wrong measure when the plan and the implementation share a hand — what this
+repository got wrong and for how long, and what it cannot say about itself.
+
+The long ones are the interesting ones: a version claim wrong for **seventeen
+releases**, and a roadmap running in two directions for **twenty-four**. Both were
+claims nothing checked, and both drifted the moment somebody stopped hand-checking
+them.
+
+It ends without a score. Every miss on it was found by the same process that made
+it, so a miss nobody noticed is by construction not on the page — and there is no
+way to estimate how many of those there are without inventing a number.
+
+### The standard carries its refusals
+
+`conform` grows an outcome chapter and an annual chapter, so another tool
+emitting this format has to handle a missing numerator the same way.
+
+And **cross-field rules**, which the chapter did not ask for and the work
+demanded. The refusals worth carrying turned out to be *relational*: a per-field
+contract can say "a number or null"; it cannot say **"null when nothing was
+recorded, and a number otherwise"** — and that is the whole refusal. A rate of `0`
+is perfectly valid when calls were recorded and none of them succeeded, and a lie
+when nothing was recorded at all, and the difference lives in a different field.
+
+A standard that shipped the fields and lost that would be worse than no standard,
+because it would look interoperable.
+
+### The doctrine, second edition
+
+Two rules added from this arc's own findings:
+
+- **Cheaper per call is not cheaper per outcome.** A workload was found costing
+  ten times more per call and half as much per resolution, and every ranking this
+  product had printed until then was the first column.
+- **An unallocated share is never spread.** It makes every figure wrong by an
+  amount nobody can see, and worst for the teams whose instrumentation is
+  cleanest.
+
+Plus the two the arc's plan named in advance, which shipped with their chapters:
+*a proxy refuses and never answers something else* (1.50.3) and *quality is
+recorded, never inferred* (1.50.4).
+
+### What this release found wrong in itself
+
+**A zero dressed as a measurement, in the module written to forbid exactly
+that.**
+
+The annual record attached an outcomes object whenever *calls* were parsed rather
+than whenever an *outcome* was recorded. So a year that recorded no outcome at
+all still got an outcomes object reporting "0 of 120", and the honest sentence —
+*no outcome was recorded this year, so nothing here says what the money bought* —
+was unreachable code.
+
+Caught by a test written for the sentence that could not print. The field's own
+contract, three files away, forbids precisely this.
+
+### What stayed out, and why
+
+**Publishing this repository's own cost figures.** The chapter asks for "its own
+cost figures, its own predictions and its own misses". The predictions and the
+misses are in `our-own-medicine.md`; the cost figures are not, because **this
+project has no usage log of its own.** It optimises LLM spend and does not itself
+spend on LLMs in a way it measures. Writing a figure there would mean estimating
+one, in the document whose entire purpose is to demonstrate that this project
+holds itself to its own standard. The absence is stated in that document rather
+than filled.
+
+**A `--gate` on the annual record.** Every other report in this product can fail
+a build and this one cannot. A year is a conversation, not a pipeline step, and a
+gate on an annual document would either fire once a year (useless) or be run
+monthly against a year that is not over (wrong). The three outcomes are printed
+and nothing exits non-zero.
 
 ---
 

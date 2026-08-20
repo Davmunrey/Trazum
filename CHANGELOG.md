@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.51.0 — "The record, and the minor"
+
 ### Added
 
 **`trazum report --year` — the year, from what was already written down.**

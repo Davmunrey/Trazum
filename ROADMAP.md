@@ -954,6 +954,33 @@ probability. Partial months dropped rather than scaled. Chapter nine of
 docs/plan-1.51.md.
 
 
+### 1.51.0 — The record, and the minor
+
+The release that closes the arc. Its thesis was that every figure this product
+printed was a denominator with no numerator — it could say a workload got 40%
+cheaper and could not say whether it stopped working. Ten chapters later it
+stands in the path of the call and refuses, records a numerator it never infers,
+divides by it and prints both rankings, prices a ladder and a contract in both
+directions, compares two arms without inventing a winner, fails a build for
+quality without blaming what it cannot attribute, finds what a dictionary cannot
+and discards most of it, and puts a name on the bill without ever spreading the
+unallocated.
+
+`trazum report --year` assembles the year from the store and the plans already
+kept — no new data, missing months named rather than filled, three outcomes
+never two, and a list of what the record cannot say. It deliberately has no
+dollar figure for what arrived, because a verification has never carried one and
+assembling a plausible number is the annual-report arithmetic this document
+replaces. It reports the record and not the team, asserted by a test.
+
+`docs/our-own-medicine.md` publishes this project's own record the way it asks
+users to keep theirs, ending without a score because every miss on it was found
+by the same process that made it. `conform` grows outcome and annual chapters
+plus cross-field rules, because the refusals worth carrying turned out to be
+relational. The doctrine reaches its second edition. Chapter ten of
+docs/plan-1.51.md.
+
+
 ## Collapsed into 1.8.0
 
 **Everything below shipped as 1.8.0, and none of these numbers is on npm.** They
