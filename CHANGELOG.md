@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.41.0 — "The connector"
+
 ### Added
 
 **`trazum connect <provider>`: your bill, read from the provider.** Every
