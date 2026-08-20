@@ -184,6 +184,16 @@ differ: no budget configured, nothing measured, or a model the catalogue
 cannot price. Pure and synchronous, because a function that reads a file
 cannot promise an answer in milliseconds.
 
+## The guard
+
+`guardSpend(request, { catalogue })` wraps `answerCost` with what to do
+instead. A refusal carries alternatives — route, batch, or both combined the
+way `billLevers` combines them rather than summed — each priced for the single
+call being decided, each carrying its typed assumption, and each filtered to
+models whose context window the prompt actually fits. `cannot-tell` never
+becomes `yes`: a guard that permits whatever it cannot judge permits
+everything the moment its inputs go missing.
+
 ## Comparing two versions
 
 ```ts

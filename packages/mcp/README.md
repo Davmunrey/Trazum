@@ -82,3 +82,12 @@ passing. `--exact-tokens` settles it against the counting endpoint, which is fre
 ## Licence
 
 MIT. Part of [Trazum](https://github.com/Davmunrey/Trazum).
+
+## `spend_guard`
+
+Whether a call you are about to make fits the budget: `yes`, `no`, or
+`cannot-tell`. A refusal carries the cheaper ways to make the same call — each
+priced for this call, each naming what it assumes, and each already filtered to
+models the prompt fits inside. The measured half (spend so far) and the
+estimated half (the call you described) stay apart, and the verdict says which
+it rests on. Nothing is called and nothing is spent to answer.

@@ -152,6 +152,22 @@ describe('serve', () => {
     assert.equal(bad.status, 400);
   });
 
+  it('is a contract: the doc and the answer promise each other every field', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const doc = await readFile(new URL('../../../docs/json-output.md', import.meta.url).pathname, 'utf8');
+    const start = doc.indexOf('## The cost answer document');
+    const end = doc.indexOf('## The spend-guard document');
+    const section = doc.slice(start, end === -1 ? undefined : end);
+    const promised = new Set([...section.matchAll(/^\| `([a-zA-Z]+)`/gm)].map((m) => m[1]));
+    const dir = await setup();
+    fill(dir);
+    const { where } = await serve(dir);
+    const { body } = await post(where, { model: 'claude-opus-5', inputTokens: 1000 });
+    const emitted = Object.keys(body);
+    assert.deepEqual(emitted.filter((k) => !promised.has(k)), [], 'fields emitted with no line in the doc');
+    assert.deepEqual([...promised].filter((k) => !emitted.includes(k)), [], 'fields promised and not emitted');
+  });
+
   it('answers in single-digit milliseconds', async () => {
     const dir = await setup();
     fill(dir);
