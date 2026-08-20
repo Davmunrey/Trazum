@@ -28,6 +28,7 @@ npm install -g @trazum/cli
 | `trazum history <dir>` | the long run: series from stored `--json` reports, the climbs and decays no pairwise comparison finds, and plans nobody is executing. Shapes named, nothing forecast |
 | `trazum connect <provider>` | your bill read from the provider's usage API — no export by hand. The credential is borrowed from the environment and never stored; a connected report is restricted on purpose and names the findings a sum cannot support |
 | `trazum store` | what the local store holds and what a prune would take. Re-pulls converge instead of doubling; records it cannot tell apart are kept as two and named; pruning refuses without a retention policy and says what went |
+| `trazum watch` | the spend gates evaluated as the money moves, not three weeks later. Measured crossings only, a day half-measured is not-yet-judgeable rather than passed, a restart neither re-alerts nor calls a blown budget clean |
 | `trazum doctor [dir]` | the whole workspace: what nothing is watching, and what fixing would be worth |
 | `trazum rank <dir>` | of these forty prompts, which is worth an afternoon |
 | `trazum prune <file> --cases <file>` | which few-shot examples earn their tokens — measured, and it asks before spending |

@@ -31,6 +31,7 @@ ${bold('USO')}
   trazum history <dir-de-informes-guardados> [opciones]
   trazum connect <anthropic|openai> [opciones]
   trazum store [--prune] [opciones]
+  trazum watch [--once | --interval 15m] [opciones]
   trazum diff <antes> <después> [opciones]
   trazum diff --all <dir> <dir> [opciones]
   trazum rank <dir> [opciones]
@@ -327,6 +328,37 @@ ${bold('OPCIONES DE plan')}
   registro no puede confirmar, porque un plan que esconde sus supuestos es un
   consejo haciéndose pasar por aritmética. El ahorro proyectado y el dinero ya
   gastado son totales separados en todas partes.
+
+${bold('OPCIONES DE watch')}
+  --once                      Una vuelta: medir, guardar, evaluar, emitir,
+                              recordar. Lo que ejecuta una entrada de cron. Es
+                              lo que se hace por defecto.
+  --interval <n>m|h           Se queda en primer plano y repite. Mínimo cinco
+                              minutos: las APIs de uso están limitadas por
+                              tasa, y un bucle apretado es una forma de que te
+                              estrangulen tu propia clave.
+  --webhook <url>             Envía los cruces por POST. Solo https, salvo en
+                              loopback; una URL con credenciales se rechaza,
+                              porque las URLs acaban en logs e historiales.
+  --payload <fichero>         Evalúa un payload de uso que ya tengas, en vez
+                              del almacén.
+  --json                      La vuelta como datos: cruces, abstenciones, hueco.
+
+  Evalúa los gates de gasto de tu configuración — maxUsd, maxDayUsd,
+  maxCacheLossUsd — contra lo que se ha medido, y te lo dice la tarde en que
+  pasa en vez de tres semanas después. Sale con 1 cuando algo cruzó, así que
+  cron te lo manda y CI falla.
+
+  Una alerta salta por un cruce medido y nunca por una proyección: "has
+  gastado $412 de un presupuesto de $400" es un hecho y "vas a excederte" es un
+  pronóstico, que esta herramienta no hace a ninguna escala de ventana. Un día
+  que todavía se está midiendo se reporta como aún no juzgable en vez de
+  aprobarse — pero un día que ya se pasó del presupuesto salta a cualquier
+  hora, porque no se pasa menos a medianoche.
+
+  Un reinicio no vuelve a avisar de un cruce ya reportado, y nombra el tramo
+  que no estuvo vigilando, porque un vigilante que se reanuda en silencio
+  insinúa una cobertura que no tuvo.
 
 ${bold('OPCIONES DE store')}
   --prune                     Borra las mediciones más antiguas que la política
@@ -1529,6 +1561,49 @@ ${bold('EJEMPLOS')}
       'Ordenado por dinero, proyectado o ya gastado por igual. Los supuestos los respondes tú: este plan es aritmética sobre el registro, no conocimiento de tu producto.',
     wrote: (path) =>
       `Plan escrito en ${path}, con fecha. Guárdalo: una predicción que nadie apuntó es una predicción que no se le puede exigir a nadie.`,
+  },
+
+  watch: {
+    noThresholds: () =>
+      'Vigilar necesita algo que vigilar. Define spend.maxUsd, spend.maxDayUsd o spend.maxCacheLossUsd en trazum.config.json — un vigilante sin umbral es una luz verde que nadie se ha ganado.',
+    nothingToWatch: (dir) =>
+      `Todavía no se ha medido nada: el almacén de ${dir} está vacío. Llénalo primero con "trazum connect <proveedor> --store" — vigilar la nada reportaría que todo está bien.`,
+    intervalTooTight: () =>
+      '--interval tiene que ser de al menos 5m. Las APIs de uso están limitadas por tasa, y un bucle apretado es una forma de que una herramienta que existe para ahorrarte dinero acabe estrangulando tu propia clave.',
+    badWebhook: (reason) =>
+      reason === 'credentials-in-url'
+        ? 'Esa URL de webhook lleva credenciales. Las URLs acaban en logs, historiales de shell y mensajes de error, así que se rechaza — pon el secreto en una cabecera que tu receptor compruebe, o en el propio receptor.'
+        : reason === 'insecure-scheme'
+          ? 'Un webhook tiene que ser https, salvo en loopback. Una alerta lleva tus cifras de gasto, y mandarlas en claro por una red es una fuga que no pediste.'
+          : 'Ese webhook no es una URL que esta herramienta pueda parsear.',
+    crossed: (gate, measured, limit, day) => {
+      const what =
+        gate === 'maxUsd'
+          ? 'El gasto total'
+          : gate === 'maxDayUsd'
+            ? `El gasto del ${day}`
+            : 'El dinero perdido con la caché';
+      return `CRUZADO — ${what} es ${measured} contra un límite de ${limit}. Medido, no proyectado.`;
+    },
+    stillOver: (gate, measured, limit, day) => {
+      const what =
+        gate === 'maxUsd'
+          ? 'El gasto total'
+          : gate === 'maxDayUsd'
+            ? `El gasto del ${day}`
+            : 'El dinero perdido con la caché';
+      return `SIGUE POR ENCIMA — ${what} es ${measured} contra un límite de ${limit}, y ya se avisó. Callado no es limpio.`;
+    },
+    notJudgeable: (gate, reason, covered) =>
+      reason === 'window-too-short'
+        ? `${gate} todavía no se puede juzgar: este período está medido al ${covered ?? 'parcialmente'}, y un umbral sobre parte de un día es un umbral sobre otra cosa. No es un aprobado — se juzgará cuando el día esté completo.`
+        : `${gate} no se puede juzgar en esta fuente, que no sirve aquello sobre lo que está escrito el gate. No es un aprobado: un gate saltado en silencio se lee exactamente igual que un gate que lleva tiempo pasando.`,
+    gap: (from, to) =>
+      `Nada estuvo vigilando entre ${from} y ${to}. Lo que cruzara en ese tramo no se vio, y esta línea existe para que un vigilante reanudado no insinúe una cobertura que no tuvo.`,
+    allWithin: (gates) => `Dentro de todos los umbrales: ${gates} gates evaluados contra gasto medido.`,
+    webhookFailed: (status) =>
+      `El webhook no se entregó (${status}). El cruce sigue en el código de salida y en la salida de arriba — que un receptor esté caído no puede ser el fallo más silencioso de la sala.`,
+    watching: (minutes) => `Vigilando cada ${minutes} minutos. Ctrl-C lo para.`,
   },
 
   store: {

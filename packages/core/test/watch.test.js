@@ -47,8 +47,9 @@ describe('evaluateWatch', () => {
   it('stays quiet under the threshold, and never forecasts one', () => {
     const result = evaluateWatch({ report: report(), thresholds: { maxUsd: 120 }, nowMs: AFTER });
     assert.deepEqual(result.crossings, []);
-    // Nothing in the result says anything about where the figure is heading.
-    assert.deepEqual(Object.keys(result).sort(), ['abstentions', 'crossings', 'gap']);
+    // Nothing in the result says anything about where the figure is heading:
+    // crossings, the ones already reported, the unjudgeable, and the gap.
+    assert.deepEqual(Object.keys(result).sort(), ['abstentions', 'crossings', 'gap', 'suppressed']);
   });
 
   it('names the day that crossed, not just the period', () => {
@@ -96,6 +97,19 @@ describe('evaluateWatch', () => {
       alreadyFired: fired,
     });
     assert.deepEqual(result.crossings, []);
+  });
+
+  it('reports a crossing it already alerted on as still over, not as clean', () => {
+    // Quiet is not clean: suppressing the alert must not suppress the fact.
+    const result = evaluateWatch({
+      report: report(),
+      thresholds: { maxUsd: 80 },
+      nowMs: AFTER,
+      alreadyFired: new Set([firedKey('maxUsd', null)]),
+    });
+    assert.deepEqual(result.crossings, []);
+    assert.equal(result.suppressed.length, 1);
+    assert.equal(result.suppressed[0].measuredUsd, 100);
   });
 
   it('still speaks for a new day when an older one already alerted', () => {

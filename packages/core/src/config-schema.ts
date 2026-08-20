@@ -80,6 +80,17 @@ export interface SpendConfig {
    * for the day budget's reason.
    */
   maxSessionUsd?: number;
+  /**
+   * What caching may add to the bill before it is a failure.
+   *
+   * `--max-cache-loss-usd` has gated this since 1.21 and only as a flag,
+   * which made it a gate `watch` could not read: a policy that lives in one
+   * invocation is a policy nothing else can act on. It inherits the flag's
+   * refusal — the worst case is read when the log did not record the write
+   * TTL, because a gate reading the flattering half passes the bills it
+   * exists to catch.
+   */
+  maxCacheLossUsd?: number;
   /** Per-label budgets, each gated against that label's own spend. */
   byLabel?: Record<string, number>;
   /**
@@ -206,7 +217,7 @@ export const CONFIG_KEYS = [
 
 export const CONFIG_BASELINE_KEYS = ['path', 'maxGrowthTokens', 'maxGrowthPct'] as const;
 
-export const CONFIG_SPEND_KEYS = ['maxUsd', 'maxDayUsd', 'maxSessionUsd', 'byLabel', 'bySource'] as const;
+export const CONFIG_SPEND_KEYS = ['maxUsd', 'maxDayUsd', 'maxSessionUsd', 'maxCacheLossUsd', 'byLabel', 'bySource'] as const;
 
 export const CONFIG_WAIVE_KEYS = ['gate', 'reason', 'until'] as const;
 
@@ -408,6 +419,9 @@ function parseSpend(raw: unknown, source: string): SpendConfig {
   const spend: SpendConfig = {};
   if (raw.maxUsd !== undefined) {
     spend.maxUsd = requireNonNegativeNumber(raw.maxUsd, 'spend.maxUsd', source);
+  }
+  if (raw.maxCacheLossUsd !== undefined) {
+    spend.maxCacheLossUsd = requireNonNegativeNumber(raw.maxCacheLossUsd, 'spend.maxCacheLossUsd', source);
   }
   if (raw.maxDayUsd !== undefined) {
     spend.maxDayUsd = requireNonNegativeNumber(raw.maxDayUsd, 'spend.maxDayUsd', source);

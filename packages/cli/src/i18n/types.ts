@@ -1,4 +1,4 @@
-import type { CannotTellReason, EvalVerdict, Locale, PlanActionKind, PlanAssumption, RuleLevel, VerifyOutcome } from '@trazum/core';
+import type { CannotTellReason, EvalVerdict, Locale, NotJudgeable, PlanActionKind, PlanAssumption, RuleLevel, VerifyOutcome, WatchGate } from '@trazum/core';
 
 /**
  * The CLI's own message catalogue.
@@ -1070,6 +1070,32 @@ export interface CliMessages {
     footer(): string;
     /** The plan saved as dated JSON — what 1.39's verify will hold it to. */
     wrote(path: string): string;
+  };
+
+  /**
+   * `trazum watch` — the gates, evaluated as the money moves.
+   *
+   * The copy here carries the rule that makes an alert at 3am trustworthy: a
+   * crossing is measured, never projected, and a period too short to judge is
+   * said to be rather than passed.
+   */
+  watch: {
+    /** Watching with no threshold configured is a green light nobody earned. */
+    noThresholds(): string;
+    nothingToWatch(dir: string): string;
+    intervalTooTight(): string;
+    badWebhook(reason: 'invalid-url' | 'credentials-in-url' | 'insecure-scheme'): string;
+    /** A measured crossing. `day` names the afternoon when the gate is a day gate. */
+    crossed(gate: WatchGate, measured: string, limit: string, day: string | null): string;
+    /** Still over the limit, and already reported — quiet, but not clean. */
+    stillOver(gate: WatchGate, measured: string, limit: string, day: string | null): string;
+    /** Neither a pass nor a failure: this cannot be judged yet, and why. */
+    notJudgeable(gate: WatchGate, reason: NotJudgeable, covered: string | null): string;
+    /** The stretch nobody was watching, named rather than implied away. */
+    gap(from: string, to: string): string;
+    allWithin(gates: string): string;
+    webhookFailed(status: string): string;
+    watching(minutes: string): string;
   };
 
   /**
