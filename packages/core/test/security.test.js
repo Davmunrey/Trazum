@@ -297,6 +297,59 @@ describe('the MCP tool surface', () => {
   });
 });
 
+describe('an outcome is recorded and never inferred', () => {
+  /**
+   * The guard for the claim the whole outcome feature rests on.
+   *
+   * Every signal in a usage log invites a heuristic: a conversation that ended
+   * quickly "resolved"; a `max_tokens` stop "failed"; a retry means the first
+   * answer was wrong; no complaint means it worked. Each is plausible, each is
+   * wrong often enough to matter, and each would become a metric somebody
+   * optimises against — which is how a tool ends up rewarding conversations
+   * that ended early because the user gave up.
+   */
+  const outcome = () =>
+    readFileSync(join(repoRoot, 'packages/core/src/outcome.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+
+  it('the outcome module reads no other signal', () => {
+    const text = outcome();
+    for (const signal of ['session', 'stop_reason', 'stopReason', 'truncated', 'ts', 'timestamp', 'retry', 'repeat']) {
+      assert.doesNotMatch(
+        text,
+        new RegExp(`\\b${signal}\\b`),
+        `outcome.ts mentions "${signal}" — an outcome inferred from anything is a guess wearing a metric's clothes`,
+      );
+    }
+  });
+
+  it('the parser takes it from the recorded field and nowhere else', () => {
+    const usage = readFileSync(join(repoRoot, 'packages/core/src/usage.ts'), 'utf8');
+    const assignment = usage.match(/^\s*outcome: (.+),$/m);
+    assert.ok(assignment, 'the outcome assignment could not be found — has it moved?');
+    assert.equal(assignment[1], 'nameOf(record.outcome) ?? nameOf(record.trazum_outcome)');
+  });
+
+  it('a success rate is null and never zero when nothing was recorded', () => {
+    /**
+     * Asserted here as well as in the unit tests because it is a security
+     * property as much as a correctness one: a tool that reports 0% success
+     * for an uninstrumented product will get somebody fired for a number that
+     * measured nothing.
+     */
+    const text = outcome();
+    assert.match(text, /successShareOfRecordedUsd: number \| null;/);
+    assert.match(text, /noRate: 'nothing-recorded' \| 'no-success-values-declared' \| null;/);
+  });
+
+  it('keeps aggregates and never calls, like everything else since 1.42', () => {
+    const text = outcome();
+    assert.match(text, /byValue: Array<\{ value: string; calls: number; usd: number \}>;/);
+    assert.doesNotMatch(text, /records: |prompt|completion|content/i);
+  });
+});
+
 describe('the gateway, which stands between somebody and their provider', () => {
   /**
    * The most dangerous component in this product, and the one whose promises

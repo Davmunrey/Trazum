@@ -35,6 +35,10 @@ const complete = {
   session: 's1',
   ts: '2026-08-01T10:00:00Z',
   stop_reason: 'end_turn',
+  // `outcome` joined the list of optional fields at 1.50.4, so "complete"
+  // means one more thing than it did. A fixture that stopped being complete
+  // when a field was added is the whole point of this suite working.
+  outcome: 'resolved',
   usage: { input_tokens: 200_000, output_tokens: 100 },
 };
 
@@ -46,6 +50,9 @@ describe('what this log cannot answer yet', () => {
     assert.match(text, /"session" on 0\/2 records/);
     assert.match(text, /"ts" on 0\/2 records/);
     assert.match(text, /"stop_reason".*on 0\/2 records/);
+    // The one that changes what every other figure in the report means.
+    assert.match(text, /an "outcome" — 0\/2/);
+    assert.match(text, /cannot say whether it stopped working/);
   });
 
   it('counts partial coverage rather than calling it present', async () => {
@@ -77,6 +84,7 @@ describe('what this log cannot answer yet', () => {
     assert.deepEqual(report.fieldCoverage, {
       label: 1,
       session: 1,
+      outcome: 1,
       ts: 1,
       stopReason: 1,
       cacheTtl: 0,

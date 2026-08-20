@@ -1,4 +1,5 @@
 import { BASELINE_FILENAME } from './baseline.js';
+import type { OutcomeVocabulary } from './outcome.js';
 import { mostSpecificMatch } from './glob.js';
 import type { PricingCatalogue } from './pricing.js';
 import { isLocale } from './i18n/index.js';
@@ -213,6 +214,21 @@ export interface TrazumConfig {
    * author's terminal and not in CI.
    */
   baseline?: BaselineConfig;
+  /**
+   * The product's own outcome vocabulary, and which values are successes.
+   *
+   * **Declared rather than guessed, and the second half is why.** `resolved`,
+   * `escalated`, `deflected`, `abandoned` — every product has its own words,
+   * and which of them count as success is a product judgement this tool has no
+   * standing to make. A tool that decided `escalated` was a failure would be
+   * wrong at every company where escalation is the correct, designed outcome
+   * for a whole class of request.
+   *
+   * A value in a log that this never declared is **named as undeclared**
+   * rather than bucketed into either side: a typo in an exporter should show up
+   * as a typo, not as a shift in the success rate.
+   */
+  outcomes?: OutcomeVocabulary;
   /** File extensions directory mode treats as prompts. */
   extensions?: string[];
   /**
@@ -244,6 +260,7 @@ export const CONFIG_KEYS = [
   'baseline',
   'extensions',
   'pricing',
+  'outcomes',
 ] as const;
 
 export const CONFIG_BASELINE_KEYS = ['path', 'maxGrowthTokens', 'maxGrowthPct'] as const;
@@ -253,6 +270,8 @@ export const CONFIG_SPEND_KEYS = ['maxUsd', 'monthlyUsd', 'maxDayUsd', 'maxSessi
 export const CONFIG_WAIVE_KEYS = ['gate', 'reason', 'until'] as const;
 
 export const CONFIG_STORE_KEYS = ['keepDays'] as const;
+
+export const CONFIG_OUTCOME_KEYS = ['values', 'success'] as const;
 
 /**
  * The gates a waiver can silence. The list is closed on purpose: a waiver
@@ -561,6 +580,81 @@ function parseSources(raw: unknown, source: string): Record<string, string[]> {
  * gets deleted, and a policy the tool rounded on the operator's behalf is a
  * policy nobody agreed to.
  */
+/**
+ * `outcomes` — the product's own vocabulary, and which of it is success.
+ *
+ * The validation here is unusually strict for this file, and deliberately: an
+ * outcome vocabulary is the input to every rate this product will ever print,
+ * and a typo in it is a silent, permanent distortion of a number people make
+ * decisions on.
+ */
+function parseOutcomes(entry: unknown, source: string): OutcomeVocabulary {
+  if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+    throw new ConfigError(
+      `"outcomes" in ${source} must be an object, for example {"values": ["resolved", "escalated"], "success": ["resolved"]}.`,
+      source,
+    );
+  }
+  const raw = entry as Record<string, unknown>;
+  rejectUnknownKeys(raw, CONFIG_OUTCOME_KEYS, source, 'outcomes.');
+
+  const stringList = (value: unknown, key: string): string[] => {
+    if (
+      !Array.isArray(value) ||
+      value.some((item) => typeof item !== 'string' || item.trim() === '')
+    ) {
+      throw new ConfigError(
+        `"outcomes.${key}" in ${source} must be an array of non-empty strings.`,
+        source,
+      );
+    }
+    return value as string[];
+  };
+
+  if (raw.values === undefined) {
+    throw new ConfigError(`"outcomes.values" in ${source} is required.`, source);
+  }
+  const values = stringList(raw.values, 'values');
+  const duplicates = values.filter((value, index) => values.indexOf(value) !== index);
+  if (duplicates.length > 0) {
+    throw new ConfigError(
+      `"outcomes.values" in ${source} lists ${JSON.stringify(duplicates[0])} more than once.`,
+      source,
+    );
+  }
+
+  /**
+   * **Required, and allowed to be empty.**
+   *
+   * Required because which values mean success is the entire product judgement
+   * this tool refuses to make on somebody's behalf — a tool that decided
+   * `escalated` was a failure would be wrong at every company where escalation
+   * is the correct, designed outcome for a class of request. Leaving it
+   * optional would send that question straight back here, to be answered by a
+   * default nobody chose.
+   *
+   * Allowed to be empty because a product that records only failures has
+   * declared something real. The report then says it cannot state a rate,
+   * rather than inventing one.
+   */
+  if (raw.success === undefined) {
+    throw new ConfigError(
+      `"outcomes.success" in ${source} is required. Which of your outcome values count as success is a judgement about your product rather than about your bill, and this tool has no standing to make it. Use [] if none of them are.`,
+      source,
+    );
+  }
+  const success = stringList(raw.success, 'success');
+  const undeclared = success.filter((value) => !values.includes(value));
+  if (undeclared.length > 0) {
+    throw new ConfigError(
+      `"outcomes.success" in ${source} names ${undeclared.map((v) => JSON.stringify(v)).join(', ')}, which "outcomes.values" does not declare.`,
+      source,
+    );
+  }
+
+  return { values, success };
+}
+
 function parseStore(raw: unknown, source: string): { keepDays?: number } {
   if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
     throw new Error(`"store" in ${source} must be an object, for example {"keepDays": 90}.`);
@@ -770,6 +864,9 @@ export function parseConfig(raw: string, source = CONFIG_FILENAME): TrazumConfig
   if (document.sources !== undefined) config.sources = parseSources(document.sources, source);
   if (document.store !== undefined) config.store = parseStore(document.store, source);
   if (document.waive !== undefined) config.waive = parseWaive(document.waive, source);
+  if (document.outcomes !== undefined) {
+    config.outcomes = parseOutcomes(document.outcomes, source);
+  }
   if (document.baseline !== undefined) {
     config.baseline = parseBaselineConfig(document.baseline, source);
   }

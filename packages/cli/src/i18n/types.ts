@@ -1121,6 +1121,17 @@ export interface CliMessages {
     coverageHeading(): string;
     needsLabel(seen: string): string;
     needsSession(seen: string): string;
+    needsOutcome(seen: string): string;
+    dryRunOutcomes(share: string): string;
+    outcomeHeading(): string;
+    outcomeRate(rate: string, ofUsd: string): string;
+    outcomeNoRate(why: string): string;
+    outcomeUnrecorded(share: string, usd: string): string;
+    outcomeUndeclared(values: string): string;
+    outcomeColumns: { outcome: string; calls: string; spend: string };
+    verdictSuccess(): string;
+    verdictOther(): string;
+    verdictUndeclared(): string;
     needsTs(seen: string): string;
     needsStopReason(seen: string): string;
     needsCacheTtl(seen: string): string;

@@ -39,6 +39,7 @@ import {
   DEFAULT_USAGE,
   budgetPositions,
   conform,
+  outcomeReport,
   FAILURE_POLICIES,
   detectFromSource,
   matchLocale,
@@ -4585,6 +4586,7 @@ async function commandProfile(
     can(cov.label > 0, t.profile.dryRunLabels(share(cov.label)));
     can(cov.ts > 0, t.profile.dryRunClock(share(cov.ts)));
     can(cov.session > 0, t.profile.dryRunSessions(share(cov.session)));
+    can(cov.outcome > 0, t.profile.dryRunOutcomes(share(cov.outcome)));
     can(cov.stopReason > 0, t.profile.dryRunStopReason(share(cov.stopReason)));
     // "No cache traffic" is not a missing field: the split can only exist on
     // records that wrote, and a log that never wrote has nothing to record.
@@ -6416,6 +6418,97 @@ async function commandProfile(
    * section at all, because a paragraph of things that are fine is the
    * paragraph readers learn to skip.
    */
+  /**
+   * Outcomes — the counterpart, where somebody recorded one.
+   *
+   * Printed above the coverage section rather than below it, because when this
+   * section is present it is the most valuable thing on the page: every other
+   * figure in this report is a cost, and this is the only one that says what
+   * the money bought.
+   *
+   * Silent when nothing recorded an outcome. The coverage section below
+   * already names the missing field and what it would unlock, and printing an
+   * empty Outcomes heading above it would be the same sentence twice.
+   */
+  {
+    const outcomes = outcomeReport(report.outcomeTally, config.outcomes ?? null);
+    if (outcomes.coverage.recorded > 0) {
+      console.log();
+      console.log(c.bold(t.profile.outcomeHeading()));
+
+      const col = t.profile.outcomeColumns;
+      const rows = [...outcomes.slices, ...outcomes.undeclared].map((slice) => ({
+        value: slice.value,
+        verdict:
+          slice.verdict === 'success'
+            ? t.profile.verdictSuccess()
+            : slice.verdict === 'undeclared'
+              ? t.profile.verdictUndeclared()
+              : t.profile.verdictOther(),
+        calls: n(slice.calls),
+        spend: formatUsd(slice.usd),
+      }));
+      const w = {
+        value: Math.max(...rows.map((r) => r.value.length), col.outcome.length),
+        verdict: Math.max(...rows.map((r) => r.verdict.length), 0),
+        calls: Math.max(...rows.map((r) => r.calls.length), col.calls.length),
+        spend: Math.max(...rows.map((r) => r.spend.length), col.spend.length),
+      };
+      console.log(
+        c.dim(
+          `  ${col.outcome.padEnd(w.value)}  ${''.padEnd(w.verdict)}  ` +
+            `${col.calls.padStart(w.calls)}  ${col.spend.padStart(w.spend)}`,
+        ),
+      );
+      for (const row of rows) {
+        const tint =
+          row.verdict === t.profile.verdictUndeclared()
+            ? c.yellow
+            : row.verdict === t.profile.verdictSuccess()
+              ? c.green
+              : c.dim;
+        console.log(
+          `  ${row.value.padEnd(w.value)}  ${tint(row.verdict.padEnd(w.verdict))}  ` +
+            `${row.calls.padStart(w.calls)}  ${row.spend.padStart(w.spend)}`,
+        );
+      }
+
+      console.log();
+      if (outcomes.successShareOfRecordedUsd !== null) {
+        const declaredUsd = outcomes.slices.reduce((sum, slice) => sum + slice.usd, 0);
+        console.log(
+          `  ${wrap(t.profile.outcomeRate(pct(outcomes.successShareOfRecordedUsd), formatUsd(declaredUsd)), 74, '    ')}`,
+        );
+      } else if (outcomes.noRate !== null) {
+        console.log(`  ${c.dim(wrap(t.profile.outcomeNoRate(outcomes.noRate), 74, '    '))}`);
+      }
+
+      // What the rate does not cover, every time it is printed. A rate over a
+      // twelfth of the bill is a rate about a twelfth of the bill.
+      if (outcomes.coverage.unrecordedUsd > 0 && report.total.totalUsd > 0) {
+        console.log(
+          `  ${c.yellow('!')} ${wrap(
+            t.profile.outcomeUnrecorded(
+              pct(outcomes.coverage.unrecordedUsd / report.total.totalUsd),
+              formatUsd(outcomes.coverage.unrecordedUsd),
+            ),
+            74,
+            '    ',
+          )}`,
+        );
+      }
+      if (outcomes.undeclared.length > 0) {
+        console.log(
+          `  ${c.yellow('!')} ${wrap(
+            t.profile.outcomeUndeclared(outcomes.undeclared.map((s) => s.value).join(', ')),
+            74,
+            '    ',
+          )}`,
+        );
+      }
+    }
+  }
+
   const coverage = report.fieldCoverage;
   if (coverage.parsed > 0) {
     const missing: string[] = [];
@@ -6425,6 +6518,14 @@ async function commandProfile(
     }
     if (coverage.session < coverage.parsed) {
       missing.push(t.profile.needsSession(partial(coverage.session)));
+    }
+    /**
+     * Listed first among the missing when it is missing entirely, because it
+     * is the one field that changes what every other figure here *means*. The
+     * rest sharpen a cost; this one gives it a counterpart.
+     */
+    if (coverage.outcome < coverage.parsed) {
+      missing.push(t.profile.needsOutcome(partial(coverage.outcome)));
     }
     if (coverage.ts < coverage.parsed) {
       missing.push(t.profile.needsTs(partial(coverage.ts)));

@@ -617,6 +617,13 @@ ${bold('FICHERO DE CONFIGURACIÓN')}
     spend     { "maxUsd": 200, "byLabel": { "chat": 40 } } — presupuestos en
               dólares para "trazum profile". Una etiqueta con presupuesto y sin
               llamadas se informa como no medida, nunca como aprobada
+    outcomes  { "values": ["resolved", "escalated"], "success": ["resolved"] } —
+              tu propio vocabulario para lo que pasó, y cuál de él cuenta como
+              acierto. Los dos son obligatorios: qué palabras significan éxito
+              es un juicio sobre tu producto y no sobre tu factura, y esta
+              herramienta no tiene potestad para hacerlo. Usa [] si ninguna lo
+              es. Un valor en un log que "values" no declare se nombra como
+              sin declarar, nunca se cuenta como fallo
     waive     [{ "gate": "maxUsd", "reason": "migración de agosto", "until":
               "2026-09-15" }] — un fallo de gate sobre el que se ha decidido,
               registrado. Los tres campos son obligatorios: un waiver sin
@@ -1664,6 +1671,25 @@ ${bold('EJEMPLOS')}
     coverageHeading: () => 'Lo que este registro todavía no puede responder',
     needsLabel: (seen) =>
       `"label" en ${seen} registros: sin él todas las cargas son una sola fila, así que no hay gasto por carga, ni zoom, y las palancas describen una mezcla en vez de una decisión.`,
+    needsOutcome: (seen) =>
+      `un "outcome" \u2014 ${seen}. El \u00fanico campo que cambia lo que significa cualquier otra cifra de aqu\u00ed: sin \u00e9l esta herramienta puede decir que una carga baj\u00f3 un 40% y no puede decir si dej\u00f3 de funcionar. Registra tu propia palabra para lo que pas\u00f3 y declara el vocabulario en "outcomes".`,
+    dryRunOutcomes: (share) =>
+      `coste por resultado y una tasa de \u00e9xito (${share} de los registros llevan "outcome")`,
+    outcomeHeading: () => 'Resultados',
+    outcomeRate: (rate, ofUsd) =>
+      `${rate} de ${ofUsd} en resultados declarados tuvo \u00e9xito \u2014 por gasto y no por llamada, porque las dos cifras divergen justo cuando la mitad cara es la que falla.`,
+    outcomeNoRate: (why) =>
+      why === 'nothing-recorded'
+        ? 'Sin tasa de \u00e9xito: nada en este log registr\u00f3 un resultado. Eso no es una tasa de cero \u2014 una tasa de cero es una medici\u00f3n real y p\u00e9sima, y esto es que nadie nos lo ha dicho.'
+        : 'Sin tasa de \u00e9xito: "outcomes.success" no declara ning\u00fan valor, as\u00ed que aqu\u00ed nada cuenta como \u00e9xito. Es leg\u00edtimo declararlo as\u00ed, y significa que la tasa no le corresponde calcularla a esta herramienta.',
+    outcomeUnrecorded: (share, usd) =>
+      `${share} de la factura (${usd}) no llev\u00f3 resultado, y no est\u00e1 en ninguna de las dos mitades de la tasa de arriba.`,
+    outcomeUndeclared: (values) =>
+      `No declarados en "outcomes.values": ${values}. Nombrados en vez de contados como fallos \u2014 una errata en un exportador debe parecer una errata, no una regresi\u00f3n del producto.`,
+    outcomeColumns: { outcome: 'resultado', calls: 'llamadas', spend: 'gasto' },
+    verdictSuccess: () => '\u00e9xito',
+    verdictOther: () => '\u2014',
+    verdictUndeclared: () => 'sin declarar',
     needsSession: (seen) =>
       `"session" en ${seen} registros: sin él no hay crecimiento de conversación, ni coste por conversación, ni encaje del TTL de caché. Se agrupa por él y nunca se imprime.`,
     needsTs: (seen) =>

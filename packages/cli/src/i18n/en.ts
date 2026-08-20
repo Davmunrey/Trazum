@@ -597,6 +597,13 @@ ${bold('CONFIG FILE')}
     spend     { "maxUsd": 200, "byLabel": { "chat": 40 } } — money budgets for
               "trazum profile", in dollars. A budgeted label with no calls in
               the log is reported as not measured, never as a pass
+    outcomes  { "values": ["resolved", "escalated"], "success": ["resolved"] } —
+              your own vocabulary for what happened, and which of it counts as
+              a win. Both required: which words mean success is a judgement
+              about your product rather than your bill, and this tool has no
+              standing to make it. Use [] if none of them are successes. A
+              value in a log that "values" never declares is named as
+              undeclared, never counted as a failure
     waive     [{ "gate": "maxUsd", "reason": "August migration", "until":
               "2026-09-15" }] — a gate failure decided about, on the record.
               All three fields required: a waiver with no end date is a
@@ -1631,6 +1638,25 @@ ${bold('EXAMPLES')}
     coverageHeading: () => 'What this log cannot answer yet',
     needsLabel: (seen) =>
       `"label" on ${seen} records: without it every workload is one row, so no per-workload spend, no drill-down, and the levers describe a mixture rather than a decision.`,
+    needsOutcome: (seen) =>
+      `an "outcome" — ${seen}. The one field that changes what every other figure here means: without it this tool can say a workload got 40% cheaper and cannot say whether it stopped working. Record your own word for what happened and declare the vocabulary under "outcomes".`,
+    dryRunOutcomes: (share) =>
+      `cost per outcome and a success rate (${share} of records carry an "outcome")`,
+    outcomeHeading: () => 'Outcomes',
+    outcomeRate: (rate, ofUsd) =>
+      `${rate} of ${ofUsd} in declared outcomes succeeded \u2014 by spend rather than by call, because the two diverge exactly when the expensive half is the half that fails.`,
+    outcomeNoRate: (why) =>
+      why === 'nothing-recorded'
+        ? 'No success rate: nothing in this log recorded an outcome. That is not a rate of zero \u2014 a rate of zero is a real and terrible measurement, and this is nobody having told us.'
+        : 'No success rate: "outcomes.success" declares no values, so nothing here counts as one. A legitimate thing to declare, and it means the rate is not this tool\u2019s to compute.',
+    outcomeUnrecorded: (share, usd) =>
+      `${share} of the bill (${usd}) carried no outcome, and is in neither half of the rate above.`,
+    outcomeUndeclared: (values) =>
+      `Not declared in "outcomes.values": ${values}. Named rather than counted as failures \u2014 a typo in an exporter should look like a typo, not like a product regression.`,
+    outcomeColumns: { outcome: 'outcome', calls: 'calls', spend: 'spend' },
+    verdictSuccess: () => 'success',
+    verdictOther: () => '\u2014',
+    verdictUndeclared: () => 'undeclared',
     needsSession: (seen) =>
       `"session" on ${seen} records: without it there is no conversation growth, no per-conversation cost, and no cache-TTL fit. It is grouped by and never printed.`,
     needsTs: (seen) =>

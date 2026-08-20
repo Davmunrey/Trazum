@@ -49,6 +49,16 @@ export type { PlanParseFailure, PlanParseResult } from './plan.js';
 export type { PlanAction, PlanActionKind, PlanAssumption, PlanDocument } from './plan.js';
 export { verifyPlan } from './verify.js';
 export { buildHistory, storedReportFrom, MIN_RUN } from './history.js';
+export { outcomeReport, judgeOutcome, OUTCOME_UNLOCKS } from './outcome.js';
+export type {
+  OutcomeCoverage,
+  OutcomeReport,
+  OutcomeSlice,
+  OutcomeTally,
+  OutcomeUnlock,
+  OutcomeVerdict,
+  OutcomeVocabulary,
+} from './outcome.js';
 export { gatewayDecision, usageFromResponse, FAILURE_POLICIES } from './gateway.js';
 export type {
   CannotTellCause,

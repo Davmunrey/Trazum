@@ -5,6 +5,7 @@ import { createInputShapeTracker } from './input-shape.js';
 import { createRepeatsTracker } from './repeats.js';
 import { createTruncationRetryTracker } from './truncation-retry.js';
 import { createTtlFitTracker } from './ttl-fit.js';
+import type { OutcomeTally } from './outcome.js';
 import { createSessionLedgerTracker } from './session-ledger.js';
 import { createSessionCostTracker } from './session-cost.js';
 import type { SessionCostShape } from './session-cost.js';
@@ -111,6 +112,17 @@ export interface UsageRecord {
    * refuses to read a log until it is annotated is a profile nobody runs.
    */
   label: string | null;
+  /**
+   * What happened, in the product's own vocabulary — `resolved`, `escalated`,
+   * `thumbs-down`, whatever the words are.
+   *
+   * The counterpart every other figure here has been missing. **Recorded by
+   * the caller and never inferred**: no absence of complaint counts as
+   * success, no short conversation counts as resolution, no retry counts as
+   * failure. `null` is "not recorded" and is reported as such, which is a
+   * different answer from any outcome and is treated as one everywhere.
+   */
+  outcome: string | null;
   /**
    * Optional conversation identifier, for measuring what re-sent history costs.
    *
@@ -241,6 +253,8 @@ export interface FieldCoverage {
   label: number;
   /** Records with a usable `session` or `conversation_id`. */
   session: number;
+  /** Records with a usable `outcome` or `trazum_outcome`. */
+  outcome: number;
   /** Records with a readable timestamp. */
   ts: number;
   /** Records with a `stop_reason` or `finish_reason`. */
@@ -426,6 +440,14 @@ export interface UsageProfileReport {
    * and a boolean would call it that.
    */
   fieldCoverage: FieldCoverage;
+  /**
+   * What each recorded outcome cost — measurement only, no judgement.
+   *
+   * `outcomeReport` turns this into a success rate where the config declares
+   * one, because which values mean success is a product judgement this module
+   * has no standing to make. An aggregate, never a list of calls.
+   */
+  outcomeTally: OutcomeTally;
   /**
    * Spend per hour of the UTC day, 0–23, over priced records that carry a
    * clock — and only the hours that saw traffic.
@@ -778,6 +800,13 @@ export function parseUsageLine(line: string): UsageRecord | null {
      * nobody sets measures nothing.
      */
     session: nameOf(record.session) ?? nameOf(record.conversation_id),
+    /**
+     * Read from either spelling, for the same reason `session` is: `outcome`
+     * in a log somebody wrote for this, `trazum_outcome` in one where a
+     * namespace was wanted. A field nobody sets measures nothing, and making
+     * its adoption a chore is how that happens.
+     */
+    outcome: nameOf(record.outcome) ?? nameOf(record.trazum_outcome),
     ts: moment.kind === 'ok' ? moment.ms : null,
     /**
      * Anthropic spells it `stop_reason: "max_tokens"`, OpenAI
@@ -977,7 +1006,9 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
   const ledger = createSessionLedgerTracker({ catalogue, on });
   const sessionCosts = createSessionCostTracker({ catalogue, on });
   let hasSessions = false;
-  const coverage = { label: 0, session: 0, ts: 0, stopReason: 0, cacheTtl: 0, cacheWrites: 0, parsed: 0 };
+  const outcomes = new Map<string, { calls: number; usd: number }>();
+  let unrecordedOutcomeUsd = 0;
+  const coverage = { label: 0, session: 0, outcome: 0, ts: 0, stopReason: 0, cacheTtl: 0, cacheWrites: 0, parsed: 0 };
   /**
    * Raw lines already seen, for the duplicate check. Bounded by the number of
    * *timestamped* lines — the price of catching a doubled bill, paid only on
@@ -1040,6 +1071,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
     coverage.parsed += 1;
     if (record.label !== null) coverage.label += 1;
     if (record.session !== null) coverage.session += 1;
+    if (record.outcome !== null) coverage.outcome += 1;
     if (record.ts !== null) coverage.ts += 1;
     if (record.truncated !== null) coverage.stopReason += 1;
     if (record.cacheWrite5mTokens + record.cacheWrite1hTokens > 0) {
@@ -1094,6 +1126,22 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
      */
     if (record.session !== null) {
       sessionUsd.set(record.session, (sessionUsd.get(record.session) ?? 0) + (total.totalUsd - usdBefore));
+    }
+    /**
+     * Tallied from the same per-record dollar as everything else here, so a
+     * success rate by spend and the bill it is a share of can never be two
+     * different arithmetics that drifted apart.
+     */
+    {
+      const usd = total.totalUsd - usdBefore;
+      if (record.outcome === null) {
+        unrecordedOutcomeUsd += usd;
+      } else {
+        const bucket = outcomes.get(record.outcome) ?? { calls: 0, usd: 0 };
+        bucket.calls += 1;
+        bucket.usd += usd;
+        outcomes.set(record.outcome, bucket);
+      }
     }
     if (record.ts !== null) {
       const day = new Date(record.ts).toISOString().slice(0, 10);
@@ -1189,6 +1237,14 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
       }),
     duplicateLines: duplicates,
     fieldCoverage: coverage,
+    outcomeTally: {
+      byValue: [...outcomes.entries()]
+        .map(([value, bucket]) => ({ value, calls: bucket.calls, usd: bucket.usd }))
+        .sort((a, b) => b.usd - a.usd),
+      recorded: coverage.outcome,
+      parsed: coverage.parsed,
+      unrecordedUsd: unrecordedOutcomeUsd,
+    },
     modelMixDrift: (() => {
       const ordered = [...days.entries()].sort((a, b) => a[0].localeCompare(b[0]));
       if (ordered.length < 4) return null;
