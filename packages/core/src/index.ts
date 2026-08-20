@@ -50,6 +50,19 @@ export type { PlanAction, PlanActionKind, PlanAssumption, PlanDocument } from '.
 export { verifyPlan } from './verify.js';
 export { buildHistory, storedReportFrom, MIN_RUN } from './history.js';
 export { outcomeReport, judgeOutcome, OUTCOME_UNLOCKS } from './outcome.js';
+export {
+  perOutcome,
+  rankPerOutcome,
+  MIN_OUTCOMES_FOR_RATE,
+  MIN_COVERAGE_FOR_RATE,
+} from './per-outcome.js';
+export type {
+  PerOutcome,
+  PerOutcomeRanking,
+  RankedSlice,
+  SliceInput,
+  WithheldReason,
+} from './per-outcome.js';
 export type {
   OutcomeCoverage,
   OutcomeReport,

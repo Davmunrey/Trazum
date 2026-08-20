@@ -1686,6 +1686,30 @@ ${bold('EJEMPLOS')}
       `${share} de la factura (${usd}) no llev\u00f3 resultado, y no est\u00e1 en ninguna de las dos mitades de la tasa de arriba.`,
     outcomeUndeclared: (values) =>
       `No declarados en "outcomes.values": ${values}. Nombrados en vez de contados como fallos \u2014 una errata en un exportador debe parecer una errata, no una regresi\u00f3n del producto.`,
+    perOutcomeHeading: () => 'Lo que cuesta un resultado',
+    perOutcomeRow: (key, perCall, perOutcome, coverage) => `${key} ${perCall} ${perOutcome} ${coverage}`,
+    perOutcomeColumns: {
+      workload: 'carga',
+      perCall: 'por llamada',
+      perOutcome: 'por acierto',
+      recorded: 'cubierto',
+    },
+    perOutcomeWithheld: (why, successes, coverage) =>
+      why === 'too-few-outcomes'
+        ? `${successes} hasta ahora`
+        : why === 'too-little-coverage'
+          ? `${coverage} cubierto`
+          : why === 'no-successes-recorded'
+            ? 'ninguno acert\u00f3'
+            : why === 'nothing-recorded'
+              ? 'sin registrar'
+              : 'sin vocabulario',
+    perOutcomeNumerator: () =>
+      'Por acierto divide el gasto de las llamadas que registraron un resultado, nunca la factura entera \u2014 dividirlo todo cargar\u00eda tu tr\u00e1fico sin instrumentar a tus aciertos medidos y dar\u00eda una cifra alta por exactamente la parte no cubierta, en silencio, en la direcci\u00f3n que mata una funci\u00f3n que s\u00ed funciona. "cubierto" es qu\u00e9 parte del gasto de cada carga cubre la cifra.',
+    perOutcomeDisagreement: (key, callRank, outcomeRank) =>
+      `${key} es el #${callRank} por coste por llamada y el #${outcomeRank} por coste por acierto.`,
+    perOutcomeBothOrders: () =>
+      'M\u00e1s barato por llamada y m\u00e1s barato por acierto son \u00f3rdenes distintos, y se imprimen los dos en vez de elegir uno. Una carga puede subir en uno mientras baja en el otro, y quien optimice por el primer n\u00famero estar\u00eda moviendo el equivocado.',
     outcomeColumns: { outcome: 'resultado', calls: 'llamadas', spend: 'gasto' },
     verdictSuccess: () => '\u00e9xito',
     verdictOther: () => '\u2014',

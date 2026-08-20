@@ -1208,6 +1208,41 @@ any other signal, and it was proven by planting one.
 terrible measurement; "nobody told us" is a different sentence, and the report
 spells them differently.
 
+### What an outcome costs
+
+With a numerator recorded, the finding a total cannot make:
+
+```
+What an outcome costs
+  workload  per call  per success  recorded
+  dear         $1.00        $1.00    100.0%
+  cheap      $0.1000        $2.00    100.0%
+
+  Cheapest per call and cheapest per success are different orders, and both are
+  printed rather than one being picked.
+  → cheap is #2 by cost per call and #1 by cost per success.
+```
+
+`dear` costs **ten times more per call** and **half as much per resolution**.
+Anybody optimising on the first number has been moving the wrong one, and until
+this release nothing in the product could say so.
+
+**Per success divides recorded spend, never the whole bill.** The obvious
+implementation divides everything a workload spent by the outcomes it resolved,
+which charges the uninstrumented traffic to the measured successes and reports a
+figure too high by exactly the uncovered share — silently, in the direction that
+gets a working feature killed. A team instrumenting half its traffic would read
+double the real cost per resolution and conclude the feature is uneconomic. The
+`recorded` column is what share of each workload's spend the figure covers, and
+it is printed every time the figure is.
+
+**Five reasons a figure is withheld instead of stated**, each named in the cell:
+fewer than ten recorded successes (`3 so far`), coverage under 80%
+(`62.5% covered`), money spent and nothing resolved (`none succeeded`), nothing
+recorded at all, and no vocabulary declared. A withheld slice is left out of the
+per-success ranking entirely — giving it a rank would place it on the strength of
+a number this tool declined to state, and a reader who sees a rank assumes a rate.
+
 ### In the path of the call: `trazum gateway`
 
 ```bash

@@ -1128,6 +1128,13 @@ export interface CliMessages {
     outcomeNoRate(why: string): string;
     outcomeUnrecorded(share: string, usd: string): string;
     outcomeUndeclared(values: string): string;
+    perOutcomeHeading(): string;
+    perOutcomeRow(key: string, perCall: string, perOutcome: string, coverage: string): string;
+    perOutcomeColumns: { workload: string; perCall: string; perOutcome: string; recorded: string };
+    perOutcomeWithheld(why: string, successes: string, coverage: string): string;
+    perOutcomeNumerator(): string;
+    perOutcomeDisagreement(key: string, callRank: string, outcomeRank: string): string;
+    perOutcomeBothOrders(): string;
     outcomeColumns: { outcome: string; calls: string; spend: string };
     verdictSuccess(): string;
     verdictOther(): string;
