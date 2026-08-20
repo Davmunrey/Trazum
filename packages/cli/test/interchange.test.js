@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -61,11 +62,21 @@ describe('--json means JSON, not JSON after a report', () => {
    * invisible. A guard that works around the bug it is standing next to is the
    * shape this suite keeps finding.
    *
-   * **Not every `--json` command is here.** `verify`, `connect`, `store`,
-   * `watch`, `route` and `prune` need a prior document, a credential, a running
-   * loop or a paid call to reach their output, and a fixture that fakes those
-   * would be testing the fixture. The six below are the ones a usage log alone
-   * can drive, and they are named rather than counted so the gap is visible.
+   * **Not every `--json` command is here, and the split is now asserted.**
+   * `verify`, `connect`, `store`, `watch`, `route` and `prune` need a
+   * credential, a running loop or a paid call to reach their output, and a
+   * fixture that fakes those would be testing the fixture. `history` needs
+   * three dated reports first; it is driven end to end in `history.test.js`,
+   * which parses its stdout whole, so it is covered rather than skipped.
+   *
+   * The five below are the ones a usage log alone can drive.
+   *
+   * **This sentence used to say "the six below" above a list of five, and
+   * omitted `history` from both halves.** It was written in the change whose
+   * whole argument was that a gap should be *named rather than counted* — and
+   * it stated a count, got it wrong, and left one command in neither list. The
+   * count is gone and `everyJsonCommand` below now asserts the partition, so
+   * the next `--json` command cannot be quietly absent from both.
    */
   const DRIVABLE = [
     ['profile', ['profile', 'usage.jsonl']],
@@ -74,6 +85,48 @@ describe('--json means JSON, not JSON after a report', () => {
     ['conform', ['conform', 'usage.jsonl']],
     ['init', ['init', '--dry-run']],
   ];
+
+  /**
+   * Commands whose `--json` output is proven somewhere other than here, and why.
+   *
+   * Named with the reason, because "it is tested elsewhere" is the sentence
+   * that stops being true without anybody noticing.
+   */
+  const COVERED_ELSEWHERE = {
+    history: 'history.test.js drives it on three dated reports and parses stdout whole',
+  };
+
+  /** Needs something a usage log cannot supply, so a fixture would test the fixture. */
+  const NEEDS_MORE_THAN_A_LOG = ['verify', 'connect', 'store', 'watch', 'route', 'prune'];
+
+  it('every command that accepts --json is covered here or named as an exception', () => {
+    const cli = readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8');
+    const block = cli.slice(
+      cli.indexOf('const COMMAND_FLAGS'),
+      cli.indexOf('};', cli.indexOf('const COMMAND_FLAGS')),
+    );
+    const jsonCommands = [...block.matchAll(/^ {2}([a-z]+): \[(.*?)\],$/gm)]
+      .filter((m) => m[2].includes("'json'"))
+      .map((m) => m[1]);
+    assert.ok(jsonCommands.length > 8, `only ${jsonCommands.length} --json commands found`);
+
+    const accounted = new Set([
+      ...DRIVABLE.map(([name]) => name),
+      ...Object.keys(COVERED_ELSEWHERE),
+      ...NEEDS_MORE_THAN_A_LOG,
+    ]);
+    const unclassified = jsonCommands.filter((name) => !accounted.has(name));
+    assert.deepEqual(
+      unclassified,
+      [],
+      'these commands emit --json and appear in neither the covered list nor a named ' +
+        `exception, which is how ${'`history`'} went missing from both: ${unclassified.join(', ')}`,
+    );
+
+    // The other direction, so an exception outlives the command it excuses.
+    const stale = [...accounted].filter((name) => !jsonCommands.includes(name));
+    assert.deepEqual(stale, [], `these are listed but no longer accept --json: ${stale.join(', ')}`);
+  });
 
   for (const [name, args] of DRIVABLE) {
     it(`${name} --json parses as a single JSON document`, async () => {

@@ -13,6 +13,36 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**A comment saying "the six below" above a list of five — in the change whose
+whole argument was that a gap should be named rather than counted.** The
+`--json` interchange suite explained which commands it could not drive and
+closed with *"The six below are the ones a usage log alone can drive, and they
+are named rather than counted so the gap is visible."* There were five, and
+`history` appeared in neither half: not in the covered list, not among the
+named exceptions. The one command the sentence could not account for was the
+one it made invisible.
+
+`history --json` is in fact fine — `history.test.js` drives it on three dated
+reports and parses its stdout whole — so this was a hole in the *account*, not
+in the coverage. That is worth saying precisely rather than inflating: nothing
+shipped broken. The exception now names where it is proven and why, because "it
+is tested elsewhere" is the sentence that stops being true without anybody
+noticing, and the count is gone.
+
+### Added
+
+**"Every command that accepts `--json` is covered here or named as an
+exception".** The partition is asserted from `COMMAND_FLAGS` rather than kept by
+hand: every command whose flags include `json` must appear in the driven list,
+in the covered-elsewhere map with a reason, or in the needs-more-than-a-log
+list. Twelve commands, three buckets, no remainder.
+
+Proven in both directions. A new `--json` command classified nowhere fails with
+*"these commands emit --json and appear in neither the covered list nor a named
+exception, which is how `history` went missing from both"*. An exception left
+behind after its command stops accepting `--json` fails the other way, so an
+excuse cannot outlive the thing it excused.
+
 **The doctrine prescribed the fix that kept causing the failure.** *Bound an
 assertion by its subject, never by its neighbour* is the rule this repository
 has broken more than any other, and its own entry in `docs/doctrine.md` ended
