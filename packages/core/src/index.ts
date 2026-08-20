@@ -63,6 +63,14 @@ export type {
   SemanticRejection,
   SemanticResult,
 } from './semantic.js';
+export { replayCommitment, coversTheTerm, MIN_MONTHS_FOR_REPLAY } from './commitment.js';
+export type {
+  CommitmentReplay,
+  CommitmentTerms,
+  CommitmentUnknown,
+  MeasuredMonth,
+  MonthReplay,
+} from './commitment.js';
 export { allocate, validateOwners } from './owners.js';
 export type {
   Allocation,

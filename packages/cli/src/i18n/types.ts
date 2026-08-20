@@ -268,6 +268,22 @@ export interface CliMessages {
    * The ladder. Every line here exists to stop somebody reading "we route to
    * the cheap model first" as a saving without the number that decides it.
    */
+  commitment: {
+    heading(floor: string, discount: string, months: string): string;
+    needsTerms(): string;
+    asIf(): string;
+    columns: { month: string; list: string; paid: string; saving: string };
+    net(usd: string, months: string): string;
+    good(usd: string): string;
+    lost(usd: string, months: string): string;
+    noShortfall(): string;
+    breakEven(usd: string): string;
+    spread(low: string, high: string, median: string): string;
+    shortTerm(covered: string, term: string): string;
+    cannotTell(why: string, needed: string): string;
+    neverAForecast(): string;
+  };
+
   owners: {
     heading(): string;
     noOwners(): string;

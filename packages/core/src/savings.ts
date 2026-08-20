@@ -99,10 +99,23 @@ export function computeSavings(
  */
 export function formatUsd(value: number): string {
   if (value === 0) return '$0';
+  /**
+   * The branch is chosen on the **rounded** value, not the raw one.
+   *
+   * `999.998` is under a thousand, so the old version took the two-decimal
+   * branch and rendered `$1000.00` — a string the thousands branch would never
+   * produce, sitting in a column beside `$5,000` and looking like a different
+   * currency format for the same magnitude. Floating point puts values there
+   * routinely: a saving of exactly a thousand dollars, computed as
+   * `5000 - 5000 * 0.8`, lands at `999.9999999999999`.
+   *
+   * Rounding first makes the boundary the number a reader sees rather than the
+   * number the machine holds.
+   */
   const abs = Math.abs(value);
   if (abs < 0.01) return `$${value.toFixed(5)}`;
   if (abs < 1) return `$${value.toFixed(4)}`;
-  if (abs < 1000) return `$${value.toFixed(2)}`;
+  if (Math.round(abs * 100) / 100 < 1000) return `$${value.toFixed(2)}`;
   return `$${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
 }
 

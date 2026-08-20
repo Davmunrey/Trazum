@@ -43,11 +43,11 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- 30 commands       MCP server      Next.js     comments on pull requests
+ 31 commands       MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
-## The thirty commands
+## The thirty-one commands
 
 | Command | What it answers |
 |---|---|
@@ -78,6 +78,7 @@ never runs unless you ask.
 | [`trazum quality`](#the-gate-that-fails-a-build-for-quality-trazum-quality) | Did that prompt change quietly make the product worse? *Refuses to blame what it cannot attribute.* |
 | [`trazum semantic`](#the-findings-a-dictionary-cannot-see-trazum-semantic) | Does this prompt say the same thing twice, or contradict itself? *The model proposes; the checker disposes.* |
 | [`trazum owners`](#whose-money-trazum-owners) | Whose budget does this land on? *The unallocated is never spread.* |
+| [`trazum commitment`](#should-you-sign-that-commitment-trazum-commitment) | What would that committed-use deal have been worth? *On measured months, both directions priced.* |
 | [`trazum conform`](#building-on-the-format-trazum-conform) | Does the document my tool emits conform, and what will it not be able to answer? |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
 | [`trazum feedback`](#telling-us-something-trazum-feedback) | Where do I report this, and what will you ask me for? *Sends nothing.* |
@@ -188,8 +189,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of thirty commands — [the table
-above](#the-thirty-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of thirty-one commands — [the table
+above](#the-thirty-one-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -339,7 +340,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other twenty-nine commands, each with its own section below:
+The other thirty commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -1513,6 +1514,55 @@ configuration error, not a rounding problem, and the workload goes to unallocate
 
 **An owner with no measured data is not an owner under budget** — the
 `fleetBudgetMissing` refusal from 1.37, applied to people.
+
+### Should you sign that commitment? `trazum commitment`
+
+Providers sell committed-use and reserved-capacity deals. Every team that signs
+one is doing arithmetic in a spreadsheet against a number they guessed — which is
+exactly the failure this product exists to end, at the highest stakes it occurs,
+because the guess is annual and signed.
+
+```
+A 12-month commitment: $3,000 a month at 20% off
+  This is what the deal WOULD HAVE done on the traffic you actually had. It is a
+  measurement of the past, not a prediction — every month below happened.
+
+  month       list  would pay    saving
+  2026-01   $5,000     $4,000   +$1,000
+  2026-02   $5,000     $4,000   +$1,000
+  2026-03  $600.00     $3,000   -$2,400
+  2026-04   $4,000     $3,200  +$800.00
+
+  Net over 4 measured months: $400.00.
+  The months that cleared the floor saved $2,800.
+  ! 1 of them fell short, and the floor you would have paid for capacity nobody
+    used comes to $2,520. That figure is kept separate on purpose: netted into
+    the line above it disappears, and the disappearing is what a vendor's slide
+    relies on.
+```
+
+**Net positive, and one month cost $2,520.** That is the whole point of the
+command: a commitment is a **floor** as well as a discount, and a saving quoted
+without the months that fell short is not an analysis — it is the vendor's slide.
+
+**An as-if calculation, and the wording never blurs it.** "On the traffic you
+actually had, this would have saved $X" is a measurement of the past. "You will
+save $X" is a claim about the future, refused here as everywhere since 1.27.
+Nothing is annualised, extrapolated or fitted to a trend.
+
+**The shortfall risk is a count, not a probability.** "Three of your last twelve
+months would have fallen short" is a measurement. "There is a 25% chance of
+shortfall" is a model of a distribution nobody fitted, wearing the authority of
+arithmetic. Only the first is available from a log.
+
+**Partial months are dropped, not scaled.** A fortnight replayed against a
+monthly floor is a shortfall the traffic never had.
+
+**Fewer than three whole months and it refuses**, saying how many more would
+settle it — a commitment is signed for a year, and an answer from one month is a
+year-long decision made on a fortnight of evidence. A history shorter than the
+term still gets an answer, with the gap marked: six months against a twelve-month
+deal is a real answer about six months.
 
 ### In the path of the call: `trazum gateway`
 
