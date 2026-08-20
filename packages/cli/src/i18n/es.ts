@@ -45,6 +45,7 @@ ${bold('USO')}
   trazum models
   trazum rules
   trazum gateway <anthropic|openai> --on-cannot-tell <fail-open|fail-closed>
+  trazum experiment <log> --a <label> --b <label> --min-outcomes <n>
   trazum ladder <log>
   trazum feedback
   trazum --version
@@ -108,6 +109,18 @@ ${bold('OPCIONES DE gateway')}
   sustituida queda marcada.
 
   Tu credencial se reenvía intacta y nunca se lee. Ver docs/gateway.md.
+
+${bold('OPCIONES DE experiment')}
+  --a <etiqueta>, --b <etiqueta>  Las dos cargas a comparar.
+  --min-outcomes <n>          Obligatorio: cuántos resultados debe registrar
+                              cada brazo antes de poder leer el resultado. Una
+                              regla de parada declarada después de mirar los
+                              números no es una regla de parada, y el informe
+                              dice si se respetó.
+
+  Juzga resultados registrados y coste a la vez. Tres valores: gana A, gana B,
+  o no separables — con cuántos resultados por brazo lo zanjarían, para que
+  "déjalo correr más" sea una instrucción y no un encogimiento de hombros.
 
 ${bold('OPCIONES DE prune')}
   --cases <fichero>           Una entrada por línea, o un array JSON. Obligatorio.
@@ -998,6 +1011,32 @@ ${bold('EJEMPLOS')}
       `${path} ya existe y se dejó intacto. Pasa --dry-run para ver qué iría dentro, o --yes para reemplazarlo.`,
     existingUnparseable: (path) =>
       `${path} existe y no se pudo interpretar, así que no se escribió nada encima. Arréglalo o muévelo primero.`,
+  },
+
+  experiment: {
+    heading: (a, b) => `Experimento: ${a} contra ${b}`,
+    needsTwo: () =>
+      'Nombra dos etiquetas a comparar, por ejemplo: trazum experiment <log> --a prompt-v1 --b prompt-v2',
+    needsRule: () =>
+      '--min-outcomes es obligatorio, y ese es justo el punto: una regla de parada declarada despu\u00e9s de mirar los n\u00fameros no es una regla de parada. Di cu\u00e1ntos resultados debe registrar cada brazo antes de poder leer el resultado.',
+    arm: (name, rate, successes, recorded, interval) =>
+      `${name}  ${rate}  (${successes} de ${recorded} registrados)  95% ${interval}`,
+    wins: (name, low, high) =>
+      `Gana ${name}. La diferencia est\u00e1 entre ${low} y ${high} con un 95% de confianza \u2014 el intervalo entero est\u00e1 a un lado del cero, que es lo que significa "gana" aqu\u00ed.`,
+    notSeparable: (why, needed) =>
+      why === 'no-difference-observed'
+        ? 'No separables: los dos brazos registraron la misma tasa. Ning\u00fan tama\u00f1o de muestra separa una diferencia de cero, as\u00ed que no hay ning\u00fan "d\u00e9jalo correr m\u00e1s" que ofrecer \u2014 no hay nada que encontrar.'
+        : why === 'nothing-recorded'
+          ? 'No separables: un brazo no registr\u00f3 ning\u00fan resultado, as\u00ed que no hay tasa que comparar.'
+          : `No separables con este tr\u00e1fico: el intervalo del 95% sobre la diferencia incluye el cero. Un n\u00famero es mayor, y eso no es un hallazgo. Unos ${needed} resultados por brazo zanjar\u00edan la diferencia observada hasta ahora.`,
+    peeked: (short, declared, recorded) =>
+      `Le\u00eddo antes de tiempo. La regla declarada eran ${declared} resultados por brazo y ${short} tiene ${recorded}. Nada puede impedir que se lea un n\u00famero antes de tiempo; esta l\u00ednea existe para que quien lea el resultado despu\u00e9s vea que se hizo.`,
+    honoured: (declared) => `Regla de parada respetada: los dos brazos superaron ${declared} resultados registrados.`,
+    marginalDearer: (better, usd) =>
+      `${better} resuelve m\u00e1s y cuesta m\u00e1s. Un acierto extra cuesta ${usd} \u2014 esa cifra, y no la tasa, es de lo que depende la decisi\u00f3n.`,
+    marginalCheaper: (better) => `${better} resuelve m\u00e1s Y cuesta menos por llamada. No se est\u00e1 cambiando nada por nada.`,
+    neverPromotes: () =>
+      'No se cambi\u00f3 nada. Un ganador es un hallazgo; tomarlo es una decisi\u00f3n con un nombre detr\u00e1s, y va en el plan como todo lo dem\u00e1s.',
   },
 
   ladder: {

@@ -50,6 +50,16 @@ export type { PlanAction, PlanActionKind, PlanAssumption, PlanDocument } from '.
 export { verifyPlan } from './verify.js';
 export { buildHistory, storedReportFrom, MIN_RUN } from './history.js';
 export { outcomeReport, judgeOutcome, OUTCOME_UNLOCKS } from './outcome.js';
+export { runExperiment } from './experiment.js';
+export type {
+  ArmResult,
+  ExperimentArm,
+  ExperimentDeclaration,
+  ExperimentResult,
+  Marginal,
+  NotSeparableReason,
+  Separation,
+} from './experiment.js';
 export {
   ladderArithmetic,
   ladderPosition,

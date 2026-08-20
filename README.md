@@ -43,11 +43,11 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- 26 commands       MCP server      Next.js     comments on pull requests
+ 27 commands       MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
-## The twenty-six commands
+## The twenty-seven commands
 
 | Command | What it answers |
 |---|---|
@@ -74,6 +74,7 @@ never runs unless you ask.
 | [`trazum serve`](#before-the-call-is-sent-trazum-serve) | What will this call cost, and is there budget? *Answered in milliseconds, halves kept apart.* |
 | [`trazum gateway`](#in-the-path-of-the-call-trazum-gateway) | Can it stop the call instead of advising against it? *Refuses; never substitutes.* |
 | [`trazum ladder`](#is-the-ladder-saving-money-or-is-it-a-bill-trazum-ladder) | Is cheap-first-escalate-on-failure saving money, or costing it? *Break-even rate, stated.* |
+| [`trazum experiment`](#two-arms-on-real-traffic-trazum-experiment) | Which of two arms is better on real traffic? *A winner only when there is one.* |
 | [`trazum conform`](#building-on-the-format-trazum-conform) | Does the document my tool emits conform, and what will it not be able to answer? |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
 | [`trazum feedback`](#telling-us-something-trazum-feedback) | Where do I report this, and what will you ask me for? *Sends nothing.* |
@@ -184,8 +185,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of twenty-six commands — [the table
-above](#the-twenty-six-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of twenty-seven commands — [the table
+above](#the-twenty-seven-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -335,7 +336,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other twenty-five commands, each with its own section below:
+The other twenty-six commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -1292,6 +1293,69 @@ arithmetic that says whether the policy is worth running.
 
 **A misconfigured ladder exits 1.** It is the one finding here that is wrong
 *now* rather than a measurement to look at.
+
+### Two arms on real traffic: `trazum experiment`
+
+`eval` compares two prompts on cases you wrote; `route` compares two models on
+the same. Both measure agreement in a laboratory. The traffic is the only place
+the real question gets answered.
+
+```
+Experiment: prompt-v2 against prompt-v1
+
+  prompt-v2  80.0%  (800 of 1,000 recorded)  95% [77.4%, 82.4%]
+  prompt-v1  50.0%  (500 of 1,000 recorded)  95% [46.9%, 53.1%]
+
+  ✓ prompt-v2 wins. The difference is between 26.0% and 33.9% at 95% confidence
+    — the whole interval is on one side of zero, which is what "wins" means here.
+
+  Stopping rule honoured: both arms cleared 1,000 recorded outcomes.
+
+  prompt-v2 resolves more and costs more. One extra success costs $1.67 — that
+    figure, not the rate, is what the decision turns on.
+```
+
+**A winner only when there is one.** Two arms always produce two numbers and one
+of them is always larger; naming a winner from that is a coin flip with a
+dashboard. When the interval on the difference includes zero the verdict is *not
+separable*, and it comes with a number:
+
+```
+  · Not separable on this traffic: the 95% interval on the difference includes
+    zero. One number is larger, and that is not a finding. About 2,449 outcomes
+    per arm would settle the difference observed so far.
+```
+
+"Not significant" tells a reader nothing about whether to wait a day or abandon
+the idea. **2,449** is a quantified instruction. And when both arms record the
+same rate the answer is `null`, not a large number: no sample size separates a
+difference of zero, and a big figure would read as "keep going" when there is
+nothing to find.
+
+**`--min-outcomes` is required**, and that is the point of it. A stopping rule
+declared after looking at the numbers is not a stopping rule. Nothing can stop
+somebody reading a result early — what this can do is make the early read
+**visible to whoever reads it later**:
+
+```
+  ! Read early. The declared rule was 1,000 outcomes per arm and a has 100.
+```
+
+Printed whether or not the arms separated: a separable result read too early is
+still separable *and* still read too early, and collapsing the two would hide
+one of them — always the inconvenient one.
+
+**What an extra success costs.** The interesting arm is almost never better *and*
+cheaper. It is better and dearer, and the decision turns on a figure nobody
+computes: the difference in spend over the difference in successes, per call so
+arms with different traffic shares compare.
+
+**Nothing is auto-promoted.** A winner is a finding; taking it is a decision with
+a name attached, and it lands in the plan like everything else.
+
+Wilson score intervals per arm, Newcombe's on the difference — both chosen
+because they behave at the sample sizes an experiment actually starts with,
+where a symmetric interval runs past 0 or 1 for most of the first week.
 
 ### In the path of the call: `trazum gateway`
 
