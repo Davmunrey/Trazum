@@ -212,27 +212,53 @@ Keep it as its own line, name what is in it, and wait for somebody to claim it.
 
 ## Bound an assertion by its subject, never by its neighbour
 
-A test that harvests "from here to whatever comes next" is not bounded — it is
-bounded by an accident, and the accident changes.
+A test bounded by *what happens to sit next to its subject* is not bounded — it
+is bounded by an accident, and the accident changes. The distinction that took
+nine goes to state clearly: **"until the next heading, whatever it is" is the
+subject's own extent; "until the heading called X" is a neighbour.** The first
+survives an insertion. The second is a trap with a delay on it.
 
-This has gone wrong six times in this repository, in three different files, and
-the shape is identical every time:
+This has gone wrong **nine times** in this repository, and the shape is
+identical every time:
 
-- Four contract harvests in `docs/json-output.md` sliced from their heading to
-  the end of the file, so each new section silently widened the one before it.
+- **Eight contract harvests** reading `docs/json-output.md`, each slicing from
+  its own heading to the *named* heading after it. Inserting two sections in the
+  middle of that file broke four suites in one commit.
+- **A ninth harvest that claimed a bound it did not have**, slicing to the end of
+  the file under the comment *"Bounded to its own section, like every other
+  harvest in this repository"*. It passed because its section happened to be
+  last. A comment asserting a property the code lacks is worse than no comment:
+  it is what a reviewer reads instead of the code.
 - Two source harvests in `security.test.js` sliced from a function to
   `commandModels` **by name**, so inserting a command between them pulled a
   third command's source into both guards.
 - A profile assertion searched the whole report for the phrase `cannot say
   whether`, and a new coverage line about outcomes — unrelated, and correct —
   made a true assertion fail.
+- The README's advisory count is stated twice, in two different nouns. The guard
+  read one of them, forced it, and let the other stay wrong for fifty-two
+  releases.
 
-Two of those made a guard cover more than it should; one made it cover less;
-one made a correct sentence look like a bug. The fix is the same in every case:
-name the end as well as the start, and match the subject rather than a phrase
-that any section might legitimately use.
+Some of those made a guard cover more than it should; one made it cover less;
+one made a correct sentence look like a bug; one let a front page contradict
+itself in public.
 
-*Learned across 1.38 to 1.50.4, the same lesson each time.*
+**This entry used to prescribe the fix that kept re-arming the trap.** It said:
+*"name the end as well as the start"* — which is what every previous repair did,
+and naming the new neighbour only moves the trap one section further along. It
+is bounding by a different accident.
+
+The fix is to bound by **the subject's own extent**: a section ends at the next
+heading, *whatever it is*; a function's source ends at the next function,
+whatever it is called; an assertion about a sentence is scoped to that sentence,
+not to a phrase any paragraph might legitimately use. Where the same bound is
+needed in more than one place it gets one home — `test-utils/section.mjs` — and
+a test fails if a suite goes back to naming a neighbour, because the pattern
+reads perfectly well in review.
+
+*Learned across 1.38 to 1.50.4, the same lesson each time, and only closed as a
+class after the ninth — which is the argument for asking, when a rule keeps
+recurring, whether the rule's own prescription is what keeps producing it.*
 
 ## Record, do not reconstruct
 

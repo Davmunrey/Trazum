@@ -13,6 +13,41 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**The doctrine prescribed the fix that kept causing the failure.** *Bound an
+assertion by its subject, never by its neighbour* is the rule this repository
+has broken more than any other, and its own entry in `docs/doctrine.md` ended
+with: *"The fix is the same in every case: **name the end as well as the
+start**."*
+
+That is exactly what every repair had done, and naming the new neighbour only
+moves the trap one section further along. The canonical document was telling
+every future reader to re-arm it. It now draws the distinction that took nine
+occurrences to state: **"until the next heading, whatever it is" is the
+subject's own extent; "until the heading called X" is a neighbour.** The first
+survives an insertion; the second is a trap with a delay on it.
+
+The entry's history was also wrong. It said "four contract harvests"; there were
+**eight**, plus a ninth that claimed a bound it did not have. Corrected, along
+with the count — six to nine — and the README's advisory count added as the
+occurrence the rule gained after it was written.
+
+**`docs/our-own-medicine.md` had stopped being current**, which for the document
+whose entire subject is this project's own record is the failure it exists to
+catch. It was missing #288, #289 and #290, and its claim that *"the two long
+ones are the interesting ones"* was overtaken: the front page contradicted
+itself about the advisory count for **fifty-two releases**, longer than either.
+It also carried the same wrong tally as the doctrine. Both are now the same
+numbers, because they are the same facts.
+
+**A guard against undocumented commands accepted any backticked word.** "Every
+command is mentioned in the README" filtered on `trazum <id>` **or** `` `<id> ``
+— a backtick followed by the name, anywhere in the file. The README has
+eighty-nine backticked lowercase words that are not commands, several of them
+plausible names for one: `batch`, `cache`, `label`, `locale`, `drift`. Planting
+a command called `cache`, documented nowhere, **passed**. All thirty-two
+commands satisfy the strict form already, so the loose clause was covering
+nothing and hiding the next command added.
+
 **`trazum report --year --json` emitted a stream no machine could read.** It
 printed the human report and *then* appended the document, and its help said
 "Also emit". Every other `--json` in this CLI is the document **instead of** the
@@ -133,6 +168,13 @@ about itself, in five guards, each proven by planting the violation:
 
 **`test-utils/section.mjs`** — the shared bound described above, with the whole
 history of why in it.
+
+**A ratchet on the class: "no test bounds a section of prose by naming the
+section after it".** Nine occurrences were repaired one at a time; this is what
+closes the class. It walks every suite and fails on `indexOf('## …')`, because
+the pattern is easy to re-introduce and reads perfectly well in review. Proven
+by putting the old two-`indexOf` bound back into `init.test.js` and watching it
+fail naming the file.
 
 ### Changed
 

@@ -63,19 +63,52 @@ misses is a tool nobody believes. A selection, and these are the real ones:
 | 1.50.11 | The Action pins were advanced to the *feature* commit, not the release commit | caught by the pin guard |
 | #265 | `ROADMAP.md`'s Released section ran in two directions | **24 releases** |
 | #265 | A waiver record was written to the terminal's directory, and one reached `main` as a tracked file | 2 releases |
+| #288 | `ROADMAP.md`'s `## Next` still called a delivered arc "in progress" | 2 releases |
+| #289 | The README hero said "fourteen findings" while the paragraph under it said "Thirteen advisories" | **52 releases** |
+| #290 | `outcome-report` was a contract whose only implementation failed it, missing `schemaVersion` | **9 releases** |
+| #290 | `trazum report --year --json` printed prose before the document, so no machine could read it | caught same day |
 
-The two long ones are the interesting ones. Both were **claims nothing checked**
-— a version number in prose, and an ordering nobody asserted — and both drifted
-the moment the person maintaining them stopped hand-checking. Both now have
-guards.
+The long ones are the interesting ones, and the longest is the newest: **the
+front page of this project contradicted itself about the number of advisories
+for fifty-two releases.** All of them were **claims nothing checked** — a version
+number in prose, an ordering nobody asserted, a count stated twice in two
+different nouns with a guard reading only one. Each drifted the moment the
+person maintaining it stopped hand-checking, and each has a guard now.
 
-**Seven times** an assertion in this repository has been bounded by something
-other than its subject: four contract harvests in `docs/json-output.md`, two
-source harvests in `security.test.js`, and one phrase match in `profile.test.js`.
-It is a doctrine rule now ([bound an assertion by its
+The #290 row is the one that should be uncomfortable. `outcome-report` was
+declared a contract, given field rules and cross-rules, documented as something
+another tool could build against — and the only implementation of it in this
+repository did not conform to it. A format whose reference producer fails its
+own check is worse than no format, because a tool mirroring it inherits the
+defect and looks interoperable.
+
+**Nine times** an assertion in this repository has been bounded by something
+other than its subject. It is a doctrine rule now ([bound an assertion by its
 subject](doctrine.md#bound-an-assertion-by-its-subject-never-by-its-neighbour)),
-and the seventh was caught by its own planted probe rather than by a later
-release — which is the argument for always planting one.
+and the count kept going up after the rule was written, which is the honest part.
+
+The seventh was caught by its own planted probe rather than by a later release —
+the argument for always planting one. The eighth was the README's advisory count
+above. **The ninth was the one that showed the earlier eight had been miscounted
+and mis-fixed.**
+
+The tally used to read "four contract harvests in `docs/json-output.md`". There
+were **eight**, and every one ended its harvest by naming the section that came
+after it. Each time one broke, the fix was to name the *new* neighbour — which
+set the same trap one section further along. Documenting two contracts in the
+middle of that file broke four suites in a single commit. A ninth harvest was
+worse: it carried the comment *"Bounded to its own section, like every other
+harvest in this repository"* above a slice that ran to the end of the file,
+bounded by nothing and passing only because its section happened to be last.
+
+**And the doctrine itself prescribed the fix that kept re-arming the trap.** The
+rule said *"name the end as well as the start"* — which is exactly what each
+repair did. The canonical document was telling every future reader to set the
+trap one section further along.
+
+They now share one helper that ends at the next heading, whatever it is, and a
+test fails if any suite goes back to naming one. That is the difference between
+fixing an instance and closing a class, and it took nine instances to make it.
 
 ## What we cannot say about ourselves
 
