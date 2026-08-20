@@ -171,6 +171,19 @@ vanishing, because "we alerted about this" and "this is fine now" are
 different sentences. The unwatched stretch between cycles is returned as
 `gap`.
 
+## Answering before the call
+
+`answerCost(request, { catalogue })` answers the two questions asked at call
+time. The budget consumed is `measured`, the cost of the described call is
+`estimated`, and the two never merge: the composed `afterCall.usd` carries its
+halves beside it, and `restsOn` says whether the verdict needed the estimate
+(`measured` when the budget is already past its limit, `measured+estimated`
+when it takes this call to cross). Three outcomes rather than two — `within`,
+`over`, `cannot-tell` — and the reasons are kept apart because their fixes
+differ: no budget configured, nothing measured, or a model the catalogue
+cannot price. Pure and synchronous, because a function that reads a file
+cannot promise an answer in milliseconds.
+
 ## Comparing two versions
 
 ```ts

@@ -225,6 +225,50 @@ describe('the alert webhook', () => {
   });
 });
 
+/**
+ * The local endpoint, introduced by `serve` in 1.44.
+ *
+ * This is the first time Trazum *listens*. What it holds is a company's
+ * spend, its model mix and its budgets, and it answers whoever asks — so the
+ * surface stays small enough not to need an auth story, and small is enforced
+ * here rather than intended in a comment.
+ */
+describe('the local endpoint', () => {
+  const source = () => readFileSync(join(repoRoot, 'packages/cli/src/serve.ts'), 'utf8');
+  const code = () =>
+    source()
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+
+  it('binds loopback, compiled in, with no way to say otherwise', () => {
+    assert.match(code(), /BIND_HOST = '127\.0\.0\.1'/);
+    // A host taken from a flag or the environment is how a local oracle ends
+    // up on 0.0.0.0 in somebody's container.
+    assert.doesNotMatch(code(), /0\.0\.0\.0|::\s*'|process\.env/);
+    const cli = readFileSync(join(repoRoot, 'packages/cli/src/index.ts'), 'utf8');
+    const serveFlags = /serve: \[([^\]]*)\]/.exec(cli);
+    assert.ok(serveFlags, 'the serve command must declare its flags');
+    assert.doesNotMatch(serveFlags[1], /host|bind|address|remote/);
+  });
+
+  it('refuses a body it would have to buffer without limit', () => {
+    // A prompt is text and text is unbounded; an oracle that buffers whatever
+    // it is handed is one request away from taking down the caller that was
+    // asking how to spend less.
+    assert.match(code(), /MAX_BODY_BYTES/);
+    assert.match(code(), /body too large/);
+  });
+
+  it('answers only the two shapes it documents', () => {
+    // Every path that is not /health or /cost is a 404 rather than something
+    // that grew by accident.
+    const text = code();
+    assert.match(text, /'\/health'/);
+    assert.match(text, /'\/cost'/);
+    assert.match(text, /404/);
+  });
+});
+
 describe('no runtime dependencies', () => {
   // Every published package here processes untrusted text. A runtime dependency
   // is code that would run on that text with no review from this project, so

@@ -1073,6 +1073,23 @@ export interface CliMessages {
   };
 
   /**
+   * `trazum serve` — the answer given before the call is sent.
+   *
+   * The copy states the two things a reader must not have to infer: that this
+   * listens on loopback and nowhere else, and that the measured half is read
+   * once rather than being current to the second.
+   */
+  serve: {
+    listening(where: string): string;
+    /** Why there is no --host, and why that is not an omission. */
+    loopbackOnly(): string;
+    measuredFrom(usd: string): string;
+    nothingMeasured(dir: string): string;
+    noBudget(): string;
+    badPort(value: string): string;
+  };
+
+  /**
    * `trazum watch` — the gates, evaluated as the money moves.
    *
    * The copy here carries the rule that makes an alert at 3am trustworthy: a

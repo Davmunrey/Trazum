@@ -45,6 +45,7 @@ ${bold('USAGE')}
   trazum connect <anthropic|openai> [options]
   trazum store [--prune] [options]
   trazum watch [--once | --interval 15m] [options]
+  trazum serve [--port <n> | --socket <path>]
   trazum diff <before> <after> [options]
   trazum diff --all <dir> <dir> [options]
   trazum rank <dir> [options]
@@ -321,6 +322,29 @@ ${bold('OPTIONS FOR plan')}
   never summed — and every action names what the log cannot confirm, because
   a plan that hides its assumptions is advice pretending to be arithmetic.
   Projected savings and money already spent are separate totals throughout.
+
+${bold('OPTIONS FOR serve')}
+  --port <n>                  Port on 127.0.0.1. Default: 7317.
+  --socket <path>             Listen on a Unix socket instead of a port.
+
+  Answers the two questions that matter at call time — what will this cost,
+  and is there budget left — in single-digit milliseconds, so an agent or a
+  wrapper can ask before it spends rather than reading a report afterwards.
+
+  POST /cost with {"model": "...", "inputTokens": n, "outputTokens": n};
+  GET /health says it is up. Every answer keeps the measured half and the
+  estimated half apart: the budget consumed comes from the provider's billed
+  counts, the cost of the call being asked about is an estimate of something
+  that has not happened, and the verdict says which of the two it rests on.
+
+  It listens on 127.0.0.1 and nowhere else, and there is no flag to change
+  that: a cost oracle on a network interface holds a company's spend, its
+  model mix and its budgets, and answers whoever asks. There is no auth for
+  the same reason there is no --host — a token checked over loopback is
+  theatre, and the honest posture is a surface small enough not to need one.
+
+  With no store and no budget it still prices the call and says the budget
+  half is unknown. Offline is a mode, not a failure.
 
 ${bold('OPTIONS FOR watch')}
   --once                      One cycle: measure, keep, evaluate, emit,
@@ -1534,6 +1558,19 @@ ${bold('EXAMPLES')}
       'Ranked by money, projected or already spent alike. The assumptions are yours to answer: this plan is arithmetic over the log, not knowledge of your product.',
     wrote: (path) =>
       `Plan written to ${path}, dated. Keep it: a prediction nobody wrote down is a prediction nobody can be held to.`,
+  },
+
+  serve: {
+    listening: (where) => `Answering on ${where}`,
+    loopbackOnly: () =>
+      'Loopback only, and there is no flag to change that: this holds your spend, your model mix and your budgets, and would answer whoever asked. There is no auth for the same reason — a token checked over loopback is theatre.',
+    measuredFrom: (usd) =>
+      `Budget answers are measured against ${usd} from the store, read once at start. Every answer carries the window that figure covers rather than implying it is current to the second — restart to refresh it.`,
+    nothingMeasured: (dir) =>
+      `Nothing is measured yet (the store at ${dir} is empty), so the budget half of every answer will say so. The cost half still answers from the catalogue: offline is a mode, not a failure.`,
+    noBudget: () =>
+      'No spend.maxUsd is configured, so "is there budget left" has no subject and every answer says so rather than guessing one.',
+    badPort: (value) => `"${value}" is not a port. Give a whole number from 0 to 65535, or use --socket.`,
   },
 
   watch: {

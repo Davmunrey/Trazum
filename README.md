@@ -43,11 +43,11 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- twenty commands    MCP server      Next.js     comments on pull requests
+ 21 commands       MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
-## The twenty commands
+## The twenty-one commands
 
 | Command | What it answers |
 |---|---|
@@ -70,6 +70,7 @@ never runs unless you ask.
 | [`trazum connect`](#your-bill-without-the-export-trazum-connect) | What did the provider actually bill me? *Read from their API, nothing exported by hand.* |
 | [`trazum store`](#keeping-it-trazum-store) | What have I measured and kept? *Aggregates only — no prompt text, ever.* |
 | [`trazum watch`](#the-afternoon-it-happened-trazum-watch) | Has anything crossed a budget? *Measured crossings only — never a forecast.* |
+| [`trazum serve`](#before-the-call-is-sent-trazum-serve) | What will this call cost, and is there budget? *Answered in milliseconds, halves kept apart.* |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
 
 ## Contents
@@ -176,8 +177,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of twenty commands — [the table
-above](#the-twenty-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of twenty-one commands — [the table
+above](#the-twenty-one-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -241,7 +242,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other nineteen commands, each with its own section below:
+The other twenty commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -251,6 +252,7 @@ trazum history reports/              # the long run, from stored reports
 trazum connect anthropic             # your bill, read from the provider
 trazum store                         # what is kept, and what a prune takes
 trazum watch --once                  # did anything cross, this afternoon
+trazum serve                         # answer before the call is sent
 trazum rank prompts/                 # which one to fix first
 trazum blame prompts/system.txt      # who made it expensive, and when
 trazum diff old.txt new.txt          # what this edit cost
@@ -1010,6 +1012,46 @@ already go. A webhook URL carrying credentials is refused (URLs end up in logs
 and shell history) and plain http is refused off loopback (an alert carries
 your spend figures). A receiver that is down is reported and swallowed — the
 crossing already went out through the other two.
+
+### Before the call is sent: `trazum serve`
+
+Everything above lives behind a process launch, a config walk and a log parse.
+That is fine for a report and useless for a decision being made right now — by
+the time the report exists, the call has been paid for.
+
+```bash
+trazum serve                 # 127.0.0.1:7317, or --socket /tmp/trazum.sock
+curl -s localhost:7317/cost -d '{"model":"claude-opus-5","inputTokens":200000}'
+```
+
+```json
+{
+  "call":   { "estimatedUsd": 1.00, "provenance": "estimated" },
+  "budget": { "consumedUsd": 40.00, "limitUsd": 50.00, "provenance": "measured" },
+  "verdict": "within",
+  "restsOn": "measured+estimated",
+  "afterCall": { "usd": 41.00, "halves": { "measuredUsd": 40, "estimatedUsd": 1 } }
+}
+```
+
+**This is where the temptation to merge halves is strongest, and the shape
+refuses to.** The budget consumed is measured — the provider billed it. The
+cost of the call is an estimate of something that has not happened. The
+composed figure exists, because callers need it, and never travels without its
+two halves beside it. `restsOn` says whether the verdict needed the estimate at
+all: `measured` means the budget is already blown, `measured+estimated` means
+it takes this call to cross.
+
+**Loopback only, and there is no flag to change it.** This holds your spend,
+your model mix and your budgets and answers whoever asks; `checkedEndpoint`
+has guarded outbound requests since 1.14 on the principle that a caller selects
+an endpoint rather than naming one, and this is the inbound counterpart. There
+is no auth for the same reason — a token checked over loopback is theatre.
+
+**It degrades rather than failing.** No store and no budget: it still prices
+the call and says the budget half is unknown. Offline is a mode, not a failure.
+The measured position is read once at start, so every answer carries the window
+that figure covers rather than implying it is current to the second.
 
 ### Charting it: `doctor --otlp-out`
 
