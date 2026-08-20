@@ -11,7 +11,69 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**`trazum watch`: the afternoon it happened, said that afternoon.** Every gate
+in this product fired when a human ran a command, and the failures worth
+catching — a retry loop, a prompt that grew, a model swapped in a deploy —
+happen at 3pm on a Tuesday. Third of the ten in docs/plan-1.41-1.50.md.
+
+**One cycle is the primitive.** `--once` measures, keeps, evaluates, emits and
+remembers; `--interval 15m` is that cycle in a timer. One code path, so a cron
+entry, a foreground watcher and every test all exercise the same thing. The
+interval has a five-minute floor: usage APIs are rate limited, and a tight
+loop is a way for a tool that exists to save money to get somebody's key
+throttled.
+
+**An alert fires on a measured crossing, never on a projection.** Each
+crossing carries `provenance: 'measured'` as a field even though it can hold
+one value today — so a later change cannot smuggle an estimate past a
+consumer by leaving the question unasked. "You have spent $412 of a $400
+budget" is a fact; "you will exceed" is a forecast, refused at every window
+length since 1.27.
+
+**A day still being measured is not judged, and not passed either.** At noon,
+a threshold over that day is a threshold over half a day, so it is reported as
+not-yet-judgeable with how much is covered. **A day already over budget fires
+whatever the hour**, because it does not become less over budget at midnight —
+the coverage floor suppresses an unripe verdict, never a real crossing. The
+floor sits below perfection because a usage API's last bucket lags minutes
+behind, and a gate that waits for a whole day never judges anything.
+
+**A restart is not amnesia, and quiet is not clean.** A crossing already
+reported does not alert twice — and is not called fine either: it comes back
+as `suppressed`, prints as STILL OVER, and the run still exits 1. The stretch
+between cycles that nobody watched is named once, because a watcher that
+resumes in silence implies coverage it did not have.
+
+**Three transports, all boring.** A non-zero exit code so cron mails it, a
+JSON event on stdout for any pipeline, and `--webhook` for wherever the alerts
+already go. A receiver that is down is reported and swallowed: the crossing
+already went out through the other two, and losing them because a receiver
+fell over would make the quietest failure the loudest one.
+
+New core module `watch.ts` (`evaluateWatch`, `firedKey`), browser-safe: the
+pulling, the storing, the sleeping and the sending live in the CLI.
+
+### Security
+
+**The alert webhook is a new outbound surface, and three guards fail the build
+over it.** A URL carrying credentials is refused, because URLs end up in logs,
+shell history and error messages. Plain http is refused off loopback, because
+an alert carries spend figures across a network — loopback is allowed, since
+pointing a watcher at your own alerting daemon is the ordinary case rather
+than the attack, and this is deliberately *not* the SSRF case
+`checkedEndpoint` guards: the URL is in the operator's own config, not an
+anonymous request body. The payload's shape is pinned to figures and gate
+names, and the delivery path may not throw. Each guard was proven with a
+planted probe before being trusted.
+
+### Changed
+
+**`spend.maxCacheLossUsd` is now a config key**, not only a flag. It has gated
+since 1.21 and only from an invocation, which made it a policy `watch` could
+not read — and a policy that lives in one command line is a policy nothing
+else can act on.
 
 ## 1.42.0 — "The store"
 

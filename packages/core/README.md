@@ -160,6 +160,17 @@ summarises what is held; `pruneRecords` returns what a retention cutoff would
 remove, with its span, because silence about deleted measurements is the one
 thing a store must not do.
 
+## Watching
+
+`evaluateWatch({ report, thresholds, nowMs, ... })` decides what has crossed.
+Crossings are measured and carry `provenance` as a field, so a later change
+cannot smuggle an estimate past a consumer by staying silent. A period too
+short to judge becomes an abstention rather than a pass — three states, never
+two — and a crossing already reported comes back as `suppressed` rather than
+vanishing, because "we alerted about this" and "this is fine now" are
+different sentences. The unwatched stretch between cycles is returned as
+`gap`.
+
 ## Comparing two versions
 
 ```ts

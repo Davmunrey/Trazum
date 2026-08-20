@@ -66,6 +66,16 @@ export interface WatchAbstention {
 export interface WatchResult {
   crossings: WatchCrossing[];
   /**
+   * Still over the limit, and already reported on an earlier cycle.
+   *
+   * These are the reason a quiet cycle is not the same as a clean one. A
+   * restart that reported "within every threshold" while the budget was still
+   * blown would be the flattering reading this product refuses everywhere:
+   * the alert was suppressed, the *crossing* was not, and only one of those
+   * is news.
+   */
+  suppressed: WatchCrossing[];
+  /**
    * Gates that could not be judged, which is neither a pass nor a failure.
    *
    * Reported rather than swallowed: a gate silently skipped for a week reads
@@ -125,14 +135,17 @@ export function evaluateWatch(options: WatchOptions): WatchResult {
   const { report, thresholds, cacheDeltaUsd, nowMs, lastCoveredToMs, alreadyFired } = options;
   const fired = alreadyFired ?? new Set<string>();
   const crossings: WatchCrossing[] = [];
+  const suppressed: WatchCrossing[] = [];
   const abstentions: WatchAbstention[] = [];
 
   const span = report.span;
 
   const push = (gate: WatchGate, measuredUsd: number, limitUsd: number, day: string | null, window: { fromMs: number; toMs: number }): void => {
     if (measuredUsd <= limitUsd) return;
-    if (fired.has(firedKey(gate, day))) return;
-    crossings.push({ gate, measuredUsd, limitUsd, window, day, provenance: 'measured' });
+    const crossing: WatchCrossing = { gate, measuredUsd, limitUsd, window, day, provenance: 'measured' };
+    // Already told: quiet, but still crossed. The two are kept apart because
+    // "we alerted about this" and "this is fine now" are different sentences.
+    (fired.has(firedKey(gate, day)) ? suppressed : crossings).push(crossing);
   };
 
   if (thresholds.maxUsd !== undefined) {
@@ -186,5 +199,5 @@ export function evaluateWatch(options: WatchOptions): WatchResult {
       ? { fromMs: lastCoveredToMs, toMs: span.fromMs }
       : null;
 
-  return { crossings, abstentions, gap };
+  return { crossings, suppressed, abstentions, gap };
 }

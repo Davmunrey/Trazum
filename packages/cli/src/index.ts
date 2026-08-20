@@ -20,6 +20,8 @@ import {
   normalizeAnthropicUsage,
   normalizeOpenAIUsage,
   bucketsFromRecords,
+  evaluateWatch,
+  firedKey,
   pruneRecords,
   recordsFromBuckets,
   storeInventory,
@@ -146,6 +148,13 @@ import {
 import type { Revision } from './git.js';
 import { fetchProviderUsage } from './connect.js';
 import { STORE_DIR, appendRecords, readStore, rewriteStore } from './store-fs.js';
+import {
+  WATCH_STATE_VERSION,
+  checkWebhook,
+  postWebhook,
+  readWatchState,
+  writeWatchState,
+} from './watch-run.js';
 import { detectLocale, getCliMessages } from './i18n/index.js';
 import {
   MAX_SUMMARY_CHARS,
@@ -196,6 +205,8 @@ const VALUE_FLAGS = new Set([
   'min-usd',
   'payload',
   'keep',
+  'interval',
+  'webhook',
   // `route` takes a path here, and the flag is deliberately not `--prompt`:
   // everywhere else in this tool `--prompt` names a marked prompt *inside* a
   // source file, and reusing it for a path would be a trap laid for the reader.
@@ -501,6 +512,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   history: ['store', 'json', 'markdown-out'],
   connect: ['since', 'until', 'payload', 'store', 'json', 'out', 'markdown-out', 'pricing', 'pricing-live', 'dry-run'],
   store: ['prune', 'keep', 'json', 'pricing', 'pricing-live', 'dry-run'],
+  watch: ['once', 'interval', 'since', 'payload', 'webhook', 'json', 'pricing', 'pricing-live'],
   route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
@@ -2280,6 +2292,213 @@ function parseWhen(
   const exact = Date.parse(value);
   if (Number.isFinite(exact)) return { ms: exact, relative: false };
   throw new Error(t.profile.badWhen(flag, value));
+}
+
+/**
+ * `trazum watch` — the afternoon it happened, said that afternoon.
+ *
+ * One cycle is the primitive: measure, keep, evaluate, emit, remember. The
+ * loop is that cycle in a timer, so a cron entry and a foreground watcher run
+ * exactly the same code and the tests exercise the thing that ships.
+ *
+ * Three transports, all boring on purpose: a non-zero exit code so cron mails
+ * it, a JSON event on stdout so any pipeline can read it, and a webhook for
+ * the operator who already has somewhere for alerts to go. No hosted service
+ * and no account.
+ */
+async function commandWatch(
+  args: Args,
+  config: TrazumConfig,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
+  const root = process.cwd();
+  const asJson = boolFlag(args, 'json');
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const day = (msValue: number): string => new Date(msValue).toISOString().slice(0, 10);
+
+  const thresholds = {
+    maxUsd: config.spend?.maxUsd,
+    maxDayUsd: config.spend?.maxDayUsd,
+    maxCacheLossUsd: config.spend?.maxCacheLossUsd,
+  };
+  if (
+    thresholds.maxUsd === undefined &&
+    thresholds.maxDayUsd === undefined &&
+    thresholds.maxCacheLossUsd === undefined
+  ) {
+    throw new Error(t.watch.noThresholds());
+  }
+
+  /**
+   * A webhook is a new outbound surface, so it is checked before anything is
+   * sent: credentials in a URL end up in logs and shell history, and an alert
+   * carrying spend figures over plain http across a network is a leak the
+   * operator did not ask for. Loopback is the exception, because pointing a
+   * watcher at your own alerting daemon is the ordinary case.
+   */
+  const webhookRaw = stringFlag(args, 'webhook');
+  let webhook: URL | null = null;
+  if (webhookRaw !== undefined) {
+    const checked = checkWebhook(webhookRaw);
+    if (!checked.ok) throw new Error(t.watch.badWebhook(checked.reason));
+    webhook = checked.url;
+  }
+
+  const intervalRaw = stringFlag(args, 'interval');
+  const once = boolFlag(args, 'once') || intervalRaw === undefined;
+  let intervalMs = 0;
+  if (!once) {
+    const match = /^(\d+)(m|h)$/.exec(intervalRaw!);
+    const amount = match === null ? NaN : Number(match[1]);
+    intervalMs = match?.[2] === 'h' ? amount * 3_600_000 : amount * 60_000;
+    // Usage APIs are rate limited, and a tight loop is a way to get somebody's
+    // key throttled by a tool that was supposed to save them money.
+    if (!Number.isFinite(intervalMs) || intervalMs < 5 * 60_000) {
+      throw new Error(t.watch.intervalTooTight());
+    }
+  }
+
+  const cycle = async (): Promise<number> => {
+    const state = await readWatchState(root);
+    const nowMs = Date.now();
+
+    /**
+     * Where the measurements come from: a saved payload when one is named
+     * (which is how this is tested and how an air-gapped run works), and the
+     * store otherwise. A cycle that found nothing to measure says so — a
+     * watcher over nothing is a green light nobody earned.
+     */
+    const payloadPath = stringFlag(args, 'payload');
+    let pull;
+    if (payloadPath !== undefined) {
+      pull = normalizeAnthropicUsage(JSON.parse(await readFile(payloadPath, 'utf8')));
+    } else {
+      const { resolved } = await readStore(root);
+      if (resolved.records.length === 0) throw new Error(t.watch.nothingToWatch(STORE_DIR));
+      pull = {
+        provider: 'store',
+        granularity: 'bucketed' as const,
+        buckets: bucketsFromRecords(resolved.records),
+        window: null,
+        gaps: [],
+        unavailable: [],
+      };
+    }
+
+    const report = bucketedProfile(pull, { catalogue: pricing });
+    const cache = bucketedCacheEconomics(report);
+    const result = evaluateWatch({
+      report,
+      thresholds,
+      cacheDeltaUsd: cache.verdict === 'no-cache' ? undefined : cache.deltaUsd,
+      nowMs,
+      lastCoveredToMs: state?.lastCoveredToMs ?? undefined,
+      alreadyFired: new Set(Object.keys(state?.fired ?? {})),
+    });
+
+    if (asJson) {
+      console.log(JSON.stringify({ schemaVersion: 1, firedAtMs: nowMs, ...result }, null, 2));
+    } else {
+      if (result.gap !== null) {
+        console.log(c.yellow(wrap(t.watch.gap(day(result.gap.fromMs), day(result.gap.toMs)), 76, '  ')));
+      }
+      for (const crossing of result.crossings) {
+        console.log(
+          c.red(
+            wrap(
+              t.watch.crossed(
+                crossing.gate,
+                formatUsd(crossing.measuredUsd),
+                formatUsd(crossing.limitUsd),
+                crossing.day,
+              ),
+              76,
+              '  ',
+            ),
+          ),
+        );
+      }
+      for (const abstention of result.abstentions) {
+        console.log(
+          c.dim(
+            wrap(
+              t.watch.notJudgeable(
+                abstention.gate,
+                abstention.reason,
+                abstention.detail === null
+                  ? null
+                  : `${Math.round((abstention.detail.coveredMs / abstention.detail.neededMs) * 100)}%`,
+              ),
+              76,
+              '  ',
+            ),
+          ),
+        );
+      }
+      for (const still of result.suppressed) {
+        console.log(
+          c.yellow(
+            wrap(
+              t.watch.stillOver(
+                still.gate,
+                formatUsd(still.measuredUsd),
+                formatUsd(still.limitUsd),
+                still.day,
+              ),
+              76,
+              '  ',
+            ),
+          ),
+        );
+      }
+      if (
+        result.crossings.length === 0 &&
+        result.suppressed.length === 0 &&
+        result.abstentions.length === 0
+      ) {
+        console.log(c.green(wrap(t.watch.allWithin(n(Object.keys(thresholds).filter((k) => thresholds[k as keyof typeof thresholds] !== undefined).length)), 76, '  ')));
+      }
+    }
+
+    if (webhook !== null && result.crossings.length > 0) {
+      const sent = await postWebhook(webhook, {
+        schemaVersion: 1,
+        firedAtMs: nowMs,
+        crossings: result.crossings,
+      });
+      if (!sent.ok) {
+        // Reported and swallowed: the exit code and the event already carried
+        // the crossing, and losing those because a receiver is down would make
+        // the quietest failure the loudest one.
+        console.error(c.yellow(t.watch.webhookFailed(sent.status === null ? sent.error ?? '' : String(sent.status))));
+      }
+    }
+
+    const fired = { ...(state?.fired ?? {}) };
+    for (const crossing of result.crossings) fired[firedKey(crossing.gate, crossing.day)] = nowMs;
+    await writeWatchState(root, {
+      v: WATCH_STATE_VERSION,
+      lastCycleMs: nowMs,
+      lastCoveredToMs: report.span?.toMs ?? state?.lastCoveredToMs ?? null,
+      fired,
+    });
+
+    return result.crossings.length + result.suppressed.length;
+  };
+
+  const crossed = await cycle();
+  // Still over is still a failure: only the alert was already sent.
+  if (crossed > 0) process.exitCode = 1;
+  if (once) return;
+
+  console.log(c.dim(t.watch.watching(String(Math.round(intervalMs / 60_000)))));
+  // The loop is the cycle in a timer and nothing more, so the primitive above
+  // is the only thing that ever needs testing.
+  for (;;) {
+    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    await cycle();
+  }
 }
 
 /**
@@ -6865,6 +7084,9 @@ async function main(): Promise<void> {
       break;
     case 'store':
       await commandStore(args, config, pricing, t);
+      break;
+    case 'watch':
+      await commandWatch(args, config, pricing, t);
       break;
     case 'route':
       await commandRoute(args, pricing, t);

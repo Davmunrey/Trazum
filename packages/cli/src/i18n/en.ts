@@ -44,6 +44,7 @@ ${bold('USAGE')}
   trazum history <dir-of-stored-reports> [options]
   trazum connect <anthropic|openai> [options]
   trazum store [--prune] [options]
+  trazum watch [--once | --interval 15m] [options]
   trazum diff <before> <after> [options]
   trazum diff --all <dir> <dir> [options]
   trazum rank <dir> [options]
@@ -320,6 +321,35 @@ ${bold('OPTIONS FOR plan')}
   never summed — and every action names what the log cannot confirm, because
   a plan that hides its assumptions is advice pretending to be arithmetic.
   Projected savings and money already spent are separate totals throughout.
+
+${bold('OPTIONS FOR watch')}
+  --once                      One cycle: measure, keep, evaluate, emit,
+                              remember. What a cron entry runs. The default.
+  --interval <n>m|h           Stay in the foreground and repeat. Minimum five
+                              minutes: usage APIs are rate limited, and a tight
+                              loop is a way to get your own key throttled.
+  --webhook <url>             POST the crossings somewhere. https only, except
+                              loopback; a URL carrying credentials is refused,
+                              because URLs end up in logs and shell history.
+  --payload <file>            Evaluate a usage payload you already have,
+                              instead of the store.
+  --json                      The cycle as data: crossings, abstentions, gap.
+
+  Evaluates the spend gates from your config — maxUsd, maxDayUsd,
+  maxCacheLossUsd — against what has been measured, and tells you the
+  afternoon it happens rather than three weeks later. Exits 1 when something
+  crossed, so cron mails it and CI fails.
+
+  An alert fires on a measured crossing and never on a projection: "you have
+  spent $412 of a $400 budget" is a fact and "you will exceed" is a forecast,
+  which this tool does not make at any window length. A day still being
+  measured is reported as not yet judgeable rather than passed — but a day
+  already over budget fires whatever the hour, because it does not become less
+  over budget at midnight.
+
+  A restart does not re-alert on a crossing already reported, and names the
+  stretch it was not watching, because a watcher that resumes in silence
+  implies coverage it did not have.
 
 ${bold('OPTIONS FOR store')}
   --prune                     Drop measurements older than the retention
@@ -1504,6 +1534,49 @@ ${bold('EXAMPLES')}
       'Ranked by money, projected or already spent alike. The assumptions are yours to answer: this plan is arithmetic over the log, not knowledge of your product.',
     wrote: (path) =>
       `Plan written to ${path}, dated. Keep it: a prediction nobody wrote down is a prediction nobody can be held to.`,
+  },
+
+  watch: {
+    noThresholds: () =>
+      'Watching needs something to watch for. Set spend.maxUsd, spend.maxDayUsd or spend.maxCacheLossUsd in trazum.config.json — a watcher with no threshold is a green light nobody earned.',
+    nothingToWatch: (dir) =>
+      `Nothing has been measured yet: the store at ${dir} is empty. Fill it with "trazum connect <provider> --store" first — watching nothing would report that everything is fine.`,
+    intervalTooTight: () =>
+      '--interval must be at least 5m. Usage APIs are rate limited, and a tight loop is a way to get your own key throttled by a tool that exists to save you money.',
+    badWebhook: (reason) =>
+      reason === 'credentials-in-url'
+        ? 'That webhook URL carries credentials. URLs end up in logs, shell history and error messages, so this one is refused — put the secret in a header your receiver checks, or in the receiver itself.'
+        : reason === 'insecure-scheme'
+          ? 'A webhook must be https, except on loopback. An alert carries your spend figures, and sending them in the clear across a network is a leak you did not ask for.'
+          : 'That webhook is not a URL this tool can parse.',
+    crossed: (gate, measured, limit, day) => {
+      const what =
+        gate === 'maxUsd'
+          ? 'Total spend'
+          : gate === 'maxDayUsd'
+            ? `Spend on ${day}`
+            : 'Money lost to caching';
+      return `CROSSED — ${what} is ${measured} against a limit of ${limit}. Measured, not projected.`;
+    },
+    stillOver: (gate, measured, limit, day) => {
+      const what =
+        gate === 'maxUsd'
+          ? 'Total spend'
+          : gate === 'maxDayUsd'
+            ? `Spend on ${day}`
+            : 'Money lost to caching';
+      return `STILL OVER — ${what} is ${measured} against a limit of ${limit}, and was already reported. Quiet is not clean.`;
+    },
+    notJudgeable: (gate, reason, covered) =>
+      reason === 'window-too-short'
+        ? `${gate} cannot be judged yet: this period is ${covered ?? 'partly'} measured, and a threshold over part of a day is a threshold over something else. Not a pass — it will be judged when the day is in.`
+        : `${gate} cannot be judged on this source, which does not serve what the gate is written against. Not a pass: a gate silently skipped reads exactly like a gate that keeps passing.`,
+    gap: (from, to) =>
+      `Nothing was watching between ${from} and ${to}. Whatever crossed in that stretch was not seen, and this line exists so a resumed watcher does not imply coverage it did not have.`,
+    allWithin: (gates) => `Within every threshold: ${gates} gates evaluated against measured spend.`,
+    webhookFailed: (status) =>
+      `The webhook did not deliver (${status}). The crossing is still in the exit code and in the output above — a receiver being down must not be the quietest failure in the room.`,
+    watching: (minutes) => `Watching every ${minutes} minutes. Ctrl-C stops it.`,
   },
 
   store: {

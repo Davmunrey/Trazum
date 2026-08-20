@@ -43,11 +43,11 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- nineteen commands  MCP server      Next.js     comments on pull requests
+ twenty commands    MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
-## The nineteen commands
+## The twenty commands
 
 | Command | What it answers |
 |---|---|
@@ -69,6 +69,7 @@ never runs unless you ask.
 | [`trazum history`](#the-long-run-trazum-history) | What have twenty reports been saying that no two of them could? *Shapes, never forecasts.* |
 | [`trazum connect`](#your-bill-without-the-export-trazum-connect) | What did the provider actually bill me? *Read from their API, nothing exported by hand.* |
 | [`trazum store`](#keeping-it-trazum-store) | What have I measured and kept? *Aggregates only — no prompt text, ever.* |
+| [`trazum watch`](#the-afternoon-it-happened-trazum-watch) | Has anything crossed a budget? *Measured crossings only — never a forecast.* |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
 
 ## Contents
@@ -175,8 +176,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of nineteen commands — [the table
-above](#the-nineteen-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of twenty commands — [the table
+above](#the-twenty-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -240,7 +241,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other eighteen commands, each with its own section below:
+The other nineteen commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -249,6 +250,7 @@ trazum verify plan.json --against new.jsonl   # did it work?
 trazum history reports/              # the long run, from stored reports
 trazum connect anthropic             # your bill, read from the provider
 trazum store                         # what is kept, and what a prune takes
+trazum watch --once                  # did anything cross, this afternoon
 trazum rank prompts/                 # which one to fix first
 trazum blame prompts/system.txt      # who made it expensive, and when
 trazum diff old.txt new.txt          # what this edit cost
@@ -972,6 +974,42 @@ before doing it.
 `trazum history --store` then builds the series straight from what is kept.
 Bucketed sources carry no label, so the label series is **absent and said to
 be**: nothing in that report claims a workload did or did not move.
+
+### The afternoon it happened: `trazum watch`
+
+Every other gate here fires when you run a command. The failures worth
+catching happen at 3pm on a Tuesday:
+
+```bash
+trazum watch --once                      # what a cron entry runs
+trazum watch --interval 15m              # or stay in the foreground
+```
+
+```
+CROSSED — Total spend is $50.00 against a limit of $25.00. Measured, not
+  projected.
+CROSSED — Spend on 2026-08-03 is $30.00 against a limit of $15.00. Measured,
+  not projected.
+```
+
+**A measured crossing, never a projection.** "You have spent $412 of a $400
+budget" is a fact; "you will exceed" is a forecast, and this tool does not make
+those at any window length. **A day still being measured is reported as not yet
+judgeable rather than passed** — but a day already over budget fires whatever
+the hour, because it does not become less over budget at midnight.
+
+**A restart is not amnesia, and quiet is not clean.** A crossing already
+reported does not alert twice — and it is not called fine either: it prints as
+`STILL OVER` and the run still fails. The stretch nobody was watching gets
+named once, because a watcher that resumes in silence implies coverage it did
+not have.
+
+Three transports, all boring: a non-zero exit code so cron mails it, a JSON
+event so any pipeline can read it, and `--webhook` for wherever your alerts
+already go. A webhook URL carrying credentials is refused (URLs end up in logs
+and shell history) and plain http is refused off loopback (an alert carries
+your spend figures). A receiver that is down is reported and swallowed — the
+crossing already went out through the other two.
 
 ### Charting it: `doctor --otlp-out`
 

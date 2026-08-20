@@ -171,6 +171,60 @@ describe('provider credentials are borrowed, never held', () => {
   });
 });
 
+/**
+ * The webhook, introduced by `watch` in 1.43.
+ *
+ * A new outbound surface: this tool now sends something somewhere the
+ * operator named. That is not the SSRF case `checkedEndpoint` guards — the
+ * URL is in the operator's own config rather than an anonymous request body —
+ * but two properties still have to hold, and holding them by test beats
+ * holding them by intention.
+ */
+describe('the alert webhook', () => {
+  const source = () => readFileSync(join(repoRoot, 'packages/cli/src/watch-run.ts'), 'utf8');
+
+  it('refuses credentials in the URL and plain http off loopback', async () => {
+    const { checkWebhook } = await import(
+      join(repoRoot, 'packages/cli/dist/watch-run.js')
+    );
+    assert.equal(checkWebhook('https://alerts.example.com/hook').ok, true);
+    // Pointing a watcher at your own daemon is the ordinary case, not an attack.
+    assert.equal(checkWebhook('http://localhost:9000/hook').ok, true);
+    assert.equal(checkWebhook('http://127.0.0.1:9000/hook').ok, true);
+
+    // A URL ends up in logs, shell history and error messages.
+    assert.equal(checkWebhook('https://user:secret@alerts.example.com/h').reason, 'credentials-in-url');
+    // An alert carries spend figures; in the clear across a network is a leak.
+    assert.equal(checkWebhook('http://alerts.example.com/hook').reason, 'insecure-scheme');
+    assert.equal(checkWebhook('not a url').reason, 'invalid-url');
+  });
+
+  it('sends figures and gate names, and never anything a prompt touched', () => {
+    // The alert body is built from the crossing type alone. If this file ever
+    // starts reaching for a report's slices or a record's group, the payload
+    // stops being figures — so the shape it may serialise is pinned here.
+    // Comments are stripped first: this is a claim about the code, and the
+    // prose above it is allowed to say the word "prompt" while explaining why
+    // the code may not touch one.
+    const code = source()
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+    assert.match(code, /crossings: WatchCrossing\[\]/);
+    assert.doesNotMatch(code, /prompt|completion|inputTokens|\bgroup\b/i);
+  });
+
+  it('cannot take the alert down with it when a receiver is off', () => {
+    // The exit code and the stdout event already carried the crossing. A
+    // throw here would make a receiver being down the loudest failure and the
+    // crossing the quietest.
+    const code = source()
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+    assert.match(code, /catch \(error\)/);
+    assert.doesNotMatch(code, /throw new Error/);
+  });
+});
+
 describe('no runtime dependencies', () => {
   // Every published package here processes untrusted text. A runtime dependency
   // is code that would run on that text with no review from this project, so
