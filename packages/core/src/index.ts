@@ -48,6 +48,16 @@ export { buildPlan, planLabelName } from './plan.js';
 export type { PlanAction, PlanActionKind, PlanAssumption, PlanDocument } from './plan.js';
 export { verifyPlan } from './verify.js';
 export { buildHistory, storedReportFrom, MIN_RUN } from './history.js';
+export { evaluateWatch, firedKey, COVERAGE_FLOOR, DAY_MS } from './watch.js';
+export type {
+  NotJudgeable,
+  WatchAbstention,
+  WatchCrossing,
+  WatchGate,
+  WatchOptions,
+  WatchResult,
+  WatchThresholds,
+} from './watch.js';
 export {
   STORE_SCHEMA_VERSION,
   identityOf,
