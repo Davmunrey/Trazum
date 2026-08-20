@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.46.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.47.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,121 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.47.0 — "The browser sees the bill"
+
+The seventh of the ten planned in `docs/plan-1.41-1.50.md`. The bill has been
+readable in a browser tab since 1.36 — the spend split, the cache verdict, the
+levers, conversation growth. Everything the loop does *with* a bill has lived
+only in a terminal, which made the web app a demo of the smallest half of the
+product.
+
+### The plan, under the report
+
+Ranked actions, each carrying what the terminal has carried since 1.38: the
+money as a projection **or** a measured stake and never both, the typed
+assumption it rests on, and the Trazum command that would settle that
+assumption. The two totals are printed apart with a line saying why they are
+never added — one is a prediction about calls that have not happened, the other
+is money that already left, and a figure that is half of each is neither.
+
+A plan with no actions renders as the real answer it is: a bill already on the
+cheapest model of its family, with no batch window to reach for and nothing
+measurable being paid to a problem, has no lever, and saying so beats
+manufacturing one.
+
+### The document is the bridge, and it is the same document
+
+**Save plan.json** writes byte-for-byte what `trazum plan -o plan.json` writes.
+Commit it, diff it in a pull request, gate on it in CI with `trazum verify`,
+open it back here on Friday. One format, one validator, no server between the
+two surfaces. A browser tool whose output the terminal will not accept is a
+second product wearing the first one's name.
+
+Saved as a **file, not offered as a link**. A link would mean this page storing
+somebody's bill somewhere, and who may read another team's spend is an
+access-control story somebody has to design on purpose. That is the same call
+the store made in 1.42, and it is the same reason.
+
+### Did it work?
+
+Open a saved plan and the log already in the tab becomes the check on it —
+three outcomes, never two, with the three cannot-tell reasons kept apart,
+because a workload that stopped being logged is not a workload that stopped
+costing money. The plan's price-table date is compared against today's, so a
+repricing between the two renders as a repricing rather than as a team missing
+a target.
+
+A file that is not a plan is **named as one that is not**, with what is wrong
+and where. Never an empty verification: "0 arrived, 0 did not, 0 cannot be
+told" reads as a clean result.
+
+### One validator, because there were two and they were not the same
+
+`parsePlanDocument` moves the check into `@trazum/core` and both surfaces use
+it. It returns a typed refusal rather than throwing — a refusal has to be
+*rendered* in a browser and *localised* in a terminal, and an exception with an
+English message baked in can be neither. It names which action is malformed and
+what about it, because a plan can hold a dozen actions and only one be wrong.
+
+Deliberately shallow past the three fields verification actually reads. A
+document format that rejects its own past is one nobody commits.
+
+### What this release found wrong in itself
+
+**`trazum verify` accepted files that were not plans.** The check was
+`schemaVersion === 1 && Array.isArray(actions)` and nothing more, which admits
+an `actions` array of arbitrary objects. `verifyPlan` would then read `label`
+off `undefined`, match it against no slice in the log, and report
+`cannot-tell: workload-vanished` for every one — a verification of a document
+that was never a plan, rendered exactly like a real one, with the reassuring
+shape of a tool that had looked and found nothing to worry about. Surfaced by
+writing the browser's validator and asking what the terminal's actually
+covered.
+
+**The web app has been built against `@trazum/core@1.36.0` for ten releases.**
+This is the larger of the two and the more uncomfortable.
+
+`apps/web/package.json` pins an exact `@trazum/core` version, the way
+`packages/cli` and `packages/mcp` do. Those two are in the release recipe and
+get bumped every time. The web app never was, because it is not published, so
+nobody thought of it — and npm honours an exact pin that does not match the
+workspace by installing a **real copy from the registry** into
+`apps/web/node_modules`, which shadows the workspace symlink.
+
+So since 1.37 the browser could not see the fleet, the plan, verification, the
+series, the connector, the store, the watch, the endpoint, the guard or `init`.
+Ten releases of core, invisible to one of the four surfaces this repository
+ships — and `npm run verify` passed the whole way, because **nothing was
+broken**. The wrong thing was being checked. The design note for this release
+had recorded "the web app cannot see the plan" as a gap to close with new code;
+it was a dependency pin.
+
+The pin now tracks the repository, and `publish.test.js` fails the build when
+any workspace — published or not — depends on a `@trazum/core` that is not this
+one. Proven by putting 1.36.0 back and watching the failure name the file, the
+field and the version.
+
+### docs/plan-format.md
+
+The plan is the one thing Trazum writes that is meant to be kept, so it now has
+a page: every field of the document and every field of an action, what
+`detail.baseline` is for (without it a plan is a prediction with no record of
+the world it was made in, and "the saving did not arrive" could never be told
+from "the traffic tripled"), the five typed ways a file is refused, and what
+`--gate` fails on and what it deliberately does not.
+
+### What stayed out, and why
+
+The fleet and the series in the browser. Both are real gaps and both need
+something dropped *beside* the log — a config naming the sources, or several
+stored reports — and a drop zone that silently accepts four kinds of file and
+guesses which is which is exactly the sort of interface this product should not
+build in a hurry. The plan and the verification needed no such guess: one is
+computed from the log already open, and the other is a file the reader
+deliberately chose.
 
 ---
 

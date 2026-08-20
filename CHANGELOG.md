@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.47.0 — "The browser sees the bill"
+
 ### Added
 
 **The plan and the verification, in the browser.** The bill has been readable
