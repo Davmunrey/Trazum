@@ -23,6 +23,18 @@ counts just as much as shortening it.
 
 ## Released
 
+**Oldest first, all the way down.** This section is a story rather than a
+noticeboard: each entry explains what the previous one made possible, so it
+only reads correctly forwards. `RELEASES.md` and `CHANGELOG.md` are the
+newest-first documents, and either of those is what you want if the question
+is "what changed recently".
+
+That is worth stating because the order broke once and nobody noticed for
+twenty-four releases: entries were being prepended at 1.26.0, so the file ran
+0.1.0 upward to 1.25.0, jumped to the newest release, and then counted
+*backwards* to 1.26.0 — a reader following it forwards went 1.25.0 → 1.50.2 →
+1.50.1 and out the bottom at 1.26.0.
+
 ### 0.1.0 — Deterministic core
 
 The bet: rules first, model second. Most prompt bloat is mechanical —
@@ -514,275 +526,6 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
-### 1.50.2 — The feedback loop
-
-Trazum has no telemetry and is not going to get any, which means the only signal
-about whether any of this works is what somebody chooses to say. `trazum
-feedback` makes saying it one word: where to report a wrong optimisation, a bug,
-a question or a security problem, plus a blank issue already carrying the
-version, runtime and platform — printed in full first, and never sent by the
-command. Four guards prove the claim, including one on install hooks, which is
-the route the other three would have missed. Plus `trazum --version`, which did
-not exist through fifty releases in a tool whose bug reports need it above
-everything, and SUPPORT.md, which GitHub surfaces in the issue flow and which
-says out loud that there is no support contract.
-
-### 1.50.1 — The numbering
-
-A patch that changes what a patch means. The version number now carries the
-narrative: a chapter of the arc in progress is a patch, and the minor is spent
-only on the release that lands the arc's thesis — so the next arc runs 1.50.1
-through 1.50.9 and finishes at 1.51.0. Major is unchanged and remains the only
-number that carries risk. What it costs somebody pinning `~1.50.0` is stated in
-its own section of VERSIONING.md rather than left to be found in a diff, and
-the reason the field was free to reassign is that inside a frozen 1.x line
-minor and patch are both additions-only, so the distinction was carrying
-nothing.
-
-### 1.50.0 — The standard
-
-The close of the arc `docs/plan-1.41-1.50.md` opened. `trazum conform` turns
-the ten documents this project emits into contracts somebody else can build
-against: does this conform (required fields, right types, gates in CI) and what
-can a valid document of this shape not answer, with the field that unlocks each
-— the second never gating, because choosing not to log sessions is a decision
-and not a defect. docs/format.md gathers the contracts, what `schemaVersion`
-promises and what only a version bump may change, and the rules a provider
-connector must follow. And docs/doctrine.md writes down the twenty rules the
-first fifty releases learned by getting each one wrong first, which is the
-actual argument for trusting a cost figure from any tool. Tenth of ten.
-
-### 1.49.0 — The live budget
-
-One measured number, wherever it is asked for. `budgetPositions` turns a budget
-into a standing — a limit, a calendar month, the measured spend inside it, and
-how much of that month was measured at all — and `store` and `serve` read the
-same call, so a CI failure and an agent's refusal cannot disagree about what is
-left. `spend.monthlyUsd` is a new key rather than a reuse of `maxUsd`, because
-one gates whatever period a log covers and the other gates a month, and a
-single key carrying both is how `serve` came to compare a year of store records
-against a monthly limit. A period nobody measured is `cannot-tell`, never
-`within`; the burn is a shape and never a date; and a floor can prove *ahead*
-and can never prove *behind*. Ninth of the ten in docs/plan-1.41-1.50.md.
-
-### 1.48.0 — The cost review
-
-Waivers get their history, closing the gap 1.40 named and refused to fill by
-inference. A waiver that silences a gate writes down that it did — the gate, the
-reason and expiry as they stood at that moment, the commit, the figures judged —
-and `trazum history` reads those lines back into habits with a typed verdict
-that separates an expiry pushed forward under an unchanged reason from a reason
-somebody rethought. Nothing is back-filled, a waiver nobody's build has hit is
-reported as dead config rather than habit, and a failure to write never fails
-the build. Plus docs/ci.md: GitLab, Jenkins, CircleCI and a pre-commit hook, one
-binary and two exit codes, no vendor plugin. Eighth of the ten in
-docs/plan-1.41-1.50.md.
-
-### 1.47.0 — The browser sees the bill
-
-The plan and the verification join the bill in the tab, so the web app stops
-being a demo of the smallest half of the product. Ranked actions with the money
-as a projection or a measured stake and never both, each naming what it assumes
-and how to check it; **Save plan.json** writes byte-for-byte what `trazum plan
--o` writes, so a decision made in a browser is committable, gateable in CI and
-openable back here; and opening a saved plan turns the log in the tab into the
-check on it, three outcomes with their reasons kept distinct. Saved as a file
-rather than a link, because a link means storing somebody's bill. One shared
-validator, `parsePlanDocument`, replaces two checks that were not the same.
-Seventh of the ten in docs/plan-1.41-1.50.md.
-
-### 1.46.0 — Five minutes
-
-`trazum init` takes somebody from `npx @trazum/cli` to a finding worth money
-without a page of documentation: it walks for prompts, reads the code for which
-provider it calls, finds a usage log or a credential for one, writes a config
-out of what it can justify, and prints the single most valuable thing it found
-with the arithmetic before the figure. The substance is what it refuses to
-write — a budget (a policy no log answers), a monthly rate from a short window
-or from undated calls, a cache hit rate from a log with no cache columns, and
-`batchEligible` in either direction — each refusal naming what would settle it.
-`proposeInit` is pure, so every rule is tested without a filesystem. Sixth of
-the ten in docs/plan-1.41-1.50.md.
-
-### 1.45.0 — The agent's budget
-
-`spend_guard` over MCP answers whether a call may be made — yes, no, or cannot
-tell — and a refusal never arrives bare: it carries the cheaper ways to make
-the same call, priced for that call rather than for a month, each naming what
-it assumes and each filtered to models the prompt actually fits inside. Route
-and batch combine rather than add. It never spends to answer and never says
-yes to what it cannot judge. Fifth of the ten in docs/plan-1.41-1.50.md.
-
-### 1.44.0 — The answer in milliseconds
-
-`trazum serve` answers what a call will cost and whether there is budget, from
-loopback, in single-digit milliseconds — so a decision being made right now can
-consult what the reports know. The measured half and the estimated half stay
-apart and the verdict says which it rests on; three outcomes with their three
-distinct reasons; and it degrades to pricing the call alone when there is no
-store or no budget. Bound to 127.0.0.1 with no flag to change it and no auth
-theatre. Fourth of the ten in docs/plan-1.41-1.50.md.
-
-### 1.43.0 — The watch
-
-`trazum watch` evaluates the spend gates as the money moves rather than when
-somebody runs a command. One cycle is the primitive and the loop is that cycle
-in a timer, so cron, a foreground watcher and every test run the same code.
-Crossings are measured and never projected; a day half-measured is
-not-yet-judgeable rather than passed, while a day already over budget fires at
-any hour; and a restart neither re-alerts nor calls a blown budget clean —
-quiet is not clean. Three transports, and three build-failing guards over the
-new webhook surface. Third of the ten in docs/plan-1.41-1.50.md.
-
-### 1.42.0 — The store
-
-`connect --store` keeps what it pulled under `.trazum/store`, so a connector
-is something you can leave on: re-pulling an overlapping window converges
-instead of doubling, because a window pulled again is the same fact restated.
-Records the store cannot tell apart are kept as two and named, a broken line
-costs that line rather than the month, and pruning refuses without a written
-retention policy and says what went. `history --store` builds the series from
-what is kept, with the label series absent and said to be. Second of the ten
-in docs/plan-1.41-1.50.md.
-
-### 1.41.0 — The connector
-
-`trazum connect` reads the bill from Anthropic's and OpenAI's usage APIs, so
-nothing has to be exported by hand. The credential is borrowed from the
-environment and never stored, never printed and never committed — four guards
-fail the build rather than promising it. A connected report is restricted on
-purpose: usage APIs serve sums, so every per-call finding is listed as
-unavailable with what would unlock it, in a document shape of its own so
-nothing can read a zero the connector wrote. First of the ten in
-docs/plan-1.41-1.50.md.
-
-### 1.40.0 — The long run
-
-`trazum history` builds the series no pairwise comparison can see, from
-stored `--json` reports rather than re-parsed logs: labels climbing for
-consecutive periods since a named report, model shares rising under flat
-totals, cache shares decaying too slowly for any single report to call, and
-plan actions planned again and again with nobody executing them. Shapes
-named, nothing forecast. Fifth and last of the five in
-docs/plan-1.36-1.40.md — the arc is delivered.
-
-### 1.39.0 — Did it work?
-
-`trazum verify` holds a saved plan to the log that came after it, with three
-outcomes and never two: arrived, did not arrive, or cannot be told — a
-vanished workload, fields that stopped being recorded, or a tier tokens
-cannot see. Differences carry the world's measured movement from the plan's
-recorded baseline, a repricing is flagged instead of silently priced
-through, and `--gate` fails CI on broken promises and on a log that degraded
-itself. Fourth of the five in docs/plan-1.36-1.40.md.
-
-### 1.38.0 — The plan
-
-`trazum plan` turns the report's findings into a ranked plan: route and batch
-on one slice pre-combined (never summed), projections and money already spent
-totalled apart, typed assumptions per action with the command that can check
-them, and the plan saved as a dated file with the catalogue that priced it —
-what makes 1.39's verification possible. `--min-usd` names what it drops and
-its worth, and the saved document never contradicts itself. Third of the five
-in docs/plan-1.36-1.40.md.
-
-### 1.37.0 — The fleet
-
-`profile --by-source` splits a directory of logs by the config's `sources`
-globs and names the service where the money is: split brains (one workload on
-different models in different sources, judged on each source's dearest model),
-caching underwater in a named source while the aggregate pays, mismatched
-spans said in the copy, and per-service budgets in `spend.bySource` that fail
-naming the service. Files matching no pattern are named, never dropped.
-Second of the five in docs/plan-1.36-1.40.md.
-
-### 1.36.0 — The estimate stops guessing
-
-`optimize --from-log` measures the call count, output size, cache share and
-model from a usage log instead of multiplying by typed guesses, names which
-figures are measured, refuses typed flags beside it, and scales to a month
-only past a full week of data. `--all-labels` ranks every mapped prompt by
-what optimising it is worth on its own measured traffic, with both coverage
-mismatches named. First of the five in docs/plan-1.36-1.40.md.
-
-### 1.35.0 — The reader who is not in the terminal
-
-`--markdown-summary` gives a pull-request body or a weekly note the three
-figures that changed and the one lever worth the most, as a view over the same
-report rather than a second set of figures. The web comparison the plan listed
-beside it was already shipped; the privacy promise above the drop zone was
-widened to name the second file it has accepted all along.
-
-### 1.34.0 — Findings as policy
-
-`waive` in the config records a gate failure the team decided to live with:
-gate, reason in prose and expiry, all three required. Waived is shown as
-waived and never hidden, and an expired waiver fails the gate it silenced —
-the mechanism by which a waiver stays a decision rather than a habit. The
-growth gate's coverage refusal is deliberately unwaivable.
-
-### 1.33.0 — The log it could not read yet
-
-Gemini's `usageMetadata` shape recognised — unambiguous, cached half
-subtracted through the same mechanism as OpenAI's, `MAX_TOKENS` in the
-truncation contract — and `--dry-run`, which states what the log could
-answer per capability, produces no dollar figure, and refuses to coexist
-with a gate. Bedrock's camelCase and OpenRouter's OpenAI shape were already
-readable, stated for the record.
-
-### 1.32.0 — The routing decision, priced whole
-
-`--what-if` corrects the figure the target would refuse to bill — cache
-traffic under the target's cache minimum priced at the rates it would
-actually get — and states the move batched on the target's rates, never
-summed. The output-ceiling check stays out: the catalogue carries no output
-ceilings, and inventing them would be guessing.
-
-### 1.31.0 — The gate that explains itself
-
-Every spend gate failure names the slice holding the money and the largest
-lever the report already priced, with whether it covers the overage stated
-rather than inferred — pointing, never recommending. A pass within a tenth of
-the budget says how much room was left. And the verdict leads the markdown
-summary, so a red build in CI carries its reason where the reader actually is.
-
-### 1.30.0 — The report as a diff
-
-`--against` gained the half the dollars cannot carry: coverage drift. A field
-the log stopped recording is not a finding that got fixed, and the report now
-names which findings went quiet with it. `--max-growth-usd` refuses the
-comparison outright rather than passing on a bill nobody could measure. All
-three surfaces render it at the same threshold.
-
-### 1.29.0 — The budget, the overlay and the small log
-
-`--max-session-usd` (and `spend.maxSessionUsd`) judges the single most
-expensive conversation — the unit an agent product blows up in — failing
-loudly on a log with no sessions. The MCP's `profile_usage` gained
-`pricing_overlay`, the CLI's `--pricing` document as text, pricing the
-whole report including `what_if`. And where the session percentiles refuse
-a small log, every surface now states the count and the single worst cost
-instead of going silent.
-
-### 1.28.0 — The retry bill, the series and the standing word
-
-`truncationRetries` measures the "billed again" half of truncation — cut
-answers followed inside two minutes by another call in the same
-conversation, priced on both sides, with the checkable denominator.
-`--csv-shape model-day` ships the mix as a day-by-day series, and
-`spend.maxDayUsd` moves the day budget into the repository's standing
-config.
-
-### 1.27.0 — The ceiling, the drift and the tab in step
-
-`contextPressure` reports each slice's largest call against its own model's
-context window — the failure a bill cannot show until the day the product
-breaks — loud from 85% and never predicting the crossing. `modelMixDrift`
-splits the log's days in half and states each model's exact share of each
-half's spend: the migration day totals and per-model totals both hide. And
-the web Bill tab caught up with all four of the CLI's newest findings, at
-the CLI's own thresholds.
-
 ### 1.26.0 — The release that releases itself
 
 No product change; a process one. Merging the release PR now publishes the
@@ -798,6 +541,275 @@ between are real releases of this repository — notes, changelog, merge commits
 — but npm's trusted publishing rejected the workflow on every attempt, so
 nothing shipped until 1.25.0 went out by hand. See
 [docs/releasing.md](docs/releasing.md) for the state of that fight.
+
+### 1.27.0 — The ceiling, the drift and the tab in step
+
+`contextPressure` reports each slice's largest call against its own model's
+context window — the failure a bill cannot show until the day the product
+breaks — loud from 85% and never predicting the crossing. `modelMixDrift`
+splits the log's days in half and states each model's exact share of each
+half's spend: the migration day totals and per-model totals both hide. And
+the web Bill tab caught up with all four of the CLI's newest findings, at
+the CLI's own thresholds.
+
+### 1.28.0 — The retry bill, the series and the standing word
+
+`truncationRetries` measures the "billed again" half of truncation — cut
+answers followed inside two minutes by another call in the same
+conversation, priced on both sides, with the checkable denominator.
+`--csv-shape model-day` ships the mix as a day-by-day series, and
+`spend.maxDayUsd` moves the day budget into the repository's standing
+config.
+
+### 1.29.0 — The budget, the overlay and the small log
+
+`--max-session-usd` (and `spend.maxSessionUsd`) judges the single most
+expensive conversation — the unit an agent product blows up in — failing
+loudly on a log with no sessions. The MCP's `profile_usage` gained
+`pricing_overlay`, the CLI's `--pricing` document as text, pricing the
+whole report including `what_if`. And where the session percentiles refuse
+a small log, every surface now states the count and the single worst cost
+instead of going silent.
+
+### 1.30.0 — The report as a diff
+
+`--against` gained the half the dollars cannot carry: coverage drift. A field
+the log stopped recording is not a finding that got fixed, and the report now
+names which findings went quiet with it. `--max-growth-usd` refuses the
+comparison outright rather than passing on a bill nobody could measure. All
+three surfaces render it at the same threshold.
+
+### 1.31.0 — The gate that explains itself
+
+Every spend gate failure names the slice holding the money and the largest
+lever the report already priced, with whether it covers the overage stated
+rather than inferred — pointing, never recommending. A pass within a tenth of
+the budget says how much room was left. And the verdict leads the markdown
+summary, so a red build in CI carries its reason where the reader actually is.
+
+### 1.32.0 — The routing decision, priced whole
+
+`--what-if` corrects the figure the target would refuse to bill — cache
+traffic under the target's cache minimum priced at the rates it would
+actually get — and states the move batched on the target's rates, never
+summed. The output-ceiling check stays out: the catalogue carries no output
+ceilings, and inventing them would be guessing.
+
+### 1.33.0 — The log it could not read yet
+
+Gemini's `usageMetadata` shape recognised — unambiguous, cached half
+subtracted through the same mechanism as OpenAI's, `MAX_TOKENS` in the
+truncation contract — and `--dry-run`, which states what the log could
+answer per capability, produces no dollar figure, and refuses to coexist
+with a gate. Bedrock's camelCase and OpenRouter's OpenAI shape were already
+readable, stated for the record.
+
+### 1.34.0 — Findings as policy
+
+`waive` in the config records a gate failure the team decided to live with:
+gate, reason in prose and expiry, all three required. Waived is shown as
+waived and never hidden, and an expired waiver fails the gate it silenced —
+the mechanism by which a waiver stays a decision rather than a habit. The
+growth gate's coverage refusal is deliberately unwaivable.
+
+### 1.35.0 — The reader who is not in the terminal
+
+`--markdown-summary` gives a pull-request body or a weekly note the three
+figures that changed and the one lever worth the most, as a view over the same
+report rather than a second set of figures. The web comparison the plan listed
+beside it was already shipped; the privacy promise above the drop zone was
+widened to name the second file it has accepted all along.
+
+### 1.36.0 — The estimate stops guessing
+
+`optimize --from-log` measures the call count, output size, cache share and
+model from a usage log instead of multiplying by typed guesses, names which
+figures are measured, refuses typed flags beside it, and scales to a month
+only past a full week of data. `--all-labels` ranks every mapped prompt by
+what optimising it is worth on its own measured traffic, with both coverage
+mismatches named. First of the five in docs/plan-1.36-1.40.md.
+
+### 1.37.0 — The fleet
+
+`profile --by-source` splits a directory of logs by the config's `sources`
+globs and names the service where the money is: split brains (one workload on
+different models in different sources, judged on each source's dearest model),
+caching underwater in a named source while the aggregate pays, mismatched
+spans said in the copy, and per-service budgets in `spend.bySource` that fail
+naming the service. Files matching no pattern are named, never dropped.
+Second of the five in docs/plan-1.36-1.40.md.
+
+### 1.38.0 — The plan
+
+`trazum plan` turns the report's findings into a ranked plan: route and batch
+on one slice pre-combined (never summed), projections and money already spent
+totalled apart, typed assumptions per action with the command that can check
+them, and the plan saved as a dated file with the catalogue that priced it —
+what makes 1.39's verification possible. `--min-usd` names what it drops and
+its worth, and the saved document never contradicts itself. Third of the five
+in docs/plan-1.36-1.40.md.
+
+### 1.39.0 — Did it work?
+
+`trazum verify` holds a saved plan to the log that came after it, with three
+outcomes and never two: arrived, did not arrive, or cannot be told — a
+vanished workload, fields that stopped being recorded, or a tier tokens
+cannot see. Differences carry the world's measured movement from the plan's
+recorded baseline, a repricing is flagged instead of silently priced
+through, and `--gate` fails CI on broken promises and on a log that degraded
+itself. Fourth of the five in docs/plan-1.36-1.40.md.
+
+### 1.40.0 — The long run
+
+`trazum history` builds the series no pairwise comparison can see, from
+stored `--json` reports rather than re-parsed logs: labels climbing for
+consecutive periods since a named report, model shares rising under flat
+totals, cache shares decaying too slowly for any single report to call, and
+plan actions planned again and again with nobody executing them. Shapes
+named, nothing forecast. Fifth and last of the five in
+docs/plan-1.36-1.40.md — the arc is delivered.
+
+### 1.41.0 — The connector
+
+`trazum connect` reads the bill from Anthropic's and OpenAI's usage APIs, so
+nothing has to be exported by hand. The credential is borrowed from the
+environment and never stored, never printed and never committed — four guards
+fail the build rather than promising it. A connected report is restricted on
+purpose: usage APIs serve sums, so every per-call finding is listed as
+unavailable with what would unlock it, in a document shape of its own so
+nothing can read a zero the connector wrote. First of the ten in
+docs/plan-1.41-1.50.md.
+
+### 1.42.0 — The store
+
+`connect --store` keeps what it pulled under `.trazum/store`, so a connector
+is something you can leave on: re-pulling an overlapping window converges
+instead of doubling, because a window pulled again is the same fact restated.
+Records the store cannot tell apart are kept as two and named, a broken line
+costs that line rather than the month, and pruning refuses without a written
+retention policy and says what went. `history --store` builds the series from
+what is kept, with the label series absent and said to be. Second of the ten
+in docs/plan-1.41-1.50.md.
+
+### 1.43.0 — The watch
+
+`trazum watch` evaluates the spend gates as the money moves rather than when
+somebody runs a command. One cycle is the primitive and the loop is that cycle
+in a timer, so cron, a foreground watcher and every test run the same code.
+Crossings are measured and never projected; a day half-measured is
+not-yet-judgeable rather than passed, while a day already over budget fires at
+any hour; and a restart neither re-alerts nor calls a blown budget clean —
+quiet is not clean. Three transports, and three build-failing guards over the
+new webhook surface. Third of the ten in docs/plan-1.41-1.50.md.
+
+### 1.44.0 — The answer in milliseconds
+
+`trazum serve` answers what a call will cost and whether there is budget, from
+loopback, in single-digit milliseconds — so a decision being made right now can
+consult what the reports know. The measured half and the estimated half stay
+apart and the verdict says which it rests on; three outcomes with their three
+distinct reasons; and it degrades to pricing the call alone when there is no
+store or no budget. Bound to 127.0.0.1 with no flag to change it and no auth
+theatre. Fourth of the ten in docs/plan-1.41-1.50.md.
+
+### 1.45.0 — The agent's budget
+
+`spend_guard` over MCP answers whether a call may be made — yes, no, or cannot
+tell — and a refusal never arrives bare: it carries the cheaper ways to make
+the same call, priced for that call rather than for a month, each naming what
+it assumes and each filtered to models the prompt actually fits inside. Route
+and batch combine rather than add. It never spends to answer and never says
+yes to what it cannot judge. Fifth of the ten in docs/plan-1.41-1.50.md.
+
+### 1.46.0 — Five minutes
+
+`trazum init` takes somebody from `npx @trazum/cli` to a finding worth money
+without a page of documentation: it walks for prompts, reads the code for which
+provider it calls, finds a usage log or a credential for one, writes a config
+out of what it can justify, and prints the single most valuable thing it found
+with the arithmetic before the figure. The substance is what it refuses to
+write — a budget (a policy no log answers), a monthly rate from a short window
+or from undated calls, a cache hit rate from a log with no cache columns, and
+`batchEligible` in either direction — each refusal naming what would settle it.
+`proposeInit` is pure, so every rule is tested without a filesystem. Sixth of
+the ten in docs/plan-1.41-1.50.md.
+
+### 1.47.0 — The browser sees the bill
+
+The plan and the verification join the bill in the tab, so the web app stops
+being a demo of the smallest half of the product. Ranked actions with the money
+as a projection or a measured stake and never both, each naming what it assumes
+and how to check it; **Save plan.json** writes byte-for-byte what `trazum plan
+-o` writes, so a decision made in a browser is committable, gateable in CI and
+openable back here; and opening a saved plan turns the log in the tab into the
+check on it, three outcomes with their reasons kept distinct. Saved as a file
+rather than a link, because a link means storing somebody's bill. One shared
+validator, `parsePlanDocument`, replaces two checks that were not the same.
+Seventh of the ten in docs/plan-1.41-1.50.md.
+
+### 1.48.0 — The cost review
+
+Waivers get their history, closing the gap 1.40 named and refused to fill by
+inference. A waiver that silences a gate writes down that it did — the gate, the
+reason and expiry as they stood at that moment, the commit, the figures judged —
+and `trazum history` reads those lines back into habits with a typed verdict
+that separates an expiry pushed forward under an unchanged reason from a reason
+somebody rethought. Nothing is back-filled, a waiver nobody's build has hit is
+reported as dead config rather than habit, and a failure to write never fails
+the build. Plus docs/ci.md: GitLab, Jenkins, CircleCI and a pre-commit hook, one
+binary and two exit codes, no vendor plugin. Eighth of the ten in
+docs/plan-1.41-1.50.md.
+
+### 1.49.0 — The live budget
+
+One measured number, wherever it is asked for. `budgetPositions` turns a budget
+into a standing — a limit, a calendar month, the measured spend inside it, and
+how much of that month was measured at all — and `store` and `serve` read the
+same call, so a CI failure and an agent's refusal cannot disagree about what is
+left. `spend.monthlyUsd` is a new key rather than a reuse of `maxUsd`, because
+one gates whatever period a log covers and the other gates a month, and a
+single key carrying both is how `serve` came to compare a year of store records
+against a monthly limit. A period nobody measured is `cannot-tell`, never
+`within`; the burn is a shape and never a date; and a floor can prove *ahead*
+and can never prove *behind*. Ninth of the ten in docs/plan-1.41-1.50.md.
+
+### 1.50.0 — The standard
+
+The close of the arc `docs/plan-1.41-1.50.md` opened. `trazum conform` turns
+the ten documents this project emits into contracts somebody else can build
+against: does this conform (required fields, right types, gates in CI) and what
+can a valid document of this shape not answer, with the field that unlocks each
+— the second never gating, because choosing not to log sessions is a decision
+and not a defect. docs/format.md gathers the contracts, what `schemaVersion`
+promises and what only a version bump may change, and the rules a provider
+connector must follow. And docs/doctrine.md writes down the twenty rules the
+first fifty releases learned by getting each one wrong first, which is the
+actual argument for trusting a cost figure from any tool. Tenth of ten.
+
+### 1.50.1 — The numbering
+
+A patch that changes what a patch means. The version number now carries the
+narrative: a chapter of the arc in progress is a patch, and the minor is spent
+only on the release that lands the arc's thesis — so the next arc runs 1.50.1
+through 1.50.9 and finishes at 1.51.0. Major is unchanged and remains the only
+number that carries risk. What it costs somebody pinning `~1.50.0` is stated in
+its own section of VERSIONING.md rather than left to be found in a diff, and
+the reason the field was free to reassign is that inside a frozen 1.x line
+minor and patch are both additions-only, so the distinction was carrying
+nothing.
+
+### 1.50.2 — The feedback loop
+
+Trazum has no telemetry and is not going to get any, which means the only signal
+about whether any of this works is what somebody chooses to say. `trazum
+feedback` makes saying it one word: where to report a wrong optimisation, a bug,
+a question or a security problem, plus a blank issue already carrying the
+version, runtime and platform — printed in full first, and never sent by the
+command. Four guards prove the claim, including one on install hooks, which is
+the route the other three would have missed. Plus `trazum --version`, which did
+not exist through fifty releases in a tool whose bug reports need it above
+everything, and SUPPORT.md, which GitHub surfaces in the issue flow and which
+says out loud that there is no support contract.
 
 ## Collapsed into 1.8.0
 
@@ -1232,39 +1244,40 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-Ten releases are planned in order through 1.50.0, as one arc, with the
-reasoning attached: [docs/plan-1.41-1.50.md](docs/plan-1.41-1.50.md). The
-short version — the loop is complete and inert: every one of the seventeen
-commands waits for a human to type something, so nobody runs it on the
-afternoon it would have mattered, and the agent actually spending the money
-has no way to ask. This arc makes Trazum something that *runs*: the
-connector (1.41), the store (1.42), the watch (1.43), the answer in
-milliseconds (1.44), the agent's budget (1.45), five-minute onboarding
-(1.46), the bill in the browser (1.47), cost review in CI (1.48), the live
-budget (1.49), and the format and guarantees other tools can build on
-(1.50).
+**The arc through 1.50.0 is delivered in full**, with its errata on the record:
+[docs/plan-1.41-1.50.md](docs/plan-1.41-1.50.md). Its thesis was that the loop
+was complete and inert — every command waited for a human to type something, so
+nobody ran it on the afternoon it would have mattered, and the agent actually
+spending the money had no way to ask. Ten releases answered that: the connector
+(1.41), the store (1.42), the watch (1.43), the answer in milliseconds (1.44),
+the agent's budget (1.45), five-minute onboarding (1.46), the bill in the
+browser (1.47), cost review in CI (1.48), the live budget (1.49), and the
+format, the guarantees and the doctrine other tools can build on (1.50).
 
-After it, ten more are planned as a second arc:
-[docs/plan-1.51.md](docs/plan-1.51.md) — **nine chapters as 1.50.1 through
-1.50.9, landing as 1.51.0**, under the numbering
+**The arc in progress** is [docs/plan-1.51.md](docs/plan-1.51.md): ten chapters
+shipping as `1.50.x` and landing as **1.51.0**, under the numbering
 [VERSIONING.md](VERSIONING.md#what-the-three-numbers-mean-here) adopted at
-1.50.1: a patch is a chapter, and the minor is spent only on the release that
-finishes the story. Its thesis is the gap this
-product has carried since the beginning — every figure it prints is a
-denominator with no numerator. It can say a workload got 40% cheaper and
-cannot say whether it stopped working. A gateway in the path of the call and
-an outcome signal the caller records (never inferred) give cost per resolved
-outcome, the escalation ladder, experiments on real traffic, quality gates in
-CI, and at last the semantic findings the rules engine has deferred since
-0.1.0 because it could not check them.
+1.50.1 — a patch is a chapter, and the minor is spent only on the release that
+finishes the story.
 
-The two arcs before these were delivered in full, with their errata on the
-record: [docs/plan-1.36-1.40.md](docs/plan-1.36-1.40.md) introduced Trazum's
-estimating and measuring halves to each other, and
+Its thesis is the gap this product has carried since the beginning: **every
+figure it prints is a denominator with no numerator.** It can say a workload got
+40% cheaper and cannot say whether it stopped working. A gateway in the path of
+the call and an outcome signal the caller records (never inferred) give cost per
+resolved outcome, the escalation ladder, experiments on real traffic, quality
+gates in CI, and at last the semantic findings the rules engine has deferred
+since 0.1.0 because it could not check them.
+
+The plan document deliberately does **not** pin a patch number to each chapter.
+The first draft did, and 1.50.1 (the numbering) and 1.50.2 (the feedback loop)
+both arrived without being in it. Work outside a plan is not a failure of the
+plan; a plan that pretends otherwise goes stale on contact with the first good
+idea. The order is the commitment.
+
+The two arcs before these were also delivered in full:
+[docs/plan-1.36-1.40.md](docs/plan-1.36-1.40.md) introduced Trazum's estimating
+and measuring halves to each other, and
 [docs/plan-1.30-1.35.md](docs/plan-1.30-1.35.md) precedes it.
-
-The ordering is a commitment and the calendar is not. What users report
-reorders it; that is the one input allowed to.
 
 ## Under consideration
 
