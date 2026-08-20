@@ -787,6 +787,60 @@ describe('a release cannot ship without notes', () => {
     );
   });
 
+  it('every flag the help shows taking a value is registered as taking one', () => {
+    /**
+     * **A value flag missing from `VALUE_FLAGS` is silently a boolean.**
+     *
+     * `--contract profile` shipped that way for the length of one release
+     * branch: the parser stored `contract: true` and dropped `profile` into
+     * the positionals, so the command read `undefined`, ignored the flag it
+     * had been given, and produced a confident answer about the wrong thing.
+     * Nothing errored. `rejectUnknownFlags` was happy — the flag *is* known —
+     * and the only symptom was an answer that looked right.
+     *
+     * The help text is the checkable source: a line reading `--x <value>`
+     * documents a flag that takes one. That is a promise to a reader, and this
+     * holds the parser to it.
+     *
+     * Deliberately one-directional. A flag in `VALUE_FLAGS` with no help line
+     * is a separate question — some are internal, some are aliases — and
+     * failing on it would make this guard about documentation coverage rather
+     * than about the parser lying.
+     */
+    const cli = readFileSync(join(repoRoot, 'packages/cli/src/index.ts'), 'utf8');
+    const block = cli.slice(cli.indexOf('const VALUE_FLAGS'), cli.indexOf('\n]);', cli.indexOf('const VALUE_FLAGS')));
+    const registered = new Set([...block.matchAll(/'([a-z-]+)'/g)].map((m) => m[1]));
+    assert.ok(registered.size > 10, 'VALUE_FLAGS could not be parsed — has it moved?');
+
+    const help = readFileSync(join(repoRoot, 'packages/cli/src/i18n/en.ts'), 'utf8');
+    /**
+     * The OPTIONS blocks only, never the USAGE synopsis.
+     *
+     * `trazum diff --all <dir> <dir>` in the synopsis reads exactly like a
+     * flag taking a value, and the two directories are positionals — the
+     * first version of this guard failed on it and was right about the shape
+     * and wrong about the meaning. An OPTIONS line is unambiguous: the value
+     * is what follows the flag on that line or nothing does.
+     */
+    const helpStart = help.indexOf("OPTIONS FOR");
+    const helpEnd = help.indexOf('\n  where: {', helpStart);
+    const helpText = help.slice(helpStart, helpEnd === -1 ? undefined : helpEnd);
+
+    // `--x <value>` and `-o, --out <file>`: the long name is what the parser
+    // stores under, so that is what has to be registered.
+    const documented = new Set(
+      [...helpText.matchAll(/--([a-z][a-z-]*)\s+<[^>]+>/g)].map((m) => m[1]),
+    );
+    assert.ok(documented.size > 10, 'no value-taking flags found in the help — has it moved?');
+
+    const unregistered = [...documented].filter((flag) => !registered.has(flag)).sort();
+    assert.deepEqual(
+      unregistered,
+      [],
+      'these are documented as taking a value and would be parsed as booleans, silently',
+    );
+  });
+
   it('every workspace depending on @trazum/core pins the version being published', () => {
     /**
      * **The web app was pinned to 1.36.0 for ten releases and nothing noticed.**

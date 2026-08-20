@@ -41,6 +41,7 @@ ${bold('USO')}
   trazum blame <fichero> [opciones]
   trazum prune <fichero> --cases <fichero> --yes
   trazum where [fichero]
+  trazum conform <fichero|-> [--contract <nombre>]
   trazum models
   trazum rules
 
@@ -59,6 +60,20 @@ ${bold('OPCIONES DE init')}
   Nunca se inventa un umbral. Un presupuesto es una política, así que init te da la
   cifra medida y te deja el límite a ti — una configuración generada llena de
   números adivinados no se la cree nadie.
+
+${bold('OPCIONES DE conform')}
+  --contract <nombre>         Comprueba contra un contrato concreto en vez de
+                              detectarlo: usage-log, profile, plan,
+                              verification, history, connected, cost-answer.
+  --json                      El informe como datos.
+
+  Responde dos preguntas y las mantiene separadas. ¿Cumple este documento —
+  campos obligatorios, presentes y del tipo correcto; sale con 1 si no. Y qué no
+  puede responder un documento válido de esta forma, con el campo que lo
+  desbloquearía.
+
+  La segunda nunca hace fallar nada. Decidir no registrar sesiones es una
+  decisión, no un defecto. Ver docs/format.md.
 
 ${bold('OPCIONES DE prune')}
   --cases <fichero>           Una entrada por línea, o un array JSON. Obligatorio.
@@ -935,6 +950,23 @@ ${bold('EJEMPLOS')}
       `${path} ya existe y se dejó intacto. Pasa --dry-run para ver qué iría dentro, o --yes para reemplazarlo.`,
     existingUnparseable: (path) =>
       `${path} existe y no se pudo interpretar, así que no se escribió nada encima. Arréglalo o muévelo primero.`,
+  },
+
+  conform: {
+    noTarget: () =>
+      'Pasa un archivo para comprobar — un registro de consumo, o cualquier documento que emita Trazum. Usa "-" para leer de la entrada estándar.',
+    badContract: (given, known) => `"${given}" no es un contrato. Contratos conocidos: ${known}.`,
+    unrecognised: (path) => `${path} no encaja con ningún contrato que Trazum conozca.`,
+    heading: (path, contract) => `${path} se lee como un documento ${contract}`,
+    headingLog: (path, contract, records) =>
+      `${path} se lee como ${contract}: ${records} ${records === 1 ? 'registro' : 'registros'}`,
+    conforms: () => 'Cumple. Todos los campos obligatorios están y son del tipo correcto.',
+    problem: (at, kind, detail) => `${at}: ${detail} (${kind})`,
+    moreProblems: (count) => `…y ${count} más. Arregla estos primero; suelen ser el mismo error.`,
+    unavailableHeading: () => 'Lo que esto no puede responder, y qué lo desbloquearía',
+    unavailable: (finding, because, unlockedBy) => `${finding} — ${because}. Añade ${unlockedBy}.`,
+    unavailableNeverGates: () =>
+      'Nada de eso ha hecho fallar nada. Decidir no registrar un campo es una decisión, no un defecto, y una puerta que fallara por ello sería esta herramienta diciéndote qué registrar.',
   },
 
   where: {
