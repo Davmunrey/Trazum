@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.50.8**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.50.9**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,137 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.50.9 — "The semantic pass"
+
+Chapter seven of `docs/plan-1.51.md`, and the oldest deferred item in this
+product finally shipping — with most of the release spent on the machinery that
+throws the model's answers away.
+
+### Why it waited seven years of releases
+
+The rules engine has deferred paraphrase-level findings since 0.1.0 for one
+honest reason. A dictionary cannot see meaning. And **a model that hallucinates
+a finding is worse than a rule that misses one**: a missed finding costs
+somebody nothing, and an invented one costs them an afternoon and the next
+finding's credibility.
+
+What changed is not the model. It is that this arc built a way to *check*.
+
+### The price, before anything is sent
+
+```
+Semantic pass on prompts/support.txt
+
+  This will send the prompt to Claude Opus 5: about 440 tokens in and 800
+  out, roughly $0.0222. Estimated, not measured — a tool that spends your
+  money to tell you how to spend less should be the first thing audited by
+  its own arithmetic. Pass --yes to run it.
+
+  Nothing was sent. Add --yes once you have read the price above.
+```
+
+Without `--yes`, that price is the **entire output** of a run. No provider is
+looked up, nothing is sent, and the arithmetic comes from the local catalogue —
+so the price works offline, which is the point.
+
+### The model proposes; the deterministic layer disposes
+
+The discipline `--suggest` has had since 1.6, applied to a harder claim. A
+rewrite is checkable by construction: the replacement is either shorter or it is
+not. A *semantic* finding is a claim about meaning, and the only part of it that
+can be checked is the **evidence**.
+
+So the evidence is checked, ruthlessly:
+
+1. **Every quoted span must appear in the prompt character for character.** The
+   strongest signal available. A model reporting on a prompt while paraphrasing
+   what it quotes has stopped reading and started writing, and everything else
+   in that response is suspect.
+2. **The spans must be distinct and must not overlap.** A "pair" that is one
+   passage quoted twice is not a finding about redundancy; it is a finding about
+   nothing.
+3. **A near-copy the rules engine already catches is dropped.** A model paid to
+   re-report a deterministic finding is a model being paid for nothing, and the
+   reader sees the same thing twice with two different confidences attached.
+4. **A near-copy labelled a contradiction is rejected.** Two passages that say
+   the same thing cannot contradict each other, and a model that mislabels one
+   has made every other label in that response worth less.
+5. **Nothing the model says about size is believed.** Tokens are counted here,
+   from the spans, with the counter everything else uses.
+
+**What did not survive is printed, with its reason.** A pass that showed only
+its accepted findings would hide its own hit rate — the single most useful thing
+a reader can know about whether to run it again.
+
+### A ceiling, and a contradiction with no number at all
+
+Merging a paraphrase pair means writing one passage that does the work of both,
+and nobody knows yet how long that is. So the figure is what deleting the
+smaller half would recover, **named as the ceiling it is** rather than presented
+as a saving.
+
+A contradiction gets no figure. It is worth fixing because the prompt is
+**wrong**, not because it is long, and attaching a dollar amount would sell the
+wrong reason to fix it — and the wrong reason is the one that loses the argument
+when somebody pushes back.
+
+### It never becomes a prerequisite
+
+The deterministic core keeps working with no key, no network and no model. True
+since 0.1.0, and this release does not get to change it. The way that stays true
+is **structural**: the verification lives in the package that has no network,
+and only the call lives in the CLI.
+
+Three guards prove it, each with a planted probe: the verification module makes
+no call of any kind — no `fetch`, no URL, no `process.env`, no `await`; nothing
+the model returns is trusted about size; and the verbatim check runs before any
+similarity work.
+
+### What this release found wrong in itself
+
+**A threshold that was wrong in the dangerous direction, with a comment
+asserting it was right.**
+
+The already-detected cutoff shipped at 0.8, and a comment claimed it matched the
+deterministic pass. It did not: `rules.ts` drops a duplicate example at **0.92**.
+Everything between 0.8 and 0.92 is a pair the rules engine does *not* catch —
+and this layer was silently throwing those away. It was discarding exactly the
+findings the chapter exists to surface, while its own comment said the opposite.
+
+The constant is 0.92 now, and a test reads the threshold **out of `rules.ts`**
+and compares them, so the two can never drift apart again.
+
+**A guard that guarded nothing — and the probe is what caught it.**
+
+The check that the verbatim test runs before any similarity work compared the
+first occurrence of `'span-not-found'` against the first `jaccard(`. But
+`'span-not-found'` appears in the *type union* near the top of the file, so it
+always came first and the assertion passed whatever the loop actually did.
+Planting the reordering left it green.
+
+It is bounded to the function body now and fails on the probe. This is the
+**seventh** time in this repository an assertion was bounded by something other
+than its subject, and the **first** time the probe caught it rather than a later
+release finding it by accident. The rule "prove a guard by breaking it" earned
+its place today.
+
+### What stayed out, and why
+
+**Applying a semantic finding.** `--suggest` can apply its rewrites because a
+rewrite is a mechanical substitution. Resolving a paraphrase pair means writing
+one passage that does the work of two, which is an authoring decision with taste
+in it — and a tool that merged two instructions automatically would change what
+a prompt asks for while reporting a token saving. The findings are shown with
+their line numbers so somebody can go and do it.
+
+**A cache.** `--suggest` has one and this deliberately does not. A cached
+semantic finding is last week's reading of a prompt that has since been edited,
+and the whole value of this pass is that it read *this* text. The suggest cache
+exists because a rewrite proposal is cheap to re-check; a semantic finding is
+not.
 
 ---
 
