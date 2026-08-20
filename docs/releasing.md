@@ -181,6 +181,13 @@ asserts no workflow reaches for one.
 
 ## Cutting a release
 
+**Which number first.** Since 1.50.1 the version carries the narrative: a
+chapter of the arc in progress is a **patch**, and the **minor** is spent only
+on the release that lands the arc's thesis. A pricing correction is also a
+patch, and the changelog entry is what tells the two apart. The full reasoning,
+including what it costs a reader pinning with a tilde, is in
+[VERSIONING.md](../VERSIONING.md#what-the-three-numbers-mean-here).
+
 1. **Move `Unreleased` in `CHANGELOG.md`** under the new version heading. Per
    [CONTRIBUTING.md](../CONTRIBUTING.md), a change that alters nothing installable
    still has an entry, so this is usually just a rename.

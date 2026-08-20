@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.50.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.50.1**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,86 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.50.1 — "The numbering"
+
+A patch that changes what a patch means, which is the only release where that
+is not a contradiction.
+
+### The version number now carries the narrative
+
+Work here is planned in **arcs**: about ten releases with a single thesis.
+`docs/plan-1.41-1.50.md` was *the loop is complete and inert*, and everything
+in it — the connector, the store, the watch, the endpoint, the guard, the first
+run, the browser, the waiver record, the live budget, the conformance check —
+served that one sentence. From the outside, none of that was visible. Ten
+minors in a row look like ten unrelated releases.
+
+From here:
+
+- **A chapter of the arc in progress is a patch.** 1.50.1, 1.50.2, and so on,
+  each a substantial release in its own right.
+- **The minor is spent only on the release that lands the thesis.** So the next
+  arc runs 1.50.1 through 1.50.9 and finishes at **1.51.0** — which is not "the
+  release after 1.50.9" but the one where a story ends.
+- **Major is unchanged and is the only number that carries risk.** A breaking
+  change waits for 2.0, as it always has.
+
+### What that costs, said out loud rather than buried
+
+**Under strict semver a patch adds nothing, and here it will.** A patch release
+of Trazum can add a command, a flag, a document format or a rule. Somebody
+pinning `~1.50.0` in the expectation of bug fixes only will receive features.
+
+It cannot *break* them — the 1.x freeze is untouched, and that freeze is the
+promise that actually matters — but "you get more than you expected" is a real
+surprise, and it is fair to want it in advance rather than from a diff.
+`VERSIONING.md` now carries a section headed exactly that, naming `^1.50.0` as
+the intended range and saying plainly that `~1.50.0` no longer means here what
+it means elsewhere.
+
+The reason the field was available to reassign is worth stating, because it is
+the whole argument: **inside a frozen 1.x line, minor and patch are both
+additions-only.** The distinction between them was never load-bearing for
+safety. It was carrying nothing, and it now carries where you are in the story.
+
+### The deprecation window got longer, and stays as written
+
+`VERSIONING.md` requires a deprecated thing to keep working for "at least two
+minor versions and at least six months, whichever is longer". Under the new
+numbering two minors is roughly *twenty* releases rather than two.
+
+That is a strengthening, and it was deliberately not rewritten to preserve the
+old duration. The clause exists so a deprecation outlives the attention span of
+whoever wrote it; the old duration was never the thing being promised. Recorded
+here because a rule whose meaning changes as a side effect of an unrelated
+decision is exactly the sort of thing that gets quietly re-tightened later by
+somebody who does not know it was considered.
+
+### The plan document, renumbered
+
+`docs/plan-1.51-1.60.md` is now `docs/plan-1.51.md`: nine chapters as 1.50.1
+through 1.50.9, landing as 1.51.0. The arc, its thesis and every release's
+content are unchanged — only what they are called.
+
+**The 1.40.0 changelog entry still names the old path**, and that is deliberate.
+Below the first version heading, `CHANGELOG.md` is a record. Rewriting a shipped
+entry so a link resolves would be falsifying history to tidy a footnote, which
+is the same rule this repository applied when it declined to correct "Nine
+commands now, up from four" in an old release's notes.
+
+### Two documents that opened in the wrong place
+
+`VERSIONING.md` began with a caveat about a pre-1.0 world nobody is in any
+more, and the reader had to get four sections in before learning what a minor
+means. It opens with what the three numbers mean now, and the pre-1.0 material
+is marked historical where it belongs.
+
+`docs/releasing.md` answers "which number" before step one. Its first step used
+to be "move `Unreleased` under the new version heading", which quietly assumes
+the hard question is already settled.
 
 ---
 

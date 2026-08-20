@@ -1,8 +1,16 @@
-# The plan through 1.60
+# The plan through 1.51
 
 Ten releases, one arc, following the one through
 [1.50](plan-1.41-1.50.md). The ordering is a commitment; the calendar is not,
 and no dates appear here for the reason [ROADMAP.md](../ROADMAP.md) gives.
+
+**Nine of them are patches and the tenth is the minor.** Since 1.50.1 the
+version number carries the narrative: a chapter of an arc in progress is a
+patch, and the minor is spent only on the release that lands the thesis. So
+this arc runs 1.50.1 through 1.50.9 and finishes at **1.51.0** — which is not
+"the release after 1.50.9" but the one where the story ends. See
+[VERSIONING.md](../VERSIONING.md#what-the-three-numbers-mean-here), including
+what that costs somebody pinning with a tilde.
 
 Every item is judged against the same sentence the roadmap uses: *Trazum
 reduces what an AI call costs without changing what the prompt asks for.* And
@@ -41,23 +49,25 @@ deferred since 0.1.0 because it could not check them.
 
 | Version | Theme | The sentence it earns |
 | --- | --- | --- |
-| 1.51.0 | The gateway | Measured at the source, and able to say no — never to say something else. |
-| 1.52.0 | The outcome | What the money bought, recorded by you and never inferred. |
-| 1.53.0 | Cost per outcome | Every figure gets its numerator: dollars per resolved thing. |
-| 1.54.0 | The ladder | Cheap first, escalate on measured failure, priced with the double spend. |
-| 1.55.0 | The experiment | Two prompts, real traffic, and a winner only when there is one. |
-| 1.56.0 | The quality gate | CI fails when a change moved outcomes, not just tokens. |
-| 1.57.0 | The semantic pass | The findings a dictionary cannot make, each checked before you see it. |
-| 1.58.0 | Whose money | Chargeback across teams, with the unallocated named loudly. |
-| 1.59.0 | The commitment | What a committed-use deal would have been worth on measured traffic. |
-| 1.60.0 | The record | A year of this product's own arithmetic, and the doctrine that survived it. |
+| 1.50.1 | The gateway | Measured at the source, and able to say no — never to say something else. |
+| 1.50.2 | The outcome | What the money bought, recorded by you and never inferred. |
+| 1.50.3 | Cost per outcome | Every figure gets its numerator: dollars per resolved thing. |
+| 1.50.4 | The ladder | Cheap first, escalate on measured failure, priced with the double spend. |
+| 1.50.5 | The experiment | Two prompts, real traffic, and a winner only when there is one. |
+| 1.50.6 | The quality gate | CI fails when a change moved outcomes, not just tokens. |
+| 1.50.7 | The semantic pass | The findings a dictionary cannot make, each checked before you see it. |
+| 1.50.8 | Whose money | Chargeback across teams, with the unallocated named loudly. |
+| 1.50.9 | The commitment | What a committed-use deal would have been worth on measured traffic. |
+| **1.51.0** | The record | A year of this product's own arithmetic, and the doctrine that survived it. |
 
-Patch releases sit between these whenever a batch is thin. A minor is earned
-by findings that change what somebody can decide, not by a date.
+There is no rule about how many chapters an arc has. There is a rule that the
+minor is not spent on anything less than a finished story, and that each
+chapter is earned by findings that change what somebody can decide rather than
+by a date.
 
 ---
 
-## 1.51.0 — The gateway
+## 1.50.1 — The gateway
 
 1.44 gave a local service that *answers* questions and 1.45 gave agents a
 guard they may consult and ignore. Advice an implementation can skip is advice
@@ -83,7 +93,7 @@ always reports the runaway after it ran.
   and are not written down — the store's contents have been aggregates since
   1.42 and being in the path changes nothing about that promise.
 
-## 1.52.0 — The outcome
+## 1.50.2 — The outcome
 
 Every finding in this product is a cost with no counterpart. The missing field
 is not something Trazum can compute: it is something only the caller knows.
@@ -105,7 +115,7 @@ is not something Trazum can compute: it is something only the caller knows.
   and the store keeps it the way it keeps everything: aggregated, never
   alongside content.
 
-## 1.53.0 — Cost per outcome
+## 1.50.3 — Cost per outcome
 
 With a numerator recorded, every figure in the product can finally be divided
 — and a whole class of finding becomes possible that no cost total can show.
@@ -126,7 +136,7 @@ With a numerator recorded, every figure in the product can finally be divided
   makes a ratio over an unknown denominator; the report states the coverage
   beside the rate or does not print the rate.
 
-## 1.54.0 — The ladder
+## 1.50.4 — The ladder
 
 "Route it to the cheaper model" has been a recommendation with a quality
 question attached since 1.23. With the gateway in the path and outcomes
@@ -147,7 +157,7 @@ recorded, it becomes an executable policy that measures its own damage.
   the before and after so `verify` can judge the ladder the same way it judges
   every other prediction: arrived, did not arrive, or cannot be told.
 
-## 1.55.0 — The experiment
+## 1.50.5 — The experiment
 
 `eval` compares two prompts on cases you wrote; `route` compares two models on
 the same. Both measure agreement in a laboratory. The traffic is the only
@@ -171,7 +181,7 @@ place the real question gets answered.
   decision with a name attached, and it lands in the plan like everything
   else.
 
-## 1.56.0 — The quality gate
+## 1.50.6 — The quality gate
 
 CI has been able to fail a build for tokens since 1.4 and for dollars since
 1.21. The failure that actually matters — a prompt edit that quietly made the
@@ -192,7 +202,7 @@ product worse — has never been gateable.
   change saves $220 a month and moved the resolution rate from 71% to 64% on
   8,400 measured outcomes. Both halves, both provenances, one comment.
 
-## 1.57.0 — The semantic pass
+## 1.50.7 — The semantic pass
 
 The rules engine has deferred the same findings since 0.1.0 for one honest
 reason: a dictionary cannot see meaning, and a model that hallucinates a
@@ -214,7 +224,7 @@ outcomes, experiments, a way to check — makes the check possible at last.
   spends your money to tell you how to spend less must be the first thing
   audited by its own arithmetic.
 
-## 1.58.0 — Whose money
+## 1.50.8 — Whose money
 
 The fleet answered *which service*. Nobody has yet answered *whose budget*,
 which is the question that decides whether anything on this list gets done.
@@ -232,7 +242,7 @@ which is the question that decides whether anything on this list gets done.
 - **An owner with no measured data is not an owner under budget** — the
   `fleetBudgetMissing` refusal from 1.37, applied to people.
 
-## 1.59.0 — The commitment
+## 1.50.9 — The commitment
 
 Providers sell committed-use and reserved-capacity deals. Every team that
 signs one is doing arithmetic in a spreadsheet against a number they guessed,
@@ -253,7 +263,7 @@ which is exactly the failure mode this product exists to end.
   unused floor would have cost, because a saving quoted without its downside
   is the sales pitch, not the analysis.
 
-## 1.60.0 — The record
+## 1.51.0 — The record
 
 Sixty minor releases of a product whose entire argument is that it refuses to
 flatter. The last release of the arc turns that argument into something a

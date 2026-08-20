@@ -1,16 +1,64 @@
 # Versioning
 
-Trazum follows [semantic versioning](https://semver.org/), with one caveat that
-applies until 1.0 and is stated plainly rather than buried.
+Trazum follows [semantic versioning](https://semver.org/) for the thing semver
+exists to protect — **breaking changes** — and uses the minor and patch fields
+to carry the release narrative. Both halves are stated plainly below rather
+than left to be inferred from the tags.
 
-## From 1.0 onwards
+## What the three numbers mean here
+
+**Major** is the only one that carries risk, and it means exactly what semver
+says: something in [the public API](#what-counts-as-public-api) changed shape,
+disappeared, or started throwing. Nothing inside 1.x does that.
+
+**Minor** closes an arc. Work here is planned in arcs of about ten releases
+with a single thesis — `docs/plan-1.41-1.50.md` was *the loop is complete and
+inert*, and everything from the connector to the conformance check served it.
+The minor bumps when that thesis has landed. 1.51.0 is not "the release after
+1.50.9"; it is the release where a story finishes.
+
+**Patch** is a chapter of the arc in progress, or a pricing correction. So the
+sequence after 1.50.0 is 1.50.1, 1.50.2, … each a substantial release in its
+own right, until the arc's last chapter lands as 1.51.0.
+
+### What that costs, said out loud
+
+**Under strict semver a patch adds nothing, and here it does.** A patch release
+of Trazum can add a command, a flag, a document format or a rule. Somebody
+pinning `~1.50.0` expecting only bug fixes will receive features.
+
+It cannot break them — the 1.x freeze below is unchanged and is the promise
+that actually matters — but "you get more than you expected" is a real
+surprise and it is fair to want to know about it in advance rather than from a
+diff.
+
+The reason the field was available to reassign: inside a frozen 1.x line, minor
+and patch are *both* additions-only, so the distinction between them was never
+load-bearing for safety. It was carrying nothing. It now carries where you are
+in the story, which is the more useful thing for it to say.
+
+**Pin `^1.50.0`** if you want everything non-breaking, which is the intended
+range and behaves identically under either scheme. Pin an exact version if you
+want to choose your upgrades. `~1.50.0` no longer means what it means
+elsewhere, and this paragraph exists so nobody finds that out the hard way.
+
+### 1.8.0 through 1.50.0
+
+*Historical.* Every release in that range was a minor, one per batch of work,
+and the arcs were not visible in the numbers at all — `docs/plan-1.41-1.50.md`
+described ten releases that looked from the outside like ten unrelated ones.
+The numbering changed at 1.50.1. Nothing about those releases is different in
+retrospect; only what the next ones are called.
+
+## The 1.x freeze
 
 **The public API is frozen.** A breaking change waits for 2.0. Nothing in the
 list below changes shape, disappears, or starts throwing where it used to
 return, inside the 1.x line.
 
 That is a promise about *the surface*, not a promise to stop working on it.
-Things that will still change in a 1.x minor, and are not breaking:
+Things that will still change in any 1.x release, minor or patch, and are not
+breaking:
 
 - **New** exports, options, commands, flags, rules and advisories. An addition
   cannot break code that does not use it.
@@ -30,6 +78,13 @@ gets deprecated instead. The full procedure, so it is not decided case by case:
 3. It keeps working, unchanged, for **at least two minor versions and at least
    six months**, whichever is longer. Deprecating and removing in consecutive
    releases is a breaking change wearing a notice.
+
+   Since 1.50.1 a minor closes an arc, so "two minors" is now roughly twenty
+   releases rather than two. That is a strengthening and it stays as written:
+   the point of the clause was always that a deprecation outlives the attention
+   span of whoever wrote it, and a longer window serves that better. It was not
+   rewritten to keep the old duration, because the old duration was never the
+   thing being promised.
 4. It is removed in the next **major**, and the major's changelog repeats the
    migration rather than pointing back at an older entry.
 
@@ -115,8 +170,9 @@ for something different.
 ## Pricing data
 
 `packages/core/src/pricing.ts` tracks published prices, which change on someone
-else's schedule. A pricing update is a **patch** release, and always moves
-`PRICING_LAST_REVIEWED`.
+else's schedule. A pricing update is a **patch** release — sharing that field
+with the arc chapters, so the changelog entry is what tells the two apart — and
+always moves `PRICING_LAST_REVIEWED`.
 
 This means a patch can change the numbers in your report. That is the intended
 behaviour — reporting a price that is no longer real is the worse failure — but
@@ -154,6 +210,10 @@ To release:
 
 1. Fold `Unreleased` into a new version heading, or leave anything genuinely
    not-shipping-yet behind. Breaking changes go first, with the migration.
+   **Which number**: a patch, unless this release is the one that lands the
+   current arc's thesis — then the minor. There is no rule about how many
+   chapters an arc has; there is a rule that the minor is not spent on
+   anything less than a finished story.
 2. Bump the version in **all five** manifests — the root, `@trazum/core`,
    `@trazum/cli`, `@trazum/mcp` and the web app — including the `@trazum/core`
    dependency pinned by the CLI and the MCP server. Regenerate the lockfile.
