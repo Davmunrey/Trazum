@@ -332,9 +332,24 @@ describe('the gateway, which stands between somebody and their provider', () => 
      * Trazum's outbound calls on that principle since 1.14; here there is no
      * caller-supplied endpoint at all.
      */
+    /**
+     * The **exact** origins, extracted and compared, not searched for.
+     *
+     * CodeQL flagged the first version of this — two unanchored host patterns
+     * — and was right about more than the lint. `assert.match(text,
+     * /https:\/\/api\.anthropic\.com/)` passes on a source that had been
+     * edited to say `https://api.anthropic.com.evil.com`, which is the single
+     * substitution somebody attacking this file would make. A guard against a
+     * redirected credential that a lookalike host satisfies is worse than no
+     * guard, because it reads as coverage.
+     */
     const text = server();
-    assert.match(text, /https:\/\/api\.anthropic\.com/);
-    assert.match(text, /https:\/\/api\.openai\.com/);
+    const origins = [...text.matchAll(/origin: '([^']*)'/g)].map((m) => m[1]).sort();
+    assert.deepEqual(origins, ['https://api.anthropic.com', 'https://api.openai.com']);
+
+    const paths = [...text.matchAll(/path: '([^']*)'/g)].map((m) => m[1]).sort();
+    assert.deepEqual(paths, ['/v1/chat/completions', '/v1/messages']);
+
     // The only interpolation into the fetch target is the compiled-in pair.
     const targets = [...text.matchAll(/doFetch\(([^,]+),/g)].map((m) => m[1].trim());
     assert.deepEqual(targets, ['`${upstream.origin}${upstream.path}`']);

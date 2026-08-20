@@ -67,7 +67,14 @@ each proven by planting the violation and watching the test fail by name.
   secret and happens not to log it today is one refactor from logging it.
 - **The upstream is compiled in.** A flag naming the host would make this a
   credential-forwarding open proxy: anything that could rewrite a config on disk
-  could point a company's API key at a machine it chose.
+  could point a company's API key at a machine it chose. The guard compares the
+  **exact** origins rather than searching for them — CodeQL flagged the first
+  version as two unanchored host patterns and was right about more than the
+  lint, because `match(/https:\/\/api\.anthropic\.com/)` also passes on
+  `https://api.anthropic.com.evil.com`, which is the single substitution
+  somebody attacking that file would make. A guard against a redirected
+  credential that a lookalike host satisfies is worse than no guard, because it
+  reads as coverage. Proven by planting the lookalike.
 - **Nothing about the payload is written down**, and the interfaces have nowhere
   to put it: the decision function is handed a description and never the body,
   and the recording callback takes counts.
