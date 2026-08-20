@@ -57,6 +57,8 @@ ${bold('USAGE')}
   trazum conform <file|-> [--contract <name>]
   trazum models
   trazum rules
+  trazum feedback
+  trazum --version
 
 ${bold('OPTIONS FOR init')}
   --dry-run                   Print the config it would write and write nothing.
@@ -87,6 +89,17 @@ ${bold('OPTIONS FOR conform')}
 
   The second never gates. Choosing not to log sessions is a decision, not a
   defect. See docs/format.md.
+
+${bold('OPTIONS FOR feedback')}
+  (none)
+
+  Prints where to report a wrong optimisation, a bug, a question or a security
+  problem — and a blank issue with the version, runtime and platform already
+  filled in, printed in full first so nothing travels you have not read.
+
+  It sends nothing. Trazum has no telemetry: no ping, no install hook, no
+  anonymous counter, and a test fails the build if this command ever reaches
+  the network.
 
 ${bold('OPTIONS FOR prune')}
   --cases <file>              One input per line, or a JSON array. Required.
@@ -907,7 +920,8 @@ ${bold('EXAMPLES')}
     findingRoute: (model) => `The same work fits ${model}, which is cheaper per token.`,
     findingBatch: () => 'The Batch API halves both halves of the bill, for work that can wait.',
     findingTotal: (usd, days) => `Together: $${usd} over the same ${days} days.`,
-    findingNext: () => 'trazum plan <your log> ranks every action, not just this one.',
+    findingNext: () =>
+      'trazum plan <your log> ranks every action, not just this one. If a figure here looks wrong, trazum feedback says where to tell us — it sends nothing on its own.',
 
     wouldOverwrite: (keys) => `This replaces keys you already set: ${keys}. Pass --yes to write anyway.`,
     nothingToWrite: () => 'No config written: nothing above could be justified from what is here.',
@@ -917,6 +931,22 @@ ${bold('EXAMPLES')}
       `${path} already exists and was left alone. Pass --dry-run to see what would go in it, or --yes to replace it.`,
     existingUnparseable: (path) =>
       `${path} exists and could not be parsed, so nothing was written over it. Fix or move it first.`,
+  },
+
+  feedback: {
+    heading: () => 'Telling us something',
+    sendsNothing: () =>
+      'This command sends nothing, and neither does anything else here. Trazum has no telemetry: no ping, no install hook, no anonymous counter. A tool whose whole argument is that it reads your bill without uploading it cannot also be quietly reporting on you, and a test fails the build if this command ever reaches the network.',
+    whereHeading: () => 'Where',
+    wrongOptimisation: () =>
+      'A rule changed what a prompt asks for — the report that matters most, and the failure this product exists to avoid:',
+    bug: () => 'Anything else that is wrong:',
+    question: () => 'A question, or an idea you are not sure about:',
+    security: () => 'A security problem — privately, never a public issue:',
+    environmentHeading: () => 'What a maintainer will ask for',
+    environmentOnly: () =>
+      'That is the whole of it. Nothing about your work is here — not the config, not a prompt, not a label, not a figure. Those are what a good report needs and what only you can decide to share.',
+    linkHeading: () => 'A blank issue with the above already filled in',
   },
 
   conform: {

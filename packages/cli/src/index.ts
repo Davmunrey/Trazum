@@ -1,6 +1,8 @@
 #!/usr/bin/env node
+import { readFileSync } from 'node:fs';
 import { open, readdir, readFile, stat, writeFile } from 'node:fs/promises';
-import { join, resolve as resolvePath } from 'node:path';
+import { dirname, join, resolve as resolvePath } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
 
 import {
@@ -528,7 +530,7 @@ function disabledRules(args: Args, config: TrazumConfig): RuleId[] | undefined {
  * a threshold is set — `--max-growh 5` would have been ignored and the build
  * gone green. Silence is the wrong answer for a typo.
  */
-const GLOBAL_FLAGS = ['help', 'h', 'locale', 'json', 'config', 'pricing', 'pricing-live'];
+const GLOBAL_FLAGS = ['help', 'h', 'version', 'v', 'locale', 'json', 'config', 'pricing', 'pricing-live'];
 const COMMAND_FLAGS: Record<string, string[]> = {
   optimize: [
     'level', 'model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch',
@@ -554,6 +556,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   rank: ['level', 'model', 'calls', 'output-tokens', 'batch', 'disable', 'prompt', 'markdown-out'],
   init: ['dry-run', 'yes', 'json', 'pricing', 'pricing-live'],
   conform: ['contract', 'json'],
+  feedback: [],
   where: [],
   rules: [],
   blame: ['limit', 'model', 'calls', 'output-tokens', 'batch', 'prompt', 'markdown-out'],
@@ -1476,6 +1479,44 @@ const INIT_LOG_CANDIDATES = [
  * nobody has vouched for.
  */
 
+/**
+ * Where feedback goes. Compiled in, never configurable.
+ *
+ * A flag or a config key naming this host would let a fork — or anything that
+ * had rewritten a config on disk — point somebody's bug report, and the
+ * prefilled body with it, at a machine they did not choose. It is one string
+ * and it stays one string.
+ */
+/**
+ * Which Trazum this is.
+ *
+ * Read from the manifest beside the built entry point rather than baked in by
+ * a generator, so it cannot drift from what npm installed — the one number a
+ * bug report is useless without is the one that must not be a copy.
+ *
+ * `readFileSync` at module load, deliberately: every other read in this file
+ * is async and inside a command, but a version has to be available to
+ * `--version` before any command is chosen, and one small synchronous read at
+ * startup is cheaper than making the whole entry point await.
+ *
+ * A failure falls back to `unknown` rather than throwing. A tool that will not
+ * start because it cannot find its own manifest is worse than one that admits
+ * it does not know — and `unknown` in a bug report is itself a useful fact
+ * about how somebody installed it.
+ */
+const VERSION: string = (() => {
+  try {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const manifest: unknown = JSON.parse(readFileSync(join(here, '..', 'package.json'), 'utf8'));
+    const found = (manifest as { version?: unknown }).version;
+    return typeof found === 'string' ? found : 'unknown';
+  } catch {
+    return 'unknown';
+  }
+})();
+
+const FEEDBACK_REPO = 'https://github.com/Davmunrey/Trazum';
+
 /** Problems listed before the rest are counted. A wall of them helps nobody. */
 const MAX_CONFORM_PROBLEMS = 20;
 
@@ -1946,6 +1987,80 @@ async function commandConform(args: Args, t: CliMessages): Promise<void> {
     // reading a red-and-yellow screen will assume both halves gated.
     console.log(`  ${c.dim(wrap(t.conform.unavailableNeverGates(), 74, '    '))}`);
   }
+  console.log();
+}
+
+/**
+ * `trazum feedback` — where to say it, and what to say.
+ *
+ * **This command sends nothing.** Trazum has no telemetry: the CLI makes no
+ * network call it was not explicitly asked to make, and there is no ping, no
+ * install hook and no anonymous counter anywhere in it. That is not an
+ * omission somebody has been meaning to fix — a tool whose entire argument is
+ * that it reads your bill without uploading it cannot also be quietly
+ * reporting on you, and the security suite fails the build if this command
+ * ever reaches the network.
+ *
+ * So the loop is closed the only honest way: the person decides to send
+ * something, and this makes that as cheap as possible. It prints the four
+ * places worth writing to, and a **prefilled link** carrying the facts a
+ * maintainer always has to ask for — version, runtime, platform — printed in
+ * full first, so nothing travels that the sender has not read.
+ *
+ * Nothing about *their work* is in it. Not the config, not a prompt, not a
+ * label, not a figure. Those are the things a bug report needs and the things
+ * only the reporter can decide to share, and a command that helpfully attached
+ * them would be the leak this product exists not to be.
+ */
+function commandFeedback(t: CliMessages): void {
+  const version = VERSION;
+  /**
+   * Facts about the machine, and nothing about the person.
+   *
+   * `process.platform` and the Node version are what every "cannot reproduce"
+   * thread eventually asks for. The locale is here because Trazum ships two
+   * languages and a report reading wrong in one of them is a real bug class.
+   */
+  const environment = [
+    `Trazum ${version}`,
+    `Node ${process.version}`,
+    `${process.platform} ${process.arch}`,
+    `locale ${t.locale}`,
+  ];
+
+  const body = [
+    '<!-- What happened, and what you expected instead. -->',
+    '',
+    '',
+    '---',
+    ...environment.map((line) => `- ${line}`),
+  ].join('\n');
+  const url =
+    `${FEEDBACK_REPO}/issues/new?body=${encodeURIComponent(body)}`;
+
+  console.log();
+  console.log(c.bold(t.feedback.heading()));
+  console.log(`  ${c.dim(wrap(t.feedback.sendsNothing(), 74, '    '))}`);
+  console.log();
+
+  console.log(c.bold(t.feedback.whereHeading()));
+  console.log(`  ${t.feedback.wrongOptimisation()}`);
+  console.log(`    ${c.dim(`${FEEDBACK_REPO}/issues/new?template=wrong_optimisation.yml`)}`);
+  console.log(`  ${t.feedback.bug()}`);
+  console.log(`    ${c.dim(`${FEEDBACK_REPO}/issues/new?template=bug_report.yml`)}`);
+  console.log(`  ${t.feedback.question()}`);
+  console.log(`    ${c.dim(`${FEEDBACK_REPO}/discussions`)}`);
+  console.log(`  ${t.feedback.security()}`);
+  console.log(`    ${c.dim(`${FEEDBACK_REPO}/security/advisories/new`)}`);
+  console.log();
+
+  console.log(c.bold(t.feedback.environmentHeading()));
+  for (const line of environment) console.log(`  ${line}`);
+  console.log(`  ${c.dim(wrap(t.feedback.environmentOnly(), 74, '    '))}`);
+  console.log();
+
+  console.log(c.bold(t.feedback.linkHeading()));
+  console.log(`  ${url}`);
   console.log();
 }
 
@@ -7835,6 +7950,20 @@ async function main(): Promise<void> {
     return;
   }
 
+  /**
+   * Before the help branch, and before the config loads.
+   *
+   * `trazum --version` on its own is how somebody answers "which one is
+   * installed", and it has to work when the config is broken — that is
+   * precisely the moment they are being asked. Placed above `!args.command`
+   * for the same reason `--clear-suggestion-cache` is: with nothing else on
+   * the line, the help branch would have swallowed it.
+   */
+  if (boolFlag(args, 'version') || boolFlag(args, 'v')) {
+    console.log(VERSION);
+    return;
+  }
+
   if (boolFlag(args, 'help') || boolFlag(args, 'h') || !args.command) {
     console.log(
       t.help(
@@ -7941,6 +8070,9 @@ async function main(): Promise<void> {
       break;
     case 'models':
       commandModels(t, pricing);
+      break;
+    case 'feedback':
+      commandFeedback(t);
       break;
     case 'conform':
       await commandConform(args, t);

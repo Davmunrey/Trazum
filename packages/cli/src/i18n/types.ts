@@ -252,6 +252,25 @@ export interface CliMessages {
    * Two halves, and the copy keeps them apart everywhere: problems gate, gaps
    * do not. Choosing not to log sessions is a decision, not a defect.
    */
+  /**
+   * Where to say something, and the standing fact that this command sends
+   * nothing. The second half is not decoration: a tool that offers to help you
+   * file a report is exactly the shape of a tool that phones home, and the
+   * only way to be believed is to say so where somebody is looking.
+   */
+  feedback: {
+    heading(): string;
+    sendsNothing(): string;
+    whereHeading(): string;
+    wrongOptimisation(): string;
+    bug(): string;
+    question(): string;
+    security(): string;
+    environmentHeading(): string;
+    environmentOnly(): string;
+    linkHeading(): string;
+  };
+
   conform: {
     noTarget(): string;
     badContract(given: string, known: string): string;
