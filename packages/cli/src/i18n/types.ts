@@ -268,6 +268,22 @@ export interface CliMessages {
    * The ladder. Every line here exists to stop somebody reading "we route to
    * the cheap model first" as a saving without the number that decides it.
    */
+  quality: {
+    heading(label: string): string;
+    needsLabel(): string;
+    needsAt(): string;
+    sides(beforeRate: string, afterRate: string, before: string, after: string): string;
+    dropped(from: string, to: string, outcomes: string, cost: string): string;
+    held(from: string, to: string, outcomes: string): string;
+    cannotTell(why: string, need: string): string;
+    confounder(kind: string, detail: string): string;
+    confoundersHeading(): string;
+    notRandomised(): string;
+    cannotSee(): string;
+    gateFailed(): string;
+    gateHeldOpen(): string;
+  };
+
   experiment: {
     heading(a: string, b: string): string;
     needsTwo(): string;

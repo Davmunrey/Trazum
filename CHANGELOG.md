@@ -11,7 +11,73 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**`trazum quality` — the gate that fails a build for the failure that matters.**
+Chapter six of `docs/plan-1.51.md`. CI has been able to fail a build for tokens
+since 1.4 and for dollars since 1.21; a prompt edit that quietly made the product
+worse has never been gateable — which means every saving this tool has ever
+recommended went into a repository with its most important consequence
+unmeasured.
+
+```
+  before 71.0% (8,400 outcomes)   after 64.0% (8,400 outcomes)
+
+  ✗ The resolution rate moved from 71.0% to 64.0% on 16,800 measured outcomes,
+    and this change saves $0.5000 a call. Both halves are measured; neither is
+    an estimate.
+```
+
+**Named `quality` rather than `check --against-outcomes`, which is what the plan
+called for.** `check` reads *prompt files* and gates on tokens; it has never
+opened a usage log, and a command that takes either a prompt or a log depending
+on a flag is two commands wearing one name. The split-by-time is also not a
+`check` idea — there is nothing in a prompt file with a timestamp on it.
+
+**This is a before-and-after, not an experiment, and that shapes everything.** An
+experiment splits traffic at random so the arms differ only in the thing under
+test. This splits by *time*, so everything else that changed at the same moment
+is in the difference too. Most of the module is therefore spent looking for
+reasons **not** to blame the prompt.
+
+**Three confounders, any of which forces `cannot tell` with the confounder
+named** — a refusal to blame, not a hedge attached to one:
+
+- **The model mix moved.** The drop may be entirely somebody else's migration.
+- **The volume moved.** A workload whose traffic doubled usually has a different
+  population — a new surface, a new customer, a campaign — and the questions
+  being asked are not the questions from before.
+- **Outcome coverage moved.** The one nobody thinks of: a team that starts
+  instrumenting its hard cases sees its measured rate fall without anything
+  having got worse. Comparing two rates over differently-selected populations is
+  the most convincing wrong answer this module could produce.
+
+They print on **every** verdict, including green ones. A rate that held while the
+model changed underneath is not evidence the prompt is fine either.
+
+**A confounder outranks the statistics.** Checked after the sample sizes and
+before the verdict, so a build is never failed on a difference something else
+could equally explain — even when the drop is enormous and statistically
+unambiguous.
+
+**"Not measurably worse" is never "held", and `cannot tell` exits 2.** Three
+outcomes, never two. A gate that spelled the first two the same way would pass a
+real regression it merely lacked the power to see, and one that exited 0 on
+"cannot tell" would turn every underpowered window into a green build.
+
+**A hundred outcomes a side**, not the ten a rate needs elsewhere. This one fails
+builds: the cost of a wrong `dropped` is somebody reverting a good change and
+losing the saving; the cost of a wrong `cannot tell` is waiting a day.
+
+**It uses `experiment`'s statistics**, deliberately — one implementation of a
+two-proportion comparison, so a gate and a deliberate experiment can never
+disagree about the same two numbers and leave a team trusting whichever answer
+they preferred.
+
+**What it cannot see, it says.** A `dropped` verdict means the rate fell and the
+three things it can check did not move. That is a smaller claim than "the prompt
+did it", and it is the largest one the evidence supports.
+
 
 ## 1.50.7 — "The experiment"
 

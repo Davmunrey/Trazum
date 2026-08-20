@@ -43,11 +43,11 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- 27 commands       MCP server      Next.js     comments on pull requests
+ 28 commands       MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
-## The twenty-seven commands
+## The twenty-eight commands
 
 | Command | What it answers |
 |---|---|
@@ -75,6 +75,7 @@ never runs unless you ask.
 | [`trazum gateway`](#in-the-path-of-the-call-trazum-gateway) | Can it stop the call instead of advising against it? *Refuses; never substitutes.* |
 | [`trazum ladder`](#is-the-ladder-saving-money-or-is-it-a-bill-trazum-ladder) | Is cheap-first-escalate-on-failure saving money, or costing it? *Break-even rate, stated.* |
 | [`trazum experiment`](#two-arms-on-real-traffic-trazum-experiment) | Which of two arms is better on real traffic? *A winner only when there is one.* |
+| [`trazum quality`](#the-gate-that-fails-a-build-for-quality-trazum-quality) | Did that prompt change quietly make the product worse? *Refuses to blame what it cannot attribute.* |
 | [`trazum conform`](#building-on-the-format-trazum-conform) | Does the document my tool emits conform, and what will it not be able to answer? |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
 | [`trazum feedback`](#telling-us-something-trazum-feedback) | Where do I report this, and what will you ask me for? *Sends nothing.* |
@@ -185,8 +186,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of twenty-seven commands — [the table
-above](#the-twenty-seven-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of twenty-eight commands — [the table
+above](#the-twenty-eight-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -336,7 +337,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other twenty-six commands, each with its own section below:
+The other twenty-seven commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -1356,6 +1357,66 @@ a name attached, and it lands in the plan like everything else.
 Wilson score intervals per arm, Newcombe's on the difference — both chosen
 because they behave at the sample sizes an experiment actually starts with,
 where a symmetric interval runs past 0 or 1 for most of the first week.
+
+### The gate that fails a build for quality: `trazum quality`
+
+CI has been able to fail a build for tokens since 1.4 and for dollars since
+1.21. The failure that actually matters — a prompt edit that quietly made the
+product worse — has never been gateable. Which means **every saving this tool has
+ever recommended went into a repository with its most important consequence
+unmeasured.**
+
+```
+trazum quality usage.jsonl --label support --at 2026-08-05T00:00:00Z --gate
+```
+
+```
+Quality across the change: support
+
+  before 71.0% (8,400 outcomes)   after 64.0% (8,400 outcomes)
+
+  ✗ The resolution rate moved from 71.0% to 64.0% on 16,800 measured outcomes,
+    and this change saves $0.5000 a call. Both halves are measured; neither is
+    an estimate.
+```
+
+That is the sentence teams actually argue about, and it has both halves and both
+provenances in one line.
+
+**This is a before-and-after, not an experiment**, and the difference is the
+whole design. An experiment splits traffic at random, so the two arms differ only
+in the thing under test. A before-and-after splits by *time*, and everything else
+that changed at the same moment is in the difference too. So this command spends
+most of its code looking for reasons **not** to blame the prompt.
+
+**Three confounders it can see**, and any of them makes the verdict `cannot tell`
+with the confounder named rather than a hedge attached to a blame:
+
+- **The model mix moved** — the drop may be entirely somebody else's migration.
+- **The volume moved** — a workload whose traffic doubled usually has a different
+  *population*, and the questions being asked are not the questions from before.
+- **Outcome coverage moved** — the one nobody thinks of. A team that starts
+  instrumenting its hard cases sees its measured rate fall without anything
+  having got worse.
+
+They print on **every** verdict, including green ones. A rate that held while the
+model changed underneath is not evidence the prompt is fine either, and hiding
+that on a passing run teaches people to trust the gate in exactly the case they
+should not.
+
+**"Not measurably worse" is never "held".** A gate that spelled them the same way
+would pass a real regression it merely lacked the power to see. And `cannot tell`
+exits **2** rather than 0 — three outcomes, never two, the posture `verify --gate`
+has had since 1.39.
+
+**It needs 100 outcomes a side**, not the ten a rate needs elsewhere. This one
+fails builds: the cost of a wrong `dropped` is somebody reverting a good change
+and losing the saving; the cost of a wrong `cannot tell` is waiting a day. Those
+are not symmetric and the threshold is not either.
+
+**What it cannot see, it says.** A `dropped` verdict means the rate fell and the
+three things it can check did not move. That is a smaller claim than "the prompt
+did it", and it is the largest one the evidence supports.
 
 ### In the path of the call: `trazum gateway`
 
