@@ -11,7 +11,25 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Documentation
+
+**The plan through 1.50.** `docs/plan-1.41-1.50.md` sets out the next arc —
+ten releases, one thesis. Through 1.40 the loop became complete and stayed
+inert: every command waits for a human to type something, so nobody runs it
+on the afternoon a retry loop burned a quarter of the month, and the agent
+spending the money has no way to ask what it costs or whether there is
+budget left. The arc turns Trazum from a tool you run into something that
+runs — connector, store, watch, a local answer in milliseconds, an agent's
+spend guard, five-minute onboarding, the bill in the browser, cost review in
+CI, one live measured budget every surface reads, and finally the
+interchange format and stability guarantees other tools can build on.
+
+Four rules are added to the doctrine for the new territory, because acting
+on a schedule, over a network, holding credentials, and answering a machine
+each bring a new way to lie: the deterministic core stays free and offline;
+a credential is borrowed, never held; nothing continuous invents a number;
+and a machine reader gets the provenance too, as separate typed fields.
+ROADMAP's "Next" now points at the new arc.
 
 ## 1.40.0 — "The long run"
 
