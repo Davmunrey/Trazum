@@ -61,6 +61,7 @@ ${bold('USAGE')}
   trazum experiment <log> --a <label> --b <label> --min-outcomes <n>
   trazum quality <log> --label <name> --at <iso> [--gate]
   trazum semantic <prompt> [--yes]
+  trazum owners <log>
   trazum ladder <log>
   trazum feedback
   trazum --version
@@ -638,6 +639,12 @@ ${bold('CONFIG FILE')}
     spend     { "maxUsd": 200, "byLabel": { "chat": 40 } } — money budgets for
               "trazum profile", in dollars. A budgeted label with no calls in
               the log is reported as not measured, never as a pass
+    owners    { "patterns": { "payments": ["billing-*"] },
+              "shared": { "search": { "payments": 0.6, "support": 0.4 } },
+              "budgets": { "payments": 400 } } — whose budget each workload
+              lands on. Spend matching no owner is its own line and is NEVER
+              divided between the others; a shared split must sum to 1, and the
+              rule travels with the report so the argument is about the rule
     ladders   { "support": { "tiers": ["claude-haiku-4-5", "claude-opus-5"],
               "escalateOn": ["escalated"] } } — cheap model first, escalate a
               recorded failure to a dearer one. Both fields required.
@@ -1002,6 +1009,35 @@ ${bold('EXAMPLES')}
       `${path} already exists and was left alone. Pass --dry-run to see what would go in it, or --yes to replace it.`,
     existingUnparseable: (path) =>
       `${path} exists and could not be parsed, so nothing was written over it. Fix or move it first.`,
+  },
+
+  owners: {
+    heading: () => 'Whose money',
+    noOwners: () =>
+      'No owners configured. Add "owners" to trazum.config.json to attribute spend, for example {"patterns": {"payments": ["billing-*"]}, "budgets": {"payments": 400}}.',
+    columns: { owner: 'owner', spend: 'spend', budget: 'budget', calls: 'calls' },
+    verdict: (kind) =>
+      kind === 'over' ? 'over' : kind === 'within' ? 'within' : kind === 'not-measured' ? 'not measured' : '\u2014',
+    unallocated: (usd, share, labels) =>
+      `Unallocated: ${usd} (${share} of the bill), from ${labels}.`,
+    neverSpread: () =>
+      'It is not divided between the owners above, and it never will be. Spreading unattributed spend proportionally is the most common lie in cost reporting: it makes every line add up and every team\u2019s number wrong by an amount nobody can see \u2014 hardest on whoever instruments best, because their known spend is largest and they absorb the biggest share of somebody else\u2019s mystery. Claim it with a pattern.',
+    nothingUnallocated: () => 'Every workload in this log has an owner.',
+    sharedHeading: () => 'Shared, by a rule somebody wrote',
+    sharedRule: (label, rule) => `${label}: ${rule}`,
+    problemsHeading: () => 'This ownership config will not do what it looks like it does',
+    problem: (kind, detail) =>
+      kind === 'split-does-not-sum'
+        ? `${detail} \u2014 a split that does not sum to 1 loses money or invents it, silently. That workload is left whole in the unallocated line until this is fixed.`
+        : kind === 'split-names-unknown-owner'
+          ? `${detail} names an owner that "owners.patterns" does not declare.`
+          : kind === 'split-has-one-owner'
+            ? `${detail} is "shared" with one owner \u2014 that is a pattern written the long way, and reading it as a share invites a second owner to be added without the first being adjusted.`
+            : kind === 'negative-share'
+              ? `${detail} has a negative share.`
+              : `${detail} has a budget but no patterns, so nothing can ever land on it.`,
+    notMeasured: (owner) =>
+      `${owner} has a budget and no measured calls. That is NOT under budget \u2014 a team whose logs never arrived passes every budget it has, forever, and a green tick beside their name says the opposite of the truth.`,
   },
 
   semantic: {

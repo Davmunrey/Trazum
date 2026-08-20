@@ -43,11 +43,11 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- 29 commands       MCP server      Next.js     comments on pull requests
+ 30 commands       MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
-## The twenty-nine commands
+## The thirty commands
 
 | Command | What it answers |
 |---|---|
@@ -77,6 +77,7 @@ never runs unless you ask.
 | [`trazum experiment`](#two-arms-on-real-traffic-trazum-experiment) | Which of two arms is better on real traffic? *A winner only when there is one.* |
 | [`trazum quality`](#the-gate-that-fails-a-build-for-quality-trazum-quality) | Did that prompt change quietly make the product worse? *Refuses to blame what it cannot attribute.* |
 | [`trazum semantic`](#the-findings-a-dictionary-cannot-see-trazum-semantic) | Does this prompt say the same thing twice, or contradict itself? *The model proposes; the checker disposes.* |
+| [`trazum owners`](#whose-money-trazum-owners) | Whose budget does this land on? *The unallocated is never spread.* |
 | [`trazum conform`](#building-on-the-format-trazum-conform) | Does the document my tool emits conform, and what will it not be able to answer? |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
 | [`trazum feedback`](#telling-us-something-trazum-feedback) | Where do I report this, and what will you ask me for? *Sends nothing.* |
@@ -187,8 +188,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of twenty-nine commands — [the table
-above](#the-twenty-nine-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of thirty commands — [the table
+above](#the-thirty-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -338,7 +339,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other twenty-eight commands, each with its own section below:
+The other twenty-nine commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -1465,6 +1466,53 @@ reason.
 and no model — true since 0.1.0, and this does not change it. That is why the
 verification lives in `@trazum/core`, which has no network, and only the call
 lives in the CLI.
+
+### Whose money: `trazum owners`
+
+The fleet answered *which service*. This answers **whose budget** — the question
+that decides whether anything on the list gets done. A report saying "the bill is
+$40,000 and here is $9,000 of savings" is read by four people who each assume it
+is one of the other three's problem.
+
+```
+Whose money
+
+  owner      spend  budget  calls
+  payments  $62.00   $8.00     62  over
+  support   $38.00  $20.00     38  over
+  platform      $0  $10.00      0  not measured
+
+  ! platform has a budget and no measured calls. That is NOT under budget — a
+    team whose logs never arrived passes every budget it has, forever, and a
+    green tick beside their name says the opposite of the truth.
+
+  ! Unallocated: $15.00 (13.0% of the bill), from internal-eval.
+    It is not divided between the owners above, and it never will be.
+
+  Shared, by a rule somebody wrote
+    search: payments 60.0%, support 40.0%
+```
+
+**The unallocated is its own line, and it is never spread.** Splitting
+unattributed spend proportionally across the owners you *do* know is the single
+most common lie in cost reporting. It is attractive because it makes every line
+add up. What it does is make **every team's figure wrong**, by an amount nobody
+can see, in a direction nobody can check — and it does it hardest to whoever
+instruments best, because their known spend is largest and they absorb the
+biggest share of somebody else's mystery.
+
+The labels in it are named, because "unallocated: $15" invites somebody to divide
+it and "unallocated: $15 from `internal-eval`" invites somebody to claim it.
+
+**Shared cost is declared, and the rule travels with the report.** That is the
+whole design: the argument then happens about *the rule* — "why is search 60/40?"
+— rather than about the number, which is an argument nobody can win because
+nobody can see where it came from. A split that does not sum to 1 is a
+configuration error, not a rounding problem, and the workload goes to unallocated
+**whole** rather than having 90% of it applied and 10% vanish.
+
+**An owner with no measured data is not an owner under budget** — the
+`fleetBudgetMissing` refusal from 1.37, applied to people.
 
 ### In the path of the call: `trazum gateway`
 

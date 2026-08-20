@@ -1,6 +1,7 @@
 import { BASELINE_FILENAME } from './baseline.js';
 import type { OutcomeVocabulary } from './outcome.js';
 import type { LadderPolicy } from './ladder.js';
+import type { OwnersConfig } from './owners.js';
 import { mostSpecificMatch } from './glob.js';
 import type { PricingCatalogue } from './pricing.js';
 import { isLocale } from './i18n/index.js';
@@ -246,6 +247,21 @@ export interface TrazumConfig {
    * traffic to a more expensive model on the strength of that guess, forever.
    */
   ladders?: Record<string, LadderPolicy>;
+  /**
+   * Whose money: label patterns per owner, declared shared splits, and
+   * per-owner budgets.
+   *
+   * **The unallocated is never spread.** Spend matching no owner stays its own
+   * line until somebody claims it — splitting it proportionally is the single
+   * most common lie in cost reporting, and it makes every team's figure wrong
+   * by an amount nobody can see, hitting hardest the team whose instrumentation
+   * is cleanest.
+   *
+   * A shared workload is split by a rule written here, and the rule travels
+   * with the report so the argument happens about the rule rather than about
+   * the number.
+   */
+  owners?: OwnersConfig;
   /** File extensions directory mode treats as prompts. */
   extensions?: string[];
   /**
@@ -279,6 +295,7 @@ export const CONFIG_KEYS = [
   'pricing',
   'outcomes',
   'ladders',
+  'owners',
 ] as const;
 
 export const CONFIG_BASELINE_KEYS = ['path', 'maxGrowthTokens', 'maxGrowthPct'] as const;
@@ -292,6 +309,8 @@ export const CONFIG_STORE_KEYS = ['keepDays'] as const;
 export const CONFIG_OUTCOME_KEYS = ['values', 'success'] as const;
 
 export const CONFIG_LADDER_KEYS = ['tiers', 'escalateOn'] as const;
+
+export const CONFIG_OWNERS_KEYS = ['patterns', 'shared', 'budgets'] as const;
 
 /**
  * The gates a waiver can silence. The list is closed on purpose: a waiver
@@ -616,6 +635,88 @@ function parseSources(raw: unknown, source: string): Record<string, string[]> {
  * declared a *success* are all checked by `validateLadder`, which needs the
  * price catalogue and the vocabulary that this function does not have.
  */
+/**
+ * `owners` — whose budget each workload lands on.
+ *
+ * Shape only. Whether a shared split sums to one, names an owner that exists,
+ * or has a single owner is checked by `validateOwners`, which reports all of
+ * it at once rather than failing on the first — a chargeback config fixed one
+ * error per run is one somebody abandons halfway and then never trusts.
+ */
+function parseOwners(entry: unknown, source: string): OwnersConfig {
+  if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+    throw new ConfigError(
+      `"owners" in ${source} must be an object with "patterns", for example {"patterns": {"payments": ["billing-*"]}}.`,
+      source,
+    );
+  }
+  const raw = entry as Record<string, unknown>;
+  rejectUnknownKeys(raw, CONFIG_OWNERS_KEYS, source, 'owners.');
+
+  if (raw.patterns === undefined) {
+    throw new ConfigError(`"owners.patterns" in ${source} is required.`, source);
+  }
+  if (typeof raw.patterns !== 'object' || raw.patterns === null || Array.isArray(raw.patterns)) {
+    throw new ConfigError(`"owners.patterns" in ${source} must be an object keyed by owner.`, source);
+  }
+  const patterns: Record<string, string[]> = {};
+  for (const [owner, globs] of Object.entries(raw.patterns as Record<string, unknown>)) {
+    if (
+      !Array.isArray(globs) ||
+      globs.length === 0 ||
+      globs.some((glob) => typeof glob !== 'string' || glob.trim() === '')
+    ) {
+      throw new ConfigError(
+        `"owners.patterns["${owner}"]" in ${source} must be a non-empty array of label patterns.`,
+        source,
+      );
+    }
+    patterns[owner] = globs as string[];
+  }
+
+  const config: OwnersConfig = { patterns };
+
+  if (raw.shared !== undefined) {
+    if (typeof raw.shared !== 'object' || raw.shared === null || Array.isArray(raw.shared)) {
+      throw new ConfigError(`"owners.shared" in ${source} must be an object keyed by label.`, source);
+    }
+    const shared: Record<string, Record<string, number>> = {};
+    for (const [label, split] of Object.entries(raw.shared as Record<string, unknown>)) {
+      if (typeof split !== 'object' || split === null || Array.isArray(split)) {
+        throw new ConfigError(`"owners.shared["${label}"]" in ${source} must be an object of owner to share.`, source);
+      }
+      const parsed: Record<string, number> = {};
+      for (const [owner, share] of Object.entries(split as Record<string, unknown>)) {
+        if (typeof share !== 'number' || !Number.isFinite(share)) {
+          throw new ConfigError(
+            `"owners.shared["${label}"]["${owner}"]" in ${source} must be a number between 0 and 1.`,
+            source,
+          );
+        }
+        parsed[owner] = share;
+      }
+      shared[label] = parsed;
+    }
+    config.shared = shared;
+  }
+
+  if (raw.budgets !== undefined) {
+    if (typeof raw.budgets !== 'object' || raw.budgets === null || Array.isArray(raw.budgets)) {
+      throw new ConfigError(`"owners.budgets" in ${source} must be an object of owner to dollars.`, source);
+    }
+    const budgets: Record<string, number> = {};
+    for (const [owner, usd] of Object.entries(raw.budgets as Record<string, unknown>)) {
+      if (typeof usd !== 'number' || !Number.isFinite(usd) || usd <= 0) {
+        throw new ConfigError(`"owners.budgets["${owner}"]" in ${source} must be a positive number of dollars.`, source);
+      }
+      budgets[owner] = usd;
+    }
+    config.budgets = budgets;
+  }
+
+  return config;
+}
+
 function parseLadders(entry: unknown, source: string): Record<string, LadderPolicy> {
   if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
     throw new ConfigError(
@@ -946,6 +1047,7 @@ export function parseConfig(raw: string, source = CONFIG_FILENAME): TrazumConfig
   if (document.store !== undefined) config.store = parseStore(document.store, source);
   if (document.waive !== undefined) config.waive = parseWaive(document.waive, source);
   if (document.ladders !== undefined) config.ladders = parseLadders(document.ladders, source);
+  if (document.owners !== undefined) config.owners = parseOwners(document.owners, source);
   if (document.outcomes !== undefined) {
     config.outcomes = parseOutcomes(document.outcomes, source);
   }

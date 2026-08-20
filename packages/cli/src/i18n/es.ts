@@ -48,6 +48,7 @@ ${bold('USO')}
   trazum experiment <log> --a <label> --b <label> --min-outcomes <n>
   trazum quality <log> --label <name> --at <iso> [--gate]
   trazum semantic <prompt> [--yes]
+  trazum owners <log>
   trazum ladder <log>
   trazum feedback
   trazum --version
@@ -658,6 +659,12 @@ ${bold('FICHERO DE CONFIGURACIÓN')}
     spend     { "maxUsd": 200, "byLabel": { "chat": 40 } } — presupuestos en
               dólares para "trazum profile". Una etiqueta con presupuesto y sin
               llamadas se informa como no medida, nunca como aprobada
+    owners    { "patterns": { "payments": ["billing-*"] },
+              "shared": { "search": { "payments": 0.6, "support": 0.4 } },
+              "budgets": { "payments": 400 } } — de quién es el presupuesto de
+              cada carga. El gasto sin propietario es su propia línea y NUNCA se
+              reparte entre los demás; un reparto compartido debe sumar 1, y la
+              regla viaja con el informe para que se discuta la regla
     ladders   { "support": { "tiers": ["claude-haiku-4-5", "claude-opus-5"],
               "escalateOn": ["escalated"] } } — modelo barato primero, escalar
               un fallo registrado a uno más caro. Los dos campos obligatorios.
@@ -1038,6 +1045,35 @@ ${bold('EJEMPLOS')}
       `${path} ya existe y se dejó intacto. Pasa --dry-run para ver qué iría dentro, o --yes para reemplazarlo.`,
     existingUnparseable: (path) =>
       `${path} existe y no se pudo interpretar, así que no se escribió nada encima. Arréglalo o muévelo primero.`,
+  },
+
+  owners: {
+    heading: () => 'De qui\u00e9n es el dinero',
+    noOwners: () =>
+      'No hay propietarios configurados. A\u00f1ade "owners" a trazum.config.json para atribuir gasto, por ejemplo {"patterns": {"payments": ["billing-*"]}, "budgets": {"payments": 400}}.',
+    columns: { owner: 'propietario', spend: 'gasto', budget: 'presupuesto', calls: 'llamadas' },
+    verdict: (kind) =>
+      kind === 'over' ? 'pasado' : kind === 'within' ? 'dentro' : kind === 'not-measured' ? 'sin medir' : '\u2014',
+    unallocated: (usd, share, labels) =>
+      `Sin asignar: ${usd} (${share} de la factura), de ${labels}.`,
+    neverSpread: () =>
+      'No se reparte entre los propietarios de arriba, y nunca se har\u00e1. Repartir el gasto sin atribuir de forma proporcional es la mentira m\u00e1s com\u00fan en informes de coste: hace que todas las l\u00edneas cuadren y que el n\u00famero de cada equipo est\u00e9 mal en una cantidad que nadie puede ver \u2014 y castiga m\u00e1s a quien mejor instrumenta, porque su gasto conocido es el mayor y absorbe la mayor parte del misterio ajeno. Recl\u00e1malo con un patr\u00f3n.',
+    nothingUnallocated: () => 'Todas las cargas de este log tienen propietario.',
+    sharedHeading: () => 'Compartido, por una regla que escribi\u00f3 alguien',
+    sharedRule: (label, rule) => `${label}: ${rule}`,
+    problemsHeading: () => 'Esta configuraci\u00f3n de propiedad no va a hacer lo que parece',
+    problem: (kind, detail) =>
+      kind === 'split-does-not-sum'
+        ? `${detail} \u2014 un reparto que no suma 1 pierde dinero o lo inventa, en silencio. Esa carga se deja entera en la l\u00ednea sin asignar hasta que se arregle.`
+        : kind === 'split-names-unknown-owner'
+          ? `${detail} nombra un propietario que "owners.patterns" no declara.`
+          : kind === 'split-has-one-owner'
+            ? `${detail} est\u00e1 "compartido" con un solo propietario \u2014 eso es un patr\u00f3n escrito largo, y leerlo como reparto invita a a\u00f1adir un segundo sin ajustar el primero.`
+            : kind === 'negative-share'
+              ? `${detail} tiene un reparto negativo.`
+              : `${detail} tiene presupuesto pero no patrones, as\u00ed que nunca podr\u00e1 caerle nada.`,
+    notMeasured: (owner) =>
+      `${owner} tiene presupuesto y ninguna llamada medida. Eso NO es estar dentro del presupuesto \u2014 un equipo cuyos logs nunca llegaron pasa todos sus presupuestos, siempre, y un tic verde junto a su nombre dice lo contrario de la verdad.`,
   },
 
   semantic: {

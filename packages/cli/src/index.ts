@@ -40,6 +40,7 @@ import {
   budgetPositions,
   conform,
   BREAK_EVEN_BAND,
+  allocate,
   runExperiment,
   qualityGate,
   semanticPassCost,
@@ -589,6 +590,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   experiment: ['a', 'b', 'min-outcomes', 'pricing', 'pricing-live'],
   quality: ['label', 'at', 'gate', 'pricing', 'pricing-live'],
   semantic: ['yes', 'model', 'pricing', 'pricing-live'],
+  owners: ['pricing', 'pricing-live', 'since', 'until'],
   where: [],
   rules: [],
   blame: ['limit', 'model', 'calls', 'output-tokens', 'batch', 'prompt', 'markdown-out'],
@@ -2731,6 +2733,146 @@ async function commandSemantic(
 
   console.log(`  ${c.dim(wrap(t.semantic.disposes(), 74, '  '))}`);
   console.log(`  ${c.dim(wrap(t.semantic.optIn(), 74, '  '))}`);
+  console.log();
+}
+
+/**
+ * `trazum owners <log>` — whose budget each workload lands on.
+ *
+ * The fleet answered *which service* in 1.37. This answers *whose money*,
+ * which is the question that decides whether anything on the list gets done: a
+ * report saying "the bill is $40,000 and here is $9,000 of savings" is read by
+ * four people who each assume it is one of the other three's problem.
+ *
+ * **The unallocated is its own line and is never spread.** See `owners.ts` for
+ * why that is worth breaking a module over.
+ */
+async function commandOwners(
+  args: Args,
+  config: TrazumConfig,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
+  const path = args.positional[0];
+  if (path === undefined) throw new Error(t.errors.missingInputFile());
+
+  console.log();
+  console.log(c.bold(t.owners.heading()));
+  if (config.owners === undefined) {
+    console.log(`  ${c.dim(wrap(t.owners.noOwners(), 74, '  '))}`);
+    console.log();
+    return;
+  }
+
+  const report = profileUsage(await readUsageLog(path, t), { catalogue: pricing });
+  const result = allocate(
+    report.byLabel.map((entry) => ({
+      label: entry.label,
+      usd: entry.breakdown.totalUsd,
+      calls: entry.breakdown.calls,
+    })),
+    config.owners,
+  );
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const pct = (value: number): string => `${(value * 100).toFixed(1)}%`;
+
+  /**
+   * Problems first, before any figure.
+   *
+   * A split that does not sum to one sends a whole workload to unallocated,
+   * and a reader who saw the table before the explanation would go looking for
+   * a bug in their logs.
+   */
+  if (result.problems.length > 0) {
+    console.log();
+    console.log(`  ${c.red('✗')} ${c.bold(t.owners.problemsHeading())}`);
+    for (const problem of result.problems) {
+      const detail =
+        problem.kind === 'budget-for-unknown-owner'
+          ? problem.owner
+          : problem.kind === 'split-does-not-sum'
+            ? `"${problem.label}" sums to ${problem.total}`
+            : problem.kind === 'negative-share' || problem.kind === 'split-names-unknown-owner'
+              ? `"${problem.label}" → ${problem.owner}`
+              : `"${problem.label}"`;
+      console.log(`      ${wrap(t.owners.problem(problem.kind, detail), 70, '      ')}`);
+    }
+    process.exitCode = 1;
+  }
+
+  console.log();
+  const col = t.owners.columns;
+  const rows = result.owners.map((line) => ({
+    owner: line.owner,
+    spend: formatUsd(line.usd),
+    budget: line.budgetUsd === null ? '—' : formatUsd(line.budgetUsd),
+    calls: n(Math.round(line.calls)),
+    verdict: t.owners.verdict(line.verdict),
+    kind: line.verdict,
+  }));
+  const w = {
+    owner: Math.max(...rows.map((r) => r.owner.length), col.owner.length),
+    spend: Math.max(...rows.map((r) => r.spend.length), col.spend.length),
+    budget: Math.max(...rows.map((r) => r.budget.length), col.budget.length),
+    calls: Math.max(...rows.map((r) => r.calls.length), col.calls.length),
+  };
+  console.log(
+    c.dim(
+      `  ${col.owner.padEnd(w.owner)}  ${col.spend.padStart(w.spend)}  ` +
+        `${col.budget.padStart(w.budget)}  ${col.calls.padStart(w.calls)}`,
+    ),
+  );
+  for (const row of rows) {
+    const tint = row.kind === 'over' ? c.red : row.kind === 'not-measured' ? c.yellow : c.dim;
+    console.log(
+      `  ${row.owner.padEnd(w.owner)}  ${row.spend.padStart(w.spend)}  ` +
+        `${row.budget.padStart(w.budget)}  ${row.calls.padStart(w.calls)}  ${tint(row.verdict)}`,
+    );
+  }
+
+  // The 1.37 refusal, applied to people, said in full for each owner it hits.
+  for (const line of result.owners) {
+    if (line.verdict === 'not-measured') {
+      console.log();
+      console.log(`  ${c.yellow('!')} ${wrap(t.owners.notMeasured(line.owner), 74, '    ')}`);
+    }
+  }
+
+  console.log();
+  if (result.unallocated.usd > 0) {
+    console.log(
+      `  ${c.yellow('!')} ${wrap(
+        t.owners.unallocated(
+          formatUsd(result.unallocated.usd),
+          report.total.totalUsd > 0 ? pct(result.unallocated.usd / report.total.totalUsd) : '—',
+          result.unallocated.labels.slice(0, 6).join(', '),
+        ),
+        74,
+        '    ',
+      )}`,
+    );
+    console.log(`    ${c.dim(wrap(t.owners.neverSpread(), 72, '    '))}`);
+  } else {
+    console.log(`  ${c.dim(t.owners.nothingUnallocated())}`);
+  }
+
+  /**
+   * The shared rules, printed with the report.
+   *
+   * The whole design: the argument then happens about the rule — "why is
+   * search 60/40?" — rather than about the number, which is an argument nobody
+   * can win because nobody can see where the number came from.
+   */
+  if (result.sharedApplied.length > 0) {
+    console.log();
+    console.log(`  ${c.bold(t.owners.sharedHeading())}`);
+    for (const { label, split } of result.sharedApplied) {
+      const rule = Object.entries(split)
+        .map(([owner, share]) => `${owner} ${pct(share)}`)
+        .join(', ');
+      console.log(`    ${c.dim(t.owners.sharedRule(label, rule))}`);
+    }
+  }
   console.log();
 }
 
@@ -8933,6 +9075,9 @@ async function main(): Promise<void> {
       break;
     case 'models':
       commandModels(t, pricing);
+      break;
+    case 'owners':
+      await commandOwners(args, config, pricing, t);
       break;
     case 'semantic':
       await commandSemantic(args, config, pricing, t);
