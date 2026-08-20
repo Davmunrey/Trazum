@@ -11,6 +11,18 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.51.1 — "A front door"
+
+**Nothing installable changed.** The three tarballs differ from 1.51.0 in their
+version number and nothing else: no source file moved, no output changed, and
+`npm install` gives you exactly what it gave you yesterday. This release exists
+because the reorganisation below needs a number — `RELEASES.md` and `ROADMAP.md`
+are indexed by version, and work that stays under `Unreleased` is work neither
+of the two documents a reader consults will ever mention. Said here rather than
+left for somebody to discover by diffing.
+
 ### Added
 
 **A documentation index: `docs/README.md`.** Fifteen documents under `docs/` and
