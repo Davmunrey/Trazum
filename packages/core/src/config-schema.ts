@@ -1,5 +1,6 @@
 import { BASELINE_FILENAME } from './baseline.js';
 import type { OutcomeVocabulary } from './outcome.js';
+import type { LadderPolicy } from './ladder.js';
 import { mostSpecificMatch } from './glob.js';
 import type { PricingCatalogue } from './pricing.js';
 import { isLocale } from './i18n/index.js';
@@ -229,6 +230,22 @@ export interface TrazumConfig {
    * as a typo, not as a shift in the success rate.
    */
   outcomes?: OutcomeVocabulary;
+  /**
+   * Per-workload escalation ladders: cheap model first, escalate on a recorded
+   * failure.
+   *
+   * Priced honestly rather than sold as a saving. An escalation pays **twice**
+   * — the cheap attempt is not refunded — so a ladder only saves below a
+   * specific escalation rate, and `trazum ladder` states that rate beside the
+   * measured one. A ladder recommended without that number is the same
+   * head-arithmetic error `plan` exists to kill.
+   *
+   * `escalateOn` names recorded outcome values, never inferred conditions.
+   * This is a control loop rather than a report: a report built on a guess
+   * prints a wrong number, and a control loop built on a guess sends real
+   * traffic to a more expensive model on the strength of that guess, forever.
+   */
+  ladders?: Record<string, LadderPolicy>;
   /** File extensions directory mode treats as prompts. */
   extensions?: string[];
   /**
@@ -261,6 +278,7 @@ export const CONFIG_KEYS = [
   'extensions',
   'pricing',
   'outcomes',
+  'ladders',
 ] as const;
 
 export const CONFIG_BASELINE_KEYS = ['path', 'maxGrowthTokens', 'maxGrowthPct'] as const;
@@ -272,6 +290,8 @@ export const CONFIG_WAIVE_KEYS = ['gate', 'reason', 'until'] as const;
 export const CONFIG_STORE_KEYS = ['keepDays'] as const;
 
 export const CONFIG_OUTCOME_KEYS = ['values', 'success'] as const;
+
+export const CONFIG_LADDER_KEYS = ['tiers', 'escalateOn'] as const;
 
 /**
  * The gates a waiver can silence. The list is closed on purpose: a waiver
@@ -588,6 +608,67 @@ function parseSources(raw: unknown, source: string): Record<string, string[]> {
  * and a typo in it is a silent, permanent distortion of a number people make
  * decisions on.
  */
+/**
+ * `ladders` — per-workload escalation policies.
+ *
+ * Only shape is checked here. Whether the tiers go cheapest-first, whether the
+ * escalation values exist in the vocabulary, and whether one of them is
+ * declared a *success* are all checked by `validateLadder`, which needs the
+ * price catalogue and the vocabulary that this function does not have.
+ */
+function parseLadders(entry: unknown, source: string): Record<string, LadderPolicy> {
+  if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
+    throw new ConfigError(
+      `"ladders" in ${source} must be an object keyed by label, for example {"support": {"tiers": ["claude-haiku-4-5", "claude-opus-5"], "escalateOn": ["escalated"]}}.`,
+      source,
+    );
+  }
+  const ladders: Record<string, LadderPolicy> = {};
+  for (const [label, raw] of Object.entries(entry as Record<string, unknown>)) {
+    if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+      throw new ConfigError(`"ladders["${label}"]" in ${source} must be an object.`, source);
+    }
+    const policy = raw as Record<string, unknown>;
+    rejectUnknownKeys(policy, CONFIG_LADDER_KEYS, source, `ladders["${label}"].`);
+    const list = (value: unknown, key: string): string[] => {
+      if (
+        !Array.isArray(value) ||
+        value.length === 0 ||
+        value.some((item) => typeof item !== 'string' || item.trim() === '')
+      ) {
+        throw new ConfigError(
+          `"ladders["${label}"].${key}" in ${source} must be a non-empty array of strings.`,
+          source,
+        );
+      }
+      return value as string[];
+    };
+    if (policy.tiers === undefined) {
+      throw new ConfigError(`"ladders["${label}"].tiers" in ${source} is required.`, source);
+    }
+    /**
+     * Required, and not defaulted to "anything that is not a success".
+     *
+     * That default is tempting and wrong: it would make every non-success
+     * value an escalation trigger, so adding a new outcome value to the
+     * vocabulary would silently start sending traffic to a more expensive
+     * model. A control loop must not change behaviour because somebody
+     * documented a new word.
+     */
+    if (policy.escalateOn === undefined) {
+      throw new ConfigError(
+        `"ladders["${label}"].escalateOn" in ${source} is required. Name the recorded outcome values that should escalate — defaulting to "anything that is not a success" would mean adding a word to your vocabulary silently starts sending traffic to a more expensive model.`,
+        source,
+      );
+    }
+    ladders[label] = {
+      tiers: list(policy.tiers, 'tiers'),
+      escalateOn: list(policy.escalateOn, 'escalateOn'),
+    };
+  }
+  return ladders;
+}
+
 function parseOutcomes(entry: unknown, source: string): OutcomeVocabulary {
   if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
     throw new ConfigError(
@@ -864,6 +945,7 @@ export function parseConfig(raw: string, source = CONFIG_FILENAME): TrazumConfig
   if (document.sources !== undefined) config.sources = parseSources(document.sources, source);
   if (document.store !== undefined) config.store = parseStore(document.store, source);
   if (document.waive !== undefined) config.waive = parseWaive(document.waive, source);
+  if (document.ladders !== undefined) config.ladders = parseLadders(document.ladders, source);
   if (document.outcomes !== undefined) {
     config.outcomes = parseOutcomes(document.outcomes, source);
   }

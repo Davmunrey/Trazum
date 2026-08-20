@@ -58,6 +58,7 @@ ${bold('USAGE')}
   trazum models
   trazum rules
   trazum gateway <anthropic|openai> --on-cannot-tell <fail-open|fail-closed>
+  trazum ladder <log>
   trazum feedback
   trazum --version
 
@@ -597,6 +598,12 @@ ${bold('CONFIG FILE')}
     spend     { "maxUsd": 200, "byLabel": { "chat": 40 } } — money budgets for
               "trazum profile", in dollars. A budgeted label with no calls in
               the log is reported as not measured, never as a pass
+    ladders   { "support": { "tiers": ["claude-haiku-4-5", "claude-opus-5"],
+              "escalateOn": ["escalated"] } } — cheap model first, escalate a
+              recorded failure to a dearer one. Both fields required.
+              "trazum ladder <log>" prints the break-even escalation rate
+              beside the measured one: an escalation pays twice, so above that
+              rate the ladder costs more than never having built it
     outcomes  { "values": ["resolved", "escalated"], "success": ["resolved"] } —
               your own vocabulary for what happened, and which of it counts as
               a win. Both required: which words mean success is a judgement
@@ -955,6 +962,47 @@ ${bold('EXAMPLES')}
       `${path} already exists and was left alone. Pass --dry-run to see what would go in it, or --yes to replace it.`,
     existingUnparseable: (path) =>
       `${path} exists and could not be parsed, so nothing was written over it. Fix or move it first.`,
+  },
+
+  ladder: {
+    heading: () => 'Escalation ladders',
+    noLadders: () =>
+      'No ladders configured. A ladder sends a workload to a cheap model first and escalates a recorded failure to a dearer one — add "ladders" to trazum.config.json, for example {"support": {"tiers": ["claude-haiku-4-5", "claude-opus-5"], "escalateOn": ["escalated"]}}.',
+    workload: (label) => label,
+    arithmetic: (cheap, dear, breakEven) =>
+      `${cheap} a call cheap, ${dear} dear. Break-even escalation rate: ${breakEven}.`,
+    measured: (rate, escalations, calls) =>
+      `Measured: ${rate} (${escalations} of ${calls} calls escalated).`,
+    saving: (delta) => `Saving ${delta} a call against never having built it.`,
+    costing: (delta) =>
+      `Costing ${delta} a call MORE than never having built it. Escalating above the break-even rate means paying for the cheap attempt and the dear one on most calls.`,
+    atBreakEven: (band) =>
+      `Within ${band} of break-even, so no sign is claimed. Inside that band the answer flips on ordinary week-to-week variation, and "saving" on Monday and "costing" on Thursday from the same policy teaches a reader to ignore the figure.`,
+    cannotTell: (why, calls) =>
+      why === 'too-few-calls'
+        ? `Cannot tell yet: ${calls} calls carried a declared outcome, and a rate over that few moves more from one more call than from anything you could do about it.`
+        : why === 'no-outcomes-recorded'
+          ? 'Cannot tell: nothing in this log recorded an outcome for this workload, so there is no escalation rate to compare against.'
+          : why === 'tier-unpriced'
+            ? 'Cannot tell: one of the tiers is not in the price catalogue, so the break-even rate cannot be computed.'
+            : 'Cannot tell: this ladder declares no escalation values.',
+    problemsHeading: (label) => `${label} — this ladder will not do what it looks like it does`,
+    problem: (kind, detail) =>
+      kind === 'escalate-on-a-success'
+        ? `escalateOn names "${detail}", which "outcomes.success" declares a SUCCESS. This ladder pays twice for work that already worked, on every call, while looking exactly like a cost-saving measure.`
+        : kind === 'escalate-on-undeclared'
+          ? `escalateOn names "${detail}", which "outcomes.values" does not declare. This ladder never fires, silently.`
+          : kind === 'tiers-not-cheapest-first'
+            ? `"${detail}" is cheaper than the tier before it. That is not a ladder; it is a routing rule that escalates to something cheaper and reports a saving for it.`
+            : kind === 'duplicate-tier'
+              ? `"${detail}" appears twice in tiers.`
+              : kind === 'unknown-model'
+                ? `"${detail}" is not in the price catalogue.`
+                : `a ladder needs at least two tiers; this one has ${detail}.`,
+    theDoubleSpend: () =>
+      'An escalation pays twice: the cheap attempt is not refunded. So a ladder saves money only below its break-even escalation rate, and above it costs more than never having built one — which is why the rate is printed beside the measurement rather than left to be worked out in somebody\u2019s head.',
+    notExecuted: () =>
+      'Trazum does not run the escalation. A ladder escalates after a failure is known, which is after the answer came back and usually after something downstream judged it, so the retry belongs in your own loop. What is here is the policy and the arithmetic that says whether the policy is worth running.',
   },
 
   gateway: {

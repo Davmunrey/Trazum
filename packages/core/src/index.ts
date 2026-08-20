@@ -51,6 +51,21 @@ export { verifyPlan } from './verify.js';
 export { buildHistory, storedReportFrom, MIN_RUN } from './history.js';
 export { outcomeReport, judgeOutcome, OUTCOME_UNLOCKS } from './outcome.js';
 export {
+  ladderArithmetic,
+  ladderPosition,
+  validateLadder,
+  MIN_CALLS_FOR_LADDER,
+  BREAK_EVEN_BAND,
+} from './ladder.js';
+export type {
+  LadderArithmetic,
+  LadderPolicy,
+  LadderPosition,
+  LadderProblem,
+  LadderUnknown,
+  LadderVerdict,
+} from './ladder.js';
+export {
   perOutcome,
   rankPerOutcome,
   MIN_OUTCOMES_FOR_RATE,

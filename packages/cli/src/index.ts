@@ -39,6 +39,9 @@ import {
   DEFAULT_USAGE,
   budgetPositions,
   conform,
+  BREAK_EVEN_BAND,
+  ladderPosition,
+  validateLadder,
   outcomeReport,
   rankPerOutcome,
   FAILURE_POLICIES,
@@ -570,6 +573,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   conform: ['contract', 'json'],
   feedback: [],
   gateway: ['on-cannot-tell', 'port', 'socket', 'pricing', 'pricing-live'],
+  ladder: ['pricing', 'pricing-live', 'since', 'until', 'label'],
   where: [],
   rules: [],
   blame: ['limit', 'model', 'calls', 'output-tokens', 'batch', 'prompt', 'markdown-out'],
@@ -2188,6 +2192,136 @@ async function commandGateway(
   );
   console.log(`  ${c.dim(wrap(t.gateway.policy(policyFlag), 74, '    '))}`);
   console.log();
+}
+
+/**
+ * `trazum ladder <log>` — is the ladder saving money, or is it a bill?
+ *
+ * The one number this command exists to print is the **break-even escalation
+ * rate**. "We route to the cheap model first" describes a policy that saves
+ * money and a policy that costs money equally well; only the rate separates
+ * them, and nobody works it out in their head because the shape of the
+ * arithmetic is not obvious — an escalation pays twice, since the cheap
+ * attempt is not refunded.
+ */
+async function commandLadder(
+  args: Args,
+  config: TrazumConfig,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
+  const path = args.positional[0];
+  if (path === undefined) {
+    throw new Error(t.errors.missingInputFile());
+  }
+  const report = profileUsage(await readUsageLog(path, t), { catalogue: pricing });
+  const ladders = config.ladders ?? {};
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const pct = (value: number): string => `${(value * 100).toFixed(1)}%`;
+
+  console.log();
+  console.log(c.bold(t.ladder.heading()));
+  if (Object.keys(ladders).length === 0) {
+    console.log(`  ${c.dim(wrap(t.ladder.noLadders(), 74, '  '))}`);
+    console.log();
+    return;
+  }
+  console.log(`  ${c.dim(wrap(t.ladder.theDoubleSpend(), 74, '  '))}`);
+  console.log();
+
+  const vocabulary = config.outcomes ?? null;
+  let anyProblem = false;
+
+  for (const [label, policy] of Object.entries(ladders)) {
+    /**
+     * Validated before it is measured, and loudly.
+     *
+     * A ladder that escalates on a value declared a *success* pays twice for
+     * work that already worked, on every call, while looking exactly like a
+     * cost-saving measure in the config. Printing its measured position first
+     * would bury that under a number.
+     */
+    const problems = validateLadder(policy, vocabulary, pricing);
+    if (problems.length > 0) {
+      anyProblem = true;
+      console.log(`  ${c.red('✗')} ${c.bold(t.ladder.problemsHeading(label))}`);
+      for (const problem of problems) {
+        const detail =
+          'value' in problem
+            ? problem.value
+            : 'model' in problem
+              ? problem.model
+              : String(problem.tiers);
+        console.log(`      ${wrap(t.ladder.problem(problem.kind, detail), 70, '      ')}`);
+      }
+      console.log();
+      continue;
+    }
+
+    const slice = report.outcomeTallyByLabel.find((entry) => entry.label === label);
+    const breakdown = report.byLabel.find((entry) => entry.label === label);
+    /**
+     * The shape of the work comes from the measured calls, so the break-even
+     * rate is priced against what this workload actually sends rather than
+     * against a token count somebody guessed at.
+     */
+    const calls = breakdown?.breakdown.calls ?? 0;
+    const shape =
+      breakdown === undefined || calls === 0
+        ? { inputTokens: 0, outputTokens: 0 }
+        : {
+            inputTokens: Math.round(
+              (breakdown.breakdown.inputTokens +
+                breakdown.breakdown.cacheReadTokens +
+                breakdown.breakdown.cacheWriteTokens) /
+                calls,
+            ),
+            outputTokens: Math.round(breakdown.breakdown.outputTokens / calls),
+          };
+
+    const empty = { byValue: [], recorded: 0, parsed: 0, unrecordedUsd: 0 };
+    const position = ladderPosition(policy, slice?.tally ?? empty, shape, vocabulary, pricing);
+
+    console.log(`  ${c.bold(t.ladder.workload(label))}  ${c.dim(policy.tiers.join(' → '))}`);
+    console.log(
+      `    ${c.dim(
+        t.ladder.arithmetic(
+          formatUsd(position.arithmetic.cheapUsd),
+          formatUsd(position.arithmetic.dearUsd),
+          position.arithmetic.breakEvenRate === null ? '—' : pct(position.arithmetic.breakEvenRate),
+        ),
+      )}`,
+    );
+
+    if (position.verdict === 'cannot-tell') {
+      console.log(
+        `    ${c.yellow('?')} ${wrap(t.ladder.cannotTell(position.unknown ?? '', n(position.calls)), 70, '      ')}`,
+      );
+    } else {
+      console.log(
+        `    ${t.ladder.measured(pct(position.measuredRate ?? 0), n(position.escalations), n(position.calls))}`,
+      );
+      const delta = formatUsd(Math.abs(position.deltaUsdPerCall ?? 0));
+      if (position.verdict === 'saving') {
+        console.log(`    ${c.green('✓')} ${wrap(t.ladder.saving(delta), 70, '      ')}`);
+      } else if (position.verdict === 'costing') {
+        console.log(`    ${c.red('✗')} ${wrap(t.ladder.costing(delta), 70, '      ')}`);
+      } else {
+        console.log(`    ${c.dim('·')} ${wrap(t.ladder.atBreakEven(pct(BREAK_EVEN_BAND)), 70, '      ')}`);
+      }
+    }
+    console.log();
+  }
+
+  console.log(`  ${c.dim(wrap(t.ladder.notExecuted(), 74, '  '))}`);
+  console.log();
+
+  /**
+   * A misconfigured ladder fails the command, because it is the one finding
+   * here that is wrong *now* rather than a measurement somebody should look
+   * at. Everything else exits 0: this is a survey, like `doctor`.
+   */
+  if (anyProblem) process.exitCode = 1;
 }
 
 function commandModels(t: CliMessages, pricing: PricingCatalogue): void {
@@ -8389,6 +8523,9 @@ async function main(): Promise<void> {
       break;
     case 'models':
       commandModels(t, pricing);
+      break;
+    case 'ladder':
+      await commandLadder(args, config, pricing, t);
       break;
     case 'gateway':
       await commandGateway(args, config, configDir, pricing, t);
