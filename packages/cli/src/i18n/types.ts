@@ -189,6 +189,63 @@ export interface CliMessages {
     wroteTo(path: string): string;
   };
 
+  /**
+   * The first run.
+   *
+   * Every string here is either something that was *found* or something that
+   * was *declined with what would settle it*. There is deliberately no
+   * congratulation copy and no next-steps list: a first run that celebrates
+   * itself before showing a number is the shape people have learned to skip.
+   */
+  init: {
+    heading(): string;
+    host(name: string): string;
+    prompts(count: number): string;
+    noPrompts(): string;
+    sourcesTruncated(cap: number): string;
+    usageFound(kind: string, where: string): string;
+    noUsage(): string;
+    usageUnreadable(where: string, because: string): string;
+
+    configHeading(): string;
+    nothingJustified(): string;
+    whyLocale(locale: string): string;
+    whyExtensions(extensions: string, files: number): string;
+    whyModelMeasured(model: string, sharePct: number): string;
+    whyModelSource(model: string, file: string, line: number): string;
+    whyCalls(perMonth: number, calls: number, days: number): string;
+    whyOutput(average: number, outputTokens: number, calls: number): string;
+    whyCache(rate: number, cacheReadTokens: number, inputTokens: number): string;
+
+    noModelEvidence(): string;
+    modelConflict(files: string): string;
+    modelProviderOnly(provider: string, file: string): string;
+    nothingMeasured(): string;
+    windowTooShort(days: number, minimum: number): string;
+    undatedCalls(undated: number, calls: number): string;
+    cacheNotRecorded(): string;
+    batchOnlyYouKnow(): string;
+    labelsUnprovable(labels: number): string;
+    budgetIsPolicy(): string;
+    budgetIsPolicyMeasured(usd: string, days: number): string;
+
+    findingHeading(): string;
+    noFinding(why: string): string;
+    findingCalls(calls: string, label: string, model: string, days: number): string;
+    findingSpent(usd: string): string;
+    findingRoute(model: string): string;
+    findingBatch(): string;
+    findingTotal(usd: string, days: number): string;
+    findingNext(): string;
+
+    wouldOverwrite(keys: string): string;
+    nothingToWrite(): string;
+    wouldWrite(path: string): string;
+    wrote(path: string): string;
+    existingRefused(path: string): string;
+    existingUnparseable(path: string): string;
+  };
+
   where: {
     hostHeading(): string;
     subscription(host: string): string;

@@ -20,6 +20,7 @@ export const es: CliMessages = {
   help: (d, bold) => `${bold('trazum')} — reduce el coste de tus prompts sin perder lo que piden.
 
 ${bold('USO')}
+  trazum init [dir] [--dry-run | --yes]
   trazum optimize <fichero|-> [opciones]
   trazum check <fichero|dir|-> --max-tokens <n> [opciones]
   trazum baseline [dir] [opciones]
@@ -42,6 +43,22 @@ ${bold('USO')}
   trazum where [fichero]
   trazum models
   trazum rules
+
+${bold('OPCIONES DE init')}
+  --dry-run                   Imprime la configuración que escribiría y no escribe nada.
+  --yes                       Reemplaza un trazum.config.json que ya exista. Sin
+                              esto, una configuración existente se deja intacta.
+  --json                      La propuesta como datos, incluida cada clave que
+                              descartó y por qué. No escribe nada.
+
+  Los primeros cinco minutos: encuentra tus prompts, lee tu código para saber a
+  qué proveedor llama, busca un registro de consumo o una credencial para uno, y
+  escribe una configuración con lo que puede justificar de verdad. Después imprime
+  lo más valioso que encontró, con la aritmética delante.
+
+  Nunca se inventa un umbral. Un presupuesto es una política, así que init te da la
+  cifra medida y te deja el límite a ti — una configuración generada llena de
+  números adivinados no se la cree nadie.
 
 ${bold('OPCIONES DE prune')}
   --cases <fichero>           Una entrada por línea, o un array JSON. Obligatorio.
@@ -840,6 +857,84 @@ ${bold('EJEMPLOS')}
     diffTooLarge: (lines, max) =>
       `  Diff omitido: ${lines} líneas supera el límite de ${max}, y alinearlas costaría más memoria de lo que vale la respuesta.`,
     wroteTo: (path) => `Prompt optimizado escrito en ${path}`,
+  },
+
+  init: {
+    heading: () => 'Lo que hay aquí',
+    host: (name) => `Ejecutándose dentro de ${name}.`,
+    prompts: (count) =>
+      `${count} ${count === 1 ? 'archivo de prompt encontrado' : 'archivos de prompt encontrados'}.`,
+    noPrompts: () =>
+      'No se encontraron prompts. El modo directorio lee .txt, .md, .prompt y .tmpl por defecto — define "extensions" si los tuyos se llaman de otra forma.',
+    sourcesTruncated: (cap) =>
+      `Se paró tras ${cap} archivos de código, así que un proveedor nombrado más abajo no se vio.`,
+    usageFound: (kind, where) =>
+      kind === 'connector-credential'
+        ? `El consumo se puede descargar: hay una credencial en ${where}. Ejecuta trazum connect.`
+        : kind === 'store'
+          ? `Hay un almacén local de mediciones pasadas en ${where}.`
+          : `Registro de consumo encontrado: ${where}.`,
+    noUsage: () =>
+      'No se encontró consumo. Apunta trazum a un registro (trazum profile <log.jsonl>) o descárgalo (trazum connect anthropic) — toda cifra en dinero de esta herramienta sale de uno.',
+    usageUnreadable: (where, because) =>
+      `${where} está ahí y no se pudo leer: ${because}. Ese es un problema distinto de no tener consumo, y es el primero que hay que arreglar.`,
+
+    configHeading: () => 'Lo que diría la configuración',
+    nothingJustified: () =>
+      'Nada. Cada clave de abajo necesita pruebas que esta ejecución no encontró, y una configuración adivinada es peor que ninguna.',
+    whyLocale: (locale) => `tu entorno pide ${locale}`,
+    whyExtensions: (extensions, files) => `${files} prompts usan ${extensions}`,
+    whyModelMeasured: (model, sharePct) => `el ${sharePct}% de la factura medida fue a ${model}`,
+    whyModelSource: (model, file, line) => `${file}:${line} nombra ${model}`,
+    whyCalls: (perMonth, calls, days) =>
+      `${calls} llamadas en ${days} días, expresadas como ${perMonth} al mes`,
+    whyOutput: (average, outputTokens, calls) =>
+      `${outputTokens} tokens de salida en ${calls} llamadas dan una media de ${average}`,
+    whyCache: (rate, cacheReadTokens, inputTokens) =>
+      `${cacheReadTokens} en caché frente a ${inputTokens} de entrada nueva dan una tasa de ${rate}`,
+
+    noModelEvidence: () => 'nada medido ni escrito en el código nombra un único modelo',
+    modelConflict: (files) => `estos archivos nombran más de un proveedor: ${files}`,
+    modelProviderOnly: (provider, file) =>
+      `${file} nombra ${provider} y ningún modelo — el modelo por defecto del proveedor se leería como decisión tuya dentro de seis semanas`,
+    nothingMeasured: () => 'todavía no se ha medido nada',
+    windowTooShort: (days, minimum) =>
+      `${days} días medidos; hacen falta ${minimum} antes de que eso sea un ritmo mensual y no un pronóstico`,
+    undatedCalls: (undated, calls) =>
+      `${undated} de ${calls} llamadas no llevan fecha, así que no se pueden situar dentro de la ventana por la que dividiría un ritmo`,
+    cacheNotRecorded: () =>
+      'este registro no tiene columnas de caché en absoluto, que no es lo mismo que una tasa de cero',
+    batchOnlyYouKnow: () =>
+      'si el trabajo puede esperar a una ventana de lote es una decisión de producto, y ningún registro la anota',
+    labelsUnprovable: (labels) =>
+      `${labels} ${labels === 1 ? 'etiqueta' : 'etiquetas'} en el registro, y nada aquí demuestra qué prompt envía cuál`,
+    budgetIsPolicy: () => 'un presupuesto es una política, y todavía no hay cifra medida contra la que escribir una',
+    budgetIsPolicyMeasured: (usd, days) =>
+      `un presupuesto es una política, así que es tuyo — la cifra medida es $${usd} en ${days} días`,
+
+    findingHeading: () => 'Lo más valioso encontrado',
+    noFinding: (why) =>
+      why === 'nothing-measured'
+        ? 'Nada, porque no se ha medido nada. Toda cifra que esta herramienta imprime como dinero sale de un registro de consumo.'
+        : why === 'nothing-could-be-priced'
+          ? 'Nada: el registro se leyó y ningún modelo suyo está en el catálogo de precios. Ejecuta trazum models para ver cuáles lo están.'
+          : 'Nada que merezca una línea: ninguna porción de esta factura se puede mover más de un uno por ciento del total.',
+    findingCalls: (calls, label, model, days) =>
+      `${calls} llamadas con la etiqueta "${label}" fueron a ${model} en ${days} días.`,
+    findingSpent: (usd) => `Costaron $${usd}.`,
+    findingRoute: (model) => `El mismo trabajo cabe en ${model}, más barato por token.`,
+    findingBatch: () => 'La API de lotes reduce a la mitad ambas mitades de la factura, para trabajo que puede esperar.',
+    findingTotal: (usd, days) => `Juntas: $${usd} en esos mismos ${days} días.`,
+    findingNext: () => 'trazum plan <tu registro> ordena todas las acciones, no solo esta.',
+
+    wouldOverwrite: (keys) => `Esto reemplaza claves que ya tenías: ${keys}. Pasa --yes para escribir igualmente.`,
+    nothingToWrite: () => 'No se escribió configuración: nada de lo anterior se pudo justificar con lo que hay aquí.',
+    wouldWrite: (path) => `Escribiría ${path}:`,
+    wrote: (path) => `Escrito en ${path}.`,
+    existingRefused: (path) =>
+      `${path} ya existe y se dejó intacto. Pasa --dry-run para ver qué iría dentro, o --yes para reemplazarlo.`,
+    existingUnparseable: (path) =>
+      `${path} existe y no se pudo interpretar, así que no se escribió nada encima. Arréglalo o muévelo primero.`,
   },
 
   where: {

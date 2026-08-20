@@ -297,6 +297,73 @@ describe('the MCP tool surface', () => {
   });
 });
 
+describe('the first run', () => {
+  /**
+   * `init` is the command with the widest reach in this product and the
+   * smallest amount of trust behind it.
+   *
+   * It runs before anybody has read a page of documentation, in a directory it
+   * has never seen, and it *walks it*: prompts, source files, log candidates,
+   * the environment. Two things follow, and both are checked here rather than
+   * left to a reviewer noticing.
+   */
+  const source = () => {
+    const cli = readFileSync(join(repoRoot, 'packages/cli/src/index.ts'), 'utf8');
+    const start = cli.indexOf('async function commandInit(');
+    const end = cli.indexOf('\nfunction commandModels(', start);
+    assert.ok(start > 0 && end > start, 'commandInit could not be located — has it moved?');
+    return cli.slice(start, end);
+  };
+  const code = () =>
+    source()
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+
+  it('never spends to answer', () => {
+    // The deterministic core has been the entry point since 0.1.0, and the
+    // first command somebody runs is the worst possible place to break that.
+    // A tool whose introduction costs money is one nobody introduces.
+    const text = code();
+    assert.doesNotMatch(text, /fetchProviderUsage|fetch\s*\(|node:https?/);
+    assert.doesNotMatch(text, /suggestPhrases|callModel|llm/i);
+  });
+
+  it('names a credential by its variable and never carries the value', () => {
+    /**
+     * `findCredential` returns `{ key, source }` because the connector needs
+     * the key. `init` needs only the name, and the rule since 1.41 is that the
+     * value never reaches a terminal — a first-run summary is the single most
+     * likely output in this product to be pasted into a chat window.
+     *
+     * Checked as *what is destructured*, not as what is printed: a version
+     * that pulled `key` out and happened not to log it today is one refactor
+     * away from logging it tomorrow.
+     */
+    const text = code();
+    assert.match(text, /found\.source\.variable/, 'the variable name is what is used');
+    assert.doesNotMatch(text, /found\.key|\{\s*key\s*[,}]/, 'the key must never be read out of findCredential here');
+  });
+
+  it('writes one file, in the directory it was pointed at', () => {
+    /**
+     * The only write in the command, and it goes to `configPath`, which is
+     * `join(root, CONFIG_FILENAME)`. An `init` that writes anywhere else — a
+     * home directory, a cache, a parent — is a first impression nobody
+     * recovers from.
+     */
+    const text = code();
+    const writes = [...text.matchAll(/writeFile\(([^,]+),/g)].map((m) => m[1].trim());
+    assert.deepEqual(writes, ['configPath'], 'init writes exactly one file, and it is the config');
+    assert.match(text, /const configPath = join\(root, CONFIG_FILENAME\)/);
+  });
+
+  it('bounds what it reads, so a large repository cannot stall the first run', () => {
+    const text = code();
+    assert.match(text, /INIT_MAX_SOURCE_FILES/);
+    assert.match(text, /INIT_MAX_SOURCE_BYTES/);
+  });
+});
+
 describe('no runtime dependencies', () => {
   // Every published package here processes untrusted text. A runtime dependency
   // is code that would run on that text with no review from this project, so

@@ -43,14 +43,15 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- 21 commands       MCP server      Next.js     comments on pull requests
+ 22 commands       MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
-## The twenty-one commands
+## The twenty-two commands
 
 | Command | What it answers |
 |---|---|
+| [`trazum init`](#the-first-five-minutes-trazum-init) | What is in this repository, and what is the one thing worth fixing? *The first command to run.* |
 | [`trazum optimize`](#cli) | What can come out of this prompt, and what is that worth a month? |
 | [`trazum check`](#cli) | Does this prompt fit its token budget, and has the repository drifted past its recorded baseline? *Exits 1 when either fails — this is the CI gate.* |
 | [`trazum baseline`](#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate) | What does this repository's prompts cost right now? *Records it, to commit.* |
@@ -77,6 +78,7 @@ never runs unless you ask.
 
 - [What it actually does](#what-it-actually-does) — the five things, and what it refuses to touch
 - [Getting started](#getting-started) — CLI, web, the GitHub Action, pre-commit
+- [The first five minutes](#the-first-five-minutes-trazum-init) — `init`, and the four things it refuses to write
 - [Which few-shot examples earn their tokens](#which-few-shot-examples-earn-their-tokens-trazum-prune) — measured, and it asks before spending
 - [An MCP server for your agents](#an-mcp-server-so-an-agent-can-budget-its-own-prompts) — budget a prompt before sending it
 - [Languages](#languages) — what the dictionaries cover, and what they deliberately do not
@@ -177,8 +179,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of twenty-one commands — [the table
-above](#the-twenty-one-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of twenty-two commands — [the table
+above](#the-twenty-two-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -190,10 +192,21 @@ land in a pull request comment rather than a terminal nobody is looking at.
 ## Getting started
 
 ```bash
+npx @trazum/cli init
+```
+
+No install, no key, no network. It reads what is already here — your prompts,
+which provider your code calls, a usage log if one is lying around — writes a
+config out of what it can actually justify, and prints the single most valuable
+thing it found. See [the first five minutes](#the-first-five-minutes-trazum-init).
+
+Or start from one file:
+
+```bash
 npx @trazum/cli optimize your-prompt.txt --cost
 ```
 
-No install, no key, no network. Or keep it around:
+Either way, keep it around:
 
 ```bash
 npm install -g @trazum/cli     # the terminal
@@ -216,6 +229,76 @@ npm run verify     # the above plus typecheck and the web build
 <sub>The test count used to be written here as a number. It said 580 while the real
 figure had reached 798, because nothing checked it — so it now says what the command
 covers instead. A number nobody maintains is worse than no number.</sub>
+
+### The first five minutes: `trazum init`
+
+```bash
+npx @trazum/cli init
+```
+
+```
+What is here
+
+  Running inside a terminal.
+  1 prompt file found.
+  Usage log found: usage.jsonl.
+
+What the config would say
+  + usage.model  100% of the measured bill went to claude-opus-5
+  + usage.callsPerMonth  240 calls over 30 days, stated as 240 a month
+  + usage.avgOutputTokens  96000 output tokens over 240 calls averages 400
+  · usage.cacheHitRate  this log has no cache columns at all, which is not the same as a hit rate of zero
+  · usage.batchEligible  whether the work can wait for a batch window is a product decision, and no log records it
+  · labels  1 label in the log, and nothing here proves which prompt file sends which
+  · spend.maxUsd  a budget is a policy, so it is yours to set — the measured figure is $38.40 over 30 days
+
+The most valuable thing found
+  240 calls labelled "classify" went to Claude Opus 5 over 30 days.
+  They cost $38.40.
+  The same work fits Claude Sonnet 5, which is cheaper per token.
+  The Batch API halves both halves of the bill, for work that can wait.
+  Together: $30.72 over the same 30 days.
+```
+
+It is a **detection, not a wizard**. Nothing is asked. Each line above is
+something that was found — a prompt, a provider named in your code, a log —
+or a key it declined **with what would settle it**. `--dry-run` prints the
+config and writes nothing; `--yes` replaces one that is already there;
+without it an existing config is left alone.
+
+**Every key it writes carries the arithmetic that justified it.** A generated
+config full of guessed thresholds is one nobody trusts and everybody deletes,
+and it is worse than an empty one, because six weeks later it reads as a
+decision somebody made.
+
+Four things it refuses to write, and they are the interesting four:
+
+- **A budget.** A log says what your traffic *was*; a budget says what it *may
+  cost*, which no log can answer. "The measured month plus twenty per cent"
+  would be this tool inventing a threshold and then grading you against it. So
+  the measured figure is handed over and the limit stays yours.
+- **A monthly rate from a short window.** Twenty-eight days minimum, so every
+  weekday appears the same number of times. Four days multiplied by seven is a
+  forecast wearing a measurement's clothes.
+- **A cache hit rate from a log with no cache columns.** Not recorded is not
+  not-happened. Writing `0` there would tell every later caching advisory that
+  caching is doing nothing — a finding invented out of a missing field.
+- **`batchEligible`, in either direction.** Whether the work tolerates a batch
+  window is a product decision, and no log records it. `false` would quietly
+  delete the batch lever from every report; `true` would sell a saving on
+  latency nobody agreed to give up.
+
+It also declines a model when your code names a *provider* and no model. `where`
+prints a provider's default because a reader can see it is a guess; a config
+file cannot.
+
+No usage anywhere? It says so, and points at
+[docs/usage-logs.md](docs/usage-logs.md) — Anthropic, OpenAI, the Vercel AI SDK
+and an OTel collector, with records you can copy.
+
+`trazum init --json` is the same proposal as data, including every declined key
+and its reason — [contracted in docs/json-output.md](docs/json-output.md#the-first-run-document).
+It writes nothing.
 
 ### CLI
 
@@ -242,7 +325,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other twenty commands, each with its own section below:
+The other twenty-one commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace

@@ -55,7 +55,13 @@ describe('spend_guard over MCP', () => {
 
   it('is a contract: the doc and the answer promise each other every field', () => {
     const doc = readFileSync(new URL('../../../docs/json-output.md', import.meta.url).pathname, 'utf8');
-    const section = doc.slice(doc.indexOf('## The spend-guard document'));
+    // Bounded to its own section. Every time a new contract is appended to
+    // this file, an unbounded harvest starts enforcing the *next* shape's
+    // fields on this one — which has now happened five times, so the bound is
+    // written before the section that would break it.
+    const start = doc.indexOf('## The spend-guard document');
+    const end = doc.indexOf('## The first-run document');
+    const section = doc.slice(start, end === -1 ? undefined : end);
     const promised = new Set([...section.matchAll(/^\| `([a-zA-Z]+)`/gm)].map((m) => m[1]));
     const emitted = Object.keys(
       JSON.parse(guard.run({ model: 'claude-opus-5', inputTokens: 1000, consumedUsd: 1, limitUsd: 10 })),
