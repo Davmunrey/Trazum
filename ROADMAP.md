@@ -1090,13 +1090,22 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-Five releases are planned in order through 1.40.0, with the reasoning
-attached: [docs/plan-1.36-1.40.md](docs/plan-1.36-1.40.md). The short version
-— Trazum's estimating half and measuring half had never met, and this arc
-introduces them: measured usage under every estimate (1.36), the fleet
-(1.37), the plan (1.38), verification against predictions (1.39), and the
-long series (1.40). The previous arc, delivered in full with its errata on
-the record, is in [docs/plan-1.30-1.35.md](docs/plan-1.30-1.35.md).
+Ten releases are planned in order through 1.50.0, as one arc, with the
+reasoning attached: [docs/plan-1.41-1.50.md](docs/plan-1.41-1.50.md). The
+short version — the loop is complete and inert: every one of the seventeen
+commands waits for a human to type something, so nobody runs it on the
+afternoon it would have mattered, and the agent actually spending the money
+has no way to ask. This arc makes Trazum something that *runs*: the
+connector (1.41), the store (1.42), the watch (1.43), the answer in
+milliseconds (1.44), the agent's budget (1.45), five-minute onboarding
+(1.46), the bill in the browser (1.47), cost review in CI (1.48), the live
+budget (1.49), and the format and guarantees other tools can build on
+(1.50).
+
+The two arcs before it were delivered in full, with their errata on the
+record: [docs/plan-1.36-1.40.md](docs/plan-1.36-1.40.md) introduced Trazum's
+estimating and measuring halves to each other, and
+[docs/plan-1.30-1.35.md](docs/plan-1.30-1.35.md) precedes it.
 
 The ordering is a commitment and the calendar is not. What users report
 reorders it; that is the one input allowed to.
