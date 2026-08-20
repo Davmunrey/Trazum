@@ -147,6 +147,16 @@ export interface TrazumConfig {
    * one is a silence nobody can audit. Waived failures render as waived,
    * never hidden — the bill still counts them; only the exit code is quiet.
    */
+  /**
+   * How long the local usage store keeps a measurement.
+   *
+   * Retention is a policy, so it lives in the repository beside the budgets
+   * rather than in whichever invocation happened to run the prune. There is
+   * deliberately **no default**: deleting measurements on a policy nobody
+   * wrote down is not something anybody should get by accident, so `--prune`
+   * with neither this nor `--keep` refuses and says so.
+   */
+  store?: { keepDays?: number };
   waive?: WaiveEntry[];
   /** Default for `trazum diff --max-growth`, in tokens. */
   maxGrowth?: number;
@@ -186,6 +196,7 @@ export const CONFIG_KEYS = [
   'labels',
   'spend',
   'sources',
+  'store',
   'waive',
   'maxGrowth',
   'baseline',
@@ -198,6 +209,8 @@ export const CONFIG_BASELINE_KEYS = ['path', 'maxGrowthTokens', 'maxGrowthPct'] 
 export const CONFIG_SPEND_KEYS = ['maxUsd', 'maxDayUsd', 'maxSessionUsd', 'byLabel', 'bySource'] as const;
 
 export const CONFIG_WAIVE_KEYS = ['gate', 'reason', 'until'] as const;
+
+export const CONFIG_STORE_KEYS = ['keepDays'] as const;
 
 /**
  * The gates a waiver can silence. The list is closed on purpose: a waiver
@@ -466,6 +479,32 @@ function parseSources(raw: unknown, source: string): Record<string, string[]> {
  * nothing. The expiry is *not* checked against today here — a config file is
  * timeless, and whether a waiver is expired is judged where the gate runs.
  */
+/**
+ * `store.keepDays` — retention, in whole days.
+ *
+ * A fraction of a day is refused rather than rounded: retention decides what
+ * gets deleted, and a policy the tool rounded on the operator's behalf is a
+ * policy nobody agreed to.
+ */
+function parseStore(raw: unknown, source: string): { keepDays?: number } {
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+    throw new Error(`"store" in ${source} must be an object, for example {"keepDays": 90}.`);
+  }
+  const entry = raw as Record<string, unknown>;
+  rejectUnknownKeys(entry, CONFIG_STORE_KEYS, source, 'store.');
+  const out: { keepDays?: number } = {};
+  if (entry.keepDays !== undefined) {
+    const days = entry.keepDays;
+    if (typeof days !== 'number' || !Number.isInteger(days) || days <= 0) {
+      throw new Error(
+        `"store.keepDays" in ${source} must be a whole number of days above zero, and it is ${JSON.stringify(days)}.`,
+      );
+    }
+    out.keepDays = days;
+  }
+  return out;
+}
+
 function parseWaive(raw: unknown, source: string): WaiveEntry[] {
   if (!Array.isArray(raw)) throw new ConfigError('"waive" must be an array', source);
   return raw.map((entry, index) => {
@@ -654,6 +693,7 @@ export function parseConfig(raw: string, source = CONFIG_FILENAME): TrazumConfig
   if (document.labels !== undefined) config.labels = parseLabels(document.labels, source);
   if (document.spend !== undefined) config.spend = parseSpend(document.spend, source);
   if (document.sources !== undefined) config.sources = parseSources(document.sources, source);
+  if (document.store !== undefined) config.store = parseStore(document.store, source);
   if (document.waive !== undefined) config.waive = parseWaive(document.waive, source);
   if (document.baseline !== undefined) {
     config.baseline = parseBaselineConfig(document.baseline, source);

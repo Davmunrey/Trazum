@@ -147,6 +147,19 @@ this module wrote: every finding a sum cannot support is listed in
 payload becomes a named `PullGap`, never a default of zero. Pure and
 browser-safe — the fetch, the credentials and the pagination live in the CLI.
 
+## The store
+
+`resolveStore(records)` collapses an append-only log into the current truth:
+one record per identity — provider, window, model, grouping — with the later
+pull winning, so overlapping pulls converge instead of double-counting.
+Records it cannot tell apart are returned as `possiblyDouble` rather than
+merged, and lines from a newer schema are counted rather than dropped.
+`recordsFromBuckets` and `bucketsFromRecords` round-trip a pull through disk
+so a stored month prices exactly as a fresh one does; `storeInventory`
+summarises what is held; `pruneRecords` returns what a retention cutoff would
+remove, with its span, because silence about deleted measurements is the one
+thing a store must not do.
+
 ## Comparing two versions
 
 ```ts

@@ -19,6 +19,10 @@ import {
   CONNECTORS,
   normalizeAnthropicUsage,
   normalizeOpenAIUsage,
+  bucketsFromRecords,
+  pruneRecords,
+  recordsFromBuckets,
+  storeInventory,
   storedReportFrom,
   verifyPlan,
   cacheEconomics,
@@ -141,6 +145,7 @@ import {
 } from './git.js';
 import type { Revision } from './git.js';
 import { fetchProviderUsage } from './connect.js';
+import { STORE_DIR, appendRecords, readStore, rewriteStore } from './store-fs.js';
 import { detectLocale, getCliMessages } from './i18n/index.js';
 import {
   MAX_SUMMARY_CHARS,
@@ -190,6 +195,7 @@ const VALUE_FLAGS = new Set([
   'from-log',
   'min-usd',
   'payload',
+  'keep',
   // `route` takes a path here, and the flag is deliberately not `--prompt`:
   // everywhere else in this tool `--prompt` names a marked prompt *inside* a
   // source file, and reusing it for a path would be a trap laid for the reader.
@@ -492,8 +498,9 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd', 'label', 'since', 'until', 'dry-run', 'markdown-summary', 'by-source'],
   plan: ['json', 'out', 'markdown-out', 'min-usd', 'pricing', 'pricing-live'],
   verify: ['against', 'gate', 'json', 'markdown-out', 'pricing', 'pricing-live'],
-  history: ['json', 'markdown-out'],
-  connect: ['since', 'until', 'payload', 'json', 'out', 'markdown-out', 'pricing', 'pricing-live', 'dry-run'],
+  history: ['store', 'json', 'markdown-out'],
+  connect: ['since', 'until', 'payload', 'store', 'json', 'out', 'markdown-out', 'pricing', 'pricing-live', 'dry-run'],
+  store: ['prune', 'keep', 'json', 'pricing', 'pricing-live', 'dry-run'],
   route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
@@ -2276,6 +2283,162 @@ function parseWhen(
 }
 
 /**
+ * `trazum store` — what is kept, and what a prune would take.
+ *
+ * The store is the one thing in this product that *deletes* something, so the
+ * errands around it are written to make that visible: the inventory says what
+ * is there and how far back, and `--prune` names what went with the span it
+ * covered. Retention with no policy written down is refused rather than
+ * defaulted — deleting measurements on a guess is not something anybody
+ * should receive by accident.
+ */
+async function commandStore(
+  args: Args,
+  config: TrazumConfig,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
+  const root = process.cwd();
+  const { resolved, unreadable, files } = await readStore(root);
+  const inventory = storeInventory(resolved);
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const day = (msValue: number): string => new Date(msValue).toISOString().slice(0, 10);
+
+  const priced = bucketedProfile(
+    {
+      provider: 'store',
+      granularity: 'bucketed',
+      buckets: bucketsFromRecords(resolved.records),
+      window: inventory.span,
+      gaps: [],
+      unavailable: [],
+    },
+    { catalogue: pricing },
+  );
+
+  if (boolFlag(args, 'prune')) {
+    const keepFlag = stringFlag(args, 'keep');
+    const keepDays = keepFlag !== undefined
+      ? Number(/^(\d+)d?$/.exec(keepFlag)?.[1] ?? NaN)
+      : config.store?.keepDays;
+    if (keepDays === undefined || !Number.isFinite(keepDays) || keepDays <= 0) {
+      throw new Error(t.store.pruneNeedsPolicy());
+    }
+    const cutoff = Date.now() - keepDays * 86_400_000;
+    const result = pruneRecords(resolved.records, cutoff);
+    const droppedUsd = bucketedProfile(
+      {
+        provider: 'store',
+        granularity: 'bucketed',
+        buckets: bucketsFromRecords(result.dropped),
+        window: null,
+        gaps: [],
+        unavailable: [],
+      },
+      { catalogue: pricing },
+    ).total.totalUsd;
+
+    if (boolFlag(args, 'dry-run')) {
+      console.log(
+        wrap(
+          t.store.pruneDryRun(
+            n(result.dropped.length),
+            String(keepDays),
+            result.droppedSpan === null
+              ? null
+              : `${day(result.droppedSpan.fromMs)} → ${day(result.droppedSpan.toMs)}`,
+            formatUsd(droppedUsd),
+          ),
+          76,
+          '  ',
+        ),
+      );
+      return;
+    }
+
+    // The prune also collapses the append log to what the store resolves to,
+    // which is the only moment a rewrite is safe: it is what the reader was
+    // already seeing.
+    await rewriteStore(root, result.kept);
+    console.log(
+      wrap(
+        t.store.pruned(
+          n(result.dropped.length),
+          String(keepDays),
+          result.droppedSpan === null
+            ? null
+            : `${day(result.droppedSpan.fromMs)} → ${day(result.droppedSpan.toMs)}`,
+          formatUsd(droppedUsd),
+          n(result.kept.length),
+        ),
+        76,
+        '  ',
+      ),
+    );
+    return;
+  }
+
+  if (boolFlag(args, 'json')) {
+    console.log(JSON.stringify({ ...inventory, totalUsd: priced.total.totalUsd, unreadable }, null, 2));
+    return;
+  }
+
+  /**
+   * Empty means *nothing at all* — not "nothing I could resolve".
+   *
+   * Records the store could not tell apart, lines it could not parse and
+   * records from a newer schema are all real measurements sitting on disk.
+   * Reporting an empty store over them would hide exactly what the reader
+   * needs to see, which is the failure this whole module is written against.
+   */
+  const nothingAtAll =
+    inventory.totalRecords === 0 &&
+    inventory.possiblyDouble === 0 &&
+    inventory.unknownVersion === 0 &&
+    unreadable.length === 0;
+  if (nothingAtAll) {
+    console.log(wrap(t.store.empty(STORE_DIR), 76, '  '));
+    return;
+  }
+
+  console.log(
+    c.bold(
+      t.store.heading(
+        n(inventory.totalRecords),
+        formatUsd(priced.total.totalUsd),
+        inventory.span === null ? '' : day(inventory.span.fromMs),
+        inventory.span === null ? '' : day(inventory.span.toMs),
+      ),
+    ),
+  );
+  for (const provider of inventory.providers) {
+    console.log(
+      `  ${t.store.providerRow(
+        provider.provider,
+        n(provider.records),
+        provider.span === null ? '' : `${day(provider.span.fromMs)} → ${day(provider.span.toMs)}`,
+        n(provider.models.length),
+      )}`,
+    );
+  }
+  console.log();
+  console.log(`  ${c.dim(wrap(t.store.holds(n(files.length)), 74, '    '))}`);
+  if (inventory.possiblyDouble > 0) {
+    console.log(`  ${c.yellow(wrap(t.store.possiblyDouble(n(inventory.possiblyDouble)), 74, '    '))}`);
+  }
+  if (inventory.unknownVersion > 0) {
+    console.log(`  ${c.yellow(wrap(t.store.unknownVersion(n(inventory.unknownVersion)), 74, '    '))}`);
+  }
+  for (const bad of unreadable) {
+    console.log(`  ${c.yellow(wrap(t.store.unreadable(bad.file, String(bad.line)), 74, '    '))}`);
+  }
+  const keepDays = config.store?.keepDays;
+  console.log(
+    `  ${c.dim(wrap(keepDays === undefined ? t.store.noRetention() : t.store.retention(String(keepDays)), 74, '    '))}`,
+  );
+}
+
+/**
  * `trazum connect <provider>` — the bill, read from the provider.
  *
  * The pull and the pricing live elsewhere; this owns the window, the
@@ -2347,6 +2510,17 @@ async function commandConnect(
   const report = bucketedProfile(pull, { catalogue: pricing });
   const cache = bucketedCacheEconomics(report);
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
+
+  /**
+   * `--store` keeps what was pulled, so the next run does not download it
+   * again and `history` has a series without anybody curating a folder. Opt
+   * in rather than automatic: a command that starts writing to a hidden
+   * directory on its own is a command nobody trusts twice.
+   */
+  let stored = 0;
+  if (boolFlag(args, 'store')) {
+    stored = await appendRecords(process.cwd(), recordsFromBuckets(pull.provider, pull.buckets, Date.now()));
+  }
 
   const outPath = stringFlag(args, 'out');
   if (outPath !== undefined) {
@@ -2438,6 +2612,7 @@ async function commandConnect(
     else console.log(`  ${wrap(row, 74, '    ')}`);
   }
   if (outPath !== undefined) console.log(c.dim(t.connect.wrote(outPath)));
+  if (stored > 0) console.log(c.dim(t.store.appended(n(stored), STORE_DIR)));
 }
 
 /**
@@ -2449,40 +2624,103 @@ async function commandConnect(
  * same action planned twice — and no series, however long, becomes a
  * forecast.
  */
-async function commandHistory(args: Args, t: CliMessages): Promise<void> {
-  const path = args.positional[0];
-  if (path === undefined) throw new Error(t.history.noTarget());
-  const target = await stat(path).catch(() => null);
-  if (!target?.isDirectory()) throw new Error(t.history.noTarget());
-
-  const entries = await readdir(path, { withFileTypes: true });
-  const files = entries
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
-    .map((entry) => join(path, entry.name))
-    .sort((a, b) => a.localeCompare(b));
-
+async function commandHistory(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
+  /**
+   * `--store` builds the series from measured spend already on disk.
+   *
+   * Bucketed sources carry no label — a usage API groups by model and
+   * workspace, never by workload — so the label series is *absent and named*
+   * rather than empty and misread, the same discipline the connected report
+   * uses for the findings a sum cannot support. The model-share and
+   * cache-share series are exactly what a series exists for, and both work.
+   */
   const reports: StoredReport[] = [];
   const plans: (PlanDocument & { createdAt?: string })[] = [];
   const unrecognized: string[] = [];
-  for (const file of files) {
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(await readFile(file, 'utf8'));
-    } catch {
+  const fromStore = boolFlag(args, 'store');
+
+  if (fromStore) {
+    const { resolved } = await readStore(process.cwd());
+    if (resolved.records.length === 0) throw new Error(t.store.empty(STORE_DIR));
+
+    /**
+     * One period per UTC day of stored measurement, priced exactly as a fresh
+     * pull prices it.
+     *
+     * The label series is deliberately absent: a usage API groups by model
+     * and workspace, never by workload, so there is no label to carry.
+     * Rendering an empty label series would read as "no workload moved",
+     * which is a statement about traffic rather than about the source, and
+     * the footer says which it is.
+     */
+    const byDay = new Map<string, typeof resolved.records>();
+    for (const record of resolved.records) {
+      const key = new Date(record.fromMs).toISOString().slice(0, 10);
+      const list = byDay.get(key) ?? [];
+      list.push(record);
+      byDay.set(key, list);
+    }
+    for (const [dayKey, records] of [...byDay.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+      const day = bucketedProfile(
+        {
+          provider: 'store',
+          granularity: 'bucketed',
+          buckets: bucketsFromRecords(records),
+          window: {
+            fromMs: Math.min(...records.map((r) => r.fromMs)),
+            toMs: Math.max(...records.map((r) => r.toMs)),
+          },
+          gaps: [],
+          unavailable: [],
+        },
+        { catalogue: pricing },
+      );
+      const cacheTouched = day.total.cacheReadTokens + day.total.cacheWriteTokens;
+      reports.push({
+        name: dayKey,
+        span: day.span,
+        totalUsd: day.total.totalUsd,
+        calls: day.total.calls,
+        byLabel: new Map(),
+        byModel: new Map(day.byModel.map((slice) => [slice.model, slice.totalUsd])),
+        cacheReadShare:
+          day.total.inputTokens + cacheTouched > 0
+            ? day.total.cacheReadTokens / (day.total.inputTokens + cacheTouched)
+            : null,
+      });
+    }
+  } else {
+    const path = args.positional[0];
+    if (path === undefined) throw new Error(t.history.noTarget());
+    const target = await stat(path).catch(() => null);
+    if (!target?.isDirectory()) throw new Error(t.history.noTarget());
+
+    const entries = await readdir(path, { withFileTypes: true });
+    const files = entries
+      .filter((entry) => entry.isFile() && entry.name.endsWith('.json'))
+      .map((entry) => join(path, entry.name))
+      .sort((a, b) => a.localeCompare(b));
+
+    for (const file of files) {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(await readFile(file, 'utf8'));
+      } catch {
+        unrecognized.push(file);
+        continue;
+      }
+      const report = storedReportFrom(file, parsed);
+      if (report !== null) {
+        reports.push(report);
+        continue;
+      }
+      const maybePlan = parsed as PlanDocument & { createdAt?: string };
+      if (maybePlan?.schemaVersion === 1 && Array.isArray(maybePlan.actions)) {
+        plans.push(maybePlan);
+        continue;
+      }
       unrecognized.push(file);
-      continue;
     }
-    const report = storedReportFrom(file, parsed);
-    if (report !== null) {
-      reports.push(report);
-      continue;
-    }
-    const maybePlan = parsed as PlanDocument & { createdAt?: string };
-    if (maybePlan?.schemaVersion === 1 && Array.isArray(maybePlan.actions)) {
-      plans.push(maybePlan);
-      continue;
-    }
-    unrecognized.push(file);
   }
 
   const history = buildHistory(reports, plans);
@@ -2516,7 +2754,7 @@ async function commandHistory(args: Args, t: CliMessages): Promise<void> {
       const row = t.history.periodRow(
         period.name,
         formatUsd(period.totalUsd),
-        n(period.calls),
+        period.calls === null ? null : n(period.calls),
         ((period.toMs - period.fromMs) / 86_400_000).toFixed(1),
       );
       out.push(md ? `- ${row}` : `  ${row}`);
@@ -2543,6 +2781,11 @@ async function commandHistory(args: Args, t: CliMessages): Promise<void> {
     }
     for (const name of unrecognized) {
       out.push(md ? `- ${t.history.unrecognized(name)}` : `  ${t.history.unrecognized(name)}`);
+    }
+    if (fromStore) {
+      out.push('');
+      const note = t.history.storeNoLabels();
+      out.push(md ? `_${note}_` : `  ${note}`);
     }
     out.push('');
     out.push(md ? `_${t.history.footer()}_` : `  ${t.history.footer()}`);
@@ -6615,10 +6858,13 @@ async function main(): Promise<void> {
       await commandVerify(args, pricing, t);
       break;
     case 'history':
-      await commandHistory(args, t);
+      await commandHistory(args, pricing, t);
       break;
     case 'connect':
       await commandConnect(args, pricing, t);
+      break;
+    case 'store':
+      await commandStore(args, config, pricing, t);
       break;
     case 'route':
       await commandRoute(args, pricing, t);

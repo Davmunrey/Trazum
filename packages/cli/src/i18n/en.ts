@@ -43,6 +43,7 @@ ${bold('USAGE')}
   trazum verify <plan.json> --against <newer.jsonl|dir> [options]
   trazum history <dir-of-stored-reports> [options]
   trazum connect <anthropic|openai> [options]
+  trazum store [--prune] [options]
   trazum diff <before> <after> [options]
   trazum diff --all <dir> <dir> [options]
   trazum rank <dir> [options]
@@ -320,6 +321,25 @@ ${bold('OPTIONS FOR plan')}
   a plan that hides its assumptions is advice pretending to be arithmetic.
   Projected savings and money already spent are separate totals throughout.
 
+${bold('OPTIONS FOR store')}
+  --prune                     Drop measurements older than the retention
+                              policy, and compact the append log to what the
+                              store already resolves to. Says what went.
+  --keep <n>d                 Retention for this run, when the config has none.
+  --dry-run                   With --prune: say what would go, and delete
+                              nothing.
+  --json                      The inventory as data.
+
+  Says what the local store holds: how many measurements, over what span, per
+  provider, and what a prune would take. The store keeps aggregates and
+  billing fields — never prompt text, never completion text, never a
+  credential — so it is a file a team can back up without a privacy review.
+
+  Pruning is the one operation here that destroys something, so it refuses to
+  run without a retention policy: set "store": {"keepDays": 90} in the config
+  or pass --keep. Deleting measurements on a policy nobody wrote down is not a
+  default anybody should get by accident.
+
 ${bold('OPTIONS FOR connect')}
   --since <when>              The window to pull. A UTC day, an ISO timestamp,
   --until <when>              a relative window (7d, 24h) or "now". Defaults to
@@ -330,6 +350,9 @@ ${bold('OPTIONS FOR connect')}
   --payload <file>            Price a usage payload you already have, instead of
                               pulling one. No credential, no network — the same
                               arithmetic on the same shape.
+  --store                     Keep what was pulled in the local store, so the
+                              next run does not download it again and "trazum
+                              history --store" has a series.
   -o, --out <file>            Save the priced report as JSON.
   --markdown-out <file>       Also write it as Markdown, for a CI job summary.
   --json                      The report as data.
@@ -350,6 +373,12 @@ ${bold('OPTIONS FOR connect')}
   that quietly describes less traffic than you asked about.
 
 ${bold('OPTIONS FOR history')}
+  --store                     Build the series from the local store instead of
+                              a directory of stored reports. Bucketed sources
+                              carry no label, so the label series is absent and
+                              said to be — the model-share and cache-share
+                              series are what a series exists for, and both
+                              work.
   --markdown-out <file>       Also write the series as Markdown, for a CI job
                               summary or a pull request comment.
   --json                      The history as data.
@@ -1477,6 +1506,37 @@ ${bold('EXAMPLES')}
       `Plan written to ${path}, dated. Keep it: a prediction nobody wrote down is a prediction nobody can be held to.`,
   },
 
+  store: {
+    appended: (count, dir) => `Kept ${count} measurements in ${dir}.`,
+    empty: (dir) =>
+      `The store at ${dir} is empty. Fill it with "trazum connect <provider> --store" — that is a state, not an error.`,
+    heading: (records, usd, from, to) =>
+      `The store: ${records} measurements · ${usd} · ${from} → ${to}`,
+    providerRow: (provider, records, span, models) =>
+      `${provider}  ${records} measurements · ${span} · ${models} models`,
+    holds: (files) =>
+      `Held in ${files} files: token counts, billed dollars and the account's own workspace and key identifiers. Never prompt text, never completion text, never a credential — this is a file you can back up without a privacy review.`,
+    possiblyDouble: (count) =>
+      `${count} records could not be told apart from another — a window of no length, or a record naming no model. They are kept whole rather than merged, so a total built on them may count the same spend twice. Saying so beats a smaller number nobody can check.`,
+    unknownVersion: (count) =>
+      `${count} records come from a newer schema than this version knows, so they are kept and left out of the figures above rather than guessed at. Upgrade to read them.`,
+    unreadable: (file, line) =>
+      `${file} line ${line} would not parse, so it is not in the figures above. The rest of the file was read — one broken line must not lose a month.`,
+    retention: (days) => `Retention: ${days} days, from "store.keepDays". Run "trazum store --prune" to apply it.`,
+    noRetention: () =>
+      'No retention policy is configured, so nothing is ever deleted on its own. Set "store": {"keepDays": 90} when you want one.',
+    pruneNeedsPolicy: () =>
+      'Pruning needs a retention policy: set "store": {"keepDays": 90} in trazum.config.json, or pass --keep 90d for this run. Deleting measurements on a policy nobody wrote down is not a default you should get by accident.',
+    pruneDryRun: (count, days, span, usd) =>
+      span === null
+        ? `Nothing is older than ${days} days, so a prune would delete nothing.`
+        : `A prune would delete ${count} measurements older than ${days} days, covering ${span} and ${usd} of measured spend. Nothing was deleted — this was --dry-run.`,
+    pruned: (count, days, span, usd, kept) =>
+      span === null
+        ? `Nothing was older than ${days} days. ${kept} measurements kept, and the append log compacted.`
+        : `Deleted ${count} measurements older than ${days} days, covering ${span} and ${usd} of measured spend. ${kept} kept, and the append log compacted to what the store already resolved to.`,
+  },
+
   connect: {
     noTarget: (providers) =>
       `Name a provider to read your bill from: trazum connect anthropic. Available: ${providers}. The credential comes from the environment and is never stored — add --dry-run to see exactly what would be called and which variable it would be read from.`,
@@ -1514,7 +1574,8 @@ ${bold('EXAMPLES')}
     needsThree: (count) =>
       `A series needs at least three dated reports, and this directory has ${count}. Two reports is a comparison, and "trazum profile --against" already does that better.`,
     heading: (periods, from, to) => `The long run: ${periods} periods, ${from} → ${to}`,
-    periodRow: (name, usd, calls, days) => `${name}  ${usd} · ${calls} calls · ${days} days`,
+    periodRow: (name, usd, calls, days) =>
+      calls === null ? `${name}  ${usd} · ${days} days` : `${name}  ${usd} · ${calls} calls · ${days} days`,
     runLabel: (label, periods, sinceName, from, to) =>
       `${label} has climbed for ${periods} consecutive periods since ${sinceName}: ${from} → ${to}. A shape, not a forecast.`,
     runModel: (model, periods, sinceName, from, to) =>
@@ -1535,6 +1596,8 @@ ${bold('EXAMPLES')}
       const span = first !== null && last !== null ? ` (${first} → ${last})` : '';
       return `${what} has been planned ${appearances} times${span} and is still in the newest plan — a decision nobody is revisiting.`;
     },
+    storeNoLabels: () =>
+      'This series comes from the store, and a usage API groups by model and workspace rather than by workload — so there is no label series here at all. Absent, not empty: nothing above says a workload did or did not move.',
     undated: (name) => `${name} carries no span, so it is on no timeline above — named, never silently absorbed.`,
     unrecognized: (name) => `${name} is neither a stored report nor a saved plan, so it is in no series above.`,
     footer: () =>
