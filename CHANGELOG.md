@@ -11,7 +11,65 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**The plan and the verification, in the browser.** The bill has been readable
+in a tab since 1.36; everything the loop does *with* a bill — rank the actions,
+save the decision, come back later and ask whether it worked — lived only in a
+terminal, which made the web app a demo of the smallest half of the product.
+The Bill tab now renders the plan under the report: ranked actions, each with
+the money as a projection **or** a measured stake and never both, the typed
+assumption it rests on, and the command that would check that assumption. Two
+totals, kept apart, with a line saying why they are never added.
+
+**The document is the bridge, and it is the same document.** *Save plan.json*
+writes byte-for-byte what `trazum plan -o` writes. Commit it, gate on it in CI
+with `trazum verify`, or open it back here — one contract, no server between
+the two surfaces. Opening a saved plan turns the log in the tab into the check
+on it: three outcomes, never two, with the three cannot-tell reasons kept
+distinct, and the plan's own price-table date compared against today's so a
+repricing is never read as a team missing a target.
+
+Saved as a **file, not a link**. A link would mean this page storing somebody's
+bill somewhere, which is an access-control question nobody has designed — the
+same call the store made in 1.42, for the same reason.
+
+**`parsePlanDocument` in `@trazum/core`.** One validator for the plan format,
+shared by the terminal and the browser, returning a typed refusal rather than
+throwing — a refusal has to be rendered in one and localised in the other, and
+an exception with an English message baked in can be neither. It reports which
+action is malformed and what about it: a plan can hold a dozen actions and only
+one be wrong.
+
+### Fixed
+
+**The CLI accepted files that were not plans.** `trazum verify` checked
+`schemaVersion === 1 && Array.isArray(actions)` and stopped there, which admits
+an `actions` array of arbitrary objects. `verifyPlan` would then read `label`
+off `undefined`, match it against no slice in the log, and report `cannot-tell:
+workload-vanished` for every one — a verification of a document that was never
+a plan, rendered exactly like a real one. The shared validator now checks the
+three fields verification actually reads, and the CLI's refusal names which
+action and why instead of only that something is wrong.
+
+**The web app was building against `@trazum/core@1.36.0` — for ten releases.**
+`apps/web/package.json` pinned an exact core version, as `packages/cli` and
+`packages/mcp` do, and unlike those two it was never in the release recipe
+because the web app is not published. npm honours an exact pin that does not
+match the workspace by installing a **real copy from the registry** into
+`apps/web/node_modules`, which shadows the workspace symlink. So the browser
+could not see the fleet, the plan, verification, the series, the connector, the
+store, the watch, the endpoint, the guard or `init` — ten releases of core —
+and every check passed the whole time, because nothing was broken. The wrong
+thing was being checked. The pin now tracks the repository, and a guard fails
+the build when any workspace depends on a `@trazum/core` that is not this one.
+
+### Documentation
+
+**docs/plan-format.md.** What a plan document holds, field by field, and the
+five ways a file gets refused as one — so the format is something a team can
+commit and diff rather than an artefact of whichever version wrote it.
+
 
 ## 1.46.0 — "Five minutes"
 

@@ -261,6 +261,78 @@ export const en: WebMessages = {
     reorderDeclinedMore: (count) => `…and ${count} more.`,
   },
 
+  plan: {
+    heading: 'What to do about it',
+    nothingToDo:
+      'Nothing this log can act on: no slice of the bill clears one per cent of it, and nothing '
+      + 'measurable is being paid to a problem. That is a real answer, not an empty one — a bill '
+      + 'already on the cheapest model of its family with no batch window to reach for has no '
+      + 'lever here.',
+    projected: (usd) => `Projected, if every action below is taken: ${usd} over this log's own period.`,
+    staked: (usd) => `Already paid to problems named below, measured: ${usd}.`,
+    neverSummed:
+      'Those two are not added together and never should be. One is a prediction about calls that '
+      + 'have not happened; the other is money that already left.',
+    action: (kind, label, model) =>
+      kind === 'route'
+        ? `Route ${label} off ${model}`
+        : kind === 'batch'
+          ? `Send ${label} on ${model} through the Batch API`
+          : kind === 'route+batch'
+            ? `Route ${label} off ${model} and batch it`
+            : kind === 'fix-truncation'
+              ? `Stop ${label} on ${model} being truncated and retried`
+              : `Fix caching on ${label} for ${model}`,
+    projectedAmount: (usd) => `${usd} projected`,
+    stakedAmount: (usd) => `${usd} already spent on it`,
+    noAmount: 'no figure',
+    routeTo: (model) => `To ${model}, which fits the calls this slice actually makes.`,
+    assumes: (what) => `Assumes: ${what}`,
+    assumeModel: (model) => `${model} can do this work. That is a question about quality, not arithmetic, and no log answers it.`,
+    assumeKind: (kind) =>
+      kind === 'batch-window'
+        ? 'these calls tolerate a batch window. Nobody but you knows whether they do.'
+        : kind === 'cache-reuse'
+          ? 'the prefix would actually be reused within the cache lifetime.'
+          : 'something the log cannot confirm.',
+    check: 'Check it with: ',
+    andMore: (count) => `…and ${count} more, in the saved plan.`,
+    save: 'Save plan.json',
+    saveNote:
+      'The same document trazum plan -o writes. Commit it, gate on it in CI with trazum verify, '
+      + 'or bring it back here later — one contract, and nothing was uploaded to make it.',
+
+    verifyHeading: 'Did it work?',
+    verifyLede:
+      'Open a plan you saved earlier, and this log becomes the check on it. Three outcomes, never '
+      + 'two: a saving that arrived, one that did not, and one nothing here can judge — because a '
+      + 'workload that stopped being logged is not a workload that stopped costing money.',
+    chooseePlan: 'Open a saved plan',
+    notAPlan: (why) => `That file is not a plan document: ${why}. Expected the JSON that Save plan.json writes.`,
+    refusalNotJson: 'it is not valid JSON',
+    refusalNotAnObject: 'the top level is not a JSON object',
+    refusalSchemaVersion: (found) => `schemaVersion is ${found} rather than 1`,
+    refusalNoActions: 'there is no actions array',
+    refusalActionMalformed: (position, because) => `action ${position} is malformed (${because})`,
+    tally: (arrived, notArrived, cannotTell) =>
+      `${arrived} arrived, ${notArrived} did not, ${cannotTell} cannot be told from this log.`,
+    emptyPlan: 'That plan proposed nothing, so there is nothing to check.',
+    pricesChanged: (planDate, currentDate) =>
+      `The price table moved between the plan (${planDate}) and now (${currentDate}). Every dollar `
+      + 'compared here is two measurements under two price lists, which is not the same as a team '
+      + 'missing a target.',
+    verifiedAction: (kind, label, model, outcome) =>
+      `${outcome === 'arrived' ? 'Arrived' : outcome === 'not-arrived' ? 'Did not arrive' : 'Cannot tell'}: `
+      + `${kind} on ${label} (${model}).`,
+    cannotTell: (reason) =>
+      reason === 'workload-vanished'
+        ? 'That workload carries no priced traffic in this log at all. It may have been renamed, moved or stopped — none of which is a saving.'
+        : reason === 'fields-stopped'
+          ? 'The fields this action would be judged on are no longer in the log. Nothing degraded here counts as a pass.'
+          : 'The log does not record the tier this action moved to, so the move cannot be seen.',
+    callsMoved: (before, after) => `Calls: ${before} when the plan was made, ${after} now.`,
+  },
+
   bill: {
     tab: 'Your bill',
     lede:

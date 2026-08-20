@@ -239,6 +239,50 @@ export interface WebMessages {
    * ceilings, an unsettled cache verdict is reported as unsettled, and "not
    * recorded" is never rendered as "did not happen".
    */
+  /**
+   * The plan, and the check that a plan came true.
+   *
+   * Kept out of `bill` because it is a different question: the bill says
+   * where the money went, the plan says what to do about it, and the
+   * verification says whether it happened. Three surfaces of one loop, and
+   * the copy for each stays where a translator can see which is which.
+   */
+  plan: {
+    heading: string;
+    nothingToDo: string;
+    projected(usd: string): string;
+    staked(usd: string): string;
+    neverSummed: string;
+    action(kind: string, label: string, model: string): string;
+    projectedAmount(usd: string): string;
+    stakedAmount(usd: string): string;
+    noAmount: string;
+    routeTo(model: string): string;
+    assumes(what: string): string;
+    assumeModel(model: string): string;
+    assumeKind(kind: string): string;
+    check: string;
+    andMore(count: number): string;
+    save: string;
+    saveNote: string;
+
+    verifyHeading: string;
+    verifyLede: string;
+    chooseePlan: string;
+    notAPlan(why: string): string;
+    refusalNotJson: string;
+    refusalNotAnObject: string;
+    refusalSchemaVersion(found: string): string;
+    refusalNoActions: string;
+    refusalActionMalformed(position: number, because: string): string;
+    tally(arrived: number, notArrived: number, cannotTell: number): string;
+    emptyPlan: string;
+    pricesChanged(planDate: string, currentDate: string): string;
+    verifiedAction(kind: string, label: string, model: string, outcome: string): string;
+    cannotTell(reason: string): string;
+    callsMoved(before: number, after: number): string;
+  };
+
   bill: {
     tab: string;
     lede: string;

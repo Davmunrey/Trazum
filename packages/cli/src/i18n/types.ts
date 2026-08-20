@@ -1269,7 +1269,22 @@ export interface CliMessages {
     noTarget(): string;
     needsAgainst(): string;
     /** Not a plan document: wrong shape, wrong version, or not JSON at all. */
-    badPlan(path: string): string;
+    /**
+     * `why` is the typed reason from `parsePlanDocument`, rendered so the
+     * refusal names what is wrong rather than only that something is. A file
+     * that is valid JSON and not a plan and a plan with one bad action are
+     * different problems with different fixes.
+     */
+    badPlan(path: string, why: string): string;
+    /** The typed refusal from `parsePlanDocument`, in one clause. */
+    planRefusal(
+      why:
+        | { kind: 'not-json' }
+        | { kind: 'not-an-object' }
+        | { kind: 'wrong-schema-version'; found: unknown }
+        | { kind: 'actions-not-a-list' }
+        | { kind: 'action-malformed'; index: number; because: string },
+    ): string;
     heading(actions: string, planDate: string | null): string;
     counts(arrived: string, notArrived: string, cannotTell: string): string;
     /** Two price lists are two measurements; every dollar line inherits this. */

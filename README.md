@@ -912,7 +912,9 @@ cache loss) are separate totals throughout, because "what you would save" and
 Every action carries what the log cannot confirm — the cheaper model's
 competence, the batch window's tolerability — and the command that can check
 it when one exists. `--min-usd` drops the noise floor and says how many
-actions it dropped and what they were worth together. `-o plan.json` saves
+actions it dropped and what they were worth together. [The document it writes
+is documented field by field](docs/plan-format.md), because a plan is the one
+output here meant to be committed and read back later. `-o plan.json` saves
 the plan dated, so a later log can be held against it; `--markdown-out` and
 `--json` as everywhere else.
 
@@ -1569,6 +1571,17 @@ pricing catalogue. **Nothing is uploaded**: there is no fetch in that
 component, a test fails if one appears, and the only analytics event carries
 two booleans. A usage log names your workloads, spend and conversation counts —
 exactly the file nobody should have to hand to a server to see a report on it.
+
+**Under the report, the rest of the loop.** The ranked plan — each action with
+its money as a projection *or* a measured stake and never both, the typed
+assumption it rests on, and the command that would check that assumption — and
+below it, *Did it work?*. **Save plan.json** writes byte-for-byte what
+`trazum plan -o` writes, so a plan made in a tab can be committed, gated on in
+CI, and opened back here later. Opening a saved plan turns the log in the tab
+into the check on it: three outcomes, never two, with the three cannot-tell
+reasons kept distinct. Saved as a file rather than offered as a link, because a
+link would mean this page storing somebody's bill somewhere — an access-control
+question nobody has designed. [The plan format is documented](docs/plan-format.md).
 
 The HTTP API behind it is public and small:
 

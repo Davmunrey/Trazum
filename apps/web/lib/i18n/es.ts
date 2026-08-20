@@ -263,6 +263,79 @@ export const es: WebMessages = {
     reorderDeclinedMore: (count) => `…y ${count} más.`,
   },
 
+  plan: {
+    heading: 'Qué hacer al respecto',
+    nothingToDo:
+      'Nada sobre lo que este registro permita actuar: ninguna porción de la factura llega al uno '
+      + 'por ciento del total, y no se está pagando nada medible a un problema. Es una respuesta '
+      + 'real, no una vacía — una factura que ya está en el modelo más barato de su familia y sin '
+      + 'API de lotes a la que recurrir no tiene palanca aquí.',
+    projected: (usd) => `Proyectado, si se toman todas las acciones de abajo: ${usd} en el periodo del propio registro.`,
+    staked: (usd) => `Ya pagado a problemas nombrados abajo, medido: ${usd}.`,
+    neverSummed:
+      'Esas dos cifras no se suman y nunca deberían. Una es una predicción sobre llamadas que no '
+      + 'han ocurrido; la otra es dinero que ya se fue.',
+    action: (kind, label, model) =>
+      kind === 'route'
+        ? `Sacar ${label} de ${model}`
+        : kind === 'batch'
+          ? `Enviar ${label} en ${model} por la API de lotes`
+          : kind === 'route+batch'
+            ? `Sacar ${label} de ${model} y enviarlo por lotes`
+            : kind === 'fix-truncation'
+              ? `Evitar que ${label} en ${model} se trunque y se reintente`
+              : `Arreglar la caché de ${label} para ${model}`,
+    projectedAmount: (usd) => `${usd} proyectados`,
+    stakedAmount: (usd) => `${usd} ya gastados en ello`,
+    noAmount: 'sin cifra',
+    routeTo: (model) => `A ${model}, que admite las llamadas que esta porción hace de verdad.`,
+    assumes: (what) => `Asume: ${what}`,
+    assumeModel: (model) => `${model} puede hacer este trabajo. Eso es una pregunta sobre calidad, no sobre aritmética, y ningún registro la responde.`,
+    assumeKind: (kind) =>
+      kind === 'batch-window'
+        ? 'estas llamadas toleran una ventana de lote. Nadie salvo tú sabe si es así.'
+        : kind === 'cache-reuse'
+          ? 'el prefijo se reutilizaría de verdad dentro de la vida de la caché.'
+          : 'algo que el registro no puede confirmar.',
+    check: 'Compruébalo con: ',
+    andMore: (count) => `…y ${count} más, en el plan guardado.`,
+    save: 'Guardar plan.json',
+    saveNote:
+      'El mismo documento que escribe trazum plan -o. Súbelo al repositorio, ponle una puerta en CI '
+      + 'con trazum verify, o tráelo de vuelta aquí más tarde — un solo contrato, y no se subió nada '
+      + 'a ningún sitio para crearlo.',
+
+    verifyHeading: '¿Funcionó?',
+    verifyLede:
+      'Abre un plan que guardaste antes y este registro se convierte en su comprobación. Tres '
+      + 'resultados, nunca dos: un ahorro que llegó, uno que no, y uno que nada de aquí puede juzgar '
+      + '— porque un flujo que dejó de registrarse no es un flujo que dejó de costar dinero.',
+    chooseePlan: 'Abrir un plan guardado',
+    notAPlan: (why) => `Ese archivo no es un documento de plan: ${why}. Se esperaba el JSON que escribe Guardar plan.json.`,
+    refusalNotJson: 'no es JSON válido',
+    refusalNotAnObject: 'el nivel superior no es un objeto JSON',
+    refusalSchemaVersion: (found) => `schemaVersion es ${found} en vez de 1`,
+    refusalNoActions: 'no hay un array actions',
+    refusalActionMalformed: (position, because) => `la acción ${position} está mal formada (${because})`,
+    tally: (arrived, notArrived, cannotTell) =>
+      `${arrived} llegaron, ${notArrived} no, y ${cannotTell} no se pueden juzgar con este registro.`,
+    emptyPlan: 'Ese plan no proponía nada, así que no hay nada que comprobar.',
+    pricesChanged: (planDate, currentDate) =>
+      `La tabla de precios cambió entre el plan (${planDate}) y ahora (${currentDate}). Cada dólar `
+      + 'comparado aquí son dos mediciones bajo dos listas de precios, que no es lo mismo que un '
+      + 'equipo que falla un objetivo.',
+    verifiedAction: (kind, label, model, outcome) =>
+      `${outcome === 'arrived' ? 'Llegó' : outcome === 'not-arrived' ? 'No llegó' : 'No se puede saber'}: `
+      + `${kind} en ${label} (${model}).`,
+    cannotTell: (reason) =>
+      reason === 'workload-vanished'
+        ? 'Ese flujo no tiene tráfico con precio en este registro. Puede haberse renombrado, movido o parado — nada de eso es un ahorro.'
+        : reason === 'fields-stopped'
+          ? 'Los campos con los que se juzgaría esta acción ya no están en el registro. Nada degradado cuenta como aprobado.'
+          : 'El registro no anota el nivel al que esta acción movió las llamadas, así que el movimiento no se ve.',
+    callsMoved: (before, after) => `Llamadas: ${before} cuando se hizo el plan, ${after} ahora.`,
+  },
+
   bill: {
     tab: 'Tu factura',
     lede:

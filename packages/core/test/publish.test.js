@@ -787,6 +787,54 @@ describe('a release cannot ship without notes', () => {
     );
   });
 
+  it('every workspace depending on @trazum/core pins the version being published', () => {
+    /**
+     * **The web app was pinned to 1.36.0 for ten releases and nothing noticed.**
+     *
+     * `packages/cli` and `packages/mcp` pin an exact `@trazum/core` version,
+     * which is deliberate: a published CLI must depend on the exact core it
+     * was built and tested against. The release recipe bumps those two along
+     * with the manifests. `apps/web` pins one too — and it was never in the
+     * recipe, because it is not published, so nobody thought of it.
+     *
+     * npm honours an exact pin that does not match the workspace by installing
+     * a **real copy from the registry** into `apps/web/node_modules`, which
+     * shadows the workspace symlink. So the web app built, tested and type-
+     * checked green against `@trazum/core@1.36.0` while the repository moved to
+     * 1.46.0 — the fleet, the plan, verification, the series, the connector,
+     * the store, the watch, the endpoint, the guard and `init`, all invisible
+     * to the browser, with every check passing. Nothing was broken; the wrong
+     * thing was being checked.
+     *
+     * The rule is one line and covers every workspace, published or not: if
+     * you depend on this repository's core, you depend on *this* core.
+     */
+    const version = manifestOf('.').version;
+    const roots = JSON.parse(readFileSync(join(repoRoot, 'package.json'), 'utf8')).workspaces;
+    const workspaces = roots.flatMap((pattern) => {
+      const parent = pattern.replace(/\/\*$/, '');
+      return readdirSync(join(repoRoot, parent), { withFileTypes: true })
+        .filter((entry) => entry.isDirectory())
+        .map((entry) => `${parent}/${entry.name}`);
+    });
+
+    const wrong = [];
+    for (const workspace of workspaces) {
+      const manifest = JSON.parse(readFileSync(join(repoRoot, workspace, 'package.json'), 'utf8'));
+      for (const field of ['dependencies', 'devDependencies', 'peerDependencies']) {
+        const pinned = manifest[field]?.['@trazum/core'];
+        if (pinned !== undefined && pinned !== version) {
+          wrong.push(`${workspace} ${field} pins ${pinned}`);
+        }
+      }
+    }
+    assert.deepEqual(
+      wrong,
+      [],
+      `these depend on a @trazum/core that is not this one (${version}), so they resolve a registry copy instead of the workspace`,
+    );
+  });
+
   it("the version RELEASES.md says is on npm is the version being published", () => {
     /**
      * **This claim was wrong for seventeen releases and nothing noticed.**
