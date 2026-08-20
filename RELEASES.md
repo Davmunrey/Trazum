@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.50.2**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.50.3**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,177 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.50.3 — "The gateway"
+
+Chapter one of the arc in `docs/plan-1.51.md`, and the first thing this
+product has ever been able to do rather than report on.
+
+### Why in the path at all
+
+`trazum serve` answers *what will this cost and is there budget* in single-digit
+milliseconds, and an implementation may consult it and ignore it. `spend_guard`
+gives an agent the same answer in a shape it can act on, and an agent may ignore
+that too. **Advice an implementation can skip is advice a budget cannot rely
+on.** And a connector pulls usage after the fact, because a provider's export is
+a batch job on somebody else's schedule — so the runaway is always reported
+after it ran.
+
+Standing between the caller and the provider fixes both.
+
+```bash
+trazum gateway anthropic --on-cannot-tell fail-closed
+```
+
+Point your SDK's base URL at what it prints and change nothing else. It speaks
+the provider's own wire format, so there is no new client, no wrapper and no
+code change.
+
+### It refuses; it does not substitute
+
+A call over budget is rejected with **HTTP 402** and the cheaper alternatives
+named. It is never silently swapped for a smaller model, never trimmed, never
+downgraded in flight. The caller asked for something specific, and a proxy that
+quietly answers a different question is worse than one that fails — the failure
+is visible and the substitution is not.
+
+**That is enforced in the type, not in a comment.** A decision from
+`gatewayDecision` is either `forward`, which carries nothing the caller did not
+send, or `refuse`, which carries no body at all. There is no shape in which the
+core hands back a modified request, so substitution cannot arrive one refactor
+later wearing a reasonable name — it would have to change a type that every
+caller and every test reads.
+
+### 402, and never 429
+
+Worth its own heading because it is the sort of detail that only shows up in
+production, at scale, at the worst moment.
+
+**Every provider SDK retries a 429 automatically.** That is what the code means
+to them. Answering a budget refusal with one would turn a single refusal into a
+retry storm against a gateway that will refuse every time — driven by the
+caller's own client library, with nobody having written a loop. 402 Payment
+Required is both literally correct and in nobody's default retry list.
+
+A **502** with `trazum_upstream_unreachable` is kept strictly distinct. A caller
+needs to tell *your provider is down* from *you are out of money*, and a proxy
+that blurred them would send somebody to fix the wrong thing at the worst
+possible moment.
+
+### Failure is a decision the operator makes in advance
+
+`--on-cannot-tell` is **required and has no default.**
+
+| Policy | What happens | What it costs |
+| --- | --- | --- |
+| `fail-open` | The call goes through, and the record says it was **unjudged** | The bill keeps running while nobody is watching |
+| `fail-closed` | The call is refused | The product stops working |
+
+Both are defensible and only the operator knows which failure their product can
+survive. Picking one for them would be the most consequential decision in
+somebody's architecture, made silently at install time, by a tool they installed
+to *reduce* surprises.
+
+The fail-open half matters as much as the refusal: the call is forwarded **and**
+the fact that nothing judged it is carried, so no later report can read it as
+"within budget". Unjudged and under budget are different, and only one of them
+is good news.
+
+### Substitution, if you want it, written down
+
+`spend.substitute` in the config, by model id, each with the operator's own
+`reason` — required, for the same purpose a waiver's reason is: a substitution
+nobody wrote a reason for is a caller being answered a different question, with
+nobody able to say why six weeks later.
+
+Every substituted call is **marked** in the record, so no later report treats it
+as the call the caller made. It is a separate decision *kind* rather than a
+`forward` with a changed model, precisely so nothing downstream can conflate
+them.
+
+And it **never fires because the gateway could not judge.** Swapping a model
+because a *budget* could not be read would be answering a different question for
+a reason that has nothing to do with the caller's request. Configured
+substitution plus fail-closed is a refusal, not a swap.
+
+### The credential is not even borrowed
+
+The connector's rule since 1.41 is *a credential is borrowed, never held*. This
+is stronger: the caller's own `authorization` and `x-api-key` headers are
+forwarded **untouched and never read**. Trazum holds no key for the gateway and
+has no way to make a call of its own through it.
+
+The guard checks for the *absence of any read*, not for the absence of a log —
+code that reads a secret and happens not to log it today is one refactor from
+logging it tomorrow.
+
+### Five guards, each proven with a planted probe
+
+1. **The upstream is compiled in.** A flag naming the host would make this a
+   credential-forwarding open proxy: anything that could rewrite a config on
+   disk could point a company's API key at a machine it chose.
+2. **The credential is never read.**
+3. **Nothing about the payload is written down**, and the interfaces have
+   nowhere to put it: `gatewayDecision` is handed a *description* of the call
+   and never a body, and the recording callback takes counts. The promise is a
+   fact about the interface rather than a discipline somebody maintains.
+4. **`forward` cannot carry a request**, asserted against the type.
+5. **The refusal is 402**, asserted against the handler.
+
+Plus loopback binding with exactly one definition of the address, and exactly
+one forwarded path — the one that spends tokens. A gateway that forwarded any
+path would be a general proxy for somebody's API key.
+
+### What this release found wrong in itself
+
+**A guard against a redirected credential that a lookalike host satisfies.**
+CodeQL flagged the compiled-in-upstream check as two unanchored host patterns.
+It was right about more than the lint: `assert.match(text,
+/https:\/\/api\.anthropic\.com/)` also passes on a source edited to say
+`https://api.anthropic.com.evil.com` — which is the *single substitution*
+somebody attacking that file would make. The guard existed to stop exactly that
+and would have watched it happen.
+
+It extracts the origins and the paths and compares them exactly now. Proven by
+planting `api.anthropic.com.evil.example` and watching it fail by name.
+
+**Two source harvests bounded by their neighbour's name.** The `init` and
+`feedback` security guards sliced from their function to `commandModels` *by
+name*, so inserting `commandGateway` between them silently widened both — and
+one immediately started reporting on its neighbour's source, failing on a
+`config?.` that belonged to a different command. This is the same failure the
+`docs/json-output.md` parity harvests have had five times, in a different file.
+Both are bounded to the *next function*, whatever it turns out to be, and the
+first-run contract harvest — last in its file and therefore unbounded — was
+bounded before the section that would have broken it.
+
+**The gateway merged with no changelog entry.** The script that writes one
+asserted on `Unreleased: Nothing yet`, which had stopped being true when the
+roadmap fix merged, so it aborted — and the `git commit` on the next line of the
+same shell ran regardless. **Third time.** 1.45's notes recorded the second and
+said a rule that fails silently once will fail silently again; the lesson that
+keeps not being learned is that writing the entry and making the commit belong
+in one operation rather than two lines of a shell.
+
+### What stayed out, and why
+
+**Streaming responses.** The gateway reads the whole response to take the
+provider's own token counts out of it, which a streamed body does not carry
+until the final event. Forwarding a stream while measuring it is a real feature
+and a different one — it needs the event framing of each provider parsed, and a
+half-parsed stream is a corrupted answer rather than a missing measurement. A
+non-streaming gateway that works is worth more than a streaming one that
+occasionally garbles a reply.
+
+**Writing the measured calls into the store.** They are reported to the
+operator's terminal as they happen and go no further. The store's records are
+provider-pull buckets with an identity that resolves duplicates across pulls;
+per-call gateway records are a different grain, and merging them without
+deciding how the two reconcile would double-count the moment somebody ran
+`trazum connect` for the same period. That reconciliation is chapter two's
+problem, and it is a design decision rather than a line of code.
 
 ---
 
