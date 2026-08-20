@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.50.5 — "Cost per outcome"
+
 ### Added
 
 **Cost per outcome — the finding a total cannot make.** Chapter three of
