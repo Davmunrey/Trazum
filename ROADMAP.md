@@ -811,6 +811,23 @@ not exist through fifty releases in a tool whose bug reports need it above
 everything, and SUPPORT.md, which GitHub surfaces in the issue flow and which
 says out loud that there is no support contract.
 
+### 1.50.3 — The gateway
+
+The first thing this product can *do* rather than report on. `trazum gateway`
+stands between the caller and the provider, speaking the provider's own wire
+format so no SDK changes, measuring usage from the response as it comes back —
+no export, no connector lag, no missing day. It refuses and never substitutes: a
+call over budget gets HTTP 402 with the cheaper alternatives named, and that is
+enforced in the type rather than in a comment, because `forward` carries nothing
+the caller did not send and `refuse` carries no body. 402 and never 429, since
+every provider SDK retries a 429 and would turn one refusal into a retry storm.
+`--on-cannot-tell` is required with no default — fail-open and fail-closed are
+both defensible and only the operator knows which failure their product
+survives. The credential is forwarded untouched and never read; the upstream is
+compiled in; nothing about the payload is written down, and the interfaces have
+nowhere to put it. Chapter one of docs/plan-1.51.md.
+
+
 ## Collapsed into 1.8.0
 
 **Everything below shipped as 1.8.0, and none of these numbers is on npm.** They
