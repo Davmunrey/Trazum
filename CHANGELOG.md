@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.50.11 — "The commitment"
+
 ### Added
 
 **`trazum commitment` — what a committed-use deal would have been worth on the
@@ -62,6 +66,14 @@ Six months against a twelve-month deal is a real answer about six months; what
 it must not do is go unsaid.
 
 ### Fixed
+
+**The README's Action pins were advanced to the wrong commit.** Reaching for the
+last merge SHA in hand gave the *feature* commit for chapter eight, labelled as
+if it were the release that follows it. The pin guard from 1.31 resolved the SHA,
+compared it against the version in the comment and failed by name three times.
+Every release since 1.28 has had two candidate commits here and the wrong one is
+always the more recent, which is what makes that guard load-bearing rather than
+decorative.
 
 **`formatUsd` rendered a value just under a thousand in the sub-thousand
 format.** `5000 - 5000 * 0.8` is `999.9999999999999`, which took the two-decimal
