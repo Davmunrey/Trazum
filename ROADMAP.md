@@ -876,6 +876,22 @@ and unknown models. Trazum does not run the escalation and says so. Chapter four
 of docs/plan-1.51.md.
 
 
+### 1.50.7 — The experiment
+
+`trazum experiment`. Two arms judged on recorded outcomes and cost together, on
+real traffic rather than in a laboratory. Three-valued: A wins, B wins, or **not
+separable** — and the third comes with the number of outcomes per arm that would
+settle it, so "run it longer" is an instruction rather than a shrug. Identical
+rates return null, because no sample size separates a difference of zero.
+`--min-outcomes` is required: a stopping rule declared after looking at the
+numbers is not one, and the report says whether it was honoured — printed even
+when the arms separated, since a separable result read too early is still both.
+And the figure the decision actually turns on: what one extra success costs,
+per call so arms with different traffic shares compare. Wilson per arm,
+Newcombe on the difference. Nothing is auto-promoted. Chapter five of
+docs/plan-1.51.md.
+
+
 ## Collapsed into 1.8.0
 
 **Everything below shipped as 1.8.0, and none of these numbers is on npm.** They

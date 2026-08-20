@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.50.6**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.50.7**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,132 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.50.7 — "The experiment"
+
+Chapter five of `docs/plan-1.51.md`. `eval` compares two prompts on cases
+somebody wrote; `route` compares two models on the same. Both measure agreement
+in a laboratory. **The traffic is the only place the real question gets
+answered** — and the moment a comparison runs there, three failures become
+available that a laboratory does not have.
+
+```
+Experiment: prompt-v2 against prompt-v1
+
+  prompt-v2  80.0%  (800 of 1,000 recorded)  95% [77.4%, 82.4%]
+  prompt-v1  50.0%  (500 of 1,000 recorded)  95% [46.9%, 53.1%]
+
+  ✓ prompt-v2 wins. The difference is between 26.0% and 33.9% at 95%
+    confidence — the whole interval is on one side of zero, which is what
+    "wins" means here.
+
+  Stopping rule honoured: both arms cleared 1,000 recorded outcomes.
+
+  prompt-v2 resolves more and costs more. One extra success costs $1.67 —
+    that figure, not the rate, is what the decision turns on.
+```
+
+### Failure one: a winner where there is none
+
+Two arms always produce two numbers, and one of them is always larger. An A/B
+report that names a winner from that is a coin flip with a dashboard.
+
+The verdict is **three-valued**, the way `verify`'s has been since 1.39 — and
+the third value is not a shrug:
+
+```
+  · Not separable on this traffic: the 95% interval on the difference includes
+    zero. One number is larger, and that is not a finding. About 2,449 outcomes
+    per arm would settle the difference observed so far.
+```
+
+"Not significant" tells a reader nothing about whether to wait a day or abandon
+the idea. **2,449** is an instruction somebody can act on. It is a two-proportion
+power calculation at 95% confidence and 80% power, on the difference observed so
+far — an estimate about something that may itself be noise, and offered as "how
+much longer" rather than as a promise.
+
+**When both arms record the same rate the figure is `null`, not a very large
+number.** No sample size separates a difference of zero, and a big figure would
+read as "keep going" when the honest answer is that there is nothing here to
+find.
+
+### Failure two: peeking
+
+A test stopped on the first afternoon it looked good is not a test.
+
+`--min-outcomes` is **required**, and that is the whole point of it: a stopping
+rule declared after looking at the numbers is not a stopping rule. Nothing here
+can *prevent* an early read — nobody can stop somebody looking at a number — but
+it can make the early read **visible to whoever reads the result later**, which
+is the part that survives the afternoon:
+
+```
+  ! Read early. The declared rule was 1,000 outcomes per arm and a has 100.
+    Nothing can stop a number being read early; this line exists so whoever
+    reads the result later can see that it was.
+```
+
+**Printed whether or not the arms separated.** A separable result read too early
+is still separable *and* still read too early. Collapsing the two would hide one
+of the facts, and it is always the inconvenient one that goes.
+
+### Failure three: quality reported without its price
+
+The interesting arm is almost never better *and* cheaper. It is better and
+dearer, and the decision turns on a figure nobody computes: **what one extra
+success costs.** The difference in spend over the difference in successes.
+
+**Per call on both sides**, so arms that took different shares of the traffic
+compare. Dividing raw totals would report a marginal cost that moves when the
+split changes and the behaviour does not — a number that reacts to a routing
+decision and looks like a finding about quality.
+
+When the better arm is *also* the cheaper one the figure is null rather than
+negative: nothing is being bought, and a negative "cost per extra success" is a
+number people quote without the sign.
+
+### The statistics are shown, not asserted
+
+Wilson score intervals per arm, Newcombe's interval on the difference. Both
+chosen because they behave at the sample sizes an experiment actually starts
+with — at 10 of 10 a symmetric interval runs past 1, and in a real experiment
+that is not an edge case, it is most of the first week.
+
+The intervals are **returned**, not just the verdict. A reader who disagrees
+with the threshold can see the numbers it was applied to, which is the same
+discipline `eval` established by running the original twice before judging
+anything against it.
+
+An undeclared outcome value stays out of both arms: a typo in an exporter must
+not decide an experiment.
+
+### Nothing is auto-promoted
+
+A winner is a finding. Taking it is a decision with a name attached, and it
+belongs in the plan like everything else. The command says so in its last line,
+because a tool that prints "prompt-v2 wins" and nothing else invites somebody to
+treat the printing as the deciding.
+
+### What stayed out, and why
+
+**Splitting the traffic.** The chapter describes arms "split across real traffic
+through the gateway", and this release reads arms from labels that already exist
+in a log. Assigning traffic to arms is a routing decision made *before* the
+call, in the caller's own code or in the gateway — and doing it in the gateway
+would mean the proxy choosing which model answers, which is the one behaviour
+1.50.3 built its type system to prevent. The honest split is the caller's, and
+the honest name for what shipped is "judge two arms", not "run an experiment for
+you".
+
+**Sequential testing.** The power calculation assumes a fixed sample, and a
+report read repeatedly against a fixed-sample threshold inflates its own false
+positive rate — which is exactly the peeking problem, one level up. Doing it
+properly needs an alpha-spending function and a declared analysis schedule, and
+half of that is worse than none: it would make the peek line say "honoured"
+while the statistics quietly stopped being valid.
 
 ---
 
