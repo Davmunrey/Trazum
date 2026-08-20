@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.50.5**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.50.6**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,116 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.50.6 — "The ladder"
+
+Chapter four of `docs/plan-1.51.md`. Two ladders, configured identically:
+
+```
+  support  claude-haiku-4-5 → claude-opus-5
+    $0.2000 a call cheap, $1.00 dear. Break-even escalation rate: 80.0%.
+    Measured: 10.0% (10 of 100 calls escalated).
+    ✓ Saving $0.7000 a call against never having built it.
+
+  triage  claude-haiku-4-5 → claude-opus-5
+    $0.2000 a call cheap, $1.00 dear. Break-even escalation rate: 80.0%.
+    Measured: 90.0% (90 of 100 calls escalated).
+    ✗ Costing $0.1000 a call MORE than never having built it.
+```
+
+One saves seventy per cent a call. The other costs ten per cent **more** than
+never having built it. The configuration is the same; the only difference is a
+measured escalation rate that no configuration file can show you, and that
+nobody was computing.
+
+### The arithmetic nobody does in their head
+
+"We route to the cheap model first and escalate on failure" describes both of
+those policies equally well. What separates them is that **an escalation pays
+twice** — the cheap attempt is not refunded — so:
+
+```
+with a ladder:  cheap + rate × dear
+without one:    dear
+```
+
+Those are equal at `rate = (dear − cheap) / dear`. Below it the ladder saves;
+above it the ladder is a more expensive way to get the same answers. It is the
+same head-arithmetic error `plan` was built to kill in 1.38, and worse here,
+because the mistake compounds with traffic and nobody notices until a quarter
+is over.
+
+### Three decisions inside the arithmetic
+
+**A multi-rung ladder is priced against its top rung**, never its middle. The
+alternative to a ladder is the model that would have been used without one,
+which is the top; comparing against the middle reports a saving against a model
+nobody was going to use.
+
+**No sign is claimed within two points of break-even.** Inside that band the
+answer flips on ordinary week-to-week variation, and reporting "saving" on
+Monday and "costing" on Thursday from an unchanged policy teaches a reader to
+ignore the figure — which is worse than not printing it.
+
+**An undeclared value is out of the denominator as well as the numerator.** With
+90 resolved, 10 escalated and 100 misspelled, counting the typos reports a 5%
+escalation rate instead of 10%. A control loop judged on half its real
+escalation rate is a control loop nobody switches off.
+
+### The signal is the caller's, and this is the sharper case
+
+`outcome` refuses inference because a report built on a guess prints a wrong
+number. A ladder refuses it for a harder reason: **this is a control loop.** A
+control loop built on a guess sends real traffic to a more expensive model on
+the strength of that guess, forever, and bills for it. Not from length, not
+latency, not refusal text, not a stop reason, not a retry.
+
+**`escalateOn` is required and never defaulted.** "Anything that is not a
+success" is the tempting default and it is wrong: adding a word to the
+vocabulary would silently start sending traffic to a dearer model. A control
+loop must not change behaviour because somebody wrote documentation.
+
+### `validateLadder`, and the most expensive typo in the file
+
+A ladder that escalates on a value declared a **success** pays twice for work
+that already worked, on every single call, while looking exactly like a
+cost-saving measure in the config. It is caught before anything is measured,
+because printing its measured position first would bury it under a number.
+
+Also caught: a ladder naming an undeclared value, which never fires and says
+nothing; rungs that go **down**, which is not a ladder but a routing rule that
+escalates to something cheaper and reports a saving for it; duplicates; unknown
+models; and one-rung ladders. All reported at once rather than one per run,
+because a config fixed one error per run is a config people give up on.
+
+A misconfigured ladder **exits 1**. It is the one finding here that is wrong
+*now* rather than a measurement somebody should look at; everything else exits
+0, like `doctor`.
+
+### What Trazum does not do, said in the output
+
+It does not run the escalation. A ladder escalates *after* a failure is known —
+after the answer came back, and usually after something downstream judged it —
+so the retry belongs in the caller's own loop rather than in a proxy sitting on
+one request. A command that printed ladder arithmetic without that line would
+read as a feature that routes traffic, and it is not one.
+
+### What stayed out, and why
+
+**The gateway executing tier zero.** Sending the first attempt to the cheap
+model is something the gateway *could* do — it is a configured substitution, and
+that machinery shipped in 1.50.3. It is not here because a ladder's first rung
+and a budget refusal's substitution look identical in the record and mean
+completely different things: one is "we always try this first" and the other is
+"you are out of money". Merging them would make the store unable to tell a
+policy from an emergency, and `verify` unable to judge either.
+
+**Judging a ladder in `verify`.** The chapter asks for it and it needs the
+before-and-after the store does not yet keep for a policy change. Inventing the
+"before" from the current config would be reconstructing rather than recording,
+which this repository refuses everywhere else.
 
 ---
 
