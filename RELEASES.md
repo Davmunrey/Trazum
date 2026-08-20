@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.50.7**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.50.8**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,140 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.50.8 — "The quality gate"
+
+Chapter six of `docs/plan-1.51.md`, and the release that closes the loop this
+product has been running open since 0.1.0.
+
+CI has been able to fail a build for tokens since 1.4 and for dollars since
+1.21. A prompt edit that quietly made the product worse has never been
+gateable — which means **every saving this tool has ever recommended went into
+a repository with its most important consequence unmeasured.**
+
+```
+Quality across the change: support
+  This is a before-and-after, not an experiment. It splits traffic by time
+  rather than at random, so everything else that changed at the same time is
+  in the difference too — which is why it says "cannot tell" far more
+  readily than an A/B would.
+
+  before 71.0% (8,400 outcomes)   after 64.0% (8,400 outcomes)
+
+  ✗ The resolution rate moved from 71.0% to 64.0% on 16,800 measured outcomes,
+    and this change saves $0.5000 a call. Both halves are measured; neither is
+    an estimate.
+
+  Gate failed: a measured drop with nothing else to explain it.
+```
+
+That is the sentence the plan asked for, and the sentence teams actually argue
+about: both halves, both provenances, one line.
+
+### The deviation, and why
+
+The chapter specified `check --against-outcomes`. It shipped as **`trazum
+quality`**.
+
+`check` reads *prompt files* and gates on tokens. It has never opened a usage
+log, and a command that takes either a prompt or a log depending on which flag
+is present is two commands wearing one name — the reader has to know which one
+they are running before they can read the help. The split-by-time this needs is
+also not a `check` idea: there is nothing in a prompt file with a timestamp on
+it.
+
+### It is a before-and-after, not an experiment
+
+Worth the first paragraph of the module, because the arithmetic is
+`experiment`'s and the epistemics are not.
+
+An experiment splits traffic **at random**, so the two arms differ only in the
+thing under test. A before-and-after splits it by **time**, and everything else
+that changed at the same moment is in the difference too.
+
+So most of this module is spent looking for reasons *not* to blame the prompt,
+and it reports `cannot-tell` far more readily than a randomised comparison
+would. That is not timidity. **A gate that blames the prompt because the prompt
+is the thing it can see will be switched off within a month, and a switched-off
+gate catches nothing at all.**
+
+### The three confounders it can see
+
+**The model mix moved.** The drop may be entirely somebody else's migration,
+and no amount of statistics separates the two from one label's numbers.
+
+**The volume moved.** A workload whose traffic doubled is usually a workload
+whose *population* changed — a new surface, a new customer, a campaign — and the
+questions being asked are not the questions from before.
+
+**Outcome coverage moved.** The subtle one, and the one nobody thinks of: if the
+share of calls recording an outcome changed, the two rates describe different
+populations. A team that starts instrumenting its hard cases sees its measured
+rate fall without anything having got worse. Comparing two rates over
+differently-selected populations is the most convincing wrong answer this module
+could produce.
+
+Any of them present and the verdict is `cannot-tell` **with the confounder
+named** — a refusal to blame, not a hedge attached to a blame.
+
+**They print on every verdict, including green ones.** A rate that held while
+the model changed underneath is not evidence that the prompt is fine either, and
+hiding the confounder on a passing run is how a gate teaches people to trust it
+in exactly the case it should not be trusted.
+
+**A confounder outranks the statistics.** It is checked after the sample sizes
+and before the verdict, so a build is never failed on a difference that
+something else could equally explain — even when the drop is enormous and
+statistically unambiguous. A test proves that with a 90%-to-10% collapse on a
+changed model: still `cannot-tell`.
+
+### Three outcomes, never two — and this one has an exit code
+
+"Not measurably worse" is **never** "held". A gate that spelled them the same
+way would pass a real regression it merely lacked the power to see, and this is
+the first gate in the product wired to a build.
+
+`cannot tell` exits **2**, not 0. A gate that exited green on every underpowered
+window would be a gate nobody ever saw fire.
+
+### A hundred outcomes a side
+
+Not the ten a rate needs elsewhere in this product. This one fails builds, and
+the two errors are not symmetric: the cost of a wrong `dropped` is somebody
+reverting a good change and losing the saving; the cost of a wrong `cannot-tell`
+is waiting a day.
+
+### One implementation of the comparison
+
+The statistics are `experiment`'s, deliberately — the same Wilson intervals and
+the same Newcombe difference. Two implementations would mean a gate and a
+deliberate A/B could disagree about the same two numbers, and a team that ran
+both would trust whichever answer they preferred.
+
+### What it cannot see, said out loud
+
+Everything else deployed that day. A `dropped` verdict states that the rate fell
+and the three things it can check did not move. That is a smaller claim than
+"the prompt did it", and it is the largest claim the evidence supports.
+
+### What stayed out, and why
+
+**Posting the sentence on a pull request.** The chapter asks for it and the
+Action already comments; what it does not have is the *timestamp* of the change,
+which is the input this gate cannot work without. A PR comment would have to
+guess the boundary from the merge time and would then judge a change against
+traffic that predates its deploy — reporting a regression for a change that was
+not live yet. Wiring it properly means the Action knowing when a deploy
+happened, which is a fact about somebody's pipeline rather than about their
+repository.
+
+**Attribution across labels.** A drop in one workload that coincides with a rise
+in another is often one population moving between them, and this gate judges one
+label at a time by design. Seeing that pattern needs a cross-label view and a
+rule for what counts as "moved", and a wrong rule there would manufacture
+confounders as confidently as the naive version manufactures blame.
 
 ---
 

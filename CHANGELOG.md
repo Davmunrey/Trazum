@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.50.8 — "The quality gate"
+
 ### Added
 
 **`trazum quality` — the gate that fails a build for the failure that matters.**
