@@ -11,7 +11,27 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Fixed
+
+**`ROADMAP.md`'s Released section ran in two directions.** Entries were being
+prepended from 1.26.0 onward, so the file went 0.1.0 upward to 1.25.0, jumped
+to the newest release, and then counted *backwards* to 1.26.0. A reader
+following it forwards went 1.25.0 → 1.50.2 → 1.50.1 and out the bottom at
+1.26.0 — the story's ending pasted into its middle, running the wrong way.
+
+Twenty-four releases were added into that break without it being noticed,
+including every one written this week. It reads oldest-first throughout now,
+and the section says so at the top with the reason: each entry explains what
+the previous one made possible, so it only reads correctly forwards.
+`RELEASES.md` and `CHANGELOG.md` are the newest-first documents.
+
+**`ROADMAP.md`'s Next section still described a delivered arc as planned.** It
+announced ten releases "planned in order through 1.50.0" — all ten of which had
+shipped — and repeated the 1.50.1-through-1.50.9 pinning that `docs/plan-1.51.md`
+had already dropped for being wrong two releases in. Rewritten: the finished arc
+is named as finished, the arc in progress points at the plan that does not pin
+numbers, and the reason it does not is stated.
+
 
 ## 1.50.2 — "The feedback loop"
 
