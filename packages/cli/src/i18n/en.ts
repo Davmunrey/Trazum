@@ -61,6 +61,7 @@ ${bold('USAGE')}
   trazum experiment <log> --a <label> --b <label> --min-outcomes <n>
   trazum quality <log> --label <name> --at <iso> [--gate]
   trazum semantic <prompt> [--yes]
+  trazum commitment <log> --floor <usd> --discount <pct> [--months 12]
   trazum owners <log>
   trazum ladder <log>
   trazum feedback
@@ -159,6 +160,17 @@ ${bold('OPTIONS FOR semantic')}
   Every quoted passage is checked character for character against the prompt,
   pairs the rules engine already catches are dropped, and every token figure is
   counted rather than believed. Optional, and always will be.
+
+${bold('OPTIONS FOR commitment')}
+  --floor <usd>               What you commit to spending each month, after
+                              the discount. Required.
+  --discount <pct>            What you get off list. 20 and 0.2 both work.
+  --months <n>                How long the deal runs. Defaults to 12.
+
+  Replays measured whole months against the deal's terms. Both directions are
+  priced: the months that cleared the floor, and what the floor cost in the
+  months that fell short — kept as its own figure, because netted into the
+  saving it disappears. An as-if calculation about the past, never a forecast.
 
 ${bold('OPTIONS FOR prune')}
   --cases <file>              One input per line, or a JSON array. Required.
@@ -1009,6 +1021,33 @@ ${bold('EXAMPLES')}
       `${path} already exists and was left alone. Pass --dry-run to see what would go in it, or --yes to replace it.`,
     existingUnparseable: (path) =>
       `${path} exists and could not be parsed, so nothing was written over it. Fix or move it first.`,
+  },
+
+  commitment: {
+    heading: (floor, discount, months) =>
+      `A ${months}-month commitment: ${floor} a month at ${discount} off`,
+    needsTerms: () =>
+      '--floor and --discount are required, and --months defaults to 12. Take them from the contract the provider is offering you: the floor is what you commit to spending each month after the discount, and the discount is what you get off list.',
+    asIf: () =>
+      'This is what the deal WOULD HAVE done on the traffic you actually had. It is a measurement of the past, not a prediction \u2014 every month below happened.',
+    columns: { month: 'month', list: 'list', paid: 'would pay', saving: 'saving' },
+    net: (usd, months) => `Net over ${months} measured months: ${usd}.`,
+    good: (usd) => `The months that cleared the floor saved ${usd}.`,
+    lost: (usd, months) =>
+      `${months} of them fell short, and the floor you would have paid for capacity nobody used comes to ${usd}. That figure is kept separate on purpose: netted into the line above it disappears, and the disappearing is what a vendor\u2019s slide relies on.`,
+    noShortfall: () => 'No measured month would have fallen short of the floor.',
+    breakEven: (usd) =>
+      `Break-even is ${usd} of monthly spend. Below it you pay the floor for less usage than it buys; above it the saving grows.`,
+    spread: (low, high, median) =>
+      `Measured spread: ${low} to ${high}, median ${median}. That is the shortfall risk in the only form a log can state it \u2014 a count of real months and the range they covered, rather than a probability from a distribution nobody fitted.`,
+    shortTerm: (covered, term) =>
+      `This replays ${covered} months against a ${term}-month commitment. It is a real answer about ${covered} months and not about ${term}.`,
+    cannotTell: (why, needed) =>
+      why === 'no-history'
+        ? 'Nothing to replay: this log has no whole months in it.'
+        : `Cannot judge this from ${needed === '0' ? 'what exists' : `what exists \u2014 ${needed} more whole month(s) would settle it`}. A commitment is signed for a year, and an answer from one month is a year-long decision made on a fortnight of evidence.`,
+    neverAForecast: () =>
+      'Nothing here is annualised, extrapolated or fitted to a trend. If next quarter looks nothing like last quarter, this arithmetic says nothing about it \u2014 which is the honest limit of what a log can tell you about a contract.',
   },
 
   owners: {

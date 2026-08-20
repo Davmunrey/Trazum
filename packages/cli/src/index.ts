@@ -41,6 +41,8 @@ import {
   conform,
   BREAK_EVEN_BAND,
   allocate,
+  replayCommitment,
+  coversTheTerm,
   runExperiment,
   qualityGate,
   semanticPassCost,
@@ -257,6 +259,9 @@ const VALUE_FLAGS = new Set([
   'a',
   'at',
   'b',
+  'floor',
+  'discount',
+  'months',
   'min-outcomes',
   'against',
   'contract',
@@ -591,6 +596,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   quality: ['label', 'at', 'gate', 'pricing', 'pricing-live'],
   semantic: ['yes', 'model', 'pricing', 'pricing-live'],
   owners: ['pricing', 'pricing-live', 'since', 'until'],
+  commitment: ['floor', 'discount', 'months', 'pricing', 'pricing-live'],
   where: [],
   rules: [],
   blame: ['limit', 'model', 'calls', 'output-tokens', 'batch', 'prompt', 'markdown-out'],
@@ -2873,6 +2879,167 @@ async function commandOwners(
       console.log(`    ${c.dim(t.owners.sharedRule(label, rule))}`);
     }
   }
+  console.log();
+}
+
+/**
+ * `trazum commitment <log> --floor <usd> --discount <pct> [--months 12]`
+ *
+ * What a committed-use deal would have been worth **on the traffic you
+ * actually had**. Every team that signs one of these is doing arithmetic in a
+ * spreadsheet against a number they guessed, and it is the highest-stakes
+ * instance of exactly the failure this product exists to end — because the
+ * guess is annual and signed.
+ *
+ * Nothing here projects. "On the traffic you actually had, this would have
+ * saved $X" is a measurement; "you will save $X" is a claim about the future
+ * this product has refused at every scale since 1.27.
+ */
+async function commandCommitment(
+  args: Args,
+  config: TrazumConfig,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
+  const path = args.positional[0];
+  if (path === undefined) throw new Error(t.errors.missingInputFile());
+
+  const floorRaw = stringFlag(args, 'floor');
+  const discountRaw = stringFlag(args, 'discount');
+  const floor = floorRaw === undefined ? Number.NaN : Number(floorRaw);
+  const discountInput = discountRaw === undefined ? Number.NaN : Number(discountRaw);
+  if (!Number.isFinite(floor) || floor <= 0 || !Number.isFinite(discountInput) || discountInput <= 0) {
+    throw new Error(t.commitment.needsTerms());
+  }
+  // Written either way in a contract, so read either way: 20 and 0.2 are the
+  // same deal, and refusing one of them would be pedantry with a stack trace.
+  const discount = discountInput > 1 ? discountInput / 100 : discountInput;
+  const months = Number(stringFlag(args, 'months') ?? 12);
+  const terms = { monthlyFloorUsd: floor, discount, months };
+
+  const report = profileUsage(await readUsageLog(path, t), { catalogue: pricing });
+  /**
+   * Whole calendar months only.
+   *
+   * A partial month replayed against a monthly floor is a shortfall the
+   * traffic never had — the deal would be judged against a fortnight of usage
+   * and a full month of commitment. Dropping them costs an answer; keeping
+   * them would manufacture one.
+   */
+  const byMonth = new Map<string, number>();
+  for (const day of report.spendByDay) {
+    const key = day.day.slice(0, 7);
+    byMonth.set(key, (byMonth.get(key) ?? 0) + day.usd);
+  }
+  const days = new Map<string, Set<string>>();
+  for (const day of report.spendByDay) {
+    const key = day.day.slice(0, 7);
+    const set = days.get(key) ?? new Set<string>();
+    set.add(day.day);
+    days.set(key, set);
+  }
+  const whole = [...byMonth.entries()]
+    .filter(([key]) => {
+      const [y, m] = key.split('-').map(Number);
+      const inMonth = new Date(Date.UTC(y ?? 2026, m ?? 1, 0)).getUTCDate();
+      return (days.get(key)?.size ?? 0) >= inMonth - 2;
+    })
+    .map(([month, usd]) => ({ month, usd }))
+    .sort((a, b) => a.month.localeCompare(b.month));
+
+  const replay = replayCommitment(whole, terms);
+  const coverage = coversTheTerm(replay, terms);
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const pct = (value: number): string => `${(value * 100).toFixed(0)}%`;
+
+  console.log();
+  console.log(c.bold(t.commitment.heading(formatUsd(floor), pct(discount), n(months))));
+  console.log(`  ${c.dim(wrap(t.commitment.asIf(), 74, '  '))}`);
+  console.log();
+
+  if (replay.unknown !== null) {
+    console.log(
+      `  ${c.yellow('?')} ${wrap(t.commitment.cannotTell(replay.unknown, n(replay.monthsNeeded ?? 0)), 74, '    ')}`,
+    );
+    console.log();
+    console.log(`  ${c.dim(t.commitment.breakEven(formatUsd(replay.breakEvenMonthlyUsd)))}`);
+    console.log();
+    return;
+  }
+
+  const col = t.commitment.columns;
+  const rows = replay.months.map((m) => ({
+    month: m.month,
+    list: formatUsd(m.listUsd),
+    paid: formatUsd(m.paidUsd),
+    // Signed: every month in this column can go either way, and formatUsd
+    // renders a negative as `$-2,400`, which reads as a typo. The sign carries
+    // the whole meaning here, so it goes where a reader expects it.
+    saving: formatSignedUsd(m.savingUsd),
+    shortfall: m.shortfall,
+  }));
+  const w = {
+    month: Math.max(...rows.map((r) => r.month.length), col.month.length),
+    list: Math.max(...rows.map((r) => r.list.length), col.list.length),
+    paid: Math.max(...rows.map((r) => r.paid.length), col.paid.length),
+    saving: Math.max(...rows.map((r) => r.saving.length), col.saving.length),
+  };
+  console.log(
+    c.dim(
+      `  ${col.month.padEnd(w.month)}  ${col.list.padStart(w.list)}  ` +
+        `${col.paid.padStart(w.paid)}  ${col.saving.padStart(w.saving)}`,
+    ),
+  );
+  for (const row of rows) {
+    const tint = row.shortfall ? c.red : c.dim;
+    console.log(
+      `  ${row.month.padEnd(w.month)}  ${row.list.padStart(w.list)}  ` +
+        `${row.paid.padStart(w.paid)}  ${tint(row.saving.padStart(w.saving))}`,
+    );
+  }
+
+  console.log();
+  console.log(`  ${c.bold(t.commitment.net(formatUsd(replay.netUsd), n(replay.months.length)))}`);
+  console.log(`  ${c.dim(t.commitment.good(formatUsd(replay.savedInGoodMonthsUsd)))}`);
+  if (replay.shortfallMonths > 0) {
+    console.log(
+      `  ${c.yellow('!')} ${wrap(
+        t.commitment.lost(formatUsd(replay.lostToUnusedFloorUsd), n(replay.shortfallMonths)),
+        74,
+        '    ',
+      )}`,
+    );
+  } else {
+    console.log(`  ${c.dim(t.commitment.noShortfall())}`);
+  }
+
+  console.log();
+  console.log(`  ${c.dim(wrap(t.commitment.breakEven(formatUsd(replay.breakEvenMonthlyUsd)), 74, '  '))}`);
+  if (replay.spread !== null) {
+    console.log(
+      `  ${c.dim(
+        wrap(
+          t.commitment.spread(
+            formatUsd(replay.spread.lowUsd),
+            formatUsd(replay.spread.highUsd),
+            formatUsd(replay.spread.medianUsd),
+          ),
+          74,
+          '  ',
+        ),
+      )}`,
+    );
+  }
+  // Said, not enforced: a shorter history is a real answer about a shorter
+  // period, and the gap must not go unmarked.
+  if (coverage.short) {
+    console.log();
+    console.log(
+      `  ${c.yellow('!')} ${wrap(t.commitment.shortTerm(n(coverage.covered), n(coverage.ofMonths)), 74, '    ')}`,
+    );
+  }
+  console.log();
+  console.log(`  ${c.dim(wrap(t.commitment.neverAForecast(), 74, '  '))}`);
   console.log();
 }
 
@@ -9075,6 +9242,9 @@ async function main(): Promise<void> {
       break;
     case 'models':
       commandModels(t, pricing);
+      break;
+    case 'commitment':
+      await commandCommitment(args, config, pricing, t);
       break;
     case 'owners':
       await commandOwners(args, config, pricing, t);

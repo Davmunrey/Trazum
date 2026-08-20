@@ -48,6 +48,7 @@ ${bold('USO')}
   trazum experiment <log> --a <label> --b <label> --min-outcomes <n>
   trazum quality <log> --label <name> --at <iso> [--gate]
   trazum semantic <prompt> [--yes]
+  trazum commitment <log> --floor <usd> --discount <pct> [--months 12]
   trazum owners <log>
   trazum ladder <log>
   trazum feedback
@@ -149,6 +150,18 @@ ${bold('OPCIONES DE semantic')}
   cláusula posterior contradice. Cada pasaje citado se comprueba carácter a
   carácter contra el prompt, los pares que el motor de reglas ya caza se
   descartan, y toda cifra de tokens se cuenta en vez de creérsela.
+
+${bold('OPCIONES DE commitment')}
+  --floor <usd>               Lo que te comprometes a gastar cada mes, después
+                              del descuento. Obligatorio.
+  --discount <pct>            Lo que te quitan de tarifa. Vale 20 y vale 0.2.
+  --months <n>                Cuánto dura el acuerdo. Por defecto 12.
+
+  Replica los meses completos medidos contra las condiciones del acuerdo. Se
+  tarifan las dos direcciones: los meses que superaron el suelo, y lo que
+  costó el suelo en los meses que se quedaron cortos — como cifra aparte,
+  porque metida en el ahorro desaparece. Un cálculo sobre el pasado, nunca una
+  previsión.
 
 ${bold('OPCIONES DE prune')}
   --cases <fichero>           Una entrada por línea, o un array JSON. Obligatorio.
@@ -1045,6 +1058,33 @@ ${bold('EJEMPLOS')}
       `${path} ya existe y se dejó intacto. Pasa --dry-run para ver qué iría dentro, o --yes para reemplazarlo.`,
     existingUnparseable: (path) =>
       `${path} existe y no se pudo interpretar, así que no se escribió nada encima. Arréglalo o muévelo primero.`,
+  },
+
+  commitment: {
+    heading: (floor, discount, months) =>
+      `Un compromiso de ${months} meses: ${floor} al mes con ${discount} de descuento`,
+    needsTerms: () =>
+      '--floor y --discount son obligatorios, y --months son 12 por defecto. S\u00e1calos del contrato que te ofrecen: el suelo es lo que te comprometes a gastar cada mes despu\u00e9s del descuento, y el descuento es lo que te quitan de tarifa.',
+    asIf: () =>
+      'Esto es lo que el acuerdo HABR\u00cdA hecho sobre el tr\u00e1fico que realmente tuviste. Es una medici\u00f3n del pasado, no una predicci\u00f3n \u2014 todos los meses de abajo ocurrieron.',
+    columns: { month: 'mes', list: 'tarifa', paid: 'pagar\u00edas', saving: 'ahorro' },
+    net: (usd, months) => `Neto sobre ${months} meses medidos: ${usd}.`,
+    good: (usd) => `Los meses que superaron el suelo ahorraron ${usd}.`,
+    lost: (usd, months) =>
+      `${months} de ellos se quedaron cortos, y el suelo que habr\u00edas pagado por capacidad que nadie us\u00f3 suma ${usd}. Esa cifra se mantiene aparte a prop\u00f3sito: metida en la l\u00ednea de arriba desaparece, y esa desaparici\u00f3n es de lo que vive la diapositiva de un comercial.`,
+    noShortfall: () => 'Ning\u00fan mes medido se habr\u00eda quedado por debajo del suelo.',
+    breakEven: (usd) =>
+      `El equilibrio est\u00e1 en ${usd} de gasto mensual. Por debajo pagas el suelo por menos uso del que compra; por encima el ahorro crece.`,
+    spread: (low, high, median) =>
+      `Dispersi\u00f3n medida: de ${low} a ${high}, mediana ${median}. Ese es el riesgo de quedarse corto en la \u00fanica forma en que un log puede expresarlo \u2014 un recuento de meses reales y el rango que cubrieron, no una probabilidad de una distribuci\u00f3n que nadie ajust\u00f3.`,
+    shortTerm: (covered, term) =>
+      `Esto replica ${covered} meses contra un compromiso de ${term} meses. Es una respuesta real sobre ${covered} meses y no sobre ${term}.`,
+    cannotTell: (why, needed) =>
+      why === 'no-history'
+        ? 'Nada que replicar: este log no tiene meses completos.'
+        : `No se puede juzgar con ${needed === '0' ? 'lo que hay' : `lo que hay \u2014 ${needed} mes(es) completo(s) m\u00e1s lo zanjar\u00edan`}. Un compromiso se firma por un a\u00f1o, y una respuesta de un mes es una decisi\u00f3n anual tomada con quince d\u00edas de evidencia.`,
+    neverAForecast: () =>
+      'Aqu\u00ed nada se anualiza, se extrapola ni se ajusta a una tendencia. Si el pr\u00f3ximo trimestre no se parece al anterior, esta aritm\u00e9tica no dice nada sobre \u00e9l \u2014 que es el l\u00edmite honesto de lo que un log puede contarte sobre un contrato.',
   },
 
   owners: {

@@ -11,7 +11,72 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**`trazum commitment` — what a committed-use deal would have been worth on the
+traffic you actually had.** Chapter nine of `docs/plan-1.51.md`. Providers sell
+these, and every team that signs one is doing arithmetic in a spreadsheet against
+a number they guessed — the failure this product exists to end, at the highest
+stakes it occurs, because the guess is annual and signed.
+
+```
+  month       list  would pay    saving
+  2026-01   $5,000     $4,000   +$1,000
+  2026-02   $5,000     $4,000   +$1,000
+  2026-03  $600.00     $3,000   -$2,400
+  2026-04   $4,000     $3,200  +$800.00
+
+  Net over 4 measured months: $400.00.
+  ! 1 of them fell short, and the floor you would have paid for capacity nobody
+    used comes to $2,520.
+```
+
+**Both directions priced, because one direction is the sales pitch.** A
+commitment is a **floor** as well as a discount. The deal above is net positive
+and one month cost $2,520 — netted together that disappears, and the
+disappearing is what a vendor's slide relies on. The unused floor is kept as its
+own figure and never folded into the saving.
+
+**An as-if calculation, and the wording never blurs it.** "On the traffic you
+actually had, this would have saved $X" is a measurement of the past; "you will
+save $X" is a claim about the future, refused here as everywhere since 1.27.
+Nothing is annualised, extrapolated or fitted to a trend, and the document
+carries `provenance: 'measured-past'` for a machine reader.
+
+**The shortfall risk is a count of real months, never a probability.** "Three of
+your last twelve would have fallen short" is a measurement. "There is a 25%
+chance of shortfall" is a model of a distribution nobody fitted, wearing the
+authority of arithmetic. Only the first is available from a log, so only the
+first is printed — with the measured spread beside it.
+
+**Partial months are dropped, not scaled.** A fortnight replayed against a
+monthly floor is a shortfall the traffic never had.
+
+**Fewer than three whole months is a refusal**, with how many more would settle
+it: a commitment is signed for a year, and an answer from one month is a
+year-long decision made on a fortnight of evidence. The break-even is stated
+anyway, because it is a fact about the deal rather than about the traffic.
+
+**A history shorter than the term still gets an answer, with the gap marked.**
+Six months against a twelve-month deal is a real answer about six months; what
+it must not do is go unsaid.
+
+### Fixed
+
+**`formatUsd` rendered a value just under a thousand in the sub-thousand
+format.** `5000 - 5000 * 0.8` is `999.9999999999999`, which took the two-decimal
+branch and came out as `$1000.00` — a string the thousands branch would never
+produce, sitting in a column beside `$5,000` and reading as a different currency
+format for the same magnitude. The branch is chosen on the **rounded** value now,
+so the boundary is the number a reader sees rather than the number the machine
+holds. Found by looking at a real commitment table.
+
+**A signed column was using the unsigned formatter.** `formatUsd` renders a
+negative as `$-2,400`, which reads as a typo; in a column where every row can go
+either way the sign carries the whole meaning, so it belongs in front of the
+currency where a reader expects it. `formatSignedUsd` has existed since 1.30 for
+exactly this and was not reached for.
+
 
 ## 1.50.10 — "Whose money"
 
