@@ -49,6 +49,8 @@ export type { PlanAction, PlanActionKind, PlanAssumption, PlanDocument } from '.
 export { verifyPlan } from './verify.js';
 export { buildHistory, storedReportFrom, MIN_RUN } from './history.js';
 export { answerCost } from './answer.js';
+export { guardSpend } from './guard.js';
+export type { GuardAlternative, GuardAnswer, GuardRequest, GuardVerdict } from './guard.js';
 export type {
   AnswerRequest,
   AnswerVerdict,

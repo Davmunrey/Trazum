@@ -269,6 +269,34 @@ describe('the local endpoint', () => {
   });
 });
 
+/**
+ * The agent-facing tool surface, widened by `spend_guard` in 1.45.
+ *
+ * An agent can now ask this server questions in a loop. The rule that keeps
+ * that safe is not about what it may read — it is about what it may *cause*.
+ */
+describe('the MCP tool surface', () => {
+  const source = () => readFileSync(join(repoRoot, 'packages/mcp/src/tools.ts'), 'utf8');
+  const code = () =>
+    source()
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+
+  it('cannot make Trazum spend somebody else\'s money or rate limit', () => {
+    // An agent that can trigger a provider pull by asking a question is a
+    // denial-of-service with good manners — and the bill lands on the person
+    // who installed the cost tool.
+    const text = code();
+    assert.doesNotMatch(text, /fetchProviderUsage|fetch\s*\(|node:https?|connect\b/);
+    assert.doesNotMatch(text, /@trazum\/core\/node/);
+  });
+
+  it('reads no files, as the server has promised since it shipped', () => {
+    const text = code();
+    assert.doesNotMatch(text, /readFile|createReadStream|node:fs/);
+  });
+});
+
 describe('no runtime dependencies', () => {
   // Every published package here processes untrusted text. A runtime dependency
   // is code that would run on that text with no review from this project, so

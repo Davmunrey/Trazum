@@ -110,17 +110,32 @@ describe('the handshake', () => {
     fresh.close();
   });
 
-  it('lists exactly the four tools, and no more', async () => {
+  it('lists exactly the five tools, and no more', async () => {
     /**
      * Asserted as an exact set. This package's whole security argument is what it
      * *cannot* do — no paths, no network, no writes — and the way that argument
      * decays is a tool arriving without anyone re-reading it. profile_usage was
      * added under exactly that review: it takes log *text*, never a path, and the
      * import test below still refuses the Node entry point that could read one.
+     *
+     * spend_guard was added under the same review in 1.45. It takes figures the
+     * caller already holds — a model id, token counts, a measured spend and a
+     * budget — and returns arithmetic over the bundled catalogue. It reads
+     * nothing, calls nothing and spends nothing; the security suite fails the
+     * build if this file ever reaches the connector's fetch path, the Node entry
+     * point or the filesystem, because an agent that can make Trazum spend
+     * somebody's rate limit by asking a question is a denial-of-service with
+     * good manners.
      */
     const answer = await client.send('tools/list', {});
     const names = answer.result.tools.map((tool) => tool.name).sort();
-    assert.deepEqual(names, ['check_prompt', 'list_models', 'optimize_prompt', 'profile_usage']);
+    assert.deepEqual(names, [
+      'check_prompt',
+      'list_models',
+      'optimize_prompt',
+      'profile_usage',
+      'spend_guard',
+    ]);
   });
 });
 

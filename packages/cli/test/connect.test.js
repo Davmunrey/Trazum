@@ -274,7 +274,9 @@ describe('trazum connect', () => {
     const { tmpdir } = await import('node:os');
     const { join } = await import('node:path');
     const doc = await readFile(new URL('../../../docs/json-output.md', import.meta.url).pathname, 'utf8');
-    const section = doc.slice(doc.indexOf('## The connected report document'));
+    const start = doc.indexOf('## The connected report document');
+    const end = doc.indexOf('## The cost answer document');
+    const section = doc.slice(start, end === -1 ? undefined : end);
     const promised = new Set(
       [...section.matchAll(/^\| `([a-zA-Z]+)(?:\[\])?`/gm)].map((m) => m[1]),
     );

@@ -153,3 +153,32 @@ document:
 | `unpricedModels[]` | Models the catalogue could not price: named, with their tokens kept and their money absent. |
 | `gaps[]` | What the pull did not get — `rate-limited`, `retention-boundary`, `cursor-expired`, `page-limit`, `unreadable-entry`, `unreadable-field` — each with the detail. A window short by an unknown amount says so here. |
 | `unavailable[]` | Findings this source cannot support, each with `because` and `unlockedBy`. A restricted report that merely omitted them would read as a report that found nothing. |
+
+## The cost answer document
+
+`trazum serve`'s `POST /cost` response, and the `cost` half of `spend_guard`'s
+answer. Contracted here since consumers build against it hardest — an agent
+reads it on every call. It should have shipped with 1.44 and did not; the
+omission is on the record in that release's notes.
+
+| Field | What it holds |
+| --- | --- |
+| `schemaVersion` | `1`. |
+| `call` | The call the caller described, priced: `model`, `inputTokens`, `outputTokens`, `estimatedUsd`, `provenance` (always `estimated` — nobody has sent it) and `basis` (`token-count` when the caller counted, `heuristic` when Trazum did). Null when no call was described or the model could not be priced. |
+| `budget` | Where the budget stands: `limitUsd`, `consumedUsd`, `remainingUsd`, `provenance` (always `measured`) and the `window` that figure covers, so staleness is visible rather than implied away. Null when there is no budget or nothing measured. |
+| `verdict` | `within`, `over`, or `cannot-tell`. Three, never two. |
+| `restsOn` | What the verdict rests on: `measured` when the budget is already past its limit and no estimate was needed, `measured+estimated` when it takes the described call to cross. Null on `cannot-tell`. |
+| `reason` | Why it cannot tell, kept apart because the fixes differ: `no-budget-configured`, `nothing-measured`, `model-unpriced`. |
+| `afterCall` | Where the budget would stand after this call — `usd`, with `halves.measuredUsd` and `halves.estimatedUsd` beside it. The composed figure never travels without its two halves, so it cannot be mistaken for a measurement. |
+
+## The spend-guard document
+
+`spend_guard` over MCP wraps the answer above with what to do instead:
+
+| Field | What it holds |
+| --- | --- |
+| `schemaVersion` | `1`. |
+| `verdict` | `yes`, `no`, `cannot-tell` — mapped from the cost answer. `cannot-tell` never becomes `yes`: a guard that permits whatever it cannot judge permits everything the moment its inputs go missing. |
+| `cost` | The full cost answer above, halves and provenance intact. |
+| `alternatives` | Cheaper ways to make the same call, dearest saving first. Each carries `kind` (`route`, `batch`, `route+batch`), the `model` it moves to, `savingUsd` **for this call** rather than for a month, the typed `assumes` it rests on, and `fits` — only alternatives the prompt fits inside are ever offered. Present on a `yes` as well, since an agent allowed to spend that could spend less should be told. |
+| `because` | One line for a human reading a log. Never the only place a fact appears. |

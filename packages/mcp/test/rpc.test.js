@@ -148,7 +148,7 @@ describe('a tool failure is a result, not a protocol error', () => {
 describe('tools/list', () => {
   it('describes every tool with a schema a client can validate against', () => {
     const { tools } = call(request('tools/list', {})).result;
-    assert.equal(tools.length, 4);
+    assert.equal(tools.length, 5);
     for (const tool of tools) {
       assert.ok(tool.name && tool.title && tool.description, `${tool.name} is under-described`);
       assert.equal(tool.inputSchema.type, 'object');

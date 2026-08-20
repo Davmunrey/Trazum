@@ -11,6 +11,7 @@ import {
   coverageDrift,
   driversBetween,
   formatUsd,
+  guardSpend,
   reviewAgeDays,
   listModels,
   optimize,
@@ -1175,4 +1176,102 @@ const PROFILE: ToolDefinition = {
 };
 
 /** The whole surface. An exact list, asserted as one by the tests. */
-export const TOOLS: readonly ToolDefinition[] = [OPTIMIZE, CHECK, MODELS, PROFILE];
+/**
+ * `spend_guard` — the tool that makes the arc pay off.
+ *
+ * The other tools tell an agent what something costs. This one tells it
+ * whether it is allowed to spend, which is the only answer that changes what
+ * a model does next.
+ *
+ * **A refusal arrives with the lever.** An agent told "denied" and nothing
+ * else has two moves: send it anyway, or fail the user's request. Both are
+ * worse than the call it wanted to make. So every no carries the cheaper ways
+ * to make the same call — each priced for *this* call rather than for a month,
+ * each naming what it assumes, and each already filtered to models the prompt
+ * actually fits in.
+ *
+ * **It never spends to answer.** No provider call, no model call, no pull.
+ * The figures come from what the caller passes and the catalogue this server
+ * already holds — a cost guard that costs money to consult is a joke with a
+ * bill attached.
+ */
+const SPEND_GUARD: ToolDefinition = {
+  name: 'spend_guard',
+  title: 'May I spend this? — with the cheaper way if not',
+  description:
+    'Answers whether a call you are about to make fits the budget: yes, no, or cannot-tell. '
+    + 'A refusal carries the cheaper ways to make the same call — a smaller model the prompt '
+    + 'still fits in, a batch window — each priced for this call and each naming what it '
+    + 'assumes. The budget consumed is measured from real billed usage you pass in; the cost '
+    + 'of your call is an estimate of something that has not happened, and the answer keeps '
+    + 'the two apart and says which the verdict rests on. Nothing is called and nothing is '
+    + 'spent to produce this answer.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      model: {
+        type: 'string',
+        minLength: 1,
+        description: 'Model id the call would go to. Call list_models for what is known.',
+      },
+      inputTokens: {
+        type: 'integer',
+        minimum: 0,
+        description: 'Input tokens the call would send, including anything cached.',
+      },
+      outputTokens: {
+        type: 'integer',
+        minimum: 0,
+        default: 0,
+        description: 'Output tokens you expect back. Left at zero, the answer prices input only and says so by carrying the figure you gave.',
+      },
+      consumedUsd: {
+        type: 'number',
+        minimum: 0,
+        description:
+          'Measured spend so far, in dollars — from a bill, never a guess. Omit it and the '
+          + 'answer is cannot-tell rather than a yes nobody measured.',
+      },
+      limitUsd: {
+        type: 'number',
+        minimum: 0,
+        description:
+          'The budget this is judged against. Omit it and the answer is cannot-tell: this '
+          + 'tool reports a position against a policy a human set, and never invents one.',
+      },
+      batchEligible: {
+        type: 'boolean',
+        default: false,
+        description:
+          'Whether this work can wait for a batch window. Only you know that, so batch '
+          + 'alternatives are offered only when you say so.',
+      },
+    },
+    required: ['model', 'inputTokens'],
+    additionalProperties: false,
+  },
+  run: (args) => {
+    const model = args.model;
+    if (typeof model !== 'string' || model.length === 0) {
+      throw new InvalidArguments('model must be a non-empty string');
+    }
+    const inputTokens = args.inputTokens;
+    if (typeof inputTokens !== 'number' || !Number.isFinite(inputTokens) || inputTokens < 0) {
+      throw new InvalidArguments('inputTokens must be a non-negative number');
+    }
+    const answer = guardSpend(
+      {
+        model,
+        inputTokens,
+        outputTokens: typeof args.outputTokens === 'number' ? args.outputTokens : 0,
+        consumedUsd: typeof args.consumedUsd === 'number' ? args.consumedUsd : undefined,
+        limitUsd: typeof args.limitUsd === 'number' ? args.limitUsd : undefined,
+        batchEligible: args.batchEligible === true,
+      },
+      { catalogue: BUNDLED_CATALOGUE },
+    );
+    return JSON.stringify(answer, null, 2);
+  },
+};
+
+export const TOOLS: readonly ToolDefinition[] = [OPTIMIZE, CHECK, MODELS, PROFILE, SPEND_GUARD];

@@ -2560,7 +2560,7 @@ packages/core/     dependency-free library (rules, tokens, pricing, LLM)
 packages/cli/      dependency-free CLI
   src/markdown.ts    the report as markdown, and the three escapers
   src/git.ts         the only module here that runs another program
-packages/mcp/      dependency-free MCP server — four tools over stdio
+packages/mcp/      dependency-free MCP server — five tools over stdio
   src/rpc.ts         JSON-RPC 2.0 by hand; the invariant beat the SDK
   src/tools.ts       the whole surface an agent can reach, in one file
 apps/web/          Next.js (App Router) — Optimise, Compare, Your bill, Library
@@ -2614,11 +2614,23 @@ cover what matters.
 
 ### An MCP server, so an agent can budget its own prompts
 
-`@trazum/mcp` exposes four tools over stdio — `optimize_prompt`, `check_prompt`,
-`profile_usage` and `list_models`. Every other surface here answers "what does
-this prompt cost" for a human after the fact; this answers it for the thing
-composing the prompts — before it sends one, and over the bill its calls already
-ran up.
+`@trazum/mcp` exposes five tools over stdio — `optimize_prompt`, `check_prompt`,
+`profile_usage`, `list_models` and `spend_guard`. Every other surface here
+answers "what does this prompt cost" for a human after the fact; this answers it
+for the thing composing the prompts — before it sends one, and over the bill its
+calls already ran up.
+
+**`spend_guard` is the one that changes what a model does.** The others say what
+something costs; this says whether it may be spent — `yes`, `no`, or
+`cannot-tell` — and **a refusal never arrives bare**. It carries the cheaper
+ways to make the *same* call: a smaller model the prompt still fits inside, a
+batch window, each priced for this call rather than for a month, each naming
+what it assumes. An agent told "denied" and nothing else has two moves — send it
+anyway, or fail the user — and both are worse than the call it wanted to make.
+
+It never spends to answer, and it never says yes to what it cannot judge: a
+guard that permits whatever it cannot see permits everything the moment a figure
+goes missing.
 
 ```jsonc
 { "mcpServers": { "trazum": { "command": "npx", "args": ["-y", "@trazum/mcp"] } } }
