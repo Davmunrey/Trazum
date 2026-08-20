@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.50.6 — "The ladder"
+
 ### Added
 
 **`trazum ladder` — is cheap-first-escalate-on-failure saving money, or is it a

@@ -859,6 +859,23 @@ in the cell, and a withheld slice gets no rank at all. Chapter three of
 docs/plan-1.51.md.
 
 
+### 1.50.6 — The ladder
+
+`trazum ladder`. "Cheap model first, escalate on failure" describes a policy
+that saves money and a policy that costs money equally well; one number
+separates them, and nobody computes it because an escalation pays **twice** —
+the cheap attempt is not refunded. The command prints the break-even escalation
+rate beside the measured one. Two identically configured ladders in the worked
+example: one saves 70% a call, the other costs 10% more than never having built
+it. No sign is claimed within two points of break-even. `escalateOn` is required
+and never defaulted, because "anything that is not a success" would mean
+documenting a new word silently starts sending traffic to a dearer model.
+`validateLadder` catches escalating on a declared success — the most expensive
+typo in the file — plus rungs that go down, ladders that never fire, duplicates
+and unknown models. Trazum does not run the escalation and says so. Chapter four
+of docs/plan-1.51.md.
+
+
 ## Collapsed into 1.8.0
 
 **Everything below shipped as 1.8.0, and none of these numbers is on npm.** They
