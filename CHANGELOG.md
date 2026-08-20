@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.50.10 — "Whose money"
+
 ### Added
 
 **`trazum owners` — whose money.** Chapter eight of `docs/plan-1.51.md`. The
