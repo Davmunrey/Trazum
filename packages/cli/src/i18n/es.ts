@@ -166,7 +166,7 @@ ${bold('OPCIONES DE commitment')}
 
 ${bold('OPCIONES DE report')}
   --year <yyyy>               Obligatorio. Qué año montar.
-  --json                      Emite también el registro como JSON.
+  --json                      El registro como datos.
 
   Todo sale del almacén y de los planes que ya guardas — no se calcula nada
   que no se pueda comprobar contra un documento que ya existe. Los meses sin

@@ -13,6 +13,87 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**`trazum report --year --json` emitted a stream no machine could read.** It
+printed the human report and *then* appended the document, and its help said
+"Also emit". Every other `--json` in this CLI is the document **instead of** the
+report. So the one command emitting the `annual-record` contract was the one
+command whose output `| jq` and `| trazum conform -` both choke on.
+
+**The test covering it did `stdout.indexOf('{')` and parsed from there** — a
+step no consumer can take. The assertion passed, the defect was invisible, and
+the guard standing next to the bug was working around it. `--json` now returns
+before any prose, the help in both locales says "The record as data", and the
+test parses the whole of stdout.
+
+**`--contract` refused two contracts that exist.** The CLI kept a hand-written
+copy of the contract names for `--contract`, and it stopped at `cost-answer`:
+`outcome-report` (1.50.4) and `annual-record` (1.51.0) had field rules, had
+cross-rules, and were answered with *"is not a contract"* — the list telling the
+caller they had made a typo when the list was the thing that was wrong. The
+names are now a single `CONTRACT_NAMES` export in `@trazum/core`, with the union
+derived from it. One home per fact.
+
+**`@trazum/core` produced an `outcome-report` its own contract rejects.**
+`conform` requires `schemaVersion` of every document — the one field checked
+outside the per-contract rules, because a consumer branches on it and its
+absence cannot be told from a pre-contract document. `outcomeReport()` never
+emitted one, from 1.50.4. A format whose reference producer fails it is worse
+than no format: anybody mirroring this output, which is exactly what
+`docs/format.md` invites, would have inherited the defect and looked
+interoperable.
+
+**`docs/format.md` was wrong about the format in three ways at once**, on the
+page whose entire job is telling another tool what it can build against:
+
+- It opened with *"Trazum emits seven documents. All seven are contracts"* while
+  its own table listed **ten** rows, three lines below the sentence.
+- It named neither `outcome-report` nor `annual-record`, so the two newest
+  contracts were undiscoverable from the page that exists to list them.
+- It flattened two distinctions worth keeping. Three of the documents it lists
+  have no `--contract` name, and one — the outcome report — is **defined but
+  never emitted**: `trazum profile` renders it as terminal text and no command
+  writes it as JSON. It is a contract so that *your* tool can produce one and
+  have it checked, which is a different promise from "Trazum will hand you one".
+
+The page now says eleven emitted plus one defined-not-emitted, carries a
+`--contract` column saying which nine are nameable, and documents the two
+missing contracts in `docs/json-output.md`.
+
+**Eight contract harvests were bounded by naming their neighbour.** Every parity
+test that reads its promised fields out of `docs/json-output.md` did:
+
+```js
+const start = doc.indexOf('## The first-run document');
+const end = doc.indexOf('## The gateway refusal document');
+```
+
+Correct exactly until a section is inserted between the two — which documenting
+the outcome report and the annual record did. Four suites failed at once,
+demanding `slices`, `year` and `missingMonths` of documents that have nothing to
+do with them. **This is the ninth occurrence of bounding an assertion by its
+neighbour**, and the first that was systemic rather than a single test: the
+comment above one of them already said it was "the sixth time in this file's
+life", and the fix each previous time was to name the next neighbour again.
+
+A ninth harvest was worse. `gateway-proxy.test.js` carried the comment *"Bounded
+to its own section, like every other harvest in this repository"* above
+`doc.slice(start)` — running to the end of the file, bounded by nothing. It
+passed only because that section happens to be last. A comment asserting a
+property the code does not have is worse than no comment: it is what a reviewer
+reads instead of the code.
+
+All nine now use one `sectionOf(document, heading)` helper that ends at **the
+next heading, whatever it is**. A section that moves, is renamed or gains a
+neighbour keeps working; a section that is deleted fails loudly naming itself,
+which is the correct outcome and is proven by deleting one.
+
+**"a outcome-report".** Every contract name that existed before 1.50.4 began
+with a consonant, so `conform`'s heading hard-coded `a`. Making the two new ones
+reachable exposed it. The first fix was also wrong — a letter-only vowel test
+turned the correct *"a usage-log"* into *"an usage-log"*, because `usage` opens
+on /juː/. The rule is now bounded to the closed set of contract names, and a
+test refuses to let a new name through whose initial English decides by sound.
+
 **The README disagreed with itself about the number of advisories, for
 fifty-two releases.** The hero says *"fourteen findings"*. Three lines below it,
 the paragraph that carries the actual argument said **"Thirteen advisories"** —
@@ -30,6 +111,28 @@ itself on the load-bearing number of the pitch.
 That is the **eighth** time in this repository an assertion has been bounded by
 a neighbour instead of by its subject, and the first time the cost was on the
 front page rather than in a test fixture.
+
+### Added
+
+**`packages/cli/test/interchange.test.js`** — the format held to what it says
+about itself, in five guards, each proven by planting the violation:
+
+- **`--json` parses as one JSON document**, for the five commands a usage log
+  alone can drive. The ones needing a prior document, a credential, a running
+  loop or a paid call are **named rather than counted**, so the gap is visible.
+- **The annual record survives a pipe into `conform`**, which is the whole
+  claim the format page makes.
+- **The reference producer conforms**: an outcome report from `@trazum/core`
+  passes the check this repository publishes. The other parity tests check the
+  document against the doc; this one checks what is actually produced.
+- **Every `CONTRACT_NAMES` member is named by `docs/format.md`**, and the count
+  it claims matches the rows of its own table minus the one it says is not
+  emitted — counting the rows is the only version of that check a stale sentence
+  cannot satisfy on its own.
+- **No `--contract` name is offered that the CLI would refuse.**
+
+**`test-utils/section.mjs`** — the shared bound described above, with the whole
+history of why in it.
 
 ### Changed
 

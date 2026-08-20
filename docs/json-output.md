@@ -205,6 +205,45 @@ person are looking at one document rather than two renderings that can drift.
 | `unreadable` | A usage source that is there and could not be read, with `where` and `because`. Null otherwise — and never folded into "no usage found", because the fixes are opposite. |
 | `truncated` | Whether the source-file walk hit its cap, so "no provider found" can be told apart from "stopped looking". |
 
+## The outcome report document
+
+**Nothing emits this one, and that is the point of documenting it.**
+`trazum profile` renders it as terminal text over a log that carries outcomes;
+`@trazum/core`'s `outcomeReport()` computes it. It is a contract so that a tool
+of *yours* can produce one and have `trazum conform --contract outcome-report`
+check it — not a promise that Trazum will hand you the JSON.
+
+The refusals are the part worth copying. A format that carried these fields and
+dropped the refusals would be worse than no format, because it would look
+interoperable.
+
+| Field | What it holds |
+| --- | --- |
+| `schemaVersion` | `1`. Absent from this document from 1.50.4 until it was noticed — the contract required it and the reference producer did not emit it, so the only implementation of this format failed it. |
+| `slices` | One entry per **declared** outcome value, dearest first: `value`, `verdict` (`success` or `other`), `calls`, `usd`. |
+| `undeclared` | Values found in the log that the config never declared, each with `verdict: "undeclared"` and what it cost. **Named, never folded into the failures** — a typo in an exporter must surface as a typo and not as a shift in the success rate. |
+| `coverage` | `recorded`, `parsed` and `unrecordedUsd`. The denominator, stated: "eleven of forty thousand calls recorded an outcome" is a different document from "eleven succeeded". |
+| `successShareOfRecordedUsd` | The success rate **by spend**, or `null`. By spend rather than by call because this product's subject is money, and the two figures diverge exactly when the expensive half is the half that fails. **Null is not zero**: zero is a real and terrible measurement, and spelling "nobody told me" the same way destroys the difference. |
+| `noRate` | Why there is no rate, when there is none: `nothing-recorded`, or `no-success-values-declared`. Null when there is one. A refusal never arrives bare. |
+
+## The annual record document
+
+`trazum report --year <yyyy> --json`. The year assembled from the store and the
+plans already kept — **no new data**, and nothing computed that cannot be checked
+against a document that already exists.
+
+| Field | What it holds |
+| --- | --- |
+| `schemaVersion` | `1`. |
+| `year` | The four-digit year, as a string. |
+| `months` | One entry per month that has a record, oldest first: `month` (`YYYY-MM`), `usd`, `calls`. A month with nothing in it is not here. |
+| `missingMonths` | Every month of the year with no record at all, **named rather than interpolated**. A year report that quietly covers nine months and prints an annual total is wrong by a quarter and says nothing about it. |
+| `totalUsd`, `totalCalls` | Over the months present, and only those. |
+| `promises` | `planned`, `arrived`, `notArrived`, `cannotTell`, `projectedUsd`. **Three outcomes, never two** — the third is the one an ordinary annual report folds into the flattering one. |
+| `promises.arrivedUsd` | **Deliberately absent.** A verification says *whether* each action landed; it has never carried a per-action dollar figure for the saving that arrived. Summing one out of the observations would mean deciding which of them to believe, which is the annual-report arithmetic this document exists to replace. |
+| `outcomes` | The outcome coverage for the year — `recorded`, `parsed`, `unrecordedUsd` — or **null when nothing recorded one**. Attached when something was *recorded*, not merely parsed: keying on "calls were parsed" made the honest "no outcome was recorded this year" sentence unreachable. |
+| `cannotSay` | Typed reasons this record cannot answer something: `months-missing`, `nothing-was-planned`, and the rest. The list is part of the document, not a footnote in the terminal rendering. |
+
 ## The gateway refusal document
 
 The body `trazum gateway` returns with **HTTP 402** when a call is over budget.

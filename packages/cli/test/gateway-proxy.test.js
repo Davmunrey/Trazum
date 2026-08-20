@@ -5,6 +5,7 @@ import { describe, it, after } from 'node:test';
 
 import { BUNDLED_CATALOGUE } from '@trazum/core';
 import { buildGateway, listenGateway, MAX_GATEWAY_BODY_BYTES } from '../dist/gateway-server.js';
+import { sectionOf } from '../../../test-utils/section.mjs';
 
 /**
  * The proxy, end to end, against a stub upstream.
@@ -269,12 +270,17 @@ describe('the gateway when it cannot judge', () => {
 describe('the refusal document is a contract', () => {
   const DOC = new URL('../../../docs/json-output.md', import.meta.url).pathname;
 
-  /** Bounded to its own section, like every other harvest in this repository. */
+  /**
+   * Bounded to its own section — which the comment here claimed and the code
+   * did not do. `doc.slice(start)` ran to the end of the file, and it passed
+   * only because this section happens to be the last one. A comment asserting
+   * a property the code does not have is worse than no comment: it is what a
+   * reviewer reads instead of the code.
+   */
   const documented = async () => {
     const doc = await readFile(DOC, 'utf8');
-    const start = doc.indexOf('## The gateway refusal document');
-    assert.ok(start > 0, 'the refusal document has no section in docs/json-output.md');
-    return new Set([...doc.slice(start).matchAll(/^\| `([a-zA-Z]+)` \|/gm)].map((m) => m[1]));
+    const section = sectionOf(doc, '## The gateway refusal document');
+    return new Set([...section.matchAll(/^\| `([a-zA-Z]+)` \|/gm)].map((m) => m[1]));
   };
 
   const emitted = async () => {
