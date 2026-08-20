@@ -514,6 +514,15 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.45.0 — The agent's budget
+
+`spend_guard` over MCP answers whether a call may be made — yes, no, or cannot
+tell — and a refusal never arrives bare: it carries the cheaper ways to make
+the same call, priced for that call rather than for a month, each naming what
+it assumes and each filtered to models the prompt actually fits inside. Route
+and batch combine rather than add. It never spends to answer and never says
+yes to what it cannot judge. Fifth of the ten in docs/plan-1.41-1.50.md.
+
 ### 1.44.0 — The answer in milliseconds
 
 `trazum serve` answers what a call will cost and whether there is budget, from

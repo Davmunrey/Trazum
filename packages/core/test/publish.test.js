@@ -787,6 +787,36 @@ describe('a release cannot ship without notes', () => {
     );
   });
 
+  it("the version RELEASES.md says is on npm is the version being published", () => {
+    /**
+     * **This claim was wrong for seventeen releases and nothing noticed.**
+     *
+     * The header of `RELEASES.md` is the first line a stranger reads about
+     * what `npm install @trazum/cli` actually gives them, and it said 1.28.0
+     * while the manifests moved to 1.45.0. Every other live claim in this
+     * repository has a guard; this one had none, so it drifted the moment
+     * somebody stopped hand-editing it — which is the whole argument this
+     * product makes about numbers, failing inside the product's own notes.
+     *
+     * The rule is checkable because publication is not a separate decision:
+     * `release.yml` publishes on the tag that the release PR's merge creates,
+     * so the merge that makes the manifests say X is the merge that puts X on
+     * the registry. Anyone reading `main` at X can install X. The two numbers
+     * are the same number, or the file is lying.
+     */
+    const version = manifestOf('.').version;
+    const claim = releases.match(/\*\*All three packages are on npm at ([0-9]+\.[0-9]+\.[0-9]+)\*\*/);
+    assert.ok(
+      claim,
+      'RELEASES.md no longer states which version is on npm — if that is deliberate, delete this test rather than loosening it',
+    );
+    assert.equal(
+      claim[1],
+      version,
+      `RELEASES.md says ${claim[1]} is on npm; the manifests publish ${version} on merge`,
+    );
+  });
+
   it('the newest section is either the pending release or the current version', () => {
     // Nothing is published yet, so the top section is `Unreleased`. Once a
     // version ships it becomes that version, and the next unreleased work opens
