@@ -28,7 +28,7 @@ run above, forty percent of the text came out and it moved 3.5% of the bill.
 What moved the rest was a question nobody was asking: does this task need the
 model it is running on?
 
-**Every figure has a receipt.** Thirteen advisories, each priced per month and
+**Every figure has a receipt.** Fourteen advisories, each priced per month and
 reproducible on a single file — caching you are not getting, work that could go
 through the Batch API, a schema costing tokens on every call to describe a shape
 the request could carry as a parameter. Underneath them, twelve deterministic

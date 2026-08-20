@@ -13,6 +13,48 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**The README disagreed with itself about the number of advisories, for
+fifty-two releases.** The hero says *"fourteen findings"*. Three lines below it,
+the paragraph that carries the actual argument said **"Thirteen advisories"** —
+the same claim, a different noun, and wrong. `AdvisoryId` has fourteen members.
+
+**A guard was standing right next to it and could not see it.** "The counts the
+README claims are the counts the code has" reads the `AdvisoryId` union out of
+source rather than hardcoding a number, and asserts the README says
+`"<word> findings"`. It does. When the fourteenth advisory landed at 1.9.1 the
+guard forced the hero sentence and said nothing about the sentence under it,
+because it was bounded to the word *findings* rather than to its subject — **the
+number of advisories**. Every release since shipped a front page contradicting
+itself on the load-bearing number of the pitch.
+
+That is the **eighth** time in this repository an assertion has been bounded by
+a neighbour instead of by its subject, and the first time the cost was on the
+front page rather than in a test fixture.
+
+### Changed
+
+**The guard now checks both nouns, and refuses any stale count beside a correct
+one.** Two halves, because requiring the right phrase is only half the job:
+
+- The README must say `"<word> findings"` **and** `"<word> advisories"`, both
+  matching the union, matched case-insensitively — the second begins a sentence
+  and a lowercase-only pattern would have been the same bug again.
+- **No number word may precede either noun unless it is the real count.** An
+  inclusion check passes on a document that states a figure twice and disagrees
+  with itself; this half fails it.
+
+**Proven against the live defect rather than a probe.** Widening the guard made
+it fail on the README as it stood — `the README should say "fourteen advisories"
+(the code has 14)` — which is the strongest form of proof available: the
+violation was already in the repository. Both halves were then re-planted
+afterwards and each failed naming the wrong figure. The README now says
+fourteen in both places.
+
+`CHANGELOG.md` still says "thirteen advisories" under 1.9.0 and that is left
+alone. It was true of 1.9.0, and rewriting history to satisfy a guard is the
+failure this file exists to prevent — the same split `RELEASES.md` already draws
+between its standing header and its record.
+
 **`ROADMAP.md`'s forward-looking section was narrating a past.** `## Next` opened
 with *"the arc in progress is `docs/plan-1.51.md`"* — after every chapter of that
 arc had shipped and the arc had landed at 1.51.0. It is exactly the failure
@@ -27,7 +69,8 @@ delivered arcs are stated as delivered, with 1.51.0's ten chapters named.
 
 ### Added
 
-**A guard on it: "the section called Next points forward, or says it does not".**
+**A guard on the roadmap: "the section called Next points forward, or says it
+does not".**
 The invariant is deliberately not *"`Next` must be full"* — a project with
 nothing planned is a real state, and a roadmap that manufactures a queue to look
 busy is worse than an empty one. It is that the section either **names a version

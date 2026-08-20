@@ -186,16 +186,29 @@ describe('what npm would publish', () => {
 
   it('the counts the README claims are the counts the code has', () => {
     /**
-     * The front page now leads with "thirteen findings" and "twelve
-     * deterministic rules". Those are the load-bearing numbers of the pitch —
-     * the whole argument is that the advisories outnumber and outweigh the
-     * trimming — and a rule or an advisory added later would leave the headline
-     * quietly wrong to every visitor.
+     * The front page leads with the advisory count and the rule count. Those
+     * are the load-bearing numbers of the pitch — the whole argument is that
+     * the advisories outnumber and outweigh the trimming — and a rule or an
+     * advisory added later would leave the headline quietly wrong to every
+     * visitor.
      *
      * `RULES` is imported. The advisories have no runtime array to count, so
      * the `AdvisoryId` union is counted from source: the alternative is
      * hardcoding a second number here, which is the thing being guarded
      * against.
+     *
+     * **The README states the advisory count twice, in two different nouns**,
+     * and this guard read only one of them. The hero says "fourteen findings";
+     * the paragraph three lines under it said "Thirteen advisories". When the
+     * fourteenth advisory landed at 1.9.1 the guard forced the hero and said
+     * nothing about the sentence below it, which stayed wrong through
+     * **fifty-two releases** — every one of them shipping a front page that
+     * disagreed with itself about the load-bearing number of the pitch.
+     *
+     * That is the eighth time in this repository an assertion has been bounded
+     * by a neighbour instead of by its subject. The subject here is *the number
+     * of advisories*, not *the word "findings"*, so both nouns are checked and
+     * the match is case-insensitive — the second one begins a sentence.
      */
     // Collapsed, because the phrase this looks for is wrapped across a line
     // break in the hero and a literal match would depend on where the wrap
@@ -220,13 +233,36 @@ describe('what npm would publish', () => {
     const advisoryCount = [...union.matchAll(/'[a-z-]+'/g)].length;
     assert.ok(advisoryCount >= 5, `only parsed ${advisoryCount} advisories out of the union`);
 
+    const word = (n) => Object.keys(words).find((w) => words[w] === n);
+    const lower = readme.toLowerCase();
+
     for (const [claimed, expected] of [
-      [`${Object.keys(words).find((w) => words[w] === advisoryCount)} findings`, advisoryCount],
-      [`${Object.keys(words).find((w) => words[w] === RULES.length)} deterministic rules`, RULES.length],
+      [`${word(advisoryCount)} findings`, advisoryCount],
+      [`${word(advisoryCount)} advisories`, advisoryCount],
+      [`${word(RULES.length)} deterministic rules`, RULES.length],
     ]) {
       assert.ok(
-        readme.includes(claimed),
+        lower.includes(claimed),
         `the README should say "${claimed}" (the code has ${expected})`,
+      );
+    }
+
+    /**
+     * And no *stale* count survives beside the correct one.
+     *
+     * Requiring the right phrase is only half of it: "Thirteen advisories" sat
+     * in the README while "fourteen findings" three lines above it satisfied
+     * the guard. A README that states a number twice and disagrees with itself
+     * passes an inclusion check and fails a reader.
+     */
+    for (const noun of ['findings', 'advisories']) {
+      const wrong = [...lower.matchAll(new RegExp(`([a-z-]+) ${noun}`, 'g'))]
+        .map((m) => m[1])
+        .filter((w) => words[w] !== undefined && words[w] !== advisoryCount);
+      assert.deepEqual(
+        wrong,
+        [],
+        `the README says "${wrong[0]} ${noun}" and the code has ${advisoryCount}`,
       );
     }
   });
