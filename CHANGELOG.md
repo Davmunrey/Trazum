@@ -11,7 +11,82 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**An `outcome` on the usage record — the counterpart every figure here has been
+missing.** Chapter two of `docs/plan-1.51.md`. Everything Trazum reports is a
+cost: it can say a workload got forty per cent cheaper and cannot say whether it
+stopped working. The missing field is not something this tool can compute; it is
+something only the caller knows.
+
+Recorded beside `label` and `session`, read from `outcome` or `trazum_outcome`,
+and declared in the config:
+
+```json
+{ "outcomes": { "values": ["resolved", "escalated", "abandoned"], "success": ["resolved"] } }
+```
+
+**The rate is by spend, never by call.** In the worked example in the README,
+forty of fifty-five calls succeeded — 73% by call and **48.2% by spend**,
+because the expensive half of the traffic was the half that failed. The two
+figures diverge exactly when it matters, and a call-weighted rate would have
+read as a healthy product.
+
+**`outcomes.success` is required, and may be empty.** Which of your words counts
+as success is a judgement about your product rather than your bill, and this tool
+has no standing to make it — one that decided `escalated` was a failure would be
+wrong at every company where escalation is the correct, designed outcome for a
+class of request. Leaving the field optional would send that question straight
+back here to be answered by a default nobody chose. `[]` is allowed: a product
+that records only failures has declared something real, and the report then says
+it cannot state a rate rather than inventing one.
+
+**Never inferred.** No absence of complaint counts as success, no short
+conversation counts as resolution, no retry counts as failure. Each is a
+plausible heuristic that would become a metric somebody optimises against —
+which is how a tool ends up rewarding conversations that ended early because the
+user gave up.
+
+**Nothing recorded is not a rate of zero.** A rate of zero is a real and terrible
+measurement; "nobody told us" is a different sentence and `noRate` spells it
+differently. A tool that reported 0% success for an uninstrumented product would
+get somebody fired over a number that measured nothing.
+
+**An undeclared value is named, not bucketed.** A misspelled `resolvd` is a
+broken exporter, and folding it into the failure side would report a product
+regression that never happened — the direction that gets somebody paged at four
+in the morning. It is excluded from both halves of the rate and listed by name.
+
+**Every printed rate carries what it does not cover.** The share of the bill that
+carried no outcome is stated beside it, because a rate over an eighth of the
+spend is a rate about an eighth of the spend.
+
+`outcomeTally` joins the profile document (measurement only, no judgement — an
+aggregate, never a list of calls) and `fieldCoverage` gains `outcome`.
+
+### Security
+
+**Three guards that an outcome is recorded and never inferred**, each proven by
+planting the violation:
+
+- the outcome module may not mention `session`, `stop_reason`, `truncated`, a
+  timestamp, a retry or a repeat;
+- the parser's assignment is compared exactly, so no `?? 'resolved'` fallback
+  can be appended;
+- the rate's type must stay `number | null` with a `noRate` beside it.
+
+The privacy line does not move: an outcome is a small enumerated value, tallied
+as an aggregate, never alongside content.
+
+### Fixed
+
+**A profile assertion was bounded by a phrase rather than by its subject.** The
+cache-TTL test asserted the whole report contained no `cannot say whether`, and
+the new outcome-coverage line says "cannot say whether it stopped working" for
+entirely unrelated and correct reasons — so a true assertion started failing on a
+sentence about a different subject. It matches the TTL hedge's own sentences now.
+Sixth occurrence of this shape in the repository, and the second this week.
+
 
 ## 1.50.3 — "The gateway"
 

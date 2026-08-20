@@ -46,6 +46,7 @@ key that disappears fails, and a key added without a line here fails too.
 | `spendByDay` | Exact dollars per UTC day, with the day's biggest label and the day's spend per model — the series `modelMixDrift` summarises, whole. |
 | `duplicateLines` | Lines identical to an earlier one (timestamped records only), and what they added to the total — the shape a doubled export has. |
 | `fieldCoverage` | How many parsed records carried each optional field — the counts behind "what this log cannot answer yet". |
+| `outcomeTally` | What each recorded `outcome` value cost: `byValue` (value, calls, usd, dearest first), `recorded`, `parsed`, `unrecordedUsd`. **Measurement only, no judgement** — which values mean success is declared in the config, not decided here, so a consumer that wants a rate passes this through `outcomeReport`. An aggregate, never a list of calls. |
 | `spendByHour` | Exact dollars per hour of the UTC day — the shape that says whether the Batch API applies. |
 | `modelMixDrift` | Each model's share of spend in the first half of the log's days against the last half — the migration a total cannot show. `null` under four dated days: one day against one day is weather, not climate. |
 | `cacheTtlFit` | Whether each slice's cache TTL fits how fast its turns arrive. |

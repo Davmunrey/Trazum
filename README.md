@@ -1147,6 +1147,67 @@ the call and says the budget half is unknown. Offline is a mode, not a failure.
 The measured position is read once at start, so every answer carries the window
 that figure covers rather than implying it is current to the second.
 
+### The counterpart: recording an outcome
+
+Every figure in this tool is a cost. It can tell you a workload got 40% cheaper
+and it cannot tell you whether it stopped working — a denominator with no
+numerator, since the first release. The missing field is not something Trazum
+can compute. It is something only you know.
+
+Put your own word for what happened on the usage record, next to `label` and
+`session`:
+
+```jsonl
+{"model":"claude-opus-5","label":"support","outcome":"resolved","usage":{...}}
+{"model":"claude-opus-5","label":"support","outcome":"escalated","usage":{...}}
+```
+
+and declare what the words mean:
+
+```json
+{ "outcomes": { "values": ["resolved", "escalated", "abandoned"], "success": ["resolved"] } }
+```
+
+```
+Outcomes
+  outcome                calls    spend
+  escalated  —              12   $11.07
+  resolved   success        40   $10.30
+  resolvd    undeclared      3  $0.7725
+
+  48.2% of $21.37 in declared outcomes succeeded — by spend rather than by
+    call, because the two diverge exactly when the expensive half is the half
+    that fails.
+  ! 12.2% of the bill ($3.07) carried no outcome, and is in neither half of
+    the rate above.
+  ! Not declared in "outcomes.values": resolvd. Named rather than counted as
+    failures — a typo in an exporter should look like a typo, not like a
+    product regression.
+```
+
+Forty of those fifty-five calls succeeded — **73% by call and 48.2% by spend.**
+That gap is the whole reason the rate is weighted by money: the expensive half
+of the traffic is the half that failed, and a call-weighted rate would have read
+as a healthy product.
+
+**`success` is required, and that is deliberate.** Which of your words counts as
+success is a judgement about your product, not about your bill, and this tool
+has no standing to make it — a tool that decided `escalated` was a failure would
+be wrong at every company where escalation is the correct, designed outcome for
+a class of request. Use `[]` if none of them are successes; the report then says
+it cannot state a rate rather than inventing one.
+
+**Never inferred.** No absence of complaint counts as success, no short
+conversation counts as resolution, no retry counts as failure. Every one of
+those is a plausible heuristic that would become a metric somebody optimises
+against — which is how a tool ends up rewarding conversations that ended early
+because the user gave up. A guard fails the build if the outcome module reads
+any other signal, and it was proven by planting one.
+
+**Nothing recorded is not a rate of zero.** A rate of zero is a real and
+terrible measurement; "nobody told us" is a different sentence, and the report
+spells them differently.
+
 ### In the path of the call: `trazum gateway`
 
 ```bash

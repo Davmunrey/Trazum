@@ -384,7 +384,23 @@ describe('what the report says when the log leaves the TTL out', () => {
       ]),
     );
     assert.equal(result.status, 0, result.stderr);
-    assert.doesNotMatch(flat(result), /cannot say whether|is a bound/, 'hedged a log with nothing to hedge');
+    /**
+     * Matched against **the TTL hedge's own sentences**, not against a phrase
+     * any section might use.
+     *
+     * The first version searched the whole report for `cannot say whether`,
+     * and the outcome coverage line added at 1.50.4 says "cannot say whether
+     * it stopped working" for entirely unrelated and correct reasons — so a
+     * true assertion started failing on a sentence about a different subject.
+     * An assertion bounded by a phrase rather than by its subject is the same
+     * mistake the source and doc harvests in this repository have made six
+     * times.
+     */
+    assert.doesNotMatch(
+      flat(result),
+      /cannot say whether caching paid for itself|That figure is a bound, not a measurement/,
+      'hedged a log with nothing to hedge',
+    );
   });
 });
 
