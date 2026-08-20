@@ -107,8 +107,11 @@ describe('trazum report --year', () => {
   it('emits the record as JSON on request, and it conforms', async () => {
     const dir = await workspace(calls('2026-01-15', 10));
     const { stdout } = run(dir, ['usage.jsonl', '--year', '2026', '--json']);
-    const start = stdout.indexOf('{');
-    const record = JSON.parse(stdout.slice(start));
+    // Parsed whole, not from the first `{`. Slicing to the first brace was how
+    // this assertion passed while the command printed the human report in front
+    // of the document — a step no consumer can take, hiding the fact that
+    // `| jq` and `| trazum conform -` both failed on it.
+    const record = JSON.parse(stdout);
     assert.equal(record.schemaVersion, 1);
     assert.equal(record.year, '2026');
     assert.ok(Array.isArray(record.cannotSay));

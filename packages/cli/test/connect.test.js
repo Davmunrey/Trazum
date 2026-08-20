@@ -4,6 +4,7 @@ import { describe, it } from 'node:test';
 import { SPAWN_ENV } from './env.mjs';
 import { connectorFor } from '@trazum/core';
 import { fetchProviderUsage, findCredential, redact } from '../dist/connect.js';
+import { sectionOf } from '../../../test-utils/section.mjs';
 
 const CLI = new URL('../dist/index.js', import.meta.url).pathname;
 
@@ -274,9 +275,7 @@ describe('trazum connect', () => {
     const { tmpdir } = await import('node:os');
     const { join } = await import('node:path');
     const doc = await readFile(new URL('../../../docs/json-output.md', import.meta.url).pathname, 'utf8');
-    const start = doc.indexOf('## The connected report document');
-    const end = doc.indexOf('## The cost answer document');
-    const section = doc.slice(start, end === -1 ? undefined : end);
+    const section = sectionOf(doc, '## The connected report document');
     const promised = new Set(
       [...section.matchAll(/^\| `([a-zA-Z]+)(?:\[\])?`/gm)].map((m) => m[1]),
     );

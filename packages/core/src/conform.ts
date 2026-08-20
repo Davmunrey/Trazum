@@ -25,17 +25,28 @@
  * nobody upgrades. Only *absent* required fields and *wrong* types fail.
  */
 
-/** The documents this project emits, and their names. */
-export type ContractName =
-  | 'usage-log'
-  | 'profile'
-  | 'plan'
-  | 'verification'
-  | 'history'
-  | 'connected'
-  | 'cost-answer'
-  | 'outcome-report'
-  | 'annual-record';
+/**
+ * The documents this project emits, and their names.
+ *
+ * A runtime array rather than a bare union, because the union alone cannot be
+ * read by anything but the type checker. The CLI kept its own hand-written copy
+ * of these names for `--contract`, and that copy stopped at `cost-answer`: the
+ * two contracts added at 1.50.4 and 1.51.0 existed, had rules, and could not be
+ * named. One home per fact, and this is the home.
+ */
+export const CONTRACT_NAMES = [
+  'usage-log',
+  'profile',
+  'plan',
+  'verification',
+  'history',
+  'connected',
+  'cost-answer',
+  'outcome-report',
+  'annual-record',
+] as const;
+
+export type ContractName = (typeof CONTRACT_NAMES)[number];
 
 export interface ConformanceProblem {
   /** Where: `line 12` for a log, or a dotted path inside a document. */

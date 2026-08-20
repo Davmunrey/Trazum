@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { SPAWN_ENV } from './env.mjs';
+import { sectionOf } from '../../../test-utils/section.mjs';
 
 const CLI = new URL('../dist/index.js', import.meta.url).pathname;
 const DOC = new URL('../../../docs/json-output.md', import.meta.url).pathname;
@@ -54,9 +55,8 @@ const report = async (extra = []) => {
  */
 const documented = async () => {
   const doc = await readFile(DOC, 'utf8');
-  const start = doc.indexOf('## Top-level fields');
-  const end = doc.indexOf('## The `--by-source` document');
-  const scope = doc.slice(start, end === -1 ? undefined : end);
+  const section = sectionOf(doc, '## Top-level fields');
+  const scope = section;
   return new Set([...scope.matchAll(/^\| `([a-zA-Z]+)` \|/gm)].map((match) => match[1]));
 };
 

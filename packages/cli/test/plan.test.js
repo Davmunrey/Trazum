@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { SPAWN_ENV } from './env.mjs';
+import { sectionOf } from '../../../test-utils/section.mjs';
 
 const CLI = new URL('../dist/index.js', import.meta.url).pathname;
 
@@ -116,9 +117,7 @@ describe('plan', () => {
 
   it('is a contract: the doc and the document promise each other every top-level field', async () => {
     const doc = await readFile(new URL('../../../docs/json-output.md', import.meta.url).pathname, 'utf8');
-    const start = doc.indexOf('## The plan document');
-    const end = doc.indexOf('## The verification document');
-    const section = doc.slice(start, end === -1 ? undefined : end);
+    const section = sectionOf(doc, '## The plan document');
     const promised = new Set(
       [...section.matchAll(/^\| `([a-zA-Z]+)(?:\[\])?`/gm)].map((m) => m[1]),
     );

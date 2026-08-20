@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
 
 import {
+  CONTRACT_NAMES,
   applyRewrites,
   BASELINE_FILENAME,
   BASELINE_VERSION,
@@ -1563,16 +1564,15 @@ const FEEDBACK_REPO = 'https://github.com/Davmunrey/Trazum';
 /** Problems listed before the rest are counted. A wall of them helps nobody. */
 const MAX_CONFORM_PROBLEMS = 20;
 
-/** The contracts `--contract` accepts, so a typo is refused with the list. */
-const CONTRACT_NAMES = [
-  'usage-log',
-  'profile',
-  'plan',
-  'verification',
-  'history',
-  'connected',
-  'cost-answer',
-];
+/**
+ * The contracts `--contract` accepts, so a typo is refused with the list.
+ *
+ * Imported, never retyped. This was a hand-written copy of the union in
+ * `conform.ts` and it stopped at `cost-answer`: `outcome-report` (1.50.4) and
+ * `annual-record` (1.51.0) had rules, had cross-rules, and were refused by name
+ * with "is not a contract" — the list telling the caller they had made a typo
+ * when the list was the thing that was wrong.
+ */
 
 /** How many source files, and how large each may be. Both reported when they bite. */
 const INIT_MAX_SOURCE_FILES = 400;
@@ -1978,12 +1978,16 @@ async function commandConform(args: Args, t: CliMessages): Promise<void> {
   if (target === undefined) throw new Error(t.conform.noTarget());
 
   const named = stringFlag(args, 'contract');
-  if (named !== undefined && !CONTRACT_NAMES.includes(named)) {
+  // Widened for the membership test only: the array is `as const` so the union
+  // is derived from it, and narrowing back is what `isContract` does below.
+  const isContract = (value: string): value is ContractName =>
+    (CONTRACT_NAMES as readonly string[]).includes(value);
+  if (named !== undefined && !isContract(named)) {
     throw new Error(t.conform.badContract(named, CONTRACT_NAMES.join(', ')));
   }
 
   const text = target === '-' ? await readInput('-', t) : await readUsageLog(target, t);
-  const report = conform(text, named === undefined ? {} : { contract: named as ContractName });
+  const report = conform(text, named === undefined ? {} : { contract: named });
 
   if (boolFlag(args, 'json')) {
     console.log(JSON.stringify(report, null, 2));
@@ -3113,6 +3117,21 @@ async function commandReport(
     .sort((a, b) => a.month.localeCompare(b.month));
 
   const record = annualRecord(year, periods);
+
+  /**
+   * `--json` is the document *instead of* the report, not after it.
+   *
+   * It used to print the human report and then append the JSON, and the help
+   * said "Also emit". That made the one command emitting the `annual-record`
+   * contract the one command whose output no machine can read: `| jq` and
+   * `| trazum conform -` both fail on the prose in front. Every other `--json`
+   * in this CLI returns here rather than adding to what was printed.
+   */
+  if (boolFlag(args, 'json')) {
+    console.log(JSON.stringify(record, null, 2));
+    return;
+  }
+
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
 
   console.log();
@@ -3170,10 +3189,6 @@ async function commandReport(
   console.log();
   console.log(`  ${c.dim(wrap(t.annual.noNewData(), 74, '  '))}`);
   console.log();
-
-  if (boolFlag(args, 'json')) {
-    console.log(JSON.stringify(record, null, 2));
-  }
 }
 
 function commandModels(t: CliMessages, pricing: PricingCatalogue): void {

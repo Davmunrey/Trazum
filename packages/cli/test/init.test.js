@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { SPAWN_ENV } from './env.mjs';
+import { sectionOf } from '../../../test-utils/section.mjs';
 
 const CLI = new URL('../dist/index.js', import.meta.url).pathname;
 const DOC = new URL('../../../docs/json-output.md', import.meta.url).pathname;
@@ -156,10 +157,9 @@ describe('trazum init --json', () => {
     // therefore unbounded; the refusal document appended after it would have
     // silently widened the harvest — the sixth time in this file's life.
     const doc = await readFile(DOC, 'utf8');
-    const start = doc.indexOf('## The first-run document');
-    const end = doc.indexOf('## The gateway refusal document');
+    const section = sectionOf(doc, '## The first-run document');
     return new Set(
-      [...doc.slice(start, end === -1 ? undefined : end).matchAll(/^\| `([a-zA-Z]+)` \|/gm)].map(
+      [...section.matchAll(/^\| `([a-zA-Z]+)` \|/gm)].map(
         (match) => match[1],
       ),
     );

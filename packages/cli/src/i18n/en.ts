@@ -175,7 +175,7 @@ ${bold('OPTIONS FOR commitment')}
 
 ${bold('OPTIONS FOR report')}
   --year <yyyy>               Required. Which year to assemble.
-  --json                      Also emit the record as JSON.
+  --json                      The record as data.
 
   Everything comes from the store and the plans you already keep — nothing is
   computed that cannot be checked against a document that already exists.
@@ -1304,9 +1304,24 @@ ${bold('EXAMPLES')}
       'Pass a file to check — a usage log, or any document Trazum emits. Use "-" to read from stdin.',
     badContract: (given, known) => `"${given}" is not a contract. Known contracts: ${known}.`,
     unrecognised: (path) => `${path} does not match any contract Trazum knows.`,
-    heading: (path, contract) => `${path} reads as a ${contract} document`,
+    /**
+     * The article follows the name's **sound**, not its first letter.
+     *
+     * Every contract that existed when this line was written began with a
+     * consonant letter, so a bare `a` was right every time it ran; then
+     * `outcome-report` and `annual-record` became reachable by name and it
+     * started saying "a outcome-report".
+     *
+     * `u` is excluded on purpose and the first attempt got it wrong: a
+     * letter-only rule turned "a usage-log" into "an usage-log", because
+     * `usage` opens on /juː/. Bounded to the closed set of contract names, all
+     * of which begin `a`, `c`, `h`, `o`, `p`, `u` or `v`, and `contract-article`
+     * in the test suite fails if a new one arrives that this rule cannot judge.
+     */
+    heading: (path, contract) =>
+      `${path} reads as ${/^[aeio]/.test(contract) ? 'an' : 'a'} ${contract} document`,
     headingLog: (path, contract, records) =>
-      `${path} reads as a ${contract}: ${records} ${records === 1 ? 'record' : 'records'}`,
+      `${path} reads as ${/^[aeio]/.test(contract) ? 'an' : 'a'} ${contract}: ${records} ${records === 1 ? 'record' : 'records'}`,
     conforms: () => 'It conforms. Every required field is present and the right type.',
     problem: (at, kind, detail) => `${at}: ${detail} (${kind})`,
     moreProblems: (count) => `…and ${count} more. Fix these first; they are often the same mistake.`,

@@ -92,6 +92,16 @@ export interface OutcomeCoverage {
 }
 
 export interface OutcomeReport {
+  /**
+   * The one field every document contract in this project carries.
+   *
+   * It was missing here from 1.50.4, which made `outcome-report` a contract
+   * whose only implementation failed it: `conform` requires `schemaVersion` of
+   * every document, and the function on this page did not emit one. A format
+   * whose reference producer does not conform is worse than no format, because
+   * a tool mirroring it inherits the defect and looks interoperable.
+   */
+  schemaVersion: 1;
   /** Per recorded value, dearest first. Empty when nothing was recorded. */
   slices: OutcomeSlice[];
   coverage: OutcomeCoverage;
@@ -195,7 +205,7 @@ export function outcomeReport(
     successShareOfRecordedUsd = successUsd / declaredUsd;
   }
 
-  return { slices, coverage, undeclared, successShareOfRecordedUsd, noRate };
+  return { schemaVersion: 1, slices, coverage, undeclared, successShareOfRecordedUsd, noRate };
 }
 
 /**

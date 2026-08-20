@@ -150,7 +150,7 @@ export type {
   GatewayStanding,
   RefuseReason,
 } from './gateway.js';
-export { conform } from './conform.js';
+export { conform, CONTRACT_NAMES } from './conform.js';
 export type {
   ConformOptions,
   ConformanceProblem,

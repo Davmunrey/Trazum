@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { TOOLS } from '../dist/tools.js';
+import { sectionOf } from '../../../test-utils/section.mjs';
 
 /**
  * The guard as an agent sees it. $1.00 = 200k input tokens on Claude Opus 5.
@@ -59,9 +60,7 @@ describe('spend_guard over MCP', () => {
     // this file, an unbounded harvest starts enforcing the *next* shape's
     // fields on this one — which has now happened five times, so the bound is
     // written before the section that would break it.
-    const start = doc.indexOf('## The spend-guard document');
-    const end = doc.indexOf('## The first-run document');
-    const section = doc.slice(start, end === -1 ? undefined : end);
+    const section = sectionOf(doc, '## The spend-guard document');
     const promised = new Set([...section.matchAll(/^\| `([a-zA-Z]+)`/gm)].map((m) => m[1]));
     const emitted = Object.keys(
       JSON.parse(guard.run({ model: 'claude-opus-5', inputTokens: 1000, consumedUsd: 1, limitUsd: 10 })),

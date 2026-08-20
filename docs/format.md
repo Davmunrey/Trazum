@@ -1,22 +1,40 @@
 # The interchange format
 
-Trazum emits seven documents. All seven are contracts, enforced in both
-directions by parity tests in this repository, and this page is what makes them
-something another tool can build against rather than something to reverse
-engineer from output.
+Trazum emits **eleven** documents as data, and defines a twelfth it does not
+emit. All twelve are contracts, enforced in both directions by parity tests in
+this repository, and this page is what makes them something another tool can
+build against rather than something to reverse engineer from output.
 
-| Contract | Written by | Documented in |
-| --- | --- | --- |
-| **usage log** | you, or `trazum connect` | [usage-logs.md](usage-logs.md) |
-| **profile** | `trazum profile --json` | [json-output.md](json-output.md#top-level-fields) |
-| **fleet** | `trazum profile --by-source --json` | [json-output.md](json-output.md#the---by-source-document) |
-| **plan** | `trazum plan -o`, and the web app | [plan-format.md](plan-format.md) |
-| **verification** | `trazum verify --json` | [json-output.md](json-output.md#the-verification-document) |
-| **history** | `trazum history --json` | [json-output.md](json-output.md#the-history-document) |
-| **connected report** | `trazum connect --json` | [json-output.md](json-output.md#the-connected-report-document) |
-| **cost answer** | `trazum serve`'s `POST /cost` | [json-output.md](json-output.md#the-cost-answer-document) |
-| **spend guard** | the `spend_guard` MCP tool | [json-output.md](json-output.md#the-spend-guard-document) |
-| **first run** | `trazum init --json` | [json-output.md](json-output.md#the-first-run-document) |
+Two distinctions are drawn in the table rather than blurred, because each one
+changes what you can actually do:
+
+- **`--contract` names nine of them.** That is narrower than being documented: a
+  named contract can be checked against a document *you* produced with a single
+  command, and the other three can only be read against their section here.
+- **The outcome report is defined but not emitted.** `trazum profile` renders it
+  as terminal text and `@trazum/core` computes it; no command writes it as JSON.
+  It is a contract so that a tool of yours can produce one and have it checked —
+  not a claim that Trazum will hand you one.
+
+| Contract | Written by | `--contract` | Documented in |
+| --- | --- | --- | --- |
+| **usage log** | you, or `trazum connect` | `usage-log` | [usage-logs.md](usage-logs.md) |
+| **profile** | `trazum profile --json` | `profile` | [json-output.md](json-output.md#top-level-fields) |
+| **fleet** | `trazum profile --by-source --json` | — | [json-output.md](json-output.md#the---by-source-document) |
+| **plan** | `trazum plan -o`, and the web app | `plan` | [plan-format.md](plan-format.md) |
+| **verification** | `trazum verify --json` | `verification` | [json-output.md](json-output.md#the-verification-document) |
+| **history** | `trazum history --json` | `history` | [json-output.md](json-output.md#the-history-document) |
+| **connected report** | `trazum connect --json` | `connected` | [json-output.md](json-output.md#the-connected-report-document) |
+| **cost answer** | `trazum serve`'s `POST /cost` | `cost-answer` | [json-output.md](json-output.md#the-cost-answer-document) |
+| **outcome report** | nothing — rendered by `trazum profile`, never written as JSON | `outcome-report` | [json-output.md](json-output.md#the-outcome-report-document) |
+| **annual record** | `trazum report --year --json` | `annual-record` | [json-output.md](json-output.md#the-annual-record-document) |
+| **spend guard** | the `spend_guard` MCP tool | — | [json-output.md](json-output.md#the-spend-guard-document) |
+| **first run** | `trazum init --json` | — | [json-output.md](json-output.md#the-first-run-document) |
+
+The count above said **seven** for as long as the table had ten rows in it, and
+it was still saying seven after the outcome report and the annual record were
+added. A page whose whole job is telling another tool what it can build against
+was, on its first sentence, wrong about how many things that is.
 
 ## Checking your own emitter
 
