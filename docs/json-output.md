@@ -201,3 +201,30 @@ person are looking at one document rather than two renderings that can drift.
 | `overwrites` | The config already present and which of its keys this proposal would replace, or null when there is no file. An empty `keys` array is a different statement from null: the file exists and nothing collides. |
 | `unreadable` | A usage source that is there and could not be read, with `where` and `because`. Null otherwise — and never folded into "no usage found", because the fixes are opposite. |
 | `truncated` | Whether the source-file walk hit its cap, so "no provider found" can be told apart from "stopped looking". |
+
+## The gateway refusal document
+
+The body `trazum gateway` returns with **HTTP 402** when a call is over budget.
+402 rather than 429 on purpose: every provider SDK retries a 429 automatically,
+which would turn one refusal into a retry storm against a gateway that refuses
+every time.
+
+| Field | What it holds |
+| --- | --- |
+| `schemaVersion` | `1`. |
+| `error` | `{type: "trazum_budget_refusal", message}` — shaped like a provider error so an SDK's own error path handles it, and typed so it cannot be mistaken for one. |
+| `reason` | `budget-exhausted` (already past, measured), `call-would-cross` (this call takes it past), or `cannot-tell-and-closed` (nothing could be judged and the operator chose fail-closed). |
+| `cause` | Why it could not be judged, when that is the reason: `no-budget`, `nothing-measured`, `model-unpriced`. Null otherwise. |
+| `restsOn` | `measured` when the budget was already spent and nothing was estimated to reach the verdict; `measured+estimated` when it takes an estimate of *this* call to cross. Null on `cannot-tell-and-closed`. The two halves never merge. |
+| `standing` | The budget position the refusal rested on — `limitUsd`, `consumedUsd`, `provenance` (always `measured`) and `asOfMs`, so a caller can see how stale the figure is rather than assume it is current to the second. |
+| `estimatedUsd` | What this call was priced at, or null when the model could not be priced. |
+| `alternatives` | Cheaper ways to make the same call, dearest saving first: `kind` (`route` or `batch`), the `model` it moves to, `savingUsd` for **this call**, and the typed `assumes` it rests on. A refusal never arrives bare. Only models the call fits inside are ever offered. |
+
+**No prompt, no completion, no credential.** The body passed through the
+process and does not come back out of it — a test asserts a refusal carries no
+trace of the request text.
+
+A **502** with `error.type: "trazum_upstream_unreachable"` is a different thing
+entirely: the provider could not be reached. A caller needs to tell "your
+provider is down" from "you are out of money", and a proxy that blurred them
+would send somebody to fix the wrong thing at the worst possible moment.

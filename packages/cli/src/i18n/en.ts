@@ -57,6 +57,7 @@ ${bold('USAGE')}
   trazum conform <file|-> [--contract <name>]
   trazum models
   trazum rules
+  trazum gateway <anthropic|openai> --on-cannot-tell <fail-open|fail-closed>
   trazum feedback
   trazum --version
 
@@ -100,6 +101,22 @@ ${bold('OPTIONS FOR feedback')}
   It sends nothing. Trazum has no telemetry: no ping, no install hook, no
   anonymous counter, and a test fails the build if this command ever reaches
   the network.
+
+${bold('OPTIONS FOR gateway')}
+  --on-cannot-tell <policy>   Required, no default: fail-open or fail-closed.
+                              What happens when the gateway cannot judge a call
+                              — no budget, nothing measured, an unpriced model.
+  --port <n> | --socket <p>   Where to listen. Loopback only, always.
+
+  Stands between your SDK and the provider, speaking their wire format, so no
+  code changes. Usage is measured from the provider's own response as it comes
+  back — no export, no connector lag, no missing day.
+
+  It refuses and never substitutes: a call over budget gets HTTP 402 with the
+  cheaper alternatives named. Substitution happens only where you wrote it down
+  in spend.substitute, with your reason, and every substituted call is marked.
+
+  Your credential is forwarded untouched and never read. See docs/gateway.md.
 
 ${bold('OPTIONS FOR prune')}
   --cases <file>              One input per line, or a JSON array. Required.
@@ -931,6 +948,32 @@ ${bold('EXAMPLES')}
       `${path} already exists and was left alone. Pass --dry-run to see what would go in it, or --yes to replace it.`,
     existingUnparseable: (path) =>
       `${path} exists and could not be parsed, so nothing was written over it. Fix or move it first.`,
+  },
+
+  gateway: {
+    badProvider: (given, known) =>
+      given === ''
+        ? `Name the provider to stand in front of. Known: ${known}.`
+        : `"${given}" is not a provider this gateway speaks for. Known: ${known}.`,
+    needsPolicy: (policies) =>
+      `--on-cannot-tell is required, and there is no default: ${policies}. When the gateway cannot judge a call — no budget, nothing measured, an unpriced model — one of these happens, and only you know which failure your product can survive. fail-open keeps it working and lets the bill run; fail-closed stops the bill and takes it down with it. Picking one for you would be the most consequential decision in your architecture, made silently at install time.`,
+    listening: (where, provider) => `Gateway on ${where}, in front of ${provider}`,
+    pointYourSdk: (where) =>
+      `Point your SDK's base URL at ${where} and change nothing else. It speaks the provider's own wire format, so no code changes and no new client.`,
+    credential: () =>
+      'Your credential is forwarded untouched and never read, never stored, never logged and never put in a URL. Trazum holds no key here and cannot make a call of its own through this.',
+    neverSubstitutes: () =>
+      'A call over budget is refused with HTTP 402 and the cheaper alternatives named — never silently swapped, trimmed or downgraded. 402 rather than 429 on purpose: every provider SDK retries a 429, which would turn one refusal into a retry storm.',
+    standing: (consumed, limit) =>
+      `Judging against ${consumed} of ${limit}, measured, read once at start — a file read in the request path would put this tool's latency between you and your provider on every call.`,
+    noStanding: () =>
+      'Nothing measured for this period, so every call is unjudged and the failure policy below decides. Set spend.monthlyUsd and pull with trazum connect.',
+    policy: (policy) =>
+      policy === 'fail-open'
+        ? 'When it cannot judge: the call goes through, and the record says it was unjudged rather than within budget.'
+        : 'When it cannot judge: the call is refused. Nothing gets through unmeasured.',
+    measured: (model, label, input, output, substituted) =>
+      `  ${model}${label === null ? '' : ` [${label}]`}: ${input} in, ${output} out${substituted ? ' (substituted — marked, and never counted as the call that was asked for)' : ''}`,
   },
 
   feedback: {

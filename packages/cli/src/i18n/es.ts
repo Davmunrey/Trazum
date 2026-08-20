@@ -44,6 +44,7 @@ ${bold('USO')}
   trazum conform <fichero|-> [--contract <nombre>]
   trazum models
   trazum rules
+  trazum gateway <anthropic|openai> --on-cannot-tell <fail-open|fail-closed>
   trazum feedback
   trazum --version
 
@@ -88,6 +89,24 @@ ${bold('OPCIONES DE feedback')}
   No envía nada. Trazum no tiene telemetría: ni ping, ni hook de instalación, ni
   contador anónimo, y una prueba hace fallar la compilación si este comando
   llega a tocar la red.
+
+${bold('OPCIONES DE gateway')}
+  --on-cannot-tell <política> Obligatorio, sin valor por defecto: fail-open o
+                              fail-closed. Qué pasa cuando la pasarela no puede
+                              juzgar una llamada — sin presupuesto, sin nada
+                              medido, un modelo sin precio.
+  --port <n> | --socket <p>   Dónde escuchar. Solo loopback, siempre.
+
+  Se pone entre tu SDK y el proveedor, hablando su formato, así que no hay
+  cambios de código. El consumo se mide desde la propia respuesta del proveedor
+  según llega — sin exportación, sin retraso, sin días que falten.
+
+  Rechaza y nunca sustituye: una llamada por encima del presupuesto recibe un
+  HTTP 402 con las alternativas más baratas nombradas. La sustitución solo
+  ocurre donde la escribiste en spend.substitute, con tu motivo, y toda llamada
+  sustituida queda marcada.
+
+  Tu credencial se reenvía intacta y nunca se lee. Ver docs/gateway.md.
 
 ${bold('OPCIONES DE prune')}
   --cases <fichero>           Una entrada por línea, o un array JSON. Obligatorio.
@@ -965,6 +984,32 @@ ${bold('EJEMPLOS')}
       `${path} ya existe y se dejó intacto. Pasa --dry-run para ver qué iría dentro, o --yes para reemplazarlo.`,
     existingUnparseable: (path) =>
       `${path} existe y no se pudo interpretar, así que no se escribió nada encima. Arréglalo o muévelo primero.`,
+  },
+
+  gateway: {
+    badProvider: (given, known) =>
+      given === ''
+        ? `Nombra el proveedor delante del que ponerse. Conocidos: ${known}.`
+        : `"${given}" no es un proveedor por el que hable esta pasarela. Conocidos: ${known}.`,
+    needsPolicy: (policies) =>
+      `--on-cannot-tell es obligatorio, y no hay valor por defecto: ${policies}. Cuando la pasarela no puede juzgar una llamada — sin presupuesto, sin nada medido, un modelo sin precio — pasa una de las dos, y solo tú sabes qué fallo puede sobrevivir tu producto. fail-open lo mantiene funcionando y deja correr la factura; fail-closed para la factura y se lo lleva por delante. Elegir por ti sería tomar la decisión más consecuente de tu arquitectura, en silencio, al instalar.`,
+    listening: (where, provider) => `Pasarela en ${where}, delante de ${provider}`,
+    pointYourSdk: (where) =>
+      `Apunta la URL base de tu SDK a ${where} y no cambies nada más. Habla el formato del propio proveedor, así que no hay cambios de código ni cliente nuevo.`,
+    credential: () =>
+      'Tu credencial se reenvía intacta y nunca se lee, ni se guarda, ni se registra, ni se pone en una URL. Trazum no tiene ninguna clave aquí y no puede hacer una llamada propia a través de esto.',
+    neverSubstitutes: () =>
+      'Una llamada por encima del presupuesto se rechaza con HTTP 402 y las alternativas más baratas nombradas — nunca se cambia, recorta ni degrada en silencio. 402 y no 429 a propósito: todos los SDK de proveedor reintentan un 429, lo que convertiría un rechazo en una tormenta de reintentos.',
+    standing: (consumed, limit) =>
+      `Juzgando contra ${consumed} de ${limit}, medido, leído una vez al arrancar — leer un fichero en el camino de la petición pondría la latencia de esta herramienta entre tú y tu proveedor en cada llamada.`,
+    noStanding: () =>
+      'Nada medido para este periodo, así que ninguna llamada se juzga y decide la política de abajo. Configura spend.monthlyUsd y descarga con trazum connect.',
+    policy: (policy) =>
+      policy === 'fail-open'
+        ? 'Cuando no puede juzgar: la llamada pasa, y el registro dice que no se juzgó, no que estaba dentro del presupuesto.'
+        : 'Cuando no puede juzgar: la llamada se rechaza. Nada pasa sin medir.',
+    measured: (model, label, input, output, substituted) =>
+      `  ${model}${label === null ? '' : ` [${label}]`}: ${input} entrada, ${output} salida${substituted ? ' (sustituida — marcada, y nunca contada como la llamada que se pidió)' : ''}`,
   },
 
   feedback: {

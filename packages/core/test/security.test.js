@@ -297,6 +297,102 @@ describe('the MCP tool surface', () => {
   });
 });
 
+describe('the gateway, which stands between somebody and their provider', () => {
+  /**
+   * The most dangerous component in this product, and the one whose promises
+   * are least checkable from the outside. A caller pointing their SDK at it
+   * hands over every prompt they send and the credential that pays for them,
+   * and has no way to see what happens next.
+   */
+  const server = () => {
+    const source = readFileSync(join(repoRoot, 'packages/cli/src/gateway-server.ts'), 'utf8');
+    return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  };
+  const decision = () => {
+    const source = readFileSync(join(repoRoot, 'packages/core/src/gateway.ts'), 'utf8');
+    return source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  };
+
+  it('binds to loopback, and the address is not a flag', () => {
+    // Same posture as `serve` since 1.44 and far more load-bearing here: this
+    // one has somebody's provider credential passing through it.
+    const text = server();
+    assert.match(text, /export const BIND_HOST = '127\.0\.0\.1';/);
+    assert.match(text, /server\.listen\(where\.port, BIND_HOST/);
+    // One definition, and it is the literal. Anything else assigning to it
+    // would mean the address became configurable.
+    assert.equal([...text.matchAll(/BIND_HOST\s*=/g)].length, 1);
+  });
+
+  it('compiles the upstream in, so no caller can choose where the key goes', () => {
+    /**
+     * A flag naming the host would make this a credential-forwarding open
+     * proxy: anything that could rewrite a config on disk could point a
+     * company's API key at a machine it chose. `checkedEndpoint` has guarded
+     * Trazum's outbound calls on that principle since 1.14; here there is no
+     * caller-supplied endpoint at all.
+     */
+    const text = server();
+    assert.match(text, /https:\/\/api\.anthropic\.com/);
+    assert.match(text, /https:\/\/api\.openai\.com/);
+    // The only interpolation into the fetch target is the compiled-in pair.
+    const targets = [...text.matchAll(/doFetch\(([^,]+),/g)].map((m) => m[1].trim());
+    assert.deepEqual(targets, ['`${upstream.origin}${upstream.path}`']);
+    assert.doesNotMatch(text, /stringFlag|process\.env|config\?\.[a-z]*[Uu]pstream/);
+  });
+
+  it('never reads the credential it forwards', () => {
+    /**
+     * Stronger than the connector's *borrowed, never held*: the key is the
+     * caller's own header, copied into the outgoing request without ever being
+     * looked at. Checked as the absence of any read, because a version that
+     * reads it and happens not to log it today is one refactor from logging it.
+     */
+    const text = server();
+    assert.doesNotMatch(text, /headers\[['"](authorization|x-api-key)['"]\]/i);
+    assert.doesNotMatch(text, /ANTHROPIC_API_KEY|OPENAI_API_KEY|process\.env/);
+  });
+
+  it('never writes the payload down, and has nowhere to put it', () => {
+    /**
+     * The store has held aggregates since 1.42 and standing in the path
+     * changes nothing about that. Two halves: the proxy does not write, and
+     * the interfaces downstream of it cannot carry text — `record` takes
+     * counts, and `gatewayDecision` is never handed a body at all.
+     */
+    const text = server();
+    assert.doesNotMatch(text, /writeFile|appendFile|createWriteStream/);
+    // `note` is the operator's terminal line, and the body is never given to it.
+    assert.doesNotMatch(text, /note\([^)]*body/);
+    assert.doesNotMatch(text, /console\.log\([^)]*body|console\.error\([^)]*body/);
+  });
+
+  it('cannot return a modified request, because the type has no room for one', () => {
+    /**
+     * The rule that matters most, enforced where an edit cannot miss it. A
+     * `forward` decision carries a price and a flag; a `refuse` carries no
+     * body. There is no shape in which the core hands back a rewritten
+     * request, so substitution cannot arrive as a quiet field addition.
+     */
+    const text = decision();
+    const forward = text.slice(text.indexOf("kind: 'forward';"), text.indexOf("kind: 'refuse';"));
+    assert.doesNotMatch(forward, /body|prompt|messages|headers|rewritten/i);
+  });
+
+  it('answers a refusal with 402, never a code an SDK retries', () => {
+    // 429 would turn one refusal into a retry storm against a gateway that
+    // refuses every time — the caller's own SDK doing it, automatically.
+    const text = server();
+    assert.match(text, /response\.writeHead\(402/);
+    assert.doesNotMatch(text, /writeHead\(429/);
+  });
+
+  it('forwards exactly one path', () => {
+    const text = server();
+    assert.match(text, /request\.method !== 'POST' \|\| request\.url !== upstream\.path/);
+  });
+});
+
 describe('there is no telemetry, and the feedback command is not an exception', () => {
   /**
    * `trazum feedback` prints where to write and a prefilled link. That is
@@ -306,10 +402,21 @@ describe('there is no telemetry, and the feedback command is not an exception', 
    * nothing* — is worth precisely as much as the check behind it.
    */
   const cli = () => readFileSync(join(repoRoot, 'packages/cli/src/index.ts'), 'utf8');
+  /**
+   * Bounded to the **next function**, whatever it turns out to be.
+   *
+   * The first version sliced to `commandModels` by name, and a command
+   * inserted between the two silently widened the harvest to include it —
+   * so a guard about `feedback` started reporting on its neighbour. The same
+   * failure the `docs/json-output.md` parity tests have had five times: a
+   * harvest bounded by what happens to come next is not bounded.
+   */
   const feedback = () => {
     const source = cli();
     const start = source.indexOf('function commandFeedback(');
-    const end = source.indexOf('\nfunction commandModels(', start);
+    const rest = source.slice(start + 1);
+    const offset = rest.search(/\n(?:async )?function /);
+    const end = offset === -1 ? source.length : start + 1 + offset;
     assert.ok(start > 0 && end > start, 'commandFeedback could not be located — has it moved?');
     return source
       .slice(start, end)
@@ -384,7 +491,9 @@ describe('the first run', () => {
   const source = () => {
     const cli = readFileSync(join(repoRoot, 'packages/cli/src/index.ts'), 'utf8');
     const start = cli.indexOf('async function commandInit(');
-    const end = cli.indexOf('\nfunction commandModels(', start);
+    const rest = cli.slice(start + 1);
+    const offset = rest.search(/\n(?:async )?function /);
+    const end = offset === -1 ? cli.length : start + 1 + offset;
     assert.ok(start > 0 && end > start, 'commandInit could not be located — has it moved?');
     return cli.slice(start, end);
   };

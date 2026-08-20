@@ -118,6 +118,20 @@ export interface SpendConfig {
    * hides which.
    */
   bySource?: Record<string, number>;
+  /**
+   * Model substitutions the gateway may make **when a budget is crossed**, by
+   * model id, each with the operator's own reason.
+   *
+   * Absent means refuse rather than swap, and that is the only safe default
+   * for a field whose entire risk is being switched on without anybody
+   * noticing. Silently answering a different question than the caller asked is
+   * the one behaviour this product must never have; a substitution written
+   * down, with a reason, by somebody who owns the budget, is a decision.
+   *
+   * Every substituted call is marked in the record, so no later report can
+   * treat it as the call the caller made.
+   */
+  substitute?: Record<string, { to: string; reason: string }>;
 }
 
 export interface TrazumConfig {
@@ -234,7 +248,7 @@ export const CONFIG_KEYS = [
 
 export const CONFIG_BASELINE_KEYS = ['path', 'maxGrowthTokens', 'maxGrowthPct'] as const;
 
-export const CONFIG_SPEND_KEYS = ['maxUsd', 'monthlyUsd', 'maxDayUsd', 'maxSessionUsd', 'maxCacheLossUsd', 'byLabel', 'bySource'] as const;
+export const CONFIG_SPEND_KEYS = ['maxUsd', 'monthlyUsd', 'maxDayUsd', 'maxSessionUsd', 'maxCacheLossUsd', 'byLabel', 'bySource', 'substitute'] as const;
 
 export const CONFIG_WAIVE_KEYS = ['gate', 'reason', 'until'] as const;
 
@@ -461,6 +475,33 @@ function parseSpend(raw: unknown, source: string): SpendConfig {
       bySource[name] = requireNonNegativeNumber(value, `spend.bySource["${name}"]`, source);
     }
     spend.bySource = bySource;
+  }
+  if (raw.substitute !== undefined) {
+    if (!isPlainObject(raw.substitute)) {
+      throw new ConfigError('"spend.substitute" must be an object', source);
+    }
+    const substitute: Record<string, { to: string; reason: string }> = {};
+    for (const [from, value] of Object.entries(raw.substitute)) {
+      if (!isPlainObject(value)) {
+        throw new ConfigError(`"spend.substitute["${from}"]" must be an object`, source);
+      }
+      const to = (value as Record<string, unknown>).to;
+      const reason = (value as Record<string, unknown>).reason;
+      if (typeof to !== 'string' || to.trim() === '') {
+        throw new ConfigError(`"spend.substitute["${from}"].to" is required and must be a model id`, source);
+      }
+      // Required, and for the same reason a waiver's is: a substitution
+      // nobody wrote a reason for is a silent answer-swap with extra steps,
+      // and the person reading the report six weeks later needs the sentence.
+      if (typeof reason !== 'string' || reason.trim() === '') {
+        throw new ConfigError(
+          `"spend.substitute["${from}"].reason" is required. A substitution with no stated reason is a caller being answered a different question, and nobody able to say why.`,
+          source,
+        );
+      }
+      substitute[from] = { to, reason };
+    }
+    spend.substitute = substitute;
   }
   if (raw.byLabel !== undefined) {
     if (!isPlainObject(raw.byLabel)) {
