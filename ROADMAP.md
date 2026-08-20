@@ -828,6 +828,22 @@ compiled in; nothing about the payload is written down, and the interfaces have
 nowhere to put it. Chapter one of docs/plan-1.51.md.
 
 
+### 1.50.4 — The outcome
+
+The counterpart every figure in this product was missing. Everything here is a
+cost: Trazum could say a workload got 40% cheaper and could not say whether it
+stopped working. An `outcome` on the usage record — the caller's own word for
+what happened — closes it, with the vocabulary declared in the config because
+which words mean success is a judgement about somebody's product rather than
+their bill. The rate is by spend and never by call, since the two diverge
+exactly when the expensive half is the half that fails: the worked example is
+73% by call and 48.2% by spend. Never inferred, and three guards prove it.
+Nothing recorded is null and never zero, because a rate of zero is a real and
+terrible measurement and "nobody told us" is a different sentence. An undeclared
+value is named rather than counted as a failure. Chapter two of
+docs/plan-1.51.md.
+
+
 ## Collapsed into 1.8.0
 
 **Everything below shipped as 1.8.0, and none of these numbers is on npm.** They

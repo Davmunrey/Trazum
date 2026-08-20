@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.50.3**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.50.4**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,170 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.50.4 — "The outcome"
+
+Chapter two of `docs/plan-1.51.md`, and the release that gives every other
+figure in this product something to be a fraction *of*.
+
+### The gap this closes
+
+Everything Trazum reports is a cost. It can tell you a workload got forty per
+cent cheaper and it cannot tell you whether it stopped working — a denominator
+with no numerator, since 0.1.0. Every "saving" this tool has ever printed came
+with an unstated and unfalsifiable assumption: that the cheaper version still
+does the job.
+
+The missing field is not something this tool can compute. **It is something
+only the caller knows.**
+
+### One field, beside `label` and `session`
+
+```jsonl
+{"model":"claude-opus-5","label":"support","outcome":"resolved","usage":{...}}
+{"model":"claude-opus-5","label":"support","outcome":"escalated","usage":{...}}
+```
+
+Read from `outcome` or `trazum_outcome`, for the same reason `session` is read
+from `conversation_id` too: a field nobody sets measures nothing, and making its
+adoption a chore is exactly how that happens.
+
+### The vocabulary is declared, not guessed
+
+```json
+{ "outcomes": { "values": ["resolved", "escalated", "abandoned"], "success": ["resolved"] } }
+```
+
+```
+Outcomes
+  outcome                calls    spend
+  escalated  —              12   $11.07
+  resolved   success        40   $10.30
+  resolvd    undeclared      3  $0.7725
+
+  48.2% of $21.37 in declared outcomes succeeded — by spend rather than by
+    call, because the two diverge exactly when the expensive half is the half
+    that fails.
+  ! 12.2% of the bill ($3.07) carried no outcome, and is in neither half of
+    the rate above.
+  ! Not declared in "outcomes.values": resolvd. Named rather than counted as
+    failures — a typo in an exporter should look like a typo, not like a
+    product regression.
+```
+
+### The rate is by spend, and that is not a detail
+
+Forty of those fifty-five calls succeeded. **73% by call. 48.2% by spend.**
+
+The expensive half of the traffic was the half that failed, and the
+call-weighted figure would have read as a healthy product. The two numbers
+diverge exactly in the case somebody needs to see, which is why only one of them
+is printed and why the sentence beside it says which one it is. This product's
+whole subject is money; a rate that ignores it is a rate about something else.
+
+### `outcomes.success` is required, and may be empty
+
+The single most important line in the schema.
+
+**Required**, because which of your words counts as success is a judgement about
+your *product* rather than your bill, and this tool has no standing to make it. A
+tool that decided `escalated` was a failure would be wrong at every company where
+escalation is the correct, designed outcome for a whole class of request.
+Leaving the field optional would have sent that question straight back here, to
+be answered by a default nobody chose and everybody inherited.
+
+**May be empty**, because a product that records only failures has declared
+something real. The report then says it cannot state a rate rather than inventing
+one, and names which of the two reasons applies.
+
+### Never inferred
+
+No absence of complaint counts as success. No short conversation counts as
+resolution. No retry counts as failure. No `end_turn` counts as anything.
+
+Every one of those is plausible, wrong often enough to matter, and would become
+a metric somebody optimises against — which is how a tool ends up rewarding
+conversations that ended early because the user gave up.
+
+**Three guards enforce it, each proven by planting the violation:** the outcome
+module may not mention `session`, `stop_reason`, `truncated`, a timestamp, a
+retry or a repeat; the parser's assignment is compared *exactly*, so no
+`?? 'resolved'` fallback can be appended to it later; and the rate's type must
+stay `number | null` with a `noRate` beside it.
+
+### Nothing recorded is not a rate of zero
+
+A rate of zero is a real and terrible measurement. "Nobody told us" is a
+different sentence. A tool that spelled them the same way would report 0%
+success for an uninstrumented product and get somebody fired over a number that
+measured nothing.
+
+`successShareOfRecordedUsd` is `null` in that case, and `noRate` says which of
+`nothing-recorded` and `no-success-values-declared` it was. Three outcomes,
+never two — the posture `verify` established in 1.39.
+
+### An undeclared value is named, never bucketed
+
+A misspelled `resolvd` is a broken exporter. Folding it into the failure side
+would report a product regression that never happened, which is the direction
+that gets somebody paged at four in the morning. It is excluded from **both**
+halves of the rate and listed by name.
+
+### Every rate carries what it does not cover
+
+The share of the bill that recorded no outcome is printed beside the rate, every
+time. A rate over an eighth of the spend is a rate about an eighth of the spend,
+and putting it next to a total without that line is how a sample becomes a claim
+about the whole.
+
+### The privacy line does not move
+
+An outcome is a small enumerated value. `outcomeTally` is an aggregate — value,
+calls, dollars — and never a list of calls, the same shape the store has kept
+since 1.42. Counting outcomes never means keeping conversations, and a guard
+asserts the module's shape rather than trusting the intention.
+
+### What this release found wrong in itself
+
+**An assertion bounded by a phrase rather than by its subject.** The cache-TTL
+test asserted that the whole report contained no `cannot say whether`. The new
+outcome-coverage line says "cannot say whether it stopped working", for entirely
+unrelated and entirely correct reasons — so a true assertion began failing on a
+sentence about a different subject. It matches the TTL hedge's own two sentences
+now.
+
+**Sixth occurrence of this shape in the repository, and the second this week**
+— after the `init` and `feedback` source harvests bounded by `commandModels`'s
+name in 1.50.3, and four in `docs/json-output.md` before them. The pattern is
+always the same: an assertion whose boundary is *whatever happens to come next*
+rather than the thing it is about. It is now worth stating as a rule of its own,
+and it is in the doctrine.
+
+**Three test fixtures that quietly stopped being what they claimed.** A record
+called `complete` in `field-coverage.test.js` was no longer complete the moment
+`outcome` joined the optional fields, and a `deepEqual` on `fieldCoverage`
+listed six fields where there are now seven. Both failed loudly, which is the
+suite working — a "complete" fixture that silently stayed passing after a field
+was added would have been the real problem.
+
+### What stayed out, and why
+
+**Cost per outcome, the ratio itself.** That is chapter three, and it needs a
+decision this release deliberately did not make: what to do about the spend that
+carried no outcome. Dividing the whole bill by the resolved calls charges the
+uninstrumented traffic to the instrumented outcomes and reports a cost per
+resolution that is too high by however much of the log is uncovered — silently,
+and in the direction that makes a product look worse than it is. Naming that
+choice is the work, and it deserves its own release rather than a paragraph at
+the end of this one.
+
+**Outcomes through the gateway.** The gateway sees a call at the moment it is
+made and an outcome is known afterwards, usually by a different part of the
+system. Accepting one on the request would mean accepting a claim about a call
+that has not happened yet. That is a real feature — an endpoint that attaches an
+outcome to a call already recorded — and it is a different one.
 
 ---
 

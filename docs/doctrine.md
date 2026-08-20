@@ -169,6 +169,30 @@ Write the check, then plant the violation it exists to catch and watch it fail
 **by name**. Remove the probe, watch it pass. A guard nobody has seen fail is a
 guard nobody knows is connected — and roughly one in five turns out not to be.
 
+## Bound an assertion by its subject, never by its neighbour
+
+A test that harvests "from here to whatever comes next" is not bounded — it is
+bounded by an accident, and the accident changes.
+
+This has gone wrong six times in this repository, in three different files, and
+the shape is identical every time:
+
+- Four contract harvests in `docs/json-output.md` sliced from their heading to
+  the end of the file, so each new section silently widened the one before it.
+- Two source harvests in `security.test.js` sliced from a function to
+  `commandModels` **by name**, so inserting a command between them pulled a
+  third command's source into both guards.
+- A profile assertion searched the whole report for the phrase `cannot say
+  whether`, and a new coverage line about outcomes — unrelated, and correct —
+  made a true assertion fail.
+
+Two of those made a guard cover more than it should; one made it cover less;
+one made a correct sentence look like a bug. The fix is the same in every case:
+name the end as well as the start, and match the subject rather than a phrase
+that any section might legitimately use.
+
+*Learned across 1.38 to 1.50.4, the same lesson each time.*
+
 ## Record, do not reconstruct
 
 When you want to say "this has happened nine times", the honest way is to have
