@@ -13,6 +13,68 @@ merged commit with no entry is a change only `git log` remembers.
 
 Nothing yet.
 
+## 1.45.0 — "The agent's budget"
+
+### Added
+
+**`spend_guard`: the thing spending the money can finally ask, and be told
+no.** The MCP server told an agent what a prompt costs; it could not tell it
+whether it was allowed to spend, which is the only answer that changes what a
+model does next. Fifth of the ten in docs/plan-1.41-1.50.md.
+
+**A refusal never arrives bare.** An agent told "denied" and nothing else has
+two moves — send it anyway, or fail the user's request — and both are worse
+than the call it wanted to make. Every `no` carries the cheaper ways to make
+the *same* call: a smaller model, a batch window, or both. Each is priced for
+this call rather than for a month, because the caller is deciding one call
+right now and a monthly figure is the right number at the wrong moment. Each
+names what it assumes, typed as everywhere since 1.38. Alternatives appear on
+a `yes` too: an agent allowed to spend that could spend less should be told.
+
+**An alternative the prompt does not fit in is not an alternative.** A cheaper
+model with a smaller context window does not make the call cheaper — it makes
+it impossible. Those are filtered before they are offered rather than offered
+and blamed later, and the surviving ones carry `fits: true` so the rule lives
+in the type rather than in a filter nobody reads.
+
+**Route and batch combine, never add.** The batch discount applies to the
+cheaper model's price, as `billLevers` has done since 1.23 — the head
+arithmetic `plan` exists to kill does not get to reappear at the tool surface.
+
+**It never spends to answer, and never says yes to what it cannot judge.** No
+provider call, no model call, no pull — a cost guard that costs money to
+consult is a joke with a bill attached. And `cannot-tell` stays
+`cannot-tell`: a guard that permits whatever it cannot see permits everything
+the moment a figure goes missing.
+
+New core module `guard.ts` (`guardSpend`), and `spend_guard` on the MCP
+server beside the four tools that were already there.
+
+### Security
+
+**A tool may not cause spending.** An agent that could trigger a provider pull
+by asking a question is a denial-of-service with good manners, and the bill
+lands on whoever installed the cost tool. A guard fails the build if the MCP
+tool surface reaches the connector's fetch path, the node entry point or the
+filesystem — proven with a planted probe. The exact-set tools test carries the
+review that admitted `spend_guard`, as it has done for `profile_usage`.
+
+### Documentation
+
+**The cost answer document is contracted at last.** `serve`'s `POST /cost`
+response should have been in docs/json-output.md when it shipped in 1.44 and
+was not — the one machine-readable output consumers build against hardest,
+undocumented. It is there now, with the spend-guard document beside it and a
+two-direction parity test over both.
+
+**`RELEASES.md` no longer states a published version nothing checks.** Its
+header claimed 1.28.0 was on npm while the manifests moved through 1.45.0 —
+seventeen releases of a stranger being told the wrong thing about what
+`npm install` gives them. `publish.test.js` now asserts that number equals the
+version the manifests publish, which is checkable because the merge that bumps
+the manifests is the merge that pushes the tag `release.yml` publishes on.
+Proven by planting 1.28.0 back and confirming the failure names both numbers.
+
 ## 1.44.0 — "The answer in milliseconds"
 
 ### Added

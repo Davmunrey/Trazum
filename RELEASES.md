@@ -7,16 +7,20 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.28.0**: `@trazum/core`, `@trazum/cli` and
-`@trazum/mcp` — published by the workflow itself, from the merge of the
-release PR, authenticated by the token fallback and carrying an OIDC-signed
-provenance attestation. 1.25.0 before it went out by hand on 2026-08-19, after
-npm's trusted publishing rejected the workflow's OIDC token on four real
+**All three packages are on npm at 1.45.0**: `@trazum/core`, `@trazum/cli` and
+`@trazum/mcp` — published by the workflow itself, from the merge of the release
+PR, authenticated by the token fallback and carrying an OIDC-signed provenance
+attestation. That has been the route for every release since 1.28.0, which was
+the fallback's first live run. 1.25.0 before it went out by hand on 2026-08-19,
+after npm's trusted publishing rejected the workflow's OIDC token on four real
 publish attempts against `v1.11.0` with every GitHub-side claim verified
 correct — so 1.25.0, like 1.8.0, 1.9.0 and 1.10.0, **carries no provenance
-attestation**. If the sentence above turns out to be premature — the fallback's
-first live run is exactly this release — this paragraph is the first thing to
-correct.
+attestation**.
+
+This paragraph said 1.28.0 for seventeen releases, because nothing checked it.
+`publish.test.js` now fails the build when it drifts from the manifests: the
+merge that bumps them is the merge that publishes, so the two are the same
+number or the file is lying to a stranger about what `npm install` gives them.
 
 **1.11.0 through 1.24.0 were never published to npm.** They are real releases
 of this repository — each has its notes below, its changelog entries and its
@@ -37,6 +41,126 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.45.0 — "The agent's budget"
+
+The fifth of the ten planned in `docs/plan-1.41-1.50.md`, and the release
+where the arc starts paying. 1.44 built an endpoint that *answers*; an agent
+may consult it and ignore it, which is fine — advice an implementation can
+skip is still advice. What was missing was the shape of a refusal an agent can
+act on.
+
+### `spend_guard`, over MCP
+
+```json
+{
+  "verdict": "no",
+  "because": "This call would take the budget past its limit, on an estimate
+              of the call. The cheapest alternative below saves the most.",
+  "alternatives": [
+    { "kind": "route+batch",
+      "model": { "id": "claude-haiku-4-5", "displayName": "Claude Haiku 4.5" },
+      "savingUsd": 0.90,
+      "assumes": [ { "kind": "model-capability", "model": "Claude Haiku 4.5" },
+                   { "kind": "batch-window" } ],
+      "fits": true }
+  ]
+}
+```
+
+### A refusal never arrives bare
+
+An agent told "denied" and nothing else has exactly two moves: send it anyway,
+or fail the user's request. **Both are worse than the call it wanted to make**
+— which is how a guard that only says no teaches a caller to stop asking, and
+a caller that stops asking is a guard that does nothing.
+
+So every `no` carries the cheaper ways to make the *same* call, and every rule
+about them has a reason:
+
+- **Priced for this call, never for a month.** The caller is deciding one call
+  right now; a monthly figure is the right number at the wrong moment and an
+  agent has no way to act on it.
+- **Each names what it assumes**, typed as `PlanAssumption` has been since
+  1.38 — the cheaper model's competence, the batch window's tolerability. A
+  machine reader gets the assumption as a value, not as prose it will drop.
+- **Alternatives appear on a `yes` as well.** An agent that is allowed to
+  spend and could spend less should be told so; withholding it until a refusal
+  would make the guard adversarial rather than useful.
+
+### An alternative the prompt does not fit in is not an alternative
+
+A cheaper model with a smaller context window does not make this call cheaper
+— **it makes it impossible**. Those are filtered out before they are offered,
+rather than offered and blamed later when the call fails. The survivors carry
+`fits: true`, so the rule lives in the type where the next reader will see it
+rather than in a filter buried three functions down.
+
+### Route and batch combine, never add
+
+The batch discount applies to the *cheaper model's* price, exactly as
+`billLevers` has combined them since 1.23. The head arithmetic `plan` was
+built to kill — $12.60 plus $10.50 against a $21.00 slice — does not get to
+reappear at the tool surface where an agent would act on it automatically.
+
+### It never spends to answer, and never says yes to what it cannot judge
+
+No provider call, no model call, no pull: the figures come from what the
+caller passes and the catalogue the server already holds. **A cost guard that
+costs money to consult is a joke with a bill attached.**
+
+And `cannot-tell` stays `cannot-tell`. A guard that permits whatever it cannot
+judge permits *everything* the moment its inputs go missing — an empty store,
+an unset budget, a model outside the catalogue. The three reasons stay apart
+because the fixes do: configure a limit, connect a source, add a price.
+
+### Security: a tool may not cause spending
+
+An agent that could trigger a provider pull by asking a question is a
+denial-of-service with good manners, and the bill lands on whoever installed
+the cost tool. A guard fails the build if the MCP tool surface reaches the
+connector's fetch path, the Node entry point or the filesystem — proven with a
+planted probe. The exact-set tools test, which exists so a tool cannot arrive
+without somebody re-reading the security argument, now carries the review that
+admitted `spend_guard`, the same way it has carried `profile_usage`'s since
+1.30.
+
+### Three process failures this release found in itself
+
+- **`serve`'s `POST /cost` shipped in 1.44 with no contract.** Every other
+  machine-readable output in this product is documented in
+  docs/json-output.md and held there by a two-direction parity test; the one
+  consumers build against hardest — an agent reads it on every call — had
+  nothing. It is documented now, with the spend-guard document beside it and
+  parity tests over both.
+- **The guard merged to `main` with no changelog entry.** The script that
+  wrote the entry aborted partway on an unrelated assertion, and the missing
+  entry was not noticed until release time. The entry is complete here, and
+  the failure is recorded rather than quietly repaired: this repository's rule
+  is that every change lands in the changelog, and a rule that fails silently
+  once will fail silently again.
+- **The header of this file said the wrong version for seventeen releases.**
+  "All three packages are on npm at 1.28.0" is the first line a stranger reads
+  about what `npm install` actually gives them, and it stayed at 1.28.0 while
+  the manifests moved to 1.45.0. Every other live claim in this repository has
+  a guard behind it; this one had none, so it drifted the moment nobody was
+  hand-editing it — the exact failure this product exists to argue against,
+  happening inside the product's own notes. `publish.test.js` now fails the
+  build when that number is not the version the manifests publish, and the
+  guard was proven by planting 1.28.0 back and watching it fail by name.
+
+### What stayed out, and why
+
+The rest of the command set over MCP — `plan`, `verify`, `history`, the fleet
+— which the plan listed for this release. Each of those reads *files*: a plan
+document, a directory of stored reports, a store. This server has promised
+since it shipped that it reads nothing from disk, and the security suite fails
+the build if it ever does. Exposing them means either breaking that promise or
+passing whole documents as tool arguments, and neither is a decision to make
+in passing at the end of a release. `spend_guard` needed no file, which is
+why it is here and they are not.
 
 ---
 
