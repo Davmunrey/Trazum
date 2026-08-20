@@ -925,6 +925,20 @@ Three guards prove the pass never becomes a prerequisite. Chapter seven of
 docs/plan-1.51.md.
 
 
+### 1.50.10 — Whose money
+
+`trazum owners`. The fleet answered which service in 1.37; this answers whose
+budget, which is the question that decides whether anything else gets acted on.
+The unallocated is its own line and is **never** spread between the owners you
+do know — that is the most common lie in cost reporting, and it makes every
+team's figure wrong by an amount nobody can see, hardest on whoever instruments
+best. Shared cost is declared by a rule somebody wrote, and the rule is printed
+beside the numbers so the argument is about the rule. A split that does not sum
+to 1 sends the workload to unallocated whole rather than applying 90% and losing
+the rest. An owner with no measured data is "not measured", never "within" — the
+1.37 refusal applied to people. Chapter eight of docs/plan-1.51.md.
+
+
 ## Collapsed into 1.8.0
 
 **Everything below shipped as 1.8.0, and none of these numbers is on npm.** They

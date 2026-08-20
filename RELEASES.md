@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.50.9**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.50.10**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,137 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.50.10 — "Whose money"
+
+Chapter eight of `docs/plan-1.51.md`, and the release that puts a name on the
+bill.
+
+The fleet answered *which service* in 1.37. Nobody has answered **whose
+budget** — which is the question that decides whether anything else in this
+product gets acted on. A report saying "the bill is $40,000 and here is $9,000
+of savings" is read by four people who each assume it is one of the other
+three's problem, and nothing happens.
+
+```
+Whose money
+
+  owner      spend  budget  calls
+  payments  $62.00   $8.00     62  over
+  support   $38.00  $20.00     38  over
+  platform      $0  $10.00      0  not measured
+
+  ! platform has a budget and no measured calls. That is NOT under budget — a
+    team whose logs never arrived passes every budget it has, forever, and a
+    green tick beside their name says the opposite of the truth.
+
+  ! Unallocated: $15.00 (13.0% of the bill), from internal-eval.
+    It is not divided between the owners above, and it never will be.
+
+  Shared, by a rule somebody wrote
+    search: payments 60.0%, support 40.0%
+```
+
+### The rule worth breaking a module over
+
+**The unallocated is its own line, and it is never spread.**
+
+Splitting unattributed spend proportionally across the owners you *do* know is
+the single most common lie in cost reporting. It is attractive for exactly one
+reason: it makes the numbers add up and every line look complete.
+
+What it actually does is make **every team's figure wrong**, by an amount nobody
+can see, in a direction nobody can check. And it does it *hardest to the teams
+with the cleanest instrumentation* — because their known spend is largest, so
+they absorb the biggest share of somebody else's mystery. A tool that behaves
+that way punishes the only people doing the thing it asked for.
+
+So it stays a line of its own, with its own dollar figure, until a human claims
+it. The labels in it are named on purpose: "unallocated: $15" invites somebody
+to divide it, and "unallocated: $15 from `internal-eval`" invites somebody to
+claim it.
+
+It is loud deliberately. An unallocated share that grows quietly is a chargeback
+report becoming fiction one month at a time.
+
+### Shared cost is declared, and the rule travels with the report
+
+A workload two teams use is split by a rule somebody wrote down, and the rule is
+**printed beside the numbers**. That is the entire design: the argument then
+happens about the rule — *why is search 60/40?* — rather than about the number,
+which is an argument nobody can win because nobody can see where it came from.
+
+Splits are keyed by the **exact label** rather than by a pattern. A shared split
+is a negotiated fact about one workload; letting it match a glob would mean a
+new label silently joining somebody's bill.
+
+### A split that does not sum to one is an error, not a rounding problem
+
+0.9 loses a tenth of that workload's money. 1.1 invents a tenth. Both silently,
+while every line still looks complete — which is precisely what a chargeback
+report exists to make impossible.
+
+**The workload goes to unallocated whole.** Applying the 0.9 would put ten per
+cent nowhere with nothing on the page to explain it; putting the whole workload
+in the unallocated line places it somewhere visible, next to the problem that
+caused it.
+
+Also caught, and all reported at once rather than one per run — a config fixed
+one error at a time is a config somebody abandons halfway and then never trusts:
+
+- a split naming an owner `owners.patterns` never declared;
+- a "shared" workload with a **single** owner, which is a pattern written the
+  long way and where reading it as a share invites a second owner to be added
+  without the first being adjusted;
+- a negative share;
+- a budget for an owner with no patterns, so nothing can ever land on it.
+
+### An owner with no measured data is not an owner under budget
+
+`fleetBudgetMissing` from 1.37, applied to people rather than services. A team
+whose logs never arrived passes every budget it has, forever, and a report that
+renders that as a green tick has told somebody the opposite of the truth.
+
+**Every declared owner gets a line even with no traffic**, because that refusal
+cannot be printed for somebody who is not on the page — and an owner absent from
+the report is an owner nobody looks at.
+
+Four verdicts, kept apart: `over`, `within`, `not-measured`, `no-budget`.
+
+### One rule for pattern precedence
+
+Attribution is by the most specific matching pattern — the same tie-break
+`sources` and `budgets` use. Two rules for pattern precedence in one tool is one
+rule too many.
+
+### What this release found wrong in itself
+
+**A hand-computed figure in a test was wrong.** The unallocated share in the CLI
+suite was written as 13.0%, copied from a smoke test with a different fixture;
+over the 85 calls the test actually builds it is 17.6%. The assertion failed on
+its first run, which is the suite working exactly as intended.
+
+Worth recording because it is the **second time this week** a figure computed by
+hand into a test has been wrong, and both times **the code was right and the test
+was not**. The lesson is not "check the arithmetic" — it is that a test asserting
+a derived number should derive it, and the two that failed both asserted a
+literal.
+
+### What stayed out, and why
+
+**Gating on an owner's budget in CI.** The verdicts are computed and printed and
+nothing exits non-zero for `over`. A chargeback overspend is a conversation
+between people, not a broken build: failing somebody's pipeline because another
+team's workload crossed a line they did not set is a gate that gets removed the
+first afternoon it fires. `--gate` belongs here eventually, scoped to *your own*
+owner, and that scoping is the design work.
+
+**Attribution by anything other than the label.** Attributing by model, by
+source file or by time window are all reasonable and all mean a second
+precedence rule competing with the first. The label is the workload, the workload
+is what somebody owns, and one rule is the whole point.
 
 ---
 
