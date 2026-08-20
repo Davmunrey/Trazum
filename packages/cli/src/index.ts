@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { open, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join, resolve as resolvePath } from 'node:path';
 import { gunzipSync } from 'node:zlib';
 
@@ -36,6 +36,10 @@ import {
   countTokensAnthropic,
   DEFAULT_USAGE,
   detectFromSource,
+  matchLocale,
+  proposeInit,
+  MIN_RATE_DAYS,
+  parseConfig,
   coverageDrift,
   driversBetween,
   explainGateFailure,
@@ -119,6 +123,15 @@ import type {
   SuggestResult,
   UsageProfile,
 } from '@trazum/core';
+import type {
+  UsageProfileReport,
+  InitDecline,
+  InitJustification,
+  InitObservations,
+  InitProposal,
+  ProviderSighting,
+  UsageSighting,
+} from '@trazum/core';
 // Everything that reads the filesystem, on its own entry point so the web
 // bundle cannot reach it. See packages/core/src/node.ts.
 import {
@@ -135,7 +148,13 @@ import {
   loadConfig,
   walkPrompts,
 } from '@trazum/core/node';
-import type { HostEnvironment, PricingCatalogue, ResolvedBudget, TrazumConfig } from '@trazum/core/node';
+import type {
+  HostEnvironment,
+  LoadedConfig,
+  PricingCatalogue,
+  ResolvedBudget,
+  TrazumConfig,
+} from '@trazum/core/node';
 
 import {
   contentAt,
@@ -146,7 +165,7 @@ import {
   revisionsFor,
 } from './git.js';
 import type { Revision } from './git.js';
-import { fetchProviderUsage } from './connect.js';
+import { fetchProviderUsage, findCredential } from './connect.js';
 import { STORE_DIR, appendRecords, readStore, rewriteStore } from './store-fs.js';
 import { DEFAULT_PORT, buildServer, listen } from './serve.js';
 import {
@@ -156,7 +175,7 @@ import {
   readWatchState,
   writeWatchState,
 } from './watch-run.js';
-import { detectLocale, getCliMessages } from './i18n/index.js';
+import { LOCALE_ENV_VARS, detectLocale, getCliMessages } from './i18n/index.js';
 import {
   MAX_SUMMARY_CHARS,
   fitWithin,
@@ -523,6 +542,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   diff: ['level', 'model', 'calls', 'output-tokens', 'batch', 'max-growth', 'optimized', 'markdown-out', 'all', 'prompt'],
   models: [],
   rank: ['level', 'model', 'calls', 'output-tokens', 'batch', 'disable', 'prompt', 'markdown-out'],
+  init: ['dry-run', 'yes', 'json', 'pricing', 'pricing-live'],
   where: [],
   rules: [],
   blame: ['limit', 'model', 'calls', 'output-tokens', 'batch', 'prompt', 'markdown-out'],
@@ -1412,6 +1432,414 @@ async function commandWhere(
   console.log();
   console.log(c.bold(t.where.pricedAs()));
   console.log(`  ${getModel(effective).displayName} ${c.dim(reason)}`);
+  console.log();
+}
+
+/**
+ * Where `init` looks for a usage log before it gives up and says so.
+ *
+ * A short list of the names people actually use, checked in order — not a
+ * glob over the whole tree. A first run that finds a log by searching two
+ * thousand directories has spent the patience it was given, and a log found
+ * in `vendor/fixtures/` is more likely to be somebody's test data than their
+ * bill.
+ */
+const INIT_LOG_CANDIDATES = [
+  'usage.jsonl',
+  'usage.ndjson',
+  'usage.log',
+  'logs/usage.jsonl',
+  'logs',
+  '.trazum/usage.jsonl',
+];
+
+/**
+ * Extensions worth reading for a provider sighting.
+ *
+ * `SOURCE_EXTENSIONS`, the same list `rank` and `doctor` walk, rather than a
+ * second copy that drifts — a language added for extraction is a language
+ * `init` should be able to detect a provider in, and one list is how that
+ * stays true. Documentation is deliberately not on it: a `.md` file quoting
+ * `from 'openai'` inside a code fence would be read as evidence, and `where`
+ * answers for a file somebody named while this answers for a repository
+ * nobody has vouched for.
+ */
+
+/** How many source files, and how large each may be. Both reported when they bite. */
+const INIT_MAX_SOURCE_FILES = 400;
+const INIT_MAX_SOURCE_BYTES = 256 * 1024;
+
+interface InitRenderContext {
+  host: HostEnvironment;
+  prompts: { files: string[]; truncated: boolean };
+  usage: UsageSighting[];
+  unreadable: { where: string; because: string } | null;
+  truncated: boolean;
+  t: CliMessages;
+  pricing: PricingCatalogue;
+}
+
+/**
+ * The first run, printed.
+ *
+ * **The arithmetic comes before the figure**, everywhere below. A tool that
+ * opens with a dollar amount nobody can check gets closed, and the reader has
+ * no reason yet to believe anything this command says — so the headline shows
+ * the calls, the model and the rate it is being compared against, and only
+ * then the money.
+ */
+function renderInit(proposal: InitProposal, ctx: InitRenderContext): void {
+  const { t } = ctx;
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+
+  console.log();
+  console.log(c.bold(t.init.heading()));
+  console.log();
+
+  // 1. Where this is running.
+  console.log(`  ${t.init.host(ctx.host.displayName)}`);
+  if (ctx.host.billing === 'subscription') {
+    console.log(`  ${c.yellow(t.where.subscription(ctx.host.displayName))}`);
+  }
+
+  // 2. The prompts.
+  console.log(
+    `  ${ctx.prompts.files.length === 0 ? c.dim(t.init.noPrompts()) : t.init.prompts(ctx.prompts.files.length)}`,
+  );
+  if (ctx.truncated) console.log(`  ${c.dim(t.init.sourcesTruncated(INIT_MAX_SOURCE_FILES))}`);
+
+  // 3. The usage, or the two ways there is none.
+  if (ctx.unreadable !== null) {
+    console.log(`  ${c.red(t.init.usageUnreadable(ctx.unreadable.where, ctx.unreadable.because))}`);
+  } else if (ctx.usage.length === 0) {
+    console.log(`  ${c.dim(t.init.noUsage())}`);
+  } else {
+    for (const sighting of ctx.usage) {
+      console.log(`  ${t.init.usageFound(sighting.kind, sighting.where)}`);
+    }
+  }
+  console.log();
+
+  // 4. What the config would say, and what it will not.
+  console.log(c.bold(t.init.configHeading()));
+  if (proposal.justified.length === 0) {
+    console.log(`  ${c.dim(t.init.nothingJustified())}`);
+  }
+  for (const why of proposal.justified) {
+    console.log(`  ${c.green('+')} ${c.bold(why.key)}  ${initJustification(why, t)}`);
+  }
+  for (const decline of proposal.declined) {
+    console.log(`  ${c.dim('·')} ${c.dim(decline.key)}  ${c.dim(initDecline(decline, t))}`);
+  }
+  if (proposal.overwrites !== null && proposal.overwrites.keys.length > 0) {
+    console.log();
+    console.log(`  ${c.yellow(t.init.wouldOverwrite(proposal.overwrites.keys.join(', ')))}`);
+  }
+  console.log();
+
+  // 5. The single most valuable thing found — arithmetic first.
+  console.log(c.bold(t.init.findingHeading()));
+  if (proposal.headline === null) {
+    console.log(`  ${c.dim(t.init.noFinding(proposal.noHeadline ?? 'nothing-measured'))}`);
+    console.log();
+    return;
+  }
+  const { slice, lever, savingUsd, days } = proposal.headline;
+  console.log(`  ${t.init.findingCalls(n(slice.calls), slice.label, slice.modelName, days)}`);
+  console.log(`  ${t.init.findingSpent(slice.spentUsd.toFixed(2))}`);
+  if (lever !== 'batch' && slice.route !== null) {
+    console.log(`  ${t.init.findingRoute(slice.route.candidate.displayName)}`);
+  }
+  if (lever !== 'route' && slice.batch !== null) {
+    console.log(`  ${t.init.findingBatch()}`);
+  }
+  console.log(`  ${c.bold(t.init.findingTotal(savingUsd.toFixed(2), days))}`);
+  console.log(`  ${c.dim(t.init.findingNext())}`);
+  console.log();
+}
+
+/** Why a key was written, in one line a person reads. */
+function initJustification(why: InitJustification, t: CliMessages): string {
+  switch (why.key) {
+    case 'locale':
+      return c.dim(t.init.whyLocale(why.value));
+    case 'extensions':
+      return c.dim(t.init.whyExtensions(why.value.join(' '), why.files));
+    case 'usage.model':
+      return c.dim(
+        why.from === 'measured'
+          ? t.init.whyModelMeasured(why.value, Math.round(why.share * 100))
+          : t.init.whyModelSource(why.value, why.file, why.line),
+      );
+    case 'usage.callsPerMonth':
+      return c.dim(t.init.whyCalls(why.value, why.calls, why.days));
+    case 'usage.avgOutputTokens':
+      return c.dim(t.init.whyOutput(why.value, why.outputTokens, why.calls));
+    case 'usage.cacheHitRate':
+      return c.dim(t.init.whyCache(why.value, why.cacheReadTokens, why.inputTokens));
+  }
+}
+
+/** Why a key was not written, and what would settle it. */
+function initDecline(decline: InitDecline, t: CliMessages): string {
+  switch (decline.why) {
+    case 'no-evidence':
+      return t.init.noModelEvidence();
+    case 'conflicting-evidence':
+      return t.init.modelConflict(decline.files.join(', '));
+    case 'provider-only':
+      return t.init.modelProviderOnly(decline.provider, decline.file);
+    case 'nothing-measured':
+      return t.init.nothingMeasured();
+    case 'window-too-short':
+      return t.init.windowTooShort(decline.days, MIN_RATE_DAYS);
+    case 'undated-calls':
+      return t.init.undatedCalls(decline.undated, decline.calls);
+    case 'not-recorded':
+      return t.init.cacheNotRecorded();
+    case 'only-you-know':
+      return t.init.batchOnlyYouKnow();
+    case 'unprovable':
+      return t.init.labelsUnprovable(decline.labels);
+    case 'a-budget-is-a-policy':
+      return decline.measuredUsd === null
+        ? t.init.budgetIsPolicy()
+        : t.init.budgetIsPolicyMeasured(decline.measuredUsd.toFixed(2), decline.days ?? 0);
+  }
+}
+
+/**
+ * `trazum init [dir]` — the first five minutes.
+ *
+ * The floor, not the ceiling. Everything else in this tool assumes you know
+ * which of twenty-two commands answers your question; this one assumes you
+ * have just typed `npx @trazum/cli` and have thirty seconds of patience left.
+ *
+ * It is a **detection, not a wizard**. Nothing is asked. Each step reports
+ * what it found and moves on, and the only decision is whether to write the
+ * file — which `--yes` skips and `--dry-run` refuses. A first run that
+ * interrogates somebody is a first run that gets abandoned halfway.
+ *
+ * The judgement lives in `proposeInit`, in the core, with no filesystem
+ * anywhere near it. This function's whole job is to *look*: walk for prompts,
+ * read a few source files, notice a log or a credential, and hand the lot over
+ * as data. That split is why `--dry-run` cannot drift from the real thing —
+ * they are the same call, and one of them stops before `writeFile`.
+ */
+async function commandInit(
+  args: Args,
+  config: TrazumConfig,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
+  const root = args.positional[0] ?? '.';
+  const dryRun = args.flags.get('dry-run') === true;
+  const asJson = args.flags.get('json') === true;
+
+  // --- what is here -------------------------------------------------------
+  const host = detectHost();
+  const prompts = await walkPrompts(root, {
+    extensions: config.extensions ?? DEFAULT_EXTENSIONS,
+  });
+
+  /**
+   * Source files, read only to be asked which provider they call.
+   *
+   * Capped hard and deliberately low. `where` reads one file because somebody
+   * named it; this reads whatever is lying around, and a first run that spends
+   * forty seconds walking a monorepo has already lost. The cap is reported
+   * when it bites, because "no provider found" and "stopped looking" are
+   * different sentences.
+   */
+  const sourceWalk = await walkPrompts(root, {
+    extensions: SOURCE_EXTENSIONS,
+    maxFiles: INIT_MAX_SOURCE_FILES,
+  });
+  const sightings: ProviderSighting[] = [];
+  for (const relative of sourceWalk.files) {
+    const path = join(root, relative);
+    let source: string;
+    /**
+     * Measured and read through **one open handle**, not by path twice.
+     *
+     * A bundle or a lockfile named `.js` is not worth reading, and reading it
+     * is how this command becomes slow on exactly the repositories that need
+     * it most — so the size is checked first. Checking it with `stat(path)`
+     * and then reading `path` is two lookups of the same name, and what
+     * arrives the second time need not be what was measured the first: the
+     * bound would be enforced against a file that is no longer there. One
+     * handle, stat'ed and read, is the same inode by construction.
+     */
+    let handle;
+    try {
+      handle = await open(path, 'r');
+    } catch {
+      continue;
+    }
+    try {
+      const info = await handle.stat();
+      if (info.size > INIT_MAX_SOURCE_BYTES) continue;
+      source = await handle.readFile('utf8');
+    } catch {
+      continue;
+    } finally {
+      await handle.close();
+    }
+    const detection = detectFromSource(source, { models: pricing.models });
+    if (detection.provider !== null || detection.model !== null || detection.conflicts.length > 0) {
+      sightings.push({ file: relative, detection });
+    }
+  }
+
+  // --- where the usage is, if it is anywhere ------------------------------
+  const usage: UsageSighting[] = [];
+  for (const candidate of INIT_LOG_CANDIDATES) {
+    /**
+     * An existence check and nothing more — what is recorded is the *name*
+     * that was tried, and whether it is a file or a directory. Anything read
+     * later is opened then, on its own terms, so there is no measurement here
+     * for a later read to disagree with.
+     */
+    try {
+      const info = await stat(join(root, candidate));
+      usage.push({
+        kind: info.isDirectory() ? 'log-directory' : 'log-file',
+        where: candidate,
+        provider: null,
+      });
+    } catch {
+      // Absent is the common case and not an error.
+    }
+  }
+  try {
+    const info = await stat(join(root, STORE_DIR));
+    if (info.isDirectory()) {
+      usage.push({ kind: 'store', where: STORE_DIR, provider: null });
+    }
+  } catch {
+    // No store yet.
+  }
+  /**
+   * A credential is named by its **variable**, never read.
+   *
+   * `findCredential` returns the value as well because the connector needs it;
+   * this takes the name and drops the rest on the floor. A first-run summary
+   * is the single most likely output in this product to be pasted into a chat
+   * window, and the rule that has held since 1.41 holds here.
+   */
+  for (const connector of CONNECTORS) {
+    const found = findCredential(connector, process.env);
+    if (found !== null) {
+      usage.push({
+        kind: 'connector-credential',
+        where: found.source.variable,
+        provider: connector.id,
+      });
+    }
+  }
+
+  // --- read what can be read ----------------------------------------------
+  let measured: UsageProfileReport | null = null;
+  let unreadable: { where: string; because: string } | null = null;
+  const readable = usage.find((u) => u.kind === 'log-file' || u.kind === 'log-directory');
+  if (readable !== undefined) {
+    try {
+      const files =
+        readable.kind === 'log-file'
+          ? [join(root, readable.where)]
+          : (await readdir(join(root, readable.where)))
+              .filter((name) => LOG_EXTENSIONS.some((extension) => name.endsWith(extension)))
+              .sort()
+              .map((name) => join(root, readable.where, name));
+      if (files.length > 0) {
+        const texts = await Promise.all(files.map((file) => readUsageLog(file, t)));
+        measured = profileUsage(texts.join('\n'), { catalogue: pricing });
+      }
+    } catch (error) {
+      // Named, never swallowed. A log that is there and cannot be read is the
+      // single most useful thing this command can tell somebody, and treating
+      // it as "no usage found" would send them to configure a connector they
+      // do not need.
+      unreadable = {
+        where: readable.where,
+        because: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  // --- the config already there -------------------------------------------
+  const configPath = join(root, CONFIG_FILENAME);
+  let existing: InitObservations['existing'] = null;
+  try {
+    existing = { path: configPath, config: parseConfig(await readFile(configPath, 'utf8'), configPath) };
+  } catch {
+    // Absent, or unparseable. Either way there is nothing to compare against,
+    // and `init` refuses to overwrite below rather than reasoning about it.
+  }
+  let unparseable = false;
+  if (existing === null) {
+    try {
+      await stat(configPath);
+      unparseable = true;
+    } catch {
+      // Genuinely absent.
+    }
+  }
+
+  const askedLocale = matchLocale(
+    LOCALE_ENV_VARS.map((name) => process.env[name]).find((value) => matchLocale(value)),
+  );
+
+  const proposal = proposeInit(
+    {
+      host,
+      sightings,
+      promptFiles: prompts.files,
+      usage,
+      measured,
+      locale: askedLocale ?? null,
+      existing,
+    },
+    { catalogue: pricing },
+  );
+
+  if (asJson) {
+    console.log(JSON.stringify({ ...proposal, unreadable, truncated: sourceWalk.truncated }, null, 2));
+    return;
+  }
+
+  renderInit(proposal, { host, prompts, usage, unreadable, truncated: sourceWalk.truncated, t, pricing });
+
+  // --- writing it ---------------------------------------------------------
+  //
+  // Three ways this ends and they are kept apart: nothing to write, refused to
+  // overwrite, written. "Nothing happened" with no reason is the output that
+  // makes somebody run the command twice.
+  if (Object.keys(proposal.config).length === 0) {
+    console.log(c.dim(t.init.nothingToWrite()));
+    console.log();
+    return;
+  }
+  const body = `${JSON.stringify(proposal.config, null, 2)}\n`;
+  if (dryRun) {
+    console.log(c.bold(t.init.wouldWrite(configPath)));
+    console.log();
+    console.log(body.trimEnd());
+    console.log();
+    return;
+  }
+  if (unparseable) {
+    console.log(c.yellow(t.init.existingUnparseable(configPath)));
+    console.log();
+    return;
+  }
+  if (existing !== null && args.flags.get('yes') !== true) {
+    console.log(c.yellow(t.init.existingRefused(configPath)));
+    console.log();
+    return;
+  }
+  await writeFile(configPath, body, 'utf8');
+  console.log(c.green(t.init.wrote(configPath)));
   console.log();
 }
 
@@ -7123,7 +7551,33 @@ async function main(): Promise<void> {
   // flag validation so a typo is reported before any file is touched. An
   // invalid config throws here rather than quietly reverting to defaults —
   // "defaults" for a budget means "no budget", which means a green build.
-  const loaded = await loadConfig({ explicit: stringFlag(args, 'config') });
+  /**
+   * `init` is the exception, and finding out why was worth the release.
+   *
+   * A malformed `trazum.config.json` throws here — correctly, for every other
+   * command, because "defaults" for a budget means "no budget" and a silent
+   * revert to defaults is a green build that should have been red. But `init`
+   * is the command somebody runs *because* their setup is broken, and it was
+   * the one command a broken setup could stop from running. The refusal to
+   * overwrite an unparseable config, written two hours earlier in this same
+   * release, was unreachable code standing behind a throw.
+   *
+   * So `init` loads the config the same way and survives the failure, with
+   * nothing carried forward: no keys, no budgets, no locale. It then refuses
+   * to write over the file it could not read, and says so.
+   */
+  let loaded: LoadedConfig;
+  try {
+    loaded = await loadConfig({ explicit: stringFlag(args, 'config') });
+  } catch (error) {
+    if (args.command !== 'init') throw error;
+    loaded = {
+      config: {},
+      path: null,
+      pricing: BUNDLED_CATALOGUE,
+      pricingPath: null,
+    };
+  }
   const { config } = loaded;
   const pricing = await pricingFor(args, loaded, t);
 
@@ -7181,6 +7635,9 @@ async function main(): Promise<void> {
       break;
     case 'models':
       commandModels(t, pricing);
+      break;
+    case 'init':
+      await commandInit(args, config, pricing, t);
       break;
     case 'where':
       await commandWhere(args, config, pricing, t);

@@ -13,6 +13,119 @@ merged commit with no entry is a change only `git log` remembers.
 
 Nothing yet.
 
+## 1.46.0 — "Five minutes"
+
+### Added
+
+**`trazum init` — the first five minutes.** Everything since 1.41 raised the
+ceiling; this lowers the floor. One command that does what a person would do on
+their first afternoon: walks for prompt files, reads source files for which
+provider the code calls (the `where` machinery from 1.7, which has always
+refused to guess), notices a usage log or a connector credential, and writes a
+`trazum.config.json` out of what it can actually justify. Then it prints the
+single most valuable thing it found, **arithmetic before the figure** — the
+calls, the label, the model, what they cost, and only then the saving. A tool
+that opens with a dollar amount nobody can check gets closed.
+
+It is a detection, not a wizard. Nothing is asked. `--dry-run` prints the config
+and writes nothing; `--yes` replaces one already there; without it an existing
+config is left alone; `--json` emits the whole proposal and writes nothing.
+
+**Four keys it refuses to write, which is the substance of the release.**
+
+- **A budget, ever.** A log says what your traffic *was*; a budget says what it
+  *may cost*, which no log can answer. "The measured month plus twenty per
+  cent" would be Trazum inventing a threshold and then grading somebody against
+  it. The measured figure is handed over; the limit stays with the person who
+  can set one.
+- **A monthly rate from a short window.** Twenty-eight days minimum, so every
+  weekday appears the same number of times. And a separate refusal for the
+  quiet case: if *any* call in the log carries no timestamp, no rate is stated
+  at all — those calls cannot be placed inside the span a rate would divide by,
+  and dividing anyway makes the figure come out high with nothing to show why.
+- **A cache hit rate from a log with no cache columns.** Not recorded is not
+  not-happened. A zero there would tell every later caching advisory that
+  caching is doing nothing — a finding invented out of a missing field. A log
+  that *does* record cache writes and reports zero reads is a different thing
+  entirely: that is a measurement, and it is written.
+- **`usage.batchEligible`, in either direction.** Whether the work tolerates a
+  batch window is a product decision no log records. `false` would silently
+  delete the batch lever from every report this config touches; `true` would
+  sell a saving on latency nobody agreed to give up.
+
+It also declines a model when the source names a *provider* and no model.
+`trazum where` prints a provider's default because a reader can see it is a
+guess; a config file cannot — six weeks later it reads as somebody's decision,
+and every price in every report rests on it.
+
+**Every refusal arrives with what would settle it**, typed rather than as prose
+— the rule `spend_guard` established for a call in 1.45, applied here to a file.
+
+**`proposeInit` in `@trazum/core`.** The judgement is a pure function over
+observations the CLI collected: no filesystem anywhere near it, so every rule
+above is tested without one, and `--dry-run` is the same code path minus the
+write rather than a second implementation that drifts.
+
+**docs/usage-logs.md.** Worked examples for the four shapes people actually
+have — an Anthropic response, an OpenAI response, a Vercel AI SDK `onFinish`
+hook, an OTel collector — with real records rather than a schema dump, and a
+table of which finding each optional field buys. Linked from `init`'s output,
+because the moment somebody needs it is the moment the tool says "no usage
+found". Every example in it was run through `trazum profile` before it was
+written down; one claim did not survive that (a JSON *array* in a `.json` file
+is not read) and the page says so instead.
+
+### Fixed
+
+**`init` no longer needs a working config to run.** Every command loads
+`trazum.config.json` before dispatch and throws when it will not parse —
+correct for the rest of them, since "defaults" for a budget means "no budget"
+and a silent revert is a green build that should have been red. But `init` is
+the command somebody runs *because* their setup is broken, and it was the one
+command a broken setup could stop from running. It now survives the failure
+with nothing carried forward — no keys, no budgets, no locale — and refuses to
+write over the file it could not read, naming it. The refusal had been written
+two hours earlier in the same release and was unreachable code standing behind
+a throw; it was found by a test that expected it to fire and watched a parse
+error arrive instead.
+
+### Security
+
+**Three guards on the first run, each proven with a planted probe.** `init` has
+the widest reach in this product and the least trust behind it: it runs in a
+directory it has never seen, before anybody has read a page of documentation.
+So the build fails if `commandInit` reaches the network or an LLM (the
+deterministic core has been the entry point since 0.1.0, and a tool whose
+introduction costs money is one nobody introduces); if it reads the *value* out
+of `findCredential` rather than the variable name (checked as what is
+destructured, not as what is printed — a version that pulls the key out and
+happens not to log it today is one refactor away from logging it tomorrow); or
+if it writes any file other than `join(root, CONFIG_FILENAME)`.
+
+**A time-of-check/time-of-use race, found by CodeQL in code written the same
+day.** `init` bounds how large a source file it will read, and it took that
+measurement with `stat(path)` and then read `readFile(path)` — two lookups of
+the same name, where what arrives the second time need not be what was measured
+the first. The bound would have been enforced against a file that was no longer
+there. It now opens the file once and stats *the handle*, which is the same
+inode by construction. A fourth guard holds the fix in place, because it is
+invisible in the output: both versions print exactly the same thing, and only
+one of them is checking the file it reads.
+
+### Documentation
+
+**The first-run document is contracted.** `trazum init --json` has a section in
+docs/json-output.md with a two-direction parity test, **bounded to its own
+section** — and the spend-guard harvest above it was bounded in the same commit,
+because an unbounded harvest starts enforcing the next shape's fields the moment
+a new contract is appended. That has now happened five times in this file, so
+the bound is written before the section that would break it rather than after.
+
+**README leads with `init`.** Getting started opened with `optimize
+your-prompt.txt` — the smallest thing in the tool — for twenty-two releases. It
+opens with `npx @trazum/cli init` now, and the command table gains a row.
+
+
 ## 1.45.0 — "The agent's budget"
 
 ### Added

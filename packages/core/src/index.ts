@@ -51,6 +51,19 @@ export { buildHistory, storedReportFrom, MIN_RUN } from './history.js';
 export { answerCost } from './answer.js';
 export { guardSpend } from './guard.js';
 export type { GuardAlternative, GuardAnswer, GuardRequest, GuardVerdict } from './guard.js';
+export { proposeInit, HEADLINE_FLOOR_SHARE, MIN_RATE_DAYS } from './init.js';
+export type {
+  InitDecline,
+  InitHeadline,
+  InitJustification,
+  InitKey,
+  InitObservations,
+  InitOptions,
+  InitProposal,
+  NoHeadline,
+  ProviderSighting,
+  UsageSighting,
+} from './init.js';
 export type {
   AnswerRequest,
   AnswerVerdict,

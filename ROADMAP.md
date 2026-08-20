@@ -514,6 +514,19 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.46.0 — Five minutes
+
+`trazum init` takes somebody from `npx @trazum/cli` to a finding worth money
+without a page of documentation: it walks for prompts, reads the code for which
+provider it calls, finds a usage log or a credential for one, writes a config
+out of what it can justify, and prints the single most valuable thing it found
+with the arithmetic before the figure. The substance is what it refuses to
+write — a budget (a policy no log answers), a monthly rate from a short window
+or from undated calls, a cache hit rate from a log with no cache columns, and
+`batchEligible` in either direction — each refusal naming what would settle it.
+`proposeInit` is pure, so every rule is tested without a filesystem. Sixth of
+the ten in docs/plan-1.41-1.50.md.
+
 ### 1.45.0 — The agent's budget
 
 `spend_guard` over MCP answers whether a call may be made — yes, no, or cannot

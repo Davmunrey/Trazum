@@ -33,6 +33,7 @@ export const en: CliMessages = {
   help: (d, bold) => `${bold('trazum')} — cut the cost of your prompts without losing what they ask for.
 
 ${bold('USAGE')}
+  trazum init [dir] [--dry-run | --yes]
   trazum optimize <file|-> [options]
   trazum check <file|dir|-> --max-tokens <n> [options]
   trazum baseline [dir] [options]
@@ -55,6 +56,22 @@ ${bold('USAGE')}
   trazum where [file]
   trazum models
   trazum rules
+
+${bold('OPTIONS FOR init')}
+  --dry-run                   Print the config it would write and write nothing.
+  --yes                       Replace a trazum.config.json that is already there.
+                              Without it an existing config is left alone.
+  --json                      The proposal as data, including every key it
+                              declined and why. Writes nothing.
+
+  The first five minutes: finds your prompts, reads your code for which provider
+  it calls, finds a usage log or a credential for one, and writes a config out of
+  what it can actually justify. Then it prints the single most valuable thing it
+  found, arithmetic first.
+
+  It never invents a threshold. A budget is a policy, so init hands you the
+  measured figure and leaves the limit to you — a generated config full of
+  guessed numbers is one nobody trusts.
 
 ${bold('OPTIONS FOR prune')}
   --cases <file>              One input per line, or a JSON array. Required.
@@ -807,6 +824,84 @@ ${bold('EXAMPLES')}
     diffTooLarge: (lines, max) =>
       `  Diff skipped: ${lines} lines is past the ${max}-line limit, and aligning them would cost more memory than the answer is worth.`,
     wroteTo: (path) => `Optimised prompt written to ${path}`,
+  },
+
+  init: {
+    heading: () => 'What is here',
+    host: (name) => `Running inside ${name}.`,
+    prompts: (count) =>
+      `${count} prompt ${count === 1 ? 'file' : 'files'} found.`,
+    noPrompts: () =>
+      'No prompt files found. Directory mode reads .txt, .md, .prompt and .tmpl by default — set "extensions" if yours are named otherwise.',
+    sourcesTruncated: (cap) =>
+      `Stopped after ${cap} source files, so a provider named further down was not seen.`,
+    usageFound: (kind, where) =>
+      kind === 'connector-credential'
+        ? `Usage can be pulled: a credential is in ${where}. Run trazum connect.`
+        : kind === 'store'
+          ? `A local store of past measurements is in ${where}.`
+          : `Usage log found: ${where}.`,
+    noUsage: () =>
+      'No usage found. Point trazum at a log (trazum profile <log.jsonl>) or pull one (trazum connect anthropic) — every money figure in this tool comes from one.',
+    usageUnreadable: (where, because) =>
+      `${where} is there and could not be read: ${because}. That is a different problem from having no usage, and it is the one to fix first.`,
+
+    configHeading: () => 'What the config would say',
+    nothingJustified: () =>
+      'Nothing. Every key below needs evidence this run did not find, and a guessed config is worse than none.',
+    whyLocale: (locale) => `your environment asks for ${locale}`,
+    whyExtensions: (extensions, files) => `${files} prompt files use ${extensions}`,
+    whyModelMeasured: (model, sharePct) => `${sharePct}% of the measured bill went to ${model}`,
+    whyModelSource: (model, file, line) => `${file}:${line} names ${model}`,
+    whyCalls: (perMonth, calls, days) =>
+      `${calls} calls over ${days} days, stated as ${perMonth} a month`,
+    whyOutput: (average, outputTokens, calls) =>
+      `${outputTokens} output tokens over ${calls} calls averages ${average}`,
+    whyCache: (rate, cacheReadTokens, inputTokens) =>
+      `${cacheReadTokens} cached against ${inputTokens} fresh input is a hit rate of ${rate}`,
+
+    noModelEvidence: () => 'nothing measured or written in the source names one model',
+    modelConflict: (files) => `these files name more than one provider: ${files}`,
+    modelProviderOnly: (provider, file) =>
+      `${file} names ${provider} and no model — a provider default would read as your decision six weeks from now`,
+    nothingMeasured: () => 'nothing has been measured yet',
+    windowTooShort: (days, minimum) =>
+      `${days} days measured; ${minimum} are needed before that is a monthly rate rather than a forecast`,
+    undatedCalls: (undated, calls) =>
+      `${undated} of ${calls} calls carry no timestamp, so they cannot be placed inside the window a rate would divide by`,
+    cacheNotRecorded: () =>
+      'this log has no cache columns at all, which is not the same as a hit rate of zero',
+    batchOnlyYouKnow: () =>
+      'whether the work can wait for a batch window is a product decision, and no log records it',
+    labelsUnprovable: (labels) =>
+      `${labels} ${labels === 1 ? 'label' : 'labels'} in the log, and nothing here proves which prompt file sends which`,
+    budgetIsPolicy: () => 'a budget is a policy, and there is no measured figure to write one against yet',
+    budgetIsPolicyMeasured: (usd, days) =>
+      `a budget is a policy, so it is yours to set — the measured figure is $${usd} over ${days} days`,
+
+    findingHeading: () => 'The most valuable thing found',
+    noFinding: (why) =>
+      why === 'nothing-measured'
+        ? 'Nothing, because nothing has been measured. Every figure this tool prints as money comes from a usage log.'
+        : why === 'nothing-could-be-priced'
+          ? 'Nothing: the log was read, and no model in it is in the price catalogue. Run trazum models to see what is priced.'
+          : 'Nothing worth a line: no single slice of this bill can be moved by more than one per cent of it.',
+    findingCalls: (calls, label, model, days) =>
+      `${calls} calls labelled "${label}" went to ${model} over ${days} days.`,
+    findingSpent: (usd) => `They cost $${usd}.`,
+    findingRoute: (model) => `The same work fits ${model}, which is cheaper per token.`,
+    findingBatch: () => 'The Batch API halves both halves of the bill, for work that can wait.',
+    findingTotal: (usd, days) => `Together: $${usd} over the same ${days} days.`,
+    findingNext: () => 'trazum plan <your log> ranks every action, not just this one.',
+
+    wouldOverwrite: (keys) => `This replaces keys you already set: ${keys}. Pass --yes to write anyway.`,
+    nothingToWrite: () => 'No config written: nothing above could be justified from what is here.',
+    wouldWrite: (path) => `Would write ${path}:`,
+    wrote: (path) => `Written to ${path}.`,
+    existingRefused: (path) =>
+      `${path} already exists and was left alone. Pass --dry-run to see what would go in it, or --yes to replace it.`,
+    existingUnparseable: (path) =>
+      `${path} exists and could not be parsed, so nothing was written over it. Fix or move it first.`,
   },
 
   where: {

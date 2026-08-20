@@ -182,3 +182,21 @@ omission is on the record in that release's notes.
 | `cost` | The full cost answer above, halves and provenance intact. |
 | `alternatives` | Cheaper ways to make the same call, dearest saving first. Each carries `kind` (`route`, `batch`, `route+batch`), the `model` it moves to, `savingUsd` **for this call** rather than for a month, the typed `assumes` it rests on, and `fits` — only alternatives the prompt fits inside are ever offered. Present on a `yes` as well, since an agent allowed to spend that could spend less should be told. |
 | `because` | One line for a human reading a log. Never the only place a fact appears. |
+
+## The first-run document
+
+`trazum init --json`. The proposal `init` would write, plus what it declined
+and why — the same value the human-readable run renders, so a script and a
+person are looking at one document rather than two renderings that can drift.
+
+| Field | What it holds |
+| --- | --- |
+| `schemaVersion` | `1`. |
+| `config` | Exactly the keys `init` could justify, and nothing else. Serialises to a valid `trazum.config.json`; a key with no evidence behind it never appears, because a guessed threshold in a generated file reads as somebody's decision six weeks later. |
+| `justified` | One entry per key written, each with the observation behind it: `key`, the `value`, `from` (`measured`, `source`, `walk`, `environment`) and the arithmetic — call counts and day spans, token totals, the file and line a model literal came from. |
+| `declined` | One entry per key left out, each with `key` and a typed `why`, plus whatever would settle it. `nothing-measured`, `window-too-short` (with `days`), `undated-calls` (with how many), `not-recorded`, `only-you-know`, `unprovable`, `provider-only`, `conflicting-evidence` (with the files), `a-budget-is-a-policy` (with the measured figure, so the number is in hand even though the threshold is not written). A refusal never arrives bare. |
+| `headline` | The single most valuable finding, or null. Carries the `slice` from `billLevers` whole — label, model, calls, what it spent, its route and batch levers — plus `lever`, `savingUsd` (the slice's `combinedUsd`, computed and never summed), `provenance` (always `measured`) and the `days` behind it. |
+| `noHeadline` | Why there is none, when `headline` is null: `nothing-measured`, `nothing-could-be-priced`, `no-lever-clears-the-floor`. Three situations a reader would act on differently. |
+| `overwrites` | The config already present and which of its keys this proposal would replace, or null when there is no file. An empty `keys` array is a different statement from null: the file exists and nothing collides. |
+| `unreadable` | A usage source that is there and could not be read, with `where` and `because`. Null otherwise — and never folded into "no usage found", because the fixes are opposite. |
+| `truncated` | Whether the source-file walk hit its cap, so "no provider found" can be told apart from "stopped looking". |
