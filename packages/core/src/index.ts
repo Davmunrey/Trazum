@@ -48,6 +48,24 @@ export { buildPlan, planLabelName } from './plan.js';
 export type { PlanAction, PlanActionKind, PlanAssumption, PlanDocument } from './plan.js';
 export { verifyPlan } from './verify.js';
 export { buildHistory, storedReportFrom, MIN_RUN } from './history.js';
+export {
+  CONNECTORS,
+  connectorFor,
+  normalizeAnthropicUsage,
+  normalizeOpenAIUsage,
+  bucketedProfile,
+  bucketedCacheEconomics,
+} from './connector.js';
+export type {
+  BucketedReport,
+  BucketedSlice,
+  ConnectorDescriptor,
+  ConnectorGranularity,
+  ConnectorPull,
+  PullGap,
+  UnavailableFinding,
+  UsageBucket,
+} from './connector.js';
 export type { HistoryDocument, HistoryRun, RepeatedPlanAction, StoredReport } from './history.js';
 export type { CannotTellReason, PlanVerification, VerifiedAction, VerifyOutcome } from './verify.js';
 export type { FleetSource, FleetRollup } from './fleet.js';

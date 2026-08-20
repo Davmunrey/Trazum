@@ -42,6 +42,7 @@ ${bold('USAGE')}
   trazum plan <log.jsonl|dir> [options]
   trazum verify <plan.json> --against <newer.jsonl|dir> [options]
   trazum history <dir-of-stored-reports> [options]
+  trazum connect <anthropic|openai> [options]
   trazum diff <before> <after> [options]
   trazum diff --all <dir> <dir> [options]
   trazum rank <dir> [options]
@@ -318,6 +319,35 @@ ${bold('OPTIONS FOR plan')}
   never summed — and every action names what the log cannot confirm, because
   a plan that hides its assumptions is advice pretending to be arithmetic.
   Projected savings and money already spent are separate totals throughout.
+
+${bold('OPTIONS FOR connect')}
+  --since <when>              The window to pull. A UTC day, an ISO timestamp,
+  --until <when>              a relative window (7d, 24h) or "now". Defaults to
+                              the last 30 days.
+  --dry-run                   Say what would be called and which environment
+                              variable the key would come from. Sends nothing
+                              and needs no credential.
+  --payload <file>            Price a usage payload you already have, instead of
+                              pulling one. No credential, no network — the same
+                              arithmetic on the same shape.
+  -o, --out <file>            Save the priced report as JSON.
+  --markdown-out <file>       Also write it as Markdown, for a CI job summary.
+  --json                      The report as data.
+
+  Reads your bill from the provider's usage API, so nothing has to be exported
+  by hand. The credential is read from the environment at the moment of the
+  call and never stored, never printed and never written to a config: set
+  TRAZUM_ANTHROPIC_ADMIN_KEY or TRAZUM_OPENAI_ADMIN_KEY. Each provider needs
+  the narrowest key that can read a usage report, and an ordinary API key
+  cannot.
+
+  These APIs serve sums over a window, not one row per call, so a connected
+  report is a restricted one and says so: the totals, the model split, the day
+  series and the cache verdict are all available, and the per-call findings —
+  input shapes, truncation retries, conversations, context pressure — are
+  listed as unavailable with what would unlock them. A rate limit, a page cap
+  or an expired cursor returns what arrived with the gap named, never a total
+  that quietly describes less traffic than you asked about.
 
 ${bold('OPTIONS FOR history')}
   --markdown-out <file>       Also write the series as Markdown, for a CI job
@@ -1445,6 +1475,37 @@ ${bold('EXAMPLES')}
       'Ranked by money, projected or already spent alike. The assumptions are yours to answer: this plan is arithmetic over the log, not knowledge of your product.',
     wrote: (path) =>
       `Plan written to ${path}, dated. Keep it: a prediction nobody wrote down is a prediction nobody can be held to.`,
+  },
+
+  connect: {
+    noTarget: (providers) =>
+      `Name a provider to read your bill from: trazum connect anthropic. Available: ${providers}. The credential comes from the environment and is never stored — add --dry-run to see exactly what would be called and which variable it would be read from.`,
+    unknownProvider: (id, providers) =>
+      `There is no connector for "${id}". The ones that exist are: ${providers}.`,
+    dryRun: (provider, from, to, envVars, keyKind) =>
+      `Would read ${provider} usage from ${from} to ${to}, using ${keyKind} taken from ${envVars}. Nothing was sent and no credential was needed to print this.`,
+    heading: (provider, from, to, usd, calls) =>
+      calls === null
+        ? `${provider} · ${from} → ${to} · ${usd}`
+        : `${provider} · ${from} → ${to} · ${usd} · ${calls} calls`,
+    modelRow: (model, usd, share, calls) =>
+      calls === null ? `${model}  ${usd}  ${share}` : `${model}  ${usd}  ${share} · ${calls} calls`,
+    nothingBilled: () =>
+      'The provider billed nothing in this window. That is a measurement, not an error — widen it with --since if you expected traffic.',
+    cachePaid: (saved) => `Caching paid for itself: ${saved} less than these tokens would have cost as ordinary input.`,
+    cacheLost: (added) => `Caching added ${added} to this bill against what the same tokens would have cost as ordinary input.`,
+    cacheUnsettled: () =>
+      'This source did not say which TTL the cache writes used, so the cheaper rate was assumed and the verdict moves under the other one. Unsettled, not settled in your favour.',
+    noCallCount: (provider) =>
+      `${provider}'s usage report serves token sums and no request count, so there is no call count here and no per-call average. A zero would read as "no traffic", so nothing is printed instead.`,
+    unpriced: (model, tokens) =>
+      `${model} is not in the price catalogue, so its ${tokens} tokens are counted and its money is not. Add it with --pricing rather than reading the total as complete.`,
+    gap: (detail) => `This window is incomplete: ${detail}.`,
+    unavailable: (findings) =>
+      `Findings this source cannot support: ${findings}. They need one row per call, and a sum has lost the rows — a per-call log still answers them.`,
+    wrote: (path) => `Report written to ${path}.`,
+    footer: () =>
+      'Every figure here is the provider\u2019s own billed token count at the catalogue\u2019s rates. Nothing was estimated, and nothing the provider did not serve was filled in.',
   },
 
   history: {

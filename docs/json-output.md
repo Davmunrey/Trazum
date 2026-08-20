@@ -134,3 +134,22 @@ is not a report:
 | `repeatedPlanActions[]` | The same action (kind, label, model) in two or more saved plans, with first and last planned dates — a decision nobody is executing. |
 | `undatedReports[]` | Reports with no span: on no timeline above, named rather than silently absorbed. |
 | `unrecognizedFiles[]` | JSON files that are neither a stored report nor a saved plan — in no series, named. |
+
+## The connected report document
+
+`trazum connect --json` (and the file `-o` writes) is the restricted report a
+usage API can support — its own contract, deliberately not the profile
+document:
+
+| Field | What it holds |
+| --- | --- |
+| `schemaVersion` | `1`. |
+| `provider` | Which connector produced it. |
+| `granularity` | `bucketed` for a usage API that serves sums; `per-call` for a source that serves rows. |
+| `span` | The window the buckets actually cover, or null when none parsed. |
+| `total` | `totalUsd`, token counts, and `calls` — **null** when the provider serves no request count, never zero, because zero reads as "no traffic" against real spend. |
+| `byModel[]` | Per model: token counts, the four dollar figures, `cachedTokensAtInputRateUsd` and `cacheWriteUsdIfAssumed1h` for the cache counterfactual, and `writeTtlKnown`. |
+| `byDay[]` | Spend per UTC day, oldest first, with the same nullable `calls`. |
+| `unpricedModels[]` | Models the catalogue could not price: named, with their tokens kept and their money absent. |
+| `gaps[]` | What the pull did not get — `rate-limited`, `retention-boundary`, `cursor-expired`, `page-limit`, `unreadable-entry`, `unreadable-field` — each with the detail. A window short by an unknown amount says so here. |
+| `unavailable[]` | Findings this source cannot support, each with `because` and `unlockedBy`. A restricted report that merely omitted them would read as a report that found nothing. |

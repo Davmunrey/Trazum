@@ -1102,7 +1102,17 @@ milliseconds (1.44), the agent's budget (1.45), five-minute onboarding
 budget (1.49), and the format and guarantees other tools can build on
 (1.50).
 
-The two arcs before it were delivered in full, with their errata on the
+After it, ten more are planned as a second arc:
+[docs/plan-1.51-1.60.md](docs/plan-1.51-1.60.md). Its thesis is the gap this
+product has carried since the beginning — every figure it prints is a
+denominator with no numerator. It can say a workload got 40% cheaper and
+cannot say whether it stopped working. A gateway in the path of the call and
+an outcome signal the caller records (never inferred) give cost per resolved
+outcome, the escalation ladder, experiments on real traffic, quality gates in
+CI, and at last the semantic findings the rules engine has deferred since
+0.1.0 because it could not check them.
+
+The two arcs before these were delivered in full, with their errata on the
 record: [docs/plan-1.36-1.40.md](docs/plan-1.36-1.40.md) introduced Trazum's
 estimating and measuring halves to each other, and
 [docs/plan-1.30-1.35.md](docs/plan-1.30-1.35.md) precedes it.

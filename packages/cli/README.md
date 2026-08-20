@@ -26,6 +26,7 @@ npm install -g @trazum/cli
 | `trazum plan <log\|dir>` | the findings as a ranked plan: what to do first, route+batch combined never summed, projections and money already spent totalled apart, every assumption named. `-o` saves it dated for a later verify; `--min-usd` names what it drops |
 | `trazum verify <plan.json> --against <log>` | did the plan's savings arrive? Three outcomes, never two — arrived, did not, cannot be told — with the world's movement named beside each verdict. `--gate` fails CI on broken promises |
 | `trazum history <dir>` | the long run: series from stored `--json` reports, the climbs and decays no pairwise comparison finds, and plans nobody is executing. Shapes named, nothing forecast |
+| `trazum connect <provider>` | your bill read from the provider's usage API — no export by hand. The credential is borrowed from the environment and never stored; a connected report is restricted on purpose and names the findings a sum cannot support |
 | `trazum doctor [dir]` | the whole workspace: what nothing is watching, and what fixing would be worth |
 | `trazum rank <dir>` | of these forty prompts, which is worth an afternoon |
 | `trazum prune <file> --cases <file>` | which few-shot examples earn their tokens — measured, and it asks before spending |

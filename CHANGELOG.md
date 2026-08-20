@@ -11,6 +11,71 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+**`trazum connect <provider>`: your bill, read from the provider.** Every
+command in this product reads a file somebody produced by hand, and the export
+step is where adoption dies — the person who would benefit most from a cost
+report is the person least likely to have a `usage.jsonl` lying around. This
+reads the bill straight from Anthropic's and OpenAI's usage APIs. First of the
+ten in docs/plan-1.41-1.50.md.
+
+**The credential is borrowed, never held.** Keys are read from the environment
+at the moment of the call (`TRAZUM_ANTHROPIC_ADMIN_KEY`,
+`TRAZUM_OPENAI_ADMIN_KEY`, with the provider's own variable as a fallback) and
+never written to a config, a cache, a report or an error message. Redaction
+runs over everything that can reach a terminal — including credential material
+quoted back inside somebody else's error body, because a leak through their
+message is still a leak through Trazum's output. Each connector documents the
+narrowest key that works: a usage report needs read access and nothing that
+could spend money. The endpoint is compiled in rather than accepted from a
+flag, the same posture the LLM layer has taken since 1.14.
+
+**A connected report is a restricted report, and says so.** Usage APIs serve
+sums over a window, not one row per call. The totals, the model split, the day
+series and the cache verdict all work; the per-call findings — input shapes,
+truncation retries, repeated turns, session costs, context pressure, doubled
+rows — are listed as unavailable with why and what would unlock them. It
+carries its own document shape rather than a `UsageProfileReport` with holes
+in it, so no per-call finding can ever read a zero this code wrote: not
+recorded is not not-happened, enforced by the type system.
+
+**The asymmetry between providers is kept, not papered over.** OpenAI's usage
+endpoint serves a request count and Anthropic's does not, so one connected
+report carries per-call averages and the other says why it carries none —
+`calls` is `null`, never `0`. OpenAI reports cached tokens inside the input
+total, so the uncached half is the subtraction: billing both at face value
+would charge the same tokens twice, once at the dearer rate.
+
+**A partial pull is a partial pull, out loud.** A rate limit, a page cap, an
+expired cursor, an unreadable entry or a bucket with no readable window all
+return what arrived with the gap named — never a total that quietly describes
+less traffic than the caller asked about. `--dry-run` prints exactly what
+would be called and which variable the key would come from, sending nothing
+and needing no credential; `--payload <file>` prices a response you already
+have, with no credential and no network.
+
+**Four guards fail the build rather than promising any of this.** No
+real-shaped provider key material may be committed anywhere in the repository
+— shaped against what a real key looks like, so an obviously fake fixture in a
+test stays legal and a leaked key does not. The module that holds a key may
+not call `console` or write a file at all. Every provider response body that
+reaches an error must pass through `redact` on the way. And the connector
+endpoints must stay compiled in, with no flag naming a URL — the SSRF posture
+`checkedEndpoint` has enforced for the LLM layer since 1.14.
+
+New core module `connector.ts` (`CONNECTORS`, `normalizeAnthropicUsage`,
+`normalizeOpenAIUsage`, `bucketedProfile`, `bucketedCacheEconomics`),
+browser-safe: the fetch, the credentials and the pagination live in the CLI,
+the same split `openrouterOverlay` has had since 1.13. The connected document
+is contracted in docs/json-output.md.
+
+### Changed
+
+**`--since`/`--until` parsing is shared.** The window parser was local to
+`profile`; `connect` needs the same grammar, and two parsers for one flag pair
+is one too many.
+
 ### Documentation
 
 **The plan through 1.50.** `docs/plan-1.41-1.50.md` sets out the next arc —
@@ -30,6 +95,28 @@ each bring a new way to lie: the deterministic core stays free and offline;
 a credential is borrowed, never held; nothing continuous invents a number;
 and a machine reader gets the provenance too, as separate typed fields.
 ROADMAP's "Next" now points at the new arc.
+
+**The plan through 1.60.** `docs/plan-1.51-1.60.md` sets out the arc after
+it, because the one through 1.50 leaves the product's oldest gap untouched:
+every figure Trazum prints is a denominator with no numerator. It can say a
+workload got 40% cheaper and cannot say whether it stopped working, which is
+why "route this to a cheaper model" has been an arithmetic claim with a
+quality question attached since 1.23.
+
+Two things close it, and the arc opens with both: a gateway in the path of
+the call — which refuses, and never silently answers something else — and an
+outcome signal the caller records and Trazum never infers. On top of those:
+cost per resolved outcome through every existing report, the escalation
+ladder priced with its double spend and its break-even rate, experiments on
+real traffic with a three-valued verdict and a declared stopping rule,
+quality gates in CI, chargeback with the unallocated named rather than
+spread, committed-use analysis stated as an as-if over measured months
+rather than a forecast, and finally the semantic findings the rules engine
+has deferred since 0.1.0 — now checkable, and still verified before anybody
+sees them.
+
+Two rules join the doctrine: a proxy refuses and never answers something
+else, and quality is recorded, never inferred.
 
 ## 1.40.0 — "The long run"
 

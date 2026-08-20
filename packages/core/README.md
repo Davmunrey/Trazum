@@ -132,6 +132,21 @@ the caller names the file instead of absorbing it. No forecasts anywhere:
 shapes are stated with their first and last values, and where they go next
 is the reader's.
 
+## The bill, from the provider
+
+`normalizeAnthropicUsage(payload)` and `normalizeOpenAIUsage(payload)` turn a
+usage API response into `UsageBucket`s — token sums per window and model, with
+the two cache-write TTLs kept apart and a request count only where the
+provider actually serves one (`null` otherwise, never zero).
+`bucketedProfile(pull, { catalogue })` prices them, and
+`bucketedCacheEconomics(report)` runs the same counterfactual `cacheEconomics`
+runs per call. The result is deliberately its own shape rather than a
+`UsageProfileReport` with holes in it, so no per-call finding can read a zero
+this module wrote: every finding a sum cannot support is listed in
+`unavailable` with why and what would unlock it. Anything unreadable in the
+payload becomes a named `PullGap`, never a default of zero. Pure and
+browser-safe — the fetch, the credentials and the pagination live in the CLI.
+
 ## Comparing two versions
 
 ```ts
