@@ -11,7 +11,88 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+**`trazum gateway` — in the path of the call, and able to say no.** Chapter one
+of the arc in `docs/plan-1.51.md`. Everything else here either answers a
+question an implementation may ignore or reports on a bill after it arrived; a
+connector's export is a batch job on somebody else's schedule, so the runaway is
+always reported after it ran. Standing between the caller and the provider fixes
+both: usage is measured from the provider's own response as it comes back, and a
+refusal is a refusal.
+
+Point your SDK's base URL at it. It speaks the provider's wire format, so there
+is no new client and no code change.
+
+**It refuses; it does not substitute.** A call over budget gets HTTP 402 with the
+cheaper alternatives named — never silently swapped, trimmed or downgraded. The
+caller asked for something specific, and a proxy that quietly answers a different
+question is worse than one that fails, because the failure is visible and the
+substitution is not.
+
+That is enforced in the **type**, not in a comment: a decision is either
+`forward`, which carries nothing the caller did not send, or `refuse`, which
+carries no body at all. There is no shape in which the core hands back a modified
+request, so substitution cannot arrive later as a reasonable-looking field.
+
+**402 rather than 429, deliberately.** Every provider SDK retries a 429
+automatically — that is what the code means to them — so answering a budget
+refusal with one would turn a single refusal into a retry storm against a gateway
+that refuses every time, driven by the caller's own client library. 402 is
+literally correct and in nobody's default retry list. A 502 with
+`trazum_upstream_unreachable` is kept distinct: "your provider is down" and "you
+are out of money" send somebody to fix different things.
+
+**`--on-cannot-tell` is required and has no default.** `fail-open` lets the call
+through and records it as **unjudged** — never "within budget" — while
+`fail-closed` refuses it. Both are defensible and only the operator knows which
+failure their product can survive. Picking one for them would be the most
+consequential decision in their architecture, made silently at install time.
+
+**`spend.substitute`** — substitution only where somebody wrote it down, with a
+required `reason` for the same purpose a waiver's is. Every substituted call is
+marked, so no later report treats it as the call the caller made, and it never
+fires because the gateway could not *judge*: swapping a model because a budget
+could not be read would be answering a different question for a reason that has
+nothing to do with the request.
+
+### Security
+
+**Five guards on a component that stands between somebody and their provider**,
+each proven by planting the violation and watching the test fail by name.
+
+- **The credential is not even borrowed.** The caller's own headers are
+  forwarded untouched and never read — stronger than the connector's *borrowed,
+  never held*, and checked as the absence of any read, because code that reads a
+  secret and happens not to log it today is one refactor from logging it.
+- **The upstream is compiled in.** A flag naming the host would make this a
+  credential-forwarding open proxy: anything that could rewrite a config on disk
+  could point a company's API key at a machine it chose.
+- **Nothing about the payload is written down**, and the interfaces have nowhere
+  to put it: the decision function is handed a description and never the body,
+  and the recording callback takes counts.
+- **`forward` cannot carry a request**, asserted against the type.
+- **The refusal is 402**, asserted against the handler.
+
+Plus loopback binding with one definition of the address, and exactly one
+forwarded path — the one that spends tokens.
+
+### Documentation
+
+**docs/gateway.md**, and the refusal body is contracted in
+`docs/json-output.md` with a two-direction parity test.
+
 ### Fixed
+
+**Two source harvests in `security.test.js` were bounded by their neighbour.**
+The `init` and `feedback` guards sliced from their function to `commandModels`
+*by name*, so inserting `commandGateway` between them silently widened both to
+include it — and one immediately started reporting on its neighbour's source.
+The same failure the `docs/json-output.md` parity tests have had five times.
+Both are bounded to the next function now, whatever it turns out to be, and the
+first-run contract harvest — which was last in the file and therefore unbounded
+— is bounded before the section that would have broken it.
+
 
 **`ROADMAP.md`'s Released section ran in two directions.** Entries were being
 prepended from 1.26.0 onward, so the file went 0.1.0 upward to 1.25.0, jumped
