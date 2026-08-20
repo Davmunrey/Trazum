@@ -433,10 +433,24 @@ describe('a count written in prose is a claim like any other', () => {
    *
    * Written as words rather than digits in that file, so this reads words.
    */
+  /**
+   * The words this guard can check.
+   *
+   * It stopped at sixteen for five releases while the command count went to
+   * twenty-one, and an unknown word is skipped rather than failed — so the
+   * claim in the README went unchecked exactly when it was changing most. A
+   * guard that quietly stops guarding is worse than no guard, because it
+   * still reads like one. Extended well past where the counts are, and
+   * hyphenated forms included, since that is how English writes them.
+   */
   const NUMBERS = {
     one: 1, two: 2, three: 3, four: 4, five: 5, six: 6,
     seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
     thirteen: 13, fourteen: 14, fifteen: 15, sixteen: 16,
+    seventeen: 17, eighteen: 18, nineteen: 19, twenty: 20,
+    'twenty-one': 21, 'twenty-two': 22, 'twenty-three': 23, 'twenty-four': 24,
+    'twenty-five': 25, 'twenty-six': 26, 'twenty-seven': 27, 'twenty-eight': 28,
+    'twenty-nine': 29, thirty: 30, 'thirty-one': 31, 'thirty-two': 32,
   };
 
   it('the rule count in RELEASES.md is the number of rules', () => {
@@ -533,7 +547,7 @@ describe('a count written in prose is a claim like any other', () => {
          * written for is what surfaced it: the count was wrong, the guard ran
          * green, and both were true at once.
          */
-      for (const match of text.matchAll(/\b(other )?([a-z]+) commands\b( that | which )?/gi)) {
+      for (const match of text.matchAll(/\b(other )?([a-z]+(?:-[a-z]+)?) commands\b( that | which )?/gi)) {
         const claimed = NUMBERS[match[2].toLowerCase()];
         if (claimed === undefined) continue; // "these commands", "the other commands"
 

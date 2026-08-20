@@ -32,6 +32,7 @@ ${bold('USO')}
   trazum connect <anthropic|openai> [opciones]
   trazum store [--prune] [opciones]
   trazum watch [--once | --interval 15m] [opciones]
+  trazum serve [--port <n> | --socket <ruta>]
   trazum diff <antes> <después> [opciones]
   trazum diff --all <dir> <dir> [opciones]
   trazum rank <dir> [opciones]
@@ -328,6 +329,32 @@ ${bold('OPCIONES DE plan')}
   registro no puede confirmar, porque un plan que esconde sus supuestos es un
   consejo haciéndose pasar por aritmética. El ahorro proyectado y el dinero ya
   gastado son totales separados en todas partes.
+
+${bold('OPCIONES DE serve')}
+  --port <n>                  Puerto en 127.0.0.1. Por defecto: 7317.
+  --socket <ruta>             Escucha en un socket Unix en vez de un puerto.
+
+  Responde las dos preguntas que importan en el momento de la llamada — cuánto
+  va a costar esto y si queda presupuesto — en milisegundos de un solo dígito,
+  para que un agente o un envoltorio pueda preguntar antes de gastar en vez de
+  leer un informe después.
+
+  POST /cost con {"model": "...", "inputTokens": n, "outputTokens": n};
+  GET /health dice que está en pie. Cada respuesta mantiene separada la mitad
+  medida de la estimada: el presupuesto consumido viene de los recuentos que
+  facturó el proveedor, el coste de la llamada por la que preguntas es una
+  estimación de algo que no ha pasado, y el veredicto dice en cuál de las dos
+  se apoya.
+
+  Escucha en 127.0.0.1 y en ningún otro sitio, y no hay flag para cambiarlo:
+  un oráculo de costes en una interfaz de red guarda el gasto de una empresa,
+  su mezcla de modelos y sus presupuestos, y le responde a quien pregunte. No
+  hay autenticación por la misma razón por la que no hay --host — un token
+  comprobado sobre loopback es teatro, y la postura honesta es una superficie
+  lo bastante pequeña como para no necesitarlo.
+
+  Sin almacén y sin presupuesto sigue tasando la llamada y dice que la mitad
+  del presupuesto es desconocida. Sin conexión es un modo, no un fallo.
 
 ${bold('OPCIONES DE watch')}
   --once                      Una vuelta: medir, guardar, evaluar, emitir,
@@ -1561,6 +1588,19 @@ ${bold('EJEMPLOS')}
       'Ordenado por dinero, proyectado o ya gastado por igual. Los supuestos los respondes tú: este plan es aritmética sobre el registro, no conocimiento de tu producto.',
     wrote: (path) =>
       `Plan escrito en ${path}, con fecha. Guárdalo: una predicción que nadie apuntó es una predicción que no se le puede exigir a nadie.`,
+  },
+
+  serve: {
+    listening: (where) => `Respondiendo en ${where}`,
+    loopbackOnly: () =>
+      'Solo loopback, y no hay flag para cambiarlo: esto guarda tu gasto, tu mezcla de modelos y tus presupuestos, y le respondería a quien preguntara. No hay autenticación por la misma razón — un token comprobado sobre loopback es teatro.',
+    measuredFrom: (usd) =>
+      `Las respuestas de presupuesto se miden contra ${usd} del almacén, leídos una vez al arrancar. Cada respuesta lleva el período que cubre esa cifra en vez de insinuar que está al segundo — reinicia para refrescarla.`,
+    nothingMeasured: (dir) =>
+      `Todavía no hay nada medido (el almacén de ${dir} está vacío), así que la mitad de presupuesto de cada respuesta lo dirá. La mitad del coste sigue respondiendo desde el catálogo: sin conexión es un modo, no un fallo.`,
+    noBudget: () =>
+      'No hay spend.maxUsd configurado, así que "queda presupuesto" no tiene sujeto y cada respuesta lo dice en vez de inventarse uno.',
+    badPort: (value) => `"${value}" no es un puerto. Da un número entero de 0 a 65535, o usa --socket.`,
   },
 
   watch: {

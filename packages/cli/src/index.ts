@@ -148,6 +148,7 @@ import {
 import type { Revision } from './git.js';
 import { fetchProviderUsage } from './connect.js';
 import { STORE_DIR, appendRecords, readStore, rewriteStore } from './store-fs.js';
+import { DEFAULT_PORT, buildServer, listen } from './serve.js';
 import {
   WATCH_STATE_VERSION,
   checkWebhook,
@@ -207,6 +208,8 @@ const VALUE_FLAGS = new Set([
   'keep',
   'interval',
   'webhook',
+  'port',
+  'socket',
   // `route` takes a path here, and the flag is deliberately not `--prompt`:
   // everywhere else in this tool `--prompt` names a marked prompt *inside* a
   // source file, and reusing it for a path would be a trap laid for the reader.
@@ -513,6 +516,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   connect: ['since', 'until', 'payload', 'store', 'json', 'out', 'markdown-out', 'pricing', 'pricing-live', 'dry-run'],
   store: ['prune', 'keep', 'json', 'pricing', 'pricing-live', 'dry-run'],
   watch: ['once', 'interval', 'since', 'payload', 'webhook', 'json', 'pricing', 'pricing-live'],
+  serve: ['port', 'socket', 'pricing', 'pricing-live'],
   route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
@@ -2292,6 +2296,78 @@ function parseWhen(
   const exact = Date.parse(value);
   if (Number.isFinite(exact)) return { ms: exact, relative: false };
   throw new Error(t.profile.badWhen(flag, value));
+}
+
+/**
+ * `trazum serve` — the answer in milliseconds.
+ *
+ * The measured position is read once at start rather than per request: the
+ * whole promise is a single-digit-millisecond answer, and a file read in the
+ * hot path cannot make it. That staleness is real, so every answer carries the
+ * window its measurement covers instead of implying it is current to the
+ * second.
+ */
+async function commandServe(
+  args: Args,
+  config: TrazumConfig,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
+  const root = process.cwd();
+  const limitUsd = config.spend?.maxUsd;
+
+  const { resolved } = await readStore(root);
+  const measured = resolved.records.length > 0;
+  /**
+   * The window the measurement covers, carried into every answer.
+   *
+   * The position is read once at start, so a caller has to be able to see how
+   * old it is. A null window here would let a figure from last month read as
+   * current, which is the staleness this endpoint is otherwise honest about.
+   */
+  const window = measured
+    ? {
+        fromMs: Math.min(...resolved.records.map((record) => record.fromMs)),
+        toMs: Math.max(...resolved.records.map((record) => record.toMs)),
+      }
+    : null;
+  const report = bucketedProfile(
+    {
+      provider: 'store',
+      granularity: 'bucketed',
+      buckets: bucketsFromRecords(resolved.records),
+      window,
+      gaps: [],
+      unavailable: [],
+    },
+    { catalogue: pricing },
+  );
+
+  const server = buildServer({
+    catalogue: pricing,
+    position: () => ({
+      consumedUsd: measured ? report.total.totalUsd : undefined,
+      limitUsd,
+      window: report.span,
+    }),
+  });
+
+  const socket = stringFlag(args, 'socket');
+  const portRaw = stringFlag(args, 'port');
+  const port = portRaw === undefined ? DEFAULT_PORT : Number(portRaw);
+  if (socket === undefined && (!Number.isInteger(port) || port < 0 || port > 65_535)) {
+    throw new Error(t.serve.badPort(String(portRaw)));
+  }
+
+  const where = await listen(server, socket !== undefined ? { socket } : { port });
+  console.log(c.bold(t.serve.listening(where)));
+  console.log(`  ${c.dim(wrap(t.serve.loopbackOnly(), 74, '    '))}`);
+  console.log(
+    `  ${c.dim(wrap(measured ? t.serve.measuredFrom(formatUsd(report.total.totalUsd)) : t.serve.nothingMeasured(STORE_DIR), 74, '    '))}`,
+  );
+  if (limitUsd === undefined) {
+    console.log(`  ${c.dim(wrap(t.serve.noBudget(), 74, '    '))}`);
+  }
 }
 
 /**
@@ -7087,6 +7163,9 @@ async function main(): Promise<void> {
       break;
     case 'watch':
       await commandWatch(args, config, pricing, t);
+      break;
+    case 'serve':
+      await commandServe(args, config, pricing, t);
       break;
     case 'route':
       await commandRoute(args, pricing, t);

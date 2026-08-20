@@ -11,7 +11,58 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**`trazum serve`: the answer in milliseconds.** Everything this tool knows sat
+behind a process launch, a config walk and a log parse — fine for a report and
+useless for a decision being made right now, because by the time the report
+exists the call has been paid for. A local endpoint now answers the two
+questions that matter at call time: what will this cost, and is there budget
+left. Fourth of the ten in docs/plan-1.41-1.50.md.
+
+**This is where the temptation to merge halves is strongest, and the shape
+refuses to.** The budget consumed is `measured` — the provider billed it. The
+cost of the described call is `estimated` — nobody has sent it. The composed
+figure exists, because callers need it, and never travels without both halves
+beside it. `restsOn` says whether the verdict needed the estimate at all:
+`measured` when the budget is already past its limit, `measured+estimated`
+when it takes this call to cross. A caller reading only the verdict still
+cannot mistake one for the other.
+
+**Three outcomes, and the reasons kept apart.** `within`, `over`,
+`cannot-tell` — and the three ways of not being able to tell are distinct
+because their fixes are: no budget configured, nothing measured, or a model
+the catalogue cannot price. Answering "within" for an unpriced model would
+answer whether *current* spend fits, which is not what was asked.
+
+**It degrades rather than failing.** With no store and no budget it still
+prices the call and says the budget half is unknown. Offline is a mode, not a
+failure. The measured position is read once at start — a file read in the hot
+path cannot promise milliseconds — so every answer carries the window that
+figure covers rather than implying it is current to the second.
+
+### Security
+
+**The first time Trazum listens, and the surface is kept small enough not to
+need an auth story.** It binds `127.0.0.1`, compiled in, with no flag,
+environment variable or config key able to change it: this holds a company's
+spend, its model mix and its budgets and answers whoever asks.
+`checkedEndpoint` has guarded outbound requests since 1.14 on the principle
+that a caller *selects* an endpoint rather than naming one, and this is the
+inbound counterpart. There is no auth for the same reason there is no `--host`
+— a token checked over loopback is theatre, since whoever can reach the socket
+can read it out of the process holding it. Bodies over 1 MB are refused
+unread, and every path but `/health` and `/cost` is a 404. Three guards fail
+the build over it, each proven with a planted probe.
+
+### Fixed
+
+**The README command-count guard had been blind since "sixteen".** Its word
+list stopped there, and an unknown number word is skipped rather than failed —
+so the claim went unchecked for five releases, exactly while it was changing
+every time. Extended past thirty, hyphenated forms included, and proven
+against a wrong count. A guard that quietly stops guarding is worse than no
+guard, because it still reads like one.
 
 ## 1.43.0 — "The watch"
 
