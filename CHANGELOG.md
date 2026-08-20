@@ -11,7 +11,71 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**`trazum report --year` — the year, from what was already written down.**
+Chapter ten of `docs/plan-1.51.md`, the last of the arc.
+
+**No new data.** Everything comes from the store and the plans a team already
+keeps, and nothing is computed that cannot be checked against a document that
+already exists. That constraint is the design: an annual report is the document
+most likely to be quoted out of the room it was written in, and the one nobody
+goes back to verify.
+
+**Three outcomes, never two.** "Eleven of fourteen arrived" reads better than
+"eleven arrived, one did not, and two could not be judged" — and the second
+sentence is the one that tells somebody their measurement has a hole in it. A
+year is where the temptation to collapse them is strongest.
+
+**Missing months are named, never filled.** A year report that quietly covers
+nine months and prints an annual total is wrong by a quarter and says nothing
+about it.
+
+**There is deliberately no `arrivedUsd`.** A verification says *whether* each
+action landed; it has never carried a per-action dollar figure for the saving
+that arrived. Summing one out of the observations would mean deciding which of
+several numbers per action is "the saving" — a judgement the verification refused
+to make and this module has no standing to make on its behalf. So the year says
+what was promised and how many promises were kept, and says plainly that it
+cannot put a figure on the kept ones. The alternative is precisely the
+annual-report arithmetic this document exists to replace.
+
+**It lists its own blind spots** in a `cannotSay` array, which is the only reason
+the rest of it is worth acting on.
+
+**It reports the record, not the team.** No per-person anything — an annual
+document is exactly where a cost tool starts being used for performance review,
+and the way not to be is to hold no data that could be. A test asserts the
+document carries no field that could name somebody.
+
+**`conform` grows an outcome chapter and an annual chapter**, so another tool
+emitting this format has to handle a missing numerator the same way. The standard
+is only worth something if its refusals travel with it.
+
+**Cross-field rules in `conform`.** The refusals worth carrying turned out to be
+**relational**: a per-field contract can say "a number or null", and it cannot say
+"null when nothing was recorded, and a number otherwise" — which is the whole
+refusal. A rate of `0` is valid when calls were recorded and none succeeded, and a
+lie when nothing was recorded at all, and the difference lives in a different
+field.
+
+**`docs/our-own-medicine.md`** — this project's own record, kept the way it asks
+users to keep theirs: what each arc refused to ship, what it got wrong and for how
+long (a version claim wrong for seventeen releases; a roadmap running in two
+directions for twenty-four), and what it cannot say about itself. It ends without
+a score, because every miss on it was found by the same process that made it.
+
+**The doctrine, second edition** — two rules added from this arc: *cheaper per
+call is not cheaper per outcome* and *an unallocated share is never spread*.
+
+### Fixed
+
+**The annual record attached an outcomes object whenever calls were parsed**,
+rather than whenever an outcome was recorded — so a year with no outcomes at all
+reported "0 of 120 recorded" and the honest sentence was unreachable. A zero
+dressed as a measurement, which is the exact failure that field's own contract
+forbids. Caught by a test written for the sentence that could not print.
+
 
 ## 1.50.11 — "The commitment"
 

@@ -62,6 +62,7 @@ ${bold('USAGE')}
   trazum quality <log> --label <name> --at <iso> [--gate]
   trazum semantic <prompt> [--yes]
   trazum commitment <log> --floor <usd> --discount <pct> [--months 12]
+  trazum report <log> --year <yyyy>
   trazum owners <log>
   trazum ladder <log>
   trazum feedback
@@ -171,6 +172,15 @@ ${bold('OPTIONS FOR commitment')}
   priced: the months that cleared the floor, and what the floor cost in the
   months that fell short — kept as its own figure, because netted into the
   saving it disappears. An as-if calculation about the past, never a forecast.
+
+${bold('OPTIONS FOR report')}
+  --year <yyyy>               Required. Which year to assemble.
+  --json                      Also emit the record as JSON.
+
+  Everything comes from the store and the plans you already keep — nothing is
+  computed that cannot be checked against a document that already exists.
+  Months with no record are named rather than filled, promises are kept in
+  three outcomes rather than two, and the report lists what it cannot say.
 
 ${bold('OPTIONS FOR prune')}
   --cases <file>              One input per line, or a JSON array. Required.
@@ -1021,6 +1031,40 @@ ${bold('EXAMPLES')}
       `${path} already exists and was left alone. Pass --dry-run to see what would go in it, or --yes to replace it.`,
     existingUnparseable: (path) =>
       `${path} exists and could not be parsed, so nothing was written over it. Fix or move it first.`,
+  },
+
+  annual: {
+    heading: (year) => `The year ${year}, from what was already written down`,
+    needsYear: () => '--year is required, as four digits: trazum report <log> --year 2026.',
+    spent: (usd, calls, months) => `${usd} across ${calls} calls, over ${months} recorded months.`,
+    missing: (months) =>
+      `No record at all for ${months}. Those months are named rather than filled: a year that quietly covers part of itself and prints an annual total is wrong by the rest and says nothing about it.`,
+    promises: (planned, arrived, notArrived, cannotTell) =>
+      `${planned} actions planned. ${arrived} arrived, ${notArrived} did not, and ${cannotTell} could not be judged. Three outcomes, never two \u2014 the third is the one an ordinary annual report folds into the flattering one.`,
+    projected: (usd) => `The plans projected ${usd} of savings.`,
+    noArrivedFigure: () =>
+      'There is deliberately no figure beside it for what arrived. A verification says WHETHER each action landed; it has never carried a per-action dollar figure for the saving. Assembling one here would mean deciding which of several observed numbers is "the saving" \u2014 a judgement the verification refused to make, and exactly the annual-report arithmetic this document replaces.',
+    outcomes: (recorded, parsed, unrecordedUsd) =>
+      `${recorded} of ${parsed} calls recorded an outcome; ${unrecordedUsd} of the year\u2019s spend did not.`,
+    noOutcomes: () =>
+      'No outcome was recorded this year, so nothing here says what the money bought. That is not a success rate of zero \u2014 an uninstrumented year and a failing year are different sentences.',
+    cannotSayHeading: () => 'What this record cannot say',
+    cannotSay: (kind) =>
+      kind === 'months-missing'
+        ? 'what happened in the months with no record'
+        : kind === 'nothing-was-planned'
+          ? 'whether anything was promised, because no plan was made'
+          : kind === 'nothing-was-verified'
+            ? 'whether the promises were kept, because no plan was verified'
+            : kind === 'some-promises-unjudgeable'
+              ? 'whether some promises were kept \u2014 they could not be judged from the logs that exist'
+              : kind === 'arrived-savings-not-quantified'
+                ? 'how many dollars the kept promises were worth'
+                : kind === 'no-outcomes-recorded'
+                  ? 'what any of the money bought'
+                  : 'what the uninstrumented share of the traffic did',
+    noNewData: () =>
+      'Every figure above comes from the store and the plans you already keep. Nothing was computed here that cannot be checked against a document that already exists \u2014 which is the only reason an annual report is worth trusting, since it is the document most likely to be quoted out of the room it was written in.',
   },
 
   commitment: {

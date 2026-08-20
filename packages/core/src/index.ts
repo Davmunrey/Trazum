@@ -71,6 +71,8 @@ export type {
   MeasuredMonth,
   MonthReplay,
 } from './commitment.js';
+export { annualRecord } from './annual.js';
+export type { AnnualPeriod, AnnualRecord } from './annual.js';
 export { allocate, validateOwners } from './owners.js';
 export type {
   Allocation,

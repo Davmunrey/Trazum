@@ -41,6 +41,7 @@ import {
   conform,
   BREAK_EVEN_BAND,
   allocate,
+  annualRecord,
   replayCommitment,
   coversTheTerm,
   runExperiment,
@@ -258,6 +259,7 @@ interface Args {
 const VALUE_FLAGS = new Set([
   'a',
   'at',
+  'year',
   'b',
   'floor',
   'discount',
@@ -597,6 +599,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   semantic: ['yes', 'model', 'pricing', 'pricing-live'],
   owners: ['pricing', 'pricing-live', 'since', 'until'],
   commitment: ['floor', 'discount', 'months', 'pricing', 'pricing-live'],
+  report: ['year', 'json', 'pricing', 'pricing-live'],
   where: [],
   rules: [],
   blame: ['limit', 'model', 'calls', 'output-tokens', 'batch', 'prompt', 'markdown-out'],
@@ -3041,6 +3044,136 @@ async function commandCommitment(
   console.log();
   console.log(`  ${c.dim(wrap(t.commitment.neverAForecast(), 74, '  '))}`);
   console.log();
+}
+
+/**
+ * `trazum report <log> --year <yyyy>` — the year, from what was already
+ * written down.
+ *
+ * The last chapter of the arc, and the one that turns this product's argument
+ * into something a stranger can audit. **No new data**: everything here comes
+ * from the store and the plans a team already keeps, and nothing is computed
+ * that could not be checked against a document that already exists.
+ *
+ * That constraint is the whole design. An annual report is the document most
+ * likely to be quoted out of the room it was written in, and the one nobody
+ * goes back to verify.
+ */
+async function commandReport(
+  args: Args,
+  config: TrazumConfig,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
+  const path = args.positional[0];
+  if (path === undefined) throw new Error(t.errors.missingInputFile());
+  const year = stringFlag(args, 'year');
+  if (year === undefined || !/^\d{4}$/.test(year)) throw new Error(t.annual.needsYear());
+
+  const report = profileUsage(await readUsageLog(path, t), { catalogue: pricing });
+
+  /**
+   * One period per calendar month, built from the day series.
+   *
+   * Partial months are kept here, unlike in `commitment`: a year report is
+   * about what happened, and a month that only ran for a week still happened.
+   * What it must not do is imply the month was whole, which is why the count
+   * of recorded months is stated beside the total.
+   */
+  const byMonth = new Map<string, { usd: number; calls: number }>();
+  for (const day of report.spendByDay) {
+    const key = day.day.slice(0, 7);
+    const entry = byMonth.get(key) ?? { usd: 0, calls: 0 };
+    entry.usd += day.usd;
+    entry.calls += day.calls;
+    byMonth.set(key, entry);
+  }
+  const outcomes = outcomeReport(report.outcomeTally, config.outcomes ?? null);
+  const periods = [...byMonth.entries()]
+    .map(([month, entry], index) => ({
+      month,
+      usd: entry.usd,
+      calls: entry.calls,
+      /**
+       * Attached only when something was **recorded**, not merely parsed.
+       *
+       * The first version keyed on `parsed > 0`, which is true of any log with
+       * calls in it — so a year that recorded no outcome at all still got an
+       * outcomes object saying "0 of 120", and the honest sentence ("no
+       * outcome was recorded this year, so nothing here says what the money
+       * bought") was unreachable. A zero dressed as a measurement, which is
+       * the exact failure the field's own contract forbids.
+       *
+       * Attached to the first month rather than divided across them: dividing
+       * would invent a monthly figure nobody measured, and the year's total is
+       * what this document reports.
+       */
+      ...(index === 0 && outcomes.coverage.recorded > 0 ? { outcomes } : {}),
+    }))
+    .sort((a, b) => a.month.localeCompare(b.month));
+
+  const record = annualRecord(year, periods);
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+
+  console.log();
+  console.log(c.bold(t.annual.heading(year)));
+  console.log();
+  console.log(
+    `  ${t.annual.spent(formatUsd(record.totalUsd), n(record.totalCalls), n(record.months.length))}`,
+  );
+  if (record.missingMonths.length > 0) {
+    console.log(
+      `  ${c.yellow('!')} ${wrap(t.annual.missing(record.missingMonths.join(', ')), 74, '    ')}`,
+    );
+  }
+
+  console.log();
+  const p = record.promises;
+  console.log(
+    `  ${wrap(t.annual.promises(n(p.planned), n(p.arrived), n(p.notArrived), n(p.cannotTell)), 74, '    ')}`,
+  );
+  if (p.projectedUsd > 0) {
+    console.log(`  ${t.annual.projected(formatUsd(p.projectedUsd))}`);
+    console.log(`  ${c.dim(wrap(t.annual.noArrivedFigure(), 74, '    '))}`);
+  }
+
+  console.log();
+  if (record.outcomes === null) {
+    console.log(`  ${c.dim(wrap(t.annual.noOutcomes(), 74, '    '))}`);
+  } else {
+    console.log(
+      `  ${wrap(
+        t.annual.outcomes(
+          n(record.outcomes.recorded),
+          n(record.outcomes.parsed),
+          formatUsd(record.outcomes.unrecordedUsd),
+        ),
+        74,
+        '    ',
+      )}`,
+    );
+  }
+
+  /**
+   * The section an annual report is usually missing, and the reason this one
+   * is worth trusting: a document that lists its own blind spots is a document
+   * somebody can act on the rest of.
+   */
+  if (record.cannotSay.length > 0) {
+    console.log();
+    console.log(`  ${c.bold(t.annual.cannotSayHeading())}`);
+    for (const kind of record.cannotSay) {
+      console.log(`    ${c.dim('·')} ${wrap(t.annual.cannotSay(kind), 70, '      ')}`);
+    }
+  }
+
+  console.log();
+  console.log(`  ${c.dim(wrap(t.annual.noNewData(), 74, '  '))}`);
+  console.log();
+
+  if (boolFlag(args, 'json')) {
+    console.log(JSON.stringify(record, null, 2));
+  }
 }
 
 function commandModels(t: CliMessages, pricing: PricingCatalogue): void {
@@ -9242,6 +9375,9 @@ async function main(): Promise<void> {
       break;
     case 'models':
       commandModels(t, pricing);
+      break;
+    case 'report':
+      await commandReport(args, config, pricing, t);
       break;
     case 'commitment':
       await commandCommitment(args, config, pricing, t);
