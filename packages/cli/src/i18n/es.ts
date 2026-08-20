@@ -29,6 +29,7 @@ ${bold('USO')}
   trazum plan <log.jsonl|dir> [opciones]
   trazum verify <plan.json> --against <nuevo.jsonl|dir> [opciones]
   trazum history <dir-de-informes-guardados> [opciones]
+  trazum connect <anthropic|openai> [opciones]
   trazum diff <antes> <después> [opciones]
   trazum diff --all <dir> <dir> [opciones]
   trazum rank <dir> [opciones]
@@ -325,6 +326,36 @@ ${bold('OPCIONES DE plan')}
   registro no puede confirmar, porque un plan que esconde sus supuestos es un
   consejo haciéndose pasar por aritmética. El ahorro proyectado y el dinero ya
   gastado son totales separados en todas partes.
+
+${bold('OPCIONES DE connect')}
+  --since <cuándo>            La ventana que se descarga. Un día UTC, una marca
+  --until <cuándo>            ISO, una ventana relativa (7d, 24h) o "now". Por
+                              defecto, los últimos 30 días.
+  --dry-run                   Dice qué se llamaría y de qué variable de entorno
+                              saldría la clave. No envía nada y no necesita
+                              credencial.
+  --payload <fichero>         Tasa un payload de uso que ya tengas, en vez de
+                              descargar uno. Sin credencial y sin red — la misma
+                              aritmética sobre la misma forma.
+  -o, --out <fichero>         Guarda el informe tasado como JSON.
+  --markdown-out <fichero>    Lo escribe además como Markdown, para CI.
+  --json                      El informe como datos.
+
+  Lee tu factura desde la API de uso del proveedor, para que nadie tenga que
+  exportar nada a mano. La credencial se lee del entorno en el momento de la
+  llamada y nunca se guarda, nunca se imprime y nunca se escribe en un fichero
+  de configuración: define TRAZUM_ANTHROPIC_ADMIN_KEY o TRAZUM_OPENAI_ADMIN_KEY.
+  Cada proveedor necesita la clave más estrecha que pueda leer un informe de
+  uso, y una clave de API normal no puede.
+
+  Estas APIs sirven sumas sobre una ventana, no una fila por llamada, así que
+  un informe conectado es un informe restringido y lo dice: los totales, el
+  reparto por modelo, la serie por día y el veredicto de caché están todos
+  disponibles, y los hallazgos por llamada — formas de entrada, reintentos por
+  truncado, conversaciones, presión de contexto — se listan como no disponibles
+  con lo que los desbloquearía. Un límite de tasa, un tope de páginas o un
+  cursor caducado devuelven lo que llegó con el hueco nombrado, nunca un total
+  que describe en silencio menos tráfico del que pediste.
 
 ${bold('OPCIONES DE history')}
   --markdown-out <fichero>    Escribe además la serie como Markdown, para un
@@ -1468,6 +1499,37 @@ ${bold('EJEMPLOS')}
       'Ordenado por dinero, proyectado o ya gastado por igual. Los supuestos los respondes tú: este plan es aritmética sobre el registro, no conocimiento de tu producto.',
     wrote: (path) =>
       `Plan escrito en ${path}, con fecha. Guárdalo: una predicción que nadie apuntó es una predicción que no se le puede exigir a nadie.`,
+  },
+
+  connect: {
+    noTarget: (providers) =>
+      `Nombra un proveedor del que leer tu factura: trazum connect anthropic. Disponibles: ${providers}. La credencial sale del entorno y nunca se guarda — añade --dry-run para ver exactamente qué se llamaría y de qué variable saldría.`,
+    unknownProvider: (id, providers) =>
+      `No hay conector para "${id}". Los que existen son: ${providers}.`,
+    dryRun: (provider, from, to, envVars, keyKind) =>
+      `Leería el uso de ${provider} del ${from} al ${to}, usando ${keyKind} tomada de ${envVars}. No se envió nada y no hizo falta ninguna credencial para imprimir esto.`,
+    heading: (provider, from, to, usd, calls) =>
+      calls === null
+        ? `${provider} · ${from} → ${to} · ${usd}`
+        : `${provider} · ${from} → ${to} · ${usd} · ${calls} llamadas`,
+    modelRow: (model, usd, share, calls) =>
+      calls === null ? `${model}  ${usd}  ${share}` : `${model}  ${usd}  ${share} · ${calls} llamadas`,
+    nothingBilled: () =>
+      'El proveedor no facturó nada en esta ventana. Eso es una medición, no un error — ensánchala con --since si esperabas tráfico.',
+    cachePaid: (saved) => `La caché se pagó sola: ${saved} menos de lo que estos tokens habrían costado como entrada normal.`,
+    cacheLost: (added) => `La caché añadió ${added} a esta factura frente a lo que los mismos tokens habrían costado como entrada normal.`,
+    cacheUnsettled: () =>
+      'Esta fuente no dijo con qué TTL se escribió la caché, así que se asumió la tarifa barata y el veredicto cambia con la otra. Sin resolver, no resuelto a tu favor.',
+    noCallCount: (provider) =>
+      `El informe de uso de ${provider} sirve sumas de tokens y ningún recuento de peticiones, así que aquí no hay número de llamadas ni media por llamada. Un cero se leería como "sin tráfico", así que no se imprime nada en su lugar.`,
+    unpriced: (model, tokens) =>
+      `${model} no está en el catálogo de precios, así que sus ${tokens} tokens se cuentan y su dinero no. Añádelo con --pricing en vez de leer el total como completo.`,
+    gap: (detail) => `Esta ventana está incompleta: ${detail}.`,
+    unavailable: (findings) =>
+      `Hallazgos que esta fuente no puede sostener: ${findings}. Necesitan una fila por llamada, y una suma ha perdido las filas — un registro por llamada sí los responde.`,
+    wrote: (path) => `Informe escrito en ${path}.`,
+    footer: () =>
+      'Cada cifra de aquí es el recuento de tokens que el proveedor facturó, a las tarifas del catálogo. No se estimó nada, y no se rellenó nada que el proveedor no sirviera.',
   },
 
   history: {

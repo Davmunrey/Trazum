@@ -43,11 +43,11 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- seventeen commands MCP server      Next.js     comments on pull requests
+ eighteen commands  MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
-## The seventeen commands
+## The eighteen commands
 
 | Command | What it answers |
 |---|---|
@@ -67,6 +67,7 @@ never runs unless you ask.
 | [`trazum plan`](#the-plan-trazum-plan) | Of everything the log shows, what do I do first, and what is each move worth? |
 | [`trazum verify`](#did-it-work-trazum-verify) | Did the plan's savings actually arrive? *Three outcomes, never two.* |
 | [`trazum history`](#the-long-run-trazum-history) | What have twenty reports been saying that no two of them could? *Shapes, never forecasts.* |
+| [`trazum connect`](#your-bill-without-the-export-trazum-connect) | What did the provider actually bill me? *Read from their API, nothing exported by hand.* |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
 
 ## Contents
@@ -173,8 +174,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of seventeen commands — [the table
-above](#the-seventeen-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of eighteen commands — [the table
+above](#the-eighteen-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -238,13 +239,14 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other sixteen commands, each with its own section below:
+The other seventeen commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
 trazum plan usage.jsonl              # the findings as a ranked plan
 trazum verify plan.json --against new.jsonl   # did it work?
 trazum history reports/              # the long run, from stored reports
+trazum connect anthropic             # your bill, read from the provider
 trazum rank prompts/                 # which one to fix first
 trazum blame prompts/system.txt      # who made it expensive, and when
 trazum diff old.txt new.txt          # what this edit cost
@@ -883,6 +885,55 @@ re-parsed logs, so a year of JSON is enough and the raw logs can be thrown
 away. Reports with no span are on no timeline and say so; files that are
 neither a report nor a plan are named; two reports is a refusal pointing at
 `profile --against`.
+
+### Your bill, without the export: `trazum connect`
+
+Every command above reads a file somebody produced by hand, and the export
+step is where this stops being used. `connect` reads the bill from the
+provider's own usage API:
+
+```bash
+export TRAZUM_ANTHROPIC_ADMIN_KEY=...   # read from the environment, never stored
+trazum connect anthropic --since 30d
+```
+
+```
+Anthropic · 2026-08-01 → 2026-08-06 · $136.00
+  claude-opus-5       $106.00   77.9%
+  claude-haiku-4-5     $30.00   22.1%
+
+  Caching added $11.00 to this bill against what the same tokens would have
+    cost as ordinary input.
+
+  Anthropic's usage report serves token sums and no request count, so there
+    is no call count here and no per-call average. A zero would read as "no
+    traffic", so nothing is printed instead.
+
+  Findings this source cannot support: inputShapes, truncationRetries,
+    repeatedTurns, sessionCosts, contextPressure, duplicateLines, calls.
+```
+
+**The credential is borrowed, never held.** It is read from the environment at
+the moment of the call and never written to a config, a cache, a report or an
+error message — and every provider asks for the narrowest key that can read a
+usage report, never one that could spend money. The endpoint is compiled in
+rather than accepted from a flag, for the same reason the LLM layer selects an
+endpoint instead of naming one.
+
+**A connected report is a restricted report, and says so.** Usage APIs serve
+sums over a window, not one row per call, so the totals, the model split, the
+day series and the cache verdict all work — and the per-call findings are
+listed as unavailable with what would unlock them, rather than computed from a
+zero nobody measured. Where the providers differ, the report differs: OpenAI
+serves a request count and Anthropic does not, so one report has per-call
+averages and the other says why it has none.
+
+**A partial pull is a partial pull.** A rate limit, a page cap or an expired
+cursor returns what arrived with the gap named — never a total that quietly
+describes less traffic than you asked about. `--dry-run` shows exactly what
+would be called and which variable the key would come from, sending nothing;
+`--payload <file>` prices a response you already have, with no credential at
+all.
 
 ### Charting it: `doctor --otlp-out`
 

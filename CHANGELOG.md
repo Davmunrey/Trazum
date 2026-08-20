@@ -11,6 +11,62 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+**`trazum connect <provider>`: your bill, read from the provider.** Every
+command in this product reads a file somebody produced by hand, and the export
+step is where adoption dies — the person who would benefit most from a cost
+report is the person least likely to have a `usage.jsonl` lying around. This
+reads the bill straight from Anthropic's and OpenAI's usage APIs. First of the
+ten in docs/plan-1.41-1.50.md.
+
+**The credential is borrowed, never held.** Keys are read from the environment
+at the moment of the call (`TRAZUM_ANTHROPIC_ADMIN_KEY`,
+`TRAZUM_OPENAI_ADMIN_KEY`, with the provider's own variable as a fallback) and
+never written to a config, a cache, a report or an error message. Redaction
+runs over everything that can reach a terminal — including credential material
+quoted back inside somebody else's error body, because a leak through their
+message is still a leak through Trazum's output. Each connector documents the
+narrowest key that works: a usage report needs read access and nothing that
+could spend money. The endpoint is compiled in rather than accepted from a
+flag, the same posture the LLM layer has taken since 1.14.
+
+**A connected report is a restricted report, and says so.** Usage APIs serve
+sums over a window, not one row per call. The totals, the model split, the day
+series and the cache verdict all work; the per-call findings — input shapes,
+truncation retries, repeated turns, session costs, context pressure, doubled
+rows — are listed as unavailable with why and what would unlock them. It
+carries its own document shape rather than a `UsageProfileReport` with holes
+in it, so no per-call finding can ever read a zero this code wrote: not
+recorded is not not-happened, enforced by the type system.
+
+**The asymmetry between providers is kept, not papered over.** OpenAI's usage
+endpoint serves a request count and Anthropic's does not, so one connected
+report carries per-call averages and the other says why it carries none —
+`calls` is `null`, never `0`. OpenAI reports cached tokens inside the input
+total, so the uncached half is the subtraction: billing both at face value
+would charge the same tokens twice, once at the dearer rate.
+
+**A partial pull is a partial pull, out loud.** A rate limit, a page cap, an
+expired cursor, an unreadable entry or a bucket with no readable window all
+return what arrived with the gap named — never a total that quietly describes
+less traffic than the caller asked about. `--dry-run` prints exactly what
+would be called and which variable the key would come from, sending nothing
+and needing no credential; `--payload <file>` prices a response you already
+have, with no credential and no network.
+
+New core module `connector.ts` (`CONNECTORS`, `normalizeAnthropicUsage`,
+`normalizeOpenAIUsage`, `bucketedProfile`, `bucketedCacheEconomics`),
+browser-safe: the fetch, the credentials and the pagination live in the CLI,
+the same split `openrouterOverlay` has had since 1.13. The connected document
+is contracted in docs/json-output.md.
+
+### Changed
+
+**`--since`/`--until` parsing is shared.** The window parser was local to
+`profile`; `connect` needs the same grammar, and two parsers for one flag pair
+is one too many.
+
 ### Documentation
 
 **The plan through 1.50.** `docs/plan-1.41-1.50.md` sets out the next arc —

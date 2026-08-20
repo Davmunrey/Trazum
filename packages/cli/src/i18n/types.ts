@@ -1073,6 +1073,38 @@ export interface CliMessages {
   };
 
   /**
+   * `trazum connect` — the bill, read from the provider.
+   *
+   * A usage API serves sums, so the report is restricted on purpose and says
+   * which findings this source cannot support. The credential copy matters as
+   * much as the figures: Trazum borrows a key from the environment and never
+   * stores it, and the messages here are where a user learns that.
+   */
+  connect: {
+    noTarget(providers: string): string;
+    unknownProvider(id: string, providers: string): string;
+    /** What would be called, with no key needed and nothing sent. */
+    dryRun(provider: string, from: string, to: string, envVars: string, keyKind: string): string;
+    /** `calls` is null on a source that serves no request count. */
+    heading(provider: string, from: string, to: string, usd: string, calls: string | null): string;
+    modelRow(model: string, usd: string, share: string, calls: string | null): string;
+    /** A window the provider billed nothing in — not an error, and not a zero to hide. */
+    nothingBilled(): string;
+    cachePaid(saved: string): string;
+    cacheLost(added: string): string;
+    /** The write TTL was not stated, so the verdict moves under the other rate. */
+    cacheUnsettled(): string;
+    /** This source serves token sums and no request count. */
+    noCallCount(provider: string): string;
+    unpriced(model: string, tokens: string): string;
+    /** Something the pull did not get, named rather than silently missing. */
+    gap(detail: string): string;
+    unavailable(findings: string): string;
+    wrote(path: string): string;
+    footer(): string;
+  };
+
+  /**
    * `trazum history` — many reports over many periods, as one series.
    *
    * Shapes are named as consecutive movement, never a fitted line, and no

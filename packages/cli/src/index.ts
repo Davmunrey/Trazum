@@ -11,8 +11,14 @@ import {
   cacheableMinimum,
   analyzeCachePrefix,
   billLevers,
+  bucketedCacheEconomics,
+  bucketedProfile,
   buildHistory,
   buildPlan,
+  connectorFor,
+  CONNECTORS,
+  normalizeAnthropicUsage,
+  normalizeOpenAIUsage,
   storedReportFrom,
   verifyPlan,
   cacheEconomics,
@@ -80,6 +86,7 @@ import {
 import { cacheDir, cacheStats, cachingProvider, clearCache } from './suggest-cache.js';
 import { dayOf, formatGap, median, spanDays } from './time.js';
 import type {
+  BucketedReport,
   FleetSource,
   HistoryRun,
   MeasuredUsage,
@@ -133,6 +140,7 @@ import {
   revisionsFor,
 } from './git.js';
 import type { Revision } from './git.js';
+import { fetchProviderUsage } from './connect.js';
 import { detectLocale, getCliMessages } from './i18n/index.js';
 import {
   MAX_SUMMARY_CHARS,
@@ -181,6 +189,7 @@ const VALUE_FLAGS = new Set([
   'against',
   'from-log',
   'min-usd',
+  'payload',
   // `route` takes a path here, and the flag is deliberately not `--prompt`:
   // everywhere else in this tool `--prompt` names a marked prompt *inside* a
   // source file, and reusing it for a path would be a trap laid for the reader.
@@ -484,6 +493,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   plan: ['json', 'out', 'markdown-out', 'min-usd', 'pricing', 'pricing-live'],
   verify: ['against', 'gate', 'json', 'markdown-out', 'pricing', 'pricing-live'],
   history: ['json', 'markdown-out'],
+  connect: ['since', 'until', 'payload', 'json', 'out', 'markdown-out', 'pricing', 'pricing-live', 'dry-run'],
   route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
@@ -2224,6 +2234,213 @@ function isoDate(): string {
  * Trazum happens to be running, so the host has no bearing on it.
  */
 /**
+ * One end of a time window, from a flag.
+ *
+ * A UTC day (`2026-08-14`), a full ISO 8601 timestamp, a relative window
+ * (`7d`, `24h`) or `now`. A bare day means the whole of it — since its first
+ * instant, until its last — because `--until 2026-08-14` excluding the named
+ * day is a trap sprung on everyone who reads dates the way humans do.
+ *
+ * `relative` comes back so the caller can state the caveat: a relative window
+ * is measured against **the machine's clock, not the data's**, and a log
+ * exported last month answers `--since 7d` with nothing.
+ */
+function parseWhen(
+  args: Args,
+  flag: string,
+  endOfDay: boolean,
+  t: CliMessages,
+  now: number,
+): { ms: number | undefined; relative: boolean } {
+  const value = stringFlag(args, flag);
+  if (value === undefined) return { ms: undefined, relative: false };
+
+  const relative = /^(\d+)([dh])$/.exec(value);
+  if (relative) {
+    const amount = Number(relative[1]);
+    if (amount > 0) {
+      const span = relative[2] === 'd' ? 86_400_000 : 3_600_000;
+      return { ms: now - amount * span, relative: true };
+    }
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const midnight = Date.parse(`${value}T00:00:00Z`);
+    if (Number.isFinite(midnight)) {
+      return { ms: endOfDay ? midnight + 86_400_000 : midnight, relative: false };
+    }
+  }
+  if (value === 'now') return { ms: now, relative: false };
+  const exact = Date.parse(value);
+  if (Number.isFinite(exact)) return { ms: exact, relative: false };
+  throw new Error(t.profile.badWhen(flag, value));
+}
+
+/**
+ * `trazum connect <provider>` — the bill, read from the provider.
+ *
+ * The pull and the pricing live elsewhere; this owns the window, the
+ * rendering and the refusals. The report it prints is deliberately a
+ * *restricted* one: a usage API serves sums, so every per-call finding is
+ * listed as unavailable rather than computed from a zero nobody measured.
+ */
+async function commandConnect(
+  args: Args,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
+  const id = args.positional[0];
+  if (id === undefined) {
+    throw new Error(t.connect.noTarget(CONNECTORS.map((c) => c.id).join(', ')));
+  }
+  const descriptor = connectorFor(id);
+  if (descriptor === null) {
+    throw new Error(t.connect.unknownProvider(id, CONNECTORS.map((c) => c.id).join(', ')));
+  }
+
+  const now = Date.now();
+  const since = parseWhen(args, 'since', false, t, now);
+  const until = parseWhen(args, 'until', true, t, now);
+  // A month back by default: long enough to be a bill, short enough that a
+  // first run against a busy organisation does not walk fifty pages.
+  const fromMs = since.ms ?? now - 30 * 86_400_000;
+  const toMs = until.ms ?? now;
+  if (fromMs >= toMs) throw new Error(t.profile.sinceAfterUntil());
+
+  const day = (msValue: number): string => new Date(msValue).toISOString().slice(0, 10);
+
+  if (boolFlag(args, 'dry-run')) {
+    console.log(
+      wrap(
+        t.connect.dryRun(
+          descriptor.displayName,
+          day(fromMs),
+          day(toMs),
+          descriptor.credentialEnv.join(' or '),
+          descriptor.keyKind,
+        ),
+        76,
+        '  ',
+      ),
+    );
+    return;
+  }
+
+  /**
+   * A payload somebody already has is priced without a pull.
+   *
+   * People save API responses — from a support thread, from a curl in a
+   * runbook, from a colleague who has the admin key and they do not. Pricing
+   * one needs no credential and no network, and it is the same arithmetic on
+   * the same shape, so refusing it would be ceremony rather than safety.
+   */
+  const payloadPath = stringFlag(args, 'payload');
+  const pulled =
+    payloadPath === undefined
+      ? await fetchProviderUsage({ descriptor, fromMs, toMs, env: process.env })
+      : {
+          pull: (descriptor.id === 'anthropic' ? normalizeAnthropicUsage : normalizeOpenAIUsage)(
+            JSON.parse(await readFile(payloadPath, 'utf8')),
+          ),
+          source: { variable: payloadPath },
+        };
+  const { pull, source } = pulled;
+  const report = bucketedProfile(pull, { catalogue: pricing });
+  const cache = bucketedCacheEconomics(report);
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+
+  const outPath = stringFlag(args, 'out');
+  if (outPath !== undefined) {
+    await writeFile(outPath, `${JSON.stringify({ ...report, pulledFrom: source.variable }, null, 2)}\n`);
+  }
+
+  if (boolFlag(args, 'json')) {
+    console.log(JSON.stringify(report, null, 2));
+    return;
+  }
+
+  const lines = (md: boolean): string[] => {
+    const out: string[] = [];
+    const heading = t.connect.heading(
+      descriptor.displayName,
+      report.span === null ? day(fromMs) : day(report.span.fromMs),
+      report.span === null ? day(toMs) : day(report.span.toMs),
+      formatUsd(report.total.totalUsd),
+      report.total.calls === null ? null : n(report.total.calls),
+    );
+    out.push(md ? `## ${heading}` : heading);
+
+    const modelWidth = Math.max(0, ...report.byModel.map((s) => s.model.length));
+    for (const slice of report.byModel) {
+      const share = report.total.totalUsd > 0 ? slice.totalUsd / report.total.totalUsd : 0;
+      const row = t.connect.modelRow(
+        md ? slice.model : slice.model.padEnd(modelWidth),
+        formatUsd(slice.totalUsd).padStart(9),
+        `${(share * 100).toFixed(1)}%`.padStart(6),
+        slice.calls === null ? null : n(slice.calls),
+      );
+      out.push(md ? `- ${row}` : row);
+    }
+
+    if (report.byModel.length === 0) {
+      out.push(md ? `_${t.connect.nothingBilled()}_` : t.connect.nothingBilled());
+    }
+
+    if (cache.verdict !== 'no-cache') {
+      out.push('');
+      const line =
+        cache.verdict === 'paid-off'
+          ? t.connect.cachePaid(formatUsd(-cache.deltaUsd))
+          : t.connect.cacheLost(formatUsd(cache.deltaUsd));
+      out.push(line);
+      if (cache.worstCaseVerdict !== cache.verdict) {
+        const unsettled = t.connect.cacheUnsettled();
+        out.push(md ? `_${unsettled}_` : unsettled);
+      }
+    }
+
+    if (report.total.calls === null) {
+      out.push('');
+      const line = t.connect.noCallCount(descriptor.displayName);
+      out.push(md ? `_${line}_` : line);
+    }
+
+    for (const model of report.unpricedModels) {
+      out.push('');
+      const line = t.connect.unpriced(model.model, n(model.inputTokens + model.outputTokens));
+      out.push(md ? `- ${line}` : `! ${line}`);
+    }
+
+    if (report.gaps.length > 0) out.push('');
+    for (const gap of report.gaps) {
+      const line = t.connect.gap(gap.detail);
+      out.push(md ? `- ${line}` : `! ${line}`);
+    }
+
+    out.push('');
+    const unavailable = t.connect.unavailable(
+      report.unavailable.map((u) => u.finding).join(', '),
+    );
+    out.push(md ? `_${unavailable}_` : unavailable);
+    out.push('');
+    out.push(md ? `_${t.connect.footer()}_` : t.connect.footer());
+    return out;
+  };
+
+  await writeMarkdown(args, () => lines(true).join('\n'));
+
+  const [head, ...rest] = lines(false);
+  console.log(c.bold(head!));
+  for (const row of rest) {
+    // Short rows print as written so the columns stay aligned; `wrap` collapses
+    // runs of spaces, which is right for prose and wrong for a table.
+    if (row === '') console.log('');
+    else if (row.length <= 74) console.log(`  ${row}`);
+    else console.log(`  ${wrap(row, 74, '    ')}`);
+  }
+  if (outPath !== undefined) console.log(c.dim(t.connect.wrote(outPath)));
+}
+
+/**
  * `trazum history <dir>` — many reports over many periods, as one series.
  *
  * Derived from *stored* `--json` documents, never re-parsed logs: a team can
@@ -2699,41 +2916,11 @@ async function commandProfile(args: Args, config: TrazumConfig, pricing: Pricing
    * no record.
    */
   const now = Date.now();
-  let relativeWindow = false;
-  const parseWhen = (flag: string, endOfDay: boolean): number | undefined => {
-    const value = stringFlag(args, flag);
-    if (value === undefined) return undefined;
-    /**
-     * A relative window — `7d`, `24h` — because "the last week" is what a
-     * nightly job actually wants, and computing a date in a shell to say it
-     * is the step that gets skipped.
-     *
-     * Relative to **the machine's clock, not the log's**, which is a real
-     * difference: a log exported last month answers `--since 7d` with
-     * nothing, and the report says so rather than reporting $0. That caveat
-     * is stated beside the window line, because a period the reader did not
-     * name is a period they will misread.
-     */
-    const relative = /^(\d+)([dh])$/.exec(value);
-    if (relative) {
-      const amount = Number(relative[1]);
-      if (amount > 0) {
-        relativeWindow = true;
-        const span = relative[2] === 'd' ? 86_400_000 : 3_600_000;
-        return now - amount * span;
-      }
-    }
-    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-      const midnight = Date.parse(`${value}T00:00:00Z`);
-      if (Number.isFinite(midnight)) return endOfDay ? midnight + 86_400_000 : midnight;
-    }
-    if (value === 'now') return now;
-    const exact = Date.parse(value);
-    if (Number.isFinite(exact)) return exact;
-    throw new Error(t.profile.badWhen(flag, value));
-  };
-  const sinceMs = parseWhen('since', false);
-  const untilMs = parseWhen('until', true);
+  const sinceWhen = parseWhen(args, 'since', false, t, now);
+  const untilWhen = parseWhen(args, 'until', true, t, now);
+  const relativeWindow = sinceWhen.relative || untilWhen.relative;
+  const sinceMs = sinceWhen.ms;
+  const untilMs = untilWhen.ms;
   if (sinceMs !== undefined && untilMs !== undefined && sinceMs >= untilMs) {
     throw new Error(t.profile.sinceAfterUntil());
   }
@@ -6429,6 +6616,9 @@ async function main(): Promise<void> {
       break;
     case 'history':
       await commandHistory(args, t);
+      break;
+    case 'connect':
+      await commandConnect(args, pricing, t);
       break;
     case 'route':
       await commandRoute(args, pricing, t);

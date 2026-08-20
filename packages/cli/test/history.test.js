@@ -128,7 +128,8 @@ describe('history', () => {
     const doc = await readFile(new URL('../../../docs/json-output.md', import.meta.url).pathname, 'utf8');
     const start = doc.indexOf('## The history document');
     assert.ok(start !== -1, 'docs/json-output.md documents the history document');
-    const section = doc.slice(start);
+    const end = doc.indexOf('## The connected report document');
+    const section = doc.slice(start, end === -1 ? undefined : end);
     const promised = new Set(
       [...section.matchAll(/^\| `([a-zA-Z]+)(?:\[\])?`/gm)].map((m) => m[1]),
     );
