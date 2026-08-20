@@ -892,6 +892,24 @@ Newcombe on the difference. Nothing is auto-promoted. Chapter five of
 docs/plan-1.51.md.
 
 
+### 1.50.8 — The quality gate
+
+`trazum quality`. CI could fail a build for tokens since 1.4 and for dollars
+since 1.21; a prompt edit that quietly made the product worse has never been
+gateable, so every saving this tool recommended went into a repository with its
+most important consequence unmeasured. Now it prints the sentence teams argue
+about — "the resolution rate moved from 71% to 64% on 16,800 measured outcomes,
+and this change saves $0.50 a call" — with both halves measured. It is a
+before-and-after rather than an experiment, so most of the module is spent
+looking for reasons **not** to blame the prompt: the model mix moving, the
+volume moving, and outcome coverage moving, each forcing "cannot tell" with the
+confounder named. A confounder outranks the statistics, so no build fails on a
+difference something else could explain. "Not measurably worse" is never "held",
+and cannot-tell exits 2. Shipped as `quality` rather than the plan's `check
+--against-outcomes`, because check reads prompt files and has never opened a
+usage log. Chapter six of docs/plan-1.51.md.
+
+
 ## Collapsed into 1.8.0
 
 **Everything below shipped as 1.8.0, and none of these numbers is on npm.** They
