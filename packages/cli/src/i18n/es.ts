@@ -47,6 +47,7 @@ ${bold('USO')}
   trazum gateway <anthropic|openai> --on-cannot-tell <fail-open|fail-closed>
   trazum experiment <log> --a <label> --b <label> --min-outcomes <n>
   trazum quality <log> --label <name> --at <iso> [--gate]
+  trazum semantic <prompt> [--yes]
   trazum ladder <log>
   trazum feedback
   trazum --version
@@ -136,6 +137,17 @@ ${bold('OPCIONES DE quality')}
   Un antes y después, no un experimento, así que dice "no se puede decir"
   siempre que la mezcla de modelos, el volumen o la cobertura se movieran a
   través de la frontera — el prompt no es la única variable y lo dice.
+
+${bold('OPCIONES DE semantic')}
+  --yes                       Obligatorio para enviar nada. Sin él, el comando
+                              imprime lo que costaría la llamada y para.
+  --model <id>                Qué modelo preguntar. Se tarifa del catálogo.
+
+  Encuentra lo que un diccionario no puede: la misma regla enseñada dos veces
+  con otras palabras, una instrucción repetida lejos, una política que una
+  cláusula posterior contradice. Cada pasaje citado se comprueba carácter a
+  carácter contra el prompt, los pares que el motor de reglas ya caza se
+  descartan, y toda cifra de tokens se cuenta en vez de creérsela.
 
 ${bold('OPCIONES DE prune')}
   --cases <fichero>           Una entrada por línea, o un array JSON. Obligatorio.
@@ -1026,6 +1038,36 @@ ${bold('EJEMPLOS')}
       `${path} ya existe y se dejó intacto. Pasa --dry-run para ver qué iría dentro, o --yes para reemplazarlo.`,
     existingUnparseable: (path) =>
       `${path} existe y no se pudo interpretar, así que no se escribió nada encima. Arréglalo o muévelo primero.`,
+  },
+
+  semantic: {
+    heading: (path) => `Pase sem\u00e1ntico sobre ${path}`,
+    willCost: (usd, input, output, model) =>
+      `Esto enviar\u00e1 el prompt a ${model}: unos ${input} tokens de entrada y ${output} de salida, aproximadamente ${usd}. Estimado, no medido \u2014 una herramienta que gasta tu dinero para decirte c\u00f3mo gastar menos deber\u00eda ser lo primero que audite su propia aritm\u00e9tica. Pasa --yes para ejecutarlo.`,
+    needsYes: () => 'No se envi\u00f3 nada. A\u00f1ade --yes cuando hayas le\u00eddo el precio de arriba.',
+    finding: (kind, because) =>
+      `${kind === 'contradiction' ? 'Contradicci\u00f3n' : kind === 'restated-instruction' ? 'Repetido' : 'Lo mismo con otras palabras'}: ${because}`,
+    span: (line, text) => `l\u00ednea ${line}: ${text}`,
+    ceiling: (tokens) =>
+      `Como mucho ${tokens} tokens \u2014 un techo, no un ahorro. Fundir los dos significa escribir un pasaje que haga el trabajo de ambos, y nadie sabe todav\u00eda cu\u00e1nto ocupa.`,
+    noCeiling: () =>
+      'Sin tokens asociados. Una contradicci\u00f3n merece arreglarse porque el prompt est\u00e1 mal, no porque sea largo, y ponerle una cifra vender\u00eda el motivo equivocado.',
+    nothingFound: () => 'Nada sobrevivi\u00f3 a la comprobaci\u00f3n. Esa es una respuesta real.',
+    rejected: (count) => `${count} propuestas no sobrevivieron a la comprobaci\u00f3n contra el prompt.`,
+    rejectedLine: (reason, span) =>
+      reason === 'span-not-found'
+        ? `parafrase\u00f3 su propia evidencia: ${span}`
+        : reason === 'already-detected'
+          ? `ya se encuentra sin modelo: ${span}`
+          : reason === 'contradiction-of-a-copy'
+            ? `llam\u00f3 contradicci\u00f3n a una casi copia: ${span}`
+            : reason === 'spans-identical' || reason === 'spans-overlap'
+              ? `cit\u00f3 el mismo pasaje dos veces: ${span}`
+              : `cubre terreno que ya cubre un hallazgo aceptado: ${span}`,
+    disposes: () =>
+      'El modelo propone y la capa determinista dispone: cada pasaje citado se comprueba car\u00e1cter a car\u00e1cter contra el prompt, los pares que el motor de reglas ya caza se descartan, y toda cifra de tokens se cuenta aqu\u00ed en vez de cre\u00e9rsela.',
+    optIn: () =>
+      'Este pase es opcional y siempre lo ser\u00e1. Trazum funciona sin clave, sin red y sin modelo \u2014 eso es cierto desde 0.1.0 y esto no lo cambia.',
   },
 
   quality: {

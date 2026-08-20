@@ -60,6 +60,7 @@ ${bold('USAGE')}
   trazum gateway <anthropic|openai> --on-cannot-tell <fail-open|fail-closed>
   trazum experiment <log> --a <label> --b <label> --min-outcomes <n>
   trazum quality <log> --label <name> --at <iso> [--gate]
+  trazum semantic <prompt> [--yes]
   trazum ladder <log>
   trazum feedback
   trazum --version
@@ -146,6 +147,17 @@ ${bold('OPTIONS FOR quality')}
   A before-and-after rather than an experiment, so it reports "cannot tell"
   whenever the model mix, the call volume or the outcome coverage moved across
   the boundary — the prompt is not the only variable and it says so.
+
+${bold('OPTIONS FOR semantic')}
+  --yes                       Required to send anything. Without it the command
+                              prints what the call would cost and stops.
+  --model <id>                Which model to ask. Priced from the catalogue.
+
+  Finds what a dictionary cannot: the same rule taught twice in different
+  words, an instruction restated far away, a policy a later clause contradicts.
+  Every quoted passage is checked character for character against the prompt,
+  pairs the rules engine already catches are dropped, and every token figure is
+  counted rather than believed. Optional, and always will be.
 
 ${bold('OPTIONS FOR prune')}
   --cases <file>              One input per line, or a JSON array. Required.
@@ -990,6 +1002,36 @@ ${bold('EXAMPLES')}
       `${path} already exists and was left alone. Pass --dry-run to see what would go in it, or --yes to replace it.`,
     existingUnparseable: (path) =>
       `${path} exists and could not be parsed, so nothing was written over it. Fix or move it first.`,
+  },
+
+  semantic: {
+    heading: (path) => `Semantic pass on ${path}`,
+    willCost: (usd, input, output, model) =>
+      `This will send the prompt to ${model}: about ${input} tokens in and ${output} out, roughly ${usd}. Estimated, not measured \u2014 a tool that spends your money to tell you how to spend less should be the first thing audited by its own arithmetic. Pass --yes to run it.`,
+    needsYes: () => 'Nothing was sent. Add --yes once you have read the price above.',
+    finding: (kind, because) =>
+      `${kind === 'contradiction' ? 'Contradiction' : kind === 'restated-instruction' ? 'Restated' : 'Same thing, different words'}: ${because}`,
+    span: (line, text) => `line ${line}: ${text}`,
+    ceiling: (tokens) =>
+      `At most ${tokens} tokens \u2014 a ceiling, not a saving. Merging these two means writing one passage that does the work of both, and nobody knows yet how long that is.`,
+    noCeiling: () =>
+      'No tokens attached. A contradiction is worth fixing because the prompt is wrong, not because it is long, and putting a figure on it would sell the wrong reason.',
+    nothingFound: () => 'Nothing survived checking. That is a real answer.',
+    rejected: (count) => `${count} proposals did not survive checking against the prompt.`,
+    rejectedLine: (reason, span) =>
+      reason === 'span-not-found'
+        ? `paraphrased its own evidence: ${span}`
+        : reason === 'already-detected'
+          ? `already found without a model: ${span}`
+          : reason === 'contradiction-of-a-copy'
+            ? `called a near-copy a contradiction: ${span}`
+            : reason === 'spans-identical' || reason === 'spans-overlap'
+              ? `quoted the same passage twice: ${span}`
+              : `covers ground an accepted finding covers: ${span}`,
+    disposes: () =>
+      'The model proposes and the deterministic layer disposes: every quoted passage is checked character for character against the prompt, pairs the rules engine already catches are dropped, and every token figure is counted here rather than believed.',
+    optIn: () =>
+      'This pass is optional and always will be. Trazum works with no key, no network and no model \u2014 that has been true since 0.1.0 and this does not change it.',
   },
 
   quality: {

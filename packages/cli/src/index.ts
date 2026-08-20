@@ -42,6 +42,9 @@ import {
   BREAK_EVEN_BAND,
   runExperiment,
   qualityGate,
+  semanticPassCost,
+  verifySemanticProposals,
+  SEMANTIC_SYSTEM_PROMPT,
   ladderPosition,
   validateLadder,
   outcomeReport,
@@ -143,6 +146,7 @@ import type {
   ContractName,
   ExperimentArm,
   GateSide,
+  SemanticProposal,
   FailurePolicy,
   GatewayStanding,
   UsageProfileReport,
@@ -584,6 +588,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   ladder: ['pricing', 'pricing-live', 'since', 'until', 'label'],
   experiment: ['a', 'b', 'min-outcomes', 'pricing', 'pricing-live'],
   quality: ['label', 'at', 'gate', 'pricing', 'pricing-live'],
+  semantic: ['yes', 'model', 'pricing', 'pricing-live'],
   where: [],
   rules: [],
   blame: ['limit', 'model', 'calls', 'output-tokens', 'batch', 'prompt', 'markdown-out'],
@@ -2606,6 +2611,126 @@ async function commandQuality(
       process.exitCode = 2;
     }
   }
+  console.log();
+}
+
+/**
+ * `trazum semantic <prompt> [--yes]` — the findings a dictionary cannot see.
+ *
+ * The rules engine has deferred these since 0.1.0 for one honest reason: a
+ * dictionary cannot see meaning, and a model that hallucinates a finding is
+ * worse than a rule that misses one.
+ *
+ * **The price is printed before anything is sent, and `--yes` is required.** A
+ * tool that spends somebody's money to tell them how to spend less has to be
+ * the first thing audited by its own arithmetic, and it has to ask.
+ */
+async function commandSemantic(
+  args: Args,
+  config: TrazumConfig,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
+  const prompt = await readInput(args.positional[0], t);
+  const modelId = stringFlag(args, 'model') ?? config.usage?.model ?? DEFAULT_USAGE.model;
+  const model = pricing.byId.get(modelId) ?? getModel(DEFAULT_USAGE.model);
+  const rates = { inputPerMTok: model.inputPerMTok, outputPerMTok: model.outputPerMTok };
+  const cost = semanticPassCost(prompt, rates);
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+
+  console.log();
+  console.log(c.bold(t.semantic.heading(args.positional[0] ?? '-')));
+  console.log();
+  console.log(
+    `  ${wrap(
+      t.semantic.willCost(formatUsd(cost.usd), n(cost.inputTokens), n(cost.outputTokens), model.displayName),
+      74,
+      '  ',
+    )}`,
+  );
+
+  if (!boolFlag(args, 'yes')) {
+    // Nothing has been sent at this point, and nothing will be. The price
+    // above is the whole output of a run without --yes.
+    console.log();
+    console.log(`  ${c.dim(t.semantic.needsYes())}`);
+    console.log();
+    return;
+  }
+
+  const provider = providerFromEnv();
+  if (!provider) throw new Error(t.errors.llmNotConfigured());
+
+  const answer = await provider.complete({ system: SEMANTIC_SYSTEM_PROMPT, user: prompt });
+  let proposals: SemanticProposal[] = [];
+  try {
+    const parsed: unknown = JSON.parse(
+      /^(?:```|~~~)[a-zA-Z]*\n([\s\S]*?)\n?(?:```|~~~)$/.exec(answer.trim())?.[1] ?? answer.trim(),
+    );
+    /**
+     * A response that is not the shape asked for is **no proposals**, never a
+     * crash and never a partial read. The model was told exactly what to
+     * return; anything else is a response this layer cannot check, and an
+     * unchecked finding is the one thing this whole module exists to prevent.
+     */
+    if (Array.isArray(parsed)) {
+      proposals = parsed.filter(
+        (entry): entry is SemanticProposal =>
+          typeof entry === 'object' &&
+          entry !== null &&
+          Array.isArray((entry as SemanticProposal).spans) &&
+          (entry as SemanticProposal).spans.length === 2 &&
+          (entry as SemanticProposal).spans.every((span) => typeof span === 'string'),
+      );
+    }
+  } catch {
+    proposals = [];
+  }
+
+  const result = verifySemanticProposals(prompt, proposals);
+  const lineOf = (offset: number): number => prompt.slice(0, offset).split('\n').length;
+
+  console.log();
+  if (result.findings.length === 0) {
+    console.log(`  ${c.dim(t.semantic.nothingFound())}`);
+  }
+  for (const finding of result.findings) {
+    console.log(`  ${c.bold(t.semantic.finding(finding.kind, finding.because))}`);
+    finding.spans.forEach((span, index) => {
+      const shown = span.length > 90 ? `${span.slice(0, 87)}…` : span;
+      console.log(`    ${c.dim(t.semantic.span(String(lineOf(finding.offsets[index] ?? 0)), shown))}`);
+    });
+    console.log(
+      `    ${c.dim(
+        wrap(
+          finding.ceilingTokens > 0 ? t.semantic.ceiling(n(finding.ceilingTokens)) : t.semantic.noCeiling(),
+          70,
+          '    ',
+        ),
+      )}`,
+    );
+    console.log();
+  }
+
+  /**
+   * What did **not** survive, counted and reasoned.
+   *
+   * A pass that showed only its accepted findings would hide its own hit
+   * rate, and the hit rate is the most useful thing a reader can know about
+   * whether to run it again.
+   */
+  if (result.rejected.length > 0) {
+    console.log(`  ${c.dim(t.semantic.rejected(n(result.rejected.length)))}`);
+    for (const { proposal, reason } of result.rejected.slice(0, 5)) {
+      const span = proposal.spans[0];
+      const shown = span.length > 50 ? `${span.slice(0, 47)}…` : span;
+      console.log(`    ${c.dim(t.semantic.rejectedLine(reason, shown))}`);
+    }
+    console.log();
+  }
+
+  console.log(`  ${c.dim(wrap(t.semantic.disposes(), 74, '  '))}`);
+  console.log(`  ${c.dim(wrap(t.semantic.optIn(), 74, '  '))}`);
   console.log();
 }
 
@@ -8808,6 +8933,9 @@ async function main(): Promise<void> {
       break;
     case 'models':
       commandModels(t, pricing);
+      break;
+    case 'semantic':
+      await commandSemantic(args, config, pricing, t);
       break;
     case 'quality':
       await commandQuality(args, config, pricing, t);

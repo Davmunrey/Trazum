@@ -297,6 +297,64 @@ describe('the MCP tool surface', () => {
   });
 });
 
+describe('the semantic pass never becomes a prerequisite', () => {
+  /**
+   * The rule from 0.1.0, and the one this chapter could most easily erode.
+   * The deterministic core works with no key, no network and no model, and the
+   * way that stays true is structural: the verification lives in the package
+   * that has no network, and the call lives in the CLI.
+   */
+  const semantic = () =>
+    readFileSync(join(repoRoot, 'packages/core/src/semantic.ts'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+
+  it('the verification module makes no call of any kind', () => {
+    const text = semantic();
+    for (const reach of ['fetch(', 'https://', 'process.env', 'provider', 'await ']) {
+      assert.ok(!text.includes(reach), `semantic.ts reaches for "${reach}"`);
+    }
+  });
+
+  it('nothing the model returns is trusted about size', () => {
+    // Every token figure is counted here, from the spans, with the counter
+    // everything else uses. A model's own arithmetic never reaches a reader.
+    const text = semantic();
+    assert.match(text, /ceilingTokens:\s*\n?\s*proposal\.kind === 'contradiction'/);
+    assert.doesNotMatch(text, /proposal\.(tokens|saving|usd)/);
+  });
+
+  it('a span must be found in the prompt before anything else is considered', () => {
+    /**
+     * Order matters: the verbatim check runs first, so a proposal whose
+     * evidence is invented is rejected before any of its other claims are
+     * examined. A version that checked similarity first would spend effort
+     * reasoning about text that is not in the prompt.
+     *
+     * **Bounded to the function body**, because the first version was not and
+     * therefore guarded nothing: `'span-not-found'` appears in the type union
+     * near the top of the file, so it always came before any `jaccard(` call
+     * and the assertion passed whatever the loop actually did. It was proven
+     * useless by planting the reordering and watching it stay green — which is
+     * why every guard in this file gets a planted probe.
+     */
+    const text = semantic();
+    const start = text.indexOf('export function verifySemanticProposals');
+    assert.ok(start > 0, 'verifySemanticProposals could not be located — has it moved?');
+    const body = text.slice(start);
+    const found = body.indexOf("reason: 'span-not-found'");
+    const similarity = body.indexOf('jaccard(');
+    assert.ok(found > 0, 'the verbatim rejection could not be found in the loop');
+    assert.ok(similarity > found, 'the verbatim check must come before any similarity work');
+  });
+
+  it('the price is computed without a network, so it works offline', () => {
+    const text = semantic();
+    const cost = text.slice(text.indexOf('export function semanticPassCost'));
+    assert.doesNotMatch(cost, /fetch|await|https/);
+  });
+});
+
 describe('an outcome is recorded and never inferred', () => {
   /**
    * The guard for the claim the whole outcome feature rests on.

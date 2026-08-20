@@ -11,7 +11,81 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**`trazum semantic` — the findings a dictionary cannot see.** Chapter seven of
+`docs/plan-1.51.md`. The rules engine has deferred these since 0.1.0 for one
+honest reason: a dictionary cannot see meaning, and **a model that hallucinates
+a finding is worse than a rule that misses one.** A missed finding costs
+somebody nothing; an invented one costs them an afternoon and the next
+finding's credibility.
+
+Two few-shot examples teaching the same boundary in different words, an
+instruction restated four paragraphs later, a policy a clarification
+contradicts — the cases the near-copy detector deliberately does not flag.
+
+**The price is printed before anything is sent, and `--yes` is required.**
+Without it, the price is the entire output of a run. A tool that spends
+somebody's money to tell them how to spend less has to be the first thing
+audited by its own arithmetic, and it has to ask.
+
+**The model proposes; the deterministic layer disposes.** Every quoted passage
+is checked **character for character** against the prompt — the strongest signal
+available, because a model reporting on a prompt while paraphrasing what it
+quotes has stopped reading and started writing, and everything else in that
+response is suspect. Then the spans must be distinct and must not overlap; a
+near-copy the rules engine already catches is dropped rather than charged for
+twice; a near-copy labelled a *contradiction* is rejected, because two passages
+that say the same thing cannot disagree and a model that mislabels one has made
+every other label in the response worth less.
+
+**Nothing the model says about size is believed.** Tokens are counted here, from
+the spans, with the counter everything else uses.
+
+**A ceiling, never a saving.** Merging a paraphrase pair means writing one
+passage that does the work of both, and nobody knows yet how long that is — so
+the figure is what deleting the smaller half would recover, named as the ceiling
+it is. A **contradiction gets no figure at all**: it is worth fixing because the
+prompt is wrong, not because it is long, and a dollar amount would sell the
+wrong reason to fix it.
+
+**What did not survive is printed, with its reason.** A pass that showed only
+its accepted findings would hide its own hit rate, which is the most useful
+thing a reader can know about whether to run it again.
+
+### Security
+
+**Three guards that the pass never becomes a prerequisite**, each proven with a
+planted probe: the verification module makes no call of any kind (no `fetch`, no
+URL, no `process.env`, no `await`); nothing the model returns is trusted about
+size; and the verbatim check runs before any similarity work, so a proposal
+whose evidence is invented is rejected before its other claims are examined.
+
+The core keeps working with no key, no network and no model. That has been true
+since 0.1.0 and this does not change it — which is why the verification lives in
+the package that has no network and only the call lives in the CLI.
+
+### Fixed
+
+**The already-detected threshold was 0.8 and claimed in a comment to match the
+deterministic pass. It did not.** `rules.ts` drops a duplicate example at
+**0.92**, and the error ran the dangerous way: every pair between 0.8 and 0.92
+is one the rules engine does *not* catch, and this layer was silently throwing
+those away — discarding exactly the findings the chapter exists to surface,
+while a comment asserted the opposite. The constant is 0.92 now and a test reads
+the threshold out of `rules.ts` and compares them, so the two can never drift
+apart again.
+
+**A guard that guarded nothing, caught by its own probe.** The check that the
+verbatim test runs before any similarity work compared the first occurrence of
+`'span-not-found'` against the first `jaccard(` — and `'span-not-found'` appears
+in the type union near the top of the file, so it always came first and the
+assertion passed whatever the loop did. Planting the reordering left it green.
+It is bounded to the function body now, and it fails on the probe. **This is the
+seventh time in this repository an assertion was bounded by something other than
+its subject**, and the first time the probe is what caught it rather than a
+later release.
+
 
 ## 1.50.8 — "The quality gate"
 
