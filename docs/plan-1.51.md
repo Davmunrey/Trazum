@@ -1,4 +1,10 @@
-# The plan through 1.51
+# The plan through 1.51 — delivered
+
+**All ten shipped — nine patches and the minor — landing at 1.51.0.** This
+file is kept as it was written, before the code, rather than rewritten in
+hindsight. It is history now, not a forecast: nothing described below is still
+forthcoming. What the arc refused to ship, and what it got wrong, is in [our own
+medicine](our-own-medicine.md).
 
 Ten releases, one arc, following the one through
 [1.50](plan-1.41-1.50.md). The ordering is a commitment; the calendar is not,

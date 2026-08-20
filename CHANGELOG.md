@@ -11,7 +11,82 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**A documentation index: `docs/README.md`.** Fifteen documents under `docs/` and
+eight at the root, and no front door to any of them. Each was reachable — from a
+link inside another document the reader had to already be reading — which is not
+the same as findable. The only path through the documentation was the one
+somebody happened to be standing on.
+
+The index is arranged by **what the reader came here to do**, not by what the
+files are called: deciding whether to use this, using it, extending it,
+maintaining it, or reporting a problem. A person choosing the tool and a person
+releasing it want different documents, and a list sorted alphabetically serves
+neither. It closes with the four planned arcs presented as what they now are —
+delivered history, with the thesis and the version each one landed at.
+
+**`CODE_OF_CONDUCT.md`.** Missing, and named in no file. It is written in this
+project's own voice rather than adopted wholesale, and it is explicit about the
+part most codes of conduct leave vague: enforcement here is one person, who is
+also the person most complaints would be about, and the document says so and
+says what to do about it instead of implying a committee exists.
+
+**`.github/PULL_REQUEST_TEMPLATE.md`.** The issue templates have existed since
+1.9.0; the pull request side had nothing. It asks for the two things this
+repository actually holds a change to that nothing else checks — what the change
+*refuses* to do, and whether a new guard was proven by planting the violation and
+watching the test fail naming it.
+
+**A guard on the documentation itself: `packages/core/test/docs.test.js`.**
+Prose is the part of this repository nothing compiles.
+
+- **Every relative link in every Markdown file resolves to a file that exists** —
+  Markdown links and `<img src>` alike, fenced code blocks excluded because a
+  path inside an example is text. Anchors are deliberately not checked: heading
+  text drifts for good reasons, and a guard that failed on a renamed section
+  would be answered by deleting the guard.
+- **Every file in `docs/` is named by `docs/README.md`.** An index that adding a
+  document is enough to fall out of is an index with a shelf life. This is the
+  ratchet that keeps the front door from going stale the way the documentation
+  did in the first place.
+
+**What the probe found.** Planting the violations — a link to a file that is not
+there, and a document deleted from the index — the index half failed by name and
+**the link half passed**. `git ls-files` lists what is *committed*, and the file
+whose links had just been broken was new and untracked. The guard was blind
+precisely when a document is most likely to be wrong: the moment it is written.
+It now enumerates with `--cached --others --exclude-standard`, and the planted
+link fails naming both broken targets.
+
+### Changed
+
+**The three delivered plans say so at the top.** `docs/plan-1.36-1.40.md`,
+`plan-1.41-1.50.md` and `plan-1.51.md` opened in the future tense describing work
+that has all shipped — three forward-looking documents narrating a past. Each now
+carries a banner naming what landed and where, and pointing at
+[docs/our-own-medicine.md](docs/our-own-medicine.md) for what the arc refused to
+ship. The bodies are **kept exactly as written**, for the reason
+`plan-1.30-1.35.md` already gave when it was retired: a plan that edits itself to
+match what happened is no longer a record of having been a plan.
+
+**`README.md` ends by pointing somewhere other than itself.** A new *The rest of
+the documentation* section names the index and the four documents a reader is
+most likely to want directly, and the contents list carries it. The *Roadmap and
+contributing* section now also names the code of conduct, support and security.
+
+**`CONTRIBUTING.md` and `SUPPORT.md` lead to the index and the code of conduct.**
+Both were reachable only from the README, which is the one document a returning
+contributor no longer reads.
+
+### Not changed
+
+**Nothing was deleted, and the reason is on the record rather than assumed.**
+Every `docs/*.md` file was checked for inbound links before this pass: the
+loneliest has three, the median seven. Nothing was orphaned and nothing was
+superseded — the disorder was that there was no way *in*, not that there was
+junk. Deleting a document to satisfy the shape of a tidy-up would have cost a
+reader something real to make this entry read better.
 
 ## 1.51.0 — "The record, and the minor"
 

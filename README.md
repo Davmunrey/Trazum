@@ -97,6 +97,8 @@ never runs unless you ask.
 - [Every model you pay for by the token](#every-model-you-pay-for-by-the-token) — pricing across seven providers, live via OpenRouter
 - [Token counting](#token-counting) — the estimator, and the error band it prints
 - [Limitations, stated plainly](#limitations-stated-plainly) — read this one
+- [Everything else](docs/README.md) — the documentation index, arranged by whether you are
+  choosing this, using it, extending it or maintaining it
 - [Layout](#layout) · [Updating prices](#updating-prices) · [Privacy](#analytics-and-privacy) · [Roadmap](#roadmap-and-contributing)
 
 ---
@@ -3495,10 +3497,36 @@ prompt library shipped and made that conditional.
 - LLM keys entered in the UI are used for that request and discarded; they are
   neither logged nor persisted.
 
+## The rest of the documentation
+
+This README is one of four documents, and it is the only one written for
+somebody who has not decided yet. **[docs/README.md](docs/README.md) is the
+index**, arranged by what you came here to do rather than by what the files are
+called: choosing the tool, using it, extending it, maintaining it, or reporting
+a problem.
+
+The four you are most likely to want directly:
+
+- **[docs/doctrine.md](docs/doctrine.md)** — the rules this product refuses to
+  break, each one discovered by getting it wrong first. It is the argument for
+  why a figure printed here is worth reading.
+- **[docs/our-own-medicine.md](docs/our-own-medicine.md)** — the same standard
+  turned on this project: what it refused to ship, what it got wrong and for how
+  long, and what it cannot say about itself.
+- **[docs/usage-logs.md](docs/usage-logs.md)** — what Trazum can read from your
+  logs, and what each optional field unlocks if you start writing it.
+- **[docs/json-output.md](docs/json-output.md)** — every machine-readable
+  document, field by field, with the provenance each one carries.
+
 ## Roadmap and contributing
 
-[ROADMAP.md](ROADMAP.md) covers what is planned and why.
+[ROADMAP.md](ROADMAP.md) covers what is planned and why, and the history that
+got here, oldest first.
 [CONTRIBUTING.md](CONTRIBUTING.md) covers adding a rule or a language, and
 [docs/authoring-rules.md](docs/authoring-rules.md) is the full walkthrough for a
 rule.
 [VERSIONING.md](VERSIONING.md) covers what counts as public API.
+[CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) covers what is expected of everyone
+taking part, and is honest about what a single-maintainer project can promise.
+[SUPPORT.md](SUPPORT.md) covers what gets answered and how fast;
+[SECURITY.md](SECURITY.md) covers reporting a vulnerability privately.

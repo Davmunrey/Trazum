@@ -13,6 +13,8 @@ see [No telemetry](#no-telemetry) below.
 | A question, or an idea you are not sure about | [Discussions](https://github.com/Davmunrey/Trazum/discussions) |
 | A security problem | [Privately, as an advisory](https://github.com/Davmunrey/Trazum/security/advisories/new) — never a public issue. [SECURITY.md](SECURITY.md) says what is in scope |
 | What is planned, and what was deliberately not | [ROADMAP.md](ROADMAP.md) — including the entries under *Under consideration* that were considered and left out |
+| How any of it actually works | [docs/README.md](docs/README.md) — the documentation index, arranged by what you are trying to do |
+| What is expected of everyone here | [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) — including what a single-maintainer project can honestly promise |
 
 Blank issues are on. A template that does not fit is a reason to write freely,
 not a reason to give up, and the reports nobody anticipated are usually the

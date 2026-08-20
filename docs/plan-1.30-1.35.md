@@ -3,7 +3,8 @@
 **All six shipped.** This file is kept as written rather than rewritten in
 hindsight: a plan that quietly edits itself to match what happened is a plan
 with no record of having been a plan. What changed along the way is noted
-under each release below.
+under each release below. What this arc **refused** to ship is in
+[our own medicine](our-own-medicine.md).
 
 Six releases, in order, with the reasoning attached. The ordering was a
 commitment; the calendar was not, and no dates appear here for the reason
