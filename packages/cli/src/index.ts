@@ -40,6 +40,7 @@ import {
   budgetPositions,
   conform,
   outcomeReport,
+  rankPerOutcome,
   FAILURE_POLICIES,
   detectFromSource,
   matchLocale,
@@ -6497,6 +6498,76 @@ async function commandProfile(
           )}`,
         );
       }
+      /**
+       * What an outcome costs, per workload — the finding a total cannot make.
+       *
+       * Printed only when at least one workload has enough recorded outcomes
+       * to say something, and every row that cannot state a figure says which
+       * of the five reasons applies rather than showing a blank.
+       */
+      const ranking = rankPerOutcome(
+        report.outcomeTallyByLabel.map((entry) => ({
+          key: entry.label,
+          calls: entry.calls,
+          totalUsd: entry.totalUsd,
+          tally: entry.tally,
+        })),
+        config.outcomes ?? null,
+      );
+      if (ranking.byCall.length > 0) {
+        console.log();
+        console.log(c.bold(t.profile.perOutcomeHeading()));
+        const pcol = t.profile.perOutcomeColumns;
+        const prows = ranking.byCall.map((slice) => ({
+          key: slice.key,
+          perCall: formatUsd(slice.usdPerCall),
+          perOutcome:
+            slice.per.usdPerSuccess !== null
+              ? formatUsd(slice.per.usdPerSuccess)
+              : t.profile.perOutcomeWithheld(
+                  slice.per.withheld ?? 'no-vocabulary',
+                  n(slice.per.successes),
+                  pct(slice.per.coverage),
+                ),
+          recorded: pct(slice.per.coverage),
+        }));
+        const pw = {
+          key: Math.max(...prows.map((r) => r.key.length), pcol.workload.length),
+          perCall: Math.max(...prows.map((r) => r.perCall.length), pcol.perCall.length),
+          perOutcome: Math.max(...prows.map((r) => r.perOutcome.length), pcol.perOutcome.length),
+          recorded: Math.max(...prows.map((r) => r.recorded.length), pcol.recorded.length),
+        };
+        console.log(
+          c.dim(
+            `  ${pcol.workload.padEnd(pw.key)}  ${pcol.perCall.padStart(pw.perCall)}  ` +
+              `${pcol.perOutcome.padStart(pw.perOutcome)}  ${pcol.recorded.padStart(pw.recorded)}`,
+          ),
+        );
+        for (const row of prows) {
+          console.log(
+            `  ${row.key.padEnd(pw.key)}  ${row.perCall.padStart(pw.perCall)}  ` +
+              `${row.perOutcome.padStart(pw.perOutcome)}  ${c.dim(row.recorded.padStart(pw.recorded))}`,
+          );
+        }
+        console.log();
+        console.log(`  ${c.dim(wrap(t.profile.perOutcomeNumerator(), 74, '    '))}`);
+
+        // The disagreement between the two orders, which is itself the finding.
+        if (ranking.disagreements.length > 0) {
+          console.log();
+          console.log(`  ${c.dim(wrap(t.profile.perOutcomeBothOrders(), 74, '    '))}`);
+          for (const d of ranking.disagreements) {
+            console.log(
+              `  ${c.yellow('→')} ${wrap(
+                t.profile.perOutcomeDisagreement(d.slice.key, n(d.callRank + 1), n(d.outcomeRank + 1)),
+                74,
+                '    ',
+              )}`,
+            );
+          }
+        }
+      }
+
       if (outcomes.undeclared.length > 0) {
         console.log(
           `  ${c.yellow('!')} ${wrap(

@@ -1653,6 +1653,30 @@ ${bold('EXAMPLES')}
       `${share} of the bill (${usd}) carried no outcome, and is in neither half of the rate above.`,
     outcomeUndeclared: (values) =>
       `Not declared in "outcomes.values": ${values}. Named rather than counted as failures \u2014 a typo in an exporter should look like a typo, not like a product regression.`,
+    perOutcomeHeading: () => 'What an outcome costs',
+    perOutcomeRow: (key, perCall, perOutcome, coverage) => `${key} ${perCall} ${perOutcome} ${coverage}`,
+    perOutcomeColumns: {
+      workload: 'workload',
+      perCall: 'per call',
+      perOutcome: 'per success',
+      recorded: 'recorded',
+    },
+    perOutcomeWithheld: (why, successes, coverage) =>
+      why === 'too-few-outcomes'
+        ? `${successes} so far`
+        : why === 'too-little-coverage'
+          ? `${coverage} covered`
+          : why === 'no-successes-recorded'
+            ? 'none succeeded'
+            : why === 'nothing-recorded'
+              ? 'not recorded'
+              : 'no vocabulary',
+    perOutcomeNumerator: () =>
+      'Per success divides the spend on calls that recorded an outcome, never the whole bill \u2014 dividing everything would charge your uninstrumented traffic to your measured successes and report a figure too high by exactly the uncovered share, silently, in the direction that gets a working feature killed. "recorded" is what share of each workload\u2019s spend the figure covers.',
+    perOutcomeDisagreement: (key, callRank, outcomeRank) =>
+      `${key} is #${callRank} by cost per call and #${outcomeRank} by cost per success.`,
+    perOutcomeBothOrders: () =>
+      'Cheapest per call and cheapest per success are different orders, and both are printed rather than one being picked. A workload can move up one while moving down the other, and somebody optimising on the first number would be moving the wrong one.',
     outcomeColumns: { outcome: 'outcome', calls: 'calls', spend: 'spend' },
     verdictSuccess: () => 'success',
     verdictOther: () => '\u2014',

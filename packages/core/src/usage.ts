@@ -441,6 +441,15 @@ export interface UsageProfileReport {
    */
   fieldCoverage: FieldCoverage;
   /**
+   * The same tally per label, and per model.
+   *
+   * The groupings a decision is made at. "This workload costs more per
+   * resolution than that one" is the finding a total cannot make, and it needs
+   * the numerator sliced the same way the bill already is.
+   */
+  outcomeTallyByLabel: Array<{ label: string; calls: number; totalUsd: number; tally: OutcomeTally }>;
+  outcomeTallyByModel: Array<{ model: string; calls: number; totalUsd: number; tally: OutcomeTally }>;
+  /**
    * What each recorded outcome cost — measurement only, no judgement.
    *
    * `outcomeReport` turns this into a success rate where the config declares
@@ -825,6 +834,28 @@ export function parseUsageLine(line: string): UsageRecord | null {
 }
 
 /**
+ * One slice's outcome tally, in the same shape as the whole log's.
+ *
+ * `parsed` is the slice's own call count rather than the log's, so a coverage
+ * share computed from it describes this slice and not the file it came from.
+ */
+function tallyOf(
+  buckets: Map<string, { calls: number; usd: number }> | undefined,
+  unrecordedUsd: number,
+  parsed: number,
+): OutcomeTally {
+  const byValue = [...(buckets ?? new Map()).entries()]
+    .map(([value, bucket]) => ({ value, calls: bucket.calls, usd: bucket.usd }))
+    .sort((a, b) => b.usd - a.usd);
+  return {
+    byValue,
+    recorded: byValue.reduce((sum, entry) => sum + entry.calls, 0),
+    parsed,
+    unrecordedUsd,
+  };
+}
+
+/**
  * A label or session identifier, from whatever a real log holds.
  *
  * **Numbers are identifiers too.** A conversation id is an auto-incremented
@@ -1008,6 +1039,11 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
   let hasSessions = false;
   const outcomes = new Map<string, { calls: number; usd: number }>();
   let unrecordedOutcomeUsd = 0;
+  /** Per-slice outcome tallies, keyed by label and by model. */
+  const outcomesByLabel = new Map<string, Map<string, { calls: number; usd: number }>>();
+  const outcomesByModel = new Map<string, Map<string, { calls: number; usd: number }>>();
+  const unrecordedByLabel = new Map<string, number>();
+  const unrecordedByModel = new Map<string, number>();
   const coverage = { label: 0, session: 0, outcome: 0, ts: 0, stopReason: 0, cacheTtl: 0, cacheWrites: 0, parsed: 0 };
   /**
    * Raw lines already seen, for the duplicate check. Bounded by the number of
@@ -1142,6 +1178,25 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
         bucket.usd += usd;
         outcomes.set(record.outcome, bucket);
       }
+
+      const into = (
+        map: Map<string, Map<string, { calls: number; usd: number }>>,
+        unrecorded: Map<string, number>,
+        key: string,
+      ): void => {
+        if (record.outcome === null) {
+          unrecorded.set(key, (unrecorded.get(key) ?? 0) + usd);
+          return;
+        }
+        const slice = map.get(key) ?? new Map<string, { calls: number; usd: number }>();
+        const bucket = slice.get(record.outcome) ?? { calls: 0, usd: 0 };
+        bucket.calls += 1;
+        bucket.usd += usd;
+        slice.set(record.outcome, bucket);
+        map.set(key, slice);
+      };
+      into(outcomesByLabel, unrecordedByLabel, record.label ?? UNLABELLED);
+      into(outcomesByModel, unrecordedByModel, record.model);
     }
     if (record.ts !== null) {
       const day = new Date(record.ts).toISOString().slice(0, 10);
@@ -1245,6 +1300,26 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
       parsed: coverage.parsed,
       unrecordedUsd: unrecordedOutcomeUsd,
     },
+    outcomeTallyByLabel: sorted(byLabel, 'label').map((entry) => ({
+      label: entry.label,
+      calls: entry.breakdown.calls,
+      totalUsd: entry.breakdown.totalUsd,
+      tally: tallyOf(
+        outcomesByLabel.get(entry.label),
+        unrecordedByLabel.get(entry.label) ?? 0,
+        entry.breakdown.calls,
+      ),
+    })),
+    outcomeTallyByModel: sorted(byModel, 'model').map((entry) => ({
+      model: entry.model,
+      calls: entry.breakdown.calls,
+      totalUsd: entry.breakdown.totalUsd,
+      tally: tallyOf(
+        outcomesByModel.get(entry.model),
+        unrecordedByModel.get(entry.model) ?? 0,
+        entry.breakdown.calls,
+      ),
+    })),
     modelMixDrift: (() => {
       const ordered = [...days.entries()].sort((a, b) => a[0].localeCompare(b[0]));
       if (ordered.length < 4) return null;

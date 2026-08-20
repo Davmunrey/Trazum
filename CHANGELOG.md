@@ -11,7 +11,69 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**Cost per outcome — the finding a total cannot make.** Chapter three of
+`docs/plan-1.51.md`. 1.50.4 recorded the numerator; this divides by it, which
+sounds like arithmetic and is almost entirely a set of decisions about when
+*not* to do the arithmetic.
+
+```
+What an outcome costs
+  workload  per call  per success  recorded
+  dear         $1.00        $1.00    100.0%
+  cheap      $0.1000        $2.00    100.0%
+
+  → cheap is #2 by cost per call and #1 by cost per success.
+```
+
+`dear` costs **ten times more per call and half as much per resolution**.
+Anybody optimising on the first number has been moving the wrong one, and until
+now nothing in this product could say so.
+
+**Per success divides recorded spend, never the whole bill.** The obvious
+implementation divides everything a workload spent by the outcomes it resolved.
+It is wrong in the direction that makes a product look worse than it is: any call
+carrying no outcome is spend with no chance of appearing in the denominator, so
+the ratio is inflated by exactly the uninstrumented share — silently, and by an
+amount invisible from the figure. A team instrumenting half its traffic would
+read double the real cost per resolution, conclude the feature is uneconomic, and
+kill it.
+
+**Five reasons a figure is withheld rather than stated**, each named in the cell
+where the figure would have been: fewer than ten recorded successes, coverage
+below 80%, money spent with nothing resolved (a real and alarming measurement,
+not a division by zero dressed up), nothing recorded, and no vocabulary declared.
+
+**Two orders, and the product prints both.** Cheapest per call and cheapest per
+success are different rankings, and picking one would be this tool making the
+choice it spent 1.50.4 refusing to make. The disagreement between them is itself
+reported.
+
+**A withheld slice has no rank.** It is left out of the per-success order
+entirely — giving it a position would place it on the strength of a number this
+module declined to state, and a reader who sees a rank assumes a rate.
+
+`outcomeTallyByLabel` and `outcomeTallyByModel` join the profile document, each
+slice carrying its own `calls` and `totalUsd` so a coverage share describes the
+workload rather than the file it came from.
+
+### Fixed
+
+**The rank-disagreement test missed the sharpest case there is.** It flagged a
+slice whose two ranks differ by more than one place, and with two rankable
+slices a *complete reversal* is a distance of exactly one — so the clearest
+possible instance of the finding was filed as noise. A change at the top now
+counts regardless of distance: whoever is dearest per call and whoever is
+dearest per resolution are the two names in the conversation, and them being
+different names is the entire point of computing both.
+
+**A fixture whose two ratios were accidentally equal.** The first version of the
+ranking test built a "cheap" workload and a "dear" one that both came to exactly
+$1.00 per resolution, so the test that was supposed to prove the orders diverge
+proved nothing. Caught because the assertion failed rather than because anybody
+checked the arithmetic.
+
 
 ## 1.50.4 — "The outcome"
 
