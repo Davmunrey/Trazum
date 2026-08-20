@@ -40,6 +40,7 @@ import {
   budgetPositions,
   conform,
   BREAK_EVEN_BAND,
+  runExperiment,
   ladderPosition,
   validateLadder,
   outcomeReport,
@@ -139,6 +140,7 @@ import type {
 import type {
   BudgetReport,
   ContractName,
+  ExperimentArm,
   FailurePolicy,
   GatewayStanding,
   UsageProfileReport,
@@ -245,6 +247,9 @@ interface Args {
 }
 
 const VALUE_FLAGS = new Set([
+  'a',
+  'b',
+  'min-outcomes',
   'against',
   'contract',
   'on-cannot-tell',
@@ -574,6 +579,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   feedback: [],
   gateway: ['on-cannot-tell', 'port', 'socket', 'pricing', 'pricing-live'],
   ladder: ['pricing', 'pricing-live', 'since', 'until', 'label'],
+  experiment: ['a', 'b', 'min-outcomes', 'pricing', 'pricing-live'],
   where: [],
   rules: [],
   blame: ['limit', 'model', 'calls', 'output-tokens', 'batch', 'prompt', 'markdown-out'],
@@ -2322,6 +2328,135 @@ async function commandLadder(
    * at. Everything else exits 0: this is a survey, like `doctor`.
    */
   if (anyProblem) process.exitCode = 1;
+}
+
+/**
+ * `trazum experiment <log> --a <label> --b <label> --min-outcomes <n>`
+ *
+ * Two arms on real traffic, judged on recorded outcomes and cost together.
+ *
+ * `--min-outcomes` is required and that is the entire point of it. A stopping
+ * rule declared after looking at the numbers is not a stopping rule, and
+ * nothing here can stop somebody reading a result early — what it can do is
+ * make the early read **visible to whoever reads the result later**, which is
+ * the part that survives the afternoon.
+ */
+async function commandExperiment(
+  args: Args,
+  config: TrazumConfig,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
+  const path = args.positional[0];
+  if (path === undefined) throw new Error(t.errors.missingInputFile());
+
+  const aName = stringFlag(args, 'a');
+  const bName = stringFlag(args, 'b');
+  if (aName === undefined || bName === undefined) throw new Error(t.experiment.needsTwo());
+
+  const minRaw = stringFlag(args, 'min-outcomes');
+  const minOutcomesPerArm = minRaw === undefined ? Number.NaN : Number(minRaw);
+  if (!Number.isInteger(minOutcomesPerArm) || minOutcomesPerArm < 1) {
+    throw new Error(t.experiment.needsRule());
+  }
+
+  const report = profileUsage(await readUsageLog(path, t), { catalogue: pricing });
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const pct = (value: number): string => `${(value * 100).toFixed(1)}%`;
+
+  const armOf = (label: string): ExperimentArm => {
+    const slice = report.outcomeTallyByLabel.find((entry) => entry.label === label);
+    return {
+      name: label,
+      totalUsd: slice?.totalUsd ?? 0,
+      tally: slice?.tally ?? { byValue: [], recorded: 0, parsed: 0, unrecordedUsd: 0 },
+    };
+  };
+
+  const result = runExperiment(
+    { arms: [aName, bName], minOutcomesPerArm },
+    { a: armOf(aName), b: armOf(bName) },
+    config.outcomes ?? null,
+  );
+
+  console.log();
+  console.log(c.bold(t.experiment.heading(aName, bName)));
+  console.log();
+  for (const side of [result.a, result.b]) {
+    console.log(
+      `  ${t.experiment.arm(
+        side.name,
+        side.rate === null ? '—' : pct(side.rate),
+        n(side.successes),
+        n(side.recorded),
+        side.interval === null ? '—' : `[${pct(side.interval.low)}, ${pct(side.interval.high)}]`,
+      )}`,
+    );
+  }
+  console.log();
+
+  if (result.separation === 'not-separable') {
+    console.log(
+      `  ${c.dim('·')} ${wrap(
+        t.experiment.notSeparable(
+          result.notSeparable ?? '',
+          result.outcomesNeededPerArm === null ? '—' : n(result.outcomesNeededPerArm),
+        ),
+        74,
+        '    ',
+      )}`,
+    );
+  } else {
+    const winner = result.separation === 'a-wins' ? result.a.name : result.b.name;
+    const d = result.difference as { low: number; high: number };
+    // Reported as a magnitude: the sign is carried by which arm is named, and
+    // printing "-30.0% to -18.0%" beside "b wins" is two ways of saying the
+    // same thing that a reader has to reconcile.
+    const lo = Math.min(Math.abs(d.low), Math.abs(d.high));
+    const hi = Math.max(Math.abs(d.low), Math.abs(d.high));
+    console.log(`  ${c.green('✓')} ${wrap(t.experiment.wins(winner, pct(lo), pct(hi)), 74, '    ')}`);
+  }
+
+  /**
+   * The peek line, printed **whether or not** the arms separated.
+   *
+   * A separable result read too early is still separable and still read too
+   * early. Collapsing the two would hide one of the facts, and it is always
+   * the inconvenient one that goes.
+   */
+  console.log();
+  if (result.stopping.honoured) {
+    console.log(`  ${c.dim(wrap(t.experiment.honoured(n(result.stopping.declared)), 74, '    '))}`);
+  } else {
+    const short = result.stopping.short === result.a.name ? result.a : result.b;
+    console.log(
+      `  ${c.yellow('!')} ${wrap(
+        t.experiment.peeked(short.name, n(result.stopping.declared), n(short.recorded)),
+        74,
+        '    ',
+      )}`,
+    );
+  }
+
+  if (result.marginal !== null) {
+    console.log();
+    console.log(
+      `  ${wrap(
+        result.marginal.usdPerExtraSuccess !== null
+          ? t.experiment.marginalDearer(
+              result.marginal.better,
+              formatUsd(result.marginal.usdPerExtraSuccess),
+            )
+          : t.experiment.marginalCheaper(result.marginal.better),
+        74,
+        '    ',
+      )}`,
+    );
+  }
+
+  console.log();
+  console.log(`  ${c.dim(wrap(t.experiment.neverPromotes(), 74, '    '))}`);
+  console.log();
 }
 
 function commandModels(t: CliMessages, pricing: PricingCatalogue): void {
@@ -8523,6 +8658,9 @@ async function main(): Promise<void> {
       break;
     case 'models':
       commandModels(t, pricing);
+      break;
+    case 'experiment':
+      await commandExperiment(args, config, pricing, t);
       break;
     case 'ladder':
       await commandLadder(args, config, pricing, t);

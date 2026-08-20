@@ -58,6 +58,7 @@ ${bold('USAGE')}
   trazum models
   trazum rules
   trazum gateway <anthropic|openai> --on-cannot-tell <fail-open|fail-closed>
+  trazum experiment <log> --a <label> --b <label> --min-outcomes <n>
   trazum ladder <log>
   trazum feedback
   trazum --version
@@ -118,6 +119,18 @@ ${bold('OPTIONS FOR gateway')}
   in spend.substitute, with your reason, and every substituted call is marked.
 
   Your credential is forwarded untouched and never read. See docs/gateway.md.
+
+${bold('OPTIONS FOR experiment')}
+  --a <label>, --b <label>    The two workloads to compare.
+  --min-outcomes <n>          Required: how many outcomes each arm must record
+                              before the result may be read. A stopping rule
+                              declared after looking at the numbers is not a
+                              stopping rule, and the report says whether it was
+                              honoured.
+
+  Judges recorded outcomes and cost together. Three-valued: A wins, B wins, or
+  not separable — with the number of outcomes per arm that would settle it, so
+  "run it longer" is an instruction rather than a shrug. Nothing is promoted.
 
 ${bold('OPTIONS FOR prune')}
   --cases <file>              One input per line, or a JSON array. Required.
@@ -962,6 +975,32 @@ ${bold('EXAMPLES')}
       `${path} already exists and was left alone. Pass --dry-run to see what would go in it, or --yes to replace it.`,
     existingUnparseable: (path) =>
       `${path} exists and could not be parsed, so nothing was written over it. Fix or move it first.`,
+  },
+
+  experiment: {
+    heading: (a, b) => `Experiment: ${a} against ${b}`,
+    needsTwo: () =>
+      'Name two labels to compare, for example: trazum experiment <log> --a prompt-v1 --b prompt-v2',
+    needsRule: () =>
+      '--min-outcomes is required, and it is the point: a stopping rule declared after looking at the numbers is not a stopping rule. Say how many outcomes each arm must record before the result may be read.',
+    arm: (name, rate, successes, recorded, interval) =>
+      `${name}  ${rate}  (${successes} of ${recorded} recorded)  95% ${interval}`,
+    wins: (name, low, high) =>
+      `${name} wins. The difference is between ${low} and ${high} at 95% confidence \u2014 the whole interval is on one side of zero, which is what "wins" means here.`,
+    notSeparable: (why, needed) =>
+      why === 'no-difference-observed'
+        ? 'Not separable: both arms recorded the same rate. No sample size separates a difference of zero, so there is no "run it longer" to offer \u2014 there is nothing here to find.'
+        : why === 'nothing-recorded'
+          ? 'Not separable: an arm recorded no outcomes at all, so there is no rate to compare.'
+          : `Not separable on this traffic: the 95% interval on the difference includes zero. One number is larger, and that is not a finding. About ${needed} outcomes per arm would settle the difference observed so far.`,
+    peeked: (short, declared, recorded) =>
+      `Read early. The declared rule was ${declared} outcomes per arm and ${short} has ${recorded}. Nothing can stop a number being read early; this line exists so whoever reads the result later can see that it was.`,
+    honoured: (declared) => `Stopping rule honoured: both arms cleared ${declared} recorded outcomes.`,
+    marginalDearer: (better, usd) =>
+      `${better} resolves more and costs more. One extra success costs ${usd} \u2014 that figure, not the rate, is what the decision turns on.`,
+    marginalCheaper: (better) => `${better} resolves more AND costs less per call. Nothing is being traded.`,
+    neverPromotes: () =>
+      'Nothing was changed. A winner is a finding; taking it is a decision with a name attached, and it belongs in the plan like everything else.',
   },
 
   ladder: {

@@ -11,7 +11,57 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**`trazum experiment` — two arms on real traffic.** Chapter five of
+`docs/plan-1.51.md`. `eval` compares two prompts on cases somebody wrote and
+`route` compares two models on the same; both measure agreement in a laboratory,
+and the traffic is the only place the real question gets answered.
+
+The moment a comparison runs on real traffic, three failures become available
+that a laboratory does not have, and each has an answer here.
+
+**A winner where there is none.** Two arms always produce two numbers and one of
+them is always larger. The verdict is three-valued the way `verify`'s has been
+since 1.39 — and *not separable* comes with the number of outcomes per arm that
+would settle it:
+
+```
+  · Not separable on this traffic: the 95% interval on the difference includes
+    zero. One number is larger, and that is not a finding. About 2,449 outcomes
+    per arm would settle the difference observed so far.
+```
+
+"Not significant" tells a reader nothing about whether to wait a day or abandon
+the idea. When both arms record the *same* rate the figure is `null` rather than
+a very large number, because no sample size separates a difference of zero and a
+big number would read as "keep going" when there is nothing to find.
+
+**Peeking.** `--min-outcomes` is required, and a stopping rule declared after
+looking at the numbers is not a stopping rule. Nothing can prevent an early read;
+what this does is make it **visible to whoever reads the result later** — and the
+line prints whether or not the arms separated, because a separable result read
+too early is still both, and collapsing them hides the inconvenient half.
+
+**Quality reported without its price.** The interesting arm is almost never
+better *and* cheaper. It is better and dearer, and the decision turns on a figure
+nobody computes: the difference in spend over the difference in successes, per
+call so arms with different traffic shares compare. Dividing raw totals would
+report a marginal cost that moves when the split changes and the behaviour does
+not.
+
+**Wilson score intervals per arm and Newcombe's on the difference**, both chosen
+because they behave at the sample sizes an experiment actually starts with — a
+symmetric interval runs past 0 or 1 for most of the first week. The intervals are
+returned rather than only the verdict, so a reader who disagrees with the
+threshold can see the numbers it was applied to.
+
+**Nothing is auto-promoted.** A winner is a finding; taking it is a decision with
+a name attached, and it lands in the plan like everything else.
+
+An undeclared outcome value stays out of both arms: a typo in an exporter must
+not decide an experiment.
+
 
 ## 1.50.6 — "The ladder"
 
