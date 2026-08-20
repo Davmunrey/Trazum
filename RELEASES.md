@@ -211,6 +211,18 @@ candidates, the environment.
 Each was proven the way this repository proves a guard: plant the violation,
 watch the test fail by name, remove it, watch the suite go green.
 
+A fourth guard was added after this release opened its pull request, because
+**CodeQL found a real time-of-check/time-of-use race in the code above**. The
+size bound was taken with `stat(path)` and the file then read with
+`readFile(path)`: two lookups of the same name, where what arrives the second
+time need not be what was measured the first. The bound would have been
+enforced against a file that was no longer there. It opens once and stats the
+*handle* now — the same inode by construction — and the guard exists because
+the fix is invisible in the output. Both versions print exactly the same thing,
+and only one of them is checking the file it reads. Worth recording plainly:
+the three guards written by hand covered spending, credentials and where a file
+is written, and none of them would have caught this.
+
 ### docs/usage-logs.md
 
 The answer to the thing a first run says most often — *no usage found*. Four

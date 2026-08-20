@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { readdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { open, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join, resolve as resolvePath } from 'node:path';
 import { gunzipSync } from 'node:zlib';
 
@@ -1659,15 +1659,31 @@ async function commandInit(
   for (const relative of sourceWalk.files) {
     const path = join(root, relative);
     let source: string;
+    /**
+     * Measured and read through **one open handle**, not by path twice.
+     *
+     * A bundle or a lockfile named `.js` is not worth reading, and reading it
+     * is how this command becomes slow on exactly the repositories that need
+     * it most — so the size is checked first. Checking it with `stat(path)`
+     * and then reading `path` is two lookups of the same name, and what
+     * arrives the second time need not be what was measured the first: the
+     * bound would be enforced against a file that is no longer there. One
+     * handle, stat'ed and read, is the same inode by construction.
+     */
+    let handle;
     try {
-      const info = await stat(path);
-      // A bundle or a lockfile named `.js` is not worth reading, and reading it
-      // is how this command becomes slow on exactly the repositories that need
-      // it most.
-      if (info.size > INIT_MAX_SOURCE_BYTES) continue;
-      source = await readFile(path, 'utf8');
+      handle = await open(path, 'r');
     } catch {
       continue;
+    }
+    try {
+      const info = await handle.stat();
+      if (info.size > INIT_MAX_SOURCE_BYTES) continue;
+      source = await handle.readFile('utf8');
+    } catch {
+      continue;
+    } finally {
+      await handle.close();
     }
     const detection = detectFromSource(source, { models: pricing.models });
     if (detection.provider !== null || detection.model !== null || detection.conflicts.length > 0) {
@@ -1678,9 +1694,14 @@ async function commandInit(
   // --- where the usage is, if it is anywhere ------------------------------
   const usage: UsageSighting[] = [];
   for (const candidate of INIT_LOG_CANDIDATES) {
-    const path = join(root, candidate);
+    /**
+     * An existence check and nothing more — what is recorded is the *name*
+     * that was tried, and whether it is a file or a directory. Anything read
+     * later is opened then, on its own terms, so there is no measurement here
+     * for a later read to disagree with.
+     */
     try {
-      const info = await stat(path);
+      const info = await stat(join(root, candidate));
       usage.push({
         kind: info.isDirectory() ? 'log-directory' : 'log-file',
         where: candidate,

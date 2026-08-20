@@ -102,6 +102,16 @@ destructured, not as what is printed — a version that pulls the key out and
 happens not to log it today is one refactor away from logging it tomorrow); or
 if it writes any file other than `join(root, CONFIG_FILENAME)`.
 
+**A time-of-check/time-of-use race, found by CodeQL in code written the same
+day.** `init` bounds how large a source file it will read, and it took that
+measurement with `stat(path)` and then read `readFile(path)` — two lookups of
+the same name, where what arrives the second time need not be what was measured
+the first. The bound would have been enforced against a file that was no longer
+there. It now opens the file once and stats *the handle*, which is the same
+inode by construction. A fourth guard holds the fix in place, because it is
+invisible in the output: both versions print exactly the same thing, and only
+one of them is checking the file it reads.
+
 ### Documentation
 
 **The first-run document is contracted.** `trazum init --json` has a section in

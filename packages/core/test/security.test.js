@@ -362,6 +362,25 @@ describe('the first run', () => {
     assert.match(text, /INIT_MAX_SOURCE_FILES/);
     assert.match(text, /INIT_MAX_SOURCE_BYTES/);
   });
+
+  it('enforces that bound through one open handle rather than a path twice', () => {
+    /**
+     * CodeQL found this one, in code written the same day, and it was right.
+     *
+     * `stat(path)` followed by `readFile(path)` is two lookups of the same
+     * name, and what arrives the second time need not be what was measured
+     * the first — so the size bound would be enforced against a file that is
+     * no longer there. One handle, stat'ed and read, is the same inode by
+     * construction. The guard exists because the fix is invisible in the
+     * output: both versions print the same thing, and only one of them is
+     * checking the file it reads.
+     */
+    const text = code();
+    assert.match(text, /await open\(path, 'r'\)/);
+    assert.match(text, /handle\.stat\(\)/);
+    assert.match(text, /handle\.readFile\(/);
+    assert.doesNotMatch(text, /await stat\(path\)/, 'the size bound must not be taken by path');
+  });
 });
 
 describe('no runtime dependencies', () => {
