@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.50.10**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.50.11**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,148 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.50.11 — "The commitment"
+
+Chapter nine of `docs/plan-1.51.md`, and the highest-stakes instance of the
+failure this whole product exists to end.
+
+Providers sell committed-use and reserved-capacity deals. Every team that signs
+one is doing arithmetic in a spreadsheet against a number they guessed — and
+unlike every other guess this tool has replaced, this one is annual and signed.
+
+```
+A 12-month commitment: $3,000 a month at 20% off
+  This is what the deal WOULD HAVE done on the traffic you actually had. It
+  is a measurement of the past, not a prediction — every month below
+  happened.
+
+  month       list  would pay    saving
+  2026-01   $5,000     $4,000   +$1,000
+  2026-02   $5,000     $4,000   +$1,000
+  2026-03  $600.00     $3,000   -$2,400
+  2026-04   $4,000     $3,200  +$800.00
+
+  Net over 4 measured months: $400.00.
+  The months that cleared the floor saved $2,800.
+  ! 1 of them fell short, and the floor you would have paid for capacity
+    nobody used comes to $2,520. That figure is kept separate on purpose:
+    netted into the line above it disappears, and the disappearing is what a
+    vendor's slide relies on.
+```
+
+### Both directions, because one direction is the sales pitch
+
+**Net positive, and one month cost $2,520.**
+
+A commitment is a **floor** as well as a discount. Below the floor you pay for
+capacity you did not use, and a saving quoted without that half is not an
+analysis. The two figures are kept apart on the page — netted together the bad
+month vanishes into a positive total, and the vanishing is precisely what makes
+the vendor's version persuasive.
+
+Three regions, and the table shows all of them:
+
+- **Below the floor** you pay the floor for less usage than it buys, and the
+  saving is negative.
+- **Between the floor and full utilisation** the saving is `spend − floor`,
+  which is real and smaller than the discount would suggest — the case a
+  percentage headline hides completely.
+- **Above full utilisation** the saving is the discount.
+
+### An as-if calculation, and the wording never blurs it
+
+"On the traffic you actually had, this commitment would have saved $X" is a
+measurement of the past.
+
+"You will save $X" is a claim about the future, and this product has refused
+that at every scale since 1.27. Nothing here projects, extrapolates, fits a
+trend or annualises a partial month, and the document carries
+`provenance: 'measured-past'` so a machine reader cannot mistake it either.
+
+### The shortfall risk is a count, not a probability
+
+"Three of your last twelve months would have fallen short, and here they are" is
+a measurement. "There is a 25% chance of shortfall" is a model of a distribution
+nobody fitted, presented with the authority of arithmetic.
+
+Only the first is available from a log, so only the first is printed — the count,
+the named months, and the measured spread beside it.
+
+### Partial months are dropped, never scaled
+
+A fortnight replayed against a monthly floor is a shortfall the traffic never
+had: half a month of usage judged against a whole month of commitment. Dropping
+it costs an answer about that month; keeping it would manufacture one.
+
+### The refusals
+
+**Fewer than three whole months** and the answer is that this cannot be judged
+from what exists, with how many more would settle it. A commitment is signed for
+a year; an answer from one month is a year-long decision made on a fortnight of
+evidence.
+
+The break-even is stated anyway, because it is a fact about the **deal** rather
+than about the traffic, and it is available before a single log exists.
+
+**A history shorter than the term still gets an answer, with the gap marked.**
+Six months against a twelve-month deal is a real answer about six months, and
+refusing it would be less useful than saying so. What it must not do is go
+unsaid — a twelve-month decision read off half a year with nothing on the page
+marking the gap is the spreadsheet this command was written to replace.
+
+### What this release found wrong in itself
+
+**The action pins were pointed at the wrong commit, and a guard caught it.**
+
+The README pins the Action to a SHA with the version in a comment beside it.
+Advancing them for this release, I reached for the last merge SHA in hand — which
+was the *feature* commit for chapter eight — and labelled it `# 1.50.10`. It is
+not: 1.50.10 is the release commit that follows it.
+
+The guard added in 1.31 resolves each pinned SHA and compares it against the
+version the comment claims, and it failed by name three times, once per pin. A
+reader following that pin would have got the Action from before the release it
+was told it was getting.
+
+Worth recording because the mistake is not carelessness with a SHA — it is that
+**every release since 1.28 has had two candidate commits** for this and the wrong
+one is always the more recent. The guard is what makes that survivable.
+
+The other two were found by looking at a real table rather than by a test.
+
+**`formatUsd` rendered a value just under a thousand in the wrong format.**
+`5000 - 5000 * 0.8` is `999.9999999999999`. That is under a thousand to a
+comparison, so it took the two-decimal branch and came out as **`$1000.00`** — a
+string the thousands branch would never produce, sitting in a column beside
+`$5,000` and reading as a different currency format for the same magnitude.
+
+The branch is chosen on the **rounded** value now, so the boundary is the number
+a reader sees rather than the number the machine holds. It has been wrong since
+`formatUsd` was written, in every table where a figure landed within a cent of a
+thousand.
+
+**A signed column was using the unsigned formatter.** `formatUsd` renders a
+negative as `$-2,400`, which reads as a typo. `formatSignedUsd` has existed since
+1.30 for exactly this case — in a column where every row can go either way the
+sign carries the whole meaning, so it belongs in front of the currency where a
+reader expects it — and it was simply not reached for.
+
+### What stayed out, and why
+
+**Recommending whether to sign.** The command prints what the deal would have
+done and stops. Whether to take it depends on how confident somebody is that next
+year resembles last year, and that is a judgement about their roadmap rather than
+about their logs — the same line `plan` has held since 1.38, where an action is
+ranked and never taken.
+
+**Tiered and blended commitments.** Providers sell deals with multiple floors,
+step discounts and spend-based tiers. Each is a different arithmetic and the
+shapes are not interchangeable; implementing one and letting it stand for the
+others would price somebody's contract against terms it does not have. One shape,
+correct, with its terms named on the first line.
 
 ---
 

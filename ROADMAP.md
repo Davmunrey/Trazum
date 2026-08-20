@@ -939,6 +939,21 @@ the rest. An owner with no measured data is "not measured", never "within" — t
 1.37 refusal applied to people. Chapter eight of docs/plan-1.51.md.
 
 
+### 1.50.11 — The commitment
+
+`trazum commitment`. Providers sell committed-use deals and every team that
+signs one is doing arithmetic in a spreadsheet against a guessed number — the
+highest-stakes instance of the failure this product exists to end, because the
+guess is annual and signed. It replays measured whole months against the deal's
+terms and prices **both directions**: a commitment is a floor as well as a
+discount, and the worked example is net positive with one month that cost
+$2,520, kept as its own figure because netted into the saving it disappears. An
+as-if calculation carrying `provenance: 'measured-past'` — nothing annualised or
+extrapolated. Shortfall risk is a count of real months and their spread, never a
+probability. Partial months dropped rather than scaled. Chapter nine of
+docs/plan-1.51.md.
+
+
 ## Collapsed into 1.8.0
 
 **Everything below shipped as 1.8.0, and none of these numbers is on npm.** They
