@@ -43,11 +43,11 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- 23 commands       MCP server      Next.js     comments on pull requests
+ 24 commands       MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
-## The twenty-three commands
+## The twenty-four commands
 
 | Command | What it answers |
 |---|---|
@@ -74,6 +74,7 @@ never runs unless you ask.
 | [`trazum serve`](#before-the-call-is-sent-trazum-serve) | What will this call cost, and is there budget? *Answered in milliseconds, halves kept apart.* |
 | [`trazum conform`](#building-on-the-format-trazum-conform) | Does the document my tool emits conform, and what will it not be able to answer? |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
+| [`trazum feedback`](#telling-us-something-trazum-feedback) | Where do I report this, and what will you ask me for? *Sends nothing.* |
 
 ## Contents
 
@@ -181,8 +182,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of twenty-three commands — [the table
-above](#the-twenty-three-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of twenty-four commands — [the table
+above](#the-twenty-four-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -332,7 +333,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other twenty-two commands, each with its own section below:
+The other twenty-three commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -401,7 +402,7 @@ In GitHub Actions, use the packaged action — nothing to install:
 
 ```yaml
 - uses: actions/checkout@v7
-- uses: Davmunrey/Trazum@e3e8795a2f478ee36050338d5c811c060c7ff5f8  # 1.49.0
+- uses: Davmunrey/Trazum@5fe256b7dcf694bc94ecc2768b3a688447466d0e  # 1.50.0
   with:
     target: prompts/system.txt
     max-tokens: 2000
@@ -447,7 +448,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v7
-  - uses: Davmunrey/Trazum@e3e8795a2f478ee36050338d5c811c060c7ff5f8  # 1.49.0
+  - uses: Davmunrey/Trazum@5fe256b7dcf694bc94ecc2768b3a688447466d0e  # 1.50.0
     with:
       target: prompts/            # a directory uses trazum.config.json budgets
       comment: true
@@ -476,7 +477,7 @@ run gates tokens before the money is spent or the spend itself, and saying
 which is the caller's job:
 
 ```yaml
-- uses: Davmunrey/Trazum@e3e8795a2f478ee36050338d5c811c060c7ff5f8  # 1.49.0
+- uses: Davmunrey/Trazum@5fe256b7dcf694bc94ecc2768b3a688447466d0e  # 1.50.0
   with:
     usage-log: logs/yesterday.jsonl
     max-usd: '50'            # exit 1 over budget — no period assumed
@@ -1649,6 +1650,32 @@ forecast; a floor can prove *over* and never *under*. Each rule with the release
 that learned it by getting it wrong first. If you are building something that
 reports money from measurements, that page is the one worth reading even if you
 never install this.
+
+### Telling us something: `trazum feedback`
+
+```bash
+npx @trazum/cli feedback
+```
+
+Prints where to report a rule that changed what a prompt asks for (the report
+that matters most), a bug, a question, or a security problem — and a blank issue
+with the version, runtime and platform already filled in.
+
+**It sends nothing, and neither does anything else here.** Trazum has no
+telemetry: no ping, no install hook, no anonymous counter, nowhere. A tool whose
+whole argument is that it reads your bill without uploading it cannot also be
+quietly reporting on you — so the loop is closed the only honest way, by making
+it cheap for a person who has decided to say something.
+
+Four guards hold that claim, each proven by planting the violation and watching
+the test fail by name: the command may not reach the network, it may not open a
+browser on your behalf (that is a request you did not read), nothing about your
+work reaches the prefilled body — not the config, not a prompt, not a label, not
+a figure — and no package here may declare an install hook, which is how a CLI
+usually acquires telemetry without a line of its own code changing.
+
+`trazum --version` prints the version on its own, and works when your config is
+broken — which is exactly when somebody is asking.
 
 ### Web
 

@@ -13,6 +13,55 @@ merged commit with no entry is a change only `git log` remembers.
 
 Nothing yet.
 
+## 1.50.2 — "The feedback loop"
+
+### Added
+
+**`trazum feedback`.** Trazum has no telemetry — no ping, no install hook, no
+anonymous counter, nowhere — which means the only signal about whether any of
+this works is what somebody chooses to say. This makes saying it one word:
+where to report a rule that changed what a prompt asks for, a bug, a question or
+a security problem, plus a blank issue link already carrying the version, the
+runtime and the platform, printed in full first so nothing travels that the
+sender has not read.
+
+Nothing about their work goes in it — not the config, not a prompt, not a label,
+not a figure. Those are exactly what a good report needs and exactly what only
+the reporter can decide to share, and a command that helpfully attached them
+would be the leak this product exists not to be.
+
+**`trazum --version`.** The CLI could not say which version it was, in a tool
+whose bug reports need that above everything else. It is read from the manifest
+beside the built entry point rather than baked in by a generator, so it cannot
+drift from what npm installed, and it answers before the config loads — which is
+exactly when somebody is asking.
+
+**SUPPORT.md**, which GitHub surfaces in the issue flow: where to go, what not
+to paste into a public page, the no-telemetry statement, and an honest note on
+what download counts and stars do *not* tell anybody.
+
+### Security
+
+**Four guards on the claim that this sends nothing**, each proven by planting
+the violation and watching the test fail by name. `trazum feedback` may not
+reach the network; may not open a browser on somebody's behalf, because that is
+a request they did not read; may not put anything about their work into the
+prefilled body; and no published package here may declare an install hook, which
+is how a CLI usually acquires telemetry without a line of its own code changing.
+
+The command needed guarding hardest precisely because it is *shaped* like a
+telemetry feature. A reader cannot tell the two apart from the output, so the
+sentence it prints is worth exactly as much as the check behind it.
+
+### Documentation
+
+**`docs/plan-1.51.md` stops pinning a patch number to each chapter.** The first
+draft assigned 1.50.1 through 1.50.9, and then 1.50.1 and 1.50.2 both arrived
+without being in it — the numbering itself, and this. Work outside a plan is not
+a failure of the plan; a plan that pretends otherwise goes stale on contact. The
+order is the commitment, and the table now says so.
+
+
 ## 1.50.1 — "The numbering"
 
 **A patch that changes what a patch means**, which is the only release where

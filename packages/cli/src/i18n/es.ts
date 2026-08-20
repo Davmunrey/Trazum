@@ -44,6 +44,8 @@ ${bold('USO')}
   trazum conform <fichero|-> [--contract <nombre>]
   trazum models
   trazum rules
+  trazum feedback
+  trazum --version
 
 ${bold('OPCIONES DE init')}
   --dry-run                   Imprime la configuración que escribiría y no escribe nada.
@@ -74,6 +76,18 @@ ${bold('OPCIONES DE conform')}
 
   La segunda nunca hace fallar nada. Decidir no registrar sesiones es una
   decisión, no un defecto. Ver docs/format.md.
+
+${bold('OPCIONES DE feedback')}
+  (ninguna)
+
+  Imprime dónde reportar una optimización incorrecta, un fallo, una pregunta o
+  un problema de seguridad — y una incidencia en blanco con la versión, el
+  runtime y la plataforma ya puestos, mostrados enteros antes para que no viaje
+  nada que no hayas leído.
+
+  No envía nada. Trazum no tiene telemetría: ni ping, ni hook de instalación, ni
+  contador anónimo, y una prueba hace fallar la compilación si este comando
+  llega a tocar la red.
 
 ${bold('OPCIONES DE prune')}
   --cases <fichero>           Una entrada por línea, o un array JSON. Obligatorio.
@@ -940,7 +954,8 @@ ${bold('EJEMPLOS')}
     findingRoute: (model) => `El mismo trabajo cabe en ${model}, más barato por token.`,
     findingBatch: () => 'La API de lotes reduce a la mitad ambas mitades de la factura, para trabajo que puede esperar.',
     findingTotal: (usd, days) => `Juntas: $${usd} en esos mismos ${days} días.`,
-    findingNext: () => 'trazum plan <tu registro> ordena todas las acciones, no solo esta.',
+    findingNext: () =>
+      'trazum plan <tu registro> ordena todas las acciones, no solo esta. Si alguna cifra de aquí parece mal, trazum feedback dice dónde contarlo — no envía nada por su cuenta.',
 
     wouldOverwrite: (keys) => `Esto reemplaza claves que ya tenías: ${keys}. Pasa --yes para escribir igualmente.`,
     nothingToWrite: () => 'No se escribió configuración: nada de lo anterior se pudo justificar con lo que hay aquí.',
@@ -950,6 +965,22 @@ ${bold('EJEMPLOS')}
       `${path} ya existe y se dejó intacto. Pasa --dry-run para ver qué iría dentro, o --yes para reemplazarlo.`,
     existingUnparseable: (path) =>
       `${path} existe y no se pudo interpretar, así que no se escribió nada encima. Arréglalo o muévelo primero.`,
+  },
+
+  feedback: {
+    heading: () => 'Contarnos algo',
+    sendsNothing: () =>
+      'Este comando no envía nada, y nada más aquí lo hace tampoco. Trazum no tiene telemetría: ni ping, ni hook de instalación, ni contador anónimo. Una herramienta cuyo argumento entero es que lee tu factura sin subirla no puede a la vez estar informando sobre ti en silencio, y una prueba hace fallar la compilación si este comando llega a tocar la red.',
+    whereHeading: () => 'Dónde',
+    wrongOptimisation: () =>
+      'Una regla cambió lo que pedía un prompt — el informe que más importa, y el fallo que este producto existe para evitar:',
+    bug: () => 'Cualquier otra cosa que esté mal:',
+    question: () => 'Una pregunta, o una idea de la que no estás seguro:',
+    security: () => 'Un problema de seguridad — en privado, nunca en una incidencia pública:',
+    environmentHeading: () => 'Lo que te va a preguntar quien mantiene esto',
+    environmentOnly: () =>
+      'Y eso es todo. Aquí no hay nada de tu trabajo — ni la configuración, ni un prompt, ni una etiqueta, ni una cifra. Eso es lo que necesita un buen informe y lo que solo tú puedes decidir compartir.',
+    linkHeading: () => 'Una incidencia en blanco con lo de arriba ya puesto',
   },
 
   conform: {

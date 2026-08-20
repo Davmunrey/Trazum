@@ -297,6 +297,80 @@ describe('the MCP tool surface', () => {
   });
 });
 
+describe('there is no telemetry, and the feedback command is not an exception', () => {
+  /**
+   * `trazum feedback` prints where to write and a prefilled link. That is
+   * exactly the shape of a command that phones home, which is why it is the
+   * one that needs guarding hardest: a reader has no way to tell the two apart
+   * from the output, and the sentence the command prints — *this sends
+   * nothing* — is worth precisely as much as the check behind it.
+   */
+  const cli = () => readFileSync(join(repoRoot, 'packages/cli/src/index.ts'), 'utf8');
+  const feedback = () => {
+    const source = cli();
+    const start = source.indexOf('function commandFeedback(');
+    const end = source.indexOf('\nfunction commandModels(', start);
+    assert.ok(start > 0 && end > start, 'commandFeedback could not be located — has it moved?');
+    return source
+      .slice(start, end)
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/^\s*\/\/.*$/gm, '');
+  };
+
+  it('sends nothing', () => {
+    const text = feedback();
+    assert.doesNotMatch(text, /fetch\s*\(|node:https?|XMLHttpRequest|request\s*\(/);
+    // Nor by proxy: opening a browser is a way to make a request happen, and
+    // a command that launched one would be transmitting on somebody's behalf
+    // without them reading what goes.
+    assert.doesNotMatch(text, /exec|spawn|open\s*\(\s*url|child_process/);
+  });
+
+  it('carries nothing about the person into the prefilled link', () => {
+    /**
+     * The environment lines are facts about a machine. A config value, a
+     * label, a path or a figure would be a leak dressed as helpfulness — and
+     * the worst kind, because the person would have pressed the button
+     * themselves.
+     */
+    // Property *reads*, so `bug_report.yml` — a filename in a template URL —
+    // is not mistaken for a report object being spread into the body. The
+    // first version of this matched it and was right about the string and
+    // wrong about what it meant.
+    const text = feedback();
+    assert.doesNotMatch(text, /\bconfig[?.]|\breport\.|process\.cwd|process\.env|homedir/);
+    assert.match(text, /process\.platform/);
+    assert.match(text, /process\.version/);
+  });
+
+  it('compiles the destination in rather than reading it from anywhere', () => {
+    // A flag or a config key naming the host would let anything that had
+    // rewritten a config on disk point somebody's report, and its prefilled
+    // body, at a machine they did not choose.
+    const source = cli();
+    assert.match(source, /const FEEDBACK_REPO = 'https:\/\/github\.com\/Davmunrey\/Trazum';/);
+    assert.doesNotMatch(feedback(), /stringFlag|config\?\./);
+  });
+
+  it('holds for the whole CLI: no install hook, and no ping anywhere', () => {
+    /**
+     * The claim the command makes is about the product, not about itself, so
+     * the check has to be too. An npm lifecycle script is the classic way a
+     * CLI acquires telemetry without a line of its own code changing.
+     */
+    for (const pkg of ['packages/cli', 'packages/core', 'packages/mcp']) {
+      const manifest = JSON.parse(readFileSync(join(repoRoot, pkg, 'package.json'), 'utf8'));
+      for (const hook of ['preinstall', 'install', 'postinstall', 'prepublish']) {
+        assert.equal(
+          manifest.scripts?.[hook],
+          undefined,
+          `${pkg} declares a ${hook} script — that is where telemetry arrives without anybody reviewing a diff`,
+        );
+      }
+    }
+  });
+});
+
 describe('the first run', () => {
   /**
    * `init` is the command with the widest reach in this product and the

@@ -514,6 +514,19 @@ The full account of each release is in [RELEASES.md](RELEASES.md) and
   cause), gzipped rotated logs read as they are, and the input shape in the
   browser.
 
+### 1.50.2 — The feedback loop
+
+Trazum has no telemetry and is not going to get any, which means the only signal
+about whether any of this works is what somebody chooses to say. `trazum
+feedback` makes saying it one word: where to report a wrong optimisation, a bug,
+a question or a security problem, plus a blank issue already carrying the
+version, runtime and platform — printed in full first, and never sent by the
+command. Four guards prove the claim, including one on install hooks, which is
+the route the other three would have missed. Plus `trazum --version`, which did
+not exist through fifty releases in a tool whose bug reports need it above
+everything, and SUPPORT.md, which GitHub surfaces in the issue flow and which
+says out loud that there is no support contract.
+
 ### 1.50.1 — The numbering
 
 A patch that changes what a patch means. The version number now carries the

@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.50.1**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.50.2**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,133 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.50.2 — "The feedback loop"
+
+### The problem this release actually has
+
+Trazum has no telemetry. No ping, no install hook, no anonymous counter, no
+crash reporter — not in the CLI, the library, the MCP server or the web app.
+That is deliberate and it is not going to change: a tool whose entire argument
+is that it reads your bill without uploading it cannot also be quietly reporting
+on you.
+
+The cost of that position is real and worth naming. **Nobody here can see how
+many people run this, which commands they use, or what breaks.** Downloads count
+CI runners and registry crawlers. Stars are a different popularity contest. The
+only signal that carries a reason is what somebody chooses to say — so the least
+this product can do is make saying it one word.
+
+### `trazum feedback`
+
+```
+Telling us something
+  This command sends nothing, and neither does anything else here.
+
+Where
+  A rule changed what a prompt asks for — the report that matters most:
+    …/issues/new?template=wrong_optimisation.yml
+  Anything else that is wrong:            …/issues/new?template=bug_report.yml
+  A question, or an idea you are not sure about:            …/discussions
+  A security problem — privately, never a public issue:     …/security/advisories/new
+
+What a maintainer will ask for
+  Trazum 1.50.2
+  Node v22.22.2
+  linux x64
+  locale en
+  That is the whole of it. Nothing about your work is here.
+
+A blank issue with the above already filled in
+  https://github.com/Davmunrey/Trazum/issues/new?body=…
+```
+
+The link is **printed in full before it is offered**, so nothing travels that
+the sender has not read. And the command does not open it — launching a browser
+is a way of making a request happen, and a request somebody did not read is not
+one they consented to, however small.
+
+**Nothing about their work is in it.** Not the config, not a prompt, not a
+label, not a figure, not a path. Those are precisely what a good report needs
+and precisely what only the reporter can decide to share. A command that
+helpfully attached them would be the leak this product exists not to be — and
+the worst kind, because they would have pressed the button themselves.
+
+### The guards, and why this command needed them most
+
+Four, each proven the way this repository proves a guard: plant the violation,
+watch the test fail by name, remove it, watch the suite go green.
+
+1. **It may not reach the network.**
+2. **It may not open a browser**, or spawn anything at all.
+3. **Nothing about the person reaches the prefilled body** — checked as
+   *property reads*, so a config value cannot be interpolated in without the
+   build going red.
+4. **No published package may declare an install hook.** `preinstall`,
+   `install`, `postinstall`, `prepublish` — that is how a CLI usually acquires
+   telemetry without a single line of its own code changing, and it is the one
+   route none of the other three would have caught.
+
+`trazum feedback` is *shaped* exactly like a telemetry feature: it collects
+environment facts, formats them, and offers to send them somewhere. A reader
+cannot tell it apart from the real thing by looking at the output. So the
+sentence it prints — *this sends nothing* — is worth precisely as much as the
+check behind it, and no more.
+
+### `trazum --version`
+
+The CLI could not say which version it was. In a tool whose bug reports need
+that above every other fact, through fifty releases.
+
+Read from the manifest beside the built entry point rather than baked in by a
+generator, so it cannot drift from what npm actually installed — the one number
+a report is useless without is the one that must not be a copy. It answers
+before the config loads, for the same reason `--clear-suggestion-cache` does:
+"which version is this?" is asked most often when something is broken, and a
+version command that needs a valid config is a version command that is missing
+when it matters.
+
+A manifest it cannot read falls back to `unknown` rather than throwing. A tool
+that will not start because it cannot find its own package.json is worse than
+one that admits it does not know — and `unknown` in a report is itself a fact
+about how somebody installed it.
+
+### SUPPORT.md
+
+GitHub surfaces it in the issue flow, and it did not exist. Where to go, the
+warning that an issue is a public page and a usage log names your workloads and
+your spend, the no-telemetry statement with what enforces it, and an honest
+paragraph on what downloads and stars do *not* tell anybody.
+
+It also says plainly that there is no support contract and no promised response
+time, because a project that implies one it will not meet has made its first
+false claim before anybody has run it.
+
+### What this release found wrong in itself
+
+**The plan document was already stale, four days after being written.**
+`docs/plan-1.51.md` assigned a patch number to each of its nine chapters —
+1.50.1 through 1.50.9 — and then 1.50.1 went to the numbering change and 1.50.2
+went to this. Two releases in, the table was wrong.
+
+It stops pinning numbers. The chapters are numbered 1 to 10 and the **order** is
+the commitment, which is what the plan documents have always actually promised.
+Work that arrives outside a plan is not a failure of the plan; a plan that
+pretends otherwise goes stale on contact with the first good idea.
+
+### What stayed out, and why
+
+**Anonymous usage telemetry, opt-in or otherwise.** It is the obvious answer to
+the problem at the top of these notes and it is not going to happen. An opt-in
+counter still means shipping the code that reports, the endpoint that receives
+and the promise that it stays opt-in — and every product that now phones home by
+default shipped exactly that first. The position is more useful than the data.
+
+**A `--json` mode for `feedback`.** There is no machine that should be
+consuming this. A script that read it would be automating the one step that is
+supposed to be a person deciding.
 
 ---
 
