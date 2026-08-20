@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.45.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.46.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,202 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.46.0 — "Five minutes"
+
+The sixth of the ten planned in `docs/plan-1.41-1.50.md`, and the first one
+pointed the other way. Everything since 1.41 raised the ceiling — a connector,
+a store, a watch, an endpoint, a guard. This lowers the floor: from
+`npx @trazum/cli` to a finding worth money, without reading a page of anything.
+Twenty-two commands is a wall to somebody who has none of them yet, and that
+wall is why a good tool gets closed inside a minute.
+
+### `trazum init`
+
+```
+What is here
+
+  Running inside a terminal.
+  1 prompt file found.
+  Usage log found: usage.jsonl.
+
+What the config would say
+  + usage.model  100% of the measured bill went to claude-opus-5
+  + usage.callsPerMonth  240 calls over 30 days, stated as 240 a month
+  + usage.avgOutputTokens  96000 output tokens over 240 calls averages 400
+  · usage.cacheHitRate  this log has no cache columns at all, which is not the same as a hit rate of zero
+  · usage.batchEligible  whether the work can wait for a batch window is a product decision, and no log records it
+  · labels  1 label in the log, and nothing here proves which prompt file sends which
+  · spend.maxUsd  a budget is a policy, so it is yours to set — the measured figure is $38.40 over 30 days
+
+The most valuable thing found
+  240 calls labelled "classify" went to Claude Opus 5 over 30 days.
+  They cost $38.40.
+  The same work fits Claude Sonnet 5, which is cheaper per token.
+  The Batch API halves both halves of the bill, for work that can wait.
+  Together: $30.72 over the same 30 days.
+```
+
+It does what a person would do on their first afternoon, in that order, saying
+what it found at each step: which provider the code calls (the `where`
+machinery from 1.7, which has refused to guess since it shipped), where the
+prompts are, whether there is a usage log or a credential for one, and what a
+config could honestly say. Then one finding.
+
+**A detection, not a wizard.** Nothing is asked. Every step above is something
+that was *found*; the only decision is whether to write the file, and `--yes`
+skips even that. A first-run experience that interrogates somebody is a
+first-run experience that gets abandoned halfway.
+
+### The arithmetic comes before the figure
+
+Not a formatting preference. The reader has no reason yet to believe anything
+this command says, and a tool that opens with a dollar amount nobody can check
+gets closed. So the headline is four lines and the money is the fourth: how
+many calls, under which label, on which model, over how many days — then what
+they cost — then which lever exists — then what it is worth. Every term is
+checkable against `trazum profile` on the same file.
+
+One finding, not a ranked table. `doctor` and `plan` exist for the table. A
+first run that opens with fourteen rows has told somebody nothing; they came to
+find out whether this is worth an afternoon.
+
+### Four keys it refuses to write, which is the substance of the release
+
+The easy version of this command writes a full config and looks impressive. It
+would also be the most damaging thing in the product: a generated config full
+of guessed thresholds is worse than an empty one, because six weeks later it
+reads as a decision somebody made, and every price in every report rests on it.
+
+- **A budget, ever.** A log says what your traffic *was* — how many calls,
+  which model, how long the outputs ran. Those are measurements and they get
+  written. A budget says what your traffic *may cost*, and no log answers that.
+  "The measured month plus twenty per cent" would be Trazum inventing a
+  threshold and then grading somebody against it. The measured figure is handed
+  over — `$38.40 over 30 days`, in the line above — and the limit stays with
+  the person who can actually set one.
+- **A monthly rate from a short window.** Twenty-eight days minimum, so every
+  weekday appears the same number of times. Four days multiplied by seven is a
+  forecast wearing a measurement's clothes, and this repository has refused
+  that since the series shipped in 1.40. And a **separate** refusal for the
+  quiet case: if any call in the log carries no timestamp, no rate is stated at
+  all. Those calls are all *there*; they simply cannot be placed inside the
+  span a rate would divide by, and dividing anyway makes the figure come out
+  high with nothing visible to explain why.
+- **A cache hit rate from a log with no cache columns.** Not recorded is not
+  not-happened. A zero would tell every later caching advisory that caching is
+  doing nothing — a finding invented out of a missing field. A log that *does*
+  record cache writes and reports no reads is a different thing entirely: that
+  is a measurement of a cache being paid for and never read, and it is written
+  as the zero it is.
+- **`usage.batchEligible`, in either direction.** Whether the work tolerates a
+  batch window is a product decision, and no log records it. `false` would
+  silently delete the batch lever from every report this config touches; `true`
+  would sell a saving on latency nobody agreed to give up.
+
+It also declines a model when the code names a **provider** and no model.
+`trazum where` prints a provider's default because a reader can see, in the
+same breath, that it is a guess. A config file cannot.
+
+And it never maps a label to a prompt file. That would be a claim about which
+file produced which calls, and a directory walk cannot prove one — a wrong
+entry is worse than a missing one, because `profile` would then read the wrong
+file and explain a cache verdict with the wrong prompt's structure,
+confidently.
+
+### A refusal never arrives bare
+
+The rule `spend_guard` established for a call in 1.45, applied here to a file.
+Every declined key carries a **typed** reason and whatever would settle it —
+the days measured against the days needed, how many calls carry no clock, which
+files named more than one provider. "No provider written" with nothing after it
+is indistinguishable from a bug, and the reader has no way to tell which.
+
+### `proposeInit`, in the core, with no filesystem near it
+
+The judgement is a pure function over observations the CLI collected. Two
+things follow. Every rule above is tested without a disk — twenty-five cases in
+`packages/core/test/init.test.js`, each one really the same case in a different
+costume: a key that cannot be justified is a key that is not written. And
+`--dry-run` is the same code path minus the write, rather than a second
+implementation that drifts from the first one the moment either changes.
+
+### What this release found wrong in itself
+
+**`init` needed a working config to run — and it is the command you run when
+yours is broken.** Every command loads `trazum.config.json` before dispatch and
+throws when it will not parse. That is correct for the other twenty-one:
+"defaults" for a budget means "no budget", and a silent revert to defaults is a
+green build that should have been red. But `init` exists for the person whose
+setup does not work yet, and it was the one command a broken setup could stop
+from running.
+
+The way it surfaced is the part worth recording. The refusal to overwrite an
+unparseable config had been written two hours earlier in this same release —
+careful code, with a comment explaining why it mattered — and it was
+**unreachable**, standing behind a throw three thousand lines away. The test
+written to prove it fires watched a parse error arrive instead. `init` now
+survives the load failure with nothing carried forward (no keys, no budgets, no
+locale) and refuses to write over the file it could not read, naming it.
+
+**A documentation claim did not survive being run.** `docs/usage-logs.md` was
+written with an example of a JSON *array* in a `.json` file. Trazum does not
+read one — it reads one object per line — and the page would have sent somebody
+to convert their log into the one format that does not work. Every example on
+that page was then run through `trazum profile` before being written down, and
+the limitation is stated rather than papered over.
+
+### Security: three guards on the first run, each proven with a planted probe
+
+`init` has the widest reach in this product and the least trust behind it. It
+runs in a directory it has never seen, before anybody has read a page of
+documentation, and it walks that directory: prompts, source files, log
+candidates, the environment.
+
+- **It never spends to answer.** The build fails if `commandInit` reaches the
+  network or an LLM. The deterministic core has been the entry point since
+  0.1.0, and a tool whose introduction costs money is one nobody introduces.
+- **A credential is named, never read.** `findCredential` returns the key
+  because the connector needs it; `init` takes the variable name and drops the
+  rest. The guard checks what is **destructured**, not what is printed — a
+  version that pulls the key out and happens not to log it today is one
+  refactor away from logging it tomorrow. A first-run summary is the single
+  most likely output in this product to be pasted into a chat window.
+- **It writes exactly one file, in the directory it was pointed at.** An `init`
+  that writes to a home directory or a cache is a first impression nobody
+  recovers from.
+
+Each was proven the way this repository proves a guard: plant the violation,
+watch the test fail by name, remove it, watch the suite go green.
+
+### docs/usage-logs.md
+
+The answer to the thing a first run says most often — *no usage found*. Four
+shapes with real records rather than a schema dump: an Anthropic response, an
+OpenAI response (with the note that `prompt_tokens` includes the cached ones,
+so Trazum subtracts them before pricing rather than billing them twice), a
+Vercel AI SDK `onFinish` hook, and an OTel collector. Plus a table of which
+finding each optional field buys, so the cost of leaving one out is visible
+before the log is written rather than after.
+
+### The first-run document, contracted
+
+`trazum init --json` has its section in `docs/json-output.md` with a
+two-direction parity test **bounded to its own section** — and the spend-guard
+harvest above it was bounded in the same commit. An unbounded harvest starts
+enforcing the *next* shape's fields the moment a new contract is appended, and
+that has now happened five times in this one file. The bound is written before
+the section that would break it rather than after.
+
+### What stayed out, and why
+
+The connector half of the first run. `init` notices that a credential is in the
+environment and says so; it does not pull. A first run that reaches a provider's
+API before anybody has agreed to it is exactly the surprise this release exists
+to avoid, and the line it prints — *run `trazum connect`* — is one keystroke
+away for somebody who wants it.
 
 ---
 

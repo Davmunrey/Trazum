@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.46.0 — "Five minutes"
+
 ### Added
 
 **`trazum init` — the first five minutes.** Everything since 1.41 raised the
