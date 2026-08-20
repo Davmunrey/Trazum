@@ -11,7 +11,38 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Fixed
+
+**`ROADMAP.md`'s forward-looking section was narrating a past.** `## Next` opened
+with *"the arc in progress is `docs/plan-1.51.md`"* — after every chapter of that
+arc had shipped and the arc had landed at 1.51.0. It is exactly the failure
+1.51.1 fixed in the three plan documents, one section further down in a file
+those fixes touched, and it went unnoticed while they were being made. A reader
+deciding whether to depend on this would have read work that is finished as work
+that is coming.
+
+`## Next` now says **nothing is planned**, because nothing is: four arcs have
+been planned in advance and all four are delivered, and there is no fifth. The
+delivered arcs are stated as delivered, with 1.51.0's ten chapters named.
+
+### Added
+
+**A guard on it: "the section called Next points forward, or says it does not".**
+The invariant is deliberately not *"`Next` must be full"* — a project with
+nothing planned is a real state, and a roadmap that manufactures a queue to look
+busy is worse than an empty one. It is that the section either **names a version
+newer than anything released**, or **says plainly that nothing is planned**.
+Doing neither leaves only one reading: delivered work described as forthcoming.
+
+Proven in both directions. Restoring the old *"the arc in progress"* opening
+fails the test by name, quoting the newest released version. Replacing it with a
+genuine forward plan naming a higher version passes **without** the escape
+phrase, which is the half that matters — a guard satisfiable only by a magic
+sentence would be answered by pasting the sentence.
+
+The version comparison is numeric rather than lexical, because `'1.9.0'` sorts
+above `'1.51.0'` as a string and that is precisely the version pair this
+repository has.
 
 ## 1.51.1 — "A front door"
 
