@@ -161,6 +161,23 @@ growth is intended, re-record" were all absent. Every one is the sentence that
 bounds the claim above it. A refusal never arrives bare, and neither does a
 measurement.
 
+**The `--json` contract was checked, and it holds — but its harvest could have
+stopped reading without saying so.** `docs/json-output.md` documents
+thirty-five top-level fields and `json-contract.test.js` enforces them in both
+directions against a real run: nothing emitted is undocumented, nothing
+documented goes unemitted, and the two fields a plain run does not produce are
+covered by the flags that produce them. That is a clean result and it is
+recorded as one.
+
+The weakness was in how the test read the table. Its field pattern was
+`[a-zA-Z]+`, and no field is spelled with a digit today, so it read all
+thirty-five rows and nothing was wrong. The day somebody adds `p95Usd` and
+documents it, the name would stop being harvested, the "emits every field it
+documents" check would stop covering it, and nothing would say so — the shape
+this repository has been caught by more than a dozen times. The harvest counts
+the rows now and fails on any it cannot read, which was proved by planting a
+nested path in the real document and watching the suite name it.
+
 **And one figure was a string the tool cannot produce.** `profile`'s
 conversation-shape line wrote a median of `$0.02`; it interpolates
 `formatUsd(shape.medianUsd)`, and `formatUsd` gives four decimals under a
