@@ -67,6 +67,8 @@ misses is a tool nobody believes. A selection, and these are the real ones:
 | #289 | The README hero said "fourteen findings" while the paragraph under it said "Thirteen advisories" | **52 releases** |
 | #290 | `outcome-report` was a contract whose only implementation failed it, missing `schemaVersion` | **9 releases** |
 | #290 | `trazum report --year --json` printed prose before the document, so no machine could read it | caught same day |
+| #294 | `CONTRIBUTING.md` said `npm test` ran two suites; it runs five, and CI's step names hid MCP too | unknown, since MCP shipped |
+| #295 | `docs/releasing.md` said "both manifests" and "both publish steps" with three packages | unknown, since MCP shipped |
 
 The long ones are the interesting ones, and the longest is the newest: **the
 front page of this project contradicted itself about the number of advisories
@@ -82,7 +84,7 @@ repository did not conform to it. A format whose reference producer fails its
 own check is worse than no format, because a tool mirroring it inherits the
 defect and looks interoperable.
 
-**Nine times** an assertion in this repository has been bounded by something
+**Ten times** an assertion in this repository has been bounded by something
 other than its subject. It is a doctrine rule now ([bound an assertion by its
 subject](doctrine.md#bound-an-assertion-by-its-subject-never-by-its-neighbour)),
 and the count kept going up after the rule was written, which is the honest part.
@@ -109,6 +111,15 @@ trap one section further along.
 They now share one helper that ends at the next heading, whatever it is, and a
 test fails if any suite goes back to naming one. That is the difference between
 fixing an instance and closing a class, and it took nine instances to make it.
+
+**And then it happened again.** The tenth was a guard written to catch a
+miscount in `docs/releasing.md`, three changes after the doctrine entry was
+rewritten to warn about this exact shape. It matched every quantity word beside
+the word "manifest" or "upload" anywhere in the file, and failed two sentences
+that were correct — one counting a different set of manifests, one using "two"
+to mean consecutive. It never merged, because it was run against the real
+document and not only against the defect it was written for. That is the whole
+defence, and it is a habit rather than an insight.
 
 ## What we cannot say about ourselves
 

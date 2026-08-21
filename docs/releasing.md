@@ -44,19 +44,19 @@ npm publish -w @trazum/mcp  --access public
   both true at once. Fetch `registry.npmjs.org/@trazum%2fcli/1.8.0` to check the
   publish actually landed; it answers first.
 
-`prepublishOnly` rebuilds and runs the tests before either upload, so a failure
-aborts the publish rather than reaching the registry.
+`prepublishOnly` rebuilds and runs the tests before each of the three uploads,
+so a failure aborts the publish rather than reaching the registry.
 
 **Nothing extra is needed to make the packages public, and there is nothing to
-get wrong here.** A scoped package is *restricted* by default, so both manifests
-carry `publishConfig.access: "public"` and both publish steps pass
+get wrong here.** A scoped package is *restricted* by default, so all three manifests
+carry `publishConfig.access: "public"` and all three publish steps pass
 `--access public`. Belt and braces on purpose: the failure they prevent is not
 a loud one. On a free account a missing `--access public` fails the publish,
 which is fine; on a paid account it **succeeds** and uploads a package nobody
 outside the org can install — a release that looks completely normal, for an
 open-source project, and unpublishable after 72 hours.
 
-`publish.test.js` asserts both, asserts that `apps/web` stays `private: true`
+`publish.test.js` asserts both of those, asserts that `apps/web` stays `private: true`
 so an application never reaches a registry, and derives the set of publishable
 workspaces from the root `workspaces` globs — so a workspace added later has to
 make the choice rather than inherit one.

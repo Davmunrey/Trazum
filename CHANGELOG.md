@@ -13,6 +13,49 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**`docs/releasing.md` said "both manifests" and "both publish steps". There are
+three.** The release document was written when `@trazum/core` and `@trazum/cli`
+were the only publishable packages, and `@trazum/mcp` never reached the prose:
+
+- *"the tests before **either** upload"*
+- *"so **both manifests** carry `publishConfig.access: \"public\"`"*
+- *"and **both publish steps** pass `--access public`"*
+
+The bash block six lines above it already lists three publishes, so the page
+contradicted itself, and **no test opened `docs/releasing.md` at all.**
+
+The sentence immediately after is the one that stings. It explains that
+`publish.test.js` *"derives the set of publishable workspaces from the root
+`workspaces` globs — so a workspace added later has to make the choice rather
+than inherit one"*. The mechanism was built for exactly this growth. The prose
+describing the mechanism was not.
+
+### Added
+
+**A guard, counting from the same derivation the paragraph describes.**
+`PACKAGES` — the workspaces globs minus anything `private` — is the count, so
+adding a fourth publishable package fails the sentence rather than quietly
+outgrowing it.
+
+**Its first draft was wrong, and its own probe caught it.** Matching every
+quantity word beside "manifest", "publish step" or "upload" across the whole
+file failed **two true sentences**: *"all five manifests — root, `packages/core`,
+`packages/cli`, `packages/mcp`, `apps/web`"*, which counts the version manifests
+a release bumps and enumerates itself, and *"a failure that happens between two
+uploads"*, where "two" means consecutive rather than total.
+
+That is this repository's most-broken rule — *bound an assertion by its subject,
+never by its neighbour* — arriving for a **tenth** time, in a guard written
+three changes after the doctrine entry was rewritten to warn about it. It was
+caught before merge only because the guard was run against the real file rather
+than against the defect alone. The assertion is now bounded to the sentences
+making the publish-access claim, which is its actual subject.
+
+Proven both ways: restoring *"both manifests"*, *"both publish steps"* and
+*"either upload"* each fails naming the phrase and the real count, and the two
+true sentences pass untouched. A guard that cries wolf gets deleted, so the
+second half is not optional.
+
 **`npm test` said "core + cli test suites". It runs five.** `CONTRIBUTING.md`
 printed four commands with a comment beside each explaining what it covers. Two
 were written before `@trazum/mcp` existed and never revisited:

@@ -218,7 +218,7 @@ nine goes to state clearly: **"until the next heading, whatever it is" is the
 subject's own extent; "until the heading called X" is a neighbour.** The first
 survives an insertion. The second is a trap with a delay on it.
 
-This has gone wrong **nine times** in this repository, and the shape is
+This has gone wrong **ten times** in this repository, and the shape is
 identical every time:
 
 - **Eight contract harvests** reading `docs/json-output.md`, each slicing from
@@ -238,6 +238,9 @@ identical every time:
 - The README's advisory count is stated twice, in two different nouns. The guard
   read one of them, forced it, and let the other stay wrong for fifty-two
   releases.
+- A guard on the release document's package count matched any quantity word
+  near the word "manifest", so *"all five manifests — root, core, cli, mcp,
+  web"* — a different and correct count, of a different set — failed it.
 
 Some of those made a guard cover more than it should; one made it cover less;
 one made a correct sentence look like a bug; one let a front page contradict
@@ -256,9 +259,18 @@ needed in more than one place it gets one home — `test-utils/section.mjs` — 
 a test fails if a suite goes back to naming a neighbour, because the pattern
 reads perfectly well in review.
 
-*Learned across 1.38 to 1.50.4, the same lesson each time, and only closed as a
-class after the ninth — which is the argument for asking, when a rule keeps
-recurring, whether the rule's own prescription is what keeps producing it.*
+The tenth is the one worth keeping in view. It was a **guard written to catch
+this exact failure**, three changes after this entry was rewritten to warn about
+it, and it went wrong the same way: it matched every quantity word beside the
+word "manifest" or "upload" anywhere in a file, and failed two true sentences.
+It never merged, because it was run against the real document rather than only
+against the defect it was written for. Knowing the rule is not protection from
+it; running the guard against everything it will see is.
+
+*Learned across 1.38 to 1.50.4, the same lesson each time, closed as a class
+after the ninth, and broken again on the tenth by a guard against itself — which
+is the argument for asking, when a rule keeps recurring, whether the rule's own
+prescription is what keeps producing it.*
 
 ## Record, do not reconstruct
 
