@@ -66,6 +66,30 @@ caller needs to tell "your provider is down" from "you are out of money", and a
 proxy that blurred them would send somebody to fix the wrong thing at the worst
 possible moment.
 
+## A refusal arrives before the first byte, or not at all
+
+**The budget is judged before the upstream is opened, and never again during
+the call.** On a refusal the provider is not contacted at all: your prompt does
+not leave the machine, and no money is spent on a call that was going to be
+refused anyway. A gateway that forwarded first and refused afterwards would have
+paid for the thing it was refusing.
+
+Once bytes are flowing, **the call is committed**. The status line is long gone,
+so a 402 could not be sent as a refusal even if the budget ran out mid-answer —
+it would arrive as garbage inside somebody's response. So it does not arrive at
+all: a stream that started, finishes.
+
+That is a real limit and it is stated rather than discovered. **A call that
+begins inside the budget can end outside it**, by exactly the cost of one
+answer. The alternative — cutting a reply off partway to save the difference —
+corrupts the thing the caller is reading to protect a figure that is already
+spent. `trazum gateway` will not do that.
+
+Both halves are asserted: one test proves the upstream sees no connection at all
+for a refused call, and another exhausts the budget *while a stream is in
+flight* and proves the answer still arrives whole. Inverting the order fails the
+first by name; consulting the budget per chunk fails the second.
+
 ## Failure is a decision you make in advance
 
 `--on-cannot-tell` is **required and has no default**.
