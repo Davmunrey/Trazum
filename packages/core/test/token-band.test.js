@@ -368,12 +368,49 @@ describe('the estimator against tokenizers it was never tuned for', () => {
         .sort()
     : [];
 
-  if (others.length === 0) {
-    it('has not been measured for any other provider', {
-      skip: 'run scripts/measure-token-band.mjs --provider deepseek',
+  /**
+   * Which families the harness can measure, read from the harness.
+   *
+   * The skip below used to name `deepseek` because that was the only other
+   * provider the day it was written. Two more arrived at 1.53 and the sentence
+   * would have gone on naming one of them — a message bounded by what happened
+   * to exist when it was typed rather than by its subject, which is this
+   * project's most repeated mistake and the reason nothing here is a list.
+   */
+  const measurable = [
+    ...new Set(
+      [...readFileSync(join(repoRoot, 'scripts/measure-token-band.mjs'), 'utf8').matchAll(
+        /^  (\w+): \{$/gm,
+      )].map((m) => m[1]),
+    ),
+  ].filter((name) => name !== 'anthropic');
+
+  it('knows which families could be measured at all', () => {
+    assert.ok(
+      measurable.length >= 3,
+      `only ${measurable.length} non-Anthropic families found in the harness`,
+    );
+  });
+
+  const unmeasured = measurable.filter(
+    (name) => !others.includes(`token-ground-truth.${name}.json`),
+  );
+
+  /**
+   * Named, one by one, rather than reported as a single absence.
+   *
+   * "Nothing else has been measured" is true and tells a reader on GPT nothing
+   * about their own figures. Each family gets its own skipped test carrying the
+   * exact command, so `--test-reporter spec` prints the list of open questions
+   * instead of one sentence that could mean any of them.
+   */
+  for (const name of unmeasured) {
+    it(`${name}: not measured — the estimator's error on this family is unknown`, {
+      skip: `run: node scripts/measure-token-band.mjs --provider ${name}`,
     }, () => {});
-    return;
   }
+
+  if (others.length === 0) return;
 
   for (const name of others) {
     const other = JSON.parse(readFileSync(join(fixturesDir, name), 'utf8'));

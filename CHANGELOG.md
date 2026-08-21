@@ -11,7 +11,60 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**The band harness measures four families, not two — 1.54's first chapter.**
+Trazum prices seven providers with an estimator calibrated on one, and
+`ROADMAP.md` has called the per-family error *"the one number that settles"*
+whether to take a real tokenizer as a dependency. Nobody had measured it, and
+until 1.53 nobody honestly could: the harness can only reach an endpoint this
+repository already trusts with a credential.
+
+The 1.53 arc made two more of them facts. OpenAI measures through
+`https://api.openai.com/v1/chat/completions` and Google through
+`https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`
+— both the gateway's own upstreams, both reading a count this repository already
+knows how to read. **Google deliberately does not use a counting endpoint.** One
+may well exist; nobody here has ever sent a key to it, and an endpoint recalled
+rather than committed is exactly what the previous arc spent itself refusing. So
+it measures with `:generateContent` at one output token and pays for it, rather
+than guessing and saving pennies.
+
+**Neither has been run against the real service.** Nothing in this environment
+has a key. What ships is the shape; the numbers arrive when somebody runs it.
+
+**The measuring script is tied to the gateway's allowlist.** It sends a real API
+key to every family it measures — the same act the gateway performs, from a file
+nobody thinks of as security-sensitive, and in fact the file where DeepSeek's
+endpoint sat while the gateway was still refusing DeepSeek as unsupported. Its
+origins must now be ones the gateway forwards to, so adding a family requires
+the same deliberate edit to `security.test.js` that adding an upstream does. A
+measuring script is not a side door.
+
+**And exactly one family may claim the published band**, counted from the
+harness source rather than from the fixtures — which do not exist on a clean
+checkout, the same absence that once let this suite report "0 failures" for a
+directory that was not there.
+
+### Fixed
+
+**"Nothing else has been measured" told a reader on GPT nothing about their own
+figures.** The suite emitted one skip naming `deepseek`, because that was the
+only other provider the day the sentence was written — so two families arriving
+at 1.53 would have gone unmentioned by a message bounded by what happened to
+exist when it was typed. Each measurable family now gets its own named skip
+carrying its own command, derived from the harness, and drops out of the list
+the moment its fixture appears. The twelfth time this project has bounded a
+message by its neighbour rather than by its subject.
+
+**A check that could never have fired.** The new "the harness reaches nothing
+the gateway does not front" assertion would never have run against anything it
+should reject: a brand-new host fails the decision check above it first. The
+case it actually exists for is subtler — a host already decided about, and
+decided to be something *other* than an upstream, which would satisfy every
+other check in the file. It is handed exactly that now. Third occurrence this
+session of a filter over today's correct values proving nothing.
+
 
 
 ## 1.53.0 — "Four of the seven, and why the other three are not here"

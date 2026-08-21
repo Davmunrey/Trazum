@@ -3280,6 +3280,17 @@ loud**.
 | every language divisor, on a held-out sample in another register | 3.8% |
 | samples outside `±10%` | 0 of 21 |
 
+**The band is Claude's, and the other families are an open question rather than
+a footnote.** Trazum prices seven providers with an estimator calibrated on one.
+The harness measures whichever family you give it a key for — `--provider
+openai`, `--provider google`, `--provider deepseek` — writing a separate fixture
+that is asserted against nothing it was never calibrated for. Only the Anthropic
+run discharges `±10%`. Every family nobody has run gets its **own named skip**
+in the suite, with the command to run, so an open question reads as an open
+question rather than as one sentence covering all of them. Those three cost
+real tokens: none has a free counting endpoint, so each sample is a completion
+held to one output token, and the harness says so before it sends anything.
+
 **The published band is 10 and the worst measurement is 6.4**, deliberately:
 twenty-one samples across six text types cannot bound a seventh — no Korean, no
 Cyrillic prose, no mixed-script document — and overstating the uncertainty is the
