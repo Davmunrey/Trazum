@@ -650,3 +650,60 @@ describe('a focus indicator that computes to nothing', () => {
     });
   }
 });
+
+describe('a desktop preference must not reach a phone drawer', () => {
+  /**
+   * `collapsed` is a choice made on a laptop. Applied to the drawer as well, it
+   * produced a 248px overlay containing a 60px rail — no wordmark, every tab
+   * label `sr-only`, and no expand control, because the only one is `lg:flex`.
+   * An icon column with no labels and nothing on the device that can undo it.
+   *
+   * `railCollapsed` is the width for THIS rendering; `collapsed` is the stored
+   * preference. Inside the rail only the first is a legitimate thing to read.
+   */
+  const app = codeOf('components/App.tsx');
+  const railBlock = (source) => {
+    const from = source.indexOf('const rail = (');
+    const to = source.indexOf('return (', from);
+    assert.ok(from > 0 && to > from, 'the rail block has moved — this guard is reading nothing');
+    return source.slice(from, to);
+  };
+  /**
+   * `collapsed` READ on its own — not as part of `railCollapsed`, and not the
+   * name of a prop. `<Account collapsed={railCollapsed} />` is the child's own
+   * vocabulary and is correct; `collapsed={collapsed}` is the bug and is still
+   * caught, because the value is not followed by an `=`.
+   */
+  const bare = (block) => block.match(/(?<![A-Za-z])collapsed\b(?!\s*=)/g) ?? [];
+
+  it('fires on the version that shipped', () => {
+    assert.ok(
+      bare("const rail = (\n<div className={cn(collapsed && 'x')} />\nreturn (").length > 0,
+      'the guard does not catch a bare preference inside the rail',
+    );
+  });
+
+  it('does not fire on the rendering width, nor on a child prop named for it', () => {
+    assert.equal(bare("{railCollapsed && 'x'}").length, 0);
+    assert.equal(bare('<Account collapsed={railCollapsed} />').length, 0);
+  });
+
+  it('still fires when the preference is handed straight to a child', () => {
+    assert.equal(bare('<Account collapsed={collapsed} />').length, 1);
+  });
+
+  it('the rail reads the rendering width, never the stored preference', () => {
+    assert.deepEqual(
+      bare(railBlock(app)),
+      [],
+      'the rail reads `collapsed` directly — a drawer would inherit a desktop choice',
+    );
+  });
+
+  it('and the drawer closes itself when the window becomes a desktop', () => {
+    // Otherwise the scrim survives the resize with `overflow: hidden` on the
+    // body and no visible control to lift either, both measured.
+    assert.match(app, /matchMedia\('\(min-width: 1024px\)'\)/);
+    assert.match(app, /setDrawerOpen\(false\)/);
+  });
+});

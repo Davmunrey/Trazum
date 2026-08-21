@@ -210,6 +210,29 @@ export function App({
     };
   }, [drawerOpen]);
 
+  /**
+   * A window that becomes a desktop closes the drawer.
+   *
+   * Nothing did before: at `lg` the rail is sticky and the close button is
+   * `display: none`, so resizing across the breakpoint with the drawer open
+   * left a full-screen scrim over the page with `overflow: hidden` on the body
+   * and no visible control to lift either. Measured after a 390 to 1440 resize:
+   * scrim still painted, close button not displayed, body still locked.
+   *
+   * The 1024px is Tailwind's `lg` written out. There is no way to ask the
+   * stylesheet, so the comment is the link — change one and change this.
+   */
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const wide = window.matchMedia('(min-width: 1024px)');
+    const settle = () => {
+      if (wide.matches) setDrawerOpen(false);
+    };
+    settle();
+    wide.addEventListener('change', settle);
+    return () => wide.removeEventListener('change', settle);
+  }, [drawerOpen]);
+
   function chooseRail(next: boolean) {
     setCollapsed(next);
     try {
@@ -292,6 +315,19 @@ export function App({
     { value: 'bill', label: t.bill.tab, Icon: Receipt },
   ] as const;
 
+  /**
+   * The rail's width for THIS rendering, which is not always the preference.
+   *
+   * `collapsed` is a desktop choice and it was being applied to the drawer as
+   * well, so a reader who collapsed the rail on a laptop and later opened the
+   * menu on their phone got a 248px drawer containing a 60px rail: no wordmark,
+   * three tab labels all `sr-only`, and no expand control, because the only one
+   * is `lg:flex`. An icon column with no labels and nothing on the device that
+   * can undo it. The drawer is always the full presentation; the preference is
+   * kept, and applies again the next time there is a rail to apply it to.
+   */
+  const railCollapsed = collapsed && !drawerOpen;
+
   const rail = (
     <>
       {/*
@@ -305,11 +341,11 @@ export function App({
         than by a number somebody has to keep in step. Collapsed, both are
         dropped and the glyph is simply centred, like every other glyph.
       */}
-      <div className={cn('flex h-14 items-center', collapsed ? 'justify-center' : 'px-2')}>
+      <div className={cn('flex h-14 items-center', railCollapsed ? 'justify-center' : 'px-2')}>
         <div
           className={cn(
             'flex min-w-0 items-center gap-2.5',
-            !collapsed && 'border border-transparent px-2.5',
+            !railCollapsed && 'border border-transparent px-2.5',
             // Room for the drawer's close button, which is absolutely
             // positioned in this corner and only exists below `lg`. Without it
             // the Spanish tagline ran 13px under a 32px tap target and lost its
@@ -331,7 +367,7 @@ export function App({
             <path d="M4.5 5 11 11l-6.5 6" />
             <path d="M14 17h4.5" />
           </svg>
-          {!collapsed && (
+          {!railCollapsed && (
             <span className="flex min-w-0 flex-col">
               <h1 className="font-display text-[19px] leading-none font-semibold tracking-[-0.01em]">
                 Trazum
@@ -372,15 +408,15 @@ export function App({
           // a vertical list is a bar sticking out of the rail's border. The
           // active row is marked by its own surface instead.
           '[&_button]:after:hidden',
-          collapsed && '[&_button]:px-0',
+          railCollapsed && '[&_button]:px-0',
         )}
       >
         {MODES.map(({ value, label, Icon }) => (
           <TabsTrigger
             key={value}
             value={value}
-            title={collapsed ? label : undefined}
-            className={cn(ROW, collapsed && 'group-data-[orientation=vertical]/tabs:justify-center')}
+            title={railCollapsed ? label : undefined}
+            className={cn(ROW, railCollapsed && 'group-data-[orientation=vertical]/tabs:justify-center')}
             // Choosing a mode is what the drawer was opened for, so it closes
             // itself. Leaving it open would hide the panel it just switched to
             // behind the menu that switched it.
@@ -393,26 +429,26 @@ export function App({
               the weakest source the accessibility tree has, on the one control
               a reader has no other way to identify.
             */}
-            <span className={cn('truncate', collapsed && 'sr-only')}>{label}</span>
+            <span className={cn('truncate', railCollapsed && 'sr-only')}>{label}</span>
           </TabsTrigger>
         ))}
         {signedIn && <TabsTrigger
           value="library"
-          title={collapsed ? t.library.tab : undefined}
-          className={cn(ROW, collapsed && 'group-data-[orientation=vertical]/tabs:justify-center')}
+          title={railCollapsed ? t.library.tab : undefined}
+          className={cn(ROW, railCollapsed && 'group-data-[orientation=vertical]/tabs:justify-center')}
           onClick={() => setDrawerOpen(false)}
         >
           <BookMarked className="size-[17px] shrink-0" aria-hidden="true" />
-          <span className={cn('truncate', collapsed && 'sr-only')}>{t.library.tab}</span>
+          <span className={cn('truncate', railCollapsed && 'sr-only')}>{t.library.tab}</span>
         </TabsTrigger>}
       </TabsList>
 
       {/* Account and language live at the foot of the rail: page-level controls,
           not part of the navigation, and reached last rather than first. */}
-      <div className={cn('mt-auto flex flex-col gap-2 border-t p-2', collapsed && 'items-center')}>
-        <Account t={t} collapsed={collapsed} />
+      <div className={cn('mt-auto flex flex-col gap-2 border-t p-2', railCollapsed && 'items-center')}>
+        <Account t={t} collapsed={railCollapsed} />
         <div
-          className={cn('flex gap-0.5 rounded-lg border p-0.5', collapsed && 'flex-col')}
+          className={cn('flex gap-0.5 rounded-lg border p-0.5', railCollapsed && 'flex-col')}
           role="group"
           aria-label={t.page.localeSwitchLabel}
         >
@@ -431,11 +467,11 @@ export function App({
                 // height and simply fill the width.
                 'h-7 px-2 text-[12px] font-normal text-muted-foreground',
                 FOCUS_RING,
-                collapsed ? 'w-full shrink-0' : 'flex-1',
+                railCollapsed ? 'w-full shrink-0' : 'flex-1',
                 option === locale && 'bg-muted text-foreground',
               )}
             >
-              {collapsed ? option.toUpperCase() : getWebMessages(option).endonym}
+              {railCollapsed ? option.toUpperCase() : getWebMessages(option).endonym}
             </Button>
           ))}
         </div>
