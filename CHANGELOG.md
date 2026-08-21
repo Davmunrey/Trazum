@@ -11,7 +11,42 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Fixed
+
+**The npm page presented twenty-one of thirty-two commands as though they were
+all of them.** `packages/cli/README.md` is what npm renders — for most people
+the first and only page they read. Its `## Commands` table stopped without
+saying it stops, and the sentence beneath it said *"`trazum --help` documents
+every flag"*: flags, never commands. `trazum gateway`, the only thing in this
+product that can refuse a call **before** the money is spent, had no row and no
+mention.
+
+The fix is not to list all thirty-two on a page like that. It is to say the
+table is a selection and point at the tool — the same rule this repository
+applies to a skipped test and a half-measured day: **silence about
+incompleteness reads as completeness.** That sentence is also only true now
+because the previous release put every command in `--help`.
+
+**Writing that disclaimer produced the very defect it was fixing, twice in one
+paragraph.** The first draft enumerated the eleven omitted commands — a list
+typed beside the thing, stale the moment a command is added, which is exactly
+what the last four fixes had been removing. The second said *"a dozen more"*
+when there are eleven. Both are refused now: the disclaimer may state no count
+and name at most one command as an example.
+
+**And the check written to catch the second one did not catch it.** It listed
+`a dozen` in lower case and was case-sensitive; the draft began the sentence
+*"A dozen more"* and sailed straight through. A guard that reads as coverage and
+covers nothing — found by running the probe rather than by reading the regex,
+and now handed both phrasings directly.
+
+**An existing guard caught this work's own test.** The first version bounded the
+`## Commands` section by finding the next heading by hand, which
+`publish.test.js` refuses: bounding a section by its neighbour has silently
+broken a harvest nine times in this repository, and `sectionOf()` exists as the
+one home for the rule. Writing it again inside a file about that same class of
+defect would have been the joke completing itself.
+
 
 
 ## 1.53.2 — "What the tool says about itself"
