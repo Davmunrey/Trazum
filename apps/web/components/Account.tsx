@@ -1,12 +1,29 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { ChevronsUpDown, LogOut } from 'lucide-react';
 
-import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 import type { WebMessages } from '../lib/i18n';
 
 /**
- * The sign-in control in the header.
+ * The account control at the foot of the rail.
+ *
+ * It was a row: a badge, an avatar, a name and a Sign out button, laid out
+ * side by side. That fitted a full-width header and fits neither of the two
+ * widths the rail actually has — 236px cramps it, and at 60px there is room
+ * for the avatar and nothing else. So the identity is the control and the
+ * things you can do with it live behind it, which is also the honest shape:
+ * signing out is a rare, destructive act and does not belong one stray click
+ * from the navigation.
  *
  * Renders nothing at all when the deployment has no GitHub app configured,
  * which is the default and the case most self-hosters are in. A disabled button
@@ -23,7 +40,7 @@ interface SessionResponse {
   ephemeralSessions: boolean;
 }
 
-export function Account({ t }: { t: WebMessages }) {
+export function Account({ t, collapsed = false }: { t: WebMessages; collapsed?: boolean }) {
   const [state, setState] = useState<SessionResponse | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -67,50 +84,121 @@ export function Account({ t }: { t: WebMessages }) {
     return (
       <a
         href={`/api/auth/github?next=${next}`}
-        className="inline-flex h-7 items-center rounded-md border px-2.5 text-[13px] font-normal text-muted-foreground hover:bg-muted hover:text-foreground"
+        title={collapsed ? t.account.signIn : undefined}
+        className={cn(
+          'inline-flex h-8 items-center justify-center rounded-md border text-[13px] font-normal text-muted-foreground hover:bg-layer-hover hover:text-foreground',
+          collapsed ? 'w-8 px-0' : 'px-2.5',
+        )}
       >
-        {t.account.signIn}
+        {/* Collapsed, the border and the icon are the whole control; the label
+            would not fit and half a word is worse than none. */}
+        {collapsed ? <LogOut className="size-[15px] rotate-180" aria-hidden="true" /> : t.account.signIn}
+        {collapsed && <span className="sr-only">{t.account.signIn}</span>}
       </a>
     );
   }
 
   return (
-    <div className="flex items-center gap-2">
-      {state.ephemeralSessions && (
-        // Said out loud, in the one place the reader will be surprised. On a
-        // memory store behind more than one instance this session ends without
-        // warning, and a documented limitation beats a bug report.
-        <span className="text-[11px] text-muted-foreground" title={t.account.ephemeralHint}>
-          {t.account.ephemeral}
-        </span>
-      )}
-
-      {state.user.avatarUrl && (
-        // eslint-disable-next-line @next/next/no-img-element -- one 20px avatar
-        <img
-          src={state.user.avatarUrl}
-          alt=""
-          width={20}
-          height={20}
-          className="rounded-full"
-          // The URL comes from GitHub, but the page should not leak which
-          // Trazum page you were on to whoever serves it.
-          referrerPolicy="no-referrer"
-        />
-      )}
-
-      <span className="text-[13px] text-muted-foreground">{state.user.login}</span>
-
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        onClick={signOut}
-        disabled={busy}
-        className="h-7 px-2.5 text-[13px] font-normal text-muted-foreground"
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        className={cn(
+          'flex w-full items-center gap-2 rounded-md p-1.5 text-left outline-hidden',
+          'hover:bg-layer-hover focus-visible:bg-layer-hover data-[state=open]:bg-layer-active',
+          collapsed && 'justify-center p-1',
+        )}
+        aria-label={t.account.menuLabel(state.user.login)}
       >
-        {busy ? t.account.signingOut : t.account.signOut}
-      </Button>
-    </div>
+        {state.user.avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- one 22px avatar
+          <img
+            src={state.user.avatarUrl}
+            alt=""
+            width={22}
+            height={22}
+            className="size-[22px] shrink-0 rounded-full"
+            // The URL comes from GitHub, but the page should not leak which
+            // Trazum page you were on to whoever serves it.
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          // No avatar is a real case — GitHub does not promise one. An initial
+          // keeps the trigger the same size either way, so the rail's foot does
+          // not shift when one reader has a picture and the next does not.
+          <span
+            aria-hidden="true"
+            className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-layer-active text-[11px] font-medium"
+          >
+            {state.user.login.slice(0, 1).toUpperCase()}
+          </span>
+        )}
+        {!collapsed && (
+          <>
+            <span className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground">
+              {state.user.login}
+            </span>
+            <ChevronsUpDown className="size-[14px] shrink-0 text-faint" aria-hidden="true" />
+          </>
+        )}
+      </DropdownMenuTrigger>
+
+      {/*
+        Upwards, and to the side when the rail is narrow: the trigger sits at
+        the bottom of a full-height column, so a menu opening downwards would
+        open off the screen.
+      */}
+      <DropdownMenuContent
+        side={collapsed ? 'right' : 'top'}
+        align={collapsed ? 'end' : 'start'}
+        className="w-[204px]"
+      >
+        <DropdownMenuLabel className="flex flex-col gap-0.5">
+          <span className="truncate">{state.user.name ?? state.user.login}</span>
+          {state.user.name && (
+            <span className="truncate text-[12px] font-normal text-faint">
+              {state.user.login}
+            </span>
+          )}
+        </DropdownMenuLabel>
+
+        {state.ephemeralSessions && (
+          <>
+            <DropdownMenuSeparator />
+            {/*
+              Said out loud, in the one place the reader will be surprised. On a
+              memory store behind more than one instance this session ends
+              without warning, and a documented limitation beats a bug report.
+              It moved out of the rail and into here because it is a sentence,
+              not a badge, and it was being shown at a width that could hold
+              neither.
+            */}
+            <div className="px-2 py-1.5 text-[12px] leading-snug text-muted-foreground">
+              {/*
+                Two lines, not one sentence. Run together they read "temporary
+                session This deployment keeps sessions in memory" — the badge
+                is a label for what follows, and it does not decline into the
+                sentence after it in either language.
+              */}
+              <span className="block font-medium text-foreground">{t.account.ephemeral}</span>
+              <span className="mt-0.5 block">{t.account.ephemeralHint}</span>
+            </div>
+          </>
+        )}
+
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onSelect={(event) => {
+            // The sign-out is a round trip ending in a reload; letting the menu
+            // close first would unmount the component mid-request.
+            event.preventDefault();
+            void signOut();
+          }}
+          disabled={busy}
+          className="text-muted-foreground focus:text-foreground"
+        >
+          <LogOut aria-hidden="true" />
+          {busy ? t.account.signingOut : t.account.signOut}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

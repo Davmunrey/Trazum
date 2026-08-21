@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Menu, PanelLeftClose, PanelLeftOpen, Receipt, GitCompare, BookMarked, Wand2, X } from 'lucide-react';
 
 import type { Locale } from '@trazum/core';
 
@@ -15,6 +16,9 @@ import { cn } from '@/lib/utils';
 import { LOCALES, LOCALE_STORAGE_KEY, getWebMessages } from '../lib/i18n';
 import { usePromptText } from '../lib/prompt-text';
 import { useScenario } from '../lib/scenario';
+
+/** Where the rail's expanded/collapsed preference lives between visits. */
+const RAIL_STORAGE_KEY = 'trazum:rail';
 
 function storedLocale(): Locale | null {
   try {
@@ -45,6 +49,17 @@ export function App({
   models: readonly { id: string; displayName: string }[];
 }) {
   const [locale, setLocale] = useState<Locale>(initialLocale);
+
+  /**
+   * Two independent disclosures, and they are not the same thing.
+   *
+   * `collapsed` is a desktop preference — the rail shrinks to icons and stays
+   * that way across visits. `drawerOpen` is a phone's transient overlay, which
+   * must never be remembered: reopening the page into a menu nobody asked for
+   * is how a drawer becomes a modal.
+   */
+  const [collapsed, setCollapsed] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const t = getWebMessages(locale);
 
   // Owned here, like the locale and for the same reason: both tabs price their
@@ -84,6 +99,49 @@ export function App({
     if (stored) setLocale(stored);
   }, []);
 
+  // Read after hydration, like the locale and for the same reason: touching
+  // localStorage during render makes the client's first pass disagree with the
+  // server's HTML.
+  useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem(RAIL_STORAGE_KEY) === 'collapsed');
+    } catch {
+      // Storage blocked. An expanded rail is the right default to fall back to.
+    }
+  }, []);
+
+  /**
+   * Escape closes the drawer, and the page underneath stops scrolling while it
+   * is open.
+   *
+   * An overlay you cannot dismiss from the keyboard is a trap, and a body that
+   * scrolls behind one makes the drawer feel detached from the page it belongs
+   * to. Both are undone on close, including when the component unmounts —
+   * leaving `overflow: hidden` on the document is the classic drawer bug.
+   */
+  useEffect(() => {
+    if (!drawerOpen) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDrawerOpen(false);
+    };
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = previous;
+    };
+  }, [drawerOpen]);
+
+  function chooseRail(next: boolean) {
+    setCollapsed(next);
+    try {
+      localStorage.setItem(RAIL_STORAGE_KEY, next ? 'collapsed' : 'expanded');
+    } catch {
+      // Not persisting is survivable; failing to collapse is not.
+    }
+  }
+
   // Keep the document language in step with the switcher, so screen readers
   // and browser translation follow what is actually on screen.
   useEffect(() => {
@@ -99,171 +157,259 @@ export function App({
     }
   }
 
-  return (
+  /**
+   * The three modes, with the icon each one earns.
+   *
+   * Not decoration: at the collapsed width the icon is the only thing left, so
+   * it has to carry the whole meaning. A wand for the rewrite, two branches for
+   * the comparison, a receipt for the bill somebody already paid.
+   */
+  const MODES = [
+    { value: 'optimise', label: t.compare.optimiseTab, Icon: Wand2 },
+    { value: 'compare', label: t.compare.tab, Icon: GitCompare },
+    { value: 'bill', label: t.bill.tab, Icon: Receipt },
+  ] as const;
+
+  const rail = (
     <>
+      {/* The mark sits in the rail now, where the navigation is. */}
+      <div className={cn('flex h-14 items-center gap-2 px-3', collapsed && 'justify-center px-0')}>
+        <svg
+          viewBox="0 0 22 22"
+          aria-hidden="true"
+          className="size-[18px] shrink-0 text-terracotta"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M4.5 5 11 11l-6.5 6" />
+          <path d="M14 17h4.5" />
+        </svg>
+        {!collapsed && (
+          <span className="flex min-w-0 flex-col">
+            <h1 className="font-display text-[19px] leading-none font-semibold tracking-[-0.01em]">
+              Trazum
+            </h1>
+            <span className="truncate text-[11px] text-faint">{t.meta.tagline}</span>
+          </span>
+        )}
+      </div>
+
       {/*
-        A bar, not a row of things that happen to be at the top.
-        
-        The header was a wrap-around flex line: wordmark, tagline, account and
-        language all at the same altitude, so nothing said "this is the
-        application's chrome and the rest is the work". A bar with its own rule
-        and a sticky position separates the two, and it is the only element on
-        the page that spans the full width — which is what makes it read as the
-        frame rather than as the first card.
+        The nav is the Tabs list. Radix still owns which panel is shown, so the
+        rail and the content cannot disagree about the current mode — and the
+        keyboard behaviour a tablist already has comes with it.
       */}
-      <header className="sticky top-0 z-40 border-b border-rule-strong bg-background/85 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-[1180px] items-center gap-3 px-5">
-        {/* A drawn mark rather than a stock glyph: the prompt caret and its
-            cursor, which is where a prompt is written and the only place this
-            tool ever touches. Two paths, no asset, and it takes the terracotta
-            from the palette. */}
-        <span className="flex items-baseline gap-2">
-          <svg
-            viewBox="0 0 22 22"
-            aria-hidden="true"
-            className="size-[18px] shrink-0 translate-y-px text-terracotta"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.4"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+      <TabsList
+        variant="line"
+        className={cn(
+          'h-auto w-full flex-col items-stretch gap-0.5 rounded-none bg-transparent p-2',
+          '[&_button]:h-auto [&_button]:w-full [&_button]:justify-start [&_button]:gap-2.5',
+          '[&_button]:rounded-md [&_button]:px-2.5 [&_button]:py-2 [&_button]:text-[14px]',
+          '[&_button:hover]:bg-layer-hover',
+          '[&_button[data-state=active]]:bg-layer-active [&_button[data-state=active]]:text-foreground',
+          // The active icon takes the mark's colour. Collapsed, the icon is the
+          // whole row, and a surface one shade off the rail's own is not a
+          // strong enough answer to "which mode am I in".
+          '[&_button[data-state=active]_svg]:text-terracotta',
+          // The `line` variant draws its marker on the trailing edge, which in
+          // a vertical list is a bar sticking out of the rail's border. The
+          // active row is marked by its own surface instead.
+          '[&_button]:after:hidden',
+          collapsed && '[&_button]:justify-center [&_button]:px-0',
+        )}
+      >
+        {MODES.map(({ value, label, Icon }) => (
+          <TabsTrigger
+            key={value}
+            value={value}
+            title={collapsed ? label : undefined}
+            // Choosing a mode is what the drawer was opened for, so it closes
+            // itself. Leaving it open would hide the panel it just switched to
+            // behind the menu that switched it.
+            onClick={() => setDrawerOpen(false)}
           >
-            <path d="M4.5 5 11 11l-6.5 6" />
-            <path d="M14 17h4.5" />
-          </svg>
-          <h1 className="font-display text-[22px] leading-none font-semibold tracking-[-0.01em]">
-            Trazum
-          </h1>
-        </span>
-        {/*
-          Dropped below `sm`. On a 390px screen the tagline and the two
-          controls cannot share a line without one of them wrapping, and a
-          wrapping bar stops being a bar. The name and the controls are what
-          the bar is for; the tagline is said again in the lede below.
-        */}
-        <span className="hidden text-[13px] text-faint sm:inline">{t.meta.tagline}</span>
+            <Icon className="size-[17px] shrink-0" aria-hidden="true" />
+            {/*
+              Collapsed, the label is still read out — it is only not drawn.
+              A `title` alone would leave the tab's accessible name resting on
+              the weakest source the accessibility tree has, on the one control
+              a reader has no other way to identify.
+            */}
+            <span className={cn('truncate', collapsed && 'sr-only')}>{label}</span>
+          </TabsTrigger>
+        ))}
+        {signedIn && <TabsTrigger value="library" title={collapsed ? t.library.tab : undefined} onClick={() => setDrawerOpen(false)}>
+          <BookMarked className="size-[17px] shrink-0" aria-hidden="true" />
+          <span className={cn('truncate', collapsed && 'sr-only')}>{t.library.tab}</span>
+        </TabsTrigger>}
+      </TabsList>
 
-        {/* Pushed to the far end so they read as page-level controls rather
-            than as part of the title. */}
-        <div className="ml-auto flex items-center gap-3">
-          <Account t={t} />
-
-          <div
-            className="flex gap-0.5 rounded-lg border p-0.5"
-            role="group"
-            aria-label={t.page.localeSwitchLabel}
-          >
-            {LOCALES.map((option) => (
-              <Button
-                key={option}
-                type="button"
-                variant="ghost"
-                size="sm"
-                aria-pressed={option === locale}
-                onClick={() => chooseLocale(option)}
-                className={cn(
-                  'h-7 px-2.5 text-[13px] font-normal text-muted-foreground',
-                  option === locale && 'bg-muted text-foreground',
-                )}
-              >
-                {getWebMessages(option).endonym}
-              </Button>
-            ))}
-          </div>
+      {/* Account and language live at the foot of the rail: page-level controls,
+          not part of the navigation, and reached last rather than first. */}
+      <div className={cn('mt-auto flex flex-col gap-2 border-t p-2', collapsed && 'items-center')}>
+        <Account t={t} collapsed={collapsed} />
+        <div
+          className={cn('flex gap-0.5 rounded-lg border p-0.5', collapsed && 'flex-col')}
+          role="group"
+          aria-label={t.page.localeSwitchLabel}
+        >
+          {LOCALES.map((option) => (
+            <Button
+              key={option}
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-pressed={option === locale}
+              onClick={() => chooseLocale(option)}
+              className={cn(
+                'h-7 flex-1 px-2 text-[12px] font-normal text-muted-foreground',
+                option === locale && 'bg-muted text-foreground',
+              )}
+            >
+              {collapsed ? option.toUpperCase() : getWebMessages(option).endonym}
+            </Button>
+          ))}
         </div>
-        </div>
-      </header>
+      </div>
+    </>
+  );
 
-      <main className="mx-auto max-w-[1180px] px-5 pt-7 pb-16">
-        {/*
-          The lede is five lines of prose above the tool it describes, and it
-          is the first thing on the page — so on a laptop the thing somebody
-          came to use started below the fold. Kept, because it is the honest
-          description of what this does, and given the width and weight of
-          supporting copy rather than of a headline.
-        */}
-        <p className="mt-0 mb-7 max-w-[62ch] text-[15px] leading-relaxed text-muted-foreground">
-          {t.page.lede}
-        </p>
+  return (
+    /*
+      A column below `lg`, a row at it.
 
-      <Tabs defaultValue="optimise">
-        {/*
-          The three modes are the page's real navigation, and they were dressed
-          as a settings toggle: a small pill group in the sunken grey, the same
-          weight as a rule-level switch. They are not one control with three
-          positions — Optimise shortens a prompt, Compare judges two of them,
-          and Your bill reads a usage log, which are three different jobs on
-          three different inputs.
+      The Tabs root is a flex container, and with `orientation="vertical"` the
+      primitive leaves it a row so the rail can sit beside the panels. On a
+      phone that made the top bar a *column* 128px wide standing next to the
+      content, which had 261px of a 390px screen left to work with. The rail is
+      `fixed` below `lg` and out of the flow entirely, so stacking here costs
+      nothing and puts the bar where a bar goes.
+    */
+    <Tabs
+      defaultValue="optimise"
+      orientation="vertical"
+      className="min-h-screen flex-col gap-0 lg:flex-row"
+    >
+      {/*
+        A bar that exists only where the rail cannot: below `lg` there is no
+        room for a persistent 236px column, so the same navigation arrives as a
+        drawer and this bar is what opens it.
+      */}
+      <div className="sticky top-0 z-30 flex h-12 items-center gap-2 border-b border-rule-strong bg-background/90 px-3 backdrop-blur-md lg:hidden">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="size-8 p-0"
+          aria-label={t.page.openMenu}
+          aria-expanded={drawerOpen}
+          onClick={() => setDrawerOpen(true)}
+        >
+          <Menu className="size-[18px]" aria-hidden="true" />
+        </Button>
+        <span className="font-display text-[17px] leading-none font-semibold">Trazum</span>
+      </div>
 
-          A line variant with a terracotta marker says "you are here" the way a
-          nav does. Styled from the list rather than on each trigger, because a
-          test pins the exact source of the Library trigger and a className
-          there would break it — and because a rule that lives once cannot
-          drift between four call sites.
+      {/* The scrim. Clicking it closes, which is the other half of Escape. */}
+      {drawerOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-foreground/40 backdrop-blur-[2px] lg:hidden"
+          onClick={() => setDrawerOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={cn(
+          'z-50 flex shrink-0 flex-col border-r bg-muted transition-[width] duration-150',
+          // Below lg it is an overlay that slides; at lg it is simply there.
+          'fixed inset-y-0 left-0 w-[248px] lg:sticky lg:top-0 lg:h-screen lg:translate-x-0',
+          drawerOpen ? 'translate-x-0' : '-translate-x-full',
+          collapsed ? 'lg:w-[60px]' : 'lg:w-[236px]',
+        )}
+      >
+        {/*
+          One rail, not one per breakpoint.
+          
+          The first version rendered `rail` twice — inside an `lg:hidden` block
+          and again inside a `hidden lg:flex` one. Hidden is not absent: that
+          put two tablists on the page controlling the same panels, two
+          `role="tab"` elements per mode for a screen reader to read out, and
+          two `Account` components each fetching the session. Visibility is a
+          style; duplication is a bug.
         */}
-        <TabsList
-          variant="line"
-          className="mb-6 h-auto w-full justify-start gap-0 overflow-x-auto rounded-none border-b p-0
-            [&_button]:h-auto [&_button]:flex-none [&_button]:rounded-none [&_button]:px-3.5 [&_button]:py-2.5
-            [&_button]:text-[15px] [&_button]:font-medium
-            [&_button:hover]:bg-layer-hover
-            [&_button[data-state=active]]:text-foreground
-            [&_button[data-state=active]]:after:bg-terracotta
-            [&_button[data-state=active]]:after:bottom-[-1px]
-            [&_button[data-state=active]]:after:h-[2px]">
-          <TabsTrigger value="optimise">{t.compare.optimiseTab}</TabsTrigger>
-          <TabsTrigger value="compare">{t.compare.tab}</TabsTrigger>
-          <TabsTrigger value="bill">{t.bill.tab}</TabsTrigger>
-          {signedIn && <TabsTrigger value="library">{t.library.tab}</TabsTrigger>}
-        </TabsList>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="absolute top-2 right-2 size-8 p-0 lg:hidden"
+          aria-label={t.page.closeMenu}
+          onClick={() => setDrawerOpen(false)}
+        >
+          <X className="size-[18px]" aria-hidden="true" />
+        </Button>
+        {rail}
 
         {/*
-          Both tabs stay mounted. Switching to Compare and back must not throw
-          away a result somebody is still reading, and Radix unmounts inactive
-          content unless told otherwise.
+          The collapse control belongs to the rail and only exists where the
+          rail does. On a phone the drawer is already the collapsed state.
         */}
-        <TabsContent value="optimise" forceMount className="data-[state=inactive]:hidden">
-          <Optimizer locale={locale} t={t} scenario={scenario} promptText={promptText} />
-        </TabsContent>
-        <TabsContent value="compare" forceMount className="data-[state=inactive]:hidden">
-          <Comparer
-            locale={locale}
-            t={t}
-            scenario={scenario}
-            modelName={modelName}
-            models={models}
-          />
-        </TabsContent>
-        {/*
-          forceMount for the same reason as Optimise and Compare: the pasted
-          log and its report exist nowhere but this tab — the whole point of
-          the tab is that they were never sent anywhere — so unmounting it
-          would destroy the one copy.
-        */}
-        <TabsContent value="bill" forceMount className="data-[state=inactive]:hidden">
-          <Bill t={t} />
-        </TabsContent>
-        {signedIn && (
-          // Not forceMount, unlike the other two: this tab holds no unsaved
-          // work — everything in it is already on the server — and remounting
-          // re-reads the list, which is the behaviour you want on return.
-          <TabsContent value="library">
-            <Library
-              t={t}
+        <button
+          type="button"
+          onClick={() => chooseRail(!collapsed)}
+          aria-label={collapsed ? t.page.expandRail : t.page.collapseRail}
+          className="hidden items-center justify-center border-t py-2 text-muted-foreground transition-colors hover:bg-layer-hover hover:text-foreground lg:flex"
+        >
+          {collapsed ? (
+            <PanelLeftOpen className="size-[16px]" aria-hidden="true" />
+          ) : (
+            <PanelLeftClose className="size-[16px]" aria-hidden="true" />
+          )}
+        </button>
+      </aside>
+
+      <main className="min-w-0 flex-1 px-5 pt-6 pb-16 lg:px-8">
+        <div className="mx-auto max-w-[1080px]">
+          <p className="mt-0 mb-6 max-w-[62ch] text-[15px] leading-relaxed text-muted-foreground">
+            {t.page.lede}
+          </p>
+
+          <TabsContent value="optimise" forceMount className="data-[state=inactive]:hidden">
+            <Optimizer locale={locale} t={t} scenario={scenario} promptText={promptText} />
+          </TabsContent>
+          <TabsContent value="compare" forceMount className="data-[state=inactive]:hidden">
+            <Comparer
               locale={locale}
-              currentPrompt={promptText.value}
-              onRestore={(text) => promptText.set(text)}
+              t={t}
+              scenario={scenario}
+              modelName={modelName}
+              models={models}
             />
           </TabsContent>
-        )}
-      </Tabs>
+          <TabsContent value="bill" forceMount className="data-[state=inactive]:hidden">
+            <Bill t={t} />
+          </TabsContent>
+          {signedIn && (
+            <TabsContent value="library">
+              <Library
+                t={t}
+                locale={locale}
+                currentPrompt={promptText.value}
+                onRestore={(text) => promptText.set(text)}
+              />
+            </TabsContent>
+          )}
 
-        <footer className="mt-8 border-t pt-3.5 text-xs text-faint">
-          {t.page.footerLead(pricingReviewed)}
-          <code className="font-mono">--exact-tokens</code>
-          {t.page.footerTail}
-        </footer>
+          <footer className="mt-8 border-t pt-3.5 text-xs text-faint">
+            {t.page.footerLead(pricingReviewed)}
+            <code className="font-mono">--exact-tokens</code>
+            {t.page.footerTail}
+          </footer>
+        </div>
       </main>
-    </>
+    </Tabs>
   );
 }

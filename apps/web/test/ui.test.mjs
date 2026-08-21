@@ -428,7 +428,17 @@ describe('the library tab does not tell the reader something untrue', () => {
   it('shows the tab only to a reader who is signed in', () => {
     // A library nobody can read is worse than an absent tab: it renders an
     // empty list that looks like "you have saved nothing".
-    assert.match(app, /signedIn && <TabsTrigger value="library">/);
+    //
+    // The open tag is left open on purpose. This used to require the trigger
+    // to be spelled `<TabsTrigger value="library">` with nothing after it, so
+    // giving the trigger a title or an onClick broke a guard that has nothing
+    // to say about either. What is being guarded is the gate, not the tag.
+    const gated = /signedIn && <TabsTrigger value="library"[ >]/;
+    assert.ok(
+      !gated.test('<TabsTrigger value="library" onClick={close}>'),
+      'the gate pattern must not pass an ungated trigger',
+    );
+    assert.match(app, gated);
     assert.match(app, /\{signedIn && \(/);
   });
 
