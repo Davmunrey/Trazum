@@ -429,15 +429,20 @@ describe('the library tab does not tell the reader something untrue', () => {
     // A library nobody can read is worse than an absent tab: it renders an
     // empty list that looks like "you have saved nothing".
     //
-    // The open tag is left open on purpose. This used to require the trigger
+    // What is guarded is the gate, not the tag. This first required the trigger
     // to be spelled `<TabsTrigger value="library">` with nothing after it, so
-    // giving the trigger a title or an onClick broke a guard that has nothing
-    // to say about either. What is being guarded is the gate, not the tag.
-    const gated = /signedIn && <TabsTrigger value="library"[ >]/;
-    assert.ok(
-      !gated.test('<TabsTrigger value="library" onClick={close}>'),
-      'the gate pattern must not pass an ungated trigger',
-    );
+    // giving it a title broke a guard with nothing to say about titles; then it
+    // required the attribute on the same line, so wrapping the tag over four
+    // lines broke it again. Attributes and whitespace are free. `signedIn &&`
+    // sitting immediately in front of the trigger is not.
+    const gated = /signedIn && <TabsTrigger\s+value="library"[\s>]/;
+    for (const ungated of [
+      '<TabsTrigger value="library" onClick={close}>',
+      '{hasPrompts && <TabsTrigger value="library">',
+      '{signedIn && <TabsTrigger value="bill">}\n<TabsTrigger value="library">',
+    ]) {
+      assert.ok(!gated.test(ungated), `the gate pattern passed an ungated trigger: ${ungated}`);
+    }
     assert.match(app, gated);
     assert.match(app, /\{signedIn && \(/);
   });

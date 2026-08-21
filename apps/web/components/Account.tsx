@@ -87,7 +87,7 @@ export function Account({ t, collapsed = false }: { t: WebMessages; collapsed?: 
         title={collapsed ? t.account.signIn : undefined}
         className={cn(
           'inline-flex h-8 items-center justify-center rounded-md border text-[13px] font-normal text-muted-foreground hover:bg-layer-hover hover:text-foreground',
-          collapsed ? 'w-8 px-0' : 'px-2.5',
+          collapsed ? 'w-8 px-0' : 'justify-start px-2.5',
         )}
       >
         {/* Collapsed, the border and the icon are the whole control; the label
@@ -102,9 +102,24 @@ export function Account({ t, collapsed = false }: { t: WebMessages; collapsed?: 
     <DropdownMenu>
       <DropdownMenuTrigger
         className={cn(
-          'flex w-full items-center gap-2 rounded-md p-1.5 text-left outline-hidden',
+          /*
+            The nav rows' geometry, copied on purpose: a transparent 1px border
+            and 10px of side padding, which is what puts a mode's icon 19px in
+            from the rail's edge. Without it this sat at 6px and the avatar
+            stood five pixels left of the column of icons directly above it —
+            two stacks of glyphs in one narrow rail, not lining up.
+          */
+          /*
+            The gap is 5px, not 10, and the number is derived rather than
+            chosen: a nav row is a 17px icon and a 10px gap, and this row's
+            glyph is 22px. Shrinking the gap by exactly the 5px the avatar is
+            wider keeps BOTH columns — the glyphs share a left edge and the
+            labels share one too. At 10px the login sat three pixels right of
+            every label above it.
+          */
+          'flex w-full items-center gap-[5px] rounded-md border border-transparent px-2.5 py-1.5 text-left outline-hidden',
           'hover:bg-layer-hover focus-visible:bg-layer-hover data-[state=open]:bg-layer-active',
-          collapsed && 'justify-center p-1',
+          collapsed && 'justify-center px-0',
         )}
         aria-label={t.account.menuLabel(state.user.login)}
       >
