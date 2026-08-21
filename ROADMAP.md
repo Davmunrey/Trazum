@@ -1184,6 +1184,42 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.53.4 — "What it says and what it does" — released
+
+The web app got a shell — a sidebar rail with a drawer below `lg`, an account
+menu at its foot, three waiting states in the shape of their own reports, and
+two exact columns whose every number is derived from the row's own padding
+rather than typed. Then two audits of that shell found fifteen defects in it,
+and a pass over the README found thirty-one more.
+
+**Every one is the same gap**: something said one thing and did another, and the
+saying was never wrong enough to notice by reading. A class list that merged
+correctly and computed to the primitive's value — three times, including an
+active row with no surface at all in either theme. A page headed *"Real output,
+transcribed"* whose transcripts stopped early, twenty of them, with the
+convention for marking that already in the file and used once. A `--max-growth`
+documented as a percentage that compares a token count. A headline figure six
+times too high, contradicted by another block on the same page.
+
+**Five of the nineteen defects were introduced while fixing the others**, and
+not one was visible in the source: a focus trap that read its container once
+while Escape kept working because it returns first; a retry that stopped at
+finding a candidate rather than at moving focus; an `outline-none` and an
+`outline-2` computing together to nothing; a comment written off a reading taken
+three percent into a transition; and an `overflow-x: visible` control that was
+not a control.
+
+Five guards, each derived from the thing it guards. **Four cried wolf on their
+first version** — a hover override that wins, an `_svg` rule that paints, a
+child's prop name, a working override sharing a property family — so state and
+element are each half the rule now. **And CodeQL found a ReDoS in one of them
+whose own proof would have passed against the vulnerable version.**
+
+What stayed out is written down: ten README figures that would have to be
+reconstructed from logs this work does not have, four transcripts needing a
+credential it does not have, and one sentence seen and deliberately not claimed.
+
+
 ## Collapsed into 1.8.0
 
 **Everything below shipped as 1.8.0, and none of these numbers is on npm.** They

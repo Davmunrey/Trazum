@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.53.3**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.53.4**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,202 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.53.4 — "What it says and what it does"
+
+**Every defect in this release is the same gap**: something said one thing and
+did another, and the saying was never wrong enough to notice by reading. A class
+list that merged correctly and computed to the primitive's value. A page headed
+*"Real output, transcribed"* whose transcripts stopped early. A guard whose name
+promised a check it had quietly stopped performing. Nineteen of them, and the
+only thing that ever found one was running it.
+
+### The web app got a shell
+
+The three modes were a pill group under a full-width header. They are a sidebar
+now: 236px expanded, 60px collapsed with the preference kept across visits, and
+below `lg` the same rail arrives as a drawer with a scrim that closes three ways
+— Escape, the scrim, and choosing a mode, which is what it was opened for. The
+account control became a menu at the rail's foot, opening upward at the wide
+width and sideways at the narrow one so it can never open off the screen.
+
+**Three waiting states, each in the shape of what is coming.** Optimise, Compare
+and Library shared one defect: the button changed its label while the panel that
+will hold the answer went on showing its empty state, so the only sign of life
+was at the far side of the screen from where the reader is looking. Each draws
+the real rows of its own report now, so nothing jumps when the answer lands.
+
+**Two columns, and every number in them is derived.** A nav row is 8px of the
+list's padding, 1px of transparent border and 10px of its own — so every glyph
+sits at 19 and every label at 46. The account row's gap is 5px rather than 10,
+which is 10 minus the 5 its 22px avatar exceeds a 17px icon, so both columns
+hold across two different glyph sizes. Collapsed, all five glyphs centre on the
+same half-pixel.
+
+### A phone had 261 pixels of a 390 pixel screen
+
+The tabs root is a flex container and `orientation="vertical"` leaves it a row,
+so the mobile bar became a 128px *column* standing beside the content. It was
+invisible in every screenshot taken of it, because the only ones taken had the
+drawer open over it, and obvious the moment the bounding boxes were printed.
+
+### Three times, a correct class list computed to the wrong thing
+
+`TabsTrigger` carries its declarations behind variant prefixes — and a `dark:`
+copy of one of them, a further specificity step up. The same declaration written
+on the `TabsList` loses to them silently: tailwind-merge cleans the class list,
+the source reads correctly, the build is green, and the computed value is the
+primitive's.
+
+It cost a collapsed rail whose icons measured 12.5px off centre while every
+other glyph measured half a pixel, and an active row with **no surface at all**
+— `rgba(0,0,0,0)` in both themes, with the collapsed rail signalling the current
+mode by icon hue alone. Fixing the light rule left the dark one exactly as it
+was, because the dark rule outranks it.
+
+### Two audits, and what they found
+
+Five lenses measured the running app — geometry, keyboard, colour, Spanish,
+breakpoints — and every finding was reproduced by an independent reader before
+it counted. Then a sixth pass asked what all five had missed, and named the
+frames *during* a transition, the dark theme's overlay layer, Windows High
+Contrast, and the requests the page issues on load.
+
+- **A closed drawer kept five controls in the tab order**, all off-screen. Five
+  consecutive Tab presses changed zero pixels anywhere on a phone.
+- **The drawer claimed modality and did not enforce it**: focus never entered,
+  Tab walked out behind the scrim, and closing stranded it.
+- **In dark mode the scrim brightened the page instead of dimming it.** It
+  followed `--foreground`, which in dark is a near-white, so the layer whose
+  whole job is to recede became a 40% white wash: the page behind it measured a
+  relative luminance of 0.0157 closed and 0.1681 open — eleven times brighter —
+  while the drawer in front of it sat at rgb(38,36,32).
+- **Expanding the rail threw its contents 70px across the page** for the first
+  ~50ms, where they also answered hit-tests.
+- **Under Windows High Contrast the current mode became untellable.** The rail
+  marks it with a background tint, and a tint is exactly what forced-colors
+  replaces; active and inactive rows both measured rgb(232,232,232).
+- **Two contrast floors**: 2.90:1 for the faint tier and 3.77:1 for inactive
+  labels in light, where the dark theme had a token and the light one had
+  shadcn's `/60` opacity. **A legibility floor outranks a visual tier**, so the
+  faint tier is now the lightest warm grey clearing 4.5:1 on both surfaces —
+  a narrow band, and said to be one.
+- **Focus indicators at 1.05:1 and 2.03:1** against a floor of 3:1.
+- **A desktop preference reached a phone drawer**, producing a 248px overlay
+  containing a 60px rail — no wordmark, every label `sr-only`, and no expand
+  control, because the only one is desktop-width. And **crossing to a desktop
+  with the drawer open** left a full-screen scrim and a locked body with no
+  visible control to lift either.
+- **The session was fetched twice on every load**, by two components reading
+  different fields of one answer — and two answers to one question can differ.
+
+**Five of the nineteen were introduced while fixing the others, and not one was
+visible in the source.** A focus trap that read its container once and did
+nothing, while Escape kept working because it returns before touching it. A
+retry that stopped at *finding* a candidate rather than at *moving* focus —
+`offsetParent` is null for `display: none` and never for `visibility: hidden`,
+so the list was full of stops that could not take focus. An `outline-none` and
+an `outline-2` computing together to `outline: none 0px`. A comment claiming
+controls had no focus indicator, written off a probe that sampled the computed
+style three percent into a transition. And an `overflow-x: visible` control that
+was not a control, because beside `overflow-y: auto` it computes back to `auto`.
+
+### The README said "real output, transcribed" and twenty blocks were not
+
+Forty-three fenced blocks invoke `trazum`. Ten commands were checked by
+executing them and comparing line for line, each difference reproduced by an
+independent reader. Twenty-nine survived, and all but four are one shape: **a
+transcript that stops early and is not marked abridged**, so a reader takes a
+partial output for a whole one. The page already had the convention — a bare
+ellipsis line inside the fence, used exactly once — and had not used it since.
+
+The four that are not that:
+
+- **`--max-growth` is a token count, not a percentage.** The page said
+  `--max-growth 10` fails "a prompt that grew more than 10%". It compares
+  `tokenDelta > limit`. Measured both directions: a prompt that grew **50%** but
+  five tokens passes, and one that grew **3%** but thirty tokens fails. People
+  put this in CI.
+- **`blame`'s headline figure was six times too high.** +759 tokens at 50,000
+  calls was priced at +$1,138.50 a month. Run on a constructed two-commit
+  history, +500 tokens at 50,000 calls prints +$125.00 — $5 per million, which
+  is what `trazum models` lists for Claude Opus 5 and what the `diff` block on
+  the same page already agreed with. It is +$189.75, and the two blocks had been
+  contradicting each other.
+- **`profile` handed the reader the wrong homework command** — the one thing the
+  block exists to give you.
+- **`check`'s report was re-laid-out around its own transcript**: the status
+  column moved from the end of the row to the front, a header and a summary line
+  appeared, and the count no longer matched the snippet printed directly above
+  it — 34, not 43, for the very code the page shows.
+
+**And the caveats had been falling out of the transcripts.** `quality` prints
+two — that a before-and-after is not an experiment, and that it cannot see what
+else you deployed that day — and the block had replaced the first with a blank
+line and dropped the second, on a block whose subject is a failing gate that
+also showed no gate verdict. `blame`'s ±10% note, `rank`'s two definitions,
+`prune`'s yardstick sentence (cut mid-clause and closed with a full stop the
+tool never prints), `route`'s "agreement is not correctness", `eval`'s "read the
+cases below before shipping this", and `baseline`'s "re-record and commit" were
+all absent. Every one bounds the claim above it.
+
+Two more found the same way: **`serve`'s response was missing `schemaVersion`**,
+which the same page elsewhere calls *"the only thing you must branch on"*; and
+**`watch` reads the store, which its section never said**, so a reader met the
+prerequisite after writing the cron entry rather than before.
+
+### Guards, and the four that cried wolf
+
+Five are new, and every one is derived from the thing it guards rather than from
+a list typed beside it: the primitive's own declarations, `formatUsd`, the
+document's own table.
+
+**Four of them flagged something correct on their first version.** A hover
+override that wins. An `_svg` descendant rule that paints. A child's prop *name*.
+A working parent override whose only sin was sharing a property family. State
+and element each turned out to be half the rule, and the lesson is now written
+down: before widening a guard, measure whether the thing it flagged actually
+works.
+
+**And CodeQL found a ReDoS inside one of them.** The extractor's alternation was
+ambiguous — both branches could begin with `[` — so every `[[]` in the input had
+two readings: 0.2ms at ten repetitions, 93.6 at twenty-two, **6,051 at
+twenty-eight**. Worse, **the test written to prove that fix would have passed
+against the vulnerable version**: it fed the pattern a plain run of sixty `[`,
+which the ambiguous form chews through in 0.08ms. The recurring trap of this
+repository — an assertion that only ever sees inputs it cannot fail on — this
+time inside the proof for the defect itself.
+
+### What stayed out, and why
+
+**Ten of the twenty-nine README findings are not fixed.** They are figures from
+logs the README's author had and this work does not — `profile`'s dollar
+columns, `blame`'s author-column width, `rank`'s size figures. Reconstructing
+them would be the same defect pointing the other way.
+
+**Four transcripts could not be run at all.** `optimize --suggest`, `eval`,
+`route` and `watch` need a model call or a provider credential, and this work
+had neither. Said, rather than worked around.
+
+**One thing was seen and deliberately not claimed.** Under the `--suggest`
+block, which shows three surviving suggestions and two dropped, the prose says
+*"eight surviving suggestions out of ten is a useful result"*. That may be a
+general principle rather than a reading of the transcript directly above it. It
+cannot be settled without a key, so it stays as it is and is written down here
+instead.
+
+**Nothing about what the tool computes changed.** The web suite goes from 351 to
+373 and the CLI suite from 957 to 964; no existing case was deleted.
+
+### Checked and clean, which is also a result
+
+`docs/format.md`'s three `conform` invocations run exactly as written, and it has
+no example documents to parse. `optimize --reorder --diff` reproduces its four
+lines word for word. The `--json` contract holds in both directions against a
+real run. Every dollar amount in every fenced block in the README now matches
+what `formatUsd` prints — swept, one finding, and the sweep is a test now.
+`trazum gateway` names four providers with no count typed beside them, which is
+the defect avoided rather than made.
 
 ## 1.53.3 — "Two surfaces, two formats"
 
