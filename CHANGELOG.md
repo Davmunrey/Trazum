@@ -13,6 +13,54 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**The gateway relays a streamed answer as it arrives — 1.52's first chapter.**
+Until now `gateway-server.ts` read `await upstreamResponse.text()` for *every*
+response. For `"stream": true` — nearly all production traffic, and every agent
+loop — the caller waited for the entire answer and then received it at once, so
+**time to first token became the total generation time**.
+
+The page had the argument against itself already: reading a budget file per
+request would *"put Trazum's own latency between you and your provider on every
+call — a cost this tool would otherwise be reporting on somebody else."*
+Buffering a stream was a far larger version of that, in the same file.
+
+**The provider decides, not the request.** A body asking to stream can still
+come back whole, so the branch turns on the `content-type` that actually
+arrived rather than on what was asked for.
+
+**`streamingUsageReader`** reads the counts off the events on their way past and
+holds three numbers and a partial line — never the text. That is the same
+promise the buffered path makes, kept structurally rather than by intention.
+
+- **Anthropic** puts input and cache counts on `message_start` and a *running*
+  output total on each `message_delta`. The last one wins. Summing them would
+  report a bill several times the real one, in the direction that makes this
+  tool look like it found money it did not.
+- **OpenAI** sends usage only when the caller passed `stream_options:
+  {include_usage: true}`. Without it the stream carries no counts and the
+  gateway records **nothing — not zero**. A call whose usage never arrived is
+  not a free call, and zero is the flattering direction.
+- **A line that never ends is refused** past 1 MB rather than buffered. A proxy
+  that promised to hold no text must not be turned into one holding a gigabyte
+  by an upstream that omits a newline; losing those counts surfaces as "usage
+  not recorded", which is the honest failure.
+- **A stream that breaks partway** destroys the socket — the head is already
+  sent, so there is no status left to change — and notes the call as unmeasured.
+  The money was spent and its counts rode an event that never arrived; recording
+  the partial counts would be a measurement of the part that arrived, read as
+  the cost of the whole.
+
+**The end-to-end test cannot pass against a buffering proxy — it hangs.** The
+stub upstream emits `message_start` and then holds; the test asserts the first
+event reached the caller *before* releasing the rest. Restoring the old relay
+does not fail the assertion, it deadlocks: the proxy waits for a body that will
+not end until the test that is waiting for the proxy lets it. Proven by doing
+exactly that, under a timeout.
+
+The type is `GatewayUsage`, not `MeasuredUsage` — `measured-profile.ts` already
+uses that name for a label's coverage across a log, and two types with one name
+is a rename waiting to be got wrong.
+
 **A plan through 1.60.0** — [docs/plan-1.52-1.60.md](docs/plan-1.52-1.60.md),
 nine arcs, written before the code as the four before it were. Under the
 numbering adopted at 1.50.1 a minor closes an arc, so 1.52.0 … 1.60.0 land one

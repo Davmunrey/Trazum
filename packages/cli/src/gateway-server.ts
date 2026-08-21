@@ -31,9 +31,10 @@
  * aggregates since 1.42 and standing in the path changes nothing about that.
  */
 
+import { once } from 'node:events';
 import { createServer } from 'node:http';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
-import { estimateTokens, gatewayDecision, usageFromResponse } from '@trazum/core';
+import { estimateTokens, gatewayDecision, streamingUsageReader, usageFromResponse } from '@trazum/core';
 import type { GatewayDecision, GatewayPolicy, GatewayStanding, PricingCatalogue } from '@trazum/core';
 
 /** Compiled in. See the module note. */
@@ -300,33 +301,89 @@ export function buildGateway(context: GatewayContext): Server {
         return;
       }
 
-      const text = await upstreamResponse.text();
+      const back: Record<string, string> = {};
+      upstreamResponse.headers.forEach((value, name) => {
+        if (!HOP_BY_HOP.has(name.toLowerCase())) back[name] = value;
+      });
 
-      // Measured at the moment of the call, from the provider's own counts —
-      // the reason this beats a connector, which reports the runaway after it
-      // ran. Counts only reach `record`; the body is dropped here.
-      let measured: unknown;
-      try {
-        measured = JSON.parse(text);
-      } catch {
-        measured = null;
-      }
-      const usage = usageFromResponse(context.provider, measured);
-      if (usage !== null) {
+      /** Counts only ever reach `record`; the body is never kept, either way. */
+      const recordUsage = (usage: ReturnType<typeof usageFromResponse>): void => {
+        if (usage === null) return;
         context.record({
           model: decision.kind === 'substitute' ? decision.to.id : described.model,
           label: described.label,
           substituted: decision.kind === 'substitute',
           ...usage,
         });
+      };
+
+      /**
+       * A streamed answer is relayed as it arrives.
+       *
+       * Until 1.52 this method read `await upstreamResponse.text()` for every
+       * response, which for `"stream": true` — nearly all production traffic —
+       * held the entire answer and then delivered it at once. Time to first
+       * token became the total generation time. This page argues that reading a
+       * budget file per request would put Trazum's latency between the caller
+       * and their provider; buffering a stream was a far larger version of that
+       * in the same file.
+       *
+       * The provider decides, not the request: a body asking to stream can
+       * still come back whole, and `content-type` is what actually arrived.
+       */
+      const streaming = (upstreamResponse.headers.get('content-type') ?? '').includes(
+        'text/event-stream',
+      );
+
+      if (!streaming || upstreamResponse.body === null) {
+        const text = await upstreamResponse.text();
+        let measured: unknown;
+        try {
+          measured = JSON.parse(text);
+        } catch {
+          measured = null;
+        }
+        recordUsage(usageFromResponse(context.provider, measured));
+        response.writeHead(upstreamResponse.status, back);
+        response.end(text);
+        return;
       }
 
-      const back: Record<string, string> = {};
-      upstreamResponse.headers.forEach((value, name) => {
-        if (!HOP_BY_HOP.has(name.toLowerCase())) back[name] = value;
-      });
       response.writeHead(upstreamResponse.status, back);
-      response.end(text);
+
+      const reader = streamingUsageReader(context.provider);
+      const decoder = new TextDecoder();
+      try {
+        for await (const chunk of upstreamResponse.body as AsyncIterable<Uint8Array>) {
+          // Counted on the way past, then forwarded unchanged. The bytes the
+          // caller receives are the bytes the provider sent.
+          reader.push(decoder.decode(chunk, { stream: true }));
+          if (!response.write(chunk)) {
+            await once(response, 'drain');
+          }
+        }
+        reader.push(decoder.decode());
+      } catch (error) {
+        /**
+         * The stream broke partway. The head is already sent, so there is no
+         * status left to change and no refusal to render — destroying the
+         * socket is the only way to tell the caller the answer is incomplete
+         * rather than short.
+         *
+         * The money is spent and unmeasured: the provider generated whatever it
+         * generated, and the counts ride the event this stream never reached.
+         * Recorded as a broken stream rather than as the partial counts, which
+         * would be a measurement of the part that arrived and read as the cost.
+         */
+        context.note(
+          `stream broke before its usage event: ${error instanceof Error ? error.message : String(error)} — this call is unmeasured`,
+        );
+        response.destroy();
+        return;
+      }
+
+      recordUsage(reader.done());
+      response.end();
     })();
   });
 }
