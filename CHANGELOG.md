@@ -11,6 +11,11 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+
+## 1.53.1 — "The band stays inside the family it was measured in"
+
 ### Fixed
 
 **Claude's band had leaked out of Claude — 1.54's second chapter, and three

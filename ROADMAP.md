@@ -1112,6 +1112,31 @@ Gemini user about an OpenAI setting, and two documents carrying provider counts
 that had gone stale in a release about that very number.
 
 
+### 1.53.1 — The band stays inside the family it was measured in
+
+Two chapters of the 1.54 arc, and the second is a fault that had been in the
+product since the estimator learned to price more than one provider. The
+published ±10% is measured against Claude's tokenizer and `--exact-tokens`
+counts with Anthropic's endpoint; both facts were written down and neither was
+enforced.
+
+`optimize --exact-tokens` was handing the caller's own model id to Anthropic's
+counter — right on a Claude model, and on `gpt-5` either an upstream error or a
+number from the wrong tokenizer labelled *exact*. It refuses by name now, before
+asking for a key. The context-overflow advisory has stopped telling other
+families that a call **will** fail on a margin measured against Claude: where
+the band was never measured, how far over the line a prompt really is cannot be
+said, and saying so beats inventing a second band. The advice to run
+`--exact-tokens` is bounded to the family it works for rather than deleted.
+
+The band harness measures four families now — OpenAI and Google became
+measurable when 1.53 made their endpoints committed facts — and is tied to the
+gateway's allowlist, so adding a family needs the same security-test edit that
+adding an upstream does. Nothing has been run against a real service: what
+shipped is the shape, and every unmeasured family is named as unmeasured with
+the command that would settle it.
+
+
 ## Collapsed into 1.8.0
 
 **Everything below shipped as 1.8.0, and none of these numbers is on npm.** They

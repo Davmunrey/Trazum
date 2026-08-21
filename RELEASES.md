@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.53.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.53.1**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,139 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.53.1 — "The band stays inside the family it was measured in"
+
+**Two chapters of the 1.54 arc**, and the second one is a fault that had been in
+the product since the estimator learned to price more than one provider.
+
+Trazum's `±10%` is the estimator's error **measured against Claude's tokenizer**
+over twenty-one samples, and `--exact-tokens` counts with **Anthropic's**
+endpoint. Both facts were written down. Neither was enforced, and three claims
+had walked out of the family they were measured in.
+
+### `--exact-tokens` was sending your model to somebody else's counter
+
+`optimize --exact-tokens` handed `result.usage.model` straight to Anthropic's
+`count_tokens`. On a Claude model that is exactly right. On `gpt-5` it sends
+another company's model id to Anthropic and comes back with either a confusing
+upstream error or a number counted with the wrong tokenizer — labelled
+**exact**, which is the strongest word this tool uses about a count.
+
+It refuses now, by name:
+
+```
+Error: --exact-tokens counts with Anthropic's endpoint, which counts Claude's
+tokenizer, and gpt-5 is a model from openai. Counting it there would either be
+refused upstream or return a number for a different tokenizer, and this tool
+will not label that exact. Drop --exact-tokens for the estimate — which is
+honest about being one — or count with openai's own tooling.
+```
+
+**The family check runs before the key check**, and that order is the point.
+Asking a reader on another family for an `ANTHROPIC_API_KEY` first would send
+them after a credential that could not have helped them.
+
+### "The call will fail" was Claude's verdict, given to everybody
+
+The context-overflow advisory is the most absolute sentence this product
+produces — no dollar figure, no hedge, just *"The call will fail: split the
+content or move to a model with a larger window."* It fired whenever the
+estimate exceeded the window by more than the band. That band is Claude's.
+
+On a family nobody has measured, an estimate over the window is **always**
+uncertain however far over it looks, because the margin that would settle it is
+the unknown. So the advisory has three shapes now where it had two: an exact
+count gives a verdict, an estimate on the calibrated family gives a probability,
+and an estimate on any other family says that how far over it really is cannot
+be said from here.
+
+**The fix is not a second, wider band for the unmeasured families.** That would
+be the same mistake with worse arithmetic — *nothing continuous invents a
+number*.
+
+### And the advice pointed at a command that now refuses you
+
+Both context advisories ended with *"settle it with --exact-tokens; the counting
+endpoint is free"* — for five of the seven priced families, a counter for a
+different tokenizer. The advice is **bounded, not deleted**: the family it works
+for still gets it, and a test asserts that it kept it.
+
+`BAND_CALIBRATED_PROVIDER` and `bandGoverns()` are exported so the fact has a
+name that something can check. A model with no provider recorded reads as **not
+covered**, never as covered: the flattering reading of missing information is
+the one this project does not take.
+
+### The band harness measures four families
+
+The other chapter, and it was only writable because 1.53 closed. OpenAI and
+Google became measurable when their endpoints became committed facts of this
+repository — the gateway's own upstreams. **Google deliberately does not use a
+counting endpoint**: one may well exist, nobody here has ever sent a key to it,
+and an endpoint recalled rather than committed is exactly what the previous arc
+spent itself refusing. It measures with `:generateContent` at one output token
+and pays for it.
+
+**Neither has been run against the real service.** Nothing in this environment
+has a key. What ships is the shape.
+
+**The measuring script is now tied to the gateway's allowlist.** It sends a real
+API key to every family it measures, from a file nobody thinks of as
+security-sensitive — and it is in fact the file where DeepSeek's endpoint sat
+while the gateway was still refusing DeepSeek as unsupported. Adding a family
+requires the same deliberate edit to `security.test.js` that adding an upstream
+does. A measuring script is not a side door.
+
+Each unmeasured family now gets its **own named skip** with its own command:
+
+```
+ok 2 - openai: not measured — the estimator's error on this family is unknown # SKIP run: node scripts/measure-token-band.mjs --provider openai
+ok 3 - google: not measured — the estimator's error on this family is unknown # SKIP run: node scripts/measure-token-band.mjs --provider google
+ok 4 - deepseek: not measured — the estimator's error on this family is unknown # SKIP run: node scripts/measure-token-band.mjs --provider deepseek
+```
+
+The sentence it replaced named `deepseek` alone, because that was the only other
+provider the day it was typed — so the two families arriving at 1.53 would have
+gone unmentioned by a message bounded by its neighbour rather than by its
+subject.
+
+### What this work found wrong in itself
+
+**A refusal that told a falsehood.** The provider-less branch said the model
+*"is not a model in the price catalogue at all"* — false in the only case that
+can reach it, since `provider` is optional on a priced model and `--pricing`
+lets anybody supply a catalogue. The model **is** in the catalogue; its family
+is what is missing. Found by constructing the case and running it.
+
+**A test that failed a correct implementation.** The new guard asked for a
+prompt 1.01× a 1,000,000-token window and grew the text by doubling, producing
+1,966,080 tokens — landing in the *certain* branch. Badly built input, correct
+code. Building it by repeated append then hung the suite for two minutes, which
+is how the third version came to compute the length instead.
+
+**A guard that legitimately failed nine models.** `threshold-honesty.test.js`
+recognises hedging by vocabulary, and the new sentences hedge in words its list
+did not know. `may be` became `\bmay\b`, plus *"not knowable"* and *"cannot be
+said"*. Widening a guard's accept-list to make your own change pass is how a
+guard becomes decoration — so the pattern is now handed the flat sentences it
+exists to refuse and must reject all three.
+
+**A check that could never have fired.** *"The harness reaches nothing the
+gateway does not front"* would never have run against anything it should reject,
+because a brand-new host fails the decision check above it first. The case it
+actually exists for is a host already decided about and decided to be something
+*other* than an upstream — which satisfies every other check in the file. Third
+time this pattern has been caught in three releases.
+
+### What stayed out
+
+**The numbers.** Nothing in this environment has an API key, so no per-family
+band was measured. The plan's remaining chapters — publish a band per family,
+then take the real-tokenizer dependency decision **with the number in hand** —
+are waiting on somebody who can run the harness. Until then every family the
+estimator was not calibrated on is named as unmeasured rather than quietly given
+Claude's number.
+
 
 ## 1.53.0 — "Four of the seven, and why the other three are not here"
 
