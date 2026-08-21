@@ -113,6 +113,63 @@ broke it again. It matches the open tag and any whitespace now, and is handed
 three ungated triggers it must reject rather than one. What is guarded is the
 gate, not the spelling.
 
+**Every README transcript was run, and twenty of them were not transcripts.**
+The page is headed *"Real output, transcribed"*. Ten commands were checked by
+executing them and comparing line for line — `rank`, `blame`, `diff`,
+`baseline`, `check`, `route`, `prune`, `quality`, `eval`, `profile` — with each
+difference handed to an independent reader who had to reproduce it before it
+counted. Twenty-nine survived, and all but four are one shape: **a transcript
+that stops early and is not marked abridged**, so a reader takes a partial
+output for a whole one. The README already had the convention — a bare `…` line
+inside the fence — and simply had not used it.
+
+Four were not that.
+
+*`--max-growth` is a token count, not a percentage.* The page said
+`--max-growth 10` fails "a prompt that grew more than 10%". It compares
+`tokenDelta > limit`. Measured both ways: a prompt that grew **50%** but five
+tokens passes `--max-growth 10`, and one that grew **3%** but thirty tokens
+fails it. This is a gate people put in CI.
+
+*`blame`'s headline figure was six times too high.* The block priced +759
+tokens at 50,000 calls as +$1,138.50 a month. Run on a constructed history,
++500 tokens at 50,000 calls prints +$125.00 — a rate of $5 per million, which
+is what the catalogue lists for Claude Opus 5 and what the sibling `diff` block
+on the same page already agrees with. The figure is +$189.75, and the two
+blocks had been contradicting each other.
+
+*`profile` handed the reader the wrong homework.* The block's whole point is
+the command it gives you to check its own claim, and it printed
+`trazum eval <prompt> --cases <cases> --model claude-sonnet-5` where the tool
+prints `trazum route <log> --prompt-file <prompt> --cases <cases> --yes`.
+
+*`check`'s report had been re-laid-out around its own transcript.* The status
+column moved from the end of the row to the front, a header line and a summary
+line appeared, and the token count no longer matched the snippet printed
+directly above it — 34, not 43, for the very code the page shows. The snippet
+now carries both prompts it reports on, so every number in the block is
+derivable from the page itself.
+
+**And the caveats had been quietly falling out of the transcripts.** `quality`
+prints two — that a before-and-after is not an experiment, and that it cannot
+see what else you deployed that day — and the block had replaced the first with
+a blank line and dropped the second. `blame`'s "±10%" estimate note, `rank`'s
+two definitions, `prune`'s yardstick sentence (cut mid-clause and ended with a
+full stop the tool never prints), `route`'s "agreement is not correctness",
+`eval`'s "read the cases below before shipping this", and `baseline`'s "if the
+growth is intended, re-record" were all absent. Every one is the sentence that
+bounds the claim above it. A refusal never arrives bare, and neither does a
+measurement.
+
+**And one figure was a string the tool cannot produce.** `profile`'s
+conversation-shape line wrote a median of `$0.02`; it interpolates
+`formatUsd(shape.medianUsd)`, and `formatUsd` gives four decimals under a
+dollar and five under a cent — precisely so a figure that rounds to nothing at
+two decimals does not print as `$0.00` beside a column of real money. It is
+`$0.0200`. A guard now takes the rule from that function rather than from any
+list typed beside it, and checks every dollar amount in every fenced block on
+the page; the sweep found this one and nothing else.
+
 **A completeness pass asked what every lens had missed, and found four more.**
 The frames *during* a transition, the dark theme's overlay layer, Windows High
 Contrast, and the requests the page issues on load — four places nobody had

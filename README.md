@@ -671,6 +671,9 @@ export const SUPPORT = `You are a support agent for Acme.
 Always answer in the customer's language.
 
 Customer message: ${message}`;
+
+// trazum:prompt classifier
+export const CLASSIFY = `Classify the ticket into one of: billing, technical, account.`;
 ```
 
 ```bash
@@ -678,8 +681,12 @@ trazum check src/ --max-tokens 2000
 ```
 
 ```
-src/prompts.ts#support-system   43 / 2,000   OK
-src/prompts.ts#classifier       23 / 2,000   OK
+src/ — 2 prompts
+
+  OK      34 / 2,000   src/prompts.ts#support-system
+  OK      19 / 2,000   src/prompts.ts#classifier
+
+  All 2 within budget.
 ```
 
 **It reads a marker, it does not guess.** A heuristic inside a CI gate fails
@@ -721,7 +728,11 @@ Agreement
 
   Diverges
     The model is consistent with itself and markedly less so with the rewrite,
-    so the optimisation changed what the prompt asks for.
+    so the optimisation changed what the prompt asks for. Read the cases below
+    and the diff before shipping this.
+
+  Cases that changed most
+…
 ```
 
 **The yardstick line is the whole point.** A model asked the same question
@@ -798,6 +809,7 @@ for one run.
   Monthly cost $129.75 → $132.95 (+$3.20)
   growth of 64 tokens is over the limit of 0
   growth of +67.4% is over the limit of 5%
+  If the growth is intended, re-record with "trazum baseline" and commit trazum.baseline.json.
 ```
 
 Read those two blocks together, because that is the whole point: **every budget
@@ -1390,12 +1402,23 @@ trazum quality usage.jsonl --label support --at 2026-08-05T00:00:00Z --gate
 
 ```
 Quality across the change: support
+  This is a before-and-after, not an experiment. It splits traffic by time
+  rather than at random, so everything else that changed at the same time is
+  in the difference too — which is why it says "cannot tell" far more
+  readily than an A/B would.
 
   before 71.0% (8,400 outcomes)   after 64.0% (8,400 outcomes)
 
   ✗ The resolution rate moved from 71.0% to 64.0% on 16,800 measured outcomes,
     and this change saves $0.5000 a call. Both halves are measured; neither is
     an estimate.
+
+  It cannot see anything else you deployed that day. A "dropped" verdict
+  says the rate fell and the three things it can check did not move. That is
+  a smaller claim than "the prompt did it", and it is the largest one the
+  evidence supports.
+
+  Gate failed: a measured drop with nothing else to explain it.
 ```
 
 That is the sentence teams actually argue about, and it has both halves and both
@@ -2010,8 +2033,11 @@ Priced on Claude Opus 5 at 50,000 calls a month.
 Recover  Tokens  Size  Tok/sen  Prompt
   $9.00      36   129     21.5  padded.txt
 $0.2500       1   115     38.3  code-heavy.txt  — 83% is code or URLs, which cannot be trimmed
-$0.2500       1   110      7.9  examples.txt  — 4 examples, ~90 tokens
 $0.2500       1    35      7.0  dense.txt
+$0.2500       1   110      7.9  examples.txt  — 4 examples, ~90 tokens
+
+Tok/sen is tokens per sentence: verbosity independent of length. There is no score — every column is a measurement you can check against the file.
+Recover is what the deterministic rules would take at this level, priced by the usage profile, with the token count beside it — a saving of one token is twenty-five cents and no work worth doing. It is measured by running the rules, not by a formula.
 ```
 
 **There is no complexity score, and that is deliberate.** A number out of a
@@ -2060,13 +2086,16 @@ Date        Tokens   Change  Author       Commit
 2026-08-04   1,204     +310  Dana         9f2ac71  add escalation rules
 2026-07-29     894      +47  Sam          31be0d0  clarify the tone
 2026-07-11     847     +402  Dana         5c1d8e2  paste in the refund policy
+…
 2026-06-02     445    added  Sam          a0417bb  first pass
 
 Net across this history: 445 → 1,204 tokens (+759, +171%).
-That movement is +$1,138.50 a month on Claude Opus 5 at 50,000 calls.
+That movement is +$189.75 a month on Claude Opus 5 at 50,000 calls.
 
 Biggest single increase
   +402 tokens — Dana, "paste in the refund policy" (5c1d8e2)
+
+Token counts are estimates (±10%). The trend is the point; the absolute figures are not.
 ```
 
 Git already knows who changed a prompt and when. What it does not know is that
@@ -2124,7 +2153,12 @@ length but happened to double in courtesy. `--optimized` switches the figures
 to the post-rules text if you already run Trazum in your pipeline.
 
 **The gate is opt-in.** Growth alone exits 0. `--max-growth 10` is what makes a
-prompt that grew more than 10% exit 1:
+prompt that grew by more than **10 tokens** exit 1 — a token count, not a
+percentage, and per prompt rather than across the run. Measured both ways: a
+prompt that grew 50% but only five tokens passes `--max-growth 10`, and one that
+grew 3% but thirty tokens fails it. A library is forty things to govern, and
+summing them would pass a refactor that doubled one prompt because another
+happened to shrink.
 
 ```bash
 trazum diff old.txt new.txt --max-growth 10
@@ -2877,8 +2911,8 @@ What would actually move this bill
     · route it to Claude Sonnet 5, $12.60
     · send it through the Batch API, $10.50
     Whether that holds is an evaluation question, not an arithmetic one, and
-    nothing here has seen a single answer. Measure it: trazum eval <prompt>
-    --cases <cases> --model claude-sonnet-5
+    nothing here has seen a single answer. Measure it: trazum route <log>
+    --prompt-file <prompt> --cases <cases> --yes
 
   For comparison: shortening the prompt text can touch $18.00 at the very
   most — 85.7% of this bill, and only if you deleted every input token.
@@ -2961,13 +2995,19 @@ trazum route usage.jsonl --prompt-file prompts/support.txt --cases cases.txt --y
   support-rag on Claude Opus 5 → Claude Sonnet 5, worth $12.60 of this bill (60.0%).
 
   This will make 9 provider calls: two per case on claude-opus-5 to measure its
-  own variance, one per case on claude-sonnet-5.
+  own variance, one per case on claude-sonnet-5. Nothing has been spent yet —
+  add --yes to run it.
+
+  Running 3 cases...
 
   The cheaper model agrees with the original 94% of the time. The original
   agrees with itself 91% of the time — that is the yardstick, not 100%.
 
   ✓ HOLDS — the difference is inside the original model's own noise. On this
     bill that route is worth $12.60.
+
+  Agreement is not correctness. This measures whether the answers moved, not
+  whether they were ever right — the decision is still yours.
 ```
 
 **The yardstick is the expensive model's own run-to-run variance**, measured on the
@@ -3083,7 +3123,7 @@ background work is what the Batch API halves. Trazum names the lever and stops
 ### What one conversation costs
 
 ```
-  chat on Claude Opus 5: across 4,812 conversations, the median one costs $0.02
+  chat on Claude Opus 5: across 4,812 conversations, the median one costs $0.0200
   over 6 turns, 95% come in under $1.80, and the most expensive was $46.10.
 ```
 
@@ -3415,12 +3455,15 @@ trazum prune prompt.txt --cases cases.txt --yes    # spends it
 example removed).
 
 What each example is doing, measured on claude-opus-5
-  The prompt agrees with itself 94% of the time. That is the yardstick.
+  The prompt agrees with itself 94% of the time. That is the yardstick: a
+  removal that moves the answer less than this moved nothing attributable to
+  the example.
 
   → example 1 — 18 tokens, 93% agreement without it  no effect on these inputs
       Input: my card was declined
   · example 3 — 19 tokens, 41% agreement without it  needed here
       Input: I want my money back
+…
 ```
 
 **Leave-one-out against the prompt's own noise floor.** Ask the full prompt twice
