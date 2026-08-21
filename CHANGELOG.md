@@ -28,29 +28,98 @@ redefined in the dark block**: a token whose only definition lives in the light
 palette is one the dark theme silently inherits, which is how a page ends up
 drawing one theme's hover on the other theme's surface.
 
-**The header is a bar rather than a row of things that happen to be at the
-top.** Wordmark, tagline, account and language all sat at the same altitude, so
-nothing said "this is the application's chrome and the rest is the work". It is
-now the only element spanning the full width, with its own rule and a sticky
-position, and the tagline drops below `sm` because a bar that wraps stops being
-one.
+**The application's chrome became a sidebar.** Wordmark, tagline, account and
+language all sat at the same altitude as the work, so nothing said "this is the
+chrome and the rest is the product". It was first pulled into a full-width bar;
+that bar became a rail, because the thing that was missing was not altitude but
+a place for navigation to live. 236px expanded, 60px collapsed, the preference
+kept in `localStorage` so it survives a visit. Below `lg` the same rail arrives
+as a drawer with a scrim, and closes three ways — Escape, the scrim, and
+choosing a mode, which is what it was opened for.
+
+**One rail, not one per breakpoint.** The first draft rendered it twice, inside
+an `lg:hidden` block and again inside a `hidden lg:flex` one. Hidden is not
+absent: that put two tablists on the page controlling the same panels, two
+`role="tab"` elements per mode for a screen reader to read out, and two account
+components each fetching the session. Visibility is a style; duplication is a
+bug.
+
+**A phone had 261 pixels of a 390 pixel screen.** The tabs root is a flex
+container and `orientation="vertical"` leaves it a row, so the mobile bar became
+a 128px *column* standing beside the content. It is a column below `lg` and a
+row at it now. Invisible in every screenshot, because the only ones taken had
+the drawer open over it, and obvious the moment the bounding boxes were printed.
 
 **The three modes read as navigation.** They were dressed as a settings toggle:
 a small pill group in the sunken grey, the weight of a rule-level switch. They
 are not one control with three positions — Optimise shortens a prompt, Compare
 judges two of them, Your bill reads a usage log, which are three different jobs
-on three different inputs. Styled from the list rather than on each trigger,
-because a test pins the exact source of the Library trigger and a `className`
-there would break it.
+on three different inputs.
+
+**Collapsed, their labels are hidden rather than removed.** `sr-only`, not
+unrendered: a `title` attribute alone would rest a tab's whole accessible name
+on the weakest source the accessibility tree has, on the one control a reader
+has no other way to identify.
+
+**The account control became a menu.** A badge, an avatar, a name and a Sign out
+button in a row fitted a full-width header and fits neither width the rail has.
+The identity is the trigger now and the actions live behind it, opening upward
+at 236px and sideways at 60px so it can never open off the screen. Signing out
+is rare and destructive and no longer sits one stray click from the navigation.
+The "temporary session" warning moved inside, where there is room for the
+sentence that explains it, and sits above that sentence rather than run into it:
+*"temporary session This deployment keeps sessions in memory"* is not a sentence
+in either language.
+
+**The rail has two columns, and every number in them is derived.** A nav row is
+8px of the list's padding, 1px of transparent border and 10px of its own — so
+every glyph sits at 19 and every label at 46. The wordmark carried its own 12px
+and hung seven pixels left of the column it heads; the account row's gap is
+`5px` rather than 10, which is 10 minus the 5 its 22px avatar exceeds a 17px
+icon, so both columns hold across two different glyph sizes. Collapsed, all five
+glyphs centre on the same half-pixel.
+
+**A cascade the class list hid.** The collapsed mode icons measured 12.5px left
+of centre while every other glyph in the rail measured half a pixel.
+`TabsTrigger` carries its own `group-data-[orientation=vertical]/tabs:justify-start`,
+and a `[&_button]:justify-center` from the list is the same declaration at lower
+specificity — so tailwind-merge did its job, the class list was correct, and the
+computed value was still `flex-start`. The override belongs on the trigger, in
+the same variant.
+
+**Three waits, each in the shape of what is coming.** Optimise, Compare and
+Library shared one defect: the button changed its label and the panel that will
+hold the answer went on showing its empty state, so the only sign of life was at
+the far side of the screen from where the reader is looking. Each draws the real
+rows of its own report now — the caveat and the headline figure for Compare,
+three list rows for Library — so nothing jumps when the answer lands. Each
+carries `role="status"` and `aria-live="polite"`; Library keeps its sentence for
+anyone listening rather than looking.
 
 **The empty result panel names what the report will contain.** It was one
 italic sentence centred in a grey box — the shape of a panel apologising for
 being empty — and it is the first thing every reader sees, before they have
-typed anything. It now says what nothing has happened yet, what to do, and the
+typed anything. It now says that nothing has happened yet, what to do, and the
 three things pressing the button actually gets you.
 
-Nothing about what the app computes changed, and the 351 web tests pass
-untouched.
+### Fixed
+
+**A guard stopped guarding, twice, and both times it was this work that found
+it.** `ui.test.mjs` required the Library trigger to be spelled
+`<TabsTrigger value="library">` with nothing after it — so giving it a title
+broke a test with nothing to say about titles, and widening it to allow
+attributes still required them on one line, so wrapping the tag over four lines
+broke it again. It matches the open tag and any whitespace now, and is handed
+three ungated triggers it must reject rather than one. What is guarded is the
+gate, not the spelling.
+
+**Two documents described a header the app no longer has.** `README.md` and
+`docs/accounts.md` both said the Sign in button and the "temporary session"
+warning live in the header. They live in the sidebar and in the account menu.
+
+Nothing about what the app computes changed. The web suite grew no cases and
+lost none — 351 before and after — but it is not untouched: the Library gate
+assertion was rewritten twice, which is the entry above.
 
 
 
