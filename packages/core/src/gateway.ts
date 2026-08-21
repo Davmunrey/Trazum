@@ -331,6 +331,30 @@ function becauseCannotTell(cause: CannotTellCause): string {
 }
 
 /**
+ * Which provider's response shape a provider speaks.
+ *
+ * Several providers serve the OpenAI wire format rather than one of their own,
+ * and reading `prompt_tokens` out of them is the same code. Kept as a map so
+ * the fact lives once: the buffered reader and the streaming reader resolve
+ * through it, and neither grows a second list of provider names to fall out of
+ * step with the first.
+ *
+ * A provider absent from this map is one whose shape nobody has established —
+ * `usageFromResponse` returns null for it rather than guessing at fields, which
+ * the gateway then reports as an unmeasured call.
+ */
+export const WIRE_SHAPES: Readonly<Record<string, 'anthropic' | 'openai'>> = {
+  anthropic: 'anthropic',
+  openai: 'openai',
+  deepseek: 'openai',
+};
+
+/** The shape to read, or null when this provider's shape is not established. */
+function shapeOf(provider: string): 'anthropic' | 'openai' | null {
+  return WIRE_SHAPES[provider] ?? null;
+}
+
+/**
  * What a provider reported for one call, however it arrived.
  *
  * Named for the gateway rather than `MeasuredUsage`, which `measured-profile.ts`
@@ -381,6 +405,7 @@ export interface StreamingUsageReader {
 const MAX_SSE_LINE_BYTES = 1024 * 1024;
 
 export function streamingUsageReader(provider: string): StreamingUsageReader {
+  const shape = shapeOf(provider);
   let pending = '';
   let seen = false;
   let overlong = false;
@@ -404,7 +429,7 @@ export function streamingUsageReader(provider: string): StreamingUsageReader {
     if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return;
     const doc = parsed as Record<string, unknown>;
 
-    if (provider === 'anthropic') {
+    if (shape === 'anthropic') {
       const message = doc.message;
       if (typeof message === 'object' && message !== null) {
         const u = (message as Record<string, unknown>).usage;
@@ -431,7 +456,7 @@ export function streamingUsageReader(provider: string): StreamingUsageReader {
       return;
     }
 
-    if (provider === 'openai') {
+    if (shape === 'openai') {
       const u = doc.usage;
       if (typeof u !== 'object' || u === null) return;
       const o = u as Record<string, unknown>;
@@ -496,7 +521,10 @@ export function usageFromResponse(
   const u = usage as Record<string, unknown>;
   const num = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
 
-  if (provider === 'anthropic') {
+  const shape = shapeOf(provider);
+  if (shape === null) return null;
+
+  if (shape === 'anthropic') {
     if (typeof u.input_tokens !== 'number' && typeof u.output_tokens !== 'number') return null;
     return {
       inputTokens: num(u.input_tokens),
@@ -505,7 +533,7 @@ export function usageFromResponse(
       cacheWriteTokens: num(u.cache_creation_input_tokens),
     };
   }
-  if (provider === 'openai') {
+  if (shape === 'openai') {
     if (typeof u.prompt_tokens !== 'number' && typeof u.completion_tokens !== 'number') return null;
     const details = u.prompt_tokens_details;
     const cached =

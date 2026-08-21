@@ -9,15 +9,18 @@ Then point your SDK's base URL at what it prints and change nothing else. It
 speaks the provider's own wire format, so there is no new client, no wrapper and
 no code change.
 
-**Two providers, and the command names them itself.** `trazum gateway` with no
-argument answers *"Name the provider to stand in front of. Known: anthropic,
-openai."* Each is compiled in with exactly one forwarded path — the one that
+**The command names the providers itself.** `trazum gateway` with no argument
+answers *"Name the provider to stand in front of"* and lists them. A provider
+Trazum **prices** but does not front — five of the seven, still — gets a
+different answer that says so and points at `trazum profile`, rather than being
+refused as a typo. Each is compiled in with exactly one forwarded path — the one that
 spends tokens:
 
 | Provider | Upstream | The only path forwarded |
 | --- | --- | --- |
 | `anthropic` | `https://api.anthropic.com` | `/v1/messages` |
 | `openai` | `https://api.openai.com` | `/v1/chat/completions` |
+| `deepseek` | `https://api.deepseek.com` | `/chat/completions` |
 
 Everything else in Trazum either answers a question you can ignore or reports on
 a bill after it arrived. This is the one thing that can say **no**.

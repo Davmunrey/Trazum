@@ -62,6 +62,15 @@ export const MAX_GATEWAY_BODY_BYTES = 8 * 1024 * 1024;
 export const UPSTREAMS: Readonly<Record<string, { origin: string; path: string }>> = {
   anthropic: { origin: 'https://api.anthropic.com', path: '/v1/messages' },
   openai: { origin: 'https://api.openai.com', path: '/v1/chat/completions' },
+  /**
+   * DeepSeek's host is not a new fact: `scripts/measure-token-band.mjs` has
+   * sent a real API key to `https://api.deepseek.com/chat/completions` since
+   * the band harness learned a second provider. Reusing the endpoint this
+   * repository already trusts with a credential is the difference between
+   * adding an upstream and inventing one — and the path has no `/v1`, which is
+   * the kind of detail recall gets wrong.
+   */
+  deepseek: { origin: 'https://api.deepseek.com', path: '/chat/completions' },
 };
 
 /**

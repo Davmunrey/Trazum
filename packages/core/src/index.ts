@@ -141,6 +141,7 @@ export type {
 export {
   gatewayDecision,
   streamingUsageReader,
+  WIRE_SHAPES,
   usageFromResponse,
   FAILURE_POLICIES,
 } from './gateway.js';
