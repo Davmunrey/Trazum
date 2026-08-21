@@ -468,3 +468,185 @@ describe('the badge markdown is derived, not assembled twice', () => {
     assert.match(control, /\[!\[Trazum\]\(\$\{[^}]+\}\.svg\)\]\(\$\{share\.url\}\)/);
   });
 });
+
+describe('styling a shadcn primitive from its parent, which does not work', () => {
+  /**
+   * The trap this shell hit three times in one pull request.
+   *
+   * `TabsTrigger` carries declarations behind variant prefixes —
+   * `group-data-[orientation=vertical]/tabs:justify-start`,
+   * `group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent`,
+   * and a `dark:` copy of the second. A `[&_button]:justify-center` written on
+   * the `TabsList` is the SAME declaration in the SAME state at lower
+   * specificity, so it never applies — and nothing says so. tailwind-merge
+   * cleans the class list, the source reads correctly, the build is green, and
+   * the computed value is the primitive's. It cost a collapsed rail whose icons
+   * sat 12.5px off centre and an active row with no surface at all, in either
+   * theme.
+   *
+   * The state is half the rule, and leaving it out makes the guard cry wolf.
+   * `[&_button:hover]:bg-layer-hover` collides with the trigger's `bg` only in
+   * a state the trigger does not define, and it is measured winning in both
+   * themes — rest `rgba(0,0,0,0)`, hover `rgb(239,238,235)` light and
+   * `rgb(43,41,36)` dark. Bare utilities on the trigger are not the problem
+   * either: `[&_button]:px-2.5` beats a bare `px-2`, also measured.
+   */
+  const tabs = codeOf('components/ui/tabs.tsx');
+
+  /** The Tailwind property family a class belongs to, coarsely. */
+  const family = (cls) => {
+    const bare = cls.split(':').pop() ?? '';
+    if (/^justify-/.test(bare)) return 'justify';
+    if (/^bg-/.test(bare)) return 'bg';
+    if (/^text-[a-z]/.test(bare)) return 'text';
+    if (/^border-[a-z]/.test(bare)) return 'border';
+    return null;
+  };
+
+  /** Which interaction state a class applies in. */
+  const state = (cls) => {
+    if (/hover/.test(cls)) return 'hover';
+    if (/data-\[state=active\]/.test(cls)) return 'active';
+    return 'base';
+  };
+
+  /** `family@state` pairs the trigger sets behind a variant prefix. */
+  const fortified = () => {
+    const found = new Set();
+    const prefixed = [
+      ...(tabs.match(/[A-Za-z0-9[\]&_=:./-]*group-data-\[[^\]]+\][^"'\s]*/g) ?? []),
+      ...(tabs.match(/\bdark:[^"'\s]+/g) ?? []),
+    ];
+    for (const cls of prefixed) {
+      const f = family(cls);
+      if (f) found.add(`${f}@${state(cls)}`);
+    }
+    return found;
+  };
+
+  /** Parent overrides written on the list, brackets and all. */
+  const overrides = (source) =>
+    source.match(/\[&_button(?:\[[^\]]*\]|[^\]"'\s])*\]:[^"'\s,]+/g) ?? [];
+
+  /**
+   * Does the override land on the trigger itself, or on something inside it?
+   *
+   * `[&_button[data-state=active]_svg]:text-terracotta` sets a colour on the
+   * icon, which nothing in the primitive targets — it is measured painting the
+   * active icon terracotta. Only overrides that land on the button compete
+   * with the button's own declarations, so only those can lose.
+   */
+  const targetsDescendant = (cls) => {
+    const body = cls.slice(cls.indexOf('&_button') + '&_button'.length, cls.lastIndexOf(']:'));
+    return body.includes('_');
+  };
+
+  const collides = (cls, guarded) => {
+    if (targetsDescendant(cls)) return false;
+    const f = family(cls);
+    return !!f && guarded.has(`${f}@${state(cls)}`);
+  };
+
+  it('knows what the primitive defends, and it is not nothing', () => {
+    const guarded = fortified();
+    // If this ever empties, the guard below stops guarding and says nothing.
+    for (const expected of ['justify@base', 'bg@active', 'text@base']) {
+      assert.ok(guarded.has(expected), `${expected} is no longer read out of tabs.tsx`);
+    }
+  });
+
+  it('finds the overrides even when they carry their own brackets', () => {
+    // The first version of this stopped at the inner `]`, so the two worst
+    // offenders were invisible to the guard written to catch them.
+    const found = overrides("cn('[&_button[data-state=active]]:bg-layer-active', '[&_button]:px-0')");
+    assert.deepEqual(found, ['[&_button[data-state=active]]:bg-layer-active', '[&_button]:px-0']);
+  });
+
+  it('refuses a parent override of something the trigger defends in that state', () => {
+    const guarded = fortified();
+    const offenders = overrides(codeOf('components/App.tsx')).filter((c) => collides(c, guarded));
+    assert.deepEqual(
+      offenders,
+      [],
+      `these are set on TabsTrigger behind a variant and will not apply from the list:\n  ` +
+        `${offenders.join('\n  ')}\n` +
+        `Put them on the trigger's own className, in the primitive's variant.`,
+    );
+  });
+
+  it('and the refusal fires on all three that actually shipped', () => {
+    // Prove the guard by breaking it. Each of these was in the source, looked
+    // right, passed review, and computed to the primitive's value.
+    const guarded = fortified();
+    for (const shipped of [
+      "'[&_button]:justify-center [&_button]:px-0'",
+      "'[&_button[data-state=active]]:bg-layer-active'",
+      "'[&_button[data-state=active]]:text-foreground'",
+    ]) {
+      const hits = overrides(shipped).filter((c) => collides(c, guarded));
+      assert.ok(hits.length > 0, `the guard would have let this through: ${shipped}`);
+    }
+  });
+
+  it('and stays silent on the parent overrides that are measured working', () => {
+    const guarded = fortified();
+    for (const fine of [
+      '[&_button:hover]:bg-layer-hover',
+      '[&_button]:px-2.5',
+      '[&_button]:py-2',
+      '[&_button]:rounded-md',
+      '[&_button]:gap-2.5',
+      '[&_button]:after:hidden',
+      // Lands on the icon, not the button, and is measured painting it.
+      '[&_button[data-state=active]_svg]:text-terracotta',
+    ]) {
+      assert.ok(!collides(fine, guarded), `the guard would refuse a working override: ${fine}`);
+    }
+  });
+});
+
+describe('a focus indicator that computes to nothing', () => {
+  /**
+   * `outline-none` sets `outline-style: none`, and `outline-2` only sets a
+   * width. Written together on one element the pair computes to
+   * `outline: none 0px` and paints nothing — measured under real keyboard
+   * focus on the account trigger, which for one build was the only control in
+   * the rail with no indicator at all while wearing the classes meant to give
+   * it one.
+   *
+   * A ring is a box-shadow and survives the same combination, which is how the
+   * language toggles kept theirs.
+   */
+  const files = ['components/App.tsx', 'components/Account.tsx'];
+
+  const deadOutline = (source) => {
+    const kills = /\boutline-(none|hidden)\b/.test(source);
+    const outlineRing = /focus-visible:outline-\d/.test(source);
+    const boxShadowRing = /focus-visible:ring-\d/.test(source);
+    return kills && outlineRing && !boxShadowRing;
+  };
+
+  it('fires on the combination that shipped', () => {
+    assert.ok(
+      deadOutline("'outline-none focus-visible:outline-2 focus-visible:outline-offset-2'"),
+      'the guard does not catch the pair it exists for',
+    );
+  });
+
+  it('does not fire on a ring, which works', () => {
+    assert.ok(
+      !deadOutline("'outline-none focus-visible:ring-2 focus-visible:ring-ring'"),
+      'the guard refuses the working replacement',
+    );
+  });
+
+  it('does not fire on an outline with nothing cancelling it', () => {
+    assert.ok(!deadOutline("'focus-visible:outline-2 focus-visible:outline-ring'"));
+  });
+
+  for (const file of files) {
+    it(`${file} does not cancel the outline it then asks for`, () => {
+      assert.ok(!deadOutline(codeOf(file)), `${file} sets outline-none and then only an outline width`);
+    });
+  }
+});
