@@ -11,6 +11,51 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+**A plan through 1.60.0** — [docs/plan-1.52-1.60.md](docs/plan-1.52-1.60.md),
+nine arcs, written before the code as the four before it were. Under the
+numbering adopted at 1.50.1 a minor closes an arc, so 1.52.0 … 1.60.0 land one
+thesis each.
+
+**The plan says which of its arcs are measured and which are intentions**, and
+that is the part worth arguing about. The first three answer things that are
+wrong or missing today and cite the line of code:
+
+- **1.52.0 — the gateway in a real path.** `gateway-server.ts` relays with
+  `await upstreamResponse.text()`, buffering the whole upstream reply before
+  writing a byte back. For `"stream": true` — nearly all production traffic —
+  time to first token becomes the total generation time. The page argues that
+  reading a budget file per request would put Trazum's latency between you and
+  your provider; buffering a stream is a much larger version of that, in the
+  same file.
+- **1.53.0 — every provider you pay for.** Seven priced, **two** connected, and
+  the gateway fronts **two**. Five providers can be priced from a hand-exported
+  log and cannot have their bill read automatically or their calls gated live.
+- **1.54.0 — the counter, per family.** The estimator is calibrated on Claude
+  over 21 samples and prices seven families. `ROADMAP.md` has called the
+  per-family error the one number that settles the real-tokenizer question, and
+  nobody has measured it.
+
+The remaining six — 1.55.0 through 1.60.0 — are **an ordering of intentions, not
+commitments about content**, and each says so in its own section. Presenting all
+nine with equal confidence would be merging a measurement with a projection on
+the roadmap of a tool whose first doctrine rule forbids exactly that.
+
+**The order changed while writing it.** The token band went first in the draft,
+because it is the question the roadmap has carried longest. It is third now: a
+shipped feature most callers cannot use outranks an open question somebody wrote
+down. That reordering is in the document rather than silently applied.
+
+**What would reorder it is written down** instead of left to be inferred — a
+user with a provider Trazum prices and cannot gate, a measured band that comes
+back far out, or somebody volunteering as a language maintainer.
+
+`ROADMAP.md`'s `## Next` now carries the plan, and names the three *Under
+consideration* entries this schedules: the tokenizer question (1.54.0), cost
+alerting (1.56.0) and the editor extension (1.58.0). It said "Nothing is
+planned" since #288, which was true when it was written and is not now.
+
 ### Fixed
 
 **`SUPPORT.md`'s "No telemetry" section claimed to enumerate every network call

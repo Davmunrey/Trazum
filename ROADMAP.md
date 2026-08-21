@@ -1434,11 +1434,38 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**Nothing is planned.** Four arcs have been planned in advance and all four are
-delivered; there is no fifth yet. This section says so rather than leaving the
-arc that just finished described as though it were still running, which is what
-it did through 1.51.1 — a roadmap whose forward-looking section narrates a past
-is the same failure the three plan documents had, one file over.
+**Nine arcs, through 1.60.0**, planned in advance and written down before the
+code: [docs/plan-1.52-1.60.md](docs/plan-1.52-1.60.md). Under the numbering
+adopted at 1.50.1 a minor closes an arc, so each of 1.52.0 … 1.60.0 lands one
+thesis.
+
+**The first three answer things that are wrong or missing today**, and the plan
+points at the line of code for each:
+
+1. **1.52.0 — the gateway in a real path.** It relays the upstream reply with
+   `await upstreamResponse.text()`, buffering the whole body before writing a
+   byte back. For a streaming call — nearly all production traffic — time to
+   first token becomes the total generation time. A shipped feature most callers
+   cannot use.
+2. **1.53.0 — every provider you pay for.** Seven priced, **two** connected, and
+   the gateway fronts **two**. A budget that works on two of your seven
+   providers is a budget for the convenient part of the bill.
+3. **1.54.0 — the counter, per family.** The estimator is calibrated on Claude
+   and prices seven families. This roadmap has called the per-family error the
+   one number that settles the real-tokenizer question, and nobody has measured
+   it.
+
+**The remaining six are an ordering of intentions, not commitments about
+content** — more than one machine (1.55.0), something that runs (1.56.0), the
+optimiser earning its name again (1.57.0), where the prompt lives (1.58.0), a
+language needs a maintainer (1.59.0), and our own medicine measured (1.60.0).
+
+The plan says which kind each arc is, in the arc's own section. Presenting all
+nine with equal confidence would be merging a measurement with a projection on
+the roadmap of a tool whose first doctrine rule forbids exactly that.
+
+**No dates, and no pace.** The ordering is the commitment. What would reorder
+it is written down at the end of the plan rather than left to be inferred.
 
 **The arc through 1.51.0 is delivered in full**, with its errata on the record:
 [docs/plan-1.51.md](docs/plan-1.51.md). Its thesis was the gap this product had
@@ -1477,7 +1504,9 @@ and measuring halves to each other, and
 Everything under *Under consideration* below stays where it is until something
 moves it. An entry there is not a queue with the front of it hidden — it is the
 reasoning for why the thing is not scheduled, and it is written down so that
-deciding differently later is a visible act.
+deciding differently later is a visible act. **Three of those entries are now
+scheduled**: the tokenizer question lands in 1.54.0, cost alerting is what
+1.56.0 has to answer honestly, and the editor extension is 1.58.0.
 
 ## Under consideration
 
