@@ -117,9 +117,95 @@ gate, not the spelling.
 `docs/accounts.md` both said the Sign in button and the "temporary session"
 warning live in the header. They live in the sidebar and in the account menu.
 
-Nothing about what the app computes changed. The web suite grew no cases and
-lost none — 351 before and after — but it is not untouched: the Library gate
-assertion was rewritten twice, which is the entry above.
+**Three guards, each proved by breaking it — and each cried wolf first.**
+
+*Styling a shadcn primitive from its parent*, which loses to the primitive's
+own variant-prefixed declarations and says nothing. The guard reads what the
+trigger defends out of `tabs.tsx` rather than a list typed beside it. Its first
+version flagged `[&_button:hover]:bg-layer-hover`, which collides only in a
+state the trigger does not define and is measured winning in both themes; its
+second flagged `[&_button[data-state=active]_svg]:text-terracotta`, which lands
+on the icon rather than the button. State and element are each half the rule.
+And its extractor could not see the two worst offenders it was written for,
+because `[^\]]*` stops at the first `]` and both of them carry their own
+brackets.
+
+*A focus indicator that computes to nothing* — `outline-none` with only a
+`focus-visible:outline-<n>` beside it. Shown firing on the pair that shipped
+and staying silent on the ring that replaced it.
+
+*A desktop preference read inside the rail.* Its first version flagged
+`<Account collapsed={railCollapsed} />`, the child's own prop name; it ignores
+an attribute name now and still catches `collapsed={collapsed}`.
+
+**And CodeQL found one in the guard itself.** The extractor's alternation was
+ambiguous — both branches could begin with `[` — so every `[[]` in the input
+had two readings and the star multiplied them: 0.2ms at ten repetitions, 93.6
+at twenty-two, 6,051 at twenty-eight. Excluding `[` from the plain-character
+branch leaves one branch able to consume a bracket, and the same input takes
+0.01ms.
+
+**The test written to prove that fix would have passed against the vulnerable
+version.** It fed the pattern a plain run of sixty `[`, which the ambiguous
+form chews through in 0.08ms — the recurring trap of this repository, an
+assertion that only ever sees inputs it cannot fail on, this time inside the
+proof for the defect itself. A test file is not exempt from being a guard.
+
+**An audit of the shell found nine more, and every one was measured.** Five
+lenses swept the running app — geometry, keyboard, colour, Spanish, breakpoints
+— and each finding was handed to an independent reviewer who had to reproduce
+the numbers before it counted.
+
+*The active row had no surface, in either theme.* The same cascade as the
+collapsed icons, twice more: the trigger carries
+`group-data-[variant=line]/tabs-list:data-[state=active]:bg-transparent` and a
+`dark:` copy of it one step higher, so `bg-layer-active` from the list computed
+to `rgba(0,0,0,0)` and the collapsed rail signalled the current mode by icon
+hue alone. Fixing light left dark untouched, because the dark rule outranks the
+light one.
+
+*A closed drawer kept five controls in the tab order.* Off-screen is not gone:
+at 390px the second Tab landed on a Close button at x=-248, and five
+consecutive presses changed zero pixels on screen.
+
+*The drawer claimed modality and did not enforce it.* It is a `dialog` with
+`aria-modal` now, focus moves in on open, Tab wraps inside, and Escape returns
+it to the hamburger.
+
+*Two contrast floors.* `--ink-faint` measured 2.90:1 light and 3.60:1 dark
+everywhere it was used; inactive tab labels 3.77:1 in light only, where the
+dark theme had a token and the light one had shadcn's `/60` opacity. The
+faint tier is now the lightest warm grey clearing 4.5:1 on both the rail and
+the raised menu — a narrow band, because a legibility floor outranks a visual
+tier.
+
+*Focus indicators.* The account trigger had `outline-hidden` and nothing in its
+place, and every other ring in the rail was at half alpha — 2.03:1 against a
+floor of 3:1. All five controls paint a full-strength ring now, verified by
+pixel diff rather than by reading the classes.
+
+*Spanish, and a stacked toggle.* The Spanish tagline ran 13px under the
+drawer's close button and lost three characters to it; the collapsed language
+buttons rendered 18px against a declared 28, because `flex-1` in a column makes
+two buttons share the group's height.
+
+*A desktop preference reached a phone drawer,* producing a 248px overlay
+containing a 60px rail — no wordmark, every label `sr-only`, and no expand
+control, because the only one is `lg:flex`. And *crossing to a desktop with the
+drawer open* left a full-screen scrim and a locked body with no visible control
+to lift either.
+
+**Four of the eleven were introduced while fixing the others**, and each was
+found by running rather than by reading: a focus trap that read its container
+once and silently did nothing, a retry that stopped at finding a candidate
+rather than at moving focus, an `outline-none`/`outline-2` pair computing to
+`outline: none 0px`, and a comment claiming controls had no focus indicator on
+the strength of a probe that read the computed style three percent into a
+transition.
+
+Nothing about what the app computes changed. The web suite goes from 351 to 367
+— the Library gate assertion was rewritten twice, and three guards were added
+below.
 
 
 
