@@ -91,18 +91,24 @@ export const es: CoreMessages = {
   },
 
   advisories: {
-    contextOverflow: ({ tokens, modelName, contextWindow, uncertain }) => ({
+    contextOverflow: ({ tokens, modelName, contextWindow, uncertain, bandApplies }) => ({
       title: uncertain
-        ? 'El prompt probablemente no cabe en la ventana de contexto'
+        ? bandApplies
+          ? 'El prompt probablemente no cabe en la ventana de contexto'
+          : 'El prompt puede no caber en la ventana de contexto, y desde aquí no se puede saber por cuánto'
         : 'El prompt no cabe en la ventana de contexto',
-      detail: uncertain
-        ? `El prompt optimizado ocupa ~${n(tokens)} tokens frente a los ${n(contextWindow)} de ${modelName}. Ese recuento es una estimación y está cerca del límite, así que la llamada fallará probablemente, pero puede que no —confírmalo con --exact-tokens antes de reescribir nada. El endpoint de conteo es gratis. Si de verdad se pasa, divide el contenido o cambia a un modelo con ventana mayor.`
-        : `El prompt optimizado ocupa ~${n(tokens)} tokens y ${modelName} admite ${n(contextWindow)}. La llamada fallará: divide el contenido o cambia a un modelo con ventana mayor.`,
+      detail: !uncertain
+        ? `El prompt optimizado ocupa ~${n(tokens)} tokens y ${modelName} admite ${n(contextWindow)}. La llamada fallará: divide el contenido o cambia a un modelo con ventana mayor.`
+        : bandApplies
+          ? `El prompt optimizado ocupa ~${n(tokens)} tokens frente a los ${n(contextWindow)} de ${modelName}. Ese recuento es una estimación y está cerca del límite, así que la llamada fallará probablemente, pero puede que no —confírmalo con --exact-tokens antes de reescribir nada. El endpoint de conteo es gratis. Si de verdad se pasa, divide el contenido o cambia a un modelo con ventana mayor.`
+          : `El prompt optimizado ocupa ~${n(tokens)} tokens frente a los ${n(contextWindow)} de ${modelName}, así que se pasa. Ese recuento es una estimación, y el error del estimador se midió contra el tokenizador de Claude —no el de ${modelName}—, así que desde aquí no se puede decir por cuánto se pasa de verdad. Trazum no va a decirte que la llamada falla apoyándose en un número que no ha medido para esta familia. Cuenta con las herramientas de tu propio proveedor antes de reescribir nada.`,
     }),
 
-    contextNearLimit: ({ tokens, modelName, contextWindow }) => ({
+    contextNearLimit: ({ tokens, modelName, contextWindow, bandApplies }) => ({
       title: 'El prompt puede no caber en la ventana de contexto',
-      detail: `El prompt optimizado ocupa ~${n(tokens)} tokens frente a los ${n(contextWindow)} de ${modelName}, así que cabe —pero ese recuento es una estimación y su margen de error se pasa de la ventana, así que el prompt real puede no caber. Una llamada que excede la ventana falla del todo en lugar de degradarse, y nada más aquí avisa de eso. Confírmalo con --exact-tokens; el endpoint de conteo es gratis.`,
+      detail: bandApplies
+        ? `El prompt optimizado ocupa ~${n(tokens)} tokens frente a los ${n(contextWindow)} de ${modelName}, así que cabe —pero ese recuento es una estimación y su margen de error se pasa de la ventana, así que el prompt real puede no caber. Una llamada que excede la ventana falla del todo en lugar de degradarse, y nada más aquí avisa de eso. Confírmalo con --exact-tokens; el endpoint de conteo es gratis.`
+        : `El prompt optimizado ocupa ~${n(tokens)} tokens frente a los ${n(contextWindow)} de ${modelName}, y sobre la estimación cabe. Este aviso salta porque el error medido del estimador —contra el tokenizador de Claude, no el de ${modelName}— se pasaría de la ventana, y nadie ha medido cuánto es ese error en esta familia. Una llamada que excede la ventana falla del todo en lugar de degradarse. Cuenta con las herramientas de tu propio proveedor antes de fiarte del margen.`,
     }),
 
     promptCaching: ({

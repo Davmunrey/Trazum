@@ -54,8 +54,20 @@ export interface ContextOverflowParams {
   /**
    * The count is an estimate and its band reaches back under the window, so
    * "the call will fail" is a prediction rather than a fact.
+   *
+   * Also true, unconditionally, when the band was never measured against this
+   * model's tokenizer: there is then no margin to be past.
    */
   uncertain: boolean;
+  /**
+   * Whether the published error band describes this model's family.
+   *
+   * False for every family but the one it was measured on, and the message has
+   * to change in two ways when it is: it may not present the estimate's margin
+   * as known, and it may not send the reader to a counting endpoint that counts
+   * a different tokenizer.
+   */
+  bandApplies: boolean;
   tokens: number;
   modelName: string;
   contextWindow: number;
@@ -65,6 +77,8 @@ export interface ContextNearLimitParams {
   tokens: number;
   modelName: string;
   contextWindow: number;
+  /** See `ContextOverflowParams.bandApplies`. */
+  bandApplies: boolean;
 }
 
 export interface PromptCachingParams {

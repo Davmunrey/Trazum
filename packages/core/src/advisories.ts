@@ -7,7 +7,7 @@ import type { PricingCatalogue } from './pricing.js';
 import { formatUsd } from './savings.js';
 import { analyzeExamples, findContradictions, findMovableSchema,
   findRestatedFormat } from './structure.js';
-import { ESTIMATE_ERROR_BAND_PCT, estimateTokens } from './tokenizer.js';
+import { ESTIMATE_ERROR_BAND_PCT, bandGoverns, estimateTokens } from './tokenizer.js';
 import type { Advisory, ModelPricing, TokenCounter, UsageProfile } from './types.js';
 
 function countSignals(haystack: string, signals: readonly string[]): number {
@@ -144,6 +144,19 @@ export function buildAdvisories(
   const estimated = count === estimateTokens;
   const band = ESTIMATE_ERROR_BAND_PCT / 100;
 
+  /**
+   * Whether that band describes **this** model's tokenizer.
+   *
+   * It was applied to every family, and the two consequences were not
+   * symmetrical. The near-limit warning firing at the wrong threshold is a
+   * heuristic being imprecise. The overflow advisory saying *"The call will
+   * fail"* to somebody on GPT-5, on the strength of a number measured against
+   * Claude over twenty-one samples, is a measurement stated as a fact outside
+   * the domain it was measured in — which is the first thing this project's
+   * doctrine forbids.
+   */
+  const bandApplies = bandGoverns(model.provider);
+
   if (tokensAfter > model.contextWindow) {
     advisories.push({
       id: 'context-overflow',
@@ -152,9 +165,17 @@ export function buildAdvisories(
         tokens: tokensAfter,
         modelName: model.displayName,
         contextWindow: model.contextWindow,
-        // Only an estimate can be uncertain. A caller who counted exactly is told
-        // the call fails, because it does.
-        uncertain: estimated && tokensAfter * (1 - band) <= model.contextWindow,
+        /**
+         * Only an estimate can be uncertain. A caller who counted exactly is
+         * told the call fails, because it does.
+         *
+         * And an estimate on a family the band was never measured against is
+         * **always** uncertain, however far over the line it looks: the margin
+         * that would settle it is the unknown. Certainty here is not a
+         * conclusion this input supports.
+         */
+        uncertain: estimated && (!bandApplies || tokensAfter * (1 - band) <= model.contextWindow),
+        bandApplies,
       }),
       estimatedMonthlyUsd: null,
     });
@@ -166,6 +187,7 @@ export function buildAdvisories(
         tokens: tokensAfter,
         modelName: model.displayName,
         contextWindow: model.contextWindow,
+        bandApplies,
       }),
       estimatedMonthlyUsd: null,
     });

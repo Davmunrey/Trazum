@@ -52,6 +52,12 @@ export interface CliMessages {
     llmNotConfigured(): string;
     applyNeedsSuggest(): string;
     exactTokensNeedsKey(): string;
+    /**
+     * `provider` is null when the model is not in the price catalogue at all —
+     * a different mistake from asking for an exact count on a family Trazum
+     * cannot count, and told as a different sentence.
+     */
+    exactTokensWrongFamily(model: string, provider: string | null): string;
     checkNeedsMaxTokens(): string;
     evalNeedsCases(): string;
     evalNoCases(path: string): string;

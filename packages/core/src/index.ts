@@ -1,5 +1,11 @@
 export * from './types.js';
-export { ESTIMATE_ERROR_BAND_PCT, estimateTokens, countTokensAnthropic } from './tokenizer.js';
+export {
+  ESTIMATE_ERROR_BAND_PCT,
+  BAND_CALIBRATED_PROVIDER,
+  bandGoverns,
+  estimateTokens,
+  countTokensAnthropic,
+} from './tokenizer.js';
 export {
   UNLABELLED,
   cacheEconomics,
