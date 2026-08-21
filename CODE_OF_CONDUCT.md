@@ -31,7 +31,7 @@ anywhere else the project's name is attached.
 
 ## Reporting
 
-Email **davidmunozrey@gmail.com**. Reports are read by the maintainer and are
+Email **davidmunozrey@protonmail.com**. Reports are read by the maintainer and are
 not shared further without the reporter's agreement.
 
 If the report concerns the maintainer, say so — there is one maintainer, and
