@@ -5,7 +5,7 @@ import { Menu, PanelLeftClose, PanelLeftOpen, Receipt, GitCompare, BookMarked, W
 
 import type { Locale } from '@trazum/core';
 
-import { Account } from './Account';
+import { Account, type SessionResponse } from './Account';
 import { Bill } from './Bill';
 import { Library } from './Library';
 import { Comparer } from './Comparer';
@@ -74,24 +74,36 @@ export function App({
   // up quietly storing something else.
   const promptText = usePromptText(locale);
 
-  // The Library tab appears only for a signed-in reader. Rendered from the same
-  // endpoint the header uses, so the tab and the button cannot disagree about
-  // whether this deployment has accounts.
-  const [signedIn, setSignedIn] = useState(false);
+  /**
+   * One fetch of the session, for everything on the page that needs it.
+   *
+   * The Library tab appears only for a signed-in reader, and the account
+   * control at the foot of the rail is the same question asked again. Both
+   * used to ask it separately — two requests per page load for one answer, and
+   * two answers that can differ if the session expires between them, which
+   * puts a tab on the page for somebody the account control has already
+   * decided is signed out.
+   *
+   * `null` until it answers, which is what keeps the rail from flashing "Sign
+   * in" at somebody who is not signed out. No answer means no tab: a library
+   * nobody can read is worse than an absent one.
+   */
+  const [session, setSession] = useState<SessionResponse | null>(null);
   useEffect(() => {
     let cancelled = false;
     fetch('/api/auth/session', { credentials: 'same-origin' })
       .then((response) => (response.ok ? response.json() : null))
-      .then((body) => {
-        if (!cancelled && body?.user) setSignedIn(true);
+      .then((body: SessionResponse | null) => {
+        if (!cancelled && body) setSession(body);
       })
       .catch(() => {
-        // No answer means no tab. A library nobody can read is worse than absent.
+        // Unanswered stays `null`, which renders neither the tab nor the control.
       });
     return () => {
       cancelled = true;
     };
   }, []);
+  const signedIn = Boolean(session?.user);
   const modelName =
     models.find((m) => m.id === scenario.usage.model)?.displayName ?? scenario.usage.model;
 
@@ -446,7 +458,7 @@ export function App({
       {/* Account and language live at the foot of the rail: page-level controls,
           not part of the navigation, and reached last rather than first. */}
       <div className={cn('mt-auto flex flex-col gap-2 border-t p-2', railCollapsed && 'items-center')}>
-        <Account t={t} collapsed={railCollapsed} />
+        <Account t={t} session={session} collapsed={railCollapsed} />
         <div
           className={cn('flex gap-0.5 rounded-lg border p-0.5', railCollapsed && 'flex-col')}
           role="group"
@@ -515,10 +527,12 @@ export function App({
         <span className="font-display text-[17px] leading-none font-semibold">Trazum</span>
       </div>
 
-      {/* The scrim. Clicking it closes, which is the other half of Escape. */}
+      {/* The scrim. Clicking it closes, which is the other half of Escape. Its
+          colour is a token of its own rather than `--foreground`, which in the
+          dark theme is a near-white and turned this into a floodlight. */}
       {drawerOpen && (
         <div
-          className="fixed inset-0 z-40 bg-foreground/40 backdrop-blur-[2px] lg:hidden"
+          className="fixed inset-0 z-40 bg-scrim backdrop-blur-[2px] lg:hidden"
           onClick={() => setDrawerOpen(false)}
           aria-hidden="true"
         />
@@ -535,6 +549,18 @@ export function App({
         ref={railRef}
         className={cn(
           'z-50 flex shrink-0 flex-col border-r bg-muted transition-[width] duration-150',
+          /*
+            The width animates; the contents do not. Every label re-renders at
+            full size on the first frame while the box is still 60px wide, and
+            with nothing clipping it and `z-50` above the page, the language
+            toggle was drawn 75px out into the main column — and answered
+            hit-tests there, `elementFromPoint(130, 842)` returning a rail
+            button 70px past the rail's edge for the first ~50ms of every
+            expand. `overflow-x` clips the horizontal spill; leaving `overflow-y`
+            to compute to `auto` means a short window scrolls the rail rather
+            than cutting it off.
+          */
+          'overflow-x-hidden',
           // Below lg it is an overlay that slides; at lg it is simply there.
           'fixed inset-y-0 left-0 w-[248px] lg:sticky lg:top-0 lg:h-screen lg:translate-x-0',
           // `invisible`, not just translated away. Off-screen is not gone: a

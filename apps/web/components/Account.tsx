@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ChevronsUpDown, LogOut } from 'lucide-react';
 
 import {
@@ -34,33 +34,37 @@ import type { WebMessages } from '../lib/i18n';
  * already signed in, and the header is not important enough to be wrong quickly.
  */
 
-interface SessionResponse {
+export interface SessionResponse {
   enabled: boolean;
   user: { login: string; name: string | null; avatarUrl: string | null } | null;
   ephemeralSessions: boolean;
 }
 
-export function Account({ t, collapsed = false }: { t: WebMessages; collapsed?: boolean }) {
-  const [state, setState] = useState<SessionResponse | null>(null);
+/**
+ * The session arrives as a prop; this component does not ask for it.
+ *
+ * It used to fetch `/api/auth/session` itself, which meant two round trips per
+ * page load — measured, two requests for one answer — because the page above
+ * fetches the same endpoint to decide whether the Library tab exists. Two
+ * answers to one question is two answers that can differ: a session that
+ * expires between them puts a tab on the page for a reader the account control
+ * has already decided is signed out. One fetch, one answer, passed down.
+ *
+ * `null` still means "not answered yet" and still renders nothing, which is
+ * the guarantee the guard below is protecting — the mechanism changed, the
+ * promise did not.
+ */
+export function Account({
+  t,
+  session,
+  collapsed = false,
+}: {
+  t: WebMessages;
+  session: SessionResponse | null;
+  collapsed?: boolean;
+}) {
   const [busy, setBusy] = useState(false);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    fetch('/api/auth/session', { credentials: 'same-origin' })
-      .then((response) => (response.ok ? response.json() : null))
-      .then((body: SessionResponse | null) => {
-        if (!cancelled && body) setState(body);
-      })
-      .catch(() => {
-        // A header that cannot tell you who you are should say nothing, not
-        // claim you are signed out.
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const state = session;
 
   if (!state?.enabled) return null;
 

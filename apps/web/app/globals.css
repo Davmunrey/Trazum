@@ -50,6 +50,21 @@
    * A legibility floor outranks a visual tier.
    */
   --ink-faint: #71706b;
+
+  /*
+   * The one colour in this file that is the same in both themes, on purpose.
+   *
+   * The drawer's scrim was `bg-foreground/40`. In dark, `--foreground` is a
+   * near-white, so the layer whose whole job is to recede became a 40% white
+   * wash: measured on a phone, the page behind it went from a relative
+   * luminance of 0.0157 to 0.1681 — nearly eleven times brighter — while the
+   * drawer in front of it sat at rgb(38,36,32). The thing you were meant to be
+   * looking at read as a dark hole punched into a bright field.
+   *
+   * A scrim dims. It is defined once and deliberately NOT redefined in the
+   * dark block; that omission is the point, not an oversight.
+   */
+  --scrim: rgb(20 19 17 / 0.45);
   --terracotta: #b0522f;
   --terracotta-wash: #f6ece7;
   --good: #2f6f4e;
@@ -107,6 +122,7 @@
  * real utilities rather than arbitrary values repeated at each call site.
  */
 @theme inline {
+  --color-scrim: var(--scrim);
   --color-faint: var(--ink-faint);
   --color-rule-strong: var(--rule-strong);
   --color-layer-hover: var(--layer-hover);
@@ -295,6 +311,28 @@
  * the reader nothing, and leaving it on for somebody who asked the operating
  * system not to animate things is not a trade-off worth making.
  */
+/*
+ * Windows High Contrast, where a background tint is exactly what gets thrown
+ * away.
+ *
+ * The rail marks the current mode with `--layer-active` and nothing else — the
+ * `line` variant's marker bar is switched off, because in a vertical list it
+ * sticks out of the rail as a stray bar. Under `forced-colors` the tint is
+ * replaced by Canvas, so the active row and the inactive rows paint
+ * identically: measured, both mean rgb(232,232,232), and in the collapsed rail
+ * all that survived was 31 terracotta pixels inside a 17px glyph.
+ *
+ * An outline is a shape rather than a surface, and `Highlight` is the system's
+ * own colour for "this is the selected one", so it survives the substitution
+ * that removed the tint.
+ */
+@media (forced-colors: active) {
+  [role='tab'][aria-selected='true'] {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
