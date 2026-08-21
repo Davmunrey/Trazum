@@ -524,9 +524,18 @@ describe('styling a shadcn primitive from its parent, which does not work', () =
     return found;
   };
 
-  /** Parent overrides written on the list, brackets and all. */
+  /**
+   * Parent overrides written on the list, brackets and all.
+   *
+   * The second branch excludes `[` on purpose. Without that exclusion both
+   * branches can begin with one, and an ambiguous alternation under a star is
+   * exponential — CodeQL called it, correctly, on
+   * `[&_button` followed by many `[`. Excluding it makes exactly one branch
+   * able to consume a bracket, so the match is linear. Proved below on an
+   * input built to be the bad case.
+   */
   const overrides = (source) =>
-    source.match(/\[&_button(?:\[[^\]]*\]|[^\]"'\s])*\]:[^"'\s,]+/g) ?? [];
+    source.match(/\[&_button(?:\[[^\]]*\]|[^\][\s"'])*\]:[^"'\s,]+/g) ?? [];
 
   /**
    * Does the override land on the trigger itself, or on something inside it?
@@ -553,6 +562,24 @@ describe('styling a shadcn primitive from its parent, which does not work', () =
     for (const expected of ['justify@base', 'bg@active', 'text@base']) {
       assert.ok(guarded.has(expected), `${expected} is no longer read out of tabs.tsx`);
     }
+  });
+
+  it('does not backtrack exponentially on the string CodeQL named', () => {
+    /*
+      `[[]` repeated, which is the shape that has two readings per repetition:
+      the bracket branch can take it, and so can the plain-character branch.
+      The first draft of this test used a plain run of `[` and passed against
+      the VULNERABLE pattern in 0.08ms — an assertion that could never fire, on
+      the very defect it was written for.
+
+      Measured on the ambiguous version: 0.2ms at 10 repetitions, 5.8 at 18,
+      93.6 at 22, and 6,051 at 28. On the version below, 0.01ms throughout.
+    */
+    const hostile = `[&_button${'[[]'.repeat(28)}!`;
+    const started = process.hrtime.bigint();
+    overrides(hostile);
+    const ms = Number(process.hrtime.bigint() - started) / 1e6;
+    assert.ok(ms < 500, `the extractor took ${ms.toFixed(0)}ms on 28 repetitions`);
   });
 
   it('finds the overrides even when they carry their own brackets', () => {
