@@ -126,3 +126,47 @@ describe('the streaming usage reader', () => {
     assert.equal(reader.done(), null);
   });
 });
+
+/**
+ * A provider that speaks somebody else's wire format.
+ *
+ * DeepSeek serves the OpenAI response shape, so reading `prompt_tokens` out of
+ * it is the same code. `WIRE_SHAPES` is where that fact lives — once, so the
+ * buffered reader and the streaming reader cannot fall out of step with each
+ * other, which is what two parallel lists of provider names always eventually
+ * do.
+ */
+describe('the wire shape a provider speaks', () => {
+  it('reads DeepSeek as the OpenAI shape, streaming', () => {
+    const reader = streamingUsageReader('deepseek');
+    feed(
+      reader,
+      [
+        'data: {"choices":[{"delta":{"content":"hola"}}]}',
+        'data: {"choices":[],"usage":{"prompt_tokens":500,"completion_tokens":20}}',
+        'data: [DONE]',
+        '',
+      ].join('\n'),
+    );
+    assert.deepEqual(reader.done(), {
+      inputTokens: 500,
+      outputTokens: 20,
+      cacheReadTokens: 0,
+      cacheWriteTokens: 0,
+    });
+  });
+
+  it('says nothing for a provider whose shape nobody established', () => {
+    /**
+     * The important half. A provider absent from `WIRE_SHAPES` gets **null**,
+     * not a guess at which fields might mean tokens — and the gateway then
+     * reports the call as unmeasured, which is true, rather than recording a
+     * number nobody can defend.
+     */
+    for (const provider of ['mistral', 'xai', 'moonshot', 'google']) {
+      const reader = streamingUsageReader(provider);
+      feed(reader, 'data: {"usage":{"prompt_tokens":9,"completion_tokens":1}}\n\n');
+      assert.equal(reader.done(), null, `${provider} was read with a shape nobody established`);
+    }
+  });
+});

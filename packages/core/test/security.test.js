@@ -456,10 +456,23 @@ describe('the gateway, which stands between somebody and their provider', () => 
      */
     const text = server();
     const origins = [...text.matchAll(/origin: '([^']*)'/g)].map((m) => m[1]).sort();
-    assert.deepEqual(origins, ['https://api.anthropic.com', 'https://api.openai.com']);
+    /**
+     * Updating this list is the point, not the friction.
+     *
+     * Adding an upstream means editing an allowlist in a security test, which
+     * is exactly the review a new destination for somebody's credential
+     * deserves. DeepSeek joined at 1.53 with the host this repository already
+     * trusts in `scripts/measure-token-band.mjs`, and its path genuinely has no
+     * `/v1` — a detail that would have been got wrong from memory.
+     */
+    assert.deepEqual(origins, [
+      'https://api.anthropic.com',
+      'https://api.deepseek.com',
+      'https://api.openai.com',
+    ]);
 
     const paths = [...text.matchAll(/path: '([^']*)'/g)].map((m) => m[1]).sort();
-    assert.deepEqual(paths, ['/v1/chat/completions', '/v1/messages']);
+    assert.deepEqual(paths, ['/chat/completions', '/v1/chat/completions', '/v1/messages']);
 
     // The only interpolation into the fetch target is the compiled-in pair.
     const targets = [...text.matchAll(/doFetch\(([^,]+),/g)].map((m) => m[1].trim());

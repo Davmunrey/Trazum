@@ -11,6 +11,47 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+**The gateway fronts DeepSeek — 1.53's second chapter.** Three of seven, up from
+two.
+
+**The host is not a new fact, and that is the whole reason this chapter could be
+written.** `scripts/measure-token-band.mjs` has sent a real API key to
+`https://api.deepseek.com/chat/completions` since the band harness learned a
+second provider. Reusing an endpoint this repository already trusts with a
+credential is the difference between *adding* an upstream and *inventing* one —
+and the path genuinely has no `/v1`, which is exactly the detail recall gets
+wrong.
+
+The remaining four providers are still unfronted for that reason and no other:
+their hosts appear nowhere in this repository, and compiling one in from memory,
+into the single place a user's credential is forwarded, is what the doctrine
+forbids treating as known.
+
+**`WIRE_SHAPES` puts "which response shape does this provider speak" in one
+place.** DeepSeek serves the OpenAI format, so reading `prompt_tokens` out of it
+is the same code — but the buffered reader and the streaming reader each had
+their own `provider === 'openai'` test, and two parallel lists of provider names
+always eventually disagree. Both resolve through the map now.
+
+**A provider absent from that map gets null, not a guess.** `mistral`, `xai`,
+`moonshot` and `google` are asserted to read as nothing rather than being
+scraped for fields that might mean tokens — and the gateway then reports the
+call as *unmeasured*, which is true, instead of recording a number nobody can
+defend.
+
+**Adding an upstream means editing an allowlist inside a security test**, and
+that friction is the point: `security.test.js` compares the exact origins and
+paths, extracted rather than searched for, so a new destination for somebody's
+credential cannot arrive without a deliberate edit to a file that exists to
+notice.
+
+**Everything derived adapted on its own**, which is what the last two chapters
+were for: the gateway's provider list grew, #309's gap guard dropped a case
+without being touched, and `trazum connect deepseek` still says the true and
+now-different thing — priced, fronted, no connector.
+
 ### Fixed
 
 **A provider Trazum prices but cannot front was refused as though it were a
