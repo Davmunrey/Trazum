@@ -38,8 +38,18 @@
    * reader is meant to read and a footnote they are meant to skip had equal
    * weight. Three tiers is the smallest number that lets a page say "read
    * this", "read this if you want" and "this is here for the record".
+   *
+   * The third tier is a narrow band, and deliberately so. It was #92908a,
+   * which measures 2.90:1 on the rail — a tier bought by making text harder
+   * to read than the standard allows, on the tagline, the account menu's
+   * secondary line and the empty state's list of what the report will hold.
+   * The lightest warm grey that still clears 4.5:1 on BOTH the rail and the
+   * raised menu surface is this one, six steps off --ink-soft. So the tier
+   * survives as an intent — this is record-level text — carried mostly by
+   * size and weight rather than by a drop in contrast the eye can measure.
+   * A legibility floor outranks a visual tier.
    */
-  --ink-faint: #92908a;
+  --ink-faint: #71706b;
   --terracotta: #b0522f;
   --terracotta-wash: #f6ece7;
   --good: #2f6f4e;
@@ -123,7 +133,7 @@
     --rule-strong: #474334;
     --ink: #efece4;
     --ink-soft: #a8a495;
-    --ink-faint: #7d7a6d;
+    --ink-faint: #93907f;
 
     /*
      * Redefined here, and that is the point. A token whose only definition

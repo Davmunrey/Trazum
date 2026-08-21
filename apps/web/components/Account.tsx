@@ -117,8 +117,22 @@ export function Account({ t, collapsed = false }: { t: WebMessages; collapsed?: 
             labels share one too. At 10px the login sat three pixels right of
             every label above it.
           */
-          'flex w-full items-center gap-[5px] rounded-md border border-transparent px-2.5 py-1.5 text-left outline-hidden',
-          'hover:bg-layer-hover focus-visible:bg-layer-hover data-[state=open]:bg-layer-active',
+          'group/account flex w-full items-center gap-[5px] rounded-md border border-transparent px-2.5 py-1.5 text-left',
+          /*
+            `outline-hidden` and nothing in its place is how this shipped: the
+            one control in the rail with NO focus indicator at all, measured at
+            1.05:1 against the rail while focused. A tint is not an indicator.
+            A ring at full strength is, and it sits outside the row so it
+            cannot be mistaken for the open state's own surface.
+
+            A ring rather than an outline, because `outline-none` sets
+            `outline-style: none` and `outline-2` only sets a width — measured
+            under real keyboard focus, the pair produced `outline: none 0px`
+            and no indicator at all, which is the same defect wearing the
+            classes that were meant to fix it.
+          */
+          'outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-muted',
+          'hover:bg-layer-hover data-[state=open]:bg-layer-active',
           collapsed && 'justify-center px-0',
         )}
         aria-label={t.account.menuLabel(state.user.login)}
@@ -148,7 +162,18 @@ export function Account({ t, collapsed = false }: { t: WebMessages; collapsed?: 
         )}
         {!collapsed && (
           <>
-            <span className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground">
+            {/*
+              `text-foreground` once the menu is open. On the closed rail the
+              muted grey measures 4.92:1; on `--layer-active`, which is what the
+              open state paints underneath it, the same grey drops to 4.30 —
+              below the floor, and only in the state the reader is looking at.
+              The `title` is for the other failure: a long login truncates here
+              with nowhere else in the interface to read it in full.
+            */}
+            <span
+              className="min-w-0 flex-1 truncate text-[13px] text-muted-foreground group-data-[state=open]/account:text-foreground"
+              title={state.user.login}
+            >
               {state.user.login}
             </span>
             <ChevronsUpDown className="size-[14px] shrink-0 text-faint" aria-hidden="true" />
@@ -164,12 +189,24 @@ export function Account({ t, collapsed = false }: { t: WebMessages; collapsed?: 
       <DropdownMenuContent
         side={collapsed ? 'right' : 'top'}
         align={collapsed ? 'end' : 'start'}
+        /*
+          The offset is measured from the TRIGGER, which sits 9px inside the
+          collapsed rail — so the default 6 opened the menu 3px *inside* the
+          rail, cutting across its right border. 16 clears the edge and leaves
+          the same 7px gap the expanded menu has.
+        */
+        sideOffset={collapsed ? 16 : 6}
         className="w-[204px]"
       >
         <DropdownMenuLabel className="flex flex-col gap-0.5">
-          <span className="truncate">{state.user.name ?? state.user.login}</span>
+          {/* Both carry a `title`: this menu is the only place either string is
+              written out, so truncating one here loses it from the interface
+              entirely. */}
+          <span className="truncate" title={state.user.name ?? state.user.login}>
+            {state.user.name ?? state.user.login}
+          </span>
           {state.user.name && (
-            <span className="truncate text-[12px] font-normal text-faint">
+            <span className="truncate text-[12px] font-normal text-faint" title={state.user.login}>
               {state.user.login}
             </span>
           )}
