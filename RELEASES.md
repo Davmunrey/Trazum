@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.51.1**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.51.2**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,175 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.51.2 — "The stream, and fourteen things nothing was checking"
+
+**Three things you install changed, and fourteen documents that were lying
+stopped.** The first chapter of the 1.52 arc lands here, along with two format
+fixes from 1.51.1's tail and a documentation sweep that found a defect in every
+file it opened but one.
+
+### The gateway no longer holds your answer hostage
+
+`trazum gateway` relayed every response with `await upstreamResponse.text()`. For
+`"stream": true` — nearly all production traffic, and every agent loop — it read
+the entire answer before writing a byte back, so **time to first token became
+the total generation time**.
+
+The page had the argument against itself already. It says reading a budget file
+per request would *"put Trazum's own latency between you and your provider on
+every call — a cost this tool would otherwise be reporting on somebody else."*
+Buffering a stream was a far larger version of exactly that, in the same file,
+shipped in the same release.
+
+```
+# before: the first byte arrives when the last one does
+# after:  the first byte arrives when the provider sends it
+```
+
+**The provider decides, not the request.** The branch turns on the
+`content-type` that actually arrived, because a body asking to stream can still
+come back whole. A non-streaming response takes the old path, unchanged.
+
+**`streamingUsageReader` counts on the way past and keeps no text** — three
+numbers and a partial line. The same promise the buffered path made, kept
+structurally rather than by intention. Four decisions inside it:
+
+- **Anthropic's `message_delta` carries a running total, so the last one wins.**
+  Summing the deltas would report a bill several times the real one, in the
+  direction that makes this tool look like it found money that was never there.
+- **OpenAI sends usage only when the caller passed `stream_options:
+  {include_usage: true}`.** Without it the stream carries no counts and the
+  gateway records **nothing — not zero**. A call whose usage never arrived is not
+  a free call, and zero is the flattering direction.
+- **A line that never ends is refused past 1 MB.** A proxy that promised to hold
+  no text must not be turned into one holding a gigabyte by an upstream that
+  omits a newline. The lost counts surface as "usage not recorded", which is the
+  honest failure.
+- **A stream that breaks partway destroys the socket** — the head is already
+  sent, so there is no status left to change — and notes the call unmeasured.
+  Recording the counts of the part that arrived would be a measurement of the
+  fragment, read as the cost of the whole.
+
+**The test cannot pass against the old implementation: it deadlocks.** The stub
+upstream emits `message_start` and then holds; the test asserts the first event
+reached the caller *before* releasing the rest. Restoring the buffering relay
+does not fail an assertion — the proxy waits for a body that will not end until
+the test waiting on the proxy lets it. Proven by doing exactly that under a
+timeout, which killed it. A test that merely checked "the bytes arrived" would
+have passed against both and proved nothing.
+
+### Two documents a machine could not read
+
+**`trazum report --year --json` printed the human report and *then* the
+document.** The one command emitting the `annual-record` contract was the one
+command whose output no machine could consume: `| jq` and `| trazum conform -`
+both die on the prose in front. Its help said "Also emit", which described what
+it did and not what `--json` means everywhere else in this tool.
+
+The test covering it did `stdout.indexOf('{')` and parsed from there — a step no
+consumer can take — so the assertion passed and the defect was invisible. **A
+guard that works around the bug it is standing next to** is a shape this sweep
+kept finding.
+
+**`@trazum/core` emitted an `outcome-report` that failed its own contract.**
+`schemaVersion` is required by the contract the same package defines, and the
+only implementation of it omitted the field for **nine releases**. A format whose
+reference producer fails its own check is worse than no format: a tool mirroring
+it inherits the defect and looks interoperable.
+
+`--contract` also refused `outcome-report` and `annual-record` by name, so the
+two newest contracts could not be checked at all.
+
+### Fourteen things nothing was checking
+
+A sweep of every markdown file whose *content* no test reads — fourteen of
+thirty. Every file opened had a defect except one, and that one is recorded as
+clean because a sweep that always finds something is not a sweep.
+
+| Where | What it said | What was true |
+| --- | --- | --- |
+| README hero | "fourteen findings" | the paragraph beneath said "Thirteen advisories" — wrong for **52 releases** |
+| README money table | "512 on Anthropic" | `cacheMinTokens` is per model and spans **512 to 4,096** |
+| `docs/ci.md` | `with: path: prompts/` | `action.yml` has **never** declared a `path` input |
+| `docs/usage-logs.md` | nine of the fourteen keys the parser accepts | `outcome` appeared **nowhere**, five releases after it shipped |
+| `docs/gateway.md` | `trazum gateway anthropic` | it has fronted `openai` since the same commit that wrote the page |
+| `SUPPORT.md` | "the only network calls" — three of them | seven, missing the gateway, `--exact-tokens` and `watch --webhook` |
+| `SKILL.md` | nine config keys | the schema knows **seventeen** |
+| `docs/releasing.md` | "both manifests", "both publish steps" | three packages |
+| `CONTRIBUTING.md` | `npm test # core + cli test suites` | it runs **five** |
+| `docs/README.md` | accounts.md is "Provider accounts" | it is about signing in to the web app |
+| `ROADMAP.md` | "the arc in progress is plan-1.51.md" | that arc had landed |
+| `docs/doctrine.md` | "name the end as well as the start" | that is the fix that kept re-arming the trap |
+| `docs/our-own-medicine.md` | nine occurrences, two long ones | ten, and the longest was newer than both |
+| `docs/plan-format.md` | — | **correct in every particular** |
+
+**The money table is the one that could have cost somebody.** A reader on Haiku
+4.5 who trusted "512 on Anthropic" would have built a prefix eight times too
+short and expected a cache saving that could never arrive. This project's own
+rule is that a floor proves over, never under — and its front page was breaking
+that rule about the floor itself. The code was always right; only the prose
+flattening a per-model fact into a per-provider one was wrong.
+
+**The CI page's example is the one that never worked at all.** It shipped with
+`path:` at 1.48.0 and said it for sixteen releases. What kept that from being
+worse is the Action's own refusal: with no `target` it stops with *"Set the
+'target' input…"*, so a reader copying it got a red build naming the right input
+rather than a green build gating nothing. That is the argument for writing a
+refusal even where nobody expects to need one.
+
+**The agent-facing one is the one that gave wrong answers.** `SKILL.md` is what
+an agent reads before answering a question about this tool. Omitting `outcomes`
+meant an agent asked *"can Trazum tell me whether the cheaper model made things
+worse?"* would have consulted the list, not found it, and said no — about the one
+capability the 1.51 arc existed to add.
+
+Each fix ships with a guard deriving its subject from the code: `CONFIG_KEYS`,
+`UPSTREAMS`, `CONNECTORS`, `BUNDLED_CATALOGUE`, `action.yml`'s inputs,
+`parseUsageLine`'s keys, `package.json`'s scripts.
+
+### What this release found wrong in itself
+
+**The doctrine's own entry prescribed the fix that kept causing the failure.**
+*Bound an assertion by its subject, never by its neighbour* is the rule this
+repository has broken more than any other, and its entry ended with *"the fix is
+the same in every case: name the end as well as the start."* That is what every
+repair had done, and naming the new neighbour moves the trap one section along.
+The canonical document was telling every future reader to re-arm it.
+
+**Then it happened again, in a guard written against that very rule.** The
+`docs/releasing.md` count guard matched every quantity word beside "manifest" or
+"upload" and failed two **true** sentences. Tenth occurrence, three changes after
+rewriting the warning.
+
+**And the guard written to find the gateway's outbound call missed the
+gateway.** `gateway-server.ts` assigns `const doFetch = context.fetchImpl ??
+fetch`; matching `fetch(` and `fetchImpl(` skipped it. Its second draft then
+missed a planted module because it derived its file list from `git ls-files`
+while the probe was unstaged — it would have worked in CI and been useless at
+the desk.
+
+**And the fix for "the only network calls" wrote "six" above a table of seven
+rows**, the same count-above-a-list failure corrected in three other files in
+this same release.
+
+The habit that caught all four: **run a new guard against the whole real corpus
+and against the pre-fix text, and show it stays silent on what was already
+correct** — not merely that it fires on the defect.
+
+### What stayed out, and why
+
+- **A release for the documentation work alone.** Fourteen PRs waited under
+  `Unreleased` rather than each taking a number. Three identical tarballs would
+  have been the noise, not the record.
+- **A guard on the 21-sample corpus count, the language-dictionary depth, and
+  the MCP README's parameter names.** All three were checked and found correct,
+  and a preventive guard where no defect was found is padding.
+- **Reverting the maintainer's direct edit to `CODE_OF_CONDUCT.md`.** The
+  reporting address changed to a Proton one between releases, outside this
+  branch. Left exactly as they set it.
+- **Buffering "just for small responses".** A threshold nobody can check and a
+  latency cliff nobody can predict.
 
 ## 1.51.1 — "A front door"
 
