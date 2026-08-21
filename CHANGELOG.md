@@ -161,6 +161,26 @@ growth is intended, re-record" were all absent. Every one is the sentence that
 bounds the claim above it. A refusal never arrives bare, and neither does a
 measurement.
 
+**`trazum watch` reads the store, and the section that documents it never said
+so.** It shows `trazum watch --once` under the words "what a cron entry runs",
+and on a fresh checkout that command refuses: *"Nothing has been measured yet:
+the store at .trazum/store is empty."* The refusal is exemplary — it names the
+store, names `trazum connect <provider> --store` as what fills it, and says why
+watching nothing would be wrong. The page just never mentioned the prerequisite,
+so the reader met it after writing the cron entry rather than before. One
+sentence, and it borrows the tool's own words.
+
+The transcript below it cannot be reproduced here — filling the store needs a
+provider credential this session does not have — and that is said rather than
+worked around. What WAS checked and holds: `trazum connect` with no argument
+answers *"Available: anthropic, openai"*, says the credential comes from the
+environment and is never stored, and points at `--dry-run`, exactly as the
+prose claims; `--dry-run` names both the prefixed and unprefixed variables for
+each provider and the scope each one wants, also exactly as claimed; and
+`trazum gateway` with no argument names anthropic, openai, deepseek and google
+while the page states no count beside them, which is the rule that has been
+broken thirteen times elsewhere.
+
 **And `trazum serve`'s response was missing the one field the page insists on.**
 The block is presented as a complete JSON document; `answerCost` returns
 `schemaVersion: 1` from every one of its four branches and the type declares it
