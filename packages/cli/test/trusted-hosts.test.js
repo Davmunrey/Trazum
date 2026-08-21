@@ -242,3 +242,79 @@ describe('and a provider endpoint the gateway could front sets off the alarm', (
     assert.deepEqual(alarm({ 'https://api.somewhere.example': 'example' }), []);
   });
 });
+
+describe('the band harness only reaches hosts the gateway already fronts', () => {
+  /**
+   * `scripts/measure-token-band.mjs` sends a real API key to every provider it
+   * measures — the same act the gateway performs, from a file nobody thinks of
+   * as security-sensitive. It was in fact where DeepSeek's endpoint had been
+   * sitting when the gateway was still refusing DeepSeek as unsupported, and
+   * where Google's would have been sitting had `llm.ts` not held it first.
+   *
+   * So the harness is tied to the same allowlist. Its origins must be ones the
+   * gateway forwards to, which means adding a family to the harness requires
+   * the same deliberate edit to `security.test.js` that adding an upstream
+   * does. A measuring script is not a side door.
+   */
+  const harness = readFileSync(join(repoRoot, 'scripts/measure-token-band.mjs'), 'utf8');
+
+  const called = [
+    ...new Set(
+      [...harness.matchAll(/fetch\(\s*'(https:\/\/[a-zA-Z0-9._-]+)/g)].map((m) => m[1]),
+    ),
+  ].sort();
+
+  const fronted = [...new Set(Object.values(UPSTREAMS).map((u) => u.origin))].sort();
+
+  it('found the call sites at all', () => {
+    assert.ok(called.length >= 2, `only ${called.length} hosts found in the harness`);
+  });
+
+  const strangersIn = (origins) => origins.filter((origin) => !fronted.includes(origin));
+
+  it('reaches nothing the gateway does not front', () => {
+    const strangers = strangersIn(called);
+    assert.deepEqual(
+      strangers,
+      [],
+      'the band harness sends a credential to hosts the gateway has never been ' +
+        `reviewed for: ${strangers.join(', ')}`,
+    );
+  });
+
+  it('and that check is not one that can never fire', () => {
+    /**
+     * A brand-new host in the harness fails the **decision** check above first,
+     * so this assertion would never have run against anything it should reject
+     * — the third time this session that a filter over today's correct values
+     * turned out to prove nothing.
+     *
+     * The case it actually exists for is subtler and would have slipped past: a
+     * host already decided about, and decided to be something other than an
+     * upstream. `docs.anthropic.com` is in the map as a documentation link. A
+     * harness that fetched it would satisfy every other check in this file.
+     */
+    assert.deepEqual(strangersIn(['https://docs.anthropic.com']), ['https://docs.anthropic.com']);
+    assert.deepEqual(strangersIn(fronted), []);
+  });
+
+  it('and exactly one family governs the published band', () => {
+    /**
+     * The hazard the whole harness is built around: `±10%` is measured against
+     * Claude's tokenizer, and a second `governsPublishedBand: true` would let a
+     * different family's number be read as the published claim.
+     *
+     * Counted from the source rather than from the fixtures, because the
+     * fixtures do not exist on a clean checkout — which is exactly how
+     * `token-band.test.js` once reported "0 failures" for a directory that was
+     * not there.
+     */
+    const governs = [...harness.matchAll(/governsPublishedBand:\s*(true|false)/g)].map((m) => m[1]);
+    assert.ok(governs.length >= 4, `only ${governs.length} providers declare a band role`);
+    assert.equal(
+      governs.filter((value) => value === 'true').length,
+      1,
+      'the published band is Claude-calibrated; exactly one family may claim it',
+    );
+  });
+});

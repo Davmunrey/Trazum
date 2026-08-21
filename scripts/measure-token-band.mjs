@@ -138,6 +138,102 @@ const PROVIDERS = {
     },
   },
 
+  /**
+   * OpenAI and Google are here because 1.53 made their endpoints facts of this
+   * repository rather than things somebody remembered. The gateway forwards a
+   * user's credential to `https://api.openai.com/v1/chat/completions` and to
+   * `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`,
+   * and `packages/cli/test/trusted-hosts.test.js` fails the build if this file
+   * ever reaches a host the gateway's own allowlist has not reviewed.
+   *
+   * **Neither has been run against the real service from this environment.**
+   * Nothing here has a key. What is committed is the shape, on endpoints this
+   * repository already trusts; the numbers arrive when somebody with a key runs
+   * it, and until then `token-band.test.js` reports the family as unmeasured by
+   * name rather than quoting Claude's band for it.
+   */
+  openai: {
+    label: 'OpenAI',
+    envVar: 'OPENAI_API_KEY',
+    defaultModel: 'gpt-5',
+    fixture: 'token-ground-truth.openai.json',
+    free: false,
+    governsPublishedBand: false,
+    async count(text, { apiKey, model }) {
+      // Same shape as DeepSeek: no counting endpoint, so the prompt count is a
+      // by-product of a completion held to one generated token. The prompt half
+      // is billed either way, which is why `free` is false and the warning
+      // below prints before a single request goes out.
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: 'Bearer ' + apiKey },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content: text }],
+          // The name this repository commits for the OpenAI wire format. The
+          // gateway reads `max_completion_tokens ?? max_tokens` when it
+          // describes a call, so both are known here and this is the one that
+          // belongs to this provider.
+          max_completion_tokens: 1,
+          stream: false,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error('chat/completions returned ' + response.status + ': ' + (await response.text()));
+      }
+      const tokens = (await response.json())?.usage?.prompt_tokens;
+      if (typeof tokens !== 'number') throw new Error('no usage.prompt_tokens in the response');
+      return tokens;
+    },
+  },
+
+  google: {
+    label: 'Google',
+    envVar: 'GOOGLE_API_KEY',
+    defaultModel: 'gemini-2.5-flash',
+    fixture: 'token-ground-truth.google.json',
+    free: false,
+    governsPublishedBand: false,
+    async count(text, { apiKey, model }) {
+      /**
+       * `:generateContent` with one output token, not `:countTokens`.
+       *
+       * A free counting endpoint may well exist; this repository has never
+       * called one, and an endpoint nobody here has sent a key to is exactly
+       * the kind of fact 1.53 spent an arc refusing to compile in from memory.
+       * `:generateContent` and `usageMetadata.promptTokenCount` are both
+       * already load-bearing here — in `packages/core/src/llm.ts` and
+       * `packages/core/src/usage.ts` — so this measures with what is known and
+       * pays for it, rather than guessing and saving pennies.
+       *
+       * The key goes in a header. Google's own examples put it in `?key=`,
+       * which puts a credential in every proxy log between here and there —
+       * the same decision `llm.ts` made when it added Gemini.
+       */
+      const response = await fetch(
+        'https://generativelanguage.googleapis.com/v1beta/models/' +
+          encodeURIComponent(model) +
+          ':generateContent',
+        {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
+          body: JSON.stringify({
+            contents: [{ role: 'user', parts: [{ text }] }],
+            generationConfig: { maxOutputTokens: 1, temperature: 0 },
+          }),
+        },
+      );
+      if (!response.ok) {
+        throw new Error('generateContent returned ' + response.status + ': ' + (await response.text()));
+      }
+      const tokens = (await response.json())?.usageMetadata?.promptTokenCount;
+      if (typeof tokens !== 'number') {
+        throw new Error('no usageMetadata.promptTokenCount in the response');
+      }
+      return tokens;
+    },
+  },
+
   deepseek: {
     label: 'DeepSeek',
     envVar: 'DEEPSEEK_API_KEY',
