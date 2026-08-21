@@ -343,14 +343,24 @@ function becauseCannotTell(cause: CannotTellCause): string {
  * `usageFromResponse` returns null for it rather than guessing at fields, which
  * the gateway then reports as an unmeasured call.
  */
-export const WIRE_SHAPES: Readonly<Record<string, 'anthropic' | 'openai'>> = {
+export const WIRE_SHAPES: Readonly<Record<string, WireShape>> = {
   anthropic: 'anthropic',
   openai: 'openai',
   deepseek: 'openai',
+  /**
+   * Google speaks neither, and this repository already knows how it counts.
+   * `usage.ts` has read `usageMetadata` since the Gemini importer landed —
+   * `promptTokenCount`, `candidatesTokenCount`, and a `cachedContentTokenCount`
+   * that is **included in** the prompt count rather than added to it. The
+   * gateway reads it through the same understanding rather than a second one.
+   */
+  google: 'google',
 };
 
+export type WireShape = 'anthropic' | 'openai' | 'google';
+
 /** The shape to read, or null when this provider's shape is not established. */
-function shapeOf(provider: string): 'anthropic' | 'openai' | null {
+function shapeOf(provider: string): WireShape | null {
   return WIRE_SHAPES[provider] ?? null;
 }
 
@@ -405,7 +415,17 @@ export interface StreamingUsageReader {
 const MAX_SSE_LINE_BYTES = 1024 * 1024;
 
 export function streamingUsageReader(provider: string): StreamingUsageReader {
-  const shape = shapeOf(provider);
+  /**
+   * `google` is deliberately not among the shapes this reads.
+   *
+   * Gemini streams from `:streamGenerateContent`, a different operation with a
+   * different event sequence, and the gateway does not forward that path —
+   * so a streamed Gemini call cannot arrive here. Establishing the buffered
+   * shape does not establish the streamed one, and treating the two as the
+   * same fact is how a reader starts guessing. A stream from Google reads as
+   * nothing, which the gateway reports as unmeasured.
+   */
+  const shape = shapeOf(provider) === 'google' ? null : shapeOf(provider);
   let pending = '';
   let seen = false;
   let overlong = false;
@@ -516,13 +536,24 @@ export function usageFromResponse(
   body: unknown,
 ): { inputTokens: number; outputTokens: number; cacheReadTokens: number; cacheWriteTokens: number } | null {
   if (typeof body !== 'object' || body === null || Array.isArray(body)) return null;
-  const usage = (body as { usage?: unknown }).usage;
-  if (typeof usage !== 'object' || usage === null || Array.isArray(usage)) return null;
-  const u = usage as Record<string, unknown>;
   const num = (value: unknown): number => (typeof value === 'number' && Number.isFinite(value) ? value : 0);
 
   const shape = shapeOf(provider);
   if (shape === null) return null;
+
+  /**
+   * Which key the counts arrive under is part of the shape, not a constant.
+   *
+   * The first three providers all put them in `usage`, so this function read
+   * that key before dispatching — and Google puts them in `usageMetadata` at
+   * the top level. A dispatch that happens after the field it depends on has
+   * already been demanded is a dispatch that only handles what came first.
+   */
+  const carrier = shape === 'google'
+    ? (body as { usageMetadata?: unknown }).usageMetadata
+    : (body as { usage?: unknown }).usage;
+  if (typeof carrier !== 'object' || carrier === null || Array.isArray(carrier)) return null;
+  const u = carrier as Record<string, unknown>;
 
   if (shape === 'anthropic') {
     if (typeof u.input_tokens !== 'number' && typeof u.output_tokens !== 'number') return null;
@@ -548,6 +579,25 @@ export function usageFromResponse(
       inputTokens: Math.max(0, num(u.prompt_tokens) - cached),
       outputTokens: num(u.completion_tokens),
       cacheReadTokens: cached,
+      cacheWriteTokens: 0,
+    };
+  }
+  if (shape === 'google') {
+    if (typeof u.promptTokenCount !== 'number' && typeof u.candidatesTokenCount !== 'number') {
+      return null;
+    }
+    const cached = num(u.cachedContentTokenCount);
+    return {
+      // `promptTokenCount` **includes** `cachedContentTokenCount`, the same
+      // way OpenAI's `prompt_tokens` includes its cached half — so the cached
+      // part is subtracted rather than added. `usage.ts` has made this exact
+      // correction for imported Gemini logs since the importer landed; the
+      // gateway is not allowed to make it differently.
+      inputTokens: Math.max(0, num(u.promptTokenCount) - cached),
+      outputTokens: num(u.candidatesTokenCount),
+      cacheReadTokens: cached,
+      // Gemini's implicit cache reports no write count. Zero here is a fact
+      // about the response, not a stand-in for one that failed to arrive.
       cacheWriteTokens: 0,
     };
   }

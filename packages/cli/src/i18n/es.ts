@@ -1304,10 +1304,15 @@ ${bold('EJEMPLOS')}
     needsPolicy: (policies) =>
       `--on-cannot-tell es obligatorio, y no hay valor por defecto: ${policies}. Cuando la pasarela no puede juzgar una llamada — sin presupuesto, sin nada medido, un modelo sin precio — pasa una de las dos, y solo tú sabes qué fallo puede sobrevivir tu producto. fail-open lo mantiene funcionando y deja correr la factura; fail-closed para la factura y se lo lleva por delante. Elegir por ti sería tomar la decisión más consecuente de tu arquitectura, en silencio, al instalar.`,
     listening: (where, provider) => `Pasarela en ${where}, delante de ${provider}`,
-    unmeasured: (cause, sofar) =>
-      cause === 'stream-broke'
-        ? `sin medir: el stream se rompió antes de su evento de uso — el proveedor facturó esta llamada y esta sesión no puede verla (${sofar} sin medir hasta ahora)`
-        : `sin medir: el stream no llevó evento de uso — en OpenAI eso es toda llamada en streaming sin stream_options.include_usage, así que el total de abajo se queda corto (${sofar} sin medir hasta ahora)`,
+    unmeasured: (cause, sofar) => {
+      if (cause === 'stream-broke') {
+        return `sin medir: el stream se rompió antes de su evento de uso — el proveedor facturó esta llamada y esta sesión no puede verla (${sofar} sin medir hasta ahora)`;
+      }
+      if (cause === 'no-usage-event') {
+        return `sin medir: el stream no llevó evento de uso — en OpenAI eso es toda llamada en streaming sin stream_options.include_usage, así que el total de abajo se queda corto (${sofar} sin medir hasta ahora)`;
+      }
+      return `sin medir: el proveedor respondió sin uso alguno en el cuerpo — la llamada se hizo y su coste no es deducible de la respuesta, así que el total de abajo se queda corto (${sofar} sin medir hasta ahora)`;
+    },
     pointYourSdk: (where) =>
       `Apunta la URL base de tu SDK a ${where} y no cambies nada más. Habla el formato del propio proveedor, así que no hay cambios de código ni cliente nuevo.`,
     credential: () =>

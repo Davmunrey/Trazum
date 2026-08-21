@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
-import { UPSTREAMS } from '../dist/gateway-server.js';
+import { UPSTREAMS, forwards } from '../dist/gateway-server.js';
 
 /**
  * The gateway's page, against the upstream table compiled into it.
@@ -52,7 +52,18 @@ describe('docs/gateway.md describes every upstream the gateway speaks for', () =
      * say which path, per provider, rather than assert the property abstractly.
      */
     const wrong = [];
-    for (const [name, { origin, path }] of Object.entries(UPSTREAMS)) {
+    for (const [name, upstream] of Object.entries(UPSTREAMS)) {
+      const { origin } = upstream;
+      /**
+       * The path as a person reads it, via the same helper the refusal uses.
+       *
+       * Google's path is a pattern, and `doc.includes(regexp)` would coerce it
+       * to its source — a string of escaped slashes and character classes that
+       * no page should contain. The check would then fail for a page that
+       * documented the path perfectly well, which is the failure mode that
+       * gets a guard deleted rather than fixed.
+       */
+      const path = forwards(upstream);
       if (!doc.includes(origin)) wrong.push(`${name}: ${origin} is not in the page`);
       if (!doc.includes(path)) wrong.push(`${name}: the forwarded path ${path} is not in the page`);
     }
@@ -72,5 +83,31 @@ describe('docs/gateway.md describes every upstream the gateway speaks for', () =
       /per provider/,
       'the page says it forwards exactly one path, and there is more than one provider',
     );
+  });
+});
+
+describe('and states no count of providers it will have to keep correct', () => {
+  /**
+   * The paragraph above the upstream table said *"five of the seven, still"*.
+   *
+   * It was true when written and stopped being true the moment DeepSeek was
+   * fronted — in a release whose whole subject was that number. Nothing
+   * failed, because nothing was checking: the table beside it was guarded
+   * against `UPSTREAMS` and the sentence introducing the table was not.
+   *
+   * The eleventh time this project has written a count above a derived list.
+   * There is no number to get wrong if there is no number.
+   */
+  it('has no spelled or digit count in the prose around the table', () => {
+    const before = doc.slice(0, doc.indexOf('| Provider | Upstream |'));
+    const paragraph = before.split(/\n\s*\n/).filter((p) => /prices/.test(p) && !p.startsWith('```'));
+    assert.ok(paragraph.length > 0, 'the paragraph introducing the upstream table has moved');
+    for (const text of paragraph) {
+      assert.doesNotMatch(
+        text.replace(/\s+/g, ' '),
+        /\b(two|three|four|five|six|seven|eight|nine|ten|\d+)\b/,
+        `docs/gateway.md counts providers in prose, which goes stale: ${text.trim()}`,
+      );
+    }
   });
 });

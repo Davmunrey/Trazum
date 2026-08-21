@@ -380,7 +380,7 @@ export interface CliMessages {
     pricedNotFronted(given: string, known: string): string;
     needsPolicy(policies: string): string;
     listening(where: string, provider: string): string;
-    unmeasured(cause: 'stream-broke' | 'no-usage-event', sofar: number): string;
+    unmeasured(cause: 'stream-broke' | 'no-usage-event' | 'no-usage-in-body', sofar: number): string;
     pointYourSdk(where: string): string;
     credential(): string;
     neverSubstitutes(): string;

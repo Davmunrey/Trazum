@@ -3,6 +3,7 @@
 ```bash
 trazum gateway anthropic --on-cannot-tell fail-closed
 trazum gateway openai    --on-cannot-tell fail-closed
+trazum gateway google    --on-cannot-tell fail-closed
 ```
 
 Then point your SDK's base URL at what it prints and change nothing else. It
@@ -11,9 +12,13 @@ no code change.
 
 **The command names the providers itself.** `trazum gateway` with no argument
 answers *"Name the provider to stand in front of"* and lists them. A provider
-Trazum **prices** but does not front — five of the seven, still — gets a
-different answer that says so and points at `trazum profile`, rather than being
-refused as a typo. Each is compiled in with exactly one forwarded path — the one that
+Trazum **prices** but does not front gets a different answer that says so and
+points at `trazum profile`, rather than being refused as a typo. Ask the command
+how many there are of each; a number written here is a number that goes stale
+the next time one moves — as the one that used to be in this paragraph had,
+silently, for a whole release.
+
+Each provider is compiled in with exactly one forwarded path — the one that
 spends tokens:
 
 | Provider | Upstream | The only path forwarded |
@@ -21,6 +26,14 @@ spends tokens:
 | `anthropic` | `https://api.anthropic.com` | `/v1/messages` |
 | `openai` | `https://api.openai.com` | `/v1/chat/completions` |
 | `deepseek` | `https://api.deepseek.com` | `/chat/completions` |
+| `google` | `https://generativelanguage.googleapis.com` | `/v1beta/models/{model}:generateContent` |
+
+**Google's row is the only one with a brace in it**, because Google puts the
+model in the URL rather than the request body. That path is matched against an
+anchored pattern whose model segment accepts only the characters a model id is
+made of, and the URL sent upstream is then **rebuilt** from what matched rather
+than forwarded as received. `:streamGenerateContent` and `:countTokens` are
+different operations and are not forwarded.
 
 Everything else in Trazum either answers a question you can ignore or reports on
 a bill after it arrived. This is the one thing that can say **no**.

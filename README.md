@@ -1625,10 +1625,16 @@ document contains no field that could name somebody.
 
 ```bash
 trazum gateway anthropic --on-cannot-tell fail-closed
+trazum gateway google    --on-cannot-tell fail-closed
 ```
 
 Point your SDK's base URL at what it prints and change nothing else — it speaks
-the provider's own wire format, so no new client and no code change.
+the provider's own wire format, so no new client and no code change. That holds
+for Google too, where the model is in the URL rather than the body: the gateway
+matches an anchored pattern for `:generateContent`, reads the model out of it,
+and rebuilds the outgoing path rather than forwarding the one it was handed.
+`trazum gateway` with no argument names every provider it fronts — see
+[docs/gateway.md](docs/gateway.md) for the table.
 
 Everything else here either answers a question you can ignore or reports on a
 bill after it arrived. **This is the one thing that can say no.** Usage is
