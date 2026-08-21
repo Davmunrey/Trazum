@@ -2,11 +2,22 @@
 
 ```bash
 trazum gateway anthropic --on-cannot-tell fail-closed
+trazum gateway openai    --on-cannot-tell fail-closed
 ```
 
 Then point your SDK's base URL at what it prints and change nothing else. It
 speaks the provider's own wire format, so there is no new client, no wrapper and
 no code change.
+
+**Two providers, and the command names them itself.** `trazum gateway` with no
+argument answers *"Name the provider to stand in front of. Known: anthropic,
+openai."* Each is compiled in with exactly one forwarded path — the one that
+spends tokens:
+
+| Provider | Upstream | The only path forwarded |
+| --- | --- | --- |
+| `anthropic` | `https://api.anthropic.com` | `/v1/messages` |
+| `openai` | `https://api.openai.com` | `/v1/chat/completions` |
 
 Everything else in Trazum either answers a question you can ignore or reports on
 a bill after it arrived. This is the one thing that can say **no**.
@@ -108,8 +119,9 @@ credential-forwarding open proxy — anything that could rewrite a config on dis
 could point your API key at a machine it chose.
 
 It binds to `127.0.0.1` and the address is not a flag, and it forwards exactly
-one path: the one that spends tokens. A gateway that forwarded any path would be
-a general proxy for your API key.
+one path **per provider** — the one that spends tokens, listed in the table
+above. A gateway that forwarded any path would be a general proxy for your API
+key.
 
 ## Nothing about the payload is written down
 
