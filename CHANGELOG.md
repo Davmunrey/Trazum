@@ -161,6 +161,22 @@ growth is intended, re-record" were all absent. Every one is the sentence that
 bounds the claim above it. A refusal never arrives bare, and neither does a
 measurement.
 
+**And `trazum serve`'s response was missing the one field the page insists on.**
+The block is presented as a complete JSON document; `answerCost` returns
+`schemaVersion: 1` from every one of its four branches and the type declares it
+non-optional, so a consumer copying that shape would not know the field is
+there — on a page that elsewhere calls it *"the only thing you must branch on"*.
+`reason` and `call.basis` were absent too. It says which fields it trims now,
+and does not trim that one.
+
+Checked and clean in the same pass, and recorded as such: `docs/format.md`'s
+three `conform` invocations all run exactly as written — a plain file,
+`--contract profile` against a real report, and `-` with `--json` over stdin —
+and it has no example documents to parse, only those commands. `optimize
+--reorder --diff` reproduces its four lines word for word on a prompt built to
+the shape the flag exists for. `optimize --suggest` calls the model and could
+not be run here, which is said rather than guessed at.
+
 **The `--json` contract was checked, and it holds — but its harvest could have
 stopped reading without saying so.** `docs/json-output.md` documents
 thirty-five top-level fields and `json-contract.test.js` enforces them in both
