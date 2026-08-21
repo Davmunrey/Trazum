@@ -20,6 +20,10 @@ export const es: WebMessages = {
       `Precios revisados el ${pricingReviewed}. El recuento de tokens es una estimación (±10%); para cifras exactas usa el endpoint oficial de recuento desde la CLI con `,
     footerTail: '. Los ahorros son proyecciones sobre el escenario que indiques, no facturación.',
     localeSwitchLabel: 'Idioma',
+    closeMenu: 'Cerrar menú',
+    openMenu: 'Abrir menú',
+    collapseRail: 'Contraer la barra lateral',
+    expandRail: 'Desplegar la barra lateral',
   },
 
   input: {
@@ -90,6 +94,7 @@ export const es: WebMessages = {
     ephemeral: 'sesión temporal',
     ephemeralHint:
       'Este despliegue guarda las sesiones en memoria, así que se cerrará cuando el servidor se reinicie. Define TRAZUM_DATABASE_URL para conservarlas.',
+    menuLabel: (login) => `Cuenta: ${login}`,
   },
 
   library: {

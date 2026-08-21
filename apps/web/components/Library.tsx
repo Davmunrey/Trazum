@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 
+import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { WebMessages } from '../lib/i18n';
@@ -154,7 +155,31 @@ export function Library({
   const when = (iso: string) =>
     new Date(iso).toLocaleDateString(t.numberLocale, { dateStyle: 'medium' });
 
-  if (prompts === null) return <p className="text-muted-foreground">{t.library.loading}</p>;
+  if (prompts === null) {
+    /*
+      A sentence saying "Loading…" tells the reader the page is alive and
+      nothing else. Three rows in the shape of the list that is coming say how
+      much is coming and stop the page jumping when it lands. The sentence
+      stays, for anyone listening rather than looking.
+    */
+    return (
+      <div className="grid gap-5" role="status" aria-live="polite">
+        <span className="sr-only">{t.library.loading}</span>
+        <Skeleton className="h-4 w-[52ch] max-w-full" />
+        <Skeleton className="h-9 w-40 rounded-md" />
+        <ul className="grid gap-2">
+          {[0, 1, 2].map((row) => (
+            <li key={row} className="rounded-lg border p-3">
+              <div className="flex items-baseline gap-3">
+                <Skeleton className="h-4 w-40" />
+                <Skeleton className="h-3 w-56" />
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+  }
 
   return (
     <div className="grid gap-5">

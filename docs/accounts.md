@@ -58,8 +58,8 @@ fine — but the consequences are worth being explicit about:
   against the next, apparently at random.
 
 Trazum says so rather than letting you find out: `/api/auth/session` reports
-`ephemeralSessions: true`, and the header renders "temporary session" beside
-your name.
+`ephemeralSessions: true`, and the account menu at the foot of the sidebar
+says "temporary session" above the sentence explaining what that costs you.
 
 ### 3. Start it
 
@@ -72,7 +72,7 @@ npm --prefix apps/web start
 ```
 
 Misconfiguration does not crash the app. Any missing or invalid variable turns
-sign-in off, the header renders no button, and `/api/auth/*` answers **503 with
+sign-in off, the sidebar renders no button, and `/api/auth/*` answers **503 with
 the name of the variable to set** — so the failure is readable by the person who
 can fix it.
 

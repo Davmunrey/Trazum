@@ -1,5 +1,6 @@
 'use client';
 
+import { Skeleton } from '@/components/ui/skeleton';
 import { useEffect, useMemo, useState } from 'react';
 
 import type {
@@ -664,7 +665,35 @@ export function Optimizer({
           Still a sunken panel and still no card: borrowing the elevation the
           real report will have would make the wait look like a result.
         */}
-        {!result && !error && (
+        {/*
+          Where the answer will be, while it is being worked out.
+
+          The button said "Optimising…" and the panel that will hold the report
+          went on showing the empty state — so the only sign of life was at the
+          far side of the screen from the place the reader is watching. A
+          skeleton in the shape of the report says the work is happening *here*,
+          and its rows are the report's real rows, so the layout does not jump
+          when the numbers land.
+        */}
+        {loading && !error && (
+          <div
+            className="rounded-xl border bg-card p-5 shadow-[var(--shadow-raised)]"
+            role="status"
+            aria-live="polite"
+            aria-label={t.input.optimizing}
+          >
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="mt-4 h-8 w-44" />
+            <Skeleton className="mt-2.5 h-3 w-56" />
+            <div className="mt-6 space-y-2.5 border-t pt-5">
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-[88%]" />
+              <Skeleton className="h-3 w-[72%]" />
+            </div>
+          </div>
+        )}
+
+        {!result && !error && !loading && (
           <div className="rounded-xl bg-muted/60 px-7 py-9">
             <div className="mx-auto flex max-w-[40ch] flex-col gap-3">
               <h3 className="font-display text-[17px] leading-snug font-semibold">

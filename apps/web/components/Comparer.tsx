@@ -8,6 +8,7 @@ import type { AdvisoryId, Locale, RuleId } from '@trazum/core';
 import { track } from './Analytics';
 import { AnimatedContent } from './motion/AnimatedContent';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -265,7 +266,37 @@ export function Comparer({
           </Card>
         )}
 
-        {result === null ? (
+        {/*
+          The wait, in the shape of the answer.
+
+          Same defect the Optimise tab had: the button said "Comparing…" and
+          this column went on showing the lede, so the only sign that anything
+          was happening was at the far side of the screen from where the reader
+          is looking. The rows below are the report's real rows — the caveat,
+          the headline figure, the two model lines — so nothing moves when the
+          numbers arrive.
+        */}
+        {loading && error === null ? (
+          <Card
+            className="gap-4 py-[18px]"
+            role="status"
+            aria-live="polite"
+            aria-label={t.compare.working}
+          >
+            <CardHeader className="px-[18px]">
+              <Skeleton className="h-3 w-16" />
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3.5 px-[18px]">
+              <Skeleton className="h-14 w-full rounded-lg" />
+              <div className="rounded-lg border px-3.5 py-3">
+                <Skeleton className="h-7 w-40" />
+                <Skeleton className="mt-2.5 h-3 w-52" />
+              </div>
+              <Skeleton className="h-3 w-full" />
+              <Skeleton className="h-3 w-[76%]" />
+            </CardContent>
+          </Card>
+        ) : result === null ? (
           <Card className="gap-0 py-[18px]">
             <CardContent className="px-[18px] text-sm text-muted-foreground">
               {t.compare.lede}

@@ -29,6 +29,12 @@ export interface WebMessages {
     /** Text after it. */
     footerTail: string;
     localeSwitchLabel: string;
+    /** The drawer's dismiss control, which needs a name for a screen reader. */
+    closeMenu: string;
+    openMenu: string;
+    /** The desktop rail's width toggle, named for what pressing it does. */
+    collapseRail: string;
+    expandRail: string;
   };
 
   input: {
@@ -90,6 +96,8 @@ export interface WebMessages {
     /** Shown beside the name when the store forgets on restart. */
     ephemeral: string;
     ephemeralHint: string;
+    /** Names the account menu's trigger, which collapses to a bare avatar. */
+    menuLabel(login: string): string;
   };
 
   /** The saved-prompts tab. Rendered only for a signed-in reader. */

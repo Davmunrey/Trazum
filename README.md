@@ -2329,7 +2329,7 @@ registered can resolve wherever they like. See [SECURITY.md](SECURITY.md).
 Off by default, and a deployment that leaves it off is the tool this README has
 been describing all along: paste a prompt, get an answer, nothing remembered.
 
-Set three variables and the header grows a **Sign in** button:
+Set three variables and the sidebar grows a **Sign in** button at its foot:
 
 ```sh
 TRAZUM_GITHUB_CLIENT_ID=Iv1.xxxx
@@ -2338,8 +2338,8 @@ TRAZUM_PUBLIC_URL=https://trazum.example
 ```
 
 A fourth, `TRAZUM_DATABASE_URL`, points it at any Postgres so sign-in survives a
-restart; without it sessions live in memory and the header says "temporary
-session". Trazum asks GitHub for `read:user` and nothing else, **never stores
+restart; without it sessions live in memory and the account menu says
+"temporary session". Trazum asks GitHub for `read:user` and nothing else, **never stores
 the access token**, and stores session cookies only as their SHA-256.
 Misconfigure any of it and sign-in simply stays off, with `/api/auth/*`
 answering 503 naming the variable to set.

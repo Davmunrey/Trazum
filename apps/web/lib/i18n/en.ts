@@ -21,6 +21,10 @@ export const en: WebMessages = {
     footerTail:
       '. Savings are projections over the scenario you describe, not billing.',
     localeSwitchLabel: 'Language',
+    closeMenu: 'Close menu',
+    openMenu: 'Open menu',
+    collapseRail: 'Collapse sidebar',
+    expandRail: 'Expand sidebar',
   },
 
   input: {
@@ -91,6 +95,7 @@ export const en: WebMessages = {
     ephemeral: 'temporary session',
     ephemeralHint:
       'This deployment keeps sessions in memory, so you will be signed out when the server restarts. Set TRAZUM_DATABASE_URL to keep them.',
+    menuLabel: (login) => `Account: ${login}`,
   },
 
   library: {
