@@ -1024,6 +1024,29 @@ ships with a guard deriving its subject from the code rather than from a list
 typed beside it.
 
 
+### 1.52.0 — The gateway in a real path
+
+The minor that closes the first arc of the 1.52–1.60 plan. `trazum gateway`
+shipped at 1.50.3 with the right argument and an implementation nobody streaming
+could use: it buffered the whole answer before writing a byte back, so time to
+first token became the total generation time. It now relays as the answer
+arrives, counting off the events while holding no text.
+
+A refusal arrives before the first byte or not at all — on a refusal the
+provider is not contacted at all, so the prompt never leaves the machine, and
+once bytes flow the call is committed. The cost of that is stated rather than
+discovered: a call beginning inside the budget can end outside it, by one
+answer.
+
+And it names the calls it could not measure, with the cause. The common one is
+not a failure: on OpenAI a streamed call carries no counts unless the caller
+passed `stream_options.include_usage`, so a gateway that stayed silent would
+under-report most of a bill and look precise doing it.
+
+It still fronts two of the seven providers Trazum prices, which is what 1.53 is
+for.
+
+
 ## Collapsed into 1.8.0
 
 **Everything below shipped as 1.8.0, and none of these numbers is on npm.** They
@@ -1462,18 +1485,22 @@ code: [docs/plan-1.52-1.60.md](docs/plan-1.52-1.60.md). Under the numbering
 adopted at 1.50.1 a minor closes an arc, so each of 1.52.0 … 1.60.0 lands one
 thesis.
 
-**The first three answer things that are wrong or missing today**, and the plan
+**1.52.0 is delivered** — the gateway in a real path. It buffered the whole
+upstream reply before writing a byte back, so for a streaming call time to first
+token became the total generation time. It now streams while counting, refuses
+before the first byte or not at all, and names the calls it could not measure.
+Its chapters are in the plan; what it still cannot do is in
+[RELEASES.md](RELEASES.md).
+
+**The next two answer things that are wrong or missing today**, and the plan
 points at the line of code for each:
 
-1. **1.52.0 — the gateway in a real path.** It relays the upstream reply with
-   `await upstreamResponse.text()`, buffering the whole body before writing a
-   byte back. For a streaming call — nearly all production traffic — time to
-   first token becomes the total generation time. A shipped feature most callers
-   cannot use.
-2. **1.53.0 — every provider you pay for.** Seven priced, **two** connected, and
+1. **1.53.0 — every provider you pay for.** Seven priced, **two** connected, and
    the gateway fronts **two**. A budget that works on two of your seven
-   providers is a budget for the convenient part of the bill.
-3. **1.54.0 — the counter, per family.** The estimator is calibrated on Claude
+   providers is a budget for the convenient part of the bill. Some of these APIs
+   publish no usage report at all, and *"this provider does not publish one"* is
+   a finding rather than a gap to paper over.
+2. **1.54.0 — the counter, per family.** The estimator is calibrated on Claude
    and prices seven families. This roadmap has called the per-family error the
    one number that settles the real-tokenizer question, and nobody has measured
    it.

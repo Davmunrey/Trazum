@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.51.2**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.52.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,144 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.52.0 — "The gateway in a real path"
+
+**The minor that closes the arc.** `trazum gateway` shipped at 1.50.3 with the
+right argument and an implementation nobody streaming could use. Four chapters
+later it stands in the path of a real call: it relays as the answer arrives, it
+refuses before the first byte or not at all, and it says out loud which calls it
+could not measure.
+
+### It streams
+
+The relay read `await upstreamResponse.text()` for every response. For
+`"stream": true` — nearly all production traffic, and every agent loop — it held
+the whole answer and delivered it at once, so **time to first token became the
+total generation time**.
+
+The page had the argument against itself already. It says reading a budget file
+per request would *"put Trazum's own latency between you and your provider on
+every call — a cost this tool would otherwise be reporting on somebody else."*
+Buffering a stream was a far larger version of exactly that, in the same file,
+written in the same commit.
+
+**The provider decides, not the request.** The branch turns on the
+`content-type` that arrived, because a body asking to stream can come back
+whole. A non-streaming response takes the old path unchanged.
+
+`streamingUsageReader` reads the counts off the events on their way past and
+holds three numbers and a partial line — never the text. The same promise the
+buffered path made, kept structurally rather than by intention:
+
+- **Anthropic's `message_delta` is cumulative, so the last one wins.** Summing
+  the deltas would report a bill several times the real one, in the direction
+  that makes this tool look like it found money that was never there.
+- **A line that never ends is refused past 1 MB.** A proxy that promised to hold
+  no text must not be turned into one holding a gigabyte by an upstream that
+  omits a newline.
+
+### It refuses before the first byte, or not at all
+
+**On a refusal the provider is not contacted at all.** The status code is the
+weaker half of that: the property worth having is that **your prompt never
+leaves the machine**. A gateway that forwarded first and refused afterwards
+would have spent the money it was refusing *and* sent the text somewhere while
+claiming to stand in front of it.
+
+**Once bytes are flowing the call is committed.** The status line is long gone,
+so a 402 could not be *sent* as a refusal even if the budget ran out mid-answer
+— it would arrive as garbage inside somebody's response. So it does not arrive:
+a stream that started, finishes.
+
+That has a cost, and it is stated rather than discovered. **A call that begins
+inside the budget can end outside it, by exactly the cost of one answer.**
+Cutting a reply off partway to save the difference would corrupt what the caller
+is reading to protect a figure already spent, and this gateway will not do that.
+
+### It says which calls it could not measure
+
+Recording nothing for a call whose usage never arrived is right. Telling nobody
+is not: the money is spent, and a period's total is short by exactly those
+calls.
+
+| Cause | What happened | How common |
+| --- | --- | --- |
+| `stream-broke` | the connection died before the event carrying the counts | rare, and a real error |
+| `no-usage-event` | the stream ended cleanly and carried no counts | **every OpenAI streaming call** without `stream_options: {include_usage: true}` |
+
+**The second is the one to act on**, and it is not a failure. On OpenAI a
+streamed call reports nothing unless the caller asks, so a gateway that stayed
+silent would under-report most of somebody's bill **and look precise doing it**.
+The gateway names the field to set, not only the symptom:
+
+```
+  unmeasured: the stream carried no usage event — on OpenAI that is every
+  streaming call without stream_options.include_usage, so the total below is
+  short by these (3 unmeasured so far)
+```
+
+The count is kept separate from the measured one and never folded in. A total
+that swallowed the difference would be wrong in the flattering direction, and
+*not-recorded is not not-happened* is the rule everywhere else here.
+
+### The tests are the point of this release
+
+Three shapes worth naming, because each one cannot pass by accident:
+
+- **The streaming test deadlocks against the old implementation.** The stub
+  upstream emits `message_start` and then holds; the test asserts the first
+  event reached the caller *before* releasing the rest. Restoring the buffering
+  relay does not fail an assertion — the proxy waits for a body that will not
+  end until the test waiting on the proxy lets it. Proven by doing exactly that
+  under a timeout, which killed it. A test that merely checked "the bytes
+  arrived" would have passed against both relays and proved nothing.
+- **The refusal tests fail against a planted inversion of the property they
+  assert.** Forwarding before judging fails the first by name; consulting the
+  budget per chunk terminates the stream mid-answer and fails the second, which
+  is exactly the production failure it describes.
+- **The unmeasured tests plant the *tempting wrong fix*.** Removing the calls
+  fails them; reporting a gap **and also recording it** fails the assertion that
+  naming a gap must not inflate the total it warns about. That second direction
+  is the one worth having — it is the change somebody would make in good faith.
+
+### What this release found wrong in itself
+
+**A test asserted a refusal type that does not exist.** `trazum_budget_exceeded`
+rather than `trazum_budget_refusal` — and it sat *in front of* the two
+assertions that mattered, so a suite that looked like it was checking the
+ordering was checking a string. Caught on the first run.
+
+**A test conflated a broken stream with a dead upstream.** It destroyed the
+upstream socket in the same tick as the first write, so the response never
+reached the gateway, the fetch failed at connection level and the 502 path ran
+instead — a different failure with a different answer. The test saw neither
+cause and reported nothing. Found by running the real thing under a probe and
+reading what happened, rather than reasoning about what Node ought to do.
+
+Both are the same lesson: **verify a name and a behaviour against the running
+code, not against what it ought to be.**
+
+### What this gateway still cannot do, said plainly
+
+- **It fronts two of the seven providers Trazum prices.** `anthropic` and
+  `openai`. A budget that works on two of your seven providers is a budget for
+  the convenient part of the bill, and closing that is what 1.53 is for.
+- **It cannot refuse a call already in flight**, by design, and the cost of that
+  is one answer.
+- **It measures only what goes through it.** Calls that bypass the proxy are
+  invisible to it, and the store never pretends otherwise.
+
+### What stayed out, and why
+
+- **Buffering "just for small responses".** A threshold nobody can check and a
+  latency cliff nobody can predict.
+- **Estimating the cost of an unmeasured call.** It would merge the two halves
+  this project spent the 1.36–1.40 arc separating, to remove a gap that is
+  better named than filled.
+- **A shutdown summary of the session's unmeasured calls.** The running count is
+  in the line that reports each one; a second surface would be a report this
+  command does not otherwise have.
 
 ## 1.51.2 — "The stream, and fourteen things nothing was checking"
 

@@ -27,7 +27,11 @@ question somebody wrote down is less urgent than a thing that is broken.
 
 ---
 
-## 1.52.0 — The gateway in a real path
+## 1.52.0 — The gateway in a real path — **delivered**
+
+**All four chapters shipped, landing at 1.52.0.** Kept as written, before the
+code, rather than rewritten in hindsight. What it still cannot do — two of seven
+providers, no refusal once bytes flow — is in [RELEASES.md](../RELEASES.md).
 
 **Measured, not a hunch.** `packages/cli/src/gateway-server.ts` relays the
 upstream reply with:
