@@ -13,6 +13,27 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**A transcript had stopped being a transcript.** `trazum doctor`'s money column
+in the README read `~$4,912`. The command prints `~ $4,912` — tilde, space,
+dollar. The transcript was taken before the column was spaced and never
+re-taken, on a page headed *"Real output, transcribed"*.
+
+**A naive rule here would have broken the correct surface.** `optimize`'s
+advisory suffix is `` ` ~${amount}/month` `` — **no** space, deliberately,
+because it trails a sentence rather than heading a column. Banning `~$` across
+the documentation would have failed `~$327.40/month` in two READMEs, which is
+exactly what the tool prints. The subject is the doctor transcript, not the
+character sequence — so the guard takes the column's shape from **running
+`doctor`** at test time, and separately asserts the sentence-trailing form
+survives a future tidy-up that tries to make the tildes "consistent".
+
+**One fix was reverted for being the same defect again.** The first pass also
+added *"(58 days ago)"* to the transcript's prices line, because the command
+prints an age now. That number is relative to today and would be wrong
+tomorrow — a count that ages on its own, in a paragraph about counts that age
+on their own. Only the spacing, which is a fact about the formatter and not
+about when the run happened, was kept.
+
 **The npm page presented twenty-one of thirty-two commands as though they were
 all of them.** `packages/cli/README.md` is what npm renders — for most people
 the first and only page they read. Its `## Commands` table stopped without
