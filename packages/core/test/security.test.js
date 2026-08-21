@@ -1446,6 +1446,35 @@ describe('the packaged Action', () => {
         if (comment[1] !== pinned) {
           bad.push(`${name}: comment says ${comment[1]}, ${sha.slice(0, 7)} says ${pinned}`);
         }
+
+        /**
+         * And the commit has to be **on the default branch**.
+         *
+         * Everything above is satisfied by a commit that exists and says the
+         * right version in its own manifest — including the pre-squash head of
+         * a feature branch, which says exactly that and is deleted the moment
+         * the pull request merges. GitHub can garbage-collect it, and a
+         * workflow pinned there stops resolving with no warning to anybody.
+         *
+         * This was nearly shipped: preparing a release, the sha to hand was the
+         * branch commit rather than the squash-merge on `main`, and every
+         * assertion above passed on it. The difference is invisible to a reader
+         * and total to a consumer.
+         */
+        const merged = spawnSync(
+          'git',
+          ['merge-base', '--is-ancestor', sha, 'origin/main'],
+          { cwd: repoRoot, encoding: 'utf8' },
+        );
+        if (merged.status === 1) {
+          bad.push(
+            `${name}: ${sha.slice(0, 7)} is not on origin/main — a pre-squash branch commit ` +
+              'says the right version and can be garbage-collected',
+          );
+        } else if (merged.status !== 0) {
+          // No `origin/main` in this clone. Named, never passed over silently.
+          unchecked.push(`${name}: ${sha.slice(0, 7)} ancestry unknown (no origin/main here)`);
+        }
       }
     }
 

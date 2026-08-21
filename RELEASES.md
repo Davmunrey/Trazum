@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.53.1**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.53.2**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,112 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.53.2 — "What the tool says about itself"
+
+**Four faults, one shape.** Every guard in this repository that watches for a
+stale list was pointed at the **documentation**. The product's own help text —
+the first thing anybody reads — was checked by nothing, and it had drifted away
+from the product in four separate places.
+
+Found by an angle nobody had tried: extracting every documented `trazum`
+invocation and comparing it against what the tool actually says.
+
+### The help said the gateway fronts two providers
+
+```
+$ trazum --help
+  trazum gateway <anthropic|openai> --on-cannot-tell <fail-open|fail-closed>
+
+$ trazum gateway
+Error: Name the provider to stand in front of. Known: anthropic, openai, deepseek, google.
+```
+
+A reader meets both within a minute of each other and **the wrong one is
+first**. It went stale during the release whose entire subject was that list —
+`docs/gateway.md` was guarded against the compiled upstream table, and the same
+sentence lived inside the product where nothing was looking.
+
+The fix is not a longer list kept in sync. It is `<provider>`, with the
+enumeration left to the refusal that derives it. A provider list typed beside
+the thing has now gone stale in `docs/gateway.md`, in `ROADMAP.md` and in the
+help; each time the answer was to stop writing the list.
+
+### `trazum profile` was not in the help at all
+
+Not a small one. `profile` is the command almost every refusal in this product
+points a reader at — *"trazum profile prices a mistral log you export"*, the
+`--max-usd` gate that fails a build on the bill, the `--json` documents
+`history` reads. It had a full nineteen-flag allowlist and its own `OPTIONS FOR
+profile` section, and it was absent from the list of commands.
+
+Nothing noticed because the *"thirty-two commands"* figure the README states is
+guarded — against `COMMAND_FLAGS`, which had all thirty-two. The USAGE block had
+thirty-one, and **no check compared the product's own two lists with each
+other**.
+
+### Two commands had no options section, and one had two
+
+`trazum ladder` takes `--since`, `--until` and `--label`; `trazum owners` takes
+`--since` and `--until`. Neither had an `OPTIONS FOR` section, so nothing in the
+help said they take a window at all — and both are commands whose whole point is
+judging a period.
+
+`eval` had **two** sections under the same heading with different content: one
+listing `--export promptfoo` and `-o`, the other carrying the paragraph
+explaining that it costs **three** provider calls per case — the original twice
+to measure the model's own run-to-run variance, and the optimised once — and
+exits 1 on divergence. Whichever a reader scrolled to, they got half, and the
+duplicate heading meant neither half announced itself as one.
+
+### An Action pin could point at a commit that is not on `main`
+
+The guard on the README's `uses:` lines is thorough: a 40-character SHA, never a
+tag, with the version comment verified against **that commit's own** manifest
+rather than against the working tree — a distinction it learned the hard way,
+because comparing to the working tree made an honest release impossible.
+
+All of it is satisfied by the pre-squash head of a feature branch. That commit
+says exactly the right version and is deleted the moment the pull request
+merges; GitHub can garbage-collect it, and a workflow pinned there stops
+resolving with no warning to anybody.
+
+**Caught while preparing this release.** The sha to hand was the branch commit
+rather than the squash-merge on `main`, and every existing assertion passed on
+it. By the time the check was written that commit had already gone from the
+clone — the hazard demonstrating itself. The pin must now be an ancestor of
+`origin/main`, and a clone without that ref reports the pin as unverified rather
+than passing over it.
+
+### What guards this now
+
+Three new checks, each derived from the code rather than from a list typed
+beside it, and each run against a planted defect **and** against the corrected
+text:
+
+- no USAGE line may enumerate providers — the provider set drawn from the
+  catalogue, the upstream table and the connector list together
+- USAGE and the dispatch table must agree **in both directions**: a command that
+  is dispatched and undocumented fails, and so does a USAGE line promising a
+  command the CLI does not have, because a careless fix for the first would
+  otherwise satisfy one check and mislead every reader
+- every command with flags of its own must have **exactly one** options section
+
+The provider check, the duplicate-heading check and the pin-ancestry check are
+each handed the shapes they exist to reject, not only today's corrected text —
+the fifth, sixth and seventh time this session that an assertion over
+known-good values turned out to be unable to fail at all.
+
+### What was checked and found correct
+
+Two negative results, recorded rather than left as unexamined confidence:
+
+- **Every documented flag exists.** Every `--flag` written beside a `trazum
+  <command>` across all thirty-one instructional documents, compared against
+  `COMMAND_FLAGS` plus the globals: zero that the command does not accept.
+- **The "thirty-two commands" figure is right**, and matches `COMMAND_FLAGS`
+  exactly.
+
 
 ## 1.53.1 — "The band stays inside the family it was measured in"
 

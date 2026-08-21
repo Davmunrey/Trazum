@@ -1137,6 +1137,31 @@ shipped is the shape, and every unmeasured family is named as unmeasured with
 the command that would settle it.
 
 
+### 1.53.2 — What the tool says about itself
+
+Four faults with one shape, found by an angle nobody had tried: extracting every
+documented `trazum` invocation and comparing it against what the tool actually
+says. Every guard in this repository that watches for a stale list was pointed
+at the documentation; the product's own help text was checked by nothing.
+
+The USAGE block said the gateway fronts two providers while the gateway itself
+answered four. `trazum profile` — the command almost every refusal points a
+reader at — was absent from the command list entirely. `ladder` and `owners`
+had no options section, so nothing said they take a window, which is the only
+thing either command is for. `eval` had two sections under one heading, each
+holding half the answer.
+
+And an Action pin could name a commit that is not on `main`: the pre-squash head
+of a feature branch says the right version, satisfies every existing check, and
+is deleted when the pull request merges. Caught while preparing this release,
+on this release's own pin.
+
+Three new guards, each derived from the code and each proved against a planted
+defect as well as against the corrected text. Two negative results recorded
+rather than assumed: no documented flag is missing from the CLI, and the
+"thirty-two commands" figure is right.
+
+
 ## Collapsed into 1.8.0
 
 **Everything below shipped as 1.8.0, and none of these numbers is on npm.** They
