@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.53.2**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.53.3**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,83 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.53.3 — "Two surfaces, two formats"
+
+**The doc-drift hunt, continued into the two places it had not looked**: the
+page npm renders, and the transcripts that claim to be real output.
+
+### The npm page showed twenty-one of thirty-two commands as though they were all
+
+`packages/cli/README.md` is what npm renders — for most people the first and
+only page they read. Its `## Commands` table stopped without saying it stops,
+and the sentence beneath it read *"`trazum --help` documents every flag"*:
+flags, never commands. `trazum gateway`, the only thing in this product that can
+refuse a call **before** the money is spent, had no row and no mention.
+
+The fix is not to list all thirty-two on a page like that. It is to say the
+table is a selection and point at the tool — the same rule this repository
+applies to a skipped test and a half-measured day: **silence about
+incompleteness reads as completeness.** That sentence is also only true because
+1.53.2 put every command into `--help` in the first place.
+
+**Writing that disclaimer produced the defect it was fixing, twice in one
+paragraph.** The first draft enumerated the eleven omitted commands — a list
+typed beside the thing, stale the moment a command is added, which is precisely
+what the previous release had spent itself removing. The second said *"a dozen
+more"* when there are eleven. Both are refused now: the disclaimer may state no
+count and name at most one command as an example.
+
+**And the check written to catch the second one did not catch it.** It listed
+`a dozen` in lower case and was case-sensitive; the draft began the sentence *"A
+dozen more"* and passed clean. A guard that reads as coverage and covers
+nothing — found by running the probe rather than by reading the regex, and now
+handed both phrasings directly.
+
+**An existing guard caught this work's own test.** The first version bounded the
+`## Commands` section by finding the next heading by hand, which
+`publish.test.js` refuses: bounding a section by its neighbour has silently
+broken a harvest nine times here, and `sectionOf()` exists as the one home for
+that rule.
+
+### A transcript had stopped being a transcript
+
+`trazum doctor`'s money column in the README read `~$4,912`. The command prints
+`~ $4,912` — tilde, space, dollar. The transcript was taken before the column
+was spaced and never re-taken, on a page headed *"Real output, transcribed"*.
+
+**A naive rule here would have broken the correct surface.** `optimize`'s
+advisory suffix is `` ` ~${amount}/month` `` — **no** space, deliberately,
+because it trails a sentence rather than heading a column. Banning `~$` across
+the documentation would have failed `~$327.40/month` in two READMEs, which is
+exactly what the tool prints. Two surfaces, two formats, one character sequence;
+the subject is the doctor transcript, not the sequence.
+
+So the guard takes the column's shape from **running `doctor`** at test time —
+the numbers differ, since the transcript is from a sample project, but the shape
+does not — and separately asserts the sentence-trailing form survives a future
+tidy-up that tries to make the tildes consistent.
+
+**One half of the fix was reverted for being the same defect again.** The first
+pass also added *"(58 days ago)"* to the transcript's prices line, because the
+command prints an age now. That number is relative to today and would be wrong
+tomorrow: a count that ages on its own, written into a paragraph about counts
+that age on their own. Only the spacing was kept — a fact about the formatter
+rather than about when the run happened.
+
+### What was checked and found correct
+
+Recorded rather than left as unexamined confidence. Documented examples
+reproduced against the real binary:
+
+- **`trazum where src/prompts.ts`** — matches the shown output **line for
+  line**, including the detection lines and their order.
+- **`trazum conform your-log.jsonl`** — matches in substance and wording; the
+  block is an abbreviated excerpt and marks itself as one.
+
+And from the previous release's sweep, still holding: every documented flag
+exists, and the "thirty-two commands" figure is right.
+
 
 ## 1.53.2 — "What the tool says about itself"
 

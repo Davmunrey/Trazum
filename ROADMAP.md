@@ -1162,6 +1162,28 @@ rather than assumed: no documented flag is missing from the CLI, and the
 "thirty-two commands" figure is right.
 
 
+### 1.53.3 — Two surfaces, two formats
+
+The doc-drift hunt continued into the two places it had not looked: the page npm
+renders, and the transcripts that claim to be real output.
+
+`packages/cli/README.md` showed twenty-one of the thirty-two commands as though
+they were all of them, with `trazum gateway` — the only thing here that can
+refuse a call before the money is spent — absent entirely. The fix is to say the
+table is a selection, not to list them all on a page like that.
+
+`trazum doctor`'s transcript wrote its money column `~$4,912` where the command
+prints `~ $4,912`. A rule banning that sequence across the documentation would
+have broken the correct surface: `optimize`'s advisory suffix has no space by
+design, and two READMEs show it exactly as the tool prints it. The guard takes
+the column's shape from running the command instead.
+
+Three things this found in its own work: writing the disclaimer reproduced the
+defect it was fixing twice in one paragraph; the check written to catch the
+second was case-sensitive and did not catch it; and an existing guard caught
+this work's own test bounding a section by its neighbour.
+
+
 ## Collapsed into 1.8.0
 
 **Everything below shipped as 1.8.0, and none of these numbers is on npm.** They
