@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.51.2 — "The stream, and fourteen things nothing was checking"
+
 ### Added
 
 **The gateway relays a streamed answer as it arrives — 1.52's first chapter.**

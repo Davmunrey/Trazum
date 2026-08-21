@@ -1001,6 +1001,29 @@ that there was no way in, not that there was junk. The guard's own probe found
 it blind to untracked files — the moment a document is most likely to be wrong.
 
 
+### 1.51.2 — The stream, and fourteen things nothing was checking
+
+The first chapter of the 1.52 arc. `trazum gateway` relayed every response with
+`await upstreamResponse.text()`, so for `"stream": true` — nearly all production
+traffic — the caller waited for the whole answer and then received it at once,
+and time to first token became the total generation time. The page had the
+argument against itself already: it says reading a budget file per request would
+put Trazum's latency between you and your provider. It now streams through while
+counting, holding three numbers and a partial line rather than the text.
+
+Two documents a machine could not read are fixed: `report --year --json` printed
+prose before the document, and `@trazum/core` emitted an `outcome-report`
+missing the `schemaVersion` its own contract requires — for nine releases.
+
+And a sweep of every markdown file whose content no test read: fourteen of
+thirty, a defect in every one opened but `docs/plan-format.md`, which is recorded
+as clean. The README's money table said Anthropic's cache floor was 512 when it
+spans 512 to 4,096; `docs/ci.md`'s Action example used an input that has never
+existed; `SKILL.md` told agents about nine config keys of seventeen. Each fix
+ships with a guard deriving its subject from the code rather than from a list
+typed beside it.
+
+
 ## Collapsed into 1.8.0
 
 **Everything below shipped as 1.8.0, and none of these numbers is on npm.** They
