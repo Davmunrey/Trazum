@@ -1004,7 +1004,19 @@ provider's own usage API:
 ```bash
 export TRAZUM_ANTHROPIC_ADMIN_KEY=...   # read from the environment, never stored
 trazum connect anthropic --since 30d
+
+export TRAZUM_OPENAI_ADMIN_KEY=...      # an Admin key with the api.usage.read scope
+trazum connect openai --since 30d
 ```
+
+**Two providers, and the command names them itself.** `trazum connect` with no
+argument answers *"Available: anthropic, openai"*, says the credential comes
+from the environment and is never stored, and points at `--dry-run` to show
+which variable it would read. Each also accepts the unprefixed name —
+`ANTHROPIC_ADMIN_KEY`, `OPENAI_ADMIN_KEY` — for an environment that already
+sets one. Anthropic wants an Admin API key with read access to the usage
+report; OpenAI wants an Admin key carrying `api.usage.read`. Neither can spend
+money.
 
 ```
 Anthropic · 2026-08-01 → 2026-08-06 · $136.00

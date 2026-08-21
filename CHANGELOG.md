@@ -13,6 +13,52 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**A mislabelled index sent readers looking for an API key to a page about
+signing in with GitHub.** `docs/README.md` described `docs/accounts.md` as
+*"Provider accounts — Connecting a provider so usage arrives on its own"*. That
+file is about the **web app's** accounts: GitHub OAuth, the prompt library,
+share links, what the database holds. It contains no provider key, no admin API
+and no mention of `trazum connect`.
+
+`docs/usage-logs.md` then ended its connector paragraph with *"See
+`accounts.md` for the key"* — written trusting the index. **A
+mislabelled index does not stay one mistake**; it propagates into every document
+that consults it, and it did so within two changes. Both were mine: the index
+row at 1.51.1, the cross-reference in #296.
+
+The index row now says what the file is. `usage-logs.md` names the variable
+outright — `TRAZUM_ANTHROPIC_ADMIN_KEY`, or `ANTHROPIC_ADMIN_KEY` — and links to
+the README's `trazum connect` walkthrough, because a reader who wants a key
+should be given the key rather than another hop.
+
+**The OpenAI connector's credential was documented nowhere at all.** Found by
+the guard below, not by reading. `trazum connect openai` has existed since 1.41,
+the command's own refusal says *"Available: anthropic, openai"*, and the README
+section explains how the two providers' reports differ — while showing only
+Anthropic's `export` line. `TRAZUM_OPENAI_ADMIN_KEY` and `OPENAI_ADMIN_KEY`
+appeared in **no markdown file in the repository**, so setting up the OpenAI
+connector required reading `connector.ts`. The section now gives both
+invocations, both variables, and what each key must be able to do — read a usage
+report, never spend.
+
+### Added
+
+**`credential-pointers.test.js`, deriving both checks from `CONNECTORS`.**
+
+There is no mechanical way to assert that a one-line index summary describes a
+file honestly. There is a mechanical way to assert the consequence that hurt: **a
+sentence promising a credential must point at a file that names one.** Links are
+matched only where the prose actually promises a key, so a page naming
+`ANTHROPIC_API_KEY` inline — which needs no pointer — is not dragged in.
+
+The second assertion runs the other way: every connector's credential must be
+named in the documentation at all. That is the one that found OpenAI.
+
+Proven both ways. Restoring *"See `accounts.md` for the key"* gives
+*"accounts.md → accounts.md, which names no connector credential"*; removing the
+OpenAI export line again gives *"these connectors exist and their credential is
+documented nowhere: openai"*.
+
 **The gateway fronts two providers. Its page named one.** `docs/gateway.md`
 opened with `trazum gateway anthropic` and never mentioned `openai` — which the
 gateway has spoken for since 1.50.3, added in the same commit that wrote the

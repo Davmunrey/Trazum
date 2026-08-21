@@ -28,7 +28,7 @@ In the order somebody actually meets them:
 | | |
 |---|---|
 | [Usage logs](usage-logs.md) | What Trazum can read, and what each optional field unlocks |
-| [Provider accounts](accounts.md) | Connecting a provider so usage arrives on its own |
+| [Accounts](accounts.md) | Signing in to the web app: the prompt library, share links, and what the database holds |
 | [The gateway](gateway.md) | Standing in the path of the call, and refusing |
 | [CI](ci.md) | Gating a build on tokens, dollars and quality |
 | [The plan document](plan-format.md) | The one output meant to be kept, committed and diffed |
