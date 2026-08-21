@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { SPAWN_ENV } from './env.mjs';
+import { sectionOf } from '../../../test-utils/section.mjs';
 
 import { BUNDLED_CATALOGUE, CONNECTORS } from '@trazum/core';
 import { UPSTREAMS } from '../dist/gateway-server.js';
@@ -246,5 +247,105 @@ describe('every command with flags has exactly one OPTIONS section', () => {
     const dupes = (list) => [...new Set(list.filter((c, i) => list.indexOf(c) !== i))];
     assert.deepEqual(dupes(['eval', 'rank', 'eval']), ['eval']);
     assert.deepEqual(dupes(['eval', 'rank']), []);
+  });
+});
+
+describe('the npm page does not present a partial command table as the whole set', () => {
+  /**
+   * `packages/cli/README.md` is what npm renders — for most people the first
+   * and only page they read. Its `## Commands` table named twenty-one of the
+   * thirty-two, with no indication that it stops, and the sentence beneath it
+   * said *"`trazum --help` documents every flag"* — flags, never commands.
+   * `trazum gateway`, the only thing in this product that can refuse a call
+   * before the money is spent, had no row and no mention.
+   *
+   * The fix is not to list all thirty-two on a marketing page. It is to say the
+   * table is a selection, which is the same rule this repository applies to a
+   * skipped test and a partial measurement: silence about incompleteness reads
+   * as completeness.
+   *
+   * **Writing that disclaimer produced the defect twice in one paragraph.** The
+   * first draft enumerated the eleven omitted commands — a list typed beside
+   * the thing, stale the moment a command is added, which is exactly what four
+   * pull requests this session had just finished removing. The second said "a
+   * dozen more" when there are eleven. Both are caught here now.
+   */
+  const page = readFileSync(new URL('../README.md', import.meta.url).pathname, 'utf8');
+  const source = readFileSync(new URL('../src/index.ts', import.meta.url).pathname, 'utf8');
+
+  const commands = [...new Set(
+    [...source
+      .slice(source.indexOf('const COMMAND_FLAGS'), source.indexOf('\n};', source.indexOf('const COMMAND_FLAGS')))
+      .matchAll(/^ {2}([a-z][a-z-]*):\s*\[/gm)].map((m) => m[1]),
+  )];
+
+  /**
+   * Bounded by `sectionOf`, not by naming what comes after it.
+   *
+   * The first version of this ended the harvest at the next `## `, found by
+   * hand — and `publish.test.js` caught it: this repository has one home for
+   * that rule precisely because bounding a section by its neighbour has broken
+   * a harvest nine times. Writing it again inside a file about that same class
+   * of defect would have been the joke completing itself.
+   */
+  const section = sectionOf(page, '## Commands');
+
+  const named = commands.filter((c) => new RegExp(`\`trazum ${c}\\b`).test(section));
+
+  it('read the section and the command list', () => {
+    assert.ok(commands.length >= 30, `only ${commands.length} commands in the source`);
+    assert.ok(named.length >= 10, `only ${named.length} commands named on the npm page`);
+  });
+
+  it('says so when it is a selection', () => {
+    if (named.length === commands.length) return; // complete: nothing to disclaim
+    assert.match(
+      section,
+      /selection, not the whole set/,
+      `the npm page names ${named.length} of ${commands.length} commands and does not say the ` +
+        'table stops — a table that stops without saying so reads as the complete list',
+    );
+  });
+
+  it('and the disclaimer states no count, and enumerates nothing', () => {
+    /**
+     * The number would go stale the next release, and the enumeration the next
+     * command. Both were written here before this check existed.
+     */
+    const disclaimer = /\*\*That table is a selection[^]*?most people meet first\./.exec(section);
+    assert.ok(disclaimer, 'the disclaimer has moved or been reworded past recognition');
+    const text = disclaimer[0].replace(/\s+/g, ' ');
+
+    /**
+     * Case-insensitive, and the check is itself checked below.
+     *
+     * The first version of this line was case-sensitive and listed `a dozen`
+     * in lower case. The draft it was written to catch said *"A dozen more"*,
+     * at the start of a sentence, and **sailed straight through** — a guard
+     * that read as coverage and covered nothing. It was caught by running the
+     * probe rather than by reading the regex.
+     */
+    const COUNTS = /\b(dozen|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\d+)\b/i;
+    assert.doesNotMatch(text, COUNTS, `the disclaimer counts the omitted commands, which goes stale: ${text}`);
+
+    // Handed the two shapes that reached this file before it existed.
+    assert.equal(COUNTS.test('A dozen more have no row above'), true);
+    assert.equal(COUNTS.test('Eleven more have no row above'), true);
+    assert.equal(COUNTS.test('Several have no row above'), false);
+
+    const listed = commands.filter((c) => new RegExp(`\`trazum ${c}\\b`).test(text));
+    assert.ok(
+      listed.length <= 1,
+      `the disclaimer enumerates omitted commands (${listed.join(', ')}) — a list typed ` +
+        'beside the thing, stale the moment one is added. Name at most one as an example.',
+    );
+  });
+
+  it('and any command it does name is real', () => {
+    // The example has to exist. A disclaimer pointing at a command that was
+    // renamed away would be worse than the silence it replaced.
+    const mentioned = [...section.matchAll(/`trazum ([a-z][a-z-]*)/g)].map((m) => m[1]);
+    const invented = [...new Set(mentioned.filter((c) => !commands.includes(c)))];
+    assert.deepEqual(invented, [], `the npm page names commands that do not exist: ${invented.join(', ')}`);
   });
 });

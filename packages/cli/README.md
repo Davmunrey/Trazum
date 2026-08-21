@@ -39,8 +39,15 @@ npm install -g @trazum/cli
 | `trazum where [file]` | which prompts hide in my source files, and which model they call |
 | `trazum models` · `trazum rules` | prices; what each rule does |
 
-`trazum --help` documents every flag. Reports are available in English and
-Spanish (`--locale es`); the locale changes the report, never the optimisation.
+**That table is a selection, not the whole set.** `trazum --help` lists every
+command and documents every flag. Several have no row above — among them
+`trazum gateway`, the only thing here that can refuse a call *before* the money
+is spent; ask the tool how many rather than this page, which cannot stay right
+about it. A table that stops without saying it has stopped reads as the complete
+list, and this one is on the page most people meet first.
+
+Reports are available in English and Spanish (`--locale es`); the locale changes
+the report, never the optimisation.
 
 ## Optimise
 
