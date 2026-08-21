@@ -1114,6 +1114,11 @@ trazum watch --once                      # what a cron entry runs
 trazum watch --interval 15m              # or stay in the foreground
 ```
 
+**It watches the store, so the store has to have something in it.** On an empty
+one it refuses rather than reporting quiet — *"watching nothing would report
+that everything is fine"* — and names `trazum connect <provider> --store` as
+what fills it. Worth knowing before the cron entry, not after it.
+
 ```
 CROSSED — Total spend is $50.00 against a limit of $25.00. Measured, not
   projected.
