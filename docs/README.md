@@ -64,9 +64,10 @@ In the order somebody actually meets them:
 
 ## The arcs, as they were planned
 
-Four arcs have been planned in advance and written down **before** the code. They
-are kept because the reasoning is the useful part — not because anything in them
-is still forthcoming. Every chapter in all four shipped.
+Five arcs have been planned in advance and written down **before** the code —
+four delivered, one in progress. The delivered four are kept because the
+reasoning is the useful part, not because anything in them is still forthcoming:
+every chapter in all four shipped.
 
 | Arc | Thesis | Landed |
 |---|---|---|
@@ -74,7 +75,15 @@ is still forthcoming. Every chapter in all four shipped.
 | [1.36–1.40](plan-1.36-1.40.md) | The estimating half and the measuring half had never met | 1.40.0 |
 | [1.41–1.50](plan-1.41-1.50.md) | The loop is complete and inert; nothing runs on its own | 1.50.0 |
 | [1.51](plan-1.51.md) | Every figure is a denominator with no numerator | 1.51.0 |
+| [1.52–1.60](plan-1.52-1.60.md) | Nine arcs: finish what shipped incomplete, then widen | **in progress** |
 
 What each of them **refused** to ship — which is the more useful half, since a
 plan and its implementation shared a hand — is in
 [our own medicine](our-own-medicine.md).
+
+**The 1.52–1.60 plan is the one to read differently.** Its first three arcs
+answer things that are wrong or missing today and point at the line of code for
+each; the remaining six are an ordering of intentions. The plan says which kind
+each arc is, because presenting all nine with equal confidence would merge a
+measurement with a projection on the roadmap of a tool whose first doctrine rule
+forbids that.
