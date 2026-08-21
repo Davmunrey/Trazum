@@ -341,6 +341,7 @@ describe('the Compare tab inverts the sign convention, and says so first', () =>
 
 describe('the account control does not advertise what the deployment lacks', () => {
   const account = codeOf('components/Account.tsx');
+  const app = codeOf('components/App.tsx');
 
   it('renders nothing at all when sign-in is not configured', () => {
     // Not a disabled button: a disabled button is a promise, and the endpoint
@@ -349,9 +350,48 @@ describe('the account control does not advertise what the deployment lacks', () 
   });
 
   it('waits for the answer instead of guessing signed-out', () => {
-    // `state` starts null and the same guard covers it, so the first paint
-    // shows nothing rather than flashing "Sign in" at somebody who is not.
-    assert.match(account, /useState<SessionResponse \| null>\(null\)/);
+    /*
+      The session starts `null` and the guard above covers it, so the first
+      paint shows nothing rather than flashing "Sign in" at somebody who is
+      already signed in.
+    
+      This used to require the `useState` in `Account.tsx`. The state moved up
+      to `App.tsx` when the two components stopped fetching the same endpoint
+      separately, and a guard that names a file rather than a promise fails on
+      a move that keeps the promise exactly. What matters is that whoever owns
+      it starts it unanswered — and that the account control has no fallback of
+      its own to guess with.
+    */
+    assert.match(app, /useState<SessionResponse \| null>\(null\)/);
+    assert.ok(
+      !/session\s*=\s*\{[^}]*enabled:\s*(true|false)/.test(account),
+      'the account control carries a default session and would render before the answer',
+    );
+    // And it must not have grown a default for the prop, which is the same
+    // guess wearing different clothes.
+    assert.ok(
+      !/session\s*=\s*[^,)}]/.test(account.match(/export function Account\(\{[\s\S]*?\}\)/)?.[0] ?? ''),
+      'the session prop has a default value — that is a guess about a reader',
+    );
+  });
+
+  it('and the no-default rule refuses a guessed session', () => {
+    // Prove it by breaking it. Both of these render the account control before
+    // the endpoint has answered, which is the defect the rule exists for.
+    const guessed = (source) =>
+      /session\s*=\s*[^,)}]/.test(source.match(/export function Account\(\{[\s\S]*?\}\)/)?.[0] ?? '');
+    assert.ok(guessed('export function Account({ t, session = { enabled: false }, collapsed })'));
+    assert.ok(guessed('export function Account({ t, session = EMPTY_SESSION })'));
+    assert.ok(!guessed('export function Account({ t, session, collapsed = false })'));
+  });
+
+  it('and the page it moved to fetches it exactly once', () => {
+    // Two components asking the same endpoint gave two answers that could
+    // differ: a session expiring between them puts the Library tab on the page
+    // for a reader the account control has already decided is signed out.
+    // Measured before the change: two requests for one page load.
+    assert.equal((app.match(/'\/api\/auth\/session'/g) ?? []).length, 1);
+    assert.equal((account.match(/'\/api\/auth\/session'/g) ?? []).length, 0);
   });
 
   it('sends cookies deliberately on every call it makes', () => {
@@ -732,5 +772,72 @@ describe('a desktop preference must not reach a phone drawer', () => {
     // body and no visible control to lift either, both measured.
     assert.match(app, /matchMedia\('\(min-width: 1024px\)'\)/);
     assert.match(app, /setDrawerOpen\(false\)/);
+  });
+});
+
+describe('an overlay that recedes, and a mode you can still tell is current', () => {
+  const css = read('app/globals.css');
+  const app = codeOf('components/App.tsx');
+
+  /** The block that redefines tokens for the dark theme. */
+  const darkBlock = () => {
+    const from = css.indexOf('@media (prefers-color-scheme: dark)');
+    assert.ok(from > 0, 'the dark block has moved — this guard is reading nothing');
+    let depth = 0;
+    for (let i = css.indexOf('{', from); i < css.length; i++) {
+      if (css[i] === '{') depth++;
+      else if (css[i] === '}' && --depth === 0) return css.slice(from, i);
+    }
+    throw new Error('the dark block is unterminated');
+  };
+
+  it('the scrim has a colour of its own, not the theme foreground', () => {
+    /*
+      `bg-foreground/40` made the drawer's scrim a near-white wash in dark: the
+      page behind it measured a relative luminance of 0.0157 closed and 0.1681
+      open — eleven times brighter — while the drawer in front sat at
+      rgb(38,36,32). The layer whose job is to recede was the brightest thing
+      on the screen.
+    */
+    assert.match(css, /--scrim:/, 'the scrim has no token of its own');
+    assert.match(app, /className="fixed inset-0 z-40 bg-scrim/);
+    assert.ok(
+      !/bg-foreground\/\d/.test(app),
+      'something in the shell paints with the theme foreground at an alpha — in dark that is a white wash',
+    );
+  });
+
+  it('and it is deliberately absent from the dark block', () => {
+    // The omission is the point. A scrim that follows the theme stops dimming
+    // in exactly one of the two themes, which is the one nobody checks.
+    assert.ok(
+      !/--scrim:/.test(darkBlock()),
+      '--scrim is redefined for dark — a scrim dims in both themes or it is not a scrim',
+    );
+  });
+
+  it('the dark-block reader can actually see a redefinition', () => {
+    // Otherwise the assertion above passes on an empty string forever. The
+    // dark block does redefine other tokens, and this proves the slice reaches
+    // them.
+    assert.match(darkBlock(), /--ink-faint:/);
+    assert.match(darkBlock(), /--layer-active:/);
+  });
+
+  it('the selected tab survives forced colours, where a tint does not', () => {
+    /*
+      The rail marks the current mode with `--layer-active` and nothing else —
+      the `line` variant's marker is switched off because in a vertical list it
+      sticks out of the rail. Under Windows High Contrast the tint is replaced
+      by Canvas, and active and inactive rows measured identically:
+      rgb(232,232,232) both, with 31 terracotta pixels inside a 17px glyph the
+      only thing left. An outline is a shape, and `Highlight` is the system's
+      own word for "this one".
+    */
+    assert.match(css, /@media \(forced-colors: active\)/);
+    const from = css.indexOf('@media (forced-colors: active)');
+    const block = css.slice(from, css.indexOf('}\n}', from) + 3);
+    assert.match(block, /\[role='tab'\]\[aria-selected='true'\]/);
+    assert.match(block, /outline:\s*2px solid Highlight/);
   });
 });

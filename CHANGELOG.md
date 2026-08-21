@@ -113,6 +113,44 @@ broke it again. It matches the open tag and any whitespace now, and is handed
 three ungated triggers it must reject rather than one. What is guarded is the
 gate, not the spelling.
 
+**A completeness pass asked what every lens had missed, and found four more.**
+The frames *during* a transition, the dark theme's overlay layer, Windows High
+Contrast, and the requests the page issues on load — four places nobody had
+looked because every other check measured a settled state in a default theme.
+
+*In dark mode the scrim brightened the page instead of dimming it.* It was
+`bg-foreground/40`, and `--foreground` in dark is a near-white, so the layer
+whose whole job is to recede became a 40% white wash: the page behind it
+measured a relative luminance of 0.0157 closed and 0.1681 open — eleven times
+brighter — while the drawer in front of it sat at rgb(38,36,32). The thing you
+were meant to be looking at read as a dark hole punched into a bright field.
+The scrim has a token of its own now, defined once and deliberately not
+redefined for dark. Measured after: light dims from 0.9007 to 0.2731, dark from
+0.0156 to 0.0108.
+
+*Expanding the rail threw its contents across the page.* Only `width` is
+animated, so every label re-renders at full size on the first frame while the
+box is still 60px — and with nothing clipping it at `z-50`, the language toggle
+was drawn and answered hit-tests 70px into the main column for the first ~50ms
+of every expand. Proved by releasing the clip again afterwards:
+`elementFromPoint(130, 842)` returns the "Español" button at rail widths of 60,
+66 and 91px without it, and nothing with it.
+
+*Under Windows High Contrast the current mode became untellable.* The rail
+signals it with a background tint and nothing else — the `line` variant's
+marker is switched off, because in a vertical list it sticks out of the rail —
+and a tint is exactly what forced-colors replaces. Active and inactive rows
+both measured rgb(232,232,232); all that survived was 31 terracotta pixels
+inside a 17px glyph. The selected tab takes a `Highlight` outline there: a
+shape rather than a surface.
+
+*The session was fetched twice on every load,* by two components reading
+different fields of one answer — and two answers to one question can differ. A
+session expiring between them puts the Library tab on the page for a reader the
+account control has already decided is signed out. One fetch now, passed down;
+the account control takes the session as a prop and still renders nothing until
+it arrives.
+
 **Two documents described a header the app no longer has.** `README.md` and
 `docs/accounts.md` both said the Sign in button and the "temporary session"
 warning live in the header. They live in the sidebar and in the account menu.
