@@ -13,6 +13,43 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**The gateway fronts two providers. Its page named one.** `docs/gateway.md`
+opened with `trazum gateway anthropic` and never mentioned `openai` — which the
+gateway has spoken for since 1.50.3, added in the same commit that wrote the
+page. The command's own refusal says *"Name the provider to stand in front of.
+Known: anthropic, openai."* The product named both; the documentation named one.
+A reader on OpenAI could read the page end to end and conclude the gateway was
+Anthropic-only.
+
+The page now carries the compiled-in table — provider, upstream origin, and the
+single path each forwards — which is also the first time either forwarded path
+appeared in the documentation at all.
+
+**"It forwards exactly one path" was counting the wrong subject.** That sentence
+is the security argument — *"a gateway that forwarded any path would be a
+general proxy for your API key"* — and the property holds: one path **per
+provider**, two in total. The claim is now stated per provider and points at the
+table.
+
+### Added
+
+**`gateway-doc.test.js`, asserting the page against `UPSTREAMS`.** Three checks,
+every subject derived from the compiled-in table: each provider is named, each
+origin and forwarded path appears verbatim, and the "exactly one path" sentence
+must say *per provider* while more than one provider exists.
+
+The path assertion is the one that matters. The page's security claim is about
+*which* path is forwarded, so asserting the property abstractly would let the
+page keep the argument and lose the specifics.
+
+**Its first draft would have fired on a correct page.** Requiring each provider
+as inline code failed `anthropic` as well, which the original page named
+perfectly well inside its opening `bash` block — naming a provider in an example
+command is naming it. Caught by running the check against the original text, not
+just the new one. Matching is now word-boundary, and the probe isolates exactly
+the real gap: *"the gateway fronts these and docs/gateway.md does not name them:
+openai"*.
+
 **The product tells you to record an `outcome`. The page it sends you to never
 mentioned the field.** `docs/usage-logs.md` exists to answer one question —
 *what do I put in the log, and what does each field buy me?* — and it named
