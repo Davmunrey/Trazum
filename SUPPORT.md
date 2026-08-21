@@ -39,10 +39,25 @@ and no cache reads" — is almost always enough.
 
 Trazum does not phone home. There is no ping, no install hook, no anonymous
 usage counter, and no crash reporter, in the CLI, the library, the MCP server or
-the web app. The only network calls any of them make are the ones you asked for:
-`connect` reaching a provider's usage API, `--pricing-live` fetching a price
-feed, `eval`/`route`/`prune`/`--suggest` making the model calls they warn you
-about first.
+the web app. Every network call any of them can make is one you asked for, and
+here is the whole list, each tied to the flag or command that reaches for it —
+named rather than counted, because a count is the half that goes stale:
+
+| What reaches out | Where it goes | What asks for it |
+| --- | --- | --- |
+| `trazum connect` | the provider's usage API | you name the provider |
+| `--pricing-live` | the OpenRouter price feed | the flag |
+| `eval`, `route`, `prune`, `--suggest`, `--llm`, `semantic` | your configured `TRAZUM_LLM_*` endpoint | the command, which prints the call count and stops without `--yes` |
+| Vertex AI, when that is your endpoint | Google's token endpoint, to exchange the service account for a token | the same commands, only on Vertex |
+| `--exact-tokens` | Anthropic's `count_tokens` endpoint | the flag. It is not charged for tokens |
+| `trazum gateway` | the provider you named, at a compiled-in host | **the whole point of the command** — it stands in the path of your calls and forwards them |
+| `trazum watch --webhook` | the URL you gave it | the flag, and only when a threshold is crossed |
+
+**The gateway is the one to read twice.** It forwards your prompt and your
+credential to the provider, because that is what standing in the path means. It
+holds neither: the body is counted and dropped, the credential is passed through
+untouched, and the host is compiled in so no config on disk can redirect it.
+[docs/gateway.md](docs/gateway.md) is the full account.
 
 That is enforced rather than promised. The build fails if `trazum feedback`
 reaches the network or opens a browser on your behalf, if anything about your

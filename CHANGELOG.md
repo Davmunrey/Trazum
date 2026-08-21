@@ -13,6 +13,59 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**`SUPPORT.md`'s "No telemetry" section claimed to enumerate every network call
+and listed three of seven.** It said *"The only network calls any of them make
+are the ones you asked for: `connect` reaching a provider's usage API,
+`--pricing-live` fetching a price feed, `eval`/`route`/`prune`/`--suggest`
+making the model calls they warn you about first."*
+
+Missing:
+
+- **`trazum gateway`**, which forwards your entire prompt and your credential to
+  the provider, and has done since 1.50.3.
+- **`--exact-tokens`**, which calls Anthropic's `count_tokens` endpoint.
+- **`trazum watch --webhook`**, which POSTs an alert to a URL you gave it.
+- Vertex AI's token exchange, when Vertex is the configured endpoint.
+
+Every one of those is a call somebody asked for, and that is not the point. The
+sentence claimed to enumerate them, **on the page a reader opens to check
+whether this tool phones home**, and an enumeration missing its largest member
+is wrong however defensible each omission is on its own.
+
+The section is now a table: what reaches out, where it goes, and what asks for
+it — with the gateway called out for a second reading, because forwarding a
+prompt and a credential is what standing in the path means, and a reader
+deserves that said plainly rather than found out.
+
+**`docs/plan-format.md` was checked and is entirely correct** — the eight
+top-level fields, the eight action fields, the five `kind` values and the five
+refusal reasons all match `plan.ts` and a plan emitted for the purpose. Reported
+because a page that survives the check is worth recording too.
+
+### Added
+
+**`outbound-surfaces.test.js`: every module that can reach the network is named
+in `SUPPORT.md`.** The file set is derived; the map from file to prose is
+deliberate. That asymmetry is the design — a new module that can call out fails
+by name, and the only way to make it pass is to decide what the page should say
+about it, which is the review a new outbound surface deserves. A fourth
+assertion refuses any count in front of the list.
+
+**The guard's first draft missed the gateway, which is the surface it was
+written to find.** `gateway-server.ts` assigns `const doFetch = context.fetchImpl
+?? fetch` and calls `doFetch(...)`; matching only `fetch(` and `fetchImpl(`
+skipped it. Aliases assigned from `fetch` are resolved now.
+
+**Its second draft missed a planted module entirely**, because it derived the
+file list from `git ls-files` and the probe was written but not yet staged. CI
+would have caught it after the commit — which is precisely the reassurance that
+lets a guard be useless where it is actually used, at the desk, before the
+commit. It reads untracked-but-not-ignored files too.
+
+**And the fix's own first draft wrote "six" above a table of seven rows** — the
+same failure corrected in three other files this session, committed again by the
+person who had just corrected them. There is no number there now.
+
 **The CI page's first example has never worked.** `docs/ci.md` opened its GitHub
 Actions section with:
 
