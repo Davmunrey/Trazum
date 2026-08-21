@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.52.0 — "The gateway in a real path"
+
 ### Added
 
 **What a call it could not measure costs — 1.52's fourth chapter, which closes
