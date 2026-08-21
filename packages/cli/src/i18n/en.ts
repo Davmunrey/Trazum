@@ -43,7 +43,7 @@ ${bold('USAGE')}
   trazum plan <log.jsonl|dir> [options]
   trazum verify <plan.json> --against <newer.jsonl|dir> [options]
   trazum history <dir-of-stored-reports> [options]
-  trazum connect <anthropic|openai> [options]
+  trazum connect <provider> [options]
   trazum store [--prune] [options]
   trazum watch [--once | --interval 15m] [options]
   trazum serve [--port <n> | --socket <path>]
@@ -57,7 +57,7 @@ ${bold('USAGE')}
   trazum conform <file|-> [--contract <name>]
   trazum models
   trazum rules
-  trazum gateway <anthropic|openai> --on-cannot-tell <fail-open|fail-closed>
+  trazum gateway <provider> --on-cannot-tell <fail-open|fail-closed>
   trazum experiment <log> --a <label> --b <label> --min-outcomes <n>
   trazum quality <log> --label <name> --at <iso> [--gate]
   trazum semantic <prompt> [--yes]

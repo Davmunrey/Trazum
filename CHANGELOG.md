@@ -11,7 +11,34 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Fixed
+
+**`--help` said the gateway fronts two providers while the gateway itself said
+four.** The USAGE block read `trazum gateway <anthropic|openai>`; running
+`trazum gateway` with no argument answers *"Known: anthropic, openai, deepseek,
+google."* A reader meets both within a minute of each other, and the wrong one
+is the first.
+
+It went stale during the release whose entire subject was that list. Nothing
+caught it, because the guard that exists for exactly this — the one comparing
+`docs/gateway.md` against the compiled upstream table — was pointed at the
+documentation, and the same sentence lived inside the product.
+
+**The fix is not a longer list kept in sync.** It is `<provider>`, in both
+commands and both locales, with the enumeration left to the refusal that
+derives it. A list of providers typed beside the thing has now gone stale in
+`docs/gateway.md`, in `ROADMAP.md` and in the help text itself; the answer each
+time was to stop writing the list, not to correct it.
+
+A guard now refuses any USAGE line whose `<a|b>` group names two or more
+providers — the provider set derived from the catalogue, the upstream table and
+the connector list together, so it covers a name defined in any of them. It is
+handed the exact line it was written for, and separately the innocent shapes
+(`<file|dir|->`, `[--dry-run | --yes]`) it must not fire on. And the other half
+is asserted too: both refusals still name every provider they support, because
+removing the list from USAGE would be a regression if nothing else told a reader
+what to pass.
+
 
 
 ## 1.53.1 — "The band stays inside the family it was measured in"
