@@ -1265,6 +1265,10 @@ ${bold('EXAMPLES')}
     needsPolicy: (policies) =>
       `--on-cannot-tell is required, and there is no default: ${policies}. When the gateway cannot judge a call — no budget, nothing measured, an unpriced model — one of these happens, and only you know which failure your product can survive. fail-open keeps it working and lets the bill run; fail-closed stops the bill and takes it down with it. Picking one for you would be the most consequential decision in your architecture, made silently at install time.`,
     listening: (where, provider) => `Gateway on ${where}, in front of ${provider}`,
+    unmeasured: (cause, sofar) =>
+      cause === 'stream-broke'
+        ? `unmeasured: the stream broke before its usage event — the provider billed this call and this session cannot see it (${sofar} unmeasured so far)`
+        : `unmeasured: the stream carried no usage event — on OpenAI that is every streaming call without stream_options.include_usage, so the total below is short by these (${sofar} unmeasured so far)`,
     pointYourSdk: (where) =>
       `Point your SDK's base URL at ${where} and change nothing else. It speaks the provider's own wire format, so no code changes and no new client.`,
     credential: () =>

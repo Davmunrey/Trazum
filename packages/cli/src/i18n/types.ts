@@ -379,6 +379,7 @@ export interface CliMessages {
     badProvider(given: string, known: string): string;
     needsPolicy(policies: string): string;
     listening(where: string, provider: string): string;
+    unmeasured(cause: 'stream-broke' | 'no-usage-event', sofar: number): string;
     pointYourSdk(where: string): string;
     credential(): string;
     neverSubstitutes(): string;

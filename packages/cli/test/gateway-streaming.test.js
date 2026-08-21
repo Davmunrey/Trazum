@@ -158,3 +158,130 @@ describe('a streamed answer is relayed as it arrives', () => {
     assert.deepEqual(recorded, []);
   });
 });
+
+/**
+ * What a broken stream costs — 1.52's fourth chapter.
+ *
+ * #304 recorded nothing for a call whose usage never arrived, which is right,
+ * and told nobody, which is not. The money was spent: the provider generated
+ * whatever it generated and will bill for it. A period's total is short by
+ * exactly those calls, and an operator who is not told reads a figure that is
+ * quietly missing traffic.
+ *
+ * The second cause is the one that matters in practice. On OpenAI a streaming
+ * call carries no usage **unless** the caller passed `stream_options:
+ * {include_usage: true}` — so this is the common case, not the exception, and
+ * a gateway that stayed silent would under-report most of somebody's bill.
+ */
+describe('a forwarded call that could not be measured is named', () => {
+  const causesFrom = async (handler, provider = 'anthropic', path = '/v1/messages') => {
+    const server = createServer(handler);
+    started.push(server);
+    const stubUrl = await new Promise((resolve) => {
+      server.listen(0, '127.0.0.1', () => resolve(`http://127.0.0.1:${server.address().port}`));
+    });
+    const causes = [];
+    const recorded = [];
+    const gw = buildGateway({
+      provider,
+      catalogue: BUNDLED_CATALOGUE,
+      policy: { onCannotTell: 'fail-closed' },
+      standing: () => ({ limitUsd: 100, consumedUsd: 1, provenance: 'measured', asOfMs: 0 }),
+      record: (m) => recorded.push(m),
+      unmeasured: (cause) => causes.push(cause),
+      note: () => {},
+      fetchImpl: (url, init) => fetch(`${stubUrl}${path}`, init),
+    });
+    started.push(gw);
+    const where = await listenGateway(gw, { port: 0 });
+    return { where, causes, recorded, path };
+  };
+
+  it('names a stream that carried no usage event', async () => {
+    const { where, causes, recorded, path } = await causesFrom((request, response) => {
+      request.resume();
+      request.on('end', () => {
+        response.writeHead(200, { 'content-type': 'text/event-stream' });
+        response.end('data: {"choices":[{"delta":{"content":"hi"}}]}\n\ndata: [DONE]\n\n');
+      });
+    }, 'openai', '/v1/chat/completions');
+
+    const response = await fetch(`${where}${path}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ model: 'gpt-5', stream: true, messages: [] }),
+    });
+    await response.text();
+
+    assert.deepEqual(causes, ['no-usage-event']);
+    // Named, and still not counted. Reporting it must not also inflate the
+    // total it exists to warn about.
+    assert.deepEqual(recorded, []);
+  });
+
+  it('names a stream that broke before its usage event', async () => {
+    const { where, causes, recorded, path } = await causesFrom((request, response) => {
+      request.resume();
+      request.on('end', () => {
+        response.writeHead(200, { 'content-type': 'text/event-stream' });
+        response.write('data: {"message":{"usage":{"input_tokens":10,"output_tokens":0}}}\n\n');
+        /**
+         * Cut the connection after the stream has genuinely begun.
+         *
+         * Destroying the socket in the same tick as the first write does not
+         * test this at all: the response never reaches the gateway, the fetch
+         * fails at connection level, and the 502 "upstream unreachable" path
+         * runs instead — a different failure with a different answer. The delay
+         * is what makes this a *broken stream* rather than a *dead upstream*,
+         * and the first draft of this test conflated them.
+         */
+        setTimeout(() => response.socket.destroy(), 30);
+      });
+    });
+
+    try {
+      const response = await fetch(`${where}${path}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body,
+      });
+      await response.text();
+    } catch {
+      // The caller sees a broken response, which is the point: an incomplete
+      // answer must not look like a short one.
+    }
+
+    assert.deepEqual(causes, ['stream-broke']);
+    assert.deepEqual(recorded, [], 'the partial counts were recorded as if they were the cost');
+  });
+
+  it('says nothing when the call was measured', async () => {
+    const stub = streamingUpstream();
+    const stubUrl = await new Promise((resolve) => {
+      stub.server.listen(0, '127.0.0.1', () => resolve(`http://127.0.0.1:${stub.server.address().port}`));
+    });
+    const causes = [];
+    const gw = buildGateway({
+      provider: 'anthropic',
+      catalogue: BUNDLED_CATALOGUE,
+      policy: { onCannotTell: 'fail-closed' },
+      standing: () => ({ limitUsd: 100, consumedUsd: 1, provenance: 'measured', asOfMs: 0 }),
+      record: () => {},
+      unmeasured: (cause) => causes.push(cause),
+      note: () => {},
+      fetchImpl: (url, init) => fetch(`${stubUrl}/v1/messages`, init),
+    });
+    started.push(gw);
+    const where = await listenGateway(gw, { port: 0 });
+
+    const response = await fetch(`${where}/v1/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body,
+    });
+    stub.release();
+    await response.text();
+
+    assert.deepEqual(causes, [], 'a measured call was reported as unmeasured');
+  });
+});

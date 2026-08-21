@@ -175,6 +175,37 @@ would put Trazum's own latency between you and your provider on every call — a
 cost this tool would otherwise be reporting on somebody else. The refusal
 carries `asOfMs` so staleness is visible rather than implied away.
 
+## What a call it could not measure costs
+
+**Some forwarded calls cannot be counted, and the gateway says so instead of
+letting the total quietly absorb them.** The money is spent either way — the
+provider generated what it generated and will bill for it — so a period's total
+is short by exactly these. A zero would be a measurement, and an estimate would
+merge the two halves this tool spent an arc separating.
+
+Two causes, and the second is not a failure at all:
+
+| Cause | What happened | How common |
+| --- | --- | --- |
+| `stream-broke` | The connection died before the event carrying the counts | rare, and a real error |
+| `no-usage-event` | The stream ended cleanly and carried no counts | **every OpenAI streaming call** without `stream_options: {include_usage: true}` |
+
+The second is the one to act on. On OpenAI a streamed call reports nothing
+unless the caller asks, so a gateway that stayed silent would under-report most
+of somebody's bill and look precise doing it. The fix is one field in your
+request, and the gateway names the field rather than only the symptom.
+
+```
+  unmeasured: the stream carried no usage event — on OpenAI that is every
+  streaming call without stream_options.include_usage, so the total below is
+  short by these (3 unmeasured so far)
+```
+
+The count is kept separate from the measured one and never folded in. That is
+the same rule as everywhere else here: **not-recorded is not not-happened**, and
+a figure that swallowed the difference would be wrong in the flattering
+direction.
+
 ## The refusal body
 
 Documented field by field, with a two-direction parity test, in
