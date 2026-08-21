@@ -1299,6 +1299,8 @@ ${bold('EJEMPLOS')}
       given === ''
         ? `Nombra el proveedor delante del que ponerse. Conocidos: ${known}.`
         : `"${given}" no es un proveedor por el que hable esta pasarela. Conocidos: ${known}.`,
+    pricedNotFronted: (given, known) =>
+      `Trazum tarifa ${given} pero esta pasarela todavía no se pone delante de él — cubre ${known}. Es un hueco real y está en la hoja de ruta, no una errata tuya. Mientras tanto: "trazum profile" tarifa un registro de ${given} que exportes, y su gate --max-usd tumba una build por la factura ya gastada. Lo que no tienes es un rechazo antes de gastar el dinero, que es justo el sentido de la pasarela y la razón de decir esto en vez de listar ${given} como desconocido.`,
     needsPolicy: (policies) =>
       `--on-cannot-tell es obligatorio, y no hay valor por defecto: ${policies}. Cuando la pasarela no puede juzgar una llamada — sin presupuesto, sin nada medido, un modelo sin precio — pasa una de las dos, y solo tú sabes qué fallo puede sobrevivir tu producto. fail-open lo mantiene funcionando y deja correr la factura; fail-closed para la factura y se lo lleva por delante. Elegir por ti sería tomar la decisión más consecuente de tu arquitectura, en silencio, al instalar.`,
     listening: (where, provider) => `Pasarela en ${where}, delante de ${provider}`,
@@ -2265,6 +2267,8 @@ ${bold('EJEMPLOS')}
       `Nombra un proveedor del que leer tu factura: trazum connect anthropic. Disponibles: ${providers}. La credencial sale del entorno y nunca se guarda — añade --dry-run para ver exactamente qué se llamaría y de qué variable saldría.`,
     unknownProvider: (id, providers) =>
       `No hay conector para "${id}". Los que existen son: ${providers}.`,
+    pricedNoConnector: (id, providers) =>
+      `Trazum tarifa ${id} pero todavía no tiene conector para él — conecta con ${providers}. O ese proveedor no publica una API de uso, o nadie ha escrito el conector; ambos son huecos, no errores tuyos. Mientras tanto, exporta un registro y pásale "trazum profile": funciona todo salvo lo que solo una API de uso podría aportar.`,
     dryRun: (provider, from, to, envVars, keyKind) =>
       `Leería el uso de ${provider} del ${from} al ${to}, usando ${keyKind} tomada de ${envVars}. No se envió nada y no hizo falta ninguna credencial para imprimir esto.`,
     heading: (provider, from, to, usd, calls) =>

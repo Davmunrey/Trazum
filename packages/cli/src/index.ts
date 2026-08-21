@@ -2131,6 +2131,18 @@ function commandFeedback(t: CliMessages): void {
  * config, with the operator's own reason, and every substituted call is marked
  * so no later report treats it as the call the caller made.
  */
+/**
+ * Every provider the catalogue prices.
+ *
+ * `provider` is optional on a model — an overlay may add one without it — so a
+ * missing provider is skipped rather than coerced. A model with no provider
+ * cannot make its provider "supported" by accident.
+ */
+function pricedProviders(catalogue: PricingCatalogue): Set<string> {
+  const models = catalogue.models ?? [];
+  return new Set(models.map((m) => m.provider).filter((p): p is string => typeof p === 'string'));
+}
+
 async function commandGateway(
   args: Args,
   config: TrazumConfig,
@@ -2140,6 +2152,22 @@ async function commandGateway(
 ): Promise<void> {
   const provider = args.positional[0];
   if (provider === undefined || UPSTREAMS[provider] === undefined) {
+    /**
+     * Three answers, not two.
+     *
+     * A provider Trazum **prices** but does not front is a different situation
+     * from a name it has never heard, and until 1.53 both got the same
+     * sentence. One is a gap in this tool with a workaround; the other is a
+     * typo. Telling them apart is the difference between a user reaching for
+     * `profile` and a user checking their spelling.
+     *
+     * Derived from the catalogue, so a provider added to pricing starts
+     * getting the better answer without anyone remembering to update a list.
+     */
+    const priced = pricedProviders(pricing);
+    if (provider !== undefined && priced.has(provider)) {
+      throw new Error(t.gateway.pricedNotFronted(provider, Object.keys(UPSTREAMS).join(', ')));
+    }
     throw new Error(t.gateway.badProvider(provider ?? '', Object.keys(UPSTREAMS).join(', ')));
   }
 
@@ -4609,7 +4637,12 @@ async function commandConnect(
   }
   const descriptor = connectorFor(id);
   if (descriptor === null) {
-    throw new Error(t.connect.unknownProvider(id, CONNECTORS.map((c) => c.id).join(', ')));
+    // The same three-way split as the gateway, for the same reason.
+    const priced = pricedProviders(pricing);
+    const known = CONNECTORS.map((c) => c.id).join(', ');
+    throw new Error(
+      priced.has(id) ? t.connect.pricedNoConnector(id, known) : t.connect.unknownProvider(id, known),
+    );
   }
 
   const now = Date.now();

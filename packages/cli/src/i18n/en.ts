@@ -1262,6 +1262,8 @@ ${bold('EXAMPLES')}
       given === ''
         ? `Name the provider to stand in front of. Known: ${known}.`
         : `"${given}" is not a provider this gateway speaks for. Known: ${known}.`,
+    pricedNotFronted: (given, known) =>
+      `Trazum prices ${given} but this gateway does not stand in front of it yet — it fronts ${known}. That is a real gap and it is on the roadmap, not a typo on your part. Until then: "trazum profile" prices a ${given} log you export, and its --max-usd gate fails a build on the bill after the fact. What you do not get is a refusal before the money is spent, which is the whole point of the gateway and the reason this is worth saying rather than listing ${given} as unknown.`,
     needsPolicy: (policies) =>
       `--on-cannot-tell is required, and there is no default: ${policies}. When the gateway cannot judge a call — no budget, nothing measured, an unpriced model — one of these happens, and only you know which failure your product can survive. fail-open keeps it working and lets the bill run; fail-closed stops the bill and takes it down with it. Picking one for you would be the most consequential decision in your architecture, made silently at install time.`,
     listening: (where, provider) => `Gateway on ${where}, in front of ${provider}`,
@@ -2246,6 +2248,8 @@ ${bold('EXAMPLES')}
       `Name a provider to read your bill from: trazum connect anthropic. Available: ${providers}. The credential comes from the environment and is never stored — add --dry-run to see exactly what would be called and which variable it would be read from.`,
     unknownProvider: (id, providers) =>
       `There is no connector for "${id}". The ones that exist are: ${providers}.`,
+    pricedNoConnector: (id, providers) =>
+      `Trazum prices ${id} but has no connector for it yet — it connects to ${providers}. Either that provider publishes no usage API, or one has not been written; both are gaps rather than mistakes of yours. Until then, export a log and run "trazum profile" on it: every figure works except the ones a usage API would supply on its own.`,
     dryRun: (provider, from, to, envVars, keyKind) =>
       `Would read ${provider} usage from ${from} to ${to}, using ${keyKind} taken from ${envVars}. Nothing was sent and no credential was needed to print this.`,
     heading: (provider, from, to, usd, calls) =>
