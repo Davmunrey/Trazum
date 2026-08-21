@@ -100,8 +100,19 @@ export function App({
   }
 
   return (
-    <main className="mx-auto max-w-[1180px] px-5 pt-7 pb-16">
-      <header className="mb-1.5 flex flex-wrap items-baseline gap-3">
+    <>
+      {/*
+        A bar, not a row of things that happen to be at the top.
+        
+        The header was a wrap-around flex line: wordmark, tagline, account and
+        language all at the same altitude, so nothing said "this is the
+        application's chrome and the rest is the work". A bar with its own rule
+        and a sticky position separates the two, and it is the only element on
+        the page that spans the full width — which is what makes it read as the
+        frame rather than as the first card.
+      */}
+      <header className="sticky top-0 z-40 border-b border-rule-strong bg-background/85 backdrop-blur-md">
+        <div className="mx-auto flex h-14 max-w-[1180px] items-center gap-3 px-5">
         {/* A drawn mark rather than a stock glyph: the prompt caret and its
             cursor, which is where a prompt is written and the only place this
             tool ever touches. Two paths, no asset, and it takes the terracotta
@@ -110,7 +121,7 @@ export function App({
           <svg
             viewBox="0 0 22 22"
             aria-hidden="true"
-            className="size-[21px] shrink-0 translate-y-px text-terracotta"
+            className="size-[18px] shrink-0 translate-y-px text-terracotta"
             fill="none"
             stroke="currentColor"
             strokeWidth="2.4"
@@ -120,11 +131,17 @@ export function App({
             <path d="M4.5 5 11 11l-6.5 6" />
             <path d="M14 17h4.5" />
           </svg>
-          <h1 className="font-display text-[27px] leading-none font-semibold tracking-[-0.01em]">
+          <h1 className="font-display text-[22px] leading-none font-semibold tracking-[-0.01em]">
             Trazum
           </h1>
         </span>
-        <span className="text-sm text-muted-foreground">{t.meta.tagline}</span>
+        {/*
+          Dropped below `sm`. On a 390px screen the tagline and the two
+          controls cannot share a line without one of them wrapping, and a
+          wrapping bar stops being a bar. The name and the controls are what
+          the bar is for; the tagline is said again in the lede below.
+        */}
+        <span className="hidden text-[13px] text-faint sm:inline">{t.meta.tagline}</span>
 
         {/* Pushed to the far end so they read as page-level controls rather
             than as part of the title. */}
@@ -154,12 +171,46 @@ export function App({
             ))}
           </div>
         </div>
+        </div>
       </header>
 
-      <p className="mt-0 mb-7 max-w-[62ch] text-muted-foreground">{t.page.lede}</p>
+      <main className="mx-auto max-w-[1180px] px-5 pt-7 pb-16">
+        {/*
+          The lede is five lines of prose above the tool it describes, and it
+          is the first thing on the page — so on a laptop the thing somebody
+          came to use started below the fold. Kept, because it is the honest
+          description of what this does, and given the width and weight of
+          supporting copy rather than of a headline.
+        */}
+        <p className="mt-0 mb-7 max-w-[62ch] text-[15px] leading-relaxed text-muted-foreground">
+          {t.page.lede}
+        </p>
 
       <Tabs defaultValue="optimise">
-        <TabsList className="mb-5">
+        {/*
+          The three modes are the page's real navigation, and they were dressed
+          as a settings toggle: a small pill group in the sunken grey, the same
+          weight as a rule-level switch. They are not one control with three
+          positions — Optimise shortens a prompt, Compare judges two of them,
+          and Your bill reads a usage log, which are three different jobs on
+          three different inputs.
+
+          A line variant with a terracotta marker says "you are here" the way a
+          nav does. Styled from the list rather than on each trigger, because a
+          test pins the exact source of the Library trigger and a className
+          there would break it — and because a rule that lives once cannot
+          drift between four call sites.
+        */}
+        <TabsList
+          variant="line"
+          className="mb-6 h-auto w-full justify-start gap-0 overflow-x-auto rounded-none border-b p-0
+            [&_button]:h-auto [&_button]:flex-none [&_button]:rounded-none [&_button]:px-3.5 [&_button]:py-2.5
+            [&_button]:text-[15px] [&_button]:font-medium
+            [&_button:hover]:bg-layer-hover
+            [&_button[data-state=active]]:text-foreground
+            [&_button[data-state=active]]:after:bg-terracotta
+            [&_button[data-state=active]]:after:bottom-[-1px]
+            [&_button[data-state=active]]:after:h-[2px]">
           <TabsTrigger value="optimise">{t.compare.optimiseTab}</TabsTrigger>
           <TabsTrigger value="compare">{t.compare.tab}</TabsTrigger>
           <TabsTrigger value="bill">{t.bill.tab}</TabsTrigger>
@@ -207,11 +258,12 @@ export function App({
         )}
       </Tabs>
 
-      <footer className="mt-8 border-t pt-3.5 text-xs text-muted-foreground">
-        {t.page.footerLead(pricingReviewed)}
-        <code className="font-mono">--exact-tokens</code>
-        {t.page.footerTail}
-      </footer>
-    </main>
+        <footer className="mt-8 border-t pt-3.5 text-xs text-faint">
+          {t.page.footerLead(pricingReviewed)}
+          <code className="font-mono">--exact-tokens</code>
+          {t.page.footerTail}
+        </footer>
+      </main>
+    </>
   );
 }

@@ -653,16 +653,35 @@ export function Optimizer({
         )}
 
         {/*
-          The empty state is not a card pretending to hold something. A sunken
-          panel says "nothing here yet" without borrowing the elevation the
-          real report will have, and the sentence is set in the display face so
-          the wait reads as composed rather than unfinished.
+          An empty state that names what the report will contain.
+
+          It was one italic sentence centred in a grey box — the shape of a
+          panel apologising for being empty. It is the first thing every
+          reader sees, before they have typed anything, so it is the page's
+          only chance to say what pressing the button is worth. Title, the
+          instruction, then the three things the report actually holds.
+
+          Still a sunken panel and still no card: borrowing the elevation the
+          real report will have would make the wait look like a result.
         */}
         {!result && !error && (
-          <div className="rounded-xl bg-muted/60 px-8 py-14 text-center">
-            <p className="mx-auto max-w-[36ch] font-display text-[17px] leading-snug text-muted-foreground italic">
-              {t.results.empty}
-            </p>
+          <div className="rounded-xl bg-muted/60 px-7 py-9">
+            <div className="mx-auto flex max-w-[40ch] flex-col gap-3">
+              <h3 className="font-display text-[17px] leading-snug font-semibold">
+                {t.results.emptyTitle}
+              </h3>
+              <p className="text-[13px] leading-relaxed text-muted-foreground">{t.results.empty}</p>
+              <ul className="mt-1 flex flex-col gap-2 border-t pt-4 text-[13px] leading-snug text-faint">
+                {t.results.emptyWillShow.map((line) => (
+                  <li key={line} className="flex gap-2.5">
+                    {/* A rule, not a bullet glyph: the list is three parts of
+                        one answer rather than three unrelated items. */}
+                    <span aria-hidden="true" className="mt-[0.55em] h-px w-3 shrink-0 bg-rule-strong" />
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           </div>
         )}
 

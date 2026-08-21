@@ -212,6 +212,12 @@ export const es: WebMessages = {
 
   results: {
     empty: 'Pega tu prompt y pulsa Optimizar para ver qué sobra y cuánto cuesta.',
+    emptyTitle: 'Todavía no hay nada calculado',
+    emptyWillShow: [
+      'qué pueden quitar las reglas, con el diff',
+      'cuánto cuesta al mes, y cuánto vale el ahorro',
+      'qué más merece la pena arreglar: caching, gama de modelo, Batch API',
+    ],
     heading: 'Resultado',
     inputTokens: (before, after) => `${before} → ${after} tokens de entrada`,
     perMonth: (amount) => `${amount} / mes`,

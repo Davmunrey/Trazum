@@ -194,6 +194,13 @@ export interface WebMessages {
 
   results: {
     empty: string;
+    /**
+     * An empty state that names what the report will contain, rather than one
+     * that apologises for being empty. Three lines: what nothing has happened
+     * yet, what to do, and what you get for doing it.
+     */
+    emptyTitle: string;
+    emptyWillShow: readonly string[];
     heading: string;
     inputTokens(before: string, after: string): string;
     perMonth(amount: string): string;

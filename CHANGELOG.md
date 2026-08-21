@@ -11,7 +11,47 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Changed
+
+**The web app got the layer the palette never had.** It carried two greys —
+`--ink` and `--ink-soft` — so a paragraph a reader is meant to read and a
+footnote they are meant to skip had the same weight. Three tiers is the
+smallest number that lets a page say *read this*, *read this if you want* and
+*this is here for the record*. A second border tier came with it, for edges
+that separate regions rather than parts.
+
+**And state became a token.** Hover and pressed were reached for ad-hoc —
+`bg-muted` at one call site, `bg-accent` at another — so two controls doing the
+same thing looked different, and changing what hover feels like meant finding
+every one. `--layer-hover` and `--layer-active` are defined once, **and
+redefined in the dark block**: a token whose only definition lives in the light
+palette is one the dark theme silently inherits, which is how a page ends up
+drawing one theme's hover on the other theme's surface.
+
+**The header is a bar rather than a row of things that happen to be at the
+top.** Wordmark, tagline, account and language all sat at the same altitude, so
+nothing said "this is the application's chrome and the rest is the work". It is
+now the only element spanning the full width, with its own rule and a sticky
+position, and the tagline drops below `sm` because a bar that wraps stops being
+one.
+
+**The three modes read as navigation.** They were dressed as a settings toggle:
+a small pill group in the sunken grey, the weight of a rule-level switch. They
+are not one control with three positions — Optimise shortens a prompt, Compare
+judges two of them, Your bill reads a usage log, which are three different jobs
+on three different inputs. Styled from the list rather than on each trigger,
+because a test pins the exact source of the Library trigger and a `className`
+there would break it.
+
+**The empty result panel names what the report will contain.** It was one
+italic sentence centred in a grey box — the shape of a panel apologising for
+being empty — and it is the first thing every reader sees, before they have
+typed anything. It now says what nothing has happened yet, what to do, and the
+three things pressing the button actually gets you.
+
+Nothing about what the app computes changed, and the 351 web tests pass
+untouched.
+
 
 
 ## 1.53.3 — "Two surfaces, two formats"
