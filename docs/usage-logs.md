@@ -32,6 +32,27 @@ findings are unavailable rather than reporting them as zero.
 | `session` | Conversation growth, per-session budgets, cache TTL fit. |
 | cache token fields | The cache verdict — whether caching is paying for itself or costing you. |
 | `stop_reason` | Truncation-and-retry detection: work billed twice. |
+| `outcome` | **Cost per resolved outcome, the success rate, the quality gate, experiments on real traffic.** Without it this tool can say a workload got 40% cheaper and cannot say whether it stopped working. Record your own word for what happened — nothing is inferred from a stop reason, a latency or a retry — and declare the vocabulary under `outcomes` in the config. |
+
+### The names it will accept
+
+One concept, several spellings, because a log that already exists should not
+have to be rewritten to be read. Each row is tried in order and the first
+present value wins:
+
+| Concept | Accepted keys |
+| --- | --- |
+| when the call happened | `ts`, `timestamp`, `created_at`, `created` |
+| the conversation | `session`, `conversation_id` |
+| what happened | `outcome`, `trazum_outcome` |
+| why it stopped | `stop_reason`, `finish_reason`, `finishReason` |
+
+`trazum_outcome` exists for the case where `outcome` already means something
+else in your pipeline. The prefixed name is never required and never preferred
+— it is there so a field collision is not a reason to go unmeasured.
+
+**`trazum conform your-log.jsonl` reports which of these a log carries**, and
+what each absent one would have unlocked, rather than guessing.
 
 ## Anthropic
 

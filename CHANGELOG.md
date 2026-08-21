@@ -13,6 +13,49 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**The product tells you to record an `outcome`. The page it sends you to never
+mentioned the field.** `docs/usage-logs.md` exists to answer one question —
+*what do I put in the log, and what does each field buy me?* — and it named
+**nine of the fourteen keys** `parseUsageLine` accepts.
+
+`outcome` and `trazum_outcome` appeared **nowhere in the file**, five releases
+after 1.50.4 introduced them. The profile report says, in the product, that this
+is *"the one field that changes what every other figure here means: without it
+this tool can say a workload got 40% cheaper and cannot say whether it stopped
+working."* A reader could follow that advice to this page, record every field it
+named, and get the same warning again.
+
+**Five aliases were also missing** — `ts`, `created_at`, `created`,
+`conversation_id` and `finish_reason`. Omitting an alias breaks no log; it makes
+somebody rewrite one that already worked, or conclude that truncation detection
+is Anthropic-only because their OpenAI records say `finish_reason`. The page now
+carries a table of every accepted spelling, in the order the parser tries them,
+and says why `trazum_outcome` exists: so a field-name collision is not a reason
+to go unmeasured.
+
+### Added
+
+**`usage-logs-doc.test.js` — the page that says what Trazum reads, against what
+it reads.** Keys are harvested from `parseUsageLine` and **bounded to it**: the
+normalised `UsageRecord` reuses several of the same names further down the
+module, so a harvest over the whole file would assert the output shape while
+claiming to assert the input one.
+
+A second assertion checks the `outcome` row still says *what recording it buys*,
+not merely that the word appears. The row exists to answer "why would I record
+this?", and its answer is the only one in the table that is not about cost.
+
+**Its first draft passed while the alias was undocumented.** Matching each key
+as a bare substring, `ts` was found in the ```ts language tag on a code fence —
+so an accepted-and-undocumented key read as documented. Caught by running the
+check against the real page before trusting it, which is the habit the tenth
+occurrence of *bound an assertion by its subject* bought. Keys are now matched
+as the page actually writes a field: inline code, or a JSON key in an example.
+
+Proven three ways: removing the alias table names all six it hides, removing the
+`outcome` row fails by name, and gutting the row's explanation while leaving the
+word fails the second assertion.
+
 **`docs/releasing.md` said "both manifests" and "both publish steps". There are
 three.** The release document was written when `@trazum/core` and `@trazum/cli`
 were the only publishable packages, and `@trazum/mcp` never reached the prose:
