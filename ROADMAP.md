@@ -1043,8 +1043,10 @@ not a failure: on OpenAI a streamed call carries no counts unless the caller
 passed `stream_options.include_usage`, so a gateway that stayed silent would
 under-report most of a bill and look precise doing it.
 
-It still fronts two of the seven providers Trazum prices, which is what 1.53 is
-for.
+It still fronts fewer of the providers Trazum prices than it does not, which is
+what 1.53 is for — and how many is a question for `trazum gateway`, which
+derives the answer, rather than for this sentence, which said *two* through a
+release that made it three.
 
 
 ## Collapsed into 1.8.0

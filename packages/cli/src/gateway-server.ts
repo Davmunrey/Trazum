@@ -59,7 +59,31 @@ export const MAX_GATEWAY_BODY_BYTES = 8 * 1024 * 1024;
  * proxy for somebody's API key, and the budget decision only has meaning for
  * the endpoint that spends tokens.
  */
-export const UPSTREAMS: Readonly<Record<string, { origin: string; path: string }>> = {
+export interface Upstream {
+  origin: string;
+  /**
+   * The one path, or the one *shape* of path when the model is part of it.
+   *
+   * A pattern is not a widening. It exists because Google puts the model in
+   * the URL rather than the body, so "one path" cannot be written down as a
+   * literal for that provider — and every pattern here is anchored at both
+   * ends with the model segment restricted to characters a model id is made
+   * of, which is a narrower grammar than a literal comparison against a string
+   * somebody could have put a `?` or a `..` in.
+   */
+  path: string | RegExp;
+  /**
+   * Where the model name is, when the request body does not carry one.
+   *
+   * Gemini's body has `contents` and no `model` field. Reading it out of the
+   * validated path is the only honest source: the alternative is a gateway
+   * that forwards a call it could not price, which is the one thing standing
+   * in the path was for.
+   */
+  modelIn?: 'path';
+}
+
+export const UPSTREAMS: Readonly<Record<string, Upstream>> = {
   anthropic: { origin: 'https://api.anthropic.com', path: '/v1/messages' },
   openai: { origin: 'https://api.openai.com', path: '/v1/chat/completions' },
   /**
@@ -71,14 +95,70 @@ export const UPSTREAMS: Readonly<Record<string, { origin: string; path: string }
    * the kind of detail recall gets wrong.
    */
   deepseek: { origin: 'https://api.deepseek.com', path: '/chat/completions' },
+  /**
+   * Google, on the same rule and from a fuller record than DeepSeek's.
+   *
+   * `packages/core/src/llm.ts` has sent a real key to
+   * `https://generativelanguage.googleapis.com` at
+   * `/v1beta/models/{model}:generateContent`, with the key in an
+   * `x-goog-api-key` header rather than the query string, since the Gemini
+   * provider landed. `packages/core/src/usage.ts` has read the counts that
+   * come back. Host, path, credential header and response shape are all
+   * facts this repository already holds — nothing here was recalled.
+   *
+   * Only `:generateContent`. `:streamGenerateContent` and `:countTokens` are
+   * different operations whose shapes nobody here has established, and a
+   * gateway that forwards an operation it cannot read is a general proxy for
+   * somebody's key with extra steps.
+   */
+  google: {
+    origin: 'https://generativelanguage.googleapis.com',
+    path: /^\/v1beta\/models\/([A-Za-z0-9._-]+):generateContent$/,
+    modelIn: 'path',
+  },
 };
+
+/**
+ * The path this gateway forwards for a provider, as a person reads it.
+ *
+ * One phrasing, used by the refusal, the documentation guard and the security
+ * allowlist — because three renderings of the same fact is how the page, the
+ * refusal and the test come to disagree about what is actually forwarded.
+ */
+export function forwards(upstream: Upstream): string {
+  return typeof upstream.path === 'string' ? upstream.path : '/v1beta/models/{model}:generateContent';
+}
+
+/**
+ * Whether this request is the one call this gateway speaks for, and the model
+ * the path named if it named one.
+ *
+ * The returned path is **built here**, never the caller's string echoed back.
+ * A pattern that matched is evidence the request was well formed; it is not a
+ * licence to forward whatever matched it. Nothing reaches the upstream URL
+ * except the compiled-in origin and a path assembled from a model id that has
+ * already been restricted to `[A-Za-z0-9._-]`.
+ */
+export function route(upstream: Upstream, url: string | undefined): { path: string; model: string | null } | null {
+  if (url === undefined) return null;
+  if (typeof upstream.path === 'string') {
+    return url === upstream.path ? { path: upstream.path, model: null } : null;
+  }
+  const matched = upstream.path.exec(url);
+  const model = matched?.[1];
+  // A pattern that matched but captured nothing would otherwise build a path
+  // containing the word `undefined` and forward it. Refusing is the only
+  // answer: there is no model, so there is nothing to price the call against.
+  if (model === undefined) return null;
+  return { path: `/v1beta/models/${model}:generateContent`, model };
+}
 
 /**
  * Headers Trazum adds or removes. Everything else the caller sent is forwarded
  * verbatim, including their credential, which this never reads.
  */
 /** Why a forwarded call's cost could not be measured. */
-export type UnmeasuredCause = 'stream-broke' | 'no-usage-event';
+export type UnmeasuredCause = 'stream-broke' | 'no-usage-event' | 'no-usage-in-body';
 
 const HOP_BY_HOP = new Set([
   'connection',
@@ -165,7 +245,7 @@ async function readBody(request: IncomingMessage): Promise<string | null> {
  * of here, including the decision and the record, is structurally incapable of
  * carrying a prompt.
  */
-function describe(body: string, provider: string): {
+function describe(body: string, provider: string, modelFromPath: string | null): {
   model: string;
   inputTokens: number | null;
   maxOutputTokens: number | null;
@@ -179,7 +259,15 @@ function describe(body: string, provider: string): {
   }
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null;
   const request = parsed as Record<string, unknown>;
-  if (typeof request.model !== 'string') return null;
+  /**
+   * The body's model, or the one the validated path named.
+   *
+   * Never both, and the path never overrides a body that carried one: a
+   * gateway that preferred the URL could price a call as one model and forward
+   * it as another, which is the substitution this product exists to refuse.
+   */
+  const model = typeof request.model === 'string' ? request.model : modelFromPath;
+  if (model === null) return null;
 
   // Every text field the wire format puts in front of the model, counted and
   // then dropped. `JSON.stringify` of the messages over-counts by the
@@ -190,12 +278,25 @@ function describe(body: string, provider: string): {
   if (typeof request.system === 'string') parts.push(request.system);
   if (Array.isArray(request.messages)) parts.push(JSON.stringify(request.messages));
   if (Array.isArray(request.input)) parts.push(JSON.stringify(request.input));
+  // Gemini names the same two things differently: the system prompt is a
+  // `systemInstruction` document rather than a string, and the turns are
+  // `contents` rather than `messages`. Counted the same way and dropped the
+  // same way.
+  if (typeof request.systemInstruction === 'object' && request.systemInstruction !== null) {
+    parts.push(JSON.stringify(request.systemInstruction));
+  }
+  if (Array.isArray(request.contents)) parts.push(JSON.stringify(request.contents));
 
   const text = parts.join('\n');
-  const max = provider === 'anthropic' ? request.max_tokens : request.max_completion_tokens ?? request.max_tokens;
+  const generation = typeof request.generationConfig === 'object' && request.generationConfig !== null
+    ? (request.generationConfig as Record<string, unknown>).maxOutputTokens
+    : undefined;
+  const max = provider === 'anthropic'
+    ? request.max_tokens
+    : request.max_completion_tokens ?? request.max_tokens ?? generation;
 
   return {
-    model: request.model,
+    model,
     inputTokens: text === '' ? null : estimateTokens(text),
     maxOutputTokens: typeof max === 'number' && Number.isFinite(max) ? max : null,
     /**
@@ -245,11 +346,19 @@ export function buildGateway(context: GatewayContext): Server {
         response.end(`${JSON.stringify({ error: 'no upstream configured for this provider' })}\n`);
         return;
       }
-      if (request.method !== 'POST' || request.url !== upstream.path) {
+      const routed = request.method === 'POST' ? route(upstream, request.url) : null;
+      if (routed === null) {
         // Only the one path that spends tokens. A gateway forwarding anything
         // else is a general proxy for somebody's API key.
         response.writeHead(404, { 'content-type': 'application/json' });
-        response.end(`${JSON.stringify({ error: 'not a path this gateway forwards' })}\n`);
+        response.end(
+          // A refusal never arrives bare: the one thing it does forward, said
+          // from the upstream table rather than written out again here.
+          `${JSON.stringify({
+            error: 'not a path this gateway forwards',
+            forwards: `POST ${forwards(upstream)}`,
+          })}\n`,
+        );
         return;
       }
 
@@ -260,7 +369,7 @@ export function buildGateway(context: GatewayContext): Server {
         return;
       }
 
-      const described = describe(body, context.provider);
+      const described = describe(body, context.provider, routed.model);
       if (described === null) {
         response.writeHead(400, { 'content-type': 'application/json' });
         response.end(`${JSON.stringify({ error: 'could not read a model out of this request' })}\n`);
@@ -312,7 +421,7 @@ export function buildGateway(context: GatewayContext): Server {
 
       let upstreamResponse: Response;
       try {
-        upstreamResponse = await doFetch(`${upstream.origin}${upstream.path}`, {
+        upstreamResponse = await doFetch(`${upstream.origin}${routed.path}`, {
           method: 'POST',
           headers: outgoing,
           body: forwarded,
@@ -375,7 +484,30 @@ export function buildGateway(context: GatewayContext): Server {
         } catch {
           measured = null;
         }
-        recordUsage(usageFromResponse(context.provider, measured));
+        const buffered = usageFromResponse(context.provider, measured);
+        /**
+         * The buffered path was the silent one.
+         *
+         * 1.52 taught the streaming path to say *this call is unmeasured*
+         * when no usage event arrived, and left this branch recording nothing
+         * and saying nothing — the same silence, on the other side of one
+         * `if`. A guard that covers one branch of a fork reads as coverage of
+         * the fork.
+         *
+         * Only on a response the provider called **ok**. An upstream error
+         * carries no counts because it produced none, and its own status
+         * already says so; announcing those as unmeasured calls would bury the
+         * ones that actually spent money.
+         */
+        if (buffered === null && upstreamResponse.ok) {
+          // The word "body" is deliberately not in this sentence. A security
+          // test refuses any `note(...)` mentioning it, prose or variable,
+          // because the cost of that rule being blunt is one word of wording
+          // and the cost of it being clever is somebody's prompt in a log.
+          context.note(`${described.model} answered with no usage counts — this call is unmeasured`);
+          context.unmeasured?.('no-usage-in-body');
+        }
+        recordUsage(buffered);
         response.writeHead(upstreamResponse.status, back);
         response.end(text);
         return;

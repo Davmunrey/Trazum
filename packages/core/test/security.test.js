@@ -469,14 +469,62 @@ describe('the gateway, which stands between somebody and their provider', () => 
       'https://api.anthropic.com',
       'https://api.deepseek.com',
       'https://api.openai.com',
+      'https://generativelanguage.googleapis.com',
     ]);
 
     const paths = [...text.matchAll(/path: '([^']*)'/g)].map((m) => m[1]).sort();
     assert.deepEqual(paths, ['/chat/completions', '/v1/chat/completions', '/v1/messages']);
 
-    // The only interpolation into the fetch target is the compiled-in pair.
+    /**
+     * Pattern paths are extracted too, and compared just as exactly.
+     *
+     * Google's model is in the URL, so its path cannot be a literal — and a
+     * check that harvested only `path: '...'` would have let a *pattern* reach
+     * somebody's credential without appearing in this allowlist at all. The
+     * hole would have opened in the same commit that added the first pattern:
+     * the guard would still have passed, still read as coverage, and no longer
+     * covered the new kind of thing.
+     */
+    const patterns = [...text.matchAll(/path: (\/\^[^\n]*?\$\/),/g)].map((m) => m[1]).sort();
+    assert.deepEqual(patterns, ['/^\\/v1beta\\/models\\/([A-Za-z0-9._-]+):generateContent$/']);
+
+    /**
+     * And every pattern is anchored at both ends and accepts no arbitrary run
+     * of text, whatever it is.
+     *
+     * The list above pins today's pattern; this pins the property, so a future
+     * one that forgot an anchor fails on the reason rather than on the diff.
+     * An unanchored pattern matches anywhere in the URL, which is how
+     * `/v1beta/models/x:generateContent/../../anything` becomes forwardable.
+     *
+     * **Proved against known-bad inputs, not only against today's good one.**
+     * Written as a loop over `patterns` alone, this assertion could never fail
+     * — the exact-list comparison above it catches any change first, so the
+     * property check would sit here reading as coverage while never once
+     * running against something it should reject. The three shapes it exists
+     * to refuse are handed to it directly.
+     */
+    const anchored = (pattern) =>
+      pattern.startsWith('/^') && pattern.endsWith('$/') && !/\.\*|\.\+/.test(pattern);
+
+    assert.equal(anchored('/\\/v1beta\\/models\\/([A-Za-z0-9._-]+):generateContent$/'), false, 'missing start anchor accepted');
+    assert.equal(anchored('/^\\/v1beta\\/models\\/([A-Za-z0-9._-]+):generateContent/'), false, 'missing end anchor accepted');
+    assert.equal(anchored('/^\\/v1beta\\/models\\/(.*):generateContent$/'), false, 'a wildcard model segment accepted');
+
+    for (const pattern of patterns) {
+      assert.ok(anchored(pattern), `an upstream path pattern is unanchored or accepts arbitrary text: ${pattern}`);
+    }
+
+    /**
+     * The only interpolation into the fetch target is the compiled-in origin
+     * and a path this module **built**. Not `request.url`: a pattern that
+     * matched is evidence the request was well formed, and echoing the string
+     * that satisfied it back into the outgoing URL would forward whatever else
+     * the pattern happened to tolerate.
+     */
     const targets = [...text.matchAll(/doFetch\(([^,]+),/g)].map((m) => m[1].trim());
-    assert.deepEqual(targets, ['`${upstream.origin}${upstream.path}`']);
+    assert.deepEqual(targets, ['`${upstream.origin}${routed.path}`']);
+    assert.doesNotMatch(text, /doFetch\([^,]*request\.url/);
     assert.doesNotMatch(text, /stringFlag|process\.env|config\?\.[a-z]*[Uu]pstream/);
   });
 
@@ -527,8 +575,22 @@ describe('the gateway, which stands between somebody and their provider', () => 
   });
 
   it('forwards exactly one path', () => {
+    /**
+     * One path per provider, decided in one place.
+     *
+     * This used to assert the literal comparison `request.url !==
+     * upstream.path`, which stopped being writable when Google's model moved
+     * into the URL. What matters was never the `!==`: it is that **one**
+     * function decides whether a request is the call this gateway speaks for,
+     * that a POST is the only method that gets there, and that nothing else
+     * in the module reaches a decision about `request.url`.
+     */
     const text = server();
-    assert.match(text, /request\.method !== 'POST' \|\| request\.url !== upstream\.path/);
+    assert.match(text, /const routed = request\.method === 'POST' \? route\(upstream, request\.url\) : null;/);
+    assert.match(text, /if \(routed === null\) \{/);
+    // `route` is the only reader of the caller's URL. A second one would be a
+    // second opinion about what this gateway forwards.
+    assert.equal([...text.matchAll(/request\.url/g)].length, 1);
   });
 });
 

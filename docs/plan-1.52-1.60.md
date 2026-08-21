@@ -95,6 +95,24 @@ over. Each carries what its API cannot serve, in the shape 1.41 established.
 happened to see. That is a measurement of Trazum's traffic, not of your bill,
 and the two differ by every call that did not go through the proxy.
 
+**Since written.** The table above is the measurement taken when this plan was,
+and is left as it was taken. What has happened to it since:
+
+| Chapter | Landed | On what already-committed fact |
+| --- | --- | --- |
+| A priced provider is not a typo | yes | none needed — derived from the catalogue |
+| DeepSeek fronted | yes | `scripts/measure-token-band.mjs` sends a key to `https://api.deepseek.com/chat/completions` |
+| Google fronted | yes | `packages/core/src/llm.ts` sends a key to `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`; `packages/core/src/usage.ts` reads `usageMetadata` back |
+
+**What is still blocked, and why it is not laziness.** `moonshot`, `xai` and
+`mistral` are priced and unfronted because their hosts appear **nowhere in this
+repository**. Compiling an endpoint in from memory, into the one place a user's
+credential is forwarded, is the thing the doctrine forbids treating as known —
+and `security.test.js` compares the exact origins, so it cannot happen quietly.
+The two chapters that did land are the shape of the answer: an endpoint this
+repository already trusts with a real credential can be reused; one nobody here
+has ever sent a key to has to be confirmed before it can be.
+
 ## 1.54.0 — The counter, per family
 
 **Measured, and already on the record.** The estimator is calibrated against

@@ -13,6 +13,43 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**The gateway fronts Google — 1.53's third chapter, and the first where the
+model is in the URL.** Four of seven.
+
+**Every fact needed was already committed here, which is why this chapter could
+be written and three others still cannot.** `packages/core/src/llm.ts` has sent
+a real API key to `https://generativelanguage.googleapis.com` at
+`/v1beta/models/{model}:generateContent`, in an `x-goog-api-key` header rather
+than the query string, since the Gemini provider landed.
+`packages/core/src/usage.ts` has read `usageMetadata` back since the Gemini
+importer landed. Host, path, credential header and response shape: four facts
+this repository holds, none recalled.
+
+**The one forwarded path becomes a pattern, and that is narrower than it
+sounds.** Google puts the model in the URL, so "the one path" cannot be a
+literal for it. The pattern is anchored at both ends and its model segment
+accepts only `[A-Za-z0-9._-]` — a stricter grammar than a string comparison
+against something a caller could have put a `?` or a `..` in. `security.test.js`
+now extracts pattern paths as exactly as it extracts literal ones, asserts each
+is anchored, and refuses any that accepts arbitrary text. Without that, the
+first pattern would have reached a credential-forwarding proxy **without
+appearing in the allowlist at all** — the hole opening in the same commit that
+made it possible, with the guard still passing.
+
+**And the URL sent upstream is rebuilt, never echoed.** A pattern that matched
+is evidence the request was well formed; it is not permission to forward the
+string that satisfied it. Eight hostile paths are refused by test — a smuggled
+query string, traversal in the model segment, a second path segment, a
+different operation, text appended after `:generateContent`, a prefix before
+the version — and each asserts the upstream saw **no connection at all**, not
+an error relayed back.
+
+**`:streamGenerateContent` is not forwarded, and Google's streamed shape is not
+read.** Its buffered shape being established does not establish its streamed
+one. `streamingUsageReader('google')` returns nothing for both an OpenAI-shaped
+event and a Gemini-shaped one, so the two facts cannot be quietly merged by a
+later edit.
+
 **The gateway fronts DeepSeek — 1.53's second chapter.** Three of seven, up from
 two.
 
@@ -53,6 +90,30 @@ without being touched, and `trazum connect deepseek` still says the true and
 now-different thing — priced, fronted, no connector.
 
 ### Fixed
+
+**The buffered path went unmeasured in silence, on the other side of one
+`if`.** 1.52 taught the streaming path to say *this call is unmeasured* when no
+usage event arrived, and left the buffered branch recording nothing and saying
+nothing. Found by a Gemini response with no counts in it: the call was
+forwarded, answered, and vanished from the total without a word. It now names
+the cause — but only when the provider called the response **ok**, because an
+upstream error carries no counts for the honest reason that it produced none,
+and announcing those would bury the ones that actually spent money.
+
+**A third unmeasured cause would have inherited the second one's sentence.**
+`gateway.unmeasured` was a two-branch ternary whose `else` explained OpenAI's
+`stream_options.include_usage` — so the new cause would have told a Gemini user
+about a setting that does not exist in their SDK. One branch per cause now, no
+`else`. The eleventh time this project has bounded a message by its neighbour
+instead of by its subject.
+
+**`docs/gateway.md` said "five of the seven, still" through an entire release
+in which it became four.** The table beside that sentence was guarded against
+`UPSTREAMS`; the sentence introducing the table was not. The count is gone —
+there is no number to get wrong if there is no number — and a guard now fails
+any spelled or digit count in that paragraph. `ROADMAP.md` carried the same
+stale *two* and lost its number the same way. The eleventh occurrence of a
+count written above a derived list, and the third file to lose one.
 
 **A provider Trazum prices but cannot front was refused as though it were a
 typo — 1.53's first chapter.** `trazum gateway mistral` and `trazum gateway

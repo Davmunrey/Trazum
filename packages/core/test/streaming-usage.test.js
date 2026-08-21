@@ -163,10 +163,32 @@ describe('the wire shape a provider speaks', () => {
      * reports the call as unmeasured, which is true, rather than recording a
      * number nobody can defend.
      */
-    for (const provider of ['mistral', 'xai', 'moonshot', 'google']) {
+    for (const provider of ['mistral', 'xai', 'moonshot']) {
       const reader = streamingUsageReader(provider);
       feed(reader, 'data: {"usage":{"prompt_tokens":9,"completion_tokens":1}}\n\n');
       assert.equal(reader.done(), null, `${provider} was read with a shape nobody established`);
     }
+  });
+
+  it('says nothing for Google, whose streamed shape is a different fact', () => {
+    /**
+     * Google is in `WIRE_SHAPES` — its **buffered** shape is established, and
+     * `usageFromResponse` reads `usageMetadata` from it. That is not the same
+     * fact as its streamed one: Gemini streams from `:streamGenerateContent`,
+     * a separate operation with its own event sequence, and the gateway does
+     * not forward that path at all.
+     *
+     * So this reader must not quietly extend the one fact to cover the other.
+     * A provider whose buffered shape is known is not thereby a provider whose
+     * stream can be read, and the two are separated here rather than left to
+     * be noticed the first time a number comes out wrong.
+     */
+    const openaiish = streamingUsageReader('google');
+    feed(openaiish, 'data: {"usage":{"prompt_tokens":9,"completion_tokens":1}}\n\n');
+    assert.equal(openaiish.done(), null, "Google's stream was read with OpenAI's shape");
+
+    const geminiish = streamingUsageReader('google');
+    feed(geminiish, 'data: {"usageMetadata":{"promptTokenCount":9,"candidatesTokenCount":1}}\n\n');
+    assert.equal(geminiish.done(), null, "Google's streamed shape was guessed from its buffered one");
   });
 });
