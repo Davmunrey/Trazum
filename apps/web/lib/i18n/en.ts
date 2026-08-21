@@ -213,6 +213,12 @@ export const en: WebMessages = {
 
   results: {
     empty: 'Paste your prompt and press Optimise to see what can go and what it costs.',
+    emptyTitle: 'Nothing priced yet',
+    emptyWillShow: [
+      'what the rules can remove, with the diff',
+      'what it costs a month, and what the saving is worth',
+      'what else is worth fixing — caching, model tier, the Batch API',
+    ],
     heading: 'Result',
     inputTokens: (before, after) => `${before} → ${after} input tokens`,
     perMonth: (amount) => `${amount} / month`,

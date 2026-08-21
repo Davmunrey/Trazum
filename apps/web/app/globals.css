@@ -27,14 +27,36 @@
   --paper-raised: #ffffff;
   --paper-sunken: #f4f4f2;
   --rule: #e3e2de;
+  /* A second border tier, for edges that separate regions rather than parts. */
+  --rule-strong: #d2d0ca;
   --ink: #1b1b19;
   --ink-soft: #6b6a65;
+  /*
+   * A third tier, and the reason it exists.
+   *
+   * Supporting copy and faint metadata were the same grey, so a paragraph a
+   * reader is meant to read and a footnote they are meant to skip had equal
+   * weight. Three tiers is the smallest number that lets a page say "read
+   * this", "read this if you want" and "this is here for the record".
+   */
+  --ink-faint: #92908a;
   --terracotta: #b0522f;
   --terracotta-wash: #f6ece7;
   --good: #2f6f4e;
   --good-wash: #e8f2ec;
   --warn: #8a6320;
   --warn-wash: #f8f0dd;
+
+  /*
+   * State is a token, not a class typed at each call site.
+   *
+   * Hover and pressed were reached for ad-hoc — `bg-muted` here, `bg-accent`
+   * there — so two controls doing the same thing looked different, and
+   * changing "what hover feels like" meant finding every one. These are the
+   * two states an interactive surface has, named once.
+   */
+  --layer-hover: #efeeeb;
+  --layer-active: #e6e5e1;
 
   --radius: 0.625rem;
 
@@ -71,6 +93,17 @@
 }
 
 /*
+ * Exposed to Tailwind so `text-faint`, `border-strong`, `bg-layer-hover` are
+ * real utilities rather than arbitrary values repeated at each call site.
+ */
+@theme inline {
+  --color-faint: var(--ink-faint);
+  --color-rule-strong: var(--rule-strong);
+  --color-layer-hover: var(--layer-hover);
+  --color-layer-active: var(--layer-active);
+}
+
+/*
  * Dark stays on `prefers-color-scheme`, which is what the app has always used
  * and what Tailwind's `dark:` variant reads by default. No toggle, no
  * class-on-html, no flash of the wrong theme on first paint.
@@ -87,8 +120,19 @@
     --paper-raised: #1e1c18;
     --paper-sunken: #262420;
     --rule: #363329;
+    --rule-strong: #474334;
     --ink: #efece4;
     --ink-soft: #a8a495;
+    --ink-faint: #7d7a6d;
+
+    /*
+     * Redefined here, and that is the point. A token whose only definition
+     * lives in the light block is a token the dark theme silently inherits
+     * from the light one — which is how a page ends up drawing one theme's
+     * hover on the other theme's surface.
+     */
+    --layer-hover: #2b2924;
+    --layer-active: #33302a;
     --terracotta: #e08a63;
     --terracotta-wash: #2e211b;
     --good: #6fc99a;
