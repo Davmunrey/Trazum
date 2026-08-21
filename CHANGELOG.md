@@ -11,7 +11,27 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+
+## 1.53.2 — "What the tool says about itself"
+
 ### Fixed
+
+**An Action pin could point at a commit that is not on `main`, and every check
+passed.** The guard on the README's `uses:` lines is thorough — a 40-character
+SHA, never a tag, with a version comment verified against **that commit's own**
+manifest rather than the working tree. All of it is satisfied by the pre-squash
+head of a feature branch, which says exactly the right version and is deleted
+the moment the pull request merges. GitHub can garbage-collect it, and a
+workflow pinned there stops resolving with no warning to anybody.
+
+This was caught while preparing this very release: the sha to hand was the
+branch commit, not the squash-merge on `main`. It is now also gone from the
+clone, which is the hazard demonstrating itself. The pin must be an ancestor of
+`origin/main`, and a clone without that ref reports the pin as unverified rather
+than passing over it.
+
 
 **Two commands had no options section, and one had two.** `trazum ladder` takes
 `--since`, `--until` and `--label`; `trazum owners` takes `--since` and
