@@ -30,7 +30,7 @@ ${bold('USO')}
   trazum plan <log.jsonl|dir> [opciones]
   trazum verify <plan.json> --against <nuevo.jsonl|dir> [opciones]
   trazum history <dir-de-informes-guardados> [opciones]
-  trazum connect <anthropic|openai> [opciones]
+  trazum connect <provider> [opciones]
   trazum store [--prune] [opciones]
   trazum watch [--once | --interval 15m] [opciones]
   trazum serve [--port <n> | --socket <ruta>]
@@ -44,7 +44,7 @@ ${bold('USO')}
   trazum conform <fichero|-> [--contract <nombre>]
   trazum models
   trazum rules
-  trazum gateway <anthropic|openai> --on-cannot-tell <fail-open|fail-closed>
+  trazum gateway <provider> --on-cannot-tell <fail-open|fail-closed>
   trazum experiment <log> --a <label> --b <label> --min-outcomes <n>
   trazum quality <log> --label <name> --at <iso> [--gate]
   trazum semantic <prompt> [--yes]
