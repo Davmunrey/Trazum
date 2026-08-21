@@ -29,6 +29,7 @@ ${bold('USO')}
   trazum route <log.jsonl> --prompt-file <fichero> --cases <fichero> --yes
   trazum plan <log.jsonl|dir> [opciones]
   trazum verify <plan.json> --against <nuevo.jsonl|dir> [opciones]
+  trazum profile <log.jsonl|dir> [opciones]
   trazum history <dir-de-informes-guardados> [opciones]
   trazum connect <provider> [opciones]
   trazum store [--prune] [opciones]

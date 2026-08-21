@@ -13,6 +13,21 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**`trazum profile` was missing from `--help`.** Not a small one: `profile` is
+the command almost every refusal in this product points a reader at — *"trazum
+profile prices a mistral log you export"*, the `--max-usd` gate that fails a
+build on the bill, the `--json` documents `history` reads. It had a full flag
+allowlist and its own `OPTIONS FOR profile` section, and it was absent from the
+list of commands the help presents.
+
+Nothing noticed because the *"thirty-two commands"* figure the README states is
+guarded against `COMMAND_FLAGS`, which had all thirty-two. The USAGE block had
+thirty-one, and **no check compared the product's own two lists with each
+other**. A guard now does, in both directions: a command that is dispatched and
+absent from USAGE fails, and so does a USAGE line promising a command the CLI
+does not have — because a fix for the first that invented the second would
+satisfy one check and mislead every reader.
+
 **`--help` said the gateway fronts two providers while the gateway itself said
 four.** The USAGE block read `trazum gateway <anthropic|openai>`; running
 `trazum gateway` with no argument answers *"Known: anthropic, openai, deepseek,
