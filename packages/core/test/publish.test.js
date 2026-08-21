@@ -662,6 +662,65 @@ describe('a count written in prose is a claim like any other', () => {
     }
   });
 
+  it('docs/releasing.md counts the publishable packages correctly', () => {
+    /**
+     * The release document said "both".
+     *
+     * *"so **both manifests** carry `publishConfig.access`"*, *"**both publish
+     * steps** pass `--access public`"*, and *"the tests before **either**
+     * upload"* — written when there were two packages, still there after
+     * `@trazum/mcp` made it three. The bash block six lines above already
+     * listed three publishes, so the page contradicted itself, and nothing read
+     * it: no test opened `docs/releasing.md` at all.
+     *
+     * The sentence immediately after is the one that stings. It explains that
+     * `publish.test.js` *"derives the set of publishable workspaces from the
+     * root `workspaces` globs — so a workspace added later has to make the
+     * choice rather than inherit one"*. The mechanism was built for exactly
+     * this growth. The prose describing the mechanism was not.
+     *
+     * **Bounded to the sentences making the access claim, and the first draft
+     * was not.** Matching every quantity word next to the word "manifest" or
+     * "upload" failed two true sentences: *"all five manifests — root, core,
+     * cli, mcp, web"*, which is the list of version manifests to bump and
+     * enumerates itself, and *"a failure that happens between two uploads"*,
+     * where "two" means consecutive rather than total. That is this
+     * repository's most-broken rule — bound an assertion by its subject, never
+     * by its neighbour — caught on its tenth attempt by its own probe. The
+     * subject here is the publish-access claim, so that is the extent.
+     */
+    const doc = readFileSync(join(repoRoot, 'docs/releasing.md'), 'utf8');
+    const WORDS = { both: 2, either: 2, two: 2, three: 3, four: 4, five: 5 };
+
+    const claims = doc
+      .split(/\n\n+/)
+      .flatMap((para) => para.split(/(?<=\.)\s+/))
+      .filter((s) => /publishConfig\.access|--access public|prepublishOnly/.test(s));
+    assert.ok(
+      claims.length >= 2,
+      'no sentence in docs/releasing.md makes the publish-access claim any more',
+    );
+
+    const wrong = [];
+    for (const sentence of claims) {
+      for (const m of sentence.matchAll(
+        /\b(both|either|two|three|four|five)\b[^.\n]{0,40}?\b(manifests?|publish steps?|uploads?)\b/gi,
+      )) {
+        const claimed = WORDS[m[1].toLowerCase()];
+        if (claimed !== PACKAGES.length) {
+          wrong.push(
+            `"${m[0].replace(/\s+/g, ' ')}" says ${claimed}, there are ${PACKAGES.length}`,
+          );
+        }
+      }
+    }
+    assert.deepEqual(
+      wrong,
+      [],
+      `docs/releasing.md miscounts the publishable packages:\n  ${wrong.join('\n  ')}`,
+    );
+  });
+
   it('every command is mentioned in the README', () => {
     /**
      * A command nobody documented is a command nobody runs.
