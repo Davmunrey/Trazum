@@ -68,6 +68,9 @@ export const UPSTREAMS: Readonly<Record<string, { origin: string; path: string }
  * Headers Trazum adds or removes. Everything else the caller sent is forwarded
  * verbatim, including their credential, which this never reads.
  */
+/** Why a forwarded call's cost could not be measured. */
+export type UnmeasuredCause = 'stream-broke' | 'no-usage-event';
+
 const HOP_BY_HOP = new Set([
   'connection',
   'keep-alive',
@@ -103,6 +106,26 @@ export interface GatewayContext {
     cacheWriteTokens: number;
     substituted: boolean;
   }) => void;
+  /**
+   * A call that was forwarded and whose cost could not be measured.
+   *
+   * The money is spent either way — the provider generated what it generated —
+   * and the period's total will be lower than the bill by however much these
+   * came to. Naming them is the only honest option: a zero would be a
+   * measurement, and inventing an estimate would merge the two halves this
+   * product spent an arc separating.
+   *
+   * Two causes, and the second is not a failure at all:
+   *
+   * - `stream-broke` — the connection died before the event carrying the
+   *   counts. Rare, and a real error.
+   * - `no-usage-event` — the stream simply carried no counts. On OpenAI that is
+   *   **every streaming call** unless the caller passed `stream_options:
+   *   {include_usage: true}`, so this is the common case rather than the
+   *   exception, and an operator who is not told will read a total that is
+   *   quietly missing most of their traffic.
+   */
+  unmeasured?: (cause: UnmeasuredCause) => void;
   /** A line for the operator's terminal. Never given a body, ever. */
   note: (line: string) => void;
   /** Injected so the proxy is testable against a stub upstream. */
@@ -378,11 +401,22 @@ export function buildGateway(context: GatewayContext): Server {
         context.note(
           `stream broke before its usage event: ${error instanceof Error ? error.message : String(error)} — this call is unmeasured`,
         );
+        context.unmeasured?.('stream-broke');
         response.destroy();
         return;
       }
 
-      recordUsage(reader.done());
+      const streamed = reader.done();
+      if (streamed === null) {
+        /**
+         * The stream ended cleanly and carried no counts. Not an error, and on
+         * OpenAI not even unusual — but the call is still unmeasured, and the
+         * operator has to hear it from here rather than infer it from a total
+         * that looks too small.
+         */
+        context.unmeasured?.('no-usage-event');
+      }
+      recordUsage(streamed);
       response.end();
     })();
   });

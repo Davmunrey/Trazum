@@ -2178,6 +2178,14 @@ async function commandGateway(
         };
 
   const measured: { calls: number; usd: number } = { calls: 0, usd: 0 };
+  /**
+   * Forwarded calls whose cost this session cannot see.
+   *
+   * Counted separately and never folded into `measured`: the money was spent,
+   * so the two are not interchangeable, and a total that quietly absorbed them
+   * would be the flattering direction.
+   */
+  let unmeasured = 0;
   const server = buildGateway({
     provider,
     catalogue: pricing,
@@ -2199,6 +2207,10 @@ async function commandGateway(
           ),
         ),
       );
+    },
+    unmeasured: (cause) => {
+      unmeasured += 1;
+      console.error(c.yellow(`  ${t.gateway.unmeasured(cause, unmeasured)}`));
     },
     note: (line) => {
       console.error(c.yellow(`  ${line}`));

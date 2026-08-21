@@ -13,6 +13,40 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**What a call it could not measure costs — 1.52's fourth chapter, which closes
+the arc's work.** #304 recorded nothing for a forwarded call whose usage never
+arrived, which is right, and told nobody, which is not. The money is spent
+either way: the provider generated what it generated and will bill for it, so a
+period's total is short by exactly those calls.
+
+**The second cause is the one that matters, and it is not a failure.** Two
+causes reach the new `unmeasured` callback:
+
+- `stream-broke` — the connection died before the event carrying the counts.
+  Rare, and a real error.
+- `no-usage-event` — the stream ended cleanly and carried no counts. On OpenAI
+  that is **every streaming call** without `stream_options: {include_usage:
+  true}`, so it is the common case rather than the exception. A gateway that
+  stayed silent here would under-report most of somebody's bill and look precise
+  doing it.
+
+The gateway names the field to set, not only the symptom, and keeps a running
+count that is **never folded into the measured one**. A total that swallowed the
+difference would be wrong in the flattering direction, and *not-recorded is not
+not-happened* is the rule everywhere else here.
+
+Proven in both directions. Removing the two calls fails both tests by name;
+reporting a call as unmeasured **and** recording it fails the assertion that
+naming a gap must not also inflate the total it warns about.
+
+**The first draft of the broken-stream test conflated two different failures.**
+It destroyed the upstream socket in the same tick as the first write, so the
+response never reached the gateway at all and the 502 *upstream unreachable*
+path ran instead — a different failure with a different answer, and the test saw
+neither cause. Destroying it after the stream has genuinely begun is what makes
+it a *broken stream* rather than a *dead upstream*. Found by running the real
+thing and reading what actually happened rather than reasoning about it.
+
 **A refusal arrives before the first byte, or not at all — 1.52's third
 chapter.** The ordering was already right; nothing asserted it, and nothing said
 it.
