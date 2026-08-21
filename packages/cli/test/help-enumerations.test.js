@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import { SPAWN_ENV } from './env.mjs';
 
@@ -111,5 +112,69 @@ describe('and the commands still name their providers where it is derived', () =
     }).stderr}`;
     const missing = CONNECTORS.map((c) => c.id).filter((p) => !said.includes(p));
     assert.deepEqual(missing, [], `the connect refusal does not name: ${missing.join(', ')}`);
+  });
+});
+
+describe('the USAGE block names every command, and only commands', () => {
+  /**
+   * `trazum profile` was missing from it.
+   *
+   * Not a small one: `profile` is the command almost every refusal in this
+   * product points a reader at — *"trazum profile prices a mistral log you
+   * export"*, the `--max-usd` gate, the `--json` documents `history` reads. It
+   * had a full flag allowlist and its own `OPTIONS FOR profile` section, and it
+   * was absent from the list of commands the help presents.
+   *
+   * Nothing noticed because the "thirty-two commands" figure the README states
+   * is guarded against `COMMAND_FLAGS`, which had all thirty-two. The USAGE
+   * block had thirty-one, and no check compared the product's own two lists
+   * with each other. The same shape as the provider enumeration above: a guard
+   * pointed at the documentation while the product disagreed with itself.
+   */
+  const source = readFileSync(new URL('../src/index.ts', import.meta.url).pathname, 'utf8');
+
+  /** The commands the CLI actually dispatches, from its flag allowlist. */
+  const known = [
+    ...new Set(
+      [...source
+        .slice(source.indexOf('const COMMAND_FLAGS'), source.indexOf('\n};', source.indexOf('const COMMAND_FLAGS')))
+        .matchAll(/^ {2}([a-z][a-z-]*):\s*\[/gm)].map((m) => m[1]),
+    ),
+  ].sort();
+
+  const usage = (() => {
+    const text = help();
+    const block = text.slice(text.indexOf('USAGE'), text.indexOf('\n\n', text.indexOf('USAGE')));
+    return [
+      ...new Set(
+        [...block.matchAll(/^ {2}trazum ([a-z][a-z-]*)/gm)].map((m) => m[1]),
+      ),
+    ].sort();
+  })();
+
+  it('read both lists at all', () => {
+    assert.ok(known.length >= 30, `only ${known.length} commands in the allowlist`);
+    assert.ok(usage.length >= 30, `only ${usage.length} commands in USAGE`);
+  });
+
+  it('lists every command the CLI accepts', () => {
+    const missing = known.filter((c) => !usage.includes(c));
+    assert.deepEqual(
+      missing,
+      [],
+      `these commands are dispatched and absent from USAGE: ${missing.join(', ')}`,
+    );
+  });
+
+  it('and lists nothing the CLI does not accept', () => {
+    // The other direction, and the one a fix for the first could break: adding
+    // a USAGE line for a command that does not exist would satisfy the check
+    // above and mislead every reader.
+    const invented = usage.filter((c) => !known.includes(c));
+    assert.deepEqual(
+      invented,
+      [],
+      `USAGE promises commands the CLI does not dispatch: ${invented.join(', ')}`,
+    );
   });
 });

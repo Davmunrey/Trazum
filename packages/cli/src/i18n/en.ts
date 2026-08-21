@@ -42,6 +42,7 @@ ${bold('USAGE')}
   trazum route <log.jsonl> --prompt-file <file> --cases <file> --yes
   trazum plan <log.jsonl|dir> [options]
   trazum verify <plan.json> --against <newer.jsonl|dir> [options]
+  trazum profile <log.jsonl|dir> [options]
   trazum history <dir-of-stored-reports> [options]
   trazum connect <provider> [options]
   trazum store [--prune] [options]
