@@ -13,6 +13,49 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**The CI page's first example has never worked.** `docs/ci.md` opened its GitHub
+Actions section with:
+
+```yaml
+with:
+  path: prompts/
+  max-tokens: '900'
+```
+
+**There is no `path` input and there never has been.** `git log -S"  path:"` on
+`action.yml` finds it in no revision; the input has been `target` since 0.11.0,
+with `file` as a deprecated alias. The page shipped at 1.48.0 and has said
+`path` since the release that introduced it — so the first example on the page a
+reader lands on to set up CI was wrong from the day it was written, across
+**sixteen releases**.
+
+**What kept it from being worse is the Action's own refusal.** With no `target`
+and no `usage-log` it stops with *"Set the 'target' input to the prompt file or
+directory to check, or 'usage-log' to gate the spend."* A reader copying the
+example got a red build naming the right input — not a green build gating
+nothing. That distinction is the whole difference between a wasted afternoon and
+a budget everybody believed in, and it is the argument for writing a refusal
+even where nobody expects to need one.
+
+The example now uses `target`, and the paragraph under it says what `file` is,
+that no `path` input exists, and what the Action does when given neither.
+
+**The rest of the page was checked and is correct.** Every flag in its GitLab,
+Jenkins, CircleCI and pre-commit examples was matched against `COMMAND_FLAGS`
+for the command it follows: no unknown flag anywhere.
+
+### Added
+
+**`action/test/documented-inputs.test.mjs`, deriving the input list from
+`action.yml`.** Every `with:` key in a Trazum Action example, in any tracked
+markdown file, must be an input the Action declares.
+
+Run across the corpus rather than the one broken page, because `README.md`
+carries three of these examples and **all three were right the whole time** — a
+guard that only ever saw the file it was written for would not have shown that.
+Proven in both places: restoring `path:` fails naming `docs/ci.md`, and a
+planted `targets:` typo in the README fails naming the README.
+
 **The agent-facing skill listed nine config keys. The schema knows seventeen.**
 `.claude/skills/trazum/SKILL.md` is what an agent reads before answering a
 question about this tool, so a gap in it is not a documentation gap — it is a

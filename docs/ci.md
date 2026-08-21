@@ -28,9 +28,15 @@ The repository ships an Action, which additionally comments on the pull request:
 ```yaml
 - uses: Davmunrey/Trazum@<commit-sha>  # pin to a commit, never a tag
   with:
-    path: prompts/
+    target: prompts/          # a file, or a directory using the config's budgets
     max-tokens: '900'
 ```
+
+The input is **`target`**. `file` is a deprecated alias kept so existing
+workflows keep working. There is no `path` input, and giving one fails the run
+with *"Set the 'target' input to the prompt file or directory to check, or
+'usage-log' to gate the spend"* — the Action refuses rather than checking
+something nobody asked about.
 
 Or use the binary directly, exactly as below.
 
