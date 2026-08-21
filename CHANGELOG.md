@@ -11,7 +11,41 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**Every host this repository names is now decided about, in one place.**
+`https://generativelanguage.googleapis.com` sat in `packages/core/src/llm.ts`
+carrying a real API key while `docs/gateway.md` listed Google among the
+providers the gateway could not front. Neither file was wrong. What was missing
+was anywhere holding **both** facts at once, so nobody could see that one
+answered the other — and it took a hand-run dump of every `https://` string in
+the repository to notice, at 1.52.1, releases after it became true.
+
+That dump is kept now. The host set is derived from source; the decision about
+each host is deliberate, the same asymmetry `outbound-surfaces.test.js` proved.
+A host that appears in a file and is not in the map fails by name, and the only
+way to pass is to say what it is — the review Google's host never got. Untracked
+files are scanned too, so a new destination fails at the desk rather than at CI.
+
+**And a provider endpoint the gateway could front sets off an alarm.** The
+vocabulary of decisions includes *"model call, not yet fronted"*, which nothing
+is permitted to carry: the day a Mistral, xAI or Moonshot host arrives here, the
+only honest label for a plain-credential model endpoint fails the build with the
+chapter to write. The check is handed a planted map as well as the real one,
+because a filter run only over today's correct values proves nothing about
+tomorrow's — the same lesson the gateway's anchored-pattern check learned.
+
+**Bedrock and Vertex are recorded as unfrontable, with the reason proven from
+this repository's code rather than from anybody's understanding of the vendor.**
+Both defaults interpolate a region into the host: `bedrock-runtime.${region}`
+and `${location}-aiplatform`. Bedrock's SigV4 signature is given that host, so a
+proxy rewriting the origin would forward a signature matching nothing; Vertex's
+per-caller origin is exactly the caller-chosen destination the gateway compiles
+its upstreams in to prevent. `docs/gateway.md` now says so, because somebody
+whose calls go through Bedrock deserves to read why rather than assume it is
+coming. The test re-checks both claims against `llm.ts` rather than trusting its
+own prose.
+
 
 
 ## 1.52.1 — "Two more providers, from facts already here"

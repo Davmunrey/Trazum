@@ -38,6 +38,26 @@ different operations and are not forwarded.
 Everything else in Trazum either answers a question you can ignore or reports on
 a bill after it arrived. This is the one thing that can say **no**.
 
+## What it cannot stand in front of, and why
+
+Two of the places Trazum sends a model call are not on the table above and never
+will be, for the same structural reason rather than for want of work.
+
+**Bedrock.** The endpoint is `https://bedrock-runtime.{region}.amazonaws.com`,
+and the SigV4 signature covers the host. A proxy that rewrote the origin would
+forward a signature that no longer matches the request it is attached to, so the
+call would fail at AWS rather than succeed through Trazum.
+
+**Vertex AI.** The endpoint is `https://{location}-aiplatform.googleapis.com`
+for every region but `global`. Fronting it would mean an origin chosen by the
+caller — and the gateway compiles its upstreams in precisely so that nothing a
+caller controls can decide where their key is sent. A security test compares the
+compiled origins exactly, for that reason.
+
+Both are still **priced** and both are still **profiled** from a log you export.
+What the gateway offers and they cannot have is a refusal before the money is
+spent.
+
 ## Why in the path at all
 
 `trazum serve` answers *what will this cost and is there budget* in single-digit
