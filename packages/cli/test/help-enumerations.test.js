@@ -178,3 +178,73 @@ describe('the USAGE block names every command, and only commands', () => {
     );
   });
 });
+
+describe('every command with flags has exactly one OPTIONS section', () => {
+  /**
+   * `ladder` and `owners` had none, and `eval` had two.
+   *
+   * `trazum ladder` takes `--since`, `--until` and `--label`; `trazum owners`
+   * takes `--since` and `--until`. Neither had an `OPTIONS FOR` section, so a
+   * reader had no way to learn from the help that they take a window at all —
+   * and both are commands whose whole point is judging a period.
+   *
+   * `eval` had **two** sections with different content: one listing `--export`
+   * and `-o`, the other carrying the paragraph explaining that it costs three
+   * provider calls per case and exits 1 on divergence. Whichever a reader
+   * scrolled to, they got half. The duplicate heading is the worse half of
+   * that: the same title over two different answers.
+   *
+   * Both lists derive from the source. A command that gains its first flag
+   * fails this until somebody writes what it does.
+   */
+  const source = readFileSync(new URL('../src/index.ts', import.meta.url).pathname, 'utf8');
+
+  const globals = new Set(
+    [...source
+      .slice(source.indexOf('const GLOBAL_FLAGS'), source.indexOf('\n', source.indexOf('const GLOBAL_FLAGS')))
+      .matchAll(/'([^']+)'/g)].map((m) => m[1]),
+  );
+
+  /** Commands with at least one flag of their own, beyond the globals. */
+  const withOwnFlags = [...source
+    .slice(source.indexOf('const COMMAND_FLAGS'), source.indexOf('\n};', source.indexOf('const COMMAND_FLAGS')))
+    .matchAll(/^ {2}([a-z][a-z-]*):\s*\[([\s\S]*?)\],?$/gm)]
+    .map((m) => [m[1], [...m[2].matchAll(/'([^']+)'/g)].map((x) => x[1])])
+    .filter(([, flags]) => flags.some((f) => !globals.has(f)))
+    .map(([name]) => name)
+    .sort();
+
+  const headings = [...help().matchAll(/^OPTIONS FOR ([a-z][a-z-]*)$/gm)].map((m) => m[1]);
+
+  it('read both lists at all', () => {
+    assert.ok(withOwnFlags.length >= 20, `only ${withOwnFlags.length} commands with own flags`);
+    assert.ok(headings.length >= 20, `only ${headings.length} OPTIONS sections`);
+  });
+
+  it('none is missing its section', () => {
+    const missing = withOwnFlags.filter((c) => !headings.includes(c));
+    assert.deepEqual(
+      missing,
+      [],
+      `these commands take flags of their own and the help documents none of them: ${missing.join(', ')}`,
+    );
+  });
+
+  it('and none has two', () => {
+    const twice = [...new Set(headings.filter((c, i) => headings.indexOf(c) !== i))];
+    assert.deepEqual(
+      twice,
+      [],
+      `two OPTIONS sections under one heading — a reader gets whichever they scroll ` +
+        `to first, and each is half the answer: ${twice.join(', ')}`,
+    );
+  });
+
+  it('and the duplicate check is not one that can never fire', () => {
+    // Handed the shape it exists for, because a scan over today's corrected
+    // help proves nothing about tomorrow's.
+    const dupes = (list) => [...new Set(list.filter((c, i) => list.indexOf(c) !== i))];
+    assert.deepEqual(dupes(['eval', 'rank', 'eval']), ['eval']);
+    assert.deepEqual(dupes(['eval', 'rank']), []);
+  });
+});

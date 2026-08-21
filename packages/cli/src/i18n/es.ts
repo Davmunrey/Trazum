@@ -199,6 +199,12 @@ ${bold('OPCIONES DE eval')}
                               concordancia no puede contestar.
   -o, --out <fichero>         Dónde escribirla. Por defecto, stdout.
 
+  Ejecuta las dos versiones del prompt sobre tus casos y dice si la
+  optimización ha cambiado las respuestas. Cuesta TRES llamadas por caso: el
+  original dos veces, para medir la varianza propia del modelo, y el optimizado
+  una. Esa base es la vara de medir: sin ella, un porcentaje de divergencia no
+  significa nada. Sale con código 1 cuando las respuestas divergen de verdad.
+
 ${bold('OPCIONES DE rank')}
   --level <safe|aggressive>   Qué reglas cuentan como recuperables. Por defecto: safe.
   --model, --calls,           Calcula el coste de los tokens recuperables, como
@@ -352,17 +358,21 @@ ${bold('OPCIONES DE baseline')}
   Nunca falla. Registrar no es un veredicto, y un comando que pudiera fallar
   mientras escribe aquello con lo que arreglarías el fallo es un bucle.
 
-${bold('OPCIONES DE eval')}
-  --cases <fichero>           Entradas a probar, una por línea o array JSON. Obligatorio.
-  --level <safe|aggressive>   Nivel con el que optimizar antes de comparar.
-  --concurrency <n>           Casos en paralelo. Por defecto: 3.
-  --json                      Resultado en JSON.
+${bold('OPCIONES DE ladder')}
+  --since <cuándo>            Lee solo las llamadas de esta ventana. Un día UTC
+  --until <cuándo>            (2026-08-14), una marca ISO 8601 completa, una
+                              ventana relativa (7d, 24h) o "now". Las llamadas
+                              sin "ts" no se pueden situar y quedan fuera: se
+                              cuentan en voz alta, nunca se tiran en silencio.
+  --label <nombre>            Juzga la escalera de un solo workload en vez de
+                              todo el registro. Una etiqueta que no casa con
+                              nada es un error que nombra las que existen.
 
-  Ejecuta las dos versiones del prompt sobre tus casos y dice si la
-  optimización ha cambiado las respuestas. Cuesta TRES llamadas por caso: el
-  original dos veces, para medir la varianza propia del modelo, y el optimizado
-  una. Esa base es la vara de medir: sin ella, un porcentaje de divergencia no
-  significa nada. Sale con código 1 cuando las respuestas divergen de verdad.
+${bold('OPCIONES DE owners')}
+  --since <cuándo>            Lee solo las llamadas de esta ventana, en las
+  --until <cuándo>            mismas formas que aceptan los demás comandos. Lo
+                              que no reclama ningún dueño se reporta como sin
+                              asignar y nunca se reparte entre los conocidos.
 
 ${bold('OPCIONES DE profile')}
   --against <log.jsonl>       Compara esta factura con un registro anterior.
