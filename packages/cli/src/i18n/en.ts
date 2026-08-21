@@ -207,6 +207,12 @@ ${bold('OPTIONS FOR eval')}
                               for the question agreement cannot answer.
   -o, --out <file>            Where to write it. Defaults to stdout.
 
+  Runs both prompt versions over your cases and reports whether the
+  optimisation changed the answers. Costs THREE provider calls per case: the
+  original twice, to measure the model's own run-to-run variance, and the
+  optimised once. That baseline is the yardstick — without it, a divergence
+  figure means nothing. Exits with code 1 when the answers genuinely diverge.
+
 ${bold('OPTIONS FOR rank')}
   --level <safe|aggressive>   Which rules to count as recoverable. Default: safe.
   --model, --calls,           Price the recoverable tokens, as in optimize.
@@ -354,17 +360,21 @@ ${bold('OPTIONS FOR baseline')}
   "0 failures" from a check that measured nothing is the most misleading
   thing this tool could tell you.
 
-${bold('OPTIONS FOR eval')}
-  --cases <file>              Inputs to test, one per line or a JSON array. Required.
-  --level <safe|aggressive>   Level to optimise with before comparing.
-  --concurrency <n>           Cases in flight at once. Default: 3.
-  --json                      Result as JSON.
+${bold('OPTIONS FOR ladder')}
+  --since <when>              Read only calls in this window. A UTC day
+  --until <when>              (2026-08-14), a full ISO 8601 timestamp, a
+                              relative window (7d, 24h) or "now". Calls with no
+                              "ts" cannot be placed and are left out — counted
+                              out loud, never dropped silently.
+  --label <name>              Judge one workload's ladder rather than the whole
+                              log. A label that matches nothing is an error
+                              naming the labels that exist.
 
-  Runs both prompt versions over your cases and reports whether the
-  optimisation changed the answers. Costs THREE provider calls per case: the
-  original twice, to measure the model's own run-to-run variance, and the
-  optimised once. That baseline is the yardstick — without it, a divergence
-  figure means nothing. Exits with code 1 when the answers genuinely diverge.
+${bold('OPTIONS FOR owners')}
+  --since <when>              Read only calls in this window, in the same forms
+  --until <when>              the other commands take. What no owner claims is
+                              reported as unallocated and never spread across
+                              the ones that are known.
 
 ${bold('OPTIONS FOR profile')}
   --against <log.jsonl>       Compare this bill to a previous log. Positive

@@ -13,6 +13,26 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**Two commands had no options section, and one had two.** `trazum ladder` takes
+`--since`, `--until` and `--label`; `trazum owners` takes `--since` and
+`--until`. Neither had an `OPTIONS FOR` section, so a reader had no way to learn
+from the help that they take a window at all — and both are commands whose whole
+point is judging a period.
+
+**`eval` had two sections under the same heading, with different content.** One
+listed `--export promptfoo` and `-o`; the other carried the paragraph explaining
+that it costs **three** provider calls per case — the original twice to measure
+the model's own run-to-run variance, and the optimised once — and exits 1 on
+divergence. Whichever a reader scrolled to, they got half, and the duplicate
+heading meant neither half announced itself as one. Merged into a single
+section, in both locales.
+
+A guard now derives the commands that take flags of their own from
+`COMMAND_FLAGS`, minus the globals, and requires each to have **exactly one**
+section. A command that gains its first flag fails until somebody writes what it
+does; a heading that appears twice fails naming itself. The duplicate check is
+handed the shape it exists for rather than only today's corrected help.
+
 **`trazum profile` was missing from `--help`.** Not a small one: `profile` is
 the command almost every refusal in this product points a reader at — *"trazum
 profile prices a mistral log you export"*, the `--max-usd` gate that fails a
