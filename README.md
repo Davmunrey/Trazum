@@ -3123,7 +3123,7 @@ background work is what the Batch API halves. Trazum names the lever and stops
 ### What one conversation costs
 
 ```
-  chat on Claude Opus 5: across 4,812 conversations, the median one costs $0.02
+  chat on Claude Opus 5: across 4,812 conversations, the median one costs $0.0200
   over 6 turns, 95% come in under $1.80, and the most expensive was $46.10.
 ```
 

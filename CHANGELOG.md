@@ -161,6 +161,15 @@ growth is intended, re-record" were all absent. Every one is the sentence that
 bounds the claim above it. A refusal never arrives bare, and neither does a
 measurement.
 
+**And one figure was a string the tool cannot produce.** `profile`'s
+conversation-shape line wrote a median of `$0.02`; it interpolates
+`formatUsd(shape.medianUsd)`, and `formatUsd` gives four decimals under a
+dollar and five under a cent — precisely so a figure that rounds to nothing at
+two decimals does not print as `$0.00` beside a column of real money. It is
+`$0.0200`. A guard now takes the rule from that function rather than from any
+list typed beside it, and checks every dollar amount in every fenced block on
+the page; the sweep found this one and nothing else.
+
 **A completeness pass asked what every lens had missed, and found four more.**
 The frames *during* a transition, the dark theme's overlay layer, Windows High
 Contrast, and the requests the page issues on load — four places nobody had
