@@ -11,7 +11,44 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**A refusal arrives before the first byte, or not at all — 1.52's third
+chapter.** The ordering was already right; nothing asserted it, and nothing said
+it.
+
+**On a refusal the provider is not contacted at all.** The status code is the
+weaker half of that: the property worth having is that **the caller's prompt
+never leaves the machine**. A gateway that forwarded first and refused afterwards
+would have spent the money it was refusing and sent the text somewhere while
+claiming to stand in front of it.
+
+**Once bytes are flowing, the call is committed.** The status line is long gone,
+so a 402 could not be *sent* as a refusal even if the budget ran out mid-answer
+— it would arrive as garbage inside somebody's response. So it does not arrive:
+a stream that started, finishes.
+
+`docs/gateway.md` now states the limit that follows rather than leaving it to be
+discovered: **a call that begins inside the budget can end outside it**, by
+exactly the cost of one answer. Cutting a reply off partway to save the
+difference would corrupt what the caller is reading to protect a figure already
+spent, and this gateway will not do that.
+
+Two tests, each proven against the failure it forbids:
+
+- Refusing a call and asserting the upstream saw **no connection at all**.
+  Inverting the order — forward, then judge — fails it by name: *"the gateway
+  called the upstream on a call it refused"*.
+- Exhausting the budget **while a stream is in flight**, after the first event
+  has reached the caller, and asserting the answer still arrives whole at 200.
+  Planting a per-chunk budget check fails it: the stream terminates mid-answer,
+  which is exactly the production failure it describes.
+
+The first draft asserted a refusal type of `trazum_budget_exceeded`, which does
+not exist — the real one is `trazum_budget_refusal`. Caught on the first run,
+and worth noting because the wrong name sat in front of the assertions that
+mattered and would have masked them.
+
 
 ## 1.51.2 — "The stream, and fourteen things nothing was checking"
 
