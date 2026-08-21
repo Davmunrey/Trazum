@@ -1153,13 +1153,20 @@ curl -s localhost:7317/cost -d '{"model":"claude-opus-5","inputTokens":200000}'
 
 ```json
 {
-  "call":   { "estimatedUsd": 1.00, "provenance": "estimated" },
+  "schemaVersion": 1,
+  "call":   { "estimatedUsd": 1.00, "provenance": "estimated", "basis": "token-count" },
   "budget": { "consumedUsd": 40.00, "limitUsd": 50.00, "provenance": "measured" },
   "verdict": "within",
   "restsOn": "measured+estimated",
+  "reason": null,
   "afterCall": { "usd": 41.00, "halves": { "measuredUsd": 40, "estimatedUsd": 1 } }
 }
 ```
+
+Trimmed to the fields under discussion: `call` also echoes the `model` and the
+token counts it was given, and `budget` carries the `window` its measurement
+covers. `schemaVersion` is not trimmed, because it is the one field a consumer
+must branch on and a shape that omitted it would be teaching the wrong thing.
 
 **This is where the temptation to merge halves is strongest, and the shape
 refuses to.** The budget consumed is measured — the provider billed it. The
