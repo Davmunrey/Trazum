@@ -16,6 +16,15 @@ export interface HelpDefaults {
   avgOutputTokens: number;
   cacheHitRate: number;
   locales: readonly string[];
+  /**
+   * Every contract `--contract` accepts, from the one place that defines them.
+   *
+   * Retyped into the help text, this list stopped at `cost-answer` and stayed
+   * there through two releases that each added a contract — the same shape as
+   * the provider enumeration `help-enumerations.test.js` exists to keep out of
+   * USAGE, one section further down the same page.
+   */
+  contracts: readonly string[];
 }
 
 export interface CliMessages {
@@ -421,6 +430,28 @@ export interface CliMessages {
     unavailableHeading(): string;
     unavailable(finding: string, because: string, unlockedBy: string): string;
     unavailableNeverGates(): string;
+  };
+
+  rollup: {
+    noTargets(): string;
+    noSuchTarget(path: string): string;
+    emptyDirectory(path: string): string;
+    heading(contributors: number, usd: string, calls: number): string;
+    span(from: string, to: string): string;
+    noSpan(): string;
+    contributorsHeading(): string;
+    contributor(name: string, usd: string, calls: number, spanDays: number | null): string;
+    rejectedHeading(): string;
+    rejected(name: string, because: string): string;
+    identical(names: string): string;
+    identicalUsd(usd: string): string;
+    byLabelHeading(): string;
+    labelRow(label: string, usd: string, calls: number): string;
+    notMergedHeading(): string;
+    notMerged(finding: string, because: string): string;
+    presentIn(names: string): string;
+    cannotSayHeading(): string;
+    caveat(code: string): string;
   };
 
   where: {

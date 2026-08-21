@@ -5,12 +5,30 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 
-import { CONFIG_KEYS, CONFIG_USAGE_KEYS, LOCALES } from '@trazum/core';
+import { CONFIG_KEYS, CONFIG_USAGE_KEYS, CONTRACT_NAMES, LOCALES } from '@trazum/core';
 
 import { LOCALE_ENV_VARS, detectLocale, en, es, getCliMessages } from '../dist/i18n/index.js';
 import { SPAWN_ENV } from './env.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
+
+/**
+ * The values `--help` interpolates, in one place.
+ *
+ * Five copies of this object lived in this file, and adding a field to
+ * `HelpDefaults` made every one of them throw at the first `.join` — five
+ * failures, one cause. The help screen is rendered from data precisely so the
+ * enumerations in it cannot go stale, and a test that retypes that data is the
+ * staleness one layer down.
+ */
+const HELP_DEFAULTS = {
+  model: 'claude-opus-5',
+  callsPerMonth: 1000,
+  avgOutputTokens: 500,
+  cacheHitRate: 0.9,
+  locales: LOCALES,
+  contracts: CONTRACT_NAMES,
+};
 
 describe('locale detection', () => {
   it('the flag wins over everything else', () => {
@@ -90,13 +108,7 @@ describe('catalogue parity', () => {
     // undiscoverable — the only way to find it was reading the changelog. A
     // command the help does not mention may as well not exist.
     const COMMANDS = ['optimize', 'check', 'eval', 'diff', 'models', 'rules'];
-    const defaults = {
-      model: 'claude-opus-5',
-      callsPerMonth: 1000,
-      avgOutputTokens: 500,
-      cacheHitRate: 0.9,
-      locales: LOCALES,
-    };
+    const defaults = HELP_DEFAULTS;
 
     for (const locale of LOCALES) {
       const help = getCliMessages(locale).help(defaults, (s) => s);
@@ -117,13 +129,7 @@ describe('catalogue parity', () => {
     // prints the real allow-list for that command, so it is the list.
     const CLI = new URL('../dist/index.js', import.meta.url).pathname;
     const COMMANDS = ['optimize', 'check', 'eval', 'diff'];
-    const defaults = {
-      model: 'claude-opus-5',
-      callsPerMonth: 1000,
-      avgOutputTokens: 500,
-      cacheHitRate: 0.9,
-      locales: LOCALES,
-    };
+    const defaults = HELP_DEFAULTS;
 
     const accepted = new Set();
     for (const command of COMMANDS) {
@@ -168,13 +174,7 @@ describe('catalogue parity', () => {
     );
     assert.ok(handled.has('clear-suggestion-cache'), 'the derivation stopped finding flags');
 
-    const defaults = {
-      model: 'claude-opus-5',
-      callsPerMonth: 1000,
-      avgOutputTokens: 500,
-      cacheHitRate: 0.9,
-      locales: LOCALES,
-    };
+    const defaults = HELP_DEFAULTS;
 
     for (const locale of LOCALES) {
       const help = getCliMessages(locale).help(defaults, (s) => s);
@@ -190,13 +190,7 @@ describe('catalogue parity', () => {
     // Derived from the schema, not listed here. A hardcoded copy is how `eval`
     // came to be fully implemented and completely undiscoverable — the parity
     // test passed the whole time.
-    const defaults = {
-      model: 'claude-opus-5',
-      callsPerMonth: 1000,
-      avgOutputTokens: 500,
-      cacheHitRate: 0.9,
-      locales: LOCALES,
-    };
+    const defaults = HELP_DEFAULTS;
 
     for (const locale of LOCALES) {
       const help = getCliMessages(locale).help(defaults, (s) => s);
@@ -211,13 +205,7 @@ describe('catalogue parity', () => {
   });
 
   it('every catalogue renders a non-empty help screen', () => {
-    const defaults = {
-      model: 'claude-opus-5',
-      callsPerMonth: 1000,
-      avgOutputTokens: 500,
-      cacheHitRate: 0.9,
-      locales: LOCALES,
-    };
+    const defaults = HELP_DEFAULTS;
     for (const locale of LOCALES) {
       const help = getCliMessages(locale).help(defaults, (s) => s);
       assert.ok(help.includes('trazum optimize'), `${locale}: help lost the usage block`);

@@ -44,6 +44,7 @@ export const CONTRACT_NAMES = [
   'cost-answer',
   'outcome-report',
   'annual-record',
+  'roll-up',
 ] as const;
 
 export type ContractName = (typeof CONTRACT_NAMES)[number];
@@ -302,6 +303,23 @@ const DOCUMENT_RULES: Record<Exclude<ContractName, 'usage-log'>, FieldRule[]> = 
     ),
     rule('cannotSay', 'an array of what this record cannot answer', isArray),
   ],
+  /**
+   * The roll-up — the chapter where the refusals matter most, because this is
+   * the one document assembled from other people's measurements.
+   *
+   * `contributors` and `rejected` are both required and neither may be
+   * inferred from the other: a roll-up that merged three of four contributions
+   * and listed three contributors is indistinguishable, field by field, from a
+   * roll-up of three. The fourth machine's entire bill goes missing and the
+   * total looks complete.
+   */
+  'roll-up': [
+    rule('contributors', 'an array — every contribution that was merged, with its own gaps', isArray),
+    rule('rejected', 'an array — every contribution that was not merged, and why; never dropped in silence', isArray),
+    rule('total', 'an object of token counts and dollars', isObject),
+    rule('notMerged', 'an array of findings that do not roll up, each with the reason', isArray),
+    rule('cannotSay', 'an array of what this roll-up cannot say about itself', isArray),
+  ],
   'cost-answer': [
     rule('verdict', 'one of within, over, cannot-tell', (v) =>
       v === 'within' || v === 'over' || v === 'cannot-tell'),
@@ -355,6 +373,43 @@ const CROSS_RULES: Partial<Record<Exclude<ContractName, 'usage-log'>, CrossRule[
         'a null rate needs a reason beside it and a stated rate must not carry one — a refusal never arrives bare, and a reason attached to an answer is two answers',
     },
   ],
+  /**
+   * The two refusals that must travel with a roll-up, or the format is worse
+   * than no format.
+   *
+   * **Overlap between contributors is unmeasurable**, always, for every
+   * roll-up of more than one document: two people exporting the same traffic
+   * double the bill and no merge of summaries can see it, because the raw
+   * lines a duplicate check needs are in neither document. An emitter that
+   * carried the fields and lost that would be handing somebody a doubled total
+   * that looks audited.
+   *
+   * And a **rejected contribution** is the other one. A machine whose document
+   * did not conform contributed nothing, and a roll-up that says so nowhere
+   * reads exactly like a roll-up of everybody.
+   */
+  'roll-up': [
+    {
+      at: 'cannotSay',
+      kind: 'missing',
+      ok: (doc) =>
+        !Array.isArray(doc.contributors) ||
+        doc.contributors.length < 2 ||
+        (Array.isArray(doc.cannotSay) && doc.cannotSay.includes('overlap-invisible')),
+      detail:
+        'more than one contributor and cannotSay does not say overlap-invisible — two people exporting the same traffic double the bill, and a merge of summaries cannot see it',
+    },
+    {
+      at: 'cannotSay',
+      kind: 'missing',
+      ok: (doc) =>
+        !Array.isArray(doc.rejected) ||
+        doc.rejected.length === 0 ||
+        (Array.isArray(doc.cannotSay) && doc.cannotSay.includes('contribution-rejected')),
+      detail:
+        'a contribution was rejected and cannotSay does not say so — a machine that contributed nothing must not read as a machine that spent nothing',
+    },
+  ],
   'annual-record': [
     {
       at: 'cannotSay',
@@ -377,6 +432,11 @@ const CROSS_RULES: Partial<Record<Exclude<ContractName, 'usage-log'>, CrossRule[
  * a slightly-more-broken profile, and send somebody to fix the wrong document.
  */
 function contractOf(doc: Record<string, unknown>): Exclude<ContractName, 'usage-log'> | null {
+  // Before the profile check, deliberately: a roll-up carries `byLabelAndModel`
+  // too — it is a merged bill, sliced the same way — so testing the profile
+  // first would classify every roll-up as a profile, accept it as conformant,
+  // and never apply the two refusals that only a roll-up has to carry.
+  if (Array.isArray(doc.contributors) && Array.isArray(doc.notMerged)) return 'roll-up';
   if (Array.isArray(doc.byLabelAndModel)) return 'profile';
   if (Array.isArray(doc.missingMonths) && isObject(doc.promises)) return 'annual-record';
   if (Array.isArray(doc.undeclared) && isObject(doc.coverage)) return 'outcome-report';
@@ -469,7 +529,7 @@ export function conform(text: string, options: ConformOptions = {}): Conformance
       schemaVersion: 1,
       contract: null,
       because:
-        'no contract recognised it — a profile has byLabelAndModel, a plan has actions, a verification adds arrived, a history has periods and runs, a connected report has provider and unavailable, a cost answer has verdict and restsOn',
+        'no contract recognised it — a roll-up has contributors and notMerged, a profile has byLabelAndModel, a plan has actions, a verification adds arrived, a history has periods and runs, a connected report has provider and unavailable, a cost answer has verdict and restsOn',
       problems: [],
       unavailable: [],
       records: null,

@@ -43,11 +43,11 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- 32 commands       MCP server      Next.js     comments on pull requests
+ 33 commands       MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
-## The thirty-two commands
+## The thirty-three commands
 
 | Command | What it answers |
 |---|---|
@@ -81,6 +81,7 @@ never runs unless you ask.
 | [`trazum commitment`](#should-you-sign-that-commitment-trazum-commitment) | What would that committed-use deal have been worth? *On measured months, both directions priced.* |
 | [`trazum report`](#the-year-from-what-was-already-written-down-trazum-report) | What did the year actually look like? *No new data, and it lists its own blind spots.* |
 | [`trazum conform`](#building-on-the-format-trazum-conform) | Does the document my tool emits conform, and what will it not be able to answer? |
+| [`trazum rollup`](#more-than-one-machine-trazum-rollup) | Four of us measured four things — what is the total, and what did merging lose? *A format and a merge, not a service.* |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
 | [`trazum feedback`](#telling-us-something-trazum-feedback) | Where do I report this, and what will you ask me for? *Sends nothing.* |
 
@@ -90,6 +91,7 @@ never runs unless you ask.
 - [Getting started](#getting-started) — CLI, web, the GitHub Action, pre-commit
 - [The first five minutes](#the-first-five-minutes-trazum-init) — `init`, and the four things it refuses to write
 - [Building on the format](#building-on-the-format-trazum-conform) — the contracts, the guarantees, and the doctrine
+- [More than one machine](#more-than-one-machine-trazum-rollup) — several people's documents, one bill, every gap preserved
 - [Which few-shot examples earn their tokens](#which-few-shot-examples-earn-their-tokens-trazum-prune) — measured, and it asks before spending
 - [An MCP server for your agents](#an-mcp-server-so-an-agent-can-budget-its-own-prompts) — budget a prompt before sending it
 - [Languages](#languages) — what the dictionaries cover, and what they deliberately do not
@@ -192,8 +194,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of thirty-two commands — [the table
-above](#the-thirty-two-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of thirty-three commands — [the table
+above](#the-thirty-three-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -343,7 +345,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other thirty-one commands, each with its own section below:
+The other thirty-two commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -354,6 +356,7 @@ trazum connect anthropic             # your bill, read from the provider
 trazum store                         # what is kept, and what a prune takes
 trazum watch --once                  # did anything cross, this afternoon
 trazum serve                         # answer before the call is sent
+trazum rollup a.json b.json          # several people's bills, one roll-up
 trazum rank prompts/                 # which one to fix first
 trazum blame prompts/system.txt      # who made it expensive, and when
 trazum diff old.txt new.txt          # what this edit cost
@@ -2183,8 +2186,8 @@ believe a limit is set.
 
 ### Building on the format: `trazum conform`
 
-Trazum emits ten documents and every one of them is a contract, enforced in
-both directions by parity tests. [docs/format.md](docs/format.md) is the index;
+Trazum emits twelve documents, defines a thirteenth it does not emit, and every
+one of them is a contract, enforced in both directions by parity tests. [docs/format.md](docs/format.md) is the index;
 this is how you check your own emitter against it.
 
 ```bash
@@ -2229,6 +2232,89 @@ forecast; a floor can prove *over* and never *under*. Each rule with the release
 that learned it by getting it wrong first. If you are building something that
 reports money from measurements, that page is the one worth reading even if you
 never install this.
+
+### More than one machine: `trazum rollup`
+
+Four people measured four things. `--by-source` and `owners` divide a bill
+somebody already collected; nothing here combined bills nobody collected
+together — which meant somebody emailing logs around, which is the one thing
+this tool exists not to make anybody do.
+
+Each contributor runs `profile --json` where their traffic already is, and hands
+over the document. A profile document carries no prompt text, no completion
+text, no session keys and no credentials, and never has.
+
+```bash
+trazum profile logs/ --json > api.json      # on the machine the traffic is on
+trazum rollup api.json nightly.json         # or: trazum rollup shared-folder/
+```
+
+```
+Roll-up of 2 contributors — $20.07 over 32 calls
+  Covering 2026-08-01 to 2026-08-14, stated and never extrapolated from.
+
+Contributors, and what each one could not see
+  api.json — $14.45, 18 calls, 13 days
+  nightly.json — $5.62, 14 calls, 13 days
+    1 line of this contributor's log could not be read
+    no record carried a session, so this contributor brings no
+      conversation findings
+
+The merged bill, per workload
+  support — $14.45, 18 calls
+  nightly — $5.62, 14 calls
+
+Findings that do not roll up
+  conversation growth — it is measured over the turns of one session, and
+    a document carries the growth rather than the turns.
+    Present in: api.json. Read it there.
+  a day's dearest label — each contributor knows its own, and the merged
+    answer needs the per-label-per-day spend that no document carries.
+    Present in: api.json, nightly.json. Read it there.
+
+What this roll-up cannot say about itself
+  A day drew from more than one contributor, so its dearest label is
+    unknown: each contributor knows its own, and the merged answer needs
+    per-label-per-day spend no document carries.
+  Overlap between contributors is unmeasurable here. Two people exporting
+    the same traffic double the bill, and a merge of summaries cannot see it
+    — the raw lines a duplicate check needs are in no document.
+```
+
+*Real output, transcribed.* Two thirds of it is what the merge could **not** do,
+and that is the point.
+
+**A format and a merge, not a service.** There is no upload, no account and no
+server. The documents arrive however your team already moves files — a shared
+drive, an artifact, a commit — and a directory argument rolls up every `.json`
+inside it, so a folder people drop a document into is a roll-up without anybody
+writing a shell loop.
+
+**Each contributor's gaps stay with that contributor.** Summing them would say
+"3% of this roll-up is unpriced" when the truth is "one of your four machines is
+90% unpriced and the other three are clean" — which is the averaging-away this
+command exists to refuse. Unreadable lines, unpriced calls, a log with no clock,
+a log with no sessions: each one is listed under the machine that has it.
+
+**Four things it will not do.** Findings computed from individual calls do not
+roll up — percentile shapes, conversation growth, repeated turns, truncation
+retries — so they are named with the contributors that have them rather than
+dropped. A day drawn from two contributors has no dearest label, because the
+merged answer needs per-label-per-day spend no document carries, and picking the
+larger of the two is wrong whenever a runner-up in both adds up to more than
+either winner. A contribution that does not conform is **rejected by name and
+exits 1**, because a machine that contributed nothing must not read like a
+machine that spent nothing. And the largest single call is a maximum, never a
+sum: four machines' largest calls added together is a call that never happened.
+
+**The one it cannot do, and says so every time.** Overlap between contributors
+is unmeasurable. Two people exporting the same traffic double the bill, and a
+merge of summaries cannot see it — the raw lines a duplicate check needs are in
+no document. Every roll-up of more than one contributor carries
+`overlap-invisible` in `cannotSay`, and `conform` fails a roll-up that does not.
+
+The output is the `roll-up` contract, checkable like every other:
+`trazum rollup … --json | trazum conform -`.
 
 ### Telling us something: `trazum feedback`
 

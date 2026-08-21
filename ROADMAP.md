@@ -1679,6 +1679,15 @@ at the line of code for it:
    one number that settles the real-tokenizer question, and nobody has measured
    it.
 
+**1.55.0 has its first chapter, out of order and deliberately.** More than one
+machine was an intention rather than a defect, and it stays behind 1.54.0 in the
+ordering — but 1.54.0 needs provider keys this repository does not have, and a
+chapter that can be built is worth more than a slot left idle waiting for one.
+`trazum rollup` merges profile documents several people produced separately,
+with each contributor's gaps preserved rather than averaged away and the overlap
+between them named as unmeasurable. The arc is not closed: closing it is a minor,
+and a minor closes an arc only when the thesis is finished.
+
 **The remaining six are an ordering of intentions, not commitments about
 content** — more than one machine (1.55.0), something that runs (1.56.0), the
 optimiser earning its name again (1.57.0), where the prompt lives (1.58.0), a

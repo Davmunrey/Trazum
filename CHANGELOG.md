@@ -11,7 +11,73 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**`trazum rollup` — several people's bills, one roll-up.** Everything here
+assumed one operator with the files on disk: `--by-source` and `owners` divide a
+bill somebody already collected, and nothing combined bills nobody collected
+together. Each contributor now runs `profile --json` where their traffic already
+is and hands over the document; `rollup` merges them. A directory argument rolls
+up every `.json` inside it, so a shared folder people drop a document into is a
+roll-up without a shell loop.
+
+**A format and a merge, not a service.** Nothing is uploaded and there is no
+account. That is the constraint the arc was written under: a tool whose argument
+is that it reads your bill without uploading it cannot also be the place
+everybody's bill is uploaded.
+
+**Four refusals, because most of a profile does not merge.** Findings computed
+from individual calls — percentile shapes, conversation growth, repeated turns,
+truncation retries — are named in `notMerged` with the contributors that have
+them, rather than dropped. A day drawn from two contributors has **no** dearest
+label: the merged answer needs per-label-per-day spend no document carries, and
+taking the larger of two answers is wrong whenever a runner-up in both adds up
+to more than either winner. A contribution that does not conform is rejected by
+name and exits 1, because a machine that contributed nothing must not read like
+a machine that spent nothing. And the largest single call is a **maximum**,
+never a sum — four machines' largest calls added together is a call that never
+happened, in the direction that makes a context window look tight.
+
+**Each contributor's gaps stay with that contributor.** Unreadable lines,
+unpriced calls, no clock, a partial clock, no sessions, no labels, duplicate
+lines: each listed under the machine that has it. Summed, they would say "3% of
+this roll-up is unpriced" when the truth is "one of your four machines is 90%
+unpriced and the other three are clean", which is the averaging-away the arc
+exists to refuse.
+
+**The one thing it cannot do, said every time.** Overlap between contributors is
+unmeasurable: two people exporting the same traffic double the bill, and a merge
+of summaries cannot see it, because the raw lines a duplicate check needs are in
+no document. Every roll-up of more than one contributor carries
+`overlap-invisible` in `cannotSay` — and `conform` **fails** a roll-up that does
+not, along with one that rejected a contribution and does not say so. A format
+that carried the fields and lost those refusals would hand somebody a doubled
+total that looks audited.
+
+**`roll-up` is the tenth `--contract` name.** Detection tests it before
+`profile` on purpose: a roll-up carries `byLabelAndModel` too, so testing the
+profile first would accept every roll-up as a profile and never apply the two
+refusals only a roll-up has to carry.
+
+### Fixed
+
+**`--help` retyped the list of contracts, and it stopped at `cost-answer`.** Two
+releases each added one and the help text named neither, one section below the
+USAGE block that a whole test suite exists to keep provider names out of. The
+list is now interpolated from `CONTRACT_NAMES`, and a test reads the names out
+of the CLI's own refusal and asserts every one appears.
+
+**The README said Trazum emits ten documents; the format page said eleven and
+twelve.** Two pages, three numbers, one table. Both now derive from the same
+count, and the guard that checks the format page's ordinal derives it from the
+row count instead of matching the literal `twelfth` — the guard against a stale
+count had itself gone stale.
+
+**Five copies of the help-screen defaults lived in one test file.** Adding a
+field to `HelpDefaults` made every one of them throw at the first `.join`: five
+failures, one cause. The help screen is rendered from data precisely so its
+enumerations cannot go stale, and a test that retypes that data is the staleness
+one layer down.
 
 
 ## 1.53.4 — "What it says and what it does"

@@ -50,6 +50,7 @@ export { coverageDrift, COVERAGE_FIELDS, COVERAGE_DRIFT_MIN } from './coverage-d
 export { explainGateFailure, gateMargin, GATE_MARGIN_TIGHT } from './gate-explain.js';
 export { measuredUsage, labelCoverage, MIN_SCALE_DAYS, SCALE_TO_DAYS } from './measured-profile.js';
 export { assignSources, fleetRollup } from './fleet.js';
+export { rollUp } from './rollup.js';
 export { buildPlan, planLabelName, parsePlanDocument, PLAN_ACTION_KINDS } from './plan.js';
 export type { PlanParseFailure, PlanParseResult } from './plan.js';
 export type { PlanAction, PlanActionKind, PlanAssumption, PlanDocument } from './plan.js';
@@ -247,6 +248,15 @@ export type {
 export type { HistoryDocument, HistoryRun, RepeatedPlanAction, StoredReport } from './history.js';
 export type { CannotTellReason, PlanVerification, VerifiedAction, VerifyOutcome } from './verify.js';
 export type { FleetSource, FleetRollup } from './fleet.js';
+export type {
+  RollupInput,
+  RollupDocument,
+  RollupContributor,
+  RollupDay,
+  RollupCaveat,
+  ContributorGap,
+  UnmergedFinding,
+} from './rollup.js';
 export type { MeasuredUsage, LabelCoverage } from './measured-profile.js';
 export type { GateExplanation } from './gate-explain.js';
 export type { CoverageDrift, CoverageField } from './coverage-drift.js';

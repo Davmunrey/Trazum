@@ -1,14 +1,14 @@
 # The interchange format
 
-Trazum emits **eleven** documents as data, and defines a twelfth it does not
-emit. All twelve are contracts, enforced in both directions by parity tests in
+Trazum emits **twelve** documents as data, and defines a thirteenth it does not
+emit. All thirteen are contracts, enforced in both directions by parity tests in
 this repository, and this page is what makes them something another tool can
 build against rather than something to reverse engineer from output.
 
 Two distinctions are drawn in the table rather than blurred, because each one
 changes what you can actually do:
 
-- **`--contract` names nine of them.** That is narrower than being documented: a
+- **`--contract` names ten of them.** That is narrower than being documented: a
   named contract can be checked against a document *you* produced with a single
   command, and the other three can only be read against their section here.
 - **The outcome report is defined but not emitted.** `trazum profile` renders it
@@ -29,6 +29,7 @@ changes what you can actually do:
 | **outcome report** | nothing — rendered by `trazum profile`, never written as JSON | `outcome-report` | [json-output.md](json-output.md#the-outcome-report-document) |
 | **annual record** | `trazum report --year --json` | `annual-record` | [json-output.md](json-output.md#the-annual-record-document) |
 | **spend guard** | the `spend_guard` MCP tool | — | [json-output.md](json-output.md#the-spend-guard-document) |
+| **roll-up** | `trazum rollup --json` | `roll-up` | [json-output.md](json-output.md#the-roll-up-document) |
 | **first run** | `trazum init --json` | — | [json-output.md](json-output.md#the-first-run-document) |
 
 The count above said **seven** for as long as the table had ten rows in it, and

@@ -153,6 +153,26 @@ records, one roll-up, with each contributor's gaps preserved rather than
 averaged away. The interchange format exists precisely so this can be somebody
 else's transport.
 
+**Since written.** The first chapter landed, out of order: `trazum rollup` and
+the `roll-up` contract. Taken ahead of 1.54.0 because that arc needs provider
+keys this repository does not have, and the ordering is a commitment about what
+comes next rather than a promise to idle until it can.
+
+What the chapter found, which the paragraph above did not anticipate: **most of
+a profile does not merge at all.** Percentile shapes, conversation growth,
+repeated turns and truncation retries are computed from individual calls, and a
+summary of a summary cannot reproduce them — so the deliverable is as much a
+list of refusals as a merge. And the refusal that matters most is one no
+implementation can lift: overlap *between* contributors is unmeasurable, because
+the raw lines a duplicate check needs are in no document. `conform` fails a
+roll-up that does not say so.
+
+**What the arc still owes:** a closing minor, which means deciding whether this
+is the whole thesis. The candidates are a roll-up of roll-ups, which needs a
+document that can contribute to one, and whether a contributor should be able to
+state a period it *claims* to cover so a missing export can be told from a quiet
+week.
+
 ## 1.56.0 — Something that runs
 
 *An intention.* `history` reads a series nobody is producing on a schedule, and
