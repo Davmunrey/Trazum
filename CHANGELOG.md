@@ -11,7 +11,52 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Fixed
+
+**A provider Trazum prices but cannot front was refused as though it were a
+typo — 1.53's first chapter.** `trazum gateway mistral` and `trazum gateway
+bogus` got the same sentence:
+
+```
+Error: "mistral" is not a provider this gateway speaks for. Known: anthropic, openai.
+```
+
+One of those is a **gap in this tool with a real workaround**; the other is a
+misspelling. Telling them apart is the difference between a user reaching for
+`trazum profile` and a user checking their keyboard. `trazum connect` did the
+same thing.
+
+Seven providers are priced. Two are fronted by the gateway and two have
+connectors — that gap is the whole subject of the 1.53 arc, and **the first
+honest thing to do about it is stop describing it as the user's mistake.**
+
+Both refusals now answer three cases instead of two, and the priced-but-
+unsupported one says what is true: that the gap is real and on the roadmap,
+that `trazum profile` prices an exported log from that provider today, and —
+the part worth stating — **what you do not get**, which is a refusal before the
+money is spent, the whole point of the gateway.
+
+The split is derived from the catalogue rather than a list kept beside it, so a
+provider added to pricing starts getting the better answer, and one that gains
+an upstream stops needing it, without anyone remembering either.
+
+### Added
+
+**A guard that generates itself from the gap.** It walks every priced provider
+without an upstream or a connector and asserts the refusal names the provider as
+priced, does not use the typo wording, and points somewhere — *a refusal never
+arrives bare*.
+
+Its first assertion is that **the gap exists at all**: if every priced provider
+is ever supported, the suite fails and says to delete it rather than quietly
+testing nothing.
+
+Proven in both directions, and the second is the one that matters. Reverting to
+one answer fails ten of the twelve. **Greeting every unknown name as
+priced-but-unsupported** — the tempting over-fix — fails the assertion that a
+name Trazum has never heard is still refused as one: that version would tell
+somebody who mistyped `nonesuch` that Trazum prices their imaginary provider.
+
 
 ## 1.52.0 — "The gateway in a real path"
 

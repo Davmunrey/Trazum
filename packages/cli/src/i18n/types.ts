@@ -377,6 +377,7 @@ export interface CliMessages {
 
   gateway: {
     badProvider(given: string, known: string): string;
+    pricedNotFronted(given: string, known: string): string;
     needsPolicy(policies: string): string;
     listening(where: string, provider: string): string;
     unmeasured(cause: 'stream-broke' | 'no-usage-event', sofar: number): string;
@@ -1421,6 +1422,7 @@ export interface CliMessages {
   connect: {
     noTarget(providers: string): string;
     unknownProvider(id: string, providers: string): string;
+    pricedNoConnector(id: string, providers: string): string;
     /** What would be called, with no key needed and nothing sent. */
     dryRun(provider: string, from: string, to: string, envVars: string, keyKind: string): string;
     /** `calls` is null on a source that serves no request count. */
