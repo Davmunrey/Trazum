@@ -65,6 +65,34 @@ import { SAFE_FETCH_INIT, checkedEndpoint } from './net.js';
  */
 export const ESTIMATE_ERROR_BAND_PCT = 10;
 
+/**
+ * Whose tokenizer that band was measured against.
+ *
+ * The number above is not a property of the estimator; it is a property of the
+ * estimator **against Claude**. Twenty-one samples, one counting endpoint, one
+ * family. Trazum prices seven, and until somebody runs the harness against the
+ * others nobody knows what the error is on a GPT or a Gemini prompt.
+ *
+ * Exported as a name rather than left implicit in a comment because the band
+ * had already leaked out of its domain in three places: an advisory that told a
+ * GPT-5 user *"the call will fail"* on the strength of a Claude measurement,
+ * the same advisory sending them to a counting endpoint that counts a different
+ * tokenizer, and `--exact-tokens` forwarding their model id to Anthropic. A
+ * fact with no name is a fact nothing can check.
+ */
+export const BAND_CALIBRATED_PROVIDER = 'anthropic';
+
+/**
+ * Whether the published band describes this provider's tokenizer.
+ *
+ * `undefined` is false, deliberately. A model with no provider recorded is not
+ * evidence that the band applies to it — and the flattering reading of missing
+ * information is the one this project does not take.
+ */
+export function bandGoverns(provider: string | undefined | null): boolean {
+  return provider === BAND_CALIBRATED_PROVIDER;
+}
+
 const CJK = /[぀-ヿ㐀-䶿一-鿿가-힯]/;
 
 /**

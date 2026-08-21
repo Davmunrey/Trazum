@@ -91,18 +91,40 @@ export const en: CoreMessages = {
   },
 
   advisories: {
-    contextOverflow: ({ tokens, modelName, contextWindow, uncertain }) => ({
+    /**
+     * Three shapes, not two, because *"how wrong might this estimate be"* has
+     * three answers and only two were written down.
+     *
+     * The count is exact — then the window verdict is a fact. The count is an
+     * estimate on the family the estimator was measured against — then the
+     * margin is known and the verdict is a probability. Or the count is an
+     * estimate on a family nobody has measured — and then the margin itself is
+     * the unknown, which is neither of the first two and used to be told as the
+     * second.
+     *
+     * `--exact-tokens` is named only in the branch where it would help. It
+     * counts with Anthropic's endpoint, so recommending it to somebody on
+     * another family was sending them to a counter for a different tokenizer
+     * and calling the result exact.
+     */
+    contextOverflow: ({ tokens, modelName, contextWindow, uncertain, bandApplies }) => ({
       title: uncertain
-        ? 'The prompt probably does not fit in the context window'
+        ? bandApplies
+          ? 'The prompt probably does not fit in the context window'
+          : 'The prompt may not fit in the context window, and by how much is not knowable here'
         : 'The prompt does not fit in the context window',
-      detail: uncertain
-        ? `The optimised prompt is ~${n(tokens)} tokens against ${modelName}'s ${n(contextWindow)}. That count is an estimate and it is close to the line, so the call will probably fail but might not — settle it with --exact-tokens before rewriting anything. The counting endpoint is free. If it does exceed the window, split the content or move to a model with a larger one.`
-        : `The optimised prompt is ~${n(tokens)} tokens and ${modelName} accepts ${n(contextWindow)}. The call will fail: split the content or move to a model with a larger window.`,
+      detail: !uncertain
+        ? `The optimised prompt is ~${n(tokens)} tokens and ${modelName} accepts ${n(contextWindow)}. The call will fail: split the content or move to a model with a larger window.`
+        : bandApplies
+          ? `The optimised prompt is ~${n(tokens)} tokens against ${modelName}'s ${n(contextWindow)}. That count is an estimate and it is close to the line, so the call will probably fail but might not — settle it with --exact-tokens before rewriting anything. The counting endpoint is free. If it does exceed the window, split the content or move to a model with a larger one.`
+          : `The optimised prompt is ~${n(tokens)} tokens against ${modelName}'s ${n(contextWindow)}, which is over. That count is an estimate, and the estimator's error was measured against Claude's tokenizer — not ${modelName}'s — so how far over it really is cannot be said from here. Trazum will not tell you the call fails on a number it has not measured for this family. Count with your provider's own tooling before rewriting anything.`,
     }),
 
-    contextNearLimit: ({ tokens, modelName, contextWindow }) => ({
+    contextNearLimit: ({ tokens, modelName, contextWindow, bandApplies }) => ({
       title: 'The prompt may not fit in the context window',
-      detail: `The optimised prompt is ~${n(tokens)} tokens against ${modelName}'s ${n(contextWindow)}, which fits — but that count is an estimate and its error range reaches past the window, so the real prompt may not. A call that exceeds the window fails outright rather than degrading, and nothing else here warns about it. Confirm with --exact-tokens; the counting endpoint is free.`,
+      detail: bandApplies
+        ? `The optimised prompt is ~${n(tokens)} tokens against ${modelName}'s ${n(contextWindow)}, which fits — but that count is an estimate and its error range reaches past the window, so the real prompt may not. A call that exceeds the window fails outright rather than degrading, and nothing else here warns about it. Confirm with --exact-tokens; the counting endpoint is free.`
+        : `The optimised prompt is ~${n(tokens)} tokens against ${modelName}'s ${n(contextWindow)}, which fits on the estimate. This warning is raised because the estimator's measured error — against Claude's tokenizer, not ${modelName}'s — would reach past the window, and nobody has measured what that error is on this family. A call that exceeds the window fails outright rather than degrading. Count with your provider's own tooling before relying on the margin.`,
     }),
 
     promptCaching: ({

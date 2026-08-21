@@ -3298,7 +3298,18 @@ safe direction for a tool that reports money. One caveat stated rather than
 buried: the Latin-language divisors were calibrated on the samples they are
 measured against, so the band rests on the samples nothing was fitted to.
 
-For exact numbers, the official counting endpoint does not charge tokens:
+**`--exact-tokens` is Claude-only, and now says so instead of trying.** It
+counts with Anthropic's endpoint — Claude's tokenizer. Asked for on a `gpt-5` or
+`gemini-2.5-pro` prompt it used to forward that model id to Anthropic, which
+either fails upstream or returns a number counted with the wrong tokenizer and
+labelled *exact*. It refuses by name now, before asking for a key, and points at
+the provider's own tooling. For the same reason the context-window advisories no
+longer tell a reader on another family that a call **will** fail: that verdict
+rested on a margin measured against Claude, and outside that family the margin
+is the unknown.
+
+For exact numbers on Claude, the official counting endpoint does not charge
+tokens:
 
 ```bash
 ANTHROPIC_API_KEY=... node packages/cli/dist/index.js optimize prompt.txt --exact-tokens

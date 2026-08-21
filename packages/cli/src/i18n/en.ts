@@ -295,7 +295,8 @@ ${bold('OPTIONS FOR optimize')}
                               order mattered. Refuses on any block that refers
                               backwards ("the text above"), and says which phrase.
   --llm                       Add a pass through the LLM configured by environment.
-  --exact-tokens              Count tokens with the official API instead of the heuristic.
+  --exact-tokens              Count tokens with Anthropic's endpoint, not the heuristic.
+                              Claude models only: it is Claude's tokenizer.
   --tokens-only               Report the token saving and no money at all. The
                               default inside Claude Code, Codex or Cursor, where
                               a subscription means there is no bill to reduce.
@@ -802,6 +803,21 @@ ${bold('EXAMPLES')}
       'Set TRAZUM_LLM_BASE_URL and TRAZUM_LLM_MODEL (OpenAI-compatible endpoint),\n' +
       'or TRAZUM_LLM_PROVIDER=anthropic with TRAZUM_LLM_API_KEY.',
     exactTokensNeedsKey: () => '--exact-tokens needs ANTHROPIC_API_KEY in the environment.',
+    /**
+     * Named, and told what it cannot do rather than merely that it will not.
+     *
+     * The alternative on offer has to be somebody else's tooling, because
+     * Trazum has none for this family — saying so is the whole refusal. A
+     * refusal never arrives bare.
+     */
+    exactTokensWrongFamily: (model, provider) =>
+      `--exact-tokens counts with Anthropic's endpoint, which counts Claude's tokenizer${
+        provider === null
+          ? `, and the catalogue records no provider for "${model}" — so which tokenizer it uses is not something Trazum knows`
+          : `, and ${model} is a model from ${provider}`
+      }. Counting it there would either be refused upstream or return a number for a different tokenizer, and this tool will not label that exact. Drop --exact-tokens for the estimate — which is honest about being one — or count with ${
+        provider === null ? "that model's" : provider + "'s"
+      } own tooling.`,
     checkNeedsMaxTokens: () => 'trazum check needs --max-tokens <n>.',
     evalNeedsCases: () => 'trazum eval needs --cases <file>.',
     unknownExportFormat: (received, allowed) =>

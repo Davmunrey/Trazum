@@ -36,6 +36,7 @@ import {
   comparePrompts,
   compareToBaseline,
   computeSavings,
+  bandGoverns,
   countTokensAnthropic,
   DEFAULT_USAGE,
   budgetPositions,
@@ -3613,6 +3614,26 @@ async function commandOptimize(
   }
 
   if (boolFlag(args, 'exact-tokens')) {
+    /**
+     * The family check comes **before** the key check, and the order is the
+     * point.
+     *
+     * This branch used to hand `result.usage.model` straight to Anthropic's
+     * `count_tokens`. On a Claude model that is exactly right. On `gpt-5` it
+     * sends somebody else's model id to Anthropic and returns either a
+     * confusing upstream error or a number counted with the wrong tokenizer and
+     * labelled exact — and "exact" is the strongest word this tool uses about a
+     * count.
+     *
+     * Asking for `ANTHROPIC_API_KEY` first would send a reader on another
+     * family to find a credential that could not have helped them.
+     */
+    const priced = pricing.byId.get(result.usage.model);
+    if (!bandGoverns(priced?.provider)) {
+      throw new Error(
+        t.errors.exactTokensWrongFamily(result.usage.model, priced?.provider ?? null),
+      );
+    }
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
       throw new Error(t.errors.exactTokensNeedsKey());

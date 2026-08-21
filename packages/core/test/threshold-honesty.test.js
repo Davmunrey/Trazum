@@ -57,7 +57,51 @@ import {
 const BAND = ESTIMATE_ERROR_BAND_PCT / 100;
 
 /** Words that count as admitting the number might be on the other side. */
-const ADMITS_UNCERTAINTY = /close to the line|may be|might|probably|reaches past|error range|--exact-tokens/;
+/**
+ * What counts as admitting uncertainty.
+ *
+ * `may be` became `\bmay\b` when the context advisories learned to say *"may
+ * not fit"* to a family whose band nobody has measured. That is a stronger
+ * hedge than the one already accepted, not a weaker one — but a list like this
+ * is exactly where a guard gets quietly widened until it accepts the thing it
+ * was written to refuse, so the widening is checked below rather than argued
+ * for here.
+ */
+const ADMITS_UNCERTAINTY =
+  /close to the line|\bmay\b|might|probably|reaches past|error range|not knowable|cannot be said|--exact-tokens/;
+
+describe('the hedging pattern still refuses a flat claim', () => {
+  /**
+   * Handed the sentences it exists to reject, directly.
+   *
+   * Widening an accept-list to make a new phrasing pass is the move that turns
+   * a guard into decoration, and a pattern only ever run against text that
+   * already hedges cannot tell you it has stopped working. The flat sentences
+   * below are the real ones this product produces when it *is* certain.
+   */
+  const FLAT = [
+    'The prompt does not fit in the context window',
+    'The optimised prompt is ~2,000,000 tokens and Claude Fable 5 accepts 1,000,000. The call will fail: split the content or move to a model with a larger window.',
+    'Turn on prompt caching for the stable prefix',
+  ];
+  const HEDGED = [
+    'The prompt probably does not fit in the context window',
+    'The prompt may not fit in the context window, and by how much is not knowable here',
+    'how far over it really is cannot be said from here',
+  ];
+
+  it('rejects every flat sentence', () => {
+    for (const sentence of FLAT) {
+      assert.equal(ADMITS_UNCERTAINTY.test(sentence), false, `accepted a flat claim: ${sentence}`);
+    }
+  });
+
+  it('accepts every hedged one', () => {
+    for (const sentence of HEDGED) {
+      assert.equal(ADMITS_UNCERTAINTY.test(sentence), true, `refused a real hedge: ${sentence}`);
+    }
+  });
+});
 
 const usageFor = (model) => ({
   model: model.id,

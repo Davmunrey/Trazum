@@ -11,6 +11,57 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**Claude's band had leaked out of Claude — 1.54's second chapter, and three
+defects with one root.** `±10%` is the estimator's error measured against
+Claude's tokenizer over twenty-one samples, and `--exact-tokens` counts with
+Anthropic's endpoint. Both facts were true, neither was enforced, and three
+claims escaped the family they were measured in.
+
+**`optimize --exact-tokens` handed the user's own model id to Anthropic.**
+`countTokensAnthropic({ apiKey, model: result.usage.model })` — correct on a
+Claude model, and on `gpt-5` either a confusing upstream error or a number
+counted with the wrong tokenizer and labelled **exact**, which is the strongest
+word this tool uses about a count. It refuses by name now, naming the model and
+its family and pointing at that provider's own tooling. **The family check runs
+before the key check**, because telling somebody on another family to go find an
+`ANTHROPIC_API_KEY` sends them after a credential that could not have helped
+them.
+
+**The context-overflow advisory said "The call will fail" to every family.** The
+most absolute sentence this product produces, with no dollar figure to soften
+it — and the margin behind it was Claude's. On a family nobody has measured, an
+estimate over the window is *always* uncertain however far over it looks,
+because the margin that would settle it is the unknown. The fix is not a second,
+wider band: inventing a number would be the same mistake with worse arithmetic.
+
+**And both context advisories sent every reader to `--exact-tokens`.** *"Settle
+it with --exact-tokens; the counting endpoint is free"* — pointing most of the
+seven priced families at a counter for a different tokenizer, and, since this
+release, at a command that refuses them. The advice is bounded rather than
+deleted: the family it works for still gets it.
+
+`BAND_CALIBRATED_PROVIDER` and `bandGoverns()` are exported so the fact has a
+name. A missing provider reads as **not covered**, never as covered — the
+flattering reading of missing information is the one this project does not take.
+
+**Two things this found in itself.** The provider-less refusal said the model
+*"is not a model in the price catalogue at all"*, which is false in the only
+case that reaches it: `provider` is optional on a priced model and `--pricing`
+lets anybody supply one, so the model is in the catalogue and its family is what
+is missing. Found by running the branch rather than reading it. And the new
+guard's first draft asked for a prompt 1.01x a 1,000,000-token window but grew
+the text by doubling, producing 1,966,080 tokens — landing in the *certain*
+branch and failing a correct implementation over a badly built input.
+
+**`threshold-honesty.test.js` legitimately failed nine models**, because it
+recognises hedging by vocabulary and the new sentences hedge in words its list
+did not know. `may be` became `\bmay\b`, plus *"not knowable"* and *"cannot be
+said"*. Widening a guard's accept-list to make a change pass is how a guard
+becomes decoration, so the pattern is now handed the flat sentences it exists to
+refuse and must reject all three.
+
 ### Added
 
 **The band harness measures four families, not two — 1.54's first chapter.**

@@ -829,6 +829,14 @@ ${bold('EJEMPLOS')}
       'Define TRAZUM_LLM_BASE_URL y TRAZUM_LLM_MODEL (endpoint compatible con OpenAI),\n' +
       'o TRAZUM_LLM_PROVIDER=anthropic con TRAZUM_LLM_API_KEY.',
     exactTokensNeedsKey: () => '--exact-tokens necesita ANTHROPIC_API_KEY en el entorno.',
+    exactTokensWrongFamily: (model, provider) =>
+      `--exact-tokens cuenta con el endpoint de Anthropic, que cuenta el tokenizador de Claude${
+        provider === null
+          ? `, y el catálogo no registra proveedor para "${model}": qué tokenizador usa no es algo que Trazum sepa`
+          : `, y ${model} es un modelo de ${provider}`
+      }. Contarlo ahí sería rechazado arriba o devolvería un número de otro tokenizador, y esta herramienta no va a llamar exacto a eso. Quita --exact-tokens y quédate con la estimación —que es honesta sobre serlo— o cuenta con las herramientas de ${
+        provider === null ? 'ese modelo' : provider
+      }.`,
     checkNeedsMaxTokens: () => 'trazum check necesita --max-tokens <n>.',
     evalNeedsCases: () => 'trazum eval necesita --cases <fichero>.',
     unknownExportFormat: (received, allowed) =>
