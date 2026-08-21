@@ -1049,6 +1049,33 @@ derives the answer, rather than for this sentence, which said *two* through a
 release that made it three.
 
 
+### 1.52.1 — Two more providers, from facts already here
+
+Three chapters of the 1.53 arc. The gateway stood in front of two of the seven
+providers Trazum prices and now stands in front of four, and neither addition
+required anybody to type a hostname from memory: DeepSeek's endpoint was already
+in the token-band harness, and Google's endpoint, credential header and response
+shape were already in the Gemini provider and the Gemini importer.
+
+A provider Trazum prices but cannot front is no longer refused as though it were
+a typo — the refusal names the gap, offers `trazum profile` on an exported log,
+and says what that does not give you. Both refusals derive their subject from
+the catalogue and the upstream table, so a provider that gains support leaves
+the gap with nothing edited.
+
+Google's model lives in the URL, so the one forwarded path became an anchored
+pattern with a restricted model segment, and the outgoing URL is rebuilt rather
+than echoed. Eight hostile paths are refused by test, each proving the provider
+was never contacted. The security allowlist learned to extract pattern paths as
+exactly as literal ones — without that, the first pattern would have reached a
+credential-forwarding proxy without appearing in the allowlist at all.
+
+It also found the buffered path recording nothing and saying nothing where 1.52
+had taught the streaming path to speak, a refusal message that would have told a
+Gemini user about an OpenAI setting, and two documents carrying provider counts
+that had gone stale in a release about that very number.
+
+
 ## Collapsed into 1.8.0
 
 **Everything below shipped as 1.8.0, and none of these numbers is on npm.** They
@@ -1497,11 +1524,15 @@ Its chapters are in the plan; what it still cannot do is in
 **The next two answer things that are wrong or missing today**, and the plan
 points at the line of code for each:
 
-1. **1.53.0 — every provider you pay for.** Seven priced, **two** connected, and
-   the gateway fronts **two**. A budget that works on two of your seven
-   providers is a budget for the convenient part of the bill. Some of these APIs
-   publish no usage report at all, and *"this provider does not publish one"* is
-   a finding rather than a gap to paper over.
+1. **1.53.0 — every provider you pay for.** In progress: the gateway now fronts
+   more of what Trazum prices than it did, and connectors have not moved. How
+   many of each is a question for `trazum gateway` and `trazum connect`, which
+   derive the answer — the plan's own table records what was measured when it
+   was written, and this sentence deliberately records no number. A budget that
+   works on the convenient part of your bill is a budget for the convenient part
+   of your bill. Some of these APIs publish no usage report at all, and *"this
+   provider does not publish one"* is a finding rather than a gap to paper
+   over.
 2. **1.54.0 — the counter, per family.** The estimator is calibrated on Claude
    and prices seven families. This roadmap has called the per-family error the
    one number that settles the real-tokenizer question, and nobody has measured
