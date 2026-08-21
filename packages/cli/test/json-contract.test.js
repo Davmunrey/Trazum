@@ -53,11 +53,33 @@ const report = async (extra = []) => {
  * their own shapes, and holding `profile --json` to `createdAt` would be
  * enforcing the wrong contract on the right command.
  */
+/** Every row of the table, whatever the field is called. */
+const ROW = /^\| `([^`]+)` \|/gm;
+/** The rows this harvest can actually read a field name out of. */
+const NAME = /^\| `([A-Za-z0-9]+)` \|/gm;
+
 const documented = async () => {
   const doc = await readFile(DOC, 'utf8');
-  const section = sectionOf(doc, '## Top-level fields');
-  const scope = section;
-  return new Set([...scope.matchAll(/^\| `([a-zA-Z]+)` \|/gm)].map((match) => match[1]));
+  const scope = sectionOf(doc, '## Top-level fields');
+
+  /*
+    The harvest must read EVERY row, not the rows it happens to understand.
+    
+    This pattern was `[a-zA-Z]+`. No field is spelled with a digit today, so it
+    read all thirty-five rows and nothing was wrong — but the day somebody adds
+    `p95Usd` and documents it, the name would stop being harvested, the "emits
+    every field it documents" check would stop covering it, and nothing would
+    say so. A guard that quietly narrows is the failure this repository keeps
+    finding; counting the rows is what makes the narrowing loud.
+  */
+  const rows = [...scope.matchAll(ROW)].map((match) => match[1]);
+  const names = [...scope.matchAll(NAME)].map((match) => match[1]);
+  assert.deepEqual(
+    rows.filter((row) => !names.includes(row)),
+    [],
+    'a documented field is spelled in a way this harvest cannot read, so it would be silently unguarded',
+  );
+  return new Set(names);
 };
 
 describe('the --json contract', () => {
@@ -118,5 +140,39 @@ describe('the --json contract', () => {
     // And the field that says a session was seen is still true: grouped by,
     // never shown.
     assert.equal(JSON.parse(result.stdout).hasSessions, true);
+  });
+});
+
+describe('the harvest cannot quietly stop reading the table', () => {
+  /**
+   * Proving the guard above by breaking it.
+   *
+   * The check inside `documented()` runs against the real document, where every
+   * row is readable — an assertion that only ever sees today's good values, and
+   * this repository has been caught by that shape more than a dozen times. So
+   * the pattern is handed the rows it would have to refuse.
+   */
+  const namesIn = (section) => [...section.matchAll(/^\| `([A-Za-z0-9]+)` \|/gm)].map((m) => m[1]);
+  const rowsIn = (section) => [...section.matchAll(/^\| `([^`]+)` \|/gm)].map((m) => m[1]);
+
+  it('reads a field spelled with a digit, which the old pattern dropped', () => {
+    const table = '| `p95Usd` | the ninety-fifth percentile |';
+    assert.deepEqual(rowsIn(table), ['p95Usd']);
+    assert.deepEqual(namesIn(table), ['p95Usd'], 'a digit in a field name is not exotic and must not be skipped');
+  });
+
+  it('and notices a row it genuinely cannot read', () => {
+    // A nested path is not a top-level field, and whatever it is, the harvest
+    // must say it could not read it rather than shrink by one in silence.
+    const table = '| `total.inputUsd` | dollars on input |';
+    assert.deepEqual(rowsIn(table), ['total.inputUsd']);
+    assert.deepEqual(namesIn(table), [], 'the strict pattern must not pretend to have read this');
+  });
+
+  it('so the two disagree exactly when something would be unguarded', () => {
+    const fine = '| `schemaVersion` | the contract version |\n| `p95Usd` | a percentile |';
+    const broken = `${fine}\n| \`total.inputUsd\` | dollars on input |`;
+    assert.deepEqual(rowsIn(fine).filter((r) => !namesIn(fine).includes(r)), []);
+    assert.deepEqual(rowsIn(broken).filter((r) => !namesIn(broken).includes(r)), ['total.inputUsd']);
   });
 });
