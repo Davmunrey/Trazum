@@ -1,0 +1,100 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { describe, it } from 'node:test';
+
+import { CONFIG_KEYS, COST_MULTIPLIERS, ESTIMATE_ERROR_BAND_PCT } from '../dist/index.js';
+// The sub-key lists are internal to the schema and stay that way: exporting
+// them so a test could import them would widen the public surface to suit the
+// test, which is the tail wagging the dog. An in-package test may reach in.
+import {
+  CONFIG_LADDER_KEYS,
+  CONFIG_OUTCOME_KEYS,
+  CONFIG_SPEND_KEYS,
+} from '../dist/config-schema.js';
+
+/**
+ * The agent-facing skill, against the code it describes to an agent.
+ *
+ * `.claude/skills/trazum/SKILL.md` is what an agent reads before answering a
+ * question about this tool, so a gap in it is not a documentation gap — it is a
+ * wrong answer given to somebody who asked. Its config section listed **nine**
+ * keys. The schema knows **seventeen**.
+ *
+ * The eight missing were `labels`, `spend`, `sources`, `store`, `waive`,
+ * `outcomes`, `ladders` and `owners` — which is to say the entire budget
+ * surface, the fleet, the waiver record, and the vocabulary the whole 1.51 arc
+ * rests on. An agent asked *"can Trazum tell me whether the cheaper model made
+ * things worse?"* would have read this list, not found `outcomes`, and said no.
+ *
+ * The section's command coverage is deliberately narrower than the CLI's — the
+ * skill is scoped to optimising and budgeting a prompt — so an absent *command*
+ * is not drift and is not asserted here. A key list that claims to be the key
+ * list is a different thing.
+ */
+
+const skill = readFileSync(
+  new URL('../../../.claude/skills/trazum/SKILL.md', import.meta.url),
+  'utf8',
+);
+
+/** Named as inline code, which is how the file writes every key. */
+const names = (key) => new RegExp('`' + key + '`').test(skill);
+
+describe('the trazum skill describes the configuration it tells agents about', () => {
+  it('names every top-level config key', () => {
+    const missing = CONFIG_KEYS.filter((key) => !names(key));
+    assert.deepEqual(
+      missing,
+      [],
+      `the schema accepts these and SKILL.md does not name them: ${missing.join(', ')}`,
+    );
+  });
+
+  it('names the sub-keys of the ones an agent has to fill in', () => {
+    /**
+     * Bounded to three: `spend`, `outcomes` and `ladders` are the keys whose
+     * *shape* an agent must produce rather than merely mention. The rest are a
+     * scalar or a path, and listing their internals here would make this test
+     * a copy of the schema rather than a check on the prose.
+     */
+    const missing = [
+      ...CONFIG_SPEND_KEYS.map((k) => ['spend', k]),
+      ...CONFIG_OUTCOME_KEYS.map((k) => ['outcomes', k]),
+      ...CONFIG_LADDER_KEYS.map((k) => ['ladders', k]),
+    ].filter(([, key]) => !names(key));
+
+    assert.deepEqual(
+      missing.map(([parent, key]) => `${parent}.${key}`),
+      [],
+      'SKILL.md names these keys nowhere, so an agent cannot write the object',
+    );
+  });
+
+  it('quotes the cache multipliers the pricing module actually uses', () => {
+    // The skill tells an agent to report a cache loss "plainly rather than
+    // softening it", and quotes the premium as its evidence. A stale multiplier
+    // there is a wrong number in an agent's answer about money.
+    assert.match(
+      skill,
+      new RegExp(`${COST_MULTIPLIERS.cacheWrite5m}x plain input`),
+      `SKILL.md no longer quotes the 5-minute cache write premium as ${COST_MULTIPLIERS.cacheWrite5m}x`,
+    );
+    // Matched without markup: the first draft required `**2x**` because that is
+    // how packages/cli/README.md writes it, and failed a sentence in this file
+    // that says `2x` plainly and is entirely correct. The number is the claim;
+    // the bold is a house style that differs per file.
+    assert.match(
+      skill,
+      new RegExp(`${COST_MULTIPLIERS.cacheWrite1h}x at the one-hour TTL`),
+      `SKILL.md no longer quotes the one-hour cache write premium as ${COST_MULTIPLIERS.cacheWrite1h}x`,
+    );
+  });
+
+  it('quotes the published error band', () => {
+    assert.match(
+      skill,
+      new RegExp(`±${ESTIMATE_ERROR_BAND_PCT}%`),
+      `SKILL.md no longer quotes the published band as ±${ESTIMATE_ERROR_BAND_PCT}%`,
+    );
+  });
+});
