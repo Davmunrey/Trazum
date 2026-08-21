@@ -11,6 +11,11 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+
+## 1.52.1 — "Two more providers, from facts already here"
+
 ### Added
 
 **The gateway fronts Google — 1.53's third chapter, and the first where the

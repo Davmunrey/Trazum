@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.52.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.52.1**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,155 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.52.1 — "Two more providers, from facts already here"
+
+**Three chapters of the 1.53 arc.** The gateway stood in front of two of the
+seven providers Trazum prices. It now stands in front of four — and the two it
+gained were added without anybody typing a hostname from memory, which is the
+whole point of how this went.
+
+### A provider you pay for is not a typo
+
+`trazum gateway mistral` and `trazum gateway bogus` got the same sentence: *"is
+not a provider this gateway speaks for."* One is a real gap in this tool with a
+real workaround; the other is a misspelling. The refusal told somebody with a
+live Mistral bill to check their spelling.
+
+It now says Trazum prices that provider, that the gateway does not front it
+**yet**, and what to do meanwhile — `trazum profile` on a log you export, whose
+`--max-usd` gate fails a build on the bill after the fact. It also says what
+that does **not** give you: a refusal before the money is spent, which is the
+entire reason the gateway exists and the reason this gap is worth naming rather
+than hiding behind "unknown provider".
+
+`trazum connect` gained the same distinction for the same reason.
+
+Both refusals are **derived** — the priced set from the catalogue, the supported
+sets from the gateway's upstream table and the connector list. A provider that
+gains support leaves the gap with nobody editing anything, and one added to
+pricing joins it the same way. Its guard begins by asserting the gap still
+exists at all: when every priced provider is fronted, the suite says to delete
+itself rather than be weakened.
+
+### DeepSeek, on a host this repository already trusts
+
+`scripts/measure-token-band.mjs` has sent a real API key to
+`https://api.deepseek.com/chat/completions` since the token-band harness learned
+a second provider. Reusing an endpoint this repository already trusts with a
+credential is a different act from inventing one — and that path genuinely has
+**no `/v1`**, which is exactly the detail memory gets wrong.
+
+`WIRE_SHAPES` came with it: one map saying which response shape each provider
+speaks. DeepSeek serves the OpenAI format, so reading `prompt_tokens` out of it
+is the same code — but the buffered reader and the streaming reader each had
+their own `provider === 'openai'` test, and two lists of provider names
+eventually disagree.
+
+**A provider absent from that map reads as null, not as a guess.** The gateway
+then reports the call as *unmeasured*, which is true, instead of recording a
+number nobody can defend.
+
+### Google, where the model is in the URL
+
+Every other provider names its model in the request body, so "the one path this
+gateway forwards" could be a literal string. Gemini's is
+`/v1beta/models/{model}:generateContent`, and that single difference reaches
+everywhere.
+
+Every fact it needed was already committed here: `packages/core/src/llm.ts` has
+sent a real key to `https://generativelanguage.googleapis.com` at that path, in
+an `x-goog-api-key` header rather than the query string, since the Gemini
+provider landed; `packages/core/src/usage.ts` has read `usageMetadata` back
+since the Gemini importer landed, including the part where `promptTokenCount`
+**includes** `cachedContentTokenCount` rather than excluding it. Host, path,
+credential header and response shape — four facts, none recalled.
+
+**The pattern is narrower than the literal it replaced.** It is anchored at both
+ends and its model segment accepts only `[A-Za-z0-9._-]` — a stricter grammar
+than an equality test against a string a caller could have put a `?` or a `..`
+in. And the URL sent upstream is **rebuilt** from what matched, never the
+caller's string echoed back: a pattern that matched is evidence the request was
+well formed, not permission to forward whatever else satisfied it.
+
+Eight hostile paths are refused by test, each asserting the provider saw **no
+connection at all** rather than an error relayed back:
+
+- a query string smuggled past the model segment
+- traversal in the model segment
+- a second path segment where the model goes
+- `:streamGenerateContent`
+- `:countTokens`
+- text appended after `:generateContent`
+- a prefix before the version
+- another provider's path, on this gateway
+
+`:streamGenerateContent` is refused on purpose. Its buffered shape being
+established does not establish its streamed one, and `streamingUsageReader`
+returns nothing for Google in **both** an OpenAI-shaped event and a
+Gemini-shaped one, so a later edit cannot quietly merge the two facts.
+
+### The allowlist had to learn about patterns
+
+`security.test.js` compares the gateway's origins and paths **exactly**,
+extracted from the source rather than searched for, so a new destination for
+somebody's credential cannot arrive without a deliberate edit to a file that
+exists to notice. That friction is the point.
+
+It harvested `path: '...'` literals. A **pattern** would have reached a
+credential-forwarding proxy without appearing in that allowlist at all — the
+hole opening in the same commit that made it possible, with the guard still
+passing and still reading as coverage. Pattern paths are now extracted just as
+exactly, every one is required to be anchored and to accept no arbitrary run of
+text, and the fetch target is asserted to interpolate only the compiled-in
+origin and a path the module built.
+
+**And that property check is proved against known-bad inputs.** Written as a
+loop over today's good pattern alone, it could never have failed: the exact-list
+comparison above it catches any change first. It is handed a pattern missing its
+start anchor, one missing its end anchor, and one with a `.*` model segment, and
+must reject all three.
+
+### What this found wrong in itself
+
+**The buffered path went unmeasured in silence.** 1.52 taught the streaming path
+to say *this call is unmeasured* when no usage event arrived, and left the other
+side of the same `if` recording nothing and saying nothing. A Gemini response
+with no counts in it was forwarded, answered, and vanished from the total
+without a word. It now names the cause — but only on a response the provider
+called **ok**, because an upstream error carries no counts for the honest reason
+that it produced none, and announcing those would bury the ones that spent
+money.
+
+**A third unmeasured cause would have inherited the second one's sentence.**
+The message was a two-branch ternary whose `else` explained OpenAI's
+`stream_options.include_usage`, so a Gemini user would have been told about a
+setting their SDK does not have. One branch per cause now, no `else`. That is
+the eleventh time this project has bounded a message by its neighbour instead of
+by its subject.
+
+**`docs/gateway.md` said "five of the seven, still" through an entire release in
+which it became four.** The table beside that sentence was guarded against the
+upstream list; the sentence introducing the table was not. `ROADMAP.md` carried
+the same stale *two*. Both counts are gone — there is no number to get wrong if
+there is no number — and a guard now fails any spelled or digit count in that
+paragraph.
+
+### What stayed out, and why
+
+**`moonshot`, `xai` and `mistral` are still unfronted.** Their hosts appear
+nowhere in this repository, and compiling an endpoint in from memory — into the
+single place a user's credential is forwarded — is the thing this project's
+doctrine forbids treating as known. The rule has now paid for itself twice: both
+providers added this release were unlocked by *finding* a host already committed
+here, not by recalling one. Confirming those three endpoints is a question for
+somebody who can check them, and until then the refusal says so plainly.
+
+**No connector was added.** Whether each of these providers publishes a usage
+API at all is a separate question from whether the gateway can front it, and
+*"this provider does not publish one"* is a finding to record, not a gap to
+paper over.
+
 
 ## 1.52.0 — "The gateway in a real path"
 
