@@ -264,9 +264,29 @@ the answer.
 
 ## The config file
 
-`trazum.config.json`, found by walking up from the working directory. Keys:
-`level`, `locale`, `disable`, `usage`, `budgets`, `maxGrowth`, `baseline`,
-`extensions`, `pricing`.
+`trazum.config.json`, found by walking up from the working directory. Seventeen
+keys, and an unknown one is a hard error rather than a silent no-op:
+
+| Key | What it settles |
+|---|---|
+| `level` `locale` `disable` | Which rules run, in which language |
+| `usage` | The scenario every dollar figure is projected over |
+| `budgets` | Per-pattern token ceilings for `check` on a directory |
+| `labels` | How a raw label maps to a workload name |
+| `spend` | The dollar gates: `maxUsd`, `monthlyUsd`, `maxDayUsd`, `maxSessionUsd`, `maxCacheLossUsd`, `byLabel`, `bySource`, `substitute` |
+| `sources` | Where `--by-source` finds each fleet member's log |
+| `store` | `keepDays` for the rolling record |
+| `waive` | A named gate, a reason and an expiry — every use is recorded |
+| `maxGrowth` `baseline` | Drift away from a committed record, not just the ceiling |
+| `extensions` | Which file types count as prompts |
+| `pricing` | An overlay adding or overriding models |
+| **`outcomes`** | **`values` and `success` — the vocabulary that makes cost per outcome, the quality gate and experiments possible. Nothing is inferred; if this is absent those commands refuse rather than guess.** |
+| `ladders` | `tiers` and `escalateOn` for the escalation ladder |
+| `owners` | Whose budget a label belongs to |
+
+**`outcomes` is the one to suggest first when a user asks whether a change made
+things worse.** Without it Trazum can say a workload got 40% cheaper and cannot
+say whether it stopped working.
 
 Flags beat the config; the config beats the defaults. When suggesting a setting a
 project will reuse, put it in the config rather than repeating flags in every CI

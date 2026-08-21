@@ -13,6 +13,54 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**The agent-facing skill listed nine config keys. The schema knows seventeen.**
+`.claude/skills/trazum/SKILL.md` is what an agent reads before answering a
+question about this tool, so a gap in it is not a documentation gap — it is a
+wrong answer given to somebody who asked.
+
+The eight it never named: `labels`, `spend`, `sources`, `store`, `waive`,
+`outcomes`, `ladders`, `owners`. That is the entire budget surface, the fleet,
+the waiver record, and **the vocabulary the whole 1.51 arc rests on**. An agent
+asked *"can Trazum tell me whether the cheaper model made things worse?"* would
+have consulted this list, not found `outcomes`, and said no — about the one
+capability that release existed to add.
+
+The section is now a table: every key, what it settles, and the sub-keys of the
+three whose *shape* an agent has to produce rather than merely mention. It ends
+by saying which key to suggest first when somebody asks whether a change made
+things worse.
+
+**The rest of the file was checked and is correct** — "three provider calls per
+case" matches `evaluate.ts`, the ±10% band matches `ESTIMATE_ERROR_BAND_PCT`,
+and the 1.25x/2x cache write premiums match `COST_MULTIPLIERS`. Its command
+coverage is deliberately narrower than the CLI's, so an absent command is scope
+rather than drift, and is not asserted.
+
+### Added
+
+**`skill-doc.test.js`, deriving the key list from `CONFIG_KEYS`.** Four
+assertions: every top-level key is named; the sub-keys of `spend`, `outcomes`
+and `ladders` are named, because those are the three an agent must fill in
+rather than mention; and the cache multipliers and the error band are quoted as
+the code holds them, since the skill tells an agent to report a cache loss
+"plainly rather than softening it" and quotes the premium as its evidence.
+
+The sub-key lists stay internal to the schema. Exporting them so a test could
+import them would widen the public surface to suit the test; an in-package test
+may reach into its own package instead.
+
+**Two things went wrong writing it, and both are the same habit paying off.**
+The guard failed the replacement table on `spend.monthlyUsd` — I had omitted it
+while writing out a list whose whole point was completeness. And the multiplier
+assertion demanded `**2x**` in bold, because that is how `packages/cli/README.md`
+writes it, and so failed a sentence in this file that says `2x` plainly and is
+entirely correct. The number is the claim; the bold is a house style that
+differs per file.
+
+Proven by restoring the original nine-key line — *"the schema accepts these and
+SKILL.md does not name them: labels, spend, sources, store, waive, outcomes,
+ladders, owners"* — and by planting a stale multiplier.
+
 **A mislabelled index sent readers looking for an API key to a page about
 signing in with GitHub.** `docs/README.md` described `docs/accounts.md` as
 *"Provider accounts — Connecting a provider so usage arrives on its own"*. That
