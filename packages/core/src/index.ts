@@ -138,7 +138,12 @@ export type {
   OutcomeVerdict,
   OutcomeVocabulary,
 } from './outcome.js';
-export { gatewayDecision, usageFromResponse, FAILURE_POLICIES } from './gateway.js';
+export {
+  gatewayDecision,
+  streamingUsageReader,
+  usageFromResponse,
+  FAILURE_POLICIES,
+} from './gateway.js';
 export type {
   CannotTellCause,
   FailurePolicy,

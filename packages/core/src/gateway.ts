@@ -331,6 +331,152 @@ function becauseCannotTell(cause: CannotTellCause): string {
 }
 
 /**
+ * What a provider reported for one call, however it arrived.
+ *
+ * Named for the gateway rather than `MeasuredUsage`, which `measured-profile.ts`
+ * already uses for a different thing — a label's coverage across a log. Two
+ * types with one name is a rename waiting to be got wrong.
+ */
+export interface GatewayUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+}
+
+/**
+ * Reads a streaming response's usage as it goes past, keeping none of it.
+ *
+ * A streamed answer carries its token counts in events rather than in a JSON
+ * body, so the buffering reader below cannot see them. This one is fed the
+ * bytes on their way to the caller and holds three numbers and a partial line
+ * — never the text. That is the same promise the proxy makes for the buffered
+ * path, kept structurally rather than by intention.
+ *
+ * **Anthropic** puts the input and cache counts on `message_start` and the
+ * running output count on each `message_delta`; the last one wins, because it
+ * is cumulative rather than incremental.
+ *
+ * **OpenAI** sends usage only when the caller asked for it with
+ * `stream_options: {include_usage: true}`. Without that the stream carries no
+ * counts at all, and `done()` returns null — which the gateway records as
+ * nothing rather than as zero. A call whose usage never arrived is not a free
+ * call, and the flattering direction is the one this project must not round to.
+ */
+export interface StreamingUsageReader {
+  /** Feed the bytes going past. Safe to call with partial lines. */
+  push(chunk: string): void;
+  /** What the provider reported, or null when the stream carried no counts. */
+  done(): GatewayUsage | null;
+}
+
+/**
+ * A single SSE line longer than this is not parsed.
+ *
+ * The reader has to buffer until a newline, and an upstream that never sends
+ * one would otherwise grow it without limit. Refusing the line loses the
+ * counts on it — which surfaces as "usage not recorded", the honest failure —
+ * where holding it costs the memory of a proxy that promised to hold nothing.
+ */
+const MAX_SSE_LINE_BYTES = 1024 * 1024;
+
+export function streamingUsageReader(provider: string): StreamingUsageReader {
+  let pending = '';
+  let seen = false;
+  let overlong = false;
+  const usage: GatewayUsage = {
+    inputTokens: 0,
+    outputTokens: 0,
+    cacheReadTokens: 0,
+    cacheWriteTokens: 0,
+  };
+
+  const num = (value: unknown): number =>
+    typeof value === 'number' && Number.isFinite(value) ? value : 0;
+
+  const event = (json: string): void => {
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(json);
+    } catch {
+      return;
+    }
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return;
+    const doc = parsed as Record<string, unknown>;
+
+    if (provider === 'anthropic') {
+      const message = doc.message;
+      if (typeof message === 'object' && message !== null) {
+        const u = (message as Record<string, unknown>).usage;
+        if (typeof u === 'object' && u !== null) {
+          const start = u as Record<string, unknown>;
+          usage.inputTokens = num(start.input_tokens);
+          usage.cacheReadTokens = num(start.cache_read_input_tokens);
+          usage.cacheWriteTokens = num(start.cache_creation_input_tokens);
+          // `message_start` also carries an output count, which is the tokens
+          // emitted so far and therefore near zero. Taken anyway so a stream
+          // that ends before any delta still reports what it reported.
+          usage.outputTokens = num(start.output_tokens);
+          seen = true;
+        }
+      }
+      const delta = doc.usage;
+      if (typeof delta === 'object' && delta !== null) {
+        const d = delta as Record<string, unknown>;
+        // Cumulative, so the last one wins rather than accumulating.
+        if (typeof d.output_tokens === 'number') usage.outputTokens = num(d.output_tokens);
+        if (typeof d.input_tokens === 'number') usage.inputTokens = num(d.input_tokens);
+        seen = true;
+      }
+      return;
+    }
+
+    if (provider === 'openai') {
+      const u = doc.usage;
+      if (typeof u !== 'object' || u === null) return;
+      const o = u as Record<string, unknown>;
+      if (typeof o.prompt_tokens !== 'number' && typeof o.completion_tokens !== 'number') return;
+      const details = o.prompt_tokens_details;
+      const cached =
+        typeof details === 'object' && details !== null
+          ? num((details as Record<string, unknown>).cached_tokens)
+          : 0;
+      // `prompt_tokens` includes the cached ones, and pricing them twice would
+      // report a bill above the invoice — the same subtraction the log reader
+      // makes, for the same reason.
+      usage.inputTokens = Math.max(0, num(o.prompt_tokens) - cached);
+      usage.cacheReadTokens = cached;
+      usage.outputTokens = num(o.completion_tokens);
+      seen = true;
+    }
+  };
+
+  return {
+    push(chunk: string): void {
+      pending += chunk;
+      let newline = pending.indexOf('\n');
+      while (newline !== -1) {
+        const line = pending.slice(0, newline).trim();
+        pending = pending.slice(newline + 1);
+        if (line.startsWith('data:')) {
+          const payload = line.slice(5).trim();
+          if (payload !== '' && payload !== '[DONE]') event(payload);
+        }
+        newline = pending.indexOf('\n');
+      }
+      if (pending.length > MAX_SSE_LINE_BYTES) {
+        overlong = true;
+        pending = '';
+      }
+    },
+    done(): GatewayUsage | null {
+      if (overlong && !seen) return null;
+      return seen ? usage : null;
+    },
+  };
+}
+
+/**
  * The tokens a provider's own response reports, from the response body.
  *
  * This is the reason the gateway measures better than a connector: the counts
