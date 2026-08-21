@@ -11,6 +11,15 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+
+## 1.53.0 — "Four of the seven, and why the other three are not here"
+
+No breaking changes. The minor closes the 1.53 arc: the question *"which of my
+providers can Trazum gate live, and why not the rest?"* now has a complete
+answer that checks itself.
+
 ### Added
 
 **Every host this repository names is now decided about, in one place.**
