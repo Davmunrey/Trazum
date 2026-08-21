@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.52.1**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.53.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,197 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.53.0 — "Four of the seven, and why the other three are not here"
+
+**The minor that closes the arc**, and it closes on a number smaller than the
+one the plan hoped for. Trazum prices seven providers. The gateway now stands in
+front of **four**; two more can never be fronted by a proxy of this kind, for
+reasons proven from this repository's own code; and the last three are missing
+one fact that nobody here can supply honestly.
+
+That is the whole thesis of the release. The arc was called *"every provider you
+pay for"*, and what shipped is *every provider this repository can reach without
+guessing* — plus a complete, self-checking account of the difference. A gap that
+is named, proven and alarmed is a finished piece of work. A gap papered over
+with a hostname somebody half-remembers is not.
+
+### Where the gateway stands
+
+| Provider | Gateway | Why |
+| --- | --- | --- |
+| `anthropic` | fronted | since 1.50.3 |
+| `openai` | fronted | since 1.50.3 |
+| `deepseek` | fronted | the token-band harness already sent a real key to its host |
+| `google` | fronted | the Gemini provider already sent a real key to its host, and the Gemini importer already read its counts |
+| Bedrock | **cannot be** | SigV4 signs the host |
+| Vertex AI | **cannot be** | the origin is per-caller |
+| `moonshot`, `xai`, `mistral` | not yet | their hosts are nowhere in this repository |
+
+### A provider you pay for is not a typo
+
+`trazum gateway mistral` and `trazum gateway bogus` used to get the same
+sentence. One is a real gap with a real workaround; the other is a
+misspelling — and the refusal told somebody with a live Mistral bill to check
+their spelling.
+
+Both refusals now name the gap, offer `trazum profile` on an exported log, and
+say what that does **not** give you: a refusal before the money is spent, which
+is the entire reason the gateway exists. Both derive their subject from the
+catalogue and from the gateway's own upstream table, so a provider that gains
+support leaves the gap with nothing edited.
+
+`trazum connect` says the honest disjunction rather than picking a side:
+*"either that provider publishes no usage API, or one has not been written."*
+
+### Two providers added without anybody typing a hostname
+
+**DeepSeek.** `scripts/measure-token-band.mjs` has sent a real API key to
+`https://api.deepseek.com/chat/completions` since the band harness learned a
+second provider. Its path genuinely has **no `/v1`** — the kind of detail memory
+gets wrong.
+
+**Google.** `packages/core/src/llm.ts` has sent a real key to
+`https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`,
+with the key in an `x-goog-api-key` header rather than the query string, since
+the Gemini provider landed; `packages/core/src/usage.ts` has read `usageMetadata`
+back since the Gemini importer landed, including the part where
+`promptTokenCount` **includes** `cachedContentTokenCount` rather than adding to
+it. Four facts, none recalled.
+
+`WIRE_SHAPES` came with the first of them: one map saying which response shape
+each provider speaks, because the buffered reader and the streaming reader each
+had their own `provider === 'openai'` test and two lists of names eventually
+disagree. **A provider absent from that map reads as null, not as a guess**, and
+the gateway then reports the call as unmeasured — which is true — instead of a
+number nobody can defend.
+
+### The model in the URL, and the pattern that is narrower than a literal
+
+Gemini names its model in the path, so "the one path this gateway forwards"
+could not stay a string comparison. It became an anchored pattern whose model
+segment accepts only `[A-Za-z0-9._-]` — a stricter grammar than an equality test
+against something a caller could have put a `?` or a `..` in — and **the URL
+sent upstream is rebuilt from what matched, never echoed**. A pattern that
+matched is evidence the request was well formed; it is not permission to forward
+whatever else satisfied it.
+
+Eight hostile paths are refused by test, each asserting the provider saw **no
+connection at all** rather than an error relayed back: a smuggled query string,
+traversal in the model segment, a second path segment, `:streamGenerateContent`,
+`:countTokens`, text appended after `:generateContent`, a prefix before the
+version, and another provider's path.
+
+`:streamGenerateContent` is refused on purpose. Establishing Gemini's buffered
+shape does not establish its streamed one, and the streaming reader returns
+nothing for Google given **both** an OpenAI-shaped event and a Gemini-shaped
+one, so no later edit can quietly merge the two facts.
+
+### Adding an upstream means editing a security test, and that includes patterns
+
+`security.test.js` compares the gateway's origins and paths **exactly**,
+extracted from the source rather than searched for, so a new destination for a
+credential cannot arrive without a deliberate edit to a file that exists to
+notice. That friction is the point.
+
+It harvested `path: '...'` literals only. A **pattern** would have reached a
+credential-forwarding proxy without appearing in the allowlist at all — the hole
+opening in the same commit that made it possible, with the guard still passing
+and still reading as coverage. Pattern paths are extracted just as exactly now,
+every one must be anchored and must accept no arbitrary run of text, and the
+fetch target is asserted to interpolate only the compiled-in origin and a path
+the module built.
+
+**That property check is proved against known-bad inputs**, because written as a
+loop over today's good pattern it could never have failed: the exact-list
+comparison above it catches any change first. It is handed a pattern missing its
+start anchor, one missing its end anchor, and one with a `.*` model segment, and
+must reject all three.
+
+### Every host this repository names is now decided about
+
+Google's endpoint sat in `llm.ts` carrying a real key while `docs/gateway.md`
+listed Google among the providers the gateway could not front. **Neither file
+was wrong.** Nothing held both facts at once, so nobody could see that one
+answered the other — and finding it took a hand-run dump of every `https://`
+string in the repository, releases after it became true.
+
+That dump is kept. The host set is derived from source — tracked files **and**
+untracked-but-not-ignored ones, so a new destination fails at the desk rather
+than at CI — and the decision about each host is deliberate, from a fixed
+vocabulary so a typo cannot invent a category. The upstream decisions are
+checked against the compiled table in both directions.
+
+**And a provider endpoint the gateway could front sets off an alarm.** Nothing
+is permitted to carry the decision *"model call, not yet fronted"*. The day a
+Mistral, xAI or Moonshot host arrives here — in a script, a provider, a
+fixture — it fails the decision check by name, and the only honest label for a
+plain-credential model endpoint fails the build with the chapter to write. The
+alarm is handed a planted map as well as the real one, for the same reason as
+the pattern check.
+
+### Bedrock and Vertex, which are findings rather than gaps
+
+Both are recorded as unfrontable **permanently**, and the reasons come from this
+repository's code rather than from anybody's understanding of the vendors. They
+turn out to be the same reason: the origin is not a constant.
+
+- **Bedrock** defaults to `https://bedrock-runtime.${region}.amazonaws.com`, and
+  `signRequest` is handed `host` — SigV4 signs the origin, so a proxy that
+  rewrote it would forward a signature matching nothing it was attached to.
+- **Vertex AI** defaults to `https://${location}-aiplatform.googleapis.com` for
+  every region but `global`, so fronting it would mean a caller-supplied
+  origin — the exact thing the compiled-in upstreams exist to prevent.
+
+`docs/gateway.md` says so now, because somebody whose calls go through Bedrock
+deserves to read why rather than assume it is coming. The test re-checks both
+claims against `llm.ts` rather than trusting its own prose.
+
+### What the arc found wrong in itself
+
+**The buffered path went unmeasured in silence.** 1.52 taught the streaming path
+to say *this call is unmeasured* when no usage event arrived, and left the other
+side of the same `if` recording nothing and saying nothing. A Gemini response
+with no counts was forwarded, answered, and vanished from the total without a
+word. It names the cause now — but only on a response the provider called
+**ok**, because an upstream error carries no counts for the honest reason that
+it produced none, and announcing those would bury the ones that spent money.
+
+**A third unmeasured cause would have inherited the second one's sentence.** The
+message was a two-branch ternary whose `else` explained OpenAI's
+`stream_options.include_usage`, so a Gemini user would have been told about a
+setting their SDK does not have. One branch per cause now, no `else`. The
+eleventh time this project has bounded a message by its neighbour instead of by
+its subject.
+
+**`docs/gateway.md` said "five of the seven, still" through an entire release in
+which it became four**, and `ROADMAP.md` carried the same stale *two*. The table
+beside the sentence was guarded against the upstream list; the sentence
+introducing the table was not. Both counts are gone, and a guard now fails any
+spelled or digit count in that paragraph. That is the eleventh count written
+above a derived list this project has had to remove.
+
+### What stayed out, and why
+
+**`moonshot`, `xai` and `mistral` are unfronted, and this release does not
+pretend otherwise.** Their hosts appear nowhere in this repository. Compiling an
+endpoint in from memory — into the single place a user's credential is
+forwarded — is the thing this project's doctrine forbids treating as known, and
+the rule paid for itself twice in this very arc: both providers that were added
+came from *finding* a host already committed here, not from recalling one.
+Confirming those three endpoints is a question for somebody who can check them.
+Until then the refusal says so, and the guard proves the absence on every build.
+
+**No connector was added.** Whether each of these providers publishes a usage
+API at all is a separate question from whether the gateway can front it, and
+*"this provider does not publish one"* is a finding to record rather than a gap
+to paper over.
+
+**Nothing sums the gateway's own traffic into a usage report.** That would be a
+measurement of what went through the proxy, not of the bill, and the two differ
+by every call that did not. The arc refused it on the day it was planned and
+refuses it now.
+
 
 ## 1.52.1 — "Two more providers, from facts already here"
 

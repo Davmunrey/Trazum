@@ -70,7 +70,14 @@ a much larger version of exactly that, in the same file.
 **What this arc refuses:** buffering "just for small responses", which is a
 threshold nobody can check and a latency cliff nobody can predict.
 
-## 1.53.0 — Every provider you pay for
+## 1.53.0 — Every provider you pay for — **delivered, at four of seven**
+
+**Kept as written**, before the code, including the number it hoped for. It
+shipped as *"Four of the seven, and why the other three are not here"*: two more
+fronted from hosts already committed here, two recorded as permanently
+unfrontable with the reason proven from `llm.ts`, and three waiting on an
+endpoint nobody here can confirm — with a guard that fails the build the day one
+arrives.
 
 **Measured.** Trazum prices **seven** providers. It has connectors for **two**
 and the gateway fronts **two**:

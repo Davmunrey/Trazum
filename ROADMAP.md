@@ -1076,6 +1076,42 @@ Gemini user about an OpenAI setting, and two documents carrying provider counts
 that had gone stale in a release about that very number.
 
 
+### 1.53.0 — Four of the seven, and why the other three are not here
+
+The minor that closes the second arc of the 1.52–1.60 plan, on a number smaller
+than the plan hoped for. Trazum prices seven providers. The gateway now fronts
+four; two more can never be fronted by a proxy of this kind; and the last three
+are missing one fact nobody here can supply honestly.
+
+DeepSeek and Google were added without anybody typing a hostname: both
+endpoints, Google's credential header and Google's response shape were already
+committed in this repository, in the token-band harness and in the Gemini
+provider and importer. Google's model lives in the URL, so the one forwarded
+path became an anchored pattern with a restricted model segment, and the
+outgoing URL is rebuilt rather than echoed — eight hostile paths are refused by
+test, each proving the provider was never contacted.
+
+A provider Trazum prices but cannot front is no longer refused as though it were
+a typo; both refusals derive their subject from the catalogue and the upstream
+table.
+
+Every `https://` host this repository names is now decided about, from a fixed
+vocabulary, checked against the compiled upstream table in both directions. A
+new host fails by name, untracked files included. Nothing may carry *"model
+call, not yet fronted"*, so the day a Mistral, xAI or Moonshot host arrives it
+fails the build with the chapter to write.
+
+Bedrock and Vertex are recorded as permanently unfrontable, for a reason proven
+from `llm.ts` rather than assumed: both interpolate a region into the host,
+SigV4 signs that host, and a per-caller origin is exactly what the compiled-in
+upstreams exist to prevent.
+
+It also found the buffered path recording nothing and saying nothing where 1.52
+had taught the streaming path to speak, a refusal whose `else` would have told a
+Gemini user about an OpenAI setting, and two documents carrying provider counts
+that had gone stale in a release about that very number.
+
+
 ## Collapsed into 1.8.0
 
 **Everything below shipped as 1.8.0, and none of these numbers is on npm.** They
@@ -1514,26 +1550,23 @@ code: [docs/plan-1.52-1.60.md](docs/plan-1.52-1.60.md). Under the numbering
 adopted at 1.50.1 a minor closes an arc, so each of 1.52.0 … 1.60.0 lands one
 thesis.
 
-**1.52.0 is delivered** — the gateway in a real path. It buffered the whole
-upstream reply before writing a byte back, so for a streaming call time to first
-token became the total generation time. It now streams while counting, refuses
-before the first byte or not at all, and names the calls it could not measure.
-Its chapters are in the plan; what it still cannot do is in
-[RELEASES.md](RELEASES.md).
+**1.52.0 and 1.53.0 are delivered.** The gateway stopped buffering the whole
+upstream reply before writing a byte back, and then learned who it can stand in
+front of: which providers it fronts, which two it can never front and why, and
+which are missing a fact this repository cannot supply without guessing. How
+many of each is a question for `trazum gateway` and `trazum connect`, which
+derive the answer, rather than for this page. What each arc still cannot do is
+in [RELEASES.md](RELEASES.md).
 
-**The next two answer things that are wrong or missing today**, and the plan
-points at the line of code for each:
+**1.53.0 closed on less than its title asked for**, deliberately: a gap that is
+named, proven and alarmed is finished work, and a gap papered over with a
+half-remembered hostname is not. Three providers wait on somebody confirming an
+endpoint; a guard fails the build the day one arrives.
 
-1. **1.53.0 — every provider you pay for.** In progress: the gateway now fronts
-   more of what Trazum prices than it did, and connectors have not moved. How
-   many of each is a question for `trazum gateway` and `trazum connect`, which
-   derive the answer — the plan's own table records what was measured when it
-   was written, and this sentence deliberately records no number. A budget that
-   works on the convenient part of your bill is a budget for the convenient part
-   of your bill. Some of these APIs publish no usage report at all, and *"this
-   provider does not publish one"* is a finding rather than a gap to paper
-   over.
-2. **1.54.0 — the counter, per family.** The estimator is calibrated on Claude
+**The next arc answers something wrong or missing today**, and the plan points
+at the line of code for it:
+
+1. **1.54.0 — the counter, per family.** The estimator is calibrated on Claude
    and prices seven families. This roadmap has called the per-family error the
    one number that settles the real-tokenizer question, and nobody has measured
    it.
