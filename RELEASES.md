@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.60.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.60.1**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,77 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.60.1 — "What else does this fail on"
+
+**A patch, and nothing installable changed.** The arcs are done as far as they
+can go — six of nine, with the other three open and named — so this is the
+honest shape of the work that follows a plan: a guard that was checking the
+wrong thing, the document it was supposed to be checking, and the rule that
+would have caught both.
+
+### A guard asserted padding and called it format
+
+`transcript-format.test.js` checks that the README's `trazum doctor` transcript
+writes its money column the way the command does. It did that by taking the `~ `
+prefix off the **first** money line of a live run and requiring every transcript
+line to use the same one.
+
+**That space is right-alignment, not format.** The command prints all three of
+these in one column:
+
+```
+  ~ $10.59  This task may not need Claude Opus 5  2 prompts
+  ~  $8.82  If the work tolerates latency, use the Batch API  2 prompts
+  ~$0.5300  The output schema could travel in the request instead of the prompt  2 prompts
+```
+
+`$0.5300` is two characters wider than `$8.82`, so the padding differs. The guard
+therefore agreed or disagreed on how wide **this repository's own figures**
+happened to be — and it broke on a config change that never touched the README.
+
+It now measures what the column actually promises: **the text starts at the same
+offset on every row, priced or not.** Both sides are measured, each bounded to its
+own advisory block, with the command's block as the yardstick.
+
+### And the defect it was written for was real
+
+| | Priced rows | Unpriced rows |
+|---|---|---|
+| `doctor` | text at column 12 | text at column **12** |
+| README transcript | text at column 12 | text at column **11** |
+
+*Below the cacheable minimum* sat one space left of the priced rows above it, on
+a page headed *Real output, transcribed*. Found by measuring both, not by reading
+either.
+
+### A rule joined the doctrine, and it is the other half of one already there
+
+*Prove a guard by breaking it* has been on that list for arcs. The half nobody
+writes down is **and prove it does not fire on anything else**. A guard that
+fails on its defect *and* on things that are not its defect gets deleted after
+enough false alarms, and by then nobody remembers whether it was ever right.
+
+Two instances on this project's record, the same shape both times — a proxy that
+correlated with the property until it did not:
+
+- A `docs/releasing.md` guard that matched every quantity word near "manifest" or
+  "upload" and failed **two correct sentences**. It never merged, because it was
+  run against the real document rather than only against the defect.
+- The padding-versus-format guard above. **Four releases.**
+
+The question that catches it is not *does this fail on the bug*. It is **what
+else does this fail on** — and the cheap way to answer is to run the finished
+check against the real thing, whole.
+
+### What this release found wrong in itself
+
+Both of the above: a guard that had been checking the wrong thing for four
+releases, and the misaligned transcript it was supposed to be checking. Neither
+was found by reading; both were found by measuring the command and the document
+and comparing the numbers.
 
 ---
 

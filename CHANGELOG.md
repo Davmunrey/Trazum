@@ -9,7 +9,13 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
-## Unreleased
+## 1.60.1 — "What else does this fail on"
+
+**A patch, and nothing installable changed.** The arcs are done as far as they
+can go — six of nine, with the other three open and named — so this is the
+honest shape of the work that follows a plan: a guard that was checking the
+wrong thing, the document it was supposed to be checking, and the rule that
+would have caught both.
 
 ### Changed
 
