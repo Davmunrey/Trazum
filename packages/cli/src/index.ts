@@ -69,6 +69,7 @@ import {
   explainGateFailure,
   assignSources,
   fleetRollup,
+  rollUp,
   labelCoverage,
   measuredUsage,
   gateMargin,
@@ -593,6 +594,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   rank: ['level', 'model', 'calls', 'output-tokens', 'batch', 'disable', 'prompt', 'markdown-out'],
   init: ['dry-run', 'yes', 'json', 'pricing', 'pricing-live'],
   conform: ['contract', 'json'],
+  rollup: ['json'],
   feedback: [],
   gateway: ['on-cannot-tell', 'port', 'socket', 'pricing', 'pricing-live'],
   ladder: ['pricing', 'pricing-live', 'since', 'until', 'label'],
@@ -2034,6 +2036,175 @@ async function commandConform(args: Args, t: CliMessages): Promise<void> {
     // Said out loud, because the exit code says it silently and somebody
     // reading a red-and-yellow screen will assume both halves gated.
     console.log(`  ${c.dim(wrap(t.conform.unavailableNeverGates(), 74, '    '))}`);
+  }
+  console.log();
+}
+
+/**
+ * `trazum rollup <document...>` — several people's bills, one roll-up.
+ *
+ * The first command here that reads *documents* rather than logs. Everything
+ * else assumes one operator with the files on disk; this assumes four people
+ * who each already ran `trazum profile --json` where their traffic is, and one
+ * of them wants the total.
+ *
+ * **A format and a merge, not a service.** There is no upload, no account and
+ * no server: the documents arrive however the team already moves files, and
+ * this reads them off the filesystem. That is the whole design — a tool whose
+ * argument is that it reads your bill without uploading it cannot also be the
+ * place everybody's bill is uploaded.
+ *
+ * A directory argument is expanded to the `.json` files directly inside it, so
+ * a shared folder people drop a document into is a roll-up without anybody
+ * writing a shell loop.
+ *
+ * The rendering leads with the total and then spends most of its lines on what
+ * the merge could **not** do: the contributors' own gaps, the findings that do
+ * not roll up, and the overlap between contributors that nothing here can see.
+ * A roll-up is the document most likely to be pasted into a slide, and a total
+ * with its caveats one screen away is a total that will be quoted alone.
+ */
+async function commandRollup(args: Args, t: CliMessages): Promise<void> {
+  if (args.positional.length === 0) throw new Error(t.rollup.noTargets());
+
+  /** Every document to merge, in the order the caller named them. */
+  const inputs: { name: string; text: string }[] = [];
+  /** What a failed filesystem call was refusing, when it said. */
+  const codeOf = (error: unknown): string | undefined =>
+    typeof error === 'object' && error !== null ? (error as { code?: string }).code : undefined;
+
+  for (const target of args.positional) {
+    /**
+     * Attempted, not checked first.
+     *
+     * The obvious shape is `stat` and then branch on `isDirectory()`, and it
+     * is a check-then-act: between the answer and the read the path can become
+     * something else, and CodeQL flagged exactly that on the pull request that
+     * introduced this command. Reading the error code has no window between
+     * the two operations, because there is only one operation — and it is the
+     * same reasoning the gateway applies to a budget decision, which happens
+     * before the upstream is opened rather than between two things.
+     *
+     * `ENOTDIR` is an answer — this is a file — and every other failure is a
+     * failure.
+     */
+    const listing = await readdir(target, { withFileTypes: true }).catch((error: unknown) => {
+      const code = codeOf(error);
+      if (code === 'ENOTDIR') return null;
+      if (code === 'ENOENT') throw new Error(t.rollup.noSuchTarget(target));
+      throw error;
+    });
+
+    if (listing !== null) {
+      const found = listing
+        .filter((child) => child.isFile() && child.name.endsWith('.json'))
+        .map((child) => join(target, child.name))
+        .sort((a, b) => a.localeCompare(b));
+      // An empty directory is named rather than quietly contributing nothing:
+      // a roll-up of a folder somebody spelled wrong would otherwise report a
+      // total of zero and look like a team that spent nothing.
+      if (found.length === 0) throw new Error(t.rollup.emptyDirectory(target));
+      for (const file of found) inputs.push({ name: file, text: await readFile(file, 'utf8') });
+      continue;
+    }
+
+    const text = await readFile(target, 'utf8').catch((error: unknown) => {
+      // Gone between the two calls, which is the race the shape above avoids
+      // deciding on: the read is what says so, and it says so by name.
+      if (codeOf(error) === 'ENOENT') throw new Error(t.rollup.noSuchTarget(target));
+      throw error;
+    });
+    inputs.push({ name: target, text });
+  }
+
+  const document = rollUp(inputs);
+
+  if (boolFlag(args, 'json')) {
+    console.log(JSON.stringify(document, null, 2));
+    // A rejected contribution is a machine missing from the total, so it gates
+    // — the same reason `conform` exits 1 on a problem. Every other caveat is
+    // a property of merging summaries and would gate on every honest roll-up.
+    if (document.rejected.length > 0) process.exitCode = 1;
+    return;
+  }
+
+  const day = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
+
+  console.log();
+  console.log(
+    c.bold(
+      t.rollup.heading(document.contributors.length, formatUsd(document.total.totalUsd), document.total.calls),
+    ),
+  );
+  console.log(
+    `  ${c.dim(
+      document.span === null
+        ? t.rollup.noSpan()
+        : t.rollup.span(day(document.span.fromMs), day(document.span.toMs)),
+    )}`,
+  );
+
+  console.log();
+  console.log(c.bold(t.rollup.contributorsHeading()));
+  for (const contributor of document.contributors) {
+    console.log(
+      `  ${t.rollup.contributor(
+        contributor.name,
+        formatUsd(contributor.totalUsd),
+        contributor.calls,
+        contributor.spanDays === null ? null : Math.round(contributor.spanDays),
+      )}`,
+    );
+    // Every gap under the contributor that has it, never summed into one
+    // figure: "one of your four machines is 90% unpriced" is the finding, and
+    // an average is what hides it.
+    for (const gap of contributor.gaps) {
+      console.log(`    ${c.yellow(wrap(gap.detail, 70, '      '))}`);
+    }
+  }
+
+  if (document.rejected.length > 0) {
+    console.log();
+    console.log(c.bold(t.rollup.rejectedHeading()));
+    for (const rejection of document.rejected) {
+      console.log(`  ${c.red(wrap(t.rollup.rejected(rejection.name, rejection.because), 72, '    '))}`);
+    }
+    process.exitCode = 1;
+  }
+
+  if (document.identicalContributions.groups.length > 0) {
+    console.log();
+    for (const group of document.identicalContributions.groups) {
+      console.log(`  ${c.yellow(wrap(t.rollup.identical(group.join(', ')), 72, '    '))}`);
+    }
+    console.log(`  ${c.dim(t.rollup.identicalUsd(formatUsd(document.identicalContributions.usd)))}`);
+  }
+
+  if (document.byLabel.length > 0) {
+    console.log();
+    console.log(c.bold(t.rollup.byLabelHeading()));
+    for (const row of document.byLabel.slice(0, 8)) {
+      console.log(`  ${t.rollup.labelRow(row.label, formatUsd(row.breakdown.totalUsd), row.breakdown.calls)}`);
+    }
+  }
+
+  if (document.notMerged.length > 0) {
+    console.log();
+    console.log(c.bold(t.rollup.notMergedHeading()));
+    for (const finding of document.notMerged) {
+      console.log(`  ${wrap(t.rollup.notMerged(finding.finding, finding.because), 72, '    ')}`);
+      if (finding.presentIn.length > 0) {
+        console.log(`    ${c.dim(t.rollup.presentIn(finding.presentIn.join(', ')))}`);
+      }
+    }
+  }
+
+  if (document.cannotSay.length > 0) {
+    console.log();
+    console.log(c.bold(t.rollup.cannotSayHeading()));
+    for (const caveat of document.cannotSay) {
+      console.log(`  ${c.dim(wrap(t.rollup.caveat(caveat), 72, '    '))}`);
+    }
   }
   console.log();
 }
@@ -9343,6 +9514,7 @@ async function main(): Promise<void> {
           avgOutputTokens: DEFAULT_USAGE.avgOutputTokens,
           cacheHitRate: DEFAULT_USAGE.cacheHitRate,
           locales: LOCALES,
+          contracts: CONTRACT_NAMES,
         },
         c.bold,
       ),
@@ -9486,6 +9658,9 @@ async function main(): Promise<void> {
       break;
     case 'conform':
       await commandConform(args, t);
+      break;
+    case 'rollup':
+      await commandRollup(args, t);
       break;
     case 'init':
       await commandInit(args, config, pricing, t);

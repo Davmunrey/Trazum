@@ -43,6 +43,7 @@ ${bold('USO')}
   trazum prune <fichero> --cases <fichero> --yes
   trazum where [fichero]
   trazum conform <fichero|-> [--contract <nombre>]
+  trazum rollup <documento...|dir> [--json]
   trazum models
   trazum rules
   trazum gateway <provider> --on-cannot-tell <fail-open|fail-closed>
@@ -74,8 +75,7 @@ ${bold('OPCIONES DE init')}
 
 ${bold('OPCIONES DE conform')}
   --contract <nombre>         Comprueba contra un contrato concreto en vez de
-                              detectarlo: usage-log, profile, plan,
-                              verification, history, connected, cost-answer.
+                              detectarlo: ${d.contracts.join(', ')}.
   --json                      El informe como datos.
 
   Responde dos preguntas y las mantiene separadas. ¿Cumple este documento —
@@ -85,6 +85,24 @@ ${bold('OPCIONES DE conform')}
 
   La segunda nunca hace fallar nada. Decidir no registrar sesiones es una
   decisión, no un defecto. Ver docs/format.md.
+
+${bold('OPCIONES DE rollup')}
+  --json                      El documento de agregación como datos. Ver
+                              docs/format.md.
+
+  Las facturas de varias personas, una sola agregación. Cada contribuyente
+  ejecuta \`trazum profile --json\` donde ya está su tráfico; esto fusiona los
+  documentos. Un formato y una fusión, no un servicio: no se sube nada y no hay
+  cuenta — los documentos llegan como tu equipo ya mueve ficheros.
+
+  Casi toda la salida es lo que la fusión no pudo hacer. Los huecos de cada
+  contribuyente se quedan con ese contribuyente en vez de promediarse en una
+  sola cifra, los hallazgos que necesitan llamadas individuales se nombran en
+  vez de desaparecer, y toda agregación de más de un documento dice que el
+  solapamiento entre contribuyentes no se puede medir: dos personas exportando
+  el mismo tráfico duplican la factura y ninguna fusión de resúmenes lo ve.
+
+  Sale con 1 cuando una contribución se entregó y no se pudo agregar.
 
 ${bold('OPCIONES DE feedback')}
   (ninguna)
@@ -1381,6 +1399,53 @@ ${bold('EJEMPLOS')}
     unavailable: (finding, because, unlockedBy) => `${finding} — ${because}. Añade ${unlockedBy}.`,
     unavailableNeverGates: () =>
       'Nada de eso ha hecho fallar nada. Decidir no registrar un campo es una decisión, no un defecto, y una puerta que fallara por ello sería esta herramienta diciéndote qué registrar.',
+  },
+
+  rollup: {
+    noTargets: () =>
+      'Pasa los documentos de perfil que quieres agregar — cada uno escrito por `trazum profile --json` — o un directorio con ellos.',
+    noSuchTarget: (path) =>
+      `${path} no está. Una agregación nunca adivina una contribución que no pudo leer.`,
+    emptyDirectory: (path) =>
+      `${path} no contiene documentos .json. Una carpeta vacía agregada en silencio diría que el equipo no gastó nada.`,
+    heading: (contributors, usd, calls) =>
+      `Agregación de ${plural(contributors, 'contribuyente')} — ${usd} en ${plural(calls, 'llamada')}`,
+    span: (from, to) => `Cubre del ${from} al ${to}, declarado y nunca extrapolado.`,
+    noSpan: () => 'Ningún contribuyente traía reloj, así que esta agregación no cubre ningún período declarado.',
+    contributorsHeading: () => 'Contribuyentes, y lo que cada uno no pudo ver',
+    contributor: (name, usd, calls, spanDays) =>
+      `${name} — ${usd}, ${plural(calls, 'llamada')}${spanDays === null ? ', sin reloj' : `, ${plural(spanDays, 'día')}`}`,
+    rejectedHeading: () => 'Entregado y no agregado',
+    rejected: (name, because) => `${name} — ${because}`,
+    identical: (names) => `El mismo documento llegó más de una vez: ${names}.`,
+    identicalUsd: (usd) =>
+      `${usd} del total de arriba es la repetición. Se cuenta, no se descarta: si es una exportación entregada dos veces o dos máquinas que coincidieron exactamente es cosa tuya saberlo.`,
+    byLabelHeading: () => 'La factura agregada, por carga de trabajo',
+    labelRow: (label, usd, calls) => `${label} — ${usd}, ${plural(calls, 'llamada')}`,
+    notMergedHeading: () => 'Hallazgos que no se agregan',
+    notMerged: (finding, because) => `${finding} — ${because}.`,
+    presentIn: (names) => `Presente en: ${names}. Léelo ahí.`,
+    cannotSayHeading: () => 'Lo que esta agregación no puede decir sobre sí misma',
+    caveat: (code) => {
+      switch (code) {
+        case 'overlap-invisible':
+          return 'El solapamiento entre contribuyentes aquí no se puede medir. Dos personas exportando el mismo tráfico duplican la factura, y una fusión de resúmenes no lo ve: las líneas en bruto que necesita una comprobación de duplicados no están en ningún documento.';
+        case 'mismatched-spans':
+          return 'Los contribuyentes cubren períodos claramente distintos. La suma es una suma; leer una parte de ella como comparación de ritmos es el error que esto señala.';
+        case 'contributor-without-clock':
+          return 'Un contribuyente no traía ninguna marca de tiempo, así que nada de su gasto está en los días de arriba.';
+        case 'day-top-label-unknown':
+          return 'Un día vino de más de un contribuyente, así que su etiqueta más cara se desconoce: cada contribuyente conoce la suya, y la respuesta agregada necesita el gasto por etiqueta y día que ningún documento lleva.';
+        case 'identical-contributions':
+          return 'Dos contribuciones eran el mismo documento.';
+        case 'contribution-rejected':
+          return 'Una contribución no se agregó. Esa máquina no aportó nada, que no es lo mismo que no haber gastado nada.';
+        case 'unknown-fields-dropped':
+          return 'Una contribución traía un campo numérico que esta versión no sabe clasificar, así que se dejó fuera en vez de combinarlo mal.';
+        default:
+          return code;
+      }
+    },
   },
 
   where: {

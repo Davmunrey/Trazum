@@ -56,6 +56,7 @@ ${bold('USAGE')}
   trazum prune <file> --cases <file> --yes
   trazum where [file]
   trazum conform <file|-> [--contract <name>]
+  trazum rollup <document...|dir> [--json]
   trazum models
   trazum rules
   trazum gateway <provider> --on-cannot-tell <fail-open|fail-closed>
@@ -87,8 +88,7 @@ ${bold('OPTIONS FOR init')}
 
 ${bold('OPTIONS FOR conform')}
   --contract <name>           Check against a named contract instead of
-                              detecting one: usage-log, profile, plan,
-                              verification, history, connected, cost-answer.
+                              detecting one: ${d.contracts.join(', ')}.
   --json                      The report as data.
 
   Answers two questions and keeps them apart. Does this document conform —
@@ -98,6 +98,23 @@ ${bold('OPTIONS FOR conform')}
 
   The second never gates. Choosing not to log sessions is a decision, not a
   defect. See docs/format.md.
+
+${bold('OPTIONS FOR rollup')}
+  --json                      The roll-up document as data. See docs/format.md.
+
+  Several people's bills, one roll-up. Each contributor runs
+  \`trazum profile --json\` where their traffic already is; this merges the
+  documents. A format and a merge, not a service: nothing is uploaded and there
+  is no account — the documents arrive however your team already moves files.
+
+  Most of the output is what the merge could not do. Each contributor's own
+  gaps stay with that contributor rather than being averaged into one figure,
+  the findings that need individual calls are named instead of dropped, and
+  every roll-up of more than one document says that overlap between
+  contributors is unmeasurable — two people exporting the same traffic double
+  the bill and no merge of summaries can see it.
+
+  Exits 1 when a contribution was handed over and could not be merged.
 
 ${bold('OPTIONS FOR feedback')}
   (none)
@@ -1376,6 +1393,52 @@ ${bold('EXAMPLES')}
     unavailable: (finding, because, unlockedBy) => `${finding} — ${because}. Add ${unlockedBy}.`,
     unavailableNeverGates: () =>
       'None of those failed anything. Choosing not to record a field is a decision, not a defect, and a gate that failed on it would be this tool telling you what to log.',
+  },
+
+  rollup: {
+    noTargets: () =>
+      'Pass the profile documents to roll up — each one written by `trazum profile --json` — or a directory of them.',
+    noSuchTarget: (path) => `${path} is not there. A roll-up never guesses at a contribution it could not read.`,
+    emptyDirectory: (path) =>
+      `${path} holds no .json documents. An empty folder rolled up silently would report a team that spent nothing.`,
+    heading: (contributors, usd, calls) =>
+      `Roll-up of ${plural(contributors, 'contributor')} — ${usd} over ${plural(calls, 'call')}`,
+    span: (from, to) => `Covering ${from} to ${to}, stated and never extrapolated from.`,
+    noSpan: () => 'No contributor carried a clock, so this roll-up covers no stated period.',
+    contributorsHeading: () => 'Contributors, and what each one could not see',
+    contributor: (name, usd, calls, spanDays) =>
+      `${name} — ${usd}, ${plural(calls, 'call')}${spanDays === null ? ', no clock' : `, ${plural(spanDays, 'day')}`}`,
+    rejectedHeading: () => 'Handed over and not merged',
+    rejected: (name, because) => `${name} — ${because}`,
+    identical: (names) => `The same document arrived more than once: ${names}.`,
+    identicalUsd: (usd) =>
+      `${usd} of the total above is the repeat. It is counted, not discarded — whether it is one export handed over twice or two machines that agreed exactly is yours to know.`,
+    byLabelHeading: () => 'The merged bill, per workload',
+    labelRow: (label, usd, calls) => `${label} — ${usd}, ${plural(calls, 'call')}`,
+    notMergedHeading: () => 'Findings that do not roll up',
+    notMerged: (finding, because) => `${finding} — ${because}.`,
+    presentIn: (names) => `Present in: ${names}. Read it there.`,
+    cannotSayHeading: () => 'What this roll-up cannot say about itself',
+    caveat: (code) => {
+      switch (code) {
+        case 'overlap-invisible':
+          return 'Overlap between contributors is unmeasurable here. Two people exporting the same traffic double the bill, and a merge of summaries cannot see it — the raw lines a duplicate check needs are in no document.';
+        case 'mismatched-spans':
+          return 'The contributors cover meaningfully different periods. The sum is a sum; reading a share of it as a comparison of rates is the mistake this names.';
+        case 'contributor-without-clock':
+          return 'A contributor carried no timestamp at all, so none of its spend is in any day above.';
+        case 'day-top-label-unknown':
+          return "A day drew from more than one contributor, so its dearest label is unknown: each contributor knows its own, and the merged answer needs per-label-per-day spend no document carries.";
+        case 'identical-contributions':
+          return 'Two contributions were the same document.';
+        case 'contribution-rejected':
+          return 'A contribution was not merged. That machine contributed nothing, which is a different statement from having spent nothing.';
+        case 'unknown-fields-dropped':
+          return 'A contribution carried a numeric field this version cannot classify, so it was left out rather than combined the wrong way.';
+        default:
+          return code;
+      }
+    },
   },
 
   where: {

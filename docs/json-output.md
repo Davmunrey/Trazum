@@ -244,6 +244,46 @@ against a document that already exists.
 | `outcomes` | The outcome coverage for the year — `recorded`, `parsed`, `unrecordedUsd` — or **null when nothing recorded one**. Attached when something was *recorded*, not merely parsed: keying on "calls were parsed" made the honest "no outcome was recorded this year" sentence unreachable. |
 | `cannotSay` | Typed reasons this record cannot answer something: `months-missing`, `nothing-was-planned`, and the rest. The list is part of the document, not a footnote in the terminal rendering. |
 
+## The roll-up document
+
+`trazum rollup <document...> --json`. Several people's **profile documents**
+merged into one bill — the only document here assembled from measurements this
+machine did not take.
+
+**It is a format and a merge, not a service.** Nothing is uploaded and there is
+no account: the documents arrive however the team already moves files. What a
+consumer has to get right is not the arithmetic but the refusals, because a
+roll-up is the document most likely to be quoted with its caveats one screen
+away.
+
+| Field | What it holds |
+| --- | --- |
+| `schemaVersion` | `1`. |
+| `contributors` | One entry per merged contribution: `name`, `totalUsd`, `calls`, `span`, `spanDays`, and `gaps`. |
+| `contributors[].gaps` | That contributor's own blind spots — `unreadable-lines`, `unpriced-calls`, `no-clock`, `partial-clock`, `no-sessions`, `no-labels`, `duplicate-lines` — each with a `detail`, and `usd`/`calls` that are **`null` where the kind has none**. Kept per contributor and never summed: "3% of this roll-up is unpriced" is the sentence that hides "one of your four machines is 90% unpriced". |
+| `rejected` | Every contribution handed over and **not** merged, with `name` and `because`. A machine that contributed nothing must not read like a machine that spent nothing, so this is a field rather than an absence — and the command exits 1 when it is non-empty. |
+| `identicalContributions` | `groups` of contribution names that were the same document, and the `usd` the repeats added. **Merged and stated, never discarded** — the rule a single profile already applies to duplicate lines. |
+| `total`, `unpriced`, `unpricedModels` | Summed across contributors, with `unpricedModels` a union. Every numeric field of a breakdown is summed **except `maxCallInputTokens`, which is a maximum**: four machines' largest calls added together is a call that never happened, in the direction that makes a context window look tight. |
+| `byLabel`, `byModel`, `byLabelAndModel` | Merged by key, largest bill first. |
+| `spendByDay` | Per UTC day, oldest first, with `contributors` — how many contributed to that day — and `byModel`. |
+| `spendByDay[].topLabel` | The day's dearest label, or **`null` when more than one contributor covered the day**, with `topLabelUsd` null beside it. The merged answer needs per-label-per-day spend no document carries, and the larger of two contributors' answers is wrong whenever a runner-up in both adds up to more than either winner. |
+| `span` | Earliest start to latest end over contributors that carried a clock, with `calls` summed. Null when none did. |
+| `fieldCoverage`, `outcomeTally`, `duplicateLines` | Summed. `duplicateLines` is **within-contributor** only — overlap *between* contributors is in `cannotSay` and is not a number. |
+| `notMerged` | Findings that do not roll up, each with `finding`, `because`, and `presentIn` — the contributors that have one, so the reader knows where to go and look. Percentile shapes, conversation growth, repeated turns and truncation retries are all computed from individual calls, and a summary of a summary cannot reproduce them. |
+| `cannotSay` | Typed caveats: `overlap-invisible`, `mismatched-spans`, `contributor-without-clock`, `day-top-label-unknown`, `identical-contributions`, `contribution-rejected`, `unknown-fields-dropped`. Part of the document, not a footnote in the terminal rendering. |
+
+**Two of those are enforced, not merely documented.**
+`trazum conform --contract roll-up` fails a roll-up of more than one contributor
+whose `cannotSay` omits `overlap-invisible`, and fails one that rejected a
+contribution and does not say so. Two people exporting the same traffic double
+the bill and no merge of summaries can see it — a format that carried the fields
+and lost that refusal would hand somebody a doubled total that looks audited.
+
+**A field this version cannot classify is dropped and named**, in `cannotSay`
+and again in `notMerged` with the field's name. A number added after this
+roll-up was written may be a sum, a maximum or a ratio, and combining it the
+wrong way is worse than leaving it out.
+
 ## The gateway refusal document
 
 The body `trazum gateway` returns with **HTTP 402** when a call is over budget.

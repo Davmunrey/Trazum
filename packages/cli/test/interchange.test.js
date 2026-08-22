@@ -94,6 +94,8 @@ describe('--json means JSON, not JSON after a report', () => {
    */
   const COVERED_ELSEWHERE = {
     history: 'history.test.js drives it on three dated reports and parses stdout whole',
+    rollup:
+      'rollup-cli.test.js drives it on profile documents this CLI wrote, parses stdout whole and pipes it through conform',
   };
 
   /** Needs something a usage log cannot supply, so a fixture would test the fixture. */
@@ -239,6 +241,7 @@ describe('contract-article', () => {
     'cost-answer': 'a',
     'outcome-report': 'an',
     'annual-record': 'an',
+    'roll-up': 'a',
   };
 
   it('has a decided article for every contract, and refuses to guess a new one', () => {
@@ -301,9 +304,24 @@ describe('the format page and the contracts it documents', () => {
     const claimed = words[claim[1]];
     assert.ok(claimed !== undefined, `"${claim[1]}" is not a number this test knows`);
 
-    // One row is defined but not emitted, and the sentence says so in the same
-    // breath. Bounded to that one exception rather than to a fudge factor.
-    assert.match(page, /defines a twelfth it does not\s+emit/);
+    /**
+     * One row is defined but not emitted, and the sentence says so in the same
+     * breath. The ordinal is **derived from the row count** rather than typed
+     * here: the literal `twelfth` in this assertion went stale the moment a
+     * thirteenth contract arrived, so the guard against a stale count was
+     * itself the stale count.
+     */
+    const ordinals = {
+      10: 'tenth', 11: 'eleventh', 12: 'twelfth',
+      13: 'thirteenth', 14: 'fourteenth', 15: 'fifteenth',
+    };
+    const ordinal = ordinals[rows];
+    assert.ok(ordinal !== undefined, `no ordinal known for ${rows} rows — add it above`);
+    assert.match(
+      page,
+      new RegExp(`defines a ${ordinal} it does not\\s+emit`),
+      `docs/format.md has ${rows} contract rows, so the sentence must say it defines a ${ordinal} it does not emit`,
+    );
     assert.equal(
       claimed,
       rows - 1,
