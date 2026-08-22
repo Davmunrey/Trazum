@@ -112,8 +112,41 @@ it, run through the rules, not with an argument that it ought to work.
 **A bounded commitment, stated plainly, because an unbounded one gets declined
 by exactly the people worth having.**
 
-- Reading one dictionary's entries for your language — a few hundred short
-  phrases — and saying, entry by entry, which ones survive question 1 above.
+- Reading the entries for your language and saying, entry by entry, which ones
+  survive question 1 above. **The list is short, and you can see it before
+  agreeing to anything:**
+
+  ```bash
+  node scripts/dictionary-worklist.mjs nl        # or fr, de, pt, it
+  node scripts/dictionary-worklist.mjs fr --json
+  ```
+
+  ```
+  Dutch: 30 entries across 6 rules
+
+  verbose-phrases (10)
+    met het doel om → om
+    vanwege het feit dat → omdat
+    …
+  politeness (6)
+    alsjeblieft → (deleted)
+    …
+  ```
+
+  | Language | Entries |
+  |---|---|
+  | French | 38 |
+  | German | 38 |
+  | Portuguese | 36 |
+  | Italian | 36 |
+  | Dutch | 30 |
+
+  **This page said "a few hundred short phrases" until something counted them.**
+  It is thirty to thirty-eight — an afternoon, not a project — and the figure was
+  wrong in the direction that discourages volunteers. English has 89 and Spanish
+  81, so the five unreviewed dictionaries are also less than half the size of the
+  two that were written by somebody who reads them. That is its own finding and
+  it is not addressed here.
 - Answering when a new entry is proposed in that language. Not on a schedule;
   when it happens.
 - Saying so if you stop. A maintainer who disappears is not a failure, and
