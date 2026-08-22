@@ -9,6 +9,62 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**This project had never counted the tokens it puts on your bill.** The second
+chapter of arc 1.60. Four system prompts ship inside `@trazum/core` and are sent
+to a model on every `--llm`, `--suggest`, `--semantic` and examples-review run —
+on your key, on your bill, before a single token of your own prompt is counted. A
+tool that reports other people's prompt cost and had never counted its own is the
+self-report problem in its most literal form.
+
+Measured by running the optimiser on them, at the aggressive level:
+
+| Prompt | Tokens | Recovered |
+|---|---|---|
+| `suggest` | 291 | 2 |
+| `semantic` | 382 | 4 |
+| `refiner` | 198 | 0 |
+| `example-review` | 305 | 0 |
+
+**1176 tokens, and this project's own rules recover 6 of them — half a per
+cent.** Eleven of the twelve rules are inert on all four. The honest reading is
+not that the rules are bad: these are prompts written to be read by a model, with
+no politeness, no hedging and nothing repeated, which is the shape the
+dictionaries have nothing to say about. The same result `rules --measure`
+produced on `examples/`.
+
+**What it establishes, and what it does not**, both on
+[our own medicine](docs/our-own-medicine.md). It records **one outcome** — on the
+only corpus this project owns, the feature this product leads with recovers 0.5%
+— which by the standard set in 1.50.4 is a real outcome rather than an inference,
+and the first on that page about the product working rather than about the
+process around it. It establishes **nothing** about whether users benefit (four
+prompts written by the person who wrote the rules are the least representative
+corpus imaginable), nothing about the model-side passes those tokens buy, and it
+is **still self-reported** — the optimiser marking its own work, one layer in.
+
+**The admission it does not overturn.** *This project has no usage log of its
+own* is still true and the page still says so: this measures the cost the project
+**imposes**, not the cost it **incurs**. A guard asserts the page keeps saying so,
+because claiming an admission fell when it did not would be the exact failure the
+page exists to catch.
+
+**The uncomfortable arithmetic is published rather than left to a sceptic.** At
+about one per cent recovered, any prompt under roughly thirty thousand tokens
+costs more in this project's own instructions on a single `--suggest` run than
+the rules recover from it. Different budgets — a per-call cost you opt into
+against a saving on every call forever — and the first thing a sceptical reader
+would compute.
+
+The guard derives the four prompts from the package's own exports, so a fifth
+shipped without being measured fails the build; the published figures are checked
+against what the optimiser produces, so they cannot drift from the prompts; and
+both are proved against a fabricated fifth export and a fabricated row.
+
+
 ## 1.59.0 — "A language needs a maintainer"
 
 **A minor, and it closes an arc out of order.** 1.57.0 and 1.58.0 are still open

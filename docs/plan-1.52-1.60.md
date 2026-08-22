@@ -302,6 +302,13 @@ not a scheduling question.
 
 ## 1.60.0 — Our own medicine, measured
 
+**Second chapter: the cost this project imposes, measured.** Four system prompts
+ship in `@trazum/core` and go on the user's bill on every model-side run — 1176
+tokens, from which this project's own rules recover six. It records one real
+outcome (on the only corpus this project owns, the headline feature recovers
+0.5%) and overturns nothing: the *no usage log of its own* admission is about
+cost incurred, this measures cost imposed, and a guard keeps the page saying so.
+
 **One of the three sentences has moved.** The arc asked for at least one of the
 admissions below to stop being true, with a measurement rather than an argument.
 The third — *every miss was found by the same process that made it* — is the one
