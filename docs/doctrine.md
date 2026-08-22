@@ -28,6 +28,18 @@ The record of getting these wrong is [our own
 medicine](our-own-medicine.md), which is the same document this product asks its
 users to keep.
 
+**And this page is held to itself now**, which it was not. Every other document
+here that makes a checkable claim fails a test when it goes stale; emptying this
+one broke nothing, in the file whose whole subject is checking what enforces
+your own rules. `packages/core/test/doctrine.test.js` does not enforce them — most
+are about judgement and one says outright that no test can hold it — it enforces
+the page: that the rules this preface names still exist under those names, that
+no rule is written twice, that a rule said to have joined at a release is named
+on that record, and that the link above resolves. **Italics in this preface are
+reserved for rule names**, which is not a style note: the check reads every one
+of them as a rule and fails on any that is not. It caught this paragraph's own
+first draft.
+
 ---
 
 ## Measured never merges with estimated without saying which half is which
