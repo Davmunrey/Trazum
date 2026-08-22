@@ -1184,6 +1184,54 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.55.0 — "More than one machine" — released
+
+**The arc that had no answer at all.** Every command here operated on files one
+person had. `--by-source` and `owners` divide a bill somebody already collected;
+nothing combined bills nobody collected together, and the workaround was
+emailing logs around, which is the one thing this tool exists not to make anybody
+do.
+
+`trazum rollup` merges profile documents several people produced separately. **A
+format and a merge, not a service** — no upload, no account, and the transport is
+whatever the team already uses, because a tool whose argument is that it reads
+your bill without uploading it cannot also be where everybody's bill is uploaded.
+
+**The merge was the easy half.** Most of a profile does not merge: percentile
+shapes, conversation growth, repeated turns and truncation retries are all
+computed from individual calls, so the deliverable is as much a list of refusals
+as an arithmetic. A day drawn from two contributors has no dearest label. The
+largest single call is a maximum, never a sum. Each contributor's gaps stay with
+that contributor rather than being averaged into a figure that hides which
+machine is blind.
+
+**And one refusal no implementation can lift**: overlap between contributors is
+unmeasurable, because the raw lines a duplicate check needs are in no document.
+Every roll-up of more than one contributor says so, and `conform` fails one that
+does not — a format that carried the fields and lost that refusal would hand
+somebody a doubled total that looks audited.
+
+**Two questions the arc found rather than started with.** A span is not a
+period, so the window a contributor *claims* to cover travels beside the one it
+observed and every silent day inside it is named. And a roll-up is a
+contribution too, so three teams can roll up and an organisation can roll up the
+three — with every refusal surviving the nesting, which is the whole difficulty:
+a refusal that stops at a layer boundary is worse than one that never existed,
+because the layer makes it look audited.
+
+**1.54.0 is missing on purpose and stays missing.** The counter-per-family arc
+needs provider API keys this work did not have, and the hole in the sequence is
+the record that an arc was jumped rather than dropped. Renumbering the plan to
+close it would rewrite a document whose whole value is having been written
+before the code.
+
+CodeQL found a file-system race in the new command on the pull request that
+introduced it — `stat`, branch, then read — and the fix is to ask once rather
+than to check first. Three enumerations that had been retyped and gone stale
+were replaced by derivations, including the guard that was itself the stale
+count.
+
+
 ## 1.53.4 — "What it says and what it does" — released
 
 The web app got a shell — a sidebar rail with a drawer below `lg`, an account
@@ -1658,7 +1706,7 @@ code: [docs/plan-1.52-1.60.md](docs/plan-1.52-1.60.md). Under the numbering
 adopted at 1.50.1 a minor closes an arc, so each of 1.52.0 … 1.60.0 lands one
 thesis.
 
-**1.52.0 and 1.53.0 are delivered.** The gateway stopped buffering the whole
+**1.52.0, 1.53.0 and 1.55.0 are delivered.** The gateway stopped buffering the whole
 upstream reply before writing a byte back, and then learned who it can stand in
 front of: which providers it fronts, which two it can never front and why, and
 which are missing a fact this repository cannot supply without guessing. How
@@ -1671,22 +1719,31 @@ named, proven and alarmed is finished work, and a gap papered over with a
 half-remembered hostname is not. Three providers wait on somebody confirming an
 endpoint; a guard fails the build the day one arrives.
 
-**The next arc answers something wrong or missing today**, and the plan points
-at the line of code for it:
+**The next arc in the ordering answers something wrong or missing today**, and
+the plan points at the line of code for it — but it is **blocked**, which is why
+1.55.0 went first:
 
 1. **1.54.0 — the counter, per family.** The estimator is calibrated on Claude
    and prices seven families. This roadmap has called the per-family error the
    one number that settles the real-tokenizer question, and nobody has measured
-   it.
+   it. Measuring it needs a key for each family's own counting endpoint, and
+   inventing a band instead is the estimating-and-measuring merge 1.36–1.40
+   spent five releases removing.
 
-**1.55.0 has its first chapter, out of order and deliberately.** More than one
-machine was an intention rather than a defect, and it stays behind 1.54.0 in the
-ordering — but 1.54.0 needs provider keys this repository does not have, and a
-chapter that can be built is worth more than a slot left idle waiting for one.
-`trazum rollup` merges profile documents several people produced separately,
-with each contributor's gaps preserved rather than averaged away and the overlap
-between them named as unmeasurable. The arc is not closed: closing it is a minor,
-and a minor closes an arc only when the thesis is finished.
+**1.55.0 is delivered, out of order and deliberately.** More than one machine
+was an intention rather than a defect, and it sat behind 1.54.0 in the ordering —
+but 1.54.0 needs provider keys this repository does not have, and an arc that can
+be built is worth more than a slot left idle waiting for one. `trazum rollup`
+merges profile documents several people produced separately: each contributor's
+gaps preserved rather than averaged away, the window a contributor claims to
+cover kept apart from the one it observed, a roll-up accepted as a contribution
+to another roll-up, and the overlap between contributors named as unmeasurable
+every time.
+
+**1.54.0 is a hole in the sequence, not a renumbering.** The number stays with
+the arc it names. Moving the plan's numbers to close the gap would rewrite a
+document whose whole value is having been written before the code, and the gap
+is the record that an arc was jumped rather than dropped.
 
 **The remaining six are an ordering of intentions, not commitments about
 content** — more than one machine (1.55.0), something that runs (1.56.0), the

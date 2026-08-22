@@ -11,6 +11,27 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+
+## 1.55.0 — "More than one machine"
+
+**The arc closes on a format and a merge, not a service.** Everything in this
+repository assumed one operator with the files on disk. Four people who each
+measured their own traffic had no way to combine what they measured without one
+of them gathering files by hand — and the tool whose whole argument is that it
+reads your bill without uploading it could not be the place everybody's bill got
+uploaded either. So the answer is a document and an arithmetic: each contributor
+runs `profile --json` where their traffic already is, and `trazum rollup` merges
+what comes back.
+
+**1.54.0 is not skipped by accident, and the number is not reused.** The arc it
+names — the counter, per family — needs provider API keys this work did not
+have, and inventing a band is exactly the estimating-and-measuring merge this
+project spent 1.36–1.40 removing. The hole in the sequence is the record that an
+arc was jumped rather than dropped, and renumbering the plan to hide it would
+rewrite a document whose whole value is having been written before the code.
+
 ### Added
 
 **`trazum rollup` — several people's bills, one roll-up.** Everything here

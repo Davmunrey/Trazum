@@ -141,7 +141,13 @@ and why.
 **What this arc refuses:** a single global band across families, which would be
 the estimating-and-measuring merge this project spent 1.36–1.40 removing.
 
-## 1.55.0 — More than one machine
+## 1.55.0 — More than one machine — **delivered**
+
+**All three chapters shipped, landing at 1.55.0** — ahead of 1.54.0, which needs
+provider keys this repository does not have. The number 1.54.0 is left unspent
+rather than renumbered: the hole records that an arc was jumped, and moving the
+numbers to close it would rewrite a document whose value is having been written
+before the code.
 
 *An intention, not a defect.* Everything assumes one operator with files on
 disk. `--by-source` and `owners` divide a bill somebody already collected; there
