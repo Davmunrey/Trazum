@@ -343,7 +343,8 @@ recovers over a set of prompts.
 | `rules[]` | Per rule: `id`, `alone` (tokens saved when it is the only rule running), `marginal` (tokens the whole set loses when it is removed), and `prompts` (how many it changed, running alone). Largest `marginal` first. |
 | `sumOfAlone` | `alone` summed over every rule, stated beside `tokensSaved` and **deliberately not reconciled with it**. The gap between them *is* the overlap; a single total would be the one number that cannot be true. |
 | `redundantHere` | Rules with a non-zero `alone` and a zero `marginal` — every token they find, something else finds too. An overlap, not a defect. |
-| `inertHere` | Rules that changed nothing anywhere in this corpus. **A fact about these files**, never about the rules: one that finds nothing here has not been shown to find nothing anywhere. |
+| `inertHere` | Rules that **never fired** in this corpus. **A fact about these files**, never about the rules: one that finds nothing here has not been shown to find nothing anywhere. |
+| `firedWithoutSavingHere` | Rules that **fired and recovered nothing** — they changed the prompt and the token count did not move. Kept apart from `inertHere` because the two look identical in a saving column and mean opposite things: a rule that never fired has not been exercised, and one that fired and saved nothing is altering somebody's instruction for no measured benefit. That is a finding about the rule rather than about the corpus. |
 | `tokenSource` | `heuristic` or `external`. Every figure inherits the counter's band, so a rule whose yield is a handful of tokens is inside the noise. |
 
 **Why two figures per rule.** `alone` and `marginal` diverge exactly where rules

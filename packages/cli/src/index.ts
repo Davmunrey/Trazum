@@ -3671,7 +3671,10 @@ async function commandRulesMeasure(
 
   const prompts: string[] = [];
   for (const file of files) {
-    const raw = await readFile(file, 'utf8');
+    // `walkPrompts` returns names relative to the root it was given, so the
+    // root has to go back on. Reading them bare only worked from a run whose
+    // cwd happened to be the root, which is the one case a first probe uses.
+    const raw = await readFile(join(root, file), 'utf8');
     // A marked source file contributes its marked prompts; anything else
     // contributes itself. The same rule `check` and `doctor` already follow,
     // so the three commands measure the same text.
@@ -3707,6 +3710,14 @@ async function commandRulesMeasure(
   }
   if (report.redundantHere.length > 0) {
     console.log(`  ${c.dim(wrap(t.rules.measureRedundant(report.redundantHere.join(', ')), 74, '    '))}`);
+  }
+  // Fired-and-saved-nothing before never-fired: the first is a finding about
+  // the rule, the second only about the corpus, and a reader who meets them the
+  // other way round reads both as the same shrug.
+  if (report.firedWithoutSavingHere.length > 0) {
+    console.log(
+      `  ${c.yellow(wrap(t.rules.measureFiredWithoutSaving(report.firedWithoutSavingHere.join(', ')), 74, '    '))}`,
+    );
   }
   if (report.inertHere.length > 0) {
     console.log(`  ${c.dim(wrap(t.rules.measureInert(report.inertHere.join(', ')), 74, '    '))}`);

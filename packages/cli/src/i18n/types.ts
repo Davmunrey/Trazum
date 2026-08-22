@@ -522,6 +522,7 @@ export interface CliMessages {
     measureOverlap(sumOfAlone: string, saved: string): string;
     measureRedundant(ids: string): string;
     measureInert(ids: string): string;
+    measureFiredWithoutSaving(ids: string): string;
     measureBand(source: string): string;
   };
 

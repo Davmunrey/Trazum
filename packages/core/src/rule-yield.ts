@@ -96,11 +96,26 @@ export interface RuleYieldReport {
    */
   redundantHere: RuleId[];
   /**
-   * Rules that changed nothing anywhere. On **this corpus**, which is the only
-   * claim the arithmetic supports: a rule that finds nothing in these files has
-   * not been shown to find nothing anywhere.
+   * Rules that changed nothing at all — they never fired. On **this corpus**,
+   * which is the only claim the arithmetic supports: a rule that finds nothing
+   * in these files has not been shown to find nothing anywhere.
    */
   inertHere: RuleId[];
+  /**
+   * Rules that **fired and recovered nothing**: they changed the prompt and
+   * the token count did not move.
+   *
+   * Kept apart from `inertHere`, because the two look identical in a saving
+   * column and mean opposite things. A rule that never fires has not been
+   * exercised; a rule that fires and saves nothing has been exercised and is
+   * altering somebody's prompt for no measured benefit — which is a finding
+   * about the rule rather than about the corpus, and the one this measurement
+   * was least likely to produce and most worth producing.
+   *
+   * `emphasis` lands here on a prompt whose shouted words it lowercases: same
+   * words, same count, different instruction.
+   */
+  firedWithoutSavingHere: RuleId[];
   /**
    * How the tokens were counted, so the reader knows the margin.
    *
@@ -181,7 +196,10 @@ export function ruleYield(
     rules: measured,
     sumOfAlone: measured.reduce((sum, rule) => sum + rule.alone, 0),
     redundantHere: measured.filter((rule) => rule.alone > 0 && rule.marginal === 0).map((rule) => rule.id),
-    inertHere: measured.filter((rule) => rule.alone === 0 && rule.marginal === 0).map((rule) => rule.id),
+    inertHere: measured.filter((rule) => rule.prompts === 0).map((rule) => rule.id),
+    firedWithoutSavingHere: measured
+      .filter((rule) => rule.prompts > 0 && rule.alone === 0)
+      .map((rule) => rule.id),
     tokenSource: whole[0]?.tokenSource ?? 'heuristic',
   };
 }

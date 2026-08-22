@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
@@ -164,5 +164,82 @@ describe('the prompts this repository actually ships', () => {
     assert.equal(report.prompts, 2);
     assert.equal(report.tokensSaved, 0);
     assert.deepEqual([...report.inertHere].sort(), [...IDS].sort());
+  });
+});
+
+describe('the rule corpus: every rule has something that exercises it', () => {
+  /**
+   * `rules --measure` could only ever answer "inert here", because nothing in
+   * this repository contained what most rules look for. Twelve fixtures, one
+   * per rule, each a short prompt carrying exactly what that rule is written
+   * to find — so "inert" becomes a signal instead of the only answer
+   * available.
+   *
+   * The guard is derived from the rule catalogue, so a rule added without a
+   * fixture fails the build rather than joining a list nobody notices.
+   */
+  const corpusDir = join(here, 'rules-corpus');
+  const fixtures = () =>
+    readdirSync(corpusDir)
+      .filter((name) => name.endsWith('.txt'))
+      .sort();
+
+  it('has one fixture per rule, named for it, and no orphans', () => {
+    const named = fixtures().map((name) => name.replace(/\.txt$/, ''));
+    const missing = IDS.filter((id) => !named.includes(id));
+    assert.deepEqual(missing, [], `rules with no fixture: ${missing.join(', ')}`);
+    const orphans = named.filter((name) => !IDS.includes(name));
+    assert.deepEqual(orphans, [], `fixtures naming no rule: ${orphans.join(', ')}`);
+  });
+
+  it('every fixture makes its own rule fire', () => {
+    /**
+     * "Fires" and "saves tokens" are deliberately different bars. `emphasis`
+     * lowercases shouted words: same words, same count, different instruction.
+     * Asserting a saving would have marked a working rule as broken.
+     */
+    const notFiring = [];
+    for (const file of fixtures()) {
+      const id = file.replace(/\.txt$/, '');
+      const text = readFileSync(join(corpusDir, file), 'utf8');
+      const own = rule(yieldOf([text]), id);
+      if (own === undefined || own.prompts === 0) notFiring.push(id);
+    }
+    assert.deepEqual(
+      notFiring,
+      [],
+      `these fixtures do not make their own rule fire: ${notFiring.join(', ')}`,
+    );
+  });
+
+  it('separates a rule that never fired from one that fired and saved nothing', () => {
+    /**
+     * The two look identical in a saving column and mean opposite things. A
+     * rule that never fires has not been exercised; one that fires and saves
+     * nothing is altering somebody's prompt for no measured benefit.
+     */
+    const emphasis = readFileSync(join(corpusDir, 'emphasis.txt'), 'utf8');
+    const report = yieldOf([emphasis]);
+    assert.ok(
+      report.firedWithoutSavingHere.includes('emphasis'),
+      `emphasis should have fired without saving: ${JSON.stringify(report.firedWithoutSavingHere)}`,
+    );
+    assert.ok(!report.inertHere.includes('emphasis'), 'emphasis fired, so it is not inert');
+    // And a rule that genuinely did not fire on this fixture is inert, not the other.
+    assert.ok(report.inertHere.includes('self-check'));
+  });
+
+  it('measures the whole corpus with no rule left inert', () => {
+    const texts = fixtures().map((file) => readFileSync(join(corpusDir, file), 'utf8'));
+    const report = yieldOf(texts);
+    assert.equal(report.prompts, IDS.length);
+    assert.deepEqual(
+      report.inertHere,
+      [],
+      `the corpus exists so that nothing is inert on it: ${report.inertHere.join(', ')}`,
+    );
+    assert.ok(report.tokensSaved > 0);
+    // The overlap is real and stated, never resolved into a total.
+    assert.ok(report.sumOfAlone > report.tokensSaved);
   });
 });

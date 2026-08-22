@@ -23,6 +23,21 @@ byte of anybody's prompt. Nobody here had measured which, and deciding what
 belongs on the model's side of the line is a question about what the dictionary
 side already covers.
 
+**A corpus that exercises every rule.** `rules --measure` could only ever
+answer "inert here", because nothing in this repository contained what most
+rules look for. Twelve fixtures now do — one per rule, each a short realistic
+prompt carrying exactly what that rule is written to find — and the guard is
+derived from the rule catalogue, so a rule added without a fixture fails the
+build rather than joining a list nobody reads.
+
+**And building it split one field into two.** `inertHere` was "saved nothing",
+which quietly merged *never fired* with *fired and recovered nothing*. Those
+look identical in a saving column and mean opposite things: the first is a fact
+about the corpus, the second is a finding about the rule. `emphasis` is the
+case — it lowercases shouted words, so the prompt changes, the instruction
+changes, and the token count does not move. It now lands in
+`firedWithoutSavingHere` instead of being filed beside rules nothing exercised.
+
 **Two figures per rule, and they are never added together.** `alone` is what a
 rule saves as the only rule running; `marginal` is what the whole set loses when
 it is removed. They diverge exactly where rules overlap — on a prompt with a
@@ -45,6 +60,11 @@ alone.
 **"Inert" is always said about the corpus.** A rule that finds nothing in these
 files has not been shown to find nothing anywhere, and the difference is the
 whole distance between "delete this rule" and "measure it on something else".
+
+And a path defect found by running it: `--measure <dir>` read the walk's
+relative names without putting the root back on, so it worked only from a run
+whose working directory happened to be the root — which is the one case a first
+probe uses.
 
 Recorded rather than asserted: **on the two sample prompts this repository
 ships, the deterministic rules recover nothing at all** — every rule lands in
