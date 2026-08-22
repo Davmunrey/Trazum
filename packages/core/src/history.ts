@@ -60,6 +60,58 @@ export interface HistoryRun {
   /** First and last values of the run, so the reader judges the size. */
   from: number;
   to: number;
+  /**
+   * Days inside this run's stretch that no report covers.
+   *
+   * A run is *consecutive reports*, and until this field existed it read as
+   * *consecutive time*. Four reports with a three-week hole between the second
+   * and the third is not "climbing for four periods" in any sense a reader
+   * would act on — the climb may have reversed and come back inside the hole,
+   * and nothing here can see it. The caveat travels with the finding rather
+   * than living in another field the reader has to cross-reference, because a
+   * finding that needs a second lookup to be read correctly will be read
+   * incorrectly.
+   */
+  unmeasuredDays: number;
+}
+
+/**
+ * A stretch of calendar time no stored report covers.
+ *
+ * Arithmetic on the spans, not an inference about a schedule: this module has
+ * no idea how often somebody meant to run anything, and guessing a cadence in
+ * order to call a gap late would be the tool deciding what the reader's
+ * routine is. A hole between one report's end and the next one's start is a
+ * fact about the reports.
+ *
+ * It is also the whole of what "nobody produced this series on a schedule"
+ * looks like from inside the data: a cron that died three weeks ago does not
+ * announce itself, it just stops adding points — and a shorter series and a
+ * series with a hole in it read identically until somebody says which.
+ */
+export interface UnmeasuredStretch {
+  fromMs: number;
+  toMs: number;
+  days: number;
+  /** The report that ends where the hole begins. */
+  afterName: string;
+  /** The report that begins where the hole ends. */
+  beforeName: string;
+}
+
+/**
+ * Two reports covering some of the same calendar time.
+ *
+ * `history` never sums `totalUsd` across periods, but a reader with the
+ * document in a spreadsheet will, and two reports over the same fortnight
+ * count that fortnight twice. Named rather than merged: which of the two is
+ * the better measurement is not knowable from here, and picking one would be
+ * throwing away money on a guess.
+ */
+export interface OverlappingReports {
+  a: string;
+  b: string;
+  days: number;
 }
 
 /** The same action planned again and again: a decision nobody is executing. */
@@ -91,9 +143,86 @@ export interface HistoryDocument {
    * named here and in no series above, never silently absorbed.
    */
   undatedReports: string[];
+  /**
+   * Calendar time between the first report's start and the last one's end
+   * that no report covers, oldest first.
+   *
+   * The series is stated with its holes rather than closed over them: a
+   * scheduled run that stopped three weeks ago produces a series that looks
+   * exactly like a shorter one, and only this field tells the two apart.
+   */
+  unmeasured: UnmeasuredStretch[];
+  /** The same calendar time covered by two reports. Named, never merged. */
+  overlappingReports: OverlappingReports[];
 }
 
 export const MIN_RUN = 3;
+
+const DAY_MS = 86_400_000;
+
+/**
+ * Whole days between two instants, never negative and never rounded up.
+ *
+ * Rounded down deliberately: a gap this module calls three days must be at
+ * least three days. A ceiling would make the smallest possible hole read as a
+ * day of missing measurement, which is the flattering direction inverted —
+ * alarming rather than reassuring, and just as wrong.
+ */
+const daysBetween = (fromMs: number, toMs: number): number =>
+  Math.max(0, Math.floor((toMs - fromMs) / DAY_MS));
+
+/**
+ * The holes and the overlaps in a set of dated reports.
+ *
+ * One sweep in start order. A report that ends before the furthest end seen so
+ * far is contained in what is already covered and moves nothing; one that
+ * starts after it opens a hole; one that starts before it overlaps.
+ */
+function coverageOf(
+  dated: { name: string; fromMs: number; toMs: number }[],
+): { unmeasured: UnmeasuredStretch[]; overlaps: OverlappingReports[] } {
+  const unmeasured: UnmeasuredStretch[] = [];
+  const overlaps: OverlappingReports[] = [];
+  if (dated.length === 0) return { unmeasured, overlaps };
+
+  let coveredTo = dated[0]!.toMs;
+  let coveredBy = dated[0]!.name;
+  for (let i = 1; i < dated.length; i += 1) {
+    const report = dated[i]!;
+    if (report.fromMs > coveredTo) {
+      const days = daysBetween(coveredTo, report.fromMs);
+      // A hole shorter than a whole day is the seam between two adjacent
+      // exports, not a stretch nobody measured.
+      if (days > 0) {
+        unmeasured.push({
+          fromMs: coveredTo,
+          toMs: report.fromMs,
+          days,
+          afterName: coveredBy,
+          beforeName: report.name,
+        });
+      }
+    } else if (report.fromMs < coveredTo) {
+      const days = daysBetween(report.fromMs, Math.min(coveredTo, report.toMs));
+      if (days > 0) overlaps.push({ a: coveredBy, b: report.name, days });
+    }
+    if (report.toMs > coveredTo) {
+      coveredTo = report.toMs;
+      coveredBy = report.name;
+    }
+  }
+  return { unmeasured, overlaps };
+}
+
+/** Days of hole inside a stretch of the timeline. */
+const unmeasuredWithin = (
+  unmeasured: UnmeasuredStretch[],
+  fromMs: number,
+  toMs: number,
+): number =>
+  unmeasured
+    .filter((hole) => hole.fromMs >= fromMs && hole.toMs <= toMs)
+    .reduce((sum, hole) => sum + hole.days, 0);
 
 /** The longest run of strictly consecutive movement ending anywhere in the series. */
 function longestRun(
@@ -152,6 +281,12 @@ export function buildHistory(
 
   const cacheShareSeries = dated.map((r) => r.cacheReadShare);
 
+  const { unmeasured, overlaps: overlappingReports } = coverageOf(periods);
+
+  /** The unmeasured days a run spans, from the report it starts in to the one it ends in. */
+  const holeIn = (start: number, length: number): number =>
+    unmeasuredWithin(unmeasured, periods[start]!.fromMs, periods[start + length]!.toMs);
+
   const runs: HistoryRun[] = [];
   for (const series of labelSeries) {
     const run = longestRun(series.points, 1);
@@ -163,6 +298,7 @@ export function buildHistory(
       sinceName: periods[run.start]!.name,
       from: series.points[run.start]!,
       to: series.points[run.start + run.length]!,
+      unmeasuredDays: holeIn(run.start, run.length),
     });
   }
   for (const series of modelShareSeries) {
@@ -175,6 +311,7 @@ export function buildHistory(
       sinceName: periods[run.start]!.name,
       from: series.points[run.start]!,
       to: series.points[run.start + run.length]!,
+      unmeasuredDays: holeIn(run.start, run.length),
     });
   }
   {
@@ -187,6 +324,7 @@ export function buildHistory(
         sinceName: periods[run.start]!.name,
         from: cacheShareSeries[run.start]!,
         to: cacheShareSeries[run.start + run.length]!,
+        unmeasuredDays: holeIn(run.start, run.length),
       });
     }
   }
@@ -232,6 +370,8 @@ export function buildHistory(
     runs,
     repeatedPlanActions,
     undatedReports,
+    unmeasured,
+    overlappingReports,
   };
 }
 

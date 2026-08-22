@@ -245,7 +245,14 @@ export type {
   UnavailableFinding,
   UsageBucket,
 } from './connector.js';
-export type { HistoryDocument, HistoryRun, RepeatedPlanAction, StoredReport } from './history.js';
+export type {
+  HistoryDocument,
+  HistoryRun,
+  RepeatedPlanAction,
+  StoredReport,
+  UnmeasuredStretch,
+  OverlappingReports,
+} from './history.js';
 export type { CannotTellReason, PlanVerification, VerifiedAction, VerifyOutcome } from './verify.js';
 export type { FleetSource, FleetRollup } from './fleet.js';
 export type {

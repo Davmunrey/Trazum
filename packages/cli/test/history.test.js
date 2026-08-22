@@ -138,3 +138,83 @@ describe('history', () => {
     assert.deepEqual([...promised].filter((k) => !emitted.includes(k)), [], 'fields promised by docs/json-output.md and not emitted');
   });
 });
+
+describe('trazum history: the holes in the series', () => {
+  /**
+   * A cron that stopped three weeks ago produces a series that looks exactly
+   * like a shorter one. Until this landed, `history` could not tell a reader
+   * which it was looking at — and a run of "four consecutive periods" spanning
+   * an unmeasured fortnight is not a finding anybody should act on.
+   */
+  const dayLog = (day, tokens) =>
+    `${JSON.stringify({
+      model: 'claude-opus-5',
+      label: 'chat',
+      ts: `2026-08-${String(day).padStart(2, '0')}T09:00:00Z`,
+      usage: { input_tokens: tokens, output_tokens: 100 },
+    })}\n${JSON.stringify({
+      model: 'claude-opus-5',
+      label: 'chat',
+      ts: `2026-08-${String(day + 2).padStart(2, '0')}T09:00:00Z`,
+      usage: { input_tokens: tokens, output_tokens: 100 },
+    })}\n`;
+
+  const seriesWithAHole = async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'trazum-history-hole-'));
+    // Two reports early in the month, two late: nothing covers the middle.
+    const days = [
+      ['a', 1, 200_000],
+      ['b', 4, 280_000],
+      ['c', 20, 360_000],
+      ['d', 23, 480_000],
+    ];
+    for (const [name, day, tokens] of days) {
+      const log = join(dir, `${name}.jsonl`);
+      await writeFile(log, dayLog(day, tokens));
+      const profiled = spawnSync(process.execPath, [CLI, 'profile', log, '--json'], {
+        encoding: 'utf8',
+        env: SPAWN_ENV,
+        timeout: 30000,
+      });
+      assert.equal(profiled.status, 0, profiled.stderr);
+      await writeFile(join(dir, `${name}.json`), profiled.stdout);
+    }
+    return dir;
+  };
+
+  it('names the stretch no report covers, in the data and in the rendering', async () => {
+    const dir = await seriesWithAHole();
+    const asJson = spawnSync(process.execPath, [CLI, 'history', dir, '--json'], {
+      encoding: 'utf8',
+      env: SPAWN_ENV,
+      timeout: 30000,
+    });
+    assert.equal(asJson.status, 0, asJson.stderr);
+    const document = JSON.parse(asJson.stdout);
+    const fortnight = document.unmeasured.find((hole) => hole.days >= 10);
+    assert.ok(fortnight !== undefined, JSON.stringify(document.unmeasured));
+    assert.equal(fortnight.afterName.endsWith('b.json'), true);
+    assert.equal(fortnight.beforeName.endsWith('c.json'), true);
+
+    const rendered = spawnSync(process.execPath, [CLI, 'history', dir], {
+      encoding: 'utf8',
+      env: SPAWN_ENV,
+      timeout: 30000,
+    });
+    assert.match(rendered.stdout, /covered by no report/);
+    // The caveat has to be on the run itself, not a section away.
+    assert.match(rendered.stdout, /of this run are covered by no report/);
+  });
+
+  it('carries the hole on the run, so a climb is not read as consecutive time', async () => {
+    const dir = await seriesWithAHole();
+    const { stdout } = spawnSync(process.execPath, [CLI, 'history', dir, '--json'], {
+      encoding: 'utf8',
+      env: SPAWN_ENV,
+      timeout: 30000,
+    });
+    const run = JSON.parse(stdout).runs.find((entry) => entry.kind === 'label-spend-climbing');
+    assert.ok(run !== undefined, 'a rising label must still produce a run');
+    assert.ok(run.unmeasuredDays >= 10, `unmeasuredDays was ${run.unmeasuredDays}`);
+  });
+});
