@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.53.4**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.55.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,226 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.55.0 — "More than one machine"
+
+**Four people measured four things, and nobody wanted to email logs around.**
+Everything in this repository assumed one operator with the files on disk:
+`--by-source` and `owners` divide a bill somebody already collected, and nothing
+combined bills nobody collected together. This release adds the missing half — a
+**format and a merge, not a service**. Nothing is uploaded and there is no
+account, because the tool whose whole argument is that it reads your bill without
+uploading it cannot also be where everybody's bill is uploaded.
+
+**1.54.0 is missing on purpose.** The arc it names — the counter, per family —
+needs provider API keys this work did not have, and inventing a band is the
+estimating-and-measuring merge this project spent 1.36–1.40 removing. The hole in
+the sequence is the record that an arc was jumped rather than dropped;
+renumbering the plan to hide it would rewrite a document whose whole value is
+having been written before the code.
+
+### `trazum rollup <document...|dir> [--json]` — new command
+
+Merges profile documents several people produced separately. Each contributor
+runs `trazum profile --json` wherever their traffic already is; the documents
+arrive however your team already moves files, and a **directory argument** rolls
+up every `.json` inside it, so a shared folder people drop a document into is a
+roll-up without anybody writing a shell loop.
+
+A profile document carries no prompt text, no completion text, no session keys
+and no credentials, and never has. That is what makes handing one to a colleague
+a different act from handing over a log.
+
+```
+Roll-up of 2 contributors — $20.07 over 32 calls
+  Covering 2026-08-01 to 2026-08-14, stated and never extrapolated from.
+
+Contributors, and what each one could not see
+  api.json — $14.45, 18 calls, 13 days
+  nightly.json — $5.62, 14 calls, 13 days
+    1 line of this contributor's log could not be read
+    no record carried a session, so this contributor brings no
+      conversation findings
+```
+
+**Two thirds of the output is what the merge could not do**, and that is the
+point. It exits 1 when a contribution was handed over and could not be merged.
+
+**What it merges.** Totals, unpriced totals and unpriced model names; per label,
+per model and per label-and-model; spend per UTC day with each day's per-model
+split; field coverage; the outcome tally; within-contributor duplicate lines; and
+the observed span, earliest start to latest end.
+
+**What it refuses, one by one:**
+
+- **Findings computed from individual calls do not roll up.** Percentile input
+  and output shapes, conversation growth, repeated turns, truncation retries —
+  every one needs the calls, and a summary of a summary cannot reproduce them.
+  They are listed in `notMerged` with the contributors that have them, so the
+  reader knows where to go and look.
+- **A day drawn from two contributors has no dearest label.** The merged answer
+  needs per-label-per-day spend no document carries, and taking the larger of two
+  contributors' answers is wrong whenever a runner-up in both adds up to more
+  than either winner. `topLabel` and `topLabelUsd` are both `null`, never `0`.
+- **The largest single call is a maximum, never a sum.** Four machines' largest
+  calls added together is a call that never happened, in the direction that makes
+  a context window look tight.
+- **A contribution that does not conform is rejected by name and gates.** A
+  machine that contributed nothing must not read like a machine that spent
+  nothing.
+- **Each contributor's gaps stay with that contributor** — unreadable lines,
+  unpriced calls, no clock, a partial clock, no sessions, no labels, duplicate
+  lines. Summed, they would say "3% of this roll-up is unpriced" when the truth
+  is "one of your four machines is 90% unpriced and the other three are clean".
+- **Overlap between contributors is unmeasurable**, and every roll-up of more
+  than one contributor says so. Two people exporting the same traffic double the
+  bill, and no merge of summaries can see it — the raw lines a duplicate check
+  needs are in no document. This one cannot be lifted by a better implementation.
+- **A numeric field this version cannot classify is dropped and named**, in
+  `cannotSay` and again in `notMerged` with the field's name. A number added
+  later may be a sum, a maximum or a ratio.
+
+**Identical contributions are merged and stated, never discarded** — the rule a
+single profile already applies to duplicate lines. The comparison is over the
+whole text, never a hash: a hash collision would report a duplicate that is not
+one, and this figure exists to make somebody distrust a total.
+
+### A span is not a period — claimed windows and named silence
+
+A log whose latest record is the 5th may be a log of a quiet week or a log that
+stopped being written on the 5th. The records cannot tell those apart.
+
+When a contributor profiled with `--since`/`--until`, the roll-up carries the
+window it **asked for** as `claimed`, keeps `claimedSpan` apart from the observed
+`span`, and **names every day inside a bounded claim that recorded nothing** —
+contiguous runs with `from`, `to` and `days`, so a year-long claim with three
+days of traffic is a handful of entries rather than three hundred and sixty-two
+strings.
+
+```
+  api-claim.json — $14.45, 18 calls, 13 days
+    asked for 2026-08-01 to 2026-08-21
+    7 days inside the window this contributor asked for recorded nothing
+      2026-08-15 to 2026-08-21
+```
+
+Whether a silent stretch is a quiet fortnight or a broken export is yours to
+know; that it is silent is this tool's to say.
+
+- A contributor that claimed nothing gets **`no-claimed-period`** rather than
+  having its span promoted to a period.
+- A claim with a single end gets **`claim-not-bounded`**: silence cannot be
+  measured against half a window, and taking the span's other end would invent
+  the claim.
+- A claim longer than ten years is **kept and not walked**. These documents come
+  from elsewhere, and `untilMs: 1e15` is a malformed document rather than a team
+  with a long memory — enumerating it would be thirty million iterations inside a
+  merge somebody ran on four files.
+- `undatedExcluded` travels too, and is **`null` when there was no window**,
+  never `0`, because zero would say a window excluded nothing.
+
+### A roll-up is a contribution too
+
+Three teams roll up their own machines and the organisation rolls up the three.
+`rollup` accepts a `roll-up` document wherever it accepts a `profile`, because
+every summable part of one carries the same field names as a profile.
+
+The interesting half is not the arithmetic. It is that **every refusal has to
+survive the nesting**, because a refusal that quietly stops at a layer boundary
+is worse than one that never existed — the layer makes it look audited.
+
+- **Contributors are flattened, never collapsed.** A roll-up of three roll-ups
+  lists twelve machines with twelve sets of gaps, each carrying `via` — the
+  roll-up it arrived through, kept as the roll-up that actually held it even
+  through a third layer.
+- **Rejections travel, with their `via`.** A machine whose document did not
+  conform cannot be made to disappear by adding a layer.
+- **`cannotSay` is unioned.** An inner roll-up that could not see overlap does
+  not become an outer roll-up that could.
+- **A finding an inner roll-up refused to merge does not become mergeable by
+  being handed on**, and the same finding from two roll-ups is one entry naming
+  both sets of machines.
+- **Days count machines, not documents.** A nested roll-up already knows how many
+  machines saw a day.
+- **The double count nesting makes possible is named and not subtracted.**
+  Handing over both a roll-up and one of the machines inside it counts that
+  machine's money twice; the documents differ, so only the *name* can see it.
+  `repeatedContributors` states it — two teams genuinely running `api.json` is
+  possible, and deciding between them by removing money is the repair this tool
+  does not make.
+
+### `roll-up` — the tenth `--contract` name
+
+`trazum conform` recognises the roll-up document, and `trazum rollup … --json |
+trazum conform -` closes the loop. Detection tests it **before** `profile`: a
+roll-up carries `byLabelAndModel` too, so testing the profile first would accept
+every roll-up as a profile and never apply the two refusals only a roll-up has to
+carry.
+
+Those two are enforced rather than merely documented. `conform` **fails** a
+roll-up of more than one contributor whose `cannotSay` omits `overlap-invisible`,
+and one that rejected a contribution and does not say so. A format that carried
+the fields and lost those refusals would hand somebody a doubled total that looks
+audited.
+
+The interchange format is now **twelve documents emitted, a thirteenth defined
+and not emitted**, ten of them nameable to `--contract`.
+
+### `rollUp()` in `@trazum/core`
+
+Exported with `RollupInput`, `RollupDocument`, `RollupContributor`, `RollupDay`,
+`RollupCaveat`, `ContributorGap`, `UnmergedFinding` and `SilentRun`. It reads no
+files and runs no globs — the caller hands over text it read — so it stays
+browser-safe and the CLI keeps its monopoly on the filesystem.
+
+### Fixed
+
+**A file-system race in the new command, caught by CodeQL on the pull request
+that introduced it.** `stat`, branch on `isDirectory()`, then read the path is a
+check-then-act: between the answer and the read the path can become something
+else. It asks once now — attempt the directory listing and read the error code,
+where `ENOTDIR` means *this is a file* — because there is no window between two
+operations when there is only one. Guarded at the source, since both shapes
+behave identically on a filesystem nobody is racing.
+
+**`--help` retyped the list of contracts and stopped at `cost-answer`.** Two
+releases each added a contract and the help text named neither — one section
+below the USAGE block that a whole test suite exists to keep provider names out
+of. It is interpolated from `CONTRACT_NAMES` now, and a test reads the names out
+of the CLI's own refusal and asserts every one appears.
+
+**The README said Trazum emits ten documents while the format page said eleven
+and twelve.** Two pages, three numbers, one table.
+
+**The guard on the format page's count matched the literal `twelfth`.** The guard
+against a stale count had itself gone stale; the ordinal is derived from the row
+count now.
+
+**A nested roll-up reported the same finding twice.** The day's-dearest-label
+entry was appended after the inner roll-up's findings were merged, so both
+survived. Found by running it — the source read fine.
+
+**Five copies of the help-screen defaults lived in one test file.** Adding a
+field to `HelpDefaults` made every one of them throw at the first `.join`: five
+failures, one cause. The help screen is rendered from data precisely so its
+enumerations cannot go stale, and a test that retypes that data is the staleness
+one layer down.
+
+### What this release still cannot do
+
+- **It cannot see overlap between contributors.** Not a gap to be closed later: a
+  merge of summaries has no access to the raw lines a duplicate check needs. The
+  document says so every time, and the checker enforces that it does.
+- **A contributor with no claimed window is a span, not a period**, and no amount
+  of arithmetic changes that. The roll-up says which contributors are in that
+  position rather than guessing.
+- **Nothing transports the documents.** That is deliberate and is the shape of
+  the whole arc, but it does mean a team with no shared drive has a step to
+  solve that this tool does not solve for them.
+- **The per-family token band is still unmeasured**, which is the arc 1.54.0
+  names and the reason that number is missing here.
 
 ---
 
