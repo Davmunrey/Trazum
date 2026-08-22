@@ -23,6 +23,21 @@ byte of anybody's prompt. Nobody here had measured which, and deciding what
 belongs on the model's side of the line is a question about what the dictionary
 side already covers.
 
+**The rule order decides what the reader is told, and now something says so.**
+The measurement showed three deletion rules each recovering the same tokens,
+which looked like a defect worth chasing. It is not: a repeated stanza is a
+repeated *block* and also a set of repeated *lines*, all three can find it, and
+whichever runs first takes it. The applied run credits exactly one rule — the
+leave-one-out measurement credits all three because each *would* have caught it
+alone, and those are different questions.
+
+**What had no guard was the consequence.** Coarsest-first means the same saving
+is reported as *one repeated paragraph* instead of *three repeated lines*, and
+the only reason written down for that order was that block deletions leave less
+text for the rest to walk. A reorder would have changed what users read while
+every number stayed identical and no test noticed. The order is pinned now,
+adjacency included, and the comment says what it actually decides.
+
 **A corpus that exercises every rule.** `rules --measure` could only ever
 answer "inert here", because nothing in this repository contained what most
 rules look for. Twelve fixtures now do — one per rule, each a short realistic
