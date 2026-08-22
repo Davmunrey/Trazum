@@ -927,6 +927,10 @@ ${bold('EXAMPLES')}
     dictionaryUnreviewed: (languages) =>
       `  Of those, ${languages} carry entries nobody here reads: written by the same `
       + 'process that wrote the rules, never agreed by a speaker of the language.',
+    dictionaryAppliedUnreviewed: (language) =>
+      `  These changes came from the ${language} dictionary, which nobody here reads. `
+      + 'Its entries were written by the same process that wrote the rules and never '
+      + 'agreed by a speaker — read the diff before trusting it.',
     levelAggressive: () => '[aggressive]',
     levelSafe: () => '[safe]',
     ruleHits: (hits, tokensSaved) => `(${hits}×, ~${tokensSaved} tokens)`,

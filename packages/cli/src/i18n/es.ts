@@ -947,6 +947,10 @@ ${bold('EJEMPLOS')}
       `  De esos, ${languages} llevan entradas que nadie aquí lee: escritas por el `
       + 'mismo proceso que escribió las reglas, nunca aprobadas por alguien que '
       + 'hable el idioma.',
+    dictionaryAppliedUnreviewed: (language) =>
+      `  Estos cambios vienen del diccionario de ${language}, que nadie aquí lee. `
+      + 'Sus entradas las escribió el mismo proceso que escribió las reglas y nunca '
+      + 'las aprobó alguien que hable el idioma: revisa el diff antes de fiarte.',
     levelAggressive: () => '[agresiva]',
     levelSafe: () => '[segura]',
     ruleHits: (hits, tokensSaved) => `(${hits}×, ~${tokensSaved} tokens)`,

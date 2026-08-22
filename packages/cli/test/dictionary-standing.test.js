@@ -66,3 +66,63 @@ describe('the report separates the dictionaries somebody read from the rest', ()
     assert.doesNotMatch(text, /nobody here reads/);
   });
 });
+
+/**
+ * Long enough for the detector to answer, and it fires the Dutch filler
+ * entries. Both halves matter: a prompt that fires nothing lands in the other
+ * branch, and a three-line prompt comes back `null` from the detector.
+ */
+const DUTCH = `Je bent een assistent voor de klantenservice van een webwinkel.
+
+Het is belangrijk om op te merken dat je altijd in de taal van de klant
+antwoordt. Zoals je weet wordt een bestelling niet meteen verzonden, dus
+eigenlijk zijn de bezorgdatums met opzet een schatting. In principe geef je
+deze informatie aan de klant voor je iets belooft.
+`;
+
+/** English, wordy, and every entry it fires was written by somebody who reads it. */
+const ENGLISH = `You are a support assistant for an online shop.
+
+In order to help the customer, please take into consideration the fact that the
+order may not have shipped yet. At this point in time, due to the fact that
+carriers are slow, it is important to note that delivery estimates are
+approximate. In the event that the customer asks, explain this.
+`;
+
+describe('when the rules did change the prompt, whose judgement changed it', () => {
+  it('says so on a prompt in a language nobody here reads', async () => {
+    const text = await run(DUTCH, ['--level', 'aggressive']);
+    assert.match(text, /Rules applied/);
+    assert.match(text, /These changes came from the Dutch dictionary, which nobody here reads/);
+    assert.match(text, /read the diff before trusting it/);
+  });
+
+  it('stays quiet on a prompt in a language somebody here reads', async () => {
+    /**
+     * The English dictionary was written by somebody reading it, so there is
+     * nothing to admit. A line printed here would be the footer this refuses to
+     * become.
+     */
+    const text = await run(ENGLISH, ['--level', 'aggressive']);
+    assert.match(text, /Rules applied/);
+    assert.doesNotMatch(text, /nobody here reads/);
+  });
+
+  it('says it in the reader language, not the prompt language', async () => {
+    const text = await run(DUTCH, ['--level', 'aggressive', '--locale', 'es']);
+    assert.match(text, /Estos cambios vienen del diccionario de neerlandés/);
+    assert.match(text, /nadie aquí lee/);
+  });
+
+  it('stays quiet when the prompt is too short to place, and that is deliberate', async () => {
+    /**
+     * `detectTextLanguage` answers null on a prompt it cannot place, and this
+     * warning is gated on a positive answer. Not-detected is not
+     * not-unreviewed — but guessing a language in order to warn about it is the
+     * overreach the detector exists to refuse, and a wrong guess would put a
+     * Dutch warning on a Portuguese prompt.
+     */
+    const text = await run('Eigenlijk, antwoord kort.\n', ['--level', 'aggressive']);
+    assert.doesNotMatch(text, /nobody here reads/);
+  });
+});

@@ -9,6 +9,29 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**The warning now reaches the branch where it matters most.** 1.56.2 said which
+five of the seven dictionaries nobody here reads, on the branch where no rule
+fired — and that is the branch where the prompt is *untouched*. The second
+chapter of arc 1.59 puts it where the change is: when a rule fires on a prompt
+whose own language is one of the five, the report says the entries that just
+edited it were never agreed by a speaker, and to read the diff.
+
+**Gated on the prompt's own detected language**, so an English or Spanish prompt
+never sees it and it does not become a footer under every report.
+`detectTextLanguage` answers `null` on a prompt too short or too mixed to place,
+and this stays silent then: not-detected is not not-unreviewed, but guessing a
+language in order to warn about it would put a Dutch warning on a Portuguese
+prompt — the same overreach the detector exists to refuse.
+
+Proved by running, in both directions: a Dutch prompt that fires the filler
+entries gets the line, an equally wordy English prompt does not, and a Dutch
+prompt too short to place fires a rule and still gets nothing.
+
+
 ## 1.56.2 — "What this project was claiming about itself"
 
 **A patch, and the number is the honest one.** A minor closes an arc. Two arcs
