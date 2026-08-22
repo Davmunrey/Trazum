@@ -1856,10 +1856,24 @@ settings.
   },
   "maxGrowth": 100,
   "extensions": [".txt", ".md"],
+  "ignore": ["**/fixtures/**", "**/corpus/**"],
   "disable": ["intensifiers"],
   "locale": "en"
 }
 ```
+
+**`ignore` is the companion to `extensions`, and it exists because the extension
+alone cannot tell a prompt from a test fixture.** A repository with a corpus of
+`.txt` files gets every one of them walked, budgeted and baselined. Patterns are
+globs relative to the walk root, a matched directory is not descended into at
+all, and a pattern that climbs out of the project with `..` is refused the same
+way a budget pattern is.
+
+This project found that out on itself: pointed at its own root, `trazum baseline`
+recorded seventy-four documents — README, changelog, roadmap — and thirty-five
+test fixtures as prompts, which is why no baseline of it had ever been committed.
+Its own config is now four `ignore` patterns and two prompts, and CI gates on
+them. See [our own medicine](docs/our-own-medicine.md).
 
 **Flags beat the config; the config beats the defaults.** A config that could
 override an explicit flag would make every flag a suggestion. A boolean the

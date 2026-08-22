@@ -13,6 +13,60 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`ignore` — saying which files are prompts, when the extension cannot.** A new
+config key, and the feature that had to exist before this repository could take
+its own gate. Directory mode decided from the extension alone, so a repository
+with a corpus of `.txt` files got every fixture walked, budgeted and baselined,
+and there was no way to say otherwise — no ignore list, no include list, nothing.
+
+```json
+{ "extensions": [".txt"], "ignore": ["**/fixtures/**", "**/corpus/**"] }
+```
+
+Globs relative to the walk root. A matched directory is **not descended into at
+all**, so an ignored tree costs one comparison rather than one per file in it. A
+pattern that climbs out of the project with `..`, or an absolute one, is refused
+the same way a budget pattern is — on a pull request the config comes from
+whoever opened it. Threaded through every walk that already consulted
+`extensions`, because the two halves of *what counts as a prompt here* disagreeing
+is the same defect one layer down.
+
+Found by needing it: the first honest config for this repository made
+`trazum doctor` report *35 of 37 prompts have no budget* and list this project's
+own test fixtures.
+
+
+**And the loop this product sells was inert in the repository that sells it.**
+The third chapter of arc 1.60. `trazum init` writes a config, `trazum baseline`
+records what a repository's prompts cost, `trazum check` fails a build when they
+grow — all three shipped arcs ago, all three are what `docs/ci.md` tells other
+people to run, and **this repository had no config and no baseline of its own**.
+
+`trazum.config.json` and `trazum.baseline.json` are committed now, CI runs the
+gate, and the gate was proved by growing the prompts past the limit and watching
+it exit 1 rather than by reading the flag.
+
+**A gate flag that silently gates nothing**, found the first time the CLI was
+pointed at this repository: `check --baseline` against a config with no
+`baseline` block prints nothing and exits 0, because the flag is read as
+`config.baseline !== undefined && boolFlag(...)` — a missing block *disables* the
+gate instead of failing the run. A green build, from a command invoked with the
+flag that asks for the check.
+
+**And the reason no baseline was ever committed here.** At the root with the
+default extensions, `trazum baseline` records **74 prompts and 509,255 tokens** —
+the README, the changelog, the roadmap — because directory mode defaults to
+`.txt .md .prompt .tmpl` and this is a documentation-heavy repository. The gate
+is scoped to `examples/`, and the scoping is the honest fix rather than a
+workaround: the prompts this project actually ships to models live inside `.ts`,
+where the baseline gate cannot see them at all.
+
+Guards: the committed baseline is checked against the tree file by file, the
+config's `baseline` block is asserted present (without it the gate is the no-op
+above), the workflow is asserted to still carry the step, and the gate itself is
+run against a scratch copy grown past the limit.
+
+
 **This project had never counted the tokens it puts on your bill.** The second
 chapter of arc 1.60. Four system prompts ship inside `@trazum/core` and are sent
 to a model on every `--llm`, `--suggest`, `--semantic` and examples-review run —

@@ -2,6 +2,7 @@ import { readdir } from 'node:fs/promises';
 import { extname, join, relative, sep } from 'node:path';
 
 import { DEFAULT_EXTENSIONS } from './config-schema.js';
+import { matchGlob } from './glob.js';
 
 /**
  * Finding the prompt files under a directory.
@@ -49,6 +50,21 @@ export interface WalkOptions {
   extensions?: readonly string[];
   maxFiles?: number;
   maxDepth?: number;
+  /**
+   * Paths to leave out, as globs against the path relative to the root.
+   *
+   * **Why this had to exist.** Directory mode decided what a prompt was from
+   * the extension alone, and `.txt` in a repository with a test corpus means
+   * *fixtures*. Pointed at this project's own root it read seventy-four
+   * documents — README, changelog, roadmap — and thirty-five test fixtures as
+   * prompts, which is why nobody here had ever committed a baseline of it. A
+   * hard-coded skip list would have been guessing on somebody else's layout;
+   * this is the repository saying which of its files are prompts.
+   *
+   * A directory is skipped whole when the pattern matches it, so an ignored
+   * tree costs one comparison rather than one per file in it.
+   */
+  ignore?: readonly string[];
 }
 
 /**
@@ -64,6 +80,18 @@ export async function walkPrompts(root: string, options: WalkOptions = {}): Prom
   );
   const maxFiles = options.maxFiles ?? MAX_WALK_FILES;
   const maxDepth = options.maxDepth ?? MAX_WALK_DEPTH;
+  const ignore = options.ignore ?? [];
+
+  /**
+   * Whether a path relative to the root is excluded.
+   *
+   * A directory is offered both bare and with a trailing slash, so
+   * `packages/**` and `packages/` both keep the walk out of it. Matching the
+   * directory rather than each file under it is what makes an ignored tree
+   * cheap instead of merely quiet.
+   */
+  const excluded = (relPath: string): boolean =>
+    ignore.some((pattern) => matchGlob(pattern, relPath) || matchGlob(pattern, `${relPath}/`));
 
   const files: string[] = [];
   let truncated = false;
@@ -99,15 +127,19 @@ export async function walkPrompts(root: string, options: WalkOptions = {}): Prom
 
       const full = join(directory, entry.name);
 
+      const rel = relative(root, full).split(sep).join('/');
+
       if (entry.isDirectory()) {
         if (SKIPPED_DIRECTORIES.has(entry.name)) continue;
+        if (excluded(rel)) continue;
         await visit(full, depth + 1);
         continue;
       }
       if (!entry.isFile()) continue;
       if (!extensions.includes(extname(entry.name).toLowerCase())) continue;
+      if (excluded(rel)) continue;
 
-      files.push(relative(root, full).split(sep).join('/'));
+      files.push(rel);
     }
   };
 

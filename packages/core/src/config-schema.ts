@@ -265,6 +265,18 @@ export interface TrazumConfig {
   /** File extensions directory mode treats as prompts. */
   extensions?: string[];
   /**
+   * Paths directory mode leaves out, as globs relative to the walk root.
+   *
+   * The companion to `extensions`, and it exists because the extension alone
+   * cannot tell a prompt from a test fixture. A repository with a corpus of
+   * `.txt` files gets every one of them counted, budgeted and baselined — which
+   * is what happened to this project's own repository and is why no baseline of
+   * it was ever committed.
+   *
+   * A directory matched here is not descended into at all.
+   */
+  ignore?: string[];
+  /**
    * Path to a pricing overlay, relative to the config file.
    *
    * Lets a project correct a published price without upgrading the library. The
@@ -292,6 +304,7 @@ export const CONFIG_KEYS = [
   'maxGrowth',
   'baseline',
   'extensions',
+  'ignore',
   'pricing',
   'outcomes',
   'ladders',
@@ -1084,6 +1097,31 @@ export function parseConfig(raw: string, source = CONFIG_FILENAME): TrazumConfig
         );
       }
       return value.toLowerCase();
+    });
+  }
+
+  if (document.ignore !== undefined) {
+    if (!Array.isArray(document.ignore)) {
+      throw new ConfigError('"ignore" must be an array of path patterns', source);
+    }
+    config.ignore = document.ignore.map((value) => {
+      if (typeof value !== 'string' || value.length === 0) {
+        throw new ConfigError(
+          `"ignore" entries are path patterns like "**/fixtures/**"; got ${JSON.stringify(value)}`,
+          source,
+        );
+      }
+      if (IS_ABSOLUTE.test(value) || value.includes('..')) {
+        // Same rule as a budget pattern, for the same reason: a pattern that
+        // climbs out of the project either matches nothing or matches somebody
+        // else's files, and both are mistakes worth naming rather than
+        // silently honouring.
+        throw new ConfigError(
+          `ignore pattern "${value}" must be a relative path inside the project`,
+          source,
+        );
+      }
+      return value;
     });
   }
 

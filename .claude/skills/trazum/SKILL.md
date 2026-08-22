@@ -279,6 +279,7 @@ keys, and an unknown one is a hard error rather than a silent no-op:
 | `waive` | A named gate, a reason and an expiry — every use is recorded |
 | `maxGrowth` `baseline` | Drift away from a committed record, not just the ceiling |
 | `extensions` | Which file types count as prompts |
+| `ignore` | Which paths are not prompts — test fixtures and corpora share the extension |
 | `pricing` | An overlay adding or overriding models |
 | **`outcomes`** | **`values` and `success` — the vocabulary that makes cost per outcome, the quality gate and experiments possible. Nothing is inferred; if this is absent those commands refuse rather than guess.** |
 | `ladders` | `tiers` and `escalateOn` for the escalation ladder |

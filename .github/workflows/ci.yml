@@ -52,6 +52,19 @@ jobs:
       - name: Tests (core, CLI, MCP, web, Action)
         run: npm test
 
+      # This repository takes its own gate. `trazum.config.json` and
+      # `trazum.baseline.json` are committed, so a pull request that grows the
+      # prompts past the recorded figure fails here — the same way it would in
+      # somebody else's repository, run by the binary this build just made.
+      #
+      # The whole tree, scoped by the config's `ignore`. Before that field
+      # existed this walk read seventy-four documents and half a million tokens
+      # of README and changelog as "prompts", plus thirty-five test fixtures,
+      # which is why no baseline was ever committed here. See
+      # docs/our-own-medicine.md.
+      - name: Our own baseline gate
+        run: node packages/cli/dist/index.js check .
+
       - name: Typecheck the web app
         run: npm run typecheck -w @trazum/web
 

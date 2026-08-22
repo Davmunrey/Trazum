@@ -1789,6 +1789,7 @@ async function commandInit(
   const host = detectHost();
   const prompts = await walkPrompts(root, {
     extensions: config.extensions ?? DEFAULT_EXTENSIONS,
+    ignore: config.ignore,
   });
 
   /**
@@ -1803,6 +1804,7 @@ async function commandInit(
   const sourceWalk = await walkPrompts(root, {
     extensions: SOURCE_EXTENSIONS,
     maxFiles: INIT_MAX_SOURCE_FILES,
+    ignore: config.ignore,
   });
   const sightings: ProviderSighting[] = [];
   for (const relative of sourceWalk.files) {
@@ -3698,7 +3700,7 @@ async function commandRulesMeasure(
   if (level !== 'safe' && level !== 'aggressive') throw new Error(t.errors.badLevel(level));
 
   const extensions = config.extensions ?? [...DEFAULT_EXTENSIONS, ...SOURCE_EXTENSIONS];
-  const { files, truncated } = await walkPrompts(root, { extensions });
+  const { files, truncated } = await walkPrompts(root, { extensions, ignore: config.ignore });
   if (files.length === 0) throw new Error(t.errors.noPromptsFound(root, extensions.join(' ')));
 
   const prompts: string[] = [];
@@ -8556,7 +8558,7 @@ async function scanPrompts(
   // to be fully implemented and completely undiscoverable; an unmarked source
   // file costs one `includes()` and is dropped.
   const extensions = config.extensions ?? [...DEFAULT_EXTENSIONS, ...SOURCE_EXTENSIONS];
-  const { files, truncated } = await walkPrompts(root, { extensions });
+  const { files, truncated } = await walkPrompts(root, { extensions, ignore: config.ignore });
 
   if (files.length === 0) {
     throw new Error(t.errors.noPromptsFound(root, extensions.join(' ')));
@@ -9613,7 +9615,7 @@ async function commandRank(
   const usage = usageFrom(args, config, t);
 
   const extensions = config.extensions ?? [...DEFAULT_EXTENSIONS, ...SOURCE_EXTENSIONS];
-  const { files, truncated } = await walkPrompts(root, { extensions });
+  const { files, truncated } = await walkPrompts(root, { extensions, ignore: config.ignore });
   if (files.length === 0) {
     throw new Error(t.errors.noPromptsFound(root, extensions.join(' ')));
   }
@@ -10088,7 +10090,7 @@ async function commandDoctor(
   const usage = usageFrom(args, config, t);
 
   const extensions = config.extensions ?? [...DEFAULT_EXTENSIONS, ...SOURCE_EXTENSIONS];
-  const { files, truncated } = await walkPrompts(root, { extensions });
+  const { files, truncated } = await walkPrompts(root, { extensions, ignore: config.ignore });
   if (files.length === 0) {
     throw new Error(t.errors.noPromptsFound(root, extensions.join(' ')));
   }
@@ -10387,8 +10389,8 @@ async function diffDirectories(
   const extensions = config.extensions ?? [...DEFAULT_EXTENSIONS, ...SOURCE_EXTENSIONS];
 
   const [beforeWalk, afterWalk] = await Promise.all([
-    walkPrompts(beforeRoot, { extensions }),
-    walkPrompts(afterRoot, { extensions }),
+    walkPrompts(beforeRoot, { extensions, ignore: config.ignore }),
+    walkPrompts(afterRoot, { extensions, ignore: config.ignore }),
   ]);
   if (beforeWalk.files.length === 0 && afterWalk.files.length === 0) {
     throw new Error(t.errors.noPromptsFound(`${beforeRoot}, ${afterRoot}`, extensions.join(' ')));
