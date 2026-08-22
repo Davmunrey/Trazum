@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.56.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.56.1**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,127 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.56.1 — "What the rules actually do"
+
+**A patch, and the number is the honest one.** A minor closes an arc; the arc in
+progress is 1.57 — *the optimiser earns its name again* — and its thesis is what
+belongs on the model's side of the line. Nothing here answers that. What is here
+is the groundwork the arc could not proceed without.
+
+The README says plainly that the deterministic rules recover about one per cent,
+and that is the fair complaint about this tool. It is also an **aggregate**,
+equally consistent with every rule pulling its weight and with two rules doing
+all of it beside five that have never changed a byte of anybody's prompt. Nobody
+here had measured which.
+
+### `trazum rules --measure <dir> [--level <safe|aggressive>] [--json]`
+
+Runs the optimiser once with each rule **alone** and once with each rule
+**removed**, over prompts you actually have.
+
+```
+What each rule recovers in . — 2 prompts, level aggressive
+  403 tokens before. The rules recover 68; normalisation recovers 2 whether a
+  rule is enabled or not, and that is not the rules' work.
+
+  verbose-phrases        lost if removed     16   alone     16   1 prompt
+  filler                 lost if removed      9   alone      9   1 prompt
+  duplicate-blocks       lost if removed      0   alone     40   1 prompt
+  near-duplicate-blocks  lost if removed      0   alone     40   1 prompt
+  duplicate-lines        lost if removed      0   alone     40   1 prompt
+```
+
+**Both figures, never added together.** They diverge exactly where rules
+overlap, and the three above are the case: each recovers forty tokens alone and
+nothing at the margin, because the other two still find it. `alone` by itself
+makes an overlapping rule look load-bearing; `marginal` by itself makes it look
+inert. `sumOfAlone` sits beside `tokensSaved` and **the gap is stated as the
+overlap rather than resolved into a total** — a single figure there is the one
+number that cannot be true.
+
+**The floor is separated out, and finding that was the point.** The optimiser
+normalises whitespace whether or not a rule is enabled. The first version of
+this measurement credited that to the rules, and over this repository's
+tokenizer corpus it reported that the optimiser saved twenty-one tokens and that
+every rule was redundant — a sentence assembled entirely out of somebody else's
+arithmetic.
+
+**Inert is always said about the corpus.** A rule that finds nothing in a set of
+files has not been shown to find nothing anywhere, and the difference is the
+whole distance between "delete this rule" and "measure it on something else".
+
+Emitted as the **rule-yield document** under `--json`, contracted in
+[docs/json-output.md](docs/json-output.md).
+
+### A corpus that exercises every rule
+
+`--measure` could only ever answer "inert here", because nothing in this
+repository contained what most rules look for. Twelve fixtures now do — one per
+rule, each a short realistic prompt carrying exactly what that rule is written
+to find. The guard is **derived from the rule catalogue**, so a rule added
+without a fixture fails the build rather than joining a list nobody reads.
+
+**Building it split one field in two.** `inertHere` was "saved nothing", which
+quietly merged *never fired* with *fired and recovered nothing*. Those look
+identical in a saving column and mean opposite things: the first is a fact about
+the corpus, the second a finding about the rule. `emphasis` is the case — it
+lowercases shouted words, so the prompt changes, the instruction changes, and
+the token count does not move. It now lands in `firedWithoutSavingHere`, which
+the terminal prints **first**, because a reader who meets the two the other way
+round reads both as the same shrug.
+
+The fixture guard asserts **firing**, not saving, for the same reason: asserting
+a saving would have marked a working rule as broken.
+
+### The rule order, and what it decides
+
+The measurement showed three deletion rules each recovering the same tokens,
+which looked like a defect worth chasing. Measured, it is not one: a repeated
+stanza is a repeated *block* and also a set of repeated *lines*, all three can
+find it, and whichever runs first takes it. The applied run credits exactly one
+rule; the leave-one-out measurement credits all three because each *would* have
+caught it alone. Different questions, both answered correctly.
+
+**What had no guard was the consequence.** Coarsest-first means the same saving
+is reported as *one repeated paragraph* instead of *three repeated lines* — a
+sentence somebody can act on instead of three they have to reassemble — and the
+only reason written down for that order was that block deletions leave less text
+for the rest to walk. A reorder would have changed what every user reads while
+every number stayed identical and no test noticed. The order is pinned now,
+adjacency included.
+
+### Fixed
+
+**`rules --measure <dir>` never put the root back on.** The walk returns names
+relative to its root and the command read them bare, so it worked only from a
+run whose working directory happened to be the root — which is the one case a
+first probe uses. `--measure .` passed; `--measure some/dir` threw `ENOENT`.
+
+**A fixture that exercised the wrong rule.** The first near-duplicate fixture
+differed in two words and `duplicate-lines` claimed it instead. A fixture that
+exercises the wrong rule is worse than no fixture, because the guard goes green.
+
+### What this release still cannot do
+
+- **It does not answer the arc's question.** What belongs on the model's side of
+  the line is still open, and the bar the semantic pass set — a finding a
+  dictionary cannot make, verified before it is offered, never applied silently
+  — is still the bar. This release only makes the dictionary side legible enough
+  to argue about.
+- **The remaining chapter needs a credential this work did not have.** Designing
+  a model-side candidate that has never been run against a model is the
+  measure-by-reading this repository refuses everywhere else, so it is named as
+  blocked rather than half-built — the same treatment 1.54.0 gets, and for the
+  same reason.
+- **Every figure carries the estimator's band.** The counter is named in the
+  report because a rule whose yield is a handful of tokens is inside the noise,
+  and nothing here pretends otherwise.
+- **It measures your prompts, not prompts in general.** Every verdict in the
+  document says "here", and the corpus in this repository is twelve fixtures
+  written to exercise twelve rules — not a sample of how anybody writes.
 
 ---
 

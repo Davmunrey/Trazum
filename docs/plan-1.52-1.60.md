@@ -226,7 +226,18 @@ ships, the deterministic rules recover **nothing at all**, which is the fair
 complaint made concrete rather than quoted.
 
 The arc cannot choose what to add on the model's side of the line without this,
-and it did not have it.
+and it did not have it. Two more chapters followed at 1.56.1: a corpus of twelve
+fixtures so "inert" is a signal rather than the only available answer, and a
+guard on the catalogue's order — which decides whether a repeated stanza is
+reported as one paragraph or three lines, for the same saving, and had never
+been written down as deciding anything.
+
+**What the arc still owes is blocked.** The remaining chapter is the thesis:
+what belongs on the model's side of the line, held to the bar the semantic pass
+set. Building a candidate that has never been run against a model is the
+measure-by-reading this repository refuses everywhere else, so it waits on a
+provider credential — named rather than half-built, the same treatment 1.54.0
+gets.
 
 *An intention.* The deterministic rules recover about 1%, which the README says
 plainly and which is the fair complaint about this tool. 1.50.9's semantic pass
