@@ -9,7 +9,26 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
-## Unreleased
+## 1.59.0 — "A language needs a maintainer"
+
+**A minor, and it closes an arc out of order.** 1.57.0 and 1.58.0 are still open
+and stay open: 1.57's remaining chapter needs a provider credential this
+repository does not have, and 1.58 is an editor extension, which is a
+distribution commitment rather than a feature. An arc that can be finished is
+worth more than a slot left idle waiting for one — the same call 1.55.0 made, for
+the same reason, and the gaps stay gaps rather than being renumbered away.
+
+**The arc asked for one thing and got it**: make the maintainer requirement a
+real, documented role with a real bar, and then admit that whether it lands is
+not a scheduling question. Three chapters did that. What it deliberately did not
+do is add an eighth language.
+
+**The uncomfortable half is that the arc's own premise had been broken since
+before the arc existed.** The rule was *a dictionary is a judgement about a
+language and this project will not make it in a language nobody here reads*. Five
+such dictionaries were already shipping. That is now a row on
+[our own medicine](docs/our-own-medicine.md) and a rule in
+[the doctrine](docs/doctrine.md).
 
 ### Added
 
@@ -66,6 +85,21 @@ prompt — the same overreach the detector exists to refuse.
 Proved by running, in both directions: a Dutch prompt that fires the filler
 entries gets the line, an equally wordy English prompt does not, and a Dutch
 prompt too short to place fires a rule and still gets nothing.
+
+
+### Changed
+
+**A rule joined [the doctrine](docs/doctrine.md), and it is the only one there
+that no test can enforce.** *A rule you wrote for yourself is a claim like any
+other* — learned by breaking it. The rules in that document are enforced by
+tests because a rule with nothing checking it drifts as fast as a number with
+nothing checking it; the ones about the project's own conduct drift faster,
+because a test asserts what the code does and nothing asserts that the project
+still does what it said it would.
+
+The cheapest available check is written down with it: put the promise next to
+the inventory. This one was found by writing the rule and the catalogue into the
+same document and noticing they did not match.
 
 
 ## 1.56.2 — "What this project was claiming about itself"

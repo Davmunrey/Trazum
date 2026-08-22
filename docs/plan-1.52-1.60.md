@@ -258,7 +258,7 @@ feature.
 
 That is still true, and it is the reason this is eighth rather than second.
 
-## 1.59.0 — A language needs a maintainer
+## 1.59.0 — A language needs a maintainer — **delivered**
 
 **First chapter landed: the gap is now stated where users meet it.** Five of the
 seven dictionaries — French, German, Portuguese, Italian and Dutch — were

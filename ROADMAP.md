@@ -1184,6 +1184,40 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.59.0 — "A language needs a maintainer" — released
+
+**The arc closes, out of order and deliberately.** 1.57.0 and 1.58.0 stay open —
+1.57's remaining chapter needs a provider credential this repository does not
+have, and 1.58 is an editor extension, a distribution commitment rather than a
+feature. An arc that can be finished beats a slot left idle waiting for one; the
+same call 1.55.0 made, and the gaps stay gaps rather than being renumbered away.
+
+**What the arc asked for**: make the maintainer requirement a real, documented
+role with a real bar, and then admit that whether it lands is not a scheduling
+question. It explicitly did not ask for an eighth language, and does not deliver
+one.
+
+**Five of the seven dictionaries had never been read by anybody who speaks the
+language.** `DICTIONARY_STANDING` records which is which. The report says so on
+two branches that are different claims: when nothing fired, where silence reads
+as *your prompt is already efficient*; and when a rule **did** fire on a prompt in
+one of the five, where the tool has just applied an unverified judgement to
+somebody's text. The second is gated on the prompt's own detected language and
+stays silent when the language cannot be placed.
+
+**[The role](docs/language-maintainer.md) is written down with its bar**, and
+`scripts/dictionary-worklist.mjs` prints the entries a maintainer would be
+judging — which corrected the page's own estimate from "a few hundred short
+phrases" to thirty-to-thirty-eight, and surfaced that the five unreviewed
+dictionaries are less than half the size of the two somebody read.
+
+**A rule joined the doctrine and no test can enforce it**: *a rule you wrote for
+yourself is a claim like any other.* This arc's own premise had been broken for as
+long as the premise existed — the promise not to judge a language nobody here
+reads sat in this roadmap while five such dictionaries shipped. No guard catches a
+rule and a catalogue disagreeing; only re-reading one against the other does.
+
+
 ## 1.56.2 — "What this project was claiming about itself" — released
 
 **A patch with no new command, and two arcs each opened rather than closed.**
@@ -1807,6 +1841,19 @@ carry tests now that derive the claim from the code rather than trusting prose.
 code: [docs/plan-1.52-1.60.md](docs/plan-1.52-1.60.md). Under the numbering
 adopted at 1.50.1 a minor closes an arc, so each of 1.52.0 … 1.60.0 lands one
 thesis.
+
+**1.59.0 is delivered, and closes its arc out of order.** The maintainer
+requirement is a documented role with a bar, the five dictionaries nobody here
+reads are named where a reader would otherwise draw the wrong conclusion, and the
+worklist a volunteer would be handed can be printed. What it does not deliver is
+an eighth language: whether the role is ever filled is not a scheduling question,
+and the arc closes saying so rather than implying a queue.
+
+**1.57.0 and 1.58.0 are now the open ones**, and neither is idle by accident.
+1.57's remaining chapter — what belongs on the model's side of the line — needs a
+provider credential this repository does not have, the same block 1.54.0 sits
+behind. 1.58 is an editor extension, which this roadmap has called a distribution
+commitment rather than a feature since 0.10.0.
 
 **1.52.0, 1.53.0, 1.55.0 and 1.56.0 are delivered.** The gateway stopped buffering the whole
 upstream reply before writing a byte back, and then learned who it can stand in

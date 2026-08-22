@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.56.2**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.59.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,158 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.59.0 — "A language needs a maintainer"
+
+**A minor closes an arc, and this one closes out of order.** 1.57.0 and 1.58.0
+stay open: 1.57's remaining chapter needs a provider credential this repository
+does not have, and 1.58 is an editor extension — a distribution commitment rather
+than a feature. An arc that can be finished is worth more than a slot left idle
+waiting for one, the same call 1.55.0 made. The gaps stay gaps rather than being
+renumbered away.
+
+**The arc asked for one thing**: make the maintainer requirement a real,
+documented role with a real bar, and then admit that whether it lands is not a
+scheduling question. It deliberately did not ask for an eighth language, and does
+not deliver one.
+
+### The five dictionaries nobody here reads, named where it matters
+
+Trazum's trimming dictionaries cover seven languages. Two are languages this
+project reports in, which is the only evidence in this repository that anybody
+here reads them. For French, German, Portuguese, Italian and Dutch, nothing says
+a speaker ever agreed that removing an entry leaves the prompt asking for the
+same thing.
+
+**Two branches say so, and they are different claims.** When no rule fires:
+
+```
+No rule found anything to trim.
+The phrase dictionaries cover English, Spanish, French, German, Portuguese,
+Italian and Dutch. A prompt in another language is not necessarily efficient —
+it may just be one Trazum cannot read yet.
+Of those, French, German, Portuguese, Italian and Dutch carry entries nobody
+here reads: written by the same process that wrote the rules, never agreed by a
+speaker of the language.
+```
+
+And when a rule **does** fire on a prompt whose own language is one of the five —
+the branch that matters most, because there the tool has just applied an
+unverified judgement to somebody's text:
+
+```
+Rules applied
+  These changes came from the Dutch dictionary, which nobody here reads. Its
+  entries were written by the same process that wrote the rules and never agreed
+  by a speaker — read the diff before trusting it.
+  [safe] Filler and throat-clearing (4×, ~29 tokens)
+```
+
+That second line is gated on the prompt's own detected language, so an English or
+Spanish prompt never sees it and it never becomes a footer. `detectTextLanguage`
+answers `null` on a prompt too short or too mixed to place, and it stays silent
+then: not-detected is not not-unreviewed, but guessing a language in order to warn
+about it would put a Dutch warning on a Portuguese prompt.
+
+**`DICTIONARY_STANDING`** is the record behind both — `reviewed` or `unreviewed`
+per language, with what was actually done to the entries. Exported from
+`@trazum/core` with `dictionaryStanding(code)` and
+`languagesWithStanding(codes, standing)`.
+
+**Nothing is deleted.** A Dutch prompt is better served by a dictionary that fires
+and says it was never reviewed than by silence that reads as *your prompt is
+already efficient*.
+
+### [docs/language-maintainer.md](docs/language-maintainer.md) — the role, with a bar
+
+What a maintainer decides, which is not "is this the right translation": whether
+removing an entry leaves the prompt asking for the same thing, whether a word is
+doing a second job, whether the phrase gets written at all, whether an output cue
+means what the catalogue says, and where the language makes this analysis wrong.
+
+What is asked — a bounded commitment, because an unbounded one gets declined by
+exactly the people worth having — and what is deliberately **not** asked:
+availability, a response time, or ownership of anything outside the dictionary.
+
+What happens when nobody holds it: the language stays, its record says
+`unreviewed`, and nothing pretends otherwise. If a maintainer stops, the record
+goes back on the day they say so — not silently, and not on a guess about how long
+is too long.
+
+### `node scripts/dictionary-worklist.mjs <lang> [--json]`
+
+The worklist that role asks for, printed. Until this existed the request could not
+be scoped: the entries live in one flat array per rule with a `// Dutch` comment
+marking where each language starts, so a prospective maintainer had to read
+`phrases.ts` to find out how much they were agreeing to.
+
+```
+Dutch: 30 entries across 6 rules
+
+verbose-phrases (10)
+  met het doel om → om
+  vanwege het feit dat → omdat
+  …
+politeness (6)
+  alsjeblieft → (deleted)
+```
+
+A replacement and a deletion read differently on purpose: one asks *is the short
+form the same instruction*, the other asks *does the prompt survive losing this at
+all*. `--json` emits the same thing for a tool.
+
+**Two things the counting found.** The maintainer page said "a few hundred short
+phrases" and it is **thirty to thirty-eight** — an afternoon, not a project, and
+the figure was wrong in the direction that discourages volunteers. And English has
+89 entries against Spanish's 81, so the five unreviewed dictionaries are also less
+than half the size of the two somebody read; recorded on the page and not
+addressed.
+
+### A rule joined the doctrine, and no test can enforce it
+
+*A rule you wrote for yourself is a claim like any other.* The rules in
+[the doctrine](docs/doctrine.md) are enforced by tests because a rule with nothing
+checking it drifts as fast as a number with nothing checking it. **The ones about
+your own conduct drift faster**, because a test asserts what the code does and
+nothing asserts that the project still does what it said it would.
+
+The cheapest available check is written down beside it: put the promise next to
+the inventory. This one was found exactly that way.
+
+### What this release found wrong in itself
+
+**A rule this project wrote for itself, and then broke.** *A dictionary is a
+judgement about a language and this project will not make it in a language nobody
+here reads* was held up for several arcs as the reason an eighth language was not
+scheduled, while five dictionaries no speaker had read were already shipping —
+**since they shipped**. Every other row on *what we got wrong, in public* is a
+claim nothing checked; this one is a rule and a catalogue, each correct alone,
+disagreeing with each other. No guard catches that shape.
+
+**And the page written to fix it overstated the work by an order of magnitude**,
+two chapters before something counted the entries.
+
+**And the worklist script printed an EPIPE stack trace** when piped into `head`,
+which is what its own documented usage invites. Found by running it.
+
+### Guards
+
+Derived rather than written, because a list that agrees with itself proves
+nothing:
+
+- The `reviewed` set is read **off the report catalogues on disk**, so a French
+  report translation fails the build until somebody decides what it means for the
+  French dictionary.
+- The worklist is checked against a **second, different parse** of the same file:
+  it slices between language markers, the guard counts the whole array, and they
+  must agree. An entry above the first marker appears on nobody's worklist and
+  still edits prompts.
+- The five counts the maintainer page quotes are checked against what the script
+  produces, so the number a volunteer is shown cannot drift from the work.
+- Every one of those is proved against a fabricated table, a fabricated
+  dictionary with an orphaned entry, and a page with a language quietly dropped.
 
 ---
 
