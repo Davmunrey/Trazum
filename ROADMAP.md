@@ -1184,6 +1184,35 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.56.1 — "What the rules actually do" — released
+
+**A patch, and the number is the honest one.** A minor closes an arc, and the
+arc in progress is 1.57 — the optimiser earning its name again — whose thesis is
+what belongs on the model's side of the line. Nothing in this release answers
+that. What it does is make the other side legible enough to argue about.
+
+`trazum rules --measure` runs the optimiser once per rule alone and once per
+rule removed, keeps the two figures apart because they diverge wherever rules
+overlap, and separates the normalisation floor from the rules' own work. Twelve
+fixtures exercise every rule, so "inert" becomes a signal rather than the only
+answer available. And the catalogue's order — which decides whether a repeated
+stanza is reported as one paragraph or three lines, for the same saving — is
+pinned, because nothing had ever said out loud that the order decides what the
+reader is told.
+
+**Three findings the measurement produced immediately.** The first version
+credited the optimiser's normalisation to the rules and concluded that every
+rule was redundant. `emphasis` fires and recovers nothing — it lowercases
+shouted words, changing the instruction and not the count — which needed a field
+of its own, because "never fired" and "fired and saved nothing" look identical
+in a saving column and mean opposite things. And on the two sample prompts this
+repository ships, the deterministic rules recover **nothing at all**.
+
+**What the arc still owes is blocked, and named as such.** A model-side
+candidate that has never been run against a model is the measure-by-reading this
+repository refuses everywhere else. Same treatment as 1.54.0, same reason.
+
+
 ## 1.56.0 — "Something that runs" — released
 
 **The arc that turned out not to need a runtime.** It asked whether alerting can

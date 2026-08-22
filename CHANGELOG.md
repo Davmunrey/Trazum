@@ -11,6 +11,18 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+
+## 1.56.1 — "What the rules actually do"
+
+**A patch, and the number is the honest one.** A minor closes an arc, and the
+arc in progress is 1.57 — *the optimiser earns its name again* — whose thesis is
+what belongs on the model's side of the line. Nothing here answers that. What is
+here is the groundwork the arc could not proceed without: the deterministic side
+measured, exercised and pinned, so a decision about what to add is made against
+figures instead of against a headline percentage nobody can reproduce.
+
 ### Added
 
 **`trazum rules --measure <dir>` — and what does each rule actually recover?**
