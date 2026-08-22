@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.59.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.60.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,170 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.60.0 — "Our own medicine, measured"
+
+**A minor closes an arc, and this closes the last arc the 1.52–1.60 plan named.**
+It does not close the plan. 1.54.0 and 1.57.0 are blocked on provider credentials
+this repository does not have; 1.58.0 is an editor extension, a distribution
+commitment rather than a feature. **Six of the nine arcs are delivered and the
+other three stay open and named** — the plan's own answer to an arc it cannot
+build, rather than renumbering the gap away.
+
+The arc's thesis was written down before the code: *make at least one of three
+admissions about this project no longer true, with a measurement rather than an
+argument — and if it cannot, say so and close on the number it could not
+produce.*
+
+### The scoreboard, which is the deliverable
+
+| Admission | After the arc |
+|---|---|
+| The record is self-reported | **No longer true** — five defects were found by CodeQL and by nothing here |
+| No outcome is recorded for any of it | **Weakened** — one outcome on the record |
+| This project has no usage log of its own | **Still true, in full** |
+
+**One of three.** Less than the arc hoped for and exactly what it committed to
+report.
+
+### Five defects on the record were found by an outside instrument
+
+In 1.8.0, 1.46.0, 1.50.3, 1.53.4 and 1.55.0 — and not one by a test in this
+repository. Tabulated on [our own medicine](docs/our-own-medicine.md) with what
+each found: an SSRF where a validated URL and a fetched URL were different
+expressions, a time-of-check/time-of-use race on a size bound, two unanchored
+host patterns a lookalike domain satisfies, a ReDoS in a guard this project had
+just written whose own proof would have passed against the vulnerable version,
+and a file-system race on the pull request that introduced it.
+
+**The 1.8.0 entry carries the weight**: CodeQL kept that alert open **twice**,
+against this project's judgement, and was right both times. A self-report cannot
+contain that shape by definition.
+
+**What it does not establish is written beside it.** CodeQL is not an independent
+audit — it runs because this project turned it on and would stop the day somebody
+deleted a workflow. It is an outside instrument whose rules this project did not
+write and cannot argue with, which is narrower and is what was actually measured.
+
+### The tokens this project puts on your bill, counted for the first time
+
+Four system prompts ship inside `@trazum/core` and are sent to a model on every
+`--llm`, `--suggest`, `--semantic` and examples-review run — on your key, on your
+bill, before a single token of your own prompt is counted. A tool that reports
+other people's prompt cost and had never counted its own is the self-report
+problem in its most literal form.
+
+| Prompt | Tokens | Recovered |
+|---|---|---|
+| `suggest` | 291 | 2 |
+| `semantic` | 382 | 4 |
+| `refiner` | 198 | 0 |
+| `example-review` | 305 | 0 |
+
+**1176 tokens, and this project's own rules recover 6 — half a per cent.** Eleven
+of the twelve rules are inert on all four. The honest reading is not that the
+rules are bad: these are prompts written to be read by a model, with no
+politeness, no hedging and nothing repeated, which is the shape the dictionaries
+have nothing to say about.
+
+**The uncomfortable arithmetic is published rather than left to a sceptic.** At
+about one per cent recovered, any prompt under roughly thirty thousand tokens
+costs more in this project's own instructions on a single `--suggest` run than
+the rules recover from it. Different budgets — a per-call cost you opt into
+against a saving on every call forever — and the first thing a sceptical reader
+would compute.
+
+**This is the outcome that weakened the second admission**, and its limits are on
+the page: nothing about whether users benefit, nothing about the model-side passes
+those tokens buy, and still self-reported.
+
+### The loop this product sells was inert in the repository that sells it
+
+`trazum init` writes a config. `trazum baseline` records what a repository's
+prompts cost. `trazum check` fails a build when they grow. All three shipped arcs
+ago, all three are what [docs/ci.md](docs/ci.md) tells other people to run — and
+**this repository had no config and no baseline of its own.**
+
+Both are committed now, CI runs the gate, and the gate was proved by growing the
+prompts past the limit in a scratch copy and watching it exit 1.
+
+### `ignore` — a new config key
+
+```json
+{ "extensions": [".txt"], "ignore": ["**/fixtures/**", "**/corpus/**"] }
+```
+
+The companion to `extensions`, and the feature that had to exist before any of the
+above was possible. Directory mode decided what a prompt was from the extension
+alone, so a repository with a corpus of `.txt` files got every fixture walked,
+budgeted and baselined, and there was no way to say otherwise.
+
+Globs relative to the walk root. **A matched directory is not descended into at
+all**, so an ignored tree costs one comparison rather than one per file in it. A
+pattern that climbs out of the project with `..`, or an absolute one, is refused
+the way a budget pattern is — on a pull request the config comes from whoever
+opened it. Threaded through every walk that already consulted `extensions`,
+because the two halves of *what counts as a prompt here* disagreeing is the same
+defect one layer down.
+
+### Why the third admission stands
+
+This project would have to spend money on models and record what it spent, and
+**it does not spend**: the deterministic path makes no calls at all, and the
+model-side passes run on the user's key. What could be counted is the cost it
+*imposes*, which is counted above under a heading that says it is a different
+sentence. Merging the two would have been this document's own first doctrine rule
+broken on its own page.
+
+### Why the second is only weakened, and what was refused
+
+*Whether it helps* needs somebody it helped, and there is no such person on this
+record.
+
+*Whether it is used* had one available instrument and **it was refused, on the
+record**: npm download counts are fetches, not uses — mirrors, CI runners and bots
+are in the total, so the figure bounds **above** and nothing bounds below. `A
+floor can prove "over" and can never prove "under"` is on this project's own
+doctrine list; quoting a ceiling as evidence of adoption is that rule inverted. A
+number nobody can check is worse here than a gap that is named.
+
+### What this release found wrong in itself
+
+Four things, and the first is the worst kind:
+
+- **A gate flag that silently gates nothing.** `check --baseline` against a config
+  with no `baseline` block prints nothing about the baseline and exits 0 — the
+  flag is read as `config.baseline !== undefined && boolFlag(...)`, so a missing
+  block *disables* the gate instead of failing the run. A green build, from a
+  command invoked with the flag that asks for the check. Found the first time the
+  CLI was pointed at this repository.
+- **The reason no baseline was ever committed here.** At the root with the default
+  extensions, `trazum baseline` records **74 prompts and 509,255 tokens** — README,
+  changelog, roadmap — plus 35 test fixtures.
+- **Three derived guards had to fail before the documentation caught up.** `ignore`
+  was missing from the README, from the CLI help in both locales, and from the
+  skill's config table; each has a test deriving the key list from the schema, and
+  each failed until it was written.
+- **The prompts this project ships to models live inside `.ts`**, where the
+  baseline gate cannot see them at all. Their cost is measured and guarded by a
+  test instead, because the product's own mechanism cannot reach them. Named
+  rather than papered over.
+
+### Guards
+
+- The published per-prompt figures are checked against what the optimiser
+  produces, and the four prompts are derived from the package's own exports, so a
+  fifth shipped unmeasured fails the build.
+- The committed baseline is checked against the tree file by file; the config's
+  `baseline` block is asserted present; the workflow is asserted to still carry
+  the step; and the gate is run against a scratch copy grown past the limit.
+- The scoreboard is graded against the page — exactly three admissions, exactly
+  one fallen, and the two that stand still stated below.
+- Every one of those is proved against fabricated input: a fifth export, a
+  drifted row, a table claiming two admissions fell, a dictionary with an orphaned
+  entry, and a release with nothing external in it.
 
 ---
 
