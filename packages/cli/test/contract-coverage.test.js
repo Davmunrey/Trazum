@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { SPAWN_ENV } from './env.mjs';
-import { outcomeReport } from '../../core/dist/index.js';
+import { CONTRACT_NAMES, outcomeReport } from '../../core/dist/index.js';
 import { sectionOf } from '../../../test-utils/section.mjs';
 
 /**
@@ -361,5 +361,166 @@ describe('the six contracts that had no guard', () => {
       [...promised(made, '## The example document')].sort(),
       ['beats', 'files', 'prompts', 'root', 'truncated'],
     );
+  });
+});
+
+/**
+ * `docs/format.md` is the front door of the interchange format, and it counts.
+ *
+ * Its first sentence states how many documents there are; its table is the list
+ * a connector author works from. The page already carries a confession that the
+ * count said "seven" through four additions — and the same thing had happened
+ * again by the time this was written: three documents with their own contract
+ * table, their own `schemaVersion` and their own emitter (`pulse`,
+ * `rules --measure`, and the gateway's 402 body) were in neither the table nor
+ * the count.
+ *
+ * So none of it is read here. The list is derived from the contract tables that
+ * exist, matched by the anchors the page itself links to, and the counts in the
+ * prose are derived from the list.
+ */
+
+const FORMAT = join(ROOT, 'docs/format.md');
+
+/** GitHub's heading anchor, which is what the table's last column links to. */
+const anchor = (heading) =>
+  heading
+    .replace(/^## /, '')
+    .toLowerCase()
+    .replace(/`/g, '')
+    .replace(/[^a-z0-9 -]/g, '')
+    .replace(/ /g, '-');
+
+const WORDS = [
+  'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight',
+  'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen',
+  'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty',
+];
+const ORDINALS = {
+  13: 'thirteenth',
+  14: 'fourteenth',
+  15: 'fifteenth',
+  16: 'sixteenth',
+  17: 'seventeenth',
+};
+
+/** The rows of the front-door table: name, `--contract` cell, and where it links. */
+const formatRows = (page) =>
+  [...page.matchAll(/^\| \*\*([^*]+)\*\* \| [^|]* \| ([^|]*) \| ([^|]*) \|$/gm)].map((row) => ({
+    name: row[1].trim(),
+    contract: row[2].trim().replace(/`/g, ''),
+    documentedIn: row[3].trim(),
+  }));
+
+/**
+ * The one contract with a page of its own.
+ *
+ * The plan is documented twice — a section in `json-output.md` and
+ * `plan-format.md`, which the front-door table links to instead of the anchor.
+ * Listed here rather than special-cased silently, and the entry is checked: the
+ * page has to exist, carry a field table, and be what the row actually links
+ * to. Moving another contract to its own page fails the anchor check first,
+ * which is the loud outcome.
+ */
+const ELSEWHERE = { '## The plan document': 'docs/plan-format.md' };
+
+describe('docs/format.md counts what exists', () => {
+  it('has a row for every contract table in docs/json-output.md, matched by the anchor it links to', async () => {
+    const page = await readFile(FORMAT, 'utf8');
+    const document = await readFile(DOC, 'utf8');
+    const linked = formatRows(page)
+      .map((row) => row.documentedIn.match(/json-output\.md#([a-z0-9-]+)/))
+      .filter(Boolean)
+      .map((match) => match[1]);
+    for (const [heading, file] of Object.entries(ELSEWHERE)) {
+      const own = await readFile(join(ROOT, file), 'utf8');
+      assert.ok(own.includes(TABLE), `${file} carries no field table`);
+      const row = formatRows(page).find((entry) => entry.documentedIn.includes(file.replace('docs/', '')));
+      assert.ok(row, `no row in docs/format.md links to ${file}`);
+      linked.push(anchor(heading));
+    }
+    const exists = contracts(document).map(anchor);
+    assert.deepEqual(
+      exists.filter((slug) => !linked.includes(slug)),
+      [],
+      'a contract documented in docs/json-output.md that the interchange page does not list — a connector author reading format.md would not know it is there',
+    );
+    assert.deepEqual(
+      linked.filter((slug) => !exists.includes(slug)),
+      [],
+      'the interchange page links to a section of docs/json-output.md that carries no contract table',
+    );
+  });
+
+  it('says the same count in README.md that the front door says', async () => {
+    /**
+     * `interchange.test.js` already holds `docs/format.md`'s sentence to the
+     * table under it, and has since the count said seven with ten rows. It did
+     * not catch these three, and could not have: **both halves it compares are
+     * written by hand**, so a document missing from the table and missing from
+     * the sentence leaves the two agreeing. The check above is the half that
+     * was absent — the table against the contracts that exist.
+     *
+     * This is the other place the same sentence is written. `README.md` said
+     * twelve in the section a reader lands on from the feature list, and one
+     * page being derived from the table is no help to the other.
+     */
+    const rows = formatRows(await readFile(FORMAT, 'utf8'));
+    const emitted = rows.length - 1; // the outcome report is defined, never emitted
+    const readme = (await readFile(join(ROOT, 'README.md'), 'utf8')).replace(/\s+/g, ' ');
+    assert.ok(
+      readme.includes(
+        `Trazum emits ${WORDS[emitted]} documents, defines a ${ORDINALS[rows.length]} it does not emit`,
+      ),
+      `README.md does not say ${WORDS[emitted]} and a ${ORDINALS[rows.length]}`,
+    );
+  });
+
+  it('agrees with `--contract` about which documents it can check, and how many', async () => {
+    /*
+      Stronger than the two checks `interchange.test.js` already makes, in one
+      place each: that file requires every contract name to appear *somewhere*
+      on the page, which prose satisfies, and requires every cell it finds to be
+      a name the CLI accepts. Neither notices a contract named in a paragraph
+      and missing from the column, so this compares the column to the list.
+    */
+    const raw = await readFile(FORMAT, 'utf8');
+    const page = raw.replace(/\s+/g, ' ');
+    const named = formatRows(raw)
+      .map((row) => row.contract)
+      .filter((cell) => cell !== '—' && cell !== '');
+    assert.deepEqual(
+      named.slice().sort(),
+      CONTRACT_NAMES.slice().sort(),
+      'the table names a different set of checkable contracts than `--contract` accepts',
+    );
+    assert.ok(
+      page.includes(`**\`--contract\` names ${WORDS[CONTRACT_NAMES.length]} of them.**`),
+      `the prose does not say ${WORDS[CONTRACT_NAMES.length]}, and --contract accepts ${CONTRACT_NAMES.length}`,
+    );
+  });
+
+  it('keeps the plan\'s two tables agreeing on what the document holds', async () => {
+    /**
+     * Documented twice is documented twice: `plan-format.md` breaks the actions
+     * out into a table of their own, so the comparison is at the top level,
+     * where both pages claim to list the same document.
+     */
+    const own = await readFile(join(ROOT, 'docs/plan-format.md'), 'utf8');
+    const shared = promised(await readFile(DOC, 'utf8'), '## The plan document');
+    const here = promised(own, '## What it holds');
+    assert.deepEqual([...here].sort(), [...shared].sort(), 'the plan is documented twice and the two disagree');
+  });
+
+  it('builds the anchor GitHub builds, including the one with backticks and dashes', () => {
+    /**
+     * The whole match above runs through `anchor`, so a slug rule that quietly
+     * disagreed with GitHub's would report every row as missing or none. The
+     * awkward one is real: `## The \`--by-source\` document` has to become
+     * `the---by-source-document`, backticks gone and the dashes kept.
+     */
+    assert.equal(anchor('## Top-level fields'), 'top-level-fields');
+    assert.equal(anchor('## The `--by-source` document'), 'the---by-source-document');
+    assert.equal(anchor('## The roll-up document'), 'the-roll-up-document');
   });
 });

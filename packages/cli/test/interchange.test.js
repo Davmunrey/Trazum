@@ -299,6 +299,7 @@ describe('the format page and the contracts it documents', () => {
     const words = {
       seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11,
       twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15,
+      sixteen: 16, seventeen: 17, eighteen: 18,
     };
     const rows = [...page.matchAll(/^\| \*\*[^*]+\*\* \|/gm)].length;
     assert.ok(rows > 5, `only ${rows} contract rows parsed out of docs/format.md — has the table moved?`);
@@ -318,6 +319,7 @@ describe('the format page and the contracts it documents', () => {
     const ordinals = {
       10: 'tenth', 11: 'eleventh', 12: 'twelfth',
       13: 'thirteenth', 14: 'fourteenth', 15: 'fifteenth',
+      16: 'sixteenth', 17: 'seventeenth', 18: 'eighteenth',
     };
     const ordinal = ordinals[rows];
     assert.ok(ordinal !== undefined, `no ordinal known for ${rows} rows — add it above`);
