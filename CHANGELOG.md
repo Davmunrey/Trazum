@@ -9,7 +9,12 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
-## Unreleased
+## 1.60.2 — "Checked by running"
+
+**A patch, and every entry in it is the same act.** With the plan finished as far
+as it can go, the work is taking a claim this project makes about itself and
+asking what enforces it — then measuring by running rather than by reading. Four
+findings, one of which reached installable code.
 
 ### Changed
 
