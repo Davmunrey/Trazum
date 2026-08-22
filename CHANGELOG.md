@@ -48,6 +48,13 @@ translation"), what is asked of them, what is deliberately not asked, and what
 happens when nobody holds it — the language stays, its record says `unreviewed`,
 and nothing pretends otherwise.
 
+**It is also a row on [our own medicine](docs/our-own-medicine.md)**, and a
+different shape from the others there. Every other row is a claim nothing
+checked; this one is a rule this project wrote for itself and then broke, held up
+for several arcs as the reason an eighth language was not scheduled while five
+unread dictionaries were already shipping. No guard catches that — only
+re-reading the rule against the catalogue does.
+
 **What this chapter does not do** is promise an eighth language. Whether the
 role is ever filled is not a scheduling question, and the page says so.
 

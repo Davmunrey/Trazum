@@ -69,6 +69,7 @@ misses is a tool nobody believes. A selection, and these are the real ones:
 | #290 | `trazum report --year --json` printed prose before the document, so no machine could read it | caught same day |
 | #294 | `CONTRIBUTING.md` said `npm test` ran two suites; it runs five, and CI's step names hid MCP too | unknown, since MCP shipped |
 | #295 | `docs/releasing.md` said "both manifests" and "both publish steps" with three packages | unknown, since MCP shipped |
+| #346 | Five of the seven phrase dictionaries were described as covering languages nobody here reads | **since they shipped** |
 
 The long ones are the interesting ones, and the longest is the newest: **the
 front page of this project contradicted itself about the number of advisories
@@ -76,6 +77,22 @@ for fifty-two releases.** All of them were **claims nothing checked** — a vers
 number in prose, an ordering nobody asserted, a count stated twice in two
 different nouns with a guard reading only one. Each drifted the moment the
 person maintaining it stopped hand-checking, and each has a guard now.
+
+**The #346 row is a different shape from the rest, and worse.** Every other row
+is a claim nothing checked — a version number in prose, a count stated twice. That
+one is a rule this project wrote for itself and then broke: *a dictionary is a
+judgement about a language and this project will not make it in a language nobody
+here reads*, held up for several arcs as the reason an eighth language was not
+scheduled, while five dictionaries that had never been read by a speaker were
+already shipping. A guard cannot catch that; only re-reading the rule against the
+catalogue can, and nobody did for as long as both existed.
+
+It is fixed the way this project fixes things rather than the way it would be
+tempting to: the five stay, because a Dutch prompt is better served by a
+dictionary that fires and says it was never reviewed than by silence, and the
+report now says which five. What the role would actually involve is written down
+in [maintaining a language](language-maintainer.md), so the sentence about it
+being "not in my gift" costs something to say.
 
 The #290 row is the one that should be uncomfortable. `outcome-report` was
 declared a contract, given field rules and cross-rules, documented as something
