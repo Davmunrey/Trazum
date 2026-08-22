@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.56.1**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.56.2**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,142 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.56.2 — "What this project was claiming about itself"
+
+**A patch, and no new command.** A minor closes an arc; two arcs each gained
+their first chapter here and neither is closed. Both chapters are the same act
+done twice: a sentence this project had been saying about itself turned out to
+be wrong, and was measured rather than argued with.
+
+### Five of the seven phrase dictionaries were never read by anybody who speaks the language
+
+The dictionaries cover English, Spanish, French, German, Portuguese, Italian and
+Dutch, and when no rule fired the report named all seven in one sentence. That
+reads as seven dictionaries of equal standing.
+
+Two of them are languages Trazum reports in, which is the only evidence in this
+repository that anybody here reads them. For the other five, nothing says a
+speaker ever agreed that removing an entry leaves the prompt asking for the same
+thing.
+
+**The roadmap had been saying the opposite for several arcs.** An eighth language
+was held back on the stated grounds that a dictionary is a judgement about a
+language and this project will not make it in a language nobody here reads.
+Seven dictionaries shipped anyway, and the catalogue is the one users meet.
+
+**What the report prints now**, on the branch where an empty result would
+otherwise reassure, in both report languages:
+
+```
+No rule found anything to trim.
+The phrase dictionaries cover English, Spanish, French, German, Portuguese,
+Italian and Dutch. A prompt in another language is not necessarily efficient —
+it may just be one Trazum cannot read yet.
+Of those, French, German, Portuguese, Italian and Dutch carry entries nobody
+here reads: written by the same process that wrote the rules, never agreed by a
+speaker of the language.
+```
+
+Its own line rather than a qualifier folded into the first, so the day somebody
+maintains all seven it is deleted rather than reworded. It does not print when a
+rule did fire: the admission belongs to the branch where silence misleads, and a
+line under every report is a footer people learn to skip.
+
+**`DICTIONARY_STANDING`** is the record behind it — `reviewed` or `unreviewed`
+per language, with what was actually done to the entries in each case. Exported
+from `@trazum/core` along with `dictionaryStanding(code)` and
+`languagesWithStanding(codes, standing)`.
+
+**The evidence that reading a list is not enough is a bug already on this
+project's record.** `INTENSIFIERS` shipped `molto`, `muito` and `heel`, each an
+intensifier *and* a quantifier, so *you have much time* became *you have time* in
+three languages at once. Spanish avoids exactly that trap — `muy` yes, `mucho`
+no — because somebody who speaks Spanish wrote it. The three were caught by
+running prompts through the rules, which is a far weaker instrument than a
+speaker. One bug found by the weaker instrument is not a review.
+
+**Nothing is deleted.** A Dutch prompt is better served by a dictionary that
+fires and says it was never reviewed than by silence.
+
+### [docs/language-maintainer.md](docs/language-maintainer.md) — the role, with a bar
+
+What a maintainer actually decides, which is not "is this the right
+translation": whether removing an entry leaves the prompt asking for the same
+thing, whether a word is doing a second job, whether the phrase gets written at
+all, whether an output cue means what the catalogue says, and where the language
+makes this analysis wrong.
+
+What is asked — a bounded commitment, because an unbounded one gets declined by
+exactly the people worth having — and what is deliberately **not** asked:
+availability, a response time, or ownership of anything outside the dictionary.
+
+And what happens when nobody holds it: the language stays, its record says
+`unreviewed`, and nothing pretends otherwise. **This page does not promise an
+eighth language.** Whether the role is ever filled is not a scheduling question,
+and the page closes on that rather than on a plan.
+
+### One of the three things this project could not say about itself is no longer true
+
+[docs/our-own-medicine.md](docs/our-own-medicine.md) ends by listing what this
+project cannot say about itself. Arc 1.60 asks for at least one of them to fall
+to a measurement rather than an argument. The third was *"every miss above was
+found and written down by the same process that made it"*.
+
+**Five defects on the record were found by CodeQL** — in 1.8.0, 1.46.0, 1.50.3,
+1.53.4 and 1.55.0 — and not one by a test in this repository. They are tabulated
+with what each found: an SSRF where a validated URL and a fetched URL were
+different expressions, a time-of-check/time-of-use race on a size bound, two
+unanchored host patterns a lookalike domain satisfies, a ReDoS in a guard this
+project had just written whose own proof would have passed against the vulnerable
+version, and a file-system race on the pull request that introduced it.
+
+**The 1.8.0 entry carries the weight**: CodeQL kept that alert open twice,
+against this project's judgement, and was right both times. A self-report cannot
+contain that shape by definition.
+
+**What it does not establish is written beside it.** CodeQL is not an independent
+audit — it runs because this project turned it on and would stop the day somebody
+here deleted a workflow. It is an outside instrument whose rules this project did
+not write and cannot argue with, which is narrower than "somebody audited us" and
+is what was actually measured. The other two admissions — no usage log of its
+own, no outcome recorded for any of its work — are untouched.
+
+### What this release found wrong in itself
+
+**A rule this project wrote for itself, and then broke.** Every other row on
+*what we got wrong, in public* is a claim nothing checked — a version number in
+prose, a count stated twice in two different nouns. This one is different and
+worse: the rule was *a dictionary is a judgement about a language and this
+project will not make it in a language nobody here reads*, held up for several
+arcs as the reason an eighth language was not scheduled, while five dictionaries
+no speaker had read were already shipping. **Since they shipped**, and no guard
+catches that shape — only re-reading the rule against the catalogue does.
+
+**And a second, found while cutting this release.** `docs/releasing.md` step 3
+listed the `@trazum/core` dependency as living in `packages/cli` and
+`packages/mcp`. It is in **three** places — `apps/web` pins it too — so anybody
+following the recipe left the web app resolving a registry copy of the previous
+version instead of the workspace. `publish.test.js` caught it here, which is why
+it is a paragraph rather than a released defect, and the recipe now says three.
+
+### Guards
+
+Derived rather than written, because a list that agrees with itself proves
+nothing:
+
+- The `reviewed` set is read **off the report catalogues on disk**, so a French
+  report translation fails the build until somebody decides what it means for the
+  French dictionary.
+- `docs/language-maintainer.md` is checked against the code's unreviewed set and
+  its count, not against a hand-kept list.
+- The releases named as outside findings are checked to actually mention CodeQL
+  in their own notes, so the claim cannot grow past its evidence.
+- Every one of those is proved against a fabricated table, a page with a language
+  quietly dropped, and a release with nothing external in it — a check that only
+  ever sees today's correct values cannot fire.
 
 ---
 

@@ -9,7 +9,14 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
-## Unreleased
+## 1.56.2 — "What this project was claiming about itself"
+
+**A patch, and the number is the honest one.** A minor closes an arc. Two arcs
+each gained their first chapter here — 1.59, *a language needs a maintainer*,
+and 1.60, *our own medicine, measured* — and neither is closed. Nothing here is
+a new command; both chapters are the same act done twice: a sentence this
+project had been saying about itself turned out to be wrong, and was measured
+rather than argued with.
 
 ### Added
 
@@ -99,6 +106,15 @@ and a test asserts the page still says so.
 
 The list of releases is guarded: `docs.test.js` fails if one named in the table
 stops mentioning CodeQL in its notes, so the claim cannot grow past its evidence.
+
+
+### Fixed
+
+**`docs/releasing.md` listed two of the three places `@trazum/core` is pinned.**
+The recipe named `packages/cli` and `packages/mcp`; `apps/web` pins it as well,
+so anybody following the steps left the web app resolving a registry copy of the
+previous version instead of the workspace. Found by `publish.test.js` while
+cutting this release, and the recipe now says three.
 
 
 ## 1.56.1 — "What the rules actually do"
