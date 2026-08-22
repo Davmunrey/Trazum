@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, normalize, relative, resolve } from 'node:path';
 import { describe, it } from 'node:test';
+import { sectionOf } from '../../../test-utils/section.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..', '..', '..');
@@ -99,5 +100,71 @@ describe('the documentation index lists the documentation', () => {
       [],
       `docs/README.md does not link these, so nothing leads a reader to them: ${missing.join(', ')}`,
     );
+  });
+});
+
+describe('the outside instrument, and the sentence it changed', () => {
+  /**
+   * `our-own-medicine.md` used to say every miss on it had been found by the
+   * same process that made it. Five were not: CodeQL found them, and the page
+   * now names the releases.
+   *
+   * A list of releases in prose is a claim like any other. This checks each
+   * named release actually carries the evidence, so the list cannot quietly
+   * grow past what happened.
+   */
+  const medicine = () => readFile(join(repoRoot, 'docs', 'our-own-medicine.md'), 'utf8');
+  const releases = () => readFile(join(repoRoot, 'RELEASES.md'), 'utf8');
+
+  /**
+   * A release's own notes, bounded by the next heading and not by a named
+   * neighbour — `sectionOf` exists precisely so this file does not reinvent
+   * that, and the guard in `publish.test.js` caught this test doing it.
+   */
+  const sectionFor = (text, version) => {
+    const heading = [...text.matchAll(/^## .+$/gm)]
+      .map((match) => match[0])
+      .find((line) => line.startsWith(`## ${version} —`));
+    return heading === undefined ? null : sectionOf(text, heading);
+  };
+
+  it('names releases that really do carry an outside finding', async () => {
+    const page = await medicine();
+    // Bounded by the next heading, whatever it is: slicing to the end of the
+    // file is the same class of mistake one document over.
+    const claim = sectionOf(page, '## The one sentence that stopped being true');
+
+    const named = [...claim.matchAll(/^\| (\d+\.\d+\.\d+) \|/gm)].map((match) => match[1]);
+    assert.ok(named.length >= 3, `only ${named.length} releases named — has the table moved?`);
+
+    const notes = await releases();
+    const unevidenced = [];
+    for (const version of named) {
+      const section = sectionFor(notes, version);
+      if (section === null || !section.includes('CodeQL')) unevidenced.push(version);
+    }
+    assert.deepEqual(
+      unevidenced,
+      [],
+      `these releases are named as outside findings and their notes do not mention CodeQL: ${unevidenced.join(', ')}`,
+    );
+  });
+
+  it('and the check is not one that can never fire', () => {
+    // Handed a release whose notes say nothing of the sort.
+    const notes = '\n## 9.9.9 — "Nothing external here"\n\nA release with no outside finding.\n';
+    const start = notes.indexOf('\n## 9.9.9 —');
+    assert.equal(notes.slice(start).includes('CodeQL'), false);
+  });
+
+  it('still says the other two admissions are untouched', async () => {
+    /**
+     * The arc asked for one sentence of three to stop being true, with a
+     * measurement. A page that quietly let the other two lapse would be
+     * claiming more than was measured.
+     */
+    const page = await medicine();
+    assert.match(page, /no usage log of (its|this project's) own/);
+    assert.match(page, /no outcome (is )?recorded/i);
   });
 });

@@ -272,6 +272,22 @@ not a scheduling question.
 
 ## 1.60.0 — Our own medicine, measured
 
+**One of the three sentences has moved.** The arc asked for at least one of the
+admissions below to stop being true, with a measurement rather than an argument.
+The third — *every miss was found by the same process that made it* — is the one
+that went: five defects on the record were found by CodeQL, in 1.8.0, 1.46.0,
+1.50.3, 1.53.4 and 1.55.0, and none of them by a test here.
+
+The 1.8.0 case is the one that carries the weight: CodeQL kept an SSRF alert
+open **twice**, against this project's judgement, and was right both times. A
+self-report cannot contain that shape by definition.
+
+**What it does not establish** is written down beside it. CodeQL is not an
+independent audit — it runs because this project turned it on and would stop the
+day somebody here deleted a workflow. It is an outside instrument whose rules
+this project did not write and cannot argue with, which is narrower and is what
+was actually measured. The other two admissions are untouched.
+
 *An intention, and the thesis that closes the arc of arcs.*
 
 [our-own-medicine.md](our-own-medicine.md) ends by listing what this project
