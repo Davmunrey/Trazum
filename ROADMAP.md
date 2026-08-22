@@ -1184,6 +1184,29 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.60.3 — "A document nobody lists" — released
+
+**Two chapters, one shape.** `docs/json-output.md` calls itself the contract and
+`docs/format.md` is the index a connector author works from. Six of the fifteen
+contracts had no guard at all, and three documents were on neither list — the
+second finding a consequence of the first.
+
+**The roll-up documented three of its nineteen top-level fields.** The merged
+bill, both periods, the duplicate and overlap findings and the typed caveats were
+absent from the contract a consumer builds against, and `notMerged` sat beside a
+documented `rejected`. The fleet document never mentioned `schemaVersion`.
+
+**The index said twelve documents while `pulse`, `rules --measure` and the
+gateway's 402 body were on neither list** — and the count had been guarded
+against the table since the day it said seven with ten rows. Both halves of that
+comparison were written by hand, so a document missing from both left the two
+agreeing.
+
+Both lists are derived now: the contracts that exist against the tables that
+document them, matched by the anchors the rows link to, with every count in the
+prose derived from the table. Proved by breaking each guard, and proved each does
+not fire on a change that is not its defect.
+
 ## 1.60.2 — "Checked by running" — released
 
 **A patch whose every entry is the same act**: take a claim this project makes

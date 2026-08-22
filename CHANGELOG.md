@@ -9,7 +9,14 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
-## Unreleased
+## 1.60.3 — "A document nobody lists"
+
+**Two chapters, one shape.** `docs/json-output.md` calls itself the contract and
+`docs/format.md` is the index a connector author works from. Between them they
+specify every document Trazum emits — and between them, six contracts had no
+guard and three documents were on neither list. The second finding is a
+consequence of the first, which is the whole point of putting them in one
+release: **a document nobody lists is a document nobody checks.**
 
 ### Fixed
 

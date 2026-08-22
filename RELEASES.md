@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.60.2**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.60.3**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,96 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.60.3 — "A document nobody lists"
+
+**Two chapters, one shape.** `docs/json-output.md` calls itself the contract;
+`docs/format.md` is the index a connector author works from. Between them they
+specify every document Trazum emits — and between them, six contracts had no
+guard at all and three documents were on neither list. The second is a
+consequence of the first, which is why they ship together: **a document nobody
+lists is a document nobody checks.**
+
+### Six of fifteen contracts had no guard, and two of them had drifted
+
+`docs/json-output.md` opens by calling itself the contract, and its second
+sentence named **one** test file. The file specifies **fifteen** documents. Nine
+were genuinely harvested by a parity check somewhere in this repository; six
+were not, and **nothing anywhere recorded which was which**.
+
+**The roll-up documented three of its nineteen top-level fields.** `trazum
+rollup --json` emits the merged bill, both periods, the duplicate and overlap
+findings and the typed caveats; the table listed `schemaVersion`, `contributors`
+and `rejected`. Absent: `total`, `unpriced`, `unpricedModels`, `byLabel`,
+`byModel`, `byLabelAndModel`, `spendByDay`, `span`, `claimedSpan`,
+`fieldCoverage`, `outcomeTally`, `duplicateLines`, `identicalContributions`,
+`repeatedContributors`, `notMerged` and `cannotSay`. `notMerged` sat beside a
+documented `rejected` — a reader handling one would have missed the other, and
+they mean different things: a contribution refused, against **a finding that
+cannot survive a merge**.
+
+All sixteen are documented now, and the rows carry the refusals rather than only
+the arithmetic: a shared day's dearest label is null because no document carries
+per-label-per-day spend; `claimedSpan` stays apart from `span` because one is
+what the records showed and the other is what somebody went looking for; the
+repeats are named and never subtracted.
+
+**The fleet document never mentioned `schemaVersion`** — the one field this
+file's own promise section calls *the only thing you must branch on*.
+
+**The guard puts the inventory next to the promise.** It takes every heading in
+`docs/json-output.md` whose section carries a field table, matches each against
+the test that harvests it, and fails on a table nobody claims *and* on a claim
+for a table that is gone. A claim is not taken on trust: the file named has to
+pass the heading to a call, because **a heading in a comment is not
+enforcement**. It also walks all three packages' test directories for harvests
+the map does not know about — the direction that would have caught the six. The
+six are now held both ways **by running the command**, or the library function
+for the outcome report, which no command emits.
+
+### The index undercounted by three, and the guard on its count agreed with it
+
+`docs/format.md`'s first sentence said Trazum emits **twelve** documents and
+defines a thirteenth. `README.md` said the same. Three documents were on neither
+list: `trazum pulse --json`, `trazum rules --measure --json`, and the gateway's
+**HTTP 402** refusal body — each with a contract table, a `schemaVersion` and
+something that emits it. A connector author working from that page would not
+have known they exist.
+
+**The count was already guarded.** It has been held to the table beneath it
+since the day it said *seven* with ten rows, and it derives the ordinal rather
+than typing it. It could not have caught these three: **both halves of that
+comparison are written by hand**, so a document missing from the table and
+missing from the sentence leaves the two in perfect agreement. The missing half
+was never the arithmetic — it was the table against the contracts that exist.
+
+Fifteen emitted and a sixteenth defined, in both pages. The list is derived from
+the contract tables that exist and matched against the index **by the anchors
+its rows link to**; `README.md` is held to the same count; the `--contract`
+column is compared to what the CLI accepts **as a set**, since the existing
+checks are satisfied by a name appearing in prose; and the plan — the one
+contract documented twice, in `json-output.md` and `plan-format.md` — has its
+two tables held to each other.
+
+### Both guards were proved by breaking them, and proved not to fire on anything else
+
+Dropping a row, renaming a documented field, removing a claim, pointing a claim
+at a file that does not harvest it, misspelling a `--contract` cell, putting
+`README.md` back to twelve, making the plan's two tables disagree: each fails.
+Adding a prose-only section, reordering the map, rewording a "Written by" cell:
+each stays green. The anchor rule is unit-checked on the case it has to get
+right — ``## The `--by-source` document`` becoming `the---by-source-document`,
+backticks gone and dashes kept — because a slug rule quietly disagreeing with
+GitHub's would report every row as missing, or none.
+
+### What this release found wrong in itself
+
+The first draft of the second chapter claimed the count had no guard. It had
+one, it fired correctly on the row it could see, and its word list simply
+stopped at fifteen. The finding is better for it: the defect was never a missing
+check, it was **a check whose two halves were both written by hand**.
 
 ---
 
