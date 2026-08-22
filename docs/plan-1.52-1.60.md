@@ -281,6 +281,12 @@ prompt in one of the five that a rule *does* change now carries the admission
 beside the change, gated on the prompt's own detected language so it never
 becomes a footer, and silent when the language cannot be placed.
 
+**Third chapter: the ask is now scoped.** `scripts/dictionary-worklist.mjs`
+prints the entries a maintainer would be judging, per language, with the change
+each one makes. The counting corrected the page's own estimate — "a few hundred
+short phrases" is thirty to thirty-eight — and surfaced that the five unreviewed
+dictionaries are less than half the size of the two somebody read.
+
 **What the arc still owes is not a scheduling question**, which is the arc's own
 thesis and is now the page's closing line rather than a caveat in a plan.
 

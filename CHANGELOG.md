@@ -13,6 +13,42 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**And the worklist that role asks for can now be printed.** The third chapter of
+arc 1.59. The page asks somebody to read one dictionary's entries and judge them
+one at a time — and until now that request could not be scoped, because the
+entries live in one flat array per rule with a `// Dutch` comment marking where
+each language starts. A prospective maintainer had to read `phrases.ts` to find
+out how much they were agreeing to.
+
+```bash
+node scripts/dictionary-worklist.mjs nl        # or fr, de, pt, it
+node scripts/dictionary-worklist.mjs fr --json
+```
+
+**The grouping was real and existed only as a comment.** `phrases.test.js`
+already parsed those markers to check no language section was thin, so the
+structure was derivable and simply unavailable to anybody outside this
+repository's test suite.
+
+**Two things the counting found.** The page said "a few hundred short phrases"
+and it is **thirty to thirty-eight** — an afternoon, not a project, and the
+figure was wrong in the direction that discourages volunteers. And English has 89
+entries against Spanish's 81, so the five unreviewed dictionaries are also less
+than half the size of the two somebody read; that is recorded on the page and not
+addressed.
+
+**The guard is a second, different parse.** The worklist slices between language
+markers; the check counts the whole array and fails if the two disagree — an
+entry written above the first marker belongs to no section, would appear on
+nobody's worklist, and would still be editing people's prompts. Proved against a
+fabricated dictionary with exactly that shape. The five counts the page quotes
+are checked against what the script produces, so the number a volunteer is shown
+cannot drift from the work.
+
+**Found by running it:** piping the output into `head`, which is what the
+documented usage invites, printed an EPIPE stack trace from a script that had
+already done its job.
+
 **The warning now reaches the branch where it matters most.** 1.56.2 said which
 five of the seven dictionaries nobody here reads, on the branch where no rule
 fired — and that is the branch where the prompt is *untouched*. The second
