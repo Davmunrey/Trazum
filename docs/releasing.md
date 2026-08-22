@@ -196,7 +196,11 @@ including what it costs a reader pinning with a tilde, is in
    they should.
 3. **Bump the version in all five manifests** — root, `packages/core`,
    `packages/cli`, `packages/mcp`, `apps/web` — plus the `@trazum/core` dependency in
-   `packages/cli` and `packages/mcp`, and the lockfile. `publish.test.js` fails if they disagree.
+   `packages/cli`, `packages/mcp` **and `apps/web`**, and the lockfile.
+   `publish.test.js` fails if they disagree, which is how the missing third one
+   was found: this list said two for as long as the web app has depended on core,
+   and every release that followed it left `apps/web` resolving a registry copy
+   until the guard caught it.
 4. **Update the README's action pin** to the release commit, with the new version
    in the trailing comment. `security.test.js` asks git what version *that commit*
    declares and fails if the label disagrees — so the pin can only be advanced

@@ -1184,6 +1184,45 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.56.2 — "What this project was claiming about itself" — released
+
+**A patch with no new command, and two arcs each opened rather than closed.**
+1.59 — *a language needs a maintainer* — and 1.60 — *our own medicine, measured*
+— gained their first chapters here. Both chapters are the same act done twice: a
+sentence this project had been saying about itself turned out to be wrong, and
+was measured rather than argued with.
+
+**Five of the seven trimming dictionaries had never been read by anybody who
+speaks the language.** The report named all seven in one sentence, which reads as
+seven dictionaries of equal standing; two of them are languages Trazum reports
+in, and that is the only evidence in this repository that anybody here reads
+them. `DICTIONARY_STANDING` records which is which, the report says so on the
+branch where an empty result would otherwise reassure, and
+[docs/language-maintainer.md](docs/language-maintainer.md) makes the missing role
+real: what a maintainer decides, what is asked, what is deliberately not asked,
+and what happens when nobody holds it.
+
+**This roadmap had been saying the opposite for several arcs**, which is the
+uncomfortable half. An eighth language was held back on the stated grounds that a
+dictionary is a judgement about a language and this project will not make it in a
+language nobody here reads — while five such dictionaries were already shipping.
+The five stay: a Dutch prompt is better served by a dictionary that fires and
+says it was never reviewed than by silence. What stops is describing them as
+though somebody had read them.
+
+**And one of the three things this project could not say about itself stopped
+being true.** Five defects on the record were found by CodeQL — 1.8.0, 1.46.0,
+1.50.3, 1.53.4 and 1.55.0 — and not one by a test here. The 1.8.0 entry carries
+the weight: CodeQL kept that alert open twice against this project's judgement
+and was right both times, which is a shape a self-report cannot contain. What it
+does not establish is written beside it — CodeQL runs because this project turned
+it on, so it is an outside instrument rather than an independent audit. The other
+two admissions are untouched.
+
+**No promise of an eighth language.** Whether the maintainer role is ever filled
+is not a scheduling question, and the page says so rather than implying a queue.
+
+
 ## 1.56.1 — "What the rules actually do" — released
 
 **A patch, and the number is the honest one.** A minor closes an arc, and the
@@ -1882,6 +1921,12 @@ Not scheduled. Listed so the reasoning is on the record.
   now a catalogue plus dictionary entries. Held back on purpose: a language
   needs a maintainer who actually reads it, and a stale translation is worse
   than an honest fallback to English.
+
+  **What that role is was written down at 1.56.2**, with its bar, in
+  [docs/language-maintainer.md](docs/language-maintainer.md) — along with the
+  admission that five of the seven dictionaries already shipping had never been
+  read by a speaker either. The page does not move this entry into the schedule.
+  Whether somebody fills the role is not something this project can plan.
 
   **Japanese is deliberately not on this list, and the split is the point.**
   There is no Japanese trimming dictionary and one is not planned: deciding that
