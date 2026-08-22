@@ -1416,6 +1416,10 @@ ${bold('EXAMPLES')}
       `${plural(count, 'record')} this contributor's own window could not place, because they carried no clock`,
     rejectedHeading: () => 'Handed over and not merged',
     rejected: (name, because) => `${name} — ${because}`,
+    via: (rollup) => `via ${rollup}`,
+    rejectedVia: (name, via, because) => `${name}, via ${via} — ${because}`,
+    repeated: (names) =>
+      `Handed over more than once, by name: ${names}. Its money is counted every time. Two machines genuinely sharing a name is possible, so nothing was subtracted — check whether a roll-up and one of the machines inside it were both handed over.`,
     identical: (names) => `The same document arrived more than once: ${names}.`,
     identicalUsd: (usd) =>
       `${usd} of the total above is the repeat. It is counted, not discarded — whether it is one export handed over twice or two machines that agreed exactly is yours to know.`,
@@ -1443,6 +1447,8 @@ ${bold('EXAMPLES')}
           return 'A contributor claimed one end of a window and not the other, so its silence cannot be measured against it.';
         case 'claim-too-long-to-enumerate':
           return 'A claimed window was too long to walk day by day and was not walked. The claim is kept; only its silence is unmeasured.';
+        case 'contributor-named-twice':
+          return 'A contributor name appears more than once, so its money may be counted twice. Handing over a roll-up and one of the machines inside it does exactly that, and the documents differ so the identical-document check cannot see it.';
         case 'identical-contributions':
           return 'Two contributions were the same document.';
         case 'contribution-rejected':

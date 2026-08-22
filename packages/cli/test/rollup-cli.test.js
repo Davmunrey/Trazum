@@ -272,3 +272,43 @@ describe('trazum rollup: a span is not a period', () => {
     assert.doesNotMatch(rendered.stdout, /asked for/);
   });
 });
+
+describe('trazum rollup: a roll-up is a contribution too', () => {
+  it('rolls up a roll-up, flattens the machines and names one handed over twice', async () => {
+    const { dir, documents } = await documentsFrom({
+      api: [call({ ts: '2026-08-01T09:00:00Z' })],
+      worker: [call({ ts: '2026-08-01T10:00:00Z' })],
+    });
+    const team = cli(['rollup', ...documents, '--json'], dir);
+    assert.equal(team.status, 0, team.stderr);
+    await writeFile(join(dir, 'team-a.json'), team.stdout);
+
+    // The team roll-up, and one of the machines inside it, both handed over.
+    const org = cli(['rollup', join(dir, 'team-a.json'), documents[0], '--json'], dir);
+    assert.equal(org.status, 0, org.stderr);
+    const document = JSON.parse(org.stdout);
+
+    // Three machines listed, not two documents.
+    assert.equal(document.contributors.length, 3);
+    assert.equal(document.contributors.filter((row) => row.via !== null).length, 2);
+    // The double count nesting makes possible, named and not subtracted.
+    assert.equal(document.repeatedContributors.length, 1);
+    assert.ok(document.cannotSay.includes('contributor-named-twice'));
+    assert.ok(Math.abs(document.total.totalUsd - 3) < 1e-9);
+
+    const rendered = cli(['rollup', join(dir, 'team-a.json'), documents[0]], dir);
+    assert.match(rendered.stdout, /via .*team-a\.json/);
+    assert.match(rendered.stdout, /Handed over more than once, by name/);
+  });
+
+  it('a nested roll-up still conforms', async () => {
+    const { dir, documents } = await documentsFrom({ api: [call()], worker: [call()] });
+    const team = cli(['rollup', ...documents, '--json'], dir);
+    await writeFile(join(dir, 'team-a.json'), team.stdout);
+    const org = cli(['rollup', join(dir, 'team-a.json'), '--json'], dir);
+    await writeFile(join(dir, 'org.json'), org.stdout);
+    const checked = cli(['conform', join(dir, 'org.json')], dir);
+    assert.equal(checked.status, 0, checked.stdout);
+    assert.match(checked.stdout, /reads as a roll-up document/);
+  });
+});

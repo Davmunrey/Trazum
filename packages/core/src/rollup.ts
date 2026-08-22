@@ -100,6 +100,16 @@ export interface SilentRun {
 
 export interface RollupContributor {
   name: string;
+  /**
+   * The roll-up this contributor arrived through, or null when it was handed
+   * over directly.
+   *
+   * Contributors are **flattened, never collapsed**: a roll-up of three
+   * roll-ups lists twelve machines rather than three, because collapsing them
+   * would average twelve sets of gaps into three and that is the averaging
+   * this whole arc exists to refuse.
+   */
+  via: string | null;
   totalUsd: number;
   calls: number;
   /** The period this contributor's log covers, or null when it carried no clock. */
@@ -181,7 +191,9 @@ export type RollupCaveat =
   /** A contributor claimed one end of a window and not the other. */
   | 'claim-not-bounded'
   /** A claim was too long to enumerate day by day, and was not. */
-  | 'claim-too-long-to-enumerate';
+  | 'claim-too-long-to-enumerate'
+  /** A contributor name appears more than once, so its money may be counted twice. */
+  | 'contributor-named-twice';
 
 export interface RollupDay {
   /** `YYYY-MM-DD`, UTC — the contributors' own bucketing, never re-derived. */
@@ -208,8 +220,16 @@ export interface RollupDay {
 export interface RollupDocument {
   schemaVersion: 1;
   contributors: RollupContributor[];
-  /** Handed over and not merged, each with why. Never dropped in silence. */
-  rejected: Array<{ name: string; because: string }>;
+  /**
+   * Handed over and not merged, each with why. Never dropped in silence.
+   *
+   * `via` names the roll-up a rejection arrived through, when it came from
+   * one. A rejection that stopped travelling at a nesting boundary would mean
+   * a broken export could be made to disappear by adding a layer, which is the
+   * one thing a format built out of other people's measurements must not
+   * allow.
+   */
+  rejected: Array<{ name: string; via: string | null; because: string }>;
   /**
    * Contributions that were the same document, grouped, and what the repeats
    * added to the total.
@@ -248,6 +268,17 @@ export interface RollupDocument {
   outcomeTally: OutcomeTally;
   /** Summed **within-contributor** duplicates. Overlap between them is elsewhere. */
   duplicateLines: { count: number; usd: number };
+  /**
+   * Contributor names that appear more than once, across nesting.
+   *
+   * Handing over both a roll-up and one of the machines inside it counts that
+   * machine's money twice, and unlike the identical-document check this one can
+   * see it — the documents differ, but the name is the same. **Named, never
+   * subtracted**: two machines genuinely called `api.json` in two teams is
+   * possible, and deciding which case this is by removing money would be the
+   * repair this tool never makes.
+   */
+  repeatedContributors: string[];
   notMerged: UnmergedFinding[];
   cannotSay: RollupCaveat[];
 }
@@ -487,7 +518,7 @@ const PER_RECORD_FINDINGS: Array<{ field: string; finding: string; because: stri
  */
 export function rollUp(inputs: RollupInput[]): RollupDocument {
   const contributors: RollupContributor[] = [];
-  const rejected: Array<{ name: string; because: string }> = [];
+  const rejected: Array<{ name: string; via: string | null; because: string }> = [];
   const cannotSay = new Set<RollupCaveat>();
 
   const total = emptyBreakdown();
@@ -506,6 +537,7 @@ export function rollUp(inputs: RollupInput[]): RollupDocument {
     {
       usd: number;
       calls: number;
+      contributors: number;
       models: Map<string, { usd: number; calls: number }>;
       from: Set<string>;
       topLabel: string | null;
@@ -513,6 +545,10 @@ export function rollUp(inputs: RollupInput[]): RollupDocument {
     }
   >();
   const findingsPresentIn = new Map<string, string[]>();
+  /** Findings a nested roll-up already refused to merge, carried through. */
+  const nestedFindings = new Map<string, { because: string; presentIn: string[] }>();
+  /** Identical-document groups a nested roll-up already found. */
+  const nestedIdentical: string[][] = [];
   /** The text of each accepted contribution, for the identical-document check. */
   const seenText = new Map<string, string[]>();
   let identicalUsd = 0;
@@ -524,14 +560,26 @@ export function rollUp(inputs: RollupInput[]): RollupDocument {
   let spanCalls = 0;
 
   for (const input of inputs) {
-    const checked = conform(input.text, { contract: 'profile' });
-    if (!checked.conforms) {
+    /**
+     * A profile, or a roll-up somebody else already made.
+     *
+     * Detected rather than forced, because a roll-up is a contribution too:
+     * three teams roll up their own machines, and the organisation rolls up
+     * the three. Every summable part of a roll-up carries the same field names
+     * as a profile — that is what makes the nesting arithmetic free — and the
+     * parts that are *not* summable are exactly the ones this loop has to
+     * carry through by hand rather than lose a layer at a time.
+     */
+    const checked = conform(input.text);
+    const nested = checked.contract === 'roll-up';
+    if (!checked.conforms || (checked.contract !== 'profile' && !nested)) {
       const first = checked.problems[0];
       rejected.push({
         name: input.name,
+        via: null,
         because:
           first === undefined
-            ? (checked.because ?? 'it does not conform to the profile contract')
+            ? (checked.because ?? 'it is neither a profile nor a roll-up')
             : `${first.at}: ${first.detail}`,
       });
       cannotSay.add('contribution-rejected');
@@ -545,12 +593,12 @@ export function rollUp(inputs: RollupInput[]): RollupDocument {
     try {
       parsed = JSON.parse(input.text.trim());
     } catch {
-      rejected.push({ name: input.name, because: 'it is not valid JSON' });
+      rejected.push({ name: input.name, via: null, because: 'it is not valid JSON' });
       cannotSay.add('contribution-rejected');
       continue;
     }
     if (!isRecord(parsed)) {
-      rejected.push({ name: input.name, because: 'a document must be a JSON object' });
+      rejected.push({ name: input.name, via: null, because: 'a document must be a JSON object' });
       cannotSay.add('contribution-rejected');
       continue;
     }
@@ -627,6 +675,7 @@ export function rollUp(inputs: RollupInput[]): RollupDocument {
         const bucket = days.get(day) ?? {
           usd: 0,
           calls: 0,
+          contributors: 0,
           models: new Map<string, { usd: number; calls: number }>(),
           from: new Set<string>(),
           topLabel: null,
@@ -635,6 +684,10 @@ export function rollUp(inputs: RollupInput[]): RollupDocument {
         bucket.usd += numberAt(row, 'usd');
         bucket.calls += numberAt(row, 'calls');
         bucket.from.add(input.name);
+        // How many *machines* saw this day, not how many documents mentioned
+        // it: a nested roll-up already knows its own count, and counting it as
+        // one would report twelve machines as three.
+        bucket.contributors += Math.max(1, numberAt(row, 'contributors') || 1);
         if (bucket.from.size === 1) {
           bucket.topLabel = asString(row.topLabel);
           bucket.topLabelUsd = bucket.topLabel === null ? null : numberAt(row, 'topLabelUsd');
@@ -668,6 +721,137 @@ export function rollUp(inputs: RollupInput[]): RollupDocument {
         list.push(input.name);
         findingsPresentIn.set(entry.field, list);
       }
+    }
+
+    /**
+     * A roll-up somebody else already made: carry through what does not sum.
+     *
+     * Everything above this point merged already, because a roll-up names its
+     * summable parts exactly the way a profile does. What is left is the half
+     * that would quietly disappear a layer at a time — and each of these is a
+     * refusal that must survive nesting or the format is worse than no format:
+     *
+     * - **Contributors are flattened, not collapsed.** Twelve machines stay
+     *   twelve machines with twelve sets of gaps.
+     * - **Rejections travel, with the roll-up they came through.** Otherwise a
+     *   machine whose document did not conform could be made to disappear by
+     *   adding a layer.
+     * - **Caveats travel.** An inner roll-up that could not see overlap does
+     *   not become an outer roll-up that could.
+     * - **Findings that did not roll up inside do not roll up outside.**
+     */
+    if (nested) {
+      if (Array.isArray(doc.contributors)) {
+        for (const row of doc.contributors) {
+          if (!isRecord(row)) continue;
+          const name = asString(row.name);
+          if (name === null) continue;
+          const innerSpan = isRecord(row.span)
+            ? {
+                fromMs: numberAt(row.span, 'fromMs'),
+                toMs: numberAt(row.span, 'toMs'),
+                calls: numberAt(row.span, 'calls'),
+              }
+            : null;
+          contributors.push({
+            name,
+            // The roll-up it arrived through — never overwritten when it is
+            // already set, so a third layer says which roll-up handed it over
+            // rather than claiming the machine came straight from there.
+            via: asString(row.via) ?? input.name,
+            totalUsd: numberAt(row, 'totalUsd'),
+            calls: numberAt(row, 'calls'),
+            span: innerSpan,
+            spanDays: typeof row.spanDays === 'number' ? row.spanDays : null,
+            claimed: isRecord(row.claimed)
+              ? {
+                  sinceMs: typeof row.claimed.sinceMs === 'number' ? row.claimed.sinceMs : null,
+                  untilMs: typeof row.claimed.untilMs === 'number' ? row.claimed.untilMs : null,
+                }
+              : null,
+            silence: isRecord(row.silence)
+              ? {
+                  runs: Array.isArray(row.silence.runs) ? (row.silence.runs as SilentRun[]) : [],
+                  days: numberAt(row.silence, 'days'),
+                }
+              : null,
+            undatedExcluded:
+              typeof row.undatedExcluded === 'number' ? row.undatedExcluded : null,
+            gaps: Array.isArray(row.gaps) ? (row.gaps as ContributorGap[]) : [],
+          });
+        }
+      }
+
+      if (Array.isArray(doc.rejected)) {
+        for (const row of doc.rejected) {
+          if (!isRecord(row)) continue;
+          const name = asString(row.name);
+          if (name === null) continue;
+          rejected.push({
+            name,
+            via: asString(row.via) ?? input.name,
+            because: asString(row.because) ?? 'no reason travelled with it',
+          });
+          cannotSay.add('contribution-rejected');
+        }
+      }
+
+      if (Array.isArray(doc.cannotSay)) {
+        for (const code of doc.cannotSay) {
+          const caveat = asString(code);
+          if (caveat !== null) cannotSay.add(caveat as RollupCaveat);
+        }
+      }
+
+      if (Array.isArray(doc.notMerged)) {
+        for (const row of doc.notMerged) {
+          if (!isRecord(row)) continue;
+          const finding = asString(row.finding);
+          if (finding === null) continue;
+          const list = nestedFindings.get(finding) ?? {
+            because: asString(row.because) ?? '',
+            presentIn: [] as string[],
+          };
+          if (Array.isArray(row.presentIn)) {
+            for (const who of row.presentIn) {
+              const named = asString(who);
+              if (named !== null && !list.presentIn.includes(named)) list.presentIn.push(named);
+            }
+          }
+          nestedFindings.set(finding, list);
+        }
+      }
+
+      if (isRecord(doc.identicalContributions)) {
+        identicalUsd += numberAt(doc.identicalContributions, 'usd');
+        if (Array.isArray(doc.identicalContributions.groups)) {
+          for (const group of doc.identicalContributions.groups) {
+            if (Array.isArray(group)) {
+              nestedIdentical.push(group.map((name) => String(name)));
+            }
+          }
+        }
+      }
+
+      if (isRecord(doc.claimedSpan)) {
+        const from = numberAt(doc.claimedSpan, 'fromMs');
+        const to = numberAt(doc.claimedSpan, 'toMs');
+        if (from > 0 && to > from) {
+          claimFrom = claimFrom === null ? from : Math.min(claimFrom, from);
+          claimTo = claimTo === null ? to : Math.max(claimTo, to);
+          claimants += Math.max(1, numberAt(doc.claimedSpan, 'contributors') || 1);
+        }
+      }
+
+      if (isRecord(doc.span)) {
+        const from = numberAt(doc.span, 'fromMs');
+        const to = numberAt(doc.span, 'toMs');
+        spanFrom = spanFrom === null ? from : Math.min(spanFrom, from);
+        spanTo = spanTo === null ? to : Math.max(spanTo, to);
+        spanCalls += numberAt(doc.span, 'calls');
+      }
+
+      continue;
     }
 
     // --- this contributor, as it will be listed ---------------------------
@@ -818,6 +1002,7 @@ export function rollUp(inputs: RollupInput[]): RollupDocument {
 
     contributors.push({
       name: input.name,
+      via: null,
       totalUsd: numberAt(totals, 'totalUsd'),
       calls: numberAt(totals, 'calls'),
       span,
@@ -847,6 +1032,26 @@ export function rollUp(inputs: RollupInput[]): RollupDocument {
     cannotSay.add('mismatched-spans');
   }
 
+  /**
+   * Contributor names that turn up more than once.
+   *
+   * Handing over both a roll-up and one of the machines inside it counts that
+   * machine's money twice — and unlike the identical-document check, this one
+   * can see it: the two documents differ, but the name does not. Named and
+   * never subtracted, because two teams genuinely running `api.json` is
+   * possible and removing money to decide between them is the repair this tool
+   * does not make.
+   */
+  const timesSeen = new Map<string, number>();
+  for (const contributor of contributors) {
+    timesSeen.set(contributor.name, (timesSeen.get(contributor.name) ?? 0) + 1);
+  }
+  const repeatedContributors = [...timesSeen.entries()]
+    .filter(([, times]) => times > 1)
+    .map(([name]) => name)
+    .sort();
+  if (repeatedContributors.length > 0) cannotSay.add('contributor-named-twice');
+
   const notMerged: UnmergedFinding[] = PER_RECORD_FINDINGS.filter((entry) =>
     findingsPresentIn.has(entry.field),
   ).map((entry) => ({
@@ -865,6 +1070,21 @@ export function rollUp(inputs: RollupInput[]): RollupDocument {
     });
   }
 
+  // Findings an inner roll-up already refused to merge do not become mergeable
+  // by being handed on. Merged by their own text so the same finding from two
+  // roll-ups is one entry naming both sets of contributors.
+  for (const [finding, entry] of nestedFindings) {
+    const existing = notMerged.find((row) => row.finding === finding);
+    if (existing === undefined) {
+      notMerged.push({ finding, because: entry.because, presentIn: [...entry.presentIn].sort() });
+      continue;
+    }
+    for (const who of entry.presentIn) {
+      if (!existing.presentIn.includes(who)) existing.presentIn.push(who);
+    }
+    existing.presentIn.sort();
+  }
+
   if (unknownFields.size > 0) {
     notMerged.push({
       finding: `numeric fields this version cannot combine: ${[...unknownFields].sort().join(', ')}`,
@@ -879,7 +1099,7 @@ export function rollUp(inputs: RollupInput[]): RollupDocument {
     contributors,
     rejected,
     identicalContributions: {
-      groups: [...seenText.values()].filter((names) => names.length > 1),
+      groups: [...[...seenText.values()].filter((names) => names.length > 1), ...nestedIdentical],
       usd: identicalUsd,
     },
     total,
@@ -907,7 +1127,7 @@ export function rollUp(inputs: RollupInput[]): RollupDocument {
         day,
         usd: bucket.usd,
         calls: bucket.calls,
-        contributors: bucket.from.size,
+        contributors: bucket.contributors,
         byModel: byMoney(
           [...bucket.models.entries()].map(([model, figures]) => ({ model, ...figures })),
           (row) => row.usd,
@@ -932,6 +1152,7 @@ export function rollUp(inputs: RollupInput[]): RollupDocument {
       unrecordedUsd: outcome.unrecordedUsd,
     },
     duplicateLines,
+    repeatedContributors,
     notMerged,
     cannotSay: [...cannotSay].sort(),
   };

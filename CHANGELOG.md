@@ -59,6 +59,29 @@ total that looks audited.
 profile first would accept every roll-up as a profile and never apply the two
 refusals only a roll-up has to carry.
 
+**A roll-up can now contribute to another roll-up.** Three teams roll up their
+own machines and the organisation rolls up the three. `rollup` accepts a
+`roll-up` document wherever it accepts a `profile`: every summable part carries
+the same field names, which is what makes the arithmetic free.
+
+What is not summable is carried through deliberately, because each piece is a
+refusal that has to survive nesting or the format is worse than no format.
+**Contributors are flattened, never collapsed** — twelve machines stay twelve
+machines with twelve sets of gaps, each carrying `via`, the roll-up it arrived
+through. **Rejections travel**, with their `via`, so a machine whose document did
+not conform cannot be made to disappear by adding a layer. **Caveats are
+unioned**, so an inner roll-up that could not see overlap does not become an
+outer one that could. And a finding an inner roll-up refused to merge does not
+become mergeable by being handed on — the same finding from two roll-ups is one
+entry naming both sets of machines.
+
+**And the double count nesting makes possible is named.** Handing over both a
+roll-up and one of the machines inside it counts that machine's money twice; the
+documents differ, so the identical-document check is blind to it and the *name*
+is what sees it. `repeatedContributors` states it and subtracts nothing — two
+teams genuinely running `api.json` is possible, and deciding between them by
+removing money is the repair this tool does not make.
+
 **A span is not a period, and the roll-up now knows the difference.** A log
 whose latest record is the 5th may be a log of a quiet week or a log that
 stopped being written on the 5th — the records cannot tell those apart, and the

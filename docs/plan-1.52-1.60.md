@@ -167,11 +167,17 @@ implementation can lift: overlap *between* contributors is unmeasurable, because
 the raw lines a duplicate check needs are in no document. `conform` fails a
 roll-up that does not say so.
 
-**What the arc still owes:** a closing minor, which means deciding whether this
-is the whole thesis. The candidates are a roll-up of roll-ups, which needs a
-document that can contribute to one, and whether a contributor should be able to
-state a period it *claims* to cover so a missing export can be told from a quiet
-week.
+Both remaining questions were then answered rather than left open. **A
+contributor states the period it claims to cover**, so a missing export can be
+told from a quiet week: the window a profile was run under travels into the
+roll-up, is kept apart from the observed span, and every silent day inside it is
+named. And **a roll-up is a contribution too** — three teams roll up their own
+machines and the organisation rolls up the three, with contributors flattened
+rather than collapsed and every refusal surviving the nesting.
+
+**What the arc still owes:** the closing minor. The thesis as written is
+delivered; what a 1.55.0 has to decide is whether anything else belongs in it
+before the number is spent.
 
 ## 1.56.0 — Something that runs
 

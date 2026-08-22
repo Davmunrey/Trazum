@@ -447,6 +447,9 @@ export interface CliMessages {
     undated(count: number): string;
     rejectedHeading(): string;
     rejected(name: string, because: string): string;
+    via(rollup: string): string;
+    rejectedVia(name: string, via: string, because: string): string;
+    repeated(names: string): string;
     identical(names: string): string;
     identicalUsd(usd: string): string;
     byLabelHeading(): string;
