@@ -9,7 +9,22 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
-## Unreleased
+## 1.60.0 — "Our own medicine, measured"
+
+**A minor closes an arc, and this one closes the last arc the 1.52–1.60 plan
+named.** It does not close the plan: 1.54.0 and 1.57.0 are blocked on provider
+credentials this repository does not have, and 1.58.0 is an editor extension —
+a distribution commitment rather than a feature. **Six of the nine arcs are
+delivered; the other three stay open and named**, which is what the plan said it
+would do with an arc it could not build rather than renumbering the gap away.
+
+**The arc committed in advance to a scoreboard**, and it reports one of three.
+*The record is self-reported* is no longer true. *No outcome is recorded* is
+weakened, not overturned. *This project has no usage log of its own* stands in
+full, with the reason written down rather than worked around.
+
+Everything below is about this project rather than about the product, except
+`ignore`, which had to exist before the project could take its own gate.
 
 ### Added
 

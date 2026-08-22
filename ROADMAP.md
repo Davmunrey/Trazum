@@ -1184,6 +1184,41 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.60.0 — "Our own medicine, measured" — released
+
+**The last arc the 1.52–1.60 plan named, and it does not close the plan.** Six of
+the nine arcs are delivered. 1.54.0 and 1.57.0 are blocked on provider
+credentials this repository does not have, and 1.58.0 is an editor extension — a
+distribution commitment rather than a feature. Those three stay open and named,
+which is the plan's own answer to an arc it cannot build.
+
+**The arc committed to a scoreboard before the code and reports one of three.**
+*The record is self-reported* is no longer true: five defects on the record were
+found by CodeQL and by nothing here, and the 1.8.0 entry is the one that carries
+the weight — CodeQL kept that alert open twice against this project's judgement
+and was right both times. What that does not establish is written beside it: an
+outside instrument this project turned on is narrower than an audit.
+
+**The tokens this project puts on other people's bills are counted for the first
+time.** Four system prompts ship inside `@trazum/core` and go to a model on every
+model-side run: 1176 tokens, from which this project's own rules recover six. That
+is one real outcome on the record — the feature this product leads with, measured
+on the only corpus this project owns — and it is why the second admission is
+weakened rather than untouched.
+
+**And the loop this product sells was inert in the repository that sells it.**
+`trazum init`, `trazum baseline` and `trazum check` shipped arcs ago and this
+repository had no config and no baseline of its own. Both are committed, CI runs
+the gate, and `ignore` is a new config key — the thing that had to exist first,
+because directory mode decided what a prompt was from the extension alone and read
+seventy-four documents and thirty-five fixtures as prompts.
+
+**The third admission stands in full**, and the reason is written down rather than
+worked around: this project would have to spend money on models and record it, and
+it does not spend. The one instrument available for *whether it is used* was
+refused on the record — npm download counts bound above and nothing bounds below.
+
+
 ## 1.59.0 — "A language needs a maintainer" — released
 
 **The arc closes, out of order and deliberately.** 1.57.0 and 1.58.0 stay open —
@@ -1837,10 +1872,35 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**Nine arcs, through 1.60.0**, planned in advance and written down before the
-code: [docs/plan-1.52-1.60.md](docs/plan-1.52-1.60.md). Under the numbering
-adopted at 1.50.1 a minor closes an arc, so each of 1.52.0 … 1.60.0 lands one
-thesis.
+**Nothing is planned above 1.60.0**, and that sentence is the honest state of
+this roadmap rather than a flourish. Nine arcs were written down in advance
+through 1.60.0 — [docs/plan-1.52-1.60.md](docs/plan-1.52-1.60.md) — and under the
+numbering adopted at 1.50.1 a minor closes an arc, so each of 1.52.0 … 1.60.0
+lands one thesis. Six landed. **The three that did not are numbered below the
+last release**, which is an unusual shape and the reason it is stated first:
+
+| Arc | Why it is open |
+|---|---|
+| 1.54.0 | Per-family counting bands need a key for each family's own counting endpoint |
+| 1.57.0 | What belongs on the model's side of the line cannot be decided without running it against a model |
+| 1.58.0 | An editor extension is a distribution commitment rather than a feature |
+
+Two of those wait on a credential this repository does not have, and inventing
+either answer is the estimating-and-measuring merge that 1.36–1.40 spent five
+releases removing. The third waits on a decision nobody has made. **The gaps stay
+gaps**: renumbering them away would rewrite a document whose whole value is having
+been written before the code.
+
+What comes after is not written down, because it is not decided. A tenth arc
+announced here today would be a projection on the roadmap of a tool whose first
+doctrine rule forbids exactly that.
+
+**1.60.0 is delivered, and it is the last arc the plan named.** The plan is not
+finished: six of nine arcs are done, and 1.54.0, 1.57.0 and 1.58.0 stay open with
+their reasons on the record rather than renumbered away. What 1.60.0 delivered is
+a scoreboard it committed to in advance and reported honestly at one of three —
+including the admission that still stands, and the instrument it refused to quote
+for the one it could not measure.
 
 **1.59.0 is delivered, and closes its arc out of order.** The maintainer
 requirement is a documented role with a bar, the five dictionaries nobody here

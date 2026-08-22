@@ -69,9 +69,11 @@ In the order somebody actually meets them:
 ## The arcs, as they were planned
 
 Five arcs have been planned in advance and written down **before** the code —
-four delivered, one in progress. The delivered four are kept because the
-reasoning is the useful part, not because anything in them is still forthcoming:
-every chapter in all four shipped.
+four delivered in full, and the fifth at six of its nine. The delivered four are
+kept because the reasoning is the useful part, not because anything in them is
+still forthcoming: every chapter in all four shipped. The fifth keeps its three
+open arcs visible for the same reason — what a plan could not build, and why, is
+the half a reader cannot reconstruct.
 
 | Arc | Thesis | Landed |
 |---|---|---|
@@ -79,7 +81,7 @@ every chapter in all four shipped.
 | [1.36–1.40](plan-1.36-1.40.md) | The estimating half and the measuring half had never met | 1.40.0 |
 | [1.41–1.50](plan-1.41-1.50.md) | The loop is complete and inert; nothing runs on its own | 1.50.0 |
 | [1.51](plan-1.51.md) | Every figure is a denominator with no numerator | 1.51.0 |
-| [1.52–1.60](plan-1.52-1.60.md) | Nine arcs: finish what shipped incomplete, then widen | **in progress** — 1.52.0, 1.53.0, 1.55.0, 1.56.0 and 1.59.0 landed; 1.60 has a chapter; 1.54.0 and 1.57.0 blocked on provider keys; 1.58.0 is a distribution commitment |
+| [1.52–1.60](plan-1.52-1.60.md) | Nine arcs: finish what shipped incomplete, then widen | **six of nine** — 1.52.0, 1.53.0, 1.55.0, 1.56.0, 1.59.0 and 1.60.0 landed; 1.54.0 and 1.57.0 blocked on provider keys; 1.58.0 is a distribution commitment |
 
 What each of them **refused** to ship — which is the more useful half, since a
 plan and its implementation shared a hand — is in

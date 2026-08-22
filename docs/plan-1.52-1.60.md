@@ -300,7 +300,7 @@ So this arc is not "add languages". It is: make the maintainer requirement a
 real, documented role with a real bar, and then admit that whether it lands is
 not a scheduling question.
 
-## 1.60.0 — Our own medicine, measured
+## 1.60.0 — Our own medicine, measured — **delivered**
 
 **Second chapter: the cost this project imposes, measured.** Four system prompts
 ship in `@trazum/core` and go on the user's bill on every model-side run — 1176
