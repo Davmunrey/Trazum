@@ -9,6 +9,34 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Changed
+
+**One of the two rules that constrain everything here was checked on one
+English sentence.** *A locale changes the report, never the optimisation* is one
+of the two rules `ROADMAP.md` opens with, and the README says it is enforced by
+tests. It was — by a single prompt in two locales.
+
+A rule stated universally and checked on one example is a claim that happens to
+be true, which is the shape this project named at 1.59.0: *a rule you wrote for
+yourself is a claim like any other.*
+
+The sweep now reads the corpus off disk — **35 prompts** across the language
+corpus, the rule corpus and `examples/` — and the locales off `LOCALES`, and runs
+every prompt at both levels in every locale. What "the same" means is enumerated
+rather than sampled: the optimised text, `tokensBefore`, `tokensAfter`,
+`tokensSaved`, `reductionPct`, every rule id with its hits and saving, and every
+advisory id.
+
+**And the opposite direction is asserted too**, because a build that returned the
+English report for every locale would satisfy every equality perfectly: somewhere
+in the corpus a rule fires, and its title has to come back different.
+
+Measured before it was written down: the invariance holds on all 70 pairs. The
+guard is the part that was missing, not the property.
+
+
 ## 1.60.1 — "What else does this fail on"
 
 **A patch, and nothing installable changed.** The arcs are done as far as they
