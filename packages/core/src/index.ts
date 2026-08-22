@@ -316,6 +316,12 @@ export type { BillLevers, BillLeverOptions, LeverId, SliceLevers } from './lever
 export { DETECTABLE_LANGUAGES, detectTextLanguage } from './language.js';
 export { countSentences, profilePrompt } from './profile.js';
 export { PHRASE_LANGUAGES } from './phrases.js';
+export {
+  DICTIONARY_STANDING,
+  dictionaryStanding,
+  languagesWithStanding,
+} from './maintainers.js';
+export type { DictionaryRecord, DictionaryStanding } from './maintainers.js';
 export { toPromptfoo } from './promptfoo.js';
 export { toOtlpMetrics } from './otlp.js';
 export type { OtlpAttribute, OtlpDataPoint, OtlpInput, OtlpMetric, OtlpPayload } from './otlp.js';

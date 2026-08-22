@@ -260,6 +260,24 @@ That is still true, and it is the reason this is eighth rather than second.
 
 ## 1.59.0 — A language needs a maintainer
 
+**First chapter landed: the gap is now stated where users meet it.** Five of the
+seven dictionaries — French, German, Portuguese, Italian and Dutch — were
+written without anybody who reads the language agreeing to a single entry, and
+the report named all seven in one sentence. `DICTIONARY_STANDING` records which
+is which with the evidence, the report prints the unreviewed set on the branch
+where an empty result would otherwise reassure, and
+[the maintainer role](language-maintainer.md) is written down with its bar.
+
+The uncomfortable half is that this arc's own premise had already been broken:
+the rule was *a dictionary is a judgement about a language and this project will
+not make it in a language nobody here reads*, and seven dictionaries shipped. The
+chapter does not delete the five — a Dutch prompt is better served by a
+dictionary that fires and says it was never reviewed than by silence — it stops
+describing them as though somebody had read them.
+
+**What the arc still owes is not a scheduling question**, which is the arc's own
+thesis and is now the page's closing line rather than a caveat in a plan.
+
 *An intention, and the one least in my gift.* The dictionaries cover seven
 languages. Adding an eighth is mechanically a catalogue plus entries, and has
 been held back because deciding a phrase says something in more words than it

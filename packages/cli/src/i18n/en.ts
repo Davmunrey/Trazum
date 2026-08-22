@@ -924,6 +924,9 @@ ${bold('EXAMPLES')}
     dictionaryCoverage: (languages) =>
       `  The phrase dictionaries cover ${languages}. A prompt in another language `
       + 'is not necessarily efficient — it may just be one Trazum cannot read yet.',
+    dictionaryUnreviewed: (languages) =>
+      `  Of those, ${languages} carry entries nobody here reads: written by the same `
+      + 'process that wrote the rules, never agreed by a speaker of the language.',
     levelAggressive: () => '[aggressive]',
     levelSafe: () => '[safe]',
     ruleHits: (hits, tokensSaved) => `(${hits}×, ~${tokensSaved} tokens)`,

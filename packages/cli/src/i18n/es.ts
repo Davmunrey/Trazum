@@ -943,6 +943,10 @@ ${bold('EJEMPLOS')}
       `  Los diccionarios de frases cubren ${languages}. Un prompt en otro idioma `
       + 'no es necesariamente eficiente: puede ser simplemente uno que Trazum '
       + 'todavía no sabe leer.',
+    dictionaryUnreviewed: (languages) =>
+      `  De esos, ${languages} llevan entradas que nadie aquí lee: escritas por el `
+      + 'mismo proceso que escribió las reglas, nunca aprobadas por alguien que '
+      + 'hable el idioma.',
     levelAggressive: () => '[agresiva]',
     levelSafe: () => '[segura]',
     ruleHits: (hits, tokensSaved) => `(${hits}×, ~${tokensSaved} tokens)`,
