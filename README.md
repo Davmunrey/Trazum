@@ -2673,20 +2673,33 @@ No rule found anything to trim.
 The phrase dictionaries cover English, Spanish, French, German, Portuguese,
 Italian and Dutch. A prompt in another language is not necessarily efficient —
 it may just be one Trazum cannot read yet.
+Of those, French, German, Portuguese, Italian and Dutch carry entries nobody
+here reads: written by the same process that wrote the rules, never agreed by a
+speaker of the language.
 ```
 
-That line exists because for a long time it was missing, and a French prompt came
-back with "No rule found anything to trim" — which reads as *your prompt is
+The first line exists because for a long time it was missing, and a French prompt
+came back with "No rule found anything to trim" — which reads as *your prompt is
 already efficient* and meant *I do not speak your language*. Stated rather than
 detected: guessing a prompt's language is one more thing to get wrong, and naming
 the coverage cannot be.
+
+**The second line exists because the first one, alone, reads as seven
+dictionaries of equal standing.** Two of the seven are languages Trazum reports
+in, which is the only evidence in this repository that anybody here reads them.
+For the other five, nothing says a speaker ever agreed that removing an entry
+leaves the prompt asking for the same thing. They are not deleted — a Dutch
+prompt is better served by a dictionary that fires and says it was never reviewed
+than by silence — and what a maintainer for one of them would actually be signing
+up for is in [maintaining a language](docs/language-maintainer.md).
 
 **Adding a language is adding entries to
 [`phrases.ts`](packages/core/src/phrases.ts)**, and one rule about doing it: a
 dictionary translated word by word looks complete and changes meaning. Spanish
 has `muy` and deliberately not `mucho` — words that are an intensifier *and* a
 quantifier (`muito`, `molto`, `heel`) turn "you have much time" into "you have
-time", and a test keeps them out.
+time", and a test keeps them out. That bug is why the standing of a dictionary is
+now recorded: three languages carried it, and it survived being read.
 
 ```bash
 trazum optimize prompt.txt --locale es      # flag

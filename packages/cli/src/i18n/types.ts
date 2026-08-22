@@ -92,6 +92,13 @@ export interface CliMessages {
     nothingToTrim(): string;
     /** The languages the phrase dictionaries cover, printed when nothing fired. */
     dictionaryCoverage(languages: string): string;
+    /**
+     * Of those, the ones nobody here has been shown to read.
+     *
+     * Its own line rather than a qualifier inside `dictionaryCoverage`, because
+     * the day somebody maintains all seven it is deleted rather than reworded.
+     */
+    dictionaryUnreviewed(languages: string): string;
     levelAggressive(): string;
     levelSafe(): string;
     ruleHits(hits: number, tokensSaved: number): string;

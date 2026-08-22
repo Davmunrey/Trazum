@@ -40,6 +40,8 @@ In the order somebody actually meets them:
 
 - **[Authoring rules](authoring-rules.md)** — how a deterministic rule is written,
   and the bar it has to clear.
+- **[Maintaining a language](language-maintainer.md)** — what a dictionary
+  maintainer decides, and which five of the seven dictionaries nobody here reads.
 - **[The format](format.md)** and **[JSON output](json-output.md)** — the
   contracts, each with a two-direction parity test.
 - **[Contributing](../CONTRIBUTING.md)** — how to propose a change here.

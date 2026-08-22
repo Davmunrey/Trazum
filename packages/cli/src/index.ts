@@ -95,6 +95,7 @@ import {
   optimize,
   parseBaseline,
   PHRASE_LANGUAGES,
+  languagesWithStanding,
   plannedCalls,
   PRICING_LAST_REVIEWED,
   profilePrompt,
@@ -911,6 +912,14 @@ function printReport(
     // Which languages the dictionaries actually cover. Only here, because this
     // is the one branch where silence reads as "your prompt is already clean".
     console.log(c.dim(t.report.dictionaryCoverage(languageNames(PHRASE_LANGUAGES, t))));
+    // And which of them nobody here reads. Naming the seven and stopping there
+    // reads as seven equal dictionaries; five of them have never been agreed by
+    // a speaker of the language, and a reader deciding whether to trust an
+    // empty result deserves the difference.
+    const unreviewed = languagesWithStanding(PHRASE_LANGUAGES, 'unreviewed');
+    if (unreviewed.length > 0) {
+      console.log(c.dim(t.report.dictionaryUnreviewed(languageNames(unreviewed, t))));
+    }
   }
 
   if (result.llm) {

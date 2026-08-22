@@ -11,6 +11,63 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+**Five of the seven phrase dictionaries were written by nobody who reads the
+language, and now the report says so.** The first chapter of arc 1.59 — *a
+language needs a maintainer*. The dictionaries cover English, Spanish, French,
+German, Portuguese, Italian and Dutch, and the coverage line named all seven in
+one sentence, which reads as seven dictionaries of equal standing. Two of them
+are languages this project reports in, which is the only evidence in this
+repository that anybody here reads them. For the other five, nothing in the
+history says a speaker ever agreed that removing an entry leaves the prompt
+asking for the same thing.
+
+**The roadmap and the catalogue disagreed, and the catalogue is the one users
+meet.** An eighth language has been held back for several arcs on the stated
+grounds that a dictionary is a judgement about a language and this project will
+not make it in a language nobody here reads. Seven dictionaries shipped anyway.
+
+**The evidence that reading the list is not enough is a bug this project already
+shipped**: `INTENSIFIERS` carried `molto`, `muito` and `heel`, each an
+intensifier *and* a quantifier, so *you have much time* became *you have time*
+in three languages at once. Spanish avoids exactly that trap — `muy` yes,
+`mucho` no — because somebody who speaks Spanish wrote it. The three were caught
+by running prompts through the rules, which is a far weaker instrument than a
+speaker, and one bug found by the weaker instrument is not a review.
+
+**`DICTIONARY_STANDING`** records `reviewed` or `unreviewed` per language with
+what was actually done to the entries, and `trazum optimize` prints the
+unreviewed set on the branch where an empty result would otherwise reassure —
+its own line, in both report languages, so the day somebody maintains all seven
+it is deleted rather than reworded.
+
+**[docs/language-maintainer.md](docs/language-maintainer.md)** is the role made
+real: what a maintainer decides (five questions, none of them "is this the right
+translation"), what is asked of them, what is deliberately not asked, and what
+happens when nobody holds it — the language stays, its record says `unreviewed`,
+and nothing pretends otherwise.
+
+**It is also a row on [our own medicine](docs/our-own-medicine.md)**, and a
+different shape from the others there. Every other row is a claim nothing
+checked; this one is a rule this project wrote for itself and then broke, held up
+for several arcs as the reason an eighth language was not scheduled while five
+unread dictionaries were already shipping. No guard catches that — only
+re-reading the rule against the catalogue does.
+
+**What this chapter does not do** is promise an eighth language. Whether the
+role is ever filled is not a scheduling question, and the page says so.
+
+**Nothing is deleted.** A Dutch prompt is better served by a dictionary that
+fires and says it was never reviewed than by silence.
+
+The guards are derived, not written: `maintainers.test.js` reads the `reviewed`
+set off the report catalogues on disk, so a French report translation fails the
+build until somebody decides what it means for the French dictionary; the
+document is checked against the code's unreviewed set rather than against a
+list; and both checks are proved against a fabricated table and a page with a
+language quietly dropped.
+
 ### Changed
 
 **One of the three things this project could not say about itself has stopped
