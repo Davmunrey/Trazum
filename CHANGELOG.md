@@ -13,6 +13,31 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+**And the other rule that constrains everything was enforced by a disclosure
+check, not by a run.** *The deterministic core stays free and offline — no
+feature may make a network call a prerequisite for optimising a prompt* is the
+first of the two rules `ROADMAP.md` opens with, and the thing a reader is most
+likely checking when they open `SUPPORT.md`.
+
+What existed was `outbound-surfaces.test.js`, which derives every module that
+*can* reach the network and requires each to be named in the prose. That is a
+good rule and a different one: a module can be disclosed, listed and documented
+and still sit on the path of `trazum optimize`.
+
+It is now proved the only way it honestly can be — **by removing the network and
+running the command.** `fetch` is replaced with a thrower before the CLI loads,
+and `optimize`, `check` and `rules` have to work with it gone; the report has to
+come back **byte-identical** to a run with the network intact.
+
+**And the stub is proved to bite**, which is what makes the rest mean anything:
+`--pricing-live` under the same stub has to fail *and carry the stub's own
+marker*, because a stub that silently failed to install would leave every
+assertion above passing and nothing proved.
+
+Measured before it was written down: it holds, in the library and through the
+binary. The guard is the part that was missing.
+
+
 **One of the two rules that constrain everything here was checked on one
 English sentence.** *A locale changes the report, never the optimisation* is one
 of the two rules `ROADMAP.md` opens with, and the README says it is enforced by
