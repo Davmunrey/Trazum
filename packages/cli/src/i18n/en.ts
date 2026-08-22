@@ -59,7 +59,7 @@ ${bold('USAGE')}
   trazum rollup <document...|dir> [--json]
   trazum pulse [--max-stale-hours <n>]
   trazum models
-  trazum rules
+  trazum rules [--measure <dir>] [--level <safe|aggressive>]
   trazum gateway <provider> --on-cannot-tell <fail-open|fail-closed>
   trazum experiment <log> --a <label> --b <label> --min-outcomes <n>
   trazum quality <log> --label <name> --at <iso> [--gate]
@@ -135,6 +135,25 @@ ${bold('OPTIONS FOR pulse')}
   Never gates on a first run that never happened — that has no cadence to be
   late against — and never on how far the measurements reach, which is a
   provider reporting on its own schedule rather than a job that failed.
+
+${bold('OPTIONS FOR rules')}
+  --measure <dir>             Measure what each rule actually recovers over the
+                              prompts in that directory, instead of listing what
+                              each one does.
+  --level <safe|aggressive>   Which rules to measure. Default: safe.
+  --json                      The measurement as data.
+
+  Without --measure it lists the rules and what each is for. With it, the
+  optimiser is run once per rule alone and once per rule removed, and both
+  figures are printed: where two rules find the same tokens they diverge, and
+  either one on its own would be wrong in a different direction.
+
+  The floor is separated out. The optimiser normalises whitespace whether or not
+  a rule is enabled, and crediting that to the rules is how a headline
+  percentage survives on a corpus where the rules recover nothing.
+
+  "Inert" is always said about the corpus. A rule that finds nothing in these
+  files has not been shown to find nothing anywhere.
 
 ${bold('OPTIONS FOR feedback')}
   (none)
@@ -1612,6 +1631,22 @@ ${bold('EXAMPLES')}
   rules: {
     title: () => 'Available rules',
     disableHint: () => '  Turn off the ones you do not want with --disable id1,id2',
+    measureHeading: (root, prompts, level) =>
+      `What each rule recovers in ${root} — ${plural(prompts, 'prompt')}, level ${level}`,
+    measureTotals: (before, saved, floor) =>
+      `${before} tokens before. The rules recover ${saved}; normalisation recovers ${floor} whether a rule is enabled or not, and that is not the rules' work.`,
+    measureRow: (id, marginal, alone, prompts) =>
+      `${id.padEnd(22)} lost if removed ${marginal.padStart(6)}   alone ${alone.padStart(6)}   ${plural(prompts, 'prompt')}`,
+    measureOverlap: (sumOfAlone, saved) =>
+      `The rules recover ${sumOfAlone} between them one at a time and ${saved} together. The gap is the overlap — two rules finding the same tokens — and it is stated rather than resolved into a total, because a single figure here is the one number that cannot be true.`,
+    measureRedundant: (ids) =>
+      `Every token these find, something else finds too, here: ${ids}. An overlap, not a defect — and not a reason to delete one without deciding which is the better to keep.`,
+    measureInert: (ids) =>
+      `These changed nothing in this corpus: ${ids}. That is a fact about these files, not about the rules: a rule that finds nothing here has not been shown to find nothing anywhere.`,
+    measureBand: (source) =>
+      source === 'heuristic'
+        ? 'Counted with the built-in estimator, so every figure above carries its documented band. A rule whose yield is a handful of tokens is inside the noise.'
+        : 'Counted with an external tokenizer.',
   },
 
 

@@ -516,6 +516,13 @@ export interface CliMessages {
   rules: {
     title(): string;
     disableHint(): string;
+    measureHeading(root: string, prompts: number, level: string): string;
+    measureTotals(before: string, saved: string, floor: string): string;
+    measureRow(id: string, marginal: string, alone: string, prompts: number): string;
+    measureOverlap(sumOfAlone: string, saved: string): string;
+    measureRedundant(ids: string): string;
+    measureInert(ids: string): string;
+    measureBand(source: string): string;
   };
 
   /** `trazum rank` — which prompts to fix first, and why. */

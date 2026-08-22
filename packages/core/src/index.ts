@@ -52,6 +52,7 @@ export { measuredUsage, labelCoverage, MIN_SCALE_DAYS, SCALE_TO_DAYS } from './m
 export { assignSources, fleetRollup } from './fleet.js';
 export { rollUp } from './rollup.js';
 export { heartbeats } from './heartbeat.js';
+export { ruleYield } from './rule-yield.js';
 export { buildPlan, planLabelName, parsePlanDocument, PLAN_ACTION_KINDS } from './plan.js';
 export type { PlanParseFailure, PlanParseResult } from './plan.js';
 export type { PlanAction, PlanActionKind, PlanAssumption, PlanDocument } from './plan.js';
@@ -256,6 +257,7 @@ export type {
 } from './history.js';
 export type { CannotTellReason, PlanVerification, VerifiedAction, VerifyOutcome } from './verify.js';
 export type { FleetSource, FleetRollup } from './fleet.js';
+export type { RuleYield, RuleYieldReport } from './rule-yield.js';
 export type {
   Heartbeat,
   HeartbeatInput,

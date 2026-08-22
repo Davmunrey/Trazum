@@ -71,6 +71,7 @@ import {
   fleetRollup,
   rollUp,
   heartbeats,
+  ruleYield,
   labelCoverage,
   measuredUsage,
   gateMargin,
@@ -299,6 +300,7 @@ const VALUE_FLAGS = new Set([
   'max-growth-usd',
   'max-cache-loss-usd',
   'max-stale-hours',
+  'measure',
   'max-day-usd',
   'max-session-usd',
   'csv-out',
@@ -608,7 +610,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   commitment: ['floor', 'discount', 'months', 'pricing', 'pricing-live'],
   report: ['year', 'json', 'pricing', 'pricing-live'],
   where: [],
-  rules: [],
+  rules: ['measure', 'level', 'json'],
   blame: ['limit', 'model', 'calls', 'output-tokens', 'batch', 'prompt', 'markdown-out'],
   doctor: ['level', 'model', 'calls', 'output-tokens', 'batch', 'disable', 'prompt', 'otlp-out'],
 };
@@ -3624,6 +3626,93 @@ function commandRules(t: CliMessages, locale: Locale): void {
     console.log(`    ${c.dim(wrap(copy[rule.id].rationale, 74, '    '))}`);
     console.log();
   }
+}
+
+/**
+ * `trazum rules --measure <dir> [--level <safe|aggressive>] [--json]` — and
+ * what does each one actually recover here?
+ *
+ * The README says plainly that the deterministic rules recover about one per
+ * cent, and that is the fair complaint about this tool. It is also an
+ * **aggregate**, and an aggregate is where a distribution goes to hide: the
+ * same one per cent is consistent with every rule pulling its weight and with
+ * two rules doing all of it beside five that have never changed a byte.
+ *
+ * This measures which, over prompts the reader actually has, by running the
+ * optimiser with each rule alone and then with each rule removed. **Both
+ * figures are printed and neither is reconciled into the other**, because
+ * where two rules find the same tokens they diverge, and either one on its own
+ * would be wrong in a different direction.
+ *
+ * **The floor is separated out.** The optimiser normalises whitespace whether
+ * or not any rule is enabled, and crediting that to the rules is how a
+ * headline percentage survives on a corpus where the rules recover nothing.
+ * The first version of the module did exactly that and reported every rule as
+ * redundant.
+ *
+ * "Inert" is always said **about the corpus**. A rule that finds nothing in
+ * these files has not been shown to find nothing anywhere, and the difference
+ * is the whole distance between "delete this rule" and "measure it on
+ * something else".
+ */
+async function commandRulesMeasure(
+  args: Args,
+  config: TrazumConfig,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
+  const root = stringFlag(args, 'measure')!;
+  const level = (stringFlag(args, 'level') ?? 'safe') as RuleLevel;
+  if (level !== 'safe' && level !== 'aggressive') throw new Error(t.errors.badLevel(level));
+
+  const extensions = config.extensions ?? [...DEFAULT_EXTENSIONS, ...SOURCE_EXTENSIONS];
+  const { files, truncated } = await walkPrompts(root, { extensions });
+  if (files.length === 0) throw new Error(t.errors.noPromptsFound(root, extensions.join(' ')));
+
+  const prompts: string[] = [];
+  for (const file of files) {
+    const raw = await readFile(file, 'utf8');
+    // A marked source file contributes its marked prompts; anything else
+    // contributes itself. The same rule `check` and `doctor` already follow,
+    // so the three commands measure the same text.
+    if (hasMarker(raw)) prompts.push(...extractPrompts(raw).prompts.map((p) => p.text));
+    else prompts.push(raw);
+  }
+
+  const report = ruleYield(prompts, RULES.map((rule) => rule.id), { level, pricing });
+
+  if (boolFlag(args, 'json')) {
+    console.log(JSON.stringify({ ...report, root, files: files.length, truncated }, null, 2));
+    return;
+  }
+
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+
+  console.log();
+  console.log(c.bold(t.rules.measureHeading(root, report.prompts, level)));
+  console.log(`  ${c.dim(t.rules.measureTotals(n(report.tokensBefore), n(report.tokensSaved), n(report.floor)))}`);
+  console.log();
+
+  for (const rule of report.rules) {
+    const line = t.rules.measureRow(rule.id, n(rule.marginal), n(rule.alone), rule.prompts);
+    if (rule.marginal > 0) console.log(`  ${line}`);
+    else console.log(`  ${c.dim(line)}`);
+  }
+
+  console.log();
+  // The overlap, stated as the gap rather than resolved into a total: a single
+  // figure here is the one number that cannot be true.
+  if (report.sumOfAlone !== report.tokensSaved) {
+    console.log(`  ${c.dim(wrap(t.rules.measureOverlap(n(report.sumOfAlone), n(report.tokensSaved)), 74, '    '))}`);
+  }
+  if (report.redundantHere.length > 0) {
+    console.log(`  ${c.dim(wrap(t.rules.measureRedundant(report.redundantHere.join(', ')), 74, '    '))}`);
+  }
+  if (report.inertHere.length > 0) {
+    console.log(`  ${c.dim(wrap(t.rules.measureInert(report.inertHere.join(', ')), 74, '    '))}`);
+  }
+  console.log(`  ${c.dim(wrap(t.rules.measureBand(report.tokenSource), 74, '    '))}`);
+  console.log();
 }
 
 async function readInput(source: string | undefined, t: CliMessages): Promise<string> {
@@ -9864,7 +9953,8 @@ async function main(): Promise<void> {
       await commandWhere(args, config, pricing, t);
       break;
     case 'rules':
-      commandRules(t, locale);
+      if (stringFlag(args, 'measure') !== undefined) await commandRulesMeasure(args, config, pricing, t);
+      else commandRules(t, locale);
       break;
     case 'doctor':
       await commandDoctor(args, config, pricing, t, locale);
