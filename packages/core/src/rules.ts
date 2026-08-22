@@ -300,9 +300,28 @@ const nearDuplicateBlocksRule: Rule = {
   },
 };
 
-/** Every rule, in the order they must run. */
+/**
+ * Every rule, in the order they must run.
+ *
+ * **The order decides what the reader is told, not just how fast this runs.**
+ * A repeated stanza is a repeated *block* and also a set of repeated *lines*,
+ * so all three of the deletion rules can find it and whichever runs first
+ * takes it. Coarsest first means the report says "one repeated paragraph"
+ * rather than "three repeated lines" for the same saving — the same number
+ * attached to a sentence somebody can act on instead of three they have to
+ * reassemble.
+ *
+ * That was an unstated consequence until `rules --measure` made the overlap
+ * visible: the leave-one-out measurement credits each of the three with the
+ * whole saving, because each of them *would* have caught it alone. The applied
+ * run credits exactly one, and this list is what picks which.
+ *
+ * `rules.test.js` pins both facts, so a reorder that quietly changes the
+ * attribution fails the build rather than changing what users read.
+ */
 export const RULES: readonly Rule[] = [
-  // Whole-block deletions first, so the rest works over less text.
+  // Whole-block deletions first: less text for the rest to walk, and the
+  // coarsest description of what was removed.
   duplicateBlocksRule,
   nearDuplicateBlocksRule,
   duplicateLinesRule,
