@@ -57,6 +57,7 @@ ${bold('USAGE')}
   trazum where [file]
   trazum conform <file|-> [--contract <name>]
   trazum rollup <document...|dir> [--json]
+  trazum pulse [--max-stale-hours <n>]
   trazum models
   trazum rules
   trazum gateway <provider> --on-cannot-tell <fail-open|fail-closed>
@@ -115,6 +116,25 @@ ${bold('OPTIONS FOR rollup')}
   the bill and no merge of summaries can see it.
 
   Exits 1 when a contribution was handed over and could not be merged.
+
+${bold('OPTIONS FOR pulse')}
+  --max-stale-hours <n>       Exit 1 when something that runs here has not run
+                              in over n hours. Without it, the ages are
+                              reported and nothing is judged.
+  --json                      The report as data.
+
+  Did the things that are supposed to run, run? \`watch --once\` is built for a
+  scheduler, and its state file is read by exactly one thing — the next cycle.
+  So nothing could tell you the watcher had stopped, because the thing that
+  would tell you was the thing that stopped.
+
+  It runs nothing and hosts nothing. Something has to notice, and the something
+  is your CI: a step running this on the schedule you already have turns a dead
+  cron into a red build, without Trazum holding anybody's metrics.
+
+  Never gates on a first run that never happened — that has no cadence to be
+  late against — and never on how far the measurements reach, which is a
+  provider reporting on its own schedule rather than a job that failed.
 
 ${bold('OPTIONS FOR feedback')}
   (none)
@@ -1459,6 +1479,31 @@ ${bold('EXAMPLES')}
           return code;
       }
     },
+  },
+
+  pulse: {
+    heading: () => 'Did the things that are supposed to run, run?',
+    kind: (kind) => {
+      switch (kind) {
+        case 'watch-cycle':
+          return 'last watch cycle';
+        case 'store-pull':
+          return 'last pull into the store';
+        case 'store-coverage':
+          return 'measurements reach up to';
+        default:
+          return kind;
+      }
+    },
+    neverRun: (name) => `${name}: never here. Not late — there is no cadence to be late against.`,
+    age: (name, when, hours) => `${name}: ${when}Z, ${plural(hours, 'hour')} ago`,
+    noThreshold: () =>
+      'Nothing was judged. Pass --max-stale-hours <n> to make a run that stopped a failing exit code; how stale is too stale is a policy, and this tool does not write yours.',
+    within: (hours) => `Everything that has run here ran within ${plural(hours, 'hour')}.`,
+    stale: (hours) =>
+      `Something that runs here has not run in over ${plural(hours, 'hour')}. Silence from a scheduled job and silence from a job with nothing to report look identical; this is which.`,
+    notAService: () =>
+      'This command runs nothing and hosts nothing. Something has to notice, and the something is your CI: a step that runs this on the schedule you already have turns a dead cron into a red build, without Trazum holding anybody\'s metrics. How far the measurements reach is reported and never judged — that is a provider reporting on its own schedule, not a job that failed.',
   },
 
   where: {
