@@ -1184,6 +1184,31 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.60.1 — "What else does this fail on" — released
+
+**A patch, and nothing installable changed.** With the plan finished as far as it
+can go, this is the shape of the work that follows one: a guard that had been
+checking the wrong thing for four releases, the document it was supposed to be
+checking, and the doctrine rule that would have caught both.
+
+The guard compared the `~ ` before a money figure in the `trazum doctor`
+transcript and called it format. That space is right-alignment — the command
+prints `~ $10.59`, `~  $8.82` and `~$0.5300` in one column — so the check agreed
+or disagreed on how wide this repository's own figures happened to be, and broke
+on a config change that never touched the README. It now measures what the column
+actually promises: the text starts at the same offset on every row, priced or
+not, measured on both sides.
+
+**And the defect it was written for was there**: the transcript's unpriced rows
+sat one column left of the priced ones, on a page headed *Real output,
+transcribed*.
+
+**A rule joined the doctrine**: *and prove it does not fire on anything else* —
+the half of the guard rule that keeps being skipped because the first half
+passed. Two instances on this project's record, both a proxy that correlated with
+the property until it did not.
+
+
 ## 1.60.0 — "Our own medicine, measured" — released
 
 **The last arc the 1.52–1.60 plan named, and it does not close the plan.** Six of
