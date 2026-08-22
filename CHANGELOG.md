@@ -59,6 +59,26 @@ total that looks audited.
 profile first would accept every roll-up as a profile and never apply the two
 refusals only a roll-up has to carry.
 
+**A span is not a period, and the roll-up now knows the difference.** A log
+whose latest record is the 5th may be a log of a quiet week or a log that
+stopped being written on the 5th — the records cannot tell those apart, and the
+first version read every contributor's span as its period. A profile run with
+`--since`/`--until` already carried the window it asked for; the roll-up carries
+it through as `claimed`, keeps `claimedSpan` apart from the observed `span`, and
+names every day inside a bounded claim that recorded nothing. Contiguous runs
+rather than a list of dates, so a year-long claim with three days of traffic is
+a handful of entries instead of three hundred and sixty-two strings.
+
+A contributor that claimed nothing gets `no-claimed-period` rather than having
+its span quietly promoted to one; a claim with a single end gets
+`claim-not-bounded`; and a claim longer than ten years is **kept and not
+walked**, because these documents come from elsewhere and `untilMs: 1e15` is a
+malformed document rather than a team with a long memory.
+
+`undatedExcluded` travels too — the records a contributor's own window could not
+place — and is `null` when there was no window, never `0`, because zero would
+say a window excluded nothing.
+
 ### Fixed
 
 **`--help` retyped the list of contracts, and it stopped at `cost-answer`.** Two

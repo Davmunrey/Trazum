@@ -2143,6 +2143,21 @@ async function commandRollup(args: Args, t: CliMessages): Promise<void> {
         : t.rollup.span(day(document.span.fromMs), day(document.span.toMs)),
     )}`,
   );
+  if (document.claimedSpan !== null) {
+    console.log(
+      `  ${c.dim(
+        wrap(
+          t.rollup.claimedSpan(
+            day(document.claimedSpan.fromMs),
+            day(document.claimedSpan.toMs - 1),
+            document.claimedSpan.contributors,
+          ),
+          72,
+          '    ',
+        ),
+      )}`,
+    );
+  }
 
   console.log();
   console.log(c.bold(t.rollup.contributorsHeading()));
@@ -2155,11 +2170,39 @@ async function commandRollup(args: Args, t: CliMessages): Promise<void> {
         contributor.spanDays === null ? null : Math.round(contributor.spanDays),
       )}`,
     );
+    /**
+     * What this contributor asked for, before what it found.
+     *
+     * A span is not a period: a log whose latest record is the 5th may be a
+     * log of a quiet week or a log that stopped being written on the 5th, and
+     * only a claim tells those apart. Printed above the gaps because the
+     * silence below is measured against it.
+     */
+    if (contributor.claimed !== null) {
+      const { sinceMs, untilMs } = contributor.claimed;
+      if (sinceMs !== null && untilMs !== null) {
+        // The window is half-open, so the last claimed day is the one before
+        // `until` — printed as the reader would say it, not as the filter
+        // stores it.
+        console.log(`    ${c.dim(t.rollup.claimedRow(day(sinceMs), day(untilMs - 1)))}`);
+      }
+      if (contributor.undatedExcluded !== null && contributor.undatedExcluded > 0) {
+        console.log(`    ${c.yellow(wrap(t.rollup.undated(contributor.undatedExcluded), 70, '      '))}`);
+      }
+    }
     // Every gap under the contributor that has it, never summed into one
     // figure: "one of your four machines is 90% unpriced" is the finding, and
     // an average is what hides it.
     for (const gap of contributor.gaps) {
       console.log(`    ${c.yellow(wrap(gap.detail, 70, '      '))}`);
+    }
+    // The silent stretches by name, under the gap that counted them: "eight
+    // days recorded nothing" is a number, and which eight is the finding.
+    if (contributor.silence !== null && contributor.silence.runs.length > 0) {
+      const runs = contributor.silence.runs
+        .map((run) => (run.from === run.to ? run.from : `${run.from} to ${run.to}`))
+        .join(', ');
+      console.log(`      ${c.dim(wrap(t.rollup.silentRuns(runs), 68, '        '))}`);
     }
   }
 

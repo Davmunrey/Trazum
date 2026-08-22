@@ -260,6 +260,9 @@ away.
 | --- | --- |
 | `schemaVersion` | `1`. |
 | `contributors` | One entry per merged contribution: `name`, `totalUsd`, `calls`, `span`, `spanDays`, and `gaps`. |
+| `contributors[].claimed` | The window this contributor **asked for** — `sinceMs`/`untilMs`, half-open — or `null` when it filtered by none. A claim, not a measurement: `span` says what the records showed and this says what was gone looking for, and only the second can tell a quiet week from an export that stopped. |
+| `contributors[].silence` | `runs` of contiguous days inside a fully bounded claim that recorded nothing, each with `from`, `to` and `days`, plus the total. **Named rather than interpolated**, the way a year report names its missing months. Null when there is nothing to measure against: no claim, one end only, or a claim too long to enumerate. |
+| `contributors[].undatedExcluded` | Records the contributor's own window could not place, because they carried no clock. **Null when there was no window**, never 0 — zero would say a window excluded nothing. |
 | `contributors[].gaps` | That contributor's own blind spots — `unreadable-lines`, `unpriced-calls`, `no-clock`, `partial-clock`, `no-sessions`, `no-labels`, `duplicate-lines` — each with a `detail`, and `usd`/`calls` that are **`null` where the kind has none**. Kept per contributor and never summed: "3% of this roll-up is unpriced" is the sentence that hides "one of your four machines is 90% unpriced". |
 | `rejected` | Every contribution handed over and **not** merged, with `name` and `because`. A machine that contributed nothing must not read like a machine that spent nothing, so this is a field rather than an absence — and the command exits 1 when it is non-empty. |
 | `identicalContributions` | `groups` of contribution names that were the same document, and the `usd` the repeats added. **Merged and stated, never discarded** — the rule a single profile already applies to duplicate lines. |
@@ -268,9 +271,10 @@ away.
 | `spendByDay` | Per UTC day, oldest first, with `contributors` — how many contributed to that day — and `byModel`. |
 | `spendByDay[].topLabel` | The day's dearest label, or **`null` when more than one contributor covered the day**, with `topLabelUsd` null beside it. The merged answer needs per-label-per-day spend no document carries, and the larger of two contributors' answers is wrong whenever a runner-up in both adds up to more than either winner. |
 | `span` | Earliest start to latest end over contributors that carried a clock, with `calls` summed. Null when none did. |
+| `claimedSpan` | Earliest claimed start to latest claimed end, over contributors that stated a fully bounded window, with how many did. **Kept apart from `span` deliberately** — one is what the records showed and the other what somebody went looking for, and merging them answers "what period does this cover" with a figure that is half measurement and half intention. |
 | `fieldCoverage`, `outcomeTally`, `duplicateLines` | Summed. `duplicateLines` is **within-contributor** only — overlap *between* contributors is in `cannotSay` and is not a number. |
 | `notMerged` | Findings that do not roll up, each with `finding`, `because`, and `presentIn` — the contributors that have one, so the reader knows where to go and look. Percentile shapes, conversation growth, repeated turns and truncation retries are all computed from individual calls, and a summary of a summary cannot reproduce them. |
-| `cannotSay` | Typed caveats: `overlap-invisible`, `mismatched-spans`, `contributor-without-clock`, `day-top-label-unknown`, `identical-contributions`, `contribution-rejected`, `unknown-fields-dropped`. Part of the document, not a footnote in the terminal rendering. |
+| `cannotSay` | Typed caveats: `overlap-invisible`, `mismatched-spans`, `contributor-without-clock`, `day-top-label-unknown`, `identical-contributions`, `contribution-rejected`, `unknown-fields-dropped`, `no-claimed-period`, `silence-inside-a-claim`, `claim-not-bounded`, `claim-too-long-to-enumerate`. Part of the document, not a footnote in the terminal rendering. |
 
 **Two of those are enforced, not merely documented.**
 `trazum conform --contract roll-up` fails a roll-up of more than one contributor
@@ -278,6 +282,13 @@ whose `cannotSay` omits `overlap-invisible`, and fails one that rejected a
 contribution and does not say so. Two people exporting the same traffic double
 the bill and no merge of summaries can see it — a format that carried the fields
 and lost that refusal would hand somebody a doubled total that looks audited.
+
+**A claim longer than ten years is kept and not walked.** These documents come
+from elsewhere, and a contribution claiming `untilMs: 1e15` is a malformed
+document rather than a team with a long memory — enumerating it would be thirty
+million iterations inside a merge somebody ran on four files. The claim survives
+into the roll-up; only its silence goes unmeasured, with
+`claim-too-long-to-enumerate` saying so.
 
 **A field this version cannot classify is dropped and named**, in `cannotSay`
 and again in `notMerged` with the field's name. A number added after this

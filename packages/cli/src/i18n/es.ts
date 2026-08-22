@@ -1415,6 +1415,12 @@ ${bold('EJEMPLOS')}
     contributorsHeading: () => 'Contribuyentes, y lo que cada uno no pudo ver',
     contributor: (name, usd, calls, spanDays) =>
       `${name} — ${usd}, ${plural(calls, 'llamada')}${spanDays === null ? ', sin reloj' : `, ${plural(spanDays, 'día')}`}`,
+    claimedSpan: (from, to, contributors) =>
+      `Pidió del ${from} al ${to} ${plural(contributors, 'contribuyente')} — una afirmación sobre lo que se fue a buscar, separada de lo que mostraron los registros.`,
+    claimedRow: (from, to) => `pidió del ${from} al ${to}`,
+    silentRuns: (runs) => runs,
+    undated: (count) =>
+      `${plural(count, 'registro')} que la propia ventana de este contribuyente no pudo situar, porque no traían reloj`,
     rejectedHeading: () => 'Entregado y no agregado',
     rejected: (name, because) => `${name} — ${because}`,
     identical: (names) => `El mismo documento llegó más de una vez: ${names}.`,
@@ -1436,6 +1442,14 @@ ${bold('EJEMPLOS')}
           return 'Un contribuyente no traía ninguna marca de tiempo, así que nada de su gasto está en los días de arriba.';
         case 'day-top-label-unknown':
           return 'Un día vino de más de un contribuyente, así que su etiqueta más cara se desconoce: cada contribuyente conoce la suya, y la respuesta agregada necesita el gasto por etiqueta y día que ningún documento lleva.';
+        case 'no-claimed-period':
+          return 'Un contribuyente no declaró ninguna ventana, así que su tramo es todo lo que se sabe de él — y un registro cuya última línea es del día 5 puede ser una semana tranquila o un registro que dejó de escribirse el día 5.';
+        case 'silence-inside-a-claim':
+          return 'Un contribuyente no registró nada en días que pidió. Si es un tramo tranquilo o una exportación que se paró es cosa tuya saberlo; los días están nombrados arriba.';
+        case 'claim-not-bounded':
+          return 'Un contribuyente declaró un extremo de la ventana y no el otro, así que su silencio no se puede medir contra ella.';
+        case 'claim-too-long-to-enumerate':
+          return 'Una ventana declarada era demasiado larga para recorrerla día a día y no se recorrió. La afirmación se conserva; solo su silencio queda sin medir.';
         case 'identical-contributions':
           return 'Dos contribuciones eran el mismo documento.';
         case 'contribution-rejected':

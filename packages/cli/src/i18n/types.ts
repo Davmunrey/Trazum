@@ -441,6 +441,10 @@ export interface CliMessages {
     noSpan(): string;
     contributorsHeading(): string;
     contributor(name: string, usd: string, calls: number, spanDays: number | null): string;
+    claimedSpan(from: string, to: string, contributors: number): string;
+    claimedRow(from: string, to: string): string;
+    silentRuns(runs: string): string;
+    undated(count: number): string;
     rejectedHeading(): string;
     rejected(name: string, because: string): string;
     identical(names: string): string;
