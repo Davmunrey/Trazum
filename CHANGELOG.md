@@ -11,7 +11,37 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Changed
+
+**One of the three things this project could not say about itself has stopped
+being true.** [docs/our-own-medicine.md](docs/our-own-medicine.md) ends with
+three admissions, and arc 1.60 asks for at least one of them to fall to a
+measurement rather than an argument. The third was *"every miss above was found
+and written down by the same process that made it"*.
+
+**Five defects on the record were found by CodeQL** — in 1.8.0, 1.46.0, 1.50.3,
+1.53.4 and 1.55.0 — and not one by a test in this repository. They are tabulated
+on the page with what each found: an SSRF where a validated URL and a fetched URL
+were different expressions, a time-of-check/time-of-use race on a size bound, two
+unanchored host patterns that a lookalike domain satisfies, a ReDoS in a guard
+this project had just written whose own proof would have passed against the
+vulnerable version, and a file-system race on the pull request that introduced
+it.
+
+**The 1.8.0 entry is the one that carries the weight**: CodeQL kept that alert
+open twice, against this project's judgement, and was right both times. A
+self-report cannot contain that shape by definition.
+
+**And what it does not establish is written beside it.** CodeQL is not an
+independent audit — it runs because this project turned it on and would stop the
+day somebody here deleted a workflow. It is an outside instrument whose rules
+this project did not write and cannot argue with, which is narrower than "somebody
+audited us" and is what was actually measured. The other two admissions — no
+usage log of its own, no outcome recorded for any of its work — are untouched,
+and a test asserts the page still says so.
+
+The list of releases is guarded: `docs.test.js` fails if one named in the table
+stops mentioning CodeQL in its notes, so the claim cannot grow past its evidence.
 
 
 ## 1.56.1 — "What the rules actually do"

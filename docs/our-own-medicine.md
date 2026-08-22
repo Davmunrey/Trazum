@@ -132,9 +132,44 @@ The section this document would be dishonest without.
 - **No outcome is recorded for any of it.** By the standard this product set in
   1.50.4, "the arc delivered" is a cost with no counterpart: nothing here says
   whether the features are used or whether they help.
-- **The record is self-reported.** Every miss above was found and written down by
-  the same process that made it. A miss nobody noticed is, by construction, not
-  on this page, and there is no way to estimate how many of those there are
-  without inventing a number.
+- **The record is *almost* self-reported**, and the exception is counted below
+  rather than waved at. A miss nobody noticed is still, by construction, not on
+  this page, and there is no way to estimate how many of those there are without
+  inventing a number.
 
 That last one is the reason this document ends without a score.
+
+## The one sentence that stopped being true
+
+This page used to say every miss on it had been found and written down by the
+same process that made it. That was the deepest of the three admissions, and it
+is no longer accurate.
+
+**Five defects on this record were found by CodeQL**, in 1.8.0, 1.46.0, 1.50.3,
+1.53.4 and 1.55.0. Not one of them was caught by a test in this repository:
+
+| Release | What it found |
+| --- | --- |
+| 1.8.0 | A validated URL and a fetched URL were two different expressions, so nothing on the path from option to `fetch` was a barrier. **It kept the alert open twice**, against this project's judgement, and was right both times. |
+| 1.46.0 | A time-of-check/time-of-use race: a size bound taken with `stat` and the file then read by name. |
+| 1.50.3 | Two unanchored host patterns in a credential guard — and it was right about more than the lint, because the same pattern passes on `api.anthropic.com.evil.com`. |
+| 1.53.4 | A ReDoS in a guard this project had just written, **whose own proof would have passed against the vulnerable version**. |
+| 1.55.0 | A file-system race in a new command, on the pull request that introduced it. |
+
+**What that does and does not establish.** It is not an independent audit: CodeQL
+runs because this project turned it on and keeps it on, and it would stop the day
+somebody here removed a workflow file. What it is, is an **outside instrument
+whose rules this project did not write and cannot argue with** — which is why the
+1.8.0 entry is the important one. This project dismissed that alert, twice, and
+the instrument was right and this project was wrong. A self-report cannot contain
+that shape by definition.
+
+**Every other line on this page is still self-found**, and the two other
+admissions above are untouched: there is still no usage log of this project's
+own, and still no outcome recorded for any of its work. One sentence of three
+moved, which is what the arc asked for and not more.
+
+**Counted rather than argued**, and reproducible: search `RELEASES.md` for
+`CodeQL`, and read the release each mention sits in. `docs.test.js` fails if a
+release named in the table above stops mentioning it, so the list cannot quietly
+grow past its evidence.
