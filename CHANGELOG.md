@@ -11,7 +11,46 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**`trazum rules --measure <dir>` — and what does each rule actually recover?**
+The first chapter of arc 1.57, and it starts by measuring the number the whole
+arc is about. The README says plainly that the deterministic rules recover about
+one per cent, which is the fair complaint about this tool — and it is an
+**aggregate**, consistent with every rule pulling its weight and equally
+consistent with two rules doing all of it beside five that have never changed a
+byte of anybody's prompt. Nobody here had measured which, and deciding what
+belongs on the model's side of the line is a question about what the dictionary
+side already covers.
+
+**Two figures per rule, and they are never added together.** `alone` is what a
+rule saves as the only rule running; `marginal` is what the whole set loses when
+it is removed. They diverge exactly where rules overlap — on a prompt with a
+repeated stanza, `duplicate-blocks`, `near-duplicate-blocks` and
+`duplicate-lines` each recover forty tokens alone and **nothing** at the margin,
+because the other two still find it. Reporting `alone` alone makes an
+overlapping rule look load-bearing; reporting `marginal` alone makes it look
+inert. `sumOfAlone` sits beside `tokensSaved` and the gap between them is stated
+as the overlap rather than resolved into a total, because a single figure there
+is the one number that cannot be true.
+
+**The floor is separated out, and finding that was the point.** The optimiser
+normalises whitespace whether or not any rule is enabled. The first version of
+this measurement credited that to the rules — and run over this repository's
+tokenizer corpus it reported that the optimiser saved twenty-one tokens and that
+every rule was redundant, a sentence assembled entirely out of somebody else's
+arithmetic. `floor` is now its own field and `tokensSaved` is the rules' work
+alone.
+
+**"Inert" is always said about the corpus.** A rule that finds nothing in these
+files has not been shown to find nothing anywhere, and the difference is the
+whole distance between "delete this rule" and "measure it on something else".
+
+Recorded rather than asserted: **on the two sample prompts this repository
+ships, the deterministic rules recover nothing at all** — every rule lands in
+`inertHere`. That is not a defect in the rules or in the samples. It is the
+reason the measurement exists, because an aggregate quoted from elsewhere is not
+a measurement of what is here.
 
 
 ## 1.56.0 — "Something that runs"

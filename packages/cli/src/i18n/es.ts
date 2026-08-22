@@ -46,7 +46,7 @@ ${bold('USO')}
   trazum rollup <documento...|dir> [--json]
   trazum pulse [--max-stale-hours <n>]
   trazum models
-  trazum rules
+  trazum rules [--measure <dir>] [--level <safe|aggressive>]
   trazum gateway <provider> --on-cannot-tell <fail-open|fail-closed>
   trazum experiment <log> --a <label> --b <label> --min-outcomes <n>
   trazum quality <log> --label <name> --at <iso> [--gate]
@@ -123,6 +123,26 @@ ${bold('OPCIONES DE pulse')}
   Nunca falla por una primera ejecución que nunca ocurrió — no hay cadencia
   contra la que ir tarde — ni por hasta dónde llegan las mediciones, que es un
   proveedor informando a su ritmo y no un trabajo que falló.
+
+${bold('OPCIONES DE rules')}
+  --measure <dir>             Mide lo que recupera realmente cada regla sobre
+                              los prompts de ese directorio, en vez de listar
+                              qué hace cada una.
+  --level <safe|aggressive>   Qué reglas medir. Por defecto: safe.
+  --json                      La medición como datos.
+
+  Sin --measure lista las reglas y para qué sirve cada una. Con él, el
+  optimizador se ejecuta una vez con cada regla sola y una vez con cada regla
+  quitada, y se imprimen ambas cifras: donde dos reglas encuentran los mismos
+  tokens divergen, y cualquiera de las dos por separado se equivocaría en una
+  dirección distinta.
+
+  El suelo se separa. El optimizador normaliza espacios haya reglas activas o
+  no, y atribuir eso a las reglas es como sobrevive un porcentaje de titular en
+  un corpus donde las reglas no recuperan nada.
+
+  "Inerte" se dice siempre sobre el corpus. Una regla que no encuentra nada en
+  estos ficheros no ha demostrado no encontrar nada en ninguna parte.
 
 ${bold('OPCIONES DE feedback')}
   (ninguna)
@@ -1620,6 +1640,22 @@ ${bold('EJEMPLOS')}
   rules: {
     title: () => 'Reglas disponibles',
     disableHint: () => '  Desactiva las que no quieras con --disable id1,id2',
+    measureHeading: (root, prompts, level) =>
+      `Qué recupera cada regla en ${root} — ${plural(prompts, 'prompt')}, nivel ${level}`,
+    measureTotals: (before, saved, floor) =>
+      `${before} tokens antes. Las reglas recuperan ${saved}; la normalización recupera ${floor} haya reglas activas o no, y eso no es obra de las reglas.`,
+    measureRow: (id, marginal, alone, prompts) =>
+      `${id.padEnd(22)} se pierde si se quita ${marginal.padStart(6)}   sola ${alone.padStart(6)}   ${plural(prompts, 'prompt')}`,
+    measureOverlap: (sumOfAlone, saved) =>
+      `Las reglas recuperan ${sumOfAlone} entre todas de una en una y ${saved} juntas. La diferencia es el solapamiento — dos reglas encontrando los mismos tokens — y se declara en vez de resolverse en un total, porque una sola cifra aquí es el único número que no puede ser cierto.`,
+    measureRedundant: (ids) =>
+      `Cada token que encuentran estas lo encuentra algo más, aquí: ${ids}. Un solapamiento, no un defecto — y no una razón para borrar una sin decidir cuál conviene conservar.`,
+    measureInert: (ids) =>
+      `Estas no cambiaron nada en este corpus: ${ids}. Es un hecho sobre estos ficheros, no sobre las reglas: una regla que no encuentra nada aquí no ha demostrado no encontrar nada en ninguna parte.`,
+    measureBand: (source) =>
+      source === 'heuristic'
+        ? 'Contado con el estimador incorporado, así que toda cifra de arriba lleva su banda documentada. Una regla cuyo rendimiento son unos pocos tokens está dentro del ruido.'
+        : 'Contado con un tokenizador externo.',
   },
 
 

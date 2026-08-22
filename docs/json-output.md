@@ -328,6 +328,30 @@ gating on it with the same threshold would produce a red build for somebody
 else's latency. It sits beside the runs because a reader wants both, and it is
 a different fact.
 
+## The rule-yield document
+
+`trazum rules --measure <dir> --json`. What each deterministic rule actually
+recovers over a set of prompts.
+
+| Field | What it holds |
+| --- | --- |
+| `schemaVersion` | `1`. |
+| `root`, `files`, `prompts`, `truncated` | Where it looked, how many files it read, how many prompts came out of them, and whether the walk was cut short. |
+| `tokensBefore` | Tokens across every prompt before anything ran. |
+| `tokensSaved` | Tokens **the rules** save — the whole run's saving minus `floor`. |
+| `floor` | Tokens the optimiser saves with **every rule disabled**: normalisation that happens either way. **Named rather than folded in** — crediting it to the rules is how a headline percentage survives on a corpus where the rules recover nothing, and the first version of this measurement did exactly that. |
+| `rules[]` | Per rule: `id`, `alone` (tokens saved when it is the only rule running), `marginal` (tokens the whole set loses when it is removed), and `prompts` (how many it changed, running alone). Largest `marginal` first. |
+| `sumOfAlone` | `alone` summed over every rule, stated beside `tokensSaved` and **deliberately not reconciled with it**. The gap between them *is* the overlap; a single total would be the one number that cannot be true. |
+| `redundantHere` | Rules with a non-zero `alone` and a zero `marginal` — every token they find, something else finds too. An overlap, not a defect. |
+| `inertHere` | Rules that changed nothing anywhere in this corpus. **A fact about these files**, never about the rules: one that finds nothing here has not been shown to find nothing anywhere. |
+| `tokenSource` | `heuristic` or `external`. Every figure inherits the counter's band, so a rule whose yield is a handful of tokens is inside the noise. |
+
+**Why two figures per rule.** `alone` and `marginal` diverge exactly where rules
+overlap: `duplicate-lines` and `duplicate-blocks` both see a repeated stanza, so
+each has a real `alone` and a `marginal` of zero. Reporting `alone` by itself
+makes an overlapping rule look load-bearing; reporting `marginal` by itself
+makes it look inert. Both travel, and nothing here adds them together.
+
 ## The gateway refusal document
 
 The body `trazum gateway` returns with **HTTP 402** when a call is over budget.

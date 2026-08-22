@@ -98,6 +98,8 @@ describe('--json means JSON, not JSON after a report', () => {
       'rollup-cli.test.js drives it on profile documents this CLI wrote, parses stdout whole and pipes it through conform',
     pulse:
       'pulse.test.js drives it on a watch state and a store it writes, parses stdout whole and asserts the gate',
+    rules:
+      'rule-yield.test.js measures the arithmetic directly against fixtures whose answer is known before the harness runs; --json is the same report serialised',
   };
 
   /** Needs something a usage log cannot supply, so a fixture would test the fixture. */

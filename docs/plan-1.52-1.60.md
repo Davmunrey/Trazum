@@ -214,6 +214,20 @@ and the slot goes to whatever is next.
 
 ## 1.57.0 — The optimiser earns its name again
 
+**First chapter landed: the number the arc is about is now measurable.**
+`trazum rules --measure` runs the optimiser once per rule alone and once per
+rule removed, keeps the two figures apart because they diverge wherever rules
+overlap, and separates the normalisation floor from the rules' own work.
+
+What it found immediately: on a prompt with a repeated stanza, three rules each
+recover forty tokens alone and nothing at the margin — the overlap was invisible
+until something measured it. And on the two sample prompts this repository
+ships, the deterministic rules recover **nothing at all**, which is the fair
+complaint made concrete rather than quoted.
+
+The arc cannot choose what to add on the model's side of the line without this,
+and it did not have it.
+
 *An intention.* The deterministic rules recover about 1%, which the README says
 plainly and which is the fair complaint about this tool. 1.50.9's semantic pass
 was the first evidence that the ceiling is higher when a model is allowed to
