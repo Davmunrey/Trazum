@@ -96,6 +96,8 @@ describe('--json means JSON, not JSON after a report', () => {
     history: 'history.test.js drives it on three dated reports and parses stdout whole',
     rollup:
       'rollup-cli.test.js drives it on profile documents this CLI wrote, parses stdout whole and pipes it through conform',
+    pulse:
+      'pulse.test.js drives it on a watch state and a store it writes, parses stdout whole and asserts the gate',
   };
 
   /** Needs something a usage log cannot supply, so a fixture would test the fixture. */

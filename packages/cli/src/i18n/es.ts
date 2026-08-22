@@ -44,6 +44,7 @@ ${bold('USO')}
   trazum where [fichero]
   trazum conform <fichero|-> [--contract <nombre>]
   trazum rollup <documento...|dir> [--json]
+  trazum pulse [--max-stale-hours <n>]
   trazum models
   trazum rules
   trazum gateway <provider> --on-cannot-tell <fail-open|fail-closed>
@@ -103,6 +104,25 @@ ${bold('OPCIONES DE rollup')}
   el mismo tráfico duplican la factura y ninguna fusión de resúmenes lo ve.
 
   Sale con 1 cuando una contribución se entregó y no se pudo agregar.
+
+${bold('OPCIONES DE pulse')}
+  --max-stale-hours <n>       Sale con 1 cuando algo que corre aquí lleva más
+                              de n horas sin correr. Sin esto, se informan las
+                              edades y no se juzga nada.
+  --json                      El informe como datos.
+
+  ¿Corrieron las cosas que tienen que correr? \`watch --once\` está hecho para un
+  planificador, y su fichero de estado lo lee exactamente una cosa: el siguiente
+  ciclo. Así que nada podía decirte que el vigilante se había parado, porque lo
+  que te lo diría era lo que se había parado.
+
+  No ejecuta nada y no aloja nada. Algo tiene que darse cuenta, y ese algo es tu
+  CI: un paso que ejecute esto con el horario que ya tienes convierte un cron
+  muerto en una build roja, sin que Trazum guarde las métricas de nadie.
+
+  Nunca falla por una primera ejecución que nunca ocurrió — no hay cadencia
+  contra la que ir tarde — ni por hasta dónde llegan las mediciones, que es un
+  proveedor informando a su ritmo y no un trabajo que falló.
 
 ${bold('OPCIONES DE feedback')}
   (ninguna)
@@ -1466,6 +1486,32 @@ ${bold('EJEMPLOS')}
           return code;
       }
     },
+  },
+
+  pulse: {
+    heading: () => '¿Corrieron las cosas que tienen que correr?',
+    kind: (kind) => {
+      switch (kind) {
+        case 'watch-cycle':
+          return 'último ciclo de watch';
+        case 'store-pull':
+          return 'última descarga al almacén';
+        case 'store-coverage':
+          return 'las mediciones llegan hasta';
+        default:
+          return kind;
+      }
+    },
+    neverRun: (name) =>
+      `${name}: nunca aquí. No va tarde — no hay cadencia contra la que ir tarde.`,
+    age: (name, when, hours) => `${name}: ${when}Z, hace ${plural(hours, 'hora')}`,
+    noThreshold: () =>
+      'No se juzgó nada. Pasa --max-stale-hours <n> para que algo que dejó de correr sea un código de salida en rojo; cuánto es demasiado es una política, y esta herramienta no escribe la tuya.',
+    within: (hours) => `Todo lo que corre aquí corrió dentro de ${plural(hours, 'hora')}.`,
+    stale: (hours) =>
+      `Algo que corre aquí lleva más de ${plural(hours, 'hora')} sin correr. El silencio de un trabajo programado y el de un trabajo sin nada que decir son iguales; esto dice cuál es.`,
+    notAService: () =>
+      'Este comando no ejecuta nada y no aloja nada. Algo tiene que darse cuenta, y ese algo es tu CI: un paso que ejecute esto con el horario que ya tienes convierte un cron muerto en una build roja, sin que Trazum guarde las métricas de nadie. Hasta dónde llegan las mediciones se informa y nunca se juzga — eso es un proveedor informando a su ritmo, no un trabajo que falló.',
   },
 
   where: {

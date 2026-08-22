@@ -309,6 +309,25 @@ and again in `notMerged` with the field's name. A number added after this
 roll-up was written may be a sum, a maximum or a ratio, and combining it the
 wrong way is worse than leaving it out.
 
+## The pulse document
+
+`trazum pulse --json`. Whether the things that are supposed to run, ran.
+
+| Field | What it holds |
+| --- | --- |
+| `schemaVersion` | `1`. |
+| `nowMs` | The instant the ages were taken against, so a document read later is still readable. |
+| `maxStaleHours` | The threshold the caller stated, or `null` when none was — in which case nothing is judged. |
+| `beats[]` | One per `kind`: `watch-cycle`, `store-pull`, `store-coverage`. Each carries `lastMs` (or `null`), `ageHours` (whole hours, floored, or `null`) and a `verdict`. |
+| `beats[].verdict` | `never-run` — it has never happened here, which is **not late**: there is no cadence to be late against. `not-judged` — it happened and no threshold was stated, or it is not a run. `within` / `stale` against the stated threshold. |
+| `stale` | True when something that **has run before** is past the threshold. Never true for `never-run`, and never true for `store-coverage`. |
+
+**`store-coverage` is reported and never judged.** How far the measurements
+reach is a provider reporting on its own schedule, not a job that failed;
+gating on it with the same threshold would produce a red build for somebody
+else's latency. It sits beside the runs because a reader wants both, and it is
+a different fact.
+
 ## The gateway refusal document
 
 The body `trazum gateway` returns with **HTTP 402** when a call is over budget.

@@ -70,6 +70,7 @@ import {
   assignSources,
   fleetRollup,
   rollUp,
+  heartbeats,
   labelCoverage,
   measuredUsage,
   gateMargin,
@@ -297,6 +298,7 @@ const VALUE_FLAGS = new Set([
   'max-usd',
   'max-growth-usd',
   'max-cache-loss-usd',
+  'max-stale-hours',
   'max-day-usd',
   'max-session-usd',
   'csv-out',
@@ -595,6 +597,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   init: ['dry-run', 'yes', 'json', 'pricing', 'pricing-live'],
   conform: ['contract', 'json'],
   rollup: ['json'],
+  pulse: ['json', 'max-stale-hours'],
   feedback: [],
   gateway: ['on-cannot-tell', 'port', 'socket', 'pricing', 'pricing-live'],
   ladder: ['pricing', 'pricing-live', 'since', 'until', 'label'],
@@ -2260,6 +2263,102 @@ async function commandRollup(args: Args, t: CliMessages): Promise<void> {
       console.log(`  ${c.dim(wrap(t.rollup.caveat(caveat), 72, '    '))}`);
     }
   }
+  console.log();
+}
+
+/**
+ * `trazum pulse [--max-stale-hours <n>] [--json]` — did the things that are
+ * supposed to run, run?
+ *
+ * `watch --once` is built for a scheduler: a cron entry is the whole daemon,
+ * and its state file records each cycle precisely so a restart is honest about
+ * the stretch it did not watch. That file is read by exactly one thing, and
+ * that thing is the next cycle.
+ *
+ * **So nothing could tell you the watcher had stopped, because the thing that
+ * would tell you was the thing that stopped.** A dead cron produces silence,
+ * and a watcher with nothing to report produces silence too. This command is
+ * the outside view: the age of the last watch cycle, the age of the last pull
+ * into the store, and how far the stored measurements reach.
+ *
+ * **It is not a service and does not run itself.** Something has to notice,
+ * and this product's answer is that the something is already in your CI: a
+ * step that runs this with `--max-stale-hours` turns a dead cron into a red
+ * build, on the schedule your CI already has, without Trazum holding anybody's
+ * metrics. Where that answer runs out is written down in docs/ rather than
+ * left to be discovered.
+ *
+ * Exits 1 only when a **run** that has happened before is past a **stated**
+ * threshold. Never on a first run that never happened, and never on how far
+ * the measurements reach — that is a provider reporting on its own schedule,
+ * not a job that failed.
+ */
+async function commandPulse(args: Args, t: CliMessages): Promise<void> {
+  const root = process.cwd();
+  const maxStaleHours = numberFlag(args, 'max-stale-hours', Number.NaN, t);
+
+  const state = await readWatchState(root);
+  const { resolved } = await readStore(root);
+
+  /**
+   * The newest pull and the furthest reach, kept apart.
+   *
+   * One says a job ran; the other says how far its answers go. A store pulled
+   * ten minutes ago whose newest record stops two days back is a healthy cron
+   * in front of a provider that reports late, and a single figure would call
+   * that either a failure or a success depending which half it took.
+   */
+  let storePulledMs: number | null = null;
+  let storeCoveredToMs: number | null = null;
+  for (const record of resolved.records) {
+    if (storePulledMs === null || record.pulledAtMs > storePulledMs) storePulledMs = record.pulledAtMs;
+    if (storeCoveredToMs === null || record.toMs > storeCoveredToMs) storeCoveredToMs = record.toMs;
+  }
+
+  const report = heartbeats(
+    { watchCycleMs: state?.lastCycleMs ?? null, storePulledMs, storeCoveredToMs },
+    Number.isFinite(maxStaleHours)
+      ? { nowMs: Date.now(), maxStaleHours }
+      : { nowMs: Date.now() },
+  );
+
+  if (boolFlag(args, 'json')) {
+    console.log(JSON.stringify(report, null, 2));
+    if (report.stale) process.exitCode = 1;
+    return;
+  }
+
+  const when = (ms: number): string => new Date(ms).toISOString().replace('T', ' ').slice(0, 16);
+
+  console.log();
+  console.log(c.bold(t.pulse.heading()));
+  for (const heartbeat of report.beats) {
+    const name = t.pulse.kind(heartbeat.kind);
+    if (heartbeat.lastMs === null) {
+      // Never run is not late. It is a thing nobody has started here, and a
+      // line that shouted about it would be this tool nagging.
+      console.log(`  ${c.dim(t.pulse.neverRun(name))}`);
+      continue;
+    }
+    const line = t.pulse.age(name, when(heartbeat.lastMs), heartbeat.ageHours ?? 0);
+    if (heartbeat.verdict === 'stale') console.log(`  ${c.red(`✗ ${line}`)}`);
+    else if (heartbeat.verdict === 'within') console.log(`  ${c.green(`✓ ${line}`)}`);
+    else console.log(`  ${line}`);
+  }
+
+  console.log();
+  if (report.maxStaleHours === null) {
+    // Nothing was judged, and the exit code says so silently. Said out loud,
+    // because a screen of green ticks with no threshold behind them is the
+    // shape somebody reads as "checked".
+    console.log(`  ${c.dim(wrap(t.pulse.noThreshold(), 74, '    '))}`);
+  } else if (report.stale) {
+    process.exitCode = 1;
+    console.log(`  ${c.red(wrap(t.pulse.stale(report.maxStaleHours), 74, '    '))}`);
+  } else {
+    console.log(`  ${c.dim(wrap(t.pulse.within(report.maxStaleHours), 74, '    '))}`);
+  }
+  console.log(`  ${c.dim(wrap(t.pulse.notAService(), 74, '    '))}`);
   console.log();
 }
 
@@ -9754,6 +9853,9 @@ async function main(): Promise<void> {
       break;
     case 'rollup':
       await commandRollup(args, t);
+      break;
+    case 'pulse':
+      await commandPulse(args, t);
       break;
     case 'init':
       await commandInit(args, config, pricing, t);

@@ -43,11 +43,11 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- 33 commands       MCP server      Next.js     comments on pull requests
+ 34 commands       MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
-## The thirty-three commands
+## The thirty-four commands
 
 | Command | What it answers |
 |---|---|
@@ -82,6 +82,7 @@ never runs unless you ask.
 | [`trazum report`](#the-year-from-what-was-already-written-down-trazum-report) | What did the year actually look like? *No new data, and it lists its own blind spots.* |
 | [`trazum conform`](#building-on-the-format-trazum-conform) | Does the document my tool emits conform, and what will it not be able to answer? |
 | [`trazum rollup`](#more-than-one-machine-trazum-rollup) | Four of us measured four things — what is the total, and what did merging lose? *A format and a merge, not a service.* |
+| [`trazum pulse`](#did-anything-stop-running-trazum-pulse) | Did the things that are supposed to run, run? *Runs nothing itself — your CI is the thing that notices.* |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
 | [`trazum feedback`](#telling-us-something-trazum-feedback) | Where do I report this, and what will you ask me for? *Sends nothing.* |
 
@@ -92,6 +93,7 @@ never runs unless you ask.
 - [The first five minutes](#the-first-five-minutes-trazum-init) — `init`, and the four things it refuses to write
 - [Building on the format](#building-on-the-format-trazum-conform) — the contracts, the guarantees, and the doctrine
 - [More than one machine](#more-than-one-machine-trazum-rollup) — several people's documents, one bill, every gap preserved
+- [Did anything stop running](#did-anything-stop-running-trazum-pulse) — the outside view of a scheduled job
 - [Which few-shot examples earn their tokens](#which-few-shot-examples-earn-their-tokens-trazum-prune) — measured, and it asks before spending
 - [An MCP server for your agents](#an-mcp-server-so-an-agent-can-budget-its-own-prompts) — budget a prompt before sending it
 - [Languages](#languages) — what the dictionaries cover, and what they deliberately do not
@@ -194,8 +196,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of thirty-three commands — [the table
-above](#the-thirty-three-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of thirty-four commands — [the table
+above](#the-thirty-four-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -345,7 +347,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other thirty-two commands, each with its own section below:
+The other thirty-three commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -357,6 +359,7 @@ trazum store                         # what is kept, and what a prune takes
 trazum watch --once                  # did anything cross, this afternoon
 trazum serve                         # answer before the call is sent
 trazum rollup a.json b.json          # several people's bills, one roll-up
+trazum pulse --max-stale-hours 36    # did anything stop running?
 trazum rank prompts/                 # which one to fix first
 trazum blame prompts/system.txt      # who made it expensive, and when
 trazum diff old.txt new.txt          # what this edit cost
@@ -2335,6 +2338,47 @@ no document. Every roll-up of more than one contributor carries
 
 The output is the `roll-up` contract, checkable like every other:
 `trazum rollup … --json | trazum conform -`.
+
+### Did anything stop running: `trazum pulse`
+
+`watch --once` is built for a scheduler — a cron entry is the whole daemon — and
+it writes a state file so a restart is honest about the stretch it did not
+watch. That file is read by exactly one thing, and that thing is the next cycle.
+
+**So nothing could tell you the watcher had stopped, because the thing that
+would tell you was the thing that stopped.** A dead cron produces silence, and a
+watcher with nothing to report produces silence too.
+
+```bash
+trazum pulse                          # the ages, judged by nothing
+trazum pulse --max-stale-hours 36     # exits 1 when something stopped
+```
+
+```
+Did the things that are supposed to run, run?
+  ✗ last watch cycle: 2026-08-19 23:10Z, 50 hours ago
+  ✓ last pull into the store: 2026-08-21 23:10Z, 2 hours ago
+  measurements reach up to: 2026-08-20 01:10Z, 48 hours ago
+
+  Something that runs here has not run in over 36 hours. Silence from a
+    scheduled job and silence from a job with nothing to report look
+    identical; this is which.
+```
+
+*Real output, transcribed.*
+
+**It runs nothing and hosts nothing.** Something has to notice, and this
+product's answer is that the something is already in your CI: a step running
+this on the schedule you already have turns a dead cron into a red build,
+without Trazum holding anybody's metrics.
+
+**Three things it will not do.** A first run that never happened is not late —
+there is no cadence to be late against, so `never-run` is its own verdict and
+never gates. Without `--max-stale-hours` nothing is judged at all, because how
+stale is too stale is a policy. And how far the measurements reach is reported
+and **never judged by the same threshold**: a store pulled ten minutes ago whose
+newest record stops two days back is a healthy cron in front of a provider that
+reports late, and gating on it would be a red build for somebody else's latency.
 
 ### Telling us something: `trazum feedback`
 

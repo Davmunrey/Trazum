@@ -461,6 +461,17 @@ export interface CliMessages {
     caveat(code: string): string;
   };
 
+  pulse: {
+    heading(): string;
+    kind(kind: string): string;
+    neverRun(name: string): string;
+    age(name: string, when: string, hours: number): string;
+    noThreshold(): string;
+    within(hours: number): string;
+    stale(hours: number): string;
+    notAService(): string;
+  };
+
   where: {
     hostHeading(): string;
     subscription(host: string): string;

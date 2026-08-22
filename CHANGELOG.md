@@ -13,6 +13,38 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**`trazum pulse` — did the things that are supposed to run, run?** `watch
+--once` is built for a scheduler: a cron entry is the whole daemon, and its
+state file records each cycle precisely so a restart is honest about the
+stretch it did not watch. That file was read by exactly one thing, and that
+thing was the next cycle.
+
+**So nothing could tell you the watcher had stopped, because the thing that
+would tell you was the thing that stopped.** A dead cron produces silence, and
+a watcher with nothing to report produces silence too. `pulse` is the outside
+view: the age of the last watch cycle, the age of the last pull into the store,
+and how far the stored measurements reach — with `--max-stale-hours <n>` to
+turn a run that stopped into a failing exit code.
+
+**It runs nothing and hosts nothing**, which is the arc's question answered
+rather than dodged: something has to notice, and the something is already in
+your CI. A step running this on the schedule you already have turns a dead cron
+into a red build without Trazum holding anybody's metrics.
+
+Three refusals: a first run that never happened is **not late**, because there
+is no cadence to be late against, so `never-run` never gates. Without a stated
+threshold nothing is judged at all — how stale is too stale is a policy. And
+**how far the measurements reach is never judged by the same threshold**: a
+store pulled ten minutes ago whose newest record stops two days back is a
+healthy cron in front of a provider that reports late.
+
+**And a whole class of flag defect is now guarded.** `--max-stale-hours 36`
+shipped, built, ran, printed a full report and gated on nothing: the flag was
+not in `VALUE_FLAGS`, so it parsed as a boolean and `36` became a positional
+argument. Nothing failed anywhere. A test now derives the rule from the source —
+anything read with `stringFlag` or `numberFlag` takes a value by definition —
+and it is proved against the exact line that shipped.
+
 **A series with a hole in it is not a shorter series, and `history` now says
 which it is looking at.** The first chapter of arc 1.56 — *something that runs*
 — and it turns out most of that arc is not a runtime at all. A scheduled job
