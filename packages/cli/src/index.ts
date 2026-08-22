@@ -2069,11 +2069,34 @@ async function commandRollup(args: Args, t: CliMessages): Promise<void> {
 
   /** Every document to merge, in the order the caller named them. */
   const inputs: { name: string; text: string }[] = [];
+  /** What a failed filesystem call was refusing, when it said. */
+  const codeOf = (error: unknown): string | undefined =>
+    typeof error === 'object' && error !== null ? (error as { code?: string }).code : undefined;
+
   for (const target of args.positional) {
-    const entry = await stat(target).catch(() => null);
-    if (entry === null) throw new Error(t.rollup.noSuchTarget(target));
-    if (entry.isDirectory()) {
-      const found = (await readdir(target, { withFileTypes: true }))
+    /**
+     * Attempted, not checked first.
+     *
+     * The obvious shape is `stat` and then branch on `isDirectory()`, and it
+     * is a check-then-act: between the answer and the read the path can become
+     * something else, and CodeQL flagged exactly that on the pull request that
+     * introduced this command. Reading the error code has no window between
+     * the two operations, because there is only one operation — and it is the
+     * same reasoning the gateway applies to a budget decision, which happens
+     * before the upstream is opened rather than between two things.
+     *
+     * `ENOTDIR` is an answer — this is a file — and every other failure is a
+     * failure.
+     */
+    const listing = await readdir(target, { withFileTypes: true }).catch((error: unknown) => {
+      const code = codeOf(error);
+      if (code === 'ENOTDIR') return null;
+      if (code === 'ENOENT') throw new Error(t.rollup.noSuchTarget(target));
+      throw error;
+    });
+
+    if (listing !== null) {
+      const found = listing
         .filter((child) => child.isFile() && child.name.endsWith('.json'))
         .map((child) => join(target, child.name))
         .sort((a, b) => a.localeCompare(b));
@@ -2084,7 +2107,14 @@ async function commandRollup(args: Args, t: CliMessages): Promise<void> {
       for (const file of found) inputs.push({ name: file, text: await readFile(file, 'utf8') });
       continue;
     }
-    inputs.push({ name: target, text: await readFile(target, 'utf8') });
+
+    const text = await readFile(target, 'utf8').catch((error: unknown) => {
+      // Gone between the two calls, which is the race the shape above avoids
+      // deciding on: the read is what says so, and it says so by name.
+      if (codeOf(error) === 'ENOENT') throw new Error(t.rollup.noSuchTarget(target));
+      throw error;
+    });
+    inputs.push({ name: target, text });
   }
 
   const document = rollUp(inputs);

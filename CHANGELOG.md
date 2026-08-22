@@ -73,6 +73,15 @@ count, and the guard that checks the format page's ordinal derives it from the
 row count instead of matching the literal `twelfth` — the guard against a stale
 count had itself gone stale.
 
+**The roll-up statted a target before reading it.** `stat`, branch on
+`isDirectory()`, then read the path — a check-then-act, and CodeQL reported it
+as a file-system race on the pull request that introduced the command. It asks
+once now: attempt the directory listing, read the error code, and let `ENOTDIR`
+mean *this is a file*. There is no window between two operations when there is
+only one. Guarded at the source rather than by behaviour, because both shapes
+behave identically on a filesystem nobody is racing — which is every filesystem
+a test runs on.
+
 **Five copies of the help-screen defaults lived in one test file.** Adding a
 field to `HelpDefaults` made every one of them throw at the first `.join`: five
 failures, one cause. The help screen is rendered from data precisely so its

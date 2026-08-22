@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -184,5 +185,46 @@ describe('the help text enumerates no contract by hand', () => {
       names.filter((name) => !planted.includes(name)),
       ['outcome-report', 'annual-record'],
     );
+  });
+});
+
+describe('the roll-up asks the filesystem once', () => {
+  /**
+   * The first version called `stat`, branched on `isDirectory()`, and then
+   * read the path — a check-then-act that CodeQL flagged as a file-system
+   * race on the pull request that introduced the command. Attempting the read
+   * and reading the error code has no window between the two, because there
+   * is only one operation.
+   *
+   * Guarded at the source rather than by behaviour: both shapes behave
+   * identically on a filesystem nobody is racing, which is every filesystem a
+   * test runs on. The defect is the shape.
+   */
+  const bodyOf = (source, name) => {
+    const start = source.indexOf(`async function ${name}(`);
+    assert.notEqual(start, -1, `${name} must still be declared`);
+    const next = source.indexOf('\nasync function ', start + 1);
+    const end = source.indexOf('\nfunction ', start + 1);
+    const stop = Math.min(...[next, end].filter((index) => index !== -1));
+    return source.slice(start, stop === Infinity ? source.length : stop);
+  };
+
+  const statCalls = (body) => [...body.matchAll(/\bawait stat\(/g)].map((match) => match[0]);
+
+  it('never stats a target before reading it', () => {
+    const source = readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8');
+    const found = statCalls(bodyOf(source, 'commandRollup'));
+    assert.deepEqual(
+      found,
+      [],
+      'commandRollup stats a path and then reads it, which is the race CodeQL reported',
+    );
+  });
+
+  it('and the detector is not one that can never fire', () => {
+    // Handed the exact line that was there.
+    assert.deepEqual(statCalls('    const entry = await stat(target).catch(() => null);'), [
+      'await stat(',
+    ]);
   });
 });
