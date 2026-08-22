@@ -156,6 +156,67 @@ The section this document would be dishonest without.
 
 That last one is the reason this document ends without a score.
 
+## The tokens this project puts on your bill
+
+The admission above says this project has no usage log of its own — it optimises
+LLM spend and does not itself spend on LLMs in a way it measures. **That is still
+true, and this section does not make that admission false.** It measures the
+other side of the same sentence: not what this project spends, what it *causes
+you to spend*.
+
+Four system prompts ship inside `@trazum/core` and are sent to a model on every
+`--llm`, `--suggest`, `--semantic` and examples-review run — on your key, on your
+bill, before a single token of your own prompt is counted. A tool that reports
+other people's prompt cost and had never counted its own is the self-report
+problem in its most literal form.
+
+Measured by running the optimiser on them, at the aggressive level:
+
+| Prompt | Tokens | Recovered |
+|---|---|---|
+| `suggest` | 291 | 2 |
+| `semantic` | 382 | 4 |
+| `refiner` | 198 | 0 |
+| `example-review` | 305 | 0 |
+
+**1176 tokens**, and this project's own deterministic rules recover **6 of them**
+— half a per cent. Eleven of the twelve rules are inert on all four; the six
+tokens come entirely from `emphasis`, which lower-cases shouted words.
+
+**The honest reading is not "the rules are bad".** These are prompts written to
+be read by a model, edited repeatedly, with no politeness, no hedging and nothing
+repeated — which is exactly the shape the dictionaries have nothing to say about.
+It is the same result `rules --measure` produced on `examples/`, on a corpus
+nobody could accuse of being adversarial: the deterministic side recovers close
+to nothing from text that was already written carefully.
+
+**What this establishes.** One outcome, recorded rather than inferred: on the only
+corpus this project owns, the feature this product leads with recovers 0.5%. By
+the standard set in 1.50.4 that is a real outcome measurement, and it is the first
+one on this page that is about the product working rather than about the process
+around it.
+
+**What it does not establish**, written here rather than left to be assumed:
+
+- **Nothing about whether users benefit.** Four prompts are not a corpus, and
+  they are the least representative four imaginable — written by the person who
+  wrote the rules, in the language the rules cover best.
+- **Nothing about the model-side passes.** The 1176 tokens buy `--suggest` and
+  `--semantic`, whose findings a dictionary cannot make. Whether that trade is
+  worth it needs the measurement the 1.57 arc is blocked on, and this is not it.
+- **It is still self-reported.** The optimiser measuring its own prompts is the
+  same process marking its own work, one layer in. The CodeQL table above is the
+  only thing on this page that is not.
+
+**The uncomfortable arithmetic, stated because leaving it out would be the
+omission this document exists to refuse:** if the deterministic rules recover
+about one per cent of a prompt, then for any prompt under roughly thirty thousand
+tokens, a single `--suggest` run spends more tokens carrying this project's own
+instructions than the rules recover from yours. Those are different budgets —
+one is a per-call cost you opt into, the other is a saving on every call forever
+— and the comparison is not apples to apples. It is also the first thing a
+sceptical reader would compute, so it is computed here.
+
 ## The one sentence that stopped being true
 
 This page used to say every miss on it had been found and written down by the
