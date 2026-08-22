@@ -9,6 +9,32 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**`docs/doctrine.md` was the one prose contract here with no guard at all, and
+that was measured rather than assumed.** Emptying the file and re-running the
+suites broke nothing. Every other page that makes checkable claims — the
+contract file, the interchange index, the usage-log format, `CONTRIBUTING`, the
+README, the roadmap — fails a test when it goes stale. The doctrine did not, in
+the file whose whole subject is checking what enforces your own rules, and where
+the rule *a rule you wrote for yourself is a claim like any other* lives.
+
+`packages/core/test/doctrine.test.js` does not enforce the rules — most are about
+judgement and one says outright that no test can hold it. It enforces the page:
+the rules the preface names still exist under those names, no rule is written
+twice, a rule said to have joined at a release is named on that record, and the
+links resolve. It opens by requiring the page to have rules in it at all, which
+is the check that would have caught the emptiness that started this.
+
+**Italics in the preface are now reserved for rule names**, and the guard is
+what makes that true rather than a style note: every italic phrase there is read
+as a rule and any that is not one fails. A preface that emphasises freely is a
+preface where a renamed rule hides. **It fired on the first draft of the
+paragraph announcing it** — the sentence describing the new test emphasised a
+phrase that was not a rule, and the check refused it.
+
 ## 1.60.3 — "A document nobody lists"
 
 **Two chapters, one shape.** `docs/json-output.md` calls itself the contract and
