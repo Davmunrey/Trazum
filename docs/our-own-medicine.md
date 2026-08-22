@@ -217,6 +217,55 @@ one is a per-call cost you opt into, the other is a saving on every call forever
 — and the comparison is not apples to apples. It is also the first thing a
 sceptical reader would compute, so it is computed here.
 
+## The loop this product sells, inert in the repository that sells it
+
+`trazum init` writes a config. `trazum baseline` records what a repository's
+prompts cost. `trazum check` fails a build when they grow past the recorded
+figure. All three shipped arcs ago, they are what
+[docs/ci.md](ci.md) tells other people to run — and **this repository had no
+config and no baseline of its own.** Every release since 1.41 argued that a
+complete loop nobody runs is not a loop. This one was not run here.
+
+It is now: `trazum.config.json` and `trazum.baseline.json` are committed, CI runs
+the gate, and a pull request that grows the sample prompts past the recorded
+figure fails — checked by growing them and watching it exit 1, not by reading the
+flag.
+
+**Two things that came out of taking it, and neither is flattering.**
+
+**A gate flag that silently gates nothing.** `check --baseline` against a config
+with no `baseline` block prints nothing about the baseline and exits 0. The flag
+is read as `config.baseline !== undefined && boolFlag(...)`, so a missing block
+*disables* the gate instead of failing the run — a green build that checked
+nothing, from a command invoked with the flag that asks for the check. That is
+`a guard that quietly stops guarding is worse than no guard`, in this project's
+own CLI, found the first time it was pointed at this repository.
+
+**And the reason nobody committed a baseline here before.** Run at the root with
+the default extensions, `trazum baseline` records **74 prompts and 509,255
+tokens** — the README, the changelog, the roadmap. Directory mode's defaults are
+`.txt .md .prompt .tmpl`, which in a documentation-heavy repository reads prose
+as prompts, and a baseline like that fails the build on every doc edit. The gate
+here is scoped to `examples/` for exactly that reason, and the scoping is the
+honest fix rather than a workaround: **the prompts this project actually ships to
+models live inside `.ts`, where the baseline gate cannot see them at all.** Their
+cost is measured in the section above and guarded by a test, because the
+product's own mechanism cannot reach them.
+
+**And the gap that had to be closed before any of it was possible.** Directory
+mode decided what a prompt was from the extension alone, and there was no way for
+a repository to say otherwise — no `ignore`, no include list, nothing. So the
+first honest attempt at a config here made `trazum doctor` report *35 of 37
+prompts have no budget* and list this project's own test fixtures. The feature
+that fixes it is a real one other people need too: `ignore` takes globs, skips a
+matched directory whole, and refuses a pattern that climbs out of the project.
+
+**What this does not establish.** Two sample prompts are not an estate, the
+record starts today, and a gate that has never fired in anger is a gate that has
+been proved and not yet used. `Record, do not reconstruct` says to start
+recording, say which day recording started, and let the record be short until it
+is not. It started 2026-08-22.
+
 ## The one sentence that stopped being true
 
 This page used to say every miss on it had been found and written down by the

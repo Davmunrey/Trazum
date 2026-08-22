@@ -740,7 +740,7 @@ ${bold('FICHERO DE CONFIGURACIÓN')}
   ${bold('trazum.config.json')}, que se busca subiendo desde el directorio de trabajo
   y parando en la raíz del repositorio. Todas las claves son opcionales:
 
-    level, locale, disable, maxGrowth, extensions
+    level, locale, disable, maxGrowth, extensions, ignore
     usage     { model, callsPerMonth, avgOutputTokens, cacheHitRate, batchEligible }
     budgets   { "prompts/**": 2000, "prompts/system.txt": 4000 }
     baseline  { "path": "trazum.baseline.json", "maxGrowthTokens": 0, "maxGrowthPct": 5 }

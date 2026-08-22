@@ -718,7 +718,7 @@ ${bold('CONFIG FILE')}
   ${bold('trazum.config.json')}, found by walking up from the working directory and
   stopping at the repository root. Every key is optional:
 
-    level, locale, disable, maxGrowth, extensions
+    level, locale, disable, maxGrowth, extensions, ignore
     usage     { model, callsPerMonth, avgOutputTokens, cacheHitRate, batchEligible }
     budgets   { "prompts/**": 2000, "prompts/system.txt": 4000 }
     baseline  { "path": "trazum.baseline.json", "maxGrowthTokens": 0, "maxGrowthPct": 5 }
