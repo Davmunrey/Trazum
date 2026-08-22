@@ -17,6 +17,11 @@ old rules did not cover either. One joined at 1.50.4 and is the newest thing her
 *cheaper per call is not cheaper per outcome, and the product prints both
 rankings rather than picking one.*
 
+**One rule joined at 1.59.0** — *a rule you wrote for yourself is a claim like
+any other* — and it is the only one here that no test can enforce. It was
+learned by breaking it: the promise not to judge a language nobody here reads
+sat in the roadmap for several arcs while five such dictionaries shipped.
+
 The record of getting these wrong is [our own
 medicine](our-own-medicine.md), which is the same document this product asks its
 users to keep.
@@ -271,6 +276,34 @@ it; running the guard against everything it will see is.
 after the ninth, and broken again on the tenth by a guard against itself — which
 is the argument for asking, when a rule keeps recurring, whether the rule's own
 prescription is what keeps producing it.*
+
+## A rule you wrote for yourself is a claim like any other
+
+The rules above are enforced by tests because a rule with nothing checking it
+drifts exactly as fast as a number with nothing checking it. **The ones about
+your own conduct drift faster**, because nobody thinks to check them: a test
+asserts what the code does, and no test asserts that the project still does what
+it said it would.
+
+This project wrote down that a trimming dictionary is a judgement about a
+language and that it would not make that judgement in a language nobody here
+reads. It held that rule up for several arcs as the reason an eighth language was
+not scheduled — while **five dictionaries no speaker had ever read were already
+shipping**, and the report named all seven in one breath.
+
+No guard catches that shape. It is not a claim in prose that a regex can compare
+against a manifest; it is a rule and a catalogue, both correct on their own,
+disagreeing with each other. Only re-reading the rule against what you actually
+ship finds it, and that has to be somebody's habit rather than somebody's
+intention.
+
+What made it findable in the end was writing the rule and the catalogue into the
+same document and noticing they did not match. That is the cheapest available
+version of the check, and it is worth doing on purpose: put the promise next to
+the inventory.
+
+*Learned across 1.56.2 and 1.59.0 — the arc whose own premise had been broken for
+as long as the premise existed.*
 
 ## Record, do not reconstruct
 
