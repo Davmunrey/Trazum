@@ -48,6 +48,33 @@ naming four fields (`root`, `files`, `prompts`, `truncated`) and one naming a
 nested field documented and deliberately never emitted (`promises.arrivedUsd`)
 — otherwise every "both ways" check above is agreeing with a misreading.
 
+**`docs/format.md` undercounted the interchange format by three, and the guard
+on that count agreed with it.** The front door of the format — the page a
+connector author works from — said Trazum emits twelve documents and defines a
+thirteenth. `trazum pulse --json`, `trazum rules --measure --json` and the
+gateway's HTTP 402 body each have a contract table, a `schemaVersion` and
+something that emits them, and were in neither the table nor the count.
+`README.md` said twelve in the same breath.
+
+**The sentence was already guarded — against the table.** `interchange.test.js`
+has held the opening count to the rows beneath it since the day it said seven
+with ten rows, and it derives the ordinal rather than typing it. It could not
+have caught these three: **both halves it compares are written by hand**, so a
+document missing from the table and missing from the sentence leaves the two in
+perfect agreement. The missing half was never the arithmetic — it was the table
+against the contracts that exist.
+
+Fifteen emitted and a sixteenth defined, in both places. The new guard derives
+the list from the contract tables in `json-output.md` and matches it against the
+front-door table **by the anchors the rows link to**, failing on a table the
+page omits and on a row pointing at a section that carries no table. It holds
+`README.md` to the same count, compares the `--contract` column to the names the
+CLI accepts as a set — the existing checks allow a contract named only in prose
+— and holds the plan's two tables, in `json-output.md` and `plan-format.md`, to
+each other. The three omitted documents were also three of the six with no
+parity guard until the entry above, which is not a coincidence: **a document
+nobody lists is a document nobody checks.**
+
 ## 1.60.2 — "Checked by running"
 
 **A patch, and every entry in it is the same act.** With the plan finished as far

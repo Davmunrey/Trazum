@@ -1,7 +1,7 @@
 # The interchange format
 
-Trazum emits **twelve** documents as data, and defines a thirteenth it does not
-emit. All thirteen are contracts, enforced in both directions by parity tests in
+Trazum emits **fifteen** documents as data, and defines a sixteenth it does not
+emit. All sixteen are contracts, enforced in both directions by parity tests in
 this repository, and this page is what makes them something another tool can
 build against rather than something to reverse engineer from output.
 
@@ -10,7 +10,7 @@ changes what you can actually do:
 
 - **`--contract` names ten of them.** That is narrower than being documented: a
   named contract can be checked against a document *you* produced with a single
-  command, and the other three can only be read against their section here.
+  command, and the other six can only be read against their section here.
 - **The outcome report is defined but not emitted.** `trazum profile` renders it
   as terminal text and `@trazum/core` computes it; no command writes it as JSON.
   It is a contract so that a tool of yours can produce one and have it checked —
@@ -31,11 +31,28 @@ changes what you can actually do:
 | **spend guard** | the `spend_guard` MCP tool | — | [json-output.md](json-output.md#the-spend-guard-document) |
 | **roll-up** | `trazum rollup --json` | `roll-up` | [json-output.md](json-output.md#the-roll-up-document) |
 | **first run** | `trazum init --json` | — | [json-output.md](json-output.md#the-first-run-document) |
+| **pulse** | `trazum pulse --json` | — | [json-output.md](json-output.md#the-pulse-document) |
+| **rule yield** | `trazum rules --measure --json` | — | [json-output.md](json-output.md#the-rule-yield-document) |
+| **gateway refusal** | `trazum gateway`, as the HTTP 402 body | — | [json-output.md](json-output.md#the-gateway-refusal-document) |
 
 The count above said **seven** for as long as the table had ten rows in it, and
 it was still saying seven after the outcome report and the annual record were
 added. A page whose whole job is telling another tool what it can build against
 was, on its first sentence, wrong about how many things that is.
+
+**Then it happened again, with a guard watching.** The page said twelve while
+`pulse`, `rules --measure` and the gateway's 402 body each had a contract table,
+a `schemaVersion` and something that emits them — three documents in neither the
+list nor the count, and a connector author working from this page would not have
+known they exist. The count had been checked against the table since the day it
+said seven with ten rows, and **both halves of that comparison are written by
+hand**: a document missing from the table and missing from the sentence leaves
+the two agreeing.
+
+So the table is no longer read by hand either. The list is derived from the
+contract tables that exist, matched by the anchors these rows link to, and
+`packages/cli/test/contract-coverage.test.js` fails on a table this page omits
+*and* on a row pointing at a section that carries no table.
 
 ## Checking your own emitter
 
