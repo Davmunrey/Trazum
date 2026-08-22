@@ -18,7 +18,9 @@ old rules did not cover either. One joined at 1.50.4 and is the newest thing her
 rankings rather than picking one.*
 
 **One rule joined at 1.59.0** — *a rule you wrote for yourself is a claim like
-any other* — and it is the only one here that no test can enforce. It was
+any other* — and it is the only one here that no test can enforce. **A second
+joined after 1.60.0**: *and prove it does not fire on anything else*, the half of
+the guard rule that keeps being skipped because the first half passed. It was
 learned by breaking it: the promise not to judge a language nobody here reads
 sat in the roadmap for several arcs while five such dictionaries shipped.
 
@@ -186,6 +188,35 @@ cannot arise.
 Write the check, then plant the violation it exists to catch and watch it fail
 **by name**. Remove the probe, watch it pass. A guard nobody has seen fail is a
 guard nobody knows is connected — and roughly one in five turns out not to be.
+
+## And prove it does not fire on anything else
+
+The other half, and the one that keeps being skipped because the first half
+passed. A guard that fails on its defect **and on things that are not its
+defect** is worse than the gap it filled: it fires on innocent changes until
+somebody deletes it, and by then nobody remembers whether it was ever right.
+
+Two instances here, both the same shape — a proxy that correlated with the
+property until it did not:
+
+- A guard on `docs/releasing.md` matched every quantity word near "manifest" or
+  "upload" anywhere in the file and failed **two correct sentences** — one
+  counting a different set of manifests, one using "two" to mean consecutive. It
+  never merged, because it was run against the real document rather than only
+  against the defect it was written for.
+- A guard on the `trazum doctor` transcript compared the `~ ` before a money
+  figure and called it format. That space is **right-alignment**: the command
+  prints `~ $10.59`, `~  $8.82` and `~$0.5300` in one column, so the check
+  agreed or disagreed on how wide this repository's own figures happened to be.
+  It broke on a config change that never touched the document. Four releases.
+
+The question that catches it is not *does this fail on the bug*. It is **what
+else does this fail on** — and the cheap way to answer is to run the finished
+check against the real thing, whole, rather than against the fixture it was
+written beside.
+
+*Learned at #295 and again at #355, which is why it is written down rather than
+remembered.*
 
 ## Cheaper per call is not cheaper per outcome
 
