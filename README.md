@@ -2296,6 +2296,17 @@ writing a shell loop.
 command exists to refuse. Unreadable lines, unpriced calls, a log with no clock,
 a log with no sessions: each one is listed under the machine that has it.
 
+**A span is not a period.** A log whose latest record is the 5th may be a log of
+a quiet week or a log that stopped being written on the 5th, and nothing in the
+records tells those apart. So when a contributor profiled with `--since` and
+`--until`, the roll-up carries the window it **asked for** beside the one it
+**observed**, and names every day inside the claim that recorded nothing —
+contiguous runs, so a year-long claim with three days of traffic is a handful of
+lines rather than three hundred. Whether a silent stretch is a quiet fortnight or
+a broken export is yours to know; that it is silent is the tool's to say. A
+contributor that claimed nothing gets `no-claimed-period` rather than having its
+span read as one.
+
 **Four things it will not do.** Findings computed from individual calls do not
 roll up — percentile shapes, conversation growth, repeated turns, truncation
 retries — so they are named with the contributors that have them rather than

@@ -256,6 +256,7 @@ export type {
   RollupCaveat,
   ContributorGap,
   UnmergedFinding,
+  SilentRun,
 } from './rollup.js';
 export type { MeasuredUsage, LabelCoverage } from './measured-profile.js';
 export type { GateExplanation } from './gate-explain.js';

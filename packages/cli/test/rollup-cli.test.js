@@ -228,3 +228,47 @@ describe('the roll-up asks the filesystem once', () => {
     ]);
   });
 });
+
+describe('trazum rollup: a span is not a period', () => {
+  it('names the days a contributor asked for and recorded nothing on', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'trazum-rollup-claim-'));
+    await writeFile(
+      join(dir, 'api.jsonl'),
+      `${[call({ ts: '2026-08-01T09:00:00Z' }), call({ ts: '2026-08-03T09:00:00Z' })].join('\n')}\n`,
+    );
+    // The window is the claim: profiled with --since/--until, the document
+    // carries what was gone looking for as well as what was found.
+    const profiled = cli(
+      ['profile', join(dir, 'api.jsonl'), '--json', '--since', '2026-08-01', '--until', '2026-08-05'],
+      dir,
+    );
+    assert.equal(profiled.status, 0, profiled.stderr);
+    await writeFile(join(dir, 'api.json'), profiled.stdout);
+
+    const merged = cli(['rollup', join(dir, 'api.json'), '--json'], dir);
+    assert.equal(merged.status, 0, merged.stderr);
+    const document = JSON.parse(merged.stdout);
+    const [contributor] = document.contributors;
+    assert.notEqual(contributor.claimed, null, 'the claim must survive into the roll-up');
+    assert.equal(contributor.silence.days, 3);
+    assert.deepEqual(contributor.silence.runs, [
+      { from: '2026-08-02', to: '2026-08-02', days: 1 },
+      { from: '2026-08-04', to: '2026-08-05', days: 2 },
+    ]);
+    assert.ok(document.cannotSay.includes('silence-inside-a-claim'));
+
+    const rendered = cli(['rollup', join(dir, 'api.json')], dir);
+    assert.match(rendered.stdout, /asked for 2026-08-01 to 2026-08-05/);
+    assert.match(rendered.stdout, /2026-08-02, 2026-08-04 to 2026-08-05/);
+  });
+
+  it('says nobody claimed a period rather than reading a span as one', async () => {
+    const { dir, documents } = await documentsFrom({
+      api: [call({ ts: '2026-08-01T09:00:00Z' })],
+    });
+    const rendered = cli(['rollup', ...documents], dir);
+    assert.equal(rendered.status, 0, rendered.stderr);
+    assert.match(rendered.stdout, /A contributor stated no window/);
+    assert.doesNotMatch(rendered.stdout, /asked for/);
+  });
+});

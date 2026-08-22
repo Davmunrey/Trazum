@@ -1408,6 +1408,12 @@ ${bold('EXAMPLES')}
     contributorsHeading: () => 'Contributors, and what each one could not see',
     contributor: (name, usd, calls, spanDays) =>
       `${name} — ${usd}, ${plural(calls, 'call')}${spanDays === null ? ', no clock' : `, ${plural(spanDays, 'day')}`}`,
+    claimedSpan: (from, to, contributors) =>
+      `Asked for ${from} to ${to} by ${plural(contributors, 'contributor')} — a claim about what was gone looking for, kept apart from what the records showed.`,
+    claimedRow: (from, to) => `asked for ${from} to ${to}`,
+    silentRuns: (runs) => runs,
+    undated: (count) =>
+      `${plural(count, 'record')} this contributor's own window could not place, because they carried no clock`,
     rejectedHeading: () => 'Handed over and not merged',
     rejected: (name, because) => `${name} — ${because}`,
     identical: (names) => `The same document arrived more than once: ${names}.`,
@@ -1429,6 +1435,14 @@ ${bold('EXAMPLES')}
           return 'A contributor carried no timestamp at all, so none of its spend is in any day above.';
         case 'day-top-label-unknown':
           return "A day drew from more than one contributor, so its dearest label is unknown: each contributor knows its own, and the merged answer needs per-label-per-day spend no document carries.";
+        case 'no-claimed-period':
+          return 'A contributor stated no window, so its span is all that is known of it — and a log whose latest record is the 5th may be a log of a quiet week or a log that stopped being written on the 5th.';
+        case 'silence-inside-a-claim':
+          return 'A contributor recorded nothing on days it asked for. Whether that is a quiet stretch or an export that stopped is yours to know; the days are named above.';
+        case 'claim-not-bounded':
+          return 'A contributor claimed one end of a window and not the other, so its silence cannot be measured against it.';
+        case 'claim-too-long-to-enumerate':
+          return 'A claimed window was too long to walk day by day and was not walked. The claim is kept; only its silence is unmeasured.';
         case 'identical-contributions':
           return 'Two contributions were the same document.';
         case 'contribution-rejected':

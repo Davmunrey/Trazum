@@ -74,10 +74,28 @@ export interface ContributorGap {
     /** No record carried a label. */
     | 'no-labels'
     /** Duplicate lines this contributor found inside its own log. */
-    | 'duplicate-lines';
+    | 'duplicate-lines'
+    /** Days inside the window it asked for on which it recorded nothing. */
+    | 'silent-days';
   detail: string;
   usd: number | null;
   calls: number | null;
+}
+
+/**
+ * A stretch inside a claimed window that recorded nothing at all.
+ *
+ * Contiguous runs rather than a list of dates: a contributor claiming a year
+ * and recording three days of traffic produces one entry per gap instead of
+ * three hundred and sixty-two strings, and the reader can still see exactly
+ * which days are missing.
+ */
+export interface SilentRun {
+  /** First silent day, `YYYY-MM-DD` UTC. */
+  from: string;
+  /** Last silent day, inclusive. */
+  to: string;
+  days: number;
 }
 
 export interface RollupContributor {
@@ -88,6 +106,42 @@ export interface RollupContributor {
   span: { fromMs: number; toMs: number; calls: number } | null;
   /** The same span in days, or null. Stated, never extrapolated from. */
   spanDays: number | null;
+  /**
+   * The window this contributor **asked for**, when it filtered by one.
+   *
+   * A claim, not a measurement, and the distinction is the point. `span` says
+   * what the records showed; this says what was gone looking for. A log whose
+   * latest record is the 5th may be a log of a quiet week or a log that
+   * stopped being written on the 5th, and only a claim can tell those apart —
+   * so a contributor that made none gets `null` here and the roll-up says that
+   * out loud rather than reading its span as a period.
+   *
+   * The window is half-open, `[sinceMs, untilMs)`, as `profileUsage` applies
+   * it.
+   */
+  claimed: { sinceMs: number | null; untilMs: number | null } | null;
+  /**
+   * Days inside a fully bounded claim on which this contributor recorded
+   * nothing, and how many there are.
+   *
+   * **Named rather than interpolated**, the way a year report names its
+   * missing months. Whether a silent stretch is a quiet week or a broken
+   * export is the reader's to know; that it is silent is this tool's to say,
+   * and a roll-up that folded it into a smaller total would be wrong by an
+   * unknown amount in the flattering direction.
+   *
+   * Null when there is nothing to measure against: no claim, a claim with only
+   * one end, or a claim too long to enumerate.
+   */
+  silence: { runs: SilentRun[]; days: number } | null;
+  /**
+   * Records the contributor's own window could not place, because they carried
+   * no clock — the honesty cost of filtering by one.
+   *
+   * Null when there was no window, never 0: zero would say a window excluded
+   * nothing, and no window is a different statement.
+   */
+  undatedExcluded: number | null;
   gaps: ContributorGap[];
 }
 
@@ -119,7 +173,15 @@ export type RollupCaveat =
   /** A contribution was handed over and not merged. */
   | 'contribution-rejected'
   /** A contribution carried a numeric field this version cannot classify. */
-  | 'unknown-fields-dropped';
+  | 'unknown-fields-dropped'
+  /** A contributor stated no window, so its span is all that is known of it. */
+  | 'no-claimed-period'
+  /** A contributor claimed days on which it recorded nothing. */
+  | 'silence-inside-a-claim'
+  /** A contributor claimed one end of a window and not the other. */
+  | 'claim-not-bounded'
+  /** A claim was too long to enumerate day by day, and was not. */
+  | 'claim-too-long-to-enumerate';
 
 export interface RollupDay {
   /** `YYYY-MM-DD`, UTC — the contributors' own bucketing, never re-derived. */
@@ -172,6 +234,16 @@ export interface RollupDocument {
   spendByDay: RollupDay[];
   /** Earliest start to latest end, over contributors that carried a clock. */
   span: { fromMs: number; toMs: number; calls: number } | null;
+  /**
+   * Earliest claimed start to latest claimed end, over contributors that
+   * stated a fully bounded window.
+   *
+   * **Kept apart from `span`, deliberately.** One is what the records showed
+   * and the other is what somebody went looking for, and a roll-up that merged
+   * them would answer "what period does this cover" with a number that is half
+   * measurement and half intention. Null when no contributor claimed one.
+   */
+  claimedSpan: { fromMs: number; toMs: number; contributors: number } | null;
   fieldCoverage: FieldCoverage;
   outcomeTally: OutcomeTally;
   /** Summed **within-contributor** duplicates. Overlap between them is elsewhere. */
@@ -308,6 +380,69 @@ function mergeKeyed(
 const byMoney = <T>(rows: T[], usd: (row: T) => number): T[] =>
   [...rows].sort((a, b) => usd(b) - usd(a));
 
+const DAY_MS = 86_400_000;
+
+/** UTC `YYYY-MM-DD` for an instant — the bucketing every day figure here uses. */
+const dayOf = (ms: number): string => new Date(ms).toISOString().slice(0, 10);
+
+/** Midnight UTC of the day an instant falls in. */
+const midnightOf = (ms: number): number => Date.parse(`${dayOf(ms)}T00:00:00.000Z`);
+
+/**
+ * The longest claim this module will walk day by day: ten years.
+ *
+ * A bound rather than trust, because these documents come from elsewhere. A
+ * contribution claiming `untilMs: 1e15` is a malformed document, not a team
+ * with a long memory, and enumerating it would be thirty million iterations
+ * inside a merge somebody ran on four files. The claim is kept and reported;
+ * only the enumeration is refused, with a caveat saying so — a refusal never
+ * arrives bare.
+ */
+const MAX_CLAIM_DAYS = 3660;
+
+/**
+ * The stretches of a claimed window on which nothing was recorded.
+ *
+ * Returns `null` when the claim cannot be walked: unbounded on either end, out
+ * of order, or longer than the bound above. The window is half-open, so the
+ * last claimed day is the one containing `untilMs - 1` — an `until` of
+ * midnight claims up to the previous day and not that day, which is how the
+ * profile's own filter reads it.
+ */
+function silenceIn(
+  claim: { sinceMs: number | null; untilMs: number | null },
+  daysWithTraffic: Set<string>,
+): { runs: SilentRun[]; days: number } | null {
+  const { sinceMs, untilMs } = claim;
+  if (sinceMs === null || untilMs === null) return null;
+  if (!Number.isFinite(sinceMs) || !Number.isFinite(untilMs)) return null;
+  if (untilMs <= sinceMs) return null;
+  const first = midnightOf(sinceMs);
+  const last = midnightOf(untilMs - 1);
+  const span = Math.round((last - first) / DAY_MS) + 1;
+  if (span > MAX_CLAIM_DAYS) return null;
+
+  const runs: SilentRun[] = [];
+  let open: { from: string; to: string; days: number } | null = null;
+  let days = 0;
+  for (let at = first; at <= last; at += DAY_MS) {
+    const day = dayOf(at);
+    if (daysWithTraffic.has(day)) {
+      if (open !== null) runs.push(open);
+      open = null;
+      continue;
+    }
+    days += 1;
+    if (open === null) open = { from: day, to: day, days: 1 };
+    else {
+      open.to = day;
+      open.days += 1;
+    }
+  }
+  if (open !== null) runs.push(open);
+  return { runs, days };
+}
+
 /** The findings a document carries per call, which no summary can reconstruct. */
 const PER_RECORD_FINDINGS: Array<{ field: string; finding: string; because: string }> = [
   {
@@ -381,6 +516,9 @@ export function rollUp(inputs: RollupInput[]): RollupDocument {
   /** The text of each accepted contribution, for the identical-document check. */
   const seenText = new Map<string, string[]>();
   let identicalUsd = 0;
+  let claimFrom: number | null = null;
+  let claimTo: number | null = null;
+  let claimants = 0;
   let spanFrom: number | null = null;
   let spanTo: number | null = null;
   let spanCalls = 0;
@@ -619,12 +757,74 @@ export function rollUp(inputs: RollupInput[]): RollupDocument {
       }
     }
 
+    /**
+     * The window this contributor asked for, if it asked for one.
+     *
+     * `timeWindow` is present in a profile document only when the profile was
+     * run with `--since` or `--until`, so its absence is the ordinary case and
+     * is an answer rather than a defect: nobody claimed a period, and the span
+     * is all that is known.
+     */
+    const window = isRecord(doc.timeWindow) ? doc.timeWindow : null;
+    const claimed =
+      window === null
+        ? null
+        : {
+            sinceMs: typeof window.sinceMs === 'number' ? window.sinceMs : null,
+            untilMs: typeof window.untilMs === 'number' ? window.untilMs : null,
+          };
+
+    if (claimed === null) {
+      cannotSay.add('no-claimed-period');
+    } else if (claimed.sinceMs === null || claimed.untilMs === null) {
+      cannotSay.add('claim-not-bounded');
+    }
+
+    /** The days this contributor itself put spend on — its own bucketing. */
+    const ownDays = new Set<string>();
+    if (Array.isArray(doc.spendByDay)) {
+      for (const row of doc.spendByDay) {
+        if (!isRecord(row)) continue;
+        const day = asString(row.day);
+        if (day !== null) ownDays.add(day);
+      }
+    }
+
+    const silence = claimed === null ? null : silenceIn(claimed, ownDays);
+    if (
+      claimed !== null &&
+      claimed.sinceMs !== null &&
+      claimed.untilMs !== null &&
+      silence === null
+    ) {
+      // Bounded, in order, and still not walked: it was longer than the bound.
+      cannotSay.add('claim-too-long-to-enumerate');
+    }
+    if (silence !== null && silence.days > 0) {
+      cannotSay.add('silence-inside-a-claim');
+      gaps.push({
+        kind: 'silent-days',
+        detail: `${silence.days} day${silence.days === 1 ? '' : 's'} inside the window this contributor asked for recorded nothing`,
+        usd: null,
+        calls: null,
+      });
+    }
+
+    if (claimed?.sinceMs != null && claimed.untilMs != null) {
+      claimFrom = claimFrom === null ? claimed.sinceMs : Math.min(claimFrom, claimed.sinceMs);
+      claimTo = claimTo === null ? claimed.untilMs : Math.max(claimTo, claimed.untilMs);
+      claimants += 1;
+    }
+
     contributors.push({
       name: input.name,
       totalUsd: numberAt(totals, 'totalUsd'),
       calls: numberAt(totals, 'calls'),
       span,
       spanDays: span === null ? null : (span.toMs - span.fromMs) / 86_400_000,
+      claimed,
+      silence,
+      undatedExcluded: window === null ? null : numberAt(window, 'undatedExcluded'),
       gaps,
     });
   }
@@ -717,6 +917,10 @@ export function rollUp(inputs: RollupInput[]): RollupDocument {
       })),
     span:
       spanFrom === null || spanTo === null ? null : { fromMs: spanFrom, toMs: spanTo, calls: spanCalls },
+    claimedSpan:
+      claimFrom === null || claimTo === null
+        ? null
+        : { fromMs: claimFrom, toMs: claimTo, contributors: claimants },
     fieldCoverage: coverage,
     outcomeTally: {
       byValue: byMoney(

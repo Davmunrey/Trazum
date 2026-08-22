@@ -402,3 +402,140 @@ describe('the merge classifies every field it is handed', () => {
     assert.deepEqual(declared.filter((field) => !classified.has(field)), ['aFieldNobodyClassified']);
   });
 });
+
+describe('a span is not a period: what a contributor claims to cover', () => {
+  /** A profile document with the time window a `--since/--until` run records. */
+  const claiming = (records, since, until) => {
+    const parsed = JSON.parse(document(records));
+    parsed.timeWindow = {
+      sinceMs: since === null ? null : Date.parse(since),
+      untilMs: until === null ? null : Date.parse(until),
+      undatedExcluded: 0,
+    };
+    return JSON.stringify(parsed);
+  };
+
+  it('names the days inside a claim that recorded nothing', () => {
+    // Claimed the first ten days of August; recorded traffic on two of them.
+    // Eight days of silence is either a quiet stretch or a broken export, and
+    // this tool says which days rather than which of the two.
+    const merged = rollUp([
+      {
+        name: 'api',
+        text: claiming(
+          [call({ ts: '2026-08-01T09:00:00Z' }), call({ ts: '2026-08-04T09:00:00Z' })],
+          '2026-08-01T00:00:00Z',
+          '2026-08-11T00:00:00Z',
+        ),
+      },
+    ]);
+    const [contributor] = merged.contributors;
+    assert.equal(contributor.silence.days, 8);
+    assert.deepEqual(contributor.silence.runs, [
+      { from: '2026-08-02', to: '2026-08-03', days: 2 },
+      { from: '2026-08-05', to: '2026-08-10', days: 6 },
+    ]);
+    assert.ok(merged.cannotSay.includes('silence-inside-a-claim'));
+    assert.ok(contributor.gaps.some((gap) => gap.kind === 'silent-days'));
+  });
+
+  it('reads the window half-open, the way the profile filter does', () => {
+    // `until` at midnight claims up to the previous day, not that day.
+    const merged = rollUp([
+      {
+        name: 'api',
+        text: claiming(
+          [call({ ts: '2026-08-01T09:00:00Z' })],
+          '2026-08-01T00:00:00Z',
+          '2026-08-03T00:00:00Z',
+        ),
+      },
+    ]);
+    assert.deepEqual(merged.contributors[0].silence.runs, [
+      { from: '2026-08-02', to: '2026-08-02', days: 1 },
+    ]);
+  });
+
+  it('says when nobody claimed a period, rather than reading a span as one', () => {
+    const merged = from([['api', [call({ ts: '2026-08-01T09:00:00Z' })]]]);
+    assert.equal(merged.contributors[0].claimed, null);
+    assert.equal(merged.contributors[0].silence, null);
+    // Absence, not zero: no window excluded nothing, because there was no window.
+    assert.equal(merged.contributors[0].undatedExcluded, null);
+    assert.ok(merged.cannotSay.includes('no-claimed-period'));
+    assert.equal(merged.claimedSpan, null);
+  });
+
+  it('refuses to measure silence against half a window', () => {
+    const merged = rollUp([
+      {
+        name: 'api',
+        text: claiming([call({ ts: '2026-08-01T09:00:00Z' })], '2026-08-01T00:00:00Z', null),
+      },
+    ]);
+    assert.equal(merged.contributors[0].silence, null);
+    assert.ok(merged.cannotSay.includes('claim-not-bounded'));
+    assert.equal(merged.cannotSay.includes('silence-inside-a-claim'), false);
+    // An open-ended claim contributes to no claimed span either.
+    assert.equal(merged.claimedSpan, null);
+  });
+
+  it('keeps the claimed period apart from the observed one', () => {
+    const merged = rollUp([
+      {
+        name: 'api',
+        text: claiming(
+          [call({ ts: '2026-08-04T09:00:00Z' })],
+          '2026-08-01T00:00:00Z',
+          '2026-08-31T00:00:00Z',
+        ),
+      },
+      {
+        name: 'ci',
+        text: claiming(
+          [call({ ts: '2026-08-05T09:00:00Z' })],
+          '2026-07-15T00:00:00Z',
+          '2026-08-10T00:00:00Z',
+        ),
+      },
+    ]);
+    // Observed: what the records showed. Claimed: what was gone looking for.
+    assert.equal(new Date(merged.span.fromMs).toISOString(), '2026-08-04T09:00:00.000Z');
+    assert.equal(new Date(merged.claimedSpan.fromMs).toISOString(), '2026-07-15T00:00:00.000Z');
+    assert.equal(new Date(merged.claimedSpan.toMs).toISOString(), '2026-08-31T00:00:00.000Z');
+    assert.equal(merged.claimedSpan.contributors, 2);
+  });
+
+  it('refuses to enumerate an implausible claim rather than walking it', () => {
+    /**
+     * These documents come from elsewhere. A claim of `untilMs: 1e15` is a
+     * malformed document, not a team with a long memory, and walking it would
+     * be thirty million iterations inside a merge somebody ran on four files.
+     */
+    const merged = rollUp([
+      {
+        name: 'malformed',
+        text: (() => {
+          const parsed = JSON.parse(document([call({ ts: '2026-08-01T09:00:00Z' })]));
+          parsed.timeWindow = { sinceMs: 0, untilMs: 1e15, undatedExcluded: 0 };
+          return JSON.stringify(parsed);
+        })(),
+      },
+    ]);
+    assert.equal(merged.contributors[0].silence, null);
+    assert.ok(merged.cannotSay.includes('claim-too-long-to-enumerate'));
+    // The claim itself is kept — only the enumeration was refused.
+    assert.equal(merged.contributors[0].claimed.untilMs, 1e15);
+  });
+
+  it('carries the records the contributor\'s own window could not place', () => {
+    const parsed = JSON.parse(document([call({ ts: '2026-08-01T09:00:00Z' })]));
+    parsed.timeWindow = {
+      sinceMs: Date.parse('2026-08-01T00:00:00Z'),
+      untilMs: Date.parse('2026-08-02T00:00:00Z'),
+      undatedExcluded: 7,
+    };
+    const merged = rollUp([{ name: 'api', text: JSON.stringify(parsed) }]);
+    assert.equal(merged.contributors[0].undatedExcluded, 7);
+  });
+});
