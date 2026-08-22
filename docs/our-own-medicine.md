@@ -72,6 +72,7 @@ misses is a tool nobody believes. A selection, and these are the real ones:
 | #346 | Five of the seven phrase dictionaries were described as covering languages nobody here reads | **since they shipped** |
 | #361 | The profile document's `schemaVersion` was stamped by the CLI, so `@trazum/core` emitted a profile `trazum conform` refuses | unknown, since the contract | 
 | #355 | A transcript guard compared column padding and called it format, so it agreed or disagreed on whichever figures this repository happened to produce | 4 releases |
+| #363 | `docs/json-output.md` called itself the contract while six of its fifteen tables had no guard at all — the roll-up documented three of its nineteen fields | **since the roll-up shipped** |
 
 The long ones are the interesting ones, and the longest is the newest: **the
 front page of this project contradicted itself about the number of advisories

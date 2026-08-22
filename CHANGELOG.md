@@ -9,6 +9,45 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Fixed
+
+**`docs/json-output.md` called itself the contract, and six of its fifteen
+tables had no guard.** The file's second sentence named one test — and one test
+is what it had: nine of the fifteen documents were genuinely harvested by a
+parity check somewhere in the repository, six were not, and nothing anywhere
+recorded which was which. Two of the six had drifted. **The roll-up document
+listed three top-level fields and `trazum rollup --json` emits nineteen** — the
+merged bill, both periods, the duplicate and overlap findings and the typed
+`cannotSay` caveats were absent from the contract a consumer builds against,
+and `notMerged` sat beside a documented `rejected` where a reader handling one
+would miss the other. The fleet document never mentioned `schemaVersion`, the
+one field this file's own promise section calls the only thing you must branch
+on. Both tables are complete now, and the roll-up's rows carry the refusals
+rather than only the arithmetic — a shared day's dearest label is null, the
+repeats are named and never subtracted.
+
+### Added
+
+**`packages/cli/test/contract-coverage.test.js` — the inventory beside the
+promise.** It takes every `##` heading in `docs/json-output.md` whose section
+carries a field table, matches each against the test that harvests it, and
+fails on a table nobody claims *and* on a claim for a table that is no longer
+there. A claim is not taken on trust: the file named has to pass the heading to
+a call, because a heading in a comment is not enforcement. It also walks all
+three packages' test directories for harvests the map does not know about — the
+direction that would have caught the six. The six unguarded tables — fleet,
+roll-up, annual record, pulse, rule-yield and the outcome report — are now held
+both ways by running the command (or, for the outcome report, the library
+function; no command emits it).
+
+**And the harvest is proved on documents written for the purpose.** It has to
+tell a section carrying a table from two that carry only prose, and read a row
+naming four fields (`root`, `files`, `prompts`, `truncated`) and one naming a
+nested field documented and deliberately never emitted (`promises.arrivedUsd`)
+— otherwise every "both ways" check above is agreeing with a misreading.
+
 ## 1.60.2 — "Checked by running"
 
 **A patch, and every entry in it is the same act.** With the plan finished as far

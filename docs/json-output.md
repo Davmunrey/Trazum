@@ -4,9 +4,17 @@ The machine-readable report, and what it promises.
 
 Everything the terminal prints is derived from these fields, so a dashboard, a
 CI step or a spreadsheet importer can read the same figures the human report
-shows without parsing prose. This file is the contract, and
-`packages/cli/test/json-contract.test.js` enforces it in both directions: a
-key that disappears fails, and a key added without a line here fails too.
+shows without parsing prose. This file is the contract, and every table in it
+is enforced in both directions: a key that disappears fails, and a key added
+without a line here fails too.
+
+**Which guard holds which table is written down, not assumed.** That sentence
+used to name one test file, and this file documents fifteen documents — nine of
+them were held that way and six were not, which is how the roll-up came to emit
+sixteen fields with no line here. `packages/cli/test/contract-coverage.test.js`
+now takes the headings out of this file, matches each against the test that
+harvests it, and fails on a table nobody claims *and* on a claim for a table
+that no longer exists.
 
 ## The promise
 
@@ -77,7 +85,9 @@ not one report:
 
 | Field | What it holds |
 | --- | --- |
+| `schemaVersion` | `1`. The fleet document carries it too — a consumer branching on it should not have to infer that from the single-log table. |
 | `bySource[]` | One entry per configured source with traffic: its `name` and its full `report`, each identical in shape to the single-log document above. |
+| `rollup` | The fleet read as one thing, in the rows below. A container rather than a figure — the sums live inside it so a consumer never reaches for a fleet total on a document that is a list of sources. |
 | `rollup.totalUsd`, `rollup.calls` | The sum over every source. A total is a total, whatever the spans. |
 | `rollup.sources[]` | Every source, dearest first: `usd`, `calls`, `share` of the fleet, and `spanDays` (null when its logs carry no clock). |
 | `rollup.worst` | The dearest source with its share, or null when the fleet spent nothing — "nothing is bleeding" and "the worst of nothing" are different statements. |
@@ -268,6 +278,22 @@ away.
 | `contributors[].undatedExcluded` | Records the contributor's own window could not place, because they carried no clock. **Null when there was no window**, never 0 — zero would say a window excluded nothing. |
 | `contributors[].gaps` | That contributor's own blind spots — `unreadable-lines`, `unpriced-calls`, `no-clock`, `partial-clock`, `no-sessions`, `no-labels`, `duplicate-lines` — each with a `detail`, and `usd`/`calls` that are **`null` where the kind has none**. Kept per contributor and never summed: "3% of this roll-up is unpriced" is the sentence that hides "one of your four machines is 90% unpriced". |
 | `rejected` | Every contribution handed over and **not** merged, with `name`, `via` and `because`. `via` names the roll-up a rejection arrived through: a rejection that stopped travelling at a nesting boundary would mean a broken export could be made to disappear by adding a layer. A machine that contributed nothing must not read like a machine that spent nothing, so this is a field rather than an absence — and the command exits 1 when it is non-empty. |
+| `total` | The merged bill: every contributor's priced calls summed, split by input, cache reads, cache writes and output, in tokens and dollars. Same `UsageBreakdown` shape as the profile document's `total`. |
+| `unpriced` | What the calls no catalogue could price used, kept entirely out of `total` — the same refusal the single-log report makes, preserved through the merge. |
+| `unpricedModels` | Model ids no contributor's catalogue knew, named rather than silently costed at zero. |
+| `byLabel` | The merged breakdown per workload label, largest bill first. |
+| `byModel` | The same per model. |
+| `byLabelAndModel` | The same at the grain a routing decision is made at. |
+| `spendByDay` | Dollars per UTC day over the whole fleet — **the contributors' own bucketing, never re-derived** — each day with its `calls`, how many `contributors` saw traffic on it, its `byModel` split, and `topLabel`/`topLabelUsd` that are **null when more than one contributor covered the day**. No document carries per-label-per-day spend, so the dearest label of a shared day is not knowable from here, and picking the larger of two answers is wrong whenever two runners-up outweigh either winner. |
+| `span` | Earliest start to latest end over the contributors that carried a clock, with the calls inside it — or null. |
+| `claimedSpan` | Earliest claimed start to latest claimed end, over contributors that stated a **fully bounded** window, with how many did. **Kept apart from `span` deliberately**: one is what the records showed and the other is what somebody went looking for, and merging them answers "what period does this cover" with a figure that is half measurement and half intention. Null when nobody claimed one. |
+| `fieldCoverage` | How many merged records carried each optional field — the counts behind what this roll-up cannot answer. |
+| `outcomeTally` | The merged outcome tally: `byValue`, `recorded`, `parsed`, `unrecordedUsd`. Measurement only; which values mean success is declared in a config, not here. |
+| `duplicateLines` | Duplicates **within** each contributor, summed. Overlap *between* contributors is a different fact and is not here — `repeatedContributors` and `identicalContributions` are where that lives. |
+| `identicalContributions` | Contributions whose whole text was byte-identical, in `groups`, with the `usd` the repeats added. Compared over the entire document rather than a hash, because a collision would report a duplicate that is not one and this figure exists to make somebody distrust a total. **Named, never subtracted.** |
+| `repeatedContributors` | Contributor names appearing more than once across nesting — handing over both a roll-up and one of the machines inside it. Unlike the identical-document check this one can see it: the documents differ, the name does not. **Named, never subtracted**, because two teams genuinely running an `api.json` is possible and deciding otherwise by removing money would be a repair this tool never makes. |
+| `notMerged` | Findings that exist in the contributions and **cannot survive a merge**, each with `finding`, `because`, and `presentIn` — the contributors that had one, so a reader knows where to go and look. A roll-up silently missing a finding reads as a fleet that does not have it. |
+| `cannotSay` | Typed codes for what this roll-up cannot say about itself — `overlap-invisible`, `mismatched-spans`, `contributor-without-clock`, `day-top-label-unknown`, `identical-contributions`, `contribution-rejected`, `unknown-fields-dropped`, `no-claimed-period`, `silence-inside-a-claim`, `claim-not-bounded`, `claim-too-long-to-enumerate`, `contributor-named-twice`. Codes rather than prose so a consumer can branch and the renderings carry the sentences. |
 | `identicalContributions` | `groups` of contribution names that were the same document, and the `usd` the repeats added. **Merged and stated, never discarded** — the rule a single profile already applies to duplicate lines. |
 | `total`, `unpriced`, `unpricedModels` | Summed across contributors, with `unpricedModels` a union. Every numeric field of a breakdown is summed **except `maxCallInputTokens`, which is a maximum**: four machines' largest calls added together is a call that never happened, in the direction that makes a context window look tight. |
 | `byLabel`, `byModel`, `byLabelAndModel` | Merged by key, largest bill first. |
