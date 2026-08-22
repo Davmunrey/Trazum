@@ -138,6 +138,51 @@ to mean consecutive. It never merged, because it was run against the real
 document and not only against the defect it was written for. That is the whole
 defence, and it is a habit rather than an insight.
 
+## The arc closes on the number it could not produce
+
+[The 1.52–1.60 plan](plan-1.52-1.60.md) committed 1.60 to one thing, in advance
+and in writing: *make at least one of those three sentences no longer true, with
+a measurement rather than an argument* — and, if it could not, *the honest
+deliverable is a longer version of that page saying so, and the arc closes on the
+number it could not produce.*
+
+Four chapters later, the scoreboard:
+
+| Admission | After the arc |
+|---|---|
+| The record is self-reported | **No longer true.** Five defects were found by CodeQL and by nothing here — an outside instrument, narrower than an audit, and the qualification is written beside it |
+| No outcome is recorded for any of it | **Weakened, not overturned.** One outcome is on the record: the deterministic rules recover 0.5% from the only corpus this project owns |
+| This project has no usage log of its own | **Still true, in full** |
+
+**Why the third one stands, and what would have made it fall.** This project
+would have to spend money on models and record what it spent. It does not spend:
+the deterministic path makes no calls at all, and the model-side passes run on the
+user's key, on the user's bill. What could be counted was the cost this project
+*imposes* — 1176 tokens of system prompt on every model-side run — and that is
+counted, above, under a heading that says it is a different sentence. Merging the
+two would have been this document's own first doctrine rule broken on its own
+page.
+
+**Why the second one is only weakened.** *Whether it helps* needs somebody it
+helped, and there is no such person on this record. *Whether it is used* has one
+available instrument and the instrument was refused: npm download counts are
+fetches, not uses — mirrors, CI runners and bots are in the total, so the figure
+bounds **above** and nothing bounds below. `A floor can prove "over" and can never
+prove "under"` is on this project's doctrine list, and quoting a ceiling as
+evidence of adoption is that rule inverted. A number that cannot be checked is
+worse here than a gap that is named.
+
+**So the arc closes at one of three**, which is what it asked for and less than it
+hoped for. What it produced along the way is the part worth keeping: an outside
+instrument's findings tabulated, the tokens this project puts on other people's
+bills counted for the first time, its own gate finally running on itself, and four
+defects in its own conduct written down — a rule it broke for as long as the rule
+existed, a recipe that named two of three places, a page that overstated a
+volunteer's work tenfold, and a gate flag that gated nothing.
+
+**And the sentence the whole document ends on is unchanged.** A miss nobody
+noticed is still, by construction, not on this page.
+
 ## What we cannot say about ourselves
 
 The section this document would be dishonest without.

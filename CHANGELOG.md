@@ -13,6 +13,31 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**And the arc closes on the number it could not produce**, which is what it said
+in advance it would do. The fourth and final chapter of arc 1.60.
+
+| Admission | After the arc |
+|---|---|
+| The record is self-reported | **No longer true** — five defects found by CodeQL and by nothing here |
+| No outcome is recorded for any of it | **Weakened** — one outcome on the record, the 0.5% above |
+| This project has no usage log of its own | **Still true, in full** |
+
+**Why the third stands**: this project would have to spend money on models and
+record it, and it does not spend. What could be counted is the cost it *imposes*,
+which is counted, under a heading that says it is a different sentence.
+
+**Why the second is only weakened**: *whether it helps* needs somebody it helped.
+*Whether it is used* has one available instrument and it was refused on the
+record — npm download counts are fetches, not uses, and mirrors, CI runners and
+bots are in the total, so the figure bounds **above** and nothing bounds below.
+`A floor can prove "over" and can never prove "under"` is on this project's own
+doctrine list; quoting a ceiling as evidence of adoption is that rule inverted.
+
+One of three is less than the arc hoped for and exactly what it committed to
+report. A guard grades the scoreboard against the page, so a later edit cannot
+promote a second admission quietly.
+
+
 **`ignore` — saying which files are prompts, when the extension cannot.** A new
 config key, and the feature that had to exist before this repository could take
 its own gate. Directory mode decided from the extension alone, so a repository

@@ -168,3 +168,56 @@ describe('the outside instrument, and the sentence it changed', () => {
     assert.match(page, /no outcome (is )?recorded/i);
   });
 });
+
+describe('the arc closes on a scoreboard that matches the page', () => {
+  /**
+   * The closing section grades three admissions. A grade that drifted from what
+   * the page below still says would be this document claiming credit it did not
+   * earn — the one failure it exists to catch, on its own last section.
+   */
+  const medicine = () => readFile(join(repoRoot, 'docs', 'our-own-medicine.md'), 'utf8');
+
+  const rows = (text) => {
+    const table = sectionOf(text, '## The arc closes on the number it could not produce');
+    return [...table.matchAll(/^\| ([^|]+) \| \*\*([^*]+)\*\*/gm)].map((match) => ({
+      admission: match[1].trim(),
+      verdict: match[2].trim(),
+    }));
+  };
+
+  it('grades exactly the three admissions, and exactly one has fallen', async () => {
+    const graded = rows(await medicine());
+    assert.equal(graded.length, 3, `the scoreboard grades ${graded.length} admissions, not three`);
+    const fallen = graded.filter((row) => row.verdict.startsWith('No longer true'));
+    assert.equal(
+      fallen.length,
+      1,
+      `the arc claims ${fallen.length} admissions fell: ${fallen.map((r) => r.admission).join('; ')}`,
+    );
+  });
+
+  it('and the two that stand are still stated below, not quietly dropped', async () => {
+    const page = await medicine();
+    const standing = sectionOf(page, '## What we cannot say about ourselves');
+    assert.match(standing, /no usage log of (its|this project's) own/);
+    assert.match(standing, /No outcome is recorded/i);
+  });
+
+  it('would notice a scoreboard that had promoted a second admission', () => {
+    // Handed a table claiming two fell, the count must reject it.
+    const table = [
+      '## The arc closes on the number it could not produce',
+      '',
+      '| Admission | After the arc |',
+      '|---|---|',
+      '| One | **No longer true.** |',
+      '| Two | **No longer true.** |',
+      '| Three | **Still true, in full** |',
+      '',
+      '## Next',
+    ].join('\n');
+    const graded = [...sectionOf(table, '## The arc closes on the number it could not produce')
+      .matchAll(/^\| ([^|]+) \| \*\*([^*]+)\*\*/gm)];
+    assert.equal(graded.filter((m) => m[2].startsWith('No longer true')).length, 2);
+  });
+});
