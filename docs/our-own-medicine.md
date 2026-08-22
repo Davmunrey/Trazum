@@ -70,6 +70,7 @@ misses is a tool nobody believes. A selection, and these are the real ones:
 | #294 | `CONTRIBUTING.md` said `npm test` ran two suites; it runs five, and CI's step names hid MCP too | unknown, since MCP shipped |
 | #295 | `docs/releasing.md` said "both manifests" and "both publish steps" with three packages | unknown, since MCP shipped |
 | #346 | Five of the seven phrase dictionaries were described as covering languages nobody here reads | **since they shipped** |
+| #355 | A transcript guard compared column padding and called it format, so it agreed or disagreed on whichever figures this repository happened to produce | 4 releases |
 
 The long ones are the interesting ones, and the longest is the newest: **the
 front page of this project contradicted itself about the number of advisories

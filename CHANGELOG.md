@@ -9,6 +9,33 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Fixed
+
+**A guard that asserted padding and called it format.**
+`transcript-format.test.js` checks that the README's `trazum doctor` transcript
+writes its money column the way the command does. It did that by taking the
+`~ ` prefix off the first money line of a live run and requiring every transcript
+line to use the same one.
+
+**That space is right-alignment, not format.** A live run prints `~ $10.59`,
+`~  $8.82` and `~$0.5300` in the same column, because `$0.5300` is two characters
+wider than `$8.82`. So the guard agreed or disagreed depending on how wide this
+repository's own figures happened to be — and it broke the day a config changed
+them, on a change that had nothing to do with the README.
+
+It now measures what the column actually promises: **the text starts at the same
+offset on every row, priced or not**, on both sides — the command's block is the
+yardstick and the transcript is compared against it. Proved by handing it the
+defect it was written for.
+
+**And that defect was real.** The transcript's two unpriced rows were indented
+eleven columns where the command indents twelve, so *Below the cacheable minimum*
+sat one space left of the priced rows above it. Found by measuring both, not by
+reading either.
+
+
 ## 1.60.0 — "Our own medicine, measured"
 
 **A minor closes an arc, and this one closes the last arc the 1.52–1.60 plan
