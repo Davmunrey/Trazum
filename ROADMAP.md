@@ -1184,6 +1184,40 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.56.0 — "Something that runs" — released
+
+**The arc that turned out not to need a runtime.** It asked whether alerting can
+be given without becoming a hosted service holding other teams' metrics, and
+committed in advance to publishing the reasoning if the answer was no.
+
+The answer is **yes for the noticing, no for the last hop**. What shipped is
+three ways of making the *absence* of a run visible, because a scheduled job
+that stopped does not announce itself — it goes quiet, and quiet is also what a
+healthy watcher with nothing to report produces.
+
+`history` names the calendar stretches no report covers, and puts the count on
+the run that spans them: "climbing for four periods" over an unmeasured
+fortnight was a sentence this tool should never have let anybody form.
+`trazum pulse` is the outside view of a scheduled job, because the file that
+would tell you the watcher stopped is read only by the watcher.
+`docs/running.md` is the argument, the recipes for four schedulers, and the
+section naming what a tool without a host cannot do: page you, retry a delivery,
+deduplicate across channels, or know you are on holiday.
+
+**It infers no schedule anywhere.** No expected cadence, no "this run is late"
+without a threshold somebody typed. A first-time reader gets ages and no
+opinion, which is the same refusal every gate in this product has carried since
+a budget was first called a policy.
+
+CodeQL was quiet this time. The defect worth recording is that
+`--max-stale-hours 36` built, ran, printed a full report and gated on nothing,
+because a flag that takes a value and is not declared as taking one parses as a
+boolean and its value becomes a positional argument. Found by running the
+command; now a derived guard over the whole class.
+
+**1.54.0 is still missing and still on purpose.**
+
+
 ## 1.55.0 — "More than one machine" — released
 
 **The arc that had no answer at all.** Every command here operated on files one
@@ -1706,7 +1740,7 @@ code: [docs/plan-1.52-1.60.md](docs/plan-1.52-1.60.md). Under the numbering
 adopted at 1.50.1 a minor closes an arc, so each of 1.52.0 … 1.60.0 lands one
 thesis.
 
-**1.52.0, 1.53.0 and 1.55.0 are delivered.** The gateway stopped buffering the whole
+**1.52.0, 1.53.0, 1.55.0 and 1.56.0 are delivered.** The gateway stopped buffering the whole
 upstream reply before writing a byte back, and then learned who it can stand in
 front of: which providers it fronts, which two it can never front and why, and
 which are missing a fact this repository cannot supply without guessing. How
@@ -1729,6 +1763,13 @@ the plan points at the line of code for it — but it is **blocked**, which is w
    it. Measuring it needs a key for each family's own counting endpoint, and
    inventing a band instead is the estimating-and-measuring merge 1.36–1.40
    spent five releases removing.
+
+**1.56.0 asked a question and answered it.** Whether alerting can be given
+without becoming a hosted service holding other teams' metrics: yes for the
+noticing — `history` names the stretches nobody measured, `trazum pulse` gives
+the outside view of a scheduled job, and the CI you already run is the thing
+that notices — and no for the last hop, which is written down rather than left
+to be discovered.
 
 **1.55.0 is delivered, out of order and deliberately.** More than one machine
 was an intention rather than a defect, and it sat behind 1.54.0 in the ordering —

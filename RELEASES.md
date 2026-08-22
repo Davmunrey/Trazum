@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.55.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.56.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,147 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.56.0 — "Something that runs"
+
+**The arc asked whether alerting can be given without becoming a hosted service
+holding other teams' metrics**, and said that if the answer turned out to be no,
+the deliverable was that sentence with its reasoning.
+
+The answer is **yes for the noticing, no for the last hop**, and what shipped is
+not a runtime at all. Three pieces, and every one of them exists because a
+scheduled job that stopped does not announce itself — it just goes quiet, and a
+tool that cannot tell quiet from stopped is a tool nobody should trust with an
+alert.
+
+### `history` names the calendar time no report covers
+
+A cron that died three weeks ago produces a series that looks exactly like a
+shorter one. Until this release nothing could tell a reader which they were
+looking at.
+
+`unmeasured[]` carries every stretch between the first report's start and the
+last one's end that **no report covers** — the days, the instants, and the
+reports either side. It is arithmetic on the spans and **never an inference
+about a schedule**: this module has no idea how often anybody meant to run
+anything, and guessing a cadence in order to call a gap *late* would be the tool
+deciding what somebody's routine is.
+
+**And the caveat travels on the finding.** A run is consecutive *reports* and
+read as consecutive *time*: four rising periods with an unmeasured fortnight
+between the second and the third was reported as "climbing for four periods",
+when the climb may have reversed and come back inside the hole. Each run now
+carries `unmeasuredDays`, printed on the run's own line — a caveat one section
+away arrives after the reader has already formed the sentence.
+
+`overlappingReports[]` names two reports covering some of the same days. This
+command never sums across periods, but a reader with the document in a
+spreadsheet will, and two exports over the same fortnight count it twice. Named
+and never merged: which of the two is the better measurement is not knowable
+from here.
+
+A gap shorter than a whole day is not reported — that is the seam between two
+adjacent exports — and days are floored, so a gap called three days is at least
+three days.
+
+### `trazum pulse [--max-stale-hours <n>] [--json]` — new command
+
+`watch --once` is built for a scheduler: a cron entry is the whole daemon, and
+its state file records each cycle precisely so a restart is honest about the
+stretch it did not watch. **That file was read by exactly one thing, and that
+thing was the next cycle.**
+
+So nothing could tell you the watcher had stopped, because the thing that would
+tell you was the thing that stopped.
+
+```
+Did the things that are supposed to run, run?
+  ✗ last watch cycle: 2026-08-19 23:10Z, 50 hours ago
+  ✓ last pull into the store: 2026-08-21 23:10Z, 2 hours ago
+  measurements reach up to: 2026-08-20 01:10Z, 48 hours ago
+
+  Something that runs here has not run in over 36 hours. Silence from a
+    scheduled job and silence from a job with nothing to report look
+    identical; this is which.
+```
+
+**It runs nothing and hosts nothing.** Something has to notice, and the
+something is already in your CI: a step running this on the schedule you already
+have turns a dead cron into a red build, without Trazum holding anybody's
+metrics.
+
+**Three refusals:**
+
+- **A first run that never happened is not late.** There is no cadence to be
+  late against, so `never-run` is its own verdict and never gates. A check that
+  fired on "you have not adopted this feature" would be nagging, not measuring.
+- **No threshold, no verdict.** Without `--max-stale-hours` the ages are
+  reported and nothing is judged, and the rendering says so out loud — a screen
+  with no threshold behind it is the shape somebody reads as "checked".
+- **How far the measurements reach is never judged by the same threshold.** A
+  store pulled ten minutes ago whose newest record stops two days back is a
+  healthy job in front of a provider that reports late. Gating on it would be a
+  red build for somebody else's latency.
+
+It does not fire on the threshold itself, only past it; a future instant is no
+age rather than a negative one; and ages are floored.
+
+### `docs/running.md` — the reasoning, the recipes, and where they run out
+
+What actually has to run, and why the four jobs are kept separate — a single
+"run everything" command would hide which of them stopped. Recipes for **cron**,
+**systemd timers**, **GitHub Actions** and **Windows Task Scheduler**, each one
+a command this repository actually accepts. Where the credential lives on each
+platform, and why Trazum adds no new place for a key to sit.
+
+Every command in the recipes was run against the build rather than recalled, and
+two claims were wrong until that happened: the Actions recipe cited a checkout
+version this repository does not use, and the page named one credential variable
+where the connector accepts two.
+
+And a section on **where this answer runs out**, because a page that only listed
+what works would be advertising. A laptop is not a scheduler. The last hop is
+still the reader's — Trazum cannot page anybody, retry a delivery, deduplicate
+across channels or know somebody is on holiday, which is what a hosted alerting
+product is actually selling. A watcher can only judge what has been pulled. And
+nothing here watches the watcher's watcher, because the chain has to end at the
+thing the reader already trusts to tell them when it breaks.
+
+### Fixed
+
+**A whole class of flag defect is now guarded.** `--max-stale-hours 36` shipped,
+built, ran, printed a full report and **gated on nothing**: the flag was not in
+`VALUE_FLAGS`, so it parsed as a boolean and `36` became a positional argument.
+Nothing failed anywhere, and a test that only checked the command printed would
+have passed. The rule is derivable, so it is derived — anything read with
+`stringFlag` or `numberFlag` takes a value by definition — and it is proved
+against the exact line that shipped.
+
+**A nested roll-up reported the same finding twice.** The day's-dearest-label
+entry was appended after the inner roll-up's findings were merged, so both
+survived. Found by running it; the source read fine.
+
+### What this release still cannot do
+
+- **It cannot notice anything on its own.** `pulse` is a command, not a daemon,
+  and if the CI step that runs it stops running, it stops with it. That is the
+  end of the chain and it is deliberate: the alternative is a hosted service
+  holding other people's metrics.
+- **It cannot deliver an alert.** A non-zero exit code, a JSON document and a
+  webhook POST are the three transports, and all three are boring on purpose.
+  Paging, retries, channel deduplication and knowing somebody is on holiday are
+  not here and are not planned.
+- **It cannot judge what has not been pulled.** A provider that reports usage a
+  day late means a crossing judged a day late. `pulse` reports the reach
+  separately so the two delays are never confused, and that is the whole of what
+  it can do about it.
+- **It infers no schedule anywhere.** No "expected cadence", no "this run is
+  late" without a threshold somebody typed. That is a refusal rather than a gap,
+  and it means a first-time reader gets ages and no opinion.
+- **The per-family token band is still unmeasured**, which is the arc 1.54.0
+  names — still missing on purpose, still waiting on provider keys.
 
 ---
 

@@ -181,13 +181,14 @@ named. And **a roll-up is a contribution too** — three teams roll up their own
 machines and the organisation rolls up the three, with contributors flattened
 rather than collapsed and every refusal surviving the nesting.
 
-**What the arc still owes:** the closing minor. The thesis as written is
-delivered; what a 1.55.0 has to decide is whether anything else belongs in it
-before the number is spent.
+**Closed at 1.55.0**, and it decided that nothing else belonged in it: three
+chapters, and the two questions the arc found on the way answered rather than
+carried forward.
 
-## 1.56.0 — Something that runs
+## 1.56.0 — Something that runs — **delivered**
 
-**Two chapters shipped and the arc's question answered.** `history` names the
+**All three chapters shipped, landing at 1.56.0, and the arc's question
+answered.** `history` names the
 stretches no report covers, so a series with a hole in it is no longer
 indistinguishable from a shorter one; `trazum pulse` gives the outside view of a
 scheduled job, because the thing that would tell you a watcher stopped was the
