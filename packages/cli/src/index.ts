@@ -2168,7 +2168,7 @@ async function commandRollup(args: Args, t: CliMessages): Promise<void> {
         formatUsd(contributor.totalUsd),
         contributor.calls,
         contributor.spanDays === null ? null : Math.round(contributor.spanDays),
-      )}`,
+      )}${contributor.via === null ? '' : ` ${c.dim(t.rollup.via(contributor.via))}`}`,
     );
     /**
      * What this contributor asked for, before what it found.
@@ -2210,7 +2210,13 @@ async function commandRollup(args: Args, t: CliMessages): Promise<void> {
     console.log();
     console.log(c.bold(t.rollup.rejectedHeading()));
     for (const rejection of document.rejected) {
-      console.log(`  ${c.red(wrap(t.rollup.rejected(rejection.name, rejection.because), 72, '    '))}`);
+      // The roll-up it arrived through, when it came through one: a rejection
+      // whose origin got lost is a machine nobody knows to go and fix.
+      const line =
+        rejection.via === null
+          ? t.rollup.rejected(rejection.name, rejection.because)
+          : t.rollup.rejectedVia(rejection.name, rejection.via, rejection.because);
+      console.log(`  ${c.red(wrap(line, 72, '    '))}`);
     }
     process.exitCode = 1;
   }
@@ -2221,6 +2227,11 @@ async function commandRollup(args: Args, t: CliMessages): Promise<void> {
       console.log(`  ${c.yellow(wrap(t.rollup.identical(group.join(', ')), 72, '    '))}`);
     }
     console.log(`  ${c.dim(t.rollup.identicalUsd(formatUsd(document.identicalContributions.usd)))}`);
+  }
+
+  if (document.repeatedContributors.length > 0) {
+    console.log();
+    console.log(`  ${c.yellow(wrap(t.rollup.repeated(document.repeatedContributors.join(', ')), 72, '    '))}`);
   }
 
   if (document.byLabel.length > 0) {

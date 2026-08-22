@@ -539,3 +539,130 @@ describe('a span is not a period: what a contributor claims to cover', () => {
     assert.equal(merged.contributors[0].undatedExcluded, 7);
   });
 });
+
+describe('a roll-up can contribute to another roll-up', () => {
+  const rollupOf = (entries) => JSON.stringify(from(entries));
+
+  it('flattens the machines rather than collapsing them into one contributor', () => {
+    const team = rollupOf([
+      ['api', [call()]],
+      ['worker', [call()]],
+    ]);
+    const org = rollUp([
+      { name: 'team-a.json', text: team },
+      { name: 'solo.json', text: document([call()]) },
+    ]);
+    // Three machines, not two contributions: collapsing them would average
+    // three sets of gaps into two and that is what this arc refuses.
+    assert.deepEqual(
+      org.contributors.map((row) => [row.name, row.via]),
+      [
+        ['api', 'team-a.json'],
+        ['worker', 'team-a.json'],
+        ['solo.json', null],
+      ],
+    );
+    assert.ok(Math.abs(org.total.totalUsd - 3) < 1e-9);
+    assert.equal(org.total.calls, 3);
+  });
+
+  it('carries a rejection through the layer that swallowed it', () => {
+    const team = rollupOf([['api', [call()]]]);
+    const withBad = JSON.parse(team);
+    withBad.rejected = [{ name: 'broken.json', via: null, because: 'schemaVersion: required' }];
+    withBad.cannotSay = [...new Set([...withBad.cannotSay, 'contribution-rejected'])];
+
+    const org = rollUp([{ name: 'team-a.json', text: JSON.stringify(withBad) }]);
+    // A machine that contributed nothing must not be made to disappear by
+    // adding a layer.
+    assert.deepEqual(org.rejected, [
+      { name: 'broken.json', via: 'team-a.json', because: 'schemaVersion: required' },
+    ]);
+    assert.ok(org.cannotSay.includes('contribution-rejected'));
+  });
+
+  it('carries the inner caveats, so an inner blindness is not an outer sight', () => {
+    const team = rollupOf([
+      ['api', [call()]],
+      ['worker', [call()]],
+    ]);
+    const org = rollUp([{ name: 'team-a.json', text: team }]);
+    // One contribution at the outer level, so the outer would not have added
+    // overlap-invisible on its own — the inner one did, and it travels.
+    assert.ok(org.cannotSay.includes('overlap-invisible'));
+  });
+
+  it('carries the findings the inner roll-up already refused to merge', () => {
+    const team = rollupOf([
+      [
+        'api',
+        [
+          call({ session: 's1', ts: '2026-08-01T09:00:00Z', usage: { input_tokens: 1_000, output_tokens: 100 } }),
+          call({ session: 's1', ts: '2026-08-01T09:00:10Z', usage: { input_tokens: 9_000, output_tokens: 100 } }),
+          call({ session: 's1', ts: '2026-08-01T09:00:20Z', usage: { input_tokens: 30_000, output_tokens: 100 } }),
+        ],
+      ],
+    ]);
+    const org = rollUp([{ name: 'team-a.json', text: team }]);
+    const growth = org.notMerged.find((entry) => entry.finding === 'conversation growth');
+    assert.ok(growth !== undefined, 'a finding that did not roll up inside does not roll up outside');
+    assert.deepEqual(growth.presentIn, ['api']);
+  });
+
+  it('counts machines per day, not documents', () => {
+    const team = rollupOf([
+      ['api', [call({ ts: '2026-08-01T09:00:00Z' })]],
+      ['worker', [call({ ts: '2026-08-01T10:00:00Z' })]],
+    ]);
+    const org = rollUp([{ name: 'team-a.json', text: team }]);
+    assert.equal(org.spendByDay[0].contributors, 2);
+  });
+
+  it('names a machine handed over twice, and does not subtract it', () => {
+    const solo = document([call()]);
+    const team = rollUp([{ name: 'api.json', text: solo }]);
+    const org = rollUp([
+      { name: 'team-a.json', text: JSON.stringify(team) },
+      { name: 'api.json', text: solo },
+    ]);
+    // The documents differ — one is a roll-up — so the identical-text check
+    // cannot see this. The name can.
+    assert.deepEqual(org.repeatedContributors, ['api.json']);
+    assert.ok(org.cannotSay.includes('contributor-named-twice'));
+    // Named, never repaired: the money is still both times.
+    assert.ok(Math.abs(org.total.totalUsd - 2) < 1e-9);
+  });
+
+  it('keeps the machine it came from through a third layer', () => {
+    const team = rollupOf([['api', [call()]]]);
+    const division = rollUp([{ name: 'team-a.json', text: team }]);
+    const org = rollUp([{ name: 'division.json', text: JSON.stringify(division) }]);
+    // `via` stays the roll-up that actually held the machine, rather than
+    // claiming it came straight from the division.
+    assert.deepEqual(
+      org.contributors.map((row) => [row.name, row.via]),
+      [['api', 'team-a.json']],
+    );
+  });
+
+  it('still rejects a document that is neither a profile nor a roll-up', () => {
+    const org = rollUp([{ name: 'plan.json', text: JSON.stringify({ schemaVersion: 1, actions: [] }) }]);
+    assert.equal(org.contributors.length, 0);
+    assert.equal(org.rejected.length, 1);
+    assert.equal(org.rejected[0].via, null);
+  });
+
+  it('produces a roll-up that still conforms', () => {
+    const team = rollupOf([
+      ['api', [call()]],
+      ['worker', [call()]],
+    ]);
+    const org = rollUp([
+      { name: 'team-a.json', text: team },
+      { name: 'solo.json', text: document([call()]) },
+    ]);
+    const report = conform(JSON.stringify(org));
+    assert.equal(report.contract, 'roll-up');
+    assert.equal(report.conforms, true, JSON.stringify(report.problems));
+  });
+});

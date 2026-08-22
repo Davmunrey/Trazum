@@ -259,12 +259,13 @@ away.
 | Field | What it holds |
 | --- | --- |
 | `schemaVersion` | `1`. |
-| `contributors` | One entry per merged contribution: `name`, `totalUsd`, `calls`, `span`, `spanDays`, and `gaps`. |
+| `contributors` | One entry per merged **machine**: `name`, `via`, `totalUsd`, `calls`, `span`, `spanDays`, and `gaps`. |
+| `contributors[].via` | The roll-up this contributor arrived through, or `null` when it was handed over directly. Contributors are **flattened, never collapsed** — a roll-up of three roll-ups lists twelve machines rather than three, because collapsing them would average twelve sets of gaps into three. |
 | `contributors[].claimed` | The window this contributor **asked for** — `sinceMs`/`untilMs`, half-open — or `null` when it filtered by none. A claim, not a measurement: `span` says what the records showed and this says what was gone looking for, and only the second can tell a quiet week from an export that stopped. |
 | `contributors[].silence` | `runs` of contiguous days inside a fully bounded claim that recorded nothing, each with `from`, `to` and `days`, plus the total. **Named rather than interpolated**, the way a year report names its missing months. Null when there is nothing to measure against: no claim, one end only, or a claim too long to enumerate. |
 | `contributors[].undatedExcluded` | Records the contributor's own window could not place, because they carried no clock. **Null when there was no window**, never 0 — zero would say a window excluded nothing. |
 | `contributors[].gaps` | That contributor's own blind spots — `unreadable-lines`, `unpriced-calls`, `no-clock`, `partial-clock`, `no-sessions`, `no-labels`, `duplicate-lines` — each with a `detail`, and `usd`/`calls` that are **`null` where the kind has none**. Kept per contributor and never summed: "3% of this roll-up is unpriced" is the sentence that hides "one of your four machines is 90% unpriced". |
-| `rejected` | Every contribution handed over and **not** merged, with `name` and `because`. A machine that contributed nothing must not read like a machine that spent nothing, so this is a field rather than an absence — and the command exits 1 when it is non-empty. |
+| `rejected` | Every contribution handed over and **not** merged, with `name`, `via` and `because`. `via` names the roll-up a rejection arrived through: a rejection that stopped travelling at a nesting boundary would mean a broken export could be made to disappear by adding a layer. A machine that contributed nothing must not read like a machine that spent nothing, so this is a field rather than an absence — and the command exits 1 when it is non-empty. |
 | `identicalContributions` | `groups` of contribution names that were the same document, and the `usd` the repeats added. **Merged and stated, never discarded** — the rule a single profile already applies to duplicate lines. |
 | `total`, `unpriced`, `unpricedModels` | Summed across contributors, with `unpricedModels` a union. Every numeric field of a breakdown is summed **except `maxCallInputTokens`, which is a maximum**: four machines' largest calls added together is a call that never happened, in the direction that makes a context window look tight. |
 | `byLabel`, `byModel`, `byLabelAndModel` | Merged by key, largest bill first. |
@@ -273,8 +274,9 @@ away.
 | `span` | Earliest start to latest end over contributors that carried a clock, with `calls` summed. Null when none did. |
 | `claimedSpan` | Earliest claimed start to latest claimed end, over contributors that stated a fully bounded window, with how many did. **Kept apart from `span` deliberately** — one is what the records showed and the other what somebody went looking for, and merging them answers "what period does this cover" with a figure that is half measurement and half intention. |
 | `fieldCoverage`, `outcomeTally`, `duplicateLines` | Summed. `duplicateLines` is **within-contributor** only — overlap *between* contributors is in `cannotSay` and is not a number. |
+| `repeatedContributors` | Contributor names that appear more than once, across nesting. Handing over both a roll-up and one of the machines inside it counts that machine's money twice, and unlike the identical-document check this one can see it — the documents differ, the name does not. **Named, never subtracted**: two machines genuinely called `api.json` in two teams is possible, and deciding by removing money is the repair this tool does not make. |
 | `notMerged` | Findings that do not roll up, each with `finding`, `because`, and `presentIn` — the contributors that have one, so the reader knows where to go and look. Percentile shapes, conversation growth, repeated turns and truncation retries are all computed from individual calls, and a summary of a summary cannot reproduce them. |
-| `cannotSay` | Typed caveats: `overlap-invisible`, `mismatched-spans`, `contributor-without-clock`, `day-top-label-unknown`, `identical-contributions`, `contribution-rejected`, `unknown-fields-dropped`, `no-claimed-period`, `silence-inside-a-claim`, `claim-not-bounded`, `claim-too-long-to-enumerate`. Part of the document, not a footnote in the terminal rendering. |
+| `cannotSay` | Typed caveats: `overlap-invisible`, `mismatched-spans`, `contributor-without-clock`, `day-top-label-unknown`, `identical-contributions`, `contribution-rejected`, `unknown-fields-dropped`, `no-claimed-period`, `silence-inside-a-claim`, `claim-not-bounded`, `claim-too-long-to-enumerate`, `contributor-named-twice`. Part of the document, not a footnote in the terminal rendering. |
 
 **Two of those are enforced, not merely documented.**
 `trazum conform --contract roll-up` fails a roll-up of more than one contributor
@@ -282,6 +284,16 @@ whose `cannotSay` omits `overlap-invisible`, and fails one that rejected a
 contribution and does not say so. Two people exporting the same traffic double
 the bill and no merge of summaries can see it — a format that carried the fields
 and lost that refusal would hand somebody a doubled total that looks audited.
+
+**A roll-up is a contribution too.** Three teams roll up their own machines and
+the organisation rolls up the three — `rollup` accepts a `roll-up` document
+wherever it accepts a `profile`, because every summable part of one carries the
+same field names. What is *not* summable is carried through by hand, and each of
+those is a refusal that has to survive nesting or the format is worse than no
+format: contributors are flattened rather than collapsed, rejections travel with
+the roll-up they came through, `cannotSay` codes are unioned so an inner
+blindness never becomes an outer sight, and a finding an inner roll-up refused to
+merge does not become mergeable by being handed on.
 
 **A claim longer than ten years is kept and not walked.** These documents come
 from elsewhere, and a contribution claiming `untilMs: 1e15` is a malformed

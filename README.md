@@ -2307,6 +2307,15 @@ a broken export is yours to know; that it is silent is the tool's to say. A
 contributor that claimed nothing gets `no-claimed-period` rather than having its
 span read as one.
 
+**A roll-up is a contribution too.** Three teams roll up their own machines and
+the organisation rolls up the three. Contributors are flattened rather than
+collapsed — twelve machines stay twelve machines with twelve sets of gaps — and
+every refusal survives the nesting: rejections travel with the roll-up they came
+through, an inner roll-up's caveats become the outer one's, and a finding that
+did not roll up inside does not roll up outside. Handing over both a roll-up and
+one of the machines inside it counts that machine twice, and `repeatedContributors`
+names it — the documents differ, so only the name can see it.
+
 **Four things it will not do.** Findings computed from individual calls do not
 roll up — percentile shapes, conversation growth, repeated turns, truncation
 retries — so they are named with the contributors that have them rather than

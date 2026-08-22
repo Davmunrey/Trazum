@@ -1423,6 +1423,10 @@ ${bold('EJEMPLOS')}
       `${plural(count, 'registro')} que la propia ventana de este contribuyente no pudo situar, porque no traían reloj`,
     rejectedHeading: () => 'Entregado y no agregado',
     rejected: (name, because) => `${name} — ${because}`,
+    via: (rollup) => `vía ${rollup}`,
+    rejectedVia: (name, via, because) => `${name}, vía ${via} — ${because}`,
+    repeated: (names) =>
+      `Entregado más de una vez, por nombre: ${names}. Su dinero se cuenta cada vez. Que dos máquinas compartan nombre es posible, así que no se ha restado nada — comprueba si se entregaron a la vez una agregación y una de las máquinas que contiene.`,
     identical: (names) => `El mismo documento llegó más de una vez: ${names}.`,
     identicalUsd: (usd) =>
       `${usd} del total de arriba es la repetición. Se cuenta, no se descarta: si es una exportación entregada dos veces o dos máquinas que coincidieron exactamente es cosa tuya saberlo.`,
@@ -1450,6 +1454,8 @@ ${bold('EJEMPLOS')}
           return 'Un contribuyente declaró un extremo de la ventana y no el otro, así que su silencio no se puede medir contra ella.';
         case 'claim-too-long-to-enumerate':
           return 'Una ventana declarada era demasiado larga para recorrerla día a día y no se recorrió. La afirmación se conserva; solo su silencio queda sin medir.';
+        case 'contributor-named-twice':
+          return 'Un nombre de contribuyente aparece más de una vez, así que su dinero puede estar contado dos veces. Entregar una agregación y una de las máquinas que contiene hace justo eso, y los documentos difieren, así que la comprobación de documento idéntico no lo ve.';
         case 'identical-contributions':
           return 'Dos contribuciones eran el mismo documento.';
         case 'contribution-rejected':
