@@ -1184,6 +1184,30 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.60.2 — "Checked by running" — released
+
+**A patch whose every entry is the same act**: take a claim this project makes
+about itself, ask what enforces it, and measure by running rather than reading.
+Four findings; one reached installable code.
+
+**The profile was the only contract of the ten whose `schemaVersion` was stamped
+by the CLI**, so `@trazum/core` emitted a profile `trazum conform` refuses. No
+test could catch it, because every profile fixture added the field first — the
+way the CLI does.
+
+**Both rules this roadmap opens with are now checked by running.** *A locale
+changes the report, never the optimisation* was a single English sentence in two
+locales and is now a 35-prompt sweep across every locale and level, with the
+opposite direction asserted too. *The deterministic core stays free and offline*
+was enforced by two source-level checks, neither of which ran the command;
+`fetch` is now removed before the CLI loads and the report has to come back
+byte-identical.
+
+**And a guard that compared column padding and called it format** — for four
+releases — is fixed, along with the misaligned transcript it was hiding. A rule
+joined the doctrine out of it: *and prove it does not fire on anything else*.
+
+
 ## 1.60.1 — "What else does this fail on" — released
 
 **A patch, and nothing installable changed.** With the plan finished as far as it

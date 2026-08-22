@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.60.1**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.60.2**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,84 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.60.2 — "Checked by running"
+
+**A patch, and every entry in it is the same act.** With the plan finished as far
+as it can go — six of nine arcs, three open and named — the work is taking a
+claim this project makes about itself, asking what enforces it, and measuring by
+running rather than by reading. Four findings. One reached installable code.
+
+### The one that reached installable code
+
+**The profile was the only contract of the ten whose `schemaVersion` was stamped
+by the CLI.** `docs/format.md` promises every document carries it and `conform`
+rejects one that does not — so `profileUsage()`, the function in the package
+whose whole job is emitting this format, returned a document `trazum conform`
+refuses. Anybody writing a connector against `@trazum/core` would have found out
+from a rejection.
+
+**Nothing could have caught it from inside.** Every test that checked a profile
+against the contract added `schemaVersion` first, because that is what the CLI
+does, and a fixture built the way the CLI builds it can never catch the CLI doing
+the work.
+
+It is stamped by `profileUsage` now, where every other builder stamps its own.
+The CLI's stamp is gone and **the compiler flagged it as redundant**, which is the
+change proving itself. The new guard hands every document the package can build
+from its own exports straight to its own checker, and **names the eight contracts
+it cannot reach** — two documents checking out is not the format checking out.
+
+### The two rules `ROADMAP.md` opens with are now checked by running
+
+**"A locale changes the report, never the optimisation"** was enforced by a
+single English sentence in two locales. It is now a sweep: the corpus read off
+disk — **35 prompts**, prose in seven languages — and the locales read off
+`LOCALES`, every prompt at both levels in every locale, comparing the optimised
+text, every token figure, every rule id with its hits and saving, and every
+advisory id. **And the opposite direction**, because a build returning the English
+report for every locale would satisfy all of that: somewhere a rule fires and its
+title has to come back different.
+
+**"The deterministic core stays free and offline"** was enforced by two checks
+and neither ran the command — one requires every network-capable module to be
+named in the prose, the other scans `packages/core/src` for `fetch`. Both are
+source-level; the CLI is in neither. `fetch` is now replaced with a thrower
+before the CLI loads, and `optimize`, `check` and `rules` have to work with it
+gone, with the report **byte-identical** to a run with the network intact. **And
+the stub is proved to bite**: `--pricing-live` under the same stub must fail
+carrying the stub's own marker, or none of the rest proves anything.
+
+### A guard that asserted padding and called it format
+
+`transcript-format.test.js` compared the `~ ` before a money figure in the
+`trazum doctor` transcript. That space is **right-alignment** — the command prints
+`~ $10.59`, `~  $8.82` and `~$0.5300` in one column — so the check agreed or
+disagreed on how wide this repository's own figures happened to be, and broke on
+a config change that never touched the README. Four releases.
+
+It now measures what the column promises: the text starts at the same offset on
+every row, priced or not, measured on both sides. **And the defect it was written
+for was real** — the transcript's unpriced rows sat one column left of the priced
+ones, on a page headed *Real output, transcribed*.
+
+### A rule joined the doctrine
+
+*And prove it does not fire on anything else* — the half of the guard rule that
+keeps being skipped because the first half passed. A guard that fails on its
+defect *and* on things that are not its defect gets deleted after enough false
+alarms, and by then nobody remembers whether it was ever right. Two instances on
+this project's record, both a proxy that correlated with the property until it
+did not.
+
+### What this release found wrong in itself
+
+Everything above, and one more: **#359's changelog entry named one guard where
+two existed**, understating what was already there and overstating what the new
+one added. Corrected in `Unreleased` before it could reach a release, by taking
+the same lens to the previous chapter.
 
 ---
 
