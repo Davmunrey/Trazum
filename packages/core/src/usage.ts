@@ -268,6 +268,22 @@ export interface FieldCoverage {
 }
 
 export interface UsageProfileReport {
+  /**
+   * The document version, and the only thing a consumer must branch on.
+   *
+   * **This was stamped by the CLI and by nothing else.** `docs/format.md` says
+   * every document carries it, `conform` rejects a document without it, and
+   * every other contract's builder sets its own — the plan, the annual record,
+   * the roll-up, the cost answer. The profile did not, so a connector author
+   * using `@trazum/core` directly produced a profile that `trazum conform`
+   * refuses, from the package whose whole job is emitting that format.
+   *
+   * Same shape as the defect on this project's record at #290, where
+   * `outcome-report` was a contract whose only implementation failed it for
+   * nine releases. A document's version belongs to whatever builds the
+   * document.
+   */
+  schemaVersion: 1;
   /** Everything, combined. */
   total: UsageBreakdown;
   /** Per `label`, largest bill first — the order somebody would act in. */
@@ -1249,6 +1265,7 @@ export function profileUsage(text: string, options: UsageProfileOptions): UsageP
       });
 
   return {
+    schemaVersion: 1,
     total,
     byLabel: sorted(byLabel, 'label'),
     byModel: sorted(byModel, 'model'),

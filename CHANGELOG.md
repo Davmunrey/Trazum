@@ -65,6 +65,35 @@ Measured before it was written down: the invariance holds on all 70 pairs. The
 guard is the part that was missing, not the property.
 
 
+### Fixed
+
+**The profile was the one contract of the ten whose `schemaVersion` existed only
+if you went through the CLI.** `docs/format.md` promises that every document
+carries it and `conform` rejects a document without it — so `profileUsage()`, the
+function in the package whose whole job is emitting this format, returned a
+document `trazum conform` refuses.
+
+**Nobody could have noticed from inside.** Every test that checked a profile
+against the contract added `schemaVersion` first, because the CLI does, and a
+fixture built the way the CLI builds it can never catch the CLI doing the work. A
+connector author reading `docs/format.md` and using `@trazum/core` would have
+found out from a rejection.
+
+It is stamped by `profileUsage` now, where every other contract's builder stamps
+its own — the plan, the annual record, the roll-up, the cost answer. The CLI's
+own stamp is gone, and the compiler caught it as redundant, which is the change
+proving itself.
+
+**The guard checks the class, not the instance**: every document this package can
+build with nothing but its own exports is handed straight to its own checker.
+Proved by removing the field and watching `conform` reject it, and the eight
+contracts the test cannot reach from the package alone are **named**, because two
+documents checking out is not the format checking out.
+
+Same shape as #290 on this project's record, where `outcome-report` was a
+contract whose only implementation failed it for nine releases.
+
+
 ## 1.60.1 — "What else does this fail on"
 
 **A patch, and nothing installable changed.** The arcs are done as far as they
