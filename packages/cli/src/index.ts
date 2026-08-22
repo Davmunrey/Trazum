@@ -5197,6 +5197,16 @@ async function commandHistory(
     return t.history.runCache(n(run.periods), run.sinceName, pct(run.from), pct(run.to));
   };
 
+  /**
+   * The hole under a run, on the run's own line.
+   *
+   * A run is consecutive *reports*, and reads as consecutive *time* unless
+   * told otherwise. A caveat one section away is a caveat that arrives after
+   * the reader has already formed the sentence.
+   */
+  const runHole = (run: HistoryRun): string =>
+    run.unmeasuredDays > 0 ? t.history.runHole(run.unmeasuredDays) : '';
+
   const lines = (md: boolean): string[] => {
     const out: string[] = [];
     const first = history.periods[0]!;
@@ -5214,7 +5224,8 @@ async function commandHistory(
     }
     if (history.runs.length > 0) out.push('');
     for (const run of history.runs) {
-      out.push(md ? `- ${runLine(run)}` : `  ! ${runLine(run)}`);
+      const line = `${runLine(run)}${runHole(run)}`;
+      out.push(md ? `- ${line}` : `  ! ${line}`);
     }
     if (history.repeatedPlanActions.length > 0) out.push('');
     for (const repeat of history.repeatedPlanActions) {
@@ -5227,6 +5238,34 @@ async function commandHistory(
         repeat.firstPlanned?.slice(0, 10) ?? null,
         repeat.lastPlanned?.slice(0, 10) ?? null,
       );
+      out.push(md ? `- ${row}` : `  ! ${row}`);
+    }
+    /**
+     * The holes in the timeline, before the per-file notes.
+     *
+     * A stretch nobody measured is a fact about the whole series rather than
+     * about one file, and it is the finding this command could not make until
+     * now: a scheduled run that stopped three weeks ago produces a series that
+     * looks exactly like a shorter one.
+     */
+    if (history.unmeasured.length > 0) {
+      out.push('');
+      const total = history.unmeasured.reduce((sum, hole) => sum + hole.days, 0);
+      const summary = t.history.unmeasuredTotal(total);
+      out.push(md ? `- **${summary}**` : `  ! ${summary}`);
+      for (const hole of history.unmeasured) {
+        const row = t.history.unmeasured(
+          hole.days,
+          day(hole.fromMs),
+          day(hole.toMs),
+          hole.afterName,
+          hole.beforeName,
+        );
+        out.push(md ? `- ${row}` : `    ${row}`);
+      }
+    }
+    for (const overlap of history.overlappingReports) {
+      const row = t.history.overlap(overlap.a, overlap.b, overlap.days);
       out.push(md ? `- ${row}` : `  ! ${row}`);
     }
     for (const name of history.undatedReports) {

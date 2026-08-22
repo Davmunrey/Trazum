@@ -124,3 +124,101 @@ describe('storedReportFrom', () => {
     assert.equal(storedReportFrom('plan.json', { schemaVersion: 1, actions: [] }), null);
   });
 });
+
+describe('a series with a hole in it is not a shorter series', () => {
+  const day = (n) => Date.parse(`2026-08-${String(n).padStart(2, '0')}T00:00:00Z`);
+  const report = (name, from, to, usd, label = 'chat') => ({
+    name,
+    span: { fromMs: day(from), toMs: day(to) },
+    totalUsd: usd,
+    calls: 100,
+    byLabel: new Map([[label, usd]]),
+    byModel: new Map([['claude-opus-5', usd]]),
+    cacheReadShare: null,
+  });
+
+  it('names the calendar time no report covers', () => {
+    const built = buildHistory([
+      report('week-1.json', 1, 8, 10),
+      // Nothing covers 8 to 22: a cron that stopped, or a fortnight nobody
+      // measured. This module states the hole and not which.
+      report('week-4.json', 22, 29, 12),
+    ]);
+    assert.equal(built.unmeasured.length, 1);
+    assert.equal(built.unmeasured[0].days, 14);
+    assert.equal(built.unmeasured[0].afterName, 'week-1.json');
+    assert.equal(built.unmeasured[0].beforeName, 'week-4.json');
+  });
+
+  it('says nothing about a series with no holes', () => {
+    const built = buildHistory([
+      report('a.json', 1, 8, 10),
+      report('b.json', 8, 15, 11),
+      report('c.json', 15, 22, 12),
+    ]);
+    assert.deepEqual(built.unmeasured, []);
+    assert.deepEqual(built.overlappingReports, []);
+  });
+
+  it('carries the hole on the run that spans it, not in a field to cross-reference', () => {
+    // Four rising periods, with a fortnight nobody measured in the middle.
+    // "Climbing for four periods" is not a thing anybody should read off this
+    // without knowing that.
+    const built = buildHistory([
+      report('a.json', 1, 2, 10),
+      report('b.json', 2, 3, 11),
+      report('c.json', 17, 18, 12),
+      report('d.json', 18, 19, 13),
+    ]);
+    const run = built.runs.find((entry) => entry.kind === 'label-spend-climbing');
+    assert.ok(run !== undefined, 'a rising label must still produce a run');
+    assert.equal(run.periods, 3);
+    assert.equal(run.unmeasuredDays, 14);
+  });
+
+  it('reports no unmeasured days on a run with no hole under it', () => {
+    const built = buildHistory([
+      report('a.json', 1, 2, 10),
+      report('b.json', 2, 3, 11),
+      report('c.json', 3, 4, 12),
+      report('d.json', 4, 5, 13),
+    ]);
+    const run = built.runs.find((entry) => entry.kind === 'label-spend-climbing');
+    assert.equal(run.unmeasuredDays, 0);
+  });
+
+  it('names two reports covering the same fortnight rather than merging them', () => {
+    const built = buildHistory([
+      report('export-1.json', 1, 15, 10),
+      report('export-2.json', 8, 22, 12),
+    ]);
+    assert.deepEqual(built.unmeasured, []);
+    assert.equal(built.overlappingReports.length, 1);
+    assert.equal(built.overlappingReports[0].days, 7);
+    // Named, never merged: which of the two is the better measurement is not
+    // knowable from here.
+    assert.equal(built.periods.length, 2);
+  });
+
+  it('treats a contained report as covered, not as a hole', () => {
+    const built = buildHistory([
+      report('month.json', 1, 29, 40),
+      report('week.json', 8, 15, 10),
+      report('after.json', 29, 30, 2),
+    ]);
+    assert.deepEqual(built.unmeasured, []);
+    assert.equal(built.overlappingReports.length, 1);
+  });
+
+  it('does not call the seam between two adjacent exports a hole', () => {
+    // Half a day apart: an export boundary, not a stretch nobody measured.
+    const built = buildHistory([
+      { ...report('a.json', 1, 8, 10) },
+      {
+        ...report('b.json', 8, 15, 11),
+        span: { fromMs: day(8) + 43_200_000, toMs: day(15) },
+      },
+    ]);
+    assert.deepEqual(built.unmeasured, []);
+  });
+});

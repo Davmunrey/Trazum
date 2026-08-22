@@ -11,7 +11,39 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+**A series with a hole in it is not a shorter series, and `history` now says
+which it is looking at.** The first chapter of arc 1.56 — *something that runs*
+— and it turns out most of that arc is not a runtime at all. A scheduled job
+that stopped three weeks ago does not announce itself; it just stops adding
+points, and a series missing its last three weeks and a series that only ever
+covered a fortnight are the same document until somebody states the difference.
+
+`unmeasured[]` names every stretch of calendar time between the first report's
+start and the last one's end that **no report covers** — with the days, the
+instants, and the reports either side. It is arithmetic on the spans and never
+an inference about a schedule: this module has no idea how often anybody meant
+to run anything, and guessing a cadence in order to call a gap *late* would be
+the tool deciding what somebody's routine is.
+
+**And the caveat travels on the finding.** A run is consecutive *reports* and
+read as consecutive *time*: four rising periods with an unmeasured fortnight
+between the second and the third was reported as "climbing for four periods",
+when the climb may have reversed and come back inside the hole. Each run now
+carries `unmeasuredDays`, and the terminal prints it on the run's own line —
+a caveat one section away arrives after the reader has already formed the
+sentence.
+
+**`overlappingReports[]`** names two reports covering some of the same days.
+`history` never sums across periods, but a reader with the document in a
+spreadsheet will, and two exports over the same fortnight count it twice. Named
+and never merged: which of the two is the better measurement is not knowable
+from here.
+
+A gap shorter than a whole day is not reported — that is the seam between two
+adjacent exports, not a stretch nobody measured — and the day count is floored
+rather than rounded, so a gap this tool calls three days is at least three days.
 
 
 ## 1.55.0 — "More than one machine"

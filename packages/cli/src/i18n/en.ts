@@ -2430,6 +2430,13 @@ ${bold('EXAMPLES')}
     },
     storeNoLabels: () =>
       'This series comes from the store, and a usage API groups by model and workspace rather than by workload — so there is no label series here at all. Absent, not empty: nothing above says a workload did or did not move.',
+    unmeasured: (days, from, to, after, before) =>
+      `Nothing covers ${from} to ${to} — ${plural(days, 'day')} between ${after} and ${before}.`,
+    unmeasuredTotal: (days) =>
+      `${plural(days, 'day')} of this stretch are covered by no report. A series with a hole in it and a shorter series read identically; this is which.`,
+    overlap: (a, b, days) =>
+      `${a} and ${b} both cover ${plural(days, 'day')}. Named, never merged — which is the better measurement is not knowable from here, and adding both totals counts those days twice.`,
+    runHole: (days) => ` — ${plural(days, 'day')} of this run are covered by no report`,
     undated: (name) => `${name} carries no span, so it is on no timeline above — named, never silently absorbed.`,
     unrecognized: (name) => `${name} is neither a stored report nor a saved plan, so it is in no series above.`,
     footer: () =>

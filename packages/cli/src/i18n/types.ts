@@ -1509,6 +1509,10 @@ export interface CliMessages {
     /** A store source carries no labels, so the label series is absent, not empty. */
     storeNoLabels(): string;
     undated(name: string): string;
+    unmeasured(days: number, from: string, to: string, after: string, before: string): string;
+    unmeasuredTotal(days: number): string;
+    overlap(a: string, b: string, days: number): string;
+    runHole(days: number): string;
     unrecognized(name: string): string;
     footer(): string;
     /** The waiver record — what this team has been living with, and for how long. */

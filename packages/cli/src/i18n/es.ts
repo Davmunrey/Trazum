@@ -2434,6 +2434,13 @@ ${bold('EJEMPLOS')}
     },
     storeNoLabels: () =>
       'Esta serie viene del almacén, y una API de uso agrupa por modelo y workspace, no por carga de trabajo — así que aquí no hay serie por label en absoluto. Ausente, no vacía: nada de lo de arriba dice que una carga se moviera o dejara de moverse.',
+    unmeasured: (days, from, to, after, before) =>
+      `Nada cubre del ${from} al ${to} — ${plural(days, 'día')} entre ${after} y ${before}.`,
+    unmeasuredTotal: (days) =>
+      `${plural(days, 'día')} de este tramo no los cubre ningún informe. Una serie con un agujero y una serie más corta se leen igual; esto dice cuál es.`,
+    overlap: (a, b, days) =>
+      `${a} y ${b} cubren ambos ${plural(days, 'día')}. Nombrado, nunca fusionado — cuál es la mejor medición no se sabe desde aquí, y sumar los dos totales cuenta esos días dos veces.`,
+    runHole: (days) => ` — ${plural(days, 'día')} de esta racha no los cubre ningún informe`,
     undated: (name) => `${name} no lleva período, así que no está en ninguna línea de tiempo de arriba — nombrado, nunca absorbido en silencio.`,
     unrecognized: (name) => `${name} no es ni un informe guardado ni un plan guardado, así que no está en ninguna serie de arriba.`,
     footer: () =>
