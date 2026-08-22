@@ -13,6 +13,25 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**[docs/running.md](docs/running.md) — something that runs, and why it is not
+us.** The arc asked whether alerting can be given without becoming a hosted
+service holding other teams' metrics. The answer is yes for the noticing, and
+this page is that answer with its reasoning, its recipes and the place it runs
+out.
+
+What has to run and why the four jobs are separate — a single "run everything"
+command would hide which of them stopped. Recipes for cron, systemd timers,
+GitHub Actions and Windows Task Scheduler, each one a command this repository
+actually accepts. Where the credential lives on each platform, and why Trazum
+adds no new place for a key to sit.
+
+And a section on **where the answer runs out**, because a page that only listed
+what works would be advertising: a laptop is not a scheduler; the last hop is
+still yours and Trazum cannot page you or know you are on holiday; a watcher can
+only judge what has been pulled; and nothing here watches the watcher's watcher,
+because the chain has to end at the thing you already trust to tell you when it
+breaks.
+
 **`trazum pulse` — did the things that are supposed to run, run?** `watch
 --once` is built for a scheduler: a cron entry is the whole daemon, and its
 state file records each cycle precisely so a restart is honest about the

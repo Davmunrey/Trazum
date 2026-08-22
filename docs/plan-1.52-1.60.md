@@ -187,6 +187,21 @@ before the number is spent.
 
 ## 1.56.0 — Something that runs
 
+**Two chapters shipped and the arc's question answered.** `history` names the
+stretches no report covers, so a series with a hole in it is no longer
+indistinguishable from a shorter one; `trazum pulse` gives the outside view of a
+scheduled job, because the thing that would tell you a watcher stopped was the
+watcher; and [docs/running.md](running.md) is the reasoning, the recipes and the
+place the answer runs out.
+
+**The answer was not the one the paragraph below feared.** Alerting can be given
+without a hosted service — for the *noticing*. Something has to run, and the
+something is already in the reader's CI: a step that gates on staleness turns a
+dead cron into a red build while Trazum holds nobody's metrics. What cannot be
+given without a host is the **last hop** — paging, retrying a delivery,
+deduplicating across channels, knowing somebody is on holiday — and that
+sentence is now written down rather than left to be discovered.
+
 *An intention.* `history` reads a series nobody is producing on a schedule, and
 `watch` runs only while a terminal is open. `ROADMAP.md` has held cost alerting
 back because it "needs somewhere to run and something to remember".

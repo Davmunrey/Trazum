@@ -101,6 +101,7 @@ never runs unless you ask.
 - [Every model you pay for by the token](#every-model-you-pay-for-by-the-token) — pricing across seven providers, live via OpenRouter
 - [Token counting](#token-counting) — the estimator, and the error band it prints
 - [Limitations, stated plainly](#limitations-stated-plainly) — read this one
+- [Running it on a schedule](docs/running.md) — cron, systemd, Actions, and where the answer runs out
 - [Everything else](docs/README.md) — the documentation index, arranged by whether you are
   choosing this, using it, extending it or maintaining it
 - [Layout](#layout) · [Updating prices](#updating-prices) · [Privacy](#analytics-and-privacy) · [Roadmap](#roadmap-and-contributing)
