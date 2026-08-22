@@ -325,6 +325,19 @@ day somebody here deleted a workflow. It is an outside instrument whose rules
 this project did not write and cannot argue with, which is narrower and is what
 was actually measured. The other two admissions are untouched.
 
+**Closed at 1.60.0, at one admission of three.** The arc asked for at least one
+to fall to a measurement and one did. The second is weakened — a single outcome
+is on the record — and the third stands in full, with the reason written down
+rather than worked around: this project would have to spend money on models and
+record it, and it does not spend. The one available instrument for *whether it is
+used* was refused on the record: npm download counts bound above and nothing
+bounds below, and quoting a ceiling as evidence of adoption is this project's own
+floor rule inverted.
+
+The scoreboard, what was tried, and what was refused are in
+[our own medicine](our-own-medicine.md). The arc closed exactly the way it said
+it would if it could not produce the number.
+
 *An intention, and the thesis that closes the arc of arcs.*
 
 [our-own-medicine.md](our-own-medicine.md) ends by listing what this project
