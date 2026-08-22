@@ -2671,7 +2671,15 @@ English by default, Spanish as a second locale.
 
 **The locale changes the report, never the optimisation.** The same prompt in
 any locale produces the same optimised prompt, the same token counts and the
-same advisory ids — only the prose differs. That is enforced by tests.
+same advisory ids — only the prose differs.
+
+Enforced by a sweep rather than by an example: every prompt in this repository's
+three corpora — 35 of them, including prose in seven languages — run at both
+levels in every locale, comparing the optimised text, every token figure, every
+rule id with its hits and saving, and every advisory id. **And the opposite
+direction too**, because a build that returned the English report for every
+locale would satisfy all of that: somewhere in the corpus a rule fires, and its
+title has to come back different.
 
 ### The prompt
 
