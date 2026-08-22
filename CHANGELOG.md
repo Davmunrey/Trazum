@@ -11,6 +11,22 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+
+## 1.56.0 — "Something that runs"
+
+**The arc's question was whether alerting can be given without becoming a
+hosted service holding other teams' metrics. The answer is yes for the
+noticing, and no for the last hop — and both halves are now written down.**
+
+What shipped is not a runtime. It is three things that make the *absence* of a
+run visible: `history` names the calendar stretches no report covers, so a
+series with a hole in it stops reading like a shorter one; `trazum pulse` gives
+the outside view of a scheduled job, because the thing that would tell you a
+watcher stopped was the watcher; and [docs/running.md](docs/running.md) is the
+reasoning, the recipes and the place the answer runs out.
+
 ### Added
 
 **[docs/running.md](docs/running.md) — something that runs, and why it is not

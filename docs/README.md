@@ -76,7 +76,7 @@ every chapter in all four shipped.
 | [1.36–1.40](plan-1.36-1.40.md) | The estimating half and the measuring half had never met | 1.40.0 |
 | [1.41–1.50](plan-1.41-1.50.md) | The loop is complete and inert; nothing runs on its own | 1.50.0 |
 | [1.51](plan-1.51.md) | Every figure is a denominator with no numerator | 1.51.0 |
-| [1.52–1.60](plan-1.52-1.60.md) | Nine arcs: finish what shipped incomplete, then widen | **in progress** — 1.52.0, 1.53.0 and 1.55.0 landed; 1.54.0 blocked on provider keys |
+| [1.52–1.60](plan-1.52-1.60.md) | Nine arcs: finish what shipped incomplete, then widen | **in progress** — 1.52.0, 1.53.0, 1.55.0 and 1.56.0 landed; 1.54.0 blocked on provider keys |
 
 What each of them **refused** to ship — which is the more useful half, since a
 plan and its implementation shared a hand — is in
