@@ -19,10 +19,13 @@ feature may make a network call a prerequisite for optimising a prompt* is the
 first of the two rules `ROADMAP.md` opens with, and the thing a reader is most
 likely checking when they open `SUPPORT.md`.
 
-What existed was `outbound-surfaces.test.js`, which derives every module that
-*can* reach the network and requires each to be named in the prose. That is a
-good rule and a different one: a module can be disclosed, listed and documented
-and still sit on the path of `trazum optimize`.
+Two things enforced it, and neither ran the command. `outbound-surfaces.test.js`
+derives every module that *can* reach the network and requires each to be named
+in the prose — a good rule and a **different** one, because a module can be
+disclosed, listed and documented and still sit on the path of `trazum optimize`.
+And `security.test.js` scans **`packages/core/src` only** for `fetch`, allowing
+it in two named modules; a source scan, over one package, of a property that is
+about what a command does at runtime — the CLI is not in it at all.
 
 It is now proved the only way it honestly can be — **by removing the network and
 running the command.** `fetch` is replaced with a thrower before the CLI loads,
