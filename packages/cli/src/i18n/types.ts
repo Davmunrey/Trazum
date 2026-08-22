@@ -99,6 +99,12 @@ export interface CliMessages {
      * the day somebody maintains all seven it is deleted rather than reworded.
      */
     dictionaryUnreviewed(languages: string): string;
+    /**
+     * The prompt just changed, and the dictionary that changed it is one
+     * nobody here reads. Printed only when the prompt's own language is
+     * detected and unreviewed — never as a footer under every report.
+     */
+    dictionaryAppliedUnreviewed(language: string): string;
     levelAggressive(): string;
     levelSafe(): string;
     ruleHits(hits: number, tokensSaved: number): string;

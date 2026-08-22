@@ -275,6 +275,12 @@ chapter does not delete the five — a Dutch prompt is better served by a
 dictionary that fires and says it was never reviewed than by silence — it stops
 describing them as though somebody had read them.
 
+**Second chapter: the warning reaches the branch where it matters.** The first
+put it under *no rule found anything to trim* — where the prompt is untouched. A
+prompt in one of the five that a rule *does* change now carries the admission
+beside the change, gated on the prompt's own detected language so it never
+becomes a footer, and silent when the language cannot be placed.
+
 **What the arc still owes is not a scheduling question**, which is the arc's own
 thesis and is now the page's closing line rather than a caveat in a plan.
 

@@ -28,6 +28,26 @@ the report prints it when no rule fires:
 | `reviewed` | English, Spanish | This project reports in it; the entries were revised by somebody reading them |
 | `unreviewed` | French, German, Portuguese, Italian, Dutch | Run through the rules against sample prompts; no speaker has agreed to the entries |
 
+And when a rule *does* fire, on a prompt whose own language is one of the five:
+
+```
+Rules applied
+  These changes came from the Dutch dictionary, which nobody here reads. Its
+  entries were written by the same process that wrote the rules and never agreed
+  by a speaker — read the diff before trusting it.
+  [safe] Filler and throat-clearing (4×, ~29 tokens)
+```
+
+**That is the branch where it matters most**, and the coverage line above cannot
+reach it: by the time that one prints, the prompt is untouched. Here the tool has
+just applied an unverified judgement to somebody's text.
+
+It is gated on the prompt's own detected language, so an English or Spanish
+prompt never sees it and it never becomes a footer. `detectTextLanguage` answers
+`null` on a prompt too short or too mixed to place, and this stays silent then —
+not-detected is not not-unreviewed, but guessing a language in order to warn
+about it would put a Dutch warning on a Portuguese prompt.
+
 The five are not deleted, and that is deliberate. A Dutch prompt is better
 served by a dictionary that fires and says it was never reviewed than by
 silence that reads as *your prompt is already efficient*. What is not

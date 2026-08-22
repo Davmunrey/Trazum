@@ -95,6 +95,8 @@ import {
   optimize,
   parseBaseline,
   PHRASE_LANGUAGES,
+  detectTextLanguage,
+  dictionaryStanding,
   languagesWithStanding,
   plannedCalls,
   PRICING_LAST_REVIEWED,
@@ -884,6 +886,27 @@ function printReport(
   if (result.rules.length > 0) {
     console.log();
     console.log(c.bold(t.report.rulesApplied()));
+    /**
+     * Whose judgement just edited this prompt.
+     *
+     * Five of the seven dictionaries were written without anybody who reads the
+     * language agreeing to an entry, and the branch where that matters most is
+     * this one: the rules did not stay silent, they changed somebody's text.
+     * The coverage line under `nothingToTrim` cannot cover it — by then the
+     * prompt is untouched.
+     *
+     * Gated on the prompt's own detected language, so an English or Spanish
+     * prompt never sees it and it never becomes a footer. `detectTextLanguage`
+     * answers null on a short or mixed prompt, and this stays silent then:
+     * not-detected is not not-unreviewed, and guessing the language in order to
+     * warn about it would be the same overreach the detector exists to refuse.
+     */
+    const promptLanguage = detectTextLanguage(result.original);
+    if (promptLanguage !== null && dictionaryStanding(promptLanguage)?.standing === 'unreviewed') {
+      console.log(
+        c.yellow(t.report.dictionaryAppliedUnreviewed(t.languages[promptLanguage] ?? promptLanguage)),
+      );
+    }
     for (const rule of result.rules) {
       const tag =
         rule.level === 'aggressive'

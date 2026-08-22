@@ -2693,6 +2693,22 @@ prompt is better served by a dictionary that fires and says it was never reviewe
 than by silence — and what a maintainer for one of them would actually be signing
 up for is in [maintaining a language](docs/language-maintainer.md).
 
+**And when a rule does fire on a prompt in one of those five**, the report says
+so where the change is, rather than leaving it to the section above:
+
+```
+Rules applied
+  These changes came from the Dutch dictionary, which nobody here reads. Its
+  entries were written by the same process that wrote the rules and never agreed
+  by a speaker — read the diff before trusting it.
+  [safe] Filler and throat-clearing (4×, ~29 tokens)
+```
+
+Gated on the prompt's own detected language, so an English or Spanish prompt
+never sees it. A prompt too short or too mixed to place gets nothing: guessing a
+language in order to warn about it would put a Dutch warning on a Portuguese
+prompt.
+
 **Adding a language is adding entries to
 [`phrases.ts`](packages/core/src/phrases.ts)**, and one rule about doing it: a
 dictionary translated word by word looks complete and changes meaning. Spanish
