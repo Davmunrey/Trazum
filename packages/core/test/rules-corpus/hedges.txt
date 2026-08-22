@@ -1,0 +1,6 @@
+You are an estimation assistant.
+
+I think the task should be sized in days rather than hours.
+It seems that the team has done something similar before.
+In my opinion the risk is in the migration and not in the new code.
+Arguably the estimate should carry a range.

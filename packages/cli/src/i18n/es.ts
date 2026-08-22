@@ -1650,6 +1650,8 @@ ${bold('EJEMPLOS')}
       `Las reglas recuperan ${sumOfAlone} entre todas de una en una y ${saved} juntas. La diferencia es el solapamiento — dos reglas encontrando los mismos tokens — y se declara en vez de resolverse en un total, porque una sola cifra aquí es el único número que no puede ser cierto.`,
     measureRedundant: (ids) =>
       `Cada token que encuentran estas lo encuentra algo más, aquí: ${ids}. Un solapamiento, no un defecto — y no una razón para borrar una sin decidir cuál conviene conservar.`,
+    measureFiredWithoutSaving: (ids) =>
+      `Estas cambiaron el prompt y no recuperaron ningún token: ${ids}. No es lo mismo que inerte — sí se ejercitaron, y están alterando la instrucción de alguien sin beneficio medido.`,
     measureInert: (ids) =>
       `Estas no cambiaron nada en este corpus: ${ids}. Es un hecho sobre estos ficheros, no sobre las reglas: una regla que no encuentra nada aquí no ha demostrado no encontrar nada en ninguna parte.`,
     measureBand: (source) =>

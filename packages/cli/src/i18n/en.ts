@@ -1641,6 +1641,8 @@ ${bold('EXAMPLES')}
       `The rules recover ${sumOfAlone} between them one at a time and ${saved} together. The gap is the overlap — two rules finding the same tokens — and it is stated rather than resolved into a total, because a single figure here is the one number that cannot be true.`,
     measureRedundant: (ids) =>
       `Every token these find, something else finds too, here: ${ids}. An overlap, not a defect — and not a reason to delete one without deciding which is the better to keep.`,
+    measureFiredWithoutSaving: (ids) =>
+      `These changed the prompt and recovered no tokens: ${ids}. Not the same as inert — they were exercised, and they are altering somebody's instruction for no measured benefit.`,
     measureInert: (ids) =>
       `These changed nothing in this corpus: ${ids}. That is a fact about these files, not about the rules: a rule that finds nothing here has not been shown to find nothing anywhere.`,
     measureBand: (source) =>
