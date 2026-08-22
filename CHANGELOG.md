@@ -11,6 +11,23 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Changed
+
+**A rule joined [the doctrine](docs/doctrine.md), and it is the other half of one
+already there.** *Prove a guard by breaking it* has been on that list for arcs.
+The half nobody writes down is **and prove it does not fire on anything else** —
+a guard that fails on its defect *and* on things that are not its defect gets
+deleted after enough false alarms, and by then nobody remembers whether it was
+ever right.
+
+Two instances on this project's own record, the same shape both times — a proxy
+that correlated with the property until it did not. A `docs/releasing.md` guard
+that matched every quantity word near "manifest" and failed two correct
+sentences, and the padding-versus-format guard fixed below. The question that
+catches it is not *does this fail on the bug* but **what else does this fail
+on**, and the cheap way to answer is to run the finished check against the real
+thing, whole.
+
 ### Fixed
 
 **A guard that asserted padding and called it format.**
