@@ -6810,14 +6810,19 @@ async function commandProfile(
       JSON.stringify(
         {
           /**
-           * The contract version, documented in docs/json-output.md and
-           * enforced by json-contract.test.js. It changes only when a
-           * field's meaning changes or one is removed — new findings arrive
-           * as new keys, so a consumer that ignores unknown ones keeps
-           * working. Without it, every dashboard built on this output has to
-           * guess whether a missing key means "old Trazum" or "no data".
+           * `schemaVersion` arrives inside `report` now, and that is the point.
+           *
+           * It used to be stamped here, which made the profile the one contract
+           * of the ten whose version existed only if you went through this
+           * command. `docs/format.md` says every document carries it and
+           * `conform` rejects one that does not, so a connector author using
+           * `@trazum/core` produced a profile this tool refuses.
+           *
+           * The contract is documented in docs/json-output.md and enforced by
+           * json-contract.test.js. It changes only when a field's meaning
+           * changes or one is removed — new findings arrive as new keys, so a
+           * consumer that ignores unknown ones keeps working.
            */
-          schemaVersion: 1,
           ...report,
           cache: cacheEconomics(report.total),
           cacheByLabel: report.byLabel.map((r) => ({
