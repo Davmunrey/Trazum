@@ -1795,8 +1795,8 @@ What it would be worth fixing
   ~ $4,912  This task may not need Claude Opus 5  16 prompts
   ~ $3,070  If the work tolerates latency, use the Batch API  16 prompts
   ~ $53.77  Move the stable instructions ahead of the first placeholder  1 prompt
-           Below the cacheable minimum  16 prompts
-           Your cost is in the output, not the prompt  16 prompts
+            Below the cacheable minimum  16 prompts
+            Your cost is in the output, not the prompt  16 prompts
 ```
 
 **There is no score, and that is the whole design.** A number assembled from

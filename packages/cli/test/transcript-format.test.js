@@ -37,12 +37,45 @@ describe("the doctor transcript matches what doctor prints", () => {
     timeout: 60000,
   }).stdout;
 
-  /** How the command really writes a money figure in that column. */
-  const realPrefix = (() => {
-    const line = real.split('\n').find((l) => /^\s+~\s*\$[\d,]/.test(l));
-    assert.ok(line, `doctor printed no money column to compare against:\n${real.slice(0, 400)}`);
-    return /^\s+(~\s*)\$/.exec(line)[1];
-  })();
+/**
+ * Where the text after the money column starts, on every line of a block.
+ *
+ * **The first version of this compared the wrong thing and passed by luck.** It
+ * took the `~ ` prefix off the first money line and asserted every transcript
+ * line used the same one — but that space is *right-alignment padding*, not
+ * format. A live run prints `~ $10.59`, `~  $8.82` and `~$0.5300` in the same
+ * column, because `$0.5300` is two characters wider than `$8.82`. The guard
+ * therefore agreed or disagreed depending on how wide this repository's own
+ * figures happened to be, and it broke the day a config changed them.
+ *
+ * What the column actually promises is that **the text starts at the same offset
+ * on every row, priced or not**, which is the thing a reader notices and the
+ * thing a transcript can get wrong. That is measured here, on both sides.
+ */
+const textOffsets = (block) => {
+  const offsets = [];
+  for (const line of block.split('\n')) {
+    // A priced row: indent, the tilde, alignment padding, the figure, the gap.
+    const priced = /^(\s*~\s*\$[\d,.]+\s+)\S/.exec(line);
+    if (priced) {
+      offsets.push(priced[1].length);
+      continue;
+    }
+    // An unpriced row in the same block: indent only, and it has to line up.
+    const unpriced = /^(\s{6,})\S/.exec(line);
+    if (unpriced) offsets.push(unpriced[1].length);
+  }
+  return offsets;
+};
+
+/** The block `doctor` really prints, so the shape is taken from the command. */
+const realBlock = (() => {
+  const start = real.indexOf('What it would be worth fixing');
+  assert.ok(start >= 0, `doctor printed no advisory block to compare against:\n${real.slice(0, 400)}`);
+  const rest = real.slice(start);
+  const end = rest.indexOf('\n\n');
+  return end === -1 ? rest : rest.slice(0, end);
+})();
 
   const transcript = (() => {
     const readme = readFileSync(new URL('../../../README.md', import.meta.url).pathname, 'utf8');
@@ -55,16 +88,52 @@ describe("the doctor transcript matches what doctor prints", () => {
     assert.match(transcript, /~\s*\$[\d,]/);
   });
 
-  it('writes the column the way the command writes it', () => {
-    const wrong = transcript
-      .split('\n')
-      .filter((l) => /^\s+~\s*\$[\d,]/.test(l))
-      .filter((l) => /^\s+(~\s*)\$/.exec(l)[1] !== realPrefix);
-    assert.deepEqual(
-      wrong,
-      [],
-      `doctor prints "${realPrefix}$" and the transcript writes something else:\n  ${wrong.join('\n  ')}`,
+  /** The transcript's own advisory block, bounded the same way the live one is. */
+  const transcriptBlock = () => {
+    const start = transcript.indexOf('What it would be worth fixing');
+    assert.ok(start >= 0, 'the transcript has no advisory block');
+    const rest = transcript.slice(start);
+    const end = rest.indexOf('\n\n');
+    return end === -1 ? rest : rest.slice(0, end);
+  };
+
+  it('starts the text at one offset, the way the command does', () => {
+    /**
+     * Both sides measured rather than one side described. The command's own
+     * block is the yardstick; the transcript's figures are different and its
+     * column must still be a column.
+     */
+    const live = new Set(textOffsets(realBlock));
+    assert.equal(live.size, 1, `doctor's own column is ragged: ${[...live].join(', ')}`);
+
+    const shown = textOffsets(transcriptBlock());
+    assert.ok(shown.length >= 4, `the transcript has only ${shown.length} rows to compare`);
+    const ragged = new Set(shown);
+    assert.equal(
+      ragged.size,
+      1,
+      `the transcript's column is ragged at offsets ${[...ragged].sort((a, b) => a - b).join(', ')} — `
+        + 'the unpriced rows have to line up with the priced ones',
     );
+    assert.equal(
+      [...ragged][0],
+      [...live][0],
+      `doctor starts the text at column ${[...live][0]} and the transcript at ${[...ragged][0]}`,
+    );
+  });
+
+  it('would notice a row that had drifted out of the column', () => {
+    /**
+     * The check above only ever sees a transcript that lines up, so on this
+     * repository it cannot fail. Handed the shape it was written for — an
+     * unpriced row one space short, which is exactly what the README carried
+     * until this was measured — it must reject it.
+     */
+    const drifted = [
+      '  ~ $53.77  Move the stable instructions ahead  1 prompt',
+      '           Below the cacheable minimum  16 prompts',
+    ].join('\n');
+    assert.equal(new Set(textOffsets(drifted)).size, 2);
   });
 
   it('leaves the sentence-trailing form alone, which is a different thing', () => {
