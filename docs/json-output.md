@@ -379,6 +379,30 @@ each has a real `alone` and a `marginal` of zero. Reporting `alone` by itself
 makes an overlapping rule look load-bearing; reporting `marginal` by itself
 makes it look inert. Both travel, and nothing here adds them together.
 
+## The prompt-draft document
+
+`trazum write --json`, and what `@trazum/core`'s `assemble()` returns. A prompt
+somebody was interviewed into, and what the interview could not get out of them.
+
+**Nothing here is generated.** The words are the author's answers, placed under
+headings in a fixed order; a writer that paraphrased them would be answering a
+question nobody asked it.
+
+| Field | What it holds |
+| --- | --- |
+| `schemaVersion` | `1`. |
+| `prompt` | The assembled prompt, or **null** when required answers are missing. Null and never `""` — an empty string reads as a prompt that came out blank, and "not built" and "built and empty" are different statements. |
+| `sections` | One entry per section that got words: its `section`, the `text` written under the heading, and `from` — the slots that supplied it, in the order they appear. A section nobody answered is absent rather than present and empty. |
+| `answered` | The slots that were answered. |
+| `declined` | The slots somebody was **asked and declined**. Kept apart from `missing`: a decision is not a gap, and folding the two would turn "I do not need that" into "nobody got round to it". |
+| `missing` | Required, open and still unanswered. **Empty exactly when `prompt` is a string** — the refusal and the output are the same fact read two ways, and they can never disagree. |
+
+**The section order is fixed and the headings are English in every locale.**
+They are structure rather than prose — a contract with the model — and the
+promise is that the same answers produce the same prompt byte for byte on any
+machine *and in any locale*. A heading that moved with `TRAZUM_LOCALE` would
+make the prompt a function of the machine that ran the interview.
+
 ## The gateway refusal document
 
 The body `trazum gateway` returns with **HTTP 402** when a call is over budget.

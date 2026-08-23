@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
   BUNDLED_CATALOGUE,
   CONTRACT_NAMES,
+  assemble,
   conform,
   profileUsage,
   rollUp,
@@ -56,6 +57,18 @@ const built = () => {
     // The roll-up takes contributors as text, the way it would read them off
     // disk — so this hands it exactly what the library just produced.
     ['roll-up', rollUp([{ name: 'a', text: JSON.stringify(profile) }])],
+    // The draft needs nothing but answers, which is why it belongs here rather
+    // than in the list below: a contract the package can build and does not
+    // hand to its own checker is the defect this file was written for.
+    [
+      'prompt-draft',
+      assemble({
+        role: 'A support engineer.',
+        task: 'Summarise a ticket.',
+        inputs: 'The ticket body.',
+        'output-shape': 'prose',
+      }),
+    ],
   ];
 };
 
@@ -102,10 +115,10 @@ describe('what the library builds, the library accepts', () => {
     );
   });
 
-  it('names the contracts it cannot reach, rather than implying it covers all ten', () => {
+  it('names the contracts it cannot reach, rather than implying it covers them all', () => {
     /**
-     * Eight of the ten contracts need something this test cannot make from the
-     * package alone — a log on disk, a plan and a later log to verify it
+     * Eight of the eleven contracts need something this test cannot make from
+     * the package alone — a log on disk, a plan and a later log to verify it
      * against, a connector's credentials. Listing them is the difference
      * between "two documents check out" and "the format checks out", and
      * silence about incompleteness reads as completeness.

@@ -549,6 +549,7 @@ export type { ResolvedBudget, SpendConfig, TrazumConfig, WaiveEntry } from './co
 export { WAIVABLE_GATES } from './config-schema.js';
 
 export {
+  assemble,
   interview,
   isOpen,
   OUTPUT_FORMATS,
@@ -557,4 +558,13 @@ export {
   SLOT_IDS,
   SLOTS,
 } from './write.js';
-export type { Answer, Answers, Interview, OutputFormat, Section, Slot } from './write.js';
+export type {
+  Answer,
+  Answers,
+  DraftSection,
+  Interview,
+  OutputFormat,
+  PromptDraft,
+  Section,
+  Slot,
+} from './write.js';

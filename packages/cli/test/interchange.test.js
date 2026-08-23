@@ -246,6 +246,7 @@ describe('contract-article', () => {
     'outcome-report': 'an',
     'annual-record': 'an',
     'roll-up': 'a',
+    'prompt-draft': 'a',
   };
 
   it('has a decided article for every contract, and refuses to guess a new one', () => {

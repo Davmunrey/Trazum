@@ -74,6 +74,36 @@ call goes last, which makes the cacheable prefix as long as the prompt allows.
 Trazum has been reporting the cost of getting that wrong since 1.20; writing it
 right by construction is the same finding from the other end.
 
+## The assembly
+
+Answers go under headings in the fixed order above. **Nothing is paraphrased** —
+the words are the author's, and a writer that rewrote them would be answering a
+question nobody asked it. A slot either opens its section or arrives under a
+label (`Audience:`, `Format:`, `Fields:`, `At most:`, `When you cannot answer:`,
+`Input:`). A section nobody answered is **omitted**, never written empty.
+
+The headings are English in every locale. They are structure rather than prose —
+a contract with the model — and the arc promises the same answers produce the
+same prompt byte for byte on any machine *and in any locale*. A heading that
+moved with `TRAZUM_LOCALE` would make the prompt a function of the machine that
+ran the interview.
+
+**The output is [a contract](json-output.md#the-prompt-draft-document)**,
+`prompt-draft`, which `trazum conform` checks. `prompt` is null and never `""`
+when required answers are missing, and `missing` is empty exactly when `prompt`
+is a string: the refusal and the output are the same fact read two ways and can
+never disagree.
+
+## The claim the arc is judged on
+
+ is run over a draft the templates produced, at **all three
+levels**, and must recover nothing. A writer whose output this tool still
+improves would be selling the cure for a disease it had just caused.
+
+That zero is only worth having if it could have been non-zero, so the same draft
+with a verbose phrase pushed into it has to come back non-zero — otherwise a
+rules engine that found nothing in anything would satisfy the check forever.
+
 ## Ids here, words in the CLI
 
 `@trazum/core` knows a slot exists and what opens it. `packages/cli/src/i18n`
