@@ -13,6 +13,38 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**Chapter one of 1.61: the questions.** `@trazum/core` now carries the slot
+catalogue and the interview behind `trazum write` — fourteen slots, four of them
+required, three of them gated on an earlier answer. No model decides what to
+ask: the catalogue is fixed, the gates are predicates over the answers so far,
+and the same answers produce the same interview on any machine.
+
+**The three asking rules are run, not commented.**
+
+- *A question is only asked when its answer can change the output.* Every gate
+  is handed an answer set that opens it and one that does not — **a gate that is
+  always true, or never true, does nothing**, and both directions fail. A JSON
+  schema is not asked for when the answer is prose.
+- *The interview stops.* It reports `done` when every open slot has an answer or
+  a decline, and the opposite direction is asserted too: `done` on an empty
+  interview would be a stop rule that stops before it starts.
+- *A refusal never arrives bare.* Unanswered required slots are named, including
+  one that only a previous answer opened — `output-schema` cannot be missing
+  until the shape is `json` or `table`, and must be missing the moment it is.
+
+**Answered, declined and unanswered are three states, not two.** `null` is a
+decline: somebody was asked and said no. It closes the follow-up a real answer
+would have opened, and it is named in the output rather than silently dropped.
+
+**Ids in core, words in the CLI**, the same split the rules catalogue uses. Both
+locales are held to the catalogue in both directions — a slot nobody can ask
+fails, and copy for a slot that does not exist fails too — plus the check that
+would catch one locale being served the other's words.
+
+`docs/prompt-writer.md` documents the catalogue and is derived: a slot the code
+has and the page does not fails, and so does a row for a slot that is gone.
+
+
 **A plan for 1.61, written before the code: the prompt writer.** Trazum has only
 ever read prompts somebody else wrote — `optimize` finds the waste in one,
 `check` holds it to a budget, `rules --measure` says what each rule recovers,

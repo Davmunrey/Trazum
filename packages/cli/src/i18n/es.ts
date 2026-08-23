@@ -2684,4 +2684,70 @@ ${bold('EJEMPLOS')}
     moneyIncomparablePricing: (was, now) =>
       `Los precios se revisaron el ${was} cuando se registr\u00f3 la l\u00ednea base y el ${now} ahora, as\u00ed que las cifras mensuales no son la misma medida. La comparaci\u00f3n de tokens no se ve afectada.`,
   },
+
+  write: {
+    slots: {
+      task: {
+        question: '¿Qué debe hacer el modelo, en una frase?',
+        unlocks: 'el prompt entero — sin esto no hay nada que escribir',
+      },
+      role: {
+        question: '¿Quién es el modelo mientras lo hace?',
+        unlocks: 'la postura de la respuesta; si falta, el modelo elige una por ti',
+      },
+      inputs: {
+        question: '¿Qué cambia de una llamada a otra?',
+        unlocks: 'la parte variable — sin ella el prompt fija un solo caso y hay que reescribirlo para el siguiente',
+      },
+      'output-shape': {
+        question: '¿Qué debe volver: prosa, json, lista o tabla?',
+        unlocks: 'el contrato de salida, y si un consumidor puede parsear la respuesta siquiera',
+      },
+      'output-schema': {
+        question: '¿Qué campos o columnas, y cuáles están siempre?',
+        unlocks: 'nombres de campo en los que un consumidor puede confiar en vez de inferirlos de una muestra',
+      },
+      'output-length': {
+        question: '¿Cuánto debe ocupar la respuesta, como máximo?',
+        unlocks: 'el techo que evita pagar por texto que nadie lee',
+      },
+      audience: {
+        question: '¿Quién lee la salida?',
+        unlocks: 'el registro — una respuesta para un ingeniero y otra para un cliente no son la misma respuesta',
+      },
+      constraints: {
+        question: '¿Qué no debe hacer nunca?',
+        unlocks: 'las prohibiciones, dichas una vez aquí en vez de descubiertas incidente a incidente',
+      },
+      refusal: {
+        question: '¿Qué debe hacer cuando no pueda responder?',
+        unlocks: 'una negativa que llega con su motivo en vez de una conjetura segura de sí misma',
+      },
+      examples: {
+        question: '¿Hay algún ejemplo de respuesta buena?',
+        unlocks: 'la guía few-shot, y la ocasión de comprobar que no se repite',
+      },
+      'example-inputs': {
+        question: '¿Qué entrada produjo ese ejemplo?',
+        unlocks: 'el emparejamiento — un ejemplo sin su entrada enseña la forma, no la correspondencia',
+      },
+      'failure-modes': {
+        question: '¿Qué ha salido mal con esto antes?',
+        unlocks: 'las correcciones que merecen decirse, que son justo las que un prompt genérico nunca tiene',
+      },
+      model: {
+        question: '¿Para qué modelo es esto?',
+        unlocks: 'la estimación de coste — esto cambia el informe, nunca el prompt',
+      },
+      budget: {
+        question: '¿Cuál es el techo mensual de este prompt?',
+        unlocks: 'la comprobación de presupuesto — esto cambia el informe, nunca el prompt',
+      },
+    },
+    missing: (count) =>
+      count === 1
+        ? 'Falta una respuesta antes de poder escribir un prompt:'
+        : `Faltan ${count} respuestas antes de poder escribir un prompt:`,
+    done: () => 'No queda nada que merezca preguntarse.',
+  },
 };
