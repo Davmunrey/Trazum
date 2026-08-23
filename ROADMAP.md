@@ -1994,6 +1994,13 @@ become the acceptance test for its own output.** If `optimize` can still recover
 tokens from a prompt this tool just wrote, the templates are wrong and the
 number says so.
 
+The web app has the same interview behind `/api/write`, and that endpoint is
+**stateless on purpose**: the browser holds the answers and sends all of them
+every time. A session would mean the server knowing what somebody is halfway
+through writing, which is the thing the rest of this product refuses to hold —
+and nothing there calls a model either, so the surface that has a network by
+definition is held to the same rule as the one that does not.
+
 **Below it, three arcs from the previous plan stay open**, which is an unusual
 shape and the reason it is stated next. Nine arcs were written down in advance
 through 1.60.0 — [docs/plan-1.52-1.60.md](docs/plan-1.52-1.60.md) — and under the

@@ -266,7 +266,7 @@ describe('the Compare tab inverts the sign convention, and says so first', () =>
     const mounts = source.match(/<TabsContent[^>]*>/g) ?? [];
     assert.ok(mounts.length >= 2, 'expected at least the two working tabs');
 
-    const held = ['optimise', 'compare', 'bill'];
+    const held = ['optimise', 'write', 'compare', 'bill'];
     for (const value of held) {
       const tag = mounts.find((m) => m.includes(`value="${value}"`));
       assert.ok(tag, `no TabsContent for ${value}`);

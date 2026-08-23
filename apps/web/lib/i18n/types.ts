@@ -172,6 +172,39 @@ export interface WebMessages {
   };
 
   /** The Compare tab: what an edit did to a prompt. */
+  /**
+   * The interview.
+   *
+   * `slots` is keyed by slot id and held to `@trazum/core`'s catalogue in both
+   * directions: a slot nobody can ask fails, and copy for a slot that does not
+   * exist fails too. The words are the product in this mode, so a missing one
+   * is not a cosmetic gap — it is a question nobody can be asked.
+   */
+  write: {
+    tab: string;
+    lede: string;
+    /** Stated above the form, before anybody types. */
+    privacy: string;
+    slots: Readonly<Record<string, { question: string; unlocks: string }>>;
+    optional: string;
+    decline: string;
+    declined: string;
+    missing(count: number): string;
+    done: string;
+    promptHeading: string;
+    copy: string;
+    copied: string;
+    tokens(count: string): string;
+    monthly(usd: string): string;
+    within(limit: string): string;
+    over(limit: string): string;
+    noVerdict(reason: 'no-budget' | 'no-model' | 'model-unpriced'): string;
+    clean: string;
+    notClean(rules: string, tokens: string): string;
+    /** The claim this mode refuses to make, said out loud. */
+    notPerfect: string;
+  };
+
   compare: {
     tab: string;
     optimiseTab: string;
@@ -568,6 +601,11 @@ export interface WebMessages {
     promptTooLong(limit: string): string;
     unknownRule(id: string): string;
     unknownModel(id: string): string;
+    /** The interview: an answers object that is not one, or an id nobody asks. */
+    answersNotAnObject: string;
+    unknownSlot(id: string): string;
+    answerNotText(id: string): string;
+    answerTooLong(id: string, limit: string): string;
     invalidEndpointUrl: string;
     endpointMustBeHttps: string;
     endpointMustBePublic: string;

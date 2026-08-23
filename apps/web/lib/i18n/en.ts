@@ -168,6 +168,54 @@ export const en: WebMessages = {
       'Names and totals only: this page never shows the text of anyone’s prompt. Recoverable tokens are measured by running the rules, not estimated.',
   },
 
+  write: {
+    tab: 'Write',
+    lede: 'Describe what you want. Trazum asks what it needs, and writes the prompt.',
+    privacy: 'Nothing is generated and nothing is sent to a model. The questions are fixed, and the words in the prompt are yours.',
+    slots: {
+      task: { question: 'What should the model do, in one sentence?', unlocks: 'the whole prompt — without it there is nothing to write' },
+      role: { question: 'Who is the model being while it does that?', unlocks: 'the stance of the answer; left out, the model picks one for you' },
+      inputs: { question: 'What changes from one call to the next?', unlocks: 'the varying part — without it the prompt hard-codes one case' },
+      'output-shape': { question: 'What should come back: prose, json, list or table?', unlocks: 'the output contract, and whether a consumer can parse the answer at all' },
+      'output-schema': { question: 'Which fields or columns, and which are always present?', unlocks: 'field names a consumer can rely on rather than infer from one sample' },
+      'output-length': { question: 'How long should the answer be, at most?', unlocks: 'the ceiling that stops a paid overrun nobody reads' },
+      audience: { question: 'Who reads the output?', unlocks: 'the register — an answer for an engineer and one for a customer are different answers' },
+      constraints: { question: 'What must it never do?', unlocks: 'the prohibitions, stated once rather than discovered one incident at a time' },
+      refusal: { question: 'What should it do when it cannot answer?', unlocks: 'a refusal that arrives with a reason instead of a confident guess' },
+      examples: { question: 'Is there an example of a good answer?', unlocks: 'few-shot guidance, and the chance to check it is not repeating itself' },
+      'example-inputs': { question: 'What input produced that example?', unlocks: 'the pairing — an example with no input teaches the shape, not the mapping' },
+      'failure-modes': { question: 'What has gone wrong with this before?', unlocks: 'the corrections worth stating, which a generic prompt never has' },
+      model: { question: 'Which model is this for?', unlocks: 'the cost estimate — this changes the report, never the prompt' },
+      budget: { question: 'What is the monthly ceiling for this prompt?', unlocks: 'the budget check — this changes the report, never the prompt' },
+    },
+    optional: 'Optional',
+    decline: 'Skip this',
+    declined: 'Skipped, and left out of the prompt',
+    missing: (count) =>
+      count === 1
+        ? 'One answer is still needed before a prompt can be written.'
+        : `${count} answers are still needed before a prompt can be written.`,
+    done: 'Nothing left worth asking.',
+    promptHeading: 'Your prompt',
+    copy: 'Copy',
+    copied: 'Copied',
+    tokens: (count) => `${count} tokens`,
+    monthly: (usd) => `${usd} per month, estimated — nobody has sent this prompt yet`,
+    within: (limit) => `Within the budget of ${limit}`,
+    over: (limit) => `Over the budget of ${limit}`,
+    noVerdict: (reason) =>
+      reason === 'no-budget'
+        ? 'No budget answered, so there is nothing to check it against.'
+        : reason === 'no-model'
+          ? 'No model answered, so it cannot be priced.'
+          : 'That model is not in the price catalogue, so it cannot be priced.',
+    clean: 'Trazum finds nothing left to cut in this.',
+    notClean: (rules, tokens) =>
+      `Trazum would still cut ${tokens} tokens here (${rules}) — from your answers, not from the structure.`,
+    notPerfect:
+      'This is not a claim that the prompt is perfect. That is a judgement about text nobody has run. What is measured is what is above: complete, priced, and clean.',
+  },
+
   compare: {
     tab: 'Compare',
     optimiseTab: 'Optimise',
@@ -721,6 +769,11 @@ export const en: WebMessages = {
     promptTooLong: (limit) => `The prompt exceeds the limit of ${limit} characters.`,
     unknownRule: (id) => `Unknown rule: "${id}".`,
     unknownModel: (id) => `Unknown model: "${id}".`,
+    answersNotAnObject: 'Answers must be an object of slot ids and answers.',
+    unknownSlot: (id) => `"${id}" is not one of the questions this interview asks.`,
+    answerNotText: (id) => `The answer to "${id}" must be text, or null to decline it.`,
+    answerTooLong: (id, limit) =>
+      `The answer to "${id}" is over ${limit} characters. An interview is short fields, not a pasted corpus.`,
     invalidEndpointUrl: 'The endpoint URL is not valid.',
     endpointMustBeHttps: 'The LLM endpoint must use https.',
     endpointMustBePublic: 'The LLM endpoint cannot point at an internal address.',

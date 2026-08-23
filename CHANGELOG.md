@@ -9,6 +9,51 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**Chapter five of 1.61: the interview on the web.** A `Write` tab and
+`POST /api/write`, the same fourteen questions and the same
+`prompt-draft` document as the terminal.
+
+**The route is stateless on purpose.** The browser holds the answers and sends
+all of them every time. A session would mean that endpoint knowing what somebody
+is halfway through writing, which is the thing the rest of this product refuses
+to hold — and nothing there calls a model either, so the surface that has a
+network by definition is held to the same rule as the one that does not.
+
+**The browser asks the server what to ask next rather than deriving it.** `next`
+and `missing` look alike and mean different things: `missing` holds only the
+*required* slots, and the interview carries on through the optional ones.
+Deriving one from the other is how a form starts skipping questions, and the
+test asserts the two disagree on a real answer set.
+
+**Skipping is offered as an answer**, not left as an empty box. A question a
+reader cannot decline is a question they will answer badly to get past — and a
+bad answer goes into the prompt, where a decline leaves nothing.
+
+**An unpriced model comes back with a verdict, not a 400.** It is one of the
+three answers this format gives; refusing it would turn a measurement into a
+failure the caller has to handle. An unknown *slot* is refused, because ignoring
+one would hand back a draft with no way to tell it from an answer the assembly
+had no use for.
+
+**The sentence this mode refuses to say is rendered, and guarded.** Copy that
+exists in a catalogue and appears nowhere is a promise nobody reads.
+
+### Fixed
+
+**Two things an existing guard and a second reading caught in this chapter's own
+work.** The `Write` tab shipped without `forceMount` on the reasoning that
+mounting it would cost one request per page load from readers who never open it
+— which traded somebody's half-answered interview for a request cheaper than the
+page's own assets. **The answers live only in the browser**, and Radix unmounts
+an inactive tab by default. The guard names the property rather than the tabs
+and was right. And the mode was put first in the rail while `defaultValue` still
+opened Optimise, so the reader would land with the second row highlighted; the
+rail's order and the default tab are one decision, not two.
+
 ## 1.60.4 — "You describe it, it asks"
 
 **Trazum has only ever read prompts somebody else wrote.** `optimize` finds the
