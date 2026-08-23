@@ -29,6 +29,24 @@ Two smaller promises ride along: **no two doors to the same value disagree**
 the runtime does not enforce is not the guard** — MCP tools validate their
 arguments in code, not only in their published schemas.
 
+## The refusal ceiling
+
+Above **400,000 characters**, an input that claims to be a prompt is refused
+with the size and the limit named — never ground through. The number is
+written down exactly once, in `@trazum/core`, and every door reads it from
+there: the web routes, the share endpoint, the MCP server, and the CLI's
+prompt doors, single files and directory walks alike. A guard in the suite
+holds every other prompt-ceiling constant in the repository to *deriving*
+from that one, so two doors to the same pipeline can never again agree only
+by coincidence.
+
+Raising it is deliberate: the CLI's `--max-input <chars>` is typed by the
+person paying the wall time, and nothing raises it by accident. Lowering it
+is equally legitimate — a CI job that knows its prompts are small can make
+anything bigger a red build. What is **not** a prompt is never held to it:
+a usage log is ordinary at fifty times this size, and its scale is the
+product's whole subject.
+
 ## Why the defects are still visible
 
 Each defect the session found is pinned in the suite as its own named case,

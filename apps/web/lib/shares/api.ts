@@ -1,4 +1,4 @@
-import { RULES, listModels } from '@trazum/core';
+import { MAX_INPUT_CHARS, RULES, listModels } from '@trazum/core';
 
 import { mintToken } from '../auth/session';
 import { DEFAULT_SHARE_TTL, SHARE_TTL_DAYS } from '../store/shares';
@@ -15,7 +15,7 @@ import type { ShareSettings, ShareTtl } from '../store/shares';
  */
 
 /** Same cap as the compare endpoint: a share stores what that endpoint accepts. */
-export const MAX_SHARE_PROMPT_CHARS = 400_000;
+export const MAX_SHARE_PROMPT_CHARS = MAX_INPUT_CHARS;
 
 /**
  * The token, from the same generator that mints session cookies.

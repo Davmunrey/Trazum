@@ -24,6 +24,7 @@ import {
   profileUsage,
   repriceProfile,
   slot,
+  MAX_INPUT_CHARS,
 } from '@trazum/core';
 import type { RuleLevel } from '@trazum/core';
 
@@ -54,12 +55,12 @@ import type { ToolDefinition } from './rpc.js';
  */
 
 /**
- * The same cap the web API uses, for the same reason.
+ * The same cap every other door uses, read from the one place it is written.
  *
  * An agent in a loop is exactly the caller that hands you a 40 MB string by
  * accident. Refusing early with a number beats an unbounded pass over it.
  */
-export const MAX_PROMPT_CHARS = 400_000;
+export const MAX_PROMPT_CHARS = MAX_INPUT_CHARS;
 
 /** Every figure this server prints descends from the estimator, so it says so. */
 const BAND_NOTE =

@@ -9,6 +9,29 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+- **The refusal ceiling — chapter three of the 1.63 arc.** Above 400,000
+  characters an input that claims to be a prompt is refused with the size and
+  the limit named, never ground through. The number now lives exactly once,
+  as `MAX_INPUT_CHARS` in `@trazum/core`; the two web routes, the share
+  endpoint and the MCP server — which each carried their own `400_000`,
+  agreeing by coincidence — now derive from it, and a new suite guard holds
+  every other prompt-ceiling constant in the repository to deriving rather
+  than restating (with three named non-door exceptions: the localStorage
+  history bound, the prompt library's row bound, and a name length — each
+  with its reason written beside it, because "it is different" is the
+  sentence that stops being true quietly). The CLI's prompt doors —
+  `optimize`, `check`, `diff`, `eval`, `prune`, `semantic`, the prompt half
+  of `route`, and every directory walk that feeds prompts to the optimiser —
+  hold the same line; a global `--max-input <chars>` raises it deliberately,
+  and lowering it is equally legitimate. **Logs and documents are never held
+  to it**: `profile` and `conform` read inputs fifty times this size by
+  design, and the null at those call sites is written out so a reader sees
+  the decision.
+
 ## 1.62.1 — "This machine, measured"
 
 **Chapters one and two of [the 1.63 arc](docs/plan-1.62-1.63.md)**: the bench

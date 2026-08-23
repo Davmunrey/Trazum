@@ -405,6 +405,10 @@ ${bold('OPTIONS FOR optimize')}
   --diff                      Show the line-by-line diff.
   --json                      Dump the full report as JSON.
   --locale <${d.locales.join('|')}>            Language of the report. Default: the system language.
+  --max-input <chars>         Raise (or lower) the prompt-input ceiling, per run.
+                              Above it a prompt door refuses with the size and
+                              the limit named rather than grinding. Logs and
+                              documents are never held to it.
   -o, --out <file>            Write the optimised prompt to a file.
   -h, --help                  This help.
   --clear-suggestion-cache    Empty the --cache-suggestions cache and say how much
@@ -881,6 +885,9 @@ ${bold('EXAMPLES')}
     optionNeedsValue: (name) => `Option --${name} needs a value.`,
     mustBeNonNegative: (name, raw) =>
       `--${name} must be a non-negative number (received: "${raw}").`,
+    inputTooLarge: (source, size, limit) =>
+      `${source} is ${count(size)} characters, past the ${count(limit)}-character ceiling for a prompt. Raise it deliberately with --max-input <chars> if this input really is one.`,
+    badMaxInput: (raw) => `--max-input must be a positive number of characters (received: "${raw}").`,
     fractionFlag: (name, raw) =>
       `--${name} is a fraction between 0 and 1 (received: ${raw}). The config refuses the same value the same way.`,
     badLevel: (received) => `--level must be "safe" or "aggressive" (received: "${received}").`,
