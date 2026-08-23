@@ -32,6 +32,22 @@ that no longer exists.
   claim, and the difference between "not measured" and "measured as none" is
   the one this tool refuses to lose.
 
+**Four of those five were prose until they were not.** Only *absence is null*
+was enforced, on five fields of one document; the rest held and nothing would
+have said so if they stopped.
+`packages/core/test/format-promises.test.js` runs all of them over every
+document this package can build — the profile, the roll-up and the prompt draft
+— and takes the bullets out of the section above first, so the guard cannot
+outlive the claim or the claim the guard.
+
+Rounding is the awkward one: its absence cannot be proved from one document, so
+what is asserted is the opposite of the failure. A document whose dollars had
+been through `toFixed(2)` would carry **none** with more than two decimals, and
+this one is required to carry a majority. Each check was proved by breaking the
+*product* rather than the test — rounding on the way out, a dollar as a string,
+a fractional token count, a session key reaching the document — and by rewording
+this section without changing a promise, which must not fail.
+
 ## Top-level fields
 
 | Field | What it holds |
