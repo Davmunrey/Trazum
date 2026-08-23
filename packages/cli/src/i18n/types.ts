@@ -531,9 +531,20 @@ export interface CliMessages {
     machine(node: string, platform: string, cpuCount: number, cpuModel: string | null): string;
     colWorkload(): string;
     colWall(): string;
+    colRatio(): string;
     colPeakRss(): string;
     note(): string;
     unknownWorkload(id: string, known: string): string;
+    recorded(path: string): string;
+    needsMaxRatio(): string;
+    maxRatioNeedsAgainst(): string;
+    badMaxRatio(raw: string): string;
+    recordAndAgainst(): string;
+    unreadableBaseline(path: string): string;
+    badBaseline(path: string, version: string): string;
+    notInBaseline(id: string, path: string): string;
+    gateOver(id: string, ratio: string, allowed: string): string;
+    gateWithin(factor: string): string;
   };
 
   where: {

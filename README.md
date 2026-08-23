@@ -2481,11 +2481,21 @@ This machine, measured
 
 *Real output, transcribed.*
 
-**No comparison and no judgement.** The number is for a person with a change in
-hand: run it before, run it after, read the two tables side by side. Gating a
-build belongs to a ratio against an in-process calibration — a shared CI runner
-lies about wall time — and that gate is planned as its own chapter, not smuggled
-in here as a threshold.
+**The wall clock is for a person; the gate holds the ratio.** Run it before a
+change and after, and read the two tables side by side — no threshold hides in
+that. When you do want a build held to it, the number is never the wall clock,
+because a shared CI runner lies about time: each workload is also timed against
+a fixed calibration loop in its own process, and the runner lies to both by the
+same amount, so the **ratio** is what is left when the lie cancels out.
+
+```bash
+trazum bench --record trazum.bench.json               # measure, write, commit
+trazum bench --against trazum.bench.json --max-ratio 1.5   # exits 1 past 1.5×
+```
+
+The factor is yours to state — how much regression is too much is a policy,
+and this tool does not write yours. A baseline whose version it does not know
+is a loud error naming `--record`, never a best-effort read.
 
 **Each workload runs in its own child process**, because a peak is a fact about
 a process: five workloads sharing one heap would each report the high-water mark

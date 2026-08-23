@@ -138,6 +138,10 @@ Covered by the versioning promise:
   why a version this Trazum does not know is a loud error naming
   `trazum baseline` rather than a best-effort read. Bumping that version is a
   breaking change and needs a major.
+- The bench ratio baseline `--record` writes, for the same reason: it is
+  committed, it gates builds through `--against`, and a `schemaVersion` this
+  Trazum does not know is a loud error naming `--record`. Bumping that version
+  is likewise a breaking change.
 - The **shape** of what `--json` prints, and of the file `--markdown-out` writes.
   Fields get added; existing fields keep their names and their units.
 

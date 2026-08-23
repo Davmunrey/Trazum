@@ -58,7 +58,7 @@ ${bold('USAGE')}
   trazum conform <file|-> [--contract <name>]
   trazum rollup <document...|dir> [--json]
   trazum pulse [--max-stale-hours <n>]
-  trazum bench [--workload <id>] [--json]
+  trazum bench [--workload <id>] [--record <file>] [--against <file> --max-ratio <n>] [--json]
   trazum write [--answers <file>] [--json] [-o <file>]
   trazum models
   trazum rules [--measure <dir>] [--level <safe|aggressive>]
@@ -151,13 +151,25 @@ ${bold('OPTIONS FOR pulse')}
 ${bold('OPTIONS FOR bench')}
   --workload <id>             Run one standard workload instead of all of them.
                               An unknown id is refused with the known ones named.
-  --json                      The measurements as data.
+  --record <file>             Also write the measured ratios as a baseline, to
+                              commit. The file --against reads.
+  --against <file>            Judge this run's ratios against a recorded
+                              baseline. Exits 1 when any measured workload is
+                              past its recorded ratio times --max-ratio.
+  --max-ratio <n>             The stated factor, at least 1. Required with
+                              --against: how much regression is too much is a
+                              policy, and this tool does not write yours.
+  --json                      The measurements as data. The shape never changes
+                              with the gate flags — a verdict is the exit code
+                              and sentences on stderr, the way check gates.
 
   Measures this machine: the standard workloads, one shot each, wall time and
-  peak RSS. No comparison and no judgement — run it before and after a change
-  and read the two tables side by side. Each workload runs in its own child
-  process, so a peak is that workload's own; the inputs are generated,
-  deterministic and never written to your project.
+  peak RSS. The wall clock is for a person with a change in hand; the gate
+  holds the ratio of workload to an in-process calibration loop, because a CI
+  runner lies about wall time to both by the same amount and the lie cancels
+  out. Each workload runs in its own child process, so a peak is that
+  workload's own; the inputs are generated, deterministic and never written to
+  your project.
 
 ${bold('OPTIONS FOR rules')}
   --measure <dir>             Measure what each rule actually recovers over the
@@ -1563,10 +1575,27 @@ ${bold('EXAMPLES')}
       `node ${node} on ${platform}, ${plural(cpuCount, 'CPU')}${cpuModel === null ? '' : ` (${cpuModel})`}`,
     colWorkload: () => 'workload',
     colWall: () => 'wall ms',
+    colRatio: () => 'ratio',
     colPeakRss: () => 'peak RSS',
     note: () =>
-      'One shot each, this machine, today. No comparison and no judgement: run it before a change and after, and read the two tables side by side. Gating a build belongs to a ratio against an in-process calibration, never to these wall clocks — a shared runner lies about time.',
+      'One shot each, this machine, today. The wall clock is for a person reading two tables side by side; the ratio — workload over an in-process calibration loop — is the number a gate can hold, because the machine cancels out of it. Record one with --record, hold a build to it with --against and a stated --max-ratio.',
     unknownWorkload: (id, known) => `Unknown workload "${id}". Known: ${known}.`,
+    recorded: (path) => `Baseline written to ${path}. Commit it; --against reads it.`,
+    needsMaxRatio: () =>
+      '--against needs --max-ratio <n>. How much regression is too much is a policy, and this tool does not write yours.',
+    maxRatioNeedsAgainst: () => '--max-ratio judges against a baseline; pass --against <file> too.',
+    badMaxRatio: (raw) =>
+      `--max-ratio must be a finite number of at least 1 (received: ${raw}). It multiplies the recorded ratio; below 1 it would demand the code got faster.`,
+    recordAndAgainst: () =>
+      '--record and --against together would gate a run against the baseline it is writing. Record, commit, then gate.',
+    unreadableBaseline: (path) => `Could not read a baseline from ${path}. Re-record it with --record.`,
+    badBaseline: (path, version) =>
+      `${path} is not a baseline this version knows (schemaVersion: ${version}). Re-record it with --record rather than letting a misread number gate the build.`,
+    notInBaseline: (id, path) =>
+      `${path} records no ratio for "${id}", and silently passing an unrecorded workload would read as coverage. Re-record with --record.`,
+    gateOver: (id, ratio, allowed) =>
+      `✗ ${id}: ratio ${ratio} is past the allowed ${allowed} (baseline × --max-ratio).`,
+    gateWithin: (factor) => `Every measured workload is within ${factor}× its recorded ratio.`,
   },
 
   where: {
