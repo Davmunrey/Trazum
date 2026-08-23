@@ -75,6 +75,9 @@ misses is a tool nobody believes. A selection, and these are the real ones:
 | #363 | `docs/json-output.md` called itself the contract while six of its fifteen tables had no guard at all — the roll-up documented three of its nineteen fields | **since the roll-up shipped** |
 | #364 | `docs/format.md` and `README.md` said the interchange format was twelve documents, and the guard on that count compared the sentence to the table — both written by hand, so three missing documents left the two agreeing | **a second time on the same page** |
 | #366 | `docs/doctrine.md` had no guard at all — emptying the file broke no test, in the page whose subject is checking what enforces your own rules | **since it was written** |
+| #370 | `optimize` took any string as a level and ran `safe` in silence; the CLI had refused `--level balanced` by name since forever, so only a library caller got the quiet downgrade | **since levels existed** |
+| #371 | `-o` parsed and did nothing — the parser rewrites it to `out`, so the key the code read could never exist — in a new command and as a dead fallback in `baseline` | unknown, in `baseline` |
+| #373 | The web route wrote answers to a property whose name came from the request; CodeQL called it what it was | caught before merge |
 
 The long ones are the interesting ones, and the longest is the newest: **the
 front page of this project contradicted itself about the number of advisories

@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.60.4**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.61.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,118 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.61.0 — "A prompt this tool cannot improve"
+
+**The arc closes.** Trazum had only ever read prompts somebody else wrote. It
+writes one now, by asking — and the whole point is what it refuses to say about
+what it wrote.
+
+[The plan](docs/plan-1.61.md) was written before the code, as every arc here has
+been. **Six chapters, all six delivered**: the questions, the assembly, the three
+measured claims, the terminal, the web, and MCP.
+
+### The shape of it
+
+```bash
+trazum write                    # asks the questions, one at a time
+trazum write --answers a.json   # the same questions, already answered
+```
+
+Also a `Write` tab in the web app, and `prompt_writer` over MCP so an agent gets
+interviewed too. **Three surfaces, one document**, and the same fourteen
+questions behind all of them.
+
+**Nothing is generated.** No model decides what to ask or what to write. The
+catalogue is fixed, the follow-ups are predicates over the answers so far, and
+the words in the prompt are the author's — a writer that paraphrased them would
+be answering a question nobody asked it. The same answers assemble the same
+bytes on any machine and in any locale, which is what let the offline rule hold
+without a footnote.
+
+### What it refuses to claim
+
+**Not that the prompt is perfect, or good, or better than the one you had.**
+Those are judgements about text nobody has run, and this product spent an entire
+arc removing exactly that kind of claim from its own advice.
+
+Three measurable things replace it:
+
+| Claim | What it means |
+|---|---|
+| **Complete** | Every required question answered, every declined one named. **No score** — a grade out of ten is precisely what *nothing continuous invents a number* forbids |
+| **Cheap** | What it costs, with `provenance: estimated` carried *inside* the figure because nobody has sent this prompt yet. `monthlyUsd` is **null when it cannot be priced**, never 0. The budget answers `within`, `over` or `cannot-tell`, with the reason for the third |
+| **Clean** | What `trazum optimize` still recovers from the draft. **Nothing** |
+
+**The third is the only one this product could have staked its name on**, because
+the tool grading the output is the same tool that would have to find the fault. A
+writer whose output `trazum optimize` still improved would be selling the cure
+for a disease it had just caused. And the zero is proved non-vacuous: the same
+draft with a verbose phrase pushed into it has to come back non-zero, or a rules
+engine that found nothing in anything would satisfy that check forever.
+
+### Three states, everywhere
+
+**Answered, declined, and never asked.** A decline is an answer: it closes the
+follow-up a real one would have opened, and it is named in the output rather
+than dropped. Input running out mid-interview is none of the three, and is
+reported as unasked — which cost a real bug to learn, because `readline` on a
+drained pipe never settles and the process was leaving with **status 0 and
+nothing printed**: an interview that stopped halfway and reported success.
+
+### The contract, and the two releases that made it arrive properly
+
+`prompt-draft` is the eleventh contract `--contract` accepts and the sixteenth
+document in the interchange format. `prompt` is **null and never `""`** when
+required answers are missing, and `missing` is empty **exactly when** `prompt` is
+a string — asserted in both directions, so the refusal and the output can never
+drift into disagreeing.
+
+**Four existing guards forced it to arrive documented and checked**, and none of
+them was edited to pass: the contract-coverage map wanted a claim, the
+interchange index and the README wanted their counts moved, the article map
+refused to guess one for a new contract name, and the library-documents guard
+required the draft to be handed to the package's own checker. That was the
+plan's own test of [1.60.3](#1603--a-document-nobody-lists), and it worked.
+
+### What building it found in code that was already shipped
+
+- **`optimize` accepted any string as a level and silently ran `safe`.** The CLI
+  had refused `--level balanced` by name since forever; a library caller got the
+  quiet downgrade instead. `RULE_LEVELS` is exported for the first time — the
+  package had the union and no list, so the valid set was not discoverable at
+  all.
+- **`-o` parsed and did nothing**, in the new command *and* as a dead fallback
+  in `baseline`: the parser rewrites it to `out`, so the key it read could never
+  exist.
+- **A guard read a whole page instead of its own section**, and reported three
+  slots that do not exist the moment that page gained a second table.
+- **CodeQL called the web route's answer loop a remote property injection**, and
+  was right about the shape: the property being written was a string the caller
+  chose. The loop runs over the catalogue now and the map has no prototype —
+  fixed on the HTTP route, then written correctly on the MCP tool before it
+  could be made twice.
+- **A count had stopped being a check.** `tools.length === 5` was a literal
+  bumped every time a tool arrived; a number somebody edits to make a suite pass
+  asserts nothing.
+
+### What this arc did not build
+
+**The optional model-assisted polish.** It needs a credential this repository
+does not have, and inventing what a model would have said is the
+estimating-and-measuring merge that 1.36–1.40 spent five releases removing.
+Named in the plan from its first draft, named here, and still open — the same
+treatment 1.54.0 and 1.57.0 get.
+
+### What this release found wrong in itself
+
+A sweep that called itself "all three levels" measured two, because `balanced`
+silently ran `safe`. The zero survived the correction; the sentence did not. And
+CI caught a section-bounding defect a local run should have: `verify` went green,
+*then* a page gained a table, *then* the commit went out — the run was of the
+code and not of the change.
 
 ---
 
