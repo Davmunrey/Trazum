@@ -350,6 +350,11 @@ const DOCUMENT_RULES: Record<Exclude<ContractName, 'usage-log'>, FieldRule[]> = 
     rule('answered', 'an array of the slots that were answered', isArray),
     rule('declined', 'an array of the slots somebody was asked and declined — never folded into missing', isArray),
     rule('missing', 'an array of required slots still unanswered; empty exactly when prompt is a string', isArray),
+    rule(
+      'measured',
+      'an object of the three claims, or **null** when there is no prompt to measure — never an object of zeros',
+      (v) => v === null || isObject(v),
+    ),
   ],
 };
 

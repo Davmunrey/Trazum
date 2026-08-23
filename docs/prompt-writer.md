@@ -104,6 +104,34 @@ That zero is only worth having if it could have been non-zero, so the same draft
 with a verbose phrase pushed into it has to come back non-zero — otherwise a
 rules engine that found nothing in anything would satisfy the check forever.
 
+## The three claims, measured
+
+Every draft carries `measured` — or **null**, when there is no prompt to measure.
+Null and never an object of zeros: a draft that was never assembled has not been
+measured as costing nothing.
+
+| Claim | What it holds |
+|---|---|
+| `complete` | `required`, `answered`, `declined`, `missing`. **A checklist with its gaps named, and no score** — [nothing continuous invents a number](doctrine.md#nothing-continuous-invents-a-number), and a grade out of ten would be exactly that. |
+| `cheap` | `tokens`, `tokenSource`, `model`, `monthlyUsd`, `provenance`, `budgetUsd`, `verdict`, `reason`. |
+| `clean` | The `rules` that still fire with their hits, and `tokensRecoverable`. |
+
+**`provenance` is always `estimated`, and it travels inside the object.** Nobody
+has sent this prompt yet, so the figure is a projection; a consumer that could
+print the money without the provenance would be publishing a projection wearing
+a measurement's clothes.
+
+**`monthlyUsd` is null when it cannot be priced**, never 0 — zero reads as free.
+And the budget answers three ways, never two: `within`, `over`, or `cannot-tell`
+with the reason for the third (`no-budget`, `no-model`, `model-unpriced`), so a
+refusal never arrives bare.
+
+`optimize` throws on a model it cannot price, which is right for a command
+somebody typed a model into and wrong here — an unpriced model is one of the
+three answers, not a crash. So the tokens and the rules are measured first
+(neither needs a price) and the money is asked for separately, only when there
+is something to ask.
+
 ## Ids here, words in the CLI
 
 `@trazum/core` knows a slot exists and what opens it. `packages/cli/src/i18n`

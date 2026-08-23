@@ -396,6 +396,7 @@ question nobody asked it.
 | `answered` | The slots that were answered. |
 | `declined` | The slots somebody was **asked and declined**. Kept apart from `missing`: a decision is not a gap, and folding the two would turn "I do not need that" into "nobody got round to it". |
 | `missing` | Required, open and still unanswered. **Empty exactly when `prompt` is a string** — the refusal and the output are the same fact read two ways, and they can never disagree. |
+| `measured` | The three claims, or **null** when there is no prompt to measure — never an object of zeros, because a draft that was never assembled has not been measured as costing nothing. `complete` is the checklist with its gaps named and **no score**: `required`, `answered`, `declined`, `missing`. `cheap` is `tokens`, `tokenSource`, `model`, `monthlyUsd` (**null when it cannot be priced**, never 0), `provenance` — always `estimated`, carried *inside* the object so the figure cannot travel without it — `budgetUsd`, and a `verdict` of `within`, `over` or `cannot-tell` with the `reason` for the third (`no-budget`, `no-model`, `model-unpriced`). `clean` is what `trazum optimize` still recovers: the `rules` that fired with their hits, and `tokensRecoverable`. The target is nothing, and a non-zero figure is printed rather than quietly fixed. |
 
 **The section order is fixed and the headings are English in every locale.**
 They are structure rather than prose — a contract with the model — and the

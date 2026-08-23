@@ -548,6 +548,7 @@ export {
 export type { ResolvedBudget, SpendConfig, TrazumConfig, WaiveEntry } from './config-schema.js';
 export { WAIVABLE_GATES } from './config-schema.js';
 
+export { RULE_LEVELS } from './types.js';
 export {
   assemble,
   interview,
@@ -561,6 +562,8 @@ export {
 export type {
   Answer,
   Answers,
+  AssembleOptions,
+  DraftMeasurement,
   DraftSection,
   Interview,
   OutputFormat,
