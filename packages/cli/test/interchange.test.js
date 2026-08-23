@@ -100,6 +100,8 @@ describe('--json means JSON, not JSON after a report', () => {
       'pulse.test.js drives it on a watch state and a store it writes, parses stdout whole and asserts the gate',
     rules:
       'rule-yield.test.js measures the arithmetic directly against fixtures whose answer is known before the harness runs; --json is the same report serialised',
+    write:
+      'write-cli.test.js drives it through --answers and parses stdout whole, on a draft and on a refusal; write-assembly.test.js pipes the same document through conform',
   };
 
   /** Needs something a usage log cannot supply, so a fixture would test the fixture. */

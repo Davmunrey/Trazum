@@ -45,6 +45,7 @@ ${bold('USO')}
   trazum conform <fichero|-> [--contract <nombre>]
   trazum rollup <documento...|dir> [--json]
   trazum pulse [--max-stale-hours <n>]
+  trazum write [--answers <fichero>] [--json] [-o <fichero>]
   trazum models
   trazum rules [--measure <dir>] [--level <safe|aggressive>]
   trazum gateway <provider> --on-cannot-tell <fail-open|fail-closed>
@@ -104,6 +105,16 @@ ${bold('OPCIONES DE rollup')}
   el mismo tráfico duplican la factura y ninguna fusión de resúmenes lo ve.
 
   Sale con 1 cuando una contribución se entregó y no se pudo agregar.
+
+${bold('OPCIONES DE write')}
+  --answers <fichero>         Un objeto JSON de ids de slot y respuestas. Sin
+                              esto, las preguntas se hacen una a una; una línea
+                              vacía declina una, que también es una respuesta.
+  --json                      El documento prompt-draft, negativas incluidas.
+  -o, --out <fichero>         Dónde escribir el prompt. Por defecto stdout, con
+                              todo lo demás en stderr.
+  --calls <n>                 Llamadas al mes, para la estimación.
+  --avg-output <n>            Tokens de salida por llamada, para la estimación.
 
 ${bold('OPCIONES DE pulse')}
   --max-stale-hours <n>       Sale con 1 cuando algo que corre aquí lleva más
@@ -2749,5 +2760,26 @@ ${bold('EJEMPLOS')}
         ? 'Falta una respuesta antes de poder escribir un prompt:'
         : `Faltan ${count} respuestas antes de poder escribir un prompt:`,
     done: () => 'No queda nada que merezca preguntarse.',
+    answersNotAnObject: (path) =>
+      `${path} debe contener un objeto JSON de ids de slot y respuestas.`,
+    unknownSlot: (id, nearest) =>
+      nearest === null
+        ? `"${id}" no es un slot. Ejecuta "trazum write" sin --answers para que te los pregunte.`
+        : `"${id}" no es un slot. ¿Querías decir "${nearest}"?`,
+    answerNotText: (id) => `"${id}" debe ser una cadena, o null para declinarlo.`,
+    tokens: (count) => `${count} tokens`,
+    monthly: (usd) => `${usd} al mes, estimado — nadie ha enviado este prompt todavía`,
+    budget: (verdict, limit) =>
+      verdict === 'over' ? `por encima del presupuesto de ${limit}` : `dentro del presupuesto de ${limit}`,
+    noVerdict: (reason) =>
+      reason === 'no-budget'
+        ? 'No hay presupuesto respondido, así que no hay contra qué comprobarlo.'
+        : reason === 'no-model'
+          ? 'No hay modelo respondido, así que no se puede tasar.'
+          : 'Ese modelo no está en el catálogo de precios, así que no se puede tasar.',
+    clean: () => 'trazum optimize no recupera nada de esto.',
+    notClean: (rules, tokens) =>
+      `trazum optimize aún recuperaría ${tokens} tokens aquí (${rules}) — de tus respuestas, no de la estructura.`,
+    declined: (ids) => `Declinados, y fuera: ${ids}`,
   },
 };
