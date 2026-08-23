@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.61.2**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.62.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,52 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.62.0 — "Held to its own standard"
+
+**The 1.62 arc closes.** The thesis was turned inward: 1.61 ended on *a prompt
+this tool cannot improve*, and the stress session asked whether `optimize`
+holds itself to that claim — it did not, and neither did four other doors. The
+five chapters landed in 1.61.1 and 1.61.2; this minor is the story finishing,
+and its job is to say on the record what is now permanently true:
+
+- **Never throws.** `optimize` survives a seeded corpus of hostile atoms — RTL,
+  CJK, lone surrogates, null bytes, zero-width characters, CRLF, unclosed
+  fences, 3,000-character tokens — without an exception.
+- **Never grows.** No input comes out costing more tokens than it went in
+  with, at either level.
+- **Idempotent.** The pipeline runs to a fixed point; run on its own output it
+  changes nothing, byte for byte.
+- **Masks intact.** Code blocks, inline code and URLs survive byte-for-byte
+  across the whole corpus — proved by planting bait the rules want to rewrite
+  *inside* protected spans, which is how defect seven was found at all.
+- **Money is never negative.** No document this package can build carries a
+  negative dollar figure, whatever the input; negative and non-finite token
+  counts, budgets and volumes are refused at the layer that owns each, and no
+  flag accepts what its config sibling refuses.
+- **Unreadable lines are named.** `profileUsage`, `conform` and `rollUp` are
+  total over strings: a line they cannot read is reported by number, never
+  thrown at, never read past in silence.
+
+The properties live in `hostile-input.test.js` — seeded, deterministic,
+bounded in seconds, run on every push — and every defect the session found is
+pinned as a named case outside the fuzzer's seed schedule, so a corpus rotation
+cannot retire a regression test. New this release:
+**[docs/hardening.md](docs/hardening.md)** states all of it as a page — where
+each promise is enforced, what a bounded fuzzer does not prove, and the
+standing rule that every future crash joins the corpus as an atom, so the same
+input can never be taken quietly twice.
+
+The documentation index also stops undercounting its own plans: it said five
+plans when there were seven, and the arcs table now records this arc as landed.
+
+No code changed in this release — the arc's code shipped in its chapters. The
+mechanics: five manifests, three `@trazum/core` pins and the lockfile at
+1.62.0; README Action pins advanced to the 1.61.2 release commit.
+
+Next: **the 1.63 arc — scale is measured, not assumed** — runs as 1.62.x. A
+bench command, a ratio gate against in-process calibration rather than a wall
+clock, a uniform refusal ceiling, and a heap line for the 25MB log.
 
 ## 1.61.2 — "An input nobody had tried"
 
