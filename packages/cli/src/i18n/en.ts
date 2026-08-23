@@ -58,6 +58,7 @@ ${bold('USAGE')}
   trazum conform <file|-> [--contract <name>]
   trazum rollup <document...|dir> [--json]
   trazum pulse [--max-stale-hours <n>]
+  trazum bench [--workload <id>] [--json]
   trazum write [--answers <file>] [--json] [-o <file>]
   trazum models
   trazum rules [--measure <dir>] [--level <safe|aggressive>]
@@ -146,6 +147,17 @@ ${bold('OPTIONS FOR pulse')}
   Never gates on a first run that never happened — that has no cadence to be
   late against — and never on how far the measurements reach, which is a
   provider reporting on its own schedule rather than a job that failed.
+
+${bold('OPTIONS FOR bench')}
+  --workload <id>             Run one standard workload instead of all of them.
+                              An unknown id is refused with the known ones named.
+  --json                      The measurements as data.
+
+  Measures this machine: the standard workloads, one shot each, wall time and
+  peak RSS. No comparison and no judgement — run it before and after a change
+  and read the two tables side by side. Each workload runs in its own child
+  process, so a peak is that workload's own; the inputs are generated,
+  deterministic and never written to your project.
 
 ${bold('OPTIONS FOR rules')}
   --measure <dir>             Measure what each rule actually recovers over the
@@ -1543,6 +1555,18 @@ ${bold('EXAMPLES')}
       `Something that runs here has not run in over ${plural(hours, 'hour')}. Silence from a scheduled job and silence from a job with nothing to report look identical; this is which.`,
     notAService: () =>
       'This command runs nothing and hosts nothing. Something has to notice, and the something is your CI: a step that runs this on the schedule you already have turns a dead cron into a red build, without Trazum holding anybody\'s metrics. How far the measurements reach is reported and never judged — that is a provider reporting on its own schedule, not a job that failed.',
+  },
+
+  bench: {
+    heading: () => 'This machine, measured',
+    machine: (node, platform, cpuCount, cpuModel) =>
+      `node ${node} on ${platform}, ${plural(cpuCount, 'CPU')}${cpuModel === null ? '' : ` (${cpuModel})`}`,
+    colWorkload: () => 'workload',
+    colWall: () => 'wall ms',
+    colPeakRss: () => 'peak RSS',
+    note: () =>
+      'One shot each, this machine, today. No comparison and no judgement: run it before a change and after, and read the two tables side by side. Gating a build belongs to a ratio against an in-process calibration, never to these wall clocks — a shared runner lies about time.',
+    unknownWorkload: (id, known) => `Unknown workload "${id}". Known: ${known}.`,
   },
 
   where: {

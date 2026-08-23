@@ -102,6 +102,8 @@ describe('--json means JSON, not JSON after a report', () => {
       'rule-yield.test.js measures the arithmetic directly against fixtures whose answer is known before the harness runs; --json is the same report serialised',
     write:
       'write-cli.test.js drives it through --answers and parses stdout whole, on a draft and on a refusal; write-assembly.test.js pipes the same document through conform',
+    bench:
+      'bench.test.js drives one workload and the whole run, parses stdout whole, and holds the document to its json-output.md table in both directions',
   };
 
   /** Needs something a usage log cannot supply, so a fixture would test the fixture. */
@@ -328,8 +330,8 @@ describe('the format page and the contracts it documents', () => {
     assert.ok(ordinal !== undefined, `no ordinal known for ${rows} rows — add it above`);
     assert.match(
       page,
-      new RegExp(`defines a ${ordinal} it does not\\s+emit`),
-      `docs/format.md has ${rows} contract rows, so the sentence must say it defines a ${ordinal} it does not emit`,
+      new RegExp(`defines an? ${ordinal} it does not\\s+emit`),
+      `docs/format.md has ${rows} contract rows, so the sentence must say it defines a(n) ${ordinal} it does not emit`,
     );
     assert.equal(
       claimed,

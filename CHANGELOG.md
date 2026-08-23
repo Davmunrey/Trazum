@@ -9,6 +9,28 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+- **`trazum bench` — this machine, measured.** Chapter one of the 1.63 arc:
+  the standard workloads — a 1MB prompt at both levels, a 200,000-line
+  profile, a 10,000-file walk, a 20,000-line roll-up — one shot each, wall
+  time and peak RSS, as a table and as `--json`. **No comparison and no
+  judgement**: the number is for a person with a change in hand, before and
+  after; the CI gate is the next chapter's ratio, not a wall clock smuggled in
+  here. Each workload runs in its own child process (this same CLI with
+  `--workload`), because a peak is a fact about a process — five workloads
+  sharing one heap would each report the high-water mark of whichever ran
+  biggest before them, and the test proves the isolation by watching a peak
+  sit *below* its predecessor, which a shared process cannot produce. The
+  inputs are generated with the hostile-input suite's own LCG against a fixed
+  pricing date — deterministic, and never written to the project, which the
+  test proves by running the bench inside an empty directory and looking.
+  "Peak heap" from the plan is reported as **peak RSS** and named as such:
+  a heap high-water mark is not observable from inside a synchronous run
+  without instrumentation that would itself move the number.
+
 ## 1.62.0 — "Held to its own standard"
 
 **The 1.62 arc closes.** Its five chapters landed in 1.61.1 and 1.61.2, in the

@@ -1,7 +1,7 @@
 # The interchange format
 
-Trazum emits **sixteen** documents as data, and defines a seventeenth it does not
-emit. All seventeen are contracts, enforced in both directions by parity tests in
+Trazum emits **seventeen** documents as data, and defines an eighteenth it does not
+emit. All eighteen are contracts, enforced in both directions by parity tests in
 this repository, and this page is what makes them something another tool can
 build against rather than something to reverse engineer from output.
 
@@ -10,7 +10,7 @@ changes what you can actually do:
 
 - **`--contract` names eleven of them.** That is narrower than being documented: a
   named contract can be checked against a document *you* produced with a single
-  command, and the other six can only be read against their section here.
+  command, and the other seven can only be read against their section here.
 - **The outcome report is defined but not emitted.** `trazum profile` renders it
   as terminal text and `@trazum/core` computes it; no command writes it as JSON.
   It is a contract so that a tool of yours can produce one and have it checked —
@@ -32,6 +32,7 @@ changes what you can actually do:
 | **roll-up** | `trazum rollup --json` | `roll-up` | [json-output.md](json-output.md#the-roll-up-document) |
 | **first run** | `trazum init --json` | — | [json-output.md](json-output.md#the-first-run-document) |
 | **pulse** | `trazum pulse --json` | — | [json-output.md](json-output.md#the-pulse-document) |
+| **bench** | `trazum bench --json` | — | [json-output.md](json-output.md#the-bench-document) |
 | **rule yield** | `trazum rules --measure --json` | — | [json-output.md](json-output.md#the-rule-yield-document) |
 | **gateway refusal** | `trazum gateway`, as the HTTP 402 body | — | [json-output.md](json-output.md#the-gateway-refusal-document) |
 | **prompt draft** | `trazum write --json`, and `@trazum/core`'s `assemble()` | `prompt-draft` | [json-output.md](json-output.md#the-prompt-draft-document) |
