@@ -1,6 +1,8 @@
 #!/usr/bin/env node
-import { readFileSync } from 'node:fs';
-import { open, readdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
+import { readdirSync, readFileSync } from 'node:fs';
+import { mkdir, mkdtemp, open, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { cpus, tmpdir } from 'node:os';
 import { createInterface } from 'node:readline/promises';
 import { dirname, join, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -312,6 +314,7 @@ const VALUE_FLAGS = new Set([
   'max-cache-loss-usd',
   'max-stale-hours',
   'measure',
+  'workload',
   'max-day-usd',
   'max-session-usd',
   'csv-out',
@@ -628,6 +631,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   conform: ['contract', 'json'],
   rollup: ['json'],
   pulse: ['json', 'max-stale-hours'],
+  bench: ['workload', 'json'],
   write: ['answers', 'json', 'out', 'o', 'calls', 'avg-output'],
   feedback: [],
   gateway: ['on-cannot-tell', 'port', 'socket', 'pricing', 'pricing-live'],
@@ -2565,6 +2569,279 @@ async function commandPulse(args: Args, t: CliMessages): Promise<void> {
   }
   console.log(`  ${c.dim(wrap(t.pulse.notAService(), 74, '    '))}`);
   console.log();
+}
+
+/**
+ * `trazum bench` — measures this machine, honestly.
+ *
+ * The standard workloads, one shot each, wall time and peak RSS. **No
+ * comparison and no judgement**: a number a person runs before and after a
+ * change and reads side by side. The pathological cases were timed once, by
+ * hand, during a stress session — 1MB of prose in about a second, a
+ * 200,000-line log in about 1.3 — and nothing held them there. This command is
+ * that measurement made repeatable; the gate that holds it belongs to a ratio
+ * against in-process calibration, not to these wall clocks.
+ *
+ * Each workload runs in its own child process, because peak RSS is a fact
+ * about a process: five workloads sharing one heap would each report the
+ * high-water mark of whichever ran biggest before them. The child is this same
+ * CLI with `--workload`, so what the bench measures is exactly what a user
+ * runs.
+ *
+ * The workloads are **generated, deterministic and never committed** — the
+ * fuzzer's own LCG, a fixed pricing date — so two runs on one machine differ
+ * by the machine's weather, never by the input. Generation happens outside the
+ * timed window: the bench times the product, not the bench.
+ *
+ * "Peak heap" in the plan is reported here as **peak RSS** —
+ * `process.resourceUsage().maxRSS`, what the operating system actually billed
+ * the process — because a true heap high-water mark is not observable from
+ * inside a synchronous run without instrumentation that would itself move the
+ * number. The field says what it is.
+ */
+
+const BENCH_WORKLOADS = [
+  'optimize-1mb-safe',
+  'optimize-1mb-aggressive',
+  'profile-200k',
+  'walk-10k',
+  'rollup-20k',
+] as const;
+type BenchWorkloadId = (typeof BENCH_WORKLOADS)[number];
+
+interface BenchMeasurement {
+  id: string;
+  wallMs: number;
+  maxRssBytes: number;
+  /** Input size in the unit the workload is named by; the others are null, never zero. */
+  bytes: number | null;
+  lines: number | null;
+  files: number | null;
+}
+
+interface BenchDocument {
+  schemaVersion: 1;
+  node: string;
+  platform: string;
+  arch: string;
+  cpus: number;
+  cpuModel: string | null;
+  workloads: BenchMeasurement[];
+}
+
+/** The hostile-input suite's LCG: same seed, same workload, any machine. */
+function benchGenerator(seed: number): () => number {
+  let state = seed;
+  return () => (state = (state * 1103515245 + 12345) % 2147483648) / 2147483648;
+}
+
+/** Prices resolve against a fixed date, so the workload cannot drift with the calendar. */
+const BENCH_DATE = new Date('2026-01-01T00:00:00Z');
+
+/**
+ * Prose the rules have work in — verbose phrases, duplicate lines, emphasis,
+ * spacing — with code fences and URLs mixed in so the segmenter and the masks
+ * are part of what is timed, not skipped by an input too clean to exercise them.
+ */
+function benchPrompt(targetBytes: number): string {
+  const rnd = benchGenerator(97);
+  const sentences = [
+    'Please kindly note that in order to get the best results you should always read the entire document.\n',
+    'It is very very important that the answer is  concise  and complete.\n',
+    'IMPORTANT: the sections below repeat their own headers.\n',
+    'The quick summary follows the long summary, which follows the summary.\n',
+    'See https://example.com/guide/section?step=3&mode=full for the walkthrough.\n',
+    '```js\nconst total = items.reduce((sum, item) => sum + item.cost, 0);\n```\n',
+    '- keep the tone neutral\n- keep the tone neutral\n- cite every claim\n',
+    'In the event that the input is empty, respond with an empty list.\n',
+  ];
+  let text = '';
+  while (text.length < targetBytes) {
+    text += sentences[Math.floor(rnd() * sentences.length)];
+    if (rnd() < 0.15) text += '\n\n';
+  }
+  return text;
+}
+
+/** A usage log in the documented shape: timestamps, labels, sessions, cache fields. */
+function benchLog(lines: number): string {
+  const rnd = benchGenerator(53);
+  const models = ['claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5'];
+  const labels = ['support-rag', 'classify', 'agent'];
+  const startMs = Date.parse('2026-01-01T00:00:00Z');
+  const out: string[] = [];
+  for (let i = 0; i < lines; i += 1) {
+    const record = {
+      timestamp: new Date(startMs + i * 7000).toISOString(),
+      model: models[Math.floor(rnd() * models.length)],
+      label: labels[Math.floor(rnd() * labels.length)],
+      session: `conv-${Math.floor(rnd() * 400)}`,
+      stop_reason: rnd() < 0.05 ? 'max_tokens' : 'end_turn',
+      usage: {
+        input_tokens: 200 + Math.floor(rnd() * 4000),
+        output_tokens: 50 + Math.floor(rnd() * 800),
+        cache_read_input_tokens: rnd() < 0.6 ? Math.floor(rnd() * 16000) : 0,
+        cache_creation_input_tokens: rnd() < 0.2 ? Math.floor(rnd() * 4000) : 0,
+      },
+    };
+    out.push(JSON.stringify(record));
+  }
+  return out.join('\n');
+}
+
+/** Runs one workload: generation outside the window, the product inside it. */
+async function benchRun(id: BenchWorkloadId): Promise<BenchMeasurement> {
+  const measure = (work: () => unknown): number => {
+    const startedAt = performance.now();
+    work();
+    return performance.now() - startedAt;
+  };
+  const done = (wallMs: number, sizes: Partial<Pick<BenchMeasurement, 'bytes' | 'lines' | 'files'>>): BenchMeasurement => ({
+    id,
+    wallMs,
+    // getrusage reports kilobytes; the field name promises bytes, so convert here.
+    maxRssBytes: process.resourceUsage().maxRSS * 1024,
+    bytes: sizes.bytes ?? null,
+    lines: sizes.lines ?? null,
+    files: sizes.files ?? null,
+  });
+
+  switch (id) {
+    case 'optimize-1mb-safe':
+    case 'optimize-1mb-aggressive': {
+      const prompt = benchPrompt(1024 * 1024);
+      const level = id === 'optimize-1mb-safe' ? 'safe' : 'aggressive';
+      return done(measure(() => optimize(prompt, { level })), { bytes: Buffer.byteLength(prompt, 'utf8') });
+    }
+    case 'profile-200k': {
+      const lines = 200_000;
+      const text = benchLog(lines);
+      return done(
+        measure(() => profileUsage(text, { catalogue: BUNDLED_CATALOGUE, on: BENCH_DATE })),
+        { lines },
+      );
+    }
+    case 'walk-10k': {
+      /**
+       * The discovery half of `rank` and directory `check`: find every file,
+       * read it, estimate it. Generated under the system temp directory and
+       * removed afterwards — ten thousand files are a workload, not a residue.
+       */
+      const files = 10_000;
+      const root = await mkdtemp(join(tmpdir(), 'trazum-bench-'));
+      try {
+        const rnd = benchGenerator(11);
+        for (let dir = 0; dir < 100; dir += 1) {
+          const dirPath = join(root, `d${dir}`);
+          await mkdir(dirPath);
+          for (let i = 0; i < files / 100; i += 1) {
+            await writeFile(
+              join(dirPath, `p${i}.txt`),
+              `Summarise the report in ${3 + Math.floor(rnd() * 9)} bullet points.\nKeep every figure.\n`,
+            );
+          }
+        }
+        const startedAt = performance.now();
+        let estimated = 0;
+        const walk = (path: string): void => {
+          for (const entry of readdirSync(path, { withFileTypes: true })) {
+            const child = join(path, entry.name);
+            if (entry.isDirectory()) walk(child);
+            else estimated += estimateTokens(readFileSync(child, 'utf8'));
+          }
+        };
+        walk(root);
+        const wallMs = performance.now() - startedAt;
+        if (estimated <= 0) throw new Error('bench walk read nothing — the workload is broken');
+        return done(wallMs, { files });
+      } finally {
+        await rm(root, { recursive: true, force: true });
+      }
+    }
+    case 'rollup-20k': {
+      /**
+       * Twenty contributors of a thousand lines each. Their profiles are built
+       * outside the window — profiling is `profile-200k`'s measurement — so
+       * what this times is the roll-up itself: twenty documents parsed,
+       * checked and merged.
+       */
+      const contributors = 20;
+      const linesEach = 1000;
+      const inputs: { name: string; text: string }[] = [];
+      for (let i = 0; i < contributors; i += 1) {
+        const report = profileUsage(benchLog(linesEach), { catalogue: BUNDLED_CATALOGUE, on: BENCH_DATE });
+        inputs.push({ name: `team-${i}`, text: JSON.stringify(report) });
+      }
+      return done(measure(() => rollUp(inputs)), { lines: contributors * linesEach });
+    }
+  }
+}
+
+function printBenchTable(measurements: BenchMeasurement[], t: CliMessages, machine?: BenchDocument): void {
+  const n = (value: number): string => Math.round(value).toLocaleString(t.numberLocale);
+  const mb = (bytes: number): string => `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  const idWidth = Math.max(...measurements.map((m) => m.id.length), t.bench.colWorkload().length);
+
+  console.log();
+  console.log(c.bold(t.bench.heading()));
+  if (machine !== undefined) {
+    console.log(`  ${c.dim(t.bench.machine(machine.node, machine.platform, machine.cpus, machine.cpuModel))}`);
+  }
+  console.log();
+  console.log(
+    `  ${c.dim(t.bench.colWorkload().padEnd(idWidth))}  ${c.dim(t.bench.colWall().padStart(10))}  ${c.dim(t.bench.colPeakRss().padStart(10))}`,
+  );
+  for (const m of measurements) {
+    console.log(`  ${m.id.padEnd(idWidth)}  ${n(m.wallMs).padStart(10)}  ${mb(m.maxRssBytes).padStart(10)}`);
+  }
+  console.log();
+  console.log(`  ${c.dim(wrap(t.bench.note(), 74, '    '))}`);
+  console.log();
+}
+
+async function commandBench(args: Args, t: CliMessages): Promise<void> {
+  const asJson = boolFlag(args, 'json');
+  const chosen = stringFlag(args, 'workload');
+
+  if (chosen !== undefined) {
+    if (!(BENCH_WORKLOADS as readonly string[]).includes(chosen)) {
+      throw new Error(t.bench.unknownWorkload(chosen, BENCH_WORKLOADS.join(', ')));
+    }
+    const measurement = await benchRun(chosen as BenchWorkloadId);
+    if (asJson) {
+      console.log(JSON.stringify(measurement, null, 2));
+      return;
+    }
+    printBenchTable([measurement], t);
+    return;
+  }
+
+  const script = fileURLToPath(import.meta.url);
+  const workloads: BenchMeasurement[] = [];
+  for (const id of BENCH_WORKLOADS) {
+    const stdout = execFileSync(
+      process.execPath,
+      [script, 'bench', '--workload', id, '--json', '--locale', t.locale],
+      { encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 },
+    );
+    workloads.push(JSON.parse(stdout) as BenchMeasurement);
+  }
+
+  const document: BenchDocument = {
+    schemaVersion: 1,
+    node: process.version,
+    platform: process.platform,
+    arch: process.arch,
+    cpus: cpus().length,
+    cpuModel: cpus()[0]?.model ?? null,
+    workloads,
+  };
+
+  if (asJson) {
+    console.log(JSON.stringify(document, null, 2));
+    return;
+  }
+  printBenchTable(workloads, t, document);
 }
 
 /**
@@ -10167,6 +10444,9 @@ async function main(): Promise<void> {
       break;
     case 'pulse':
       await commandPulse(args, t);
+      break;
+    case 'bench':
+      await commandBench(args, t);
       break;
     case 'write':
       await commandWrite(args, t);

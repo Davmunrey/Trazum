@@ -370,6 +370,28 @@ gating on it with the same threshold would produce a red build for somebody
 else's latency. It sits beside the runs because a reader wants both, and it is
 a different fact.
 
+## The bench document
+
+`trazum bench --json`. What this machine measures, one shot per workload.
+
+| Field | What it holds |
+| --- | --- |
+| `schemaVersion` | `1`. |
+| `node`, `platform`, `arch` | The runtime the numbers were taken on — a measurement without its machine is a rumour. |
+| `cpus`, `cpuModel` | How many, and what kind. `cpuModel` is `null` where the OS does not say. |
+| `workloads[]` | One per standard workload, in a fixed order. Each carries `id`, `wallMs` (not rounded — the terminal rounds, the JSON does not) and `maxRssBytes`. |
+| `workloads[].bytes` / `.lines` / `.files` | The input's size, in the unit the workload is named by. Exactly one is a number; the other two are `null`, never zero. |
+| `workloads[].maxRssBytes` | Peak RSS of the workload's own child process — what the operating system billed it, which is why each workload gets a process to itself. Named RSS because that is what it is: a heap high-water mark is not observable from inside a synchronous run without moving the number. |
+
+With `--workload <id>`, the output is the single measurement object — the same
+shape as one entry of `workloads[]` — because that is what the parent run
+collects from each child, and two shapes for one fact is one too many.
+
+**No baseline, no verdict, no delta.** The document records what happened on
+this machine today. Comparing two of them is the reader's judgement to make,
+and any CI gate belongs to a ratio measured in-process, not to these wall
+clocks.
+
 ## The rule-yield document
 
 `trazum rules --measure <dir> --json`. What each deterministic rule actually

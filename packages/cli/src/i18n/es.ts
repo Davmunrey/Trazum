@@ -45,6 +45,7 @@ ${bold('USO')}
   trazum conform <fichero|-> [--contract <nombre>]
   trazum rollup <documento...|dir> [--json]
   trazum pulse [--max-stale-hours <n>]
+  trazum bench [--workload <id>] [--json]
   trazum write [--answers <fichero>] [--json] [-o <fichero>]
   trazum models
   trazum rules [--measure <dir>] [--level <safe|aggressive>]
@@ -134,6 +135,17 @@ ${bold('OPCIONES DE pulse')}
   Nunca falla por una primera ejecución que nunca ocurrió — no hay cadencia
   contra la que ir tarde — ni por hasta dónde llegan las mediciones, que es un
   proveedor informando a su ritmo y no un trabajo que falló.
+
+${bold('OPCIONES DE bench')}
+  --workload <id>             Ejecuta una sola carga estándar en vez de todas.
+                              Un id desconocido se rechaza nombrando los conocidos.
+  --json                      Las mediciones como datos.
+
+  Mide esta máquina: las cargas estándar, una pasada cada una, tiempo de pared y
+  RSS pico. Sin comparación y sin juicio — ejecútalo antes y después de un
+  cambio y lee las dos tablas lado a lado. Cada carga corre en su propio proceso
+  hijo, así que cada pico es solo suyo; las entradas se generan, son
+  deterministas y nunca se escriben en tu proyecto.
 
 ${bold('OPCIONES DE rules')}
   --measure <dir>             Mide lo que recupera realmente cada regla sobre
@@ -1553,6 +1565,18 @@ ${bold('EJEMPLOS')}
       `Algo que corre aquí lleva más de ${plural(hours, 'hora')} sin correr. El silencio de un trabajo programado y el de un trabajo sin nada que decir son iguales; esto dice cuál es.`,
     notAService: () =>
       'Este comando no ejecuta nada y no aloja nada. Algo tiene que darse cuenta, y ese algo es tu CI: un paso que ejecute esto con el horario que ya tienes convierte un cron muerto en una build roja, sin que Trazum guarde las métricas de nadie. Hasta dónde llegan las mediciones se informa y nunca se juzga — eso es un proveedor informando a su ritmo, no un trabajo que falló.',
+  },
+
+  bench: {
+    heading: () => 'Esta máquina, medida',
+    machine: (node, platform, cpuCount, cpuModel) =>
+      `node ${node} en ${platform}, ${plural(cpuCount, 'CPU')}${cpuModel === null ? '' : ` (${cpuModel})`}`,
+    colWorkload: () => 'carga',
+    colWall: () => 'ms de pared',
+    colPeakRss: () => 'RSS pico',
+    note: () =>
+      'Una pasada cada una, esta máquina, hoy. Sin comparación y sin juicio: ejecútalo antes de un cambio y después, y lee las dos tablas lado a lado. Bloquear una build corresponde a un ratio contra una calibración en el mismo proceso, nunca a estos relojes de pared — un runner compartido miente sobre el tiempo.',
+    unknownWorkload: (id, known) => `Carga desconocida "${id}". Conocidas: ${known}.`,
   },
 
   where: {

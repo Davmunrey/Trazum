@@ -47,7 +47,7 @@ never runs unless you ask.
                  for your agents
 ```
 
-## The thirty-five commands
+## The thirty-six commands
 
 | Command | What it answers |
 |---|---|
@@ -83,6 +83,7 @@ never runs unless you ask.
 | [`trazum conform`](#building-on-the-format-trazum-conform) | Does the document my tool emits conform, and what will it not be able to answer? |
 | [`trazum rollup`](#more-than-one-machine-trazum-rollup) | Four of us measured four things — what is the total, and what did merging lose? *A format and a merge, not a service.* |
 | [`trazum pulse`](#did-anything-stop-running-trazum-pulse) | Did the things that are supposed to run, run? *Runs nothing itself — your CI is the thing that notices.* |
+| [`trazum bench`](#this-machine-measured-trazum-bench) | How fast is Trazum here, and on what? *One shot per workload, no judgement — run it before and after a change.* |
 | [`trazum write`](#you-describe-it-it-asks-trazum-write) | What should this prompt say, and what will it cost before I ever send it? *Asks; nothing is generated.* |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
 | [`trazum feedback`](#telling-us-something-trazum-feedback) | Where do I report this, and what will you ask me for? *Sends nothing.* |
@@ -198,8 +199,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of thirty-five commands — [the table
-above](#the-thirty-five-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of thirty-six commands — [the table
+above](#the-thirty-six-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -362,6 +363,7 @@ trazum watch --once                  # did anything cross, this afternoon
 trazum serve                         # answer before the call is sent
 trazum rollup a.json b.json          # several people's bills, one roll-up
 trazum pulse --max-stale-hours 36    # did anything stop running?
+trazum bench                         # how fast is Trazum on this machine
 trazum rank prompts/                 # which one to fix first
 trazum blame prompts/system.txt      # who made it expensive, and when
 trazum diff old.txt new.txt          # what this edit cost
@@ -2449,6 +2451,53 @@ stale is too stale is a policy. And how far the measurements reach is reported
 and **never judged by the same threshold**: a store pulled ten minutes ago whose
 newest record stops two days back is a healthy cron in front of a provider that
 reports late, and gating on it would be a red build for somebody else's latency.
+
+### This machine, measured: `trazum bench`
+
+The pathological cases were timed once, by hand, during a stress session — 1MB
+of prose in about a second, a 200,000-line log in about 1.3 — and nothing held
+them there. This is that measurement made repeatable: the standard workloads,
+one shot each, wall time and peak RSS.
+
+```bash
+trazum bench                                   # every workload, as a table
+trazum bench --workload profile-200k --json    # one workload, as data
+```
+
+```
+This machine, measured
+  node v22.22.2 on linux, 4 CPUs (Intel(R) Xeon(R) Processor @ 2.30GHz)
+
+  workload                    wall ms    peak RSS
+  optimize-1mb-safe               818    152.2 MB
+  optimize-1mb-aggressive       1,071    148.4 MB
+  profile-200k                  1,673    230.0 MB
+  walk-10k                        118     89.8 MB
+  rollup-20k                        7    112.3 MB
+
+  One shot each, this machine, today. No comparison and no judgement: run it
+    before a change and after, and read the two tables side by side.
+```
+
+*Real output, transcribed.*
+
+**No comparison and no judgement.** The number is for a person with a change in
+hand: run it before, run it after, read the two tables side by side. Gating a
+build belongs to a ratio against an in-process calibration — a shared CI runner
+lies about wall time — and that gate is planned as its own chapter, not smuggled
+in here as a threshold.
+
+**Each workload runs in its own child process**, because a peak is a fact about
+a process: five workloads sharing one heap would each report the high-water mark
+of whichever ran biggest before them. The child is this same CLI with
+`--workload`, so what the bench measures is exactly what you run.
+
+**The inputs are generated, deterministic and never written to your project.**
+Same seed, same workload, any machine; the only thing that varies between two
+runs on one machine is the machine. Peak memory is reported as RSS — what the
+operating system actually billed the process — because a true heap high-water
+mark is not observable from inside a synchronous run without instrumentation
+that would itself move the number.
 
 ### Telling us something: `trazum feedback`
 

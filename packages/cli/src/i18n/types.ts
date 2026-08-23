@@ -526,6 +526,16 @@ export interface CliMessages {
     notAService(): string;
   };
 
+  bench: {
+    heading(): string;
+    machine(node: string, platform: string, cpuCount: number, cpuModel: string | null): string;
+    colWorkload(): string;
+    colWall(): string;
+    colPeakRss(): string;
+    note(): string;
+    unknownWorkload(id: string, known: string): string;
+  };
+
   where: {
     hostHeading(): string;
     subscription(host: string): string;
