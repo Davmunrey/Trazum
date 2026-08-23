@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.60.3**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.60.4**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,134 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.60.4 — "You describe it, it asks"
+
+**Trazum has only ever read prompts somebody else wrote.** `optimize` finds the
+waste in one, `check` holds it to a budget, `rules --measure` says what each rule
+recovers — and all of them start from a prompt somebody already guessed their way
+into. The most expensive waste is not the filler the rules remove. It is **the
+paragraph that should never have been written and the constraint nobody stated.**
+
+The owner asked for the other direction: *you describe what you want, the app
+asks you for context, and writes the prompt.* [The plan](docs/plan-1.61.md) was
+written before the code, as every arc here has been, and this release is its
+first four chapters — plus a guard for the one page in this repository that had
+none.
+
+### `trazum write`
+
+```bash
+trazum write                    # asks the questions, one at a time
+trazum write --answers a.json   # the same questions, already answered
+trazum write --answers a.json --json > draft.json
+```
+
+**Nothing is generated.** No model decides what to ask or what to write. The
+catalogue is fixed, the follow-ups are predicates over the answers so far, and
+the words in the prompt are yours — a writer that paraphrased your answers would
+be answering a question nobody asked it. The same answers assemble the same bytes
+on any machine and **in any locale**, which is what lets the offline rule hold
+without a footnote.
+
+**The prompt goes to stdout and everything else to stderr**, so
+`trazum write --answers a.json > prompt.txt` is a file with a prompt in it and
+not a file with an interview in it.
+
+### The questions are the product
+
+A question whose answer cannot change the output is waste, and waste is this
+tool's whole subject. Three rules govern the asking, and **each one is run rather
+than commented**:
+
+- **A question is only asked when its answer can change the output.** Every gate
+  is handed an answer set that opens it *and* one that does not — **a gate that
+  is always true, or never true, does nothing** — and both directions fail. No
+  JSON schema is asked for when the answer is prose.
+- **The interview stops.** It says so when every open slot has an answer or a
+  decline, and the opposite direction is asserted too: `done` on an empty
+  interview would be a stop rule that stops before it starts.
+- **A refusal never arrives bare.** Missing required answers are named with what
+  each one unlocks, including one that only a previous answer opened.
+
+**Answered, declined and unanswered are three states.** A decline is an answer:
+it closes the follow-up a real one would have opened, and it is named in the
+output rather than dropped. Input simply running out is none of the three and is
+reported as unasked.
+
+### It refuses to claim the prompt is perfect
+
+That is a quality judgement about text nobody has run. Three measurable claims
+replace it, and all three are printed:
+
+| Claim | What it holds |
+|---|---|
+| **complete** | The checklist with its gaps named, and **no score** — a grade out of ten is exactly what *nothing continuous invents a number* forbids |
+| **cheap** | `provenance` is always `estimated` and travels *inside* the object; `monthlyUsd` is **null when it cannot be priced**, never 0; the budget answers `within`, `over` or `cannot-tell` with its reason |
+| **clean** | What `trazum optimize` still recovers from the draft. The target is nothing |
+
+**The third is the one worth having**: the product's own rules are the acceptance
+test for its own output. A writer whose output this tool still improved would be
+selling the cure for a disease it had just caused. It recovers **nothing**, at
+every level — and the zero is proved non-vacuous, because a rules engine that
+found nothing in anything would satisfy that check forever.
+
+### `prompt-draft` joined the interchange format
+
+The eleventh contract `--contract` accepts, the sixteenth document. `prompt` is
+**null and never `""`** when required answers are missing, and `missing` is empty
+**exactly when** `prompt` is a string — the refusal and the output are the same
+fact read two ways, asserted in both directions so they cannot drift into
+disagreeing.
+
+**This was the plan's own test of the two releases before it**, and four guards
+fired without being edited: the new table needed a claim, two pages needed their
+counts moved, the article map refused to guess one for a new contract name, and
+the library-documents guard required the draft to be handed to the package's own
+checker.
+
+### The doctrine was the one page here nothing enforced
+
+Measured rather than assumed: **emptying `docs/doctrine.md` and re-running the
+suites broke nothing**, while emptying `docs/json-output.md` broke ten files.
+Twenty-four rules, referenced only from test comments — in the page whose whole
+subject is checking what enforces your own rules.
+
+The guard does not enforce the rules; most are about judgement and one says
+outright that no test can hold it. It enforces the page, and **italics in the
+preface are now reserved for rule names** — which is not a style note, because
+every italic phrase there is read as a rule and any that is not one fails. **It
+fired on the first draft of the paragraph announcing it.**
+
+### What building this found in code that was already shipped
+
+- **`optimize` accepted any string as a level and silently ran `safe`.** The CLI
+  has refused `--level balanced` by name since forever; a library caller got the
+  quiet downgrade instead. It refuses now. `RULE_LEVELS` is exported for the
+  first time — the package had the union and no list, so the valid set was not
+  discoverable at all.
+- **`-o` was accepted, ignored, and the prompt went to stdout.** The parser
+  rewrites `-o` to `out`, so `stringFlag(args, 'o')` can never match. **The same
+  dead read had been sitting in `baseline`** as a fallback that could not fire.
+- **A guard read a whole page instead of its own section.** Chapter one's slot
+  table check harvested every backticked cell in `docs/prompt-writer.md`, and
+  reported three slots that do not exist the moment the page gained a second
+  table. *Bound an assertion by its subject, never by its neighbour* — a rule
+  this repository wrote down and a helper it already had.
+
+### What this release found wrong in itself
+
+The chapter that measured the writer's cleanliness swept `safe`, `balanced` and
+`aggressive` and called it "all three levels". **There are two**, and `balanced`
+silently ran `safe`, so it measured the same level twice. The zero survived the
+correction; the sentence did not, and the sweep now comes from `RULE_LEVELS`
+rather than a list typed into a test.
+
+And CI caught the section-bounding defect when a local run should have:
+`npm run verify` went green, *then* the page gained a table, *then* the commit
+went out. The run was of the code and not of the change.
 
 ---
 
