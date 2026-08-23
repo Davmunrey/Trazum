@@ -9,6 +9,33 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**Four of the five promises `docs/json-output.md` opens with were prose.** Only
+*absence is null and never zero* was enforced, on five fields of one document.
+The other four held — measured, not assumed, over **414 dollar figures and 296
+token counts** across the profile, the roll-up and the prompt draft — which is
+exactly the state in which a promise quietly stops being true, because nothing
+would say so.
+
+`packages/core/test/format-promises.test.js` runs all of them over every
+document this package can build, and **takes the bullets out of the section
+first**: deleting a promise from the page fails here, so the guard cannot
+outlive the claim or the claim the guard.
+
+**Rounding is the awkward one, and it is asserted backwards.** The absence of
+rounding cannot be proved from one document, so what is checked is the shape of
+the failure: a document whose dollars had been through `toFixed(2)` would carry
+**none** with more than two decimals, and this one has to carry a majority.
+
+**Every check was proved by breaking the product, not the test.** Rounding every
+dollar on the way out of `profileUsage`, returning one as a string, adding a
+half to a token count, and putting a session key into the document — each fails.
+And rewording the promise section without changing a promise must not, which it
+does not.
+
 ## 1.61.0 — "A prompt this tool cannot improve"
 
 **The arc closes.** Trazum had only ever read prompts somebody else wrote; it
