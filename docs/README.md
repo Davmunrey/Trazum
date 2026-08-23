@@ -82,6 +82,7 @@ the half a reader cannot reconstruct.
 | [1.41–1.50](plan-1.41-1.50.md) | The loop is complete and inert; nothing runs on its own | 1.50.0 |
 | [1.51](plan-1.51.md) | Every figure is a denominator with no numerator | 1.51.0 |
 | [1.52–1.60](plan-1.52-1.60.md) | Nine arcs: finish what shipped incomplete, then widen | **six of nine** — 1.52.0, 1.53.0, 1.55.0, 1.56.0, 1.59.0 and 1.60.0 landed; 1.54.0 and 1.57.0 blocked on provider keys; 1.58.0 is a distribution commitment |
+| [1.61](plan-1.61.md) | Trazum has only ever read prompts somebody else wrote | **in progress** — closes at 1.61.0 |
 
 What each of them **refused** to ship — which is the more useful half, since a
 plan and its implementation shared a hand — is in

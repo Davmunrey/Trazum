@@ -1944,12 +1944,35 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**Nothing is planned above 1.60.0**, and that sentence is the honest state of
-this roadmap rather than a flourish. Nine arcs were written down in advance
+**The arc in progress is [docs/plan-1.61.md](docs/plan-1.61.md), and it closes
+at 1.61.0** — the first thing planned above 1.60.0, and the first arc this
+project has planned that is not about reading somebody else's prompt.
+
+Trazum has only ever read prompts other people wrote. `optimize` finds the waste
+in one, `check` holds it to a budget, `rules --measure` says what each rule
+recovers. All of them start from a prompt somebody already guessed their way
+into — and the most expensive waste is not the filler the rules remove, it is
+the paragraph that should never have been written and the constraint nobody
+stated. **1.61 goes the other way: you say what you want, the tool asks what it
+needs, and what comes out is a prompt whose cost and cleanliness are known
+before it is ever sent.**
+
+The interview and the assembly are deterministic — no model decides what to ask
+or what to write — so the offline rule holds without a footnote, and the same
+`fetch`-thrower test that proved it for `optimize` proves it here. What the arc
+refuses to claim is in the plan from its first draft: not "the perfect prompt",
+because that is a quality judgement about text nobody has run. Three measurable
+claims replace it, and the third is the one worth having — **Trazum's own rules
+become the acceptance test for its own output.** If `optimize` can still recover
+tokens from a prompt this tool just wrote, the templates are wrong and the
+number says so.
+
+**Below it, three arcs from the previous plan stay open**, which is an unusual
+shape and the reason it is stated next. Nine arcs were written down in advance
 through 1.60.0 — [docs/plan-1.52-1.60.md](docs/plan-1.52-1.60.md) — and under the
 numbering adopted at 1.50.1 a minor closes an arc, so each of 1.52.0 … 1.60.0
 lands one thesis. Six landed. **The three that did not are numbered below the
-last release**, which is an unusual shape and the reason it is stated first:
+last release**:
 
 | Arc | Why it is open |
 |---|---|
@@ -1963,9 +1986,9 @@ releases removing. The third waits on a decision nobody has made. **The gaps sta
 gaps**: renumbering them away would rewrite a document whose whole value is having
 been written before the code.
 
-What comes after is not written down, because it is not decided. A tenth arc
-announced here today would be a projection on the roadmap of a tool whose first
-doctrine rule forbids exactly that.
+What comes after 1.61.0 is not written down, because it is not decided. An arc
+announced here today with nothing behind it would be a projection on the roadmap
+of a tool whose first doctrine rule forbids exactly that.
 
 **1.60.0 is delivered, and it is the last arc the plan named.** The plan is not
 finished: six of nine arcs are done, and 1.54.0, 1.57.0 and 1.58.0 stay open with
