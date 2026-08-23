@@ -1184,6 +1184,26 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.61.1 — "Nothing was holding these" — released
+
+**A patch whose two entries are the same act**: take something this repository
+says about itself and find out what would fail if it stopped being true, by
+emptying it rather than by reading.
+
+**Four of the five promises `docs/json-output.md` opens with were prose.** Only
+*absence is null and never zero* was enforced. All four held — 414 dollar
+figures and 296 token counts, measured — which is exactly the state in which a
+promise quietly stops being true. Rounding is asserted backwards, because its
+absence cannot be proved from one document.
+
+**Six prose pages broke nothing when emptied**, including `SECURITY.md` and
+`VERSIONING.md`. One derived guard now holds every page to what a page goes
+wrong about quietly: that it says something, links only to files that are there,
+and shows only commands this CLI dispatches.
+
+It caught prose on its first run — an error message quoted in the changelog read
+as a command — and the pattern was tightened rather than the file exempted.
+
 ## 1.61.0 — "A prompt this tool cannot improve" — released
 
 **The arc closes, and all six chapters landed.** Trazum had only ever read
@@ -2000,7 +2020,7 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**Nothing is planned above 1.61.0**, and that sentence is the honest state of
+**Nothing is planned above 1.61.1**, and that sentence is the honest state of
 this roadmap rather than a flourish. [The 1.61 arc](docs/plan-1.61.md) is
 delivered — six chapters and the minor — and what comes after it is not written
 down, because it is not decided. An arc announced here today with nothing behind
