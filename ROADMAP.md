@@ -1184,6 +1184,35 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.61.0 — "A prompt this tool cannot improve" — released
+
+**The arc closes, and all six chapters landed.** Trazum had only ever read
+prompts somebody else wrote. `trazum write`, a `Write` tab and `prompt_writer`
+over MCP are three surfaces onto one interview and one document.
+
+**Nothing is generated.** The questions are fixed, the follow-ups are predicates
+over the answers, and the words are the author's — so the same answers assemble
+the same bytes on any machine and in any locale, and the offline rule holds
+without a footnote.
+
+`/api/write` is the web half, and it is **stateless on purpose**: the browser
+holds the answers and sends all of them every time. A session would mean that
+endpoint knowing what somebody is halfway through writing, which is the thing
+the rest of this product refuses to hold — and nothing there calls a model
+either, so the surface that has a network by definition is held to the same rule
+as the one that does not.
+
+**What it refuses to claim is the point.** Not that the prompt is good; that is a
+judgement about text nobody has run. Complete with its gaps named and no score,
+cheap with the estimate marked as one, and clean — `trazum optimize` recovering
+nothing from it, which is the only one of the three this product could have
+staked its name on, because the tool grading the output is the tool that would
+have to find the fault.
+
+**What it did not build**: the optional model-assisted polish, which needs a
+credential this repository does not have. Named in the plan from its first draft
+and still open, the same treatment 1.54.0 and 1.57.0 get.
+
 ## 1.60.4 — "You describe it, it asks" — released
 
 **The first four chapters of the 1.61 arc**, and the answer to a question this
@@ -1971,35 +2000,12 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**The arc in progress is [docs/plan-1.61.md](docs/plan-1.61.md), and it closes
-at 1.61.0** — the first thing planned above 1.60.0, and the first arc this
-project has planned that is not about reading somebody else's prompt.
-
-Trazum has only ever read prompts other people wrote. `optimize` finds the waste
-in one, `check` holds it to a budget, `rules --measure` says what each rule
-recovers. All of them start from a prompt somebody already guessed their way
-into — and the most expensive waste is not the filler the rules remove, it is
-the paragraph that should never have been written and the constraint nobody
-stated. **1.61 goes the other way: you say what you want, the tool asks what it
-needs, and what comes out is a prompt whose cost and cleanliness are known
-before it is ever sent.**
-
-The interview and the assembly are deterministic — no model decides what to ask
-or what to write — so the offline rule holds without a footnote, and the same
-`fetch`-thrower test that proved it for `optimize` proves it here. What the arc
-refuses to claim is in the plan from its first draft: not "the perfect prompt",
-because that is a quality judgement about text nobody has run. Three measurable
-claims replace it, and the third is the one worth having — **Trazum's own rules
-become the acceptance test for its own output.** If `optimize` can still recover
-tokens from a prompt this tool just wrote, the templates are wrong and the
-number says so.
-
-The web app has the same interview behind `/api/write`, and that endpoint is
-**stateless on purpose**: the browser holds the answers and sends all of them
-every time. A session would mean the server knowing what somebody is halfway
-through writing, which is the thing the rest of this product refuses to hold —
-and nothing there calls a model either, so the surface that has a network by
-definition is held to the same rule as the one that does not.
+**Nothing is planned above 1.61.0**, and that sentence is the honest state of
+this roadmap rather than a flourish. [The 1.61 arc](docs/plan-1.61.md) is
+delivered — six chapters and the minor — and what comes after it is not written
+down, because it is not decided. An arc announced here today with nothing behind
+it would be a projection on the roadmap of a tool whose first doctrine rule
+forbids exactly that.
 
 **Below it, three arcs from the previous plan stay open**, which is an unusual
 shape and the reason it is stated next. Nine arcs were written down in advance

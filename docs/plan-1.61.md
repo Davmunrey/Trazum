@@ -1,11 +1,21 @@
-# The plan through 1.61 — the prompt writer
+# The plan through 1.61 — the prompt writer — delivered
+
+**All seven shipped — six chapters and the minor — landing at 1.61.0.** This
+file is kept as it was written, before the code, rather than rewritten in
+hindsight. It is history now, not a forecast: nothing described below is still
+forthcoming, **except the one thing it said it would not build.** The optional
+model-assisted polish needs a credential this repository does not have, and it
+is still named rather than faked.
+
+What the arc refused to ship, and what it got wrong, is in [our own
+medicine](our-own-medicine.md).
 
 Seven releases, one arc, following the one through
-[1.60](plan-1.52-1.60.md). Six patches and the minor. The ordering is a
-commitment; the calendar is not, and no dates appear here for the reason
+[1.60](plan-1.52-1.60.md). Six patches and the minor. The ordering was a
+commitment; the calendar was not, and no dates appear here for the reason
 [ROADMAP.md](../ROADMAP.md) gives.
 
-This file is written **before the code**, which is the only version of a plan
+This file was written **before the code**, which is the only version of a plan
 this project keeps. What the arc refuses to ship is in it from the first draft,
 under its own heading, because [what stays out gets its reason on the
 record](doctrine.md#what-stays-out-gets-its-reason-on-the-record).

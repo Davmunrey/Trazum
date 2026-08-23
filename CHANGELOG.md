@@ -9,7 +9,23 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
-## Unreleased
+## 1.61.0 — "A prompt this tool cannot improve"
+
+**The arc closes.** Trazum had only ever read prompts somebody else wrote; it
+writes one now, by asking. Six chapters, all six delivered — the questions, the
+assembly, the three measured claims, the terminal, the web, and MCP.
+
+**What it will not say is the part worth reading.** Not that the prompt is good:
+that is a judgement about text nobody has run. It says the checklist is complete
+with its gaps named, what the prompt costs with the estimate marked as one, and
+that `trazum optimize` recovers **nothing** from it — which is the only one of
+the three this product could ever have staked its name on, because the tool
+grading the output is the same tool that would have to find the fault.
+
+**One thing the plan named and this release did not build**: the optional
+model-assisted polish. It needs a credential this repository does not have, and
+inventing what a model would have said is the estimating-and-measuring merge
+that 1.36–1.40 spent five releases removing. Named, not faked, and still open.
 
 ### Added
 
