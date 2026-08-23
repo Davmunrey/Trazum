@@ -45,6 +45,9 @@ In the order somebody actually meets them:
   the worklist `scripts/dictionary-worklist.mjs` prints for each.
 - **[The format](format.md)** and **[JSON output](json-output.md)** — the
   contracts, each with a two-direction parity test.
+- **[The prompt writer](prompt-writer.md)** — the questions `trazum write` asks,
+  why each one is asked only when its answer can change the output, and what a
+  declined answer costs you.
 - **[Contributing](../CONTRIBUTING.md)** — how to propose a change here.
 
 ## I am maintaining it

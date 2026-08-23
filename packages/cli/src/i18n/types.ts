@@ -27,12 +27,41 @@ export interface HelpDefaults {
   contracts: readonly string[];
 }
 
+/**
+ * One question, and what is lost by declining it.
+ *
+ * `unlocks` is not decoration. A required slot left unanswered stops the
+ * assembly, and a refusal never arrives bare — whatever cannot be built is
+ * reported with this sentence beside the slot that would have unblocked it.
+ */
+export interface SlotCopy {
+  question: string;
+  unlocks: string;
+}
+
 export interface CliMessages {
   locale: Locale;
   /** BCP 47 tag used to format numbers. */
   numberLocale: string;
 
   help(defaults: HelpDefaults, bold: (s: string) => string): string;
+
+  /**
+   * The interview behind `trazum write`, one entry per slot in
+   * `@trazum/core`'s catalogue.
+   *
+   * Keyed by slot id and held to the catalogue in both directions: a slot with
+   * no entry here fails, and an entry for a slot that does not exist fails too.
+   * The words are the product in this command, so a missing one is not a
+   * cosmetic gap — it is a question nobody can be asked.
+   */
+  write: {
+    slots: Readonly<Record<string, SlotCopy>>;
+    /** Printed when required slots are unanswered, with each named below it. */
+    missing: (count: number) => string;
+    /** Printed when there is nothing left worth asking. */
+    done: () => string;
+  };
 
   /** The on-disk cache of model answers for `--suggest`. */
   cache: {
