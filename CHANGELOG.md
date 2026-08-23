@@ -9,7 +9,19 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
-## Unreleased
+## 1.60.4 — "You describe it, it asks"
+
+**Trazum has only ever read prompts somebody else wrote.** `optimize` finds the
+waste in one, `check` holds it to a budget, `rules --measure` says what each
+rule recovers — and every one of them starts from a prompt somebody already
+guessed their way into. The most expensive waste is not the filler the rules
+remove; it is **the paragraph that should never have been written and the
+constraint nobody stated.**
+
+This release is the first four chapters of the arc that goes the other way. You
+say what you want, the tool asks what it needs, and what comes back is a prompt
+whose cost and cleanliness are known before it is ever sent. Plus the guard for
+the one page in this repository that had none.
 
 ### Fixed
 

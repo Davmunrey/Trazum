@@ -1184,6 +1184,33 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.60.4 — "You describe it, it asks" — released
+
+**The first four chapters of the 1.61 arc**, and the answer to a question this
+product had never asked: every other command reads a prompt somebody already
+wrote. `trazum write` starts from nothing and asks — and what it asks is the
+product, because a question whose answer cannot change the output is waste.
+
+**Nothing is generated.** The catalogue of questions is fixed, the follow-ups are
+predicates over the answers, and the words in the prompt are the author's. The
+same answers assemble the same bytes on any machine and in any locale, so the
+offline rule holds without a footnote.
+
+**It refuses to claim the prompt is perfect** and prints three measurable things
+instead: complete with its gaps named and no score, cheap with the estimate
+marked as one, and clean — `trazum optimize` run over the draft, recovering
+nothing, with that zero proved non-vacuous.
+
+`prompt-draft` joined the interchange format as the eleventh contract, and four
+existing guards forced it to arrive documented and checked rather than quietly.
+
+**And the doctrine got a guard.** Emptying `docs/doctrine.md` broke no test,
+in the page whose subject is checking what enforces your own rules.
+
+Three defects in already-shipped code came out of building it: `optimize` took
+any string as a level and ran `safe` in silence, `-o` parsed and did nothing in
+two places, and a guard read a whole page instead of its own section.
+
 ## 1.60.3 — "A document nobody lists" — released
 
 **Two chapters, one shape.** `docs/json-output.md` calls itself the contract and
