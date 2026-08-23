@@ -382,6 +382,15 @@ function parseArgs(argv: string[], t: CliMessages): Args {
  * `flags.has(name)` is the wrong test once negation exists: `--no-batch` stores
  * the key with the value `false`, and `has` would report it as set.
  */
+/** A numberFlag that is also a fraction: the config's own 0-to-1 rule. */
+function fractionFlag(args: Args, name: string, fallback: number, t: CliMessages): number {
+  const value = numberFlag(args, name, fallback, t);
+  if (value > 1) {
+    throw new Error(t.errors.fractionFlag(name, String(args.flags.get(name))));
+  }
+  return value;
+}
+
 function boolFlag(args: Args, name: string, fallback = false): boolean {
   const raw = args.flags.get(name);
   return typeof raw === 'boolean' ? raw : fallback;
@@ -480,7 +489,15 @@ function usageFrom(
       fromConfig.avgOutputTokens ?? DEFAULT_USAGE.avgOutputTokens,
       t,
     ),
-    cacheHitRate: numberFlag(
+    /*
+      Bounded above as well as below, because the config already is.
+
+      `usage.cacheHitRate: 2` in trazum.config.json is refused as "a fraction
+      between 0 and 1"; `--cache-hit-rate 2` on the command line was accepted
+      and quietly skewed the caching advisory. Two doors to the same value
+      cannot disagree about what fits through.
+    */
+    cacheHitRate: fractionFlag(
       args,
       'cache-hit-rate',
       fromConfig.cacheHitRate ?? DEFAULT_USAGE.cacheHitRate,

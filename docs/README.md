@@ -86,6 +86,7 @@ the half a reader cannot reconstruct.
 | [1.51](plan-1.51.md) | Every figure is a denominator with no numerator | 1.51.0 |
 | [1.52–1.60](plan-1.52-1.60.md) | Nine arcs: finish what shipped incomplete, then widen | **six of nine** — 1.52.0, 1.53.0, 1.55.0, 1.56.0, 1.59.0 and 1.60.0 landed; 1.54.0 and 1.57.0 blocked on provider keys; 1.58.0 is a distribution commitment |
 | [1.61](plan-1.61.md) | Trazum has only ever read prompts somebody else wrote | 1.61.0 — all six chapters; the model-assisted polish stays named and unbuilt |
+| [1.62–1.63](plan-1.62-1.63.md) | Held to its own standard, then measured: fuzz as a fixture, perf as a gate | **in progress** — closes at 1.62.0 and 1.63.0 |
 
 What each of them **refused** to ship — which is the more useful half, since a
 plan and its implementation shared a hand — is in

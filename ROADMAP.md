@@ -2020,19 +2020,30 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**Nothing is planned above 1.61.1**, and that sentence is the honest state of
-this roadmap rather than a flourish. [The 1.61 arc](docs/plan-1.61.md) is
-delivered — six chapters and the minor — and what comes after it is not written
-down, because it is not decided. An arc announced here today with nothing behind
-it would be a projection on the roadmap of a tool whose first doctrine rule
-forbids exactly that.
+**Two arcs are planned: [docs/plan-1.62-1.63.md](docs/plan-1.62-1.63.md).**
+The 1.62 arc runs as 1.61.x and closes at 1.62.0; the 1.63 arc runs as 1.62.x
+and closes at 1.63.0.
 
-**Below it, three arcs from the previous plan stay open**, which is an unusual
-shape and the reason it is stated next. Nine arcs were written down in advance
-through 1.60.0 — [docs/plan-1.52-1.60.md](docs/plan-1.52-1.60.md) — and under the
-numbering adopted at 1.50.1 a minor closes an arc, so each of 1.52.0 … 1.60.0
-lands one thesis. Six landed. **The three that did not are numbered below the
-last release**:
+**1.62 — its own output, held to its own standard.** A stress session found six
+defects in an afternoon, all one shape: an input nobody had tried, taken
+quietly. `optimize` is not idempotent — on its own output it saves more, which
+is the writer's acceptance test failed by the tool that grades it. And
+`spend_guard` accepts a negative `outputTokens`, prices the call below zero and
+says **yes** — an agent that lies about its output buys an approval. The arc
+fixes the six at the layer that owns each, then makes the finding permanent: a
+seeded fuzz suite in CI holding four properties — never throws, never grows
+tokens, idempotent, masks intact — plus *money is never negative, whatever the
+input*.
+
+**1.63 — scale is measured, not assumed.** The pathological cases time well
+today (1MB of prose ~1s, a 200,000-line log ~1.3s) and nothing holds them
+there. A `bench` command measures the standard workloads; CI gates the ratio
+against an in-process calibration loop rather than a wall clock that lies on
+shared runners; every door refuses inputs past a stated ceiling instead of
+grinding; the 25MB log profiles within a stated heap line.
+
+**Below them, three arcs from the previous plans stay open**, numbered below
+the last release:
 
 | Arc | Why it is open |
 |---|---|

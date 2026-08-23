@@ -1266,11 +1266,23 @@ const SPEND_GUARD: ToolDefinition = {
     if (typeof inputTokens !== 'number' || !Number.isFinite(inputTokens) || inputTokens < 0) {
       throw new InvalidArguments('inputTokens must be a non-negative number');
     }
+    /*
+      Held to the same rule as inputTokens, because it was not and that was a
+      hole: `outputTokens: -500` priced the call below zero and turned the
+      verdict into a **yes** — a negative estimate lowers the projected spend,
+      so an agent that lies about its output tokens buys itself an approval.
+      The core refuses this too now; refusing it here as well keeps the error
+      an InvalidArguments the protocol knows how to carry.
+    */
+    const outputTokens = typeof args.outputTokens === 'number' ? args.outputTokens : 0;
+    if (!Number.isFinite(outputTokens) || outputTokens < 0) {
+      throw new InvalidArguments('outputTokens must be a non-negative number');
+    }
     const answer = guardSpend(
       {
         model,
         inputTokens,
-        outputTokens: typeof args.outputTokens === 'number' ? args.outputTokens : 0,
+        outputTokens,
         consumedUsd: typeof args.consumedUsd === 'number' ? args.consumedUsd : undefined,
         limitUsd: typeof args.limitUsd === 'number' ? args.limitUsd : undefined,
         batchEligible: args.batchEligible === true,
@@ -1378,6 +1390,19 @@ const WRITER: ToolDefinition = {
       answers[entry.id] = value;
     }
 
+    /*
+      The schema says `minimum: 1` and the runtime did not enforce it, so
+      `callsPerMonth: -100` priced a prompt at −$1.26 a month. A schema the
+      runtime does not enforce is documentation wearing a guard's clothes.
+      The core now refuses negatives as well; refusing here keeps the message
+      an InvalidArguments rather than a silent discard.
+    */
+    for (const name of ['callsPerMonth', 'avgOutputTokens'] as const) {
+      const value = args[name];
+      if (value !== undefined && (typeof value !== 'number' || !Number.isFinite(value) || value <= 0)) {
+        throw new InvalidArguments(`${name} must be a positive number`);
+      }
+    }
     const draft = assemble(answers, {
       callsPerMonth: typeof args.callsPerMonth === 'number' ? args.callsPerMonth : undefined,
       avgOutputTokens: typeof args.avgOutputTokens === 'number' ? args.avgOutputTokens : undefined,
