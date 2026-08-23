@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtemp, readdir } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { SPAWN_ENV } from './env.mjs';
+import { sectionOf } from '../../../test-utils/section.mjs';
 
 /**
  * `trazum bench`, run rather than read.
@@ -20,6 +21,30 @@ import { SPAWN_ENV } from './env.mjs';
  */
 
 const CLI = new URL('../dist/index.js', import.meta.url).pathname;
+const DOC = new URL('../../../docs/json-output.md', import.meta.url).pathname;
+
+/**
+ * The bench document's promised fields, harvested from its own table.
+ *
+ * First-column backticks only, so a field mentioned in an explanation does not
+ * become a promise. `workloads[].x` rows and their `.y` shorthands land in the
+ * per-workload set; everything else, `workloads[]` included, is top-level.
+ */
+const promisedFields = (page, heading) => {
+  const section = sectionOf(page, heading);
+  const top = new Set();
+  const perWorkload = new Set();
+  for (const row of section.split('\n')) {
+    if (!row.startsWith('| `')) continue;
+    const cell = row.split('|')[1];
+    for (const [, name] of cell.matchAll(/`([^`]+)`/g)) {
+      if (name.startsWith('workloads[].')) perWorkload.add(name.slice('workloads[].'.length));
+      else if (name.startsWith('.')) perWorkload.add(name.slice(1));
+      else top.add(name.replace('[]', ''));
+    }
+  }
+  return { top, perWorkload };
+};
 
 const run = (args, cwd) =>
   spawnSync(process.execPath, [CLI, 'bench', ...args], {
@@ -95,6 +120,35 @@ describe('the whole bench', () => {
     assert.ok(sits, `no workload peaked below a predecessor — one shared process? ${peaks.join(', ')}`);
 
     assert.deepEqual(await readdir(cwd), [], 'bench wrote into the working directory');
+
+    // The document against its own contract table, both directions: a field
+    // emitted and undocumented fails, and so does one documented and gone.
+    const page = await readFile(DOC, 'utf8');
+    const { top, perWorkload } = promisedFields(page, '## The bench document');
+    assert.deepEqual(Object.keys(document).sort(), [...top].sort());
+    for (const m of document.workloads) {
+      assert.deepEqual(Object.keys(m).sort(), [...perWorkload].sort(), m.id);
+    }
+  });
+});
+
+describe('and the harvest can see its own failure', () => {
+  it('reads a made table the way it reads the real one', () => {
+    const made = [
+      '## The example document',
+      '',
+      '| Field | What it holds |',
+      '| --- | --- |',
+      '| `schemaVersion` | `1`. |',
+      '| `workloads[]` | Rows, each with `hidden` mentioned in prose. |',
+      '| `workloads[].id`, `workloads[].wallMs` | Which, and how long. |',
+      '| `workloads[].bytes` / `.lines` | Sizes. |',
+      '',
+    ].join('\n');
+    const { top, perWorkload } = promisedFields(made, '## The example document');
+    assert.deepEqual([...top].sort(), ['schemaVersion', 'workloads']);
+    // `hidden` sits in the second column, so it is prose rather than a promise.
+    assert.deepEqual([...perWorkload].sort(), ['bytes', 'id', 'lines', 'wallMs']);
   });
 });
 

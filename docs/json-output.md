@@ -379,7 +379,8 @@ a different fact.
 | `schemaVersion` | `1`. |
 | `node`, `platform`, `arch` | The runtime the numbers were taken on — a measurement without its machine is a rumour. |
 | `cpus`, `cpuModel` | How many, and what kind. `cpuModel` is `null` where the OS does not say. |
-| `workloads[]` | One per standard workload, in a fixed order. Each carries `id`, `wallMs` (not rounded — the terminal rounds, the JSON does not) and `maxRssBytes`. |
+| `workloads[]` | One per standard workload, in a fixed order. |
+| `workloads[].id`, `workloads[].wallMs` | Which workload, and its wall time — not rounded: the terminal rounds, the JSON does not. |
 | `workloads[].bytes` / `.lines` / `.files` | The input's size, in the unit the workload is named by. Exactly one is a number; the other two are `null`, never zero. |
 | `workloads[].maxRssBytes` | Peak RSS of the workload's own child process — what the operating system billed it, which is why each workload gets a process to itself. Named RSS because that is what it is: a heap high-water mark is not observable from inside a synchronous run without moving the number. |
 

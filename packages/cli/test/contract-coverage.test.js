@@ -69,6 +69,7 @@ const CLAIMED = {
   '## The annual record document': 'packages/cli/test/contract-coverage.test.js',
   '## The roll-up document': 'packages/cli/test/contract-coverage.test.js',
   '## The pulse document': 'packages/cli/test/contract-coverage.test.js',
+  '## The bench document': 'packages/cli/test/bench.test.js',
   '## The rule-yield document': 'packages/cli/test/contract-coverage.test.js',
   '## The gateway refusal document': 'packages/cli/test/gateway-proxy.test.js',
   '## The prompt-draft document': 'packages/core/test/write-assembly.test.js',
@@ -403,7 +404,12 @@ const ORDINALS = {
   15: 'fifteenth',
   16: 'sixteenth',
   17: 'seventeenth',
+  18: 'eighteenth',
+  19: 'nineteenth',
 };
+
+/** "a seventeenth", "an eighteenth" — the article belongs to the word, not the template. */
+const withArticle = (ordinal) => `${/^[aeiou]/.test(ordinal) ? 'an' : 'a'} ${ordinal}`;
 
 /** The rows of the front-door table: name, `--contract` cell, and where it links. */
 const formatRows = (page) =>
@@ -471,9 +477,9 @@ describe('docs/format.md counts what exists', () => {
     const readme = (await readFile(join(ROOT, 'README.md'), 'utf8')).replace(/\s+/g, ' ');
     assert.ok(
       readme.includes(
-        `Trazum emits ${WORDS[emitted]} documents, defines a ${ORDINALS[rows.length]} it does not emit`,
+        `Trazum emits ${WORDS[emitted]} documents, defines ${withArticle(ORDINALS[rows.length])} it does not emit`,
       ),
-      `README.md does not say ${WORDS[emitted]} and a ${ORDINALS[rows.length]}`,
+      `README.md does not say ${WORDS[emitted]} and ${withArticle(ORDINALS[rows.length])}`,
     );
   });
 
