@@ -29,6 +29,20 @@ nothing from a draft — but the sentence did not, and the sweep now comes from
 `RULE_LEVELS` rather than a list typed into the test, so a level added tomorrow
 is covered without anybody remembering.
 
+**The slot-table guard read the whole page, and the page grew a second table.**
+Chapter one's check harvested every backticked first cell in
+`docs/prompt-writer.md`, which was right until this chapter added the three
+claims — whose rows are `complete`, `cheap` and `clean` — and it reported three
+slots that do not exist. **[Bound an assertion by its subject, never by its
+neighbour](docs/doctrine.md)**, which this repository has a helper for and that
+test was not using. Bounded to `## The slots` now, and still failing in both
+directions: a slot dropped from the table, and a phantom row added to it.
+
+**It was CI that caught it, and it should not have been.** `npm run verify` ran
+green, then the page gained the new table, then the commit went out — the local
+run was of the code and not of the change. The correction is in the record
+rather than in a habit nobody can check.
+
 **`RULE_LEVELS` is exported.** The package had the union and no list, so the
 valid set was not discoverable from `@trazum/core` at all.
 

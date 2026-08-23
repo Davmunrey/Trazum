@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { describe, it } from 'node:test';
+import { sectionOf } from '../../../test-utils/section.mjs';
 import { OUTPUT_FORMATS, SECTIONS, SLOTS, SLOT_IDS, interview, isOpen, slot } from '../dist/index.js';
 
 /**
@@ -146,7 +147,17 @@ describe('answered, declined and unanswered are three states', () => {
 
 describe('the catalogue is documented and asked in both locales', () => {
   it('has a row in docs/prompt-writer.md for every slot, and no row for one that is gone', async () => {
-    const page = await readFile(DOC, 'utf8');
+    /**
+     * Bounded to `## The slots`, and it has to be.
+     *
+     * The first version read every backticked first cell on the page. That was
+     * correct until the page gained a second table — the three claims, whose
+     * rows are `complete`, `cheap` and `clean` — and the harvest reported three
+     * slots that do not exist. **[Bound an assertion by its subject, never by
+     * its neighbour](../../../docs/doctrine.md#bound-an-assertion-by-its-subject-never-by-its-neighbour)**,
+     * which this repository has a helper for and this test was not using.
+     */
+    const page = sectionOf(await readFile(DOC, 'utf8'), '## The slots');
     const rows = [...page.matchAll(/^\| `([a-z-]+)` \|/gm)].map((match) => match[1]);
     assert.ok(rows.length > 5, `only ${rows.length} slot rows parsed — has the table moved?`);
     assert.deepEqual(
