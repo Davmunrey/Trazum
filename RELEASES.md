@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.61.1**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.61.2**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,75 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.61.2 — "An input nobody had tried"
+
+**Seven defects, one stress session, one shape.** The owner asked for the app
+to be stressed — errors, failures, absolutely everything — and an afternoon of
+fuzzing found seven, every one an input nobody had tried, taken quietly. [The
+plan through 1.62 and 1.63](docs/plan-1.62-1.63.md) was written out of the
+session, and this release is its first five chapters.
+
+### The seven
+
+1. **`optimize` was not idempotent** — run on its own output it saved more, on
+   1 input in 4,000. One pass missed its own cascades: `emphasis` stripped
+   `IMPORTANT:` and left two lines equal but for a space `whitespace` had
+   already stopped looking at. The pipeline runs to a **fixed point** now, and
+   `optimize(optimize(x)) === optimize(x)` is enforced over a hostile corpus.
+2. **`spend_guard` said yes to a lie.** `outputTokens: -500` priced the call
+   at **−$0.0075**, and a negative estimate lowers the projected spend — an
+   agent that lies about its output tokens bought itself an approval. Refused
+   in `answerCost`, which closes `serve`, the gateway and the guard in one
+   place.
+3. **A negative budget was judged.** `assemble` took `budget: "-5"` and said
+   `over` — a verdict against a limit that cannot exist. Not a positive finite
+   number → no budget, said with the verdict's own reason.
+4. **A negative volume was billed.** `callsPerMonth: -100` priced a prompt at
+   **−$1.26 a month**, a number no bill ever had.
+5. **`--cache-hit-rate 2` walked through the flag door** while the config door
+   refused the identical value. Two doors to one value cannot disagree about
+   what fits through; the flag now refuses in both locales, naming the
+   config's own rule.
+6. **`prompt_writer`'s schema said `minimum: 1` and the runtime never enforced
+   it.** A schema the runtime does not enforce is documentation wearing a
+   guard's clothes.
+7. **Text inside a code span came out rewritten, with every mask believed on.**
+   On ``` ``` `span` ``` ``` shapes the segmenter's inline-code scan matched
+   from the third backtick of a closing fence, and after the illegitimate
+   match was dropped its scan position had already passed the real span — left
+   mutable, and rewritten. **Since the masker shipped.** Each pattern now
+   scans with earlier patterns' ranges reserved, restarting after a
+   reservation rather than after itself.
+
+### The stress session as a fixture
+
+`packages/core/test/hostile-input.test.js` — seeded, deterministic, bounded
+(~5s). A corpus of hostile atoms (RTL, CJK, lone surrogates, zero-width
+characters, control bytes, CRLF, unclosed fences, 3KB tokens) holding four
+properties: **never throws, never grows tokens, idempotent, masks survive
+byte-for-byte** — plus a malformed-log corpus, *money is never negative
+whatever the input*, and *a line the parser could not read is named in
+`skippedLines`, never read past*. Every defect above is pinned as a named case
+outside the fuzzer's seed schedule.
+
+### The zero that proved nothing, twice
+
+The mask property passed immediately — and breaking the safety net did not
+fail it, and removing the inline-code mask did not either. **The corpus held
+no code a rule wanted to touch**: a zero that cannot go non-zero proves
+nothing. Bait atoms went in — verbose phrases and double spaces *inside*
+protected spans — and defect seven fell out the same hour. The bait stays in
+the corpus so the zero can never go vacuous again.
+
+### What this release found wrong in itself
+
+The plan document named a command that does not exist yet, and the every-page
+guard refused the page — correctly: a reader cannot type `bench` today. The
+plan now says "a `bench` command", and the invocation appears when it exists.
+The guard beat the plan, and the plan is better for it.
 
 ---
 

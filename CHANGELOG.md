@@ -9,7 +9,11 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
-## Unreleased
+## 1.61.2 — "An input nobody had tried"
+
+**Seven defects, one stress session, one shape**: an input nobody had tried,
+taken quietly. Chapters one to five of [the 1.62
+arc](docs/plan-1.62-1.63.md), landed in the order the plan committed to.
 
 ### Fixed
 
