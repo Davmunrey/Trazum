@@ -1,3 +1,8 @@
+import { optimize } from './optimize.js';
+import type { RuleLevel, UsageProfile } from './types.js';
+import { BUNDLED_CATALOGUE } from './pricing.js';
+import type { PricingCatalogue } from './pricing.js';
+
 /**
  * The interview behind `trazum write`.
  *
@@ -229,6 +234,14 @@ export interface PromptDraft {
   readonly declined: readonly string[];
   /** Required, open and unanswered. Empty exactly when `prompt` is a string. */
   readonly missing: readonly string[];
+  /**
+   * What the draft costs and what the rules still find in it, or **null** when
+   * there is no prompt to measure.
+   *
+   * Null rather than an object of zeros: a draft that was never assembled has
+   * not been measured as costing nothing.
+   */
+  readonly measured: DraftMeasurement | null;
 }
 
 const line = (id: string, answer: string): string => {
@@ -242,7 +255,7 @@ const line = (id: string, answer: string): string => {
  * Deterministic in both senses that matter: the same answers produce the same
  * bytes, and nothing here consults the network, the clock or the locale.
  */
-export function assemble(answers: Answers): PromptDraft {
+export function assemble(answers: Answers, options: AssembleOptions = {}): PromptDraft {
   const state = interview(answers);
   const sections: DraftSection[] = [];
 
@@ -263,12 +276,137 @@ export function assemble(answers: Answers): PromptDraft {
     });
   }
 
+  const prompt =
+    state.missing.length > 0 ? null : sections.map((entry) => entry.text).join('\n\n');
+
   return {
     schemaVersion: 1,
-    prompt: state.missing.length > 0 ? null : sections.map((entry) => entry.text).join('\n\n'),
+    prompt,
     sections,
     answered: state.answered,
     declined: state.declined,
     missing: state.missing,
+    measured: prompt === null ? null : measure(prompt, answers, state, options),
   };
 }
+
+/**
+ * What the draft costs and what this tool's own rules still find in it.
+ *
+ * Three claims replace "the perfect prompt", which is a quality judgement
+ * about text nobody has run. Each is measured and printed rather than
+ * promised, and the third is the one worth having: **the product's own rules
+ * are the acceptance test for its own output.**
+ */
+export interface DraftMeasurement {
+  /** Complete: the checklist, with its gaps named rather than scored. */
+  readonly complete: {
+    readonly required: number;
+    readonly answered: number;
+    /** Asked and turned down. A decision, kept apart from a gap. */
+    readonly declined: readonly string[];
+    readonly missing: readonly string[];
+  };
+  /**
+   * Cheap: what it costs, and whether it fits.
+   *
+   * `provenance` is always `estimated` and travels inside the object, because
+   * nobody has sent this prompt yet. A figure that could be read without its
+   * provenance would be a projection wearing a measurement's clothes.
+   */
+  readonly cheap: {
+    readonly tokens: number;
+    readonly tokenSource: string;
+    readonly model: string | null;
+    /** Null when it cannot be priced — never 0, which would read as free. */
+    readonly monthlyUsd: number | null;
+    readonly provenance: 'estimated';
+    readonly budgetUsd: number | null;
+    /** Three, never two. */
+    readonly verdict: 'within' | 'over' | 'cannot-tell';
+    /** Why it cannot tell. Null when it can — a refusal never arrives bare. */
+    readonly reason: 'no-budget' | 'no-model' | 'model-unpriced' | null;
+  };
+  /** Clean: what `trazum optimize` still recovers. The target is nothing. */
+  readonly clean: {
+    readonly rules: readonly { readonly id: string; readonly hits: number }[];
+    readonly tokensRecoverable: number;
+  };
+}
+
+export interface AssembleOptions {
+  /** Calls per month, for the estimate. The answers supply the model. */
+  readonly callsPerMonth?: number;
+  readonly avgOutputTokens?: number;
+  readonly pricing?: PricingCatalogue;
+  /** The level the cleanliness claim is measured at. Defaults to `safe`. */
+  readonly level?: RuleLevel;
+}
+
+const measure = (
+  prompt: string,
+  answers: Answers,
+  state: Interview,
+  options: AssembleOptions,
+): DraftMeasurement => {
+  const model = typeof answers['model'] === 'string' ? answers['model'].trim() : null;
+  const budgetAnswer = typeof answers['budget'] === 'string' ? Number(answers['budget']) : NaN;
+  const budgetUsd = Number.isFinite(budgetAnswer) ? budgetAnswer : null;
+
+  /*
+    Priced only when the catalogue knows the model.
+
+    `optimize` throws on a model it cannot price, which is right for a command
+    somebody typed a model into and wrong here: an unpriced model is one of the
+    three answers this measurement gives, not a crash. So the tokens and the
+    rules — neither of which needs a price — are measured first, and the money
+    is asked for separately and only when there is something to ask.
+  */
+  const known =
+    model !== null && (options.pricing ?? BUNDLED_CATALOGUE).byId.has(model);
+
+  const usage: Partial<UsageProfile> = {};
+  if (known) usage.model = model as string;
+  if (options.callsPerMonth !== undefined) usage.callsPerMonth = options.callsPerMonth;
+  if (options.avgOutputTokens !== undefined) usage.avgOutputTokens = options.avgOutputTokens;
+
+  const report = optimize(prompt, {
+    level: options.level ?? 'safe',
+    pricing: options.pricing,
+    usage,
+  });
+
+  const monthlyUsd = known && report.savings !== null ? report.savings.perMonth.before.totalUsd : null;
+
+  let verdict: DraftMeasurement['cheap']['verdict'] = 'cannot-tell';
+  let reason: DraftMeasurement['cheap']['reason'] = null;
+  if (budgetUsd === null) reason = 'no-budget';
+  else if (model === null) reason = 'no-model';
+  else if (monthlyUsd === null) reason = 'model-unpriced';
+  else verdict = monthlyUsd > budgetUsd ? 'over' : 'within';
+
+  return {
+    complete: {
+      required: SLOTS.filter((entry) => entry.required && isOpen(entry, answers)).length,
+      answered: state.answered.length,
+      declined: state.declined,
+      missing: state.missing,
+    },
+    cheap: {
+      tokens: report.tokensBefore,
+      tokenSource: report.tokenSource,
+      model,
+      monthlyUsd,
+      provenance: 'estimated',
+      budgetUsd,
+      verdict,
+      reason,
+    },
+    clean: {
+      rules: report.rules
+        .filter((entry) => entry.hits > 0)
+        .map((entry) => ({ id: entry.id, hits: entry.hits })),
+      tokensRecoverable: report.tokensSaved,
+    },
+  };
+};

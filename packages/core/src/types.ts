@@ -5,7 +5,17 @@ import type { Locale, RuleId } from './i18n/types.js';
 import type { PricingCatalogue } from './pricing.js';
 
 /** How aggressive the deterministic rules are allowed to be. */
-export type RuleLevel = 'safe' | 'aggressive';
+/**
+ * The levels an optimisation runs at, from the one place that defines them.
+ *
+ * Exported as a value, not only as a type. `@trazum/core` had the union and no
+ * list, so the valid set was not discoverable from the package and a caller
+ * reaching for a plausible third name — `balanced` — got no answer from the
+ * types at runtime and no error either.
+ */
+export const RULE_LEVELS = ['safe', 'aggressive'] as const;
+
+export type RuleLevel = (typeof RULE_LEVELS)[number];
 
 /**
  * A deterministic rule applied to the mutable text of a prompt.

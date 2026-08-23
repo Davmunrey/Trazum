@@ -4,6 +4,7 @@ import { describe, it } from 'node:test';
 import {
   CONTRACT_NAMES,
   LOCALES,
+  RULE_LEVELS,
   SECTIONS,
   assemble,
   conform,
@@ -48,9 +49,19 @@ const REQUIRED_ONLY = {
 
 describe('the assembly is what it claims to be', () => {
   it('leaves nothing for the optimiser to recover, at every level', () => {
+    /**
+     * The levels come from `RULE_LEVELS` rather than a list written here.
+     *
+     * The first version of this test iterated `safe`, `balanced` and
+     * `aggressive` and said "all three levels" in its own name. There are two.
+     * `balanced` is not a level this product has ever had — the library took
+     * any string and ran `safe`, so the sweep measured `safe` twice and called
+     * it three. The zero survived the correction; the sentence did not.
+     */
+    assert.ok(RULE_LEVELS.length >= 2, `only ${RULE_LEVELS.length} level`);
     const draft = assemble(ANSWERS);
     assert.ok(draft.prompt, 'nothing was assembled');
-    for (const level of ['safe', 'balanced', 'aggressive']) {
+    for (const level of RULE_LEVELS) {
       const report = optimize(draft.prompt, { level });
       const fired = report.rules.filter((entry) => entry.hits > 0).map((entry) => entry.id);
       assert.deepEqual(
@@ -74,7 +85,7 @@ describe('the assembly is what it claims to be', () => {
       'Summarise a support ticket',
       'In order to summarise a support ticket',
     );
-    const report = optimize(spoiled, { level: 'balanced' });
+    const report = optimize(spoiled, { level: 'safe' });
     assert.ok(
       report.rules.some((entry) => entry.hits > 0),
       'no rule fires even on a planted redundancy, so the zero above proves nothing',
@@ -178,5 +189,80 @@ describe('the prompt-draft contract', () => {
       [],
       'fields promised by the page and not emitted',
     );
+  });
+});
+
+describe('the three claims are measured, not asserted', () => {
+  it('refuses a level this product does not have, rather than running safe in silence', () => {
+    /**
+     * Found by running: `optimize` skipped aggressive rules unless the level
+     * *was* `aggressive`, so every other string produced safe-level results
+     * and said nothing. The CLI has always refused `--level balanced` by name;
+     * a library caller got the quiet downgrade instead.
+     */
+    assert.throws(() => optimize('anything', { level: 'balanced' }), /safe, aggressive/);
+    assert.throws(() => optimize('anything', { level: 'Safe' }), /received/);
+    // And it still accepts the ones that exist, so the guard is not a wall.
+    for (const level of RULE_LEVELS) assert.ok(optimize('anything', { level }));
+  });
+
+  it('measures nothing when there is no prompt, rather than measuring zeros', () => {
+    // A draft that was never assembled has not been measured as costing
+    // nothing. Null, not an object of zeros.
+    assert.equal(assemble({}).measured, null);
+    assert.notEqual(assemble(ANSWERS).measured, null);
+  });
+
+  it('keeps the estimate inside an object that says it is one', () => {
+    const { cheap } = assemble(ANSWERS, { callsPerMonth: 1000, avgOutputTokens: 300 }).measured;
+    assert.equal(cheap.provenance, 'estimated');
+    assert.ok(cheap.tokens > 0);
+    assert.equal(typeof cheap.tokenSource, 'string');
+  });
+
+  it('answers the budget three ways, and never bare', () => {
+    const priced = { ...ANSWERS, model: 'claude-opus-5' };
+    const within = assemble({ ...priced, budget: '1000' }, { callsPerMonth: 1000 }).measured.cheap;
+    assert.equal(within.verdict, 'within');
+    assert.equal(within.reason, null);
+
+    const over = assemble({ ...priced, budget: '0.01' }, { callsPerMonth: 1000 }).measured.cheap;
+    assert.equal(over.verdict, 'over');
+    assert.equal(over.reason, null);
+
+    // Three, never two — and each refusal names which of the three it is.
+    const noBudget = assemble({ ...priced, budget: null }).measured.cheap;
+    assert.equal(noBudget.verdict, 'cannot-tell');
+    assert.equal(noBudget.reason, 'no-budget');
+
+    const noModel = assemble({ ...ANSWERS, model: null, budget: '20' }).measured.cheap;
+    assert.equal(noModel.verdict, 'cannot-tell');
+    assert.equal(noModel.reason, 'no-model');
+
+    const unpriced = assemble({ ...ANSWERS, model: 'no-such-model', budget: '20' }).measured.cheap;
+    assert.equal(unpriced.verdict, 'cannot-tell');
+    assert.equal(unpriced.reason, 'model-unpriced');
+    assert.equal(unpriced.monthlyUsd, null, 'an unpriced model costs null, never 0');
+  });
+
+  it('counts the checklist without scoring it', () => {
+    const { complete } = assemble({ ...REQUIRED_ONLY, audience: null }).measured;
+    assert.equal(complete.required, 4);
+    assert.deepEqual(complete.missing, []);
+    assert.deepEqual(complete.declined, ['audience']);
+    // No score, no percentage, no grade: the gaps are named instead.
+    assert.deepEqual(Object.keys(complete).sort(), ['answered', 'declined', 'missing', 'required']);
+  });
+
+  it('reports the rules it still finds, and finds none in its own output', () => {
+    const { clean } = assemble(ANSWERS).measured;
+    assert.deepEqual(clean.rules, []);
+    assert.equal(clean.tokensRecoverable, 0);
+  });
+
+  it('and reports them when they are there, so the empty list is not the only answer it gives', () => {
+    const spoiled = assemble({ ...ANSWERS, task: 'In order to summarise a ticket.' }).measured;
+    assert.ok(spoiled.clean.rules.length > 0, 'a planted redundancy in an answer is not reported');
+    assert.ok(spoiled.clean.tokensRecoverable > 0);
   });
 });

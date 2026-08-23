@@ -11,7 +11,65 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**`optimize` accepted any string as a level and silently ran `safe`.** The rule
+loop skips aggressive rules unless the level *is* `aggressive`, so a typo — or a
+plausible-sounding `balanced`, which this product has never had — produced
+safe-level results with nothing said. The CLI has always refused
+`--level balanced` by name; **a library caller got the quiet downgrade
+instead**, which is the swallowed-flag defect one layer down. It now refuses,
+naming the levels that exist. Nothing correct depended on the old behaviour: no
+program means `safe` by writing something else.
+
+**And the previous chapter's own test was measuring `safe` twice.** It iterated
+`safe`, `balanced` and `aggressive` and said "all three levels" in its own name.
+There are two. The zero survived the correction — both real levels recover
+nothing from a draft — but the sentence did not, and the sweep now comes from
+`RULE_LEVELS` rather than a list typed into the test, so a level added tomorrow
+is covered without anybody remembering.
+
+**The slot-table guard read the whole page, and the page grew a second table.**
+Chapter one's check harvested every backticked first cell in
+`docs/prompt-writer.md`, which was right until this chapter added the three
+claims — whose rows are `complete`, `cheap` and `clean` — and it reported three
+slots that do not exist. **[Bound an assertion by its subject, never by its
+neighbour](docs/doctrine.md)**, which this repository has a helper for and that
+test was not using. Bounded to `## The slots` now, and still failing in both
+directions: a slot dropped from the table, and a phantom row added to it.
+
+**It was CI that caught it, and it should not have been.** `npm run verify` ran
+green, then the page gained the new table, then the commit went out — the local
+run was of the code and not of the change. The correction is in the record
+rather than in a habit nobody can check.
+
+**`RULE_LEVELS` is exported.** The package had the union and no list, so the
+valid set was not discoverable from `@trazum/core` at all.
+
 ### Added
+
+**Chapter three of 1.61: the three claims, measured.** Every assembled draft now
+carries `measured` — `complete`, `cheap` and `clean` — or **null** when there is
+no prompt to measure, never an object of zeros.
+
+**`complete` is a checklist with its gaps named and no score.** A grade out of
+ten is precisely what *nothing continuous invents a number* forbids, and the
+test asserts the object has exactly four keys so a score cannot arrive later
+without somebody noticing.
+
+**`cheap` keeps the estimate inside an object that says it is one.**
+`provenance` is always `estimated` and travels with the figure, because nobody
+has sent this prompt yet. `monthlyUsd` is **null when it cannot be priced**,
+never 0 — zero reads as free. The budget answers three ways and never bare:
+`within`, `over`, or `cannot-tell` with `no-budget`, `no-model` or
+`model-unpriced` beside it. Priced separately from the tokens and the rules,
+because `optimize` throws on a model it cannot price and an unpriced model is
+one of the three answers here rather than a crash.
+
+**`clean` reports what this tool's own rules still recover**, and finds nothing
+in its own output — with the opposite direction asserted too, so an empty list
+is not the only answer the measurement can give.
+
 
 **Chapter two of 1.61: the assembly, and the claim the arc is judged on.**
 `assemble()` puts the answers under headings in the fixed section order and

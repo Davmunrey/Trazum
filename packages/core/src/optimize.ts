@@ -9,6 +9,7 @@ import { computeSavings } from './savings.js';
 import { join, segment } from './segment.js';
 import { estimateTokens } from './tokenizer.js';
 import type { AsyncTokenCounter } from './tokenizer.js';
+import { RULE_LEVELS } from './types.js';
 import type {
   OptimizationResult,
   OptimizeOptions,
@@ -92,6 +93,22 @@ function distinctProtected(segments: Segment[]): string[] {
  */
 export function optimize(prompt: string, options: OptimizeOptions = {}): OptimizationResult {
   const level = options.level ?? 'safe';
+  /*
+    An unknown level used to run `safe` and say nothing.
+
+    The rule loop skips aggressive rules unless the level *is* `aggressive`, so
+    every other string — a typo, a plausible-sounding `balanced` — silently
+    produced safe-level results. The CLI has always refused `--level balanced`
+    by name; a library caller got the quiet downgrade instead, and a report
+    that says `safe` work was done at the level somebody asked for is the
+    swallowed-flag defect one layer down. Nothing correct depends on the old
+    behaviour: no program means `safe` by writing something else.
+  */
+  if (!RULE_LEVELS.includes(level)) {
+    throw new Error(
+      `level must be one of ${RULE_LEVELS.join(', ')} (received: ${JSON.stringify(level)})`,
+    );
+  }
   const locale: Locale = options.locale ?? DEFAULT_LOCALE;
   const t = getMessages(locale);
   const disabled = new Set<RuleId>(options.disableRules ?? []);
