@@ -47,6 +47,17 @@ anything bigger a red build. What is **not** a prompt is never held to it:
 a usage log is ordinary at fifty times this size, and its scale is the
 product's whole subject.
 
+## Memory holds a line
+
+The 25MB usage log profiles within a **384MB heap ceiling**, and the suite
+does not take an RSS reading's word for it: the probe runs in a child process
+with V8's old space capped at the line, so "fits" is enforced by the engine —
+a profile that needs more does not come back slower, it does not come back.
+The ceiling was proved to bind in both directions: the same probe dies at
+64MB, and a deliberate memory hog dies under the cap, so the flag is not
+decoration. Moving the line is a release-notes decision, the same as the
+token band.
+
 ## Why the defects are still visible
 
 Each defect the session found is pinned in the suite as its own named case,

@@ -13,6 +13,19 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Memory holds a line — chapter four of the 1.63 arc.** The 25MB usage log
+  profiles within a stated **384MB heap ceiling**, asserted in the suite the
+  only way that is honest on any machine: the probe runs in a child process
+  with V8's old space capped at the line, so "fits" is enforced by the engine
+  rather than inferred from an RSS reading a memory-rich runner would inflate
+  by collecting lazily. Deterministic 25MB log (the fuzzer's LCG, a fixed
+  clock), every line parsed, none skipped. The line was proved to bind in
+  both directions before it was trusted: the same probe dies at 64MB, and a
+  deliberate memory hog dies under a 48MB cap inside the suite itself, so
+  the flag is not decoration. Observed peak RSS for the run: ~158MB, which
+  is the headroom the release notes publish next to the promise. Moving the
+  line is a release-notes decision, the same as the token band.
+
 - **The refusal ceiling — chapter three of the 1.63 arc.** Above 400,000
   characters an input that claims to be a prompt is refused with the size and
   the limit named, never ground through. The number now lives exactly once,
