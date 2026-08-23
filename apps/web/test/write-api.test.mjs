@@ -136,3 +136,40 @@ describe('POST /api/write', () => {
     assert.equal(response.status, 400);
   });
 });
+
+describe('the answers map is not a place to write arbitrary properties', () => {
+  it('refuses `__proto__` and every other name the catalogue does not have', async () => {
+    /**
+     * CodeQL called this a remote property injection on the first version, and
+     * it was right about the shape: the loop iterated the request's own keys,
+     * so the property being written was a string the caller chose. The slot
+     * check refused the dangerous ones, but a write whose *target* is
+     * caller-controlled is only ever as safe as the guard immediately above it.
+     *
+     * The loop runs over the catalogue now, so the writable keys are a fixed
+     * literal set. Asserted by sending the names anyway.
+     */
+    for (const name of ['__proto__', 'constructor', 'prototype', 'toString']) {
+      const response = await post({ answers: { ...REQUIRED, [name]: 'x' } });
+      assert.equal(response.status, 400, `${name} was accepted`);
+    }
+  });
+
+  it('leaves Object.prototype alone even when asked nicely', async () => {
+    const response = await post({
+      answers: { ...REQUIRED, __proto__: { polluted: 'yes' } },
+    });
+    assert.ok(response.status === 400 || response.status === 200);
+    assert.equal({}.polluted, undefined, 'Object.prototype was polluted');
+  });
+
+  it('still assembles from a body whose keys arrive in any order', async () => {
+    // The catalogue decides the order now, so a caller sending them backwards
+    // must get the same prompt as one sending them forwards.
+    const forwards = await (await post({ answers: REQUIRED })).json();
+    const backwards = await (
+      await post({ answers: Object.fromEntries(Object.entries(REQUIRED).reverse()) })
+    ).json();
+    assert.equal(forwards.draft.prompt, backwards.draft.prompt);
+  });
+});

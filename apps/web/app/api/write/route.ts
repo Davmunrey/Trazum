@@ -67,25 +67,43 @@ export async function POST(request: Request) {
     return badRequest(t.api.answersNotAnObject);
   }
 
+  const sent = raw as Record<string, unknown>;
+
   /*
-    Every key checked against the catalogue, and every value against its type.
+    Refused first, then built — and the loop runs over the catalogue.
 
     An unknown slot is refused rather than ignored: a browser that misspells one
     would otherwise get a draft assembled without it and no way to tell that
     from an answer the assembly had no use for.
+
+    **The keys written here come from `SLOTS`, never from the request.** The
+    first version iterated the request's own entries, so the property being
+    assigned was a string the caller chose — `__proto__` among them. The slot
+    check would have refused that one, but a write whose *target* is
+    caller-controlled is only ever as safe as the guard immediately above it,
+    and CodeQL was right to call it what it is. Iterating the catalogue makes
+    the set of writable keys a fixed literal, and the map has no prototype to
+    reach in the first place.
   */
-  const answers: Record<string, string | null> = {};
-  for (const [id, value] of Object.entries(raw as Record<string, unknown>)) {
+  for (const id of Object.keys(sent)) {
     if (slot(id) === undefined) return badRequest(t.api.unknownSlot(id));
+  }
+
+  const answers: Record<string, string | null> = Object.create(null) as Record<string, string | null>;
+  for (const entry of SLOTS) {
+    if (!Object.prototype.hasOwnProperty.call(sent, entry.id)) continue;
+    const value = sent[entry.id];
     if (value === null) {
-      answers[id] = null;
+      answers[entry.id] = null;
       continue;
     }
-    if (typeof value !== 'string') return badRequest(t.api.answerNotText(id));
+    if (typeof value !== 'string') return badRequest(t.api.answerNotText(entry.id));
     if (value.length > MAX_ANSWER_CHARS) {
-      return badRequest(t.api.answerTooLong(id, MAX_ANSWER_CHARS.toLocaleString(t.numberLocale)));
+      return badRequest(
+        t.api.answerTooLong(entry.id, MAX_ANSWER_CHARS.toLocaleString(t.numberLocale)),
+      );
     }
-    answers[id] = value;
+    answers[entry.id] = value;
   }
 
   const model = answers['model'];

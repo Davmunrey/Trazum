@@ -44,6 +44,16 @@ exists in a catalogue and appears nowhere is a promise nobody reads.
 
 ### Fixed
 
+**CodeQL called the route's answer loop a remote property injection, and it was
+right about the shape.** The first version iterated the request's own keys, so
+the property being assigned was a string the caller chose — `__proto__` among
+them. The slot check would have refused that one, but **a write whose *target*
+is caller-controlled is only ever as safe as the guard immediately above it**.
+The loop runs over the catalogue now, so the writable keys are a fixed literal
+set, and the map is created with no prototype to reach in the first place. Sent
+`__proto__`, `constructor`, `prototype` and `toString` anyway, and asserted
+`Object.prototype` is untouched.
+
 **Two things an existing guard and a second reading caught in this chapter's own
 work.** The `Write` tab shipped without `forceMount` on the reasoning that
 mounting it would cost one request per page load from readers who never open it
