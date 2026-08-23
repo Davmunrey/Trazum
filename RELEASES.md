@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.62.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.62.1**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,57 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.62.1 — "This machine, measured"
+
+**The 1.63 arc opens with its first two chapters: the bench, and the ratio
+gate it feeds.** The stress session timed the pathological cases by hand — 1MB
+of prose in about a second, a 200,000-line log in about 1.3 — and nothing held
+them there. Now something can.
+
+**`trazum bench` measures this machine, honestly.** The standard workloads — a
+1MB prompt at both levels, a 200,000-line profile, a 10,000-file walk, a
+20,000-line roll-up — one shot each, wall time and peak RSS, as a table and as
+`--json`. Each workload runs in its own child process, because a memory peak
+is a fact about a process: five workloads in one heap would each report the
+high-water mark of whichever ran biggest before them, and the test proves the
+isolation by watching a peak sit *below* its predecessor, a shape one process
+cannot produce. The inputs are generated with the hostile-input suite's own
+LCG against a fixed pricing date — deterministic, never written to your
+project (proved by running the bench inside an empty directory and looking).
+"Peak heap" from the plan ships as **peak RSS, named as such** — a heap
+high-water mark is not observable from inside a synchronous run without
+moving the number.
+
+**The gate is a ratio, never a wall clock.** CI runners lie about time, so
+each workload is also timed against a fixed calibration loop in the same
+process — deliberately *not* the product's own code, so a ratio moves only
+when the workload does — and the runner lies to both by the same amount, so
+the lie cancels out. `--record` writes the ratios as a committed baseline;
+`--against` with a stated `--max-ratio` exits 1 past the factor, on stderr,
+the way `check` has always gated — the JSON never changes shape with the gate
+flags. A workload measured but absent from the baseline fails rather than
+passing silently. The baseline format joins the versioning freeze beside
+`trazum.baseline.json`: an unknown version is a loud error naming `--record`.
+The gate is proved by breaking it — a real run against an absurdly small
+recorded ratio goes red with the workload named.
+
+**Landing it collected four debts, each from a guard doing its job**: the
+bench document needed a CLAIMED harvest (it now holds its own `json-output.md`
+table in both directions), `docs/format.md` needed a row (seventeen documents
+emitted of eighteen defined, with the count guards taught the indefinite
+article), the `--json` command partition had bench in neither list, and the
+security suite refused a second `child_process` import — the spawn moved into
+`git.ts` as `runSelf()`, under the same stated rules, nothing loosened.
+
+Not in these chapters, per the plan: wiring this repository's own CI to a
+committed baseline. That is the arc's closing condition — the gate goes live
+for whichever workloads prove stable, and a workload dropped for variance is
+dropped loudly in the release notes, never left flaking.
+
+This container's numbers, transcribed: 1MB optimize (safe) 818ms / 152MB;
+aggressive 1,071ms / 148MB; 200k-line profile 1,673ms / 230MB; 10k-file walk
+118ms; 20k-line roll-up 7ms.
 
 ## 1.62.0 — "Held to its own standard"
 
