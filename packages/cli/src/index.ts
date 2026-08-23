@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-import { execFileSync } from 'node:child_process';
 import { readdirSync, readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, open, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { cpus, tmpdir } from 'node:os';
@@ -208,6 +207,7 @@ import {
   pathInRepository,
   repositoryRoot,
   revisionsFor,
+  runSelf,
 } from './git.js';
 import type { Revision } from './git.js';
 import { fetchProviderUsage, findCredential } from './connect.js';
@@ -2819,11 +2819,7 @@ async function commandBench(args: Args, t: CliMessages): Promise<void> {
   const script = fileURLToPath(import.meta.url);
   const workloads: BenchMeasurement[] = [];
   for (const id of BENCH_WORKLOADS) {
-    const stdout = execFileSync(
-      process.execPath,
-      [script, 'bench', '--workload', id, '--json', '--locale', t.locale],
-      { encoding: 'utf8', maxBuffer: 8 * 1024 * 1024 },
-    );
+    const stdout = runSelf(script, ['bench', '--workload', id, '--json', '--locale', t.locale]);
     workloads.push(JSON.parse(stdout) as BenchMeasurement);
   }
 

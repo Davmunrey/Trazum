@@ -4,9 +4,10 @@ import { isAbsolute, relative, resolve, sep } from 'node:path';
 /**
  * The only place in this repository that runs another program.
  *
- * `trazum blame` needs a file's history, and the history lives in git. Nothing
- * else here has ever shelled out, so this module is written as if it were the
- * whole attack surface — because it is.
+ * `trazum blame` needs a file's history, and the history lives in git;
+ * `trazum bench` needs a fresh process per workload, because a memory peak is
+ * a fact about a process. Nothing else here has ever shelled out, so this
+ * module is written as if it were the whole attack surface — because it is.
  *
  * The rules, and why each one is here rather than in a comment on the call site:
  *
@@ -185,6 +186,37 @@ export function pathInRepository(root: string, target: string): string | null {
     return null;
   }
   return rel.split(sep).join('/');
+}
+
+/**
+ * Two minutes: a bench child runs a workload in seconds, and a machine where
+ * it takes longer than this deserves a loud failure, not a silent wait.
+ */
+const SELF_TIMEOUT_MS = 120_000;
+
+/**
+ * Runs this same CLI in a child process and returns its stdout.
+ *
+ * The bench's isolation seam, kept in this module so the invariant the
+ * security suite asserts — child_process appears in exactly one file — stays
+ * whole. The same rules as the git spawn, and one more: **every argument is
+ * the caller's own.** The bench passes a script path derived from its own
+ * module URL, workload ids from a const list, and a locale its catalogue
+ * produced; nothing typed by a user reaches this argv.
+ */
+export function runSelf(scriptPath: string, args: readonly string[]): string {
+  const result = spawnSync(process.execPath, [scriptPath, ...args], {
+    // Stated rather than left to the default, same as the git spawn above.
+    shell: false,
+    encoding: 'utf8',
+    timeout: SELF_TIMEOUT_MS,
+    maxBuffer: MAX_BUFFER,
+  });
+  if (result.error !== undefined) throw result.error;
+  if (result.status !== 0) {
+    throw new Error(result.stderr.trim() || `child exited with status ${result.status}`);
+  }
+  return result.stdout;
 }
 
 /**
