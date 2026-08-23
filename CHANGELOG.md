@@ -9,7 +9,10 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
-## Unreleased
+## 1.62.1 — "This machine, measured"
+
+**Chapters one and two of [the 1.63 arc](docs/plan-1.62-1.63.md)**: the bench
+exists, and the gate it feeds is a ratio, never a wall clock.
 
 ### Added
 
@@ -51,6 +54,23 @@ merged commit with no entry is a change only `git log` remembers.
   "Peak heap" from the plan is reported as **peak RSS** and named as such:
   a heap high-water mark is not observable from inside a synchronous run
   without instrumentation that would itself move the number.
+
+### Fixed
+
+- **Landing the bench collected four debts, each from a guard doing its job.**
+  Three fired on the first push: the bench document had no CLAIMED harvest,
+  `docs/format.md` had no row (its count and the README's moved to seventeen
+  of eighteen, and the two count guards learned the indefinite article on the
+  way — "a eighteenth" was the sentence they would have demanded), and the
+  `--json` command partition had bench in neither list. The fourth was the
+  security suite: `child_process` is allowed in exactly one file, and the
+  bench's spawn had landed in the CLI instead — it moved into `git.ts` as
+  `runSelf()`, under the same stated rules, with nothing loosened.
+
+### Release mechanics
+
+- Five manifests, `@trazum/core` in three places, lockfile at **1.62.1**;
+  README Action pins advanced to `b55038e` (1.62.0).
 
 ## 1.62.0 — "Held to its own standard"
 

@@ -1184,6 +1184,20 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.62.1 — "This machine, measured" — released
+
+**The 1.63 arc opens: the bench and the ratio gate, chapters one and two.**
+`trazum bench` runs the standard workloads one shot each — wall time and peak
+RSS, each workload in its own child process because a peak is a fact about a
+process — on inputs generated with the fuzzer's own LCG, never written to the
+project. The gate holds `wallMs` over an in-process calibration loop, because
+a CI runner lies about wall time to the workload and the yardstick alike and
+the ratio is what is left when the lie cancels out: `--record` writes a
+committed baseline, `--against` with a stated `--max-ratio` exits 1 past the
+factor. Landing it collected four debts from standing guards — a CLAIMED
+harvest, a format.md row and count, the `--json` partition, and the
+one-file-spawns rule that moved the child spawn into `git.ts`.
+
 ## 1.62.0 — "Held to its own standard" — released
 
 **The 1.62 arc closes on the properties it promised**, stated in the release
@@ -2051,7 +2065,8 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 **One arc remains planned: [docs/plan-1.62-1.63.md](docs/plan-1.62-1.63.md)** —
 the 1.62 arc closed at 1.62.0 with all five chapters landed; the 1.63 arc runs
-as 1.62.x and closes at 1.63.0.
+as 1.62.x and closes at 1.63.0, and is two chapters in — the bench and the
+ratio gate landed at 1.62.1; the refusal ceiling and the heap line remain.
 
 **1.63 — scale is measured, not assumed.** The pathological cases time well
 today (1MB of prose ~1s, a 200,000-line log ~1.3s) and nothing holds them
