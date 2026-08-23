@@ -1,14 +1,14 @@
 # The interchange format
 
-Trazum emits **fifteen** documents as data, and defines a sixteenth it does not
-emit. All sixteen are contracts, enforced in both directions by parity tests in
+Trazum emits **sixteen** documents as data, and defines a seventeenth it does not
+emit. All seventeen are contracts, enforced in both directions by parity tests in
 this repository, and this page is what makes them something another tool can
 build against rather than something to reverse engineer from output.
 
 Two distinctions are drawn in the table rather than blurred, because each one
 changes what you can actually do:
 
-- **`--contract` names ten of them.** That is narrower than being documented: a
+- **`--contract` names eleven of them.** That is narrower than being documented: a
   named contract can be checked against a document *you* produced with a single
   command, and the other six can only be read against their section here.
 - **The outcome report is defined but not emitted.** `trazum profile` renders it
@@ -34,6 +34,7 @@ changes what you can actually do:
 | **pulse** | `trazum pulse --json` | — | [json-output.md](json-output.md#the-pulse-document) |
 | **rule yield** | `trazum rules --measure --json` | — | [json-output.md](json-output.md#the-rule-yield-document) |
 | **gateway refusal** | `trazum gateway`, as the HTTP 402 body | — | [json-output.md](json-output.md#the-gateway-refusal-document) |
+| **prompt draft** | `trazum write --json`, and `@trazum/core`'s `assemble()` | `prompt-draft` | [json-output.md](json-output.md#the-prompt-draft-document) |
 
 The count above said **seven** for as long as the table had ten rows in it, and
 it was still saying seven after the outcome report and the annual record were

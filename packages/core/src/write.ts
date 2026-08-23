@@ -163,3 +163,112 @@ export function interview(answers: Answers): Interview {
     missing: unasked.filter((entry) => entry.required).map((entry) => entry.id),
   };
 }
+
+/**
+ * How each slot appears in the assembled prompt.
+ *
+ * A slot either supplies the section's opening line on its own, or arrives
+ * under a label. Nothing here paraphrases an answer: the words are the
+ * author's, and a writer that rewrote them would be answering a question
+ * nobody asked it.
+ */
+const LABEL: Readonly<Record<string, string | null>> = {
+  role: null,
+  audience: 'Audience:',
+  task: null,
+  inputs: null,
+  'output-shape': 'Format:',
+  'output-schema': 'Fields:',
+  'output-length': 'At most:',
+  constraints: null,
+  refusal: 'When you cannot answer:',
+  examples: null,
+  'example-inputs': 'Input:',
+  'failure-modes': null,
+};
+
+/**
+ * The heading each section is written under.
+ *
+ * **English, in every locale, on purpose.** These are structure rather than
+ * prose — a contract with the model, not words for a human reader — and the
+ * arc promises the same answers produce the same prompt byte for byte on any
+ * machine *and in any locale*. A heading that moved with `TRAZUM_LOCALE` would
+ * make the assembled prompt a function of the machine that ran the interview,
+ * which is the one thing [the locale rule](../../../ROADMAP.md) forbids.
+ */
+const HEADING: Readonly<Record<Section, string>> = {
+  role: 'Role',
+  task: 'Task',
+  inputs: 'Inputs',
+  output: 'Output',
+  constraints: 'Constraints',
+  examples: 'Examples',
+  'failure-modes': 'Failure modes',
+};
+
+export interface DraftSection {
+  readonly section: Section;
+  readonly text: string;
+  /** The slots that put words in it, in the order they appear. */
+  readonly from: readonly string[];
+}
+
+export interface PromptDraft {
+  readonly schemaVersion: 1;
+  /**
+   * The assembled prompt, or **null** when required answers are missing.
+   *
+   * Null and never `''`: an empty string would read as a prompt that came out
+   * empty, and the difference between "not built" and "built and blank" is the
+   * one this product refuses to lose.
+   */
+  readonly prompt: string | null;
+  readonly sections: readonly DraftSection[];
+  readonly answered: readonly string[];
+  readonly declined: readonly string[];
+  /** Required, open and unanswered. Empty exactly when `prompt` is a string. */
+  readonly missing: readonly string[];
+}
+
+const line = (id: string, answer: string): string => {
+  const label = LABEL[id] ?? null;
+  return label === null ? answer.trim() : `${label} ${answer.trim()}`;
+};
+
+/**
+ * Assemble the prompt, or refuse and say what is missing.
+ *
+ * Deterministic in both senses that matter: the same answers produce the same
+ * bytes, and nothing here consults the network, the clock or the locale.
+ */
+export function assemble(answers: Answers): PromptDraft {
+  const state = interview(answers);
+  const sections: DraftSection[] = [];
+
+  for (const section of SECTIONS) {
+    const filled = SLOTS.filter(
+      (entry) =>
+        entry.section === section &&
+        isOpen(entry, answers) &&
+        typeof answers[entry.id] === 'string' &&
+        (answers[entry.id] as string).trim().length > 0,
+    );
+    if (filled.length === 0) continue;
+    const body = filled.map((entry) => line(entry.id, answers[entry.id] as string)).join('\n');
+    sections.push({
+      section,
+      text: `${HEADING[section]}\n${body}`,
+      from: filled.map((entry) => entry.id),
+    });
+  }
+
+  return {
+    schemaVersion: 1,
+    prompt: state.missing.length > 0 ? null : sections.map((entry) => entry.text).join('\n\n'),
+    sections,
+    answered: state.answered,
+    declined: state.declined,
+    missing: state.missing,
+  };
+}

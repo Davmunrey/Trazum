@@ -71,6 +71,7 @@ const CLAIMED = {
   '## The pulse document': 'packages/cli/test/contract-coverage.test.js',
   '## The rule-yield document': 'packages/cli/test/contract-coverage.test.js',
   '## The gateway refusal document': 'packages/cli/test/gateway-proxy.test.js',
+  '## The prompt-draft document': 'packages/core/test/write-assembly.test.js',
 };
 
 describe('every contract in docs/json-output.md is claimed by a guard', () => {

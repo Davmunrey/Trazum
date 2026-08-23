@@ -13,6 +13,42 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**Chapter two of 1.61: the assembly, and the claim the arc is judged on.**
+`assemble()` puts the answers under headings in the fixed section order and
+returns a `prompt-draft`. Nothing is paraphrased — the words are the author's,
+and a writer that rewrote them would be answering a question nobody asked it.
+
+**`trazum optimize` recovers nothing from a draft the templates produced**, at
+all three levels, measured by running it. That is the arc's acceptance test: a
+writer whose output this tool still improves would be selling the cure for a
+disease it had just caused, and the number proving it would be printed here.
+**And the zero is not vacuous** — the same draft with a verbose phrase pushed
+into it has to come back non-zero, or a rules engine that found nothing in
+anything would satisfy the check forever.
+
+**The same answers assemble the same bytes in every locale.** The headings are
+English everywhere on purpose: they are structure rather than prose, and a
+heading that moved with `TRAZUM_LOCALE` would make the prompt a function of the
+machine that ran the interview.
+
+**The refusal and the output are the same fact read two ways.** `prompt` is
+`null` — never `''` — when required answers are missing, and `missing` is empty
+**exactly when** `prompt` is a string; the test asserts the equivalence in both
+directions over four answer sets rather than asserting each half separately. A
+declined slot stays out of `missing` and in its own list: a decision is not a
+gap. A section nobody answered is omitted rather than written empty, and a slot
+that fills no section (`model`, `budget`) puts no words in the prompt at all.
+
+**`prompt-draft` joins the interchange format** — the eleventh contract
+`--contract` accepts, the sixteenth document. This was the plan's own test of
+the two releases before it, and all three guards fired as designed: the new
+table needed a claim, `docs/format.md` and `README.md` needed their counts moved
+to sixteen and a seventeenth, and the article map refused to guess one for a new
+contract name. A fourth caught the rest — the library-documents guard from #361
+required the draft to be handed to the package's own checker, since it is a
+contract `@trazum/core` can build with nothing but answers.
+
+
 **Chapter one of 1.61: the questions.** `@trazum/core` now carries the slot
 catalogue and the interview behind `trazum write` — fourteen slots, four of them
 required, three of them gated on an earlier answer. No model decides what to

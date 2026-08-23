@@ -45,6 +45,7 @@ export const CONTRACT_NAMES = [
   'outcome-report',
   'annual-record',
   'roll-up',
+  'prompt-draft',
 ] as const;
 
 export type ContractName = (typeof CONTRACT_NAMES)[number];
@@ -325,6 +326,30 @@ const DOCUMENT_RULES: Record<Exclude<ContractName, 'usage-log'>, FieldRule[]> = 
       v === 'within' || v === 'over' || v === 'cannot-tell'),
     rule('call', 'an object, or null when nothing was described', (v) => v === null || isObject(v)),
     rule('budget', 'an object, or null when there is no budget', (v) => v === null || isObject(v)),
+  ],
+  /**
+   * A prompt somebody was interviewed into, and what the interview could not
+   * get out of them.
+   *
+   * `prompt` is **null and never an empty string** when required answers are
+   * missing: an empty string reads as a prompt that came out blank, and the
+   * difference between "not built" and "built and empty" is the one this
+   * format refuses to lose everywhere else.
+   *
+   * `declined` and `missing` are separate arrays for the same reason. Somebody
+   * who was asked and said no is not somebody who was never asked, and folding
+   * the two would turn a decision into a gap.
+   */
+  'prompt-draft': [
+    rule(
+      'prompt',
+      'the assembled prompt, or **null** when required answers are missing — never an empty string',
+      (v) => v === null || typeof v === 'string',
+    ),
+    rule('sections', 'an array of the sections that got words, in the order they are written', isArray),
+    rule('answered', 'an array of the slots that were answered', isArray),
+    rule('declined', 'an array of the slots somebody was asked and declined — never folded into missing', isArray),
+    rule('missing', 'an array of required slots still unanswered; empty exactly when prompt is a string', isArray),
   ],
 };
 
