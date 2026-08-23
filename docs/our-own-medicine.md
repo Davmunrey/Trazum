@@ -76,6 +76,7 @@ misses is a tool nobody believes. A selection, and these are the real ones:
 | #364 | `docs/format.md` and `README.md` said the interchange format was twelve documents, and the guard on that count compared the sentence to the table — both written by hand, so three missing documents left the two agreeing | **a second time on the same page** |
 | #366 | `docs/doctrine.md` had no guard at all — emptying the file broke no test, in the page whose subject is checking what enforces your own rules | **since it was written** |
 | #377 | Six prose pages had no guard at all — emptying `SECURITY.md`, `VERSIONING.md`, `docs/ci.md`, `docs/running.md`, `docs/accounts.md` or `docs/authoring-rules.md` broke no test | **since they were written** |
+| #380 | Text inside a code span came out rewritten with every mask believed on — the segmenter's overlap handling skipped the legitimate match after discarding an illegitimate one | **since the masker shipped** |
 | #379 | `optimize` run on its own output saved more — one pass missed its own cascades, found by a fuzzer on 1 input in 4,000 | **since the rules shipped** |
 | #379 | `spend_guard` accepted `outputTokens: -500`, priced the call at −$0.0075 and said **yes** — a lie about output tokens bought an approval | **since the guard shipped** |
 | #379 | A negative budget was judged `over` and a negative volume billed −$1.26 a month; `--cache-hit-rate 2` passed the flag door while the config door refused it | since 1.61.0 / **since the flag shipped** |

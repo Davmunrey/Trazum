@@ -39,6 +39,12 @@ const ATOMS = [
   '\u0000null-byte', '\u200bzero-width\u200b', 'e\u0301 combining', '\ud835\udd66nicode math',
   'a'.repeat(3000), '\n\n\n\n\n\n', '<html><b>tags</b></html>', '{"json": true, "n": 1.5}',
   '-----BEGIN FAKE-----\nAAAA\n-----END FAKE-----', '\ud83d',
+  // Bait: text a rule would rewrite, deliberately inside protected spans.
+  // Without these the mask property can never fail -- the corpus would hold
+  // no code a rule wants to touch, and a zero that cannot be non-zero proves
+  // nothing. Removing the inline-code mask fails the property through these.
+  '`in order to  keep  these  spaces`', '```\nPlease kindly note that   \nIMPORTANT: inside\n```',
+  'https://example.com/in%20order%20to?keep=very%20very',
 ];
 
 const prompts = (seed, iterations) => {
@@ -185,5 +191,53 @@ describe('money is never negative, whatever the input', () => {
       const { measured } = assemble(REQUIRED, { callsPerMonth });
       assert.ok(measured.cheap.monthlyUsd === null || measured.cheap.monthlyUsd >= 0, `callsPerMonth ${callsPerMonth} went negative`);
     }
+  });
+});
+
+describe('what a mask promises, over the whole corpus', () => {
+  /**
+   * Code blocks, inline code and URLs must survive `optimize` byte-for-byte.
+   *
+   * Three fixtures could hold that; the corpus is where the hard cases live —
+   * the lone surrogate *inside* a code span, the URL against an RTL run, the
+   * fence that never closes. Extracted from the input by the same shapes the
+   * masker protects, and looked for verbatim in the output.
+   */
+  const protectedSpans = (text) => {
+    const spans = [];
+    for (const match of text.matchAll(/```[\s\S]*?```/g)) spans.push(match[0]);
+    const noFences = text.replace(/```[\s\S]*?```/g, '');
+    for (const match of noFences.matchAll(/`[^`\n]+`/g)) spans.push(match[0]);
+    for (const match of noFences.matchAll(/https?:\/\/[^\s)]+/g)) spans.push(match[0]);
+    return spans;
+  };
+
+  it('keeps every protected span, byte for byte', () => {
+    const CORPUS = prompts(97, 800);
+    const lost = [];
+    let seen = 0;
+    for (const { text, level } of CORPUS) {
+      const spans = protectedSpans(text);
+      if (spans.length === 0) continue;
+      seen += spans.length;
+      const { optimized } = optimize(text, { level });
+      for (const span of spans) {
+        if (!optimized.includes(span)) {
+          lost.push({ level, span: JSON.stringify(span.slice(0, 60)), input: JSON.stringify(text.slice(0, 80)) });
+        }
+      }
+    }
+    assert.ok(seen > 300, `only ${seen} protected spans in the corpus — the atoms have drifted`);
+    assert.deepEqual(lost.slice(0, 5), [], `${lost.length} of ${seen} protected spans did not survive`);
+  });
+
+  it('and the extractor can see a loss, on a case written for it', () => {
+    // The property above passes on this repository, which is the state a
+    // guard is least able to prove itself in: hand the checker an output that
+    // really did lose the span.
+    const text = 'Keep `this span` safe.';
+    const spans = protectedSpans(text);
+    assert.deepEqual(spans, ['`this span`']);
+    assert.ok(!'Keep  safe.'.includes(spans[0]));
   });
 });

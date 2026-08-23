@@ -45,9 +45,28 @@ interface Match {
 
 /** Splits the text into segments, marking what must not be modified. */
 export function segment(text: string): Segment[] {
-  const matches: Match[] = [];
+  /*
+    Each pattern scans with the earlier patterns' ranges already reserved, and
+    a match that overlaps a reservation restarts the scan **after the
+    reservation** rather than after itself.
+
+    The old version scanned every pattern over the whole text and dropped the
+    overlaps afterwards, which loses more than the overlap: on
+    ``` ``` `span` ``` ``` shapes, inline-code matched from the *third
+    backtick of a closing fence* to the opening of the real span — an
+    illegitimate match, later dropped — but its `lastIndex` had already
+    advanced past the real span's opening backtick, so the legitimate match
+    was never seen and the span was left mutable. A fuzzed corpus caught it:
+    bait text inside a code span came out rewritten, with every mask believed
+    to be on.
+  */
+  const kept: Match[] = [];
 
   for (const { kind, regex, trimTrailing } of PATTERNS) {
+    const reserved = [...kept].sort((a, b) => a.start - b.start);
+    const overlapping = (start: number, end: number): Match | undefined =>
+      reserved.find((range) => start < range.end && end > range.start);
+
     // Copy the regex so lastIndex is not shared between calls.
     const re = new RegExp(regex.source, regex.flags);
     let m: RegExpExecArray | null;
@@ -59,21 +78,22 @@ export function segment(text: string): Segment[] {
       }
       if (trimTrailing) matched = matched.replace(trimTrailing, '');
       if (matched.length === 0) continue;
-      matches.push({ start: m.index, end: m.index + matched.length, kind });
+      const start = m.index;
+      const end = start + matched.length;
+      const hit = overlapping(start, end);
+      if (hit !== undefined) {
+        // Not simply skipped: the scan resumes where the reservation ends, so
+        // a legitimate match sitting just past it is still found.
+        re.lastIndex = Math.max(hit.end, start + 1);
+        continue;
+      }
+      kept.push({ start, end, kind });
     }
   }
 
-  // Sort by start and, on a tie, longest span first.
-  matches.sort((a, b) => a.start - b.start || b.end - a.end);
-
-  // Drop overlaps, keeping the first match at each position.
-  const kept: Match[] = [];
-  let cursor = 0;
-  for (const match of matches) {
-    if (match.start < cursor) continue;
-    kept.push(match);
-    cursor = match.end;
-  }
+  // Order for emission; within one pattern matches never overlap, and across
+  // patterns the reservation check above already guaranteed it.
+  kept.sort((a, b) => a.start - b.start);
 
   const segments: Segment[] = [];
   let pos = 0;
