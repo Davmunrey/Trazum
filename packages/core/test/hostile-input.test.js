@@ -128,6 +128,25 @@ describe('malformed logs are read, never thrown at', () => {
     assert.equal({}.polluted, undefined, 'a log line reached Object.prototype');
   });
 
+  it('names every line it could not read, rather than reading past it', () => {
+    /**
+     * Total over strings is only half the property. The other half is that a
+     * refusal never disappears: a line the parser could not read lands in
+     * `skippedLines` with its 1-based position, because "the fuzzer did not
+     * crash" and "the unreadable third of your log is accounted for" are
+     * different statements.
+     */
+    const log = [
+      '{"model":"claude-opus-5","usage":{"input_tokens":100,"output_tokens":10}}',
+      'not json at all',
+      '{"model":"claude-opus-5","usage":{"input_tokens":200,"output_tokens":20}}',
+      '{broken',
+    ].join('\n');
+    const report = profileUsage(log, { catalogue: BUNDLED_CATALOGUE });
+    assert.deepEqual(report.skippedLines, [2, 4]);
+    assert.equal(report.total.calls, 2, 'a skipped line changed the arithmetic of the readable ones');
+  });
+
   it('conforms and rolls up hostile documents without throwing', () => {
     for (const doc of ['{}', '[]', 'null', '"str"', 'not json', '{"schemaVersion":"1"}']) {
       for (const contract of ['profile', 'prompt-draft', 'roll-up', undefined]) {

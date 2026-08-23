@@ -1184,6 +1184,24 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.61.2 — "An input nobody had tried" — released
+
+**Seven defects, one stress session, one shape.** The first five chapters of
+the 1.62 arc: money can never be negative and no door disagrees with its
+sibling; `optimize` runs to a fixed point and is idempotent by property; the
+stress session is a seeded fixture in CI; masks survive byte-for-byte over the
+corpus; and a line the parser cannot read is named, never read past.
+
+The worst two: `spend_guard` said **yes** to `outputTokens: -500` because a
+negative estimate lowers projected spend — an agent that lies about its output
+bought an approval — and text inside a code span came out rewritten with every
+mask believed on, since the masker shipped, because the segmenter's scan
+position skipped a legitimate match after discarding an illegitimate one.
+
+The zero that proved nothing is on the record twice: the mask property could
+not fail until bait atoms — rules' own targets *inside* protected spans — went
+into the corpus, and defect seven fell out the same hour.
+
 ## 1.61.1 — "Nothing was holding these" — released
 
 **A patch whose two entries are the same act**: take something this repository
@@ -2020,7 +2038,7 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**Two arcs are planned: [docs/plan-1.62-1.63.md](docs/plan-1.62-1.63.md).**
+**Two arcs are planned: [docs/plan-1.62-1.63.md](docs/plan-1.62-1.63.md)** — the 1.62 arc is five chapters in.
 The 1.62 arc runs as 1.61.x and closes at 1.62.0; the 1.63 arc runs as 1.62.x
 and closes at 1.63.0.
 
