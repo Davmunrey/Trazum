@@ -11,6 +11,27 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+**A seventh defect, found while proving the mask property could fail.** The
+chapter that holds code blocks, inline code and URLs to byte-for-byte survival
+started with a zero that proved nothing — the corpus held no code a rule
+wanted to touch — so bait atoms went in: a verbose phrase and double spaces
+*inside* protected spans. **They came out rewritten, with every mask believed
+to be on.** On ``` ``` `span` ``` ``` shapes, the segmenter scanned every
+pattern over the whole text and dropped overlaps afterwards, which loses more
+than the overlap: `inline-code` matched from the *third backtick of a closing
+fence* to the real span's opening backtick — an illegitimate match, later
+dropped — but its scan position had already advanced past the real span, so
+the legitimate match was never seen and the span was left mutable.
+
+Each pattern now scans with the earlier patterns' ranges reserved, and a match
+that overlaps a reservation restarts **after the reservation** rather than
+after itself. The mask property — every protected span survives `optimize`
+byte-for-byte, over the whole hostile corpus — is chapter four of the 1.62
+arc, and it holds now, with the bait atoms in the corpus so the zero can never
+go vacuous again.
+
 ### Added
 
 **The plan through 1.62 and 1.63** — [docs/plan-1.62-1.63.md](docs/plan-1.62-1.63.md),
