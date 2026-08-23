@@ -119,40 +119,74 @@ export function optimize(prompt: string, options: OptimizeOptions = {}): Optimiz
   const { text: maskedOriginal, vault } = mask(segments);
 
   let current = maskedOriginal;
-  const ruleResults: RuleResult[] = [];
+  const byRule = new Map<RuleId, RuleResult>();
 
-  for (const rule of RULES) {
-    if (disabled.has(rule.id)) continue;
-    if (rule.level === 'aggressive' && level !== 'aggressive') continue;
+  /*
+    The pipeline runs to a fixed point, because one pass is not one.
 
-    const currentUnmasked = unmask(current, vault);
-    const before = count(currentUnmasked);
-    const { text: candidate, hits } = rule.apply(current);
-    if (hits === 0 || candidate === current) continue;
+    A single pass missed its own cascades: `emphasis` strips `IMPORTANT:` and
+    leaves two lines equal but for a space, and `whitespace` — which would
+    have collapsed that space — has already run, so `duplicate-lines` never
+    sees the pair. The result was a tool that saves more when run on its own
+    output, which is the writer's acceptance test failed by the tool that
+    grades it. Found by a fuzzer, on 1 input in 4,000.
 
-    const candidateUnmasked = unmask(candidate, vault);
+    The bound is a cap against oscillation, not a budget anybody expects to
+    reach: pass two exists for the cascades and pass three is almost always
+    the one that confirms nothing changed. A run that is still moving at the
+    cap returns what it has — valid, merely short of the fixed point — and
+    the idempotence property in the fuzz suite is what would make that loud.
+  */
+  const FIXED_POINT_PASSES = 5;
+  for (let pass = 0; pass < FIXED_POINT_PASSES; pass += 1) {
+    const atPassStart = current;
 
-    // Safety net: if a rule made protected content disappear, that rule is
-    // dropped rather than returning a broken prompt.
-    const lostProtected = mustSurvive.some((text) => !candidateUnmasked.includes(text));
-    if (lostProtected) continue;
+    for (const rule of RULES) {
+      if (disabled.has(rule.id)) continue;
+      if (rule.level === 'aggressive' && level !== 'aggressive') continue;
 
-    const after = count(candidateUnmasked);
-    // Captured against the unmasked text on both sides, so the snippets read
-    // as the author wrote them rather than showing private-use markers.
-    const changes = extractChanges(currentUnmasked, candidateUnmasked);
-    current = candidate;
-    const copy = t.rules[rule.id];
-    ruleResults.push({
-      id: rule.id,
-      title: copy.title,
-      rationale: copy.rationale,
-      level: rule.level,
-      hits,
-      tokensSaved: Math.max(0, before - after),
-      changes,
-    });
+      const currentUnmasked = unmask(current, vault);
+      const before = count(currentUnmasked);
+      const { text: candidate, hits } = rule.apply(current);
+      if (hits === 0 || candidate === current) continue;
+
+      const candidateUnmasked = unmask(candidate, vault);
+
+      // Safety net: if a rule made protected content disappear, that rule is
+      // dropped rather than returning a broken prompt.
+      const lostProtected = mustSurvive.some((text) => !candidateUnmasked.includes(text));
+      if (lostProtected) continue;
+
+      const after = count(candidateUnmasked);
+      // Captured against the unmasked text on both sides, so the snippets read
+      // as the author wrote them rather than showing private-use markers.
+      const changes = extractChanges(currentUnmasked, candidateUnmasked);
+      current = candidate;
+      const copy = t.rules[rule.id];
+      const existing = byRule.get(rule.id);
+      if (existing === undefined) {
+        byRule.set(rule.id, {
+          id: rule.id,
+          title: copy.title,
+          rationale: copy.rationale,
+          level: rule.level,
+          hits,
+          tokensSaved: Math.max(0, before - after),
+          changes,
+        });
+      } else {
+        // A rule that fires again in a later pass is one finding, continued:
+        // its hits and saving accumulate rather than appearing as a second row.
+        existing.hits += hits;
+        existing.tokensSaved += Math.max(0, before - after);
+        existing.changes = [...existing.changes, ...changes];
+      }
+    }
+
+    if (current === atPassStart) break;
   }
+
+  const ruleResults: RuleResult[] = [...byRule.values()];
 
   const optimized = unmask(current, vault).trim();
   const tokensBefore = count(prompt);

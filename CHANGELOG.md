@@ -9,6 +9,70 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+**The plan through 1.62 and 1.63** — [docs/plan-1.62-1.63.md](docs/plan-1.62-1.63.md),
+written before the code and out of a stress session that found six defects in
+an afternoon, all one shape: **an input nobody had tried, taken quietly.** The
+1.62 arc holds the product to its own standard under hostile input; the 1.63
+arc turns today's good performance numbers into measurements the build is held
+to. Its first three chapters land below.
+
+**`packages/core/test/hostile-input.test.js` — the stress session as a
+fixture.** A seeded, deterministic fuzzer (same seed, same verdict, any
+machine; ~5s, bounded) over a corpus of hostile atoms — RTL, CJK, lone
+surrogates, zero-width characters, control bytes, CRLF, unclosed fences, 3KB
+tokens — holding `optimize` to three of its own promises: **never throws,
+never grows tokens, idempotent**. Plus a malformed-log corpus for
+`profileUsage` (negative, non-finite, string and `__proto__` token counts) and
+the property that **no input can produce negative money**. Every defect below
+is pinned as a named case outside the fuzzer's seed schedule, because a seed
+schedule rotates the moment an atom is added.
+
+### Fixed
+
+**`optimize` was not idempotent: run on its own output, it saved more.** On 1
+input in 4,000, `emphasis` stripped `IMPORTANT:` and left two lines equal but
+for a space — and `whitespace`, which would have collapsed it, had already
+run, so `duplicate-lines` never saw the pair. The writer's acceptance test,
+failed by the tool that grades it. The pipeline now runs to a **fixed point**
+(bounded at a named constant; pass two exists for the cascades, pass three
+confirms), rule hits and savings aggregate across passes rather than
+appearing as duplicate rows, and the property `optimize(optimize(x)) ===
+optimize(x)` is enforced over the whole corpus. Cost: ~40% on a 1MB prompt,
+the price of the confirming pass.
+
+**`spend_guard` said yes to a lie.** `outputTokens: -500` priced the call at
+**−$0.0075** and the verdict came back `yes` — a negative estimate lowers the
+projected spend, so an agent that lies about its output tokens buys itself an
+approval. `answerCost` now refuses negative or non-finite token counts, which
+closes every door that routes through it — `serve`'s `POST /cost`, the
+gateway, and the guard — and the MCP tool refuses them as an
+`InvalidArguments` the protocol knows how to carry.
+
+**A negative budget was judged; a negative volume was billed.** `assemble`
+took `budget: "-5"` and returned the verdict `over` — a judgement against a
+limit that cannot exist — and `callsPerMonth: -100` priced a prompt at
+**−$1.26 a month**, a number no bill ever had. Anything that is not a
+positive finite number now lands where it belongs: no budget, no volume,
+said with the verdict's own reason. `prompt_writer` additionally refuses them
+by name, because its schema said `minimum: 1` and the runtime never enforced
+it — **a schema the runtime does not enforce is documentation wearing a
+guard's clothes.**
+
+**`--cache-hit-rate 2` was accepted while the config refused it.**
+`usage.cacheHitRate: 2` in `trazum.config.json` fails with *"a fraction
+between 0 and 1"*; the same value through the flag was accepted and quietly
+skewed the caching advisory. **Two doors to the same value cannot disagree
+about what fits through.** The flag now refuses, in both locales, naming the
+config's own rule.
+
+**Every fix was proved by breaking the product**: the fixed point reduced to
+one pass fails two cases; the negative-token refusal deleted fails the
+negative-money property.
+
 ## 1.61.1 — "Nothing was holding these"
 
 **A patch, and both entries are the same act**: take something this repository

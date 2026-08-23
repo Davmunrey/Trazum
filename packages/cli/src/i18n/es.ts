@@ -883,6 +883,8 @@ ${bold('EJEMPLOS')}
     optionNeedsValue: (name) => `La opción --${name} necesita un valor.`,
     mustBeNonNegative: (name, raw) =>
       `--${name} debe ser un número no negativo (recibido: "${raw}").`,
+    fractionFlag: (name, raw) =>
+      `--${name} es una fracción entre 0 y 1 (recibido: ${raw}). La configuración rechaza el mismo valor de la misma forma.`,
     badLevel: (received) => `--level debe ser "safe" o "aggressive" (recibido: "${received}").`,
     allLabelsNeedsLog: () =>
       '--all-labels ordena los prompts por tráfico medido, así que necesita --from-log <usage.jsonl>. Sin registro cada ahorro se multiplicaría por la misma suposición tecleada, lo que ordena los prompts por longitud y lo llama prioridad.',

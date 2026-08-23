@@ -350,8 +350,16 @@ const measure = (
   options: AssembleOptions,
 ): DraftMeasurement => {
   const model = typeof answers['model'] === 'string' ? answers['model'].trim() : null;
+  /*
+    A budget is a positive finite number or it is no budget.
+
+    `Number.isFinite` alone let `-5` through, and a negative ceiling produced
+    the verdict `over` — a judgement against a limit that cannot exist. `-5`,
+    `Infinity` and `NaN` all land in the same place: nothing to check against,
+    which the verdict already knows how to say.
+  */
   const budgetAnswer = typeof answers['budget'] === 'string' ? Number(answers['budget']) : NaN;
-  const budgetUsd = Number.isFinite(budgetAnswer) ? budgetAnswer : null;
+  const budgetUsd = Number.isFinite(budgetAnswer) && budgetAnswer > 0 ? budgetAnswer : null;
 
   /*
     Priced only when the catalogue knows the model.
@@ -365,10 +373,21 @@ const measure = (
   const known =
     model !== null && (options.pricing ?? BUNDLED_CATALOGUE).byId.has(model);
 
+  /*
+    A negative volume is not a volume. `callsPerMonth: -100` priced a prompt at
+    −$1.26 a month — a number no bill ever had — so anything that is not a
+    positive finite count is treated as not stated, the same door the budget
+    goes through.
+  */
+  const positive = (value: number | undefined): number | undefined =>
+    value !== undefined && Number.isFinite(value) && value > 0 ? value : undefined;
+
   const usage: Partial<UsageProfile> = {};
   if (known) usage.model = model as string;
-  if (options.callsPerMonth !== undefined) usage.callsPerMonth = options.callsPerMonth;
-  if (options.avgOutputTokens !== undefined) usage.avgOutputTokens = options.avgOutputTokens;
+  const callsPerMonth = positive(options.callsPerMonth);
+  if (callsPerMonth !== undefined) usage.callsPerMonth = callsPerMonth;
+  const avgOutputTokens = positive(options.avgOutputTokens);
+  if (avgOutputTokens !== undefined) usage.avgOutputTokens = avgOutputTokens;
 
   const report = optimize(prompt, {
     level: options.level ?? 'safe',

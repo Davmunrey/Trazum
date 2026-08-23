@@ -857,6 +857,8 @@ ${bold('EXAMPLES')}
     optionNeedsValue: (name) => `Option --${name} needs a value.`,
     mustBeNonNegative: (name, raw) =>
       `--${name} must be a non-negative number (received: "${raw}").`,
+    fractionFlag: (name, raw) =>
+      `--${name} is a fraction between 0 and 1 (received: ${raw}). The config refuses the same value the same way.`,
     badLevel: (received) => `--level must be "safe" or "aggressive" (received: "${received}").`,
     allLabelsNeedsLog: () =>
       '--all-labels ranks prompts by measured traffic, so it needs --from-log <usage.jsonl>. Without a log every saving would be multiplied by the same typed guess, which ranks prompts by length and calls it a priority.',

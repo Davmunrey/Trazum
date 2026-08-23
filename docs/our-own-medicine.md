@@ -76,6 +76,9 @@ misses is a tool nobody believes. A selection, and these are the real ones:
 | #364 | `docs/format.md` and `README.md` said the interchange format was twelve documents, and the guard on that count compared the sentence to the table — both written by hand, so three missing documents left the two agreeing | **a second time on the same page** |
 | #366 | `docs/doctrine.md` had no guard at all — emptying the file broke no test, in the page whose subject is checking what enforces your own rules | **since it was written** |
 | #377 | Six prose pages had no guard at all — emptying `SECURITY.md`, `VERSIONING.md`, `docs/ci.md`, `docs/running.md`, `docs/accounts.md` or `docs/authoring-rules.md` broke no test | **since they were written** |
+| #379 | `optimize` run on its own output saved more — one pass missed its own cascades, found by a fuzzer on 1 input in 4,000 | **since the rules shipped** |
+| #379 | `spend_guard` accepted `outputTokens: -500`, priced the call at −$0.0075 and said **yes** — a lie about output tokens bought an approval | **since the guard shipped** |
+| #379 | A negative budget was judged `over` and a negative volume billed −$1.26 a month; `--cache-hit-rate 2` passed the flag door while the config door refused it | since 1.61.0 / **since the flag shipped** |
 | #376 | Four of the five promises `docs/json-output.md` opens with were enforced by nothing — dollars as numbers, never rounded, tokens as integers, and no prompt text | **since the format was written** |
 | #370 | `optimize` took any string as a level and ran `safe` in silence; the CLI had refused `--level balanced` by name since forever, so only a library caller got the quiet downgrade | **since levels existed** |
 | #371 | `-o` parsed and did nothing — the parser rewrites it to `out`, so the key the code read could never exist — in a new command and as a dead fallback in `baseline` | unknown, in `baseline` |

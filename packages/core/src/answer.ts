@@ -116,6 +116,26 @@ export function answerCost(
 ): CostAnswer {
   const { catalogue, on = new Date() } = options;
 
+  /*
+    A token count below zero, or not a number at all, is refused before it can
+    become money.
+
+    `spend_guard` took `outputTokens: -500`, priced the call at −$0.0075, and
+    said **yes** — a negative estimate lowers the projected spend, so an agent
+    that lies about its output tokens buys itself an approval. The refusal
+    lives here rather than in the MCP wrapper because every door — serve's
+    `POST /cost`, the gateway, the guard — routes through this function, and a
+    fix in one wrapper is a hole left in the other three.
+  */
+  for (const [name, value] of [
+    ['inputTokens', request.inputTokens],
+    ['outputTokens', request.outputTokens],
+  ] as const) {
+    if (value !== undefined && (!Number.isFinite(value) || value < 0)) {
+      throw new Error(`${name} must be a non-negative finite number (received: ${String(value)})`);
+    }
+  }
+
   let call: CallEstimate | null = null;
   let unpriced = false;
   if (request.model !== undefined) {
