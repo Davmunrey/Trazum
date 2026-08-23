@@ -13,6 +13,33 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**A plan for 1.61, written before the code: the prompt writer.** Trazum has only
+ever read prompts somebody else wrote — `optimize` finds the waste in one,
+`check` holds it to a budget, `rules --measure` says what each rule recovers,
+and every one of them starts from a prompt somebody already guessed their way
+into. The arc goes the other way: you say what you want, the tool asks what it
+needs, and what comes out is a prompt whose cost and cleanliness are known
+before it is ever sent.
+
+**The tension is stated first and resolved without a footnote.** A prompt writer
+is a generative feature in a deterministic product. The interview and the
+assembly are deterministic — a fixed slot catalogue, rules over the answers, a
+fixed section order, byte-identical output for identical answers — and the only
+generative step is optional, credential-gated, and **named and not built** while
+this repository has no credential, the same treatment 1.54.0 and 1.57.0 get.
+
+**It refuses to claim "the perfect prompt"** — a quality judgement about text
+nobody has run. Three measurable claims replace it: complete against a checklist
+with its gaps named, cheap against the configured budget with the estimate
+marked as one, and **clean against Trazum's own rules**. That third is the arc's
+real test: if `optimize` can still recover tokens from a prompt this tool just
+wrote, the templates are wrong and the number says so.
+
+`ROADMAP.md`'s `## Next` names 1.61.0 — the first thing planned above 1.60.0 —
+with the three arcs that stay open below it kept where they are, and
+`docs/README.md` indexes the plan beside the five before it.
+
+
 **`docs/doctrine.md` was the one prose contract here with no guard at all, and
 that was measured rather than assumed.** Emptying the file and re-running the
 suites broke nothing. Every other page that makes checkable claims — the
