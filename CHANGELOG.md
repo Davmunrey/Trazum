@@ -13,6 +13,35 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**Six more pages could have been deleted in silence.** The probe that found
+`docs/doctrine.md` unguarded — empty a source and re-run the suites — was run
+over every prose page in the repository. Six broke **nothing at all**:
+`docs/ci.md`, `docs/running.md`, `docs/accounts.md`, `docs/authoring-rules.md`,
+**`SECURITY.md`** and **`VERSIONING.md`**. The last two are the ones worth
+naming: one tells somebody how to report a vulnerability, and the other defines
+what this project's three version numbers mean, which every release depends on.
+
+Six bespoke guards would have left the seventh page unguarded, so
+`packages/core/test/every-page.test.js` is derived from the filesystem. It holds
+every page to the three things a page goes wrong about quietly: **it says
+something** (a page gutted to a heading fails), **it links only to files that are
+there**, and **it shows only commands this CLI dispatches** — the last derived
+from `COMMAND_FLAGS`, so the docs and `USAGE` cannot disagree with the product or
+with each other. 30 pages, 219 relative links and 50-odd documented invocations,
+all checked.
+
+What that proves is narrow and worth stating: nothing mechanical can check that
+what a page *says* is true. But the failure the probe found was not a subtle
+mischaracterisation — it was six pages nothing was holding at all.
+
+**And the guard caught prose on its first run.** `Executable trazum not found`,
+quoted in a changelog entry, came back as a command called `not`. Exempting the
+file would have been the wrong fix — a guard that needs an allowlist to stay
+quiet is a guard somebody deletes — so the pattern was tightened to what an
+invocation actually is: something that **begins** its command, at a line start,
+inside a code span, or after a shell prompt. Both cases are kept as tests.
+
+
 **Four of the five promises `docs/json-output.md` opens with were prose.** Only
 *absence is null and never zero* was enforced, on five fields of one document.
 The other four held — measured, not assumed, over **414 dollar figures and 296
