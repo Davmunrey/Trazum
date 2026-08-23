@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { readFileSync } from 'node:fs';
 import { open, readdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { createInterface } from 'node:readline/promises';
 import { dirname, join, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
@@ -91,7 +92,11 @@ import {
   MAX_BASELINE_BYTES,
   moneyIsComparable,
   mostSpecificMatch,
+  assemble,
+  interview,
   nearestName,
+  slot,
+  SLOT_IDS,
   optimize,
   parseBaseline,
   PHRASE_LANGUAGES,
@@ -265,6 +270,9 @@ interface Args {
 }
 
 const VALUE_FLAGS = new Set([
+  'answers',
+  'calls',
+  'avg-output',
   'a',
   'at',
   'year',
@@ -603,6 +611,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   conform: ['contract', 'json'],
   rollup: ['json'],
   pulse: ['json', 'max-stale-hours'],
+  write: ['answers', 'json', 'out', 'o', 'calls', 'avg-output'],
   feedback: [],
   gateway: ['on-cannot-tell', 'port', 'socket', 'pricing', 'pricing-live'],
   ladder: ['pricing', 'pricing-live', 'since', 'until', 'label'],
@@ -2329,6 +2338,149 @@ async function commandRollup(args: Args, t: CliMessages): Promise<void> {
  * the measurements reach — that is a provider reporting on its own schedule,
  * not a job that failed.
  */
+/**
+ * `trazum write` — the interview, on a terminal.
+ *
+ * Two ways in, and the same document out. Interactive, it asks the open slots
+ * one at a time and takes an empty line as a decline. With `--answers`, it
+ * reads a JSON object of slot ids and asks nothing, which is what a script or
+ * a second run needs.
+ *
+ * **The prompt goes to stdout and everything else to stderr**, so
+ * `trazum write --answers a.json > prompt.txt` is a file with a prompt in it
+ * and not a file with an interview in it.
+ */
+async function commandWrite(args: Args, t: CliMessages): Promise<void> {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const answersPath = stringFlag(args, 'answers');
+  let answers: Record<string, string | null> = {};
+
+  if (answersPath !== undefined) {
+    const parsed: unknown = JSON.parse(await readFile(answersPath, 'utf8'));
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      throw new Error(t.write.answersNotAnObject(answersPath));
+    }
+    for (const [id, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (slot(id) === undefined) {
+        const nearest = nearestName(id, [...SLOT_IDS]);
+        throw new Error(t.write.unknownSlot(id, nearest));
+      }
+      if (value !== null && typeof value !== 'string') throw new Error(t.write.answerNotText(id));
+      answers[id] = value as string | null;
+    }
+  } else {
+    /**
+     * Interactive on a terminal, and a list of lines when it is not.
+     *
+     * An empty line is a **decline**, which is an answer: it closes the
+     * follow-up a real one would have opened. Input running out is not a
+     * decline — the remaining slots stay unasked and the refusal below names
+     * them.
+     *
+     * The two paths exist because `readline` on a piped stream closes as soon
+     * as the buffer drains, and a question asked after that never settles: the
+     * event loop empties and the process leaves with status 0 and nothing
+     * printed, which is an interview that stopped halfway and reported
+     * success. A script piping answers is really handing over an ordered list,
+     * so that is what this reads.
+     */
+    let next: () => Promise<string | null>;
+    let close = () => {};
+
+    if (process.stdin.isTTY) {
+      const rl = createInterface({ input: process.stdin, output: process.stderr });
+      next = async () => {
+        try {
+          return await rl.question('> ');
+        } catch {
+          return null;
+        }
+      };
+      close = () => rl.close();
+    } else {
+      const piped: string[] = [];
+      for await (const chunk of process.stdin) piped.push(String(chunk));
+      const lines = piped.join('').split('\n');
+      // A trailing newline is the end of the last answer, not an extra one.
+      if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
+      let at = 0;
+      next = async () => (at < lines.length ? (lines[at++] as string) : null);
+    }
+
+    let ended = false;
+    try {
+      for (;;) {
+        const state = interview(answers);
+        if (state.done) break;
+        const id = state.next as string;
+        const copy = t.write.slots[id] as { question: string; unlocks: string };
+        process.stderr.write(`${copy.question}\n`);
+        const typed = await next();
+        if (typed === null) {
+          ended = true;
+          break;
+        }
+        answers = { ...answers, [id]: typed.trim().length > 0 ? typed.trim() : null };
+      }
+    } finally {
+      close();
+    }
+    if (!ended) console.error(t.write.done());
+  }
+
+  const draft = assemble(answers, {
+    callsPerMonth: numberFlag(args, 'calls', Number.NaN, t) || undefined,
+    avgOutputTokens: numberFlag(args, 'avg-output', Number.NaN, t) || undefined,
+  });
+
+  if (boolFlag(args, 'json')) {
+    console.log(JSON.stringify(draft, null, 2));
+    if (draft.prompt === null) process.exitCode = 1;
+    return;
+  }
+
+  if (draft.prompt === null) {
+    // A refusal never arrives bare: each missing slot with what it unlocks.
+    console.error(c.red(t.write.missing(draft.missing.length)));
+    for (const id of draft.missing) {
+      console.error(`  ${c.bold(id)} — ${(t.write.slots[id] as { unlocks: string }).unlocks}`);
+    }
+    process.exitCode = 1;
+    return;
+  }
+
+  /*
+    `out`, not `o`.
+
+    The parser normalises `-o` to `out` on the way in, so `stringFlag(args, 'o')`
+    can never match anything: reading it meant `-o` was accepted, ignored, and
+    the prompt went to stdout instead of the file somebody named. A flag that
+    parses and does nothing is the defect this CLI already refuses one layer up
+    with "Did you mean --max-growth?".
+  */
+  const out = stringFlag(args, 'out');
+  if (out !== undefined) await writeFile(out, `${draft.prompt}\n`, 'utf8');
+  else console.log(draft.prompt);
+
+  const m = draft.measured;
+  if (m !== null) {
+    console.error('');
+    console.error(t.write.tokens(n(m.cheap.tokens)));
+    if (m.cheap.monthlyUsd !== null) console.error(t.write.monthly(formatUsd(m.cheap.monthlyUsd)));
+    if (m.cheap.verdict !== 'cannot-tell') {
+      console.error(t.write.budget(m.cheap.verdict, formatUsd(m.cheap.budgetUsd as number)));
+    } else if (m.cheap.reason !== null) {
+      console.error(t.write.noVerdict(m.cheap.reason));
+    }
+    console.error(
+      m.clean.rules.length === 0
+        ? t.write.clean()
+        : t.write.notClean(m.clean.rules.map((rule) => rule.id).join(', '), n(m.clean.tokensRecoverable)),
+    );
+    if (m.complete.declined.length > 0) console.error(t.write.declined(m.complete.declined.join(', ')));
+  }
+}
+
 async function commandPulse(args: Args, t: CliMessages): Promise<void> {
   const root = process.cwd();
   const maxStaleHours = numberFlag(args, 'max-stale-hours', Number.NaN, t);
@@ -8422,7 +8574,10 @@ async function commandBaseline(
     files,
   };
 
-  const out = stringFlag(args, 'out') ?? stringFlag(args, 'o') ?? config.baseline?.path ?? BASELINE_FILENAME;
+  // `?? stringFlag(args, 'o')` used to sit here and could never fire: the
+  // parser rewrites `-o` to `out`, so the key `o` is never set. Removed rather
+  // than left as a fallback nobody can reach.
+  const out = stringFlag(args, 'out') ?? config.baseline?.path ?? BASELINE_FILENAME;
   await writeFile(out, formatBaseline(document), 'utf8');
 
   if (boolFlag(args, 'json')) {
@@ -9995,6 +10150,9 @@ async function main(): Promise<void> {
       break;
     case 'pulse':
       await commandPulse(args, t);
+      break;
+    case 'write':
+      await commandWrite(args, t);
       break;
     case 'init':
       await commandInit(args, config, pricing, t);

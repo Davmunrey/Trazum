@@ -43,11 +43,11 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- 34 commands       MCP server      Next.js     comments on pull requests
+ 35 commands       MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
-## The thirty-four commands
+## The thirty-five commands
 
 | Command | What it answers |
 |---|---|
@@ -83,6 +83,7 @@ never runs unless you ask.
 | [`trazum conform`](#building-on-the-format-trazum-conform) | Does the document my tool emits conform, and what will it not be able to answer? |
 | [`trazum rollup`](#more-than-one-machine-trazum-rollup) | Four of us measured four things — what is the total, and what did merging lose? *A format and a merge, not a service.* |
 | [`trazum pulse`](#did-anything-stop-running-trazum-pulse) | Did the things that are supposed to run, run? *Runs nothing itself — your CI is the thing that notices.* |
+| [`trazum write`](#you-describe-it-it-asks-trazum-write) | What should this prompt say, and what will it cost before I ever send it? *Asks; nothing is generated.* |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
 | [`trazum feedback`](#telling-us-something-trazum-feedback) | Where do I report this, and what will you ask me for? *Sends nothing.* |
 
@@ -197,8 +198,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of thirty-four commands — [the table
-above](#the-thirty-four-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of thirty-five commands — [the table
+above](#the-thirty-five-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -348,7 +349,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other thirty-three commands, each with its own section below:
+The other thirty-four commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -2353,6 +2354,60 @@ no document. Every roll-up of more than one contributor carries
 
 The output is the `roll-up` contract, checkable like every other:
 `trazum rollup … --json | trazum conform -`.
+
+### You describe it, it asks: `trazum write`
+
+Every other command here reads a prompt somebody already wrote. This one starts
+from nothing and asks — and **what it asks is the product**, because a question
+whose answer cannot change the output is waste, and waste is this tool's whole
+subject.
+
+```bash
+trazum write                       # asks the questions, one at a time
+trazum write --answers a.json      # the same questions, already answered
+trazum write --answers a.json --json > draft.json
+```
+
+The prompt goes to stdout and everything else to stderr, so
+`trazum write --answers a.json > prompt.txt` is a file with a prompt in it and
+not a file with an interview in it.
+
+**Nothing is generated.** No model decides what to ask or what to write: the
+questions are fixed, the follow-ups are rules over the answers so far, and the
+words in the prompt are yours. A writer that paraphrased your answers would be
+answering a question nobody asked it. The same answers assemble the same bytes
+on any machine and in any locale.
+
+**It does not claim the prompt is perfect** — that is a judgement about text
+nobody has run. Three measurable claims replace it, and all three are printed:
+
+```
+122 tokens
+$8.11 per month, estimated — nobody has sent this prompt yet
+within the budget of $20.00
+trazum optimize recovers nothing from this.
+Declined, and left out: audience, examples, failure-modes
+```
+
+**Complete**, with the gaps named and no score. **Cheap**, with the estimate
+marked as one and the budget answered three ways — `within`, `over`, or
+`cannot-tell` with its reason. **Clean**, which is the one worth having:
+`trazum optimize` is run over the draft and reports what it can still recover.
+The target is nothing. A writer whose output this tool still improves would be
+selling the cure for a disease it had just caused.
+
+Answers you decline are named rather than dropped, and a required answer that
+is still missing stops the prompt from being written at all — with each one
+listed beside what it would have unlocked:
+
+```
+3 answers are still needed before a prompt can be written:
+  task — the whole prompt — without it there is nothing to write
+  inputs — the varying part — without it the prompt hard-codes one case
+  output-shape — the output contract, and whether a consumer can parse it
+```
+
+[The questions, and why each one is asked](docs/prompt-writer.md).
 
 ### Did anything stop running: `trazum pulse`
 

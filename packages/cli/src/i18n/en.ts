@@ -58,6 +58,7 @@ ${bold('USAGE')}
   trazum conform <file|-> [--contract <name>]
   trazum rollup <document...|dir> [--json]
   trazum pulse [--max-stale-hours <n>]
+  trazum write [--answers <file>] [--json] [-o <file>]
   trazum models
   trazum rules [--measure <dir>] [--level <safe|aggressive>]
   trazum gateway <provider> --on-cannot-tell <fail-open|fail-closed>
@@ -116,6 +117,16 @@ ${bold('OPTIONS FOR rollup')}
   the bill and no merge of summaries can see it.
 
   Exits 1 when a contribution was handed over and could not be merged.
+
+${bold('OPTIONS FOR write')}
+  --answers <file>            A JSON object of slot ids and answers. Without it,
+                              the questions are asked one at a time; an empty
+                              line declines one, which is an answer.
+  --json                      The prompt-draft document, refusals included.
+  -o, --out <file>            Where to write the prompt. Defaults to stdout,
+                              with everything else on stderr.
+  --calls <n>                 Calls per month, for the estimate.
+  --avg-output <n>            Average output tokens per call, for the estimate.
 
 ${bold('OPTIONS FOR pulse')}
   --max-stale-hours <n>       Exit 1 when something that runs here has not run
@@ -2741,5 +2752,26 @@ ${bold('EXAMPLES')}
         ? 'One answer is still needed before a prompt can be written:'
         : `${count} answers are still needed before a prompt can be written:`,
     done: () => 'Nothing left worth asking.',
+    answersNotAnObject: (path) =>
+      `${path} must hold a JSON object of slot ids and answers.`,
+    unknownSlot: (id, nearest) =>
+      nearest === null
+        ? `"${id}" is not a slot. Run "trazum write" with no --answers to be asked them.`
+        : `"${id}" is not a slot. Did you mean "${nearest}"?`,
+    answerNotText: (id) => `"${id}" must be a string, or null to decline it.`,
+    tokens: (count) => `${count} tokens`,
+    monthly: (usd) => `${usd} per month, estimated — nobody has sent this prompt yet`,
+    budget: (verdict, limit) =>
+      verdict === 'over' ? `over the budget of ${limit}` : `within the budget of ${limit}`,
+    noVerdict: (reason) =>
+      reason === 'no-budget'
+        ? 'No budget answered, so there is nothing to check it against.'
+        : reason === 'no-model'
+          ? 'No model answered, so it cannot be priced.'
+          : 'That model is not in the price catalogue, so it cannot be priced.',
+    clean: () => 'trazum optimize recovers nothing from this.',
+    notClean: (rules, tokens) =>
+      `trazum optimize would still recover ${tokens} tokens here (${rules}) — from your answers, not from the structure.`,
+    declined: (ids) => `Declined, and left out: ${ids}`,
   },
 };

@@ -13,6 +13,15 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+**`-o` on a new command was accepted, ignored, and the prompt went to stdout.**
+The parser rewrites `-o` to `out` on the way in, so `stringFlag(args, 'o')` can
+never match anything — a flag that parses and does nothing, which is the defect
+this CLI refuses one layer up with *"Did you mean --max-growth?"*. Caught by the
+test that asserted the file, not by reading. **The same dead read had been
+sitting in `baseline` as a fallback**, `?? stringFlag(args, 'o')`, which could
+not fire either; removed rather than left as an alternative nobody can reach.
+
+
 **`optimize` accepted any string as a level and silently ran `safe`.** The rule
 loop skips aggressive rules unless the level *is* `aggressive`, so a typo — or a
 plausible-sounding `balanced`, which this product has never had — produced
@@ -47,6 +56,31 @@ rather than in a habit nobody can check.
 valid set was not discoverable from `@trazum/core` at all.
 
 ### Added
+
+**Chapter four of 1.61: `trazum write` on a terminal.** Two ways in and one
+document out — the questions asked one at a time, or a JSON object through
+`--answers` — with **the prompt on stdout and everything else on stderr**, so
+`trazum write --answers a.json > prompt.txt` is a file with a prompt in it and
+not a file with an interview in it.
+
+**Input running out is not a decline, and finding that out cost a real bug.**
+`readline` on a piped stream closes as soon as the buffer drains, and a question
+asked after that never settles: the event loop emptied and the process left with
+**status 0 and nothing printed** — an interview that stopped halfway and
+reported success. A terminal now gets `readline` and a pipe gets the lines read
+in order, because a script piping answers is really handing over a list. A
+truncated interview refuses, names the slots it never asked, and is asserted not
+to report them as declined.
+
+**A misspelled slot id is answered with the nearest one**, the same way this CLI
+already answers a misspelled flag. A missing required answer refuses with each
+slot named beside what it would have unlocked, and never writes half a prompt to
+stdout.
+
+**Three existing guards caught what this chapter forgot**, in order: the flag
+allowlist had no `write` entry, the README's command table and its three counts
+had not moved, and the check that every `--json` command is covered or named as
+an exception refused to let a new one be absent from both.
 
 **Chapter three of 1.61: the three claims, measured.** Every assembled draft now
 carries `measured` — `complete`, `cheap` and `clean` — or **null** when there is

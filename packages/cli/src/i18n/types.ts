@@ -61,6 +61,16 @@ export interface CliMessages {
     missing: (count: number) => string;
     /** Printed when there is nothing left worth asking. */
     done: () => string;
+    answersNotAnObject: (path: string) => string;
+    unknownSlot: (id: string, nearest: string | null) => string;
+    answerNotText: (id: string) => string;
+    tokens: (count: string) => string;
+    monthly: (usd: string) => string;
+    budget: (verdict: 'within' | 'over', limit: string) => string;
+    noVerdict: (reason: 'no-budget' | 'no-model' | 'model-unpriced') => string;
+    clean: () => string;
+    notClean: (rules: string, tokens: string) => string;
+    declined: (ids: string) => string;
   };
 
   /** The on-disk cache of model answers for `--suggest`. */
