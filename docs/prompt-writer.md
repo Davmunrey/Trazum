@@ -132,6 +132,24 @@ three answers, not a crash. So the tokens and the rules are measured first
 (neither needs a price) and the money is asked for separately, only when there
 is something to ask.
 
+## On the web
+
+`POST /api/write` is the same interview behind a form, and **stateless on
+purpose**: the browser holds the answers and sends all of them every time. A
+session would mean that endpoint knowing what somebody is halfway through
+writing, which is the thing the rest of this product refuses to hold. Nothing
+there calls a model either — the surface that has a network by definition is
+held to the same rule as the one that does not.
+
+**The browser asks the server what to ask next rather than deriving it.**
+`next` and `missing` look alike and mean different things: `missing` holds only
+the *required* slots, and the interview carries on through the optional ones.
+Deriving one from the other is how a form starts skipping questions.
+
+**Skipping is offered as an answer.** A question a reader cannot decline is a
+question they will answer badly to get past — and a bad answer goes into the
+prompt, where a decline would have left nothing.
+
 ## Ids here, words in the CLI
 
 `@trazum/core` knows a slot exists and what opens it. `packages/cli/src/i18n`

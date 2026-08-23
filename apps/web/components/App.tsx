@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Menu, PanelLeftClose, PanelLeftOpen, Receipt, GitCompare, BookMarked, Wand2, X } from 'lucide-react';
+import { Menu, PanelLeftClose, PanelLeftOpen, PenLine, Receipt, GitCompare, BookMarked, Wand2, X } from 'lucide-react';
 
 import type { Locale } from '@trazum/core';
 
@@ -10,6 +10,7 @@ import { Bill } from './Bill';
 import { Library } from './Library';
 import { Comparer } from './Comparer';
 import { Optimizer } from './Optimizer';
+import { Writer } from './Writer';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
@@ -322,7 +323,17 @@ export function App({
     'group-data-[orientation=vertical]/tabs:data-[state=active]:text-foreground';
 
   const MODES = [
+    /*
+      Optimise stays first because it is what `defaultValue` opens.
+
+      Write was first in this list for a moment, which put a rail whose top item
+      is not the panel on screen — the reader lands on the second row
+      highlighted. The order of the rail and the default tab are one decision,
+      not two, and moving the front door is a product change rather than
+      something to smuggle in with a new mode.
+    */
     { value: 'optimise', label: t.compare.optimiseTab, Icon: Wand2 },
+    { value: 'write', label: t.write.tab, Icon: PenLine },
     { value: 'compare', label: t.compare.tab, Icon: GitCompare },
     { value: 'bill', label: t.bill.tab, Icon: Receipt },
   ] as const;
@@ -618,6 +629,20 @@ export function App({
             {t.page.lede}
           </p>
 
+          {/*
+            `forceMount`, like every tab holding state the server does not have.
+
+            The first draft left it out to avoid one request per page load from
+            readers who never open this mode. That traded somebody's
+            half-answered interview for a request cheaper than the page's own
+            assets: the answers live **only** in the browser, so unmounting
+            discards them, and Radix unmounts an inactive tab by default. The
+            existing guard names the property rather than the tabs, and it was
+            right.
+          */}
+          <TabsContent value="write" forceMount className="data-[state=inactive]:hidden">
+            <Writer t={t} locale={locale} />
+          </TabsContent>
           <TabsContent value="optimise" forceMount className="data-[state=inactive]:hidden">
             <Optimizer locale={locale} t={t} scenario={scenario} promptText={promptText} />
           </TabsContent>

@@ -167,6 +167,54 @@ export const es: WebMessages = {
       'Solo nombres y totales: esta página nunca muestra el texto del prompt de nadie. Los tokens recuperables se miden ejecutando las reglas, no se estiman.',
   },
 
+  write: {
+    tab: 'Escribir',
+    lede: 'Describe lo que quieres. Trazum pregunta lo que necesita y escribe el prompt.',
+    privacy: 'No se genera nada ni se envía nada a un modelo. Las preguntas son fijas y las palabras del prompt son tuyas.',
+    slots: {
+      task: { question: '¿Qué debe hacer el modelo, en una frase?', unlocks: 'el prompt entero — sin esto no hay nada que escribir' },
+      role: { question: '¿Quién es el modelo mientras lo hace?', unlocks: 'la postura de la respuesta; si falta, el modelo elige una por ti' },
+      inputs: { question: '¿Qué cambia de una llamada a otra?', unlocks: 'la parte variable — sin ella el prompt fija un solo caso' },
+      'output-shape': { question: '¿Qué debe volver: prosa, json, lista o tabla?', unlocks: 'el contrato de salida, y si un consumidor puede parsear la respuesta siquiera' },
+      'output-schema': { question: '¿Qué campos o columnas, y cuáles están siempre?', unlocks: 'nombres de campo fiables en vez de inferidos de una muestra' },
+      'output-length': { question: '¿Cuánto debe ocupar la respuesta, como máximo?', unlocks: 'el techo que evita pagar por texto que nadie lee' },
+      audience: { question: '¿Quién lee la salida?', unlocks: 'el registro — una respuesta para un ingeniero y otra para un cliente no son la misma' },
+      constraints: { question: '¿Qué no debe hacer nunca?', unlocks: 'las prohibiciones, dichas una vez en vez de descubiertas incidente a incidente' },
+      refusal: { question: '¿Qué debe hacer cuando no pueda responder?', unlocks: 'una negativa que llega con su motivo en vez de una conjetura segura de sí misma' },
+      examples: { question: '¿Hay algún ejemplo de respuesta buena?', unlocks: 'la guía few-shot, y la ocasión de comprobar que no se repite' },
+      'example-inputs': { question: '¿Qué entrada produjo ese ejemplo?', unlocks: 'el emparejamiento — un ejemplo sin su entrada enseña la forma, no la correspondencia' },
+      'failure-modes': { question: '¿Qué ha salido mal con esto antes?', unlocks: 'las correcciones que merecen decirse, que un prompt genérico nunca tiene' },
+      model: { question: '¿Para qué modelo es esto?', unlocks: 'la estimación de coste — esto cambia el informe, nunca el prompt' },
+      budget: { question: '¿Cuál es el techo mensual de este prompt?', unlocks: 'la comprobación de presupuesto — esto cambia el informe, nunca el prompt' },
+    },
+    optional: 'Opcional',
+    decline: 'Saltar esta',
+    declined: 'Saltada, y fuera del prompt',
+    missing: (count) =>
+      count === 1
+        ? 'Falta una respuesta antes de poder escribir un prompt.'
+        : `Faltan ${count} respuestas antes de poder escribir un prompt.`,
+    done: 'No queda nada que merezca preguntarse.',
+    promptHeading: 'Tu prompt',
+    copy: 'Copiar',
+    copied: 'Copiado',
+    tokens: (count) => `${count} tokens`,
+    monthly: (usd) => `${usd} al mes, estimado — nadie ha enviado este prompt todavía`,
+    within: (limit) => `Dentro del presupuesto de ${limit}`,
+    over: (limit) => `Por encima del presupuesto de ${limit}`,
+    noVerdict: (reason) =>
+      reason === 'no-budget'
+        ? 'No hay presupuesto respondido, así que no hay contra qué comprobarlo.'
+        : reason === 'no-model'
+          ? 'No hay modelo respondido, así que no se puede tasar.'
+          : 'Ese modelo no está en el catálogo de precios, así que no se puede tasar.',
+    clean: 'Trazum no encuentra nada más que recortar aquí.',
+    notClean: (rules, tokens) =>
+      `Trazum aún recortaría ${tokens} tokens aquí (${rules}) — de tus respuestas, no de la estructura.`,
+    notPerfect:
+      'Esto no afirma que el prompt sea perfecto. Eso es un juicio sobre un texto que nadie ha ejecutado. Lo medido es lo de arriba: completo, tasado y limpio.',
+  },
+
   compare: {
     tab: 'Comparar',
     optimiseTab: 'Optimizar',
@@ -738,6 +786,11 @@ export const es: WebMessages = {
     promptTooLong: (limit) => `El prompt supera el límite de ${limit} caracteres.`,
     unknownRule: (id) => `Regla desconocida: "${id}".`,
     unknownModel: (id) => `Modelo desconocido: "${id}".`,
+    answersNotAnObject: 'Las respuestas deben ser un objeto de ids de slot y respuestas.',
+    unknownSlot: (id) => `"${id}" no es una de las preguntas que hace esta entrevista.`,
+    answerNotText: (id) => `La respuesta a "${id}" debe ser texto, o null para declinarla.`,
+    answerTooLong: (id, limit) =>
+      `La respuesta a "${id}" supera los ${limit} caracteres. Una entrevista son campos cortos, no un corpus pegado.`,
     invalidEndpointUrl: 'La URL del endpoint no es válida.',
     endpointMustBeHttps: 'El endpoint del LLM debe usar https.',
     endpointMustBePublic: 'El endpoint del LLM no puede apuntar a una dirección interna.',
