@@ -9,6 +9,50 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## 1.62.0 — "Held to its own standard"
+
+**The 1.62 arc closes.** Its five chapters landed in 1.61.1 and 1.61.2, in the
+order [the plan](docs/plan-1.62-1.63.md) committed to; the minor is the release
+where the story finishes, and this is what finished. The properties now held —
+by tests that fail the build, not by sentences:
+
+- **`optimize` never throws**, over a seeded corpus of hostile atoms: RTL and
+  CJK text, lone surrogates, null bytes, zero-width characters, CRLF, unclosed
+  fences, 3,000-character tokens.
+- **`optimize` never grows the token count**, at both levels.
+- **`optimize` is idempotent** — the pipeline runs to a fixed point, and
+  `optimize(optimize(x))` is byte-identical to `optimize(x)`.
+- **Protected spans survive byte-for-byte** — code blocks, inline code and
+  URLs, asserted across the whole corpus, with bait the rules want to rewrite
+  planted inside protected spans so the assertion can actually fail.
+- **Money is never negative** — no document this package can build carries a
+  negative dollar figure, whatever the input, and no two doors to the same
+  value disagree about what fits through.
+- **Unreadable lines are named** — `profileUsage`, `conform` and `rollUp`
+  never throw on any text; what they cannot read they report by line number.
+
+### Added
+
+- **[`docs/hardening.md`](docs/hardening.md)** — the properties above stated
+  as a page a stranger can read: where each is enforced, why every defect the
+  stress session found is pinned as a named case outside the fuzzer's seed
+  schedule, what a bounded fuzzer does not prove, and how to reproduce a
+  verdict. Linked from the documentation index in the deciding-whether-to-trust
+  section, next to the doctrine it borrows its standard from.
+
+### Changed
+
+- The documentation index's account of the plans was written when there were
+  five and never counted past them; it now counts seven, and the arcs table
+  says the 1.62 arc landed rather than that it is in progress.
+
+### Release mechanics
+
+- All five manifests, the `@trazum/core` dependency in the CLI, the MCP server
+  and the web app, and the lockfile move to **1.62.0**.
+- The three README Action pins advance to `cd1588c`, the 1.61.2 release
+  commit.
+
 ## 1.61.2 — "An input nobody had tried"
 
 **Seven defects, one stress session, one shape**: an input nobody had tried,

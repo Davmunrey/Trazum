@@ -20,6 +20,9 @@ Then, if you want to know whether to trust the numbers:
 - **[Our own medicine](our-own-medicine.md)** — the same standard applied to this
   project: what it refused to ship, what it got wrong and for how long, and what
   it cannot say about itself.
+- **[Any input](hardening.md)** — what is promised about input this tool was
+  never meant to see, and the seeded fuzz suite in CI that holds each promise:
+  never throws, never grows, idempotent, masks intact, money never negative.
 
 ## I am using it
 
@@ -71,12 +74,13 @@ In the order somebody actually meets them:
 
 ## The arcs, as they were planned
 
-Five arcs have been planned in advance and written down **before** the code —
-four delivered in full, and the fifth at six of its nine. The delivered four are
-kept because the reasoning is the useful part, not because anything in them is
-still forthcoming: every chapter in all four shipped. The fifth keeps its three
-open arcs visible for the same reason — what a plan could not build, and why, is
-the half a reader cannot reconstruct.
+Seven plans have been written down **before** the code. Five delivered in
+full, one landed six of its nine arcs, and the newest is half-way — its first
+arc closed, its second in progress. The delivered plans are kept because the
+reasoning is the useful part, not because anything in them is still
+forthcoming: every chapter in them shipped. The 1.52–1.60 plan keeps its three
+open arcs visible for the same reason — what a plan could not build, and why,
+is the half a reader cannot reconstruct.
 
 | Arc | Thesis | Landed |
 |---|---|---|
@@ -86,7 +90,7 @@ the half a reader cannot reconstruct.
 | [1.51](plan-1.51.md) | Every figure is a denominator with no numerator | 1.51.0 |
 | [1.52–1.60](plan-1.52-1.60.md) | Nine arcs: finish what shipped incomplete, then widen | **six of nine** — 1.52.0, 1.53.0, 1.55.0, 1.56.0, 1.59.0 and 1.60.0 landed; 1.54.0 and 1.57.0 blocked on provider keys; 1.58.0 is a distribution commitment |
 | [1.61](plan-1.61.md) | Trazum has only ever read prompts somebody else wrote | 1.61.0 — all six chapters; the model-assisted polish stays named and unbuilt |
-| [1.62–1.63](plan-1.62-1.63.md) | Held to its own standard, then measured: fuzz as a fixture, perf as a gate | **in progress** — closes at 1.62.0 and 1.63.0 |
+| [1.62–1.63](plan-1.62-1.63.md) | Held to its own standard, then measured: fuzz as a fixture, perf as a gate | **1.62.0 landed** — all five chapters, seven defects fixed; the 1.63 arc runs as 1.62.x |
 
 What each of them **refused** to ship — which is the more useful half, since a
 plan and its implementation shared a hand — is in

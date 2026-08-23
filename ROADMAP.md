@@ -1184,6 +1184,17 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.62.0 — "Held to its own standard" — released
+
+**The 1.62 arc closes on the properties it promised**, stated in the release
+notes as the plan committed: never throws, never grows, idempotent, masks
+intact, money never negative, unreadable lines named. The chapters landed in
+1.61.1 and 1.61.2; the minor is the story finishing. New with the close:
+`docs/hardening.md`, the promises as a page — where each is enforced, what a
+bounded fuzzer does not prove, and the standing rule that every future crash
+joins the corpus as an atom. The documentation index also stops undercounting
+its own plans: it said five when there were seven.
+
 ## 1.61.2 — "An input nobody had tried" — released
 
 **Seven defects, one stress session, one shape.** The first five chapters of
@@ -2038,20 +2049,9 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**Two arcs are planned: [docs/plan-1.62-1.63.md](docs/plan-1.62-1.63.md)** — the 1.62 arc is five chapters in.
-The 1.62 arc runs as 1.61.x and closes at 1.62.0; the 1.63 arc runs as 1.62.x
-and closes at 1.63.0.
-
-**1.62 — its own output, held to its own standard.** A stress session found six
-defects in an afternoon, all one shape: an input nobody had tried, taken
-quietly. `optimize` is not idempotent — on its own output it saves more, which
-is the writer's acceptance test failed by the tool that grades it. And
-`spend_guard` accepts a negative `outputTokens`, prices the call below zero and
-says **yes** — an agent that lies about its output buys an approval. The arc
-fixes the six at the layer that owns each, then makes the finding permanent: a
-seeded fuzz suite in CI holding four properties — never throws, never grows
-tokens, idempotent, masks intact — plus *money is never negative, whatever the
-input*.
+**One arc remains planned: [docs/plan-1.62-1.63.md](docs/plan-1.62-1.63.md)** —
+the 1.62 arc closed at 1.62.0 with all five chapters landed; the 1.63 arc runs
+as 1.62.x and closes at 1.63.0.
 
 **1.63 — scale is measured, not assumed.** The pathological cases time well
 today (1MB of prose ~1s, a 200,000-line log ~1.3s) and nothing holds them
