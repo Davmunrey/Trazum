@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.61.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.61.1**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,72 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.61.1 — "Nothing was holding these"
+
+**A patch, and both entries are the same act.** Take something this repository
+says about itself, ask what would fail if it stopped being true, and find out by
+**emptying it** rather than by reading. Two answers came back the same: nothing
+would fail.
+
+### Four of the five promises the format opens with
+
+`docs/json-output.md` opens with five. One was enforced — *absence is `null` and
+never zero*, checked on five fields of one document. **The other four were
+prose**: dollars are numbers, never rounded; token counts are integers; nothing
+carries a session key or prompt text.
+
+**All four held.** Measured, not assumed: **414 dollar figures and 296 token
+counts** across the profile, the roll-up and the prompt draft — zero strings,
+zero non-integers, and nothing out of a log deliberately carrying `prompt`,
+`system`, `completion`, `content` and `messages`. That is exactly the state in
+which a promise quietly stops being true, because nothing would say so.
+
+The guard **takes the bullets out of the page first**, so it cannot outlive the
+claim or the claim the guard. **Rounding is asserted backwards**, because its
+absence cannot be proved from one document: a document whose dollars had been
+through `toFixed(2)` would carry *none* with more than two decimals, and this one
+has to carry a majority.
+
+**Every check was proved by breaking the product, not the test** — rounding on
+the way out of `profileUsage`, a dollar returned as a string, a half added to a
+token count, a session key placed in the document. And rewording the promise
+section without changing a promise must not fail, which it does not.
+
+### Six pages that could have been deleted in silence
+
+The probe that found `docs/doctrine.md` unguarded was run over every prose page
+here. Six broke **nothing at all**: `docs/ci.md`, `docs/running.md`,
+`docs/accounts.md`, `docs/authoring-rules.md`, **`SECURITY.md`** and
+**`VERSIONING.md`**. The last two are worth naming — one tells somebody how to
+report a vulnerability, the other defines what this project's three version
+numbers mean, which every release depends on.
+
+Six bespoke guards would have left the seventh page unguarded, so the new one is
+derived from the filesystem and holds **every** page to the three things a page
+goes wrong about quietly: it says something, it links only to files that are
+there, and it shows only commands this CLI dispatches — that last derived from
+`COMMAND_FLAGS`, so the docs and `USAGE` cannot disagree with the product or with
+each other. Thirty pages, 219 relative links, fifty-odd documented invocations.
+
+**What that proves is narrow, and the test says so.** Nothing mechanical can
+check that what a page *says* is true. But the failure was not a subtle
+mischaracterisation: it was six pages nothing was holding at all.
+
+### What this release found wrong in itself
+
+**The new guard caught prose on its first run.** `Executable trazum not found`,
+quoted in a changelog entry, came back as a command called `not`. Exempting the
+file would have been the wrong fix — a guard that needs an allowlist to stay
+quiet is a guard somebody deletes — so the pattern was tightened to what an
+invocation actually is: something that **begins** its command, at a line start,
+inside a code span, or after a shell prompt. Both cases are kept as tests.
+
+And the first attempt to prove the link check by breaking it was a **no-op**: it
+edited a link `docs/ci.md` does not have, and the suite stayed green for the
+wrong reason. Redone against a link that is really there.
 
 ---
 

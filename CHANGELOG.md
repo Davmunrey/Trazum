@@ -9,7 +9,11 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
-## Unreleased
+## 1.61.1 — "Nothing was holding these"
+
+**A patch, and both entries are the same act**: take something this repository
+says about itself, ask what would fail if it stopped being true, and find out by
+**emptying it**. Ten claims and six pages had the same answer — nothing.
 
 ### Added
 
