@@ -148,7 +148,17 @@ describe('a tool failure is a result, not a protocol error', () => {
 describe('tools/list', () => {
   it('describes every tool with a schema a client can validate against', () => {
     const { tools } = call(request('tools/list', {})).result;
-    assert.equal(tools.length, 5);
+    /*
+      Derived from TOOLS rather than typed.
+
+      The literal `5` here had to be edited every time a tool arrived, which
+      makes it a chore rather than a check: a count somebody bumps to make a
+      suite pass has stopped asserting anything. What matters is that
+      `tools/list` offers every tool the server has, and that is comparable
+      without a number.
+    */
+    assert.equal(tools.length, TOOLS.length);
+    assert.ok(tools.length > 4, `only ${tools.length} tools listed`);
     for (const tool of tools) {
       assert.ok(tool.name && tool.title && tool.description, `${tool.name} is under-described`);
       assert.equal(tool.inputSchema.type, 'object');

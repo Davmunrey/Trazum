@@ -150,6 +150,28 @@ Deriving one from the other is how a form starts skipping questions.
 question they will answer badly to get past — and a bad answer goes into the
 prompt, where a decline would have left nothing.
 
+## Over MCP
+
+`prompt_writer` hands an agent the questions rather than the answers. An agent
+asked to *"write a prompt for X"* has the same problem a person has: it does not
+know what it has not been told.
+
+**Stateless, like the HTTP route** — the caller sends every answer every time,
+and the same answers produce the same reply. `next` carries the **wording** and
+not just the id: an agent handed a bare id would either invent the question or
+skip it, and a question nobody asks is a slot nobody fills.
+
+The two slots that fill no section say so in their own wording — *"this changes
+the estimate, never the prompt"* — because an agent told only *"which model is
+this for?"* would reasonably expect the answer to turn up in the text. That is
+guarded: any slot with a null section whose question does not say it fails.
+
+**The property written is always a catalogue id.** Over MCP the arguments arrive
+as JSON, where `__proto__` is an ordinary own property rather than the prototype
+setter a JS object literal makes it — so a test written with a literal proves
+nothing, and this one parses the wire form. Same shape CodeQL named on
+`/api/write`, fixed here before it could be written twice.
+
 ## Ids here, words in the CLI
 
 `@trazum/core` knows a slot exists and what opens it. `packages/cli/src/i18n`

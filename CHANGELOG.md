@@ -13,6 +13,34 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+**Chapter six of 1.61: `prompt_writer` over MCP.** An agent asked to write a
+prompt for something has the same problem a person has — it does not know what
+it has not been told — so this hands it the questions rather than the answers.
+Call it with what you know; get back the next question worth asking and whatever
+can be assembled so far.
+
+**`next` carries the wording, not just the id.** An agent handed a bare id would
+either invent the question or skip it, and a question nobody asks is a slot
+nobody fills. The two slots that fill no section say so in their own wording —
+*"this changes the estimate, never the prompt"* — because an agent told only
+"which model is this for?" would reasonably expect the answer in the text. Any
+slot with a null section whose question does not say it fails.
+
+**Stateless, and asserted as such**: the same answers produce a byte-identical
+reply, and an earlier call leaves no trace in a later one.
+
+**The `__proto__` test parses the wire form.** In a JS object literal that name
+sets the prototype rather than a key, so a test written that way proves nothing;
+over MCP the arguments arrive as JSON, where it is an ordinary own property. The
+tool writes only catalogue ids into a map with no prototype — the shape CodeQL
+named on `/api/write`, fixed here before it could be written twice.
+
+**And a count stopped being a check.** `rpc.test.js` asserted `tools.length === 5`,
+a literal that had to be bumped every time a tool arrived; a number somebody
+edits to make a suite pass has stopped asserting anything. It compares against
+`TOOLS` now.
+
+
 **Chapter five of 1.61: the interview on the web.** A `Write` tab and
 `POST /api/write`, the same fourteen questions and the same
 `prompt-draft` document as the terminal.

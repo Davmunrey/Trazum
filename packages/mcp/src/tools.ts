@@ -1,9 +1,12 @@
 import {
   BUNDLED_CATALOGUE,
   MAX_PRICING_BYTES,
+  SLOTS,
+  SLOT_IDS,
   PRICING_LAST_REVIEWED,
   PricingOverlayError,
   UNLABELLED,
+  assemble,
   billLevers,
   cacheEconomics,
   cacheHitRate,
@@ -12,15 +15,19 @@ import {
   driversBetween,
   formatUsd,
   guardSpend,
+  interview,
+  nearestName,
   reviewAgeDays,
   listModels,
   optimize,
   contextPressure,
   profileUsage,
   repriceProfile,
+  slot,
 } from '@trazum/core';
 import type { RuleLevel } from '@trazum/core';
 
+import { SLOT_QUESTIONS } from './questions.js';
 import { InvalidArguments } from './rpc.js';
 import type { ToolDefinition } from './rpc.js';
 
@@ -1274,4 +1281,125 @@ const SPEND_GUARD: ToolDefinition = {
   },
 };
 
-export const TOOLS: readonly ToolDefinition[] = [OPTIMIZE, CHECK, MODELS, PROFILE, SPEND_GUARD];
+
+/** Per answer. An interview is short fields, not a pasted corpus. */
+export const MAX_ANSWER_CHARS = 20_000;
+
+/**
+ * The interview, for something that is not a person.
+ *
+ * An agent asked to "write a prompt for X" has the same problem a person has:
+ * it does not know what it has not been told. This hands it the questions
+ * instead of the answers — call it with what you know, get back the next
+ * question and whatever can be assembled so far, call it again.
+ *
+ * **Stateless, like the HTTP route.** The caller holds the answers and sends
+ * all of them every time. A server that remembered would be a server that
+ * knows what somebody is halfway through writing.
+ */
+const WRITER: ToolDefinition = {
+  name: 'prompt_writer',
+  title: 'Interviews you, then writes the prompt',
+  description:
+    'Asks what a good prompt needs and assembles one from your answers. Call it with the '
+    + 'answers you have; it returns the next question worth asking, what is still missing, '
+    + 'and the prompt once the required answers are in. Nothing is generated — the questions '
+    + 'are fixed and the words in the prompt are yours, so the same answers always produce '
+    + 'the same text. An answer of null is a decline, which is an answer: it is recorded and '
+    + 'the follow-up it would have opened is not asked. The draft carries what it costs '
+    + '(estimated, and it says so), whether it fits a budget you state, and what '
+    + 'trazum optimize can still recover from it — which should be nothing. It does not '
+    + 'claim the prompt is good: that is a judgement about text nobody has run.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      answers: {
+        type: 'object',
+        description:
+          'What you know so far, keyed by question id. Start with {} to be asked the first '
+          + 'one. A value of null declines that question. Unknown ids are refused rather '
+          + 'than ignored.',
+        additionalProperties: { type: ['string', 'null'], maxLength: MAX_ANSWER_CHARS },
+      },
+      callsPerMonth: {
+        type: 'integer',
+        minimum: 1,
+        description: 'Calls per month, for the cost estimate. Nothing is priced without it.',
+      },
+      avgOutputTokens: {
+        type: 'integer',
+        minimum: 0,
+        description: 'Output tokens you expect back per call, for the same estimate.',
+      },
+    },
+    required: ['answers'],
+    additionalProperties: false,
+  },
+  run: (args) => {
+    const sent = args.answers;
+    if (sent === null || typeof sent !== 'object' || Array.isArray(sent)) {
+      throw new InvalidArguments('answers must be an object of question ids and answers');
+    }
+
+    /*
+      Refused first, then built by iterating the catalogue.
+
+      The property written is always a `SLOTS` id and never a key the caller
+      chose, and the map has no prototype — the same shape CodeQL called a
+      remote property injection on the HTTP route, fixed here before it could
+      be written twice.
+    */
+    const given = sent as Record<string, unknown>;
+    for (const id of Object.keys(given)) {
+      if (slot(id) === undefined) {
+        const nearest = nearestName(id, [...SLOT_IDS]);
+        throw new InvalidArguments(
+          nearest === null
+            ? `"${id}" is not one of the questions this interview asks`
+            : `"${id}" is not a question this interview asks. Did you mean "${nearest}"?`,
+        );
+      }
+    }
+
+    const answers: Record<string, string | null> = Object.create(null) as Record<string, string | null>;
+    for (const entry of SLOTS) {
+      if (!Object.prototype.hasOwnProperty.call(given, entry.id)) continue;
+      const value = given[entry.id];
+      if (value === null) {
+        answers[entry.id] = null;
+        continue;
+      }
+      if (typeof value !== 'string') {
+        throw new InvalidArguments(`the answer to "${entry.id}" must be text, or null to decline it`);
+      }
+      if (value.length > MAX_ANSWER_CHARS) {
+        throw new InvalidArguments(`the answer to "${entry.id}" is over ${MAX_ANSWER_CHARS} characters`);
+      }
+      answers[entry.id] = value;
+    }
+
+    const draft = assemble(answers, {
+      callsPerMonth: typeof args.callsPerMonth === 'number' ? args.callsPerMonth : undefined,
+      avgOutputTokens: typeof args.avgOutputTokens === 'number' ? args.avgOutputTokens : undefined,
+    });
+    const state = interview(answers);
+
+    /**
+     * `nextQuestion` is the wording, not just the id.
+     *
+     * An agent that had to look the wording up somewhere would either invent it
+     * or skip it, and a question nobody asks is a slot nobody fills. `next` is
+     * also **not** derivable from `missing`: that holds only the required
+     * questions, and the interview carries on through the optional ones.
+     */
+    const next = state.next === null ? null : {
+      id: state.next,
+      question: SLOT_QUESTIONS[state.next] ?? state.next,
+      required: slot(state.next)?.required === true,
+    };
+
+    return JSON.stringify({ draft, next, done: state.done, open: state.open }, null, 2);
+  },
+};
+
+export const TOOLS: readonly ToolDefinition[] = [OPTIMIZE, CHECK, MODELS, PROFILE, SPEND_GUARD, WRITER];

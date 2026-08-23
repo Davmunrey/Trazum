@@ -134,6 +134,7 @@ describe('the handshake', () => {
       'list_models',
       'optimize_prompt',
       'profile_usage',
+      'prompt_writer',
       'spend_guard',
     ]);
   });

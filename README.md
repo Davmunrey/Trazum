@@ -3746,11 +3746,19 @@ cover what matters.
 
 ### An MCP server, so an agent can budget its own prompts
 
-`@trazum/mcp` exposes five tools over stdio — `optimize_prompt`, `check_prompt`,
-`profile_usage`, `list_models` and `spend_guard`. Every other surface here
-answers "what does this prompt cost" for a human after the fact; this answers it
-for the thing composing the prompts — before it sends one, and over the bill its
-calls already ran up.
+`@trazum/mcp` exposes six tools over stdio — `optimize_prompt`, `check_prompt`,
+`profile_usage`, `list_models`, `spend_guard` and `prompt_writer`. Every other
+surface here answers "what does this prompt cost" for a human after the fact;
+this answers it for the thing composing the prompts — before it sends one, and
+over the bill its calls already ran up.
+
+**`prompt_writer` hands over the questions rather than the answers.** An agent
+asked to write a prompt for something has the same problem a person has: it does
+not know what it has not been told. Call it with what you know, get back the
+next question worth asking and whatever can be assembled so far. Nothing is
+generated — the questions are fixed and the words are the caller's — and the
+draft comes back with what it costs, whether it fits a budget, and what
+`trazum optimize` can still recover from it, which should be nothing.
 
 **`spend_guard` is the one that changes what a model does.** The others say what
 something costs; this says whether it may be spent — `yes`, `no`, or
