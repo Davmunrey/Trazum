@@ -13,6 +13,27 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **The ratio gate — chapter two of the 1.63 arc.** Every bench workload is
+  now also timed against a fixed calibration loop run in the same process,
+  right after it — an integer loop no release has a reason to touch,
+  deliberately not the product's own code, so a ratio moves only when the
+  workload does. `wallMs / calibrationMs` is the number a gate can hold: a CI
+  runner lies about wall time to the workload and the yardstick by the same
+  amount, and the lie cancels out. `--record <file>` writes the measured
+  ratios as a committed baseline (`schemaVersion: 1`, covered by the
+  versioning freeze the way `trazum.baseline.json` is — an unknown version is
+  a loud error naming `--record`, never a best-effort read); `--against
+  <file> --max-ratio <n>` exits 1 when any measured workload is past its
+  recorded ratio times the stated factor. The factor is required, not
+  defaulted — how much regression is too much is a policy, the same rule as
+  pulse's threshold. The JSON shape never changes with the gate flags: the
+  verdict is the exit code and sentences on stderr, the way `check` has
+  always gated. A workload measured but absent from the baseline fails
+  rather than passing silently, because a silent skip reads as coverage.
+  Proved by breaking it: the suite gates a real run against a baseline whose
+  recorded ratio is absurdly small and watches the build go red with the
+  workload named.
+
 - **`trazum bench` — this machine, measured.** Chapter one of the 1.63 arc:
   the standard workloads — a 1MB prompt at both levels, a 200,000-line
   profile, a 10,000-file walk, a 20,000-line roll-up — one shot each, wall

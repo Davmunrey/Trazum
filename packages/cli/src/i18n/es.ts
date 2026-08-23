@@ -45,7 +45,7 @@ ${bold('USO')}
   trazum conform <fichero|-> [--contract <nombre>]
   trazum rollup <documento...|dir> [--json]
   trazum pulse [--max-stale-hours <n>]
-  trazum bench [--workload <id>] [--json]
+  trazum bench [--workload <id>] [--record <fichero>] [--against <fichero> --max-ratio <n>] [--json]
   trazum write [--answers <fichero>] [--json] [-o <fichero>]
   trazum models
   trazum rules [--measure <dir>] [--level <safe|aggressive>]
@@ -139,13 +139,25 @@ ${bold('OPCIONES DE pulse')}
 ${bold('OPCIONES DE bench')}
   --workload <id>             Ejecuta una sola carga estándar en vez de todas.
                               Un id desconocido se rechaza nombrando los conocidos.
-  --json                      Las mediciones como datos.
+  --record <fichero>          Escribe además los ratios medidos como baseline,
+                              para commitear. El fichero que --against lee.
+  --against <fichero>         Juzga los ratios de esta pasada contra un baseline
+                              grabado. Sale con 1 cuando alguna carga medida
+                              supera su ratio grabado por --max-ratio.
+  --max-ratio <n>             El factor declarado, al menos 1. Obligatorio con
+                              --against: cuánta regresión es demasiada es una
+                              política, y esta herramienta no escribe la tuya.
+  --json                      Las mediciones como datos. La forma no cambia con
+                              los flags del gate — el veredicto es el código de
+                              salida y frases en stderr, como hace check.
 
   Mide esta máquina: las cargas estándar, una pasada cada una, tiempo de pared y
-  RSS pico. Sin comparación y sin juicio — ejecútalo antes y después de un
-  cambio y lee las dos tablas lado a lado. Cada carga corre en su propio proceso
-  hijo, así que cada pico es solo suyo; las entradas se generan, son
-  deterministas y nunca se escriben en tu proyecto.
+  RSS pico. El reloj de pared es para una persona con un cambio entre manos; el
+  gate sostiene el ratio entre la carga y un bucle de calibración en el mismo
+  proceso, porque un runner de CI miente sobre el tiempo a ambos por igual y la
+  mentira se cancela. Cada carga corre en su propio proceso hijo, así que cada
+  pico es solo suyo; las entradas se generan, son deterministas y nunca se
+  escriben en tu proyecto.
 
 ${bold('OPCIONES DE rules')}
   --measure <dir>             Mide lo que recupera realmente cada regla sobre
@@ -1573,10 +1585,27 @@ ${bold('EJEMPLOS')}
       `node ${node} en ${platform}, ${plural(cpuCount, 'CPU')}${cpuModel === null ? '' : ` (${cpuModel})`}`,
     colWorkload: () => 'carga',
     colWall: () => 'ms de pared',
+    colRatio: () => 'ratio',
     colPeakRss: () => 'RSS pico',
     note: () =>
-      'Una pasada cada una, esta máquina, hoy. Sin comparación y sin juicio: ejecútalo antes de un cambio y después, y lee las dos tablas lado a lado. Bloquear una build corresponde a un ratio contra una calibración en el mismo proceso, nunca a estos relojes de pared — un runner compartido miente sobre el tiempo.',
+      'Una pasada cada una, esta máquina, hoy. El reloj de pared es para una persona leyendo dos tablas lado a lado; el ratio — carga entre un bucle de calibración en el mismo proceso — es el número que un gate puede sostener, porque la máquina se cancela en él. Graba uno con --record y sujeta una build con --against y un --max-ratio declarado.',
     unknownWorkload: (id, known) => `Carga desconocida "${id}". Conocidas: ${known}.`,
+    recorded: (path) => `Baseline escrito en ${path}. Commitéalo; --against lo lee.`,
+    needsMaxRatio: () =>
+      '--against necesita --max-ratio <n>. Cuánta regresión es demasiada es una política, y esta herramienta no escribe la tuya.',
+    maxRatioNeedsAgainst: () => '--max-ratio juzga contra un baseline; pasa también --against <fichero>.',
+    badMaxRatio: (raw) =>
+      `--max-ratio debe ser un número finito de al menos 1 (recibido: ${raw}). Multiplica el ratio grabado; por debajo de 1 exigiría que el código se hubiera vuelto más rápido.`,
+    recordAndAgainst: () =>
+      '--record y --against juntos evaluarían una pasada contra el baseline que ella misma escribe. Graba, commitea, y luego evalúa.',
+    unreadableBaseline: (path) => `No se pudo leer un baseline de ${path}. Vuelve a grabarlo con --record.`,
+    badBaseline: (path, version) =>
+      `${path} no es un baseline que esta versión conozca (schemaVersion: ${version}). Vuelve a grabarlo con --record antes que dejar que un número mal leído bloquee la build.`,
+    notInBaseline: (id, path) =>
+      `${path} no graba ratio para "${id}", y aprobar en silencio una carga sin grabar se leería como cobertura. Vuelve a grabar con --record.`,
+    gateOver: (id, ratio, allowed) =>
+      `✗ ${id}: el ratio ${ratio} supera el permitido ${allowed} (baseline × --max-ratio).`,
+    gateWithin: (factor) => `Cada carga medida está dentro de ${factor}× su ratio grabado.`,
   },
 
   where: {

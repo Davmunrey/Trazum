@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtemp, readdir, readFile } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
@@ -66,6 +66,9 @@ const WORKLOADS = [
 const soundMeasurement = (m) => {
   assert.equal(typeof m.id, 'string');
   assert.ok(Number.isFinite(m.wallMs) && m.wallMs > 0, `${m.id}: wallMs ${m.wallMs}`);
+  assert.ok(Number.isFinite(m.calibrationMs) && m.calibrationMs > 0, `${m.id}: calibrationMs ${m.calibrationMs}`);
+  assert.ok(Number.isFinite(m.ratio) && m.ratio > 0, `${m.id}: ratio ${m.ratio}`);
+  assert.ok(Math.abs(m.ratio - m.wallMs / m.calibrationMs) < 1e-9, `${m.id}: ratio is not wall over calibration`);
   assert.ok(Number.isInteger(m.maxRssBytes) && m.maxRssBytes > 0, `${m.id}: maxRssBytes ${m.maxRssBytes}`);
   // Exactly one input size is stated, in the unit the workload is named by;
   // the others are null, never zero — a zero would claim a measured nothing.
@@ -161,5 +164,76 @@ describe('the refusal', () => {
         assert.ok(result.stderr.includes(id), `${locale}: refusal does not name ${id}`);
       }
     }
+  });
+});
+
+describe('the ratio gate', () => {
+  /**
+   * The gate is proved by breaking it: a baseline whose recorded ratio is
+   * absurdly small makes any real run a regression, and the build goes red
+   * with the workload named. The passing side uses a generous factor over a
+   * genuinely recorded baseline, because two runs seconds apart on one machine
+   * still wobble — asserting a tight factor here would be the flaky absolute
+   * gate this chapter exists to avoid, one file early.
+   */
+  const baseline = (entries) => JSON.stringify({ schemaVersion: 1, workloads: entries });
+
+  it('records a baseline the gate then holds', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'trazum-bench-gate-'));
+    const file = join(dir, 'trazum.bench.json');
+    const recorded = run(['--workload', 'rollup-20k', '--record', file, '--json']);
+    assert.equal(recorded.status, 0, recorded.stderr);
+    const written = JSON.parse(await readFile(file, 'utf8'));
+    assert.equal(written.schemaVersion, 1);
+    assert.deepEqual(written.workloads.map((w) => w.id), ['rollup-20k']);
+    assert.ok(written.workloads[0].ratio > 0);
+    // And the JSON on stdout is still the plain measurement — the gate flags
+    // never change the document's shape.
+    const emitted = JSON.parse(recorded.stdout);
+    assert.equal(emitted.id, 'rollup-20k');
+
+    const gated = run(['--workload', 'rollup-20k', '--against', file, '--max-ratio', '1000']);
+    assert.equal(gated.status, 0, gated.stderr);
+  });
+
+  it('goes red past the stated factor, naming the workload', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'trazum-bench-gate-'));
+    const file = join(dir, 'tiny.json');
+    await writeFile(file, baseline([{ id: 'rollup-20k', ratio: 1e-9 }]));
+    const result = run(['--workload', 'rollup-20k', '--against', file, '--max-ratio', '1']);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /rollup-20k/);
+  });
+
+  it('refuses to gate on a baseline it cannot vouch for', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'trazum-bench-gate-'));
+    const unknown = join(dir, 'v9.json');
+    await writeFile(unknown, JSON.stringify({ schemaVersion: 9, workloads: [] }));
+    const versioned = run(['--workload', 'rollup-20k', '--against', unknown, '--max-ratio', '2']);
+    assert.equal(versioned.status, 1);
+    assert.match(versioned.stderr, /--record/);
+
+    const missing = join(dir, 'other.json');
+    await writeFile(missing, baseline([{ id: 'walk-10k', ratio: 1 }]));
+    // Measured but never recorded is not a pass — a silent skip reads as coverage.
+    const unrecorded = run(['--workload', 'rollup-20k', '--against', missing, '--max-ratio', '2']);
+    assert.equal(unrecorded.status, 1);
+    assert.match(unrecorded.stderr, /rollup-20k/);
+  });
+
+  it('holds the factor to being a stated policy', () => {
+    const noFactor = run(['--workload', 'rollup-20k', '--against', 'x.json']);
+    assert.equal(noFactor.status, 1);
+    assert.match(noFactor.stderr, /--max-ratio/);
+
+    const noBaseline = run(['--workload', 'rollup-20k', '--max-ratio', '2']);
+    assert.equal(noBaseline.status, 1);
+    assert.match(noBaseline.stderr, /--against/);
+
+    const below = run(['--workload', 'rollup-20k', '--against', 'x.json', '--max-ratio', '0.5']);
+    assert.equal(below.status, 1);
+
+    const together = run(['--workload', 'rollup-20k', '--record', 'a.json', '--against', 'b.json', '--max-ratio', '2']);
+    assert.equal(together.status, 1);
   });
 });

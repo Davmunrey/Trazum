@@ -381,6 +381,7 @@ a different fact.
 | `cpus`, `cpuModel` | How many, and what kind. `cpuModel` is `null` where the OS does not say. |
 | `workloads[]` | One per standard workload, in a fixed order. |
 | `workloads[].id`, `workloads[].wallMs` | Which workload, and its wall time — not rounded: the terminal rounds, the JSON does not. |
+| `workloads[].calibrationMs`, `workloads[].ratio` | A fixed calibration loop timed in the same process right after the workload, and the workload's wall time divided by it. The ratio is the number a gate can hold: a CI runner lies about wall time to the workload and the yardstick by the same amount, and the lie cancels out. |
 | `workloads[].bytes` / `.lines` / `.files` | The input's size, in the unit the workload is named by. Exactly one is a number; the other two are `null`, never zero. |
 | `workloads[].maxRssBytes` | Peak RSS of the workload's own child process — what the operating system billed it, which is why each workload gets a process to itself. Named RSS because that is what it is: a heap high-water mark is not observable from inside a synchronous run without moving the number. |
 
@@ -388,10 +389,16 @@ With `--workload <id>`, the output is the single measurement object — the same
 shape as one entry of `workloads[]` — because that is what the parent run
 collects from each child, and two shapes for one fact is one too many.
 
-**No baseline, no verdict, no delta.** The document records what happened on
-this machine today. Comparing two of them is the reader's judgement to make,
-and any CI gate belongs to a ratio measured in-process, not to these wall
-clocks.
+**The document never carries a verdict, whatever flags ran it.** `--record`
+writes the measured ratios to a separate baseline file — `schemaVersion: 1`
+and one `{ id, ratio }` per measured workload, meant to be committed — and
+`--against <file> --max-ratio <n>` exits 1 when any measured workload is past
+its recorded ratio times the stated factor, saying so on stderr. The gate is
+the exit code, the way `trazum check` has always gated; the JSON shape does
+not change with the gate flags, so a consumer never meets a field that is
+sometimes there. A baseline whose `schemaVersion` this Trazum does not know is
+a loud error naming `--record`, never a best-effort read — the file is
+committed, so it crosses upgrades.
 
 ## The rule-yield document
 

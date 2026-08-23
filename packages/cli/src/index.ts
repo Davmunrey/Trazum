@@ -315,6 +315,8 @@ const VALUE_FLAGS = new Set([
   'max-stale-hours',
   'measure',
   'workload',
+  'record',
+  'max-ratio',
   'max-day-usd',
   'max-session-usd',
   'csv-out',
@@ -631,7 +633,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   conform: ['contract', 'json'],
   rollup: ['json'],
   pulse: ['json', 'max-stale-hours'],
-  bench: ['workload', 'json'],
+  bench: ['workload', 'json', 'record', 'against', 'max-ratio'],
   write: ['answers', 'json', 'out', 'o', 'calls', 'avg-output'],
   feedback: [],
   gateway: ['on-cannot-tell', 'port', 'socket', 'pricing', 'pricing-live'],
@@ -2612,11 +2614,21 @@ type BenchWorkloadId = (typeof BENCH_WORKLOADS)[number];
 interface BenchMeasurement {
   id: string;
   wallMs: number;
+  /** The calibration loop's wall time, in this same process, right after the workload. */
+  calibrationMs: number;
+  /** wallMs over calibrationMs — the number a gate can hold, because the machine cancels out. */
+  ratio: number;
   maxRssBytes: number;
   /** Input size in the unit the workload is named by; the others are null, never zero. */
   bytes: number | null;
   lines: number | null;
   files: number | null;
+}
+
+/** The committed ratio baseline `--record` writes and `--against` reads. */
+interface BenchBaseline {
+  schemaVersion: 1;
+  workloads: { id: string; ratio: number }[];
 }
 
 interface BenchDocument {
@@ -2637,6 +2649,41 @@ function benchGenerator(seed: number): () => number {
 
 /** Prices resolve against a fixed date, so the workload cannot drift with the calendar. */
 const BENCH_DATE = new Date('2026-01-01T00:00:00Z');
+
+/**
+ * Enough integer work for the loop to take a stable fraction of a second on
+ * anything that can run Node, and little enough that calibrating five
+ * workloads is not itself the bench.
+ */
+const CALIBRATION_ITERATIONS = 1 << 24;
+
+/**
+ * The yardstick a ratio divides by: a fixed integer loop, timed in the same
+ * process as the workload it calibrates.
+ *
+ * **Deliberately not the product's own code.** A calibration built on
+ * `estimateTokens` would speed up when the tokenizer does, and every ratio in
+ * every committed baseline would silently mean something new. This loop is
+ * arithmetic that no release has a reason to touch — the same LCG the corpus
+ * generators use, run hot — so a ratio moves only when the workload does.
+ *
+ * CI machines lie about wall time; they lie to the workload and the yardstick
+ * by roughly the same amount, and the ratio is what is left when the lie
+ * cancels out. That is the whole of chapter two's argument, and the reason a
+ * gate on `ratio` can hold where a gate on `wallMs` would fail on weather.
+ */
+function benchCalibration(): number {
+  const startedAt = performance.now();
+  let state = 1;
+  for (let i = 0; i < CALIBRATION_ITERATIONS; i += 1) {
+    state = (state * 1103515245 + 12345) % 2147483648;
+  }
+  const elapsed = performance.now() - startedAt;
+  // Reading the accumulator keeps the loop observable — a JIT that could prove
+  // the result unused could also skip the work being timed.
+  if (state < 0) throw new Error('unreachable: the LCG stays in [0, 2^31)');
+  return elapsed;
+}
 
 /**
  * Prose the rules have work in — verbose phrases, duplicate lines, emphasis,
@@ -2696,15 +2743,20 @@ async function benchRun(id: BenchWorkloadId): Promise<BenchMeasurement> {
     work();
     return performance.now() - startedAt;
   };
-  const done = (wallMs: number, sizes: Partial<Pick<BenchMeasurement, 'bytes' | 'lines' | 'files'>>): BenchMeasurement => ({
-    id,
-    wallMs,
-    // getrusage reports kilobytes; the field name promises bytes, so convert here.
-    maxRssBytes: process.resourceUsage().maxRSS * 1024,
-    bytes: sizes.bytes ?? null,
-    lines: sizes.lines ?? null,
-    files: sizes.files ?? null,
-  });
+  const done = (wallMs: number, sizes: Partial<Pick<BenchMeasurement, 'bytes' | 'lines' | 'files'>>): BenchMeasurement => {
+    const calibrationMs = benchCalibration();
+    return {
+      id,
+      wallMs,
+      calibrationMs,
+      ratio: wallMs / calibrationMs,
+      // getrusage reports kilobytes; the field name promises bytes, so convert here.
+      maxRssBytes: process.resourceUsage().maxRSS * 1024,
+      bytes: sizes.bytes ?? null,
+      lines: sizes.lines ?? null,
+      files: sizes.files ?? null,
+    };
+  };
 
   switch (id) {
     case 'optimize-1mb-safe':
@@ -2789,55 +2841,132 @@ function printBenchTable(measurements: BenchMeasurement[], t: CliMessages, machi
   }
   console.log();
   console.log(
-    `  ${c.dim(t.bench.colWorkload().padEnd(idWidth))}  ${c.dim(t.bench.colWall().padStart(10))}  ${c.dim(t.bench.colPeakRss().padStart(10))}`,
+    `  ${c.dim(t.bench.colWorkload().padEnd(idWidth))}  ${c.dim(t.bench.colWall().padStart(10))}  ${c.dim(t.bench.colRatio().padStart(7))}  ${c.dim(t.bench.colPeakRss().padStart(10))}`,
   );
   for (const m of measurements) {
-    console.log(`  ${m.id.padEnd(idWidth)}  ${n(m.wallMs).padStart(10)}  ${mb(m.maxRssBytes).padStart(10)}`);
+    console.log(
+      `  ${m.id.padEnd(idWidth)}  ${n(m.wallMs).padStart(10)}  ${m.ratio.toFixed(2).padStart(7)}  ${mb(m.maxRssBytes).padStart(10)}`,
+    );
   }
   console.log();
   console.log(`  ${c.dim(wrap(t.bench.note(), 74, '    '))}`);
   console.log();
 }
 
+/** Reads and validates a committed ratio baseline, loudly on anything else. */
+async function readBenchBaseline(path: string, t: CliMessages): Promise<BenchBaseline> {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await readFile(path, 'utf8'));
+  } catch {
+    throw new Error(t.bench.unreadableBaseline(path));
+  }
+  const candidate = parsed as BenchBaseline;
+  // A version this Trazum does not know is a loud error naming the fix, never
+  // a best-effort read: the file is committed, so it crosses upgrades, and a
+  // gate on misread numbers is a gate on numbers somebody invented.
+  if (candidate?.schemaVersion !== 1 || !Array.isArray(candidate.workloads)) {
+    throw new Error(t.bench.badBaseline(path, JSON.stringify((parsed as { schemaVersion?: unknown })?.schemaVersion)));
+  }
+  for (const entry of candidate.workloads) {
+    if (typeof entry?.id !== 'string' || !Number.isFinite(entry?.ratio) || entry.ratio <= 0) {
+      throw new Error(t.bench.badBaseline(path, 'workloads'));
+    }
+  }
+  return candidate;
+}
+
 async function commandBench(args: Args, t: CliMessages): Promise<void> {
   const asJson = boolFlag(args, 'json');
   const chosen = stringFlag(args, 'workload');
+  const recordPath = stringFlag(args, 'record');
+  const againstPath = stringFlag(args, 'against');
+  const maxRatioRaw = args.flags.get('max-ratio');
+
+  if (recordPath !== undefined && againstPath !== undefined) {
+    throw new Error(t.bench.recordAndAgainst());
+  }
+  let maxRatio: number | null = null;
+  if (againstPath !== undefined) {
+    // The factor is a policy, so it is stated by the caller rather than
+    // defaulted here — the same rule as pulse's threshold.
+    if (maxRatioRaw === undefined) throw new Error(t.bench.needsMaxRatio());
+    const factor = Number(maxRatioRaw);
+    if (!Number.isFinite(factor) || factor < 1) throw new Error(t.bench.badMaxRatio(String(maxRatioRaw)));
+    maxRatio = factor;
+  } else if (maxRatioRaw !== undefined) {
+    throw new Error(t.bench.maxRatioNeedsAgainst());
+  }
+
+  // Read before measuring, so a baseline this run cannot gate on refuses in
+  // milliseconds instead of after the workloads have been paid for.
+  const baseline = againstPath !== undefined ? await readBenchBaseline(againstPath, t) : null;
+
+  let measurements: BenchMeasurement[];
+  let machine: BenchDocument | undefined;
 
   if (chosen !== undefined) {
     if (!(BENCH_WORKLOADS as readonly string[]).includes(chosen)) {
       throw new Error(t.bench.unknownWorkload(chosen, BENCH_WORKLOADS.join(', ')));
     }
-    const measurement = await benchRun(chosen as BenchWorkloadId);
-    if (asJson) {
-      console.log(JSON.stringify(measurement, null, 2));
-      return;
+    measurements = [await benchRun(chosen as BenchWorkloadId)];
+  } else {
+    const script = fileURLToPath(import.meta.url);
+    measurements = [];
+    for (const id of BENCH_WORKLOADS) {
+      const stdout = runSelf(script, ['bench', '--workload', id, '--json', '--locale', t.locale]);
+      measurements.push(JSON.parse(stdout) as BenchMeasurement);
     }
-    printBenchTable([measurement], t);
-    return;
+    machine = {
+      schemaVersion: 1,
+      node: process.version,
+      platform: process.platform,
+      arch: process.arch,
+      cpus: cpus().length,
+      cpuModel: cpus()[0]?.model ?? null,
+      workloads: measurements,
+    };
   }
 
-  const script = fileURLToPath(import.meta.url);
-  const workloads: BenchMeasurement[] = [];
-  for (const id of BENCH_WORKLOADS) {
-    const stdout = runSelf(script, ['bench', '--workload', id, '--json', '--locale', t.locale]);
-    workloads.push(JSON.parse(stdout) as BenchMeasurement);
+  if (recordPath !== undefined) {
+    const baseline: BenchBaseline = {
+      schemaVersion: 1,
+      workloads: measurements.map((m) => ({ id: m.id, ratio: m.ratio })),
+    };
+    await writeFile(recordPath, `${JSON.stringify(baseline, null, 2)}\n`);
   }
-
-  const document: BenchDocument = {
-    schemaVersion: 1,
-    node: process.version,
-    platform: process.platform,
-    arch: process.arch,
-    cpus: cpus().length,
-    cpuModel: cpus()[0]?.model ?? null,
-    workloads,
-  };
 
   if (asJson) {
-    console.log(JSON.stringify(document, null, 2));
-    return;
+    // The JSON shape never changes with the gate flags: a gate verdict is the
+    // exit code and the sentences on stderr, the way `check` has always gated.
+    console.log(JSON.stringify(chosen !== undefined ? measurements[0] : machine, null, 2));
+  } else {
+    printBenchTable(measurements, t, machine);
   }
-  printBenchTable(workloads, t, document);
+  if (recordPath !== undefined) {
+    console.error(t.bench.recorded(recordPath));
+  }
+
+  if (againstPath !== undefined && baseline !== null && maxRatio !== null) {
+    const byId = new Map(baseline.workloads.map((entry) => [entry.id, entry.ratio]));
+    let over = false;
+    for (const m of measurements) {
+      const recorded = byId.get(m.id);
+      // Measured but never recorded is not a pass: a gate that silently skips
+      // a workload reads as green coverage it does not have.
+      if (recorded === undefined) throw new Error(t.bench.notInBaseline(m.id, againstPath));
+      const allowed = recorded * maxRatio;
+      if (m.ratio > allowed) {
+        over = true;
+        console.error(c.red(t.bench.gateOver(m.id, m.ratio.toFixed(2), allowed.toFixed(2))));
+      }
+    }
+    if (over) {
+      process.exitCode = 1;
+    } else {
+      console.error(c.dim(t.bench.gateWithin(String(maxRatio))));
+    }
+  }
 }
 
 /**
