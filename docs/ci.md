@@ -118,6 +118,26 @@ team that degraded its own log must not pass on the strength of the silence. A
 workload that genuinely vanished, or a tier the log never recorded, reports
 `cannot-tell` and fails nothing. **Three outcomes, never two.**
 
+## Gating performance without gating the runner
+
+A wall-clock budget in CI fails on weather: shared runners lie about time.
+The bench's gate holds a **ratio** instead — each workload timed against a
+calibration loop in the same process, so the runner's speed cancels out of
+the number being judged:
+
+```bash
+trazum bench --record trazum.bench.json                  # once, committed
+trazum bench --against trazum.bench.json --max-ratio 3   # every build
+```
+
+Exits 1 when any workload is past its recorded ratio times the stated
+factor, on stderr, the way `check` gates. The factor is yours: 3× is a
+tripwire for the quadratic-regex class of regression; a tighter factor buys
+sensitivity at the price of noise. A baseline whose version the binary does
+not know is a loud error naming `--record`, never a best-effort read — the
+file is committed, so it crosses upgrades. This repository runs exactly this
+step on its own CI.
+
 ## Waivers, and their record
 
 A gate failure a team has looked at and decided to live with goes in the config

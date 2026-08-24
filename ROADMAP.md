@@ -1184,6 +1184,21 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.63.0 — "Scale is measured, not assumed" — released
+
+**The 1.63 arc closes on its stated condition: the gate is live.**
+`trazum.bench.json` is committed and CI fails past 3× a workload's recorded
+ratio — validated for free when this container's CPU changed between the
+recording and the gating run: wall clocks moved ~1.5×, ratios held. The
+refusal ceiling (chapter three) and the heap line (chapter four) landed just
+before the close: one constant in core behind every prompt door with
+`--max-input` to raise it deliberately, and the 25MB log profiling inside a
+384MB old-space cap the engine itself enforces. One CodeQL query —
+`js/file-access-to-http`, which accurately describes `--exact-tokens` and
+`--llm` — excluded with owner approval and the reasoning committed. With
+this minor the 1.62–1.63 plan is delivered in full: both arcs, all nine
+chapters.
+
 ## 1.62.1 — "This machine, measured" — released
 
 **The 1.63 arc opens: the bench and the ratio gate, chapters one and two.**
@@ -2063,19 +2078,12 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**One arc remains planned: [docs/plan-1.62-1.63.md](docs/plan-1.62-1.63.md)** —
-the 1.62 arc closed at 1.62.0 with all five chapters landed; the 1.63 arc runs
-as 1.62.x and closes at 1.63.0, and is two chapters in — the bench and the
-ratio gate landed at 1.62.1; the refusal ceiling and the heap line remain.
+**No arc is currently planned.** [The 1.62–1.63 plan](docs/plan-1.62-1.63.md)
+delivered in full at 1.63.0 — both arcs, all nine chapters — and the next
+plan, whenever it is written, will be written the same way: before the code,
+and kept as written after it.
 
-**1.63 — scale is measured, not assumed.** The pathological cases time well
-today (1MB of prose ~1s, a 200,000-line log ~1.3s) and nothing holds them
-there. A `bench` command measures the standard workloads; CI gates the ratio
-against an in-process calibration loop rather than a wall clock that lies on
-shared runners; every door refuses inputs past a stated ceiling instead of
-grinding; the 25MB log profiles within a stated heap line.
-
-**Below them, three arcs from the previous plans stay open**, numbered below
+**Three arcs from the previous plans stay open**, numbered below
 the last release:
 
 | Arc | Why it is open |

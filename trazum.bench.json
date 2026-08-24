@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "workloads": [
+    {
+      "id": "optimize-1mb-safe",
+      "ratio": 5.473073003388714
+    },
+    {
+      "id": "optimize-1mb-aggressive",
+      "ratio": 7.494184264394565
+    },
+    {
+      "id": "profile-200k",
+      "ratio": 11.076933199938761
+    },
+    {
+      "id": "walk-10k",
+      "ratio": 0.9594087627303102
+    },
+    {
+      "id": "rollup-20k",
+      "ratio": 0.04859152934523983
+    }
+  ]
+}
