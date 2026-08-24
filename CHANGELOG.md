@@ -11,7 +11,61 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+- **The position travels — chapter two of the 1.67 arc.** The same
+  `positionReport`, through the surfaces that already exist. `trazum
+  position --html-out` writes the position as one self-contained page —
+  every sentence the terminal's own, through the same message catalogue,
+  with the caveat block (unmeasurable ceilings, deliberate non-answers,
+  unpriced records) rendered **before** the positions because a forwarded
+  page gets cropped from the bottom; hostile labels arrive as text, never
+  markup, and a test drives both locales. The MCP server grows a seventh
+  tool, `position`: the log text and the ceilings in, the same document
+  out — the `limits` argument validated by the config file's own parser,
+  session keys grouped by and never shown, and no forecast field anywhere.
+  No new daemon, no scheduler: `watch` remains the thing that runs on
+  yours.
+- **One pipe, no shell loop — chapter three of the 1.67 arc.**
+  `check --files-from -` reads a file list from stdin — the shape
+  `git diff --name-only` already produces — so the pre-commit recipe in
+  `docs/ci.md` is now one pipe: `git diff --cached --name-only | trazum
+  check --files-from -`. Refusals and budgets are directory mode's own;
+  only which files are looked at changes. Paths that are not prompt files,
+  paths the config ignores, and deletions are dropped and **counted out
+  loud** — "checking 2 of 4 listed, 2 dropped" — and a commit that touches
+  no prompts passes without ceremony, because a hook that fails on a
+  README edit is a hook somebody uninstalls. The baseline gate is
+  deliberately skipped under a partial list — it compares the whole
+  repository against the committed record, and two changed files would
+  read as thirty-eight removals — and the skip is stated on every run
+  rather than discovered in an incident.
+- **The position, as one answer — chapter one of the 1.67 arc.**
+  `trazum position <usage.jsonl>` states where the month stands against
+  every configured ceiling — `spend.monthlyUsd`, `limits.dayUsd`, each
+  `limits.byLabel` entry — measured from the named log alone, priced record
+  by record, with the denominator on every figure: days measured against
+  days elapsed, the window each figure covers, and the source stated in the
+  document (`source: "usage-log"` — the store's provider-billed standing is
+  a different measurement and is never merged in). The line people actually
+  want is division, labelled as division: *"at $5.00/day over 8 measured
+  days, the ceiling is 12.0 days away — division on the past, not a
+  forecast"* — **absent**, never zeroed, under the seven-day floor
+  (`MIN_SCALE_DAYS`, the same floor every scaled figure respects), on an
+  `over`, and on a zero rate; no field anywhere names a date, and a test
+  holds that. A stale log is `cannot-tell` for the month (the
+  `budgetPositions` rule) while a quiet day is a measured $0 (the doors'
+  rule), stated side by side deliberately. What the log cannot measure is
+  named with its reason — `no-clock`, `no-labels`, `nothing-recorded`,
+  `label-unseen` (renamed? idle? neither is "under budget") — and what the
+  document deliberately does not answer is written in it: the per-session
+  ceiling is judged per call at the doors, because a session is not a
+  calendar scope. The document is the **nineteenth named contract**:
+  `conform` detects and enforces it, `trazum schema position` exports it,
+  `positionReport` in `@trazum/core` computes it pure (the library's own
+  output goes through the library's own checker), and the contract table in
+  `docs/json-output.md` is held both ways against the real emission. The
+  CLI grows to thirty-eight commands.
 
 ## 1.66.0 — "One policy, three doors"
 

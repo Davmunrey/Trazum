@@ -479,3 +479,21 @@ A **502** with `error.type: "trazum_upstream_unreachable"` is a different thing
 entirely: the provider could not be reached. A caller needs to tell "your
 provider is down" from "you are out of money", and a proxy that blurred them
 would send somebody to fix the wrong thing at the worst possible moment.
+
+## The position document
+
+`trazum position <usage.jsonl> --json` — where the month stands, measured from
+one named log. `@trazum/core` computes it with `positionReport`, the same pure
+function every surface answers with, so a page and a terminal cannot disagree
+about where the month is.
+
+| Field | What it holds |
+| --- | --- |
+| `schemaVersion` | `1`. |
+| `source` | Always `usage-log` — the document's own signature, and the statement of what was measured: this log, priced record by record. The store's provider-billed monthly standing is a different measurement and is never merged in. |
+| `month` | The UTC month as a period: `id` (`YYYY-MM`), `fromMs`, `toMs`, `days`. |
+| `positions` | One standing per measurable ceiling, in config order: `scope` (`month`, `day`, `label`), `label`, `limitUsd`, `measuredUsd`, `remainingUsd`, the `window` the figure covers, `daysMeasured` and `daysElapsed` — the denominator on every figure — a `verdict` (`within`, `over`, `cannot-tell`), and `distance`. |
+| `positions[].distance` | Division on the past, or null. `daysAway` is `remainingUsd ÷ usdPerDay` with `usdPerDay` and its own denominator `overDays` beside it, and `arithmetic: "division"` stated in the number. Null under the seven-day floor, on an `over`, and on a zero rate — absent, never zeroed, and there is no field naming a date anywhere in this document. |
+| `unmeasured` | Configured ceilings this log cannot answer for, each with `scope`, `label`, `limitUsd` and a `why`: `no-clock`, `no-labels`, `nothing-recorded`, or `label-unseen` — a label the log records but has not seen this month, which may be renamed or idle and is neither "under budget". |
+| `cannotSay` | What the document deliberately does not answer, as sentences — the per-session ceiling is judged per call at the doors, and a month with no configured ceiling has no position to state. |
+| `unpricedRecords` | Records naming a model the catalogue cannot price. They contribute nothing to any figure above — money nobody can see, counted instead of dropped. |

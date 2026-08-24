@@ -58,6 +58,7 @@ ${bold('USAGE')}
   trazum conform <file|-> [--contract <name>]
   trazum schema <contract>
   trazum rollup <document...|dir> [--json] [--html-out <file>]
+  trazum position <usage.jsonl>
   trazum pulse [--max-stale-hours <n>]
   trazum bench [--workload <id>] [--record <file>] [--against <file> --max-ratio <n>] [--json]
   trazum write [--answers <file>] [--json] [-o <file>]
@@ -134,6 +135,19 @@ ${bold('OPTIONS FOR write')}
                               with everything else on stderr.
   --calls <n>                 Calls per month, for the estimate.
   --avg-output <n>            Average output tokens per call, for the estimate.
+
+${bold('OPTIONS FOR position')}
+  --html-out <file>           The position as one self-contained page — the
+                              same sentences the terminal prints, caveats
+                              first, for the person who does not run CLIs.
+  --json                      The position document, contract-checked like
+                              everything (\`--contract position\`).
+
+  Where the month stands against every configured ceiling, measured from the
+  named log alone with the denominator on every figure. The distance line is
+  division on the past, labelled as such, and absent under the seven-day
+  floor, on an over, and on a zero rate: never a forecast, and no field in
+  the document names a date.
 
 ${bold('OPTIONS FOR pulse')}
   --max-stale-hours <n>       Exit 1 when something that runs here has not run
@@ -435,6 +449,13 @@ ${bold('OPTIONS FOR check')}
   --baseline                  Gate on the recorded cost baseline. On by default whenever
                               the config declares one, so CI needs no argument; the useful
                               spelling is --no-baseline, which skips it for one run.
+  --files-from <file|->       Check only the files listed, one path per line — the shape
+                              git diff --name-only produces, so a pre-commit hook is one
+                              pipe: git diff --cached --name-only | trazum check --files-from -
+                              Non-prompt paths and deletions are dropped and counted out
+                              loud; a list with nothing checkable passes. Budgets apply
+                              per file as always; the baseline needs the whole repository
+                              and is skipped, and says so.
 
   Built for CI: exits with code 1 when the prompt busts the budget, so a
   template that grows unchecked breaks the build instead of the bill.
@@ -1577,6 +1598,35 @@ ${bold('EXAMPLES')}
     },
   },
 
+  position: {
+    heading: (month) => `Where ${month} stands, measured`,
+    scopeMonth: () => 'the month',
+    scopeDay: () => 'today',
+    scopeLabel: (label) => `"${label}"`,
+    within: (scope, measured, limit, remaining, days, elapsed) =>
+      `${scope}: ${measured} of ${limit} measured — ${remaining} left (${days} of ${elapsed} elapsed days measured)`,
+    over: (scope, measured, limit, overBy) =>
+      `${scope}: over — ${measured} measured against ${limit}, ${overBy} past the ceiling`,
+    cannotTell: (scope) => `${scope}: cannot tell — nothing measured in this window`,
+    distance: (days, rate, overDays) =>
+      `at ${rate}/day over ${overDays} measured days, the ceiling is ${days} days away — division on the past, not a forecast`,
+    unmeasuredHeading: () => 'Configured and not measurable from this log',
+    unmeasured: (scope, why) => `${scope}: ${why}`,
+    why: (reason) =>
+      reason === 'no-clock'
+        ? 'no record carries a timestamp, so no window can be measured'
+        : reason === 'no-labels'
+          ? 'no record carries a label, so per-label spend is unknowable here'
+          : reason === 'nothing-recorded'
+            ? 'the log is empty — nothing was recorded'
+            : 'the log records labels and has never seen this one this month — possibly renamed, possibly idle, and neither is "under budget"',
+    cannotSayHeading: () => 'What this deliberately does not answer',
+    unpriced: (count) =>
+      `${count} record(s) name a model the catalogue cannot price. They contribute nothing to any figure above — money nobody can see, said here rather than hidden.`,
+    source: () =>
+      'Measured from this log alone, priced record by record. The store\'s provider-billed monthly standing is a different measurement — "trazum store" prints it — and the two are never merged into one figure.',
+    noLog: () => 'position needs a usage log: trazum position usage.jsonl',
+  },
   pulse: {
     heading: () => 'Did the things that are supposed to run, run?',
     kind: (kind) => {
@@ -2012,6 +2062,10 @@ ${bold('EXAMPLES')}
     noBudget: () => '(no budget)',
     walkTruncated: () =>
       'Stopped early: the directory is larger than the walk limit, so this is not the whole picture.',
+    filesFromSummary: (checked, listed, dropped) =>
+      `Checking ${checked} of ${listed} listed file(s) — ${dropped} dropped: not a prompt extension, ignored by config, or no longer on disk.`,
+    filesFromNoBaseline: () =>
+      'The baseline gate is skipped under --files-from: it compares the whole repository against the committed record, and a partial list would read as removals. Budgets are checked per file as always; run "trazum check ." for the baseline.',
     exactCountsCost: (files) =>
       `Counting ${files} ${files === 1 ? 'file' : 'files'} through the API, one call each. This takes a moment.`,
   },

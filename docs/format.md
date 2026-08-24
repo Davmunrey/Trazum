@@ -1,14 +1,14 @@
 # The interchange format
 
-Trazum emits **seventeen** documents as data, and defines an eighteenth it does not
-emit. All eighteen are contracts, enforced in both directions by parity tests in
+Trazum emits **eighteen** documents as data, and defines a nineteenth it does not
+emit. All nineteen are contracts, enforced in both directions by parity tests in
 this repository, and this page is what makes them something another tool can
 build against rather than something to reverse engineer from output.
 
 Two distinctions are drawn in the table rather than blurred, because each one
 changes what you can actually do:
 
-- **`--contract` names eighteen of them.** Every documented contract — the
+- **`--contract` names nineteen of them.** Every documented contract — the
   defined-but-not-emitted outcome report included — can be checked against a
   document *you* produced with a single command. The distinction between named
   and merely documented existed for releases and closed in the 1.65 arc: a
@@ -39,6 +39,7 @@ changes what you can actually do:
 | **rule yield** | `trazum rules --measure --json` | `rule-yield` | [json-output.md](json-output.md#the-rule-yield-document) |
 | **gateway refusal** | `trazum gateway`, as the HTTP 402 body | `gateway-refusal` | [json-output.md](json-output.md#the-gateway-refusal-document) |
 | **prompt draft** | `trazum write --json`, and `@trazum/core`'s `assemble()` | `prompt-draft` | [json-output.md](json-output.md#the-prompt-draft-document) |
+| **position** | `trazum position --json` | `position` | [json-output.md](json-output.md#the-position-document) |
 
 The count above said **seven** for as long as the table had ten rows in it, and
 it was still saying seven after the outcome report and the annual record were

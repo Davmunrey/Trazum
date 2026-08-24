@@ -45,6 +45,7 @@ ${bold('USO')}
   trazum conform <fichero|-> [--contract <nombre>]
   trazum schema <contrato>
   trazum rollup <documento...|dir> [--json] [--html-out <fichero>]
+  trazum position <uso.jsonl>
   trazum pulse [--max-stale-hours <n>]
   trazum bench [--workload <id>] [--record <fichero>] [--against <fichero> --max-ratio <n>] [--json]
   trazum write [--answers <fichero>] [--json] [-o <fichero>]
@@ -123,6 +124,19 @@ ${bold('OPCIONES DE write')}
                               todo lo demás en stderr.
   --calls <n>                 Llamadas al mes, para la estimación.
   --avg-output <n>            Tokens de salida por llamada, para la estimación.
+
+${bold('OPCIONES DE position')}
+  --html-out <fichero>        La posición como una página autocontenida — las
+                              mismas frases que imprime el terminal, caveats
+                              primero, para quien no ejecuta CLIs.
+  --json                      El documento de posición, verificado por
+                              contrato como todo (\`--contract position\`).
+
+  Dónde está el mes frente a cada techo configurado, medido solo desde el
+  log nombrado y con el denominador en cada cifra. La línea de distancia es
+  división sobre el pasado, etiquetada como tal, y ausente bajo el suelo de
+  siete días, con un techo superado o con tasa cero: nunca un pronóstico, y
+  ningún campo del documento nombra una fecha.
 
 ${bold('OPCIONES DE pulse')}
   --max-stale-hours <n>       Sale con 1 cuando algo que corre aquí lleva más
@@ -436,6 +450,15 @@ ${bold('OPCIONES DE check')}
   --baseline                  Aplica la línea base registrada. Activo por defecto siempre
                               que el config declare una, así CI no necesita argumentos; la
                               forma útil es --no-baseline, que la omite en una ejecución.
+  --files-from <fichero|->    Comprueba solo los ficheros listados, una ruta por línea —
+                              la forma que produce git diff --name-only, así que un hook
+                              de pre-commit es una tubería:
+                              git diff --cached --name-only | trazum check --files-from -
+                              Las rutas que no son prompts y las eliminaciones se
+                              descartan y se cuentan en voz alta; una lista sin nada
+                              comprobable pasa. Los presupuestos aplican por fichero como
+                              siempre; el baseline necesita el repositorio entero y se
+                              omite, diciéndolo.
 
   Pensado para CI: sale con código 1 si el prompt supera el presupuesto,
   así una plantilla que crece sin control rompe la build en vez de la factura.
@@ -1589,6 +1612,35 @@ ${bold('EJEMPLOS')}
     },
   },
 
+  position: {
+    heading: (month) => `Dónde está ${month}, medido`,
+    scopeMonth: () => 'el mes',
+    scopeDay: () => 'hoy',
+    scopeLabel: (label) => `«${label}»`,
+    within: (scope, measured, limit, remaining, days, elapsed) =>
+      `${scope}: ${measured} de ${limit} medidos — quedan ${remaining} (${days} de ${elapsed} días transcurridos con medición)`,
+    over: (scope, measured, limit, overBy) =>
+      `${scope}: superado — ${measured} medidos contra ${limit}, ${overBy} por encima del techo`,
+    cannotTell: (scope) => `${scope}: no se puede saber — nada medido en esta ventana`,
+    distance: (days, rate, overDays) =>
+      `a ${rate}/día sobre ${overDays} días medidos, el techo queda a ${days} días — división sobre el pasado, no un pronóstico`,
+    unmeasuredHeading: () => 'Configurado y no medible desde este log',
+    unmeasured: (scope, why) => `${scope}: ${why}`,
+    why: (reason) =>
+      reason === 'no-clock'
+        ? 'ningún registro lleva marca de tiempo, así que no se puede medir ninguna ventana'
+        : reason === 'no-labels'
+          ? 'ningún registro lleva etiqueta, así que el gasto por etiqueta es incognoscible aquí'
+          : reason === 'nothing-recorded'
+            ? 'el log está vacío — no se registró nada'
+            : 'el log registra etiquetas y no ha visto esta en todo el mes — quizá renombrada, quizá parada, y ninguna de las dos es «dentro del presupuesto»',
+    cannotSayHeading: () => 'Lo que deliberadamente no responde',
+    unpriced: (count) =>
+      `${count} registro(s) nombran un modelo que el catálogo no puede tasar. No aportan nada a ninguna cifra de arriba — dinero que nadie ve, dicho aquí en vez de escondido.`,
+    source: () =>
+      'Medido solo desde este log, registro a registro. La posición mensual facturada por el proveedor que guarda el almacén es otra medición — la imprime «trazum store» — y las dos nunca se funden en una cifra.',
+    noLog: () => 'position necesita un log de uso: trazum position uso.jsonl',
+  },
   pulse: {
     heading: () => '¿Corrieron las cosas que tienen que correr?',
     kind: (kind) => {
@@ -2023,6 +2075,10 @@ ${bold('EJEMPLOS')}
     noBudget: () => '(sin presupuesto)',
     walkTruncated: () =>
       'Se ha parado antes de tiempo: el directorio supera el límite de recorrido, así que esto no es el cuadro completo.',
+    filesFromSummary: (checked, listed, dropped) =>
+      `Comprobando ${checked} de ${listed} fichero(s) listados — ${dropped} descartados: sin extensión de prompt, ignorados por la config, o ya no están en disco.`,
+    filesFromNoBaseline: () =>
+      'La puerta de baseline se omite con --files-from: compara el repositorio entero contra el registro comprometido, y una lista parcial se leería como eliminaciones. Los presupuestos se comprueban por fichero como siempre; ejecuta «trazum check .» para el baseline.',
     exactCountsCost: (files) =>
       `Contando ${files} ${files === 1 ? 'fichero' : 'ficheros'} con la API, una llamada por cada uno. Esto tarda un momento.`,
   },

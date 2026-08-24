@@ -73,6 +73,7 @@ const CLAIMED = {
   '## The rule-yield document': 'packages/cli/test/contract-coverage.test.js',
   '## The gateway refusal document': 'packages/cli/test/gateway-proxy.test.js',
   '## The prompt-draft document': 'packages/core/test/write-assembly.test.js',
+  '## The position document': 'packages/cli/test/contract-coverage.test.js',
 };
 
 describe('every contract in docs/json-output.md is claimed by a guard', () => {
@@ -304,6 +305,17 @@ describe('the six contracts that had no guard', () => {
     const document = await readFile(DOC, 'utf8');
     const emitted = Object.keys(run(['pulse', '--json']));
     bothWays('## The pulse document', promised(document, '## The pulse document'), emitted);
+  });
+
+  it('holds the position document, the 1.67 arc\'s one answer', async () => {
+    const dir = await workspace();
+    await writeFile(
+      join(dir, 'trazum.config.json'),
+      JSON.stringify({ spend: { monthlyUsd: 100 }, limits: { dayUsd: 25, byLabel: { chat: 40 } } }),
+    );
+    const document = await readFile(DOC, 'utf8');
+    const emitted = Object.keys(run(['position', join(dir, 'src', 'a.jsonl'), '--json'], dir));
+    bothWays('## The position document', promised(document, '## The position document'), emitted);
   });
 
   it('holds the rule-yield document', async () => {

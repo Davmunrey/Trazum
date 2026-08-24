@@ -47,7 +47,7 @@ never runs unless you ask.
                  for your agents
 ```
 
-## The thirty-seven commands
+## The thirty-eight commands
 
 | Command | What it answers |
 |---|---|
@@ -84,6 +84,7 @@ never runs unless you ask.
 | [`trazum conform`](#building-on-the-format-trazum-conform) | Does the document my tool emits conform, and what will it not be able to answer? |
 | [`trazum rollup`](#more-than-one-machine-trazum-rollup) | Four of us measured four things — what is the total, and what did merging lose? *A format and a merge, not a service.* |
 | [`trazum pulse`](#did-anything-stop-running-trazum-pulse) | Did the things that are supposed to run, run? *Runs nothing itself — your CI is the thing that notices.* |
+| [`trazum position`](#where-the-month-stands-trazum-position) | Where does the month stand against every ceiling? *Measured, denominators attached, no forecast anywhere.* |
 | [`trazum bench`](#this-machine-measured-trazum-bench) | How fast is Trazum here, and on what? *One shot per workload, no judgement — run it before and after a change.* |
 | [`trazum write`](#you-describe-it-it-asks-trazum-write) | What should this prompt say, and what will it cost before I ever send it? *Asks; nothing is generated.* |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
@@ -200,8 +201,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of thirty-seven commands — [the table
-above](#the-thirty-seven-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of thirty-eight commands — [the table
+above](#the-thirty-eight-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -2209,7 +2210,7 @@ believe a limit is set.
 
 ### Building on the format: `trazum conform`
 
-Trazum emits seventeen documents, defines an eighteenth it does not emit, and every
+Trazum emits eighteen documents, defines a nineteenth it does not emit, and every
 one of them is a contract, enforced in both directions by parity tests. [docs/format.md](docs/format.md) is the index;
 this is how you check your own emitter against it.
 
@@ -2412,6 +2413,31 @@ listed beside what it would have unlocked:
 ```
 
 [The questions, and why each one is asked](docs/prompt-writer.md).
+
+### Where the month stands: `trazum position`
+
+```bash
+trazum position usage.jsonl
+trazum position usage.jsonl --json   # the position document, contract-checked
+```
+
+One answer where `profile`, the budget positions and `watch` each held a
+piece: every configured ceiling — `spend.monthlyUsd`, `limits.dayUsd`, each
+`limits.byLabel` entry — with its measured spend, its window, and the
+denominator on every figure: days measured against days elapsed, from the
+named log alone.
+
+The line people actually want is there and is exactly what it says it is:
+*"at $5.00/day over 8 measured days, the ceiling is 12.0 days away — division
+on the past, not a forecast."* It is division, labelled as division, and it is
+**absent** — not zeroed — when the rate stands on fewer than seven measured
+days, when the ceiling is already crossed, and when nothing was measured.
+There is no field in the document that names a date, and a test holds that.
+
+What the log cannot answer is named instead of skipped: a ceiling with no
+clock behind it, a label the log has never seen this month (renamed? idle?
+neither is "under budget"), and the per-session ceiling — judged per call at
+the doors, because a session is not a calendar scope.
 
 ### Did anything stop running: `trazum pulse`
 
@@ -3807,11 +3833,12 @@ cover what matters.
 
 ### An MCP server, so an agent can budget its own prompts
 
-`@trazum/mcp` exposes six tools over stdio — `optimize_prompt`, `check_prompt`,
-`profile_usage`, `list_models`, `spend_guard` and `prompt_writer`. Every other
-surface here answers "what does this prompt cost" for a human after the fact;
-this answers it for the thing composing the prompts — before it sends one, and
-over the bill its calls already ran up.
+`@trazum/mcp` exposes seven tools over stdio — `optimize_prompt`,
+`check_prompt`, `profile_usage`, `position`, `list_models`, `spend_guard` and
+`prompt_writer`. Every other surface here answers "what does this prompt cost"
+for a human after the fact; this answers it for the thing composing the
+prompts — before it sends one, over the bill its calls already ran up, and —
+with `position` — against where the month stands before it spends more.
 
 **`prompt_writer` hands over the questions rather than the answers.** An agent
 asked to write a prompt for something has the same problem a person has: it does

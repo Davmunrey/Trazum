@@ -200,6 +200,14 @@ export type {
 } from './judgement.js';
 export { indexUsage, positionAt } from './position.js';
 export type { MeasuredIndex } from './position.js';
+export { positionReport } from './position-report.js';
+export type {
+  PositionDistance,
+  PositionDocument,
+  PositionScope,
+  PositionStanding,
+  UnmeasuredPosition,
+} from './position-report.js';
 export { guardSpend } from './guard.js';
 export type { GuardAlternative, GuardAnswer, GuardRequest, GuardVerdict } from './guard.js';
 export { proposeInit, HEADLINE_FLOOR_SHARE, MIN_RATE_DAYS } from './init.js';

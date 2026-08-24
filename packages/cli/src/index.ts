@@ -92,6 +92,7 @@ import {
   listModels,
   LOCALES,
   MAX_BASELINE_BYTES,
+  matchGlob,
   MAX_INPUT_CHARS,
   moneyIsComparable,
   mostSpecificMatch,
@@ -110,6 +111,7 @@ import {
   parseUsageLine,
   plannedCalls,
   positionAt,
+  positionReport,
   PRICING_LAST_REVIEWED,
   profilePrompt,
   profileToCsv,
@@ -242,7 +244,7 @@ import {
   renderRankMarkdown,
   renderProfileMarkdown,
 } from './markdown.js';
-import { renderProfileHtml, renderRollupHtml } from './html.js';
+import { renderPositionHtml, renderProfileHtml, renderRollupHtml } from './html.js';
 import type { CliMessages } from './i18n/index.js';
 
 // --------------------------------------------------------------------------
@@ -280,6 +282,7 @@ interface Args {
 const VALUE_FLAGS = new Set([
   'answers',
   'calls',
+  'files-from',
   'log',
   'avg-output',
   'a',
@@ -644,7 +647,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
     'tokens-only', 'cost', 'prompt', 'suggest', 'apply-suggestions',
     'cache-suggestions', 'from-log', 'label', 'all-labels',
   ],
-  check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline'],
+  check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline', 'files-from'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
   profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'html-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd', 'label', 'since', 'until', 'dry-run', 'markdown-summary', 'by-source'],
   plan: ['json', 'out', 'markdown-out', 'min-usd', 'pricing', 'pricing-live'],
@@ -664,6 +667,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   conform: ['contract', 'json'],
   schema: [],
   rollup: ['json', 'html-out'],
+  position: ['json', 'html-out', 'pricing', 'pricing-live'],
   pulse: ['json', 'max-stale-hours'],
   bench: ['workload', 'json', 'record', 'against', 'max-ratio'],
   write: ['answers', 'json', 'out', 'o', 'calls', 'avg-output'],
@@ -2543,6 +2547,130 @@ async function commandWrite(args: Args, t: CliMessages): Promise<void> {
     );
     if (m.complete.declined.length > 0) console.error(t.write.declined(m.complete.declined.join(', ')));
   }
+}
+
+/**
+ * `trazum position <usage.jsonl>` — where the month stands, measured.
+ *
+ * One answer where `profile`, `budgetPositions` and `watch` each held a
+ * piece: every configured ceiling with its measurement, its window and its
+ * denominators, from the named log alone. The distance line is division on
+ * the past — `positionReport` withholds it under the floor, on an over and
+ * on a zero rate, so if it prints, its denominator prints with it.
+ */
+async function commandPosition(
+  args: Args,
+  config: TrazumConfig,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
+  const file = args.positional[0];
+  if (file === undefined) throw new Error(t.position.noLog());
+
+  const text = await readUsageLog(file, t);
+  const records = text
+    .split('\n')
+    .filter((line) => line.trim() !== '')
+    .map((line) => parseUsageLine(line))
+    .filter((record): record is NonNullable<ReturnType<typeof parseUsageLine>> => record !== null);
+
+  const document = positionReport(
+    records,
+    {
+      ...(config.spend === undefined ? {} : { spend: config.spend }),
+      ...(config.limits === undefined ? {} : { limits: config.limits }),
+    },
+    { catalogue: pricing },
+  );
+
+  /**
+   * The HTML door, written on both output paths — the 1.64 rule: the page a
+   * person forwards must exist whether the run was for a human or a pipe.
+   */
+  const htmlOut = stringFlag(args, 'html-out');
+  if (htmlOut !== undefined) {
+    await writeFile(htmlOut, renderPositionHtml(document, t), 'utf8');
+    if (!boolFlag(args, 'json')) console.error(c.dim(t.html.written(htmlOut)));
+  }
+
+  if (boolFlag(args, 'json')) {
+    console.log(JSON.stringify(document, null, 2));
+    return;
+  }
+
+  const scopeName = (position: { scope: string; label: string | null }): string =>
+    position.scope === 'month'
+      ? t.position.scopeMonth()
+      : position.scope === 'day'
+        ? t.position.scopeDay()
+        : t.position.scopeLabel(position.label ?? '');
+
+  console.log();
+  console.log(c.bold(t.position.heading(document.month.id)));
+  for (const position of document.positions) {
+    const name = scopeName(position);
+    if (position.verdict === 'cannot-tell') {
+      console.log(`  ${c.yellow('?')} ${wrap(t.position.cannotTell(name), 72, '    ')}`);
+      continue;
+    }
+    if (position.verdict === 'over') {
+      console.log(
+        `  ${c.red('✗')} ${wrap(
+          t.position.over(name, formatUsd(position.measuredUsd), formatUsd(position.limitUsd), formatUsd(-position.remainingUsd)),
+          72,
+          '    ',
+        )}`,
+      );
+      continue;
+    }
+    console.log(
+      `  ${c.green('✓')} ${wrap(
+        t.position.within(
+          name,
+          formatUsd(position.measuredUsd),
+          formatUsd(position.limitUsd),
+          formatUsd(position.remainingUsd),
+          position.daysMeasured,
+          position.daysElapsed,
+        ),
+        72,
+        '    ',
+      )}`,
+    );
+    if (position.distance !== null) {
+      console.log(
+        `    ${c.dim(wrap(
+          t.position.distance(
+            position.distance.daysAway.toFixed(1),
+            formatUsd(position.distance.usdPerDay),
+            position.distance.overDays,
+          ),
+          70,
+          '      ',
+        ))}`,
+      );
+    }
+  }
+  if (document.unmeasured.length > 0) {
+    console.log();
+    console.log(`  ${c.bold(t.position.unmeasuredHeading())}`);
+    for (const entry of document.unmeasured) {
+      console.log(`    ${c.yellow(wrap(t.position.unmeasured(scopeName(entry), t.position.why(entry.why)), 70, '      '))}`);
+    }
+  }
+  if (document.cannotSay.length > 0) {
+    console.log();
+    console.log(`  ${c.bold(t.position.cannotSayHeading())}`);
+    for (const line of document.cannotSay) {
+      console.log(`    ${c.dim(wrap(line, 70, '      '))}`);
+    }
+  }
+  if (document.unpricedRecords > 0) {
+    console.log();
+    console.log(`  ${c.yellow(wrap(t.position.unpriced(document.unpricedRecords), 72, '    '))}`);
+  }
+  console.log();
+  console.log(`  ${c.dim(wrap(t.position.source(), 74, '    '))}`);
 }
 
 async function commandPulse(args: Args, t: CliMessages): Promise<void> {
@@ -4957,6 +5085,25 @@ async function commandCheck(
 
   // A flag beats the config, as everywhere else. -1 means "not given".
   const flagBudget = numberFlag(args, 'max-tokens', -1, t);
+
+  /**
+   * `--files-from -` reads a file list from stdin — the shape
+   * `git diff --name-only` already produces — so a pre-commit hook is one
+   * pipe with no shell loop. Chapter three of the 1.67 arc, and the
+   * refusals and budgets are the directory mode's own: only which files are
+   * looked at changes, and what was dropped from the list is counted out
+   * loud rather than silently.
+   */
+  const filesFrom = stringFlag(args, 'files-from');
+  if (filesFrom !== undefined) {
+    const listText = await readInput(filesFrom, t, maxInputFlag(args, t));
+    const listed = listText
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line !== '');
+    await checkDirectory('.', args, flagBudget, config, counter, level, t, locale, pricing, listed);
+    return;
+  }
 
   const asDirectory = target !== undefined && target !== '-' ? await isDirectory(target) : false;
 
@@ -9275,6 +9422,37 @@ interface PromptScan {
  * files the gate does not check. One walk, one answer, and the budget resolution
  * comes along for free so `check` still sees exactly what it always did.
  */
+/**
+ * Filters an explicit file list to what the directory walk would have
+ * accepted: the same extensions, the same ignore globs, and only files that
+ * exist — a path listed by `git diff --name-only` may be a deletion. The
+ * dropped count is returned so the caller can say it, because a hook that
+ * silently skips half its input reads as having checked everything.
+ */
+async function fromList(
+  root: string,
+  listed: readonly string[],
+  config: TrazumConfig,
+): Promise<{ checkable: string[]; dropped: number }> {
+  const extensions = (config.extensions ?? [...DEFAULT_EXTENSIONS, ...SOURCE_EXTENSIONS]).map((ext) =>
+    ext.toLowerCase(),
+  );
+  const ignore = config.ignore ?? [];
+  const checkable: string[] = [];
+  for (const raw of listed) {
+    const relativePath = raw.replace(/^\.\//, '');
+    if (!extensions.some((ext) => relativePath.toLowerCase().endsWith(ext))) continue;
+    if (ignore.some((pattern) => matchGlob(pattern, relativePath) || matchGlob(pattern, `${relativePath}/`))) continue;
+    try {
+      if (!(await stat(join(root, relativePath))).isFile()) continue;
+    } catch {
+      continue; // listed and gone: a deletion in the diff, not an error
+    }
+    checkable.push(relativePath);
+  }
+  return { checkable, dropped: listed.length - checkable.length };
+}
+
 async function scanPrompts(
   root: string,
   args: Args,
@@ -9285,13 +9463,16 @@ async function scanPrompts(
   t: CliMessages,
   locale: Locale,
   pricing: PricingCatalogue,
+  only?: readonly string[],
 ): Promise<PromptScan> {
   // Source files are walked alongside prompt files rather than opted into.
   // Requiring config to discover a marker somebody just wrote is how `eval` came
   // to be fully implemented and completely undiscoverable; an unmarked source
   // file costs one `includes()` and is dropped.
   const extensions = config.extensions ?? [...DEFAULT_EXTENSIONS, ...SOURCE_EXTENSIONS];
-  const { files, truncated } = await walkPrompts(root, { extensions, ignore: config.ignore });
+  const walked = only === undefined ? await walkPrompts(root, { extensions, ignore: config.ignore }) : null;
+  const files = walked === null ? [...only!] : walked.files;
+  const truncated = walked === null ? false : walked.truncated;
 
   if (files.length === 0) {
     throw new Error(t.errors.noPromptsFound(root, extensions.join(' ')));
@@ -9361,8 +9542,25 @@ async function checkDirectory(
   t: CliMessages,
   locale: Locale,
   pricing: PricingCatalogue,
+  only?: readonly string[],
 ): Promise<void> {
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
+
+  /**
+   * An explicit list with nothing checkable is a pass, not an error: the
+   * whole point of `--files-from` is a hook over `git diff --name-only`,
+   * and a commit that touches no prompt files must go through — with the
+   * drop counted out loud, never silently.
+   */
+  if (only !== undefined) {
+    const { checkable, dropped } = await fromList(root, only, config);
+    if (!boolFlag(args, 'json')) {
+      console.log(c.dim(t.check.filesFromSummary(checkable.length, only.length, dropped)));
+    }
+    if (checkable.length === 0) return;
+    only = checkable;
+  }
+
   const { verdicts, declined, truncated, extensions } = await scanPrompts(
     root,
     args,
@@ -9373,6 +9571,7 @@ async function checkDirectory(
     t,
     locale,
     pricing,
+    only,
   );
 
   /**
@@ -9384,7 +9583,16 @@ async function checkDirectory(
    * asked for and could not run is not a pass: that is the whole reason
    * `parseBaseline` throws on everything.
    */
-  const wantsBaseline = config.baseline !== undefined && boolFlag(args, 'baseline', true);
+  /**
+   * The baseline is a whole-repository gate: it compares every measured file
+   * against the committed record, and handing it two changed files would
+   * report the other thirty-eight as removed. So `--files-from` checks
+   * budgets only, and says so once rather than silently narrowing a gate.
+   */
+  const wantsBaseline = config.baseline !== undefined && boolFlag(args, 'baseline', true) && only === undefined;
+  if (config.baseline !== undefined && only !== undefined && !boolFlag(args, 'json')) {
+    console.log(c.dim(t.check.filesFromNoBaseline()));
+  }
   let baselineOutcome: {
     comparison: BaselineComparison;
     breached: BaselineBreach[];
@@ -10728,6 +10936,9 @@ async function main(): Promise<void> {
       break;
     case 'rollup':
       await commandRollup(args, t);
+      break;
+    case 'position':
+      await commandPosition(args, config, pricing, t);
       break;
     case 'pulse':
       await commandPulse(args, t);
