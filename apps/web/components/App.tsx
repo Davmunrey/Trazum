@@ -320,7 +320,7 @@ export function App({
     // — one specificity step above the light rule, so fixing light alone left
     // the dark rail's active row measuring rgba(0,0,0,0) exactly as before.
     'dark:group-data-[variant=line]/tabs-list:data-[state=active]:bg-layer-active ' +
-    'group-data-[orientation=vertical]/tabs:data-[state=active]:text-foreground';
+    'data-[orientation=vertical]:data-[state=active]:text-foreground';
 
   const MODES = [
     /*
@@ -413,7 +413,7 @@ export function App({
         className={cn(
           'h-auto w-full flex-col items-stretch gap-0.5 rounded-none bg-transparent p-2',
           // No `justify-*` here on purpose. `TabsTrigger` sets its own
-          // `group-data-[orientation=vertical]/tabs:justify-start`, and a
+          // `data-[orientation=vertical]:justify-start`, and a
           // `[&_button]:justify-center` from this parent loses the cascade to
           // it — same declaration, higher specificity, so the collapsed rail
           // silently kept left-aligned icons that measured 12.5px off centre
@@ -439,7 +439,7 @@ export function App({
             key={value}
             value={value}
             title={railCollapsed ? label : undefined}
-            className={cn(ROW, railCollapsed && 'group-data-[orientation=vertical]/tabs:justify-center')}
+            className={cn(ROW, railCollapsed && 'data-[orientation=vertical]:justify-center')}
             // Choosing a mode is what the drawer was opened for, so it closes
             // itself. Leaving it open would hide the panel it just switched to
             // behind the menu that switched it.
@@ -458,7 +458,7 @@ export function App({
         {signedIn && <TabsTrigger
           value="library"
           title={railCollapsed ? t.library.tab : undefined}
-          className={cn(ROW, railCollapsed && 'group-data-[orientation=vertical]/tabs:justify-center')}
+          className={cn(ROW, railCollapsed && 'data-[orientation=vertical]:justify-center')}
           onClick={() => setDrawerOpen(false)}
         >
           <BookMarked className="size-[17px] shrink-0" aria-hidden="true" />

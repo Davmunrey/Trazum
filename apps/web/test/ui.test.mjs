@@ -555,6 +555,18 @@ describe('styling a shadcn primitive from its parent, which does not work', () =
     const found = new Set();
     const prefixed = [
       ...(tabs.match(/[A-Za-z0-9[\]&_=:./-]*group-data-\[[^\]]+\][^"'\s]*/g) ?? []),
+      /*
+        The primitive's own data-attribute variants are fortification too.
+
+        The orientation rules moved from `group-data-[orientation=…]/tabs:` to
+        the element's own `data-[orientation=…]:` when the named group was
+        measured matching ANY ancestor Tabs root — the Optimizer's nested
+        horizontal switcher rendered as a column inside the shell's vertical
+        Tabs, with the two orientations' marker rules collapsing to a 2×2px
+        dot. Same declarations, new spelling; a parent override loses to them
+        exactly as before, so the harvest reads both.
+      */
+      ...(tabs.match(/(?<=["'\s])data-\[[^\]]+\]:[^"'\s]+/g) ?? []),
       ...(tabs.match(/\bdark:[^"'\s]+/g) ?? []),
     ];
     for (const cls of prefixed) {

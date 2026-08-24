@@ -11,6 +11,22 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+- **A nested Tabs no longer inherits the shell's orientation.** Tailwind's
+  named groups match ANY ancestor, not the nearest: the web app's tabs
+  primitive styled its list and triggers through `group-data-[orientation]/tabs:`,
+  so the Optimizer's little result/diff switcher — a horizontal Tabs inside
+  the app shell's vertical one — rendered as a column of two plain lines,
+  and the `line` variant's active marker, with both orientations' `after:`
+  rules matching at once, collapsed to a 2×2px dot floating over the card
+  heading. Seen in light, dark and mobile alike; the primitive now reads the
+  element's own `data-orientation`, which Radix stamps on the list and every
+  trigger and which cannot cross a Tabs boundary. The parent-override guard
+  in `ui.test.mjs` learned the new spelling — the same declarations defend
+  the same properties — and the planted-defect cases still fire. 393 web
+  tests green.
+
 ### Added
 
 - **Deployable on N0, with the update path written down.** A root
