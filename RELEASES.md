@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.63.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.64.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,46 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.64.0 — "The report somebody forwards"
+
+**The figures leave the terminal without losing their caveats.** The person
+who pays the bill is usually not the person who runs the CLI, and until now
+the profile reached them as a screenshot — a document with no caveats and no
+second page. Four chapters, planned first, delivered in full:
+
+- **`trazum profile --html-out`** — one self-contained file: inline CSS, no
+  scripts, no external assets, both locales, printable. A projection of the
+  document `--json` prints — the renderer takes the exact same input object
+  as the Markdown door, built once for both, so no second computation exists
+  to disagree with the first, and the copy is the terminal's own catalogue.
+- **The caveats are furniture, not footnotes.** Unpriced models, unreadable
+  lines, a log with no clock or sessions, an unsettled cache TTL and a stale
+  price table render in a bordered block *ahead of* the tables, at the same
+  weight as the totals they qualify — asserted by content and by position,
+  and in the other direction too: a run with nothing to caveat earns no
+  block, because a box that always renders is a box nobody reads.
+- **`trazum rollup --html-out`** — the team-facing document, same
+  discipline: each contributor's gaps under that contributor's own name
+  (pooling them is the averaging the roll-up exists to refuse), and every
+  `cannotSay` — `overlap-invisible` included — impossible to crop out of a
+  forwarded copy.
+- **The parity guard, both directions**: every dollar anywhere in either
+  page and every count in a numeric cell walks back to the document
+  (nothing invented), and the document's headline figures walk forward into
+  the page (nothing dropped). Proved by forging pages before being trusted;
+  the guard imports the product's own `formatUsd`, because a
+  re-implementation is a second computation wearing an assertion.
+
+**Found on the way in, fixed first**: `profile --json --markdown-out` had
+crashed with a ReferenceError since 1.59, on every release — reproduced
+against the published 1.63.0 before fixing. Under `--json` the terminal path
+never runs, and the side-file writer reached for that path's uninitialised
+`levers` binding. No test had ever driven both flags together; now one does.
+
+Labels and model ids come from somebody's log, so everything interpolated is
+escaped — tested with a label that is itself an HTML injection. What stayed
+out, per the plan: charting libraries, template languages, serving anything.
 
 ## 1.63.0 — "Scale is measured, not assumed"
 

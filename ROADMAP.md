@@ -1184,6 +1184,17 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.64.0 — "The report somebody forwards" — released
+
+**The figures leave the terminal without losing their caveats.** The profile
+and the roll-up gain an HTML door — one self-contained file, both locales,
+printable — rendered from the same document `--json` prints, with the
+caveats in a bordered block ahead of the tables and a parity guard walking
+every dollar in both directions, proved by forging pages before being
+trusted. On the way in the arc's first test caught a defect shipped since
+1.59: `profile --json --markdown-out` crashed with a ReferenceError, on
+every release, because no test had ever driven both flags together.
+
 ## 1.63.0 — "Scale is measured, not assumed" — released
 
 **The 1.63 arc closes on its stated condition: the gate is live.**
@@ -2078,19 +2089,11 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**One arc is planned: [docs/plan-1.64.md](docs/plan-1.64.md)** — the report
-somebody forwards. The chapters run as 1.63.x and close at 1.64.0.
-
-**1.64 — the figures leave the terminal without losing their caveats.** The
-person who pays the bill is usually not the person who runs the CLI, and
-today the profile reaches them as a screenshot — a document with no caveats
-and no second page. The arc gives the profile and the roll-up an HTML door:
-one self-contained file, both locales, printable, every figure taken from
-the same document `--json` prints so there is no second computation, and a
-parity guard that walks every dollar in the HTML back to the document in
-both directions. The caveats render with the same weight as the totals they
-qualify, and the guard asserts their presence by content — a forwarded
-report that flatters is worse than no report.
+**Nothing is planned right now.** [The 1.64 plan](docs/plan-1.64.md)
+delivered in full at 1.64.0, and the next plan — the owner has asked for the
+five open-source paths to be carried as far as they go without third
+parties — is being written the same way every plan here is written: before
+the code, and kept as written after it.
 
 **Three arcs from the previous plans stay open**, numbered below
 the last release:
