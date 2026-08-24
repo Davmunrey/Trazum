@@ -38,19 +38,29 @@ export const COST_MULTIPLIERS = {
  * from "unspecified": the first should stop the advisory firing, the second
  * should fall back to the default.
  */
+/** Memoised for the same reason as `effectivePricing`: once per record. */
+const multipliersMemo = new WeakMap<
+  ModelPricing,
+  { cacheWrite5m: number; cacheWrite1h: number; cacheRead: number; batch: number | null }
+>();
+
 export function multipliersFor(model: ModelPricing): {
   cacheWrite5m: number;
   cacheWrite1h: number;
   cacheRead: number;
   batch: number | null;
 } {
+  const cached = multipliersMemo.get(model);
+  if (cached !== undefined) return cached;
   const m = model.multipliers ?? {};
-  return {
+  const result = Object.freeze({
     cacheWrite5m: m.cacheWrite5m ?? COST_MULTIPLIERS.cacheWrite5m,
     cacheWrite1h: m.cacheWrite1h ?? COST_MULTIPLIERS.cacheWrite1h,
     cacheRead: m.cacheRead ?? COST_MULTIPLIERS.cacheRead,
     batch: m.batch === undefined ? COST_MULTIPLIERS.batch : m.batch,
-  };
+  });
+  multipliersMemo.set(model, result);
+  return result;
 }
 
 export const MODELS: ModelPricing[] = [
@@ -410,25 +420,51 @@ export function listModels(): ModelPricing[] {
 }
 
 /** Effective price on a given date, applying any live promotion. */
+/**
+ * Memoised per model, because this runs once per record when a usage log is
+ * priced: a 200k-line profile called it 200k times, and the `new Date(...)`
+ * parse of the promo's end date alone was 0.7 of the 2.4 seconds the whole
+ * profile took — measured with --cpu-prof, not guessed. The cache keys on
+ * the model object (a WeakMap, so an overlay's models are collected with
+ * the overlay) and stores the parsed end-of-promo instant plus the two
+ * possible answers; `on` still decides which answer applies on every call,
+ * so behaviour is unchanged to the millisecond.
+ */
+const pricingMemo = new WeakMap<
+  ModelPricing,
+  {
+    untilMs: number | null;
+    promo: { inputPerMTok: number; outputPerMTok: number; promoApplied: boolean } | null;
+    base: { inputPerMTok: number; outputPerMTok: number; promoApplied: boolean };
+  }
+>();
+
 export function effectivePricing(
   model: ModelPricing,
   on: Date = new Date(),
 ): { inputPerMTok: number; outputPerMTok: number; promoApplied: boolean } {
-  if (model.promo) {
-    const until = new Date(`${model.promo.until}T23:59:59.999Z`);
-    if (on.getTime() <= until.getTime()) {
-      return {
-        inputPerMTok: model.promo.inputPerMTok,
-        outputPerMTok: model.promo.outputPerMTok,
-        promoApplied: true,
-      };
-    }
+  let memo = pricingMemo.get(model);
+  if (memo === undefined) {
+    memo = {
+      untilMs: model.promo ? new Date(`${model.promo.until}T23:59:59.999Z`).getTime() : null,
+      promo: model.promo
+        ? {
+            inputPerMTok: model.promo.inputPerMTok,
+            outputPerMTok: model.promo.outputPerMTok,
+            promoApplied: true,
+          }
+        : null,
+      base: Object.freeze({
+        inputPerMTok: model.inputPerMTok,
+        outputPerMTok: model.outputPerMTok,
+        promoApplied: false,
+      }),
+    };
+    if (memo.promo) Object.freeze(memo.promo);
+    pricingMemo.set(model, memo);
   }
-  return {
-    inputPerMTok: model.inputPerMTok,
-    outputPerMTok: model.outputPerMTok,
-    promoApplied: false,
-  };
+  if (memo.untilMs !== null && on.getTime() <= memo.untilMs) return memo.promo!;
+  return memo.base;
 }
 
 /** Cheapest model of each capability tier, for recommendations. */

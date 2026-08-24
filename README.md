@@ -17,6 +17,10 @@ every call. Shortening the prompt is one of them, and it is rarely the biggest.
 
 <img src="docs/assets/demo.svg" alt="trazum optimize on a wordy support prompt: 238 tokens down to 142 (-40.3%), $24.00/month saved by the rules — and an advisory pointing at $528.40/month, 22× more" width="760">
 
+**[Try it live → trazum.vercel.app](https://trazum.vercel.app)** — the web app,
+deployed from `main` on every merge. Paste a prompt or a usage log; nothing you
+paste leaves your browser.
+
 *Real output, transcribed. Read the last two lines: the rules recovered $24.00
 a month, and the advisory above them is worth $528.40 — **22× more**. That gap
 is the entire argument for this tool.*
@@ -2582,7 +2586,7 @@ broken — which is exactly when somebody is asking.
 <div align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="docs/assets/web-dark.png">
-    <img src="docs/assets/web-light.png" alt="The Trazum web app: a wordy support prompt on the left, and on the right a result panel reading minus 43.7 percent, 158 to 89 input tokens, and a saving of $3.45 a month." width="820">
+    <img src="docs/assets/web-light.png" alt="The Trazum web app: the grouped rail on the left with direct GitHub, npm and documentation links; a wordy support prompt in the middle; and on the right a result panel reading minus 29.8 percent, 258 to 181 input tokens, and $3.85 a month saved." width="820">
   </picture>
 </div>
 
