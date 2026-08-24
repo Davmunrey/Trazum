@@ -165,6 +165,37 @@ Three things to get right when offering this:
   path-shaped. Offer the config's `labels` block to map it to a workload
   name before quoting per-label figures from it.
 
+## When the user already has OpenTelemetry spans
+
+If their LLM calls are instrumented with OpenTelemetry's GenAI semantic
+conventions, the spans already carry the counts — `trazum from-otel` reads the
+OTLP/JSON any exporter produces without them reshaping anything:
+
+```bash
+npx -y @trazum/cli from-otel spans.otlp.json -o usage.jsonl
+npx -y @trazum/cli profile usage.jsonl
+```
+
+Three things to get right when offering this:
+
+- **Only the numbers cross.** The conversion reads the model
+  (`gen_ai.request.model`/`gen_ai.response.model`), the timestamp
+  (`startTimeUnixNano`), a label (the span's `gen_ai.operation.name` or the
+  resource's `service.name`) and the `gen_ai.usage.*_tokens` counts; prompt
+  content, trace ids and every other attribute never enter the log. Non-LLM
+  spans are counted and skipped, never priced.
+- **The cache verdicts will read "cannot tell", and that is correct.**
+  OpenTelemetry has not standardised the cache-write TTL split, so an
+  OTel-sourced record carries no `cache_creation`. Do not pick a side — the
+  same refusal as the missing-TTL case above. If the user wants the caching
+  verdict, the fix is emitting the `cache_creation` object, not guessing it.
+- **`--label-from-service` labels by the resource's `service.name`**, so a
+  per-service bill falls out by itself.
+
+Other exporters' formats (LangSmith, Helicone, LiteLLM) are named as next but
+not built: offer `from-otel` for OTLP, and for a vendor format, offer to add a
+converter once the user can share a real export of it.
+
 ## When the log has no labels
 
 If the report says **none of these calls carried a label**, do not quote the levers
