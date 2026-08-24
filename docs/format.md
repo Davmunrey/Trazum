@@ -59,6 +59,54 @@ contract tables that exist, matched by the anchors these rows link to, and
 `packages/cli/test/contract-coverage.test.js` fails on a table this page omits
 *and* on a row pointing at a section that carries no table.
 
+## Emitting the minimum
+
+Two contracts in the table exist to be written by tools that are not Trazum:
+the **usage log**, which anything that calls a model can append, and the
+**outcome report**, which is defined here precisely so that a tool of yours
+can produce one. The examples below are not illustrations — each is extracted
+from this page by `packages/cli/test/producer-page.test.js` and run through
+`trazum conform`, and the same test guts a required field from each and
+requires the gutted copy to fail. An example that drifted from the contract
+breaks the build instead of misleading the first person to copy it.
+
+A usage-log record is one JSON object per line, and the only field `conform`
+*requires* is `model`:
+
+```json usage-log
+{"model": "claude-opus-5", "usage": {"input_tokens": 1200, "output_tokens": 300}}
+```
+
+Everything else — `label`, `session`, `ts`, `stop_reason`, cache token counts
+— is a measurement you either took or did not. `conform` lists what each
+absence costs you and gates on none of it; the fields are documented in
+[usage-logs.md](usage-logs.md).
+
+An outcome report, exactly as `@trazum/core` computes one:
+
+```json outcome-report
+{
+  "schemaVersion": 1,
+  "slices": [
+    { "value": "ok", "verdict": "success", "calls": 3, "usd": 1.5 },
+    { "value": "fail", "verdict": "other", "calls": 1, "usd": 0.5 }
+  ],
+  "coverage": { "recorded": 4, "parsed": 6, "unrecordedUsd": 2 },
+  "undeclared": [],
+  "successShareOfRecordedUsd": 0.75,
+  "noRate": null
+}
+```
+
+The producer's side of the additive promise is short: **add anything, redefine
+nothing, and never write `0` for a measurement nobody took**. A field of your
+own rides along untouched — every consumer here ignores unknown keys, so
+nothing you add needs permission. What you may not do is reuse a documented
+name with a different meaning or type, because that is the one change no
+consumer can detect; and absence is `null` or an empty array, never zero,
+because `successShareOfRecordedUsd: 0` claims every recorded dollar failed —
+a wrong report, where `null` with its `noRate` reason is an honest one.
+
 ## Checking your own emitter
 
 ```bash
@@ -82,6 +130,30 @@ record.
 Unknown fields are never a problem. These documents gain fields without a
 version bump, so a checker that rejected tomorrow's field would be a checker
 nobody upgrades.
+
+## Where the schemas live
+
+`trazum schema <contract>` prints an authored **JSON Schema (draft 2020-12)**
+for any name in the table's `--contract` column, so a document can be checked
+by a tool that has never installed Trazum:
+
+```bash
+trazum schema usage-log > usage-log.schema.json
+npx ajv validate -s usage-log.schema.json -d record.json
+```
+
+Each schema's `$id` — the usage log's is
+`https://github.com/Davmunrey/Trazum/schema/usage-log/v1.json`, and the test
+that holds this page requires that sentence to match the schema — is an
+**identifier, never fetched**: it exists so two tools can agree they mean the
+same contract, and nothing in any build should resolve it.
+
+The schemas state required fields and their types and stop there.
+`additionalProperties` is never `false` — that is the additive promise in
+schema form — and documented unions stay open for the same reason. `conform`
+remains the stricter check: the relational rules, like a rate and its refusal
+never both carrying a value, or a zero standing in for absence, live there,
+because a schema cannot hold them.
 
 ## What `schemaVersion` promises
 
