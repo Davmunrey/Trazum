@@ -11,6 +11,23 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Changed
+
+- **One CodeQL query excluded, out loud and owner-approved:
+  `js/file-access-to-http`.** Merging the refusal ceiling surfaced four medium
+  alerts — the three provider calls in `llm.ts` and the counter in
+  `tokenizer.ts`, each "file data in an outbound network request". That shape
+  is exfiltration in most software; here it is the contract: `--exact-tokens`
+  and `--llm` send the prompt to the API the caller configured, opt-in by
+  flag, gated on the caller's own credential, documented as doing exactly
+  that. The protection the query wants exists in the security suite as tests —
+  which modules may reach the network at all, and that no command calls out
+  unasked. The exclusion was put to the repository owner as a question and
+  approved before it landed; it lives in `.github/codeql/codeql-config.yml`
+  with the full reasoning attached, reviewed and diffable rather than a
+  dismissal buried in a settings page. Every other security-extended query
+  stays on.
+
 ### Added
 
 - **Memory holds a line — chapter four of the 1.63 arc.** The 25MB usage log
