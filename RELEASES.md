@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.68.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.69.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,41 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.69.0 — "The agent's own bill"
+
+**The largest new LLM bill many people have is one they never
+instrumented: the agent they talk to all day.** `trazum from-claude-code`
+— the thirty-ninth command — turns the transcripts Claude Code already
+writes under `~/.claude/projects/` into a usage log, so `profile`,
+`position`, the gates and the web tab price the agent's sessions without
+recording anything new. The API's own `usage` object crosses whole,
+`cache_creation` TTL split included — the exact field the cache verdicts
+beg for — and **nothing else does**: no message text, no paths, no branch
+names, held by fixtures that plant a secret in each and grep the entire
+output.
+
+Measured before designed, on real transcripts: one API call is written as
+one line per content block (25,490 lines → 16,079 calls on one session —
+counting lines would overbill by a third), so records deduplicate by
+request id keeping the final line; and 311 calls across a real project
+differed only by counts growing — responses captured mid-stream — which
+the converter counts as `streamed` without alarm, reserving
+`disagreements` for what streaming cannot explain. The first draft
+alarmed on both; that was the message crying wolf about the norm, and the
+plan records the correction.
+
+A guard hole closed on the way and paid immediately: the README's
+command-count guard mapped number words only up to thirty-two, silently
+skipping every claim above it — extended to forty-four, its first covered
+run caught a stale "thirty-four commands" that had drifted invisibly.
+
+This release also carries what merged unreleased before it: **Trazum as a
+Claude Code plugin** (`claude plugin marketplace add Davmunrey/Trazum`,
+then `claude plugin install trazum@trazum` — the skill derived from the
+project's own by script, the MCP server through the registry, versions in
+lockstep with these manifests), and six vendored agent skills with their
+provenance recorded in `.agents/skills/VENDORED.md`.
 
 ## 1.68.0 — "The browser catches up"
 
