@@ -94,6 +94,7 @@ is the half a reader cannot reconstruct.
 | [1.64](plan-1.64.md) | The report somebody forwards: an HTML door, with the caveats travelling | 1.64.0 — all four chapters; the parity guard holds both pages |
 | [1.65–1.67](plan-1.65-1.67.md) | The paths, as far as code goes: an adoptable format, one policy at three doors, a measured position | 1.65.0, 1.66.0 and 1.67.0 — all three arcs, every chapter |
 | [1.68](plan-1.68.md) | The browser catches up: the position in the tab, from the same functions, with nothing uploaded | 1.68.0 — all four chapters |
+| [1.69](plan-1.69.md) | The agent's own bill: Claude Code transcripts as a usage log, with nothing read but the numbers | in progress |
 
 What each of them **refused** to ship — which is the more useful half, since a
 plan and its implementation shared a hand — is in

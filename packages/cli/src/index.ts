@@ -110,6 +110,7 @@ import {
   indexUsage,
   parseUsageLine,
   plannedCalls,
+  claudeCodeRecords,
   positionAt,
   positionReport,
   PRICING_LAST_REVIEWED,
@@ -668,6 +669,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   schema: [],
   rollup: ['json', 'html-out'],
   position: ['json', 'html-out', 'pricing', 'pricing-live'],
+  'from-claude-code': ['label', 'label-from-project', 'out', 'o'],
   pulse: ['json', 'max-stale-hours'],
   bench: ['workload', 'json', 'record', 'against', 'max-ratio'],
   write: ['answers', 'json', 'out', 'o', 'calls', 'avg-output'],
@@ -2547,6 +2549,90 @@ async function commandWrite(args: Args, t: CliMessages): Promise<void> {
     );
     if (m.complete.declined.length > 0) console.error(t.write.declined(m.complete.declined.join(', ')));
   }
+}
+
+/**
+ * `trazum from-claude-code <file|dir>` — transcripts as a usage log.
+ *
+ * The conversion is `claudeCodeRecords` in core, and this command is only
+ * the walk and the honesty: every transcript under an explicit path (never
+ * a silent default reach into somebody's home), the records on stdout or
+ * `-o`, and a stderr summary of what was collapsed — one API call arrives
+ * as one line per content block, and counting lines would overbill by a
+ * third on a real session — and what was passed over. No message text, no
+ * `cwd`, no branch name crosses the conversion; the suite plants one of
+ * each in a fixture and greps the whole output for them.
+ */
+async function commandFromClaudeCode(args: Args, t: CliMessages): Promise<void> {
+  const target = args.positional[0];
+  if (target === undefined) throw new Error(t.fromClaudeCode.noPath());
+
+  let info;
+  try {
+    info = await stat(target);
+  } catch {
+    throw new Error(t.fromClaudeCode.notFound(target));
+  }
+  const files: string[] = [];
+  if (info.isDirectory()) {
+    const entries = await readdir(target, { recursive: true, withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isFile() && entry.name.endsWith('.jsonl')) {
+        files.push(join(entry.parentPath, entry.name));
+      }
+    }
+    files.sort();
+    if (files.length === 0) throw new Error(t.fromClaudeCode.noTranscripts(target));
+  } else {
+    files.push(target);
+  }
+
+  const label = stringFlag(args, 'label');
+  const labelFromProject = boolFlag(args, 'label-from-project');
+  const lines: string[] = [];
+  let records = 0;
+  let collapsed = 0;
+  let noRequestId = 0;
+  let otherLines = 0;
+  let unparseable = 0;
+  let withoutUsage = 0;
+  let streamed = 0;
+  let disagreements = 0;
+  for (const file of files) {
+    const text = await readFile(file, 'utf8');
+    const projectLabel = labelFromProject ? dirname(resolvePath(file)).split('/').pop() : undefined;
+    const conversion = claudeCodeRecords(text, {
+      ...(label !== undefined
+        ? { label }
+        : projectLabel !== undefined && projectLabel !== ''
+          ? { label: projectLabel }
+          : {}),
+    });
+    for (const record of conversion.records) lines.push(JSON.stringify(record));
+    records += conversion.records.length;
+    collapsed += conversion.collapsed;
+    noRequestId += conversion.noRequestId;
+    otherLines += conversion.otherLines;
+    unparseable += conversion.unparseable;
+    withoutUsage += conversion.assistantWithoutUsage;
+    streamed += conversion.streamed;
+    disagreements += conversion.disagreements;
+  }
+
+  const out = stringFlag(args, 'out') ?? stringFlag(args, 'o');
+  if (out !== undefined) {
+    await writeFile(out, lines.join('\n') + (lines.length > 0 ? '\n' : ''), 'utf8');
+    console.error(t.fromClaudeCode.written(out));
+  } else {
+    for (const line of lines) console.log(line);
+  }
+
+  console.error(t.fromClaudeCode.summary(files.length, records));
+  if (collapsed > 0) console.error(t.fromClaudeCode.collapsed(collapsed));
+  if (streamed > 0) console.error(t.fromClaudeCode.streamed(streamed));
+  if (disagreements > 0) console.error(t.fromClaudeCode.disagreements(disagreements));
+  if (noRequestId > 0) console.error(t.fromClaudeCode.noRequestId(noRequestId));
+  console.error(t.fromClaudeCode.skipped(otherLines, unparseable, withoutUsage));
 }
 
 /**
@@ -10939,6 +11025,9 @@ async function main(): Promise<void> {
       break;
     case 'position':
       await commandPosition(args, config, pricing, t);
+      break;
+    case 'from-claude-code':
+      await commandFromClaudeCode(args, t);
       break;
     case 'pulse':
       await commandPulse(args, t);

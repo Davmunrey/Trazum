@@ -518,6 +518,26 @@ export interface CliMessages {
     caveat(code: string): string;
   };
 
+  /**
+   * `trazum from-claude-code` — transcripts as a usage log. The summary is
+   * the command's honesty: what was priced, what was collapsed (one API
+   * call arrives as one line per content block), and what was passed over.
+   */
+  fromClaudeCode: {
+    noPath(): string;
+    notFound(path: string): string;
+    noTranscripts(path: string): string;
+    summary(files: number, records: number): string;
+    collapsed(lines: number): string;
+    /** Calls written while still streaming; the final line's counts stood. */
+    streamed(count: number): string;
+    /** Lines of one request disagreed beyond streaming growth. A finding. */
+    disagreements(count: number): string;
+    noRequestId(count: number): string;
+    skipped(other: number, unparseable: number, withoutUsage: number): string;
+    written(file: string): string;
+  };
+
   position: {
     /** `Where 2026-08 stands, measured` — the month is data, not prose. */
     heading(month: string): string;

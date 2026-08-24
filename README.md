@@ -47,7 +47,7 @@ never runs unless you ask.
                  for your agents
 ```
 
-## The thirty-eight commands
+## The thirty-nine commands
 
 | Command | What it answers |
 |---|---|
@@ -85,6 +85,7 @@ never runs unless you ask.
 | [`trazum rollup`](#more-than-one-machine-trazum-rollup) | Four of us measured four things — what is the total, and what did merging lose? *A format and a merge, not a service.* |
 | [`trazum pulse`](#did-anything-stop-running-trazum-pulse) | Did the things that are supposed to run, run? *Runs nothing itself — your CI is the thing that notices.* |
 | [`trazum position`](#where-the-month-stands-trazum-position) | Where does the month stand against every ceiling? *Measured, denominators attached, no forecast anywhere.* |
+| [`trazum from-claude-code`](#the-agents-own-bill-trazum-from-claude-code) | What did my Claude Code sessions cost? *Reads the transcripts already on disk — the numbers only, never the words.* |
 | [`trazum bench`](#this-machine-measured-trazum-bench) | How fast is Trazum here, and on what? *One shot per workload, no judgement — run it before and after a change.* |
 | [`trazum write`](#you-describe-it-it-asks-trazum-write) | What should this prompt say, and what will it cost before I ever send it? *Asks; nothing is generated.* |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
@@ -201,8 +202,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of thirty-eight commands — [the table
-above](#the-thirty-eight-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of thirty-nine commands — [the table
+above](#the-thirty-nine-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -365,7 +366,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other thirty-four commands, each with its own section below:
+The other thirty-eight commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -3254,6 +3255,35 @@ it is the advisories' job.
 A model the pricing catalogue does not know is **named and kept out of the
 totals** rather than costed at zero — a total that silently omits calls is wrong in
 the flattering direction.
+
+### The agent's own bill: `trazum from-claude-code`
+
+The largest new LLM bill many people have is one they never instrumented: the
+agent they talk to all day. Claude Code writes a transcript per session under
+`~/.claude/projects/`, and every assistant line in it carries the API's own
+`usage` object — the counts, and the `cache_creation` TTL split that settles
+whether caching paid off. This command turns those transcripts into a usage
+log, so everything above prices your sessions without recording anything new:
+
+```bash
+trazum from-claude-code ~/.claude/projects -o usage.jsonl
+trazum profile usage.jsonl
+```
+
+**The numbers only, never the words.** The conversion reads the model, the
+timestamp, the session id and the usage object; message text, file paths and
+branch names do not cross it, and the suite plants one of each in a fixture
+and greps the whole output to hold that. One API call is written as one line
+per content block — on a real project, 25,490 lines collapsed to 16,079
+calls, so counting lines would overbill by a third — and calls captured while
+still streaming keep their final line's counts. Everything collapsed or
+passed over is said on stderr, never silently. `--label <name>` stamps one
+workload; `--label-from-project` uses each transcript's project directory
+name, which the config's `labels` block can map to something readable.
+
+Other agents' transcript formats are deliberately not guessed at: the command
+names the one it reads. A second format arrives when a real transcript of it
+does.
 
 ### What would actually move this bill
 

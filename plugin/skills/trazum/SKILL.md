@@ -140,6 +140,31 @@ Three things to get right when reporting on this:
   refuses to choose; report it the same way, and tell the user the fix is
   recording the `cache_creation` object the API already returns.
 
+## When the user has no usage log but uses Claude Code
+
+They already have one — they just have not converted it. Claude Code writes a
+transcript per session under `~/.claude/projects/`, and each assistant line
+carries the API's own `usage` object, cache TTL split included:
+
+```bash
+npx -y @trazum/cli from-claude-code ~/.claude/projects -o usage.jsonl
+npx -y @trazum/cli profile usage.jsonl
+```
+
+Three things to get right when offering this:
+
+- **Only the numbers cross.** The conversion reads model, timestamp, session
+  id and usage; message text, file paths and branch names never enter the
+  log. Say this — it is the reason the user can accept the offer.
+- **The stderr summary is part of the answer.** Collapsed lines (one API call
+  is written as one line per content block; counting lines overbills by a
+  third), streamed calls, and everything passed over are stated there. If
+  the summary reports **disagreements**, surface that loudly — it is a
+  finding about the transcript, not bookkeeping.
+- **`--label-from-project` labels by project directory name**, which is
+  path-shaped. Offer the config's `labels` block to map it to a workload
+  name before quoting per-label figures from it.
+
 ## When the log has no labels
 
 If the report says **none of these calls carried a label**, do not quote the levers

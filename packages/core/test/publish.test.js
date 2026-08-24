@@ -541,6 +541,13 @@ describe('a count written in prose is a claim like any other', () => {
     'twenty-one': 21, 'twenty-two': 22, 'twenty-three': 23, 'twenty-four': 24,
     'twenty-five': 25, 'twenty-six': 26, 'twenty-seven': 27, 'twenty-eight': 28,
     'twenty-nine': 29, thirty: 30, 'thirty-one': 31, 'thirty-two': 32,
+    // The table stopped at thirty-two while the product reached thirty-eight,
+    // and every claim above the table's ceiling was silently skipped — a guard
+    // hole found while adding the thirty-ninth command. Extended past today's
+    // count on purpose, so the next few claims are born covered.
+    'thirty-three': 33, 'thirty-four': 34, 'thirty-five': 35, 'thirty-six': 36,
+    'thirty-seven': 37, 'thirty-eight': 38, 'thirty-nine': 39, forty: 40,
+    'forty-one': 41, 'forty-two': 42, 'forty-three': 43, 'forty-four': 44,
   };
 
   it('the rule count in RELEASES.md is the number of rules', () => {
@@ -589,7 +596,9 @@ describe('a count written in prose is a claim like any other', () => {
       cli.indexOf('const COMMAND_FLAGS'),
       cli.indexOf('};', cli.indexOf('const COMMAND_FLAGS')),
     );
-    const commands = [...block.matchAll(/^ {2}([a-z]+):/gm)].map((m) => m[1]);
+    // Quoted keys included: `'from-claude-code':` was the first hyphenated
+    // command, invisible to the bare-word pattern this used to be.
+    const commands = [...block.matchAll(/^ {2}'?([a-z][a-z-]*)'?:/gm)].map((m) => m[1]);
     assert.ok(commands.length > 5, 'COMMAND_FLAGS could not be parsed — has it moved?');
 
     /**

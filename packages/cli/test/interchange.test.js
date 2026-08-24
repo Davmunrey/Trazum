@@ -116,7 +116,7 @@ describe('--json means JSON, not JSON after a report', () => {
       cli.indexOf('const COMMAND_FLAGS'),
       cli.indexOf('};', cli.indexOf('const COMMAND_FLAGS')),
     );
-    const jsonCommands = [...block.matchAll(/^ {2}([a-z]+): \[(.*?)\],$/gm)]
+    const jsonCommands = [...block.matchAll(/^ {2}'?([a-z][a-z-]*)'?: \[(.*?)\],$/gm)]
       .filter((m) => m[2].includes("'json'"))
       .map((m) => m[1]);
     assert.ok(jsonCommands.length > 8, `only ${jsonCommands.length} --json commands found`);

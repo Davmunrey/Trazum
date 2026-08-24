@@ -13,6 +13,33 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **The agent's own bill — `trazum from-claude-code`.** [The 1.69
+  plan](docs/plan-1.69.md)'s arc: the thirty-ninth command turns the
+  transcripts Claude Code already writes under `~/.claude/projects/` into a
+  usage log, so `profile`, `position`, the gates and the web tab price the
+  agent's sessions without instrumenting anything — and without reading
+  what was said. The conversion (`claudeCodeRecords` in core, pure) takes
+  model, timestamp, session id and the API's own `usage` object — the
+  `cache_creation` TTL split included, which feeds the TTL-fit verdict
+  directly — and nothing else: a fixture plants a secret in the message
+  text, the `cwd` and the branch name, and the suite greps the entire
+  output for each. Measured before designed: one API call is written as
+  one line per content block (25,490 lines → 16,079 calls on a real
+  session — counting lines overbills by a third), so records deduplicate
+  by `requestId` keeping the last line; and a first run over a whole
+  project found 311 calls whose lines differ only by counts growing —
+  responses captured mid-stream — which the converter counts as `streamed`
+  without alarm, reserving `disagreements` for what streaming cannot
+  explain. The first draft alarmed on both; that was the message crying
+  wolf about the norm. Everything collapsed or passed over is summarised
+  on stderr, never silently. Along the way a guard hole closed: the
+  README's command-count guard mapped number words only up to thirty-two,
+  so every claim above it had been silently skipped since the
+  thirty-third command — the table now reaches forty-four and the
+  `COMMAND_FLAGS` parsers learned quoted, hyphenated keys, of which
+  `from-claude-code` is the first. Both locales; project and plugin skills
+  teach the pipe.
+
 - **Trazum is a Claude Code plugin, from this repository.** `claude plugin
   marketplace add Davmunrey/Trazum` then `claude plugin install
   trazum@trazum` installs the `trazum` skill and the MCP server together.

@@ -119,7 +119,7 @@ describe('every page in this repository', () => {
     const source = readFileSync(join(ROOT, 'packages/cli/src/index.ts'), 'utf8');
     const start = source.indexOf('const COMMAND_FLAGS');
     const block = source.slice(start, source.indexOf('\n};', start));
-    const known = new Set([...block.matchAll(/^ {2}([a-z][a-z-]*):\s*\[/gm)].map((m) => m[1]));
+    const known = new Set([...block.matchAll(/^ {2}'?([a-z][a-z-]*)'?:\s*\[/gm)].map((m) => m[1]));
     assert.ok(known.size >= 30, `only ${known.size} commands parsed out of COMMAND_FLAGS`);
 
     const invented = [];
