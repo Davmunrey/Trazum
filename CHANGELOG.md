@@ -24,6 +24,15 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+- **The storefront caught up with the product.** The README's web-app
+  screenshots dated from 2026-08-12 — before the redesign, the grouped
+  rail, the resource links and the Position card existed — and the live
+  demo born today was linked from nowhere. Both hero screenshots retaken
+  at 2x from the current production build (light and dark, alt text
+  updated to the figures actually on screen), and the README now links
+  **[trazum.vercel.app](https://trazum.vercel.app)** at the top with the
+  one sentence that matters: nothing you paste leaves your browser.
+
 - **Pricing a record stopped re-deriving the price table's answers.**
   `effectivePricing` and `multipliersFor` run once per record when a usage
   log is priced, and a `--cpu-prof` over a 200k-line profile showed the
