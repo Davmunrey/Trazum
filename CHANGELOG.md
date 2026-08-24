@@ -13,6 +13,23 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **The library judges it — chapter two of the 1.66 arc.** `judgeLimits` in
+  `@trazum/core`: one function takes the `limits` policy, the measured
+  position and a proposed call, and answers **within**, **over** or
+  **cannot-tell** — one judgement per applicable ceiling, each carrying the
+  limit, the measured spend, the window it covers and where the scope would
+  stand after the call. Nothing is re-derived: every ceiling is judged by
+  `answerCost`, the same single-budget semantics every door has used since
+  1.44, refusals included (negative token counts throw, an unpriced model is
+  a cannot-tell, and `restsOn` says whether the verdict needed the
+  estimate). Two refusals are the module's own and both close the same
+  loophole: per-label ceilings judging a call that names no label, or a
+  session ceiling judging a call with no session, answer `cannot-tell` —
+  a call that omits its label does not slip past the ceiling, it becomes
+  unjudgeable, with the smallest ceiling named as the one it might be
+  dodging. Verdict precedence is the only safe one: over, then cannot-tell,
+  then within, because "within" must mean everything was judged. An empty
+  policy is `no-policy`, never "within".
 - **The policy has one shape — chapter one of the 1.66 arc.** A `limits`
   block in `trazum.config.json`: per-day (`dayUsd`), per-session
   (`sessionUsd`) and per-label (`byLabel`) USD ceilings — the enforcement

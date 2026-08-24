@@ -188,6 +188,16 @@ export type {
 export { waiverHistory, waiverDay, isWaiverUse } from './waivers.js';
 export type { WaiverHabit, WaiverHistory, WaiverUse, WaiverVerdict } from './waivers.js';
 export { answerCost } from './answer.js';
+export { judgeLimits } from './judgement.js';
+export type {
+  CannotJudgeReason,
+  LimitJudgement,
+  LimitScope,
+  LimitVerdict,
+  MeasuredPosition,
+  PolicyJudgement,
+  ProposedCall,
+} from './judgement.js';
 export { guardSpend } from './guard.js';
 export type { GuardAlternative, GuardAnswer, GuardRequest, GuardVerdict } from './guard.js';
 export { proposeInit, HEADLINE_FLOOR_SHARE, MIN_RATE_DAYS } from './init.js';
