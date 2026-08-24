@@ -24,6 +24,26 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **The landing speaks five languages.** English and Spanish — the two this
+  project has reviewed — plus machine-drafted French, German and Portuguese,
+  so the marketing surface reaches the world while the tool keeps making its
+  precise claims only in the languages a human has checked, the same split
+  `maintainers.ts` draws for the trimming dictionaries. The unreviewed
+  languages carry a visible note — *machine-drafted, not reviewed by a native
+  speaker; a correction is one GitHub issue away* — and the landing keeps its
+  own locale storage key, so a French visitor reads a French landing and
+  lands in the English tool rather than being pushed into a half-reviewed
+  one. Completeness is compiler-enforced (a missing key does not build);
+  `marketing.test.mjs` pins the five locales, the unreviewed notes, and the
+  separate key. German and Portuguese for the app's own chrome are now a
+  fill-in-the-blanks contribution the type system completes; the tool's
+  precise reports stay en/es until a reviewer for another language exists.
+  On **more LLM vendors**: the bundled price table is a reviewed snapshot,
+  and inventing a price would be this product's one unforgivable sin — so
+  coverage beyond it stays where it already is, the live OpenRouter overlay
+  (`--pricing-live`), which prices hundreds of models across dozens of
+  providers as published data and adds no caching advice it cannot source.
+
 - **One drag: your ~/.claude/projects folder onto the web app.** [The 1.70
   plan](docs/plan-1.70.md): the Bill tab's drop zone now accepts a folder,
   descends it for transcripts (`webkitGetAsEntry` on drop, a

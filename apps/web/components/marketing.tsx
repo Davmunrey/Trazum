@@ -2,38 +2,65 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { LOCALE_STORAGE_KEY } from '../lib/i18n';
-import type { Locale } from '../lib/i18n';
-
 /**
- * Shared plumbing for the marketing pages — the landing and the pricing
- * page. These are Persuade surfaces: they sell, the app operates. They
- * deliberately reuse the app's own visual system (Fraunces display, the
- * terracotta accent, the wash tokens) rather than inventing a second brand,
- * and they carry the same two locales the product carries, read from the
- * same storage key the app writes — switching language on the landing
- * switches it in the tool, because it is one product.
+ * Shared plumbing for the marketing surface — the landing.
  *
- * Like the Bill tab, there is no fetch here: the pages are static, the
- * locale is local, and the scroll effects are IntersectionObserver over
- * elements already on the page.
+ * The Persuade surface sells, the tool operates, and they part ways on
+ * language on purpose. **The tool speaks the two languages this project has
+ * reviewed** (en, es) — its numbers make precise claims, and a claim is only
+ * as trustworthy as the language it is checked in, the same principle the
+ * trimming dictionaries hold themselves to. **The marketing speaks the
+ * world's**: reach is not a precise claim, so a machine-drafted French,
+ * German or Portuguese landing serves a reader better than forcing them into
+ * English — exactly the reasoning `maintainers.ts` uses for the unreviewed
+ * dictionaries, applied to copy that sells rather than measures.
+ *
+ * So the landing carries its own locale, under its own storage key, and
+ * never pushes an unreviewed language into the tool: a French visitor reads
+ * a French landing and lands in the English tool, which is the honest split.
+ * The visual system is the app's own — Fraunces, terracotta, the wash tokens
+ * — not a second brand. Like the Bill tab, there is no fetch here.
  */
 
-export function useStoredLocale(): [Locale, (next: Locale) => void] {
-  const [locale, setLocale] = useState<Locale>('en');
+export const MARKETING_LOCALES = ['en', 'es', 'fr', 'de', 'pt'] as const;
+export type MarketingLocale = (typeof MARKETING_LOCALES)[number];
+
+/** Native name for the switcher, and whether a human has reviewed the copy. */
+export const MARKETING_LOCALE_META: Record<
+  MarketingLocale,
+  { name: string; reviewed: boolean }
+> = {
+  en: { name: 'English', reviewed: true },
+  es: { name: 'Español', reviewed: true },
+  fr: { name: 'Français', reviewed: false },
+  de: { name: 'Deutsch', reviewed: false },
+  pt: { name: 'Português', reviewed: false },
+};
+
+const MARKETING_LOCALE_KEY = 'trazum:marketing-locale';
+
+const isMarketingLocale = (value: unknown): value is MarketingLocale =>
+  typeof value === 'string' && (MARKETING_LOCALES as readonly string[]).includes(value);
+
+export function useMarketingLocale(): [MarketingLocale, (next: MarketingLocale) => void] {
+  const [locale, setLocale] = useState<MarketingLocale>('en');
   useEffect(() => {
     try {
-      const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY);
-      if (stored === 'en' || stored === 'es') setLocale(stored);
-      else if (navigator.language?.toLowerCase().startsWith('es')) setLocale('es');
+      const stored = window.localStorage.getItem(MARKETING_LOCALE_KEY);
+      if (isMarketingLocale(stored)) {
+        setLocale(stored);
+        return;
+      }
+      const base = navigator.language?.toLowerCase().slice(0, 2);
+      if (isMarketingLocale(base)) setLocale(base);
     } catch {
       // Storage can throw (private mode); the default locale is a full page.
     }
   }, []);
-  const set = (next: Locale) => {
+  const set = (next: MarketingLocale) => {
     setLocale(next);
     try {
-      window.localStorage.setItem(LOCALE_STORAGE_KEY, next);
+      window.localStorage.setItem(MARKETING_LOCALE_KEY, next);
     } catch {
       // Not persisting is fine; the choice still applies to this visit.
     }
@@ -45,24 +72,24 @@ export function LocaleToggle({
   locale,
   onChange,
 }: {
-  locale: Locale;
-  onChange: (next: Locale) => void;
+  locale: MarketingLocale;
+  onChange: (next: MarketingLocale) => void;
 }) {
   return (
-    <div className="flex items-center gap-1 rounded-lg border p-0.5 text-[13px]">
-      {(['en', 'es'] as const).map((code) => (
+    <div className="flex flex-wrap items-center gap-0.5 rounded-lg border p-0.5 text-[13px]">
+      {MARKETING_LOCALES.map((code) => (
         <button
           key={code}
           type="button"
           onClick={() => onChange(code)}
           aria-pressed={locale === code}
-          className={`rounded-md px-2.5 py-1 transition-colors ${
+          className={`rounded-md px-2 py-1 transition-colors ${
             locale === code
               ? 'bg-layer-active font-semibold'
               : 'text-muted-foreground hover:bg-layer-hover'
           }`}
         >
-          {code === 'en' ? 'English' : 'Español'}
+          {MARKETING_LOCALE_META[code].name}
         </button>
       ))}
     </div>

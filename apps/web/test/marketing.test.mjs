@@ -39,9 +39,12 @@ describe('the marketing pages play by the app’s rules', () => {
     assert.match(marketing, /setShown\(true\);\s*return;/);
   });
 
-  it('shares the app’s locale key, because it is one product', () => {
-    assert.match(marketing, /LOCALE_STORAGE_KEY/);
-    assert.equal(/['"]trazum:locale['"]/.test(marketing), false, 'the key is duplicated as a literal');
+  it('carries its own locale key, so an unreviewed language stays on the landing', () => {
+    // The marketing surface reaches five languages; the tool speaks two. They
+    // must not share storage, or a French landing would push 'fr' into a tool
+    // that has no reviewed French — the "never push an unreviewed language
+    // into the tool" invariant, pinned at its root.
+    assert.match(marketing, /MARKETING_LOCALE_KEY = 'trazum:marketing-locale'/);
   });
 
   it('carries no price — the owner decided to stay open source, priceless', () => {
@@ -62,6 +65,46 @@ describe('the marketing pages play by the app’s rules', () => {
       assert.ok(targets.length > 0, 'no external links found at all — the pattern moved');
       assert.equal(targets.length, rels.length, 'an external link without rel protection');
     }
+  });
+
+  it('speaks five languages, and every one is complete', () => {
+    // The type system already forbids a partial COPY record — a missing key
+    // is a build error — so this pins the intent: five locales named, and the
+    // switcher renders all five. Adding German or Portuguese later is a
+    // fill-in-the-blanks that the compiler completes.
+    for (const code of ['en', 'es', 'fr', 'de', 'pt']) {
+      assert.ok(
+        new RegExp(`\\n  ${code}: \\{`).test(landing),
+        `the landing is missing a ${code} copy block`,
+      );
+    }
+    assert.match(marketing, /MARKETING_LOCALES = \['en', 'es', 'fr', 'de', 'pt'\]/);
+  });
+
+  it('says out loud which languages are machine-drafted, unreviewed', () => {
+    // The maintainers-doctrine pattern applied to selling copy: fr/de/pt are
+    // marked unreviewed and carry a visible note; en/es are reviewed and
+    // carry none. A translation shipped as authoritative without review would
+    // be the same lie the trimming dictionaries refuse.
+    assert.match(marketing, /fr: \{ name: 'Français', reviewed: false \}/);
+    assert.match(marketing, /en: \{ name: 'English', reviewed: true \}/);
+    assert.match(landing, /UNREVIEWED_NOTE/);
+    // The note is non-empty for every unreviewed language and empty for the
+    // reviewed ones — no note shown where a human vouched for the words.
+    for (const code of ['fr', 'de', 'pt']) {
+      assert.ok(
+        new RegExp(`${code}: '[^']+GitHub`).test(landing),
+        `the ${code} unreviewed note is missing or does not point at GitHub`,
+      );
+    }
+    assert.match(landing, /en: '',\n  es: '',/);
+  });
+
+  it('never pushes an unreviewed language into the tool', () => {
+    // The marketing locale has its own storage key: a French visitor reads a
+    // French landing and lands in the en/es tool, never a half-reviewed tool.
+    assert.match(marketing, /trazum:marketing-locale/);
+    assert.equal(/LOCALE_STORAGE_KEY/.test(marketing), false, 'the marketing locale reuses the tool key');
   });
 
   it('the landing’s figures are the product’s own, with their sources named', () => {
