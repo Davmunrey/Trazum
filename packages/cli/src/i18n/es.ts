@@ -802,6 +802,13 @@ ${bold('FICHERO DE CONFIGURACIÓN')}
     spend     { "maxUsd": 200, "byLabel": { "chat": 40 } } — presupuestos en
               dólares para "trazum profile". Una etiqueta con presupuesto y sin
               llamadas se informa como no medida, nunca como aprobada
+    limits    { "dayUsd": 25, "sessionUsd": 1.5, "byLabel": { "chat": 5 } } —
+              la política de aplicación: techos en USD juzgados antes de hacer
+              una llamada, en la puerta a la que llegue (el 402 del gateway,
+              "serve", spend_guard por MCP). Separado de "spend" porque una
+              puerta de informe y un rechazo de llamada se leen en momentos
+              distintos; cada techo debe ser un número positivo, porque un
+              techo de 0 es una caída escrita como política
     owners    { "patterns": { "payments": ["billing-*"] },
               "shared": { "search": { "payments": 0.6, "support": 0.4 } },
               "budgets": { "payments": 400 } } — de quién es el presupuesto de

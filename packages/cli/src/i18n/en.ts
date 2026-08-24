@@ -778,6 +778,13 @@ ${bold('CONFIG FILE')}
     spend     { "maxUsd": 200, "byLabel": { "chat": 40 } } — money budgets for
               "trazum profile", in dollars. A budgeted label with no calls in
               the log is reported as not measured, never as a pass
+    limits    { "dayUsd": 25, "sessionUsd": 1.5, "byLabel": { "chat": 5 } } —
+              the enforcement policy: USD ceilings judged before a call is
+              made, at whichever door it arrives (the gateway's 402, "serve",
+              spend_guard over MCP). Separate from "spend" because a report
+              gate and a call refusal are read at different moments; every
+              ceiling must be a positive number, because a ceiling of 0 is an
+              outage written as a policy
     owners    { "patterns": { "payments": ["billing-*"] },
               "shared": { "search": { "payments": 0.6, "support": 0.4 } },
               "budgets": { "payments": 400 } } — whose budget each workload

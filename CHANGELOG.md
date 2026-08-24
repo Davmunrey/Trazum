@@ -11,7 +11,22 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+- **The policy has one shape — chapter one of the 1.66 arc.** A `limits`
+  block in `trazum.config.json`: per-day (`dayUsd`), per-session
+  (`sessionUsd`) and per-label (`byLabel`) USD ceilings — the enforcement
+  policy every door will read, stated once. Deliberately separate from
+  `spend`: a report gate is read after the fact over a log, an enforcement
+  ceiling is read before a call is made to refuse it, and two surfaces
+  reading "the same" value from different slices of config is the 1.62 arc's
+  defect waiting for its input. Validation is stricter than `spend` in
+  exactly one way: every ceiling must be a **positive** finite number,
+  because a zero enforcement ceiling refuses every call at that door — an
+  outage dressed as a policy, and the error says what to write instead.
+  Unknown keys inside `limits` are named with the nearest real key rather
+  than ignored. The help documents the block in both locales and the skill
+  names it, both held by the existing derived guards.
 
 ## 1.65.0 — "The format anyone can adopt"
 
