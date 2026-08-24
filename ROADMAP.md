@@ -2179,7 +2179,14 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**Nothing is planned.** [The 1.69 plan](docs/plan-1.69.md) is delivered in
+**1.70.0 — "One drag."** [The 1.70 plan](docs/plan-1.70.md), asked for
+and written before the code: drag the `~/.claude/projects` folder onto the
+web app and read your own agent bill in seconds — the 1.69 converter is
+already in the browser bundle, so the tab learns to recognise a transcript,
+accept a folder, convert in the page and say what it did. No install, no
+upload, no third step.
+
+Before it, [the 1.69 plan](docs/plan-1.69.md) was delivered in
 full — the agent's own bill, priced from the transcripts already on disk.
 Before it, [the 1.68 plan](docs/plan-1.68.md) was delivered in
 full — the browser caught up with the other three doors in one release.

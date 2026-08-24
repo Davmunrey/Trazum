@@ -24,6 +24,45 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **The landing speaks five languages.** English and Spanish — the two this
+  project has reviewed — plus machine-drafted French, German and Portuguese,
+  so the marketing surface reaches the world while the tool keeps making its
+  precise claims only in the languages a human has checked, the same split
+  `maintainers.ts` draws for the trimming dictionaries. The unreviewed
+  languages carry a visible note — *machine-drafted, not reviewed by a native
+  speaker; a correction is one GitHub issue away* — and the landing keeps its
+  own locale storage key, so a French visitor reads a French landing and
+  lands in the English tool rather than being pushed into a half-reviewed
+  one. Completeness is compiler-enforced (a missing key does not build);
+  `marketing.test.mjs` pins the five locales, the unreviewed notes, and the
+  separate key. German and Portuguese for the app's own chrome are now a
+  fill-in-the-blanks contribution the type system completes; the tool's
+  precise reports stay en/es until a reviewer for another language exists.
+  On **more LLM vendors**: the bundled price table is a reviewed snapshot,
+  and inventing a price would be this product's one unforgivable sin — so
+  coverage beyond it stays where it already is, the live OpenRouter overlay
+  (`--pricing-live`), which prices hundreds of models across dozens of
+  providers as published data and adds no caching advice it cannot source.
+
+- **One drag: your ~/.claude/projects folder onto the web app.** [The 1.70
+  plan](docs/plan-1.70.md): the Bill tab's drop zone now accepts a folder,
+  descends it for transcripts (`webkitGetAsEntry` on drop, a
+  `webkitdirectory` picker as the alternative), and converts every one in
+  the page with the 1.69 converter — labelled by its project directory, so
+  the per-project bill appears by itself — priced beside any usage logs in
+  the same drop. A new core `looksLikeClaudeCodeTranscript` routes each
+  file (keyed on the `type: 'assistant'` envelope carrying `message.usage`,
+  not the word "assistant", so a usage log labelled `assistant-work` is not
+  mistaken for one), and a banner above the report says what was converted,
+  collapsed and streamed, ending on the sentence that earns the feature:
+  the transcripts were read in this tab, the numbers kept and the words
+  not. No install, no upload, no third step — the whole 1.69 pipe collapsed
+  to a gesture. `claude-code.test.js` gains the detector's both-direction
+  fixtures; `folder-ingest.test.mjs` holds the no-fetch invariant with the
+  new code inside it, proves a mixed folder-plus-log drop prices as one
+  bill with three labels, and confirms the planted transcript words never
+  cross into the priced stream. Both locales; verified live.
+
 - **A landing, sold the way the product measures.** `/landing` is the
   product's one Persuade surface: a scrollytelling story
   (IntersectionObserver reveals that are never attached under

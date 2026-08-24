@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { claudeCodeRecords, parseUsageLine } from '../dist/index.js';
+import { claudeCodeRecords, looksLikeClaudeCodeTranscript, parseUsageLine } from '../dist/index.js';
 
 /**
  * The transcript converter, held to the two promises the 1.69 plan makes:
@@ -116,5 +116,34 @@ describe('nothing but the numbers crosses the conversion', () => {
     // And the session id is the one thing of the envelope that does survive
     // — grouped by downstream, never printed, the standing rule.
     assert.ok(serialised.includes('session-1'));
+  });
+});
+
+describe('the tab tells a transcript from a usage log', () => {
+  const transcript = lines(assistant(), { type: 'user', message: { content: 'hi' } });
+  const usageLog = [
+    JSON.stringify({ model: 'claude-sonnet-5', usage: { input_tokens: 10, output_tokens: 2 } }),
+    JSON.stringify({ model: 'claude-opus-5', label: 'assistant-work', usage: { input_tokens: 5, output_tokens: 1 } }),
+  ].join('\n');
+
+  it('recognises a transcript', () => {
+    assert.equal(looksLikeClaudeCodeTranscript(transcript), true);
+  });
+
+  it('does not mistake a usage log for one — even one labelled "assistant"', () => {
+    // The trap: a usage log line can carry `label: "assistant-work"`. The
+    // detector keys on `type: 'assistant'` at the envelope, not the word.
+    assert.equal(looksLikeClaudeCodeTranscript(usageLog), false);
+  });
+
+  it('says no to the near-misses', () => {
+    assert.equal(looksLikeClaudeCodeTranscript(''), false);
+    assert.equal(looksLikeClaudeCodeTranscript('not json at all\nstill not\n'), false);
+    // An assistant line with no usage is a transcript line, but not one this
+    // converts — and the detector is defined as "convertible", so: false.
+    assert.equal(
+      looksLikeClaudeCodeTranscript(JSON.stringify({ type: 'assistant', message: { model: 'm' } })),
+      false,
+    );
   });
 });

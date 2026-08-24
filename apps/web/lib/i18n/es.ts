@@ -414,6 +414,18 @@ export const es: WebMessages = {
       + 'ninguna parte: cierra la página y desaparece.',
     dropLabel: 'Suelta aquí un registro de uso',
     chooseFile: 'Elegir un archivo',
+    chooseFolder: 'Elegir una carpeta',
+    dropFolderHint:
+      'Arrastra aquí tu carpeta ~/.claude/projects para tasar tus sesiones de Claude Code — convertidas en esta pestaña, sin subir nada.',
+    transcriptSummary: (transcripts, calls) =>
+      `Convertidos ${transcripts} transcript(s) de Claude Code en ${calls} llamada(s) tasada(s), aquí en tu navegador.`,
+    transcriptAlsoLogs: (logs) => `Más ${logs} log(s) de uso, leídos tal cual.`,
+    transcriptCollapsed: (lines) =>
+      `${lines} línea(s) extra de llamadas ya contadas colapsadas — una llamada a la API se escribe como una línea por bloque de contenido.`,
+    transcriptStreamed: (calls) =>
+      `${calls} llamada(s) capturadas en streaming; quedaron sus recuentos finales.`,
+    transcriptPrivacy:
+      'Los transcripts se leyeron en esta pestaña. Se quedaron los números y no las palabras — ni texto de mensajes, ni rutas, ni ramas cruzaron la conversión.',
     orPaste: 'o pega el registro debajo',
     pasteAriaLabel: 'Registro de uso a analizar',
     analyze: 'Leer la factura',

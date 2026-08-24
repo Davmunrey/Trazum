@@ -9,11 +9,13 @@ import {
   billLevers,
   cacheEconomics,
   cacheHitRate,
+  claudeCodeRecords,
   contextPressure,
   coverageDrift,
   driversBetween,
   formatSignedUsd,
   formatUsd,
+  looksLikeClaudeCodeTranscript,
   profileUsage,
   repriceProfile,
   reviewAgeDays,
@@ -80,6 +82,7 @@ export function Bill({ t }: { t: WebMessages }) {
    */
   const [drillLabel, setDrillLabel] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const folderInput = useRef<HTMLInputElement>(null);
   const previousInput = useRef<HTMLInputElement>(null);
 
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
@@ -170,9 +173,102 @@ export function Bill({ t }: { t: WebMessages }) {
     });
   }
 
+  /**
+   * What the last folder-or-file ingest did, for the banner above the report.
+   * Null until an ingest that touched a transcript — a plain usage log leaves
+   * it null, so the banner is silent when there is nothing to say. Session
+   * keys never enter this: it holds counts, never records.
+   */
+  const [ingest, setIngest] = useState<{
+    transcripts: number;
+    convertedCalls: number;
+    collapsed: number;
+    streamed: number;
+    logs: number;
+  } | null>(null);
+
   async function readFile(file: File | undefined) {
     if (!file) return;
-    analyze(await file.text(), previousText);
+    await ingestFiles([file]);
+  }
+
+  /**
+   * The 1.70 move: one or many files, transcripts and usage logs mixed, all
+   * converted and priced **in this tab**. A file that looks like a Claude
+   * Code transcript is converted with `claudeCodeRecords` and labelled with
+   * its own project directory's name; a file that is already a usage log is
+   * taken as-is. The concatenation feeds the same `analyze` path a paste
+   * does — nothing here uploads, and `claudeCodeRecords` keeps the numbers
+   * and drops the words, held by the core suite.
+   */
+  async function ingestFiles(files: File[]): Promise<void> {
+    if (files.length === 0) return;
+    const parts: string[] = [];
+    let transcripts = 0;
+    let convertedCalls = 0;
+    let collapsed = 0;
+    let streamed = 0;
+    let logs = 0;
+    for (const file of files) {
+      const text = await file.text();
+      if (looksLikeClaudeCodeTranscript(text)) {
+        transcripts += 1;
+        // The project directory name is the label — a per-project bill by
+        // itself. webkitRelativePath is "project/session.jsonl" for a folder
+        // drop; a lone file has none, and then the records go unlabelled.
+        const rel = file.webkitRelativePath;
+        const label = rel.includes('/') ? rel.split('/')[0] : undefined;
+        const conversion = claudeCodeRecords(text, label !== undefined ? { label } : {});
+        for (const record of conversion.records) parts.push(JSON.stringify(record));
+        convertedCalls += conversion.records.length;
+        collapsed += conversion.collapsed;
+        streamed += conversion.streamed;
+      } else {
+        logs += 1;
+        parts.push(text.trim());
+      }
+    }
+    setIngest(transcripts > 0 ? { transcripts, convertedCalls, collapsed, streamed, logs } : null);
+    analyze(parts.join('\n'), previousText);
+  }
+
+  /**
+   * Walk a dropped `DataTransferItemList` for files, descending into any
+   * dropped directory — the whole point of the folder drop. `webkitGetAsEntry`
+   * is the only cross-browser way to see a dropped folder's contents; the
+   * relative path it builds is what labels each transcript by its project.
+   */
+  async function filesFromDrop(items: DataTransferItemList): Promise<File[]> {
+    const entries: FileSystemEntry[] = [];
+    for (const item of Array.from(items)) {
+      const entry = item.webkitGetAsEntry?.();
+      if (entry) entries.push(entry);
+    }
+    const out: File[] = [];
+    const walk = async (entry: FileSystemEntry, prefix: string): Promise<void> => {
+      if (entry.isFile) {
+        const file = await new Promise<File>((resolve, reject) =>
+          (entry as FileSystemFileEntry).file(resolve, reject),
+        );
+        if (/\.(jsonl|json|txt|log)$/i.test(file.name)) {
+          // Rebuild a relative path so a plain drop labels like a picker does.
+          Object.defineProperty(file, 'webkitRelativePath', {
+            value: prefix === '' ? file.name : `${prefix}/${file.name}`,
+            configurable: true,
+          });
+          out.push(file);
+        }
+      } else if (entry.isDirectory) {
+        const reader = (entry as FileSystemDirectoryEntry).createReader();
+        const children = await new Promise<FileSystemEntry[]>((resolve, reject) =>
+          reader.readEntries(resolve, reject),
+        );
+        const dir = prefix === '' ? entry.name : `${prefix}/${entry.name}`;
+        for (const child of children) await walk(child, dir);
+      }
+    };
+    for (const entry of entries) await walk(entry, '');
+    return out;
   }
 
   /** The second log, re-analysing in place when a report is already on screen. */
@@ -228,19 +324,36 @@ export function Bill({ t }: { t: WebMessages }) {
             onDragOver={(event) => event.preventDefault()}
             onDrop={(event) => {
               event.preventDefault();
-              void readFile(event.dataTransfer.files[0]);
+              // A folder drop carries directory entries, not files: walk them.
+              // A file drop still works — the walk descends nothing and returns
+              // the files it was given.
+              void filesFromDrop(event.dataTransfer.items).then((files) => {
+                if (files.length > 0) void ingestFiles(files);
+                else void readFile(event.dataTransfer.files[0]);
+              });
             }}
             className="flex flex-col items-center gap-2 rounded-lg border border-dashed px-4 py-6 text-sm text-muted-foreground"
           >
             <span>{t.bill.dropLabel}</span>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => fileInput.current?.click()}
-            >
-              {t.bill.chooseFile}
-            </Button>
+            <div className="flex flex-wrap items-center justify-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInput.current?.click()}
+              >
+                {t.bill.chooseFile}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => folderInput.current?.click()}
+              >
+                {t.bill.chooseFolder}
+              </Button>
+            </div>
+            <span className="text-center text-xs">{t.bill.dropFolderHint}</span>
             <input
               ref={fileInput}
               type="file"
@@ -252,7 +365,43 @@ export function Bill({ t }: { t: WebMessages }) {
                 event.target.value = '';
               }}
             />
+            {/*
+              The folder picker: webkitdirectory hands us every file under the
+              chosen directory, each with a webkitRelativePath that labels it
+              by its project. Not in the JSX types, so the attributes are spread.
+            */}
+            <input
+              ref={folderInput}
+              type="file"
+              className="hidden"
+              {...({ webkitdirectory: '', directory: '' } as Record<string, string>)}
+              onChange={(event) => {
+                const chosen = Array.from(event.target.files ?? []).filter((f) =>
+                  /\.(jsonl|json|txt|log)$/i.test(f.name),
+                );
+                if (chosen.length > 0) void ingestFiles(chosen);
+                event.target.value = '';
+              }}
+            />
           </div>
+
+          {/*
+            What the folder ingest did, where the reader is looking. Silent for
+            a plain usage log; loud for a folder of transcripts, and it ends on
+            the sentence that earns the feature: the transcripts were read in
+            this tab, the numbers kept and the words not.
+          */}
+          {ingest !== null && (
+            <div className="rounded-lg border border-l-[3px] border-l-good px-3.5 py-3 text-[13px] leading-snug">
+              <div className="font-semibold">
+                {t.bill.transcriptSummary(ingest.transcripts, ingest.convertedCalls)}
+              </div>
+              {ingest.logs > 0 && <div>{t.bill.transcriptAlsoLogs(ingest.logs)}</div>}
+              {ingest.collapsed > 0 && <div>{t.bill.transcriptCollapsed(ingest.collapsed)}</div>}
+              {ingest.streamed > 0 && <div>{t.bill.transcriptStreamed(ingest.streamed)}</div>}
+              <div className="mt-1 text-muted-foreground">{t.bill.transcriptPrivacy}</div>
+            </div>
+          )}
 
           <span className="text-xs text-muted-foreground">{t.bill.orPaste}</span>
           <Textarea

@@ -2,7 +2,14 @@
 
 import Link from 'next/link';
 
-import { LocaleToggle, Reveal, ScrollProgress, useStoredLocale } from '../../components/marketing';
+import {
+  LocaleToggle,
+  MARKETING_LOCALE_META,
+  Reveal,
+  ScrollProgress,
+  useMarketingLocale,
+} from '../../components/marketing';
+import type { MarketingLocale } from '../../components/marketing';
 
 /**
  * The landing — the one Persuade surface in an app that otherwise operates.
@@ -60,7 +67,18 @@ interface Copy {
   finalCta: string;
 }
 
-const COPY: Record<'en' | 'es', Copy> = {
+/** Shown quietly under the header on machine-drafted languages — the same
+ *  honesty the trimming dictionaries carry: unreviewed, and saying so, with
+ *  an invitation to a native speaker rather than a claim of authority. */
+const UNREVIEWED_NOTE: Record<MarketingLocale, string> = {
+  en: '',
+  es: '',
+  fr: 'Traduction automatique, non relue par un locuteur natif. Une correction ? Ouvrez une issue sur GitHub.',
+  de: 'Maschinell übersetzt, nicht von Muttersprachlern geprüft. Fehler gefunden? Eröffnen Sie ein GitHub-Issue.',
+  pt: 'Tradução automática, sem revisão de falante nativo. Encontrou um erro? Abra uma issue no GitHub.',
+};
+
+const COPY: Record<MarketingLocale, Copy> = {
   en: {
     localeName: 'English',
     heroEyebrow: 'Trazum — prompt cost analyser',
@@ -163,13 +181,167 @@ const COPY: Record<'en' | 'es', Copy> = {
       'La demo corre en tu navegador con tus datos sin salir de él, y el CLI está a un npx de tu log de uso.',
     finalCta: 'Abrir la demo',
   },
+  fr: {
+    localeName: 'Français',
+    heroEyebrow: 'Trazum — analyseur de coût des prompts',
+    heroTitle: 'Vous savez ce que vous dépensez en LLM. Trazum vous dit où.',
+    heroLede:
+      'Optimisation déterministe des prompts, budgets de tokens en CI, un profileur de journaux d’usage qui nomme ce qui ferait vraiment bouger la facture, et des plafonds de dépense appliqués avant même l’appel. Mesuré, jamais estimé — chaque chiffre arrive avec son dénominateur.',
+    ctaDemo: 'Ouvrir la démo',
+    ctaGitHub: 'Star sur GitHub',
+    storyEyebrow: 'Le problème',
+    story1Title: 'La facture grimpe et personne ne sait quelle charge l’a fait.',
+    story1Body:
+      'Un bot de support, un pipeline RAG et un agent partagent une même facture. Sans étiquette sur les appels, un pic de 3× n’a pas de responsable — et les outils qui promettent des réponses estiment au lieu de mesurer.',
+    story2Title: 'Les estimations, c’est ainsi qu’on corrige la mauvaise chose.',
+    story2Body:
+      'Trazum tarifie les enregistrements d’usage que votre fournisseur renvoie déjà, un par un, et refuse d’imprimer une prévision. Un mois périmé est « impossible à dire », une journée calme est un 0 $ mesuré, et les modèles non tarifés sont nommés plutôt que cachés dans le total.',
+    story3Title: 'Les économies qui comptent sont rarement dans le prompt.',
+    story3Body:
+      'Raccourcir récupère environ 1 %. Le modèle vers lequel part un appel déplace 40–80 %, l’API Batch déplace 50 % à plat, et un cache dont le TTL survit à sa réutilisation perd de l’argent en silence. Trazum tarifie tout cela à partir de vos propres tokens.',
+    doorsEyebrow: 'Une politique, chaque porte',
+    doorsTitle: 'La même réponse au CLI, à la passerelle, au navigateur et à l’agent.',
+    doorsLede:
+      'Un seul cœur mesure ; quatre surfaces le portent. Ils ne peuvent pas diverger, car ce sont les mêmes fonctions.',
+    doorCliTitle: 'CLI + CI',
+    doorCliBody:
+      '39 commandes. Budgets de tokens et lignes de base de dérive qui sortent en 1, un hook de pré-commit tenant en un pipe, et une GitHub Action qui commente le rapport sur votre PR.',
+    doorGatewayTitle: 'Passerelle',
+    doorGatewayBody:
+      'Se place devant le fournisseur et refuse un appel qui casse votre politique de dépense — par jour, par session, par étiquette — avec des dérogations portant un auteur et une échéance.',
+    doorBrowserTitle: 'Navigateur',
+    doorBrowserBody:
+      'Collez un journal d’usage et lisez votre facture, le what-if, et où en est le mois face à vos plafonds. Rien de ce que vous collez ne quitte la page — aucun fetch, et un test le garantit.',
+    doorAgentTitle: 'Agents',
+    doorAgentBody:
+      'Un serveur MCP avec un garde de dépense que votre agent consulte avant de dépenser, et un convertisseur qui tarifie vos sessions Claude Code depuis les transcriptions déjà sur le disque — les chiffres seulement, jamais les mots.',
+    proofEyebrow: 'Mesuré sur le prompt de démo',
+    proofTitle: 'Ce qu’un prompt de support verbeux a rendu',
+    proofBody:
+      'Le prompt de démo fourni, niveau agressif, un million d’appels par mois — la sortie du produit lui-même, pas une projection :',
+    proofRules: 'récupéré par les règles, sémantique intacte',
+    proofRoute: 'en déplaçant les appels éligibles vers un modèle moins cher',
+    proofBatch: 'à plat, quand le travail tolère une fenêtre de batch',
+    openEyebrow: 'Open source',
+    openTitle: 'Le cœur est MIT, et reste MIT.',
+    openBody:
+      'Le moteur, le CLI, le serveur MCP, le format et ses dix-neuf contrats sont open source — adoptez le format sans adopter l’outil. Ce qui sera payant, le jour où cela existera, c’est le confort hébergé autour : équipes, passerelle gérée, politique à l’échelle de l’organisation. La mesure ne passe jamais derrière un péage.',
+    openCta: 'Lire le code',
+    finalTitle: 'Essayez-le sur votre propre facture.',
+    finalBody:
+      'La démo tourne dans votre navigateur, vos données y restent, et le CLI est à un npx de votre journal d’usage.',
+    finalCta: 'Ouvrir la démo',
+  },
+  de: {
+    localeName: 'Deutsch',
+    heroEyebrow: 'Trazum — Prompt-Kostenanalyse',
+    heroTitle: 'Sie wissen, was Sie für LLMs ausgeben. Trazum sagt Ihnen, wofür.',
+    heroLede:
+      'Deterministische Prompt-Optimierung, Token-Budgets in der CI, ein Nutzungsprotokoll-Profiler, der benennt, was die Rechnung wirklich bewegt, und Ausgabengrenzen, die vor dem Aufruf greifen. Gemessen, nie geschätzt — jede Zahl kommt mit ihrem Nenner.',
+    ctaDemo: 'Live-Demo öffnen',
+    ctaGitHub: 'Auf GitHub sternen',
+    storyEyebrow: 'Das Problem',
+    story1Title: 'Die Rechnung wächst, und niemand weiß, welche Last es war.',
+    story1Body:
+      'Ein Support-Bot, eine RAG-Pipeline und ein Agent teilen sich eine Rechnung. Ohne Labels an den Aufrufen hat ein 3×-Ausschlag keinen Verantwortlichen — und die Tools, die Antworten versprechen, schätzen, statt zu messen.',
+    story2Title: 'Schätzungen sind der Weg, das Falsche zu beheben.',
+    story2Body:
+      'Trazum bepreist die Nutzungsdatensätze, die Ihr Anbieter ohnehin zurückgibt, Datensatz für Datensatz, und weigert sich, eine Prognose auszugeben. Ein veralteter Monat ist „nicht feststellbar“, ein ruhiger Tag ein gemessener 0 $, und nicht bepreiste Modelle werden benannt statt in der Summe versteckt.',
+    story3Title: 'Die Einsparungen, die zählen, stecken selten im Prompt.',
+    story3Body:
+      'Kürzen bringt etwa 1 %. Welches Modell einen Aufruf bekommt, bewegt 40–80 %, die Batch-API bewegt glatt 50 %, und ein Cache, dessen TTL seine Wiederverwendung überdauert, verliert still Geld. Trazum bepreist all das aus Ihren eigenen Tokens.',
+    doorsEyebrow: 'Eine Richtlinie, jede Tür',
+    doorsTitle: 'Dieselbe Antwort am CLI, am Gateway, im Browser und beim Agenten.',
+    doorsLede:
+      'Ein Kern misst; vier Oberflächen tragen es. Sie können nicht widersprechen, denn es sind dieselben Funktionen.',
+    doorCliTitle: 'CLI + CI',
+    doorCliBody:
+      '39 Befehle. Token-Budgets und Drift-Baselines, die mit 1 beenden, ein Pre-Commit-Hook aus einer einzigen Pipe, und eine GitHub-Action, die den Bericht an Ihre PR kommentiert.',
+    doorGatewayTitle: 'Gateway',
+    doorGatewayBody:
+      'Stellt sich vor den Anbieter und verweigert einen Aufruf, der Ihre Ausgaben-Richtlinie bricht — pro Tag, pro Sitzung, pro Label — mit Ausnahmen, die Autor und Ablaufdatum tragen.',
+    doorBrowserTitle: 'Browser',
+    doorBrowserBody:
+      'Fügen Sie ein Nutzungsprotokoll ein und lesen Sie Ihre Rechnung, das Was-wäre-wenn und wo der Monat gegen Ihre Grenzen steht. Nichts, was Sie einfügen, verlässt die Seite — kein Fetch, und ein Test hält das fest.',
+    doorAgentTitle: 'Agenten',
+    doorAgentBody:
+      'Ein MCP-Server mit einem Ausgaben-Wächter, den Ihr Agent vor dem Ausgeben befragt, und ein Konverter, der Ihre Claude-Code-Sitzungen aus den bereits auf der Platte liegenden Transkripten bepreist — nur die Zahlen, nie die Worte.',
+    proofEyebrow: 'Am Demo-Prompt gemessen',
+    proofTitle: 'Was ein wortreicher Support-Prompt zurückgab',
+    proofBody:
+      'Der mitgelieferte Demo-Prompt, aggressive Stufe, eine Million Aufrufe im Monat — die eigene Ausgabe des Produkts, keine Projektion:',
+    proofRules: 'von den Regeln zurückgeholt, Semantik intakt',
+    proofRoute: 'geeignete Aufrufe auf ein günstigeres Modell verschoben',
+    proofBatch: 'glatt, wenn die Arbeit ein Batch-Fenster verträgt',
+    openEyebrow: 'Open Source',
+    openTitle: 'Der Kern ist MIT und bleibt MIT.',
+    openBody:
+      'Die Engine, das CLI, der MCP-Server, das Format und seine neunzehn Verträge sind Open Source — übernehmen Sie das Format, ohne das Tool zu übernehmen. Was kosten wird, sobald es existiert, ist der gehostete Komfort drumherum: Teams, ein verwaltetes Gateway, organisationsweite Richtlinien. Das Messen kommt nie hinter eine Bezahlschranke.',
+    openCta: 'Den Code lesen',
+    finalTitle: 'Probieren Sie es an Ihrer eigenen Rechnung.',
+    finalBody:
+      'Die Demo läuft in Ihrem Browser, Ihre Daten bleiben darin, und das CLI ist ein npx von Ihrem Nutzungsprotokoll entfernt.',
+    finalCta: 'Demo öffnen',
+  },
+  pt: {
+    localeName: 'Português',
+    heroEyebrow: 'Trazum — analisador de custo de prompts',
+    heroTitle: 'Você sabe quanto gasta em LLMs. O Trazum diz onde.',
+    heroLede:
+      'Otimização determinística de prompts, orçamentos de tokens no CI, um analisador de registos de uso que nomeia o que realmente moveria a fatura, e tetos de gasto aplicados antes de fazer a chamada. Medido, nunca estimado — cada número viaja com o seu denominador.',
+    ctaDemo: 'Abrir a demo',
+    ctaGitHub: 'Estrela no GitHub',
+    storyEyebrow: 'O problema',
+    story1Title: 'A fatura cresce e ninguém sabe qual carga a fez.',
+    story1Body:
+      'Um bot de suporte, um pipeline RAG e um agente partilham uma fatura. Sem rótulos nas chamadas, um pico de 3× não tem dono — e as ferramentas que prometem respostas estimam em vez de medir.',
+    story2Title: 'As estimativas são como se corrige a coisa errada.',
+    story2Body:
+      'O Trazum tarifa os registos de uso que o seu fornecedor já devolve, registo a registo, e recusa imprimir uma previsão. Um mês desatualizado é «não dá para saber», um dia calmo é um 0 $ medido, e os modelos sem preço são nomeados em vez de escondidos no total.',
+    story3Title: 'As poupanças que importam raramente estão no prompt.',
+    story3Body:
+      'Encurtar recupera cerca de 1 %. Para que modelo vai uma chamada move 40–80 %, a API Batch move 50 % fixos, e uma cache cujo TTL sobrevive à sua reutilização perde dinheiro em silêncio. O Trazum tarifa tudo isso a partir dos seus próprios tokens.',
+    doorsEyebrow: 'Uma política, todas as portas',
+    doorsTitle: 'A mesma resposta no CLI, no gateway, no navegador e no agente.',
+    doorsLede:
+      'Um só núcleo mede; quatro superfícies levam-no. Não podem discordar, porque são as mesmas funções.',
+    doorCliTitle: 'CLI + CI',
+    doorCliBody:
+      '39 comandos. Orçamentos de tokens e baselines de deriva que saem com 1, um hook de pré-commit que é um só pipe, e uma GitHub Action que comenta o relatório no seu PR.',
+    doorGatewayTitle: 'Gateway',
+    doorGatewayBody:
+      'Coloca-se à frente do fornecedor e recusa uma chamada que quebra a sua política de gasto — por dia, por sessão, por rótulo — com dispensas que trazem autor e validade.',
+    doorBrowserTitle: 'Navegador',
+    doorBrowserBody:
+      'Cole um registo de uso e leia a sua fatura, o what-if, e onde está o mês face aos seus tetos. Nada do que cola sai da página — não há fetch, e um teste garante-o.',
+    doorAgentTitle: 'Agentes',
+    doorAgentBody:
+      'Um servidor MCP com um guarda de gasto que o seu agente consulta antes de gastar, e um conversor que tarifa as suas sessões de Claude Code a partir das transcrições já em disco — só os números, nunca as palavras.',
+    proofEyebrow: 'Medido no prompt de demo',
+    proofTitle: 'O que um prompt de suporte prolixo devolveu',
+    proofBody:
+      'O prompt de demo incluído, nível agressivo, um milhão de chamadas por mês — a saída do próprio produto, não uma projeção:',
+    proofRules: 'recuperado pelas regras, semântica intacta',
+    proofRoute: 'movendo chamadas elegíveis para um modelo mais barato',
+    proofBatch: 'fixo, quando o trabalho tolera uma janela de batch',
+    openEyebrow: 'Open source',
+    openTitle: 'O núcleo é MIT, e continua MIT.',
+    openBody:
+      'O motor, o CLI, o servidor MCP, o formato e os seus dezanove contratos são open source — adote o formato sem adotar a ferramenta. O que será pago, quando existir, é a comodidade alojada à volta: equipas, gateway gerido, política à escala da organização. A medição nunca vai para trás de um muro de pagamento.',
+    openCta: 'Ler o código',
+    finalTitle: 'Experimente na sua própria fatura.',
+    finalBody:
+      'A demo corre no seu navegador, os seus dados ficam nele, e o CLI está a um npx do seu registo de uso.',
+    finalCta: 'Abrir a demo',
+  },
 };
 
 const GITHUB = 'https://github.com/Davmunrey/Trazum';
 
 export default function Landing() {
-  const [locale, setLocale] = useStoredLocale();
+  const [locale, setLocale] = useMarketingLocale();
   const t = COPY[locale];
+  const reviewed = MARKETING_LOCALE_META[locale].reviewed;
   return (
     <main className="min-h-dvh bg-background text-foreground">
       <ScrollProgress />
@@ -180,6 +352,19 @@ export default function Landing() {
         </Link>
         <LocaleToggle locale={locale} onChange={setLocale} />
       </header>
+
+      {/*
+        The honesty line, on machine-drafted languages only: unreviewed, and
+        saying so, with the fix one issue away — the maintainers-doctrine
+        pattern applied to selling copy. The reviewed languages show nothing.
+      */}
+      {!reviewed && (
+        <div className="mx-auto max-w-5xl px-6 pt-3">
+          <p className="rounded-md border border-l-[3px] border-l-warn bg-warn-wash px-3 py-2 text-[12.5px] leading-snug text-muted-foreground">
+            {UNREVIEWED_NOTE[locale]}
+          </p>
+        </div>
+      )}
 
       {/* Hero */}
       <section className="mx-auto max-w-5xl px-6 pb-20 pt-16 sm:pt-24">

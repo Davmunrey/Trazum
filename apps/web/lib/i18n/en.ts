@@ -411,6 +411,18 @@ export const en: WebMessages = {
       + 'the page and it is gone.',
     dropLabel: 'Drop a usage log here',
     chooseFile: 'Choose a file',
+    chooseFolder: 'Choose a folder',
+    dropFolderHint:
+      'Drop your ~/.claude/projects folder here to price your Claude Code sessions — converted in this tab, nothing uploaded.',
+    transcriptSummary: (transcripts, calls) =>
+      `Converted ${transcripts} Claude Code transcript(s) into ${calls} priced call(s), here in your browser.`,
+    transcriptAlsoLogs: (logs) => `Plus ${logs} usage log(s), read as they are.`,
+    transcriptCollapsed: (lines) =>
+      `${lines} extra line(s) of already-counted calls collapsed — one API call is written as one line per content block.`,
+    transcriptStreamed: (calls) =>
+      `${calls} call(s) were captured mid-stream; their final counts stood.`,
+    transcriptPrivacy:
+      'The transcripts were read in this tab. The numbers were kept and the words were not — no message text, no paths, no branches crossed the conversion.',
     orPaste: 'or paste the log below',
     pasteAriaLabel: 'Usage log to analyse',
     analyze: 'Read the bill',
