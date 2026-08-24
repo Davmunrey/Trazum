@@ -25,6 +25,13 @@ export const en: WebMessages = {
     openMenu: 'Open menu',
     collapseRail: 'Collapse sidebar',
     expandRail: 'Expand sidebar',
+    groupWork: 'Work on a prompt',
+    groupMeasure: 'Measure',
+    groupResources: 'Resources',
+    linkGitHub: 'GitHub',
+    linkNpm: 'npm — @trazum/cli',
+    linkDocs: 'Documentation',
+    opensExternal: 'opens in a new tab',
   },
 
   input: {

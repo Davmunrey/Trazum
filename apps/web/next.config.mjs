@@ -89,6 +89,15 @@ const nextConfig = {
   // The core ships as ESM with types; Next transpiles it alongside the app.
   transpilePackages: ['@trazum/core'],
 
+  /**
+   * A self-contained server for the container image. `standalone` makes
+   * `next build` emit `.next/standalone` with only the modules the server
+   * actually imports — the difference between shipping this app and shipping
+   * this app plus the whole workspace's node_modules. Local `next dev` and
+   * `next start` are unaffected.
+   */
+  output: 'standalone',
+
   async headers() {
     return [
       { source: '/:path*', headers: BASELINE },

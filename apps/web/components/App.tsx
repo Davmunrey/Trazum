@@ -1,7 +1,34 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Menu, PanelLeftClose, PanelLeftOpen, PenLine, Receipt, GitCompare, BookMarked, Wand2, X } from 'lucide-react';
+import {
+  ArrowUpRight,
+  BookMarked,
+  BookOpen,
+  GitCompare,
+  Menu,
+  Package,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PenLine,
+  Receipt,
+  Wand2,
+  X,
+} from 'lucide-react';
+
+/**
+ * The GitHub mark, inlined. lucide dropped brand icons in the major this app
+ * ships, and a folder-with-a-branch metaphor under a link labelled "GitHub"
+ * asks the reader to translate; the mark they already know does not. Same
+ * `currentColor` contract as every lucide glyph, so the row's states apply.
+ */
+function GitHubMark({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" aria-hidden="true" fill="currentColor" className={className}>
+      <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
+    </svg>
+  );
+}
 
 import type { Locale } from '@trazum/core';
 
@@ -320,23 +347,57 @@ export function App({
     // — one specificity step above the light rule, so fixing light alone left
     // the dark rail's active row measuring rgba(0,0,0,0) exactly as before.
     'dark:group-data-[variant=line]/tabs-list:data-[state=active]:bg-layer-active ' +
-    'group-data-[orientation=vertical]/tabs:data-[state=active]:text-foreground';
+    'data-[orientation=vertical]:data-[state=active]:text-foreground';
 
-  const MODES = [
-    /*
-      Optimise stays first because it is what `defaultValue` opens.
+  /*
+    Two groups, and the split is the product's own oldest line: everything in
+    the first works on prompt TEXT (estimates), and the second reads a usage
+    log somebody already paid for (measurements). A grouping that mixed the
+    two would blur on the rail the distinction every report refuses to blur.
 
-      Write was first in this list for a moment, which put a rail whose top item
-      is not the panel on screen — the reader lands on the second row
-      highlighted. The order of the rail and the default tab are one decision,
-      not two, and moving the front door is a product change rather than
-      something to smuggle in with a new mode.
-    */
-    { value: 'optimise', label: t.compare.optimiseTab, Icon: Wand2 },
-    { value: 'write', label: t.write.tab, Icon: PenLine },
-    { value: 'compare', label: t.compare.tab, Icon: GitCompare },
-    { value: 'bill', label: t.bill.tab, Icon: Receipt },
-  ] as const;
+    Labels, not submenus. With five modes, a collapsible group would hide two
+    destinations behind one extra click and remember open/closed state nobody
+    asked to manage — the grouping is typographic, and every mode stays one
+    click away.
+  */
+  const GROUPS = [
+    {
+      label: t.page.groupWork,
+      items: [
+        /*
+          Optimise stays first because it is what `defaultValue` opens.
+
+          Write was first in this list for a moment, which put a rail whose top
+          item is not the panel on screen — the reader lands on the second row
+          highlighted. The order of the rail and the default tab are one
+          decision, not two, and moving the front door is a product change
+          rather than something to smuggle in with a new mode.
+        */
+        { value: 'optimise', label: t.compare.optimiseTab, Icon: Wand2 },
+        { value: 'write', label: t.write.tab, Icon: PenLine },
+        { value: 'compare', label: t.compare.tab, Icon: GitCompare },
+        // The library holds prompt text, so it lives with the text tools —
+        // and only for a signed-in reader, same rule as its panel.
+        ...(signedIn ? [{ value: 'library', label: t.library.tab, Icon: BookMarked }] : []),
+      ],
+    },
+    {
+      label: t.page.groupMeasure,
+      items: [{ value: 'bill', label: t.bill.tab, Icon: Receipt }],
+    },
+  ];
+
+  /**
+   * Straight to the repository, the package and the docs — the places this
+   * page otherwise only alludes to. External on purpose and marked as such:
+   * `no-referrer` is already site-wide, so a share token can never ride
+   * along, and the arrow glyph says "this leaves the app" before the click.
+   */
+  const RESOURCES = [
+    { href: 'https://github.com/Davmunrey/Trazum', label: t.page.linkGitHub, Icon: GitHubMark },
+    { href: 'https://www.npmjs.com/package/@trazum/cli', label: t.page.linkNpm, Icon: Package },
+    { href: 'https://github.com/Davmunrey/Trazum/tree/main/docs', label: t.page.linkDocs, Icon: BookOpen },
+  ];
 
   /**
    * The rail's width for THIS rendering, which is not always the preference.
@@ -413,7 +474,7 @@ export function App({
         className={cn(
           'h-auto w-full flex-col items-stretch gap-0.5 rounded-none bg-transparent p-2',
           // No `justify-*` here on purpose. `TabsTrigger` sets its own
-          // `group-data-[orientation=vertical]/tabs:justify-start`, and a
+          // `data-[orientation=vertical]:justify-start`, and a
           // `[&_button]:justify-center` from this parent loses the cascade to
           // it — same declaration, higher specificity, so the collapsed rail
           // silently kept left-aligned icons that measured 12.5px off centre
@@ -434,37 +495,96 @@ export function App({
           railCollapsed && '[&_button]:px-0',
         )}
       >
-        {MODES.map(({ value, label, Icon }) => (
-          <TabsTrigger
-            key={value}
-            value={value}
-            title={railCollapsed ? label : undefined}
-            className={cn(ROW, railCollapsed && 'group-data-[orientation=vertical]/tabs:justify-center')}
-            // Choosing a mode is what the drawer was opened for, so it closes
-            // itself. Leaving it open would hide the panel it just switched to
-            // behind the menu that switched it.
-            onClick={() => setDrawerOpen(false)}
-          >
-            <Icon className="size-[17px] shrink-0" aria-hidden="true" />
+        {GROUPS.map((group, index) => (
+          <div key={group.label} className="flex flex-col gap-0.5">
             {/*
-              Collapsed, the label is still read out — it is only not drawn.
-              A `title` alone would leave the tab's accessible name resting on
-              the weakest source the accessibility tree has, on the one control
-              a reader has no other way to identify.
+              The group heading is visual furniture inside a tablist, so the
+              accessibility tree does not see it: a screen reader walking the
+              tabs would otherwise meet text that is not a tab. Collapsed, the
+              grouping survives as a hairline — a label with no room is a
+              separator, not nothing.
             */}
-            <span className={cn('truncate', railCollapsed && 'sr-only')}>{label}</span>
-          </TabsTrigger>
+            {railCollapsed ? (
+              index > 0 && <div aria-hidden="true" className="mx-2 my-1.5 border-t" />
+            ) : (
+              <div
+                aria-hidden="true"
+                className={cn(
+                  'px-2.5 pb-1 text-[10.5px] font-medium tracking-[0.08em] uppercase select-none text-faint',
+                  index === 0 ? 'pt-1' : 'pt-3',
+                )}
+              >
+                {group.label}
+              </div>
+            )}
+            {group.items.map(({ value, label, Icon }) => (
+              <TabsTrigger
+                key={value}
+                value={value}
+                title={railCollapsed ? label : undefined}
+                className={cn(ROW, railCollapsed && 'data-[orientation=vertical]:justify-center')}
+                // Choosing a mode is what the drawer was opened for, so it
+                // closes itself. Leaving it open would hide the panel it just
+                // switched to behind the menu that switched it.
+                onClick={() => setDrawerOpen(false)}
+              >
+                <Icon className="size-[17px] shrink-0" aria-hidden="true" />
+                {/*
+                  Collapsed, the label is still read out — it is only not
+                  drawn. A `title` alone would leave the tab's accessible name
+                  resting on the weakest source the accessibility tree has, on
+                  the one control a reader has no other way to identify.
+                */}
+                <span className={cn('truncate', railCollapsed && 'sr-only')}>{label}</span>
+              </TabsTrigger>
+            ))}
+          </div>
         ))}
-        {signedIn && <TabsTrigger
-          value="library"
-          title={railCollapsed ? t.library.tab : undefined}
-          className={cn(ROW, railCollapsed && 'group-data-[orientation=vertical]/tabs:justify-center')}
-          onClick={() => setDrawerOpen(false)}
-        >
-          <BookMarked className="size-[17px] shrink-0" aria-hidden="true" />
-          <span className={cn('truncate', railCollapsed && 'sr-only')}>{t.library.tab}</span>
-        </TabsTrigger>}
       </TabsList>
+
+      {/*
+        Straight out of the app, and dressed to say so. A `nav` of its own —
+        these are links, not tabs, and putting them in the tablist would make
+        arrow-key navigation walk into pages that navigate away. The arrow
+        glyph carries "external" visually; the accessible name says it in
+        words, because an icon is not an announcement.
+      */}
+      <nav aria-label={t.page.groupResources} className="mt-2 flex flex-col gap-0.5 px-2">
+        {!railCollapsed && (
+          <div
+            aria-hidden="true"
+            className="px-2.5 pt-3 pb-1 text-[10.5px] font-medium tracking-[0.08em] uppercase select-none text-faint"
+          >
+            {t.page.groupResources}
+          </div>
+        )}
+        {RESOURCES.map(({ href, label, Icon }) => (
+          <a
+            key={href}
+            href={href}
+            target="_blank"
+            rel="noreferrer noopener"
+            title={railCollapsed ? label : undefined}
+            aria-label={`${label} — ${t.page.opensExternal}`}
+            className={cn(
+              'group/link flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-layer-hover hover:text-foreground',
+              FOCUS_RING,
+              railCollapsed && 'justify-center px-0',
+            )}
+          >
+            <Icon className="size-[15px] shrink-0" aria-hidden="true" />
+            {!railCollapsed && (
+              <>
+                <span className="min-w-0 flex-1 truncate">{label}</span>
+                <ArrowUpRight
+                  className="size-[13px] shrink-0 text-faint opacity-0 transition-opacity group-hover/link:opacity-100 group-focus-visible/link:opacity-100"
+                  aria-hidden="true"
+                />
+              </>
+            )}
+          </a>
+        ))}
+      </nav>
 
       {/* Account and language live at the foot of the rail: page-level controls,
           not part of the navigation, and reached last rather than first. */}

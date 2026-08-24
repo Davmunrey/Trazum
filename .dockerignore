@@ -1,0 +1,19 @@
+# Only what the image build needs goes to the daemon. The test suites, the
+# docs and the git history are the bulk of this repository and none of them
+# belong in a build context.
+node_modules
+**/node_modules
+.git
+.next
+**/.next
+**/dist
+**/test
+docs
+action
+*.md
+.env*
+.trazum
+.gitea
+.github
+.claude
+.agents

@@ -1,0 +1,76 @@
+{
+  "name": "Trazum",
+  "slug": "trazum",
+  "description": "Prompt cost optimiser: measure a prompt, see what it costs per month, and cut it \u2014 from the browser.",
+  "badge": "Self-hosted",
+  "icon": {
+    "letter": "T",
+    "bg": "bg-teal-500/20",
+    "color": "text-teal-400"
+  },
+  "open_btn_class": "bg-teal-500/20 hover:bg-teal-500/30 text-teal-400",
+  "entrypoint": "web",
+  "services": {
+    "db": {
+      "image": "postgres:16-alpine",
+      "port": 5432,
+      "env": {
+        "POSTGRES_DB": "trazum",
+        "POSTGRES_USER": "trazum",
+        "POSTGRES_PASSWORD": {
+          "secret": true,
+          "label": "Database password"
+        },
+        "POSTGRES_INITDB_ARGS": "--data-checksums"
+      },
+      "volumes": {
+        "pgdata": "/var/lib/postgresql/data"
+      },
+      "memory_mb": 512
+    },
+    "migration": {
+      "image": "postgres:16-alpine",
+      "port": 5432,
+      "env": {
+        "POSTGRES_PASSWORD": {
+          "secret": true,
+          "label": "Database password (same as db)"
+        }
+      },
+      "command": [
+        "sh",
+        "-c",
+        "until pg_isready -h db -U trazum >/dev/null 2>&1; do sleep 1; done; for f in /migrations/*.sql; do psql \"postgresql://trazum:${POSTGRES_PASSWORD}@db:5432/trazum\" -v ON_ERROR_STOP=1 -f \"$f\" || exit 1; done"
+      ],
+      "volumes": {
+        "migrations": "/migrations"
+      },
+      "config_files": {
+        "migrations": {
+          "001_accounts.sql": "-- Trazum accounts: users and sessions.\n--\n-- Apply with psql, or paste into the SQL editor of whatever hosts your\n-- Postgres. Idempotent, so re-running it is safe.\n--\n--   psql \"$TRAZUM_DATABASE_URL\" -f apps/web/db/001_accounts.sql\n--\n-- Table names are prefixed so Trazum can share a database with something else.\n\ncreate table if not exists trazum_users (\n  id          uuid primary key,\n  provider    text        not null,\n  -- The provider's own id, not the login. Logins are renameable and, once\n  -- released, reusable: keyed on the login, the next holder of a freed username\n  -- would inherit the previous holder's account here.\n  provider_id text        not null,\n  login       text        not null,\n  name        text,\n  avatar_url  text,\n  created_at  timestamptz not null,\n  unique (provider, provider_id)\n);\n\ncreate table if not exists trazum_sessions (\n  -- SHA-256 of the cookie value, hex. The cookie value itself is never stored,\n  -- so a dump of this table is a list of hashes and not a list of live logins.\n  token_hash text        primary key,\n  user_id    uuid        not null references trazum_users (id) on delete cascade,\n  created_at timestamptz not null,\n  expires_at timestamptz not null\n);\n\ncreate index if not exists trazum_sessions_user_id_idx\n  on trazum_sessions (user_id);\ncreate index if not exists trazum_sessions_expires_at_idx\n  on trazum_sessions (expires_at);\n\n-- ---------------------------------------------------------------------------\n-- Row level security\n-- ---------------------------------------------------------------------------\n--\n-- Aimed at one specific deployment: Supabase, and anything else that puts a\n-- REST layer in front of `public`. There, every table in this schema is\n-- reachable over HTTP with the publishable key unless RLS says otherwise, and a\n-- readable `trazum_sessions` is every live session in the deployment.\n--\n-- Enabled with no policies at all, which is the point: no policy means no row\n-- matches, so the anonymous and authenticated roles can read and write nothing.\n-- Trazum itself connects as the table owner over a direct Postgres connection,\n-- and an owner is exempt from RLS, so the app is unaffected.\n--\n-- `enable`, deliberately, and not `force`. `force row level security` applies\n-- the policies to the owner too \u2014 which, with no policies, locks Trazum out of\n-- its own tables. It looks like the stricter of the two options and it is the\n-- one that takes the site down.\nalter table trazum_users    enable row level security;\nalter table trazum_sessions enable row level security;\n",
+          "002_prompts.sql": "-- Trazum prompt library: saved prompts and every version of each.\n--\n-- Apply after 001_accounts.sql. Idempotent, so re-running it is safe.\n--\n--   psql \"$TRAZUM_DATABASE_URL\" -f apps/web/db/002_prompts.sql\n\ncreate table if not exists trazum_prompts (\n  id         uuid primary key,\n  owner_id   uuid        not null references trazum_users (id) on delete cascade,\n  name       text        not null,\n  created_at timestamptz not null,\n  -- When the newest version was written, not when the row was last touched by\n  -- anything. A rename moves it too, because a rename is a change to the prompt\n  -- as the owner experiences it.\n  updated_at timestamptz not null,\n  -- Per owner, not globally: two people naming a prompt \"support triage\" is not\n  -- a collision, and making it one would leak that the name is taken.\n  unique (owner_id, name)\n);\n\ncreate table if not exists trazum_prompt_versions (\n  id         uuid primary key,\n  prompt_id  uuid        not null references trazum_prompts (id) on delete cascade,\n  -- 1, 2, 3\u2026 within one prompt. Not a global sequence: \"version 4\" has to mean\n  -- the fourth save of this prompt, or the history reads as nonsense.\n  version    integer     not null,\n  text       text        not null,\n  note       text,\n  -- Who saved it. The owner today; a teammate once a prompt can be shared, which\n  -- is why it is a column now rather than a migration later.\n  author_id  uuid        not null references trazum_users (id),\n  created_at timestamptz not null,\n  unique (prompt_id, version)\n);\n\ncreate index if not exists trazum_prompts_owner_idx\n  on trazum_prompts (owner_id, updated_at desc);\ncreate index if not exists trazum_prompt_versions_prompt_idx\n  on trazum_prompt_versions (prompt_id, version desc);\n\n-- No token count column, deliberately.\n--\n-- Storing the estimate taken at save time makes the history chart lie: two\n-- versions saved a year apart get priced by two different estimators, so the\n-- line moves when the prompts did not. Counts are recomputed from `text` on\n-- read, with today's estimator, which is the only way versions are comparable\n-- to each other.\n\n-- Row level security, for the same reason as 001: on a platform that puts a\n-- REST layer in front of `public`, an unprotected `trazum_prompts` is every\n-- saved prompt in the deployment, readable with the publishable key.\n--\n-- `enable` with no policies \u2014 no policy means no row matches, so the anonymous\n-- and authenticated roles get nothing, while Trazum, connecting as the table\n-- owner, is exempt. Not `force`, which would apply the policies to the owner\n-- too and lock the application out of its own tables.\nalter table trazum_prompts         enable row level security;\nalter table trazum_prompt_versions enable row level security;\n",
+          "003_shares.sql": "-- Trazum share links: a comparison anyone holding the URL can read.\n--\n-- Apply after 002_prompts.sql. Idempotent.\n--\n--   psql \"$TRAZUM_DATABASE_URL\" -f apps/web/db/003_shares.sql\n\ncreate table if not exists trazum_shares (\n  -- The capability, and the primary key: 32 bytes from the CSPRNG, base64url.\n  --\n  -- Stored in the clear, unlike a session token, and the asymmetry is the point.\n  -- Hashing a session token means a leaked table is a list of hashes rather than\n  -- a list of live logins. Hashing this one would protect nothing: the row it\n  -- points at is itself the secret, so a leaked table gives up the prompts\n  -- whether or not it gives up the tokens.\n  token       text        primary key,\n  owner_id    uuid        not null references trazum_users (id) on delete cascade,\n  -- Denormalised so rendering a shared page is one query and not two. It is a\n  -- display name; the owner_id above is the identity.\n  owner_login text        not null,\n  before_text text        not null,\n  after_text  text        not null,\n  -- Canonicalised on write: only the keys the settings type declares ever reach\n  -- this column, so nothing free-form from a client is stored and later read\n  -- back as configuration.\n  settings    jsonb       not null,\n  created_at  timestamptz not null,\n  -- Null means it never expires, which the API makes you ask for.\n  expires_at  timestamptz\n);\n\ncreate index if not exists trazum_shares_owner_idx\n  on trazum_shares (owner_id, created_at desc);\ncreate index if not exists trazum_shares_expires_idx\n  on trazum_shares (expires_at);\n\n-- No view counter and no last_viewed_at, deliberately.\n--\n-- Counting views would turn every anonymous read into a write. Two costs: the\n-- obvious one on a connection-limited database, and the one worth stating \u2014\n-- an unauthenticated request that can cause a write is a lever, and \"how many\n-- people opened this\" is not worth being one.\n\n-- Row level security: same reasoning as 001 and 002. A readable trazum_shares\n-- over a REST layer is every shared prompt in the deployment, no token needed.\n-- `enable` with no policies blocks the anonymous role; the table owner, which is\n-- Trazum, is exempt. Not `force`, which would lock the application out.\nalter table trazum_shares enable row level security;\n"
+        }
+      },
+      "depends_on": [
+        "db"
+      ],
+      "memory_mb": 256
+    },
+    "web": {
+      "image": "REPLACE-WITH-REGISTRY/REPLACE-WITH-ORG/trazum:latest",
+      "port": 3000,
+      "env": {
+        "TRAZUM_DATABASE_URL": {
+          "secret": true,
+          "label": "postgresql://trazum:<password>@db:5432/trazum"
+        }
+      },
+      "depends_on": [
+        "db",
+        "migration"
+      ],
+      "memory_mb": 512
+    }
+  }
+}

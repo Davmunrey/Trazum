@@ -24,6 +24,13 @@ export const es: WebMessages = {
     openMenu: 'Abrir menú',
     collapseRail: 'Contraer la barra lateral',
     expandRail: 'Desplegar la barra lateral',
+    groupWork: 'Trabajar un prompt',
+    groupMeasure: 'Medir',
+    groupResources: 'Recursos',
+    linkGitHub: 'GitHub',
+    linkNpm: 'npm — @trazum/cli',
+    linkDocs: 'Documentación',
+    opensExternal: 'se abre en una pestaña nueva',
   },
 
   input: {

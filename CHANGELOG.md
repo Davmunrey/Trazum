@@ -11,7 +11,57 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Fixed
+
+- **A nested Tabs no longer inherits the shell's orientation.** Tailwind's
+  named groups match ANY ancestor, not the nearest: the web app's tabs
+  primitive styled its list and triggers through `group-data-[orientation]/tabs:`,
+  so the Optimizer's little result/diff switcher — a horizontal Tabs inside
+  the app shell's vertical one — rendered as a column of two plain lines,
+  and the `line` variant's active marker, with both orientations' `after:`
+  rules matching at once, collapsed to a 2×2px dot floating over the card
+  heading. Seen in light, dark and mobile alike; the primitive now reads the
+  element's own `data-orientation`, which Radix stamps on the list and every
+  trigger and which cannot cross a Tabs boundary. The parent-override guard
+  in `ui.test.mjs` learned the new spelling — the same declarations defend
+  the same properties — and the planted-defect cases still fire. 393 web
+  tests green.
+
+### Added
+
+- **The rail groups its destinations and links out to the project.** The web
+  app's five tabs sat in one undifferentiated column; the rail now names what
+  each cluster is for — *Work on a prompt* (Optimise, Write, Compare, and the
+  Library when signed in) and *Measure* (Your bill) — with quiet uppercase
+  eyebrows that collapse to hairline separators in the icon-only rail, plus a
+  *Resources* block of external links: the GitHub repository (inline mark —
+  the icon library dropped brand icons), the npm CLI package, and the
+  documentation tree. Each link opens in a new tab, says so to a screen
+  reader, and reveals a small outward arrow on hover or keyboard focus. The
+  labels are data, not submenus — nothing hides behind an extra click. All
+  strings exist in English and Spanish; the library-tab gate guard in
+  `ui.test.mjs` learned the trigger's new data-driven spelling (the entry is
+  admitted by a conditional spread on `signedIn`) and its planted ungated
+  variants still fail. 393 web tests green; verified by screenshot in light,
+  dark, mobile drawer and collapsed rail.
+
+- **Deployable on N0, with the update path written down.** A root
+  `Dockerfile` (multi-stage over the workspace: core built, then the web app
+  with Next's `standalone` output), an `n0-app.json` manifest — Postgres,
+  a migration service that applies `apps/web/db/*.sql` and stops on error,
+  and the web entrypoint — plus the two workflows that make updates travel:
+  Gitea Actions builds the image inside the N0 workspace on every mirrored
+  commit, and a GitHub workflow mirrors `main` there, doing nothing (and
+  saying so) until the `N0_*` secrets exist. The manifest embeds the SQL
+  because the platform writes `config_files` before the container starts —
+  and `n0-manifest.test.js` holds the embedded copy byte-identical to
+  `apps/web/db` in both directions, requires every env object to be a
+  secret declaration rather than a credential, and requires the web image
+  to stay a loud placeholder until a real workspace exists. The web app
+  gains `output: 'standalone'`; deploy doctrine in
+  [docs/deploy-n0.md](docs/deploy-n0.md) — pin the SHA (`:latest` does not
+  update a cached tag), preview before promote, and the deploy itself stays
+  a decision, not a push hook.
 
 ## 1.67.0 — "The month ends on a measured position"
 

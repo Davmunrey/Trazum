@@ -1,0 +1,49 @@
+# The bridge from GitHub to an N0 deployment: mirrors this repository into
+# the N0 workspace's Gitea, whose own Actions then build and push the image
+# (.gitea/workflows/build-and-push.yml).
+#
+# Does nothing until three repository secrets exist — it checks and says so
+# instead of failing every push on a repository that has not opted in:
+#
+#   N0_GITEA_HOST   e.g. gitea-<workspace>.apps.<platform-domain>
+#   N0_GITEA_USER   username from POST .../gitea/token/
+#   N0_GITEA_TOKEN  token from POST .../gitea/token/
+#
+# Full flow, including import + preview + promote: docs/deploy-n0.md.
+
+name: Mirror to N0 Gitea
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check for N0 credentials
+        id: creds
+        env:
+          HOST: ${{ secrets.N0_GITEA_HOST }}
+        run: |
+          if [ -z "$HOST" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "N0 secrets not configured — skipping mirror. See docs/deploy-n0.md."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        if: steps.creds.outputs.configured == 'true'
+        with:
+          fetch-depth: 0
+
+      - name: Push to N0 Gitea over HTTPS
+        if: steps.creds.outputs.configured == 'true'
+        env:
+          HOST: ${{ secrets.N0_GITEA_HOST }}
+          USER: ${{ secrets.N0_GITEA_USER }}
+          TOKEN: ${{ secrets.N0_GITEA_TOKEN }}
+        run: |
+          git push --force "https://${USER}:${TOKEN}@${HOST}/${USER}/trazum.git" HEAD:main
