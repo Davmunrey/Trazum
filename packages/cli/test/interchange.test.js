@@ -251,6 +251,15 @@ describe('contract-article', () => {
     'annual-record': 'an',
     'roll-up': 'a',
     'prompt-draft': 'a',
+    // The seven named in the 1.65 arc: consonant onsets, every one, so the
+    // sound rule and the letter rule agree and 'a' is decided, not guessed.
+    fleet: 'a',
+    'spend-guard': 'a',
+    'first-run': 'a',
+    pulse: 'a',
+    'rule-yield': 'a',
+    'gateway-refusal': 'a',
+    bench: 'a',
   };
 
   it('has a decided article for every contract, and refuses to guess a new one', () => {
