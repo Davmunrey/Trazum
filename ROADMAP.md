@@ -1184,6 +1184,22 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.66.0 — "One policy, three doors" — released
+
+**Per-label, per-session and per-day USD ceilings, stated once, judged once,
+enforced identically at whichever door the call arrives.** A `limits` block
+validated like every other config key; `judgeLimits` in the core answering
+within, over or cannot-tell with the limit, the measured spend and the
+window on every judgement; the gateway's 402, `serve`'s cost answer and
+`spend_guard` all carrying that judgement verbatim, with a suite that pushes
+the same call through all three doors and requires field-for-field equality
+— then breaks a door to prove the property can fail. Refusals name the
+limit, the measured position and the period in one shared sentence; waivers
+apply to limits unchanged, and a waived ceiling keeps its measurement while
+the silence rides in every answer. On the way in, the arc's tests found
+`serve` crashing outright on a negative token count — a defect reproduced
+against the shipped build before it was fixed to a 400.
+
 ## 1.65.0 — "The format anyone can adopt" — released
 
 **A document can be checked against this format by a tool that has never
@@ -2102,16 +2118,11 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**Two arcs remain from [docs/plan-1.65-1.67.md](docs/plan-1.65-1.67.md)** —
+**One arc remains from [docs/plan-1.65-1.67.md](docs/plan-1.65-1.67.md)** —
 the owner's five open-source paths, carried as far as they go as code. The
-1.65 arc delivered all three of its chapters and closed at 1.65.0; the 1.66
-arc runs as 1.65.x and closes at 1.66.0, and 1.67 follows the same pattern.
-
-**1.66 — one policy, three doors.** Per-label, per-session and per-day USD
-limits stated once in the config, judged once in the core, enforced
-identically by the gateway's 402, `serve`'s cost answer and `spend_guard`
-over MCP — with the suite pushing the same call through all three doors and
-requiring the verdicts to match, field for field.
+1.65 arc delivered all three chapters and closed at 1.65.0; the 1.66 arc
+delivered all four and closed at 1.66.0; the 1.67 arc runs as 1.66.x and
+closes at 1.67.0.
 
 **1.67 — the month ends on a measured position.** Measured month-to-date
 spend against every budget and limit, denominator on every figure, no

@@ -11,6 +11,15 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.66.0 — "One policy, three doors"
+
+Released 2026-08-24. The 1.66 arc closes: **per-label, per-session and
+per-day USD ceilings, stated once, judged once, enforced identically at
+whichever door the call arrives** — and a test that goes red the day any
+door starts agreeing by coincidence again.
+
 ### Added
 
 - **The doors hold the line — chapter three of the 1.66 arc.** The gateway's
