@@ -1184,6 +1184,20 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.67.1 — "Ready to travel" — released
+
+**Nothing new to install and two ways the project now reaches further.**
+The repository became deployable on N0 — a root Dockerfile over the
+workspace, a manifest with Postgres and a migration service whose embedded
+SQL a test keeps byte-identical to the real files, and a mirror workflow
+that does nothing (and says so) until the owner adds the secrets. The web
+app's rail named its groups — work on a prompt, measure — and gained direct
+links to the GitHub repository, the npm CLI package and the documentation.
+And a real rendering defect died on the way: Tailwind named groups match
+any ancestor, so a horizontal Tabs nested in the vertical shell inherited
+its orientation and the active marker collapsed to a 2×2px dot; the
+primitive now reads its own `data-orientation`.
+
 ## 1.67.0 — "The month ends on a measured position" — released
 
 **The product still refuses to forecast; what it stops refusing is to say

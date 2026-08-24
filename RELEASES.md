@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.67.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.67.1**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,54 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.67.1 — "Ready to travel"
+
+**Nothing changed shape; the project got easier to reach and easier to
+run.** A patch in this repository's sense: no new contract, no new command,
+and three things worth having.
+
+**Deployable on N0, honestly.** A root `Dockerfile` builds the workspace in
+stages — core first, then the web app with Next's `standalone` output — and
+`n0-app.json` describes the whole thing: Postgres 16, a migration service
+that applies `apps/web/db/*.sql` in order and stops on the first error, and
+the web entrypoint. The manifest embeds the SQL because the platform writes
+config files before the container starts, and a test keeps the embedded
+copies **byte-identical to the real files in both directions** — plus two
+more honesty guards: the image field must keep its loud
+`REPLACE-WITH-REGISTRY/` placeholder until a real registry exists, and no
+environment value may be credential-shaped (secrets are declarations, not
+values). Updates travel by mirroring: a GitHub workflow pushes `main` to
+the N0 workspace's Gitea — doing nothing, and saying so in the log, until
+the owner adds the three `N0_*` secrets — and a Gitea Actions workflow
+there builds and pushes the image on every mirrored commit. The whole flow,
+including why you pin a commit SHA rather than trusting `:latest`, is in
+`docs/deploy-n0.md`. **Nothing deployed with this release**; the machinery
+waits for credentials only the owner can mint.
+
+**The rail names its groups and links out.** The web app's five tabs sat in
+one undifferentiated column; now the rail says what each cluster is for —
+*Work on a prompt* (Optimise, Write, Compare, and the Library when signed
+in) and *Measure* (Your bill) — with quiet uppercase eyebrows that collapse
+to hairline separators in the icon-only rail, and a *Resources* block
+linking the GitHub repository, the npm CLI package and the documentation.
+Each link opens in a new tab, tells a screen reader so, and shows a small
+outward arrow on hover or keyboard focus. The labels are data, not
+submenus: nothing hides behind an extra click, and the keyboard order is
+unchanged. Both locales.
+
+**A rendering defect found by looking, not by report.** Tailwind's named
+groups match *any* ancestor, not the nearest: the tabs primitive styled
+itself through `group-data-[orientation]/tabs:`, so the Optimizer's
+horizontal result switcher — nested inside the shell's vertical Tabs —
+rendered as a stacked column, and with both orientations' marker rules
+matching at once the active indicator collapsed to a 2×2px dot floating
+over the card heading. The primitive now reads the element's own
+`data-orientation`, which Radix stamps per element and which cannot cross a
+Tabs boundary. The guard that defends those declarations learned the new
+spelling, and its planted-defect cases still fire. 393 web tests green;
+verified by screenshot in light, dark, the mobile drawer and the collapsed
+rail.
 
 ## 1.67.0 — "The month ends on a measured position"
 
