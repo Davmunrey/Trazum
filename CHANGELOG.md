@@ -13,6 +13,20 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **The producer's page — chapter three of the 1.65 arc.** `docs/format.md`
+  grows the section a connector author actually needs: **emit-this-minimum**
+  examples for the two contracts that exist to be written by tools that are
+  not Trazum (a usage-log record whose only required field is `model`, and an
+  outcome report exactly as `@trazum/core` computes one), the additive
+  promise restated from the producer's side (*add anything, redefine nothing,
+  never write `0` for a measurement nobody took*), and where the schemas
+  live — `trazum schema` piped to any off-the-shelf validator, with the `$id`
+  stated as an **identifier, never fetched**. Held the only way that cannot
+  rot: `producer-page.test.js` extracts every labelled example from the page
+  and runs it through `trazum conform` — the product, not a re-implementation
+  — then guts a required field from each and requires the gutted copy to
+  fail, and the `$id` quoted in prose is compared to the one the schema
+  actually carries.
 - **The schema leaves the repository — chapter two of the 1.65 arc.** A
   `schema` command prints an authored JSON Schema (draft 2020-12) for any
   named contract, so a document can be checked by **any off-the-shelf
