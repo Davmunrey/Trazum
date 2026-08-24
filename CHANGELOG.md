@@ -25,6 +25,38 @@ merged commit with no entry is a change only `git log` remembers.
   by name: charting libraries, template languages, serving. The chapters run
   as 1.63.x and close at 1.64.0.
 
+## Unreleased
+
+### Added
+
+- **The profile leaves the terminal — chapters one and two of the 1.64
+  arc.** `trazum profile` gains an HTML door beside the Markdown one: one
+  self-contained file — inline CSS, no scripts, no external assets, both
+  locales, printable — for the person who pays the bill and does not run
+  CLIs. It is a projection of the document `--json` prints: the renderer
+  takes the exact same input object as the Markdown renderer, built once
+  for both doors, so no second computation exists to disagree with the
+  first. **The caveats are furniture, not footnotes**: unpriced models,
+  unreadable lines, a log with no clock or no sessions, an unsettled cache
+  TTL and a stale price table render in a bordered block *ahead of* the
+  detail tables, at the same weight as the totals they qualify — and the
+  suite asserts their presence by content and their position by offset,
+  plus the other direction: a run with nothing to caveat earns a report
+  with no block, because a box that always renders is a box nobody reads.
+  Labels and model ids come from somebody's log, so everything interpolated
+  is escaped, tested with a label that is itself an HTML injection.
+
+### Fixed
+
+- **`profile --json --markdown-out` crashed with a ReferenceError — since
+  1.59, on every release, and no test had ever asked.** Under `--json` the
+  terminal path never runs, and the side-file writer reached for that
+  path's `levers` binding, which was never initialised. The HTML door's
+  test drove both flags together and the flag turned out not to silently
+  do nothing but to loudly do nothing. Reproduced against the published
+  1.63.0 before fixing; the side-file writer now derives `levers` and the
+  cache verdict itself.
+
 ## 1.63.0 — "Scale is measured, not assumed"
 
 **The 1.63 arc closes.** Chapters one and two landed at 1.62.1; chapters

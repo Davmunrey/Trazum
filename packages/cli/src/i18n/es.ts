@@ -523,6 +523,11 @@ ${bold('OPCIONES DE profile')}
                               imposibles, no se cobran como baratas.
   --markdown-out <fichero>    Escribe además el informe en Markdown, para el
                               resumen de un job de CI o un comentario de PR.
+  --html-out <fichero>        Escribe además el informe como un único HTML
+                              autocontenido — el que se envía por correo a
+                              quien paga la factura. Las mismas cifras que
+                              --json, con las salvedades tan visibles como
+                              los totales a los que acompañan.
   --csv-shape <forma>         Qué tabla escribe --csv-out: slice (por defecto),
                               day, hour o model-day (una fila por día y
                               modelo — dibuja la mezcla moviéndose). Una sola
@@ -1584,6 +1589,27 @@ ${bold('EJEMPLOS')}
       `Algo que corre aquí lleva más de ${plural(hours, 'hora')} sin correr. El silencio de un trabajo programado y el de un trabajo sin nada que decir son iguales; esto dice cuál es.`,
     notAService: () =>
       'Este comando no ejecuta nada y no aloja nada. Algo tiene que darse cuenta, y ese algo es tu CI: un paso que ejecute esto con el horario que ya tienes convierte un cron muerto en una build roja, sin que Trazum guarde las métricas de nadie. Hasta dónde llegan las mediciones se informa y nunca se juzga — eso es un proveedor informando a su ritmo, no un trabajo que falló.',
+  },
+
+  html: {
+    caveatsHeading: () => 'Lo que este informe no puede decir',
+    noClock: () => 'Ningún registro traía marca de tiempo, así que días, ritmos y deriva no están en este informe — un total sigue siendo un total.',
+    noSessions: () => 'Ningún registro traía sesión, así que el crecimiento de conversación y los costes por conversación no están en este informe.',
+    byLabelHeading: () => 'Por carga de trabajo',
+    byModelHeading: () => 'Por modelo',
+    findingsHeading: () => 'Qué movería esta factura',
+    colLabel: () => 'carga',
+    colModel: () => 'modelo',
+    colCalls: () => 'llamadas',
+    colInput: () => 'entrada',
+    colCacheRead: () => 'lecturas de caché',
+    colCacheWrite: () => 'escrituras de caché',
+    colOutput: () => 'salida',
+    sharesLine: (input, cacheRead, cacheWrite, output) =>
+      `A dónde va el dinero: ${input} entrada normal, ${cacheRead} lecturas de caché, ${cacheWrite} escrituras de caché, ${output} salida.`,
+    footer: () =>
+      'Generado por trazum a partir de un log de uso, sin conexión. Cada cifra deriva de ese log y de la tabla de precios que la ejecución nombró; nada de esto se envió a ninguna parte para calcularse.',
+    written: (path) => `Informe HTML escrito en ${path}.`,
   },
 
   bench: {
