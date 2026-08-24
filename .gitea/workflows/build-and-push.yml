@@ -1,0 +1,50 @@
+# Builds the web app image inside the N0 workspace's Gitea and pushes it to
+# that workspace's container registry. N0 does not build images — this
+# workflow is what turns a commit into something the platform can pull.
+#
+# The org-level REGISTRY variable and REGISTRY_USER/REGISTRY_PASSWORD secrets
+# are auto-provisioned per workspace; nothing here is hardcoded to one.
+#
+# Deploys should pin the commit-SHA tag, never :latest — containerd caches an
+# unchanged tag and keeps serving the old build (see docs/deploy-n0.md).
+
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*', 'release-*']
+
+env:
+  # Lowercase on purpose: Docker rejects uppercase image names, and
+  # ${{ github.repository }} preserves the original case.
+  IMAGE: ${{ vars.REGISTRY }}/davmunrey/trazum
+
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to Gitea Registry
+        run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ${{ vars.REGISTRY }} -u "${{ secrets.REGISTRY_USER }}" --password-stdin
+
+      - name: Build and push
+        run: |
+          SHORT_SHA="${GITHUB_SHA::7}"
+          docker build \
+            -t ${{ env.IMAGE }}:latest \
+            -t ${{ env.IMAGE }}:${{ github.sha }} \
+            -t ${{ env.IMAGE }}:${SHORT_SHA} .
+          docker push ${{ env.IMAGE }}:latest
+          docker push ${{ env.IMAGE }}:${{ github.sha }}
+          docker push ${{ env.IMAGE }}:${SHORT_SHA}
+          if [[ "${GITHUB_REF}" == refs/tags/* ]]; then
+            RELEASE_TAG="${GITHUB_REF#refs/tags/}"
+            docker tag ${{ env.IMAGE }}:latest ${{ env.IMAGE }}:${RELEASE_TAG}
+            docker push ${{ env.IMAGE }}:${RELEASE_TAG}
+          fi
+
+      - name: Cleanup
+        if: always()
+        run: docker rmi ${{ env.IMAGE }}:${{ github.sha }} 2>/dev/null || true

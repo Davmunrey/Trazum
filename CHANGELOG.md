@@ -11,7 +11,25 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+- **Deployable on N0, with the update path written down.** A root
+  `Dockerfile` (multi-stage over the workspace: core built, then the web app
+  with Next's `standalone` output), an `n0-app.json` manifest — Postgres,
+  a migration service that applies `apps/web/db/*.sql` and stops on error,
+  and the web entrypoint — plus the two workflows that make updates travel:
+  Gitea Actions builds the image inside the N0 workspace on every mirrored
+  commit, and a GitHub workflow mirrors `main` there, doing nothing (and
+  saying so) until the `N0_*` secrets exist. The manifest embeds the SQL
+  because the platform writes `config_files` before the container starts —
+  and `n0-manifest.test.js` holds the embedded copy byte-identical to
+  `apps/web/db` in both directions, requires every env object to be a
+  secret declaration rather than a credential, and requires the web image
+  to stay a loud placeholder until a real workspace exists. The web app
+  gains `output: 'standalone'`; deploy doctrine in
+  [docs/deploy-n0.md](docs/deploy-n0.md) — pin the SHA (`:latest` does not
+  update a cached tag), preview before promote, and the deploy itself stays
+  a decision, not a push hook.
 
 ## 1.67.0 — "The month ends on a measured position"
 
