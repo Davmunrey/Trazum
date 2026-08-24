@@ -13,6 +13,33 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **The position travels — chapter two of the 1.67 arc.** The same
+  `positionReport`, through the surfaces that already exist. `trazum
+  position --html-out` writes the position as one self-contained page —
+  every sentence the terminal's own, through the same message catalogue,
+  with the caveat block (unmeasurable ceilings, deliberate non-answers,
+  unpriced records) rendered **before** the positions because a forwarded
+  page gets cropped from the bottom; hostile labels arrive as text, never
+  markup, and a test drives both locales. The MCP server grows a seventh
+  tool, `position`: the log text and the ceilings in, the same document
+  out — the `limits` argument validated by the config file's own parser,
+  session keys grouped by and never shown, and no forecast field anywhere.
+  No new daemon, no scheduler: `watch` remains the thing that runs on
+  yours.
+- **One pipe, no shell loop — chapter three of the 1.67 arc.**
+  `check --files-from -` reads a file list from stdin — the shape
+  `git diff --name-only` already produces — so the pre-commit recipe in
+  `docs/ci.md` is now one pipe: `git diff --cached --name-only | trazum
+  check --files-from -`. Refusals and budgets are directory mode's own;
+  only which files are looked at changes. Paths that are not prompt files,
+  paths the config ignores, and deletions are dropped and **counted out
+  loud** — "checking 2 of 4 listed, 2 dropped" — and a commit that touches
+  no prompts passes without ceremony, because a hook that fails on a
+  README edit is a hook somebody uninstalls. The baseline gate is
+  deliberately skipped under a partial list — it compares the whole
+  repository against the committed record, and two changed files would
+  read as thirty-eight removals — and the skip is stated on every run
+  rather than discovered in an incident.
 - **The position, as one answer — chapter one of the 1.67 arc.**
   `trazum position <usage.jsonl>` states where the month stands against
   every configured ceiling — `spend.monthlyUsd`, `limits.dayUsd`, each

@@ -125,6 +125,19 @@ ${bold('OPCIONES DE write')}
   --calls <n>                 Llamadas al mes, para la estimación.
   --avg-output <n>            Tokens de salida por llamada, para la estimación.
 
+${bold('OPCIONES DE position')}
+  --html-out <fichero>        La posición como una página autocontenida — las
+                              mismas frases que imprime el terminal, caveats
+                              primero, para quien no ejecuta CLIs.
+  --json                      El documento de posición, verificado por
+                              contrato como todo (\`--contract position\`).
+
+  Dónde está el mes frente a cada techo configurado, medido solo desde el
+  log nombrado y con el denominador en cada cifra. La línea de distancia es
+  división sobre el pasado, etiquetada como tal, y ausente bajo el suelo de
+  siete días, con un techo superado o con tasa cero: nunca un pronóstico, y
+  ningún campo del documento nombra una fecha.
+
 ${bold('OPCIONES DE pulse')}
   --max-stale-hours <n>       Sale con 1 cuando algo que corre aquí lleva más
                               de n horas sin correr. Sin esto, se informan las
@@ -437,6 +450,15 @@ ${bold('OPCIONES DE check')}
   --baseline                  Aplica la línea base registrada. Activo por defecto siempre
                               que el config declare una, así CI no necesita argumentos; la
                               forma útil es --no-baseline, que la omite en una ejecución.
+  --files-from <fichero|->    Comprueba solo los ficheros listados, una ruta por línea —
+                              la forma que produce git diff --name-only, así que un hook
+                              de pre-commit es una tubería:
+                              git diff --cached --name-only | trazum check --files-from -
+                              Las rutas que no son prompts y las eliminaciones se
+                              descartan y se cuentan en voz alta; una lista sin nada
+                              comprobable pasa. Los presupuestos aplican por fichero como
+                              siempre; el baseline necesita el repositorio entero y se
+                              omite, diciéndolo.
 
   Pensado para CI: sale con código 1 si el prompt supera el presupuesto,
   así una plantilla que crece sin control rompe la build en vez de la factura.
@@ -2053,6 +2075,10 @@ ${bold('EJEMPLOS')}
     noBudget: () => '(sin presupuesto)',
     walkTruncated: () =>
       'Se ha parado antes de tiempo: el directorio supera el límite de recorrido, así que esto no es el cuadro completo.',
+    filesFromSummary: (checked, listed, dropped) =>
+      `Comprobando ${checked} de ${listed} fichero(s) listados — ${dropped} descartados: sin extensión de prompt, ignorados por la config, o ya no están en disco.`,
+    filesFromNoBaseline: () =>
+      'La puerta de baseline se omite con --files-from: compara el repositorio entero contra el registro comprometido, y una lista parcial se leería como eliminaciones. Los presupuestos se comprueban por fichero como siempre; ejecuta «trazum check .» para el baseline.',
     exactCountsCost: (files) =>
       `Contando ${files} ${files === 1 ? 'fichero' : 'ficheros'} con la API, una llamada por cada uno. Esto tarda un momento.`,
   },

@@ -22,7 +22,9 @@ import {
   optimize,
   contextPressure,
   parseLimits,
+  parseUsageLine,
   parseWaive,
+  positionReport,
   profileUsage,
   repriceProfile,
   slot,
@@ -1505,4 +1507,79 @@ const WRITER: ToolDefinition = {
   },
 };
 
-export const TOOLS: readonly ToolDefinition[] = [OPTIMIZE, CHECK, MODELS, PROFILE, SPEND_GUARD, WRITER];
+/**
+ * The month's measured position, for the agent that asks "how much room is
+ * left" before it spends — chapter two of the 1.67 arc: the same
+ * `positionReport` the CLI and the HTML door answer with, so no surface can
+ * disagree about where the month stands. Stateless like every tool here:
+ * the log and the ceilings arrive as arguments, nothing is read from disk,
+ * and nothing is spent to answer.
+ */
+const POSITION: ToolDefinition = {
+  name: 'position',
+  title: 'Where the month stands, measured — no forecast',
+  description:
+    'States the month\'s measured position against every ceiling you pass: monthly budget, '
+    + 'per-day limit, per-label limits. Measured from the log text alone, priced record by '
+    + 'record, with the denominator on every figure — days measured against days elapsed. '
+    + 'The distance line is division on the past, labelled as such, and absent under the '
+    + 'seven-day floor, on an over, and on a zero rate: this tool never forecasts. Ceilings '
+    + 'the log cannot measure are named with the reason instead of skipped. Pass the log '
+    + 'text itself: this server never reads files, and session keys are never shown.',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      log: {
+        type: 'string',
+        minLength: 1,
+        maxLength: MAX_LOG_CHARS,
+        description: 'The usage log text, one JSON object per line. Never a file path.',
+      },
+      monthlyUsd: {
+        type: 'number',
+        exclusiveMinimum: 0,
+        description: 'The calendar-month budget, in dollars — spend.monthlyUsd from the config.',
+      },
+      limits: {
+        type: 'object',
+        description:
+          'The limits policy from trazum.config.json — {"dayUsd": n, "sessionUsd": n, '
+          + '"byLabel": {"name": n}}. Validated like the config file itself.',
+      },
+    },
+    required: ['log'],
+    additionalProperties: false,
+  },
+  run: (args) => {
+    const log = args.log;
+    if (typeof log !== 'string' || log.length === 0) {
+      throw new InvalidArguments('log must be the usage log text, one JSON object per line');
+    }
+    let limits;
+    try {
+      if (args.limits !== undefined) limits = parseLimits(args.limits, 'position');
+    } catch (error) {
+      throw new InvalidArguments(error instanceof Error ? error.message : 'limits is not a valid policy');
+    }
+    const monthlyUsd = args.monthlyUsd;
+    if (monthlyUsd !== undefined && (typeof monthlyUsd !== 'number' || !Number.isFinite(monthlyUsd) || monthlyUsd <= 0)) {
+      throw new InvalidArguments('monthlyUsd must be a positive number of dollars');
+    }
+    const records = log
+      .split('\n')
+      .filter((line) => line.trim() !== '')
+      .map((line) => parseUsageLine(line))
+      .filter((record): record is NonNullable<ReturnType<typeof parseUsageLine>> => record !== null);
+    const document = positionReport(
+      records,
+      {
+        ...(monthlyUsd === undefined ? {} : { spend: { monthlyUsd } }),
+        ...(limits === undefined ? {} : { limits }),
+      },
+      { catalogue: BUNDLED_CATALOGUE },
+    );
+    return JSON.stringify(document, null, 2);
+  },
+};
+
+export const TOOLS: readonly ToolDefinition[] = [OPTIMIZE, CHECK, MODELS, PROFILE, POSITION, SPEND_GUARD, WRITER];

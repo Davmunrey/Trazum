@@ -1,5 +1,5 @@
 import { UNLABELLED, formatUsd, sharesOf } from '@trazum/core';
-import type { RollupDocument, UsageBreakdown } from '@trazum/core';
+import type { PositionDocument, RollupDocument, UsageBreakdown } from '@trazum/core';
 import type { CliMessages } from './i18n/index.js';
 import type { ProfileMarkdownInput } from './markdown.js';
 import { dayOf, spanDays } from './time.js';
@@ -340,4 +340,80 @@ export function renderRollupHtml(document: RollupDocument, t: CliMessages): stri
     t.locale,
     parts,
   );
+}
+
+/**
+ * The position as one self-contained page — the third door the 1.64 arc's
+ * discipline applies to: the input is the position document itself, the one
+ * `--json` prints and `conform` checks, so the page cannot disagree with
+ * the data. Every sentence is the terminal's own, through the same message
+ * catalogue, which is what keeps the two surfaces saying the same thing in
+ * the same words. The caveat block — what could not be measured, what is
+ * deliberately unanswered, the records nobody can price — renders BEFORE
+ * the positions, because a forwarded page gets cropped from the bottom.
+ */
+export function renderPositionHtml(document: PositionDocument, t: CliMessages): string {
+  const scopeName = (entry: { scope: string; label: string | null }): string =>
+    entry.scope === 'month'
+      ? t.position.scopeMonth()
+      : entry.scope === 'day'
+        ? t.position.scopeDay()
+        : t.position.scopeLabel(entry.label ?? '');
+
+  const parts: string[] = [];
+  parts.push(`<h1>${esc(t.position.heading(document.month.id))}</h1>`);
+  parts.push(`<p class="muted">${esc(t.position.source())}</p>`);
+
+  const caveats = [
+    ...document.unmeasured.map((entry) => t.position.unmeasured(scopeName(entry), t.position.why(entry.why))),
+    ...document.cannotSay,
+    ...(document.unpricedRecords > 0 ? [t.position.unpriced(document.unpricedRecords)] : []),
+  ];
+  if (caveats.length > 0) {
+    parts.push(
+      `<div class="caveats"><h2>${esc(t.position.cannotSayHeading())}</h2><ul>${caveats
+        .map((line) => `<li>${esc(line)}</li>`)
+        .join('')}</ul></div>`,
+    );
+  }
+
+  parts.push(
+    `<ul class="findings">${document.positions
+      .map((position) => {
+        const name = scopeName(position);
+        const sentence =
+          position.verdict === 'cannot-tell'
+            ? t.position.cannotTell(name)
+            : position.verdict === 'over'
+              ? t.position.over(
+                  name,
+                  formatUsd(position.measuredUsd),
+                  formatUsd(position.limitUsd),
+                  formatUsd(-position.remainingUsd),
+                )
+              : t.position.within(
+                  name,
+                  formatUsd(position.measuredUsd),
+                  formatUsd(position.limitUsd),
+                  formatUsd(position.remainingUsd),
+                  position.daysMeasured,
+                  position.daysElapsed,
+                );
+        const distance =
+          position.distance === null
+            ? ''
+            : `<div class="muted">${esc(
+                t.position.distance(
+                  position.distance.daysAway.toFixed(1),
+                  formatUsd(position.distance.usdPerDay),
+                  position.distance.overDays,
+                ),
+              )}</div>`;
+        return `<li>${esc(sentence)}${distance}</li>`;
+      })
+      .join('')}</ul>`,
+  );
+
+  parts.push(`<footer>${esc(t.html.footer())}</footer>`);
+  return page(t.position.heading(document.month.id), t.locale, parts);
 }

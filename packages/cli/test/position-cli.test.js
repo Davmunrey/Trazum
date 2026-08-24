@@ -66,6 +66,36 @@ describe('trazum position', () => {
     assert.equal(report.contract, 'position', 'conform did not detect the position document bare');
   });
 
+  it('writes the HTML door with the same sentences, everything escaped, in both locales', async () => {
+    const { readFile } = await import('node:fs/promises');
+    const dir = await workspace();
+    // A hostile label: the page must carry it as text, never as markup.
+    const hostile = JSON.stringify({
+      model: 'claude-opus-5',
+      label: '<img src=x onerror=alert(1)>',
+      ts: new Date(Date.now() - 60_000).toISOString(),
+      usage: { input_tokens: 1000, output_tokens: 0 },
+    });
+    await writeFile(join(dir, 'usage.jsonl'), `${hostile}\n`, { flag: 'a' });
+    await writeFile(
+      join(dir, 'trazum.config.json'),
+      JSON.stringify({
+        spend: { monthlyUsd: 100 },
+        limits: { byLabel: { chat: 60, '<img src=x onerror=alert(1)>': 5 } },
+      }),
+    );
+    for (const locale of ['en', 'es']) {
+      const out = `pos-${locale}.html`;
+      const result = run(['position', 'usage.jsonl', '--html-out', out, '--locale', locale], dir);
+      assert.equal(result.status, 0, result.stderr);
+      const html = await readFile(join(dir, out), 'utf8');
+      assert.ok(!html.includes('<img src=x'), `${locale}: a hostile label reached the page as markup`);
+      assert.ok(html.includes('&lt;img src=x'), `${locale}: the hostile label is missing entirely`);
+      assert.match(html, locale === 'en' ? /division on the past/ : /división sobre el pasado/);
+      assert.ok(!/https?:\/\/(?!github\.com|fonts\.)/.test(html.replace(/https:\/\/github\.com[^\s"']*/g, '')), `${locale}: the page references an external resource`);
+    }
+  });
+
   it('refuses without a log, teaching the invocation, in both locales', async () => {
     const dir = await workspace();
     for (const locale of ['en', 'es']) {

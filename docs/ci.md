@@ -88,16 +88,24 @@ jobs:
 ## A pre-commit hook
 
 The one place where speed matters more than completeness, so gate on the
-prompts and not on a month of logs:
+files this commit touches and nothing else — one pipe, no shell loop:
 
 ```bash
 #!/bin/sh
 # .git/hooks/pre-commit
-npx --yes @trazum/cli check prompts/ --max-tokens 900 || {
+git diff --cached --name-only | npx --yes @trazum/cli check --files-from - || {
   echo "Prompt over budget. Commit with --no-verify if you mean it."
   exit 1
 }
 ```
+
+`--files-from -` reads the list from stdin — exactly the shape
+`git diff --name-only` produces. Paths that are not prompt files, paths the
+config ignores, and deletions are dropped and **counted out loud**; a commit
+that touches no prompts passes without ceremony. Budgets apply per file from
+the config as always. The baseline gate is deliberately skipped here — it
+compares the whole repository against the committed record, and a partial
+list would read as removals — so keep `trazum check .` in CI for it.
 
 `--no-verify` is named on purpose. A hook somebody cannot get past is a hook
 somebody uninstalls, and an uninstalled hook gates nothing.

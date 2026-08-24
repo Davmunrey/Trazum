@@ -136,6 +136,19 @@ ${bold('OPTIONS FOR write')}
   --calls <n>                 Calls per month, for the estimate.
   --avg-output <n>            Average output tokens per call, for the estimate.
 
+${bold('OPTIONS FOR position')}
+  --html-out <file>           The position as one self-contained page — the
+                              same sentences the terminal prints, caveats
+                              first, for the person who does not run CLIs.
+  --json                      The position document, contract-checked like
+                              everything (\`--contract position\`).
+
+  Where the month stands against every configured ceiling, measured from the
+  named log alone with the denominator on every figure. The distance line is
+  division on the past, labelled as such, and absent under the seven-day
+  floor, on an over, and on a zero rate: never a forecast, and no field in
+  the document names a date.
+
 ${bold('OPTIONS FOR pulse')}
   --max-stale-hours <n>       Exit 1 when something that runs here has not run
                               in over n hours. Without it, the ages are
@@ -436,6 +449,13 @@ ${bold('OPTIONS FOR check')}
   --baseline                  Gate on the recorded cost baseline. On by default whenever
                               the config declares one, so CI needs no argument; the useful
                               spelling is --no-baseline, which skips it for one run.
+  --files-from <file|->       Check only the files listed, one path per line — the shape
+                              git diff --name-only produces, so a pre-commit hook is one
+                              pipe: git diff --cached --name-only | trazum check --files-from -
+                              Non-prompt paths and deletions are dropped and counted out
+                              loud; a list with nothing checkable passes. Budgets apply
+                              per file as always; the baseline needs the whole repository
+                              and is skipped, and says so.
 
   Built for CI: exits with code 1 when the prompt busts the budget, so a
   template that grows unchecked breaks the build instead of the bill.
@@ -2042,6 +2062,10 @@ ${bold('EXAMPLES')}
     noBudget: () => '(no budget)',
     walkTruncated: () =>
       'Stopped early: the directory is larger than the walk limit, so this is not the whole picture.',
+    filesFromSummary: (checked, listed, dropped) =>
+      `Checking ${checked} of ${listed} listed file(s) — ${dropped} dropped: not a prompt extension, ignored by config, or no longer on disk.`,
+    filesFromNoBaseline: () =>
+      'The baseline gate is skipped under --files-from: it compares the whole repository against the committed record, and a partial list would read as removals. Budgets are checked per file as always; run "trazum check ." for the baseline.',
     exactCountsCost: (files) =>
       `Counting ${files} ${files === 1 ? 'file' : 'files'} through the API, one call each. This takes a moment.`,
   },

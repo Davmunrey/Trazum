@@ -3833,11 +3833,12 @@ cover what matters.
 
 ### An MCP server, so an agent can budget its own prompts
 
-`@trazum/mcp` exposes six tools over stdio — `optimize_prompt`, `check_prompt`,
-`profile_usage`, `list_models`, `spend_guard` and `prompt_writer`. Every other
-surface here answers "what does this prompt cost" for a human after the fact;
-this answers it for the thing composing the prompts — before it sends one, and
-over the bill its calls already ran up.
+`@trazum/mcp` exposes seven tools over stdio — `optimize_prompt`,
+`check_prompt`, `profile_usage`, `position`, `list_models`, `spend_guard` and
+`prompt_writer`. Every other surface here answers "what does this prompt cost"
+for a human after the fact; this answers it for the thing composing the
+prompts — before it sends one, over the bill its calls already ran up, and —
+with `position` — against where the month stands before it spends more.
 
 **`prompt_writer` hands over the questions rather than the answers.** An agent
 asked to write a prompt for something has the same problem a person has: it does

@@ -833,6 +833,10 @@ export interface CliMessages {
     noBudget(): string;
     walkTruncated(): string;
     exactCountsCost(files: number): string;
+    /** How many of the listed files are checkable, and how many were dropped. */
+    filesFromSummary(checked: number, listed: number, dropped: number): string;
+    /** The baseline is whole-repository; a partial list checks budgets only. */
+    filesFromNoBaseline(): string;
   };
 
   /**

@@ -15,7 +15,7 @@ describe('spend_guard over MCP', () => {
     assert.ok(guard, 'the server must expose spend_guard');
     assert.deepEqual(
       TOOLS.map((tool) => tool.name),
-      ['optimize_prompt', 'check_prompt', 'list_models', 'profile_usage', 'spend_guard', 'prompt_writer'],
+      ['optimize_prompt', 'check_prompt', 'list_models', 'profile_usage', 'position', 'spend_guard', 'prompt_writer'],
     );
   });
 
