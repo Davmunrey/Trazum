@@ -43,6 +43,7 @@ ${bold('USO')}
   trazum prune <fichero> --cases <fichero> --yes
   trazum where [fichero]
   trazum conform <fichero|-> [--contract <nombre>]
+  trazum schema <contrato>
   trazum rollup <documento...|dir> [--json] [--html-out <fichero>]
   trazum pulse [--max-stale-hours <n>]
   trazum bench [--workload <id>] [--record <fichero>] [--against <fichero> --max-ratio <n>] [--json]
@@ -1618,6 +1619,12 @@ ${bold('EJEMPLOS')}
     footer: () =>
       'Generado por trazum a partir de un log de uso, sin conexión. Cada cifra deriva de ese log y de la tabla de precios que la ejecución nombró; nada de esto se envió a ninguna parte para calcularse.',
     written: (path) => `Informe HTML escrito en ${path}.`,
+  },
+
+  schema: {
+    noTarget: (known) =>
+      `Nombra un contrato para imprimir su JSON Schema. Conocidos: ${known}. El esquema valida con cualquier validador draft 2020-12 — sin Trazum.`,
+    unknown: (name, known) => `"${name}" no es un contrato. Conocidos: ${known}.`,
   },
 
   bench: {

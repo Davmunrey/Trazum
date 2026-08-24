@@ -13,6 +13,24 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **The schema leaves the repository — chapter two of the 1.65 arc.** A
+  `schema` command prints an authored JSON Schema (draft 2020-12) for any
+  named contract, so a document can be checked by **any off-the-shelf
+  validator with no Trazum installed**. The schemas state required fields
+  and their types and stop there — `additionalProperties` is never `false`,
+  because these documents gain fields without a version bump. Held to
+  `conform` by construction, not coincidence: `requiredFieldsOf` exports the
+  exact list `conform` enforces, the guard compares every schema's
+  `required` to it (it caught five drifts and a missing `noRate` before the
+  chapter was an hour old), and every schema-shaped minimum round-trips
+  through both doors while gutting any field fails both. The suite's
+  validator is thirty lines over the subset the schemas use — the
+  zero-dependency rule, kept — and is handed planted defects before
+  anything trusts it. Two carve-outs are stated where they live: the cost
+  answer's verdict union is open by the format's own rule, and the outcome
+  report's rate/refusal exclusivity is relational — carrying it is what
+  `conform` is for.
+
 - **Every contract answers to its name — chapter one of the 1.65 arc.** The
   seven documented contracts `--contract` could not name — `fleet`,
   `spend-guard`, `first-run`, `pulse`, `rule-yield`, `gateway-refusal` and

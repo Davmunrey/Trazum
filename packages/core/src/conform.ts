@@ -546,6 +546,17 @@ function contractOf(doc: Record<string, unknown>): Exclude<ContractName, 'usage-
   return null;
 }
 
+/**
+ * The required top-level fields of a named contract, as `conform` enforces
+ * them — the single source the JSON Schemas are held to. `schemaVersion` is
+ * checked separately by `conform` and is not in this list; the usage log's
+ * one requirement is the model, same as the line parser's.
+ */
+export function requiredFieldsOf(name: ContractName): string[] {
+  if (name === 'usage-log') return ['model'];
+  return DOCUMENT_RULES[name].map((fieldRule) => fieldRule.path);
+}
+
 export interface ConformOptions {
   /** Force a contract instead of detecting one, for an emitter under test. */
   contract?: ContractName;

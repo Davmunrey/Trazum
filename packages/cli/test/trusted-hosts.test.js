@@ -53,6 +53,13 @@ const KINDS = new Set([
   'tooling, not a model call',
   /** Printed for a human to open. Nothing is sent here. */
   'documentation link',
+  /**
+   * A URI that exists to be compared, never resolved — the JSON Schema
+   * dialect identifier is the case. Distinct from a documentation link
+   * because no human is meant to open it either: it is data about data,
+   * and a build that fetched it would be wrong, not slow.
+   */
+  'identifier, never fetched',
   /** Appears only as an example, a placeholder or a test fixture. */
   'example',
 ]);
@@ -73,6 +80,12 @@ const HOSTS = {
 
   'https://api.github.com': 'tooling, not a model call',
   'https://registry.npmjs.org': 'tooling, not a model call',
+
+  // The JSON Schema dialect identifier inside every schema `trazum schema`
+  // prints. An identifier by the spec, never fetched: nothing in this
+  // repository makes a request to it, and a validator that did would be
+  // fetching a well-known constant.
+  'https://json-schema.org': 'identifier, never fetched',
 
   'https://docs.anthropic.com': 'documentation link',
   'https://platform.openai.com': 'documentation link',
