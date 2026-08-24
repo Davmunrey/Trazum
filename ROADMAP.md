@@ -2078,10 +2078,19 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**Nothing is planned.** [The 1.62–1.63 plan](docs/plan-1.62-1.63.md)
-delivered in full at 1.63.0 — both arcs, all nine chapters — and the next
-plan, whenever it is written, will be written the same way: before the code,
-and kept as written after it.
+**One arc is planned: [docs/plan-1.64.md](docs/plan-1.64.md)** — the report
+somebody forwards. The chapters run as 1.63.x and close at 1.64.0.
+
+**1.64 — the figures leave the terminal without losing their caveats.** The
+person who pays the bill is usually not the person who runs the CLI, and
+today the profile reaches them as a screenshot — a document with no caveats
+and no second page. The arc gives the profile and the roll-up an HTML door:
+one self-contained file, both locales, printable, every figure taken from
+the same document `--json` prints so there is no second computation, and a
+parity guard that walks every dollar in the HTML back to the document in
+both directions. The caveats render with the same weight as the totals they
+qualify, and the guard asserts their presence by content — a forwarded
+report that flatters is worse than no report.
 
 **Three arcs from the previous plans stay open**, numbered below
 the last release:

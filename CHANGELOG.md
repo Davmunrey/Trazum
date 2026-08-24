@@ -9,6 +9,22 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+- **[The plan for 1.64](docs/plan-1.64.md), written before the code.** One
+  arc: *the report somebody forwards*. The profile and the roll-up gain an
+  HTML door — one self-contained file, no external assets, both locales,
+  printable — rendered from the same document `--json` prints, never from
+  the log, so no second computation exists to disagree with the first. The
+  caveats (unpriced models, skipped lines, `cannotSay`) render with the same
+  weight as the totals they qualify, and the closing chapter is a parity
+  guard that walks every dollar and token in the HTML back to the document
+  in both directions, proved by breaking the renderer both ways. Stays out,
+  by name: charting libraries, template languages, serving. The chapters run
+  as 1.63.x and close at 1.64.0.
+
 ## 1.63.0 — "Scale is measured, not assumed"
 
 **The 1.63 arc closes.** Chapters one and two landed at 1.62.1; chapters
