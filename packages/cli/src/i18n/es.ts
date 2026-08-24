@@ -43,7 +43,7 @@ ${bold('USO')}
   trazum prune <fichero> --cases <fichero> --yes
   trazum where [fichero]
   trazum conform <fichero|-> [--contract <nombre>]
-  trazum rollup <documento...|dir> [--json]
+  trazum rollup <documento...|dir> [--json] [--html-out <fichero>]
   trazum pulse [--max-stale-hours <n>]
   trazum bench [--workload <id>] [--record <fichero>] [--against <fichero> --max-ratio <n>] [--json]
   trazum write [--answers <fichero>] [--json] [-o <fichero>]
@@ -116,6 +116,15 @@ ${bold('OPCIONES DE write')}
                               todo lo demás en stderr.
   --calls <n>                 Llamadas al mes, para la estimación.
   --avg-output <n>            Tokens de salida por llamada, para la estimación.
+
+${bold('OPCIONES DE rollup')}
+  --html-out <fichero>        Escribe además el roll-up como un único HTML
+                              autocontenido — el informe de equipo, para quien
+                              paga la factura. Los huecos de cada contribuyente
+                              se quedan bajo ese contribuyente, y lo que ninguna
+                              fusión puede medir va en la caja de salvedades,
+                              imposible de recortar.
+  --json                      El documento de roll-up como datos.
 
 ${bold('OPCIONES DE pulse')}
   --max-stale-hours <n>       Sale con 1 cuando algo que corre aquí lleva más
@@ -1600,6 +1609,8 @@ ${bold('EJEMPLOS')}
     findingsHeading: () => 'Qué movería esta factura',
     colLabel: () => 'carga',
     colModel: () => 'modelo',
+    colContributor: () => 'contribuyente',
+    colSpanDays: () => 'días',
     colCalls: () => 'llamadas',
     colInput: () => 'entrada',
     colCacheRead: () => 'lecturas de caché',

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { SPAWN_ENV } from './env.mjs';
+import { formatUsd } from '../../core/dist/index.js';
 
 /**
  * The HTML door, driven end to end — chapters one and two of the 1.64 arc.
@@ -16,8 +17,10 @@ import { SPAWN_ENV } from './env.mjs';
  * log arriving as live markup (a label is exactly where `<script>` arrives),
  * and an external asset (a mail client strips it, a reader mistrusts it).
  *
- * The full both-directions parity walk is the arc's chapter four; what is
- * asserted here already refuses the failures chapter one can produce.
+ * Chapters three and four live here too: the roll-up door is held to the
+ * same discipline, and the parity guard below walks every rendered figure
+ * back to the document in both directions — proved by forging a page before
+ * it was trusted, because a guard born green has proved nothing yet.
  */
 
 const CLI = new URL('../dist/index.js', import.meta.url).pathname;
@@ -57,10 +60,7 @@ describe('the profile leaves the terminal', () => {
     // The headline dollars and the per-model rows are the JSON document's own
     // figures, formatted — not recomputed. formatUsd keeps sub-cent totals
     // exact, so a plain substring match is a real check, not a rounding one.
-    const usd = (value) => {
-      const s = `$${value.toFixed(4)}`;
-      return s.endsWith('00') ? `$${value.toFixed(2)}` : s;
-    };
+    const usd = formatUsd;
     assert.ok(html.includes(usd(document.total.totalUsd)), `headline ${usd(document.total.totalUsd)} not in the HTML`);
     for (const row of document.byModel) {
       assert.ok(html.includes(usd(row.breakdown.totalUsd)), `${row.model}: ${usd(row.breakdown.totalUsd)} not in the HTML`);
@@ -81,6 +81,98 @@ describe('the profile leaves the terminal', () => {
     const es = await render('es');
     assert.match(es.html, /Lo que este informe no puede decir/);
     assert.match(es.html, /lang="es"/);
+  });
+});
+
+/**
+ * Chapter four: the parity guard, both directions.
+ *
+ * Direction one — nothing invented: every dollar figure anywhere in the HTML,
+ * and every count in a numeric table cell, must be the formatting of a value
+ * that exists in the document the page was rendered from. Direction two —
+ * nothing dropped: the headline figures of the document must reach the page.
+ * Both checkers are then handed the failure they exist for, because a parity
+ * guard born green on a correct renderer has proved nothing yet.
+ */
+const numericLeaves = (node, out = []) => {
+  if (typeof node === 'number' && Number.isFinite(node)) out.push(node);
+  else if (Array.isArray(node)) for (const item of node) numericLeaves(item, out);
+  else if (node !== null && typeof node === 'object') for (const value of Object.values(node)) numericLeaves(value, out);
+  return out;
+};
+
+/** Every rendered figure the document cannot account for — empty on parity. */
+function invented(html, document, numberLocale) {
+  const leaves = numericLeaves(document);
+  const dollars = new Set();
+  const counts = new Set(['—']);
+  for (const leaf of leaves) {
+    dollars.add(formatUsd(leaf));
+    dollars.add(formatUsd(-leaf));
+    if (Number.isInteger(leaf)) {
+      counts.add(leaf.toLocaleString(numberLocale));
+      counts.add(Math.abs(leaf).toLocaleString(numberLocale));
+    }
+  }
+  const out = [];
+  for (const [token] of html.matchAll(/\$\d[\d,]*(?:\.\d+)?/g)) {
+    if (!dollars.has(token)) out.push(token);
+  }
+  for (const [, cell] of html.matchAll(/<td class="n">([^<]+)<\/td>/g)) {
+    if (cell.startsWith('$') || cell.endsWith('%')) continue;
+    if (!counts.has(cell)) out.push(cell);
+  }
+  return out;
+}
+
+/** Headline figures of the document that never reached the page. */
+function dropped(html, document, numberLocale) {
+  const must = [formatUsd(document.total.totalUsd), document.total.calls.toLocaleString(numberLocale)];
+  for (const row of document.byLabel ?? []) must.push(formatUsd(row.breakdown.totalUsd));
+  for (const row of document.byModel ?? []) must.push(formatUsd(row.breakdown.totalUsd));
+  return must.filter((token) => !html.includes(token));
+}
+
+describe('the parity guard walks every figure back to the document', () => {
+  it('holds the profile page: nothing invented, nothing dropped', async () => {
+    const { html, document } = await render('en');
+    assert.deepEqual(invented(html, document, 'en-US'), [], 'figures in the HTML the document cannot account for');
+    assert.deepEqual(dropped(html, document, 'en-US'), [], 'headline figures that never reached the HTML');
+  });
+
+  it('holds the roll-up page the same way', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'trazum-html-'));
+    const log = join(dir, 'usage.jsonl');
+    await writeFile(log, LOG);
+    const profiled = run(['profile', log, '--json']);
+    assert.equal(profiled.status, 0, profiled.stderr);
+    const contribution = join(dir, 'team-a.json');
+    await writeFile(contribution, profiled.stdout);
+    const out = join(dir, 'rollup.html');
+    const rolled = run(['rollup', contribution, '--html-out', out, '--json']);
+    assert.equal(rolled.status, 0, rolled.stderr);
+    const document = JSON.parse(rolled.stdout);
+    const html = await readFile(out, 'utf8');
+    assert.match(html, /class="caveats"/);
+    assert.deepEqual(invented(html, document, 'en-US'), [], 'figures in the roll-up HTML its document cannot account for');
+    assert.deepEqual(dropped(html, document, 'en-US'), [], 'headline figures that never reached the roll-up HTML');
+  });
+
+  it('and each direction is proved by the failure it exists for', async () => {
+    const { html, document } = await render('en');
+    // A renderer that invents a dollar: the checker names it.
+    const legit = formatUsd(document.total.totalUsd);
+    const forged = html.replace(legit, '$9,999.1234');
+    assert.deepEqual(invented(forged, document, 'en-US'), ['$9,999.1234']);
+    // A renderer that drops the headline everywhere: the checker names that
+    // too. replaceAll, because the one priced model's row legitimately equals
+    // the total — the first draft replaced one occurrence and called the
+    // survivor a failure of the guard rather than a fact about the fixture.
+    const gone = html.replaceAll(legit, '$9,999.1234');
+    assert.ok(dropped(gone, document, 'en-US').includes(legit));
+    // And an invented count in a table cell does not hide behind the dollars.
+    const forgedCell = html.replace(/<td class="n">1<\/td>/, '<td class="n">777</td>');
+    assert.ok(invented(forgedCell, document, 'en-US').includes('777'));
   });
 });
 

@@ -56,7 +56,7 @@ ${bold('USAGE')}
   trazum prune <file> --cases <file> --yes
   trazum where [file]
   trazum conform <file|-> [--contract <name>]
-  trazum rollup <document...|dir> [--json]
+  trazum rollup <document...|dir> [--json] [--html-out <file>]
   trazum pulse [--max-stale-hours <n>]
   trazum bench [--workload <id>] [--record <file>] [--against <file> --max-ratio <n>] [--json]
   trazum write [--answers <file>] [--json] [-o <file>]
@@ -128,6 +128,14 @@ ${bold('OPTIONS FOR write')}
                               with everything else on stderr.
   --calls <n>                 Calls per month, for the estimate.
   --avg-output <n>            Average output tokens per call, for the estimate.
+
+${bold('OPTIONS FOR rollup')}
+  --html-out <file>           Also write the roll-up as one self-contained HTML
+                              file — the team-facing report, for whoever pays
+                              the bill. Each contributor's gaps stay under that
+                              contributor, and what no merge can measure is in
+                              the caveat block, impossible to crop.
+  --json                      The roll-up document as data.
 
 ${bold('OPTIONS FOR pulse')}
   --max-stale-hours <n>       Exit 1 when something that runs here has not run
@@ -1589,6 +1597,8 @@ ${bold('EXAMPLES')}
     findingsHeading: () => 'What would move this bill',
     colLabel: () => 'workload',
     colModel: () => 'model',
+    colContributor: () => 'contributor',
+    colSpanDays: () => 'days',
     colCalls: () => 'calls',
     colInput: () => 'input',
     colCacheRead: () => 'cache reads',

@@ -1,5 +1,6 @@
 import { UNLABELLED, formatUsd, sharesOf } from '@trazum/core';
-import type { UsageBreakdown } from '@trazum/core';
+import type { RollupDocument, UsageBreakdown } from '@trazum/core';
+import type { CliMessages } from './i18n/index.js';
 import type { ProfileMarkdownInput } from './markdown.js';
 import { dayOf, spanDays } from './time.js';
 
@@ -197,13 +198,18 @@ export function renderProfileHtml(input: ProfileMarkdownInput): string {
 
   parts.push(`<footer>${esc(t.html.footer())}</footer>`);
 
+  return page(t.profile.heading(), t.locale, parts);
+}
+
+/** The shared skeleton: both documents are the same file to a mail client. */
+function page(title: string, locale: string, parts: string[]): string {
   return [
     '<!doctype html>',
-    `<html lang="${esc(t.locale)}">`,
+    `<html lang="${esc(locale)}">`,
     '<head>',
     '<meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
-    `<title>${esc(t.profile.heading())}</title>`,
+    `<title>${esc(title)}</title>`,
     `<style>${STYLE}</style>`,
     '</head>',
     '<body>',
@@ -214,4 +220,124 @@ export function renderProfileHtml(input: ProfileMarkdownInput): string {
     '</html>',
     '',
   ].join('\n');
+}
+
+/**
+ * The roll-up as one self-contained page — the team-facing document, for
+ * exactly the person who does not run CLIs.
+ *
+ * The same discipline as the profile door: the input is the roll-up document
+ * itself, the one `--json` prints and `conform` checks, so the page cannot
+ * disagree with the data. Two things this page refuses to soften, because
+ * they are the roll-up's whole honesty: **each contributor's gaps stay under
+ * that contributor** — summing them away is the averaging this command
+ * exists to refuse — and **the `cannotSay` caveats render in the caveat
+ * block**, overlap-invisible included, so the one thing no merge can measure
+ * cannot be cropped out of the forwarded copy.
+ */
+export function renderRollupHtml(document: RollupDocument, t: CliMessages): string {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const parts: string[] = [];
+
+  parts.push(`<h1>${esc(t.rollup.heading(document.contributors.length, formatUsd(document.total.totalUsd), document.total.calls))}</h1>`);
+  parts.push(`<p class="headline">${esc(formatUsd(document.total.totalUsd))}</p>`);
+  if (document.span !== null) {
+    parts.push(`<p class="muted">${esc(t.rollup.span(dayOf(document.span.fromMs), dayOf(document.span.toMs)))}</p>`);
+  } else {
+    parts.push(`<p class="muted">${esc(t.rollup.noSpan())}</p>`);
+  }
+
+  // The caveat block, ahead of every table: what the merge cannot say, what
+  // was rejected by name, and which contributions arrived twice.
+  const caveats: string[] = [];
+  for (const code of document.cannotSay) caveats.push(esc(t.rollup.caveat(code)));
+  for (const rejection of document.rejected) {
+    caveats.push(
+      esc(
+        rejection.via === null
+          ? t.rollup.rejected(rejection.name, rejection.because)
+          : t.rollup.rejectedVia(rejection.name, rejection.via, rejection.because),
+      ),
+    );
+  }
+  if (document.repeatedContributors.length > 0) {
+    caveats.push(esc(t.rollup.repeated(document.repeatedContributors.join(', '))));
+  }
+  for (const group of document.identicalContributions.groups) {
+    caveats.push(esc(t.rollup.identical(group.join(', '))));
+  }
+  if (document.identicalContributions.usd > 0) {
+    caveats.push(esc(t.rollup.identicalUsd(formatUsd(document.identicalContributions.usd))));
+  }
+  if (document.unpricedModels.length > 0) {
+    caveats.push(esc(t.profile.unpriced(document.unpricedModels.join(', '), document.unpriced.calls)));
+  }
+  if (caveats.length > 0) {
+    parts.push(
+      `<div class="caveats"><h2>${esc(t.rollup.cannotSayHeading())}</h2><ul>${caveats
+        .map((caveat) => `<li>${caveat}</li>`)
+        .join('')}</ul></div>`,
+    );
+  }
+
+  // One contributor, one row — and that contributor's own gaps directly
+  // beneath its name, never pooled.
+  parts.push(`<h2>${esc(t.rollup.contributorsHeading())}</h2>`);
+  const contributorRows = document.contributors
+    .map((contributor) => {
+      const gapItems = contributor.gaps
+        .map((gap) => `<li>${esc(gap.detail)}${gap.usd !== null ? ` — ${esc(formatUsd(gap.usd))}` : ''}</li>`)
+        .join('');
+      const gaps = gapItems === '' ? '' : `<ul class="findings">${gapItems}</ul>`;
+      return `<tr><td>${esc(contributor.name)}</td><td class="n">${n(contributor.calls)}</td><td class="n">${esc(formatUsd(contributor.totalUsd))}</td><td class="n">${contributor.spanDays === null ? '—' : n(contributor.spanDays)}</td></tr>${
+        gaps === '' ? '' : `<tr><td colspan="4">${gaps}</td></tr>`
+      }`;
+    })
+    .join('\n');
+  parts.push(
+    `<table><thead><tr><th>${esc(t.html.colContributor())}</th><th class="n">${esc(t.html.colCalls())}</th><th class="n">USD</th><th class="n">${esc(t.html.colSpanDays())}</th></tr></thead><tbody>\n${contributorRows}\n</tbody></table>`,
+  );
+
+  parts.push(`<h2>${esc(t.rollup.byLabelHeading())}</h2>`);
+  parts.push(
+    breakdownTable(
+      document.byLabel.map((row) => ({
+        name: row.label === UNLABELLED ? t.profile.unlabelled() : row.label,
+        breakdown: row.breakdown,
+      })),
+      document.total.totalUsd,
+      t,
+      t.html.colLabel(),
+    ),
+  );
+  parts.push(`<h2>${esc(t.html.byModelHeading())}</h2>`);
+  parts.push(
+    breakdownTable(
+      document.byModel.map((row) => ({ name: row.model, breakdown: row.breakdown })),
+      document.total.totalUsd,
+      t,
+      t.html.colModel(),
+    ),
+  );
+
+  // Findings that did not merge are named with the contributors that have
+  // them — reported as prose, exactly as the terminal says it.
+  if (document.notMerged.length > 0) {
+    parts.push(`<h2>${esc(t.rollup.notMergedHeading())}</h2>`);
+    parts.push(
+      `<ul class="findings">${document.notMerged
+        .map(
+          (entry) =>
+            `<li>${esc(t.rollup.notMerged(entry.finding, entry.because))} ${esc(t.rollup.presentIn(entry.presentIn.join(', ')))}</li>`,
+        )
+        .join('')}</ul>`,
+    );
+  }
+
+  parts.push(`<footer>${esc(t.html.footer())}</footer>`);
+  return page(
+    t.rollup.heading(document.contributors.length, formatUsd(document.total.totalUsd), document.total.calls),
+    t.locale,
+    parts,
+  );
 }

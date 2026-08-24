@@ -29,6 +29,27 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **The roll-up ships the same door, and the parity guard closes the loop —
+  chapters three and four of the 1.64 arc.** `trazum rollup` gains
+  `--html-out`, written on both output paths (a side file that vanished
+  under `--json` is the fault the profile's `--csv-out` already taught this
+  repository): one self-contained page for the team-facing document, where
+  **each contributor's gaps render under that contributor's own name** —
+  pooling them is the averaging the roll-up exists to refuse — and every
+  `cannotSay` caveat, `overlap-invisible` included, sits in the caveat block
+  ahead of the tables, impossible to crop out of a forwarded copy. Rejected
+  contributions, repeated contributors and identical contributions land in
+  the same block, by name. And **the parity guard**: a test walks every
+  dollar figure anywhere in the page and every count in a numeric table
+  cell back to the document the page was rendered from — nothing invented —
+  and walks the document's headline figures forward into the page — nothing
+  dropped. Both directions were handed the failure they exist for before
+  being trusted: a forged dollar is named, a forged cell is named, and a
+  page scrubbed of its headline is caught. The first draft of that last
+  proof replaced one occurrence and blamed the guard for seeing the
+  survivor — the one priced model's row legitimately equals the total, and
+  the fixture, not the guard, was wrong.
+
 - **The profile leaves the terminal — chapters one and two of the 1.64
   arc.** `trazum profile` gains an HTML door beside the Markdown one: one
   self-contained file — inline CSS, no scripts, no external assets, both
