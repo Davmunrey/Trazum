@@ -59,6 +59,7 @@ ${bold('USAGE')}
   trazum schema <contract>
   trazum rollup <document...|dir> [--json] [--html-out <file>]
   trazum position <usage.jsonl>
+  trazum from-claude-code <file|dir> [--label <name>] [-o <file>]
   trazum pulse [--max-stale-hours <n>]
   trazum bench [--workload <id>] [--record <file>] [--against <file> --max-ratio <n>] [--json]
   trazum write [--answers <file>] [--json] [-o <file>]
@@ -135,6 +136,20 @@ ${bold('OPTIONS FOR write')}
                               with everything else on stderr.
   --calls <n>                 Calls per month, for the estimate.
   --avg-output <n>            Average output tokens per call, for the estimate.
+
+${bold('OPTIONS FOR from-claude-code')}
+  --label <name>              Stamp every record with one label.
+  --label-from-project        Label each record with its transcript's project
+                              directory name, verbatim — map it to a workload
+                              name with the config's \`labels\` block.
+  -o, --out <file>            Write the usage log there instead of stdout.
+
+  Claude Code's transcripts, read as a usage log: model, timestamp, session
+  and the API's own usage object — the cache TTL split included — and
+  nothing else. No message text, no paths, no branches cross the
+  conversion. One API call is written as one line per content block, so
+  lines are collapsed by request id; what was collapsed or passed over is
+  said on stderr, never silently.
 
 ${bold('OPTIONS FOR position')}
   --html-out <file>           The position as one self-contained page — the
@@ -1596,6 +1611,19 @@ ${bold('EXAMPLES')}
           return code;
       }
     },
+  },
+
+  fromClaudeCode: {
+    noPath: () => 'from-claude-code needs a transcript file or directory: trazum from-claude-code ~/.claude/projects',
+    notFound: (path) => `${path}: not found`,
+    noTranscripts: (path) => `${path}: no .jsonl transcripts under it. Claude Code writes them per session under ~/.claude/projects/<project>/.`,
+    summary: (files, records) => `${files} transcript(s), ${records} priced call(s).`,
+    collapsed: (lines) => `${lines} extra line(s) of already-counted calls collapsed — one API call is written as one line per content block, and counting each line would overbill.`,
+    streamed: (count) => `${count} call(s) were written while still streaming; the final line's counts stood.`,
+    disagreements: (count) => `${count} call(s) had lines that disagreed beyond streaming growth — a count shrank, or another field changed. The last line stood, but that is a finding: worth a look at the transcript.`,
+    noRequestId: (count) => `${count} call(s) carried no request id, so nothing could be collapsed against them; each is priced as recorded.`,
+    skipped: (other, unparseable, withoutUsage) => `Passed over: ${other} non-assistant line(s) (the transcript's other business), ${unparseable} unparseable, ${withoutUsage} assistant line(s) without usage.`,
+    written: (file) => `Wrote ${file}.`,
   },
 
   position: {

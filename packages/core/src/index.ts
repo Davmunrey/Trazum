@@ -200,6 +200,8 @@ export type {
 } from './judgement.js';
 export { indexUsage, positionAt } from './position.js';
 export type { MeasuredIndex } from './position.js';
+export { claudeCodeRecords } from './claude-code.js';
+export type { ClaudeCodeConversion, ClaudeCodeRecord } from './claude-code.js';
 export { positionReport } from './position-report.js';
 export type {
   PositionDistance,

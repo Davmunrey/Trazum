@@ -1612,6 +1612,19 @@ ${bold('EJEMPLOS')}
     },
   },
 
+  fromClaudeCode: {
+    noPath: () => 'from-claude-code necesita un archivo o directorio de transcripts: trazum from-claude-code ~/.claude/projects',
+    notFound: (path) => `${path}: no existe`,
+    noTranscripts: (path) => `${path}: no hay transcripts .jsonl debajo. Claude Code los escribe por sesión en ~/.claude/projects/<proyecto>/.`,
+    summary: (files, records) => `${files} transcript(s), ${records} llamada(s) tasadas.`,
+    collapsed: (lines) => `${lines} línea(s) extra de llamadas ya contadas colapsadas — una llamada a la API se escribe como una línea por bloque de contenido, y contar cada línea sobrefacturaría.`,
+    streamed: (count) => `${count} llamada(s) se escribieron aún en streaming; quedaron los recuentos de la línea final.`,
+    disagreements: (count) => `${count} llamada(s) tenían líneas en desacuerdo más allá del crecimiento del streaming — un recuento encogió, u otro campo cambió. Se quedó la última línea, pero es un hallazgo: merece un vistazo al transcript.`,
+    noRequestId: (count) => `${count} llamada(s) sin id de petición, así que nada pudo colapsarse contra ellas; cada una se tasa tal como quedó registrada.`,
+    skipped: (other, unparseable, withoutUsage) => `Omitidas: ${other} línea(s) no-assistant (el resto del negocio del transcript), ${unparseable} imparseables, ${withoutUsage} línea(s) assistant sin usage.`,
+    written: (file) => `Escrito ${file}.`,
+  },
+
   position: {
     heading: (month) => `Dónde está ${month}, medido`,
     scopeMonth: () => 'el mes',

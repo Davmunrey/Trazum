@@ -2160,7 +2160,14 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**Nothing is planned.** [The 1.68 plan](docs/plan-1.68.md) is delivered in
+**1.69.0 — "The agent's own bill."** [The 1.69 plan](docs/plan-1.69.md),
+asked for and written before the code: `trazum from-claude-code` turns the
+transcripts Claude Code already writes into a usage log — deduplicated by
+request, the TTL split preserved, and nothing read but the numbers — so
+every existing door prices the agent's sessions without instrumenting
+anything.
+
+Before it, [the 1.68 plan](docs/plan-1.68.md) was delivered in
 full — the browser caught up with the other three doors in one release.
 Before it, [the 1.65–1.67 plan](docs/plan-1.65-1.67.md) was delivered in
 full — the owner's five open-source paths, carried as far as they go as

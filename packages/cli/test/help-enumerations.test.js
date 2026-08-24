@@ -139,7 +139,7 @@ describe('the USAGE block names every command, and only commands', () => {
     ...new Set(
       [...source
         .slice(source.indexOf('const COMMAND_FLAGS'), source.indexOf('\n};', source.indexOf('const COMMAND_FLAGS')))
-        .matchAll(/^ {2}([a-z][a-z-]*):\s*\[/gm)].map((m) => m[1]),
+        .matchAll(/^ {2}'?([a-z][a-z-]*)'?:\s*\[/gm)].map((m) => m[1]),
     ),
   ].sort();
 
@@ -209,7 +209,7 @@ describe('every command with flags has exactly one OPTIONS section', () => {
   /** Commands with at least one flag of their own, beyond the globals. */
   const withOwnFlags = [...source
     .slice(source.indexOf('const COMMAND_FLAGS'), source.indexOf('\n};', source.indexOf('const COMMAND_FLAGS')))
-    .matchAll(/^ {2}([a-z][a-z-]*):\s*\[([\s\S]*?)\],?$/gm)]
+    .matchAll(/^ {2}'?([a-z][a-z-]*)'?:\s*\[([\s\S]*?)\],?$/gm)]
     .map((m) => [m[1], [...m[2].matchAll(/'([^']+)'/g)].map((x) => x[1])])
     .filter(([, flags]) => flags.some((f) => !globals.has(f)))
     .map(([name]) => name)
@@ -276,7 +276,7 @@ describe('the npm page does not present a partial command table as the whole set
   const commands = [...new Set(
     [...source
       .slice(source.indexOf('const COMMAND_FLAGS'), source.indexOf('\n};', source.indexOf('const COMMAND_FLAGS')))
-      .matchAll(/^ {2}([a-z][a-z-]*):\s*\[/gm)].map((m) => m[1]),
+      .matchAll(/^ {2}'?([a-z][a-z-]*)'?:\s*\[/gm)].map((m) => m[1]),
   )];
 
   /**
