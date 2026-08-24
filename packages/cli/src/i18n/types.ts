@@ -539,6 +539,8 @@ export interface CliMessages {
     findingsHeading(): string;
     colLabel(): string;
     colModel(): string;
+    colContributor(): string;
+    colSpanDays(): string;
     colCalls(): string;
     colInput(): string;
     colCacheRead(): string;

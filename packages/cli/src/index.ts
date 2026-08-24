@@ -238,7 +238,7 @@ import {
   renderRankMarkdown,
   renderProfileMarkdown,
 } from './markdown.js';
-import { renderProfileHtml } from './html.js';
+import { renderProfileHtml, renderRollupHtml } from './html.js';
 import type { CliMessages } from './i18n/index.js';
 
 // --------------------------------------------------------------------------
@@ -635,7 +635,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   rank: ['level', 'model', 'calls', 'output-tokens', 'batch', 'disable', 'prompt', 'markdown-out'],
   init: ['dry-run', 'yes', 'json', 'pricing', 'pricing-live'],
   conform: ['contract', 'json'],
-  rollup: ['json'],
+  rollup: ['json', 'html-out'],
   pulse: ['json', 'max-stale-hours'],
   bench: ['workload', 'json', 'record', 'against', 'max-ratio'],
   write: ['answers', 'json', 'out', 'o', 'calls', 'avg-output'],
@@ -2194,6 +2194,14 @@ async function commandRollup(args: Args, t: CliMessages): Promise<void> {
   }
 
   const document = rollUp(inputs);
+
+  // The HTML door, on both output paths — a side file that vanished under
+  // --json is the fault the profile's --csv-out already taught this file.
+  const htmlOut = stringFlag(args, 'html-out');
+  if (htmlOut !== undefined) {
+    await writeFile(htmlOut, renderRollupHtml(document, t), 'utf8');
+    console.error(c.dim(t.html.written(htmlOut)));
+  }
 
   if (boolFlag(args, 'json')) {
     console.log(JSON.stringify(document, null, 2));

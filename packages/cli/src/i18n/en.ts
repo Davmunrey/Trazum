@@ -56,7 +56,7 @@ ${bold('USAGE')}
   trazum prune <file> --cases <file> --yes
   trazum where [file]
   trazum conform <file|-> [--contract <name>]
-  trazum rollup <document...|dir> [--json]
+  trazum rollup <document...|dir> [--json] [--html-out <file>]
   trazum pulse [--max-stale-hours <n>]
   trazum bench [--workload <id>] [--record <file>] [--against <file> --max-ratio <n>] [--json]
   trazum write [--answers <file>] [--json] [-o <file>]
@@ -104,6 +104,11 @@ ${bold('OPTIONS FOR conform')}
 
 ${bold('OPTIONS FOR rollup')}
   --json                      The roll-up document as data. See docs/format.md.
+  --html-out <file>           Also write the roll-up as one self-contained HTML
+                              file — the team-facing report, for whoever pays
+                              the bill. Each contributor's gaps stay under that
+                              contributor, and what no merge can measure is in
+                              the caveat block, impossible to crop.
 
   Several people's bills, one roll-up. Each contributor runs
   \`trazum profile --json\` where their traffic already is; this merges the
@@ -1589,6 +1594,8 @@ ${bold('EXAMPLES')}
     findingsHeading: () => 'What would move this bill',
     colLabel: () => 'workload',
     colModel: () => 'model',
+    colContributor: () => 'contributor',
+    colSpanDays: () => 'days',
     colCalls: () => 'calls',
     colInput: () => 'input',
     colCacheRead: () => 'cache reads',
