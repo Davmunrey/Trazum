@@ -29,6 +29,22 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **The rail groups its destinations and links out to the project.** The web
+  app's five tabs sat in one undifferentiated column; the rail now names what
+  each cluster is for — *Work on a prompt* (Optimise, Write, Compare, and the
+  Library when signed in) and *Measure* (Your bill) — with quiet uppercase
+  eyebrows that collapse to hairline separators in the icon-only rail, plus a
+  *Resources* block of external links: the GitHub repository (inline mark —
+  the icon library dropped brand icons), the npm CLI package, and the
+  documentation tree. Each link opens in a new tab, says so to a screen
+  reader, and reveals a small outward arrow on hover or keyboard focus. The
+  labels are data, not submenus — nothing hides behind an extra click. All
+  strings exist in English and Spanish; the library-tab gate guard in
+  `ui.test.mjs` learned the trigger's new data-driven spelling (the entry is
+  admitted by a conditional spread on `signedIn`) and its planted ungated
+  variants still fail. 393 web tests green; verified by screenshot in light,
+  dark, mobile drawer and collapsed rail.
+
 - **Deployable on N0, with the update path written down.** A root
   `Dockerfile` (multi-stage over the workspace: core built, then the web app
   with Next's `standalone` output), an `n0-app.json` manifest — Postgres,

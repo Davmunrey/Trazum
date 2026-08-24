@@ -469,17 +469,17 @@ describe('the library tab does not tell the reader something untrue', () => {
     // A library nobody can read is worse than an absent tab: it renders an
     // empty list that looks like "you have saved nothing".
     //
-    // What is guarded is the gate, not the tag. This first required the trigger
-    // to be spelled `<TabsTrigger value="library">` with nothing after it, so
-    // giving it a title broke a guard with nothing to say about titles; then it
-    // required the attribute on the same line, so wrapping the tag over four
-    // lines broke it again. Attributes and whitespace are free. `signedIn &&`
-    // sitting immediately in front of the trigger is not.
-    const gated = /signedIn && <TabsTrigger\s+value="library"[\s>]/;
+    // What is guarded is the gate, not the tag. The trigger is data now — an
+    // entry in the GROUPS list the rail renders from — so the gate to prove is
+    // the conditional spread that admits the library entry only when
+    // `signedIn` holds. A bare entry in the items list, a spread keyed on some
+    // other flag, or a gate wrapped around a different tab are exactly the
+    // defects this exists to catch, so each must fail the pattern.
+    const gated = /\.\.\.\(signedIn \? \[\{ value: 'library'/;
     for (const ungated of [
-      '<TabsTrigger value="library" onClick={close}>',
-      '{hasPrompts && <TabsTrigger value="library">',
-      '{signedIn && <TabsTrigger value="bill">}\n<TabsTrigger value="library">',
+      "{ value: 'library', label: t.library.tab, Icon: BookMarked },",
+      "...(hasPrompts ? [{ value: 'library', label: t.library.tab }] : []),",
+      "...(signedIn ? [{ value: 'bill' }] : []),\n{ value: 'library' },",
     ]) {
       assert.ok(!gated.test(ungated), `the gate pattern passed an ungated trigger: ${ungated}`);
     }

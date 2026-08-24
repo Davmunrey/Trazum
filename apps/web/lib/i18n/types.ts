@@ -35,6 +35,21 @@ export interface WebMessages {
     /** The desktop rail's width toggle, named for what pressing it does. */
     collapseRail: string;
     expandRail: string;
+    /**
+     * The rail's two nav groups. Labels, not controls: with five modes a
+     * collapsible submenu would hide two clicks behind one, so the grouping
+     * is typographic — an eyebrow over each cluster — and every mode stays
+     * one click away.
+     */
+    groupWork: string;
+    groupMeasure: string;
+    /** The external links at the rail's foot, and the group's own name. */
+    groupResources: string;
+    linkGitHub: string;
+    linkNpm: string;
+    linkDocs: string;
+    /** Appended to an external link's accessible name: it leaves this app. */
+    opensExternal: string;
   };
 
   input: {
