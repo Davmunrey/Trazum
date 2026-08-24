@@ -25,6 +25,26 @@ merged commit with no entry is a change only `git log` remembers.
   by name: charting libraries, template languages, serving. The chapters run
   as 1.63.x and close at 1.64.0.
 
+## Unreleased
+
+### Added
+
+- **[The plan through 1.65, 1.66 and 1.67](docs/plan-1.65-1.67.md), written
+  before the code.** The owner's five open-source paths, carried exactly as
+  far as they go as code, with the not-code halves named in "what stays out"
+  rather than dressed up as chapters. **1.65 — the format anyone can
+  adopt**: all eighteen contracts answer to a `--contract` name, and an
+  authored JSON Schema per contract leaves the repository, held to agreeing
+  with `conform` by a two-direction guard. **1.66 — one policy, three
+  doors**: per-label/session/day USD limits stated once, judged once in the
+  core, enforced identically by the gateway, `serve` and `spend_guard` —
+  with the same call pushed through all three doors and the verdicts
+  required to match. **1.67 — the month ends on a measured position**:
+  month-to-date spend against every limit with the denominator on every
+  figure and no projection anywhere, travelling through JSON, the HTML door
+  and MCP; plus `check` reading a file list from stdin so a pre-commit hook
+  is one pipe.
+
 ## 1.64.0 — "The report somebody forwards"
 
 **The 1.64 arc closes, delivered in full**: the profile and the roll-up have
