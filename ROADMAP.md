@@ -2078,7 +2078,7 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**No arc is currently planned.** [The 1.62–1.63 plan](docs/plan-1.62-1.63.md)
+**Nothing is planned.** [The 1.62–1.63 plan](docs/plan-1.62-1.63.md)
 delivered in full at 1.63.0 — both arcs, all nine chapters — and the next
 plan, whenever it is written, will be written the same way: before the code,
 and kept as written after it.
