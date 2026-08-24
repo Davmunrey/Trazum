@@ -53,6 +53,7 @@ export const CONTRACT_NAMES = [
   'gateway-refusal',
   'bench',
   'prompt-draft',
+  'position',
 ] as const;
 
 export type ContractName = (typeof CONTRACT_NAMES)[number];
@@ -385,6 +386,14 @@ const DOCUMENT_RULES: Record<Exclude<ContractName, 'usage-log'>, FieldRule[]> = 
     rule('justified', 'an array — one entry per key written, with the observation behind it', isArray),
     rule('declined', 'an array — one entry per key left out, each with a typed why', isArray),
   ],
+  position: [
+    rule('source', 'the string "usage-log" — where every figure was measured from', (v) => v === 'usage-log'),
+    rule('month', 'the period object — id, fromMs, toMs, days', isObject),
+    rule('positions', 'an array — one standing per measurable ceiling', isArray),
+    rule('unmeasured', 'an array — configured ceilings this log cannot answer for, with reasons', isArray),
+    rule('cannotSay', 'an array of sentences — what is deliberately not answered', isArray),
+    rule('unpricedRecords', 'a count of records the catalogue cannot price', isNumber),
+  ],
   pulse: [
     rule('beats', 'an array — one per kind', isArray),
     rule('nowMs', 'the instant the ages were taken against', isNumber),
@@ -530,6 +539,9 @@ function contractOf(doc: Record<string, unknown>): Exclude<ContractName, 'usage-
   if (isObject(doc.config) && Array.isArray(doc.justified) && Array.isArray(doc.declined)) {
     return 'first-run';
   }
+  // Before the pulse and everything position-shaped: `source: "usage-log"`
+  // is this document's own signature — no other contract carries it.
+  if (doc.source === 'usage-log' && Array.isArray(doc.positions)) return 'position';
   if (Array.isArray(doc.beats) && typeof doc.nowMs === 'number') return 'pulse';
   if (Array.isArray(doc.rules) && typeof doc.floor === 'number') return 'rule-yield';
   if (isObject(doc.error) && typeof doc.reason === 'string' && Array.isArray(doc.alternatives)) {

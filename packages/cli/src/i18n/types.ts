@@ -518,6 +518,29 @@ export interface CliMessages {
     caveat(code: string): string;
   };
 
+  position: {
+    /** `Where 2026-08 stands, measured` — the month is data, not prose. */
+    heading(month: string): string;
+    scopeMonth(): string;
+    scopeDay(): string;
+    scopeLabel(label: string): string;
+    within(scope: string, measured: string, limit: string, remaining: string, days: number, elapsed: number): string;
+    over(scope: string, measured: string, limit: string, overBy: string): string;
+    cannotTell(scope: string): string;
+    /**
+     * Division on the past, said as such — never a forecast. Absent under
+     * the floor, so this line only ever renders with its denominator.
+     */
+    distance(days: string, rate: string, overDays: number): string;
+    unmeasuredHeading(): string;
+    unmeasured(scope: string, why: string): string;
+    why(reason: 'no-clock' | 'no-labels' | 'nothing-recorded' | 'label-unseen'): string;
+    cannotSayHeading(): string;
+    unpriced(count: number): string;
+    /** The source, named: this log alone, never merged with the store. */
+    source(): string;
+    noLog(): string;
+  };
   pulse: {
     heading(): string;
     kind(kind: string): string;

@@ -161,6 +161,11 @@ describe('conform — the documents', () => {
       [{ schemaVersion: 1, rules: [], floor: 0, tokensBefore: 1, tokensSaved: 0 }, 'rule-yield'],
       [{ schemaVersion: 1, error: {}, reason: 'budget-exhausted', alternatives: [] }, 'gateway-refusal'],
       [{ schemaVersion: 1, workloads: [], node: 'v22', cpus: 4 }, 'bench'],
+      // The 1.67 arc's document: its own `source` string is the signature.
+      [
+        { schemaVersion: 1, source: 'usage-log', month: {}, positions: [], unmeasured: [], cannotSay: [], unpricedRecords: 0 },
+        'position',
+      ],
     ];
     for (const [doc, expected] of cases) {
       assert.equal(conform(JSON.stringify(doc)).contract, expected, expected);
@@ -182,6 +187,15 @@ describe('conform — the documents', () => {
       'rule-yield': { schemaVersion: 1, rules: [], floor: 0, tokensBefore: 1, tokensSaved: 0 },
       'gateway-refusal': { schemaVersion: 1, error: {}, reason: 'budget-exhausted', alternatives: [] },
       bench: { schemaVersion: 1, workloads: [], node: 'v22', cpus: 4 },
+      position: {
+        schemaVersion: 1,
+        source: 'usage-log',
+        month: {},
+        positions: [],
+        unmeasured: [],
+        cannotSay: [],
+        unpricedRecords: 0,
+      },
     };
     for (const [name, doc] of Object.entries(minimal)) {
       const whole = conform(JSON.stringify(doc), { contract: name });

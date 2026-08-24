@@ -45,6 +45,7 @@ ${bold('USO')}
   trazum conform <fichero|-> [--contract <nombre>]
   trazum schema <contrato>
   trazum rollup <documento...|dir> [--json] [--html-out <fichero>]
+  trazum position <uso.jsonl>
   trazum pulse [--max-stale-hours <n>]
   trazum bench [--workload <id>] [--record <fichero>] [--against <fichero> --max-ratio <n>] [--json]
   trazum write [--answers <fichero>] [--json] [-o <fichero>]
@@ -1589,6 +1590,35 @@ ${bold('EJEMPLOS')}
     },
   },
 
+  position: {
+    heading: (month) => `Dónde está ${month}, medido`,
+    scopeMonth: () => 'el mes',
+    scopeDay: () => 'hoy',
+    scopeLabel: (label) => `«${label}»`,
+    within: (scope, measured, limit, remaining, days, elapsed) =>
+      `${scope}: ${measured} de ${limit} medidos — quedan ${remaining} (${days} de ${elapsed} días transcurridos con medición)`,
+    over: (scope, measured, limit, overBy) =>
+      `${scope}: superado — ${measured} medidos contra ${limit}, ${overBy} por encima del techo`,
+    cannotTell: (scope) => `${scope}: no se puede saber — nada medido en esta ventana`,
+    distance: (days, rate, overDays) =>
+      `a ${rate}/día sobre ${overDays} días medidos, el techo queda a ${days} días — división sobre el pasado, no un pronóstico`,
+    unmeasuredHeading: () => 'Configurado y no medible desde este log',
+    unmeasured: (scope, why) => `${scope}: ${why}`,
+    why: (reason) =>
+      reason === 'no-clock'
+        ? 'ningún registro lleva marca de tiempo, así que no se puede medir ninguna ventana'
+        : reason === 'no-labels'
+          ? 'ningún registro lleva etiqueta, así que el gasto por etiqueta es incognoscible aquí'
+          : reason === 'nothing-recorded'
+            ? 'el log está vacío — no se registró nada'
+            : 'el log registra etiquetas y no ha visto esta en todo el mes — quizá renombrada, quizá parada, y ninguna de las dos es «dentro del presupuesto»',
+    cannotSayHeading: () => 'Lo que deliberadamente no responde',
+    unpriced: (count) =>
+      `${count} registro(s) nombran un modelo que el catálogo no puede tasar. No aportan nada a ninguna cifra de arriba — dinero que nadie ve, dicho aquí en vez de escondido.`,
+    source: () =>
+      'Medido solo desde este log, registro a registro. La posición mensual facturada por el proveedor que guarda el almacén es otra medición — la imprime «trazum store» — y las dos nunca se funden en una cifra.',
+    noLog: () => 'position necesita un log de uso: trazum position uso.jsonl',
+  },
   pulse: {
     heading: () => '¿Corrieron las cosas que tienen que correr?',
     kind: (kind) => {

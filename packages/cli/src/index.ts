@@ -110,6 +110,7 @@ import {
   parseUsageLine,
   plannedCalls,
   positionAt,
+  positionReport,
   PRICING_LAST_REVIEWED,
   profilePrompt,
   profileToCsv,
@@ -664,6 +665,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   conform: ['contract', 'json'],
   schema: [],
   rollup: ['json', 'html-out'],
+  position: ['json', 'pricing', 'pricing-live'],
   pulse: ['json', 'max-stale-hours'],
   bench: ['workload', 'json', 'record', 'against', 'max-ratio'],
   write: ['answers', 'json', 'out', 'o', 'calls', 'avg-output'],
@@ -2543,6 +2545,120 @@ async function commandWrite(args: Args, t: CliMessages): Promise<void> {
     );
     if (m.complete.declined.length > 0) console.error(t.write.declined(m.complete.declined.join(', ')));
   }
+}
+
+/**
+ * `trazum position <usage.jsonl>` — where the month stands, measured.
+ *
+ * One answer where `profile`, `budgetPositions` and `watch` each held a
+ * piece: every configured ceiling with its measurement, its window and its
+ * denominators, from the named log alone. The distance line is division on
+ * the past — `positionReport` withholds it under the floor, on an over and
+ * on a zero rate, so if it prints, its denominator prints with it.
+ */
+async function commandPosition(
+  args: Args,
+  config: TrazumConfig,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
+  const file = args.positional[0];
+  if (file === undefined) throw new Error(t.position.noLog());
+
+  const text = await readUsageLog(file, t);
+  const records = text
+    .split('\n')
+    .filter((line) => line.trim() !== '')
+    .map((line) => parseUsageLine(line))
+    .filter((record): record is NonNullable<ReturnType<typeof parseUsageLine>> => record !== null);
+
+  const document = positionReport(
+    records,
+    {
+      ...(config.spend === undefined ? {} : { spend: config.spend }),
+      ...(config.limits === undefined ? {} : { limits: config.limits }),
+    },
+    { catalogue: pricing },
+  );
+
+  if (boolFlag(args, 'json')) {
+    console.log(JSON.stringify(document, null, 2));
+    return;
+  }
+
+  const scopeName = (position: { scope: string; label: string | null }): string =>
+    position.scope === 'month'
+      ? t.position.scopeMonth()
+      : position.scope === 'day'
+        ? t.position.scopeDay()
+        : t.position.scopeLabel(position.label ?? '');
+
+  console.log();
+  console.log(c.bold(t.position.heading(document.month.id)));
+  for (const position of document.positions) {
+    const name = scopeName(position);
+    if (position.verdict === 'cannot-tell') {
+      console.log(`  ${c.yellow('?')} ${wrap(t.position.cannotTell(name), 72, '    ')}`);
+      continue;
+    }
+    if (position.verdict === 'over') {
+      console.log(
+        `  ${c.red('✗')} ${wrap(
+          t.position.over(name, formatUsd(position.measuredUsd), formatUsd(position.limitUsd), formatUsd(-position.remainingUsd)),
+          72,
+          '    ',
+        )}`,
+      );
+      continue;
+    }
+    console.log(
+      `  ${c.green('✓')} ${wrap(
+        t.position.within(
+          name,
+          formatUsd(position.measuredUsd),
+          formatUsd(position.limitUsd),
+          formatUsd(position.remainingUsd),
+          position.daysMeasured,
+          position.daysElapsed,
+        ),
+        72,
+        '    ',
+      )}`,
+    );
+    if (position.distance !== null) {
+      console.log(
+        `    ${c.dim(wrap(
+          t.position.distance(
+            position.distance.daysAway.toFixed(1),
+            formatUsd(position.distance.usdPerDay),
+            position.distance.overDays,
+          ),
+          70,
+          '      ',
+        ))}`,
+      );
+    }
+  }
+  if (document.unmeasured.length > 0) {
+    console.log();
+    console.log(`  ${c.bold(t.position.unmeasuredHeading())}`);
+    for (const entry of document.unmeasured) {
+      console.log(`    ${c.yellow(wrap(t.position.unmeasured(scopeName(entry), t.position.why(entry.why)), 70, '      '))}`);
+    }
+  }
+  if (document.cannotSay.length > 0) {
+    console.log();
+    console.log(`  ${c.bold(t.position.cannotSayHeading())}`);
+    for (const line of document.cannotSay) {
+      console.log(`    ${c.dim(wrap(line, 70, '      '))}`);
+    }
+  }
+  if (document.unpricedRecords > 0) {
+    console.log();
+    console.log(`  ${c.yellow(wrap(t.position.unpriced(document.unpricedRecords), 72, '    '))}`);
+  }
+  console.log();
+  console.log(`  ${c.dim(wrap(t.position.source(), 74, '    '))}`);
 }
 
 async function commandPulse(args: Args, t: CliMessages): Promise<void> {
@@ -10728,6 +10844,9 @@ async function main(): Promise<void> {
       break;
     case 'rollup':
       await commandRollup(args, t);
+      break;
+    case 'position':
+      await commandPosition(args, config, pricing, t);
       break;
     case 'pulse':
       await commandPulse(args, t);

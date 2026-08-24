@@ -142,6 +142,15 @@ export const CONTRACT_SCHEMAS: Record<ContractName, Record<string, unknown>> = {
     missing: array,
     measured: objectOrNull,
   }),
+  position: doc('position', {
+    // The document's own signature: no other contract names its source.
+    source: { const: 'usage-log' },
+    month: object,
+    positions: array,
+    unmeasured: array,
+    cannotSay: array,
+    unpricedRecords: number,
+  }),
 };
 
 /** The schema for one named contract — the object `trazum schema` prints. */

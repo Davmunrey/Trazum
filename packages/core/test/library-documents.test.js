@@ -5,6 +5,8 @@ import {
   CONTRACT_NAMES,
   assemble,
   conform,
+  parseUsageLine,
+  positionReport,
   profileUsage,
   rollUp,
 } from '../dist/index.js';
@@ -69,6 +71,18 @@ const built = () => {
         'output-shape': 'prose',
       }),
     ],
+    // The position is pure over parsed records and config — the 1.67 arc's
+    // point is that the same function answers at every surface, so the
+    // library's own output going through the library's own checker is the
+    // first surface it answers at.
+    [
+      'position',
+      positionReport(
+        LOG.split('\n').map((line) => parseUsageLine(line)).filter((record) => record !== null),
+        { spend: { monthlyUsd: 100 }, limits: { byLabel: { chat: 10 } } },
+        { ...OPTIONS, on: new Date('2026-08-24T12:00:00Z') },
+      ),
+    ],
   ];
 };
 
@@ -117,7 +131,7 @@ describe('what the library builds, the library accepts', () => {
 
   it('names the contracts it cannot reach, rather than implying it covers them all', () => {
     /**
-     * Fifteen of the eighteen contracts need something this test cannot make
+     * Fifteen of the nineteen contracts need something this test cannot make
      * from the package alone — a log on disk, a plan and a later log to
      * verify it against, a connector's credentials, a CLI run for the
      * documents the CLI stamps. Listing them is the difference between "two
