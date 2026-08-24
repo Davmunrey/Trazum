@@ -9,6 +9,32 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+- **The position, in the tab — the fourth door.** [The 1.68
+  plan](docs/plan-1.68.md)'s first three chapters: the Bill tab grows a
+  Position card that renders the 1.67 `PositionDocument` in the browser —
+  every configured ceiling with its measured spend, window, denominators and
+  verdict; the distance line as division labelled as division, rendered only
+  when `positionReport` granted it (never re-derived — a guard proves the
+  card cannot restate arithmetic the document withheld). The ceilings come
+  from the reader's own `trazum.config.json`, pasted and read by the same
+  `parseConfig` the CLI uses — same validation, same error sentences,
+  verbatim; a config that validates but configures no ceilings is told so
+  rather than shown an empty report. Both locales, with the CLI catalogue's
+  own sentences word for word. Nothing leaves the page, held by the same
+  no-fetch guard as the rest of the tab. A new `position-ui.test.mjs` holds
+  the fourth door to the other three textually (no second JSON parser, no
+  session key rendered, source stated) and functionally (the exact call path
+  the card takes produces the document the CLI produces: quiet day as a
+  measured $0, unseen label named, sessionUsd in `cannotSay`, unpriced
+  records counted). 408 web tests green; verified live in light, dark and
+  Spanish, error states included. One honest correction recorded in the
+  plan: "what-if in the browser" was sketched as a chapter and turned out to
+  have already shipped — the Bill tab has carried it since the levers work.
+
 ## 1.67.1 — "Ready to travel"
 
 ### Fixed

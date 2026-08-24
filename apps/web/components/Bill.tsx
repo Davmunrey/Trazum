@@ -22,6 +22,7 @@ import {
 import type { BillLevers, CacheEconomics, UsageProfileReport } from '@trazum/core';
 
 import { Plan } from './Plan';
+import { PositionCard } from './Position';
 import { track } from './Analytics';
 import { AnimatedContent } from './motion/AnimatedContent';
 import { Button } from '@/components/ui/button';
@@ -355,6 +356,15 @@ export function Bill({ t }: { t: WebMessages }) {
           onDrill={drillTo}
         />
       )}
+      {/*
+        Where the month stands against the configured ceilings — the fourth
+        door on the 1.67 position document, below the bill it is measured
+        from. Full-width on purpose: it answers a different question than the
+        report's columns, and it needs the whole log rather than the analysis
+        above, because `positionReport` is the door — not a re-rendering of
+        the profile.
+      */}
+      {analysis !== null && logText !== null && <PositionCard logText={logText} t={t} />}
     </div>
   );
 }

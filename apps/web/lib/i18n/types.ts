@@ -602,6 +602,52 @@ export interface WebMessages {
     againstByModel: string;
   };
 
+  /**
+   * The position card — the CLI's `trazum position` in the Bill tab, the
+   * fourth door on one document. Where the CLI catalogue already has the
+   * sentence, the web says it word for word: four surfaces summarising one
+   * month differently would be a second opinion nobody asked for.
+   */
+  position: {
+    heading: string;
+    lede: string;
+    /**
+     * The ceilings' source is the reader's own trazum.config.json, parsed by
+     * the same `parseConfig` the CLI reads it with — no bespoke fields that
+     * could accept what the schema refuses.
+     */
+    configLabel: string;
+    configAriaLabel: string;
+    read: string;
+    clear: string;
+    /** A config the schema refuses — the parser's own sentence, verbatim. */
+    configError(message: string): string;
+    /** A config that validates and configures no ceilings. Not an empty report. */
+    noCeilings: string;
+    monthHeading(month: string): string;
+    scopeMonth: string;
+    scopeDay: string;
+    scopeLabel(label: string): string;
+    within(
+      scope: string,
+      measured: string,
+      limit: string,
+      remaining: string,
+      days: number,
+      elapsed: number,
+    ): string;
+    over(scope: string, measured: string, limit: string, overBy: string): string;
+    cannotTell(scope: string): string;
+    /** Division on the past, with its denominator — never a forecast. */
+    distance(days: string, rate: string, overDays: number): string;
+    unmeasuredHeading: string;
+    unmeasured(scope: string, why: string): string;
+    why(reason: 'no-clock' | 'no-labels' | 'nothing-recorded' | 'label-unseen'): string;
+    cannotSayHeading: string;
+    unpriced(count: number): string;
+    source: string;
+  };
+
   errors: {
     requestFailed: string;
     unreachable: string;

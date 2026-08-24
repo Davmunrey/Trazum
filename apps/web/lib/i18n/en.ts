@@ -762,6 +762,44 @@ export const en: WebMessages = {
     againstByModel: 'The same change, by model — where the mix moved:',
   },
 
+  position: {
+    heading: 'Position',
+    lede: 'Where the month stands against the ceilings you configured — the CLI’s "trazum position", measured in this tab from the log above. Paste your trazum.config.json: it is read by the same parser the CLI uses, and it never leaves the page either.',
+    configLabel: 'Your trazum.config.json',
+    configAriaLabel: 'Paste your trazum.config.json here',
+    read: 'Read ceilings',
+    clear: 'Clear',
+    configError: (message) => `The config was refused, in the parser’s own words: ${message}`,
+    noCeilings:
+      'This config validates and configures no ceilings, so there is no position to state. spend.monthlyUsd and the limits block are where ceilings live.',
+    monthHeading: (month) => `Where ${month} stands, measured`,
+    scopeMonth: 'the month',
+    scopeDay: 'today',
+    scopeLabel: (label) => `"${label}"`,
+    within: (scope, measured, limit, remaining, days, elapsed) =>
+      `${scope}: ${measured} of ${limit} measured — ${remaining} left (${days} of ${elapsed} elapsed days measured)`,
+    over: (scope, measured, limit, overBy) =>
+      `${scope}: over — ${measured} measured against ${limit}, ${overBy} past the ceiling`,
+    cannotTell: (scope) => `${scope}: cannot tell — nothing measured in this window`,
+    distance: (days, rate, overDays) =>
+      `at ${rate}/day over ${overDays} measured days, the ceiling is ${days} days away — division on the past, not a forecast`,
+    unmeasuredHeading: 'Configured and not measurable from this log',
+    unmeasured: (scope, why) => `${scope}: ${why}`,
+    why: (reason) =>
+      reason === 'no-clock'
+        ? 'no record carries a timestamp, so no window can be measured'
+        : reason === 'no-labels'
+          ? 'no record carries a label, so per-label spend is unknowable here'
+          : reason === 'nothing-recorded'
+            ? 'the log is empty — nothing was recorded'
+            : 'the log records labels and has never seen this one this month — possibly renamed, possibly idle, and neither is "under budget"',
+    cannotSayHeading: 'What this deliberately does not answer',
+    unpriced: (count) =>
+      `${count} record(s) name a model the catalogue cannot price. They contribute nothing to any figure above — money nobody can see, said here rather than hidden.`,
+    source:
+      'Measured from this log alone, priced record by record. The store’s provider-billed monthly standing is a different measurement — "trazum store" prints it — and the two are never merged into one figure.',
+  },
+
   errors: {
     requestFailed: 'The prompt could not be optimised.',
     unreachable: 'Could not reach the server.',
