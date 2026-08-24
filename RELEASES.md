@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.69.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.70.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,31 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.70.0 — "One drag"
+
+**Drag your ~/.claude/projects folder onto the web app and read your own
+agent bill in seconds — no install, no upload, no third step.** The 1.69
+converter already lived in the browser bundle; 1.70 taught the Bill tab to
+recognise a transcript (a new core `looksLikeClaudeCodeTranscript`, keyed
+on the assistant envelope, not the word), accept a dropped folder
+(`webkitGetAsEntry` descending it, a `webkitdirectory` picker beside it),
+convert every transcript in the page labelled by its project directory —
+so the per-project bill appears by itself — and price them beside any
+usage logs in the same drop. A banner says what it did and ends on the
+sentence that earns the whole thing: the transcripts were read in this
+tab, the numbers kept and the words not. The privacy guard holds it: no
+fetch with the new code inside it, and a mixed folder-plus-log drop
+prices as one bill with three labels while the planted transcript words
+never cross into the priced stream.
+
+**And the landing speaks five languages.** English and Spanish — reviewed
+— plus machine-drafted French, German and Portuguese, so the marketing
+surface reaches the world while the tool keeps making its precise claims
+only in the languages a human has checked, the same split the trimming
+dictionaries draw. The unreviewed languages say so, visibly, with the fix
+one GitHub issue away, and the landing keeps its own locale key so a
+French visitor never gets pushed into a half-reviewed tool.
 
 ## 1.69.0 — "The agent's own bill"
 
