@@ -2115,6 +2115,13 @@ priced by two different estimators. Somebody else's prompt answers **404, never
 403**, and the store has no lookup that takes an id without an owner, so that
 mistake cannot be written rather than merely not being written.
 
+**A landing at `/landing`** — the one Persuade surface. It tells the
+product's story with the product's own measured figures and no invented
+social proof, in both locales, guarded by `marketing.test.mjs`. A pricing
+page was built alongside it and removed the same day by the owner's call —
+the project stays open source for now, and a landing with no prices says
+that better than a proposal page would.
+
 **A deployment overview at `/admin`** (`/api/admin`) for whoever runs the instance, off unless
 `TRAZUM_ADMINS` is set — and off means the page does not exist rather than
 refuses. It is careful about what it claims: Trazum has never seen a bill or an

@@ -22,6 +22,23 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+- **A landing, sold the way the product measures.** `/landing` is the
+  product's one Persuade surface: a scrollytelling story
+  (IntersectionObserver reveals that are never attached under
+  `prefers-reduced-motion`), the four doors, and three figures that are the
+  product's own output with their sources named — no testimonials, no logo
+  wall, no projection. Both locales from a page-local typed dictionary,
+  sharing the app's locale storage key (one product, one language choice),
+  held by `marketing.test.mjs`: no fetch, reduced motion respected,
+  measured figures pinned, external links rel-protected — and **no price
+  anywhere**, guard-enforced: a pricing page was built alongside and
+  removed the same day by the owner's call. The project stays open source
+  for now, and the guard keeps a euro figure or a pricing route from
+  creeping back without a decision.
+
+
 ### Changed
 
 - **The storefront caught up with the product.** The README's web-app
