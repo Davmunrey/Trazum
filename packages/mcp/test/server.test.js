@@ -110,7 +110,7 @@ describe('the handshake', () => {
     fresh.close();
   });
 
-  it('lists exactly the five tools, and no more', async () => {
+  it('lists exactly the seven tools, and no more', async () => {
     /**
      * Asserted as an exact set. This package's whole security argument is what it
      * *cannot* do — no paths, no network, no writes — and the way that argument
@@ -126,6 +126,12 @@ describe('the handshake', () => {
      * point or the filesystem, because an agent that can make Trazum spend
      * somebody's rate limit by asking a question is a denial-of-service with
      * good manners.
+     *
+     * position was added under the same review in the 1.67 arc: log *text*
+     * and ceilings in — never a path — arithmetic over the bundled catalogue
+     * out. It reads nothing, calls nothing, spends nothing, and the session
+     * keys inside the log are grouped by and never shown, which its own test
+     * greps for.
      */
     const answer = await client.send('tools/list', {});
     const names = answer.result.tools.map((tool) => tool.name).sort();
@@ -133,6 +139,7 @@ describe('the handshake', () => {
       'check_prompt',
       'list_models',
       'optimize_prompt',
+      'position',
       'profile_usage',
       'prompt_writer',
       'spend_guard',
