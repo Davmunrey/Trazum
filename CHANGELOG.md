@@ -9,6 +9,27 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+- **Three vendored skills, and the provenance said out loud.** The agent
+  skill set under `.agents/skills/` grows `karpathy-guidelines` (behavioural
+  guardrails against LLM over-engineering — surgical changes, simplicity
+  first, verifiable success criteria; MIT, from
+  multica-ai/andrej-karpathy-skills), plus `ui-styling` and `design-system`
+  from nextlevelbuilder/ui-ux-pro-max-skill (MIT) — the two sub-skills that
+  serve `apps/web`'s actual stack (shadcn/radix + Tailwind, token
+  architecture); the rest of that repository (Gemini logo generation,
+  banners, slides, social photos) was deliberately left out as off-mission.
+  A new `.agents/skills/VENDORED.md` records source repository, commit and
+  license for what was added, verifies the already-vendored taste-skill
+  family byte-identical against its upstream (twelve directories, zero
+  drift), and names what was *not* done: an `impeccable` refresh, whose
+  sanctioned path (`npx impeccable update`) this environment's permission
+  policy blocked — a hand-assembled partial sync of an installer-generated
+  layout would be worse than the drift.
+
 ## 1.68.0 — "The browser catches up"
 
 ### Added
