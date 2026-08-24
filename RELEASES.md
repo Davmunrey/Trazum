@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.65.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.66.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,69 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.66.0 — "One policy, three doors"
+
+**Per-label, per-session and per-day USD ceilings, stated once, judged once,
+enforced identically at whichever door the call arrives.** The product could
+already refuse — the gateway with an HTTP 402, `serve` with a cost answer,
+`spend_guard` over MCP — but each door read its own slice of config, and the
+1.62 arc's lesson is that two doors to the same value agreeing by coincidence
+is a defect waiting for its input. Four chapters closed it.
+
+**Chapter one — the policy has one shape.** A `limits` block in
+`trazum.config.json`: `dayUsd`, `sessionUsd` and `byLabel` ceilings.
+Deliberately separate from `spend`: a report gate is read after the fact over
+a log; an enforcement ceiling is read before a call is made, to refuse it.
+Every ceiling must be a **positive** finite number — a zero enforcement
+ceiling refuses every call at that door, an outage dressed as a policy, and
+the error says what to write instead. Unknown keys are named with the
+nearest real key, never ignored.
+
+**Chapter two — the library judges it.** `judgeLimits` in `@trazum/core`:
+policy + measured position + proposed call in; within, over or cannot-tell
+out — one judgement per applicable ceiling, each carrying the limit, the
+measured spend, the window it covers and the after-call position. Every
+ceiling is judged by `answerCost`, the single-budget semantics every door
+has used since 1.44, refusals included. Two refusals close one loophole: a
+call that omits its label or session does not slip past that ceiling — it
+becomes unjudgeable, with the smallest ceiling named as the one it might be
+dodging. Verdict precedence is over, then cannot-tell, then within, because
+"within" must mean everything was judged; an empty policy answers
+`no-policy`, never "within".
+
+**Chapter three — the doors hold the line.** All three doors carry the same
+`policy` judgement; none does arithmetic of its own. The suite proves it the
+hard way: the same policy, the same measured position and the same call go
+through all three doors and the judgements must match **field for field** —
+then a door is deliberately broken twice (a forged field; `serve` started
+without its measured side) to show the comparison can fail. The measured
+side is a usage log — `--log` on `serve` and `gateway`, since per-label and
+per-session spend live in a usage log, not in the store's provider buckets —
+and `spend_guard`'s `limits` argument is validated by the config file's own
+parser, so a pasted policy and a committed one cannot mean different things.
+The gateway reads `metadata.trazum_session` at the label's seam; session
+identifiers judge and are never echoed, recorded or printed, and the suite
+greps every door's output for the key to prove it.
+
+**Chapter four — refusal is legible, and silencing one leaves a record.**
+Every over-limit refusal names the limit, the measured spend and the period
+in one sentence, built once and spoken by every door. Waivers apply to
+limits unchanged — gates `limits.dayUsd`, `limits.sessionUsd`,
+`limits.byLabel:<label>`, mandatory reason and expiry. A waived ceiling
+keeps its `over` — the measurement is the measurement — but the policy does
+not refuse it, the waiver rides in every answer as the record of the
+silence, and the day it expires the ceiling refuses again.
+
+**Also found on the way, reproduced against the shipped build first:**
+`serve` crashed outright on `{"inputTokens": -5}` — the core's
+negative-figure refusal was an uncaught throw inside the request handler,
+taking the whole oracle down. It is a 400 now, with a test on the door.
+
+The new `policy` field is additive on all three documents; `schemaVersion`
+stays `1` everywhere and nothing existing changed shape or meaning.
 
 ---
 

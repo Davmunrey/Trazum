@@ -75,8 +75,8 @@ In the order somebody actually meets them:
 ## The arcs, as they were planned
 
 Nine plans have been written down **before** the code. Seven delivered in
-full; one landed six of its nine arcs; the newest has delivered the first of
-its three arcs. The delivered plans are kept because
+full; one landed six of its nine arcs; the newest has delivered two of its
+three arcs. The delivered plans are kept because
 the reasoning is the useful part, not because anything in them is still
 forthcoming: every chapter in them shipped. The 1.52–1.60 plan keeps its three
 open arcs visible for the same reason — what a plan could not build, and why,
@@ -92,7 +92,7 @@ is the half a reader cannot reconstruct.
 | [1.61](plan-1.61.md) | Trazum has only ever read prompts somebody else wrote | 1.61.0 — all six chapters; the model-assisted polish stays named and unbuilt |
 | [1.62–1.63](plan-1.62-1.63.md) | Held to its own standard, then measured: fuzz as a fixture, perf as a gate | 1.62.0 and 1.63.0 — both arcs, all nine chapters; the ratio gate is live in CI |
 | [1.64](plan-1.64.md) | The report somebody forwards: an HTML door, with the caveats travelling | 1.64.0 — all four chapters; the parity guard holds both pages |
-| [1.65–1.67](plan-1.65-1.67.md) | The paths, as far as code goes: an adoptable format, one policy at three doors, a measured position | **1.65.0** — the format arc, all three chapters; 1.66 and 1.67 still to run |
+| [1.65–1.67](plan-1.65-1.67.md) | The paths, as far as code goes: an adoptable format, one policy at three doors, a measured position | **1.65.0 and 1.66.0** — the format arc and the policy arc, all chapters; 1.67 still to run |
 
 What each of them **refused** to ship — which is the more useful half, since a
 plan and its implementation shared a hand — is in
