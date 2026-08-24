@@ -241,6 +241,19 @@ npm install @trazum/core       # the library
 npm install @trazum/mcp        # the MCP server, for an agent
 ```
 
+Or hand the whole thing to Claude Code as a plugin — the `trazum` skill plus
+the MCP server, installed together, nothing else to configure:
+
+```bash
+claude plugin marketplace add Davmunrey/Trazum
+claude plugin install trazum@trazum
+```
+
+The plugin's skill is [the same document](plugin/skills/trazum/SKILL.md) this
+repository's own agents work from, derived by
+`scripts/build-plugin-skill.mjs` with only the invocation changed — a test
+fails the build if the two drift apart in any other way.
+
 <details>
 <summary>From source, if you are working on Trazum itself</summary>
 

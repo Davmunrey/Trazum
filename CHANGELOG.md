@@ -13,6 +13,25 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Trazum is a Claude Code plugin, from this repository.** `claude plugin
+  marketplace add Davmunrey/Trazum` then `claude plugin install
+  trazum@trazum` installs the `trazum` skill and the MCP server together.
+  The plugin's skill is *derived*, not duplicated:
+  `scripts/build-plugin-skill.mjs` produces it from the project's own
+  `.claude/skills/trazum/SKILL.md` with exactly two transforms — the
+  invocation becomes `npx -y @trazum/cli` and the in-repo build section is
+  replaced — and `claude-plugin.test.js` runs the same derivation and fails
+  the build on any other difference, so a hand edit to the plugin copy
+  cannot survive. The plugin manifest's version joins the manifests'
+  lockstep (releasing.md updated), the marketplace card and the plugin
+  describe themselves with one sentence held equal by the guard, and the
+  MCP config reaches `@trazum/mcp` through the registry with no env block —
+  there is no secret this server needs, and a committed env value is how a
+  credential ends up in a marketplace. Submission to
+  anthropics/claude-plugins-community goes through Anthropic's review form
+  (direct PRs there are auto-closed); the repository is ready for it as it
+  stands.
+
 - **Three more vendored skills, eight repositories triaged.** From
   mattpocock/skills (MIT): `tdd` (the red-green loop with tests worth
   keeping), `diagnosing-bugs` (a phased discipline for hard bugs) and
