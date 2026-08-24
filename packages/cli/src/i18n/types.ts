@@ -84,6 +84,9 @@ export interface CliMessages {
     livePricingFailed: (url: string, detail: string) => string;
     optionNeedsValue(name: string): string;
     mustBeNonNegative(name: string, raw: string): string;
+    /** The refusal ceiling: an input past the limit is named, never ground through. */
+    inputTooLarge(source: string, size: number, limit: number): string;
+    badMaxInput(raw: string): string;
     /** A flag that is a fraction of a whole: over 1 is refused, like the config. */
     fractionFlag(name: string, raw: string): string;
     badLevel(received: string): string;

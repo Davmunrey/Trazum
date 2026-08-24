@@ -91,6 +91,7 @@ import {
   listModels,
   LOCALES,
   MAX_BASELINE_BYTES,
+  MAX_INPUT_CHARS,
   moneyIsComparable,
   mostSpecificMatch,
   assemble,
@@ -317,6 +318,7 @@ const VALUE_FLAGS = new Set([
   'workload',
   'record',
   'max-ratio',
+  'max-input',
   'max-day-usd',
   'max-session-usd',
   'csv-out',
@@ -605,7 +607,7 @@ function disabledRules(args: Args, config: TrazumConfig): RuleId[] | undefined {
  * a threshold is set — `--max-growh 5` would have been ignored and the build
  * gone green. Silence is the wrong answer for a typo.
  */
-const GLOBAL_FLAGS = ['help', 'h', 'version', 'v', 'locale', 'json', 'config', 'pricing', 'pricing-live'];
+const GLOBAL_FLAGS = ['help', 'h', 'version', 'v', 'locale', 'json', 'config', 'pricing', 'pricing-live', 'max-input'];
 const COMMAND_FLAGS: Record<string, string[]> = {
   optimize: [
     'level', 'model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch',
@@ -2060,7 +2062,8 @@ async function commandConform(args: Args, t: CliMessages): Promise<void> {
     throw new Error(t.conform.badContract(named, CONTRACT_NAMES.join(', ')));
   }
 
-  const text = target === '-' ? await readInput('-', t) : await readUsageLog(target, t);
+  // A document or a log, not a prompt: deliberately uncapped (limit null).
+  const text = target === '-' ? await readInput('-', t, null) : await readUsageLog(target, t);
   const report = conform(text, named === undefined ? {} : { contract: named });
 
   if (boolFlag(args, 'json')) {
@@ -3618,7 +3621,7 @@ async function commandSemantic(
   pricing: PricingCatalogue,
   t: CliMessages,
 ): Promise<void> {
-  const prompt = await readInput(args.positional[0], t);
+  const prompt = await readInput(args.positional[0], t, maxInputFlag(args, t));
   const modelId = stringFlag(args, 'model') ?? config.usage?.model ?? DEFAULT_USAGE.model;
   const model = pricing.byId.get(modelId) ?? getModel(DEFAULT_USAGE.model);
   const rates = { inputPerMTok: model.inputPerMTok, outputPerMTok: model.outputPerMTok };
@@ -4279,7 +4282,7 @@ async function commandRulesMeasure(
     // `walkPrompts` returns names relative to the root it was given, so the
     // root has to go back on. Reading them bare only worked from a run whose
     // cwd happened to be the root, which is the one case a first probe uses.
-    const raw = await readFile(join(root, file), 'utf8');
+    const raw = capInput(await readFile(join(root, file), 'utf8'), file, maxInputFlag(args, t), t);
     // A marked source file contributes its marked prompts; anything else
     // contributes itself. The same rule `check` and `doctor` already follow,
     // so the three commands measure the same text.
@@ -4331,16 +4334,57 @@ async function commandRulesMeasure(
   console.log();
 }
 
-async function readInput(source: string | undefined, t: CliMessages): Promise<string> {
+/**
+ * The refusal ceiling for a prompt door: the flag, or the number written once
+ * in `@trazum/core`.
+ *
+ * Raising it is deliberate — a flag typed by the person paying the wall time —
+ * and nothing raises it by accident. Lowering it is equally legitimate: a CI
+ * job that knows its prompts are small can make anything bigger a red build.
+ */
+function maxInputFlag(args: Args, t: CliMessages): number {
+  const raw = args.flags.get('max-input');
+  if (raw === undefined || typeof raw === 'boolean') return MAX_INPUT_CHARS;
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value <= 0) {
+    throw new Error(t.errors.badMaxInput(String(raw)));
+  }
+  return Math.floor(value);
+}
+
+/** Refuses a prompt past the ceiling — the size and the limit named, never a grind. */
+function capInput(text: string, source: string, limit: number, t: CliMessages): string {
+  if (text.length > limit) {
+    throw new Error(t.errors.inputTooLarge(source, text.length, limit));
+  }
+  return text;
+}
+
+/**
+ * Reads a prompt-sized input, held to the ceiling.
+ *
+ * `limit: null` is for the callers whose input is a *document or a log* — a
+ * 200,000-line export is ordinary and its size is the product's subject, so
+ * holding it to a prompt's ceiling would refuse the exact input `profile`
+ * exists to read. The null is written at the call site, so a reader of the
+ * caller sees the decision.
+ */
+async function readInput(
+  source: string | undefined,
+  t: CliMessages,
+  limit: number | null = null,
+): Promise<string> {
   if (!source) {
     throw new Error(t.errors.missingInputFile());
   }
   if (source === '-') {
     const chunks: Buffer[] = [];
     for await (const chunk of process.stdin) chunks.push(Buffer.from(chunk));
-    return Buffer.concat(chunks).toString('utf8');
+    const text = Buffer.concat(chunks).toString('utf8');
+    return limit === null ? text : capInput(text, 'stdin', limit, t);
   }
-  return readFile(source, 'utf8');
+  const text = await readFile(source, 'utf8');
+  return limit === null ? text : capInput(text, source, limit, t);
 }
 
 async function commandOptimize(
@@ -4392,6 +4436,7 @@ async function commandOptimize(
         unreadable.push({ label, path: promptPath });
         continue;
       }
+      text = capInput(text, promptPath, maxInputFlag(args, t), t);
       const r = optimize(text, { level, usage: m.profile, locale, pricing });
       rows.push({
         label,
@@ -4442,7 +4487,7 @@ async function commandOptimize(
   }
 
   const target = args.positional[0];
-  const raw = await readInput(target, t);
+  const raw = await readInput(target, t, maxInputFlag(args, t));
   const level = levelFlag(args, config, t);
 
   // A source file is not a prompt.
@@ -4850,7 +4895,7 @@ async function commandCheck(
     return;
   }
 
-  const prompt = await readInput(target, t);
+  const prompt = await readInput(target, t, maxInputFlag(args, t));
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
 
   // A single file falls back to the config budget for its own path, so
@@ -8862,7 +8907,7 @@ async function commandRoute(args: Args, pricing: PricingCatalogue, t: CliMessage
     return;
   }
 
-  const prompt = await readFile(promptPath, 'utf8');
+  const prompt = capInput(await readFile(promptPath, 'utf8'), promptPath, maxInputFlag(args, t), t);
   const inputs = parseCases(await readFile(casesPath, 'utf8'));
   if (inputs.length === 0) throw new Error(t.errors.evalNoCases(casesPath));
 
@@ -9155,7 +9200,12 @@ async function scanPrompts(
   const declined: Array<{ path: string; line: number; detail: string }> = [];
 
   for (const relativePath of files) {
-    const text = await readFile(join(root, relativePath), 'utf8');
+    const text = capInput(
+      await readFile(join(root, relativePath), 'utf8'),
+      relativePath,
+      maxInputFlag(args, t),
+      t,
+    );
     // Budgets are keyed on paths as written in the repository, so a pattern like
     // `prompts/**` has to be matched against the path including the root the
     // user passed — not against the name relative to it.
@@ -9452,7 +9502,7 @@ function joinPosix(root: string, relativePath: string): string {
  * never "delete this", and nothing here edits the prompt.
  */
 async function commandPrune(args: Args, t: CliMessages): Promise<void> {
-  const prompt = await readInput(args.positional[0], t);
+  const prompt = await readInput(args.positional[0], t, maxInputFlag(args, t));
 
   const casesPath = stringFlag(args, 'cases');
   if (!casesPath) throw new Error(t.errors.evalNeedsCases());
@@ -9540,7 +9590,7 @@ async function commandEval(
   t: CliMessages,
   locale: Locale,
 ): Promise<void> {
-  const prompt = await readInput(args.positional[0], t);
+  const prompt = await readInput(args.positional[0], t, maxInputFlag(args, t));
   const level = levelFlag(args, config, t);
 
   const casesPath = stringFlag(args, 'cases');
@@ -9727,8 +9777,8 @@ async function commandDiff(
   }
 
   const [before, after] = await Promise.all([
-    readInput(beforePath, t),
-    readInput(afterPath, t),
+    readInput(beforePath, t, maxInputFlag(args, t)),
+    readInput(afterPath, t, maxInputFlag(args, t)),
   ]);
 
   const comparison = comparePrompts(before, after, {
@@ -10203,7 +10253,7 @@ async function commandRank(
   let skipped = 0;
 
   for (const file of files) {
-    const raw = await readFile(join(root, file), 'utf8');
+    const raw = capInput(await readFile(join(root, file), 'utf8'), file, maxInputFlag(args, t), t);
 
     // A source file contributes its marked prompt, or nothing. Ranking
     // `src/prompts.ts` by the size of its imports would put the wrong file at
@@ -10684,7 +10734,7 @@ async function commandDoctor(
   let skipped = 0;
 
   for (const file of files) {
-    const raw = await readFile(join(root, file), 'utf8');
+    const raw = capInput(await readFile(join(root, file), 'utf8'), file, maxInputFlag(args, t), t);
 
     // Same contract as `rank`: a source file contributes its marked prompt or
     // nothing, and an unmarked one is counted rather than allowed to abort a
@@ -10986,7 +11036,7 @@ async function diffDirectories(
 
   /** The prompt at a path, or null when the file holds no marked prompt. */
   const textAt = async (root: string, file: string): Promise<string | null> => {
-    const raw = await readFile(join(root, file), 'utf8');
+    const raw = capInput(await readFile(join(root, file), 'utf8'), file, maxInputFlag(args, t), t);
     let source: { text: string; model?: string } | null;
     try {
       source = sourceFileOf(file, raw, pricing, stringFlag(args, 'prompt'));

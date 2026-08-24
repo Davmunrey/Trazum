@@ -1,4 +1,5 @@
 export * from './types.js';
+export { MAX_INPUT_CHARS } from './limits.js';
 export {
   ESTIMATE_ERROR_BAND_PCT,
   BAND_CALIBRATED_PROVIDER,

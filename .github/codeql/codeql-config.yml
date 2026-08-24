@@ -1,0 +1,27 @@
+# CodeQL configuration — one exclusion, with its reasoning attached.
+#
+# `js/file-access-to-http` (security-extended) flags any flow from file data
+# to an outbound network request. For most software that shape is
+# exfiltration. For this product it is the contract: `--exact-tokens` sends
+# the prompt to the token-counting endpoint, and `--llm` sends it to the
+# provider for a refine pass — each opt-in by flag, each requiring the
+# caller's own credential, each documented as doing exactly that. The four
+# flows the query finds (three providers in llm.ts, the counter in
+# tokenizer.ts) are the features, described accurately.
+#
+# The protection the query wants already exists here as tests rather than as
+# a taint rule: the security suite pins which modules may reach the network
+# at all, asserts the CLI makes no call it was not explicitly asked to make,
+# and `trazum feedback` — the one command that could be a beacon — is tested
+# to send nothing. A finding that re-states the product's documented purpose
+# on every future pull request would be noise wearing a severity, and noise
+# is how the real alert gets scrolled past.
+#
+# Every other query in security-extended stays on. This file is the loud,
+# reviewed, diffable form of that decision — the alternative was a dismissal
+# buried in a settings page, which is silence with extra steps. The exclusion
+# was proposed to the repository owner and approved before it landed.
+name: "Trazum CodeQL config"
+query-filters:
+  - exclude:
+      id: js/file-access-to-http

@@ -404,6 +404,10 @@ ${bold('OPCIONES DE optimize')}
   --diff                      Muestra el diff línea a línea.
   --json                      Vuelca el informe completo en JSON.
   --locale <${d.locales.join('|')}>            Idioma del informe. Por defecto: el del sistema.
+  --max-input <caracteres>    Sube (o baja) el techo de entrada de prompts, por
+                              ejecución. Por encima, una puerta de prompt rechaza
+                              nombrando el tamaño y el límite en vez de arrastrarse.
+                              Los logs y documentos nunca se sujetan a él.
   -o, --out <fichero>         Escribe el prompt optimizado a un fichero.
   -h, --help                  Esta ayuda.
   --clear-suggestion-cache    Vacía la caché de --cache-suggestions y dice cuánto
@@ -907,6 +911,9 @@ ${bold('EJEMPLOS')}
     optionNeedsValue: (name) => `La opción --${name} necesita un valor.`,
     mustBeNonNegative: (name, raw) =>
       `--${name} debe ser un número no negativo (recibido: "${raw}").`,
+    inputTooLarge: (source, size, limit) =>
+      `${source} tiene ${count(size)} caracteres, por encima del techo de ${count(limit)} para un prompt. Súbelo deliberadamente con --max-input <caracteres> si esta entrada de verdad lo es.`,
+    badMaxInput: (raw) => `--max-input debe ser un número positivo de caracteres (recibido: "${raw}").`,
     fractionFlag: (name, raw) =>
       `--${name} es una fracción entre 0 y 1 (recibido: ${raw}). La configuración rechaza el mismo valor de la misma forma.`,
     badLevel: (received) => `--level debe ser "safe" o "aggressive" (recibido: "${received}").`,

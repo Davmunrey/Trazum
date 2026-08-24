@@ -18,6 +18,7 @@ import {
   resolveEndpoint,
   resolveLocale,
   validateLlmEndpoint,
+  MAX_INPUT_CHARS,
 } from '@trazum/core';
 import type {
   Locale,
@@ -35,8 +36,8 @@ import { createRateLimiter } from '../../../lib/rate-limit';
 
 export const runtime = 'nodejs';
 
-/** Size cap: stops an open tab from taking the process down. */
-const MAX_PROMPT_CHARS = 400_000;
+/** Size cap: stops an open tab from taking the process down. The number lives in core. */
+const MAX_PROMPT_CHARS = MAX_INPUT_CHARS;
 
 // --------------------------------------------------------------------------
 // Rate limiting

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 
-import { RULES, comparePrompts, getMessages, listModels, resolveLocale } from '@trazum/core';
+import { MAX_INPUT_CHARS, RULES, comparePrompts, getMessages, listModels, resolveLocale } from '@trazum/core';
 import type { AdvisoryId, Locale, PromptComparison, RuleId, RuleLevel, UsageProfile } from '@trazum/core';
 
 import { getWebMessages } from '../../../lib/i18n';
@@ -23,7 +23,7 @@ export const runtime = 'nodejs';
  */
 
 /** Per prompt, so a comparison can carry twice the optimise route's cap. */
-const MAX_PROMPT_CHARS = 400_000;
+const MAX_PROMPT_CHARS = MAX_INPUT_CHARS;
 
 /**
  * In-memory sliding window per IP, in a bucket of its own.

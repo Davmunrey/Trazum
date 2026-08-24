@@ -9,6 +9,59 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Changed
+
+- **One CodeQL query excluded, out loud and owner-approved:
+  `js/file-access-to-http`.** Merging the refusal ceiling surfaced four medium
+  alerts — the three provider calls in `llm.ts` and the counter in
+  `tokenizer.ts`, each "file data in an outbound network request". That shape
+  is exfiltration in most software; here it is the contract: `--exact-tokens`
+  and `--llm` send the prompt to the API the caller configured, opt-in by
+  flag, gated on the caller's own credential, documented as doing exactly
+  that. The protection the query wants exists in the security suite as tests —
+  which modules may reach the network at all, and that no command calls out
+  unasked. The exclusion was put to the repository owner as a question and
+  approved before it landed; it lives in `.github/codeql/codeql-config.yml`
+  with the full reasoning attached, reviewed and diffable rather than a
+  dismissal buried in a settings page. Every other security-extended query
+  stays on.
+
+### Added
+
+- **Memory holds a line — chapter four of the 1.63 arc.** The 25MB usage log
+  profiles within a stated **384MB heap ceiling**, asserted in the suite the
+  only way that is honest on any machine: the probe runs in a child process
+  with V8's old space capped at the line, so "fits" is enforced by the engine
+  rather than inferred from an RSS reading a memory-rich runner would inflate
+  by collecting lazily. Deterministic 25MB log (the fuzzer's LCG, a fixed
+  clock), every line parsed, none skipped. The line was proved to bind in
+  both directions before it was trusted: the same probe dies at 64MB, and a
+  deliberate memory hog dies under a 48MB cap inside the suite itself, so
+  the flag is not decoration. Observed peak RSS for the run: ~158MB, which
+  is the headroom the release notes publish next to the promise. Moving the
+  line is a release-notes decision, the same as the token band.
+
+- **The refusal ceiling — chapter three of the 1.63 arc.** Above 400,000
+  characters an input that claims to be a prompt is refused with the size and
+  the limit named, never ground through. The number now lives exactly once,
+  as `MAX_INPUT_CHARS` in `@trazum/core`; the two web routes, the share
+  endpoint and the MCP server — which each carried their own `400_000`,
+  agreeing by coincidence — now derive from it, and a new suite guard holds
+  every other prompt-ceiling constant in the repository to deriving rather
+  than restating (with three named non-door exceptions: the localStorage
+  history bound, the prompt library's row bound, and a name length — each
+  with its reason written beside it, because "it is different" is the
+  sentence that stops being true quietly). The CLI's prompt doors —
+  `optimize`, `check`, `diff`, `eval`, `prune`, `semantic`, the prompt half
+  of `route`, and every directory walk that feeds prompts to the optimiser —
+  hold the same line; a global `--max-input <chars>` raises it deliberately,
+  and lowering it is equally legitimate. **Logs and documents are never held
+  to it**: `profile` and `conform` read inputs fifty times this size by
+  design, and the null at those call sites is written out so a reader sees
+  the decision.
+
 ## 1.62.1 — "This machine, measured"
 
 **Chapters one and two of [the 1.63 arc](docs/plan-1.62-1.63.md)**: the bench

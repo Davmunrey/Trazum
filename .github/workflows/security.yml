@@ -34,6 +34,9 @@ jobs:
         with:
           languages: javascript-typescript
           queries: security-extended
+          # One query excluded, owner-approved, with the reasoning written
+          # where it can be reviewed: .github/codeql/codeql-config.yml.
+          config-file: ./.github/codeql/codeql-config.yml
 
       - uses: github/codeql-action/analyze@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4.37.7
 
