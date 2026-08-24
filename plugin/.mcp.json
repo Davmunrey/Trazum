@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "trazum": {
+      "command": "npx",
+      "args": ["-y", "@trazum/mcp"]
+    }
+  }
+}

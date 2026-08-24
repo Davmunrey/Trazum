@@ -13,6 +13,40 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Trazum is a Claude Code plugin, from this repository.** `claude plugin
+  marketplace add Davmunrey/Trazum` then `claude plugin install
+  trazum@trazum` installs the `trazum` skill and the MCP server together.
+  The plugin's skill is *derived*, not duplicated:
+  `scripts/build-plugin-skill.mjs` produces it from the project's own
+  `.claude/skills/trazum/SKILL.md` with exactly two transforms — the
+  invocation becomes `npx -y @trazum/cli` and the in-repo build section is
+  replaced — and `claude-plugin.test.js` runs the same derivation and fails
+  the build on any other difference, so a hand edit to the plugin copy
+  cannot survive. The plugin manifest's version joins the manifests'
+  lockstep (releasing.md updated), the marketplace card and the plugin
+  describe themselves with one sentence held equal by the guard, and the
+  MCP config reaches `@trazum/mcp` through the registry with no env block —
+  there is no secret this server needs, and a committed env value is how a
+  credential ends up in a marketplace. Submission to
+  anthropics/claude-plugins-community goes through Anthropic's review form
+  (direct PRs there are auto-closed); the repository is ready for it as it
+  stands.
+
+- **Three more vendored skills, eight repositories triaged.** From
+  mattpocock/skills (MIT): `tdd` (the red-green loop with tests worth
+  keeping), `diagnosing-bugs` (a phased discipline for hard bugs) and
+  `writing-for-agents` (how to write documents agents consume — the craft
+  behind every SKILL.md in this directory). Its `code-review` skill stays
+  out: its name collides with the harness's built-in `/code-review`, and
+  vendored files are never edited here. The other seven repositories
+  reviewed the same day (public-apis, apache/maka, volcengine/OpenViking,
+  basecamp/omarchy, akitaonrails/ai-memory, block/buzz,
+  anthropics/claude-plugins-community) carry no vendorable skill content
+  that serves this repository — products, platforms and lists, orthogonal
+  to a prompt-cost tool; claude-plugins-community is noted in VENDORED.md
+  as a distribution channel for Trazum's own plugin, an owner's decision.
+  All recorded with source commit and license in `.agents/skills/VENDORED.md`.
+
 - **Three vendored skills, and the provenance said out loud.** The agent
   skill set under `.agents/skills/` grows `karpathy-guidelines` (behavioural
   guardrails against LLM over-engineering — surgical changes, simplicity

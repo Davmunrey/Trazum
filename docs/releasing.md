@@ -200,7 +200,11 @@ including what it costs a reader pinning with a tilde, is in
    `publish.test.js` fails if they disagree, which is how the missing third one
    was found: this list said two for as long as the web app has depended on core,
    and every release that followed it left `apps/web` resolving a registry copy
-   until the guard caught it.
+   until the guard caught it. **The Claude Code plugin manifest joins the
+   lockstep**: `plugin/.claude-plugin/plugin.json` carries the same version,
+   held by `claude-plugin.test.js` — a plugin claiming one version over a CLI
+   at another would describe commands that behave differently than its skill
+   says.
 4. **Update the README's action pin** to the release commit, with the new version
    in the trailing comment. `security.test.js` asks git what version *that commit*
    declares and fails if the label disagrees — so the pin can only be advanced
