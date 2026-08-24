@@ -1184,6 +1184,18 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.69.0 — "The agent's own bill" — released
+
+**The transcripts Claude Code already writes, priced — the numbers only,
+never the words.** `trazum from-claude-code` converts them to a usage log:
+deduplicated by request (one call is written as one line per content
+block), streamed responses kept at their final counts, the cache TTL
+split preserved for the verdicts that need it, and a privacy guard that
+greps the whole output for planted secrets. Measured against this
+repository's own 195 live transcripts before the design settled. Also
+carried: the Claude Code plugin and six vendored agent skills, merged
+unreleased.
+
 ## 1.68.0 — "The browser catches up" — released
 
 **Everything the CLI can say about your money, the web app says in the
@@ -2160,13 +2172,8 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**1.69.0 — "The agent's own bill."** [The 1.69 plan](docs/plan-1.69.md),
-asked for and written before the code: `trazum from-claude-code` turns the
-transcripts Claude Code already writes into a usage log — deduplicated by
-request, the TTL split preserved, and nothing read but the numbers — so
-every existing door prices the agent's sessions without instrumenting
-anything.
-
+**Nothing is planned.** [The 1.69 plan](docs/plan-1.69.md) is delivered in
+full — the agent's own bill, priced from the transcripts already on disk.
 Before it, [the 1.68 plan](docs/plan-1.68.md) was delivered in
 full — the browser caught up with the other three doors in one release.
 Before it, [the 1.65–1.67 plan](docs/plan-1.65-1.67.md) was delivered in
