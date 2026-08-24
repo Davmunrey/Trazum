@@ -13,6 +13,41 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **The doors hold the line — chapter three of the 1.66 arc.** The gateway's
+  402, `serve`'s cost answer and `spend_guard` over MCP all carry the same
+  `policy` judgement, produced by `judgeLimits` — none of the three does
+  arithmetic of its own. `three-doors.test.js` proves the sibling-agreement
+  property the hard way: the same policy, the same measured position and the
+  same call go through all three doors and the judgements must match **field
+  for field** — then a door is deliberately broken twice (a forged field, and
+  `serve` started without its measured side) to show the comparison can
+  fail. The measured side is a usage log: `--log` on `serve` and `gateway`
+  (per-label and per-session spend live in a usage log, not in the store's
+  provider buckets), `position` figures passed explicitly to `spend_guard`,
+  whose `limits` argument is validated by the config file's own parser so a
+  pasted policy and a committed one cannot mean different things. The
+  gateway reads `metadata.trazum_session` at the same seam as the label;
+  session identifiers are used to judge and never echoed, recorded or
+  printed, and the suite greps every door's output for the key to prove it.
+  A crossed ceiling is HTTP 402 `limit-over` at the gateway, `no` at the
+  guard, and `policy.verdict: "over"` in the cost answer. Unpriced records
+  in the `--log` are counted and announced at startup — money the policy
+  cannot see, said out loud. Also fixed on the way in, reproduced first
+  against the shipped build: `serve` **crashed outright** on
+  `{"inputTokens": -5}` — the core's negative-figure refusal was an uncaught
+  throw inside the request handler, taking the whole oracle down; it is a
+  400 now.
+- **Refusal is legible, and silencing one leaves a record — chapter four.**
+  Every over-limit refusal names the limit, the measured spend and the
+  period in one sentence, built once (`limitSentence`) and spoken by every
+  door — an agent can log it and a person can audit it without re-running
+  anything. The `waive` mechanism applies to limits unchanged: gates
+  `limits.dayUsd`, `limits.sessionUsd` and `limits.byLabel:<label>`, each
+  with the mandatory reason and expiry. A waived ceiling keeps its `over` —
+  the measurement is the measurement — but the policy does not refuse it,
+  the waiver rides in the judgement with the reason and end date so every
+  answer from every door is the record of the silence, and the day it
+  expires the ceiling refuses again.
 - **The library judges it — chapter two of the 1.66 arc.** `judgeLimits` in
   `@trazum/core`: one function takes the `limits` policy, the measured
   position and a proposed call, and answers **within**, **over** or

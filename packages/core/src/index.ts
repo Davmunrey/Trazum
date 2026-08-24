@@ -198,6 +198,8 @@ export type {
   PolicyJudgement,
   ProposedCall,
 } from './judgement.js';
+export { indexUsage, positionAt } from './position.js';
+export type { MeasuredIndex } from './position.js';
 export { guardSpend } from './guard.js';
 export type { GuardAlternative, GuardAnswer, GuardRequest, GuardVerdict } from './guard.js';
 export { proposeInit, HEADLINE_FLOOR_SHARE, MIN_RATE_DAYS } from './init.js';
@@ -557,6 +559,8 @@ export {
   MAX_CONFIG_SEARCH_DEPTH,
   budgetFor,
   parseConfig,
+  parseLimits,
+  parseWaive,
 } from './config-schema.js';
 export type { LimitsConfig, ResolvedBudget, SpendConfig, TrazumConfig, WaiveEntry } from './config-schema.js';
 export { WAIVABLE_GATES } from './config-schema.js';

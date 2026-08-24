@@ -204,6 +204,11 @@ ${bold('OPCIONES DE gateway')}
                               juzgar una llamada — sin presupuesto, sin nada
                               medido, un modelo sin precio.
   --port <n> | --socket <p>   Dónde escuchar. Solo loopback, siempre.
+  --log <uso.jsonl>           El log de uso contra el que se mide la política
+                              de limits, leído una vez al arrancar — el mismo
+                              flag que en serve, por la misma razón: el gasto
+                              por etiqueta y sesión vive en un log de uso, no
+                              en el almacén.
 
   Se pone entre tu SDK y el proveedor, hablando su formato, así que no hay
   cambios de código. El consumo se mide desde la propia respuesta del proveedor
@@ -583,6 +588,11 @@ ${bold('OPCIONES DE plan')}
 ${bold('OPCIONES DE serve')}
   --port <n>                  Puerto en 127.0.0.1. Por defecto: 7317.
   --socket <ruta>             Escucha en un socket Unix en vez de un puerto.
+  --log <uso.jsonl>           El log de uso contra el que se mide la política
+                              de limits, leído una vez al arrancar. El gasto
+                              por etiqueta y por sesión vive en un log de uso,
+                              no en el almacén; sin esto, cada techo de
+                              "limits" responde cannot-tell.
 
   Responde las dos preguntas que importan en el momento de la llamada — cuánto
   va a costar esto y si queda presupuesto — en milisegundos de un solo dígito,
@@ -2476,6 +2486,10 @@ ${bold('EJEMPLOS')}
 
   serve: {
     listening: (where) => `Respondiendo en ${where}`,
+    limitsNoLog: () =>
+      'Hay una política de limits configurada y no se dio --log, así que cada techo responderá cannot-tell: el gasto por etiqueta y por sesión vive en un log de uso, no en el almacén. Apunta --log a tu log de uso para que los techos sean juzgables.',
+    limitsUnpriced: (count) =>
+      `${count} registro(s) del --log nombran un modelo que el catálogo no puede tasar. No aportan nada a ninguna cifra medida — dinero que la política de limits no puede ver, dicho aquí en vez de escondido.`,
     loopbackOnly: () =>
       'Solo loopback, y no hay flag para cambiarlo: esto guarda tu gasto, tu mezcla de modelos y tus presupuestos, y le respondería a quien preguntara. No hay autenticación por la misma razón — un token comprobado sobre loopback es teatro.',
     measuredFrom: (usd) =>

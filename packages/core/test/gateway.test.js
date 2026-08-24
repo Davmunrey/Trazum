@@ -40,16 +40,19 @@ const decide = (c, s, policy = { onCannotTell: 'fail-closed' }) =>
 describe('gatewayDecision — it forwards what fits', () => {
   it('forwards a call inside the budget, carrying nothing the caller did not send', () => {
     /**
-     * The most important assertion in this file. `forward` has exactly three
+     * The most important assertion in this file. `forward` has exactly four
      * fields and none of them is a request: no rewritten model, no trimmed
      * prompt, no header to add. A field for any of those is how substitution
-     * arrives one refactor later wearing a reasonable name.
+     * arrives one refactor later wearing a reasonable name. `policy` joined
+     * in the 1.66 arc and is a judgement, not a request — it can refuse a
+     * call, never rewrite one.
      */
     const decision = decide(call(), standing());
     assert.equal(decision.kind, 'forward');
-    assert.deepEqual(Object.keys(decision).sort(), ['estimatedUsd', 'kind', 'unjudged']);
+    assert.deepEqual(Object.keys(decision).sort(), ['estimatedUsd', 'kind', 'policy', 'unjudged']);
     assert.ok(Math.abs(decision.estimatedUsd - 1) < 1e-9);
     assert.equal(decision.unjudged, null);
+    assert.equal(decision.policy.reason, 'no-policy', 'no limits configured: judged as absent, not omitted');
   });
 
   it('prices the output ceiling the caller asked for, not one it invented', () => {

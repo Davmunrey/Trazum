@@ -1506,6 +1506,14 @@ export interface CliMessages {
     listening(where: string): string;
     /** Why there is no --host, and why that is not an omission. */
     loopbackOnly(): string;
+    /**
+     * A `limits` block is configured and no `--log` was given, so every
+     * ceiling will judge cannot-tell. Said at start rather than discovered
+     * one refusal at a time. Shared by both HTTP doors.
+     */
+    limitsNoLog(): string;
+    /** Unpriced records in the `--log` — money the measured side cannot see. */
+    limitsUnpriced(count: number): string;
     measuredFrom(usd: string): string;
     nothingMeasured(dir: string): string;
     noBudget(): string;

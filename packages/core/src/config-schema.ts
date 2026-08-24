@@ -642,7 +642,7 @@ function requirePositiveUsd(value: unknown, label: string, source: string): numb
   return value;
 }
 
-function parseLimits(raw: unknown, source: string): LimitsConfig {
+export function parseLimits(raw: unknown, source: string): LimitsConfig {
   if (!isPlainObject(raw)) throw new ConfigError('"limits" must be an object', source);
   rejectUnknownKeys(raw, CONFIG_LIMITS_KEYS, source, 'limits.');
 
@@ -948,7 +948,7 @@ function parseStore(raw: unknown, source: string): { keepDays?: number } {
   return out;
 }
 
-function parseWaive(raw: unknown, source: string): WaiveEntry[] {
+export function parseWaive(raw: unknown, source: string): WaiveEntry[] {
   if (!Array.isArray(raw)) throw new ConfigError('"waive" must be an array', source);
   return raw.map((entry, index) => {
     const at = `waive[${index}]`;
@@ -961,10 +961,16 @@ function parseWaive(raw: unknown, source: string): WaiveEntry[] {
     }
     const known =
       (WAIVABLE_GATES as readonly string[]).includes(gate) ||
-      (gate.startsWith('byLabel:') && gate.length > 'byLabel:'.length);
+      (gate.startsWith('byLabel:') && gate.length > 'byLabel:'.length) ||
+      // The limits policy's ceilings, waivable since the 1.66 arc: silencing
+      // a limit leaves a record, and the doors carry the waiver in every
+      // judgement rather than refusing. The forms mirror the config keys.
+      gate === 'limits.dayUsd' ||
+      gate === 'limits.sessionUsd' ||
+      (gate.startsWith('limits.byLabel:') && gate.length > 'limits.byLabel:'.length);
     if (!known) {
       throw new ConfigError(
-        `"${at}.gate" names no gate: "${gate}". Waivable: ${WAIVABLE_GATES.join(', ')}, or byLabel:<label>.`,
+        `"${at}.gate" names no gate: "${gate}". Waivable: ${WAIVABLE_GATES.join(', ')}, byLabel:<label>, limits.dayUsd, limits.sessionUsd, or limits.byLabel:<label>.`,
         source,
       );
     }

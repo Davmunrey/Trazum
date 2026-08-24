@@ -142,6 +142,44 @@ Both are defensible and only you know which failure your product can survive.
 Picking one for you would be the most consequential decision in your
 architecture, made silently at install time.
 
+## One policy, three doors
+
+The `limits` block in `trazum.config.json` — `dayUsd`, `sessionUsd`,
+`byLabel` — is the enforcement policy, and the gateway is one of three doors
+that hold it. The other two are `trazum serve`'s cost answer and the
+`spend_guard` MCP tool, and all three call **the same judging function** in
+`@trazum/core`: none of them does arithmetic of its own, which is why
+`three-doors.test.js` can push one call through all three and require the
+judgement to match field for field.
+
+What the gateway needs to judge:
+
+- **The policy**: the `limits` block. Without one, every decision carries a
+  judgement that says `no-policy` — absent is an answer, not a missing field.
+- **The measurement**: `--log <usage.jsonl>`, read once at start. Per-label
+  and per-session spend live in a usage log, not in the store's provider
+  buckets, so without `--log` every ceiling answers `cannot-tell` — and what
+  happens then is your `--on-cannot-tell` decision, like every other
+  cannot-tell.
+- **The call's identity**: `metadata.trazum_label` and
+  `metadata.trazum_session` in the request body, the same seam. A call that
+  names neither cannot be judged against a per-label or per-session ceiling —
+  it does not slip past; it becomes unjudgeable, with the smallest ceiling
+  named as the one it might be dodging. Session identifiers are used to judge
+  and never recorded, forwarded, or printed.
+
+A crossed ceiling refuses with HTTP 402, `reason: "limit-over"`, and a
+`because` sentence that names the limit, the measured spend and the period —
+a refusal an agent can log and a person can audit without re-running
+anything.
+
+**Silencing a limit leaves a record.** The `waive` mechanism `check` has
+applies here unchanged: a `waive` entry with gate `limits.dayUsd`,
+`limits.sessionUsd` or `limits.byLabel:<label>`, a reason and an expiry lets
+the call through — but the judgement still says `over`, the waiver rides in
+it with the reason and the end date, and the day it expires the ceiling
+refuses again. A waiver with no end date is not accepted, here or anywhere.
+
 ## Substitution, if you want it, written down
 
 ```json

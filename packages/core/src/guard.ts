@@ -25,6 +25,9 @@
 
 import { answerCost } from './answer.js';
 import type { AnswerRequest, CostAnswer } from './answer.js';
+import { judgeLimits, limitSentence, unjudgedSentence } from './judgement.js';
+import type { MeasuredPosition, PolicyJudgement } from './judgement.js';
+import type { LimitsConfig, WaiveEntry } from './config-schema.js';
 import { effectivePricing, multipliersFor } from './pricing.js';
 import type { PricingCatalogue } from './pricing.js';
 import type { ModelPricing } from './types.js';
@@ -71,6 +74,14 @@ export interface GuardAnswer {
    * machine acts on; this is never the only place a fact appears.
    */
   because: string;
+  /**
+   * The `limits` policy, judged for this call by `judgeLimits` — the same
+   * function the gateway and `serve` call, which is what "one policy, three
+   * doors" means in code. Always present: with no policy it says `no-policy`
+   * rather than being absent, because a missing field and a judged absence
+   * are different answers.
+   */
+  policy: PolicyJudgement;
 }
 
 /** Models cheaper than this one, in the same family, that the prompt fits in. */
@@ -97,6 +108,16 @@ function cheaperThan(
 export interface GuardRequest extends AnswerRequest {
   /** Whether the caller says this work can wait for a batch window. */
   batchEligible?: boolean;
+  /** The `limits` block, when the caller holds one. Judged, never re-derived. */
+  limits?: LimitsConfig;
+  /** Measured spend per scope, from the caller's own log — never a guess. */
+  position?: MeasuredPosition;
+  /** The workload this call belongs to, for the per-label ceiling. */
+  label?: string;
+  /** The conversation, for the per-session ceiling. Never echoed back. */
+  session?: string;
+  /** The config's `waive` list — a silenced limit answers yes, on the record. */
+  waive?: readonly WaiveEntry[];
 }
 
 export function guardSpend(
@@ -165,24 +186,73 @@ export function guardSpend(
   alternatives.sort((a, b) => b.savingUsd - a.savingUsd);
 
   /**
+   * The limits policy, judged by the same function the gateway and `serve`
+   * call. A caller that passes no policy gets `no-policy` and an answer
+   * byte-identical to what this returned before the field existed.
+   */
+  const policy = judgeLimits(
+    request.limits,
+    request.position ?? { dayUsd: null, sessionUsd: null, labelUsd: null },
+    {
+      model: request.model,
+      inputTokens: request.inputTokens,
+      outputTokens: request.outputTokens,
+      basis: request.basis,
+      label: request.label,
+      session: request.session,
+    },
+    { catalogue, on, ...(request.waive === undefined ? {} : { waivers: request.waive }) },
+  );
+
+  /**
    * The verdict maps the cost answer's three outcomes onto the three an agent
    * can act on. `cannot-tell` stays `cannot-tell` rather than defaulting to
    * yes: a guard that permits whatever it cannot judge is a guard that permits
    * everything the moment its inputs go missing.
+   *
+   * A judged limits policy folds in at the same precedence the policy itself
+   * uses — no beats cannot-tell beats yes — because a guard whose headline
+   * said "yes" over a crossed session ceiling would be two doors in one
+   * answer. `no-policy` folds as nothing: the caller asked only the budget
+   * question, and gets only that answer.
    */
-  const verdict: GuardVerdict =
+  const fromCost: GuardVerdict =
     cost.verdict === 'cannot-tell' ? 'cannot-tell' : cost.verdict === 'over' ? 'no' : 'yes';
+  const verdict: GuardVerdict =
+    policy.verdict === 'over'
+      ? 'no'
+      : policy.verdict === 'cannot-tell' && policy.reason !== 'no-policy' && fromCost === 'yes'
+        ? 'cannot-tell'
+        : fromCost;
 
   return {
     schemaVersion: 1,
     verdict,
     cost,
     alternatives,
-    because: reasonFor(verdict, cost, alternatives),
+    because: reasonFor(verdict, cost, alternatives, policy),
+    policy,
   };
 }
 
-function reasonFor(verdict: GuardVerdict, cost: CostAnswer, alternatives: GuardAlternative[]): string {
+function reasonFor(
+  verdict: GuardVerdict,
+  cost: CostAnswer,
+  alternatives: GuardAlternative[],
+  policy: PolicyJudgement,
+): string {
+  // A refusal that came from the limits policy speaks the shared sentence —
+  // the limit, the measured position and the period, same words at every door.
+  const overLimit = policy.judgements.find((entry) => entry.verdict === 'over' && entry.waived === null);
+  if (verdict === 'no' && overLimit !== undefined) {
+    const lead = limitSentence(overLimit);
+    return alternatives.length === 0
+      ? `${lead} No cheaper way to make this call exists in the catalogue.`
+      : `${lead} The cheapest alternative below saves the most.`;
+  }
+  if (verdict === 'cannot-tell' && cost.verdict !== 'cannot-tell') {
+    return unjudgedSentence(policy);
+  }
   if (verdict === 'cannot-tell') {
     return cost.reason === 'no-budget-configured'
       ? 'No budget is configured, so there is nothing to judge this against.'
