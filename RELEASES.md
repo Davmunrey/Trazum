@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.67.1**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.68.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,47 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.68.0 — "The browser catches up"
+
+**Everything the CLI can say about your money, the web app now says in
+your own tab — from the same functions, with nothing uploaded.** The
+[1.68 plan](docs/plan-1.68.md)'s arc, closed: 1.67 taught the product to
+answer *where does the month stand against the ceilings I configured*, and
+until now only three of the four surfaces could say it. The fourth — the
+one a person who pays the bill actually opens — has caught up.
+
+**The Position card.** The Bill tab renders the 1.67 `PositionDocument` in
+the browser: every configured ceiling with its measured spend, its window,
+its denominators and its verdict; the distance line as division labelled
+as division, rendered **only when `positionReport` granted it** — under
+the seven-day floor, on an `over` and on a zero rate the document withholds
+it, and a guard proves the card cannot re-derive what was withheld. The
+unmeasured ceilings render with their reasons — an unseen label is named
+as possibly renamed, possibly idle, and neither is "under budget" — the
+`cannotSay` lines render as furniture, and `source: usage-log` is stated
+on the card: the store's provider-billed standing is a different
+measurement and is never merged in.
+
+**The ceilings come from the real config.** You paste your own
+`trazum.config.json`; it is read by the same `parseConfig` the CLI uses —
+same validation, same error sentences verbatim, and no second JSON parser
+beside it (guard-enforced). A config that validates but configures no
+ceilings is told so, never shown an empty report. Like everything in the
+tab: no fetch anywhere, the config never leaves the page.
+
+**One document, four doors, one wording.** Both locales speak the CLI
+catalogue's own sentences word for word. `position-ui.test.mjs` holds the
+fourth door to the other three textually and functionally — the exact call
+path the card takes produces the document the CLI produces: a quiet day is
+a measured $0, `sessionUsd` lands in "what this deliberately does not
+answer", unpriced records are counted out loud. 408 web tests; verified
+live in light, dark and Spanish, error states included.
+
+The plan records one honest correction, kept because the record is the
+point: "what-if in the browser" was sketched as a chapter and turned out
+to have already shipped — the Bill tab has carried the CLI's `--what-if`
+since the levers work.
 
 ## 1.67.1 — "Ready to travel"
 

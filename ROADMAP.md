@@ -1184,6 +1184,19 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.68.0 — "The browser catches up" — released
+
+**Everything the CLI can say about your money, the web app says in the
+reader's own tab, from the same functions, with nothing uploaded.** The
+Bill tab's Position card renders the 1.67 position document by the same
+`positionReport` the CLI, its HTML page and the MCP tool call; the
+ceilings come from the reader's own `trazum.config.json`, read by the
+same `parseConfig` — same validation, same error sentences verbatim; both
+locales speak the CLI catalogue's sentences word for word; and a parity
+guard holds the fourth door to the other three, textually and
+functionally. One honest correction recorded in the plan: "what-if in the
+browser" was sketched as a chapter and had already shipped.
+
 ## 1.67.1 — "Ready to travel" — released
 
 **Nothing new to install and two ways the project now reaches further.**
@@ -2147,19 +2160,14 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**1.68.0 — "The browser catches up."** [The 1.68 plan](docs/plan-1.68.md),
-asked for and written before the code: everything the CLI can say about
-your money, the web app says in the reader's own tab, from the same
-functions, with nothing uploaded. The position card in the Bill tab,
-ceilings read from the reader's own `trazum.config.json` by the same
-parser, both locales, and a parity guard holding the fourth door to the
-other three.
-
+**Nothing is planned.** [The 1.68 plan](docs/plan-1.68.md) is delivered in
+full — the browser caught up with the other three doors in one release.
 Before it, [the 1.65–1.67 plan](docs/plan-1.65-1.67.md) was delivered in
 full — the owner's five open-source paths, carried as far as they go as
 code: 1.65.0 (the format anyone can adopt), 1.66.0 (one policy, three
 doors) and 1.67.0 (the month ends on a measured position), every chapter of
-all three arcs.
+all three arcs. No new plan is written until one is asked for: a plan
+exists to be written before the code, not to keep a section warm.
 
 The halves of the paths that are not code — adoption conversations, a
 policy server, a forecast — stay named in the plan's "what stays out"
