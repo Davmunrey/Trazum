@@ -1184,6 +1184,19 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.65.0 — "The format anyone can adopt" — released
+
+**A document can be checked against this format by a tool that has never
+installed this product.** All eighteen documented contracts answer to a
+`--contract` name with required fields enforced both ways; `trazum schema`
+prints an authored JSON Schema (draft 2020-12) per contract, held to
+`conform` by a guard that compares every schema's `required` to the exact
+list `conform` enforces — it caught five drifted schemas and a missing field
+before the chapter was an hour old. The producer's page closes the arc:
+emit-this-minimum examples that the build extracts and runs through
+`trazum conform`, then guts and requires to fail, so an example that drifts
+breaks this build and not the first producer to copy it.
+
 ## 1.64.0 — "The report somebody forwards" — released
 
 **The figures leave the terminal without losing their caveats.** The profile
@@ -2089,17 +2102,10 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**Three arcs are planned: [docs/plan-1.65-1.67.md](docs/plan-1.65-1.67.md)**
-— the owner's five open-source paths, carried as far as they go as code. The
-1.65 arc runs as 1.64.x and closes at 1.65.0; 1.66 and 1.67 follow the same
-pattern.
-
-**1.65 — the format anyone can adopt.** All eighteen documented contracts
-answer to a `--contract` name, and an authored JSON Schema per contract
-leaves the repository — so a document can be checked against this format by
-a tool that has never installed this product. A two-direction guard holds
-each schema to agreeing with `conform`, because a schema that drifts is the
-two-doors defect wearing a file format.
+**Two arcs remain from [docs/plan-1.65-1.67.md](docs/plan-1.65-1.67.md)** —
+the owner's five open-source paths, carried as far as they go as code. The
+1.65 arc delivered all three of its chapters and closed at 1.65.0; the 1.66
+arc runs as 1.65.x and closes at 1.66.0, and 1.67 follows the same pattern.
 
 **1.66 — one policy, three doors.** Per-label, per-session and per-day USD
 limits stated once in the config, judged once in the core, enforced

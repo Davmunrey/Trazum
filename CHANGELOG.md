@@ -11,6 +11,15 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.65.0 — "The format anyone can adopt"
+
+Released 2026-08-24. The 1.65 arc closes: **a document can be checked against
+this format by a tool that has never installed this product.** Eighteen named
+contracts, exportable schemas, and a producer's page whose examples are run —
+not read — by the build.
+
 ### Added
 
 - **The producer's page — chapter three of the 1.65 arc.** `docs/format.md`

@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.64.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.65.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,58 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.65.0 — "The format anyone can adopt"
+
+**A document can now be checked against this format by a tool that has never
+installed this product.** That sentence is the whole arc, and each of its three
+chapters removed one thing standing between a stranger's tool and this format.
+
+**Chapter one — every contract answers to its name.** `--contract` accepts all
+**eighteen** documented contracts; before this arc it named eleven, and the
+seven others — fleet, spend guard, first run, pulse, rule yield, gateway
+refusal, bench — could be read about but not checked. Each of the seven now has
+its required fields enforced by `conform` in both directions: the documented
+minimum passes, and gutting any single field fails with the field named.
+`contractOf` detects all eighteen from a bare document, with the detection
+order stated where it matters (a fleet before a profile, a spend guard before
+a cost answer).
+
+**Chapter two — the schema leaves the repository.** `trazum schema <contract>`
+prints an authored **JSON Schema (draft 2020-12)** for any named contract, so
+any off-the-shelf validator can check a document with no Trazum installed. The
+schemas state required fields and their types and stop there:
+`additionalProperties` is never `false`, because these documents gain fields
+without a version bump, and documented unions stay open by the format's own
+rule. Held to `conform` by construction, not coincidence — `requiredFieldsOf`
+exports the exact list `conform` enforces and a guard compares every schema's
+`required` to it. That guard caught **five drifted schemas and a missing
+field before the chapter was an hour old**, which is the argument for it in
+one sentence. Every schema-shaped minimum round-trips through both doors;
+the CLI's output is byte-identical to the library's schema, tested per
+contract; the refusal names all eighteen contracts in both locales.
+
+**Chapter three — the producer's page.** `docs/format.md` grows the section a
+connector author actually needs: **emit-this-minimum** examples for the two
+contracts that exist to be written by tools that are not Trazum (a usage-log
+record whose only required field is `model`, and an outcome report exactly as
+`@trazum/core` computes one), the additive promise restated from the
+producer's side — *add anything, redefine nothing, never write `0` for a
+measurement nobody took* — and where the schemas live, with each schema's
+`$id` stated as an **identifier, never fetched**. The examples are not
+illustrations: the build extracts every labelled example from the page, runs
+it through `trazum conform`, then guts a required field and requires the
+gutted copy to fail. An example that drifts breaks this build, not the first
+producer to copy it.
+
+Also in this release: the trusted-hosts inventory gained a new decision kind,
+*identifier, never fetched*, added deliberately for `json-schema.org` — a URI
+that exists to be compared and must never be resolved by a build.
+
+Nothing in the JSON contract changed shape. `schemaVersion` stays `1`
+everywhere; the schemas describe what already ships.
 
 ---
 
