@@ -9,6 +9,20 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Fixed
+
+- **The web app builds on Vercel.** `output: 'standalone'` — added for the
+  Docker/N0 image — breaks Vercel's build, whose pipeline does its own file
+  tracing (`ENOENT` on `.next/next-server.js.nft.json`; found by deploying
+  a demo, not by reading about it). The flag is now conditional on not
+  running under Vercel (`VERCEL=1` is set in every Vercel build), so the
+  container image, the N0 manifest and the local standalone preview keep
+  exactly the output they had, and Vercel gets the default output its
+  platform expects. A Vercel project linked to this repository redeploys
+  the demo from `main` on every merge.
+
 ## 1.69.0 — "The agent's own bill"
 
 ### Added
