@@ -13,6 +13,21 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Three more vendored skills, eight repositories triaged.** From
+  mattpocock/skills (MIT): `tdd` (the red-green loop with tests worth
+  keeping), `diagnosing-bugs` (a phased discipline for hard bugs) and
+  `writing-for-agents` (how to write documents agents consume — the craft
+  behind every SKILL.md in this directory). Its `code-review` skill stays
+  out: its name collides with the harness's built-in `/code-review`, and
+  vendored files are never edited here. The other seven repositories
+  reviewed the same day (public-apis, apache/maka, volcengine/OpenViking,
+  basecamp/omarchy, akitaonrails/ai-memory, block/buzz,
+  anthropics/claude-plugins-community) carry no vendorable skill content
+  that serves this repository — products, platforms and lists, orthogonal
+  to a prompt-cost tool; claude-plugins-community is noted in VENDORED.md
+  as a distribution channel for Trazum's own plugin, an owner's decision.
+  All recorded with source commit and license in `.agents/skills/VENDORED.md`.
+
 - **Three vendored skills, and the provenance said out loud.** The agent
   skill set under `.agents/skills/` grows `karpathy-guidelines` (behavioural
   guardrails against LLM over-engineering — surgical changes, simplicity
