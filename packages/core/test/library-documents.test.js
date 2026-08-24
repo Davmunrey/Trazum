@@ -117,21 +117,31 @@ describe('what the library builds, the library accepts', () => {
 
   it('names the contracts it cannot reach, rather than implying it covers them all', () => {
     /**
-     * Eight of the eleven contracts need something this test cannot make from
-     * the package alone — a log on disk, a plan and a later log to verify it
-     * against, a connector's credentials. Listing them is the difference
-     * between "two documents check out" and "the format checks out", and
-     * silence about incompleteness reads as completeness.
+     * Fifteen of the eighteen contracts need something this test cannot make
+     * from the package alone — a log on disk, a plan and a later log to
+     * verify it against, a connector's credentials, a CLI run for the
+     * documents the CLI stamps. Listing them is the difference between "two
+     * documents check out" and "the format checks out", and silence about
+     * incompleteness reads as completeness. The seven contracts named in the
+     * 1.65 arc land here on arrival; the ones the package alone can build
+     * are driven end to end in the CLI and MCP suites instead.
      */
     const covered = built().map(([contract]) => contract);
     const uncovered = CONTRACT_NAMES.filter((name) => !covered.includes(name));
     assert.deepEqual(uncovered.sort(), [
       'annual-record',
+      'bench',
       'connected',
       'cost-answer',
+      'first-run',
+      'fleet',
+      'gateway-refusal',
       'history',
       'outcome-report',
       'plan',
+      'pulse',
+      'rule-yield',
+      'spend-guard',
       'usage-log',
       'verification',
     ]);

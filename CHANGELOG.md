@@ -13,21 +13,19 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
-- **[The plan for 1.64](docs/plan-1.64.md), written before the code.** One
-  arc: *the report somebody forwards*. The profile and the roll-up gain an
-  HTML door — one self-contained file, no external assets, both locales,
-  printable — rendered from the same document `--json` prints, never from
-  the log, so no second computation exists to disagree with the first. The
-  caveats (unpriced models, skipped lines, `cannotSay`) render with the same
-  weight as the totals they qualify, and the closing chapter is a parity
-  guard that walks every dollar and token in the HTML back to the document
-  in both directions, proved by breaking the renderer both ways. Stays out,
-  by name: charting libraries, template languages, serving. The chapters run
-  as 1.63.x and close at 1.64.0.
-
-## Unreleased
-
-### Added
+- **Every contract answers to its name — chapter one of the 1.65 arc.** The
+  seven documented contracts `--contract` could not name — `fleet`,
+  `spend-guard`, `first-run`, `pulse`, `rule-yield`, `gateway-refusal` and
+  `bench` — get names, required-field rules and detection, held to the same
+  discipline as the eleven: detection ordered so a fleet (a list of full
+  profile reports) classifies before the profile check and a spend-guard
+  verdict (which contains a cost answer) before the cost answer, the same
+  reasoning the roll-up already carries. `docs/format.md` stops saying the
+  claim is narrower in the product than on the page: **`--contract` names
+  eighteen of them**, and the derived guard that compares the table's column
+  to `CONTRACT_NAMES` moved the sentence itself. Each new contract is proved
+  by the document it rejects: the documented minimum conforms, and gutting
+  any required field fails with the field named.
 
 - **[The plan through 1.65, 1.66 and 1.67](docs/plan-1.65-1.67.md), written
   before the code.** The owner's five open-source paths, carried exactly as
@@ -54,6 +52,19 @@ All four chapters landed on `main` before this minor; the minor is the story
 finishing.
 
 ### Added
+
+- **[The plan for 1.64](docs/plan-1.64.md), written before the code.** One
+  arc: *the report somebody forwards*. The profile and the roll-up gain an
+  HTML door — one self-contained file, no external assets, both locales,
+  printable — rendered from the same document `--json` prints, never from
+  the log, so no second computation exists to disagree with the first. The
+  caveats (unpriced models, skipped lines, `cannotSay`) render with the same
+  weight as the totals they qualify, and the closing chapter is a parity
+  guard that walks every dollar and token in the HTML back to the document
+  in both directions, proved by breaking the renderer both ways. Stays out,
+  by name: charting libraries, template languages, serving. The chapters run
+  as 1.63.x and close at 1.64.0.
+
 
 - **The roll-up ships the same door, and the parity guard closes the loop —
   chapters three and four of the 1.64 arc.** `trazum rollup` gains

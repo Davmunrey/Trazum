@@ -37,14 +37,21 @@
 export const CONTRACT_NAMES = [
   'usage-log',
   'profile',
+  'fleet',
   'plan',
   'verification',
   'history',
   'connected',
   'cost-answer',
+  'spend-guard',
   'outcome-report',
   'annual-record',
   'roll-up',
+  'first-run',
+  'pulse',
+  'rule-yield',
+  'gateway-refusal',
+  'bench',
   'prompt-draft',
 ] as const;
 
@@ -356,6 +363,49 @@ const DOCUMENT_RULES: Record<Exclude<ContractName, 'usage-log'>, FieldRule[]> = 
       (v) => v === null || isObject(v),
     ),
   ],
+
+  /*
+    The seven below existed as documented tables for releases before they had
+    names here. "All eighteen are contracts" was narrower in the product than
+    on the page — a claim `docs/format.md` made that `--contract` could not
+    honour — and the 1.65 arc exists to close exactly that gap.
+  */
+  fleet: [
+    rule('bySource', 'an array — one entry per configured source with traffic', isArray),
+    rule('rollup', 'an object — the fleet read as one thing, sums inside it', isObject),
+  ],
+  'spend-guard': [
+    rule('verdict', 'yes, no or cannot-tell — and cannot-tell never becomes yes', (v) => typeof v === 'string'),
+    rule('cost', 'the full cost answer, halves and provenance intact', isObject),
+    rule('alternatives', 'an array, dearest saving first — a refusal never arrives bare', isArray),
+    rule('because', 'one line for a human reading a log — never the only place a fact appears', (v) => typeof v === 'string'),
+  ],
+  'first-run': [
+    rule('config', 'exactly the keys init could justify, and nothing else', isObject),
+    rule('justified', 'an array — one entry per key written, with the observation behind it', isArray),
+    rule('declined', 'an array — one entry per key left out, each with a typed why', isArray),
+  ],
+  pulse: [
+    rule('beats', 'an array — one per kind', isArray),
+    rule('nowMs', 'the instant the ages were taken against', isNumber),
+    rule('stale', 'a boolean — never true for never-run', (v) => typeof v === 'boolean'),
+  ],
+  'rule-yield': [
+    rule('rules', 'an array — per rule, alone and marginal both', isArray),
+    rule('tokensBefore', 'a number', isNumber),
+    rule('tokensSaved', 'a number — the whole run minus floor', isNumber),
+    rule('floor', 'a number, named rather than folded in', isNumber),
+  ],
+  'gateway-refusal': [
+    rule('error', 'an object shaped like a provider error, typed so it cannot be mistaken for one', isObject),
+    rule('reason', 'budget-exhausted, call-would-cross or cannot-tell-and-closed', (v) => typeof v === 'string'),
+    rule('alternatives', 'an array — a refusal never arrives bare', isArray),
+  ],
+  bench: [
+    rule('workloads', 'an array — one per standard workload, in a fixed order', isArray),
+    rule('node', 'the runtime the numbers were taken on', (v) => typeof v === 'string'),
+    rule('cpus', 'a number', isNumber),
+  ],
 };
 
 /**
@@ -467,7 +517,25 @@ function contractOf(doc: Record<string, unknown>): Exclude<ContractName, 'usage-
   // first would classify every roll-up as a profile, accept it as conformant,
   // and never apply the two refusals that only a roll-up has to carry.
   if (Array.isArray(doc.contributors) && Array.isArray(doc.notMerged)) return 'roll-up';
+  // Before the profile check, same reasoning as the roll-up: a fleet document
+  // is a list of full profile reports, and any looser ordering would classify
+  // it by the shape of what it contains rather than what it is.
+  if (Array.isArray(doc.bySource) && isObject(doc.rollup)) return 'fleet';
   if (Array.isArray(doc.byLabelAndModel)) return 'profile';
+  // Before the cost answer: a spend-guard verdict *contains* a cost answer,
+  // and `verdict` is a string on both documents.
+  if (typeof doc.verdict === 'string' && isObject(doc.cost) && Array.isArray(doc.alternatives)) {
+    return 'spend-guard';
+  }
+  if (isObject(doc.config) && Array.isArray(doc.justified) && Array.isArray(doc.declined)) {
+    return 'first-run';
+  }
+  if (Array.isArray(doc.beats) && typeof doc.nowMs === 'number') return 'pulse';
+  if (Array.isArray(doc.rules) && typeof doc.floor === 'number') return 'rule-yield';
+  if (isObject(doc.error) && typeof doc.reason === 'string' && Array.isArray(doc.alternatives)) {
+    return 'gateway-refusal';
+  }
+  if (Array.isArray(doc.workloads) && typeof doc.node === 'string') return 'bench';
   if (Array.isArray(doc.missingMonths) && isObject(doc.promises)) return 'annual-record';
   if (Array.isArray(doc.undeclared) && isObject(doc.coverage)) return 'outcome-report';
   if (Array.isArray(doc.periods) && Array.isArray(doc.runs)) return 'history';

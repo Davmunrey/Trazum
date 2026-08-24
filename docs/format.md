@@ -8,9 +8,12 @@ build against rather than something to reverse engineer from output.
 Two distinctions are drawn in the table rather than blurred, because each one
 changes what you can actually do:
 
-- **`--contract` names eleven of them.** That is narrower than being documented: a
-  named contract can be checked against a document *you* produced with a single
-  command, and the other seven can only be read against their section here.
+- **`--contract` names eighteen of them.** Every documented contract — the
+  defined-but-not-emitted outcome report included — can be checked against a
+  document *you* produced with a single command. The distinction between named
+  and merely documented existed for releases and closed in the 1.65 arc: a
+  format is adoptable when checking a document requires nothing but the
+  document.
 - **The outcome report is defined but not emitted.** `trazum profile` renders it
   as terminal text and `@trazum/core` computes it; no command writes it as JSON.
   It is a contract so that a tool of yours can produce one and have it checked —
@@ -20,7 +23,7 @@ changes what you can actually do:
 | --- | --- | --- | --- |
 | **usage log** | you, or `trazum connect` | `usage-log` | [usage-logs.md](usage-logs.md) |
 | **profile** | `trazum profile --json` | `profile` | [json-output.md](json-output.md#top-level-fields) |
-| **fleet** | `trazum profile --by-source --json` | — | [json-output.md](json-output.md#the---by-source-document) |
+| **fleet** | `trazum profile --by-source --json` | `fleet` | [json-output.md](json-output.md#the---by-source-document) |
 | **plan** | `trazum plan -o`, and the web app | `plan` | [plan-format.md](plan-format.md) |
 | **verification** | `trazum verify --json` | `verification` | [json-output.md](json-output.md#the-verification-document) |
 | **history** | `trazum history --json` | `history` | [json-output.md](json-output.md#the-history-document) |
@@ -28,13 +31,13 @@ changes what you can actually do:
 | **cost answer** | `trazum serve`'s `POST /cost` | `cost-answer` | [json-output.md](json-output.md#the-cost-answer-document) |
 | **outcome report** | nothing — rendered by `trazum profile`, never written as JSON | `outcome-report` | [json-output.md](json-output.md#the-outcome-report-document) |
 | **annual record** | `trazum report --year --json` | `annual-record` | [json-output.md](json-output.md#the-annual-record-document) |
-| **spend guard** | the `spend_guard` MCP tool | — | [json-output.md](json-output.md#the-spend-guard-document) |
+| **spend guard** | the `spend_guard` MCP tool | `spend-guard` | [json-output.md](json-output.md#the-spend-guard-document) |
 | **roll-up** | `trazum rollup --json` | `roll-up` | [json-output.md](json-output.md#the-roll-up-document) |
-| **first run** | `trazum init --json` | — | [json-output.md](json-output.md#the-first-run-document) |
-| **pulse** | `trazum pulse --json` | — | [json-output.md](json-output.md#the-pulse-document) |
-| **bench** | `trazum bench --json` | — | [json-output.md](json-output.md#the-bench-document) |
-| **rule yield** | `trazum rules --measure --json` | — | [json-output.md](json-output.md#the-rule-yield-document) |
-| **gateway refusal** | `trazum gateway`, as the HTTP 402 body | — | [json-output.md](json-output.md#the-gateway-refusal-document) |
+| **first run** | `trazum init --json` | `first-run` | [json-output.md](json-output.md#the-first-run-document) |
+| **pulse** | `trazum pulse --json` | `pulse` | [json-output.md](json-output.md#the-pulse-document) |
+| **bench** | `trazum bench --json` | `bench` | [json-output.md](json-output.md#the-bench-document) |
+| **rule yield** | `trazum rules --measure --json` | `rule-yield` | [json-output.md](json-output.md#the-rule-yield-document) |
+| **gateway refusal** | `trazum gateway`, as the HTTP 402 body | `gateway-refusal` | [json-output.md](json-output.md#the-gateway-refusal-document) |
 | **prompt draft** | `trazum write --json`, and `@trazum/core`'s `assemble()` | `prompt-draft` | [json-output.md](json-output.md#the-prompt-draft-document) |
 
 The count above said **seven** for as long as the table had ten rows in it, and

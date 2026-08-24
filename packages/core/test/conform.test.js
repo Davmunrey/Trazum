@@ -151,9 +151,52 @@ describe('conform — the documents', () => {
       [{ schemaVersion: 1, actions: [] }, 'plan'],
       [{ schemaVersion: 1, verdict: 'within', restsOn: 'measured' }, 'cost-answer'],
       [{ schemaVersion: 1, provider: 'anthropic', unavailable: [] }, 'connected'],
+      // The seven named in the 1.65 arc, and the two orderings that matter:
+      // a fleet is a list of profiles and detects before the profile check,
+      // and a spend-guard verdict contains a cost answer and detects first.
+      [{ schemaVersion: 1, bySource: [], rollup: {} }, 'fleet'],
+      [{ schemaVersion: 1, verdict: 'no', cost: {}, alternatives: [], because: 'x' }, 'spend-guard'],
+      [{ schemaVersion: 1, config: {}, justified: [], declined: [] }, 'first-run'],
+      [{ schemaVersion: 1, beats: [], nowMs: 1, stale: false }, 'pulse'],
+      [{ schemaVersion: 1, rules: [], floor: 0, tokensBefore: 1, tokensSaved: 0 }, 'rule-yield'],
+      [{ schemaVersion: 1, error: {}, reason: 'budget-exhausted', alternatives: [] }, 'gateway-refusal'],
+      [{ schemaVersion: 1, workloads: [], node: 'v22', cpus: 4 }, 'bench'],
     ];
     for (const [doc, expected] of cases) {
       assert.equal(conform(JSON.stringify(doc)).contract, expected, expected);
+    }
+  });
+
+  it('holds each of the seven newly named contracts to its required fields', () => {
+    /**
+     * Each accepted whole, then gutted one required field at a time — a rule
+     * proved by the document it rejects, not by the one it accepts. The
+     * fixtures are the documented minimum, which is the promise: checking a
+     * document requires nothing but the document.
+     */
+    const minimal = {
+      fleet: { schemaVersion: 1, bySource: [], rollup: {} },
+      'spend-guard': { schemaVersion: 1, verdict: 'no', cost: {}, alternatives: [], because: 'x' },
+      'first-run': { schemaVersion: 1, config: {}, justified: [], declined: [] },
+      pulse: { schemaVersion: 1, beats: [], nowMs: 1, stale: false },
+      'rule-yield': { schemaVersion: 1, rules: [], floor: 0, tokensBefore: 1, tokensSaved: 0 },
+      'gateway-refusal': { schemaVersion: 1, error: {}, reason: 'budget-exhausted', alternatives: [] },
+      bench: { schemaVersion: 1, workloads: [], node: 'v22', cpus: 4 },
+    };
+    for (const [name, doc] of Object.entries(minimal)) {
+      const whole = conform(JSON.stringify(doc), { contract: name });
+      assert.equal(whole.conforms, true, `${name}: the documented minimum does not conform`);
+      for (const field of Object.keys(doc)) {
+        if (field === 'schemaVersion') continue;
+        const gutted = { ...doc };
+        delete gutted[field];
+        const checked = conform(JSON.stringify(gutted), { contract: name });
+        assert.equal(checked.conforms, false, `${name} without ${field} still conforms`);
+        assert.ok(
+          checked.problems.some((problem) => problem.at === field),
+          `${name} without ${field}: no problem names the field`,
+        );
+      }
     }
   });
 
