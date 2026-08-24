@@ -24,6 +24,25 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **One drag: your ~/.claude/projects folder onto the web app.** [The 1.70
+  plan](docs/plan-1.70.md): the Bill tab's drop zone now accepts a folder,
+  descends it for transcripts (`webkitGetAsEntry` on drop, a
+  `webkitdirectory` picker as the alternative), and converts every one in
+  the page with the 1.69 converter — labelled by its project directory, so
+  the per-project bill appears by itself — priced beside any usage logs in
+  the same drop. A new core `looksLikeClaudeCodeTranscript` routes each
+  file (keyed on the `type: 'assistant'` envelope carrying `message.usage`,
+  not the word "assistant", so a usage log labelled `assistant-work` is not
+  mistaken for one), and a banner above the report says what was converted,
+  collapsed and streamed, ending on the sentence that earns the feature:
+  the transcripts were read in this tab, the numbers kept and the words
+  not. No install, no upload, no third step — the whole 1.69 pipe collapsed
+  to a gesture. `claude-code.test.js` gains the detector's both-direction
+  fixtures; `folder-ingest.test.mjs` holds the no-fetch invariant with the
+  new code inside it, proves a mixed folder-plus-log drop prices as one
+  bill with three labels, and confirms the planted transcript words never
+  cross into the priced stream. Both locales; verified live.
+
 - **A landing, sold the way the product measures.** `/landing` is the
   product's one Persuade surface: a scrollytelling story
   (IntersectionObserver reveals that are never attached under

@@ -181,3 +181,40 @@ export function claudeCodeRecords(
   }
   return out;
 }
+
+/**
+ * Does this text look like a Claude Code transcript rather than a usage log?
+ *
+ * The web app accepts a dropped folder that mixes both, and has to tell them
+ * apart per file with no help from the reader: a transcript's lines are
+ * conversation events (`type: 'assistant'`, `'user'`, `'system'`…) with the
+ * usage buried in `message.usage`, while a usage log's lines are the usage
+ * records themselves (`model` and `usage` at the top). Deliberately dumb —
+ * no scoring, no tunable threshold: a file is a transcript when at least one
+ * line is an assistant event carrying `message.usage`, and not otherwise.
+ * That is the exact shape `claudeCodeRecords` converts, so "looks like one"
+ * and "converts to something" cannot disagree.
+ *
+ * Reads at most the first `limit` non-empty lines: a transcript announces
+ * itself early, and a hundred-megabyte session should not be parsed in full
+ * just to route it.
+ */
+export function looksLikeClaudeCodeTranscript(text: string, limit = 200): boolean {
+  let seen = 0;
+  for (const line of text.split('\n')) {
+    if (line.trim() === '') continue;
+    if (seen >= limit) break;
+    seen += 1;
+    let raw: unknown;
+    try {
+      raw = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    const entry = asObject(raw);
+    if (entry === null || entry.type !== 'assistant') continue;
+    const message = asObject(entry.message);
+    if (message !== null && asObject(message.usage) !== null) return true;
+  }
+  return false;
+}

@@ -353,6 +353,14 @@ export interface WebMessages {
     privacy: string;
     dropLabel: string;
     chooseFile: string;
+    /** The folder drop — the 1.70 move: a whole ~/.claude/projects at once. */
+    chooseFolder: string;
+    dropFolderHint: string;
+    transcriptSummary(transcripts: number, calls: number): string;
+    transcriptAlsoLogs(logs: number): string;
+    transcriptCollapsed(lines: number): string;
+    transcriptStreamed(calls: number): string;
+    transcriptPrivacy: string;
     orPaste: string;
     pasteAriaLabel: string;
     analyze: string;
