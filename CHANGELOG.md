@@ -20,7 +20,7 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
-## Unreleased
+## 1.70.0 — "One drag"
 
 ### Added
 

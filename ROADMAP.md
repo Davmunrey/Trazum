@@ -1184,6 +1184,18 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.70.0 — "One drag" — released
+
+**Drag ~/.claude/projects onto the web app; read your agent bill in
+seconds, nothing uploaded.** A new core `looksLikeClaudeCodeTranscript`
+routes each dropped file, the Bill tab descends a folder and converts
+every transcript in the page labelled by its project, and a banner says
+what it did — the numbers kept, the words not. The landing also gained
+machine-drafted French, German and Portuguese beside reviewed English and
+Spanish, each unreviewed language saying so. On more LLM vendors: the
+bundled table stays a reviewed snapshot; live coverage is OpenRouter's,
+because an invented price would be this product's one unforgivable sin.
+
 ## 1.69.0 — "The agent's own bill" — released
 
 **The transcripts Claude Code already writes, priced — the numbers only,
@@ -2179,13 +2191,10 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**1.70.0 — "One drag."** [The 1.70 plan](docs/plan-1.70.md), asked for
-and written before the code: drag the `~/.claude/projects` folder onto the
-web app and read your own agent bill in seconds — the 1.69 converter is
-already in the browser bundle, so the tab learns to recognise a transcript,
-accept a folder, convert in the page and say what it did. No install, no
-upload, no third step.
-
+**Nothing is planned.** [The 1.70 plan](docs/plan-1.70.md) is delivered in
+full — the whole 1.69 pipe collapsed to a drag of the transcripts folder,
+and the landing gained three machine-drafted languages beside the two
+reviewed ones.
 Before it, [the 1.69 plan](docs/plan-1.69.md) was delivered in
 full — the agent's own bill, priced from the transcripts already on disk.
 Before it, [the 1.68 plan](docs/plan-1.68.md) was delivered in
