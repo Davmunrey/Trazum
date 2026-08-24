@@ -523,6 +523,22 @@ export interface CliMessages {
    * the command's honesty: what was priced, what was collapsed (one API
    * call arrives as one line per content block), and what was passed over.
    */
+  /**
+   * `trazum from-otel` — OpenTelemetry GenAI spans as a usage log. The summary
+   * is the command's honesty: LLM spans converted, non-LLM spans skipped, and
+   * how many carried no cache data (OTel has no TTL split to give).
+   */
+  fromOtel: {
+    noPath(): string;
+    notFound(path: string): string;
+    noExports(path: string): string;
+    summary(files: number, llmSpans: number): string;
+    skipped(otherSpans: number): string;
+    noCache(count: number): string;
+    unparseable(count: number): string;
+    written(file: string): string;
+  };
+
   fromClaudeCode: {
     noPath(): string;
     notFound(path: string): string;

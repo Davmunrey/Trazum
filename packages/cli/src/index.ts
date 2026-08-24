@@ -111,6 +111,7 @@ import {
   parseUsageLine,
   plannedCalls,
   claudeCodeRecords,
+  otelRecords,
   positionAt,
   positionReport,
   PRICING_LAST_REVIEWED,
@@ -670,6 +671,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   rollup: ['json', 'html-out'],
   position: ['json', 'html-out', 'pricing', 'pricing-live'],
   'from-claude-code': ['label', 'label-from-project', 'out', 'o'],
+  'from-otel': ['label-from-service', 'out', 'o'],
   pulse: ['json', 'max-stale-hours'],
   bench: ['workload', 'json', 'record', 'against', 'max-ratio'],
   write: ['answers', 'json', 'out', 'o', 'calls', 'avg-output'],
@@ -2633,6 +2635,69 @@ async function commandFromClaudeCode(args: Args, t: CliMessages): Promise<void> 
   if (disagreements > 0) console.error(t.fromClaudeCode.disagreements(disagreements));
   if (noRequestId > 0) console.error(t.fromClaudeCode.noRequestId(noRequestId));
   console.error(t.fromClaudeCode.skipped(otherLines, unparseable, withoutUsage));
+}
+
+/**
+ * `trazum from-otel <file|dir>` — OpenTelemetry GenAI spans as a usage log.
+ *
+ * The 1.71 move: the same pure-converter pattern generalised to the standard
+ * the ecosystem is converging on, so Trazum prices whatever telemetry a team
+ * already emits. `otelRecords` in core does the reading; this is the walk and
+ * the honesty — how many spans were LLM calls, how many were skipped as
+ * non-LLM, how many carried no cache data (the OTel norm, since it has not
+ * standardised the TTL split). Prompt content, trace ids and every other span
+ * attribute stay in the span; a fixture greps the whole output to prove it.
+ */
+async function commandFromOtel(args: Args, t: CliMessages): Promise<void> {
+  const target = args.positional[0];
+  if (target === undefined) throw new Error(t.fromOtel.noPath());
+
+  let info;
+  try {
+    info = await stat(target);
+  } catch {
+    throw new Error(t.fromOtel.notFound(target));
+  }
+  const files: string[] = [];
+  if (info.isDirectory()) {
+    const entries = await readdir(target, { recursive: true, withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isFile() && /\.(json|jsonl|ndjson)$/i.test(entry.name)) {
+        files.push(join(entry.parentPath, entry.name));
+      }
+    }
+    files.sort();
+    if (files.length === 0) throw new Error(t.fromOtel.noExports(target));
+  } else {
+    files.push(target);
+  }
+
+  const lines: string[] = [];
+  let llmSpans = 0;
+  let otherSpans = 0;
+  let noCacheData = 0;
+  let unparseable = 0;
+  for (const file of files) {
+    const conversion = otelRecords(await readFile(file, 'utf8'));
+    for (const record of conversion.records) lines.push(JSON.stringify(record));
+    llmSpans += conversion.llmSpans;
+    otherSpans += conversion.otherSpans;
+    noCacheData += conversion.noCacheData;
+    unparseable += conversion.unparseable;
+  }
+
+  const out = stringFlag(args, 'out') ?? stringFlag(args, 'o');
+  if (out !== undefined) {
+    await writeFile(out, lines.join('\n') + (lines.length > 0 ? '\n' : ''), 'utf8');
+    console.error(t.fromOtel.written(out));
+  } else {
+    for (const line of lines) console.log(line);
+  }
+
+  console.error(t.fromOtel.summary(files.length, llmSpans));
+  if (otherSpans > 0) console.error(t.fromOtel.skipped(otherSpans));
+  if (noCacheData > 0) console.error(t.fromOtel.noCache(noCacheData));
+  if (unparseable > 0) console.error(t.fromOtel.unparseable(unparseable));
 }
 
 /**
@@ -11028,6 +11093,9 @@ async function main(): Promise<void> {
       break;
     case 'from-claude-code':
       await commandFromClaudeCode(args, t);
+      break;
+    case 'from-otel':
+      await commandFromOtel(args, t);
       break;
     case 'pulse':
       await commandPulse(args, t);

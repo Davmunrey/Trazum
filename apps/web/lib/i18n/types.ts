@@ -360,6 +360,10 @@ export interface WebMessages {
     transcriptAlsoLogs(logs: number): string;
     transcriptCollapsed(lines: number): string;
     transcriptStreamed(calls: number): string;
+    /** The 1.71 arm: a dropped OpenTelemetry export, priced in this tab. */
+    otelSummary(exports: number, spans: number): string;
+    otelSkipped(spans: number): string;
+    otelNoCache(spans: number): string;
     transcriptPrivacy: string;
     orPaste: string;
     pasteAriaLabel: string;

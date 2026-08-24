@@ -4,7 +4,14 @@ import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
-import { claudeCodeRecords, looksLikeClaudeCodeTranscript, profileUsage, BUNDLED_CATALOGUE } from '@trazum/core';
+import {
+  BUNDLED_CATALOGUE,
+  claudeCodeRecords,
+  looksLikeClaudeCodeTranscript,
+  looksLikeOtel,
+  otelRecords,
+  profileUsage,
+} from '@trazum/core';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const web = join(here, '..');
@@ -34,6 +41,51 @@ describe('the Bill tab ingests a folder in the browser', () => {
     // Descends a dropped directory — the whole point of the folder drop.
     assert.match(bill, /webkitGetAsEntry/);
     assert.match(bill, /webkitdirectory/);
+  });
+
+  it('the 1.71 arm: an OpenTelemetry export is detected and converted in the page too', () => {
+    // The third arm — a dropped OTLP export routes through the core converter,
+    // and the banner reads its honest counts, not a raw span attribute.
+    assert.match(bill, /looksLikeOtel\(/);
+    assert.match(bill, /otelRecords\(/);
+    assert.match(bill, /t\.bill\.otelSummary\(/);
+    assert.match(bill, /t\.bill\.otelNoCache\(/);
+  });
+
+  it('a dropped OTLP export prices its LLM spans and nothing else crosses', () => {
+    const SECRET = 'web-otel-prompt-do-not-leak-3c9d';
+    const otlp = JSON.stringify({
+      resourceSpans: [
+        {
+          resource: { attributes: [{ key: 'service.name', value: { stringValue: 'checkout' } }] },
+          scopeSpans: [
+            {
+              spans: [
+                {
+                  name: 'chat',
+                  startTimeUnixNano: '1787600000000000000',
+                  attributes: [
+                    { key: 'gen_ai.request.model', value: { stringValue: 'claude-sonnet-5' } },
+                    { key: 'gen_ai.prompt', value: { stringValue: SECRET } },
+                    { key: 'gen_ai.usage.input_tokens', value: { intValue: '1000' } },
+                    { key: 'gen_ai.usage.output_tokens', value: { intValue: '120' } },
+                  ],
+                },
+                { name: 'db.query', startTimeUnixNano: '1', attributes: [{ key: 'db.system', value: { stringValue: 'pg' } }] },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+    assert.equal(looksLikeOtel(otlp), true);
+    const conv = otelRecords(otlp);
+    assert.equal(conv.llmSpans, 1);
+    assert.equal(conv.otherSpans, 1);
+    const parts = conv.records.map((r) => JSON.stringify(r));
+    const report = profileUsage(parts.join('\n'), { catalogue: BUNDLED_CATALOGUE });
+    assert.equal(report.total.calls, 1);
+    assert.equal(/web-otel-prompt-do-not-leak/.test(parts.join('\n')), false, 'the prompt crossed into the priced log');
   });
 
   it('the ingest summary holds counts, never a session key', () => {

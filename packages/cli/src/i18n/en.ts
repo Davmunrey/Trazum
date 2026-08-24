@@ -60,6 +60,7 @@ ${bold('USAGE')}
   trazum rollup <document...|dir> [--json] [--html-out <file>]
   trazum position <usage.jsonl>
   trazum from-claude-code <file|dir> [--label <name>] [-o <file>]
+  trazum from-otel <file|dir> [--label-from-service] [-o <file>]
   trazum pulse [--max-stale-hours <n>]
   trazum bench [--workload <id>] [--record <file>] [--against <file> --max-ratio <n>] [--json]
   trazum write [--answers <file>] [--json] [-o <file>]
@@ -136,6 +137,17 @@ ${bold('OPTIONS FOR write')}
                               with everything else on stderr.
   --calls <n>                 Calls per month, for the estimate.
   --avg-output <n>            Average output tokens per call, for the estimate.
+
+${bold('OPTIONS FOR from-otel')}
+  --label-from-service        Label each record with its span's service name,
+                              so a per-service bill falls out.
+  -o, --out <file>            Write the usage log there instead of stdout.
+
+  OpenTelemetry GenAI spans, read as a usage log: model, timestamp, label and
+  the token counts from each gen_ai.* span — and nothing else. Prompt content
+  and trace ids stay in the span. OTel has no cache TTL split, so cache
+  verdicts read "cannot tell" rather than a guessed one. Non-LLM spans are
+  counted and skipped, said on stderr.
 
 ${bold('OPTIONS FOR from-claude-code')}
   --label <name>              Stamp every record with one label.
@@ -1611,6 +1623,17 @@ ${bold('EXAMPLES')}
           return code;
       }
     },
+  },
+
+  fromOtel: {
+    noPath: () => 'from-otel needs an OTLP file or directory: trazum from-otel spans.json',
+    notFound: (path) => `${path}: not found`,
+    noExports: (path) => `${path}: no .json/.jsonl/.ndjson OTLP exports under it.`,
+    summary: (files, llmSpans) => `${files} file(s), ${llmSpans} LLM span(s) priced.`,
+    skipped: (otherSpans) => `${otherSpans} non-LLM span(s) skipped — the trace's other work, not a bill.`,
+    noCache: (count) => `${count} span(s) carried no cache data. OpenTelemetry has not standardised the cache TTL split, so the cache verdicts read "cannot tell" on this log rather than a fabricated one.`,
+    unparseable: (count) => `${count} line(s) did not parse as JSON.`,
+    written: (file) => `Wrote ${file}.`,
   },
 
   fromClaudeCode: {

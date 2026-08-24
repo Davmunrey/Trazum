@@ -20,6 +20,57 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## 1.71.0 — "The universal cost lens"
+
+### Added
+
+- **`trazum from-otel`: the cost lens over OpenTelemetry.** [The 1.71
+  plan](docs/plan-1.71.md) generalises the `from-claude-code` pattern to the
+  standard the ecosystem is converging on. A new core `otelRecords(text)`
+  reads the OTLP/JSON any GenAI exporter produces — one document or
+  newline-delimited spans — and turns each LLM-call span into a usage-log
+  record: the model (`gen_ai.response.model` or `gen_ai.request.model`), the
+  timestamp (`startTimeUnixNano`), a label (the span's `gen_ai.operation.name`
+  or the resource's `service.name`, so a per-service bill falls out), and the
+  input/output token counts. Spans that are not LLM calls are counted and
+  skipped, never priced. The **fortieth command** walks a file or directory of
+  `.json`/`.jsonl`/`.ndjson`, writes the usage log to `-o` or stdout, and
+  reports on stderr how many spans were LLM calls, how many were skipped, and
+  how many carried no cache data. `--label-from-service` labels by the
+  resource's `service.name`. This makes Trazum complementary to every
+  observability tool — LangSmith, Helicone, LiteLLM — reading whatever
+  telemetry a team already emits rather than competing with the tool that
+  emits it.
+
+- **The web Bill tab reads OTLP too.** The folder drop gains a third arm: a
+  dropped OpenTelemetry export is detected by `looksLikeOtel` and converted in
+  the page with `otelRecords`, priced beside any transcripts and usage logs in
+  the same drop — *drag your OpenTelemetry export onto Trazum* joins *drag your
+  ~/.claude/projects*. No fetch, same invariant. The ingest banner names how
+  many LLM spans were priced, how many non-LLM spans were skipped, and how many
+  carried no cache data. Both locales.
+
+### Honest gaps, stated
+
+- **No cache TTL split, because OTel has none.** OpenTelemetry has not
+  standardised the cache-write TTL split, so an OTel-sourced record carries no
+  `cache_creation` object and the cache verdicts read *cannot tell* rather than
+  a fabricated one — the same refusal as inventing a price. Cache reads are
+  taken only where a `gen_ai.usage.cache_read_input_tokens`-shaped key is
+  actually present. The converter says so on stderr and the documentation states
+  it plainly.
+- **Nothing but the numbers crosses.** Prompt and completion content, trace ids
+  and every other span attribute stay in the span; `otel.test.js` plants a
+  prompt and a trace id in a fixture and greps the whole conversion output for
+  them, the same privacy proof the transcript converter carries. The
+  `from-otel` CLI suite and `folder-ingest.test.mjs` extend it to the run and
+  the web arm.
+- **Vendor converters not guessed at.** LangSmith, Helicone and LiteLLM are
+  named as next, not built now: a converter for a documented-but-unseen format
+  is an estimate wearing a parser's clothes. Each ships when a real export of it
+  is seen.
+
+
 ## 1.70.0 — "One drag"
 
 ### Added

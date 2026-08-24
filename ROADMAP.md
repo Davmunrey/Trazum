@@ -1184,6 +1184,20 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.71.0 — "The universal cost lens" — released
+
+**Point Trazum at any OpenTelemetry export and it prices the LLM calls
+inside.** `trazum from-otel` — the fortieth command — generalises the
+`from-claude-code` pattern: a pure `otelRecords` converter turns the OTLP/JSON
+any GenAI exporter produces into usage-log records (model, timestamp, a label
+from the span's operation or service name, the token counts), and every
+command prices it from there. Non-LLM spans are counted and skipped. The web
+Bill tab's folder drop gained a third arm — a dropped OTLP export detected by
+`looksLikeOtel` and converted in the page. What OTel cannot give is not faked:
+no cache TTL split, so the cache verdicts read *cannot tell*; a privacy fixture
+greps the whole conversion for a planted prompt and trace id. Vendor-specific
+converters stay named and unbuilt until a real export of each is seen.
+
 ## 1.70.0 — "One drag" — released
 
 **Drag ~/.claude/projects onto the web app; read your agent bill in
@@ -2191,7 +2205,18 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**Nothing is planned.** [The 1.70 plan](docs/plan-1.70.md) is delivered in
+Nothing is planned. [The 1.71 plan](docs/plan-1.71.md) was delivered in full —
+the universal cost lens, generalising the `from-claude-code` pattern to the
+whole observability ecosystem: the standards-based `from-otel` (the fortieth
+command) reads OpenTelemetry's GenAI spans as a usage log, so Trazum prices
+whatever telemetry a team already emits, and the web tab gained a third arm
+for a dropped OTLP export. Vendor-specific converters (LangSmith, Helicone,
+LiteLLM) are named as next but stay unbuilt until a real export of each is
+seen — the same refusal as inventing a price. No new plan is written until one
+is asked for: a plan exists to be written before the code, not to keep a
+section warm.
+
+Before it, [the 1.70 plan](docs/plan-1.70.md) was delivered in
 full — the whole 1.69 pipe collapsed to a drag of the transcripts folder,
 and the landing gained three machine-drafted languages beside the two
 reviewed ones.

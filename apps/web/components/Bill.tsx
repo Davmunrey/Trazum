@@ -16,6 +16,8 @@ import {
   formatSignedUsd,
   formatUsd,
   looksLikeClaudeCodeTranscript,
+  looksLikeOtel,
+  otelRecords,
   profileUsage,
   repriceProfile,
   reviewAgeDays,
@@ -185,6 +187,10 @@ export function Bill({ t }: { t: WebMessages }) {
     collapsed: number;
     streamed: number;
     logs: number;
+    otelExports: number;
+    otelSpans: number;
+    otelSkipped: number;
+    otelNoCache: number;
   } | null>(null);
 
   async function readFile(file: File | undefined) {
@@ -209,9 +215,23 @@ export function Bill({ t }: { t: WebMessages }) {
     let collapsed = 0;
     let streamed = 0;
     let logs = 0;
+    let otelExports = 0;
+    let otelSpans = 0;
+    let otelSkipped = 0;
+    let otelNoCache = 0;
     for (const file of files) {
       const text = await file.text();
-      if (looksLikeClaudeCodeTranscript(text)) {
+      // The 1.71 arm: an OpenTelemetry GenAI export, detected by its shape and
+      // converted in this tab. Only the token counts cross; prompts, trace ids
+      // and every other span attribute stay behind, held by the core suite.
+      if (looksLikeOtel(text)) {
+        otelExports += 1;
+        const conversion = otelRecords(text);
+        for (const record of conversion.records) parts.push(JSON.stringify(record));
+        otelSpans += conversion.llmSpans;
+        otelSkipped += conversion.otherSpans;
+        otelNoCache += conversion.noCacheData;
+      } else if (looksLikeClaudeCodeTranscript(text)) {
         transcripts += 1;
         // The project directory name is the label — a per-project bill by
         // itself. webkitRelativePath is "project/session.jsonl" for a folder
@@ -228,7 +248,11 @@ export function Bill({ t }: { t: WebMessages }) {
         parts.push(text.trim());
       }
     }
-    setIngest(transcripts > 0 ? { transcripts, convertedCalls, collapsed, streamed, logs } : null);
+    setIngest(
+      transcripts > 0 || otelExports > 0
+        ? { transcripts, convertedCalls, collapsed, streamed, logs, otelExports, otelSpans, otelSkipped, otelNoCache }
+        : null,
+    );
     analyze(parts.join('\n'), previousText);
   }
 
@@ -250,7 +274,7 @@ export function Bill({ t }: { t: WebMessages }) {
         const file = await new Promise<File>((resolve, reject) =>
           (entry as FileSystemFileEntry).file(resolve, reject),
         );
-        if (/\.(jsonl|json|txt|log)$/i.test(file.name)) {
+        if (/\.(jsonl|json|ndjson|txt|log)$/i.test(file.name)) {
           // Rebuild a relative path so a plain drop labels like a picker does.
           Object.defineProperty(file, 'webkitRelativePath', {
             value: prefix === '' ? file.name : `${prefix}/${file.name}`,
@@ -357,7 +381,7 @@ export function Bill({ t }: { t: WebMessages }) {
             <input
               ref={fileInput}
               type="file"
-              accept=".jsonl,.json,.txt,.log"
+              accept=".jsonl,.json,.ndjson,.txt,.log"
               className="hidden"
               onChange={(event) => {
                 void readFile(event.target.files?.[0]);
@@ -377,7 +401,7 @@ export function Bill({ t }: { t: WebMessages }) {
               {...({ webkitdirectory: '', directory: '' } as Record<string, string>)}
               onChange={(event) => {
                 const chosen = Array.from(event.target.files ?? []).filter((f) =>
-                  /\.(jsonl|json|txt|log)$/i.test(f.name),
+                  /\.(jsonl|json|ndjson|txt|log)$/i.test(f.name),
                 );
                 if (chosen.length > 0) void ingestFiles(chosen);
                 event.target.value = '';
@@ -393,13 +417,24 @@ export function Bill({ t }: { t: WebMessages }) {
           */}
           {ingest !== null && (
             <div className="rounded-lg border border-l-[3px] border-l-good px-3.5 py-3 text-[13px] leading-snug">
-              <div className="font-semibold">
-                {t.bill.transcriptSummary(ingest.transcripts, ingest.convertedCalls)}
-              </div>
+              {ingest.transcripts > 0 && (
+                <div className="font-semibold">
+                  {t.bill.transcriptSummary(ingest.transcripts, ingest.convertedCalls)}
+                </div>
+              )}
+              {ingest.otelExports > 0 && (
+                <div className="font-semibold">
+                  {t.bill.otelSummary(ingest.otelExports, ingest.otelSpans)}
+                </div>
+              )}
+              {ingest.otelSkipped > 0 && <div>{t.bill.otelSkipped(ingest.otelSkipped)}</div>}
+              {ingest.otelNoCache > 0 && <div>{t.bill.otelNoCache(ingest.otelNoCache)}</div>}
               {ingest.logs > 0 && <div>{t.bill.transcriptAlsoLogs(ingest.logs)}</div>}
               {ingest.collapsed > 0 && <div>{t.bill.transcriptCollapsed(ingest.collapsed)}</div>}
               {ingest.streamed > 0 && <div>{t.bill.transcriptStreamed(ingest.streamed)}</div>}
-              <div className="mt-1 text-muted-foreground">{t.bill.transcriptPrivacy}</div>
+              {ingest.transcripts > 0 && (
+                <div className="mt-1 text-muted-foreground">{t.bill.transcriptPrivacy}</div>
+              )}
             </div>
           )}
 
@@ -435,7 +470,7 @@ export function Bill({ t }: { t: WebMessages }) {
             <input
               ref={previousInput}
               type="file"
-              accept=".jsonl,.json,.txt,.log"
+              accept=".jsonl,.json,.ndjson,.txt,.log"
               className="hidden"
               onChange={(event) => {
                 void readPrevious(event.target.files?.[0]);

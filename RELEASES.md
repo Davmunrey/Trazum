@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.70.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.71.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,41 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.71.0 — "The universal cost lens"
+
+**Point Trazum at any OpenTelemetry export and it prices the LLM calls
+inside — the standard the whole ecosystem is converging on, read as a
+bill.** `trazum from-otel` — the fortieth command — generalises the
+`from-claude-code` pattern: a pure converter turns a tool's export into a
+usage log, and every command prices it from there. It reads the OTLP/JSON
+any GenAI exporter produces and turns each LLM-call span into a record —
+the model, the timestamp, a label from the span's operation or the
+service name (so a per-service bill falls out by itself), and the token
+counts. Spans that are not LLM calls are counted and skipped, never
+priced. `trazum from-otel spans.otlp.json -o usage.jsonl` then `trazum
+profile usage.jsonl`, and the stderr summary says how many spans were LLM
+calls, how many were skipped, and how many carried no cache data. This is
+what makes Trazum complementary to LangSmith, Helicone and LiteLLM rather
+than a competitor: it reads whatever telemetry you already emit.
+
+**The web app learned it too.** The Bill tab's folder drop gains a third
+arm — a dropped OpenTelemetry export is detected and converted in the
+page, priced beside any transcripts and usage logs in the same drop.
+*Drag your OpenTelemetry export onto Trazum* joins *drag your
+~/.claude/projects*. No fetch, same invariant, both locales.
+
+**What OTel cannot give, it does not fake.** OpenTelemetry has not
+standardised the cache-write TTL split, so an OTel-sourced record carries
+no `cache_creation` and its cache verdicts read *cannot tell* rather than
+a fabricated one — the same refusal as inventing a price. Cache reads are
+read only where the span actually carries them. And nothing but the
+numbers crosses: a fixture plants a prompt and a trace id in a span and
+greps the whole conversion for them, the same privacy proof the
+transcript converter carries. Vendor-specific converters (LangSmith,
+Helicone, LiteLLM) are named as next, not built now — each ships when a
+real export of it is seen, because a converter for an unseen format is an
+estimate wearing a parser's clothes.
 
 ## 1.70.0 — "One drag"
 
