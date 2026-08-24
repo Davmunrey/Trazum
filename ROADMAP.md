@@ -2147,12 +2147,19 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**Nothing is planned.** [The 1.65–1.67 plan](docs/plan-1.65-1.67.md) is
-delivered in full — the owner's five open-source paths, carried as far as
-they go as code: 1.65.0 (the format anyone can adopt), 1.66.0 (one policy,
-three doors) and 1.67.0 (the month ends on a measured position), every
-chapter of all three arcs. No new plan is written until one is asked for: a
-plan exists to be written before the code, not to keep a section warm.
+**1.68.0 — "The browser catches up."** [The 1.68 plan](docs/plan-1.68.md),
+asked for and written before the code: everything the CLI can say about
+your money, the web app says in the reader's own tab, from the same
+functions, with nothing uploaded. The position card in the Bill tab,
+ceilings read from the reader's own `trazum.config.json` by the same
+parser, both locales, and a parity guard holding the fourth door to the
+other three.
+
+Before it, [the 1.65–1.67 plan](docs/plan-1.65-1.67.md) was delivered in
+full — the owner's five open-source paths, carried as far as they go as
+code: 1.65.0 (the format anyone can adopt), 1.66.0 (one policy, three
+doors) and 1.67.0 (the month ends on a measured position), every chapter of
+all three arcs.
 
 The halves of the paths that are not code — adoption conversations, a
 policy server, a forecast — stay named in the plan's "what stays out"

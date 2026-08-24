@@ -779,6 +779,44 @@ export const es: WebMessages = {
     againstByModel: 'El mismo cambio, por modelo — hacia dónde se movió la mezcla:',
   },
 
+  position: {
+    heading: 'Posición',
+    lede: 'Dónde está el mes contra los techos que configuraste — el «trazum position» del CLI, medido en esta pestaña desde el log de arriba. Pega tu trazum.config.json: lo lee el mismo parser que usa el CLI, y tampoco sale de la página.',
+    configLabel: 'Tu trazum.config.json',
+    configAriaLabel: 'Pega aquí tu trazum.config.json',
+    read: 'Leer techos',
+    clear: 'Quitar',
+    configError: (message) => `La configuración fue rechazada, en palabras del propio parser: ${message}`,
+    noCeilings:
+      'Esta configuración valida y no configura ningún techo, así que no hay posición que declarar. spend.monthlyUsd y el bloque limits son donde viven los techos.',
+    monthHeading: (month) => `Dónde está ${month}, medido`,
+    scopeMonth: 'el mes',
+    scopeDay: 'hoy',
+    scopeLabel: (label) => `«${label}»`,
+    within: (scope, measured, limit, remaining, days, elapsed) =>
+      `${scope}: ${measured} de ${limit} medidos — quedan ${remaining} (${days} de ${elapsed} días transcurridos con medición)`,
+    over: (scope, measured, limit, overBy) =>
+      `${scope}: superado — ${measured} medidos contra ${limit}, ${overBy} por encima del techo`,
+    cannotTell: (scope) => `${scope}: no se puede saber — nada medido en esta ventana`,
+    distance: (days, rate, overDays) =>
+      `a ${rate}/día sobre ${overDays} días medidos, el techo queda a ${days} días — división sobre el pasado, no un pronóstico`,
+    unmeasuredHeading: 'Configurado y no medible desde este log',
+    unmeasured: (scope, why) => `${scope}: ${why}`,
+    why: (reason) =>
+      reason === 'no-clock'
+        ? 'ningún registro lleva marca de tiempo, así que no se puede medir ninguna ventana'
+        : reason === 'no-labels'
+          ? 'ningún registro lleva etiqueta, así que el gasto por etiqueta es incognoscible aquí'
+          : reason === 'nothing-recorded'
+            ? 'el log está vacío — no se registró nada'
+            : 'el log registra etiquetas y no ha visto esta en todo el mes — quizá renombrada, quizá parada, y ninguna de las dos es «dentro del presupuesto»',
+    cannotSayHeading: 'Lo que deliberadamente no responde',
+    unpriced: (count) =>
+      `${count} registro(s) nombran un modelo que el catálogo no puede tasar. No aportan nada a ninguna cifra de arriba — dinero que nadie ve, dicho aquí en vez de escondido.`,
+    source:
+      'Medido solo desde este log, registro a registro. La posición mensual facturada por el proveedor que guarda el almacén es otra medición — la imprime «trazum store» — y las dos nunca se funden en una cifra.',
+  },
+
   errors: {
     requestFailed: 'No se ha podido optimizar el prompt.',
     unreachable: 'No se ha podido contactar con el servidor.',
