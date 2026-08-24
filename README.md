@@ -47,7 +47,7 @@ never runs unless you ask.
                  for your agents
 ```
 
-## The thirty-six commands
+## The thirty-seven commands
 
 | Command | What it answers |
 |---|---|
@@ -80,6 +80,7 @@ never runs unless you ask.
 | [`trazum owners`](#whose-money-trazum-owners) | Whose budget does this land on? *The unallocated is never spread.* |
 | [`trazum commitment`](#should-you-sign-that-commitment-trazum-commitment) | What would that committed-use deal have been worth? *On measured months, both directions priced.* |
 | [`trazum report`](#the-year-from-what-was-already-written-down-trazum-report) | What did the year actually look like? *No new data, and it lists its own blind spots.* |
+| [`trazum schema`](#building-on-the-format-trazum-conform) | Which fields must a document of this format carry? *A JSON Schema, for validators that are not Trazum.* |
 | [`trazum conform`](#building-on-the-format-trazum-conform) | Does the document my tool emits conform, and what will it not be able to answer? |
 | [`trazum rollup`](#more-than-one-machine-trazum-rollup) | Four of us measured four things — what is the total, and what did merging lose? *A format and a merge, not a service.* |
 | [`trazum pulse`](#did-anything-stop-running-trazum-pulse) | Did the things that are supposed to run, run? *Runs nothing itself — your CI is the thing that notices.* |
@@ -199,8 +200,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of thirty-six commands — [the table
-above](#the-thirty-six-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of thirty-seven commands — [the table
+above](#the-thirty-seven-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 

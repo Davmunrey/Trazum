@@ -9,6 +9,7 @@ import { gunzipSync } from 'node:zlib';
 
 import {
   CONTRACT_NAMES,
+  contractSchema,
   applyRewrites,
   BASELINE_FILENAME,
   BASELINE_VERSION,
@@ -635,6 +636,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   rank: ['level', 'model', 'calls', 'output-tokens', 'batch', 'disable', 'prompt', 'markdown-out'],
   init: ['dry-run', 'yes', 'json', 'pricing', 'pricing-live'],
   conform: ['contract', 'json'],
+  schema: [],
   rollup: ['json', 'html-out'],
   pulse: ['json', 'max-stale-hours'],
   bench: ['workload', 'json', 'record', 'against', 'max-ratio'],
@@ -2887,6 +2889,26 @@ async function readBenchBaseline(path: string, t: CliMessages): Promise<BenchBas
     }
   }
   return candidate;
+}
+
+
+/**
+ * `trazum schema <contract>` — the format, portable.
+ *
+ * Prints the JSON Schema for a named contract, so a document can be checked
+ * by any off-the-shelf validator with no Trazum installed. The output is the
+ * schema and nothing else — pipeable by construction, like `--json`
+ * everywhere — and the refusal with no or an unknown name lists every
+ * contract, derived from the same list `--contract` accepts, the way the
+ * gateway names its providers.
+ */
+function commandSchema(args: Args, t: CliMessages): void {
+  const name = args.positional[0];
+  if (name === undefined) throw new Error(t.schema.noTarget(CONTRACT_NAMES.join(', ')));
+  if (!(CONTRACT_NAMES as readonly string[]).includes(name)) {
+    throw new Error(t.schema.unknown(name, CONTRACT_NAMES.join(', ')));
+  }
+  console.log(JSON.stringify(contractSchema(name as (typeof CONTRACT_NAMES)[number]), null, 2));
 }
 
 async function commandBench(args: Args, t: CliMessages): Promise<void> {
@@ -10643,6 +10665,9 @@ async function main(): Promise<void> {
       break;
     case 'conform':
       await commandConform(args, t);
+      break;
+    case 'schema':
+      commandSchema(args, t);
       break;
     case 'rollup':
       await commandRollup(args, t);

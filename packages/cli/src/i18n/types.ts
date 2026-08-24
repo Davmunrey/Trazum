@@ -551,6 +551,12 @@ export interface CliMessages {
     written(path: string): string;
   };
 
+  /** The portable format: a JSON Schema per contract, for validators that are not Trazum. */
+  schema: {
+    noTarget(known: string): string;
+    unknown(name: string, known: string): string;
+  };
+
   bench: {
     heading(): string;
     machine(node: string, platform: string, cpuCount: number, cpuModel: string | null): string;

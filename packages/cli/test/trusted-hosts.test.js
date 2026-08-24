@@ -74,6 +74,12 @@ const HOSTS = {
   'https://api.github.com': 'tooling, not a model call',
   'https://registry.npmjs.org': 'tooling, not a model call',
 
+  // The JSON Schema dialect identifier inside every schema `trazum schema`
+  // prints. An identifier by the spec, never fetched: nothing in this
+  // repository makes a request to it, and a validator that did would be
+  // fetching a well-known constant.
+  'https://json-schema.org': 'identifier, never fetched',
+
   'https://docs.anthropic.com': 'documentation link',
   'https://platform.openai.com': 'documentation link',
   'https://www.promptfoo.dev': 'documentation link',

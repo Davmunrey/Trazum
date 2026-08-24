@@ -166,7 +166,8 @@ export type {
   GatewayStanding,
   RefuseReason,
 } from './gateway.js';
-export { conform, CONTRACT_NAMES } from './conform.js';
+export { conform, CONTRACT_NAMES, requiredFieldsOf } from './conform.js';
+export { CONTRACT_SCHEMAS, contractSchema } from './schemas.js';
 export type {
   ConformOptions,
   ConformanceProblem,
