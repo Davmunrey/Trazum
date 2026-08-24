@@ -274,6 +274,7 @@ keys, and an unknown one is a hard error rather than a silent no-op:
 | `budgets` | Per-pattern token ceilings for `check` on a directory |
 | `labels` | How a raw label maps to a workload name |
 | `spend` | The dollar gates: `maxUsd`, `monthlyUsd`, `maxDayUsd`, `maxSessionUsd`, `maxCacheLossUsd`, `byLabel`, `bySource`, `substitute` |
+| `limits` | The enforcement policy every door reads before a call: `dayUsd`, `sessionUsd`, `byLabel` — positive USD ceilings, judged identically at the gateway, `serve` and `spend_guard` |
 | `sources` | Where `--by-source` finds each fleet member's log |
 | `store` | `keepDays` for the rolling record |
 | `waive` | A named gate, a reason and an expiry — every use is recorded |

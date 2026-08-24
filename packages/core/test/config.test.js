@@ -136,6 +136,55 @@ describe('an invalid config is loud', () => {
   });
 });
 
+describe('the limits block — one policy, validated like everything else', () => {
+  /**
+   * The enforcement policy of the 1.66 arc: per-day, per-session and
+   * per-label USD ceilings, stated once and read by every door. Validation
+   * is stricter than `spend` in exactly one way — a ceiling must be
+   * *positive* — because a zero enforcement ceiling refuses every call at
+   * that door, which is an outage dressed as a policy, and the error says
+   * so rather than enforcing the outage.
+   */
+  const rejects = (document, pattern) => {
+    assert.throws(() => parseConfig(JSON.stringify(document)), pattern);
+  };
+
+  it('reads every ceiling it documents', () => {
+    const config = parseConfig(
+      JSON.stringify({
+        limits: { dayUsd: 25, sessionUsd: 1.5, byLabel: { chat: 5, batch: 0.25 } },
+      }),
+    );
+    assert.deepEqual(config.limits, { dayUsd: 25, sessionUsd: 1.5, byLabel: { chat: 5, batch: 0.25 } });
+  });
+
+  it('refuses a ceiling that is not a positive finite number, with the reason', () => {
+    for (const bad of [0, -1, Number.NaN, Number.POSITIVE_INFINITY, '5']) {
+      rejects({ limits: { dayUsd: bad } }, /positive number of dollars/);
+      rejects({ limits: { sessionUsd: bad } }, /positive number of dollars/);
+      rejects({ limits: { byLabel: { chat: bad } } }, /positive number of dollars/);
+    }
+    // The zero case carries its own sentence: the intent it names is real.
+    rejects({ limits: { dayUsd: 0 } }, /outage as a policy/);
+  });
+
+  it('names an unknown key inside limits rather than ignoring it', () => {
+    rejects({ limits: { dayusd: 5 } }, /unknown key "limits\.dayusd" — did you mean "dayUsd"\?/);
+    rejects({ limits: { monthlyUsd: 5 } }, /unknown key "limits\.monthlyUsd"/);
+  });
+
+  it('refuses the shapes that cannot be a policy', () => {
+    rejects({ limits: [] }, /"limits" must be an object/);
+    rejects({ limits: 5 }, /"limits" must be an object/);
+    rejects({ limits: { byLabel: [] } }, /"limits\.byLabel" must be an object/);
+    rejects({ limits: { byLabel: { ' ': 5 } } }, /empty label/);
+  });
+
+  it('an absent block stays absent — no door invents a ceiling', () => {
+    assert.equal(parseConfig('{}').limits, undefined);
+  });
+});
+
 describe('finding the config file', () => {
   it('finds one in the starting directory', async () => {
     const root = await scratch();

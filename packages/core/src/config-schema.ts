@@ -137,6 +137,34 @@ export interface SpendConfig {
   substitute?: Record<string, { to: string; reason: string }>;
 }
 
+/**
+ * The enforcement policy: USD ceilings judged at call time, at whichever door
+ * the call arrives — the gateway's 402, `serve`'s cost answer, `spend_guard`
+ * over MCP.
+ *
+ * A separate block from `spend`, and the separation is the point. `spend`
+ * gates *reports*: it is read after the fact, over a log or a store, and a
+ * crossing fails a check. This is read *before a call is made*, to refuse it.
+ * Same units, different moments — and the 1.62 arc's lesson is that two
+ * surfaces reading "the same" value from different slices of config is how
+ * they come to disagree about how much is left. One block, stated once,
+ * enforced identically at every door.
+ *
+ * Every ceiling is a **positive** dollar amount. `spend` accepts zero because
+ * a zero report-budget is a gate somebody can waive on the record; a zero
+ * enforcement ceiling is a door that refuses everything, which is an outage
+ * dressed as a policy — if the intent is "stop all calls", turning the door
+ * off is the honest spelling.
+ */
+export interface LimitsConfig {
+  /** Ceiling per UTC calendar day, in dollars, measured across the store. */
+  dayUsd?: number;
+  /** Ceiling per session — the unit an agent product actually blows up in. */
+  sessionUsd?: number;
+  /** Per-label ceilings, each judged against that label's own measured spend. */
+  byLabel?: Record<string, number>;
+}
+
 export interface TrazumConfig {
   level?: RuleLevel;
   locale?: Locale;
@@ -182,6 +210,7 @@ export interface TrazumConfig {
    */
   sources?: Record<string, string[]>;
   spend?: SpendConfig;
+  limits?: LimitsConfig;
   /**
    * Findings as policy: a gate failure the team has looked at and decided to
    * live with, on the record, for a bounded time.
@@ -298,6 +327,7 @@ export const CONFIG_KEYS = [
   'budgets',
   'labels',
   'spend',
+  'limits',
   'sources',
   'store',
   'waive',
@@ -314,6 +344,8 @@ export const CONFIG_KEYS = [
 export const CONFIG_BASELINE_KEYS = ['path', 'maxGrowthTokens', 'maxGrowthPct'] as const;
 
 export const CONFIG_SPEND_KEYS = ['maxUsd', 'monthlyUsd', 'maxDayUsd', 'maxSessionUsd', 'maxCacheLossUsd', 'byLabel', 'bySource', 'substitute'] as const;
+
+export const CONFIG_LIMITS_KEYS = ['dayUsd', 'sessionUsd', 'byLabel'] as const;
 
 export const CONFIG_WAIVE_KEYS = ['gate', 'reason', 'until'] as const;
 
@@ -588,6 +620,53 @@ function parseSpend(raw: unknown, source: string): SpendConfig {
     spend.byLabel = byLabel;
   }
   return spend;
+}
+
+/**
+ * Validates the `limits` block.
+ *
+ * Every ceiling must be a **positive** finite number of dollars — stricter
+ * than `spend`, deliberately. A report-budget of zero is a gate somebody can
+ * waive on the record; an enforcement ceiling of zero refuses every call at
+ * that door, which is an outage dressed as a policy, so the error says what
+ * to write instead. Unknown keys are named rather than ignored, because a
+ * misspelled ceiling is a policy that is never enforced while CI stays green.
+ */
+function requirePositiveUsd(value: unknown, label: string, source: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) {
+    throw new ConfigError(
+      `"${label}" must be a positive number of dollars. A ceiling of 0 would refuse every call at this door — if that is the intent, turn the door off rather than writing an outage as a policy.`,
+      source,
+    );
+  }
+  return value;
+}
+
+function parseLimits(raw: unknown, source: string): LimitsConfig {
+  if (!isPlainObject(raw)) throw new ConfigError('"limits" must be an object', source);
+  rejectUnknownKeys(raw, CONFIG_LIMITS_KEYS, source, 'limits.');
+
+  const limits: LimitsConfig = {};
+  if (raw.dayUsd !== undefined) {
+    limits.dayUsd = requirePositiveUsd(raw.dayUsd, 'limits.dayUsd', source);
+  }
+  if (raw.sessionUsd !== undefined) {
+    limits.sessionUsd = requirePositiveUsd(raw.sessionUsd, 'limits.sessionUsd', source);
+  }
+  if (raw.byLabel !== undefined) {
+    if (!isPlainObject(raw.byLabel)) {
+      throw new ConfigError('"limits.byLabel" must be an object', source);
+    }
+    const byLabel: Record<string, number> = {};
+    for (const [label, value] of Object.entries(raw.byLabel)) {
+      if (label.trim().length === 0) {
+        throw new ConfigError('"limits.byLabel" has an empty label', source);
+      }
+      byLabel[label] = requirePositiveUsd(value, `limits.byLabel["${label}"]`, source);
+    }
+    limits.byLabel = byLabel;
+  }
+  return limits;
 }
 
 /**
@@ -1056,6 +1135,7 @@ export function parseConfig(raw: string, source = CONFIG_FILENAME): TrazumConfig
   if (document.budgets !== undefined) config.budgets = parseBudgets(document.budgets, source);
   if (document.labels !== undefined) config.labels = parseLabels(document.labels, source);
   if (document.spend !== undefined) config.spend = parseSpend(document.spend, source);
+  if (document.limits !== undefined) config.limits = parseLimits(document.limits, source);
   if (document.sources !== undefined) config.sources = parseSources(document.sources, source);
   if (document.store !== undefined) config.store = parseStore(document.store, source);
   if (document.waive !== undefined) config.waive = parseWaive(document.waive, source);

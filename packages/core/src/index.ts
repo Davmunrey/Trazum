@@ -188,6 +188,16 @@ export type {
 export { waiverHistory, waiverDay, isWaiverUse } from './waivers.js';
 export type { WaiverHabit, WaiverHistory, WaiverUse, WaiverVerdict } from './waivers.js';
 export { answerCost } from './answer.js';
+export { judgeLimits } from './judgement.js';
+export type {
+  CannotJudgeReason,
+  LimitJudgement,
+  LimitScope,
+  LimitVerdict,
+  MeasuredPosition,
+  PolicyJudgement,
+  ProposedCall,
+} from './judgement.js';
 export { guardSpend } from './guard.js';
 export type { GuardAlternative, GuardAnswer, GuardRequest, GuardVerdict } from './guard.js';
 export { proposeInit, HEADLINE_FLOOR_SHARE, MIN_RATE_DAYS } from './init.js';
@@ -539,6 +549,7 @@ export { editDistance, nearestName } from './nearest.js';
 export {
   CONFIG_FILENAME,
   CONFIG_KEYS,
+  CONFIG_LIMITS_KEYS,
   CONFIG_USAGE_KEYS,
   ConfigError,
   DEFAULT_EXTENSIONS,
@@ -547,7 +558,7 @@ export {
   budgetFor,
   parseConfig,
 } from './config-schema.js';
-export type { ResolvedBudget, SpendConfig, TrazumConfig, WaiveEntry } from './config-schema.js';
+export type { LimitsConfig, ResolvedBudget, SpendConfig, TrazumConfig, WaiveEntry } from './config-schema.js';
 export { WAIVABLE_GATES } from './config-schema.js';
 
 export { RULE_LEVELS } from './types.js';
