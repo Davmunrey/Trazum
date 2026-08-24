@@ -238,6 +238,7 @@ import {
   renderRankMarkdown,
   renderProfileMarkdown,
 } from './markdown.js';
+import { renderProfileHtml } from './html.js';
 import type { CliMessages } from './i18n/index.js';
 
 // --------------------------------------------------------------------------
@@ -331,6 +332,7 @@ const VALUE_FLAGS = new Set([
   'locale',
   'config',
   'markdown-out',
+  'html-out',
   'otlp-out',
   'pricing',
   'prompt',
@@ -617,7 +619,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
-  profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd', 'label', 'since', 'until', 'dry-run', 'markdown-summary', 'by-source'],
+  profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'html-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd', 'label', 'since', 'until', 'dry-run', 'markdown-summary', 'by-source'],
   plan: ['json', 'out', 'markdown-out', 'min-usd', 'pricing', 'pricing-live'],
   verify: ['against', 'gate', 'json', 'markdown-out', 'pricing', 'pricing-live'],
   history: ['store', 'json', 'markdown-out'],
@@ -7329,11 +7331,26 @@ async function commandProfile(
      * comment. Written from the same message catalogue the terminal used, because
      * two renderings of one finding drift the moment they are worded twice.
      */
-      const markdownOut = stringFlag(args, 'markdown-out');
-    if (markdownOut !== undefined) {
-      await writeFile(
-        markdownOut,
-        renderProfileMarkdown({
+    const markdownOut = stringFlag(args, 'markdown-out');
+    const htmlOut = stringFlag(args, 'html-out');
+    if (markdownOut !== undefined || htmlOut !== undefined) {
+      /**
+       * Derived here, not borrowed from the terminal path. Under `--json`
+       * that path never runs, and the outer `levers` this block used to
+       * reach for was an uninitialised binding — `profile --json
+       * --markdown-out` crashed with a ReferenceError from 1.59 until the
+       * HTML door's test drove both flags together and found it. The flag
+       * did not silently do nothing; it loudly did nothing, and no test had
+       * ever asked.
+       */
+      const levers = billLevers(report, { catalogue: pricing });
+      const cache = cacheEconomics(report.total);
+      /**
+       * One input object for both doors, built once: the HTML file and the
+       * Markdown file are two projections of the same figures, and building
+       * the input twice is how two renderings of one bill start disagreeing.
+       */
+      const renderInput = ({
           report,
           levers,
           cache,
@@ -7375,10 +7392,15 @@ async function commandProfile(
                 },
               }
             : {}),
-        }),
-        'utf8',
-      );
-      notice(c.dim(t.report.wroteTo(markdownOut)));
+      });
+      if (markdownOut !== undefined) {
+        await writeFile(markdownOut, renderProfileMarkdown(renderInput), 'utf8');
+        notice(c.dim(t.report.wroteTo(markdownOut)));
+      }
+      if (htmlOut !== undefined) {
+        await writeFile(htmlOut, renderProfileHtml(renderInput), 'utf8');
+        notice(c.dim(t.html.written(htmlOut)));
+      }
     }
 
     /**

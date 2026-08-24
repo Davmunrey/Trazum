@@ -529,6 +529,26 @@ export interface CliMessages {
     notAService(): string;
   };
 
+  /** The HTML report: the one surface for a reader with an inbox, not a terminal. */
+  html: {
+    caveatsHeading(): string;
+    noClock(): string;
+    noSessions(): string;
+    byLabelHeading(): string;
+    byModelHeading(): string;
+    findingsHeading(): string;
+    colLabel(): string;
+    colModel(): string;
+    colCalls(): string;
+    colInput(): string;
+    colCacheRead(): string;
+    colCacheWrite(): string;
+    colOutput(): string;
+    sharesLine(input: string, cacheRead: string, cacheWrite: string, output: string): string;
+    footer(): string;
+    written(path: string): string;
+  };
+
   bench: {
     heading(): string;
     machine(node: string, platform: string, cpuCount: number, cpuModel: string | null): string;
