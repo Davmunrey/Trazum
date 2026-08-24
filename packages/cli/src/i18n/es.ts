@@ -92,6 +92,12 @@ ${bold('OPCIONES DE conform')}
 ${bold('OPCIONES DE rollup')}
   --json                      El documento de agregación como datos. Ver
                               docs/format.md.
+  --html-out <fichero>        Escribe además el roll-up como un único HTML
+                              autocontenido — el informe de equipo, para quien
+                              paga la factura. Los huecos de cada contribuyente
+                              se quedan bajo ese contribuyente, y lo que ninguna
+                              fusión puede medir va en la caja de salvedades,
+                              imposible de recortar.
 
   Las facturas de varias personas, una sola agregación. Cada contribuyente
   ejecuta \`trazum profile --json\` donde ya está su tráfico; esto fusiona los
@@ -116,15 +122,6 @@ ${bold('OPCIONES DE write')}
                               todo lo demás en stderr.
   --calls <n>                 Llamadas al mes, para la estimación.
   --avg-output <n>            Tokens de salida por llamada, para la estimación.
-
-${bold('OPCIONES DE rollup')}
-  --html-out <fichero>        Escribe además el roll-up como un único HTML
-                              autocontenido — el informe de equipo, para quien
-                              paga la factura. Los huecos de cada contribuyente
-                              se quedan bajo ese contribuyente, y lo que ninguna
-                              fusión puede medir va en la caja de salvedades,
-                              imposible de recortar.
-  --json                      El documento de roll-up como datos.
 
 ${bold('OPCIONES DE pulse')}
   --max-stale-hours <n>       Sale con 1 cuando algo que corre aquí lleva más

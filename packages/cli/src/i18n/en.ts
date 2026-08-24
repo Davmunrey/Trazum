@@ -104,6 +104,11 @@ ${bold('OPTIONS FOR conform')}
 
 ${bold('OPTIONS FOR rollup')}
   --json                      The roll-up document as data. See docs/format.md.
+  --html-out <file>           Also write the roll-up as one self-contained HTML
+                              file — the team-facing report, for whoever pays
+                              the bill. Each contributor's gaps stay under that
+                              contributor, and what no merge can measure is in
+                              the caveat block, impossible to crop.
 
   Several people's bills, one roll-up. Each contributor runs
   \`trazum profile --json\` where their traffic already is; this merges the
@@ -128,14 +133,6 @@ ${bold('OPTIONS FOR write')}
                               with everything else on stderr.
   --calls <n>                 Calls per month, for the estimate.
   --avg-output <n>            Average output tokens per call, for the estimate.
-
-${bold('OPTIONS FOR rollup')}
-  --html-out <file>           Also write the roll-up as one self-contained HTML
-                              file — the team-facing report, for whoever pays
-                              the bill. Each contributor's gaps stay under that
-                              contributor, and what no merge can measure is in
-                              the caveat block, impossible to crop.
-  --json                      The roll-up document as data.
 
 ${bold('OPTIONS FOR pulse')}
   --max-stale-hours <n>       Exit 1 when something that runs here has not run
