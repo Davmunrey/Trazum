@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.62.1**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.63.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,54 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.63.0 — "Scale is measured, not assumed"
+
+**The 1.63 arc closes, and the ceilings are now measurements the build is
+held to.** The stress session timed the pathological cases by hand and
+nothing held them there; four chapters later, everything below is enforced,
+and this release's own contribution is the closing condition the plan
+committed to: **the gate is live.**
+
+### This machine's numbers, next to the promises
+
+- **The bench** (1.62.1): 1MB optimize safe **818ms / 152MB RSS**, aggressive
+  **1,071ms / 148MB**; 200k-line profile **1,673ms / 230MB**; 10k-file walk
+  **118ms**; 20k-line roll-up **7ms**. One shot each, own child process,
+  deterministic generated inputs.
+- **The ratio gate** (1.62.1, live as of this release): `trazum.bench.json`
+  is committed and CI fails past **3×** a workload's recorded ratio. The
+  design got a free live trial: this container's CPU changed between the
+  recording run and the gating run — wall clocks moved ~1.5× — and the
+  ratios held (5.47→5.33, 7.49→7.85, 11.08→11.14). The machine cancels out;
+  that was the whole argument, and it is now measured rather than claimed.
+  The named risk stands: a workload too noisy on shared runners loses its
+  gate loudly here, never left flaking.
+- **The refusal ceiling** (this arc's chapter three): above **400,000
+  characters**, anything claiming to be a prompt is refused with the size
+  and the limit named — every door, one constant in `@trazum/core`, a suite
+  guard holding every other ceiling to deriving from it, `--max-input` to
+  raise it deliberately. Logs and documents are never held to it.
+- **The heap line** (chapter four): the 25MB log profiles inside a **384MB**
+  old-space cap enforced by the engine itself, observed peak **~158MB**;
+  the same probe dies at 64MB, so the line binds.
+
+### On the record
+
+Landing chapter three tripped the code-scanning rule: four medium
+`js/file-access-to-http` alerts on `llm.ts` and `tokenizer.ts` — CodeQL
+accurately describing `--exact-tokens` and `--llm`, the two features that
+send your prompt to the API you configured. The query is now excluded in
+`.github/codeql/codeql-config.yml` with the reasoning attached, **proposed
+to and approved by the repository owner before it landed**; every other
+security-extended query stays on, and the security suite keeps pinning
+which modules may reach the network at all.
+
+With this minor, [the 1.62–1.63 plan](docs/plan-1.62-1.63.md) is delivered
+in full — both arcs, all nine chapters, nothing renumbered and nothing
+faked. What stays blocked stays named: 1.54.0 and 1.57.0 on provider
+credentials, 1.58.0 on a distribution decision, the writer's model-assisted
+polish on the same.
 
 ## 1.62.1 — "This machine, measured"
 

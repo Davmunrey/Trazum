@@ -65,6 +65,18 @@ jobs:
       - name: Our own baseline gate
         run: node packages/cli/dist/index.js check .
 
+      # The performance gate, live — the 1.63 arc's closing condition. The
+      # committed trazum.bench.json records each workload's ratio to an
+      # in-process calibration loop, so what is judged is the code, not the
+      # runner's wall clock: the runner lies about time to the workload and
+      # the yardstick by the same amount, and the lie cancels out. The factor
+      # is 3× — generous on purpose, a tripwire for the quadratic regex class
+      # of regression rather than a micro-benchmark. The plan names the risk:
+      # if a workload's ratio proves too noisy on shared runners, its gate is
+      # dropped loudly in the release notes, never left flaking.
+      - name: Performance ratio gate
+        run: node packages/cli/dist/index.js bench --against trazum.bench.json --max-ratio 3
+
       - name: Typecheck the web app
         run: npm run typecheck -w @trazum/web
 

@@ -9,26 +9,25 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
-## Unreleased
+## 1.63.0 — "Scale is measured, not assumed"
 
-### Changed
-
-- **One CodeQL query excluded, out loud and owner-approved:
-  `js/file-access-to-http`.** Merging the refusal ceiling surfaced four medium
-  alerts — the three provider calls in `llm.ts` and the counter in
-  `tokenizer.ts`, each "file data in an outbound network request". That shape
-  is exfiltration in most software; here it is the contract: `--exact-tokens`
-  and `--llm` send the prompt to the API the caller configured, opt-in by
-  flag, gated on the caller's own credential, documented as doing exactly
-  that. The protection the query wants exists in the security suite as tests —
-  which modules may reach the network at all, and that no command calls out
-  unasked. The exclusion was put to the repository owner as a question and
-  approved before it landed; it lives in `.github/codeql/codeql-config.yml`
-  with the full reasoning attached, reviewed and diffable rather than a
-  dismissal buried in a settings page. Every other security-extended query
-  stays on.
+**The 1.63 arc closes.** Chapters one and two landed at 1.62.1; chapters
+three and four landed on `main` just before this; the minor is the story
+finishing, and its own contribution is the closing condition [the
+plan](docs/plan-1.62-1.63.md) committed to: **the gate goes live.**
 
 ### Added
+
+- **`trazum.bench.json`, committed, and CI held to it.** The Build-and-tests
+  job now runs the ratio gate against the recorded baseline with a stated
+  factor of 3× — generous on purpose: a tripwire for the quadratic-regex
+  class of regression, not a micro-benchmark. Recorded and immediately
+  cross-validated on a machine whose CPU changed between the recording run
+  and the gating run: wall clocks moved ~1.5×, ratios held (5.47→5.33,
+  11.08→11.14) — the machine cancels out, measured rather than claimed. The
+  plan's named risk stands: a workload whose ratio proves too noisy on
+  shared runners loses its gate loudly in the release notes, never left
+  flaking.
 
 - **Memory holds a line — chapter four of the 1.63 arc.** The 25MB usage log
   profiles within a stated **384MB heap ceiling**, asserted in the suite the
@@ -61,6 +60,28 @@ merged commit with no entry is a change only `git log` remembers.
   to it**: `profile` and `conform` read inputs fifty times this size by
   design, and the null at those call sites is written out so a reader sees
   the decision.
+
+### Changed
+
+- **One CodeQL query excluded, out loud and owner-approved:
+  `js/file-access-to-http`.** Merging the refusal ceiling surfaced four medium
+  alerts — the three provider calls in `llm.ts` and the counter in
+  `tokenizer.ts`, each "file data in an outbound network request". That shape
+  is exfiltration in most software; here it is the contract: `--exact-tokens`
+  and `--llm` send the prompt to the API the caller configured, opt-in by
+  flag, gated on the caller's own credential, documented as doing exactly
+  that. The protection the query wants exists in the security suite as tests —
+  which modules may reach the network at all, and that no command calls out
+  unasked. The exclusion was put to the repository owner as a question and
+  approved before it landed; it lives in `.github/codeql/codeql-config.yml`
+  with the full reasoning attached, reviewed and diffable rather than a
+  dismissal buried in a settings page. Every other security-extended query
+  stays on.
+
+### Release mechanics
+
+- Five manifests, `@trazum/core` in three places, lockfile at **1.63.0**;
+  README Action pins advanced to `214aa43` (1.62.1).
 
 ## 1.62.1 — "This machine, measured"
 
