@@ -11,6 +11,15 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 1.67.0 — "The month ends on a measured position"
+
+Released 2026-08-24. The 1.67 arc closes, and with it the whole
+[1.65–1.67 plan](docs/plan-1.65-1.67.md): the format is adoptable, the
+policy has one judge at three doors, and the month has a measured position
+every surface can state — with a pre-commit hook that is one pipe.
+
 ### Added
 
 - **The position travels — chapter two of the 1.67 arc.** The same

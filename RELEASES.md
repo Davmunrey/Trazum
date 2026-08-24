@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.66.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.67.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,64 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.67.0 — "The month ends on a measured position"
+
+**The product still refuses to forecast; what it stops refusing is to say
+where the month stands.** The last arc of the 1.65–1.67 plan, and with it
+the plan closes: every chapter of all three arcs delivered.
+
+**Chapter one — the position, as one answer.** `trazum position
+<usage.jsonl>`: every configured ceiling — `spend.monthlyUsd`,
+`limits.dayUsd`, each `limits.byLabel` entry — with its measured spend, its
+window, and the denominator on every figure, measured from the named log
+alone and saying so (`source: "usage-log"`; the store's provider-billed
+standing is a different measurement and is never merged in). The line
+people actually want is division, labelled as division: *"at $5.00/day over
+8 measured days, the ceiling is 12.0 days away — division on the past, not
+a forecast."* It is **absent, never zeroed**, under the seven-day floor
+every scaled figure respects, on an `over`, and on a zero rate — and no
+field in the document names a date, held by a test. A stale log is
+`cannot-tell` for the month while a quiet day is a measured $0 — the
+`budgetPositions` rule and the doors' rule, side by side on purpose. What
+the log cannot measure is named with its reason (`no-clock`, `no-labels`,
+`nothing-recorded`, `label-unseen` — renamed? idle? neither is "under
+budget"), and what the document deliberately does not answer is written in
+it: the per-session ceiling is judged per call at the doors, because a
+session is not a calendar scope. The document is the **nineteenth named
+contract** — `conform` detects it, `trazum schema position` exports it —
+and the CLI grows to **thirty-eight commands**.
+
+**Chapter two — the position travels.** `--html-out` writes the position as
+one self-contained page: the terminal's own sentences through the same
+message catalogue, the caveat block before the tables (a forwarded page
+gets cropped from the bottom), hostile labels escaped and both locales
+tested. The MCP server grows a **seventh tool, `position`** — log text and
+ceilings in, never a path; the same document out; the `limits` argument
+validated by the config file's own parser; session keys grouped by and
+never shown. The tool-list guard exists precisely so a tool cannot arrive
+without its security argument being re-read, and position's is recorded
+where the others' are.
+
+**Chapter three — one pipe, no shell loop.** `check --files-from -` reads a
+file list from stdin — the shape `git diff --name-only` produces — so the
+pre-commit hook is now literally
+`git diff --cached --name-only | trazum check --files-from -`. Paths that
+are not prompt files, paths the config ignores, and deletions are dropped
+and **counted out loud**; a commit that touches no prompts passes without
+ceremony, because a hook that fails on a README edit is a hook somebody
+uninstalls. The baseline gate is deliberately skipped under a partial list
+— it compares the whole repository against the committed record, and two
+changed files would read as thirty-eight removals — and the skip is stated
+on every run.
+
+Nothing existing changed shape or meaning; `schemaVersion` stays `1`
+everywhere. With this release the five open-source paths are delivered as
+far as they go as code; what stays out — adoption conversations, a
+forecast, a policy server, and the blocked arcs 1.54.0/1.57.0/1.58.0 with
+the writer's model-assisted polish — stays named, not faked.
 
 ---
 

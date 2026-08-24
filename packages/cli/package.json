@@ -1,6 +1,6 @@
 {
   "name": "@trazum/cli",
-  "version": "1.66.0",
+  "version": "1.67.0",
   "description": "Trazum CLI: find where your LLM bill goes, price every finding per month, and enforce token budgets in CI.",
   "license": "MIT",
   "author": "David Mu\u00f1oz Rey",
@@ -37,7 +37,7 @@
     "prepublishOnly": "npm run build && npm test"
   },
   "dependencies": {
-    "@trazum/core": "1.66.0"
+    "@trazum/core": "1.67.0"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",

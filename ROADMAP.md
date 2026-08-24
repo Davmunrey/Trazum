@@ -1184,6 +1184,21 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.67.0 — "The month ends on a measured position" — released
+
+**The product still refuses to forecast; what it stops refusing is to say
+where the month stands.** `trazum position` states every configured ceiling
+with its measured spend, window and denominators from one named log; the
+distance line is division labelled as division, absent under the seven-day
+floor, on an over and on a zero rate, with no date-shaped field anywhere.
+The same document travels: an HTML page with the caveats ahead of the
+tables, and a seventh MCP tool so an agent can ask "how much room is left"
+before it spends. `check --files-from -` turns the pre-commit hook into one
+pipe over `git diff --name-only`, drops counted out loud, baseline
+deliberately whole-repository. With this release the 1.65–1.67 plan — the
+owner's five open-source paths, as far as they go as code — is delivered in
+full.
+
 ## 1.66.0 — "One policy, three doors" — released
 
 **Per-label, per-session and per-day USD ceilings, stated once, judged once,
@@ -2118,21 +2133,16 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**One arc remains from [docs/plan-1.65-1.67.md](docs/plan-1.65-1.67.md)** —
-the owner's five open-source paths, carried as far as they go as code. The
-1.65 arc delivered all three chapters and closed at 1.65.0; the 1.66 arc
-delivered all four and closed at 1.66.0; the 1.67 arc runs as 1.66.x and
-closes at 1.67.0.
+**Nothing is planned.** [The 1.65–1.67 plan](docs/plan-1.65-1.67.md) is
+delivered in full — the owner's five open-source paths, carried as far as
+they go as code: 1.65.0 (the format anyone can adopt), 1.66.0 (one policy,
+three doors) and 1.67.0 (the month ends on a measured position), every
+chapter of all three arcs. No new plan is written until one is asked for: a
+plan exists to be written before the code, not to keep a section warm.
 
-**1.67 — the month ends on a measured position.** Measured month-to-date
-spend against every budget and limit, denominator on every figure, no
-projection anywhere; the answer travels through JSON, the HTML door and MCP.
-And `check` learns to read a file list from stdin, so a pre-commit hook is
-one pipe.
-
-The halves of the paths that are not code — adoption conversations, a policy
-server, a forecast — are named in the plan's "what stays out" rather than
-dressed up as chapters.
+The halves of the paths that are not code — adoption conversations, a
+policy server, a forecast — stay named in the plan's "what stays out"
+rather than dressed up as chapters.
 
 **Three arcs from the previous plans stay open**, numbered below
 the last release:
