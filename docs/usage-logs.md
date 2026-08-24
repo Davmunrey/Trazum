@@ -125,9 +125,28 @@ on.
 
 ## An OpenTelemetry collector
 
-If your calls are already instrumented, the spans carry the counts. Export
-them and reshape one span per line — the field names are yours to map, and
-Trazum reads a flat record as readily as a nested one:
+If your calls are already instrumented, the spans carry the counts — and
+`trazum from-otel` reads them without your reshaping anything. Point it at the
+OTLP/JSON any OpenTelemetry GenAI exporter produces (one document, or
+newline-delimited spans) and it converts each LLM-call span — the model from
+`gen_ai.request.model`/`gen_ai.response.model`, the timestamp from
+`startTimeUnixNano`, a label from the span's `gen_ai.operation.name` or the
+resource's `service.name`, and the `gen_ai.usage.*_tokens` counts:
+
+```
+trazum from-otel spans.otlp.json -o usage.jsonl
+trazum profile usage.jsonl
+```
+
+Spans that are not LLM calls are counted and skipped, never priced, and the
+stderr summary says how many were converted, skipped, and carried no cache
+data. Nothing but the numbers crosses: prompt content, trace ids and every
+other attribute stay in the span. OpenTelemetry has not standardised the
+cache-write TTL split, so an OTel-sourced record carries no `cache_creation`
+and its cache verdicts read *cannot tell* rather than a fabricated one.
+
+You can also reshape the spans yourself — the field names are yours to map,
+and Trazum reads a flat record as readily as a nested one:
 
 ```jsonl
 {"timestamp":"2026-08-01T09:14:22Z","model":"claude-opus-5","label":"agent","input_tokens":92400,"output_tokens":1200}

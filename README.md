@@ -51,7 +51,7 @@ never runs unless you ask.
                  for your agents
 ```
 
-## The thirty-nine commands
+## The forty commands
 
 | Command | What it answers |
 |---|---|
@@ -90,6 +90,7 @@ never runs unless you ask.
 | [`trazum pulse`](#did-anything-stop-running-trazum-pulse) | Did the things that are supposed to run, run? *Runs nothing itself — your CI is the thing that notices.* |
 | [`trazum position`](#where-the-month-stands-trazum-position) | Where does the month stand against every ceiling? *Measured, denominators attached, no forecast anywhere.* |
 | [`trazum from-claude-code`](#the-agents-own-bill-trazum-from-claude-code) | What did my Claude Code sessions cost? *Reads the transcripts already on disk — the numbers only, never the words.* |
+| [`trazum from-otel`](#the-universal-cost-lens-trazum-from-otel) | What did the LLM calls in my OpenTelemetry export cost? *Reads the GenAI spans any exporter already emits — the counts only, never the prompts.* |
 | [`trazum bench`](#this-machine-measured-trazum-bench) | How fast is Trazum here, and on what? *One shot per workload, no judgement — run it before and after a change.* |
 | [`trazum write`](#you-describe-it-it-asks-trazum-write) | What should this prompt say, and what will it cost before I ever send it? *Asks; nothing is generated.* |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
@@ -206,8 +207,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of thirty-nine commands — [the table
-above](#the-thirty-nine-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of forty commands — [the table
+above](#the-forty-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -370,7 +371,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other thirty-eight commands, each with its own section below:
+The other thirty-nine commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -443,7 +444,7 @@ In GitHub Actions, use the packaged action — nothing to install:
 
 ```yaml
 - uses: actions/checkout@v7
-- uses: Davmunrey/Trazum@16402a06056d55f8580557da29d9b7e49219ce33  # 1.69.0
+- uses: Davmunrey/Trazum@10fe99f7cabe1ab3e2d77775f417be197065f744  # 1.70.0
   with:
     target: prompts/system.txt
     max-tokens: 2000
@@ -489,7 +490,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v7
-  - uses: Davmunrey/Trazum@16402a06056d55f8580557da29d9b7e49219ce33  # 1.69.0
+  - uses: Davmunrey/Trazum@10fe99f7cabe1ab3e2d77775f417be197065f744  # 1.70.0
     with:
       target: prompts/            # a directory uses trazum.config.json budgets
       comment: true
@@ -518,7 +519,7 @@ run gates tokens before the money is spent or the spend itself, and saying
 which is the caller's job:
 
 ```yaml
-- uses: Davmunrey/Trazum@16402a06056d55f8580557da29d9b7e49219ce33  # 1.69.0
+- uses: Davmunrey/Trazum@10fe99f7cabe1ab3e2d77775f417be197065f744  # 1.70.0
   with:
     usage-log: logs/yesterday.jsonl
     max-usd: '50'            # exit 1 over budget — no period assumed
@@ -3288,6 +3289,42 @@ name, which the config's `labels` block can map to something readable.
 Other agents' transcript formats are deliberately not guessed at: the command
 names the one it reads. A second format arrives when a real transcript of it
 does.
+
+### The universal cost lens: `trazum from-otel`
+
+`from-claude-code` proved a pattern: a pure converter turns one tool's export
+into a usage log, and every command above prices it from there. `from-otel`
+generalises it to the standard the ecosystem is converging on —
+**OpenTelemetry's GenAI semantic conventions**. Any exporter that emits LLM
+calls as spans with `gen_ai.usage.input_tokens` and friends is now a source
+Trazum reads, so it becomes the cost lens over whatever telemetry a team
+already emits — complementary to every observability tool, replacing none.
+
+```bash
+trazum from-otel spans.otlp.json -o usage.jsonl
+trazum profile usage.jsonl
+```
+
+It reads the OTLP/JSON any GenAI exporter produces — one document or
+newline-delimited spans — and turns each LLM-call span into a usage-log
+record: the model (`gen_ai.response.model` or `gen_ai.request.model`), the
+timestamp (`startTimeUnixNano`), a label (the span's `gen_ai.operation.name`
+or the resource's `service.name`, so a per-service bill falls out), and the
+token counts. Spans that are not LLM calls are counted and skipped, never
+priced. `--label-from-service` labels by the resource's `service.name`.
+
+**The counts only, never the prompts.** Prompt and completion content, trace
+ids and every other span attribute stay in the span; the same privacy fixture
+the transcript converter carries — a planted prompt and trace id, grepped for
+across the whole output — holds it.
+
+**What OTel cannot yet give, said out loud.** OpenTelemetry has not
+standardised the cache-write TTL split, so an OTel-sourced record carries no
+`cache_creation` object and the cache verdicts read *cannot tell* rather than
+a fabricated one — the same refusal as inventing a price. Cache reads are
+taken only where a `gen_ai.usage.cache_read_input_tokens`-shaped key is
+actually present. Vendor-specific converters (LangSmith, Helicone, LiteLLM)
+are named as next, not built now: each ships when a real export of it is seen.
 
 ### What would actually move this bill
 

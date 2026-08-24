@@ -424,6 +424,11 @@ export const es: WebMessages = {
       `${lines} línea(s) extra de llamadas ya contadas colapsadas — una llamada a la API se escribe como una línea por bloque de contenido.`,
     transcriptStreamed: (calls) =>
       `${calls} llamada(s) capturadas en streaming; quedaron sus recuentos finales.`,
+    otelSummary: (exports, spans) =>
+      `Convertidos ${exports} export(s) de OpenTelemetry en ${spans} span(s) LLM tasado(s), aquí en tu navegador.`,
+    otelSkipped: (spans) => `${spans} span(s) no-LLM omitidos — contados, nunca tasados.`,
+    otelNoCache: (spans) =>
+      `${spans} span(s) sin datos de caché — OTel no ha estandarizado el reparto de TTL de caché, así que sus veredictos de caché dicen "no se puede saber" en vez de uno inventado.`,
     transcriptPrivacy:
       'Los transcripts se leyeron en esta pestaña. Se quedaron los números y no las palabras — ni texto de mensajes, ni rutas, ni ramas cruzaron la conversión.',
     orPaste: 'o pega el registro debajo',

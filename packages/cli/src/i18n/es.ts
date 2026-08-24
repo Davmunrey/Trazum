@@ -1612,6 +1612,17 @@ ${bold('EJEMPLOS')}
     },
   },
 
+  fromOtel: {
+    noPath: () => 'from-otel necesita un archivo o directorio OTLP: trazum from-otel spans.json',
+    notFound: (path) => `${path}: no existe`,
+    noExports: (path) => `${path}: no hay exports OTLP .json/.jsonl/.ndjson debajo.`,
+    summary: (files, llmSpans) => `${files} archivo(s), ${llmSpans} span(s) LLM tasados.`,
+    skipped: (otherSpans) => `${otherSpans} span(s) no-LLM omitidos — el resto del trabajo de la traza, no una factura.`,
+    noCache: (count) => `${count} span(s) sin datos de caché. OpenTelemetry no ha estandarizado el reparto del TTL de caché, así que los veredictos de caché dicen «no se puede saber» en este log en vez de uno inventado.`,
+    unparseable: (count) => `${count} línea(s) no se pudieron parsear como JSON.`,
+    written: (file) => `Escrito ${file}.`,
+  },
+
   fromClaudeCode: {
     noPath: () => 'from-claude-code necesita un archivo o directorio de transcripts: trazum from-claude-code ~/.claude/projects',
     notFound: (path) => `${path}: no existe`,
