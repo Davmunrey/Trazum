@@ -2089,11 +2089,33 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**Nothing is planned right now.** [The 1.64 plan](docs/plan-1.64.md)
-delivered in full at 1.64.0, and the next plan — the owner has asked for the
-five open-source paths to be carried as far as they go without third
-parties — is being written the same way every plan here is written: before
-the code, and kept as written after it.
+**Three arcs are planned: [docs/plan-1.65-1.67.md](docs/plan-1.65-1.67.md)**
+— the owner's five open-source paths, carried as far as they go as code. The
+1.65 arc runs as 1.64.x and closes at 1.65.0; 1.66 and 1.67 follow the same
+pattern.
+
+**1.65 — the format anyone can adopt.** All eighteen documented contracts
+answer to a `--contract` name, and an authored JSON Schema per contract
+leaves the repository — so a document can be checked against this format by
+a tool that has never installed this product. A two-direction guard holds
+each schema to agreeing with `conform`, because a schema that drifts is the
+two-doors defect wearing a file format.
+
+**1.66 — one policy, three doors.** Per-label, per-session and per-day USD
+limits stated once in the config, judged once in the core, enforced
+identically by the gateway's 402, `serve`'s cost answer and `spend_guard`
+over MCP — with the suite pushing the same call through all three doors and
+requiring the verdicts to match, field for field.
+
+**1.67 — the month ends on a measured position.** Measured month-to-date
+spend against every budget and limit, denominator on every figure, no
+projection anywhere; the answer travels through JSON, the HTML door and MCP.
+And `check` learns to read a file list from stdin, so a pre-commit hook is
+one pipe.
+
+The halves of the paths that are not code — adoption conversations, a policy
+server, a forecast — are named in the plan's "what stays out" rather than
+dressed up as chapters.
 
 **Three arcs from the previous plans stay open**, numbered below
 the last release:
