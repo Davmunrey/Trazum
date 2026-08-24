@@ -25,7 +25,13 @@ merged commit with no entry is a change only `git log` remembers.
   by name: charting libraries, template languages, serving. The chapters run
   as 1.63.x and close at 1.64.0.
 
-## Unreleased
+## 1.64.0 — "The report somebody forwards"
+
+**The 1.64 arc closes, delivered in full**: the profile and the roll-up have
+an HTML door, the caveats are load-bearing in both, and the parity guard
+makes each page a projection of the JSON rather than a rival account of it.
+All four chapters landed on `main` before this minor; the minor is the story
+finishing.
 
 ### Added
 
@@ -77,6 +83,11 @@ merged commit with no entry is a change only `git log` remembers.
   do nothing but to loudly do nothing. Reproduced against the published
   1.63.0 before fixing; the side-file writer now derives `levers` and the
   cache verdict itself.
+
+### Release mechanics
+
+- Five manifests, `@trazum/core` in three places, lockfile at **1.64.0**;
+  README Action pins advanced to `bdca0df` (1.63.0).
 
 ## 1.63.0 — "Scale is measured, not assumed"
 

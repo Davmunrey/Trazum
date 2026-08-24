@@ -362,6 +362,7 @@ trazum store                         # what is kept, and what a prune takes
 trazum watch --once                  # did anything cross, this afternoon
 trazum serve                         # answer before the call is sent
 trazum rollup a.json b.json          # several people's bills, one roll-up
+trazum profile usage.jsonl --html-out report.html   # the report somebody forwards
 trazum pulse --max-stale-hours 36    # did anything stop running?
 trazum bench                         # how fast is Trazum on this machine
 trazum rank prompts/                 # which one to fix first
@@ -422,7 +423,7 @@ In GitHub Actions, use the packaged action — nothing to install:
 
 ```yaml
 - uses: actions/checkout@v7
-- uses: Davmunrey/Trazum@214aa434e85577a93bb4cceae7fadcfce0358d62  # 1.62.1
+- uses: Davmunrey/Trazum@bdca0dfa4b39fe09499686b3c8889c97c78ca967  # 1.63.0
   with:
     target: prompts/system.txt
     max-tokens: 2000
@@ -468,7 +469,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v7
-  - uses: Davmunrey/Trazum@214aa434e85577a93bb4cceae7fadcfce0358d62  # 1.62.1
+  - uses: Davmunrey/Trazum@bdca0dfa4b39fe09499686b3c8889c97c78ca967  # 1.63.0
     with:
       target: prompts/            # a directory uses trazum.config.json budgets
       comment: true
@@ -497,7 +498,7 @@ run gates tokens before the money is spent or the spend itself, and saying
 which is the caller's job:
 
 ```yaml
-- uses: Davmunrey/Trazum@214aa434e85577a93bb4cceae7fadcfce0358d62  # 1.62.1
+- uses: Davmunrey/Trazum@bdca0dfa4b39fe09499686b3c8889c97c78ca967  # 1.63.0
   with:
     usage-log: logs/yesterday.jsonl
     max-usd: '50'            # exit 1 over budget — no period assumed
