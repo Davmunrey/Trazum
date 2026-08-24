@@ -95,8 +95,15 @@ const nextConfig = {
    * actually imports — the difference between shipping this app and shipping
    * this app plus the whole workspace's node_modules. Local `next dev` and
    * `next start` are unaffected.
+   *
+   * Conditional on purpose: Vercel's own build pipeline does its own file
+   * tracing and breaks against `standalone` (ENOENT on
+   * `.next/next-server.js.nft.json`, found by deploying). Vercel sets
+   * `VERCEL=1` in every build, so the flag applies exactly where the
+   * container image is built — Docker, N0, a local standalone preview —
+   * and nowhere it fights the platform.
    */
-  output: 'standalone',
+  ...(process.env.VERCEL ? {} : { output: 'standalone' }),
 
   async headers() {
     return [
