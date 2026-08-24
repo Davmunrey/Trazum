@@ -105,6 +105,41 @@ describe('judging the limits policy', () => {
     assert.equal(overWins.verdict, 'over');
   });
 
+  it('a waived limit keeps its measurement and loses its refusal, until the waiver expires', () => {
+    const policy = { sessionUsd: 0.2001 };
+    const waivers = [{ gate: 'limits.sessionUsd', reason: 'August migration', until: '2099-01-01' }];
+    const silenced = judgeLimits(policy, POSITION, CALL, { catalogue, waivers });
+    // The measurement is the measurement: the judgement still says over.
+    assert.equal(silenced.judgements[0].verdict, 'over');
+    // The silence is attached, on the record, in every answer.
+    assert.deepEqual(silenced.judgements[0].waived, { reason: 'August migration', until: '2099-01-01' });
+    // And the policy does not refuse what somebody decided to live with.
+    assert.equal(silenced.verdict, 'within');
+
+    // The day the waiver expires, the ceiling refuses again — nobody has to remember.
+    const expired = judgeLimits(policy, POSITION, CALL, {
+      catalogue,
+      waivers: [{ gate: 'limits.sessionUsd', reason: 'was August', until: '2001-01-01' }],
+    });
+    assert.equal(expired.verdict, 'over');
+    assert.equal(expired.judgements[0].waived, null);
+
+    // A waiver names one gate; naming a different one silences nothing.
+    const wrongGate = judgeLimits(policy, POSITION, CALL, {
+      catalogue,
+      waivers: [{ gate: 'limits.dayUsd', reason: 'not this one', until: '2099-01-01' }],
+    });
+    assert.equal(wrongGate.verdict, 'over');
+
+    // Per-label waivers name the label.
+    const labelled = judgeLimits({ byLabel: { chat: 0.5001 } }, POSITION, CALL, {
+      catalogue,
+      waivers: [{ gate: 'limits.byLabel:chat', reason: 'chat spike, reviewed', until: '2099-01-01' }],
+    });
+    assert.equal(labelled.verdict, 'within');
+    assert.equal(labelled.judgements[0].verdict, 'over');
+  });
+
   it('inherits answerCost\'s refusals: an unpriced model cannot be judged, a negative count throws', () => {
     const unpriced = judge({ dayUsd: 25 }, POSITION, { ...CALL, model: 'no-such-model' });
     assert.equal(unpriced.verdict, 'cannot-tell');

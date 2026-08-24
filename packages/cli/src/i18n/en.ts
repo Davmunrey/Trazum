@@ -212,6 +212,10 @@ ${bold('OPTIONS FOR gateway')}
                               What happens when the gateway cannot judge a call
                               — no budget, nothing measured, an unpriced model.
   --port <n> | --socket <p>   Where to listen. Loopback only, always.
+  --log <usage.jsonl>         The usage log the limits policy is measured
+                              against, read once at start — same flag as
+                              serve's, same reason: label and session spend
+                              live in a usage log, not in the store.
 
   Stands between your SDK and the provider, speaking their wire format, so no
   code changes. Usage is measured from the provider's own response as it comes
@@ -569,6 +573,11 @@ ${bold('OPTIONS FOR plan')}
 ${bold('OPTIONS FOR serve')}
   --port <n>                  Port on 127.0.0.1. Default: 7317.
   --socket <path>             Listen on a Unix socket instead of a port.
+  --log <usage.jsonl>         The usage log the limits policy is measured
+                              against, read once at start. Per-label and
+                              per-session spend live in a usage log, not in
+                              the store; without this, every ceiling in
+                              "limits" answers cannot-tell.
 
   Answers the two questions that matter at call time — what will this cost,
   and is there budget left — in single-digit milliseconds, so an agent or a
@@ -2467,6 +2476,10 @@ ${bold('EXAMPLES')}
 
   serve: {
     listening: (where) => `Answering on ${where}`,
+    limitsNoLog: () =>
+      'A limits policy is configured and no --log was given, so every ceiling will answer cannot-tell: per-label and per-session spend live in a usage log, not in the store. Point --log at your usage log to make the ceilings judgeable.',
+    limitsUnpriced: (count) =>
+      `${count} record(s) in the --log name a model the catalogue cannot price. They contribute nothing to any measured figure — money the limits policy cannot see, said here rather than hidden.`,
     loopbackOnly: () =>
       'Loopback only, and there is no flag to change that: this holds your spend, your model mix and your budgets, and would answer whoever asked. There is no auth for the same reason — a token checked over loopback is theatre.',
     measuredFrom: (usd) =>

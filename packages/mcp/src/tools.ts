@@ -21,6 +21,8 @@ import {
   listModels,
   optimize,
   contextPressure,
+  parseLimits,
+  parseWaive,
   profileUsage,
   repriceProfile,
   slot,
@@ -1254,6 +1256,47 @@ const SPEND_GUARD: ToolDefinition = {
           'Whether this work can wait for a batch window. Only you know that, so batch '
           + 'alternatives are offered only when you say so.',
       },
+      limits: {
+        type: 'object',
+        description:
+          'The limits policy from trazum.config.json — {"dayUsd": n, "sessionUsd": n, '
+          + '"byLabel": {"name": n}}, positive dollars. Judged by the same function the '
+          + 'gateway and trazum serve use, so the three doors cannot disagree. Validated '
+          + 'like the config file: an unknown key or a non-positive ceiling is refused '
+          + 'with the reason.',
+      },
+      position: {
+        type: 'object',
+        properties: {
+          dayUsd: { type: 'number', minimum: 0 },
+          sessionUsd: { type: 'number', minimum: 0 },
+          labelUsd: { type: 'number', minimum: 0 },
+        },
+        additionalProperties: false,
+        description:
+          'Measured spend per scope, from your own usage log — never a guess. A scope you '
+          + 'omit is unmeasured and its ceiling answers cannot-tell, not "under".',
+      },
+      label: {
+        type: 'string',
+        minLength: 1,
+        description: 'The workload this call belongs to, for the per-label ceiling.',
+      },
+      session: {
+        type: 'string',
+        minLength: 1,
+        description:
+          'The conversation this call belongs to, for the per-session ceiling. Used to '
+          + 'judge and never echoed back.',
+      },
+      waive: {
+        type: 'array',
+        description:
+          'The waive list from trazum.config.json — [{"gate": "limits.sessionUsd", '
+          + '"reason": "...", "until": "YYYY-MM-DD"}]. A waived ceiling still reports its '
+          + 'measurement, but a crossed one answers yes with the waiver attached: the '
+          + 'silence rides in the record. Validated like the config file.',
+      },
     },
     required: ['model', 'inputTokens'],
     additionalProperties: false,
@@ -1279,6 +1322,31 @@ const SPEND_GUARD: ToolDefinition = {
     if (!Number.isFinite(outputTokens) || outputTokens < 0) {
       throw new InvalidArguments('outputTokens must be a non-negative number');
     }
+    /*
+      The limits policy is validated by the config file's own parser — the
+      same shape, the same refusals — so a policy pasted here and a policy
+      committed to the repository cannot mean different things. A ConfigError
+      becomes the protocol's InvalidArguments, message intact.
+    */
+    let limits;
+    let waive;
+    try {
+      if (args.limits !== undefined) limits = parseLimits(args.limits, 'spend_guard');
+      if (args.waive !== undefined) waive = parseWaive(args.waive, 'spend_guard');
+    } catch (error) {
+      throw new InvalidArguments(error instanceof Error ? error.message : 'limits is not a valid policy');
+    }
+    const rawPosition =
+      typeof args.position === 'object' && args.position !== null && !Array.isArray(args.position)
+        ? (args.position as Record<string, unknown>)
+        : {};
+    const scopeUsd = (value: unknown, name: string): number | null => {
+      if (value === undefined) return null;
+      if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+        throw new InvalidArguments(`position.${name} must be a non-negative number`);
+      }
+      return value;
+    };
     const answer = guardSpend(
       {
         model,
@@ -1287,6 +1355,15 @@ const SPEND_GUARD: ToolDefinition = {
         consumedUsd: typeof args.consumedUsd === 'number' ? args.consumedUsd : undefined,
         limitUsd: typeof args.limitUsd === 'number' ? args.limitUsd : undefined,
         batchEligible: args.batchEligible === true,
+        ...(limits === undefined ? {} : { limits }),
+        position: {
+          dayUsd: scopeUsd(rawPosition.dayUsd, 'dayUsd'),
+          sessionUsd: scopeUsd(rawPosition.sessionUsd, 'sessionUsd'),
+          labelUsd: scopeUsd(rawPosition.labelUsd, 'labelUsd'),
+        },
+        ...(typeof args.label === 'string' && args.label !== '' ? { label: args.label } : {}),
+        ...(typeof args.session === 'string' && args.session !== '' ? { session: args.session } : {}),
+        ...(waive === undefined ? {} : { waive }),
       },
       { catalogue: BUNDLED_CATALOGUE },
     );

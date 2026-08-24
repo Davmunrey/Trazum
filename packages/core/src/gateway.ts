@@ -51,6 +51,9 @@ import type { PlanAssumption } from './plan.js';
 import { effectivePricing, multipliersFor } from './pricing.js';
 import type { PricingCatalogue } from './pricing.js';
 import type { ModelPricing } from './types.js';
+import { judgeLimits, limitSentence, unjudgedSentence } from './judgement.js';
+import type { MeasuredPosition, PolicyJudgement } from './judgement.js';
+import type { LimitsConfig, WaiveEntry } from './config-schema.js';
 
 /**
  * What the operator has decided happens when the gateway cannot judge.
@@ -80,6 +83,12 @@ export interface GatewayCall {
   maxOutputTokens: number | null;
   /** The workload, when the caller labelled it. */
   label: string | null;
+  /**
+   * The conversation, when the caller identified it — `metadata.trazum_session`,
+   * the same seam as the label. Used to judge the per-session ceiling and
+   * never recorded, printed, or forwarded anywhere by this module.
+   */
+  session: string | null;
 }
 
 /** Where the budget stands, as the gateway was told at the last refresh. */
@@ -97,10 +106,17 @@ export type RefuseReason =
   | 'budget-exhausted'
   /** This call would take it past, on an estimate of this call. */
   | 'call-would-cross'
+  /** A ceiling in the `limits` policy is over — the judgement names which. */
+  | 'limit-over'
   /** Cannot tell, and the operator chose fail-closed. */
   | 'cannot-tell-and-closed';
 
-export type CannotTellCause = 'no-budget' | 'nothing-measured' | 'model-unpriced';
+export type CannotTellCause =
+  | 'no-budget'
+  | 'nothing-measured'
+  | 'model-unpriced'
+  /** A ceiling in the `limits` policy could not be judged — see `policy`. */
+  | 'limit-unjudged';
 
 /** A cheaper way to make the same call, named on a refusal. */
 export interface GatewayAlternative {
@@ -124,6 +140,8 @@ export type GatewayDecision =
       estimatedUsd: number | null;
       /** Present when the gateway could not judge and the operator fails open. */
       unjudged: CannotTellCause | null;
+      /** The limits policy, judged for this call — same judge as every door. */
+      policy: PolicyJudgement;
     }
   | {
       kind: 'refuse';
@@ -137,6 +155,8 @@ export type GatewayDecision =
       /** A refusal never arrives bare. Dearest saving first; may be empty. */
       alternatives: GatewayAlternative[];
       because: string;
+      /** The limits policy, judged for this call — same judge as every door. */
+      policy: PolicyJudgement;
     }
   | {
       /**
@@ -154,6 +174,8 @@ export type GatewayDecision =
       configuredReason: string;
       estimatedUsd: number | null;
       markedInStore: true;
+      /** The limits policy, judged for this call — same judge as every door. */
+      policy: PolicyJudgement;
     };
 
 export interface GatewayPolicy {
@@ -172,6 +194,19 @@ export interface GatewayOptions {
   catalogue: PricingCatalogue;
   policy: GatewayPolicy;
   on?: Date;
+  /**
+   * The `limits` block and the measured position it is judged against —
+   * chapter three of the 1.66 arc. Both optional: a gateway with no limits
+   * config behaves exactly as before, and the judgement is `no-policy`.
+   *
+   * The judging is `judgeLimits`, verbatim — the same function `serve` and
+   * `spend_guard` call, which is the whole point: three doors, one judge,
+   * no door doing its own arithmetic.
+   */
+  limits?: LimitsConfig;
+  position?: MeasuredPosition;
+  /** The config's `waive` list — a silenced limit forwards, on the record. */
+  waivers?: readonly WaiveEntry[];
 }
 
 /** What this call costs at a model's rates, or null when it cannot be priced. */
@@ -258,6 +293,63 @@ export function gatewayDecision(
   const model = catalogue.byId.get(call.model);
   const estimatedUsd = priceCall(model, call, on);
 
+  /**
+   * The limits policy, judged first and by the shared judge — never by
+   * arithmetic of this module's own. An `over` here refuses regardless of
+   * where the monthly budget stands: a session ceiling exists precisely for
+   * the call that is fine by the month and ruinous by the conversation.
+   */
+  const judged = judgeLimits(
+    options.limits,
+    options.position ?? { dayUsd: null, sessionUsd: null, labelUsd: null },
+    {
+      model: call.model,
+      inputTokens: call.inputTokens ?? undefined,
+      outputTokens: call.maxOutputTokens ?? undefined,
+      label: call.label ?? undefined,
+      session: call.session ?? undefined,
+    },
+    { catalogue, on, ...(options.waivers === undefined ? {} : { waivers: options.waivers }) },
+  );
+
+  if (judged.verdict === 'over') {
+    // The unwaived crossing — a waived `over` is present in the judgement
+    // and deliberately not the one a refusal is written about.
+    const over = judged.judgements.find((entry) => entry.verdict === 'over' && entry.waived === null)!;
+    /*
+      A configured substitution is deliberately NOT consulted here. The
+      operator wrote that rule for the budget; rerouting a call because a
+      *session* ceiling crossed would spend more money in the very unit that
+      is over, under a rule written about something else.
+    */
+    return {
+      kind: 'refuse',
+      reason: 'limit-over',
+      cause: null,
+      restsOn: over.restsOn,
+      standing,
+      estimatedUsd,
+      alternatives: model === undefined ? [] : alternativesFor(model, call, catalogue, on),
+      because: limitSentence(over),
+      policy: judged,
+    };
+  }
+
+  const limitUnjudged = judged.verdict === 'cannot-tell' && judged.reason !== 'no-policy';
+  if (limitUnjudged && policy.onCannotTell === 'fail-closed') {
+    return {
+      kind: 'refuse',
+      reason: 'cannot-tell-and-closed',
+      cause: 'limit-unjudged',
+      restsOn: null,
+      standing,
+      estimatedUsd,
+      alternatives: [],
+      because: `${unjudgedSentence(judged)} This gateway is configured to fail closed.`,
+      policy: judged,
+    };
+  }
+
   const cause = whyCannotTell(standing, estimatedUsd);
   if (cause !== null) {
     /**
@@ -267,7 +359,7 @@ export function gatewayDecision(
      * nothing to do with the caller's request.
      */
     if (policy.onCannotTell === 'fail-open') {
-      return { kind: 'forward', estimatedUsd, unjudged: cause };
+      return { kind: 'forward', estimatedUsd, unjudged: cause, policy: judged };
     }
     return {
       kind: 'refuse',
@@ -278,6 +370,7 @@ export function gatewayDecision(
       estimatedUsd,
       alternatives: [],
       because: becauseCannotTell(cause),
+      policy: judged,
     };
   }
 
@@ -285,13 +378,21 @@ export function gatewayDecision(
   // it — narrowed here rather than asserted, so a change to `whyCannotTell`
   // that stopped guaranteeing them fails the build instead of the request.
   if (standing === null || estimatedUsd === null || model === undefined) {
-    return { kind: 'forward', estimatedUsd, unjudged: 'no-budget' };
+    return {
+      kind: 'forward',
+      estimatedUsd,
+      unjudged: limitUnjudged ? 'limit-unjudged' : 'no-budget',
+      policy: judged,
+    };
   }
 
   const already = standing.consumedUsd > standing.limitUsd;
   const wouldCross = standing.consumedUsd + estimatedUsd > standing.limitUsd;
   if (!already && !wouldCross) {
-    return { kind: 'forward', estimatedUsd, unjudged: null };
+    // The monthly budget holds. A limits ceiling nobody could judge still
+    // rides along as `unjudged` under fail-open, so the forward says what it
+    // did not check rather than implying everything was.
+    return { kind: 'forward', estimatedUsd, unjudged: limitUnjudged ? 'limit-unjudged' : null, policy: judged };
   }
 
   const configured = policy.substitute?.[call.model];
@@ -303,6 +404,7 @@ export function gatewayDecision(
       configuredReason: configured.reason,
       estimatedUsd: priceCall(target, call, on),
       markedInStore: true,
+      policy: judged,
     };
   }
 
@@ -319,8 +421,10 @@ export function gatewayDecision(
     because: already
       ? 'The budget for this period is already spent, measured.'
       : 'This call would take the budget past its limit, on an estimate of this call.',
+    policy: judged,
   };
 }
+
 
 function becauseCannotTell(cause: CannotTellCause): string {
   return cause === 'no-budget'

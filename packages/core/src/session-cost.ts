@@ -72,7 +72,7 @@ export interface SessionCostTracker {
 }
 
 /** Every billed dollar of one call, at its own model's rates. */
-function costOf(record: UsageRecord, catalogue: PricingCatalogue, on: Date): number | null {
+export function costOf(record: UsageRecord, catalogue: PricingCatalogue, on: Date): number | null {
   const model = catalogue.byId.get(record.model);
   if (!model) return null;
   const { inputPerMTok, outputPerMTok } = effectivePricing(model, on);

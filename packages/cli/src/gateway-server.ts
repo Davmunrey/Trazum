@@ -35,7 +35,15 @@ import { once } from 'node:events';
 import { createServer } from 'node:http';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
 import { estimateTokens, gatewayDecision, streamingUsageReader, usageFromResponse } from '@trazum/core';
-import type { GatewayDecision, GatewayPolicy, GatewayStanding, PricingCatalogue } from '@trazum/core';
+import type {
+  GatewayDecision,
+  GatewayPolicy,
+  GatewayStanding,
+  LimitsConfig,
+  MeasuredPosition,
+  PricingCatalogue,
+  WaiveEntry,
+} from '@trazum/core';
 
 /** Compiled in. See the module note. */
 export const BIND_HOST = '127.0.0.1';
@@ -179,6 +187,15 @@ export interface GatewayContext {
   policy: GatewayPolicy;
   /** Where the budget stands, refreshed by the caller — never read per request. */
   standing: () => GatewayStanding | null;
+  /** The `limits` block, when the config carries one. */
+  limits?: LimitsConfig;
+  /**
+   * The measured position for one call's scopes — from an index built once
+   * at start, like `standing`. Never a file read in the request path.
+   */
+  position?: (call: { label?: string; session?: string }) => MeasuredPosition;
+  /** The config's `waive` list — a silenced limit forwards, on the record. */
+  waivers?: readonly WaiveEntry[];
   /**
    * Called after a forwarded call returns, with the provider's own counts.
    *
@@ -250,6 +267,7 @@ function describe(body: string, provider: string, modelFromPath: string | null):
   inputTokens: number | null;
   maxOutputTokens: number | null;
   label: string | null;
+  session: string | null;
 } | null {
   let parsed: unknown;
   try {
@@ -307,14 +325,26 @@ function describe(body: string, provider: string, modelFromPath: string | null):
      * workload they never named.
      */
     label: labelOf(request),
+    /**
+     * `metadata.trazum_session` — the same seam as the label, for the same
+     * reason: a per-session ceiling can only bind conversations that name
+     * themselves, and inferring one would attribute spend to a conversation
+     * nobody declared. The value is used to judge and never forwarded,
+     * recorded, or printed.
+     */
+    session: metadataField(request, 'trazum_session'),
   };
 }
 
 function labelOf(request: Record<string, unknown>): string | null {
+  return metadataField(request, 'trazum_label');
+}
+
+function metadataField(request: Record<string, unknown>, key: string): string | null {
   const metadata = request.metadata;
   if (typeof metadata !== 'object' || metadata === null || Array.isArray(metadata)) return null;
-  const label = (metadata as Record<string, unknown>).trazum_label;
-  return typeof label === 'string' && label.trim() !== '' ? label : null;
+  const value = (metadata as Record<string, unknown>)[key];
+  return typeof value === 'string' && value.trim() !== '' ? value : null;
 }
 
 /** The refusal, as the caller's SDK will receive it. */
@@ -329,6 +359,9 @@ function refusalBody(decision: Extract<GatewayDecision, { kind: 'refuse' }>): st
       standing: decision.standing,
       estimatedUsd: decision.estimatedUsd,
       alternatives: decision.alternatives,
+      // The limits policy, judged by the same function every door calls —
+      // the 402 body carries the judgement, not a paraphrase of it.
+      policy: decision.policy,
     },
     null,
     2,
@@ -379,7 +412,20 @@ export function buildGateway(context: GatewayContext): Server {
       const decision = gatewayDecision(
         { provider: context.provider, ...described },
         context.standing(),
-        { catalogue: context.catalogue, policy: context.policy },
+        {
+          catalogue: context.catalogue,
+          policy: context.policy,
+          ...(context.limits === undefined ? {} : { limits: context.limits }),
+          ...(context.waivers === undefined ? {} : { waivers: context.waivers }),
+          ...(context.position === undefined
+            ? {}
+            : {
+                position: context.position({
+                  ...(described.label === null ? {} : { label: described.label }),
+                  ...(described.session === null ? {} : { session: described.session }),
+                }),
+              }),
+        },
       );
 
       if (decision.kind === 'refuse') {

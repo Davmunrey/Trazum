@@ -183,6 +183,15 @@ describe('the limits block — one policy, validated like everything else', () =
   it('an absent block stays absent — no door invents a ceiling', () => {
     assert.equal(parseConfig('{}').limits, undefined);
   });
+
+  it('accepts a waiver naming a limit, and still refuses one naming nothing', () => {
+    const entry = (gate) => ({ waive: [{ gate, reason: 'reviewed', until: '2099-01-01' }] });
+    for (const gate of ['limits.dayUsd', 'limits.sessionUsd', 'limits.byLabel:chat']) {
+      assert.doesNotThrow(() => parseConfig(JSON.stringify(entry(gate))), gate);
+    }
+    rejects(entry('limits.monthlyUsd'), /names no gate/);
+    rejects(entry('limits.byLabel:'), /names no gate/);
+  });
 });
 
 describe('finding the config file', () => {

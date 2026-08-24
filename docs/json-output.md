@@ -202,6 +202,7 @@ omission is on the record in that release's notes.
 | `restsOn` | What the verdict rests on: `measured` when the budget is already past its limit and no estimate was needed, `measured+estimated` when it takes the described call to cross. Null on `cannot-tell`. |
 | `reason` | Why it cannot tell, kept apart because the fixes differ: `no-budget-configured`, `nothing-measured`, `model-unpriced`. |
 | `afterCall` | Where the budget would stand after this call — `usd`, with `halves.measuredUsd` and `halves.estimatedUsd` beside it. The composed figure never travels without its two halves, so it cannot be mistaken for a measurement. |
+| `policy` | The `limits` policy, judged for this call by the same function every door calls — `verdict` (`within`, `over`, `cannot-tell`), `reason` (`no-policy` when no ceiling applies), and one entry per applicable ceiling in `judgements[]`, each carrying `scope`, `label`, `limitUsd`, `verdict`, `restsOn`, `reason`, `measuredUsd`, `window`, `afterCallUsd` and `waived` — a waived ceiling keeps its `over` and loses its refusal, with the waiver's reason and expiry attached so the silence is on the record. Always present: a missing field and a judged absence are different answers. Session identifiers scope the judgement and are never echoed. |
 
 ## The spend-guard document
 
@@ -214,6 +215,7 @@ omission is on the record in that release's notes.
 | `cost` | The full cost answer above, halves and provenance intact. |
 | `alternatives` | Cheaper ways to make the same call, dearest saving first. Each carries `kind` (`route`, `batch`, `route+batch`), the `model` it moves to, `savingUsd` **for this call** rather than for a month, the typed `assumes` it rests on, and `fits` — only alternatives the prompt fits inside are ever offered. Present on a `yes` as well, since an agent allowed to spend that could spend less should be told. |
 | `because` | One line for a human reading a log. Never the only place a fact appears. |
+| `policy` | The `limits` policy, judged for this call by the same function the gateway and `serve` call — same shape as the cost answer's `policy`, field for field, which is the property `three-doors.test.js` holds. A judged `over` folds into the verdict as `no`; an unjudgeable ceiling folds a `yes` into `cannot-tell`; `no-policy` folds as nothing. |
 
 ## The first-run document
 
@@ -461,12 +463,13 @@ every time.
 | --- | --- |
 | `schemaVersion` | `1`. |
 | `error` | `{type: "trazum_budget_refusal", message}` — shaped like a provider error so an SDK's own error path handles it, and typed so it cannot be mistaken for one. |
-| `reason` | `budget-exhausted` (already past, measured), `call-would-cross` (this call takes it past), or `cannot-tell-and-closed` (nothing could be judged and the operator chose fail-closed). |
-| `cause` | Why it could not be judged, when that is the reason: `no-budget`, `nothing-measured`, `model-unpriced`. Null otherwise. |
+| `reason` | `budget-exhausted` (already past, measured), `call-would-cross` (this call takes it past), `limit-over` (a ceiling in the `limits` policy is over — `policy` names which), or `cannot-tell-and-closed` (nothing could be judged and the operator chose fail-closed). |
+| `cause` | Why it could not be judged, when that is the reason: `no-budget`, `nothing-measured`, `model-unpriced`, `limit-unjudged` (a `limits` ceiling could not be judged — `policy` says why). Null otherwise. |
 | `restsOn` | `measured` when the budget was already spent and nothing was estimated to reach the verdict; `measured+estimated` when it takes an estimate of *this* call to cross. Null on `cannot-tell-and-closed`. The two halves never merge. |
 | `standing` | The budget position the refusal rested on — `limitUsd`, `consumedUsd`, `provenance` (always `measured`) and `asOfMs`, so a caller can see how stale the figure is rather than assume it is current to the second. |
 | `estimatedUsd` | What this call was priced at, or null when the model could not be priced. |
 | `alternatives` | Cheaper ways to make the same call, dearest saving first: `kind` (`route` or `batch`), the `model` it moves to, `savingUsd` for **this call**, and the typed `assumes` it rests on. A refusal never arrives bare. Only models the call fits inside are ever offered. |
+| `policy` | The `limits` policy, judged for this call — same judge and same shape as `serve`'s and the spend guard's `policy`, field for field. A refusal with `reason: limit-over` names the crossed ceiling here, and `because` states the limit, the measured spend and the period in one auditable sentence. |
 
 **No prompt, no completion, no credential.** The body passed through the
 process and does not come back out of it — a test asserts a refusal carries no

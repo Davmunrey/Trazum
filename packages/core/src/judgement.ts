@@ -28,7 +28,8 @@
 import { answerCost } from './answer.js';
 import type { CostAnswer } from './answer.js';
 import type { PricingCatalogue } from './pricing.js';
-import type { LimitsConfig } from './config-schema.js';
+import type { LimitsConfig, WaiveEntry } from './config-schema.js';
+import { formatUsd } from './savings.js';
 
 /** Which ceiling a judgement is about. */
 export type LimitScope = 'day' | 'session' | 'label';
@@ -70,6 +71,16 @@ export interface LimitJudgement {
   window: { fromMs: number; toMs: number } | null;
   /** Where the scope would stand after this call. Null when unjudgeable. */
   afterCallUsd: number | null;
+  /**
+   * The unexpired waiver silencing this ceiling, when the config carries one.
+   *
+   * The `check` mechanism, applied here unchanged: the verdict stays `over`
+   * — the measurement is the measurement — but a waived `over` does not make
+   * the policy refuse, and the waiver rides in the judgement so every answer
+   * from every door is the record of the silence. Null when nothing is
+   * waived, which is almost always.
+   */
+  waived: { reason: string; until: string } | null;
 }
 
 export interface PolicyJudgement {
@@ -135,6 +146,7 @@ const judgementOf = (
   measuredUsd: answer.budget?.consumedUsd ?? null,
   window: answer.budget?.window ?? null,
   afterCallUsd: answer.afterCall?.usd ?? null,
+  waived: null,
 });
 
 const unjudgeable = (
@@ -152,7 +164,32 @@ const unjudgeable = (
   measuredUsd: null,
   window: null,
   afterCallUsd: null,
+  waived: null,
 });
+
+/** The waiver gate that names one judgement's ceiling. */
+const gateOf = (judgement: LimitJudgement): string =>
+  judgement.scope === 'day'
+    ? 'limits.dayUsd'
+    : judgement.scope === 'session'
+      ? 'limits.sessionUsd'
+      : `limits.byLabel:${judgement.label ?? ''}`;
+
+/**
+ * The unexpired waiver for one judgement, if the config carries one.
+ *
+ * Judged in UTC at run time, the same rule `check` applies: the day the
+ * waiver expires, the ceiling refuses again — nobody has to remember.
+ */
+const waiverFor = (
+  judgement: LimitJudgement,
+  waivers: readonly WaiveEntry[],
+  on: Date,
+): { reason: string; until: string } | null => {
+  const today = on.toISOString().slice(0, 10);
+  const match = waivers.find((entry) => entry.gate === gateOf(judgement) && entry.until >= today);
+  return match === undefined ? null : { reason: match.reason, until: match.until };
+};
 
 /**
  * Judges a proposed call against the whole `limits` policy.
@@ -165,7 +202,7 @@ export function judgeLimits(
   policy: LimitsConfig | undefined,
   position: MeasuredPosition,
   call: ProposedCall,
-  options: { catalogue: PricingCatalogue; on?: Date },
+  options: { catalogue: PricingCatalogue; on?: Date; waivers?: readonly WaiveEntry[] },
 ): PolicyJudgement {
   const judgements: LimitJudgement[] = [];
 
@@ -234,7 +271,19 @@ export function judgeLimits(
     return { schemaVersion: 1, verdict: 'cannot-tell', reason: 'no-policy', judgements: [] };
   }
 
-  const verdict: LimitVerdict = judgements.some((entry) => entry.verdict === 'over')
+  /**
+   * Waivers, applied after every ceiling is judged: the measurement stays —
+   * a waived judgement still says `over` — but the silence is attached, on
+   * the record, and the verdict below treats a waived `over` as not-refusing.
+   */
+  const { on = new Date(), waivers = [] } = options;
+  if (waivers.length > 0) {
+    for (const judgement of judgements) {
+      if (judgement.verdict === 'over') judgement.waived = waiverFor(judgement, waivers, on);
+    }
+  }
+
+  const verdict: LimitVerdict = judgements.some((entry) => entry.verdict === 'over' && entry.waived === null)
     ? 'over'
     : judgements.some((entry) => entry.verdict === 'cannot-tell')
       ? 'cannot-tell'
@@ -242,3 +291,56 @@ export function judgeLimits(
 
   return { schemaVersion: 1, verdict, reason: null, judgements };
 }
+
+/** The scope, as a refusal names it. Labels print; session identifiers never do. */
+export function limitScopeName(judgement: LimitJudgement): string {
+  return judgement.scope === 'day'
+    ? "the day's ceiling"
+    : judgement.scope === 'session'
+      ? "this session's ceiling"
+      : judgement.label === null
+        ? 'the per-label ceiling'
+        : `the "${judgement.label}" label's ceiling`;
+}
+
+/** The period a measured figure covers, when the judgement carries one. */
+function periodOf(judgement: LimitJudgement): string {
+  if (judgement.window === null) return '';
+  const from = new Date(judgement.window.fromMs).toISOString();
+  const to = new Date(judgement.window.toMs).toISOString();
+  return ` between ${from} and ${to}`;
+}
+
+/**
+ * The refusal, legible — chapter four's rule, written once.
+ *
+ * Every over-limit sentence names the limit, the measured position and the
+ * period, so an agent can log it and a person can audit it without
+ * re-running anything. Every door uses this builder rather than composing
+ * its own, for the same reason every door uses the same judge.
+ */
+export function limitSentence(judgement: LimitJudgement): string {
+  const limit = formatUsd(judgement.limitUsd);
+  const measured =
+    judgement.measuredUsd === null ? 'nothing measured' : `${formatUsd(judgement.measuredUsd)} measured`;
+  return judgement.restsOn === 'measured'
+    ? `${capital(limitScopeName(judgement))} of ${limit} is already spent: ${measured}${periodOf(judgement)}.`
+    : `This call would take ${limitScopeName(judgement)} of ${limit} past its limit: ${measured}${periodOf(judgement)}, plus this call's estimate.`;
+}
+
+/** Why the policy could not be judged, in one auditable sentence. */
+export function unjudgedSentence(judged: PolicyJudgement): string {
+  const first = judged.judgements.find((entry) => entry.verdict === 'cannot-tell');
+  const which = first === undefined ? 'a ceiling' : limitScopeName(first);
+  const why =
+    first?.reason === 'no-label-on-call'
+      ? 'the call names no label'
+      : first?.reason === 'no-session-on-call'
+        ? 'the call names no session'
+        : first?.reason === 'model-unpriced'
+          ? 'the model is not in the price catalogue'
+          : 'its spend has not been measured';
+  return `${capital(which)} in the limits policy cannot be judged: ${why}.`;
+}
+
+const capital = (text: string): string => `${text[0]!.toUpperCase()}${text.slice(1)}`;

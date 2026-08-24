@@ -25,8 +25,8 @@
 
 import { createServer } from 'node:http';
 import type { IncomingMessage, Server, ServerResponse } from 'node:http';
-import { answerCost } from '@trazum/core';
-import type { CostAnswer, PricingCatalogue } from '@trazum/core';
+import { answerCost, judgeLimits } from '@trazum/core';
+import type { CostAnswer, LimitsConfig, MeasuredPosition, PricingCatalogue, WaiveEntry } from '@trazum/core';
 
 /** Compiled in. See the module note: this is the inbound SSRF posture. */
 export const BIND_HOST = '127.0.0.1';
@@ -54,6 +54,15 @@ export interface ServeContext {
    * rather than implying it is current to the second.
    */
   position: () => { consumedUsd?: number; limitUsd?: number; window?: { fromMs: number; toMs: number } | null };
+  /** The `limits` block, when the config carries one. */
+  limits?: LimitsConfig;
+  /**
+   * The measured position for one call's scopes — from an index built once
+   * at start, same staleness posture as `position`.
+   */
+  measured?: (call: { label?: string; session?: string }) => MeasuredPosition;
+  /** The config's `waive` list — a silenced limit answers within, on the record. */
+  waivers?: readonly WaiveEntry[];
 }
 
 async function readBody(request: IncomingMessage): Promise<string> {
@@ -112,17 +121,66 @@ export function buildServer(context: ServeContext): Server {
       }
 
       const position = context.position();
-      const answer: CostAnswer = answerCost(
-        {
-          model: typeof payload.model === 'string' ? payload.model : undefined,
-          inputTokens: typeof payload.inputTokens === 'number' ? payload.inputTokens : undefined,
-          outputTokens: typeof payload.outputTokens === 'number' ? payload.outputTokens : undefined,
-          basis: payload.basis === 'heuristic' ? 'heuristic' : 'token-count',
-          ...position,
-        },
-        { catalogue: context.catalogue },
-      );
-      send(response, 200, answer);
+      const call = {
+        model: typeof payload.model === 'string' ? payload.model : undefined,
+        inputTokens: typeof payload.inputTokens === 'number' ? payload.inputTokens : undefined,
+        outputTokens: typeof payload.outputTokens === 'number' ? payload.outputTokens : undefined,
+        basis: (payload.basis === 'heuristic' ? 'heuristic' : 'token-count') as 'heuristic' | 'token-count',
+        /**
+         * `label` and `session` scope the limits judgement and nothing else.
+         * The session value is used to look up measured spend and is never
+         * echoed back — the answer's judgement names the scope, not the key.
+         */
+        label: typeof payload.label === 'string' && payload.label !== '' ? payload.label : undefined,
+        session: typeof payload.session === 'string' && payload.session !== '' ? payload.session : undefined,
+      };
+      let answer: CostAnswer;
+      let policy;
+      try {
+        answer = answerCost(
+          {
+            model: call.model,
+            inputTokens: call.inputTokens,
+            outputTokens: call.outputTokens,
+            basis: call.basis,
+            ...position,
+          },
+          { catalogue: context.catalogue },
+        );
+        /**
+         * The limits policy, judged by the same function the gateway and the
+         * spend guard call — one judge, three doors. Always present: absent
+         * config answers `no-policy` rather than omitting the field, because
+         * a missing field and a judged absence are different answers.
+         */
+        policy = judgeLimits(
+          context.limits,
+          context.measured?.({
+            ...(call.label === undefined ? {} : { label: call.label }),
+            ...(call.session === undefined ? {} : { session: call.session }),
+          }) ?? { dayUsd: null, sessionUsd: null, labelUsd: null },
+          call,
+          {
+            catalogue: context.catalogue,
+            ...(context.waivers === undefined ? {} : { waivers: context.waivers }),
+          },
+        );
+      } catch (error) {
+        /*
+          The core refuses a figure that cannot mean what it says — a
+          negative token count, most importantly, because a negative estimate
+          lowers the projected spend and buys an approval. Before this catch
+          existed the refusal was an uncaught throw inside the request
+          handler: `{"inputTokens": -5}` took the whole oracle down. A bad
+          figure is the caller's error, and it gets the caller's status code.
+        */
+        send(response, 400, {
+          error: 'bad-request',
+          detail: error instanceof Error ? error.message : 'unjudgeable figures',
+        });
+        return;
+      }
+      send(response, 200, { ...answer, policy });
     })();
   });
 }

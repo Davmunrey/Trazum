@@ -106,7 +106,10 @@ import {
   detectTextLanguage,
   dictionaryStanding,
   languagesWithStanding,
+  indexUsage,
+  parseUsageLine,
   plannedCalls,
+  positionAt,
   PRICING_LAST_REVIEWED,
   profilePrompt,
   profileToCsv,
@@ -277,6 +280,7 @@ interface Args {
 const VALUE_FLAGS = new Set([
   'answers',
   'calls',
+  'log',
   'avg-output',
   'a',
   'at',
@@ -467,6 +471,28 @@ const LOG_EXTENSIONS = ['.jsonl', '.ndjson', '.log', '.json'];
  * would be a figure quietly missing a day, the failure this repository
  * refuses everywhere it can occur.
  */
+/**
+ * The measured side of the `limits` policy, from `--log` — shared by the two
+ * HTTP doors. Returns null when no log was named: the doors then judge every
+ * ceiling `cannot-tell`, which is the honest answer to "what has this label
+ * spent" when nobody handed over the record of what labels spent.
+ */
+async function usageIndexFrom(
+  args: Args,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<ReturnType<typeof indexUsage> | null> {
+  const logPath = stringFlag(args, 'log');
+  if (logPath === undefined) return null;
+  const text = await readUsageLog(logPath, t);
+  const records = text
+    .split('\n')
+    .filter((line) => line.trim() !== '')
+    .map((line) => parseUsageLine(line))
+    .filter((record): record is NonNullable<ReturnType<typeof parseUsageLine>> => record !== null);
+  return indexUsage(records, { catalogue: pricing });
+}
+
 async function readUsageLog(file: string, t: CliMessages): Promise<string> {
   if (!file.endsWith('.gz')) return readFile(file, 'utf8');
   const compressed = await readFile(file);
@@ -627,7 +653,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   connect: ['since', 'until', 'payload', 'store', 'json', 'out', 'markdown-out', 'pricing', 'pricing-live', 'dry-run'],
   store: ['prune', 'keep', 'json', 'pricing', 'pricing-live', 'dry-run'],
   watch: ['once', 'interval', 'since', 'payload', 'webhook', 'json', 'pricing', 'pricing-live'],
-  serve: ['port', 'socket', 'pricing', 'pricing-live'],
+  serve: ['port', 'socket', 'log', 'pricing', 'pricing-live'],
   route: ['prompt-file', 'cases', 'label', 'concurrency', 'json', 'yes', 'pricing', 'pricing-live'],
   eval: ['cases', 'level', 'concurrency', 'export', 'out', 'o', 'model'],
   prune: ['cases', 'concurrency', 'json', 'yes'],
@@ -642,7 +668,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   bench: ['workload', 'json', 'record', 'against', 'max-ratio'],
   write: ['answers', 'json', 'out', 'o', 'calls', 'avg-output'],
   feedback: [],
-  gateway: ['on-cannot-tell', 'port', 'socket', 'pricing', 'pricing-live'],
+  gateway: ['on-cannot-tell', 'port', 'socket', 'log', 'pricing', 'pricing-live'],
   ladder: ['pricing', 'pricing-live', 'since', 'until', 'label'],
   experiment: ['a', 'b', 'min-outcomes', 'pricing', 'pricing-live'],
   quality: ['label', 'at', 'gate', 'pricing', 'pricing-live'],
@@ -3172,6 +3198,9 @@ async function commandGateway(
           asOfMs: Date.now(),
         };
 
+  /** Same measured side as `serve`'s, from `--log` — see `usageIndexFrom`. */
+  const limitsIndex = await usageIndexFrom(args, pricing, t);
+
   const measured: { calls: number; usd: number } = { calls: 0, usd: 0 };
   /**
    * Forwarded calls whose cost this session cannot see.
@@ -3188,6 +3217,9 @@ async function commandGateway(
       onCannotTell: policyFlag as FailurePolicy,
       ...(config.spend?.substitute === undefined ? {} : { substitute: config.spend.substitute }),
     },
+    ...(config.limits === undefined ? {} : { limits: config.limits }),
+    ...(limitsIndex === null ? {} : { position: (call: { label?: string; session?: string }) => positionAt(limitsIndex, call) }),
+    ...(config.waive === undefined ? {} : { waivers: config.waive }),
     standing: () => standing,
     record: (call) => {
       measured.calls += 1;
@@ -3228,6 +3260,12 @@ async function commandGateway(
     `  ${c.dim(wrap(standing === null ? t.gateway.noStanding() : t.gateway.standing(formatUsd(standing.consumedUsd), formatUsd(standing.limitUsd)), 74, '    '))}`,
   );
   console.log(`  ${c.dim(wrap(t.gateway.policy(policyFlag), 74, '    '))}`);
+  if (config.limits !== undefined && limitsIndex === null) {
+    console.log(`  ${c.yellow(wrap(t.serve.limitsNoLog(), 74, '    '))}`);
+  }
+  if (limitsIndex !== null && limitsIndex.unpriced > 0) {
+    console.log(`  ${c.yellow(wrap(t.serve.limitsUnpriced(limitsIndex.unpriced), 74, '    '))}`);
+  }
   console.log();
 }
 
@@ -5279,6 +5317,16 @@ async function commandServe(
   const limitUsd = config.spend?.monthlyUsd;
   const measured = standing !== null && standing.coverage !== 'none';
 
+  /**
+   * The limits policy's measured side, from the usage log `--log` points at —
+   * read once at start, same staleness posture as the store. The store cannot
+   * serve this: its records are provider buckets with no label and no
+   * session, so per-label and per-session spend exist only in a usage log.
+   * Without `--log`, every ceiling judges `cannot-tell` rather than judging
+   * against a measurement nobody took.
+   */
+  const limitsIndex = await usageIndexFrom(args, pricing, t);
+
   const server = buildServer({
     catalogue: pricing,
     position: () => ({
@@ -5291,6 +5339,9 @@ async function commandServe(
       // know which month the figure is about.
       window: standing === null ? null : { fromMs: standing.period.fromMs, toMs: standing.period.toMs },
     }),
+    ...(config.limits === undefined ? {} : { limits: config.limits }),
+    ...(limitsIndex === null ? {} : { measured: (call: { label?: string; session?: string }) => positionAt(limitsIndex, call) }),
+    ...(config.waive === undefined ? {} : { waivers: config.waive }),
   });
 
   const socket = stringFlag(args, 'socket');
@@ -5313,6 +5364,12 @@ async function commandServe(
   }
   if (limitUsd === undefined) {
     console.log(`  ${c.dim(wrap(t.serve.noBudget(), 74, '    '))}`);
+  }
+  if (config.limits !== undefined && limitsIndex === null) {
+    console.log(`  ${c.yellow(wrap(t.serve.limitsNoLog(), 74, '    '))}`);
+  }
+  if (limitsIndex !== null && limitsIndex.unpriced > 0) {
+    console.log(`  ${c.yellow(wrap(t.serve.limitsUnpriced(limitsIndex.unpriced), 74, '    '))}`);
   }
 }
 
