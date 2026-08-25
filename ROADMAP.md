@@ -1184,6 +1184,16 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.71.1 — "The help, in the language it was asked in" — released
+
+**The Spanish `--help` documents `from-claude-code` and `from-otel` again.**
+Both were absent from the Spanish USAGE block and had no options section, so a
+Spanish reader could not learn from `--help` that the conversion commands
+exist. The help is one template per locale, invisible to the type system.
+Fixed, and `help-enumerations.test.js` now runs the help in every reviewed
+locale instead of only English, with a planted hole proving it fails on the
+shape.
+
 ## 1.71.0 — "The universal cost lens" — released
 
 **Point Trazum at any OpenTelemetry export and it prices the LLM calls

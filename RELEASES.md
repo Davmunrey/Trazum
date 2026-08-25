@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.71.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.71.1**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,18 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.71.1 — "The help, in the language it was asked in"
+
+**A Spanish reader running `trazum --help` now sees the two conversion
+commands, `from-claude-code` and `from-otel`.** Both were missing from the
+Spanish USAGE block and had no options section, so `--help --locale es` did
+not tell a Spanish user those commands exist, even though their error
+messages were translated. The help is one big template per language, so the
+compiler could not catch it. Fixed, and the guard that proves the English
+help lists every command now runs in every reviewed locale, with a planted
+hole to prove it fails when a command goes missing again. No behaviour
+changed; the CLI republishes so the corrected help ships.
 
 ## 1.71.0 — "The universal cost lens"
 

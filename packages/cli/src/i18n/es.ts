@@ -46,6 +46,8 @@ ${bold('USO')}
   trazum schema <contrato>
   trazum rollup <documento...|dir> [--json] [--html-out <fichero>]
   trazum position <uso.jsonl>
+  trazum from-claude-code <fichero|dir> [--label <nombre>] [-o <fichero>]
+  trazum from-otel <fichero|dir> [--label-from-service] [-o <fichero>]
   trazum pulse [--max-stale-hours <n>]
   trazum bench [--workload <id>] [--record <fichero>] [--against <fichero> --max-ratio <n>] [--json]
   trazum write [--answers <fichero>] [--json] [-o <fichero>]
@@ -137,6 +139,34 @@ ${bold('OPCIONES DE position')}
   división sobre el pasado, etiquetada como tal, y ausente bajo el suelo de
   siete días, con un techo superado o con tasa cero: nunca un pronóstico, y
   ningún campo del documento nombra una fecha.
+
+${bold('OPCIONES DE from-otel')}
+  --label-from-service        Etiqueta cada registro con el nombre de servicio
+                              de su span, para que salga una factura por
+                              servicio.
+  -o, --out <fichero>         Escribe el log de uso ahí en vez de en stdout.
+
+  Spans GenAI de OpenTelemetry, leídos como un log de uso: modelo, marca de
+  tiempo, etiqueta y los recuentos de tokens de cada span gen_ai.*, y nada
+  más. El contenido del prompt y los trace ids se quedan en el span. OTel no
+  tiene reparto de TTL de caché, así que los veredictos de caché dicen "no se
+  puede saber" en vez de uno inventado. Los spans que no son de LLM se cuentan
+  y se omiten, dicho en stderr.
+
+${bold('OPCIONES DE from-claude-code')}
+  --label <nombre>            Marca cada registro con una etiqueta.
+  --label-from-project        Etiqueta cada registro con el nombre del
+                              directorio de proyecto de su transcript, tal
+                              cual; mapéalo a un nombre de workload con el
+                              bloque \`labels\` de la config.
+  -o, --out <fichero>         Escribe el log de uso ahí en vez de en stdout.
+
+  Los transcripts de Claude Code, leídos como un log de uso: modelo, marca de
+  tiempo, sesión y el propio objeto usage de la API, con el reparto de TTL de
+  caché incluido, y nada más. Ni texto de mensajes, ni rutas, ni ramas cruzan
+  la conversión. Una llamada a la API se escribe como una línea por bloque de
+  contenido, así que las líneas se colapsan por id de petición; lo colapsado o
+  descartado se dice en stderr, nunca en silencio.
 
 ${bold('OPCIONES DE pulse')}
   --max-stale-hours <n>       Sale con 1 cuando algo que corre aquí lleva más
