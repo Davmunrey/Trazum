@@ -147,6 +147,32 @@ this module wrote: every finding a sum cannot support is listed in
 payload becomes a named `PullGap`, never a default of zero. Pure and
 browser-safe — the fetch, the credentials and the pagination live in the CLI.
 
+## The bill, from what is already on disk
+
+`claudeCodeRecords(text, { label })` converts a Claude Code transcript into
+usage-log records — the token counts and the model cross, the words never do,
+and that absence is asserted by test rather than promised.
+`looksLikeClaudeCodeTranscript(text)` detects one, so a mixed folder routes
+itself. `otelRecords(text)` does the same for an OpenTelemetry export's GenAI
+spans, and returns what it skipped beside what it converted — "1 LLM span
+priced, 1 other ignored" is a different sentence from a bare total. Both are
+pure and browser-safe; the web app's Bill tab runs them on a dropped folder.
+
+## Should we switch models?
+
+`switchAnalysis(report, targetId, { catalogue, on, migrationUsd, evalCases })`
+prices the decision a what-if only gestures at: the saving on the same tokens
+(the sign is proven in both directions — a switch that costs money says so),
+the break-even of a **declared** migration cost as division over the measured
+days — refused by name (`no-saving`, `no-clock`) rather than approximated —
+and the cost of the evaluation itself, three provider calls per case. Quality
+is never in the result: the analysis defers to `route`, every time.
+`ownRate({ gpuUsdPerHour, tokensPerSecond, utilization })` derives a
+self-hosted $/MTok from your declared numbers — the one price source here
+that is neither published nor bundled: it is your own measurement, and the
+function refuses rather than defaults when a number is missing or out of
+range.
+
 ## The store
 
 `resolveStore(records)` collapses an append-only log into the current truth:
@@ -229,6 +255,12 @@ result.pricingSource; // says which models came from the overlay, and its date
 
 A catalogue is a **value**: applying an overlay returns a new one and mutates
 nothing, so your prices never leak into another caller's report.
+
+`openrouterOverlay(payload, { knownIds, lastReviewed })` turns an OpenRouter
+`/models` response into that same overlay shape — models you already price are
+left alone, and anything unreadable comes back in `skipped` with a reason
+rather than vanishing. It is pure, so the browser can run it on a pasted
+response; the CLI's `--pricing-live` is this function behind a fetch.
 
 ## Two entry points
 

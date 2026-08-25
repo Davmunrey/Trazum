@@ -49,7 +49,7 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- 35 commands       MCP server      Next.js     comments on pull requests
+ 42 commands       MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
@@ -448,7 +448,7 @@ In GitHub Actions, use the packaged action — nothing to install:
 
 ```yaml
 - uses: actions/checkout@v7
-- uses: Davmunrey/Trazum@d7b79eadc26e6488038dbeeb7f918c72654b5fc7  # 1.73.1
+- uses: Davmunrey/Trazum@782aaabefeafc61b4d2f8d2407646605decc6523  # 1.74.0
   with:
     target: prompts/system.txt
     max-tokens: 2000
@@ -494,7 +494,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v7
-  - uses: Davmunrey/Trazum@d7b79eadc26e6488038dbeeb7f918c72654b5fc7  # 1.73.1
+  - uses: Davmunrey/Trazum@782aaabefeafc61b4d2f8d2407646605decc6523  # 1.74.0
     with:
       target: prompts/            # a directory uses trazum.config.json budgets
       comment: true
@@ -523,7 +523,7 @@ run gates tokens before the money is spent or the spend itself, and saying
 which is the caller's job:
 
 ```yaml
-- uses: Davmunrey/Trazum@d7b79eadc26e6488038dbeeb7f918c72654b5fc7  # 1.73.1
+- uses: Davmunrey/Trazum@782aaabefeafc61b4d2f8d2407646605decc6523  # 1.74.0
   with:
     usage-log: logs/yesterday.jsonl
     max-usd: '50'            # exit 1 over budget — no period assumed
@@ -2641,6 +2641,16 @@ component, a test fails if one appears, and the only analytics event carries
 two booleans. A usage log names your workloads, spend and conversation counts —
 exactly the file nobody should have to hand to a server to see a report on it.
 
+The drop zone reads more than logs. A **Claude Code project folder** —
+`~/.claude/projects` as it sits on disk — prices every transcript in the page,
+labelled by project, with the counts crossing and never the words. An
+**OpenTelemetry export** prices its GenAI spans the same way. And a **price
+card** — an OpenRouter `/models` response, or the same overlay JSON a
+`--pricing` file holds — widens the catalogue every figure in the tab prices
+with, so a model the bundled snapshot has never met (your Qwen, your
+self-hosted rate from [`trazum ownrate`](#the-model-you-run-yourself-trazum-ownrate))
+gets the same exact arithmetic, still without a single request leaving the page.
+
 **Under the report, the rest of the loop.** The ranked plan — each action with
 its money as a projection *or* a measured stake and never both, the typed
 assumption it rests on, and the command that would check that assumption — and
@@ -2651,6 +2661,15 @@ into the check on it: three outcomes, never two, with the three cannot-tell
 reasons kept distinct. Saved as a file rather than offered as a link, because a
 link would mean this page storing somebody's bill somewhere — an access-control
 question nobody has designed. [The plan format is documented](docs/plan-format.md).
+
+**A guided tour walks the public tabs** — Optimise, Write, Compare, Bill and
+the Playground — ringing each panel in place with a sentence on what it
+answers. It never auto-plays: a first visit is offered it once, and the compass
+in the rail starts it any time after. The **Playground** tab is the CLI itself
+in the page — ten commands that spend nothing and touch no network, over
+sample files already loaded, through the same `@trazum/core` functions the
+terminal runs, so `trazum profile usage.jsonl` can be tried before anything is
+installed, against data that never existed outside the browser.
 
 The HTTP API behind it is public and small:
 

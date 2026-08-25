@@ -31,6 +31,9 @@ because "MCP server" reads like infrastructure and this is not.
 | `optimize_prompt` | The shorter text, the token counts either side, what the difference is worth per month, and any advisories. |
 | `profile_usage` | Where the money went, from a usage log passed as text: the spend split, per label and per model, whether caching paid for itself, and the levers that would actually move the bill. `label`, `since`/`until` and `previous_log` drill down and compare; `what_if` prices the same calls on another model — arithmetic, not advice, and it says so. `pricing_overlay` takes the same JSON a `--pricing` overlay file holds, as text — models it adds or overrides price the whole report, and the report says the overlay is in effect. The one tool whose figures are exact — they are the provider's own billed counts. |
 | `list_models` | Prices, context windows and cacheable minimums, with the date the table was reviewed. |
+| `spend_guard` | Whether the call you are about to make fits the budget — `yes`, `no`, or `cannot-tell`, with the cheaper ways to make the same call attached to a refusal. See below. |
+| `position` | Where the month stands against every ceiling you pass, measured from the log text alone — the denominator on every figure, and no forecast anywhere. |
+| `prompt_writer` | Interviews you, then writes the prompt. Fixed questions, your words, same answers same text — nothing is generated. |
 
 `check_prompt` is the one worth wiring up. It has **three** outcomes rather than
 two, and the third is the point:
@@ -79,10 +82,6 @@ samples in seven languages), and every tool says so in its own output. A prompt
 within a few percent of its budget should be treated as uncertain rather than as
 passing. `--exact-tokens` settles it against the counting endpoint, which is free.
 
-## Licence
-
-MIT. Part of [Trazum](https://github.com/Davmunrey/Trazum).
-
 ## `spend_guard`
 
 Whether a call you are about to make fits the budget: `yes`, `no`, or
@@ -91,3 +90,7 @@ priced for this call, each naming what it assumes, and each already filtered to
 models the prompt fits inside. The measured half (spend so far) and the
 estimated half (the call you described) stay apart, and the verdict says which
 it rests on. Nothing is called and nothing is spent to answer.
+
+## Licence
+
+MIT. Part of [Trazum](https://github.com/Davmunrey/Trazum).
