@@ -1184,6 +1184,14 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.71.2 — "The README the npm page never showed" — released
+
+**The npm page for every package now shows its README.** Publishing with `npm
+publish -w` from the repo root put the README in the tarball but not in the
+version metadata, so npmjs.com rendered "no README" over packages that shipped
+one, for three releases. Each package now publishes from its own directory.
+`publish.test.js` forbids the `-w` form and asserts the per-directory shape.
+
 ## 1.71.1 — "The help, in the language it was asked in" — released
 
 **The Spanish `--help` documents `from-claude-code` and `from-otel` again.**

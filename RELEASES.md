@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.71.1**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.71.2**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,17 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.71.2 — "The README the npm page never showed"
+
+**Every package's npm page now shows its README.** The release workflow
+published with `npm publish -w @trazum/<pkg>` from the repo root, which puts
+the README in the tarball but leaves it out of the version metadata npmjs.com
+renders, so the page said "This package does not have a README" over a
+package that shipped one. Three releases went out that way. Each package now
+publishes from its own directory, which is what makes npm attach the README.
+No code changed; the packages republish so the pages fill in, and a guard now
+forbids the `-w` form and proves it would fail.
 
 ## 1.71.1 — "The help, in the language it was asked in"
 
