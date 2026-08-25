@@ -74,6 +74,11 @@ Signing happens in the pull request: the CLA workflow asks first-time
 contributors to post the sentence it names, records the signature in
 `.github/cla-signatures.json` on the `cla-signatures` branch — a file that
 exists only there, written by the workflow, with your GitHub username and the
-date — and turns its check green. One signature covers all your contributions to the project from
-then on. If you cannot or do not wish to sign, say so in the pull request —
-the code can still be discussed; it just cannot be merged.
+date — and turns its check green. One signature covers all your contributions
+to the project from then on. If you cannot or do not wish to sign, say so in
+the pull request — the code can still be discussed; it just cannot be merged.
+
+The maintainer's own account and the project's automation are allowlisted in
+that workflow, so their pull requests carry no signature request. That is not
+an exemption from the terms above: the Maintainer is the party this agreement
+grants **to**, and a bot has nothing to grant.
