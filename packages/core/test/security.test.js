@@ -1683,21 +1683,43 @@ describe('the packaged Action', () => {
     assert.match(job, /if: github\.event_name != 'pull_request'/);
   });
 
-  it('no workflow or the action uses pull_request_target', () => {
+  it('pull_request_target is banned everywhere but the CLA gate, which checks out nothing', () => {
     // The event a reviewer reaches for when a fork PR cannot post a comment. It
     // runs with a writable token against the BASE repository while checking out
     // code the contributor controls, which is how "we just wanted to comment on
     // the PR" becomes arbitrary code execution with the repository's secrets.
-    // If 0.11.0 ever needs it, that needs arguing in a pull request, not a
-    // quiet addition.
+    // This guard used to ban it outright and said any need for it "needs
+    // arguing in a pull request, not a quiet addition" — cla.yml is that
+    // argument, made and merged. The CLA bot must comment and set a status on
+    // exactly the fork pull requests whose plain-event token is read-only, so
+    // it needs the event; the event is only dangerous BESIDE a checkout of the
+    // contributor's code, and the assertions below pin that cla.yml never
+    // checks anything out. Widening the exception, or adding a checkout to
+    // cla.yml, is the argument reopened — this test failing is how it reopens.
     const workflows = readdirSync(join(repoRoot, '.github/workflows'))
       .filter((name) => name.endsWith('.yml') || name.endsWith('.yaml'))
       .map((name) => [name, readFileSync(join(repoRoot, '.github/workflows', name), 'utf8')]);
 
     assert.ok(workflows.length > 0, 'no workflows found — has the layout changed?');
+    let claSeen = false;
     for (const [name, source] of [...workflows, ['action.yml', action]]) {
+      if (name === 'cla.yml') {
+        claSeen = true;
+        assert.match(
+          source,
+          /pull_request_target/,
+          'cla.yml stopped using pull_request_target — its exception here should go too',
+        );
+        assert.doesNotMatch(
+          source,
+          /actions\/checkout|uses:\s*\.\//,
+          'cla.yml checks out code beside a writable token — the exact attack the ban exists for',
+        );
+        continue;
+      }
       assert.doesNotMatch(source, /pull_request_target/, `${name} uses pull_request_target`);
     }
+    assert.ok(claSeen, 'cla.yml is gone — remove its exception from this guard');
   });
 
   it('passes every declared input through to the CLI', () => {
