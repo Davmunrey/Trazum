@@ -57,6 +57,14 @@ export function Tour({
 }) {
   const [index, setIndex] = useState(0);
   const [rect, setRect] = useState<TargetRect | null>(null);
+  /**
+   * The glide is for travelling between steps, not for chasing the reader's
+   * scroll: a 320ms transition applied to every scroll-driven re-measure
+   * lags the ring and the card behind the page — the production screenshots
+   * showed the card half out of view mid-scroll. True for a beat after each
+   * step change, false the rest of the time.
+   */
+  const [gliding, setGliding] = useState(false);
   const cardRef = useRef<HTMLDivElement | null>(null);
   const step = TOUR_STEPS[index];
   const copy = t.tour.steps[step.id];
@@ -93,6 +101,7 @@ export function Tour({
   // view (instantly for a reader who asked for no motion), then measure.
   useEffect(() => {
     onTabChange(step.tab);
+    setGliding(true);
     const frame = requestAnimationFrame(() => {
       const element =
         step.target !== null ? document.querySelector(`[data-tour="${step.target}"]`) : null;
@@ -107,12 +116,22 @@ export function Tour({
         });
       }
       measure();
-      // The smooth scroll lands over a few frames; measure again when it has.
-      const settle = setTimeout(measure, 360);
       cardRef.current?.focus();
-      return () => clearTimeout(settle);
     });
-    return () => cancelAnimationFrame(frame);
+    /**
+     * The smooth scroll lands over a few frames, and a tab a fast click just
+     * opened can be measured before its panel is visible — the 1.73 tour had
+     * no re-measure and a quick walker got centred cards with no ring for the
+     * rest of the step. Timers owned by the effect, not the rAF callback: a
+     * cleanup returned inside requestAnimationFrame is returned to nobody.
+     */
+    const settle = setTimeout(measure, 360);
+    const glided = setTimeout(() => setGliding(false), 420);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(settle);
+      clearTimeout(glided);
+    };
   }, [step, onTabChange, measure]);
 
   // The rectangle is a snapshot of layout, so layout changes re-take it.
@@ -159,8 +178,11 @@ export function Tour({
     cardLeft = Math.max(EDGE, Math.min(rect.left, viewportW - CARD_WIDTH - EDGE));
   }
 
-  // The glide. Instant under reduced motion via the global rule.
-  const glide = 'top 320ms cubic-bezier(0.2, 0.8, 0.2, 1), left 320ms cubic-bezier(0.2, 0.8, 0.2, 1), width 320ms cubic-bezier(0.2, 0.8, 0.2, 1), height 320ms cubic-bezier(0.2, 0.8, 0.2, 1)';
+  // The glide. Instant under reduced motion via the global rule, and off
+  // entirely outside the step-change beat so scroll tracking is immediate.
+  const glide = gliding
+    ? 'top 320ms cubic-bezier(0.2, 0.8, 0.2, 1), left 320ms cubic-bezier(0.2, 0.8, 0.2, 1), width 320ms cubic-bezier(0.2, 0.8, 0.2, 1), height 320ms cubic-bezier(0.2, 0.8, 0.2, 1)'
+    : 'none';
 
   return (
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={t.tour.dialogLabel}>
@@ -229,7 +251,7 @@ export function Tour({
                     ? 'h-1.5 w-5 rounded-full bg-primary transition-all duration-300'
                     : i < index
                       ? 'h-1.5 w-1.5 rounded-full bg-primary/50 transition-all duration-300'
-                      : 'h-1.5 w-1.5 rounded-full bg-border transition-all duration-300'
+                      : 'h-1.5 w-1.5 rounded-full bg-muted-foreground/30 transition-all duration-300'
                 }
               />
             ))}
