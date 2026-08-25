@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.71.2**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.72.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,31 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.72.0 — "The playground"
+
+**Type `trazum profile usage.jsonl` in the web app and the bill prints —
+the CLI, runnable in the page, with nothing installed and nothing
+uploaded.** The new Playground tab is a terminal over the same
+`@trazum/core` functions the real CLI imports, on sample files already
+loaded: ten commands (`optimize`, `check`, `profile`, `position`, `diff`,
+`semantic`, `from-otel`, `from-claude-code`, `models`, `rules`) plus `ls`,
+`cat`, `clear` and `help`. Converter output written with `-o` lands beside
+the samples, so the whole 1.71 pipe happens in front of you: convert an
+OpenTelemetry export, then price it, two lines apart. Arrow-key history,
+both languages, and a clock pinned inside the sample month so the demo
+reads the same next year.
+
+**The subset says it is one.** The commands that need a network, a
+credential or a running process are named as CLI-only by `help` — and by
+the refusal you get typing one — rather than silently absent. The suite
+holds the rest: no fetch in either new file, every advertised command runs
+in both locales, and a prompt planted in the OTLP sample never crosses any
+conversion or any priced output.
+
+Also carried: `github/codeql-action` bumped to 4.37.8 in one commit, both
+halves together, superseding the two dependabot PRs that each fail the
+SHA-parity guard alone — by design, as the workflow's own comment says.
 
 ## 1.71.2 — "The README the npm page never showed"
 

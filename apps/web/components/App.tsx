@@ -12,6 +12,7 @@ import {
   PanelLeftOpen,
   PenLine,
   Receipt,
+  SquareTerminal,
   Wand2,
   X,
 } from 'lucide-react';
@@ -37,6 +38,7 @@ import { Bill } from './Bill';
 import { Library } from './Library';
 import { Comparer } from './Comparer';
 import { Optimizer } from './Optimizer';
+import { Playground } from './Playground';
 import { Writer } from './Writer';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -383,7 +385,13 @@ export function App({
     },
     {
       label: t.page.groupMeasure,
-      items: [{ value: 'bill', label: t.bill.tab, Icon: Receipt }],
+      items: [
+        { value: 'bill', label: t.bill.tab, Icon: Receipt },
+        // The playground demonstrates the tool the tabs above only allude to:
+        // the CLI's pure subset, run in the page on sample data. Public on
+        // purpose — it is the demo, and it holds nothing personal.
+        { value: 'playground', label: t.playground.tab, Icon: SquareTerminal },
+      ],
     },
   ];
 
@@ -777,6 +785,14 @@ export function App({
           </TabsContent>
           <TabsContent value="bill" forceMount className="data-[state=inactive]:hidden">
             <Bill t={t} />
+          </TabsContent>
+          {/*
+            forceMount for the same reason as every other tab: the terminal's
+            scrollback and its virtual files live only in the browser, and an
+            unmounted tab would discard both.
+          */}
+          <TabsContent value="playground" forceMount className="data-[state=inactive]:hidden">
+            <Playground t={t} locale={locale} />
           </TabsContent>
           {signedIn && (
             <TabsContent value="library">

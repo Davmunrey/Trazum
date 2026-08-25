@@ -1184,6 +1184,18 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.72.0 — "The playground" — released
+
+**The CLI, runnable in the web app.** A terminal tab over the same
+`@trazum/core` functions the real CLI imports, on sample files already
+loaded: ten pure commands plus `ls`/`cat`/`clear`/`help`, converter output
+written with `-o` landing beside the samples so the 1.71 pipe runs in front
+of the visitor, both locales, a pinned demo clock, and nothing uploaded or
+fetched. The commands that need a network, a credential or a process are
+named as CLI-only rather than hidden. Also carried: codeql-action 4.37.8
+bumped in one commit, both halves together, superseding the two dependabot
+PRs that each fail the SHA-parity guard alone.
+
 ## 1.71.2 — "The README the npm page never showed" — released
 
 **The npm page for every package now shows its README.** Publishing with `npm
@@ -2223,13 +2235,13 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**1.72.0 — "The playground."** [The 1.72 plan](docs/plan-1.72.md), asked for
-and written before the code: the CLI's pure subset — optimise, profile,
-position, the converters and the rest of what needs no network, no credential
-and no process — runnable in the web app against sample files already loaded,
-through the same `@trazum/core` functions the terminal runs. Nothing uploaded,
-nothing fetched, and the commands that do need a terminal named as CLI-only
-rather than hidden.
+Nothing is planned. [The 1.72 plan](docs/plan-1.72.md) was delivered in
+full — the playground: the CLI's pure subset runnable in the web app against
+sample files, through the same `@trazum/core` functions the terminal runs,
+with the commands that need a terminal named as CLI-only rather than hidden.
+The guided tour of the app, chosen alongside it, is the natural next arc and
+waits to be asked for: a plan exists to be written before the code, not to
+keep a section warm.
 
 Before it, [the 1.71 plan](docs/plan-1.71.md) was delivered in full —
 the universal cost lens, generalising the `from-claude-code` pattern to the
