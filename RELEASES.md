@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.74.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.75.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,25 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.75.0 — "The readable terminal"
+
+The CLI's reports were honest and dense, and dense was winning: a forty-day
+profile printed twelve sections of correct prose with the same visual weight
+on every line. Now the terminal has what the HTML report always had — a
+hierarchy you can see from a metre away. Section headings carry a rule out to
+the report's width; the spend split and the per-label and per-model rows
+carry a proportion bar beside the percentage they already stated; warnings
+keep their yellow `!`, levers their `→`, and `trazum models` is the first
+table through the one shared renderer, aligned by a measurer that does not
+count ANSI codes as width.
+
+Every sentence and every figure is unchanged, and that is a test now, not a
+promise: the same command runs painted and plain, the paint is stripped, and
+the two must match byte for byte. A pipe still gets plain bytes — your
+`trazum … | grep` reads exactly what it read last week. `FORCE_COLOR=1`
+paints anywhere, `NO_COLOR` wins everywhere, and neither is a Trazum
+invention.
 
 ## 1.74.0 — "Any model's money"
 

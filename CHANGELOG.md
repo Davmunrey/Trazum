@@ -20,6 +20,57 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## 1.75.0 — "The readable terminal"
+
+### Added
+
+- **The style module.** [The 1.75 plan](docs/plan-1.75.md):
+  `packages/cli/src/style.ts` — the six painters moved out of `index.ts`
+  unchanged, and around them what eleven hand-built tables had each rebuilt
+  badly: `visibleWidth` (a string's width with its ANSI codes not counted —
+  every hand-rolled `padStart` miscounted the moment a painted cell reached
+  it), `padCell`, one `table` renderer with per-column alignment and dimmed
+  headers, `bar` (a share the line already states, as `█████░░░░░`, printed
+  for a pipe too because it is content, not paint), and `sectionHeading`
+  (the heading bold, completed to the report's width with a dim rule — an
+  anchor line a scrolling eye can stop on). Colour detection gained one
+  door: `FORCE_COLOR=1` paints under a pipe, because the guard below needs
+  to see colour to strip it. `NO_COLOR` still wins in a terminal; a bare
+  pipe still gets plain bytes.
+
+- **Fifty-four section headings ruled, three reports barred.** The profile's
+  spend split, its per-label and per-model rows each carry the proportion
+  bar beside the percentage they already stated; the split rows stopped
+  being dimmed wholesale — the money split is data, not provenance. Every
+  section heading across the CLI's reports — profile, optimize, models,
+  init, switch, rollup, position, and the rest — gets the rule. The two
+  `where` headings that are sentence fragments flowing into their answer
+  ("Prompts in X go to…") stay bold and unruled on purpose: a rule in the
+  middle of a sentence reads as the sentence's object.
+
+- **`trazum models` through the shared renderer.** The first consumer of
+  `table()`: same columns, same figures, dimmed header, alignment measured
+  ANSI-aware.
+
+### Guarded
+
+- **Colour adds nothing, and hides nothing** (`style.test.js`). The same
+  command runs painted (`FORCE_COLOR=1`) and plain (`NO_COLOR`), the ANSI
+  codes are stripped from the painted run, and the two must be
+  byte-identical — decoration that does not survive the strip is content
+  hiding in a channel a pipe cannot see, and content that survives only
+  when painted is the same defect mirrored. A second assertion keeps the
+  pipe plain: no ANSI ever reaches a non-TTY without `FORCE_COLOR`, which
+  is also the guard on every other test's regexes. A third pins the rule
+  and the bar as content: they must appear in the plain run too.
+
+### Changed
+
+- Nothing installable beyond the above: no new figures, no reworded
+  sentences, no reordered sections, no dependency. A reader who memorised
+  the plain report reads the painted one with the same memory — that
+  sentence is now a test rather than a promise.
+
 ## 1.74.0 — "Any model's money"
 
 ### Added
