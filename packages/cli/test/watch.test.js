@@ -120,6 +120,6 @@ describe('watch', () => {
 
   it('speaks Spanish', async () => {
     const dir = await setup();
-    assert.match(flat(run(dir, ['--locale', 'es'])), /CRUZADO — El gasto total es \$50\.00/);
+    assert.match(flat(run(dir, ['--locale', 'es'])), /CRUZADO: El gasto total es \$50\.00/);
   });
 });

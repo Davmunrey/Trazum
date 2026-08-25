@@ -186,6 +186,6 @@ describe('optimize --from-log', () => {
   it('speaks Spanish', async () => {
     const { prompt, log } = await setup([call('2026-08-01'), call('2026-08-11')]);
     const out = flat(run([prompt, '--from-log', log, '--label', 'chat', '--locale', 'es']));
-    assert.match(out, /2 llamadas medidas en 10\.0 días — 6\/mes a ese ritmo/);
+    assert.match(out, /2 llamadas medidas en 10\.0 días, 6\/mes a ese ritmo/);
   });
 });

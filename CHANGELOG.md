@@ -20,6 +20,44 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## 1.79.0 — "The dash the sweep left behind"
+
+### Changed
+
+- **The Spanish catalogues carry no em-dash.** The owner asked for it to
+  leave the product; the web app was swept by hand and the terminal was
+  not, so `trazum position --locale es` printed two of them in the middle
+  of a Spanish paragraph. 338 occurrences are gone from
+  `packages/cli/src/i18n/es.ts` and `packages/core/src/i18n/es.ts`, each
+  judged one at a time rather than substituted in bulk: an explanatory
+  continuation became a colon, an aside a comma, a bracketed clause a pair
+  of parentheses, and the two table cells that used a dash as a placeholder
+  now say what they mean ("ninguno", "otro", "sin veredicto").
+- **English is deliberately untouched.** The em-dash is ordinary English
+  punctuation and this product's whole English voice rests on it, from the
+  READMEs to `en.ts`. Sweeping one English file and not the rest would make
+  the product read as though two people wrote it. If English should follow,
+  that is a separate and much larger decision, and it should be asked for
+  rather than assumed.
+
+### Added
+
+- **A guard, so the sweep is a rule instead of an edit.** `i18n.test.js`
+  walks the repository for every `i18n/es.ts`, asserts it found at least
+  three so it cannot pass by finding nothing, and fails on an em-dash in
+  any of them with the file and line named. It checks **both spellings**:
+  the literal character and the `\u2014` escape. That second half is not
+  defensive tidiness. The first version of this sweep searched for the
+  character alone and reported the catalogue clean while 32 escaped
+  em-dashes sat in it, one of which was still printing in Spanish; the
+  test suite caught it, and the guard now covers what the sweep missed.
+
+### Fixed
+
+- Six Spanish assertions in the CLI suite that pinned the old punctuation.
+  Nothing about them was wrong: they were doing their job, which is why the
+  sweep could not land quietly.
+
 ## 1.78.0 — "A sentence no locale could reach"
 
 ### Changed

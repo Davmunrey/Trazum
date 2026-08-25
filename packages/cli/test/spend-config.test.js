@@ -131,7 +131,7 @@ describe('spend budgets in trazum.config.json', () => {
     const { dir, log } = await project({ spend: { byLabel: { chat: 2 } } }, [call('chat', 5)]);
     const result = run(dir, [log, '--locale', 'es']);
     assert.equal(result.status, 1);
-    assert.match(flat(result), /FALLO — chat gastó \$5\.00/);
+    assert.match(flat(result), /FALLO: chat gastó \$5\.00/);
   });
 
   it('refuses a negative budget at parse time', async () => {

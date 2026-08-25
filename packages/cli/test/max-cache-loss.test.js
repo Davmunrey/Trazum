@@ -115,6 +115,6 @@ describe('--max-cache-loss-usd', () => {
       { encoding: 'utf8', env: SPAWN_ENV, timeout: 30000 },
     );
     assert.equal(result.status, 1);
-    assert.match(flat(result), /FALLO — cachear añadió \$1\.25/);
+    assert.match(flat(result), /FALLO: cachear añadió \$1\.25/);
   });
 });

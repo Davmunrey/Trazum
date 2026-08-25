@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
+import { dirname, join, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 
 import {
@@ -248,5 +251,61 @@ describe('locale in the report', () => {
     );
     // And the money is the same number either way.
     assert.equal(enCaching.estimatedMonthlyUsd, esCaching.estimatedMonthlyUsd);
+  });
+});
+
+describe('the Spanish catalogues carry no em-dash', () => {
+  /**
+   * The owner asked for the em-dash to leave the product, the web app was swept
+   * by hand, and then `trazum position --locale es` printed two of them in the
+   * terminal. An instruction carried out by hand on one surface is not carried
+   * out: it is postponed until somebody reintroduces it. So the sweep is a rule
+   * now, and this is the rule.
+   *
+   * English is deliberately not covered. The em-dash is ordinary English
+   * punctuation and the whole English voice of this product rests on it, from
+   * the READMEs to `en.ts` itself. Removing it from one English file and not the
+   * rest would make the product read as though two people wrote it.
+   *
+   * The Spanish catalogues are found by walking, not by a hard-coded list, so a
+   * Spanish dictionary added tomorrow is covered the day it lands.
+   */
+  const catalogues = () => {
+    const found = [];
+    const walk = (dir) => {
+      for (const entry of readdirSync(dir, { withFileTypes: true })) {
+        if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name === '.next') continue;
+        const full = join(dir, entry.name);
+        if (entry.isDirectory()) walk(full);
+        else if (entry.name === 'es.ts' && full.includes(`${sep}i18n${sep}`)) found.push(full);
+      }
+    };
+    walk(join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..'));
+    return found;
+  };
+
+  it('finds the Spanish catalogues at all, so this guard cannot pass by finding nothing', () => {
+    const found = catalogues();
+    assert.ok(found.length >= 3, `expected the core, CLI and web Spanish catalogues, found ${found.length}`);
+  });
+
+  it('holds no em-dash in any of them, in either spelling, comments included', () => {
+    /**
+     * Both spellings, because the sweep that wrote this guard missed 32 of them:
+     * the CLI catalogue carries a mix of literal characters and `\\u2014`
+     * escapes, and a search for the character alone walked straight past the
+     * escaped half. A guard that only sees one spelling of the thing it forbids
+     * is a guard that reports clean while the terminal prints it.
+     */
+    for (const file of catalogues()) {
+      const lines = readFileSync(file, 'utf8').split('\n');
+      const offending = lines
+        .map((line, index) =>
+          line.includes('—') || line.includes('\\u2014') ? `${file}:${index + 1}` : null,
+        )
+        .filter((entry) => entry !== null);
+      // Named with the line, so a contributor who adds one is told where.
+      assert.deepEqual(offending, [], `em-dash in Spanish copy: ${offending.join(', ')}`);
+    }
   });
 });

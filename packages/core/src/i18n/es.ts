@@ -82,7 +82,7 @@ export const es: CoreMessages = {
 
   suggest: {
     'not-found': () =>
-      'la frase citada no está en el prompt — el modelo parafraseó lo que estaba copiando',
+      'la frase citada no está en el prompt: el modelo parafraseó lo que estaba copiando',
     'touches-protected': () =>
       'editaría código, una URL, un marcador o una etiqueta, que se copian literalmente',
     'introduces-protected': () => 'el reemplazo añade un marcador o una URL que no estaba',
@@ -100,15 +100,15 @@ export const es: CoreMessages = {
       detail: !uncertain
         ? `El prompt optimizado ocupa ~${n(tokens)} tokens y ${modelName} admite ${n(contextWindow)}. La llamada fallará: divide el contenido o cambia a un modelo con ventana mayor.`
         : bandApplies
-          ? `El prompt optimizado ocupa ~${n(tokens)} tokens frente a los ${n(contextWindow)} de ${modelName}. Ese recuento es una estimación y está cerca del límite, así que la llamada fallará probablemente, pero puede que no —confírmalo con --exact-tokens antes de reescribir nada. El endpoint de conteo es gratis. Si de verdad se pasa, divide el contenido o cambia a un modelo con ventana mayor.`
-          : `El prompt optimizado ocupa ~${n(tokens)} tokens frente a los ${n(contextWindow)} de ${modelName}, así que se pasa. Ese recuento es una estimación, y el error del estimador se midió contra el tokenizador de Claude —no el de ${modelName}—, así que desde aquí no se puede decir por cuánto se pasa de verdad. Trazum no va a decirte que la llamada falla apoyándose en un número que no ha medido para esta familia. Cuenta con las herramientas de tu propio proveedor antes de reescribir nada.`,
+          ? `El prompt optimizado ocupa ~${n(tokens)} tokens frente a los ${n(contextWindow)} de ${modelName}. Ese recuento es una estimación y está cerca del límite, así que la llamada fallará probablemente, pero puede que no. Confírmalo con --exact-tokens antes de reescribir nada. El endpoint de conteo es gratis. Si de verdad se pasa, divide el contenido o cambia a un modelo con ventana mayor.`
+          : `El prompt optimizado ocupa ~${n(tokens)} tokens frente a los ${n(contextWindow)} de ${modelName}, así que se pasa. Ese recuento es una estimación, y el error del estimador se midió contra el tokenizador de Claude y no el de ${modelName}, así que desde aquí no se puede decir por cuánto se pasa de verdad. Trazum no va a decirte que la llamada falla apoyándose en un número que no ha medido para esta familia. Cuenta con las herramientas de tu propio proveedor antes de reescribir nada.`,
     }),
 
     contextNearLimit: ({ tokens, modelName, contextWindow, bandApplies }) => ({
       title: 'El prompt puede no caber en la ventana de contexto',
       detail: bandApplies
-        ? `El prompt optimizado ocupa ~${n(tokens)} tokens frente a los ${n(contextWindow)} de ${modelName}, así que cabe —pero ese recuento es una estimación y su margen de error se pasa de la ventana, así que el prompt real puede no caber. Una llamada que excede la ventana falla del todo en lugar de degradarse, y nada más aquí avisa de eso. Confírmalo con --exact-tokens; el endpoint de conteo es gratis.`
-        : `El prompt optimizado ocupa ~${n(tokens)} tokens frente a los ${n(contextWindow)} de ${modelName}, y sobre la estimación cabe. Este aviso salta porque el error medido del estimador —contra el tokenizador de Claude, no el de ${modelName}— se pasaría de la ventana, y nadie ha medido cuánto es ese error en esta familia. Una llamada que excede la ventana falla del todo en lugar de degradarse. Cuenta con las herramientas de tu propio proveedor antes de fiarte del margen.`,
+        ? `El prompt optimizado ocupa ~${n(tokens)} tokens frente a los ${n(contextWindow)} de ${modelName}, así que cabe, pero ese recuento es una estimación y su margen de error se pasa de la ventana, así que el prompt real puede no caber. Una llamada que excede la ventana falla del todo en lugar de degradarse, y nada más aquí avisa de eso. Confírmalo con --exact-tokens; el endpoint de conteo es gratis.`
+        : `El prompt optimizado ocupa ~${n(tokens)} tokens frente a los ${n(contextWindow)} de ${modelName}, y sobre la estimación cabe. Este aviso salta porque el error medido del estimador (contra el tokenizador de Claude, no el de ${modelName}) se pasaría de la ventana, y nadie ha medido cuánto es ese error en esta familia. Una llamada que excede la ventana falla del todo en lugar de degradarse. Cuenta con las herramientas de tu propio proveedor antes de fiarte del margen.`,
     }),
 
     promptCaching: ({
@@ -124,13 +124,13 @@ export const es: CoreMessages = {
       nearMinimum,
     }) => {
       const scope = placeholder
-        ? `El prefijo estable —lo anterior al primer marcador ${placeholder}— son ~${n(prefixTokens)} de los ${n(totalTokens)} tokens del prompt, y supera el mínimo cacheable de ${n(minTokens)} de ${modelName}.`
+        ? `El prefijo estable (lo anterior al primer marcador ${placeholder}) son ~${n(prefixTokens)} de los ${n(totalTokens)} tokens del prompt, y supera el mínimo cacheable de ${n(minTokens)} de ${modelName}.`
         : `El prompt no tiene marcadores variables, así que el prefijo cacheable es entero y supera el mínimo de ${n(minTokens)} tokens de ${modelName}.`;
       const how = explicit
         ? 'Coloca el marcador de caché al final del prefijo estable: cualquier byte que cambie antes del corte invalida todo lo que va detrás.'
         : `${modelName} cachea automáticamente por encima de su mínimo, así que no hay nada que activar; pero la regla es la misma: cualquier byte que cambie antes del corte invalida todo lo que va detrás.`;
       const hedge = nearMinimum
-        ? ` Un aviso sobre la cifra: ese recuento del prefijo es una estimación y está cerca del límite, así que el real puede quedar por debajo del mínimo de ${n(minTokens)} tokens —y entonces no se cachea nada y este ahorro no existe. Confírmalo con --exact-tokens antes de presupuestar sobre él. El endpoint de conteo es gratis.`
+        ? ` Un aviso sobre la cifra: ese recuento del prefijo es una estimación y está cerca del límite, así que el real puede quedar por debajo del mínimo de ${n(minTokens)} tokens, y entonces no se cachea nada y este ahorro no existe. Confírmalo con --exact-tokens antes de presupuestar sobre él. El endpoint de conteo es gratis.`
         : '';
       return {
         title: 'Activa prompt caching en el prefijo estable',
@@ -171,7 +171,7 @@ export const es: CoreMessages = {
 
     cachePrefixReorder: ({ staticTokensAfter, sharePct, placeholder, command }) => ({
       title: 'Mueve las instrucciones estables antes del primer marcador',
-      detail: `Unos ~${n(staticTokensAfter)} tokens de contenido estable (el ${sharePct}% del prompt) están después del primer marcador variable ${placeholder}, así que hoy no se cachean nunca. Instrucciones y contexto fijos primero, marcadores al final, y ese contenido empieza a leerse de caché al 10% del precio. Ejecuta \`${command}\` para intentarlo: solo mueve bloques completos y se niega a mover cualquiera que se refiera a texto anterior. Lee el diff —el orden significa algo, y «resume el texto de arriba» no tiene sentido delante del texto al que apunta.`,
+      detail: `Unos ~${n(staticTokensAfter)} tokens de contenido estable (el ${sharePct}% del prompt) están después del primer marcador variable ${placeholder}, así que hoy no se cachean nunca. Instrucciones y contexto fijos primero, marcadores al final, y ese contenido empieza a leerse de caché al 10% del precio. Ejecuta \`${command}\` para intentarlo: solo mueve bloques completos y se niega a mover cualquiera que se refiera a texto anterior. Lee el diff: el orden significa algo, y «resume el texto de arriba» no tiene sentido delante del texto al que apunta.`,
     }),
 
     batchApi: () => ({
@@ -225,8 +225,8 @@ export const es: CoreMessages = {
       title: 'El esquema de salida podría ir en la petición y no en el prompt',
       detail:
         `${blocks === 1 ? 'Un bloque de esquema' : `${blocks} bloques de esquema`} introducido por "${cue}" define ${keyList}, y cuesta unos ${n(tokens)} tokens en cada llamada. ` +
-        'Toda API relevante acepta ya un esquema de respuesta como parámetro de la petición — output_config.format, response_format, responseSchema — y moverlo allí es el cambio raro que sale más barato y además más estricto: la prosa le pide al modelo que cumpla, un parámetro obliga al decodificador. ' +
-        'Trazum no puede hacer esta edición, porque cambia la llamada y no el prompt, y no comprueba si tu proveedor ofrece el parámetro — si no lo ofrece, esto no está disponible para ti.',
+        'Toda API relevante acepta ya un esquema de respuesta como parámetro de la petición (output_config.format, response_format, responseSchema) y moverlo allí es el cambio raro que sale más barato y además más estricto: la prosa le pide al modelo que cumpla, un parámetro obliga al decodificador. ' +
+        'Trazum no puede hacer esta edición, porque cambia la llamada y no el prompt, y no comprueba si tu proveedor ofrece el parámetro: si no lo ofrece, esto no está disponible para ti.',
     }),
 
     restatedOutputFormat: ({ restatedCount, totalCount, restatedTokens, keyList }) => ({
