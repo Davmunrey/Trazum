@@ -22,7 +22,36 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Changed
+
+- **No em-dash reaches a visitor.** Two hundred and seventy-one of them
+  removed from copy somebody reads: 123 in the English dictionary, 94 in
+  the Spanish, 45 across the landing page's five languages, nine in
+  components and route bodies. Not a find-and-replace: an em-dash does
+  four different jobs and each wanted a different repair, and about
+  thirty strings had to be reshaped into two sentences because the
+  alternative was a comma splice or a second colon in a line that
+  already carried one. Spanish got Spanish punctuation rather than
+  translated English punctuation. Scope is what a visitor can see; the
+  em-dashes in code comments stay, because they are source rather than
+  app. Verified from the rendered page rather than from a grep: the
+  landing page and the Spanish app were loaded in a browser and their
+  text searched. The whole suite stayed green without touching a single
+  assertion, which is what "match on ids, not on prose" buys.
+
 ### Fixed
+
+- **A sign-in that was built, working and invisible.** With no GitHub
+  app configured the header renders nothing, which is the honest
+  rendering for a visitor but left the operator with no signal at all:
+  no button, no error, no line to read, and therefore no way to tell a
+  deployment deliberately running anonymous from one misconfigured.
+  `authConfig` already computes a one-line reason for exactly this
+  moment and `/api/auth/session` dropped it on the floor; it is returned
+  now. It names environment variables, never their values, and those
+  names are in the public documentation. The header still renders
+  nothing: absence remains the right answer for a visitor, and only the
+  endpoint an operator can curl gained one.
 
 - **The CLA gate, corrected by the API rather than by reasoning.** Its
   first live runs failed three pull requests, and each failure taught
