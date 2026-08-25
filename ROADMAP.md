@@ -2256,7 +2256,16 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-Nothing is planned. [The 1.73 plan](docs/plan-1.73.md) was delivered in
+**1.74.0 — "Any model's money."** [The 1.74 plan](docs/plan-1.74.md), asked
+for and written before the code: the Bill tab accepts a dropped price card
+(the config's overlay JSON, or a raw OpenRouter response transformed by the
+pure `openrouterOverlay` in the page), `trazum switch` prices the decision
+every what-if serves — measured delta, declared migration cost, break-even
+as division on the past, and the evaluation itself priced — and
+`trazum ownrate` derives a self-hosted model's $/MTok from your own declared
+throughput. Quality stays an evaluation, never a presumption.
+
+Before it, [the 1.73 plan](docs/plan-1.73.md) was delivered in
 full — the guided tour: five doors walked once, offered on first visit and
 launched from the rail forever after, with no tour library, no auto-play, no
 analytics and the one scroll respecting prefers-reduced-motion. No new plan
