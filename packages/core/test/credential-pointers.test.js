@@ -71,7 +71,8 @@ describe('a sentence that promises a key points at a page that names one', () =>
   it('and every connector credential is named in the documentation at all', () => {
     // The other direction: a connector whose key nothing documents cannot be
     // set up by anybody who did not read the source.
-    const corpus = ['README.md', 'docs/usage-logs.md'].map(read).join('\n');
+    // docs/commands.md carries the connect chapter since the README split.
+    const corpus = ['README.md', 'docs/commands.md', 'docs/usage-logs.md'].map(read).join('\n');
     const undocumented = CONNECTORS.filter(
       (connector) => !connector.credentialEnv.some((name) => corpus.includes(name)),
     ).map((connector) => connector.id);

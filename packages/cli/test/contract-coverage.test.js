@@ -471,7 +471,7 @@ describe('docs/format.md counts what exists', () => {
     );
   });
 
-  it('says the same count in README.md that the front door says', async () => {
+  it('says the same count in docs/commands.md that the front door says', async () => {
     /**
      * `interchange.test.js` already holds `docs/format.md`'s sentence to the
      * table under it, and has since the count said seven with ten rows. It did
@@ -486,12 +486,15 @@ describe('docs/format.md counts what exists', () => {
      */
     const rows = formatRows(await readFile(FORMAT, 'utf8'));
     const emitted = rows.length - 1; // the outcome report is defined, never emitted
-    const readme = (await readFile(join(ROOT, 'README.md'), 'utf8')).replace(/\s+/g, ' ');
+    // The sentence moved with the conform chapter when the README split into
+    // a front door and the command reference; the promise, and this guard
+    // holding it, moved with it.
+    const reference = (await readFile(join(ROOT, 'docs/commands.md'), 'utf8')).replace(/\s+/g, ' ');
     assert.ok(
-      readme.includes(
+      reference.includes(
         `Trazum emits ${WORDS[emitted]} documents, defines ${withArticle(ORDINALS[rows.length])} it does not emit`,
       ),
-      `README.md does not say ${WORDS[emitted]} and ${withArticle(ORDINALS[rows.length])}`,
+      `docs/commands.md does not say ${WORDS[emitted]} and ${withArticle(ORDINALS[rows.length])}`,
     );
   });
 

@@ -413,12 +413,14 @@ describe('the documented coverage is the actual coverage', () => {
       ja: 'Japanese',
       zh: 'Chinese',
     };
-    const readme = readFileSync(join(repoRoot, 'README.md'), 'utf8');
+    // The chapter moved with the rest of the deep documentation in the
+    // README split; the promise and this guard moved with it.
+    const readme = readFileSync(join(repoRoot, 'docs/commands.md'), 'utf8');
     const documented = readme.slice(
       readme.indexOf('A block that refers backwards stays put'),
       readme.indexOf('Only whole blocks move'),
     );
-    assert.ok(documented.length > 0, 'the refusal list has moved in the README');
+    assert.ok(documented.length > 0, 'the refusal list has moved out of docs/commands.md');
 
     for (const code of Object.keys(BACKWARD_REFERENCES_BY_LANGUAGE)) {
       const name = names[code];
