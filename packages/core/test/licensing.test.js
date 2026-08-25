@@ -4,6 +4,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 
+import { sectionOf } from '../../../test-utils/section.mjs';
+
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const licensing = readFileSync(join(repoRoot, 'docs/licensing.md'), 'utf8');
 
@@ -109,15 +111,22 @@ describe('docs/licensing.md names everything this repository ships', () => {
     );
   });
 
-  it('is reachable from the documentation index', () => {
-    // docs.test.js already asserts every file in docs/ is linked from the
-    // index. This asserts the stronger thing: that it is linked from the
-    // section for somebody deciding whether to depend on this, which is the
-    // only reader who goes looking for it.
+  it('is reachable from the section a deciding reader actually reads', () => {
+    /**
+     * docs.test.js already asserts every file in docs/ is linked from the
+     * index. This asserts the stronger thing: that it is linked from the
+     * section for somebody deciding whether to depend on this, who is the
+     * only reader who comes looking for it.
+     *
+     * Bounded with `sectionOf`, not by naming the heading that follows. The
+     * first draft of this test named it, and publish.test.js caught that on
+     * the commit that tracked the file: `git ls-files` is what that guard
+     * walks, so an untracked test is invisible to it and the rule only bites
+     * once the file is staged. The failure it prevents has now recurred ten
+     * times in this repository, and this is the tenth.
+     */
     const index = readFileSync(join(repoRoot, 'docs/README.md'), 'utf8');
-    const start = index.indexOf('## I am deciding whether to use this');
-    assert.ok(start > -1, 'the deciding-whether-to-use section is gone from docs/README.md');
-    const section = index.slice(start, index.indexOf('\n## ', start + 1));
+    const section = sectionOf(index, '## I am deciding whether to use this');
     assert.ok(
       section.includes('licensing.md'),
       'docs/licensing.md is not linked from the section for somebody deciding whether to depend on this',

@@ -92,6 +92,14 @@ merged commit with no entry is a change only `git log` remembers.
   page unlinked from the index section. All eight fail, and each names what
   went missing.
 
+  One of those six assertions bounded a section of `docs/README.md` by
+  naming the heading that follows it, which is the failure `publish.test.js`
+  has ratcheted against nine times before. It caught this one on the commit
+  that tracked the file, not before: that guard walks `git ls-files`, so an
+  untracked test is invisible to it and the rule bites the moment the file is
+  staged. Rewritten to use `sectionOf`, and checked by inserting a section
+  between the two headings, which the old form would have swallowed.
+
   Two open items are named on the page rather than implied: Apache-2.0 is
   under consideration and undecided, and the licences of vendored and
   development dependencies have not been audited. Runtime dependencies outside
