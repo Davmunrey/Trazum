@@ -817,6 +817,69 @@ export const en: WebMessages = {
       'Measured from this log alone, priced record by record. The store’s provider-billed monthly standing is a different measurement — "trazum store" prints it — and the two are never merged into one figure.',
   },
 
+  playground: {
+    tab: 'Playground',
+    lead:
+      'The CLI, runnable here: the same @trazum/core functions the terminal runs, on sample files already loaded. Nothing is uploaded and nothing is fetched. Type "help" to start.',
+    inputAriaLabel: 'Playground command line',
+    helpIntro: 'Commands that run in this tab, each against the loaded samples:',
+    commandHelp: {
+      models: 'the bundled price table',
+      rules: 'every optimisation rule, by level',
+      optimize: 'apply the rules, count what they save',
+      check: 'judge a prompt against a token budget',
+      profile: 'price a usage log — the bill, by workload',
+      position: 'where the month stands against its ceiling',
+      diff: 'what a prompt change does to cost',
+      semantic: 'find contradictory instructions, structurally',
+      'from-otel': 'OpenTelemetry GenAI spans, read as a usage log',
+      'from-claude-code': 'Claude Code transcripts, read as a usage log',
+    },
+    helpLs: 'list the loaded files',
+    helpCat: 'print one of them',
+    helpClear: 'empty the terminal',
+    helpCliOnly:
+      'The other commands (gateway, serve, watch, connect, eval, live pricing and the rest) need a network, a credential or a running process, so they live in the installed CLI — npm i -g @trazum/cli — not in a browser tab.',
+    unknown: (head) => `Unknown command: ${head}. Type "help" for what runs here.`,
+    cliOnly: (command) =>
+      `"trazum ${command}" is CLI-only — it needs a network, a credential or a process a browser tab does not have. Type "help" for what runs here.`,
+    usageLine: (usage) => `Usage: ${usage}`,
+    noSuchFile: (name) => `No such file: ${name}. "ls" lists what is loaded.`,
+    badConfig: (name) => `${name} is not valid JSON.`,
+    modelsHeading: 'The bundled catalogue — a reviewed snapshot, never a live feed:',
+    rulesHeading: (count) => `${count} rules, each deterministic and offline:`,
+    optimizeTokens: (before, after, pct) =>
+      `${before} tokens → ${after} tokens (−${pct}%), by these rules:`,
+    optimizeAdvisories: (count) =>
+      `${count} advisory(ies) — findings the rules refuse to apply for you.`,
+    optimizeHonest:
+      'Shortening the prompt is the smallest lever — profile a usage log to see what would actually move a bill.',
+    checkWithin: (tokens, budget) => `Within budget: ${tokens} tokens of ${budget} allowed.`,
+    checkOver: (tokens, budget) => `Over budget: ${tokens} tokens of ${budget} allowed.`,
+    profileTotal: (calls, usd) => `${calls} calls priced, ${usd} total. By workload:`,
+    profileMore: (count) => `  … and ${count} more label(s).`,
+    positionRow: (scope, measured, limit, verdict) =>
+      `${scope}: ${measured} measured of ${limit} — ${verdict}`,
+    positionUnpriced: (count) =>
+      `${count} record(s) name a model the catalogue cannot price — said, not hidden.`,
+    diffTokens: (before, after, delta) =>
+      `${before} tokens → ${after} tokens (${delta >= 0 ? '+' : ''}${delta}).`,
+    diffMonthly: (usd, grew) =>
+      grew ? `At the default usage profile that is ${usd} more per month.` : `At the default usage profile that is ${usd} less per month.`,
+    semanticNone: 'No structural contradictions found.',
+    semanticFound: (count) => `${count} contradiction(s), each with both sides quoted:`,
+    semanticStructuralOnly:
+      'This is the structural scan. The model-assisted pass costs real provider calls and lives in the CLI.',
+    notOtel: (name) => `${name} does not look like an OpenTelemetry export.`,
+    notTranscript: (name) => `${name} does not look like a Claude Code transcript.`,
+    otelSummary: (llmSpans, otherSpans) =>
+      `${llmSpans} LLM span(s) converted; ${otherSpans} non-LLM span(s) counted and skipped.`,
+    otelNoCache: (count) =>
+      `${count} span(s) carried no cache data — OTel has no TTL split, so the cache verdicts read "cannot tell".`,
+    transcriptSummary: (count) => `${count} call(s) converted — the numbers only, never the words.`,
+    wrote: (name, count) => `Wrote ${count} record(s) to ${name} — "trazum profile ${name}" prices them.`,
+  },
+
   errors: {
     requestFailed: 'The prompt could not be optimised.',
     unreachable: 'Could not reach the server.',

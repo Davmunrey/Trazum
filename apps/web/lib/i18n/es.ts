@@ -834,6 +834,71 @@ export const es: WebMessages = {
       'Medido solo desde este log, registro a registro. La posición mensual facturada por el proveedor que guarda el almacén es otra medición — la imprime «trazum store» — y las dos nunca se funden en una cifra.',
   },
 
+  playground: {
+    tab: 'Playground',
+    lead:
+      'La CLI, ejecutable aquí: las mismas funciones de @trazum/core que corre el terminal, sobre ficheros de ejemplo ya cargados. No se sube nada y no se descarga nada. Escribe «help» para empezar.',
+    inputAriaLabel: 'Línea de comandos del playground',
+    helpIntro: 'Comandos que corren en esta pestaña, cada uno contra los ejemplos cargados:',
+    commandHelp: {
+      models: 'la tabla de precios incluida',
+      rules: 'cada regla de optimización, por nivel',
+      optimize: 'aplica las reglas y cuenta lo que ahorran',
+      check: 'juzga un prompt contra un presupuesto de tokens',
+      profile: 'tasa un log de uso: la factura, por workload',
+      position: 'dónde está el mes frente a su techo',
+      diff: 'qué hace un cambio de prompt al coste',
+      semantic: 'encuentra instrucciones contradictorias, estructuralmente',
+      'from-otel': 'spans GenAI de OpenTelemetry, leídos como log de uso',
+      'from-claude-code': 'transcripts de Claude Code, leídos como log de uso',
+    },
+    helpLs: 'lista los ficheros cargados',
+    helpCat: 'imprime uno de ellos',
+    helpClear: 'vacía el terminal',
+    helpCliOnly:
+      'Los demás comandos (gateway, serve, watch, connect, eval, precios en vivo y el resto) necesitan red, una credencial o un proceso en marcha, así que viven en la CLI instalada — npm i -g @trazum/cli — y no en una pestaña del navegador.',
+    unknown: (head) => `Comando desconocido: ${head}. Escribe «help» para ver qué corre aquí.`,
+    cliOnly: (command) =>
+      `«trazum ${command}» es solo de CLI: necesita red, una credencial o un proceso que una pestaña no tiene. Escribe «help» para ver qué corre aquí.`,
+    usageLine: (usage) => `Uso: ${usage}`,
+    noSuchFile: (name) => `No existe el fichero: ${name}. «ls» lista lo cargado.`,
+    badConfig: (name) => `${name} no es JSON válido.`,
+    modelsHeading: 'El catálogo incluido: una instantánea revisada, nunca un feed en vivo:',
+    rulesHeading: (count) => `${count} reglas, cada una determinista y sin red:`,
+    optimizeTokens: (before, after, pct) =>
+      `${before} tokens → ${after} tokens (−${pct}%), por estas reglas:`,
+    optimizeAdvisories: (count) =>
+      `${count} aviso(s): hallazgos que las reglas se niegan a aplicar por ti.`,
+    optimizeHonest:
+      'Acortar el prompt es la palanca más pequeña: tasa un log de uso con profile para ver qué movería de verdad una factura.',
+    checkWithin: (tokens, budget) => `Dentro del presupuesto: ${tokens} tokens de ${budget} permitidos.`,
+    checkOver: (tokens, budget) => `Fuera del presupuesto: ${tokens} tokens de ${budget} permitidos.`,
+    profileTotal: (calls, usd) => `${calls} llamadas tasadas, ${usd} en total. Por workload:`,
+    profileMore: (count) => `  … y ${count} etiqueta(s) más.`,
+    positionRow: (scope, measured, limit, verdict) =>
+      `${scope}: ${measured} medidos de ${limit} — ${verdict}`,
+    positionUnpriced: (count) =>
+      `${count} registro(s) nombran un modelo que el catálogo no puede tasar — dicho, no escondido.`,
+    diffTokens: (before, after, delta) =>
+      `${before} tokens → ${after} tokens (${delta >= 0 ? '+' : ''}${delta}).`,
+    diffMonthly: (usd, grew) =>
+      grew
+        ? `Con el perfil de uso por defecto, eso son ${usd} más al mes.`
+        : `Con el perfil de uso por defecto, eso son ${usd} menos al mes.`,
+    semanticNone: 'Sin contradicciones estructurales.',
+    semanticFound: (count) => `${count} contradicción(es), cada una con sus dos lados citados:`,
+    semanticStructuralOnly:
+      'Este es el escaneo estructural. El pase asistido por modelo cuesta llamadas reales al proveedor y vive en la CLI.',
+    notOtel: (name) => `${name} no parece un export de OpenTelemetry.`,
+    notTranscript: (name) => `${name} no parece un transcript de Claude Code.`,
+    otelSummary: (llmSpans, otherSpans) =>
+      `${llmSpans} span(s) LLM convertidos; ${otherSpans} span(s) no-LLM contados y omitidos.`,
+    otelNoCache: (count) =>
+      `${count} span(s) sin datos de caché: OTel no tiene reparto de TTL, así que los veredictos de caché dicen «no se puede saber».`,
+    transcriptSummary: (count) => `${count} llamada(s) convertidas: solo los números, nunca las palabras.`,
+    wrote: (name, count) => `Escritos ${count} registro(s) en ${name} — «trazum profile ${name}» los tasa.`,
+  },
+
   errors: {
     requestFailed: 'No se ha podido optimizar el prompt.',
     unreachable: 'No se ha podido contactar con el servidor.',

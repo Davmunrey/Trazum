@@ -660,6 +660,63 @@ export interface WebMessages {
     source: string;
   };
 
+  /**
+   * The 1.72 playground: the CLI's pure subset, runnable in the page. The
+   * command names, flags and file names stay verbatim (they are the product);
+   * every sentence around them speaks the reader's language.
+   */
+  playground: {
+    tab: string;
+    lead: string;
+    inputAriaLabel: string;
+    helpIntro: string;
+    /** One line per playground command, keyed by the command's own name. */
+    commandHelp: {
+      models: string;
+      rules: string;
+      optimize: string;
+      check: string;
+      profile: string;
+      position: string;
+      diff: string;
+      semantic: string;
+      'from-otel': string;
+      'from-claude-code': string;
+    };
+    helpLs: string;
+    helpCat: string;
+    helpClear: string;
+    /** The honest gap: the commands that need a terminal, named not hidden. */
+    helpCliOnly: string;
+    unknown(head: string): string;
+    cliOnly(command: string): string;
+    usageLine(usage: string): string;
+    noSuchFile(name: string): string;
+    badConfig(name: string): string;
+    modelsHeading: string;
+    rulesHeading(count: number): string;
+    optimizeTokens(before: number, after: number, pct: number): string;
+    optimizeAdvisories(count: number): string;
+    optimizeHonest: string;
+    checkWithin(tokens: number, budget: number): string;
+    checkOver(tokens: number, budget: number): string;
+    profileTotal(calls: number, usd: string): string;
+    profileMore(count: number): string;
+    positionRow(scope: string, measured: string, limit: string, verdict: string): string;
+    positionUnpriced(count: number): string;
+    diffTokens(before: number, after: number, delta: number): string;
+    diffMonthly(usd: string, grew: boolean): string;
+    semanticNone: string;
+    semanticFound(count: number): string;
+    semanticStructuralOnly: string;
+    notOtel(name: string): string;
+    notTranscript(name: string): string;
+    otelSummary(llmSpans: number, otherSpans: number): string;
+    otelNoCache(count: number): string;
+    transcriptSummary(count: number): string;
+    wrote(name: string, count: number): string;
+  };
+
   errors: {
     requestFailed: string;
     unreachable: string;

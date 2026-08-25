@@ -19,7 +19,9 @@ every call. Shortening the prompt is one of them, and it is rarely the biggest.
 
 **[Try it live → trazum.vercel.app](https://trazum.vercel.app)** — the web app,
 deployed from `main` on every merge. Paste a prompt or a usage log; nothing you
-paste leaves your browser.
+paste leaves your browser. The **Playground** tab is the CLI itself, runnable
+in the page: `trazum profile usage.jsonl` against sample files already loaded,
+through the same `@trazum/core` functions the terminal runs.
 
 *Real output, transcribed. Read the last two lines: the rules recovered $24.00
 a month, and the advisory above them is worth $528.40 — **22× more**. That gap
@@ -444,7 +446,7 @@ In GitHub Actions, use the packaged action — nothing to install:
 
 ```yaml
 - uses: actions/checkout@v7
-- uses: Davmunrey/Trazum@7a21236149a682fc13961c68c077a13d6832c383  # 1.71.1
+- uses: Davmunrey/Trazum@d94196439cac1238013be9707a8cadfe63aec951  # 1.71.2
   with:
     target: prompts/system.txt
     max-tokens: 2000
@@ -490,7 +492,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v7
-  - uses: Davmunrey/Trazum@7a21236149a682fc13961c68c077a13d6832c383  # 1.71.1
+  - uses: Davmunrey/Trazum@d94196439cac1238013be9707a8cadfe63aec951  # 1.71.2
     with:
       target: prompts/            # a directory uses trazum.config.json budgets
       comment: true
@@ -519,7 +521,7 @@ run gates tokens before the money is spent or the spend itself, and saying
 which is the caller's job:
 
 ```yaml
-- uses: Davmunrey/Trazum@7a21236149a682fc13961c68c077a13d6832c383  # 1.71.1
+- uses: Davmunrey/Trazum@d94196439cac1238013be9707a8cadfe63aec951  # 1.71.2
   with:
     usage-log: logs/yesterday.jsonl
     max-usd: '50'            # exit 1 over budget — no period assumed

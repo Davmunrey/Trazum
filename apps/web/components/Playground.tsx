@@ -1,0 +1,142 @@
+'use client';
+
+import { useRef, useState } from 'react';
+
+import type { Locale } from '@trazum/core';
+
+import { createPlaygroundFiles, runPlayground } from '@/lib/playground';
+import type { WebMessages } from '@/lib/i18n';
+
+/**
+ * The playground tab — the 1.72 arc: the CLI's pure subset, runnable in the
+ * page against sample files, through the dispatcher in `lib/playground.ts`.
+ *
+ * This file owns only the terminal chrome: an output area, a prompt line, and
+ * arrow-key history. Every answer is computed by `runPlayground`, which runs
+ * the same `@trazum/core` functions the CLI imports — and, like every feature
+ * of this app, nothing here fetches. The suite greps this file and the
+ * dispatcher for the whole family of network calls, the same guard Bill
+ * carries.
+ */
+
+interface TerminalLine {
+  kind: 'input' | 'output';
+  text: string;
+}
+
+export function Playground({ t, locale }: { t: WebMessages; locale: Locale }) {
+  const [lines, setLines] = useState<TerminalLine[]>([]);
+  const [input, setInput] = useState('');
+  // History of submitted lines; index counts back from the end while browsing.
+  const historyRef = useRef<string[]>([]);
+  const historyIndexRef = useRef<number | null>(null);
+  // The virtual files persist for the life of the tab: `-o` writes land here
+  // and the next command reads them, which is the whole demo loop.
+  const filesRef = useRef<Map<string, string> | null>(null);
+  if (filesRef.current === null) filesRef.current = createPlaygroundFiles();
+  const outputRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  function submit() {
+    const line = input.trim();
+    setInput('');
+    historyIndexRef.current = null;
+    if (line === '') return;
+    historyRef.current.push(line);
+    const result = runPlayground(line, filesRef.current as Map<string, string>, t, locale);
+    setLines((previous) => {
+      if (result.clear === true) return [];
+      return [
+        ...previous,
+        { kind: 'input' as const, text: `$ ${line}` },
+        ...result.lines.map((text) => ({ kind: 'output' as const, text })),
+      ];
+    });
+    // After the state lands, keep the newest line in view.
+    requestAnimationFrame(() => {
+      outputRef.current?.scrollTo({ top: outputRef.current.scrollHeight });
+    });
+  }
+
+  function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      submit();
+      return;
+    }
+    const history = historyRef.current;
+    if (event.key === 'ArrowUp' && history.length > 0) {
+      event.preventDefault();
+      const index =
+        historyIndexRef.current === null ? history.length - 1 : Math.max(0, historyIndexRef.current - 1);
+      historyIndexRef.current = index;
+      setInput(history[index]);
+    } else if (event.key === 'ArrowDown' && historyIndexRef.current !== null) {
+      event.preventDefault();
+      const index = historyIndexRef.current + 1;
+      if (index >= history.length) {
+        historyIndexRef.current = null;
+        setInput('');
+      } else {
+        historyIndexRef.current = index;
+        setInput(history[index]);
+      }
+    }
+  }
+
+  return (
+    <section>
+      <p className="mt-0 mb-4 max-w-[68ch] text-[14px] leading-relaxed text-muted-foreground">
+        {t.playground.lead}
+      </p>
+
+      {/*
+        The terminal. A click anywhere inside focuses the prompt, because that
+        is what a terminal does; the output region is still selectable text.
+      */}
+      <div
+        className="rounded-lg border bg-background font-mono text-[13px] leading-relaxed"
+        onClick={() => inputRef.current?.focus()}
+      >
+        <div
+          ref={outputRef}
+          className="h-[420px] overflow-y-auto overflow-x-auto px-3.5 py-3"
+          aria-live="polite"
+        >
+          {lines.length === 0 && (
+            <div className="whitespace-pre-wrap text-muted-foreground">help</div>
+          )}
+          {lines.map((line, index) => (
+            <div
+              key={index}
+              className={
+                line.kind === 'input'
+                  ? 'whitespace-pre-wrap font-semibold'
+                  : 'whitespace-pre text-muted-foreground'
+              }
+            >
+              {line.text === '' ? ' ' : line.text}
+            </div>
+          ))}
+        </div>
+        <div className="flex items-center gap-2 border-t px-3.5 py-2.5">
+          <span aria-hidden="true" className="select-none text-faint">
+            $
+          </span>
+          <input
+            ref={inputRef}
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            onKeyDown={onKeyDown}
+            aria-label={t.playground.inputAriaLabel}
+            placeholder="help"
+            autoCapitalize="off"
+            autoCorrect="off"
+            spellCheck={false}
+            className="w-full bg-transparent outline-none placeholder:text-faint"
+          />
+        </div>
+      </div>
+    </section>
+  );
+}

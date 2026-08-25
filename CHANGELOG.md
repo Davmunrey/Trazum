@@ -20,6 +20,49 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## 1.72.0 — "The playground"
+
+### Added
+
+- **A terminal in the web app, running the CLI's pure subset.** [The 1.72
+  plan](docs/plan-1.72.md): a new Playground tab holds a quote-aware
+  tokenizer, a command registry and an in-memory file map seeded with sample
+  files — a deliberately wasteful `prompt.txt`, a measured `usage.jsonl`
+  month, an OTLP GenAI `spans.otlp.json`, a Claude Code `transcript.jsonl`
+  and a `trazum.config.json` ceiling. Ten commands run in the page through
+  the same `@trazum/core` functions the CLI imports — `models`, `rules`,
+  `optimize`, `check`, `profile`, `position`, `diff`, `semantic` (the
+  structural half), `from-otel` and `from-claude-code` — plus `ls`, `cat`,
+  `clear` and `help`. Converter output written with `-o` lands beside the
+  samples, so the whole 1.71 pipe runs in front of the visitor:
+  `trazum from-otel spans.otlp.json -o converted.jsonl`, then
+  `trazum profile converted.jsonl`. Arrow-key history, both locales, and a
+  clock pinned inside the sample month so the demo does not decay with the
+  calendar. Nothing is uploaded and nothing is fetched.
+
+### Honest gaps, stated
+
+- **The other thirty commands are named as CLI-only, not hidden.** `help`
+  ends on where they live — anything needing a network, a credential, the
+  filesystem or a running process (`gateway`, `serve`, `watch`, `connect`,
+  `eval`, live pricing) belongs to the installed CLI, and typing one gets
+  that answer rather than silence. The LLM half of `semantic` and
+  `optimize`'s model-assisted pass stay where the credential lives.
+- **`playground.test.mjs` holds the invariants:** the no-fetch guard covers
+  both new files; every advertised command runs against the samples in both
+  locales and says something; the `from-otel → profile` loop is proven end to
+  end; and a prompt planted in the OTLP sample is grepped out of every
+  conversion and every priced output — `cat` legitimately shows the file's
+  own text, the conversions never carry it.
+
+### Fixed
+
+- **`github/codeql-action` bumped to 4.37.8, both halves in one commit.**
+  Dependabot raised init and analyze as two pull requests (#417, #418) and
+  each alone fails the guard that keeps every sub-action of one repository on
+  the same commit — by design. Superseded both, the way the workflow's own
+  comment instructs.
+
 ## 1.71.2 — "The README the npm page never showed"
 
 ### Fixed
