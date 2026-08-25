@@ -106,6 +106,7 @@ is the half a reader cannot reconstruct.
 | [1.75](plan-1.75.md) | The readable terminal: hierarchy the eye can use, with a guard that colour adds nothing | 1.75.0 — all four chapters, fifty-four ruled headings and the parity guard |
 | [1.76](plan-1.76.md) | The tour that does the work: every step performs its page, and the terminal types | 1.76.0 — all four chapters, three commands typed and a guard that runs them |
 | [1.77](plan-1.77.md) | The agent's bill, told honestly: the four things a real profile should not have had to say | 1.77.0 — all five chapters, and a dated id prices as the model it is |
+| [1.79](plan-1.79.md) | The dash the sweep left behind: an instruction obeyed by hand on one surface, finished on the other and turned into a rule | 1.79.0 — both chapters, 338 em-dashes out of the Spanish catalogues and a guard that holds them out |
 
 What each of them **refused** to ship — which is the more useful half, since a
 plan and its implementation shared a hand — is in

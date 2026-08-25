@@ -92,7 +92,7 @@ describe('--max-growth-usd, the growth gate', () => {
     const after = await write('after.jsonl', [call(), call(), call()]);
     const result = run([after, '--against', before, '--max-growth-usd', '5', '--locale', 'es']);
     assert.equal(result.status, 1);
-    assert.match(flat(result), /FALLO — la factura creció \+\$10\.00/);
+    assert.match(flat(result), /FALLO: la factura creció \+\$10\.00/);
   });
 });
 

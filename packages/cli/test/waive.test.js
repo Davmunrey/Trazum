@@ -136,6 +136,6 @@ describe('waive: findings as policy', () => {
       encoding: 'utf8', env: SPAWN_ENV, timeout: 30000,
     });
     assert.equal(result.status, 0);
-    assert.match(flat(result), /WAIVED — el fallo de maxUsd de arriba queda registrado/);
+    assert.match(flat(result), /WAIVED: el fallo de maxUsd de arriba queda registrado/);
   });
 });

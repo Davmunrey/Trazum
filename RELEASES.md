@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.78.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.79.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,30 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.79.0 — "The dash the sweep left behind"
+
+The em-dash was asked to leave this product. The web app was swept, and
+the terminal was not, so running `trazum position --locale es` on a real
+log printed two of them in the middle of a Spanish paragraph. An
+instruction carried out by hand on one surface is not carried out; it is
+postponed until somebody reintroduces it.
+
+338 em-dashes are gone from the two Spanish catalogues, each judged one at
+a time so the Spanish still reads like Spanish rather than like a bulk
+find-and-replace. English keeps its em-dashes on purpose: they are ordinary
+English punctuation, this product's entire English voice rests on them, and
+sweeping one English file while the READMEs kept theirs would just make the
+product read as though two people wrote it.
+
+The part worth keeping is the guard. It walks the repository for every
+Spanish dictionary, refuses to pass by finding none, and names the file and
+line of any em-dash it finds, in **both** spellings: the character and the
+`\u2014` escape. That second spelling is there because the first attempt at
+this sweep searched only for the character and declared the catalogue clean
+while 32 escaped em-dashes sat inside it, one of which was still printing
+on screen. The suite caught what the sweep missed, and now the guard covers
+both.
 
 ## 1.78.0 — "A sentence no locale could reach"
 

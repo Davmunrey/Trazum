@@ -1184,6 +1184,16 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.79.0 — "The dash the sweep left behind" — released
+
+**An instruction obeyed on one surface, finished on the other and turned
+into a rule.** The em-dash had been swept out of the web app by hand and
+left standing in the terminal, where a Spanish paragraph printed two of
+them. 338 are gone from the two Spanish catalogues, judged one at a time;
+English keeps its own on purpose. The guard walks for every Spanish
+dictionary and fails on both spellings, the character and the escape,
+because the first pass searched for only one and missed 32.
+
 ## 1.78.0 — "A sentence no locale could reach" — released
 
 **The position document joins its own family.** Its caveats were English
@@ -2317,9 +2327,11 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-Nothing is planned. [The 1.77 plan](docs/plan-1.77.md) was delivered in
-full: the four gaps a real forty-day profile exposed are closed at their
-source. The verdict bridge — quality beside cost, from a dropped
+Nothing is planned. [The 1.79 plan](docs/plan-1.79.md) was delivered in
+full: the Spanish catalogues are swept and the sweep is a guard rather
+than an edit. Before it, [the 1.77 plan](docs/plan-1.77.md) was delivered
+in full: the four gaps a real forty-day profile exposed are closed at
+their source. The verdict bridge — quality beside cost, from a dropped
 `route`/`eval` result — stays named and waits to be asked for, as do the
 `from-langsmith`, `from-helicone` and `from-litellm` converters, which
 need real exports before their formats can be read rather than guessed.
