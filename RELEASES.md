@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.73.1**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.74.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,24 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.74.0 — "Any model's money"
+
+**Drop your own price card on the bill — an OpenRouter export or your own
+overlay JSON — and every figure prices Qwen, Llama, or the model only your
+company runs.** The transformation is the same pure function the CLI runs
+on a live feed, run in the page on a file, so nothing is fetched and the
+what-if crosses vendors both ways. **`trazum switch`** then prices the
+decision itself: the measured delta, a declared migration cost recovered
+over the measured daily saving — division on the past, days attached,
+refused by name when there is no saving or no clock — and the evaluation
+the switch requires, priced too, because knowing the cheaper model is good
+enough costs money. **`trazum ownrate`** derives your self-hosted model's
+$/MTok from your own GPU rate and measured throughput, and prints the
+overlay snippet ready to paste — proven to paste by a round-trip guard.
+Forty-two commands now. What none of this says: whether the candidate can
+do the work. That is an evaluation, and every report ends by printing the
+`trazum route` command that settles it.
 
 ## 1.73.1 — "The result follows the scenario"
 

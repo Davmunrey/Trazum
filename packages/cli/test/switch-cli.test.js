@@ -91,6 +91,18 @@ describe('ownrate, run', () => {
     assert.equal(model.inputPerMTok, model.outputPerMTok);
   });
 
+  it('the printed snippet actually pastes: parsePricingOverlay accepts it whole', async () => {
+    // The defect this guards: the first draft omitted cacheMinTokens, tier
+    // and capability, and the overlay parser rightly refuses an incomplete
+    // new model — a snippet that does not paste is worse than none.
+    const { parsePricingOverlay } = await import('@trazum/core');
+    const out = run(['ownrate', '--gpu-usd-hour', '2.5', '--tokens-per-second', '250']);
+    assert.equal(out.status, 0, out.stderr);
+    const snippet = out.stdout.slice(out.stdout.indexOf('{'));
+    const overlay = parsePricingOverlay(snippet, 'ownrate snippet');
+    assert.ok(overlay.models['my-self-hosted-model']);
+  });
+
   it('refuses missing and out-of-range declarations', () => {
     assert.equal(run(['ownrate']).status, 1);
     const zero = run(['ownrate', '--gpu-usd-hour', '0', '--tokens-per-second', '250']);

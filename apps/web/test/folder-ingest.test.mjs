@@ -94,7 +94,11 @@ describe('the Bill tab ingests a folder in the browser', () => {
     // it — or read off it in the banner — is what this catches. (The report
     // elsewhere in this file legitimately reads `.session`; the guard is
     // scoped to the ingest object, not the whole file.)
-    const shape = bill.slice(bill.indexOf('const [ingest, setIngest]'), bill.indexOf('} | null>(null);'));
+    const start = bill.indexOf('const [ingest, setIngest]');
+    // The closing brace is searched from the declaration itself: another
+    // state with the same `} | null>(null)` shape earlier in the file (the
+    // 1.74 price card) must not truncate this slice to nothing.
+    const shape = bill.slice(start, bill.indexOf('} | null>(null);', start));
     assert.ok(shape.length > 0, 'the ingest state declaration moved');
     assert.equal(/session/i.test(shape), false, 'the ingest summary object carries a session key');
     // And the banner renders only from t.bill.transcript* — never a raw field.

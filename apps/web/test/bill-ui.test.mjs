@@ -137,7 +137,9 @@ describe('the bill tab reads the log in the browser and nowhere else', () => {
     assert.match(bill, /T00:00:00Z`\) \+ 86_400_000/);
     // The same window on both sides of the comparison — a windowed bill
     // against an unwindowed one compares a slice to a whole.
-    assert.match(bill, /profileUsage\(previous, \{\s*catalogue: BUNDLED_CATALOGUE,\s*sinceMs,\s*untilMs,/);
+    // `catalogue` since 1.74: the bundled snapshot, or the dropped price card —
+    // the invariant is unchanged (same catalogue and window on both sides).
+    assert.match(bill, /profileUsage\(previous, \{\s*catalogue,\s*sinceMs,\s*untilMs,/);
   });
 
   it('names the fields the log is missing, from counts rather than booleans', () => {
@@ -253,7 +255,7 @@ describe('the bill tab reads the log in the browser and nowhere else', () => {
      * dollar figure: a number with the caveat underneath is a recommendation
      * with small print, and this comparison has never seen a prompt.
      */
-    assert.match(bill, /repriceProfile\(report, whatIfModel, BUNDLED_CATALOGUE\)/);
+    assert.match(bill, /repriceProfile\(report, whatIfModel, catalogue\)/);
     const assumption = bill.indexOf('t.bill.whatIfAssumption');
     const total = bill.indexOf('t.bill.whatIfTotal');
     assert.notEqual(assumption, -1, 'the what-if assumption is not rendered at all');
@@ -305,7 +307,7 @@ describe('the bill tab reads the log in the browser and nowhere else', () => {
     // surfaces summarising one log differently is a second opinion nobody
     // asked for.
     assert.match(bill, /report\.repeatedTurns\.length > 0/);
-    assert.match(bill, /contextPressure\(report, BUNDLED_CATALOGUE\)/);
+    assert.match(bill, /contextPressure\(report, catalogue\)/);
     assert.match(bill, /row\.share >= 0\.85/);
     assert.match(bill, /Math\.abs\(m\.lastShare - m\.firstShare\) >= 0\.15/);
     assert.match(bill, /report\.duplicateLines\.count > 0/);

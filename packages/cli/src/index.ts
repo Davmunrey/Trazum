@@ -2769,13 +2769,21 @@ function commandOwnrate(args: Args, t: CliMessages): void {
   console.log(`  ${c.dim(wrap(t.ownrate.declared(), 74, '  '))}`);
   console.log();
   console.log(`  ${t.ownrate.snippetHeading()}`);
+  // Complete on purpose: the overlay parser refuses a new model with fields
+  // missing, and a snippet that does not paste is worse than none. The
+  // honest values for what a self-hosted model has not measured are the
+  // catalogue's own unknowns, never a guess.
   const snippet = {
+    lastReviewed: new Date().toISOString().slice(0, 10),
     models: {
       'my-self-hosted-model': {
         displayName: 'My self-hosted model',
         inputPerMTok: Number(usdPerMTok.toFixed(4)),
         outputPerMTok: Number(usdPerMTok.toFixed(4)),
         contextWindow: 32768,
+        cacheMinTokens: null,
+        tier: 'unknown',
+        capability: 'unknown',
       },
     },
   };
