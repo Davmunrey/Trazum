@@ -234,3 +234,69 @@ describe('the agent\'s bill, told honestly', () => {
     assert.equal(report.total.stopReasonCalls, 2);
   });
 });
+
+/**
+ * 1.77.2, found by running 1.77.1 on a real bill.
+ *
+ * `--pricing-live` dropped eight calls out of the totals. The aliases were
+ * indexed in one catalogue builder and not the other, so a dated id priced
+ * fine until an overlay was applied and then quietly stopped. Two builders
+ * means one of them is always the one nobody updated; there is one now, and
+ * this holds every path that produces a catalogue to it.
+ */
+describe('an alias survives every catalogue, not just the bundled one', () => {
+  const DATED = 'claude-haiku-4-5-20251001';
+  const log = JSON.stringify({
+    ts: '2026-08-01T10:00:00Z',
+    model: DATED,
+    usage: { input_tokens: 1000, output_tokens: 100 },
+  });
+
+  it('prices the same under bundled, an overlay, and a live-shaped feed', async () => {
+    const { applyPricingOverlay, openrouterOverlay, catalogueFromOverlay } = await import('../dist/index.js');
+    assert.equal(profileUsage(log, { catalogue: BUNDLED_CATALOGUE }).total.calls, 1);
+
+    // The shape `--pricing-live` builds: hundreds of models added, none of
+    // the bundled ones replaced.
+    const known = new Set(BUNDLED_CATALOGUE.models.map((m) => m.id));
+    const { overlay } = openrouterOverlay(
+      { data: [{ id: 'qwen/q3', context_length: 1000, pricing: { prompt: '0.000001', completion: '0.000002' } }] },
+      { knownIds: known, lastReviewed: '2026-08-25' },
+    );
+    const live = applyPricingOverlay(BUNDLED_CATALOGUE, overlay, 'live');
+    assert.equal(live.byId.has(DATED), true, 'the live catalogue lost the alias index');
+    assert.equal(profileUsage(log, { catalogue: live }).total.calls, 1, 'calls left the totals under --pricing-live');
+
+    // And the hand-written overlay path, which is a different door.
+    const local = catalogueFromOverlay(
+      JSON.stringify({ lastReviewed: '2026-08-25', models: { 'claude-opus-5': { inputPerMTok: 6 } } }),
+      'test overlay',
+    );
+    assert.equal(profileUsage(log, { catalogue: local }).total.calls, 1, 'a local overlay lost the alias');
+  });
+
+  it('a real id still beats an alias that collides with it', async () => {
+    const { applyPricingOverlay, parsePricingOverlay } = await import('../dist/index.js');
+    // Somebody declares a model whose id is another model's alias. The id
+    // wins: an alias is a convenience, never a way to shadow a real entry.
+    const overlay = parsePricingOverlay(
+      JSON.stringify({
+        lastReviewed: '2026-08-25',
+        models: {
+          [DATED]: {
+            displayName: 'Something else entirely',
+            inputPerMTok: 99,
+            outputPerMTok: 99,
+            contextWindow: 1000,
+            cacheMinTokens: null,
+            tier: 'unknown',
+            capability: 'unknown',
+          },
+        },
+      }),
+      'collision overlay',
+    );
+    const catalogue = applyPricingOverlay(BUNDLED_CATALOGUE, overlay, 'collision overlay');
+    assert.equal(catalogue.byId.get(DATED).displayName, 'Something else entirely');
+  });
+});

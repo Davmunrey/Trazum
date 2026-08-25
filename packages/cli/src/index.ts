@@ -699,7 +699,10 @@ const COMMAND_FLAGS: Record<string, string[]> = {
 function rejectUnknownFlags(args: Args, t: CliMessages): void {
   const known = COMMAND_FLAGS[args.command];
   if (!known) return;
-  const allowed = [...known, ...GLOBAL_FLAGS];
+  // Deduplicated: a command that declares a flag the globals also carry
+  // (`--json`, `--pricing`, `--pricing-live`) listed it twice in the error,
+  // and a refusal that stutters reads like the tool is unsure what it takes.
+  const allowed = [...new Set([...known, ...GLOBAL_FLAGS])];
 
   for (const name of args.flags.keys()) {
     // `out` is stored under its long name even when given as `-o`, and a
@@ -2739,7 +2742,10 @@ async function commandSwitch(args: Args, pricing: PricingCatalogue, t: CliMessag
       savingUsd >= 0
         ? t.switchCmd.saves(formatUsd(reprice.currentUsd), formatUsd(reprice.targetUsd), formatUsd(savingUsd))
         : t.switchCmd.costs(formatUsd(reprice.currentUsd), formatUsd(reprice.targetUsd), formatUsd(-savingUsd));
-    console.log(`  ${savingUsd >= 0 ? c.green('->') : c.red('->')} ${wrap(line, 72, '    ')}`);
+    // The same arrow the levers use. `switch` shipped with an ASCII `->`
+    // in 1.74 and the 1.75 arc gave every report one visual vocabulary;
+    // two glyphs for one meaning is the reader doing translation work.
+    console.log(`  ${savingUsd >= 0 ? c.green('\u2192') : c.red('\u2192')} ${wrap(line, 72, '    ')}`);
     const movableCalls = reprice.slices.reduce((sum, slice) => sum + slice.calls, 0);
     console.log(`  ${wrap(t.switchCmd.movable(movableCalls, reprice.slices.length), 74, '  ')}`);
   }

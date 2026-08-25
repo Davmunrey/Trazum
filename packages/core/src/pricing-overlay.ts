@@ -1,4 +1,4 @@
-import { BUNDLED_CATALOGUE } from './pricing.js';
+import { indexModels, BUNDLED_CATALOGUE } from './pricing.js';
 import { nearestName } from './nearest.js';
 import type { PricingCatalogue } from './pricing.js';
 import type { Capability, CachingMode, CostMultipliers, ModelPricing } from './types.js';
@@ -332,8 +332,19 @@ export function applyPricingOverlay(
     return merged;
   });
 
+  /**
+   * Membership by **id**, never through the alias index.
+   *
+   * `base.byId` holds declared aliases beside ids since 1.77.0, so asking
+   * it whether an overlay's id already exists answered yes for an id that
+   * is only somebody's alias — and the entry was then neither patched nor
+   * added: an operator declared a price and nothing happened, silently.
+   * An explicit declaration outranks a convenience alias, so it is added
+   * here and `indexModels` writes ids last, which makes it win the lookup.
+   */
+  const realIds = new Set(base.models.map((m) => m.id));
   for (const [id, patch] of Object.entries(overlay.models)) {
-    if (base.byId.has(id)) continue;
+    if (realIds.has(id)) continue;
 
     // `capability` joins the list: it is a required field of `ModelPricing`, and
     // an added model without one produced an object the type says cannot exist —
@@ -357,7 +368,7 @@ export function applyPricingOverlay(
 
   return {
     models,
-    byId: new Map(models.map((m) => [m.id, m])),
+    byId: indexModels(models),
     lastReviewed: overlay.lastReviewed,
     overriddenModels: overridden.sort(),
     addedModels: added.sort(),

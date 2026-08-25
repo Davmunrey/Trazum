@@ -353,6 +353,25 @@ export interface PricingCatalogue {
   addedModels: string[];
 }
 
+/**
+ * The one index every catalogue is looked up through.
+ *
+ * Exported, and the only builder, because there used to be two: this one
+ * learned about `aliases` in 1.77.0 and the overlay's did not, so a dated
+ * model id priced fine until somebody passed `--pricing-live` and then
+ * eight calls quietly left the totals. Two builders means one of them is
+ * always the one nobody updated.
+ *
+ * Aliases are written first and ids last, so a real id always wins over a
+ * declared alias that collides with it.
+ */
+export function indexModels(models: ModelPricing[]): Map<string, ModelPricing> {
+  return new Map([
+    ...models.flatMap((m) => (m.aliases ?? []).map((alias) => [alias, m] as const)),
+    ...models.map((m) => [m.id, m] as const),
+  ]);
+}
+
 function makeCatalogue(
   models: ModelPricing[],
   lastReviewed: string,
@@ -361,13 +380,7 @@ function makeCatalogue(
 ): PricingCatalogue {
   return {
     models,
-    // Aliases sit in the same index as ids: a lookup does not need to know
-    // which spelling it was handed. A declared alias never shadows a real
-    // id, because the ids are written last.
-    byId: new Map([
-      ...models.flatMap((m) => (m.aliases ?? []).map((alias) => [alias, m] as const)),
-      ...models.map((m) => [m.id, m] as const),
-    ]),
+    byId: indexModels(models),
     lastReviewed,
     overriddenModels,
     addedModels,

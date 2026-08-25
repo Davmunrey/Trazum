@@ -54,6 +54,14 @@ apart. `ai-job-search` was labelled `search`. `pulse-coffee` was labelled
 `coffee`. Two projects renamed to words that were never their names, with
 money attributed to them.
 
+The same session found three more, all of them the shape of a change that
+was applied in one place and not the other: the model aliases 1.77.0 added
+were indexed by one of the two catalogue builders, so `--pricing-live`
+dropped eight calls out of a real bill; an overlay declaring an id that was
+already an alias was silently discarded; and `switch` printed an ASCII
+arrow where every other report prints `→`. One index builder now, one
+arrow, and a refusal that no longer lists a flag twice.
+
 The folder name stands as it is now, minus the leading separator: longer,
 uglier, and true. Presenting a decoding as a fact when the encoding cannot
 support one is the failure this product exists to refuse, and it does not
