@@ -1731,18 +1731,22 @@ describe('the packaged Action', () => {
      *
      * The action resolves a committer as
      * `commit.author.user || commit.committer.user || commit.author || …`
-     * and compares the allowlist against `login || name`. This repository's
-     * agent commits under an email no GitHub account owns, so there is no
-     * login and the raw name is what must be listed. Drop either identity
-     * from that line and *every* pull request here blocks on a signature
-     * from somebody who cannot give one — loudly, but only after the fact.
-     * This is the promise kept next to the inventory instead.
+     * and compares the allowlist against `login || name` — **exactly**,
+     * case included. Reading that source suggested the capitalised commit
+     * name; the API said otherwise, because the agent's commit email
+     * belongs to the GitHub account `claude` and the lowercase login is
+     * what actually arrives. Three red pull requests taught that, so both
+     * spellings are listed and both are pinned here: the login for today,
+     * the commit name for the day that email is unlinked. Drop either and
+     * *every* pull request here blocks on a signature from somebody who
+     * cannot give one — loudly, but only after the fact. This is the
+     * promise kept next to the inventory instead.
      */
     const cla = readFileSync(join(repoRoot, '.github/workflows/cla.yml'), 'utf8');
     const allowlist = /allowlist:\s*'([^']*)'/.exec(cla);
     assert.ok(allowlist, 'cla.yml declares no allowlist — every PR would demand a signature');
     const listed = allowlist[1].split(',').map((entry) => entry.trim());
-    for (const identity of ['Davmunrey', 'Claude']) {
+    for (const identity of ['Davmunrey', 'claude', 'Claude']) {
       assert.ok(
         listed.includes(identity),
         `"${identity}" commits in this repository and is not allowlisted — the gate would block every pull request it authors`,
