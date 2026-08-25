@@ -2223,7 +2223,15 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-Nothing is planned. [The 1.71 plan](docs/plan-1.71.md) was delivered in full —
+**1.72.0 — "The playground."** [The 1.72 plan](docs/plan-1.72.md), asked for
+and written before the code: the CLI's pure subset — optimise, profile,
+position, the converters and the rest of what needs no network, no credential
+and no process — runnable in the web app against sample files already loaded,
+through the same `@trazum/core` functions the terminal runs. Nothing uploaded,
+nothing fetched, and the commands that do need a terminal named as CLI-only
+rather than hidden.
+
+Before it, [the 1.71 plan](docs/plan-1.71.md) was delivered in full —
 the universal cost lens, generalising the `from-claude-code` pattern to the
 whole observability ecosystem: the standards-based `from-otel` (the fortieth
 command) reads OpenTelemetry's GenAI spans as a usage log, so Trazum prices
