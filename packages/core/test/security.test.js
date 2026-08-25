@@ -1803,9 +1803,19 @@ describe('the packaged Action', () => {
       /git rebase --signoff/,
       'CONTRIBUTING.md does not name `git rebase --signoff`',
     );
+    /**
+     * The full origin, scheme and trailing slash included. CodeQL flagged the
+     * first draft of this line, `/developercertificate\.org/`, and it was
+     * right about more than style: that pattern also matches
+     * `https://developercertificate.org.example.com/` and
+     * `https://notdevelopercertificate.org/`, so the guard would have passed
+     * on a document linking an impostor host for the text a contributor is
+     * being asked to certify against. Anchoring it is the stronger assertion,
+     * not the quieter one.
+     */
     assert.match(
       contributing,
-      /developercertificate\.org/,
+      /https:\/\/developercertificate\.org\//,
       'CONTRIBUTING.md describes a sign-off without linking what is being certified',
     );
     // A sign-off is a certification of origin. Saying so is the difference
