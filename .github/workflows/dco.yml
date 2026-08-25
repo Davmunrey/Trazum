@@ -1,0 +1,87 @@
+name: DCO
+
+# Every commit in a pull request must carry a Signed-off-by line.
+#
+# The plain `pull_request` event on purpose: this job reads commits and
+# fails, and needs nothing writable to do it. The target-event variant is
+# banned everywhere but cla.yml, and a provenance check has no business
+# being the second exception. security.test.js pins both facts, and it
+# matches the workflow as text, so the banned event name is not written
+# here even to say it is unused.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  dco:
+    name: Signed-off-by on every commit
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          # The whole history. A shallow clone cannot walk base..head, and a
+          # check that silently examines nothing is worse than no check.
+          fetch-depth: 0
+
+      - name: Every commit carries a sign-off
+        env:
+          # Through the environment rather than spliced into the script. Both
+          # are commit SHAs today; the habit is what keeps them from becoming
+          # something else later.
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          # Merge commits are skipped. GitHub writes them itself when a branch
+          # is updated from the web, the contributor never sees an editor, and
+          # failing somebody for a commit they did not author teaches nothing
+          # except how to bypass this.
+          commits="$(git rev-list --no-merges "$BASE_SHA".."$HEAD_SHA")"
+
+          if [ -z "$commits" ]; then
+            echo "No non-merge commits in this range. Nothing to check."
+            exit 0
+          fi
+
+          missing=""
+          checked=0
+          for sha in $commits; do
+            checked=$((checked + 1))
+            if ! git log -1 --format=%B "$sha" | grep -qiE '^Signed-off-by: .+ <[^@]+@[^>]+>[[:space:]]*$'; then
+              subject="$(git log -1 --format=%s "$sha")"
+              missing="${missing}${sha} ${subject}"$'\n'
+            fi
+          done
+
+          if [ -z "$missing" ]; then
+            echo "All $checked commit(s) carry a Signed-off-by line."
+            exit 0
+          fi
+
+          # Loud, and with the exact command. A guard that fails without a
+          # remedy is a guard people learn to route around.
+          echo "::error::Commits without a Signed-off-by line:"
+          echo ""
+          echo "$missing"
+          echo "Each commit here has to certify its own origin. See the sign-off"
+          echo "section of CONTRIBUTING.md for what you are certifying."
+          echo ""
+          echo "For work you have not committed yet:"
+          echo ""
+          echo "    git commit -s"
+          echo ""
+          echo "For the commits above, which already exist:"
+          echo ""
+          echo "    git rebase --signoff $BASE_SHA"
+          echo "    git push --force-with-lease"
+          echo ""
+          echo "Your git identity supplies the name and email, so set them first"
+          echo "if you have not: git config user.name / git config user.email."
+          exit 1

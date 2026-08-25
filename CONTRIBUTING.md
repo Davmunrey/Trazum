@@ -24,6 +24,37 @@ Two deliberate exceptions:
 - **`packages/*/src/i18n/es.ts`, `apps/web/lib/i18n/es.ts`** and the Spanish
   sample prompt are Spanish by definition.
 
+## Signing off
+
+Every commit in a pull request must carry a `Signed-off-by:` line. The `DCO`
+check reads the range your branch adds and fails on any commit that does not,
+naming the SHA.
+
+```bash
+git commit -s                     # for work you have not committed yet
+git rebase --signoff <base>       # for commits that already exist
+```
+
+Your git identity supplies the name and email, so `git config user.name` and
+`git config user.email` have to be set. Merge commits are skipped: GitHub
+writes those itself when you update a branch from the web, and failing you for
+a commit you never opened an editor for would teach nothing except how to
+route around this.
+
+**What you are signing is a certification of origin, not a copyright
+assignment.** The text is the [Developer Certificate of Origin
+1.1](https://developercertificate.org/): you are stating that you wrote the
+patch, or that you have the right to submit it under this project's licence.
+You keep your copyright. Nothing about the line transfers anything.
+
+The reason a project this small bothers: a repository that cannot account for
+the provenance of its own history cannot answer a corporate legal review, and
+cannot change its own licence. Right now there is one copyright holder and the
+answer to both questions is trivial. The first merged commit whose origin
+nobody recorded is the one that makes it permanent, and no amount of care
+afterwards recovers it. This is cheap now and impossible later, which is the
+whole argument.
+
 ## The CLA
 
 Your first pull request will be greeted by the CLA workflow: it asks you to

@@ -1722,6 +1722,119 @@ describe('the packaged Action', () => {
     assert.ok(claSeen, 'cla.yml is gone — remove its exception from this guard');
   });
 
+  it('the DCO gate reads the whole range and hands back the command that fixes it', () => {
+    /**
+     * Provenance, and the two ways a check like this quietly stops working.
+     *
+     * The first is a shallow checkout. `base..head` over a depth-1 clone walks
+     * nothing, the loop finds no commits, and the job goes green while
+     * examining zero of them — the failure mode where a guard reports clean
+     * because it was never given anything to read. `fetch-depth: 0` is pinned
+     * below for that reason and no other.
+     *
+     * The second is a remedy nobody can act on. A contributor whose pull
+     * request is red for a reason they cannot fix in one command does not
+     * learn the rule; they ask for the check to be turned off, and on a
+     * single-maintainer repository that request usually wins. So both
+     * remedies are pinned as literal text: `git commit -s` for work that
+     * does not exist yet, `git rebase --signoff` for work that does.
+     *
+     * The event is pinned too. `pull_request_target` is banned everywhere but
+     * cla.yml by the guard above, and a check that only reads commits has no
+     * business becoming the second exception.
+     */
+    const dco = readFileSync(join(repoRoot, '.github/workflows/dco.yml'), 'utf8');
+
+    assert.match(dco, /^on:\n\s+pull_request:/m, 'dco.yml does not run on pull_request');
+    assert.doesNotMatch(
+      dco,
+      /pull_request_target/,
+      'dco.yml uses pull_request_target — a read-only check does not need a writable token',
+    );
+    // Anchored to column zero. A loose `\\s+` also matched the job-level block
+    // six spaces in, so planting `contents: write` at the top of the file left
+    // this green: the guard was reading the wrong one of two identical lines.
+    assert.match(
+      dco,
+      /^permissions:\n {2}contents: read$/m,
+      'dco.yml does not declare read-only permissions at the top level',
+    );
+    assert.match(
+      dco,
+      /fetch-depth: 0/,
+      'dco.yml checks out shallow — base..head would walk nothing and the job would pass',
+    );
+    // The grep pattern itself, not the bare words. Planting a typo in the
+    // header comment left the old assertion green, which means it was pinning
+    // prose rather than behaviour. A sign-off with no address is not one, so
+    // the address is part of what is pinned.
+    assert.match(
+      dco,
+      /grep -qiE '\^Signed-off-by: \.\+ <\[\^@\]\+@\[\^>\]\+>/,
+      'dco.yml no longer greps for a Signed-off-by line carrying an address',
+    );
+    assert.match(
+      dco,
+      /git commit -s/,
+      'dco.yml fails without naming the command for new work',
+    );
+    assert.match(
+      dco,
+      /git rebase --signoff/,
+      'dco.yml fails without naming the command for commits that already exist',
+    );
+    assert.match(
+      dco,
+      /--no-merges/,
+      'dco.yml judges merge commits GitHub wrote itself',
+    );
+  });
+
+  it('CONTRIBUTING.md tells a contributor how to satisfy the DCO gate', () => {
+    // The workflow prints the remedy at the moment of failure; this is the
+    // copy somebody reads *before* pushing. Both commands are pinned in both
+    // places on purpose: a document that names a gate and not its remedy sends
+    // the reader to the pull request to find out, which is the trip the gate
+    // exists to save.
+    const contributing = readFileSync(join(repoRoot, 'CONTRIBUTING.md'), 'utf8');
+    assert.match(contributing, /git commit -s/, 'CONTRIBUTING.md does not name `git commit -s`');
+    assert.match(
+      contributing,
+      /git rebase --signoff/,
+      'CONTRIBUTING.md does not name `git rebase --signoff`',
+    );
+    /**
+     * Not a regular expression, and that is the fix rather than a way around
+     * the alarm. CodeQL flagged this assertion twice, first as
+     * `/developercertificate\\.org/` and then as the same thing with a scheme
+     * bolted on, and its complaint was the same both times: a pattern shaped
+     * like a URL with nothing anchoring it matches inside a longer URL, so
+     * `https://example.com/?to=https://developercertificate.org/` satisfies it.
+     *
+     * The real subject here was never a URL. It is a markdown document, and
+     * the question is whether it *links* the text a contributor is asked to
+     * certify against. So the guard asks that literally: the exact link
+     * target, delimited by the markdown syntax around it. The closing paren
+     * is what a longer URL cannot survive, no host can precede `](`, and a
+     * mere mention of the domain in prose no longer counts.
+     *
+     * Expressing a containment check as a regex is what made it look like URL
+     * validation, and it was weaker than a containment check the whole time.
+     */
+    assert.ok(
+      contributing.includes('](https://developercertificate.org/)'),
+      'CONTRIBUTING.md describes a sign-off without linking what is being certified',
+    );
+    // A sign-off is a certification of origin. Saying so is the difference
+    // between a contributor signing and a contributor asking their employer.
+    assert.match(
+      contributing,
+      // Wrap-tolerant: the sentence sits across a line break in the file.
+      /not a copyright\s+assignment/i,
+      'CONTRIBUTING.md does not say what the sign-off is not',
+    );
+  });
+
   it('the CLA gate allowlists the identities that commit here, and chooses its own locking', () => {
     /**
      * The gate's first live run failed on two pull requests before anybody
