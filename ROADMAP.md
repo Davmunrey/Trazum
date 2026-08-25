@@ -1184,6 +1184,18 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.73.0 — "The guided tour" — released
+
+**The app explains its own doors.** A guided tour — dimmed page, one ringed
+panel, a card per step — walks optimise, write, compare, the bill and the
+playground, opening each tab as it goes and ending where the visitor can
+type a first command. Offered on first visit, never auto-played, launched
+from the rail forever after. Steps are data, copy is dictionary in both
+locales, the overlay is ~180 lines of this repository's own rather than a
+library, and the suite pins every join: anchors must exist, locales must
+differ, no effect may open it, storage sits behind try/catch, reduced
+motion means instant scroll.
+
 ## 1.72.0 — "The playground" — released
 
 **The CLI, runnable in the web app.** A terminal tab over the same
@@ -2235,14 +2247,15 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-Nothing is planned. [The 1.72 plan](docs/plan-1.72.md) was delivered in
-full — the playground: the CLI's pure subset runnable in the web app against
-sample files, through the same `@trazum/core` functions the terminal runs,
-with the commands that need a terminal named as CLI-only rather than hidden.
-The guided tour of the app, chosen alongside it, is the natural next arc and
-waits to be asked for: a plan exists to be written before the code, not to
-keep a section warm.
+Nothing is planned. [The 1.73 plan](docs/plan-1.73.md) was delivered in
+full — the guided tour: five doors walked once, offered on first visit and
+launched from the rail forever after, with no tour library, no auto-play, no
+analytics and the one scroll respecting prefers-reduced-motion. No new plan
+is written until one is asked for.
 
+Before it, [the 1.72 plan](docs/plan-1.72.md) was delivered in full — the
+playground: the CLI's pure subset runnable in the web app against sample
+files, through the same `@trazum/core` functions the terminal runs.
 Before it, [the 1.71 plan](docs/plan-1.71.md) was delivered in full —
 the universal cost lens, generalising the `from-claude-code` pattern to the
 whole observability ecosystem: the standards-based `from-otel` (the fortieth

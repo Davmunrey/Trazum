@@ -5,6 +5,7 @@ import {
   ArrowUpRight,
   BookMarked,
   BookOpen,
+  Compass,
   GitCompare,
   Menu,
   Package,
@@ -39,11 +40,13 @@ import { Library } from './Library';
 import { Comparer } from './Comparer';
 import { Optimizer } from './Optimizer';
 import { Playground } from './Playground';
+import { Tour } from './Tour';
 import { Writer } from './Writer';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { LOCALES, LOCALE_STORAGE_KEY, getWebMessages } from '../lib/i18n';
+import { TOUR_SEEN_KEY } from '../lib/tour';
 import { usePromptText } from '../lib/prompt-text';
 import { useScenario } from '../lib/scenario';
 
@@ -90,6 +93,33 @@ export function App({
    */
   const [collapsed, setCollapsed] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  /**
+   * The tour drives the tabs, so the tabs are controlled — the one state
+   * change 1.73 asks of this component. Everything else about the tour lives
+   * in Tour.tsx; here is only whether it is open, and whether the one-line
+   * first-visit offer shows. The offer reads its flag after mount (a server
+   * render has no storage), behind try/catch like every storage access here:
+   * a private window shows the offer again, which is the right failure.
+   */
+  const [activeTab, setActiveTab] = useState('optimise');
+  const [tourOpen, setTourOpen] = useState(false);
+  const [tourOffered, setTourOffered] = useState(false);
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem(TOUR_SEEN_KEY) === null) setTourOffered(true);
+    } catch {
+      setTourOffered(true);
+    }
+  }, []);
+  function markTourSeen() {
+    setTourOffered(false);
+    try {
+      window.localStorage.setItem(TOUR_SEEN_KEY, '1');
+    } catch {
+      // Nothing to do: the offer will simply show again next visit.
+    }
+  }
   const railRef = useRef<HTMLElement>(null);
   const t = getWebMessages(locale);
 
@@ -592,6 +622,27 @@ export function App({
             )}
           </a>
         ))}
+        {/*
+          The tour's permanent home: offered on first visit, launched from
+          here forever after. A button, not a link — it leaves nothing.
+        */}
+        <button
+          type="button"
+          onClick={() => {
+            markTourSeen();
+            setTourOpen(true);
+            setDrawerOpen(false);
+          }}
+          title={railCollapsed ? t.tour.launch : undefined}
+          className={cn(
+            'group/link flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-left text-[13px] text-muted-foreground transition-colors hover:bg-layer-hover hover:text-foreground',
+            FOCUS_RING,
+            railCollapsed && 'justify-center px-0',
+          )}
+        >
+          <Compass className="size-[15px] shrink-0" aria-hidden="true" />
+          {!railCollapsed && <span className="min-w-0 flex-1 truncate">{t.tour.launch}</span>}
+        </button>
       </nav>
 
       {/* Account and language live at the foot of the rail: page-level controls,
@@ -642,7 +693,8 @@ export function App({
       nothing and puts the bar where a bar goes.
     */
     <Tabs
-      defaultValue="optimise"
+      value={activeTab}
+      onValueChange={setActiveTab}
       orientation="vertical"
       className="min-h-screen flex-col gap-0 lg:flex-row"
     >
@@ -753,6 +805,35 @@ export function App({
 
       <main className="min-w-0 flex-1 px-5 pt-6 pb-16 lg:px-8">
         <div className="mx-auto max-w-[1080px]">
+          {/*
+            The first-visit offer: one line, two buttons, made once. Never a
+            modal — software that grabs the mouse on arrival has taught the
+            visitor the wrong first lesson.
+          */}
+          {tourOffered && !tourOpen && (
+            <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-l-[3px] border-l-primary px-3.5 py-2.5 text-[13px]">
+              <span className="text-muted-foreground">{t.tour.offer}</span>
+              <span className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    markTourSeen();
+                    setTourOpen(true);
+                  }}
+                  className="font-medium underline-offset-2 hover:underline"
+                >
+                  {t.tour.offerStart}
+                </button>
+                <button
+                  type="button"
+                  onClick={markTourSeen}
+                  className="text-faint underline-offset-2 hover:underline"
+                >
+                  {t.tour.offerDismiss}
+                </button>
+              </span>
+            </div>
+          )}
           <p className="mt-0 mb-6 max-w-[62ch] text-[15px] leading-relaxed text-muted-foreground">
             {t.page.lede}
           </p>
@@ -768,13 +849,13 @@ export function App({
             existing guard names the property rather than the tabs, and it was
             right.
           */}
-          <TabsContent value="write" forceMount className="data-[state=inactive]:hidden">
+          <TabsContent value="write" forceMount data-tour="panel-write" className="data-[state=inactive]:hidden">
             <Writer t={t} locale={locale} />
           </TabsContent>
-          <TabsContent value="optimise" forceMount className="data-[state=inactive]:hidden">
+          <TabsContent value="optimise" forceMount data-tour="panel-optimise" className="data-[state=inactive]:hidden">
             <Optimizer locale={locale} t={t} scenario={scenario} promptText={promptText} />
           </TabsContent>
-          <TabsContent value="compare" forceMount className="data-[state=inactive]:hidden">
+          <TabsContent value="compare" forceMount data-tour="panel-compare" className="data-[state=inactive]:hidden">
             <Comparer
               locale={locale}
               t={t}
@@ -783,7 +864,7 @@ export function App({
               models={models}
             />
           </TabsContent>
-          <TabsContent value="bill" forceMount className="data-[state=inactive]:hidden">
+          <TabsContent value="bill" forceMount data-tour="panel-bill" className="data-[state=inactive]:hidden">
             <Bill t={t} />
           </TabsContent>
           {/*
@@ -791,7 +872,7 @@ export function App({
             scrollback and its virtual files live only in the browser, and an
             unmounted tab would discard both.
           */}
-          <TabsContent value="playground" forceMount className="data-[state=inactive]:hidden">
+          <TabsContent value="playground" forceMount data-tour="panel-playground" className="data-[state=inactive]:hidden">
             <Playground t={t} locale={locale} />
           </TabsContent>
           {signedIn && (
@@ -812,6 +893,10 @@ export function App({
           </footer>
         </div>
       </main>
+
+      {tourOpen && (
+        <Tour t={t} onTabChange={setActiveTab} onClose={() => setTourOpen(false)} />
+      )}
     </Tabs>
   );
 }

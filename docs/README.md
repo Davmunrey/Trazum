@@ -98,6 +98,7 @@ is the half a reader cannot reconstruct.
 | [1.70](plan-1.70.md) | One drag: the transcripts folder onto the web app, converted in the tab, nothing uploaded | 1.70.0 — all four chapters, and the landing in five languages |
 | [1.71](plan-1.71.md) | The universal cost lens: read OpenTelemetry GenAI (and, in time, every observability export) as a usage log | 1.71.0 — all four chapters, `from-otel` the fortieth command and the web tab's third arm |
 | [1.72](plan-1.72.md) | The playground: the CLI's pure subset, runnable in the page on sample files | 1.72.0 — all four chapters, ten commands in the tab and the honest CLI-only note |
+| [1.73](plan-1.73.md) | The guided tour: five doors walked once, offered never imposed | 1.73.0 — all four chapters, no library and no auto-play |
 
 What each of them **refused** to ship — which is the more useful half, since a
 plan and its implementation shared a hand — is in

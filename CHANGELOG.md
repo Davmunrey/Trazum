@@ -20,6 +20,44 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## 1.73.0 — "The guided tour"
+
+### Added
+
+- **A guided tour of the five doors, offered not imposed.** [The 1.73
+  plan](docs/plan-1.73.md): a first visit gets a one-line dismissible offer
+  above the lede, the rail's resources group gains a permanent launcher, and
+  the tour itself is a dimmed page, one ringed panel and a card — welcome,
+  then optimise, write, compare, the bill and the playground, each step
+  opening the tab it describes and saying what question that door answers,
+  ending where the visitor can type their first command. Steps are data
+  (`lib/tour.ts`), copy is dictionary (`t.tour`, both locales), and the
+  overlay is this repository's own ~180 lines rather than a tour library: a
+  ring whose box-shadow is the backdrop, a card that positions below or
+  above the target and centres when there is no target on screen — which is
+  what a phone gets. `Escape` leaves, focus travels with the card, the step
+  body is announced politely, and the one scroll respects
+  `prefers-reduced-motion`. Tabs became controlled in `App` so a step can
+  open its door; the first-visit flag lives under `trazum:tour-seen`, read
+  and written behind try/catch like every storage access here.
+
+### Honest gaps, stated
+
+- **The tour never auto-plays.** Software that grabs the mouse on arrival
+  has taught the visitor the wrong first lesson; the offer is a banner with
+  a start button, the suite asserts no effect opens the overlay, and the
+  Library tab — signed-in only — deliberately has no step.
+- **No analytics on tour progress.** Where a visitor left the walk is a
+  number this product does not collect, the same as every other number about
+  the visitor.
+- **`tour.test.mjs` holds the joins:** the no-fetch invariant over both new
+  files; every ringed step's `data-tour` anchor exists in some component
+  source, with the planted-absent anchor proving the detector can fail;
+  every step speaks both locales with genuinely different words; every step
+  opens a tab `App` renders and every public door has a step; the storage
+  accesses sit inside try/catch; and the reduced-motion branch picks instant
+  scrolling.
+
 ## 1.72.0 — "The playground"
 
 ### Added

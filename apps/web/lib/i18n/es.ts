@@ -899,6 +899,56 @@ export const es: WebMessages = {
     wrote: (name, count) => `Escritos ${count} registro(s) en ${name} — «trazum profile ${name}» los tasa.`,
   },
 
+  tour: {
+    launch: 'Haz el tour',
+    offer: '¿Primera vez aquí? Un tour de un minuto recorre las cinco puertas.',
+    offerStart: 'Empezar el tour',
+    offerDismiss: 'Ahora no',
+    next: 'Siguiente',
+    back: 'Atrás',
+    skip: 'Saltar el tour',
+    done: 'Hecho',
+    progress: (current, total) => `${current} de ${total}`,
+    dialogLabel: 'Tour guiado',
+    steps: {
+      welcome: {
+        title: 'Qué responde Trazum',
+        body:
+          'Qué cuesta este prompt, qué le hace este cambio a la factura y qué la movería de verdad. Todo corre en tu navegador: nada de lo que pegas o sueltas se sube a ningún sitio.',
+      },
+      optimise: {
+        title: 'Optimizar',
+        body:
+          'Pega un prompt y las reglas deterministas lo acortan sin cambiar lo que pide: tokens antes y después, el ahorro tasado, y los avisos que suelen valer más que el recorte.',
+      },
+      write: {
+        title: 'Escribir',
+        body:
+          'Describe el prompt que necesitas y te hace las preguntas cuyas respuestas cambian el resultado; luego monta un borrador y lo tasa antes de que lo envíes. Ningún modelo genera nada.',
+      },
+      compare: {
+        title: 'Comparar',
+        body:
+          'Dos versiones de un prompt, juzgadas como una edición: qué hace a tokens y dinero, qué reglas empezaron a saltar, y cualquier contradicción que el cambio haya metido — corrección antes que coste.',
+      },
+      bill: {
+        title: 'Tu factura',
+        body:
+          'Pega un log de uso — o arrastra tu carpeta ~/.claude/projects o un export de OpenTelemetry encima — y lee dónde se fue el dinero y el único cambio que lo movería de verdad. Convertido en esta pestaña, nada subido.',
+      },
+      playground: {
+        title: 'Playground',
+        body:
+          'La CLI, ejecutable aquí: escribe «trazum profile usage.jsonl» contra ficheros de ejemplo ya cargados, o «help» para la lista completa. Las mismas funciones que corre el terminal.',
+      },
+      finish: {
+        title: 'Ese es el tour',
+        body:
+          'Los enlaces del rail llevan al repositorio, al paquete npm y a la documentación — y este tour queda detrás de su botón cuando lo quieras repetir.',
+      },
+    },
+  },
+
   errors: {
     requestFailed: 'No se ha podido optimizar el prompt.',
     unreachable: 'No se ha podido contactar con el servidor.',
