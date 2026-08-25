@@ -385,10 +385,23 @@ describe('POST /api/auth/signout', () => {
 // ---------------------------------------------------------------------------
 
 describe('GET /api/auth/session', () => {
-  it('reports the feature as off when it is off', async () => {
+  it('reports the feature as off when it is off, and says why', async () => {
+    /**
+     * The reason is the half that was missing. An operator whose sign-in
+     * never appeared had nothing to read — no button, no error — which is
+     * the same silence as a deployment deliberately running anonymous, and
+     * only one of those wants fixing. Variable *names* only: those are
+     * public documentation, and no value is ever echoed.
+     */
     delete process.env.TRAZUM_GITHUB_CLIENT_ID;
     const response = await sessionRoute(req(`${ORIGIN}/api/auth/session`));
-    assert.deepEqual(await response.json(), { enabled: false, user: null, ephemeralSessions: false });
+    const body = await response.json();
+    assert.equal(body.enabled, false);
+    assert.equal(body.user, null);
+    assert.equal(body.ephemeralSessions, false);
+    assert.match(body.reason, /TRAZUM_GITHUB_CLIENT_ID/);
+    // The secret's name may be named; its value must never be.
+    assert.equal(/secret['":=]\s*\S/i.test(body.reason.replace(/TRAZUM_GITHUB_CLIENT_SECRET/g, '')), false);
   });
 
   it('returns null for a visitor and the profile for a member', async () => {

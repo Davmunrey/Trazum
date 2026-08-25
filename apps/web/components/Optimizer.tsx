@@ -1063,7 +1063,7 @@ export function Optimizer({
                                         {change.after}
                                       </span>
                                     ) : (
-                                      <span className="flex-none text-muted-foreground">—</span>
+                                      <span className="flex-none text-muted-foreground">∅</span>
                                     )}
                                   </li>
                                 ))}

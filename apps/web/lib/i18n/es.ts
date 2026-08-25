@@ -7,15 +7,15 @@ export const es: WebMessages = {
   endonym: 'Español',
 
   meta: {
-    title: 'Trazum — a dónde va el gasto de tus prompts',
+    title: 'Trazum: a dónde va el gasto de tus prompts',
     tagline: 'analizador de coste de prompts',
     description:
-      'Reduce el coste de tus llamadas a la IA: acorta el prompt sin cambiar lo que pide y ve cuánto dinero supone al mes. O lee tu registro de uso — por completo en el navegador, sin subir nada — y ve adónde fue el dinero de verdad.',
+      'Reduce el coste de tus llamadas a la IA: acorta el prompt sin cambiar lo que pide y ve cuánto dinero supone al mes. O lee tu registro de uso (por completo en el navegador, sin subir nada) y ve adónde fue el dinero de verdad.',
     ogLocale: 'es_ES',
   },
 
   page: {
-    lede: 'Calcula todo lo que hace que este prompt cueste más de lo necesario —el caching, la gama de modelo, la Batch API— y acorta el texto sin cambiar lo que pide. El código, las URLs y los marcadores de plantilla se quedan intactos. La pestaña Tu factura lee en cambio un registro de uso, por completo en este navegador, y dice adónde fue el dinero de verdad.',
+    lede: 'Calcula todo lo que hace que este prompt cueste más de lo necesario (el caching, la gama de modelo, la Batch API) y acorta el texto sin cambiar lo que pide. El código, las URLs y los marcadores de plantilla se quedan intactos. La pestaña Tu factura lee en cambio un registro de uso, por completo en este navegador, y dice adónde fue el dinero de verdad.',
     footerLead: (pricingReviewed) =>
       `Precios revisados el ${pricingReviewed}. El recuento de tokens es una estimación (±10%); para cifras exactas usa el endpoint oficial de recuento desde la CLI con `,
     footerTail: '. Los ahorros son proyecciones sobre el escenario que indiques, no facturación.',
@@ -28,7 +28,7 @@ export const es: WebMessages = {
     groupMeasure: 'Medir',
     groupResources: 'Recursos',
     linkGitHub: 'GitHub',
-    linkNpm: 'npm — @trazum/cli',
+    linkNpm: 'npm: @trazum/cli',
     linkDocs: 'Documentación',
     opensExternal: 'se abre en una pestaña nueva',
   },
@@ -71,12 +71,12 @@ export const es: WebMessages = {
       'Reescribe el prompt con todas las sugerencias que hayan sobrevivido. Lee el diff '
       + 'después: vienen de un modelo.',
     baseUrlNotOffered:
-      'Este servidor solo llama al LLM que configuró su operador. Ejecuta Trazum tú mismo — la '
-      + 'CLI, o tu propio despliegue — para apuntarlo al endpoint que quieras.',
+      'Este servidor solo llama al LLM que configuró su operador. Ejecuta Trazum tú mismo (la '
+      + 'CLI, o tu propio despliegue) para apuntarlo al endpoint que quieras.',
     model: 'Modelo',
     modelPlaceholder: 'identificador del modelo',
     apiKey: 'Clave de API',
-    apiKeyOnServer: 'configurada en el servidor — déjalo vacío',
+    apiKeyOnServer: 'configurada en el servidor: déjalo vacío',
     apiKeyPlaceholder: 'tu clave',
     keyNote:
       'La clave viaja a este servidor para hacer la llamada y se descarta al terminar: no se guarda ni se registra. Si prefieres no escribirla aquí, define las variables de entorno en el servidor y deja los campos vacíos.',
@@ -179,20 +179,20 @@ export const es: WebMessages = {
     lede: 'Describe lo que quieres. Trazum pregunta lo que necesita y escribe el prompt.',
     privacy: 'No se genera nada ni se envía nada a un modelo. Las preguntas son fijas y las palabras del prompt son tuyas.',
     slots: {
-      task: { question: '¿Qué debe hacer el modelo, en una frase?', unlocks: 'el prompt entero — sin esto no hay nada que escribir' },
+      task: { question: '¿Qué debe hacer el modelo, en una frase?', unlocks: 'el prompt entero; sin esto no hay nada que escribir' },
       role: { question: '¿Quién es el modelo mientras lo hace?', unlocks: 'la postura de la respuesta; si falta, el modelo elige una por ti' },
-      inputs: { question: '¿Qué cambia de una llamada a otra?', unlocks: 'la parte variable — sin ella el prompt fija un solo caso' },
+      inputs: { question: '¿Qué cambia de una llamada a otra?', unlocks: 'la parte variable; sin ella el prompt fija un solo caso' },
       'output-shape': { question: '¿Qué debe volver: prosa, json, lista o tabla?', unlocks: 'el contrato de salida, y si un consumidor puede parsear la respuesta siquiera' },
       'output-schema': { question: '¿Qué campos o columnas, y cuáles están siempre?', unlocks: 'nombres de campo fiables en vez de inferidos de una muestra' },
       'output-length': { question: '¿Cuánto debe ocupar la respuesta, como máximo?', unlocks: 'el techo que evita pagar por texto que nadie lee' },
-      audience: { question: '¿Quién lee la salida?', unlocks: 'el registro — una respuesta para un ingeniero y otra para un cliente no son la misma' },
+      audience: { question: '¿Quién lee la salida?', unlocks: 'el registro; una respuesta para un ingeniero y otra para un cliente no son la misma' },
       constraints: { question: '¿Qué no debe hacer nunca?', unlocks: 'las prohibiciones, dichas una vez en vez de descubiertas incidente a incidente' },
       refusal: { question: '¿Qué debe hacer cuando no pueda responder?', unlocks: 'una negativa que llega con su motivo en vez de una conjetura segura de sí misma' },
       examples: { question: '¿Hay algún ejemplo de respuesta buena?', unlocks: 'la guía few-shot, y la ocasión de comprobar que no se repite' },
-      'example-inputs': { question: '¿Qué entrada produjo ese ejemplo?', unlocks: 'el emparejamiento — un ejemplo sin su entrada enseña la forma, no la correspondencia' },
+      'example-inputs': { question: '¿Qué entrada produjo ese ejemplo?', unlocks: 'el emparejamiento; un ejemplo sin su entrada enseña la forma, no la correspondencia' },
       'failure-modes': { question: '¿Qué ha salido mal con esto antes?', unlocks: 'las correcciones que merecen decirse, que un prompt genérico nunca tiene' },
-      model: { question: '¿Para qué modelo es esto?', unlocks: 'la estimación de coste — esto cambia el informe, nunca el prompt' },
-      budget: { question: '¿Cuál es el techo mensual de este prompt?', unlocks: 'la comprobación de presupuesto — esto cambia el informe, nunca el prompt' },
+      model: { question: '¿Para qué modelo es esto?', unlocks: 'la estimación de coste; esto cambia el informe, nunca el prompt' },
+      budget: { question: '¿Cuál es el techo mensual de este prompt?', unlocks: 'la comprobación de presupuesto; esto cambia el informe, nunca el prompt' },
     },
     optional: 'Opcional',
     decline: 'Saltar esta',
@@ -206,7 +206,7 @@ export const es: WebMessages = {
     copy: 'Copiar',
     copied: 'Copiado',
     tokens: (count) => `${count} tokens`,
-    monthly: (usd) => `${usd} al mes, estimado — nadie ha enviado este prompt todavía`,
+    monthly: (usd) => `${usd} al mes, estimado: nadie ha enviado este prompt todavía`,
     within: (limit) => `Dentro del presupuesto de ${limit}`,
     over: (limit) => `Por encima del presupuesto de ${limit}`,
     noVerdict: (reason) =>
@@ -217,7 +217,7 @@ export const es: WebMessages = {
           : 'Ese modelo no está en el catálogo de precios, así que no se puede tasar.',
     clean: 'Trazum no encuentra nada más que recortar aquí.',
     notClean: (rules, tokens) =>
-      `Trazum aún recortaría ${tokens} tokens aquí (${rules}) — de tus respuestas, no de la estructura.`,
+      `Trazum aún recortaría ${tokens} tokens aquí (${rules}): de tus respuestas, no de la estructura.`,
     notPerfect:
       'Esto no afirma que el prompt sea perfecto. Eso es un juicio sobre un texto que nadie ha ejecutado. Lo medido es lo de arriba: completo, tasado y limpio.',
   },
@@ -315,7 +315,7 @@ export const es: WebMessages = {
     suggestOffered: (count, tokens) =>
       `${count} ${count === 1 ? 'frase podría decir' : 'frases podrían decir'} lo mismo con ~${tokens} tokens menos:`,
     suggestApplied: (count, tokens) =>
-      `Aplicadas ${count} ${count === 1 ? 'reescritura' : 'reescrituras'} (~${tokens} tokens) — lee el diff.`,
+      `Aplicadas ${count} ${count === 1 ? 'reescritura' : 'reescrituras'} (~${tokens} tokens). Lee el diff.`,
     suggestNothing: (provider, model) =>
       `${provider} (${model}) no ha encontrado nada que reescribir que las reglas no hubieran cogido ya.`,
     suggestRejected: (count) =>
@@ -334,7 +334,7 @@ export const es: WebMessages = {
     nothingToDo:
       'Nada sobre lo que este registro permita actuar: ninguna porción de la factura llega al uno '
       + 'por ciento del total, y no se está pagando nada medible a un problema. Es una respuesta '
-      + 'real, no una vacía — una factura que ya está en el modelo más barato de su familia y sin '
+      + 'real, no una vacía. Una factura que ya está en el modelo más barato de su familia y sin '
       + 'API de lotes a la que recurrir no tiene palanca aquí.',
     projected: (usd) => `Proyectado, si se toman todas las acciones de abajo: ${usd} en el periodo del propio registro.`,
     staked: (usd) => `Ya pagado a problemas nombrados abajo, medido: ${usd}.`,
@@ -368,14 +368,14 @@ export const es: WebMessages = {
     save: 'Guardar plan.json',
     saveNote:
       'El mismo documento que escribe trazum plan -o. Súbelo al repositorio, ponle una puerta en CI '
-      + 'con trazum verify, o tráelo de vuelta aquí más tarde — un solo contrato, y no se subió nada '
+      + 'con trazum verify, o tráelo de vuelta aquí más tarde: un solo contrato, y no se subió nada '
       + 'a ningún sitio para crearlo.',
 
     verifyHeading: '¿Funcionó?',
     verifyLede:
       'Abre un plan que guardaste antes y este registro se convierte en su comprobación. Tres '
-      + 'resultados, nunca dos: un ahorro que llegó, uno que no, y uno que nada de aquí puede juzgar '
-      + '— porque un flujo que dejó de registrarse no es un flujo que dejó de costar dinero.',
+      + 'resultados, nunca dos: un ahorro que llegó, uno que no, y uno que nada de aquí puede juzgar, '
+      + 'porque un flujo que dejó de registrarse no es un flujo que dejó de costar dinero.',
     chooseePlan: 'Abrir un plan guardado',
     notAPlan: (why) => `Ese archivo no es un documento de plan: ${why}. Se esperaba el JSON que escribe Guardar plan.json.`,
     refusalNotJson: 'no es JSON válido',
@@ -395,7 +395,7 @@ export const es: WebMessages = {
       + `${kind} en ${label} (${model}).`,
     cannotTell: (reason) =>
       reason === 'workload-vanished'
-        ? 'Ese flujo no tiene tráfico con precio en este registro. Puede haberse renombrado, movido o parado — nada de eso es un ahorro.'
+        ? 'Ese flujo no tiene tráfico con precio en este registro. Puede haberse renombrado, movido o parado; nada de eso es un ahorro.'
         : reason === 'fields-stopped'
           ? 'Los campos con los que se juzgaría esta acción ya no están en el registro. Nada degradado cuenta como aprobado.'
           : 'El registro no anota el nivel al que esta acción movió las llamadas, así que el movimiento no se ve.',
@@ -405,23 +405,23 @@ export const es: WebMessages = {
   bill: {
     tab: 'Tu factura',
     lede:
-      'Lee un registro de uso — un objeto JSON por línea, cada uno con un "model" y el objeto '
-      + '"usage" que devolvió la API — y dice adónde fue el dinero: qué carga de trabajo, qué '
+      'Lee un registro de uso (un objeto JSON por línea, cada uno con un "model" y el objeto '
+      + '"usage" que devolvió la API) y dice adónde fue el dinero: qué carga de trabajo, qué '
       + 'modelo, si la caché se pagó sola y qué palancas moverían la factura de verdad.',
     privacy:
-      'Todo registro que abras aquí — la factura, y un segundo con el que compararla — se lee '
+      'Todo registro que abras aquí (la factura, y un segundo con el que compararla) se lee '
       + 'por completo en esta pestaña del navegador. No se sube, no se guarda ni se envía a '
       + 'ninguna parte: cierra la página y desaparece.',
     dropLabel: 'Suelta aquí un registro de uso',
     chooseFile: 'Elegir un archivo',
     chooseFolder: 'Elegir una carpeta',
     dropFolderHint:
-      'Arrastra aquí tu carpeta ~/.claude/projects para tasar tus sesiones de Claude Code — convertidas en esta pestaña, sin subir nada.',
+      'Arrastra aquí tu carpeta ~/.claude/projects para tasar tus sesiones de Claude Code, convertidas en esta pestaña, sin subir nada.',
     transcriptSummary: (transcripts, calls) =>
       `Convertidos ${transcripts} transcript(s) de Claude Code en ${calls} llamada(s) tasada(s), aquí en tu navegador.`,
     transcriptAlsoLogs: (logs) => `Más ${logs} log(s) de uso, leídos tal cual.`,
     transcriptCollapsed: (lines) =>
-      `${lines} línea(s) extra de llamadas ya contadas colapsadas — una llamada a la API se escribe como una línea por bloque de contenido.`,
+      `${lines} línea(s) extra de llamadas ya contadas colapsadas: una llamada a la API se escribe como una línea por bloque de contenido.`,
     transcriptStreamed: (calls) =>
       `${calls} llamada(s) capturadas en streaming; quedaron sus recuentos finales.`,
     priceCardApplied: (touched, added) =>
@@ -430,11 +430,11 @@ export const es: WebMessages = {
     priceCardClear: 'Volver a la instantánea incluida',
     otelSummary: (exports, spans) =>
       `Convertidos ${exports} export(s) de OpenTelemetry en ${spans} span(s) LLM tasado(s), aquí en tu navegador.`,
-    otelSkipped: (spans) => `${spans} span(s) no-LLM omitidos — contados, nunca tasados.`,
+    otelSkipped: (spans) => `${spans} span(s) no-LLM omitidos: contados, nunca tasados.`,
     otelNoCache: (spans) =>
-      `${spans} span(s) sin datos de caché — OTel no ha estandarizado el reparto de TTL de caché, así que sus veredictos de caché dicen "no se puede saber" en vez de uno inventado.`,
+      `${spans} span(s) sin datos de caché: OTel no ha estandarizado el reparto de TTL de caché, así que sus veredictos de caché dicen "no se puede saber" en vez de uno inventado.`,
     transcriptPrivacy:
-      'Los transcripts se leyeron en esta pestaña. Se quedaron los números y no las palabras — ni texto de mensajes, ni rutas, ni ramas cruzaron la conversión.',
+      'Los transcripts se leyeron en esta pestaña. Se quedaron los números y no las palabras: ni texto de mensajes, ni rutas, ni ramas cruzaron la conversión.',
     orPaste: 'o pega el registro debajo',
     pasteAriaLabel: 'Registro de uso a analizar',
     analyze: 'Leer la factura',
@@ -468,7 +468,7 @@ export const es: WebMessages = {
       `La caché quitó ${usd} de esta factura, frente a los mismos tokens sin caché.`,
     cacheLost: (usd) =>
       `La caché añadió ${usd} a esta factura en lugar de quitarlo. Una escritura de caché `
-      + 'cuesta más que la entrada normal — 1,25x, o 2x con el TTL de 1 hora — así que un '
+      + 'cuesta más que la entrada normal (1,25x, o 2x con el TTL de 1 hora), así que un '
       + 'prefijo que cambia más rápido de lo que se reutiliza paga esa prima a cambio de nada. '
       + 'O cachea un prefijo que se quede quieto, o apaga la caché aquí.',
     cacheNoDifference:
@@ -491,7 +491,7 @@ export const es: WebMessages = {
     cacheHiddenLoss: (usd, labels) =>
       `El total esconde una pérdida: la caché cuesta ${usd} en ${labels}.`,
     leversHeading: 'Qué movería esta factura de verdad',
-    leverSlice: (label, model, usd, pct) => `${label} en ${model} — hasta ${usd} (${pct})`,
+    leverSlice: (label, model, usd, pct) => `${label} en ${model}: hasta ${usd} (${pct})`,
     leverRoute: (candidate, usd) => `enrutarlo a ${candidate}: ${usd}`,
     leverBatch: (usd) => `enviarlo por la Batch API: ${usd}`,
     leverCalls: (calls, spent) =>
@@ -501,8 +501,8 @@ export const es: WebMessages = {
       + 'una sola respuesta. La CLI lo mide: trazum route <log> --prompt-file <prompt> --cases '
       + '<cases>.',
     leverPromptCeiling: (usd, pct) =>
-      `Como referencia: acortar el texto del prompt puede tocar como muchísimo ${usd} — ${pct} `
-      + 'de esta factura, y solo si borraras todos los tokens de entrada. La cifra real queda '
+      `Como referencia: acortar el texto del prompt puede tocar como muchísimo ${usd} (${pct} `
+      + 'de esta factura), y solo si borraras todos los tokens de entrada. La cifra real queda '
       + 'muy por debajo, porque la mayoría de esos tokens son contexto recuperado, historial de '
       + 'conversación y resultados de herramientas que no están en ningún archivo de prompt.',
     leversNone:
@@ -511,7 +511,7 @@ export const es: WebMessages = {
       + 'vacía.',
     leversUnlabelled:
       'Ninguna de estas llamadas llevaba etiqueta, así que esto es todas las cargas de trabajo '
-      + 'en una sola fila — un clasificador y un pipeline RAG fundidos en una cifra, con una '
+      + 'en una sola fila: un clasificador y un pipeline RAG fundidos en una cifra, con una '
       + 'única ruta sugerida para ambos. Añade "label" al registro y las palancas se separan '
       + 'por carga de trabajo, que es el nivel al que se decide de verdad.',
     whatIfHeading: 'Estas mismas llamadas en otro modelo',
@@ -522,7 +522,7 @@ export const es: WebMessages = {
       + 'tarifa. No dice nada sobre si ese modelo podría hacer el trabajo, y un modelo que '
       + 'responda más largo o al que haya que reintentar no enviaría estos recuentos.',
     whatIfTotal: (current, target, delta) =>
-      `${current} de gasto movible habrían sido ${target} — una diferencia de ${delta}.`,
+      `${current} de gasto movible habrían sido ${target}, una diferencia de ${delta}.`,
     whatIfCheaper:
       'Compruébalo antes de mover nada: la CLI mide un prompt contra ambos modelos con tus '
       + 'propios ejemplos, con trazum route.',
@@ -530,12 +530,12 @@ export const es: WebMessages = {
       'Esa dirección cuesta más. La aritmética está aquí para que el número no sea una suposición.',
     whatIfBatchOnTarget: (batched, moved) =>
       `Si esas llamadas además pueden esperar, la Batch API del destino deja la factura `
-      + `trasladada de ${moved} en ${batched} — el descuento aplica a las tarifas del destino, `
+      + `trasladada de ${moved} en ${batched}: el descuento aplica a las tarifas del destino, `
       + 'no a las que dejas. Si pueden esperar no está en el registro; esa mitad de la decisión es tuya.',
     whatIfCacheBeyond: (largest, min, noCache) =>
       `Su tráfico de caché no podría existir allí: la llamada más grande tiene ${largest} tokens `
       + `frente al mínimo de caché de ${min} tokens del destino, así que ninguna llamada de este `
-      + `slice podría crear una entrada. Sin la caché los mismos tokens cuestan ${noCache} — la `
+      + `slice podría crear una entrada. Sin la caché los mismos tokens cuestan ${noCache}, la `
       + 'cifra que el destino facturaría de verdad; la fila de arriba favorece el traslado.',
     whatIfSlice: (label, model, current, target) => `${label} en ${model}: ${current} → ${target}`,
     whatIfOverContext: (label, tokens, window, usd) =>
@@ -545,7 +545,7 @@ export const es: WebMessages = {
     whatIfAlreadyThere: (calls, usd) =>
       `Ya en ese modelo: ${calls.toLocaleString('es-ES')} `
       + `${calls === 1 ? 'llamada' : 'llamadas'} por valor de ${usd}, fuera de las cifras de `
-      + 'arriba — dinero que no puede moverse haría que la diferencia pareciera menor de lo que es.',
+      + 'arriba. Dinero que no puede moverse haría que la diferencia pareciera menor de lo que es.',
     whatIfUnpriced: (calls, models) =>
       `Fuera de la comparación: ${calls.toLocaleString('es-ES')} `
       + `${calls === 1 ? 'llamada' : 'llamadas'} cuyo modelo no tiene precio aquí (${models}). Su `
@@ -560,18 +560,18 @@ export const es: WebMessages = {
       + `en el más grande, en conversaciones de hasta ${turns} turnos.`,
     historyCeiling: (usd, pct, flat, spent) =>
       `Si cada turno hubiera tenido el tamaño del más pequeño, esa entrada habría costado `
-      + `${flat} en vez de ${spent} — así que como mucho ${usd} de esta factura es crecimiento `
+      + `${flat} en vez de ${spent}, así que como mucho ${usd} de esta factura es crecimiento `
       + `de conversación (${pct}). Es un techo y no un ahorro: parte son los mensajes nuevos `
       + 'del propio usuario, que nada puede recortar. Lo que lo mueve es limitar el historial '
       + 'que reenvías, o resumirlo.',
     historyNoSessions:
       'Ninguna llamada de este registro llevaba sesión, así que no se pudo medir qué cuesta '
-      + 'reenviar la conversación — normalmente la mayor línea de una factura de chat o de '
+      + 'reenviar la conversación, normalmente la mayor línea de una factura de chat o de '
       + 'agentes. Añade "session" (o "conversation_id") al registro. Trazum agrupa por esa '
       + 'clave y nunca la muestra.',
     inputShapeHeading: 'Cómo de grandes son estas llamadas',
     inputSkewed: (label, model, p50, p95, ratio, usd) =>
-      `${label} en ${model} es desigual: la mitad de sus llamadas caben en ${p50} tokens de entrada y el 95% en ${p95} — unas ${ratio} veces la llamada normal, sobre ${usd} de gasto de entrada.`,
+      `${label} en ${model} es desigual: la mitad de sus llamadas caben en ${p50} tokens de entrada y el 95% en ${p95} (unas ${ratio} veces la llamada normal), sobre ${usd} de gasto de entrada.`,
     inputSkewedAdvice:
       'Por encima de cuatro veces la mediana, la llamada normal está bien y algo crece encima: '
       + 'una conversación que nadie corta, una recuperación sin tope, un resultado de herramienta '
@@ -580,39 +580,39 @@ export const es: WebMessages = {
     inputEven: (label, model, p50, p95, usd) =>
       `${label} en ${model} es pareja: la mitad de sus llamadas caben en ${p50} tokens de entrada y el 95% en ${p95}, sobre ${usd} de gasto de entrada.`,
     inputEvenAdvice:
-      'Las llamadas grandes no son mucho mayores que la normal, así que no hay cola que capar — el '
+      'Las llamadas grandes no son mucho mayores que la normal, así que no hay cola que capar: el '
       + 'prompt simplemente es grande. Las palancas son menos documentos recuperados, un bloque de '
       + 'sistema más corto y caché si el prefijo se repite.',
     inputHuge: (label, model, calls, usd) =>
       `${label} en ${model}: cada una de sus ${calls.toLocaleString('es-ES')} `
       + `${calls === 1 ? 'llamada' : 'llamadas'} es mayor de lo que esta herramienta mide con `
       + `precisión, sobre ${usd} de gasto de entrada. No se nombra techo porque no hay ninguno que `
-      + 'nombrar con honestidad — ese tamaño es ya el hallazgo.',
+      + 'nombrar con honestidad. Ese tamaño es ya el hallazgo.',
     inputMostlyCached: (share) =>
-      `El ${share} de esos tokens fueron lecturas de caché, facturadas a una décima parte de la tarifa de entrada — el tamaño es real y la mayor parte es barata.`,
+      `El ${share} de esos tokens fueron lecturas de caché, facturadas a una décima parte de la tarifa de entrada: el tamaño es real y la mayor parte es barata.`,
     inputFullRate:
       'Casi nada de eso fue lectura de caché, así que cada uno de esos tokens se facturó a tarifa '
       + 'de entrada completa. Si algún prefijo se repite entre estas llamadas, la caché es la '
       + 'palanca con el techo más alto aquí.',
     duplicateLines: (count, usd) =>
-      `${count.toLocaleString('es-ES')} ${count === 1 ? 'línea es un duplicado exacto' : 'líneas son duplicados exactos'} de una línea anterior — mismos recuentos, misma etiqueta y sesión, mismo milisegundo — que suma ${usd} al total de arriba. Si un registro se exportó dos veces, esta factura está inflada en esa cantidad.`,
+      `${count.toLocaleString('es-ES')} ${count === 1 ? 'línea es un duplicado exacto' : 'líneas son duplicados exactos'} de una línea anterior (mismos recuentos, misma etiqueta y sesión, mismo milisegundo), que suma ${usd} al total de arriba. Si un registro se exportó dos veces, esta factura está inflada en esa cantidad.`,
     repeatsHeading: 'La misma petición, otra vez',
     repeatsLine: (label, model, repeats, checked, seconds, usd) =>
       `${label} en ${model}: ${repeats} de ${checked} llamadas reenviaron el tamaño de entrada exacto de la anterior en menos de ${seconds} segundos, en la misma conversación, costando ${usd}.`,
     repeatsNote:
       'La entrada de una conversación crece en cada turno, así que el mismo tamaño dos veces '
       + 'seguidas con segundos de diferencia suele ser un reintento, un paso de agente que se '
-      + 'repite o un bucle — esto lee recuentos y no ve el contenido, así que nombra el patrón y para.',
+      + 'repite o un bucle. Esto lee recuentos y no ve el contenido, así que nombra el patrón y para.',
     pressureHeading: 'Acercándose a la ventana de contexto',
     pressureLine: (label, model, tokens, window, share) =>
-      `${label} en ${model}: la llamada más grande llevó ${tokens} tokens de entrada contra una ventana de ${window} — el ${share} del techo.`,
+      `${label} en ${model}: la llamada más grande llevó ${tokens} tokens de entrada contra una ventana de ${window}, el ${share} del techo.`,
     pressureAdvice:
       'Al 100% la llamada falla sin más, y nada en la factura cambia hasta ese día. Las palancas '
       + 'son un tope al contexto recuperado, truncar el historial o un modelo con ventana mayor. '
       + 'Cuándo se cruza no se predice aquí.',
     mixDriftHeading: 'La mezcla se movió dentro de este registro',
     mixDriftLine: (model, firstShare, lastShare, firstDays, lastDays, usd) =>
-      `${model} pasó del ${firstShare} del gasto en los primeros ${firstDays} días al ${lastShare} en los últimos ${lastDays} — ${usd} de la mitad reciente.`,
+      `${model} pasó del ${firstShare} del gasto en los primeros ${firstDays} días al ${lastShare} en los últimos ${lastDays}: ${usd} de la mitad reciente.`,
     mixDriftNote:
       'Una factura puede crecer sin que crezca ninguna carga: tráfico migrando entre modelos, un '
       + 'deploy que cambió un valor por defecto, un fallback convertido en camino principal. Se '
@@ -621,22 +621,22 @@ export const es: WebMessages = {
     outputHeading: 'Dónde se concentra el gasto de salida',
     outputTail: (label, model, callPct, spendPct, above, usd) =>
       `${label} en ${model}: el ${callPct} de las llamadas concentra el ${spendPct} del gasto `
-      + `de salida — las que responden con más de ${above} tokens, de ${usd} de salida en este `
+      + `de salida (las que responden con más de ${above} tokens), de ${usd} de salida en este `
       + 'segmento. Eso es una cola, y una cola tiene una causa: un camino del prompt que invita '
       + 'a un ensayo, una llamada sin max_tokens, una recuperación que devolvió un libro.',
     outputFlat: (label, model, callPct, spendPct, usd) =>
-      `${label} en ${model}: el gasto de salida está donde están las llamadas — el ${callPct} `
+      `${label} en ${model}: el gasto de salida está donde están las llamadas. El ${callPct} `
       + `concentra el ${spendPct} de ${usd}. No hay cola que cazar; pide respuestas más cortas `
       + 'y limita max_tokens.',
     outputPercentiles: (p50, p95) =>
-      `La mitad de las respuestas medidas caben en ${p50} tokens de salida, y el 95% en ${p95} `
-      + '— el número que un límite de max_tokens quiere de verdad. Medido en estas llamadas, '
+      `La mitad de las respuestas medidas caben en ${p50} tokens de salida, y el 95% en ${p95}: `
+      + 'el número que un límite de max_tokens quiere de verdad. Medido en estas llamadas, '
       + 'prometido para ninguna.',
     truncatedHeading: 'Respuestas cortadas a medias',
     truncatedWaste: (calls, usd, pct) =>
       `${calls.toLocaleString('es-ES')} ${calls === 1 ? 'llamada chocó' : 'llamadas chocaron'} `
       + `con el techo de max_tokens: ${usd} del gasto de salida (${pct}) compró `
-      + `${calls === 1 ? 'una respuesta cortada' : 'respuestas cortadas'} a media generación — `
+      + `${calls === 1 ? 'una respuesta cortada' : 'respuestas cortadas'} a media generación, `
       + `${calls === 1 ? 'pagada entera, a menudo reintentada y facturada' : 'pagadas enteras, a menudo reintentadas y facturadas'} `
       + 'otra vez. Donde la respuesta necesite el espacio de verdad, sube max_tokens; donde '
       + 'no, pide menos.',
@@ -659,24 +659,24 @@ export const es: WebMessages = {
       + 'el día más caro.',
     ttlExpires: (label, model, gap) =>
       `${label} en ${model}: los turnos llegan con una mediana de ${gap} entre sí y la entrada `
-      + 'de 5 minutos ya no existe para entonces — las escrituras caducan antes de que el '
+      + 'de 5 minutos ya no existe para entonces. Las escrituras caducan antes de que el '
       + 'siguiente turno las lea, que visto desde la factura es una caché que solo escribe. El '
       + 'TTL de 1 hora cuesta 2x la entrada al escribir y sobreviviría a estos huecos; la otra '
       + 'opción honesta es apagar la caché aquí.',
     ttlExpiresBoth: (label, model, gap) =>
       `${label} en ${model}: los turnos llegan con una mediana de ${gap} entre sí, y ninguna `
-      + 'entrada de caché vive tanto — hasta el TTL de 1 hora ha caducado para el siguiente '
+      + 'entrada de caché vive tanto. Hasta el TTL de 1 hora ha caducado para el siguiente '
       + 'turno. La caché no puede funcionar a este ritmo; apágala aquí y deja de pagar la '
       + 'prima de escritura.',
     ttlOverlong: (label, model, gap, usd) =>
-      `${label} en ${model}: los turnos llegan con una mediana de ${gap} entre sí — de sobra `
-      + 'dentro de la ventana de 5 minutos — y estas escrituras pagan la tarifa de 1 hora, 2x '
+      `${label} en ${model}: los turnos llegan con una mediana de ${gap} entre sí (de sobra `
+      + 'dentro de la ventana de 5 minutos), y estas escrituras pagan la tarifa de 1 hora, 2x '
       + 'la entrada frente a 1.25x, por una resistencia que los huecos nunca usan. Las mismas '
       + `escrituras con el TTL de 5 minutos salen ${usd} más baratas en este registro, y esa `
       + 'cifra es exacta: los mismos tokens a la otra tarifa publicada.',
     ttlUnsettled: (label, model, gap) =>
-      `${label} en ${model}: los turnos llegan con una mediana de ${gap} entre sí — una entrada `
-      + 'de 5 minutos ya no existe para entonces y una de 1 hora sobrevive — y el registro no '
+      `${label} en ${model}: los turnos llegan con una mediana de ${gap} entre sí (una entrada `
+      + 'de 5 minutos ya no existe para entonces y una de 1 hora sobrevive), y el registro no '
       + 'anotó cuáles eran estas escrituras. Registra el objeto "cache_creation" que devuelve '
       + 'la API y esto se resuelve solo.',
     ttlFits: (label, model, gap) =>
@@ -689,10 +689,10 @@ export const es: WebMessages = {
     singleTurnConfirmed: (label, model, single, sessions, usd) =>
       `${label} en ${model}: ${single} de ${sessions} conversaciones terminaron tras su primer `
       + `turno y gastaron ${usd} escribiendo una caché que nada en este registro leyó jamás. `
-      + 'Esas escrituras no compraron nada — deja de marcar llamadas de un solo uso con cache_control.',
+      + 'Esas escrituras no compraron nada: deja de marcar llamadas de un solo uso con cache_control.',
     singleTurnCeiling: (label, model, single, sessions, usd) =>
       `${label} en ${model}: ${single} de ${sessions} conversaciones terminaron tras su primer `
-      + `turno, y sus escrituras de caché — ${usd} — pagaron una reutilización que su propia `
+      + `turno, y sus escrituras de caché (${usd}) pagaron una reutilización que su propia `
       + 'conversación nunca hizo. Otra conversación con el mismo prefijo dentro del TTL pudo '
       + 'haberlas leído; el registro no puede ver de quién era la escritura que una lectura '
       + 'encontró, así que esa cifra es un techo del desperdicio, no una factura.',
@@ -706,33 +706,33 @@ export const es: WebMessages = {
       `${calls === 1 ? '1 llamada no lleva' : `${calls} llamadas no llevan`} marca de tiempo y no se `
       + `${calls === 1 ? 'puede situar' : 'pueden situar'} dentro o fuera de esta ventana, así que `
       + `${calls === 1 ? 'quedó fuera' : 'quedaron fuera'}. Su gasto está en el registro y no en este `
-      + 'informe — las cifras de la ventana son un suelo del periodo.',
+      + 'informe: las cifras de la ventana son un suelo del periodo.',
     windowMatchesNothing: (from, to) =>
       `Ningún registro cae dentro de esta ventana. El registro cubre ${from} → ${to}. Una ventana `
       + 'que no encuentra nada no debe volverse un informe de $0.',
     windowNeedsClock:
       'Ningún registro lleva marca de tiempo, así que la ventana no tiene por qué filtrar. '
-      + 'Añade "ts" a los registros — la receta de abajo dice dónde.',
+      + 'Añade "ts" a los registros; la receta de abajo dice dónde.',
     windowOrder: 'La ventana empieza después de terminar. Revisa las dos fechas.',
     pricesStale: (date, days) =>
-      `La tabla de precios detrás de cada dólar de aquí se revisó por última vez el ${date} — `
+      `La tabla de precios detrás de cada dólar de aquí se revisó por última vez el ${date}, `
       + `hace ${days} días, más de los 45 que esta herramienta considera vigentes. Si el `
       + 'proveedor cambió precios desde entonces, este informe se equivoca exactamente en ese '
       + 'cambio. La CLI puede traer precios actuales (trazum profile --pricing-live).',
     coverageHeading: 'Lo que este registro todavía no puede responder',
     needsLabel: (seen) =>
-      `"label" en ${seen} registros: sin él todas las cargas son una fila — no hay gasto por carga ni zoom.`,
+      `"label" en ${seen} registros: sin él todas las cargas son una fila; no hay gasto por carga ni zoom.`,
     needsSession: (seen) =>
       `"session" en ${seen} registros: sin él no hay crecimiento de conversación, ni coste por conversación, ni encaje del TTL. Se agrupa por él y nunca se muestra.`,
     needsTs: (seen) =>
       `"ts" en ${seen} registros: sin él el registro no tiene periodo, ni forma por día o por hora, y la pregunta del TTL no se puede plantear.`,
     needsStopReason: (seen) =>
-      `"stop_reason" o "finish_reason" en ${seen} registros: sin él las respuestas cortadas en max_tokens son invisibles — y el silencio no es lo mismo que ninguna.`,
+      `"stop_reason" o "finish_reason" en ${seen} registros: sin él las respuestas cortadas en max_tokens son invisibles, y el silencio no es lo mismo que ninguna.`,
     needsCacheTtl: (seen) =>
       `el objeto "cache_creation" en ${seen} de los registros que escribieron en caché: sin él se asume la tarifa barata, así que esos totales son un suelo.`,
     hourChartLabel: 'Gasto por hora del día UTC, de medianoche a medianoche',
     hoursConcentrated: (hours) =>
-      `El 80% de este gasto cae en ${hours} horas del día UTC — tráfico interactivo con alguien `
+      `El 80% de este gasto cae en ${hours} horas del día UTC: tráfico interactivo con alguien `
       + 'esperando, donde las 24 horas de la Batch API no encajan. Las horas son UTC.',
     hoursFlat: (hours) =>
       `Hacen falta ${hours} horas del día UTC para cubrir el 80% de este gasto. Esa es la forma `
@@ -742,7 +742,7 @@ export const es: WebMessages = {
       `${label}: ${calls} de ${measured} llamadas que registraron motivo de parada quedaron `
       + `cortadas (${rate}), ${usd} de salida. El denominador son las llamadas que midieron, no todas.`,
     drillActive: (label) =>
-      `Mostrando solo ${label}. Cada porcentaje de abajo es una parte de la factura de esta carga, no del registro completo, y la comparación — si la hay — filtra los dos registros igual.`,
+      `Mostrando solo ${label}. Cada porcentaje de abajo es una parte de la factura de esta carga, no del registro completo, y la comparación (si la hay) filtra los dos registros igual.`,
     drillClear: 'Ver el registro completo',
     coverageField: (field) =>
       ({ label: 'etiqueta', session: 'sesión', ts: 'marca de tiempo', stopReason: 'razón de parada' })[field] ?? field,
@@ -765,7 +765,7 @@ export const es: WebMessages = {
       + 'pocas no, y esa es una cola que una cuota puede cazar, no una carga cara de manera uniforme.',
     sessionSpendOnly: (sessions, max) =>
       `${sessions} conversaci${sessions === 1 ? 'ón' : 'ones'} en este registro; la más cara costó `
-      + `${max}. Demasiado pocas por carga para un percentil — un máximo es un hecho con cualquier `
+      + `${max}. Demasiado pocas por carga para un percentil: un máximo es un hecho con cualquier `
       + 'recuento, y es la cifra que juzga un presupuesto por conversación.',
     byLabelHeading: 'Por etiqueta',
     byModelHeading: 'Por modelo',
@@ -773,20 +773,20 @@ export const es: WebMessages = {
     moreRows: (count) => `…y ${count} más.`,
     unpriced: (models, calls) =>
       `${calls.toLocaleString('es-ES')} ${calls === 1 ? 'llamada no está' : 'llamadas no están'} `
-      + `en estos totales — el catálogo de precios no conoce: ${models}. La CLI puede `
+      + `en estos totales. El catálogo de precios no conoce: ${models}. La CLI puede `
       + `${calls === 1 ? 'ponerle' : 'ponerles'} precio con un overlay (trazum profile --pricing).`,
     skipped: (count, lines) =>
       `${count.toLocaleString('es-ES')} ${count === 1 ? 'línea no se pudo leer y quedó' : 'líneas no se pudieron leer y quedaron'} `
       + `fuera (${count === 1 ? 'línea' : 'líneas'} ${lines}).`,
     againstLabel: 'Comparar con un registro anterior (opcional)',
     againstHint:
-      'Un segundo registro de uso — el de la semana pasada, el de ayer — leído en esta pestaña '
+      'Un segundo registro de uso (el de la semana pasada, el de ayer) leído en esta pestaña '
       + 'como el primero. No se sube nada.',
     againstClear: 'Quitar el registro anterior',
     againstHeading: 'Contra el registro anterior',
     againstConvention:
       'Positivo significa que la factura creció. Ambas cifras son exactamente lo que contiene '
-      + 'cada registro — no se asume ningún periodo, así que juzga las llamadas antes que el '
+      + 'cada registro: no se asume ningún periodo, así que juzga las llamadas antes que el '
       + 'dinero.',
     againstTotals: (before, after, delta, pct) => `${before} → ${after}   ${delta} (${pct})`,
     againstCalls: (before, after) =>
@@ -797,12 +797,12 @@ export const es: WebMessages = {
     againstNothingPriced:
       'El registro anterior no tiene nada que el catálogo de precios conozca, así que no hay '
       + 'comparación posible.',
-    againstByModel: 'El mismo cambio, por modelo — hacia dónde se movió la mezcla:',
+    againstByModel: 'El mismo cambio, por modelo. Hacia dónde se movió la mezcla:',
   },
 
   position: {
     heading: 'Posición',
-    lede: 'Dónde está el mes contra los techos que configuraste — el «trazum position» del CLI, medido en esta pestaña desde el log de arriba. Pega tu trazum.config.json: lo lee el mismo parser que usa el CLI, y tampoco sale de la página.',
+    lede: 'Dónde está el mes contra los techos que configuraste: el «trazum position» del CLI, medido en esta pestaña desde el log de arriba. Pega tu trazum.config.json: lo lee el mismo parser que usa el CLI, y tampoco sale de la página.',
     configLabel: 'Tu trazum.config.json',
     configAriaLabel: 'Pega aquí tu trazum.config.json',
     read: 'Leer techos',
@@ -815,12 +815,12 @@ export const es: WebMessages = {
     scopeDay: 'hoy',
     scopeLabel: (label) => `«${label}»`,
     within: (scope, measured, limit, remaining, days, elapsed) =>
-      `${scope}: ${measured} de ${limit} medidos — quedan ${remaining} (${days} de ${elapsed} días transcurridos con medición)`,
+      `${scope}: ${measured} de ${limit} medidos; quedan ${remaining} (${days} de ${elapsed} días transcurridos con medición)`,
     over: (scope, measured, limit, overBy) =>
-      `${scope}: superado — ${measured} medidos contra ${limit}, ${overBy} por encima del techo`,
-    cannotTell: (scope) => `${scope}: no se puede saber — nada medido en esta ventana`,
+      `${scope}: superado; ${measured} medidos contra ${limit}, ${overBy} por encima del techo`,
+    cannotTell: (scope) => `${scope}: no se puede saber; nada medido en esta ventana`,
     distance: (days, rate, overDays) =>
-      `a ${rate}/día sobre ${overDays} días medidos, el techo queda a ${days} días — división sobre el pasado, no un pronóstico`,
+      `a ${rate}/día sobre ${overDays} días medidos, el techo queda a ${days} días: división sobre el pasado, no un pronóstico`,
     unmeasuredHeading: 'Configurado y no medible desde este log',
     unmeasured: (scope, why) => `${scope}: ${why}`,
     why: (reason) =>
@@ -829,13 +829,13 @@ export const es: WebMessages = {
         : reason === 'no-labels'
           ? 'ningún registro lleva etiqueta, así que el gasto por etiqueta es incognoscible aquí'
           : reason === 'nothing-recorded'
-            ? 'el log está vacío — no se registró nada'
-            : 'el log registra etiquetas y no ha visto esta en todo el mes — quizá renombrada, quizá parada, y ninguna de las dos es «dentro del presupuesto»',
+            ? 'el log está vacío: no se registró nada'
+            : 'el log registra etiquetas y no ha visto esta en todo el mes: quizá renombrada, quizá parada, y ninguna de las dos es «dentro del presupuesto»',
     cannotSayHeading: 'Lo que deliberadamente no responde',
     unpriced: (count) =>
-      `${count} registro(s) nombran un modelo que el catálogo no puede tasar. No aportan nada a ninguna cifra de arriba — dinero que nadie ve, dicho aquí en vez de escondido.`,
+      `${count} registro(s) nombran un modelo que el catálogo no puede tasar. No aportan nada a ninguna cifra de arriba: dinero que nadie ve, dicho aquí en vez de escondido.`,
     source:
-      'Medido solo desde este log, registro a registro. La posición mensual facturada por el proveedor que guarda el almacén es otra medición — la imprime «trazum store» — y las dos nunca se funden en una cifra.',
+      'Medido solo desde este log, registro a registro. La posición mensual facturada por el proveedor que guarda el almacén es otra medición (la imprime «trazum store») y las dos nunca se funden en una cifra.',
   },
 
   playground: {
@@ -860,7 +860,7 @@ export const es: WebMessages = {
     helpCat: 'imprime uno de ellos',
     helpClear: 'vacía el terminal',
     helpCliOnly:
-      'Los demás comandos (gateway, serve, watch, connect, eval, precios en vivo y el resto) necesitan red, una credencial o un proceso en marcha, así que viven en la CLI instalada — npm i -g @trazum/cli — y no en una pestaña del navegador.',
+      'Los demás comandos (gateway, serve, watch, connect, eval, precios en vivo y el resto) necesitan red, una credencial o un proceso en marcha, así que viven en la CLI instalada (npm i -g @trazum/cli) y no en una pestaña del navegador.',
     unknown: (head) => `Comando desconocido: ${head}. Escribe «help» para ver qué corre aquí.`,
     cliOnly: (command) =>
       `«trazum ${command}» es solo de CLI: necesita red, una credencial o un proceso que una pestaña no tiene. Escribe «help» para ver qué corre aquí.`,
@@ -880,9 +880,9 @@ export const es: WebMessages = {
     profileTotal: (calls, usd) => `${calls} llamadas tasadas, ${usd} en total. Por workload:`,
     profileMore: (count) => `  … y ${count} etiqueta(s) más.`,
     positionRow: (scope, measured, limit, verdict) =>
-      `${scope}: ${measured} medidos de ${limit} — ${verdict}`,
+      `${scope}: ${measured} medidos de ${limit}, ${verdict}`,
     positionUnpriced: (count) =>
-      `${count} registro(s) nombran un modelo que el catálogo no puede tasar — dicho, no escondido.`,
+      `${count} registro(s) nombran un modelo que el catálogo no puede tasar: dicho, no escondido.`,
     diffTokens: (before, after, delta) =>
       `${before} tokens → ${after} tokens (${delta >= 0 ? '+' : ''}${delta}).`,
     diffMonthly: (usd, grew) =>
@@ -900,7 +900,7 @@ export const es: WebMessages = {
     otelNoCache: (count) =>
       `${count} span(s) sin datos de caché: OTel no tiene reparto de TTL, así que los veredictos de caché dicen «no se puede saber».`,
     transcriptSummary: (count) => `${count} llamada(s) convertidas: solo los números, nunca las palabras.`,
-    wrote: (name, count) => `Escritos ${count} registro(s) en ${name} — «trazum profile ${name}» los tasa.`,
+    wrote: (name, count) => `Escritos ${count} registro(s) en ${name}. «trazum profile ${name}» los tasa.`,
   },
 
   tour: {
@@ -963,7 +963,7 @@ export const es: WebMessages = {
       finish: {
         title: 'Ese es el tour',
         body:
-          'Los enlaces del rail llevan al repositorio, al paquete npm y a la documentación — y este tour queda detrás de su botón cuando lo quieras repetir.',
+          'Los enlaces del rail llevan al repositorio, al paquete npm y a la documentación. Este tour queda detrás de su botón cuando lo quieras repetir.',
       },
     },
   },

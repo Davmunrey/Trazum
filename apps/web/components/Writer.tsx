@@ -184,7 +184,7 @@ export function Writer({ t, locale }: { t: WebMessages; locale: Locale }) {
           <ul className="list-disc pl-5 text-[13px] text-muted-foreground">
             {draft.missing.map((id) => (
               <li key={id}>
-                <strong>{t.write.slots[id]?.question}</strong> — {t.write.slots[id]?.unlocks}
+                <strong>{t.write.slots[id]?.question}</strong> ({t.write.slots[id]?.unlocks})
               </li>
             ))}
           </ul>

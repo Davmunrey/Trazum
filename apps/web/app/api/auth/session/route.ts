@@ -22,10 +22,25 @@ export async function GET(request: Request): Promise<Response> {
   const config = authConfig();
 
   if (!config.enabled) {
+    /**
+     * The refusal says why, which everything else here already does.
+     *
+     * `authConfig` computes a one-line reason for exactly this moment and
+     * this branch used to drop it, so an operator whose sign-in never
+     * appeared had nothing to read: no button, no error, no log line —
+     * the same silence as a deployment that deliberately runs anonymous.
+     * The two are different situations and only one of them wants fixing.
+     *
+     * Safe to say out loud: the reason names environment *variables*, never
+     * their values, and those names are in the public documentation and in
+     * this file's own imports. The header still renders nothing — absence
+     * remains the honest rendering for a visitor — but the endpoint the
+     * operator can curl now answers the question they are actually asking.
+     */
     // Cache-Control on every branch, including this one. A signed-in answer
     // cached by a CDN is somebody else's identity served to a stranger.
     return Response.json(
-      { enabled: false, user: null, ephemeralSessions: false },
+      { enabled: false, user: null, ephemeralSessions: false, reason: config.reason },
       { headers: { 'cache-control': 'private, no-store' } },
     );
   }

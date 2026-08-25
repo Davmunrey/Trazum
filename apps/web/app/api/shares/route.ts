@@ -87,7 +87,7 @@ export async function POST(request: Request): Promise<Response> {
 
   if (!created) {
     return privateJson(
-      { error: `you have reached the limit of ${MAX_SHARES_PER_OWNER} share links — revoke one first` },
+      { error: `you have reached the limit of ${MAX_SHARES_PER_OWNER} share links; revoke one first` },
       409,
     );
   }
