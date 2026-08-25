@@ -63,8 +63,14 @@ merged commit with no entry is a change only `git log` remembers.
   create its signatures branch (`cla-signatures` now exists), and the
   repository's own agent — committing as "Claude" under the owner's
   account — was not allowlisted, so every PR would have demanded a
-  signature from a name that cannot sign. Allowlisted, with the reasoning
-  in the workflow.
+  signature from a name that cannot sign. Allowlisted — and verified
+  against the action's source rather than guessed: it compares
+  `committer.login || committer.name`, and this agent's commits carry an
+  email no GitHub account owns, so the raw name is what the pattern must
+  match. Reading that source also surfaced a default nobody chose,
+  `lock-pullrequest-aftermerge: true`, which locks the conversation on
+  every merged pull request; it is now explicitly false, because a merged
+  PR is still where somebody asks why a change was made.
 
 ### Changed
 
