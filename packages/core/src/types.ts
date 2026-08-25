@@ -194,6 +194,20 @@ export interface ModelPricing {
     /** ISO date (inclusive) the promotional price applies until. */
     until: string;
   };
+  /**
+   * Other ids that bill at exactly this rate.
+   *
+   * A provider's canonical id is often the dated snapshot
+   * (`claude-haiku-4-5-20251001`) while the catalogue lists the short form
+   * a person recognises, so a real usage log arrives full of ids the
+   * catalogue does not hold and the report has to leave those calls out of
+   * its totals. An alias closes that, and it is **declared one line at a
+   * time, never derived**: a rule that stripped anything resembling a date
+   * would be a machine guessing that two ids bill alike, which is the one
+   * guess this product does not make. Every entry here is a statement,
+   * reviewed the way a price is reviewed.
+   */
+  aliases?: string[];
   /** Notes relevant to cost calculation. */
   notes?: string;
 }

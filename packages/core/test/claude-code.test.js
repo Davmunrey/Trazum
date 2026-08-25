@@ -1,7 +1,13 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { claudeCodeRecords, looksLikeClaudeCodeTranscript, parseUsageLine } from '../dist/index.js';
+import {
+  BUNDLED_CATALOGUE,
+  claudeCodeRecords,
+  looksLikeClaudeCodeTranscript,
+  parseUsageLine,
+  profileUsage,
+} from '../dist/index.js';
 
 /**
  * The transcript converter, held to the two promises the 1.69 plan makes:
@@ -145,5 +151,86 @@ describe('the tab tells a transcript from a usage log', () => {
       looksLikeClaudeCodeTranscript(JSON.stringify({ type: 'assistant', message: { model: 'm' } })),
       false,
     );
+  });
+});
+
+/**
+ * The 1.77 arc: four things a real forty-day profile had to say, and should
+ * not have had to. Each was the converter handing the profiler less than
+ * the transcript already knew.
+ */
+describe('the agent\'s bill, told honestly', () => {
+  const assistant = (extra) =>
+    JSON.stringify({
+      type: 'assistant',
+      timestamp: '2026-08-10T10:00:00.000Z',
+      sessionId: 's1',
+      requestId: `req-${extra.requestId ?? '1'}`,
+      message: {
+        model: extra.model ?? 'claude-sonnet-5',
+        ...(extra.stopReason !== undefined ? { stop_reason: extra.stopReason } : {}),
+        content: [{ type: 'text', text: 'words' }],
+        usage: { input_tokens: 100, output_tokens: 20 },
+      },
+    });
+
+  it('carries stop_reason when the transcript has it, and invents none when it does not', () => {
+    const withReason = claudeCodeRecords(assistant({ stopReason: 'max_tokens' }));
+    assert.equal(withReason.records[0].stop_reason, 'max_tokens');
+    // Absent stays absent. A truncation verdict guessed from a round output
+    // length would be this tool inventing the one field it exists to read.
+    const without = claudeCodeRecords(assistant({}));
+    assert.equal('stop_reason' in without.records[0], false);
+  });
+
+  it('excludes <synthetic> by name, counts it, and prices everything else', () => {
+    const text = [
+      assistant({ requestId: 'a' }),
+      assistant({ requestId: 'b', model: '<synthetic>' }),
+    ].join('\n');
+    const conversion = claudeCodeRecords(text);
+    assert.equal(conversion.synthetic, 1);
+    assert.equal(conversion.records.length, 1);
+    assert.equal(conversion.records[0].model, 'claude-sonnet-5');
+    // And only that exact string: a real model whose id merely looks odd is
+    // spend, and a pattern that swallowed it would delete money silently.
+    const odd = claudeCodeRecords(assistant({ model: '<not-synthetic>' }));
+    assert.equal(odd.synthetic, 0);
+    assert.equal(odd.records.length, 1);
+  });
+
+  it('a dated id prices as the model it is, and an undeclared one still refuses', () => {
+    // 164 calls sat outside a real report's totals over exactly this.
+    const dated = BUNDLED_CATALOGUE.byId.get('claude-haiku-4-5-20251001');
+    assert.ok(dated, 'the canonical dated id resolves to no model');
+    assert.equal(dated.id, 'claude-haiku-4-5');
+    assert.equal(dated.inputPerMTok, BUNDLED_CATALOGUE.byId.get('claude-haiku-4-5').inputPerMTok);
+    // The mechanism is a declaration, not a fuzzy matcher: an id that merely
+    // resembles a known one is still unknown, because guessing that two ids
+    // bill alike is guessing a price.
+    assert.equal(BUNDLED_CATALOGUE.byId.get('claude-haiku-4-5-20260101'), undefined);
+    assert.equal(BUNDLED_CATALOGUE.byId.get('claude-sonnet-5-20260101'), undefined);
+  });
+
+  it('the four sentences the real run could not produce', () => {
+    // End to end: a transcript with a dated model, a synthetic turn and a
+    // stop reason converts, and the profile of its output prices every call,
+    // leaves nothing unpriced, and can answer the truncation question.
+    const text = [
+      assistant({ requestId: 'a', model: 'claude-haiku-4-5-20251001', stopReason: 'max_tokens' }),
+      assistant({ requestId: 'b', model: '<synthetic>' }),
+      assistant({ requestId: 'c', model: 'claude-sonnet-5', stopReason: 'end_turn' }),
+    ].join('\n');
+    const conversion = claudeCodeRecords(text, { label: 'trazum' });
+    const log = conversion.records.map((r) => JSON.stringify(r)).join('\n');
+    const report = profileUsage(log, { catalogue: BUNDLED_CATALOGUE });
+
+    assert.equal(report.total.calls, 2, 'the synthetic turn was priced as a call');
+    assert.equal(report.unpriced.calls, 0, 'a dated id fell out of the totals');
+    assert.ok(report.total.totalUsd > 0);
+    // Labelled, so the levers describe a decision rather than a mixture.
+    assert.deepEqual(report.byLabel.map((e) => e.label), ['trazum']);
+    // And the truncation question is answerable now: both calls recorded one.
+    assert.equal(report.total.stopReasonCalls, 2);
   });
 });

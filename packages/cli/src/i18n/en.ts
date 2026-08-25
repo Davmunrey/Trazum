@@ -1715,6 +1715,8 @@ ${bold('EXAMPLES')}
     streamed: (count) => `${count} call(s) were written while still streaming; the final line's counts stood.`,
     disagreements: (count) => `${count} call(s) had lines that disagreed beyond streaming growth — a count shrank, or another field changed. The last line stood, but that is a finding: worth a look at the transcript.`,
     noRequestId: (count) => `${count} call(s) carried no request id, so nothing could be collapsed against them; each is priced as recorded.`,
+    synthetic: (count) => `${count} turn(s) Claude Code wrote itself (model "<synthetic>") are not in the output: no provider ever billed them, so they are not calls.`,
+    labelled: () => 'Labelled by project folder. Pass --no-label-from-project to leave the label off, or --label <name> to set one.',
     skipped: (other, unparseable, withoutUsage) => `Passed over: ${other} non-assistant line(s) (the transcript's other business), ${unparseable} unparseable, ${withoutUsage} assistant line(s) without usage.`,
     written: (file) => `Wrote ${file}.`,
   },

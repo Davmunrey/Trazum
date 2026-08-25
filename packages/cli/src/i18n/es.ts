@@ -1733,6 +1733,8 @@ ${bold('EJEMPLOS')}
     streamed: (count) => `${count} llamada(s) se escribieron aún en streaming; quedaron los recuentos de la línea final.`,
     disagreements: (count) => `${count} llamada(s) tenían líneas en desacuerdo más allá del crecimiento del streaming — un recuento encogió, u otro campo cambió. Se quedó la última línea, pero es un hallazgo: merece un vistazo al transcript.`,
     noRequestId: (count) => `${count} llamada(s) sin id de petición, así que nada pudo colapsarse contra ellas; cada una se tasa tal como quedó registrada.`,
+    synthetic: (count) => `${count} turno(s) que Claude Code escribió por su cuenta (modelo «<synthetic>») quedan fuera de la salida: ningún proveedor los facturó, así que no son llamadas.`,
+    labelled: () => 'Etiquetado por carpeta de proyecto. Usa --no-label-from-project para dejarlo sin etiqueta, o --label <nombre> para poner una.',
     skipped: (other, unparseable, withoutUsage) => `Omitidas: ${other} línea(s) no-assistant (el resto del negocio del transcript), ${unparseable} imparseables, ${withoutUsage} línea(s) assistant sin usage.`,
     written: (file) => `Escrito ${file}.`,
   },

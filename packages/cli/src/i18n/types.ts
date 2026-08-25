@@ -585,6 +585,8 @@ export interface CliMessages {
     /** Lines of one request disagreed beyond streaming growth. A finding. */
     disagreements(count: number): string;
     noRequestId(count: number): string;
+    synthetic(count: number): string;
+    labelled(): string;
     skipped(other: number, unparseable: number, withoutUsage: number): string;
     written(file: string): string;
   };

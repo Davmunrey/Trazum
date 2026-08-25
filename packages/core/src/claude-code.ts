@@ -29,6 +29,16 @@ export interface ClaudeCodeRecord {
   ts: string;
   session: string;
   label?: string;
+  /**
+   * What the provider said ended the turn, when the transcript recorded it.
+   *
+   * The field was on the assistant message all along and this converter did
+   * not read it, so every report that depends on it answered "cannot be
+   * measured" about a log whose own source knew. Absent when the transcript
+   * is absent: nothing here is inferred from an output length that looks
+   * suspiciously round.
+   */
+  stop_reason?: string;
   usage: {
     input_tokens: number;
     output_tokens: number;
@@ -62,7 +72,19 @@ export interface ClaudeCodeConversion {
    * the caller should say so loudly: this is a finding, not bookkeeping.
    */
   disagreements: number;
+  /**
+   * Turns Claude Code produced locally, never sent to a provider.
+   *
+   * It writes `<synthetic>` in the model field for interrupts and error
+   * notices. They carry a usage object of zeros and nobody billed them.
+   * Priced, they are noise; dropped in silence, they are a hole. So they
+   * are excluded by name and counted here, and the caller says how many.
+   */
+  synthetic: number;
 }
+
+/** The model id Claude Code writes for a turn no provider ever saw. */
+const SYNTHETIC_MODEL = '<synthetic>';
 
 const asObject = (value: unknown): Record<string, unknown> | null =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -86,6 +108,7 @@ export function claudeCodeRecords(
     assistantWithoutUsage: 0,
     streamed: 0,
     disagreements: 0,
+    synthetic: 0,
   };
   /** requestId → index into out.records, so a later line can replace the usage. */
   const byRequest = new Map<string, number>();
@@ -109,10 +132,24 @@ export function claudeCodeRecords(
     const message = asObject(entry.message);
     const usage = message === null ? null : asObject(message.usage);
     const model = message === null ? undefined : message.model;
+    const stopReason = message === null ? undefined : message.stop_reason;
     const input = usage === null ? undefined : asCount(usage.input_tokens);
     const output = usage === null ? undefined : asCount(usage.output_tokens);
     if (usage === null || typeof model !== 'string' || input === undefined || output === undefined) {
       out.assistantWithoutUsage += 1;
+      continue;
+    }
+    /**
+     * Excluded by name, and only by name.
+     *
+     * `<synthetic>` is the model Claude Code writes for a turn it produced
+     * itself. Matching the exact string rather than "anything in angle
+     * brackets" is deliberate: a provider is free to ship a model whose id
+     * looks odd, and a pattern that swallowed it would delete real spend
+     * from a bill without saying so.
+     */
+    if (model === SYNTHETIC_MODEL) {
+      out.synthetic += 1;
       continue;
     }
 
@@ -121,6 +158,7 @@ export function claudeCodeRecords(
       model,
       ts: typeof entry.timestamp === 'string' ? entry.timestamp : '',
       session: typeof entry.sessionId === 'string' ? entry.sessionId : '',
+      ...(typeof stopReason === 'string' && stopReason !== '' ? { stop_reason: stopReason } : {}),
       ...(options.label !== undefined ? { label: options.label } : {}),
       usage: {
         input_tokens: input,

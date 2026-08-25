@@ -1184,6 +1184,16 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.77.0 — "The agent's bill, told honestly" — released
+
+**Four things a real profile should not have had to say.** A folder of
+projects labels itself by project; a dated model id prices as the model
+it is, through aliases declared one line at a time and never derived
+from a pattern; the turns Claude Code writes itself are excluded by
+name and counted rather than priced at zero; and `stop_reason` reaches
+the log it was always in the transcript for. Every one of them was the
+converter handing the profiler less than the transcript already knew.
+
 ## 1.76.0 — "The tour that does the work" — released
 
 **The tour performs instead of describing.** Every step demos its page
@@ -2290,14 +2300,12 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-1.77.0 — the agent's bill, told honestly. Asked for after a real forty-day
-Claude Code profile surfaced four gaps in `from-claude-code`: labels taken
-from the project folder the way the web drop already does, documented
-aliases for dated model ids, the `<synthetic>` lines counted and excluded
-by name rather than surfacing as an unpriceable model, and `stop_reason`
-carried through so cut-off answers stop being invisible. The verdict
-bridge — quality beside cost, from a dropped `route`/`eval` result — stays
-named and waits to be asked for.
+Nothing is planned. [The 1.77 plan](docs/plan-1.77.md) was delivered in
+full: the four gaps a real forty-day profile exposed are closed at their
+source. The verdict bridge — quality beside cost, from a dropped
+`route`/`eval` result — stays named and waits to be asked for, as do the
+`from-langsmith`, `from-helicone` and `from-litellm` converters, which
+need real exports before their formats can be read rather than guessed.
 
 Before it, [the 1.73 plan](docs/plan-1.73.md) was delivered in
 full — the guided tour: five doors walked once, offered on first visit and
