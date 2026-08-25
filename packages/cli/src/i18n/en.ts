@@ -1744,6 +1744,16 @@ ${bold('EXAMPLES')}
             ? 'the log is empty — nothing was recorded'
             : 'the log records labels and has never seen this one this month — possibly renamed, possibly idle, and neither is "under budget"',
     cannotSayHeading: () => 'What this deliberately does not answer',
+    cannotSay: (code) => {
+      switch (code) {
+        case 'session-limit-at-the-doors':
+          return 'limits.sessionUsd is judged per call at the doors. A session is not a calendar scope, and a "session position for the month" would be an average wearing a limit\'s name.';
+        case 'no-ceiling-configured':
+          return 'No monthly budget and no limits are configured, so there is no ceiling to state a position against. spend.monthlyUsd and the limits block are where ceilings live.';
+        default:
+          return code;
+      }
+    },
     unpriced: (count) =>
       `${count} record(s) name a model the catalogue cannot price. They contribute nothing to any figure above — money nobody can see, said here rather than hidden.`,
     source: () =>

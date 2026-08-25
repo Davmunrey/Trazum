@@ -6,6 +6,11 @@ import { fileURLToPath } from 'node:url';
 
 import { BUNDLED_CATALOGUE, parseConfig, parseUsageLine, positionReport } from '@trazum/core';
 
+import { register } from 'node:module';
+register('./helpers/loader.mjs', import.meta.url);
+const { en } = await import('../lib/i18n/en.ts');
+const { es } = await import('../lib/i18n/es.ts');
+
 const here = dirname(fileURLToPath(import.meta.url));
 const web = join(here, '..');
 
@@ -182,13 +187,23 @@ describe('the fourth door answers with the other doors’ document', () => {
 
   it('sends the session ceiling to cannotSay, where the card renders it', () => {
     assert.ok(
-      document.cannotSay.some((line) => line.includes('limits.sessionUsd')),
+      // Codes since 1.78.0: the document carries the reason, each surface
+      // carries the sentence. A Spanish reader used to meet a localized
+      // heading over an untranslated English paragraph here.
+      document.cannotSay.includes('session-limit-at-the-doors'),
       'the per-session ceiling is not declared unanswerable',
     );
   });
 
   it('counts the unpriced record out loud', () => {
     assert.equal(document.unpricedRecords, 1);
+    // Every code core can emit has a sentence in both locales. Without
+    // this, a new code reaches a visitor as a bare slug.
+    for (const code of document.cannotSay) {
+      for (const [name, dict] of [['en', en], ['es', es]]) {
+        assert.ok(dict.position.cannotSay[code], `no ${name} sentence for "${code}"`);
+      }
+    }
   });
 
   it('serialises with no session key anywhere', () => {

@@ -20,6 +20,32 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## 1.78.0 — "A sentence no locale could reach"
+
+### Changed
+
+- **The position document carries codes, not sentences.** Its three
+  sibling documents already state the rule in the contract itself:
+  "codes rather than prose so a consumer can branch and the renderings
+  carry the sentences". This one baked English paragraphs into the
+  document, and the first Spanish run showed exactly what that costs — a
+  localized heading over an untranslated block. `cannotSay` is now
+  `session-limit-at-the-doors` and `no-ceiling-configured`, and both the
+  terminal and the web app carry the sentence in the reader's language.
+
+  **This is a document contract change.** A consumer reading
+  `cannotSay` as display text gets codes now; the sentences moved to the
+  renderings, where the same consumer can no longer be broken by a
+  reworded caveat. `docs/json-output.md` is updated in the same commit.
+
+### Guarded
+
+- The document's own guard asserts every entry matches `^[a-z][a-z-]*$`:
+  the property the prose version could never have, since a space is the
+  cheapest evidence of a sentence. And the web suite holds the join both
+  renderers depend on — every code core can emit has a sentence in both
+  locales, so a new code can never reach a visitor as a bare slug.
+
 ## 1.77.1 — "The folder name stands"
 
 ### Fixed

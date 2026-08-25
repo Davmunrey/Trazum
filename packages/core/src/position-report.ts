@@ -72,6 +72,15 @@ export interface PositionStanding {
   distance: PositionDistance | null;
 }
 
+/**
+ * What a position document deliberately does not answer.
+ *
+ * Codes rather than prose, like every other document here: a consumer can
+ * branch on them, and each rendering carries the sentence in its own
+ * language.
+ */
+export type PositionCaveat = 'session-limit-at-the-doors' | 'no-ceiling-configured';
+
 /** A configured ceiling this log cannot measure, with the reason stated. */
 export interface UnmeasuredPosition {
   scope: PositionScope;
@@ -94,7 +103,7 @@ export interface PositionDocument {
    * session is not a calendar scope, and a "session position for the month"
    * would be an average wearing a limit's name.
    */
-  cannotSay: string[];
+  cannotSay: PositionCaveat[];
   /** Records whose model the catalogue cannot price — money nobody can see. */
   unpricedRecords: number;
 }
@@ -251,16 +260,22 @@ export function positionReport(
     }
   }
 
-  const cannotSay: string[] = [];
+  /**
+   * Codes, not sentences — the rule this document was the last to follow.
+   *
+   * Its three sibling documents already say why, in the contract itself:
+   * "codes rather than prose so a consumer can branch and the renderings
+   * carry the sentences". This one pushed English prose instead, and the
+   * consequence was visible the first time somebody ran it in Spanish: a
+   * localized heading over an untranslated paragraph. A sentence baked
+   * into a document is a sentence no locale can reach.
+   */
+  const cannotSay: PositionCaveat[] = [];
   if (config.limits?.sessionUsd !== undefined) {
-    cannotSay.push(
-      'limits.sessionUsd is judged per call at the doors. A session is not a calendar scope, and a "session position for the month" would be an average wearing a limit\'s name.',
-    );
+    cannotSay.push('session-limit-at-the-doors');
   }
   if (monthly === undefined && config.limits?.dayUsd === undefined && Object.keys(config.limits?.byLabel ?? {}).length === 0) {
-    cannotSay.push(
-      'No monthly budget and no limits are configured, so there is no ceiling to state a position against. spend.monthlyUsd and the limits block are where ceilings live.',
-    );
+    cannotSay.push('no-ceiling-configured');
   }
 
   return {

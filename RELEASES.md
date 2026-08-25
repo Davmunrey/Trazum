@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.77.1**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.78.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,19 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.78.0 — "A sentence no locale could reach"
+
+Running `trazum position` in Spanish printed a Spanish heading over an
+English paragraph. The paragraph was not a translation that had been
+missed: it was baked into the document itself, where no locale could ever
+reach it.
+
+Three sibling documents already do this correctly, and the contract says
+why in so many words: codes rather than prose, so a consumer can branch
+and each rendering carries the sentence. The position document follows its
+own family now, and both the terminal and the web app say it in the
+reader's language.
 
 ## 1.77.1 — "The folder name stands"
 

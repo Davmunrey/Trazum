@@ -609,6 +609,7 @@ export interface CliMessages {
     unmeasured(scope: string, why: string): string;
     why(reason: 'no-clock' | 'no-labels' | 'nothing-recorded' | 'label-unseen'): string;
     cannotSayHeading(): string;
+    cannotSay(code: string): string;
     unpriced(count: number): string;
     /** The source, named: this log alone, never merged with the store. */
     source(): string;

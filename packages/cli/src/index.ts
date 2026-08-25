@@ -2999,8 +2999,8 @@ async function commandPosition(
   if (document.cannotSay.length > 0) {
     console.log();
     console.log(`  ${c.bold(t.position.cannotSayHeading())}`);
-    for (const line of document.cannotSay) {
-      console.log(`    ${c.dim(wrap(line, 70, '      '))}`);
+    for (const code of document.cannotSay) {
+      console.log(`    ${c.dim(wrap(t.position.cannotSay(code), 70, '      '))}`);
     }
   }
   if (document.unpricedRecords > 0) {
