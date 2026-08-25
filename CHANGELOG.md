@@ -20,6 +20,39 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Fixed
+
+- **The CLA gate, corrected by the API rather than by reasoning.** Its
+  first live runs failed three pull requests, and each failure taught
+  something the previous reading had got wrong. The action does not
+  create the branch it writes signatures to, so `cla-signatures` had to
+  exist first. Then: it resolves a committer as `commit.author.user ||
+  commit.committer.user || commit.author || …` and compares `login ||
+  name` against each allowlist pattern **exactly**, case included. The
+  source suggested the capitalised commit name, because the agent's
+  commit email looked like one no account would own — but GitHub
+  resolves `noreply@anthropic.com` to the account `claude`, so the
+  lowercase login is what arrives, and `Claude !== claude`. Asking the
+  commits API what identity it actually reports is what settled it. Both
+  spellings are listed now: the login for today, the commit name for the
+  day that email is unlinked.
+
+- **A default nobody chose.** `lock-pullrequest-aftermerge` is true
+  unless set, which locks the conversation on every merged pull request.
+  It is explicitly false: a merged PR is still where somebody asks why a
+  change was made.
+
+### Guarded
+
+- The allowlist is pinned to the identities that actually commit here,
+  and the locking value must be stated rather than inherited
+  (`security.test.js`). A misconfigured gate does not degrade
+  gracefully — it blocks every pull request and blames the contributor
+  rather than the line that is wrong. Verified as a detector: removing
+  an identity turns the test red.
+
 ## 1.76.0 — "The tour that does the work"
 
 ### Added
