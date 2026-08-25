@@ -1804,18 +1804,25 @@ describe('the packaged Action', () => {
       'CONTRIBUTING.md does not name `git rebase --signoff`',
     );
     /**
-     * The full origin, scheme and trailing slash included. CodeQL flagged the
-     * first draft of this line, `/developercertificate\.org/`, and it was
-     * right about more than style: that pattern also matches
-     * `https://developercertificate.org.example.com/` and
-     * `https://notdevelopercertificate.org/`, so the guard would have passed
-     * on a document linking an impostor host for the text a contributor is
-     * being asked to certify against. Anchoring it is the stronger assertion,
-     * not the quieter one.
+     * Not a regular expression, and that is the fix rather than a way around
+     * the alarm. CodeQL flagged this assertion twice, first as
+     * `/developercertificate\\.org/` and then as the same thing with a scheme
+     * bolted on, and its complaint was the same both times: a pattern shaped
+     * like a URL with nothing anchoring it matches inside a longer URL, so
+     * `https://example.com/?to=https://developercertificate.org/` satisfies it.
+     *
+     * The real subject here was never a URL. It is a markdown document, and
+     * the question is whether it *links* the text a contributor is asked to
+     * certify against. So the guard asks that literally: the exact link
+     * target, delimited by the markdown syntax around it. The closing paren
+     * is what a longer URL cannot survive, no host can precede `](`, and a
+     * mere mention of the domain in prose no longer counts.
+     *
+     * Expressing a containment check as a regex is what made it look like URL
+     * validation, and it was weaker than a containment check the whole time.
      */
-    assert.match(
-      contributing,
-      /https:\/\/developercertificate\.org\//,
+    assert.ok(
+      contributing.includes('](https://developercertificate.org/)'),
       'CONTRIBUTING.md describes a sign-off without linking what is being certified',
     );
     // A sign-off is a certification of origin. Saying so is the difference

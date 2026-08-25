@@ -53,6 +53,17 @@ merged commit with no entry is a change only `git log` remembers.
   cannot answer a corporate legal review and cannot change its own licence.
   Guarded, so the document and the workflow cannot drift apart.
 
+  CodeQL flagged that last guard twice, and was right twice. It began as
+  `/developercertificate\.org/`, which also matches
+  `https://notdevelopercertificate.org/`; anchoring it to the full origin
+  fixed that and left the real complaint standing, since an unanchored
+  URL-shaped pattern still matches *inside* a longer URL. The subject was
+  never a URL: it is a markdown document, and the question is whether it
+  links the text. So the assertion is a containment check on the exact link
+  target now, with no regex at all. It rejects a bare mention in prose, a
+  subdomain impostor, and the domain embedded in somebody else's query
+  string, none of which the first version rejected.
+
 Nothing installable changes: no package code, no command, no flag.
 
 ## 1.79.0 — "The dash the sweep left behind"
