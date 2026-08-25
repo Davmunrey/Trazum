@@ -923,7 +923,7 @@ export const es: WebMessages = {
       optimise: {
         title: 'Optimizar',
         body:
-          'Pega un prompt y las reglas deterministas lo acortan sin cambiar lo que pide: tokens antes y después, el ahorro tasado, y los avisos que suelen valer más que el recorte.',
+          'El prompt de ejemplo acaba de ejecutarse: las reglas deterministas lo acortan sin cambiar lo que pide, con tokens antes y después, el ahorro tasado y los avisos que suelen valer más que el recorte. Pega el tuyo y responde igual.',
       },
       write: {
         title: 'Escribir',
@@ -933,17 +933,32 @@ export const es: WebMessages = {
       compare: {
         title: 'Comparar',
         body:
-          'Dos versiones de un prompt, juzgadas como una edición: qué hace a tokens y dinero, qué reglas empezaron a saltar, y cualquier contradicción que el cambio haya metido — corrección antes que coste.',
+          'Dos versiones de un prompt, juzgadas como una edición, y el par en pantalla acaba de analizarse: qué hace el cambio a tokens y dinero, qué reglas empezaron a saltar y cualquier contradicción introducida. Positivo significa peor, y la página lo dice.',
       },
       bill: {
         title: 'Tu factura',
         body:
-          'Pega un log de uso — o arrastra tu carpeta ~/.claude/projects o un export de OpenTelemetry encima — y lee dónde se fue el dinero y el único cambio que lo movería de verdad. Convertido en esta pestaña, nada subido.',
+          'El mes de ejemplo acaba de tasarse solo, igual que un log pegado, una carpeta ~/.claude/projects arrastrada o un export de OpenTelemetry: adónde fue el dinero, si la caché compensó y el único cambio que de verdad movería la factura. Convertido en esta pestaña, sin subir nada.',
       },
       playground: {
         title: 'Playground',
         body:
-          'La CLI, ejecutable aquí: escribe «trazum profile usage.jsonl» contra ficheros de ejemplo ya cargados, o «help» para la lista completa. Las mismas funciones que corre el terminal.',
+          'Una terminal real con el subconjunto puro de la CLI detrás: las mismas funciones de @trazum/core que ejecuta la herramienta instalada, sobre archivos de ejemplo ya cargados. Mira: los siguientes pasos teclean solos, y el teclado es tuyo en cuanto lo toques.',
+      },
+      'playground-profile': {
+        title: 'La factura, leída',
+        body:
+          '«trazum profile usage.jsonl»: el mes de ejemplo tasado por carga, con las mismas funciones que ejecuta la CLI instalada; en tu máquina, el informe completo añade el veredicto de caché, las palancas y los gates. El primer comando que ejecutar sobre un log tuyo.',
+      },
+      'playground-optimize': {
+        title: 'El prompt, acortado',
+        body:
+          '«trazum optimize prompt.txt» sobre un ejemplo deliberadamente derrochador: tokens antes y después, y el bloque de avisos que suele valer más que el recorte. Lee las últimas líneas primero: ahí está el dinero.',
+      },
+      cli: {
+        title: 'La CLI, completa',
+        body:
+          '«trazum position usage.jsonl» cierra el bucle en una línea: el mes frente a su techo configurado, medido y con veredicto. Todo lo que acabas de ver es la CLI real; sus cuarenta y dos comandos se instalan con «npm i -g @trazum/cli», y «help» lista aquí lo que el navegador puede ejecutar.',
       },
       finish: {
         title: 'Ese es el tour',

@@ -1184,6 +1184,19 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.76.0 — "The tour that does the work" — released
+
+**The tour performs instead of describing.** Every step demos its page
+through that page's own run path — sample prompt optimised, comparison
+judged, sample month priced — and the terminal types three real commands
+and runs them, ending on the line that installs the CLI. A typed demo
+bus with no DOM, a typing hand the visitor's keystroke cancels, and a
+guard that executes every demo command in CI so a broken sample fails
+before a visitor sees it. Asked for as "que el mismo tour paso a paso
+sea una demo", and shipped with the honest copy correction the samples
+forced: the playground's profile is the compact rendering, and the card
+now says so instead of overclaiming.
+
 ## 1.75.0 — "The readable terminal" — released
 
 **The reports became scannable without changing a word.** A style module —
@@ -2277,7 +2290,7 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-1.76.0 — the agent's bill, told honestly. Asked for after a real forty-day
+1.77.0 — the agent's bill, told honestly. Asked for after a real forty-day
 Claude Code profile surfaced four gaps in `from-claude-code`: labels taken
 from the project folder the way the web drop already does, documented
 aliases for dated model ids, the `<synthetic>` lines counted and excluded

@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { runDemo } from '@/lib/demo';
+import type { DemoAction } from '@/lib/demo';
 import { TOUR_STEPS } from '@/lib/tour';
 import type { WebMessages } from '@/lib/i18n';
 
@@ -127,10 +129,21 @@ export function Tour({
      */
     const settle = setTimeout(measure, 360);
     const glided = setTimeout(() => setGliding(false), 420);
+    /**
+     * The 1.76 arc: a step that carries a demo performs it once the panel
+     * has mounted and the ring has settled — the sample prompt optimised,
+     * the comparison run, the sample month priced, a command typed into the
+     * terminal. Dispatched from here and nowhere else, so a demo can only
+     * ever fire from an open tour on the step that owns it; closing the
+     * tour unmounts this effect and the pending dispatch with it.
+     */
+    const demo =
+      step.demo !== undefined ? setTimeout(() => runDemo(step.demo as DemoAction), 450) : null;
     return () => {
       cancelAnimationFrame(frame);
       clearTimeout(settle);
       clearTimeout(glided);
+      if (demo !== null) clearTimeout(demo);
     };
   }, [step, onTabChange, measure]);
 

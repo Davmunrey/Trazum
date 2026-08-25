@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { formatSignedUsd } from '@trazum/core';
 import type { AdvisoryId, Locale, RuleId } from '@trazum/core';
 
 import { track } from './Analytics';
+import { onDemo } from '../lib/demo';
 import { AnimatedContent } from './motion/AnimatedContent';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -105,6 +106,20 @@ export function Comparer({
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   /** Signed, always. A bare `40` here is unreadable in either direction. */
   const signed = (value: number): string => `${value > 0 ? '+' : ''}${n(value)}`;
+
+  /**
+   * The tour's demo — the 1.76 arc: stepping onto Compare runs the analysis
+   * over the two versions the tab already carries, through the same path the
+   * Compare button uses. The latest-ref keeps the dispatch on today's state.
+   */
+  const compareRef = useRef(compare);
+  compareRef.current = compare;
+  useEffect(() => {
+    return onDemo((action) => {
+      if (action.kind !== 'compare-sample') return;
+      void compareRef.current();
+    });
+  }, []);
 
   async function compare() {
     setLoading(true);

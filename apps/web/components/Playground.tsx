@@ -1,9 +1,10 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import type { Locale } from '@trazum/core';
 
+import { onDemo } from '@/lib/demo';
 import { createPlaygroundFiles, runPlayground } from '@/lib/playground';
 import type { WebMessages } from '@/lib/i18n';
 
@@ -11,10 +12,17 @@ import type { WebMessages } from '@/lib/i18n';
  * The playground tab — the 1.72 arc: the CLI's pure subset, runnable in the
  * page against sample files, through the dispatcher in `lib/playground.ts`.
  *
- * This file owns only the terminal chrome: an output area, a prompt line, and
- * arrow-key history. Every answer is computed by `runPlayground`, which runs
- * the same `@trazum/core` functions the CLI imports — and, like every feature
- * of this app, nothing here fetches. The suite greps this file and the
+ * This file owns only the terminal chrome: an output area, a prompt line,
+ * arrow-key history — and, since 1.76, the typing hand: the tour's demo
+ * types a real command character by character and submits it through the
+ * exact path the visitor's Enter uses, history included. **The visitor's
+ * keystroke cancels the hand mid-word** — it is their terminal, and a demo
+ * that fights the person who took the keyboard is worse than no demo.
+ * Reduced motion types instantly.
+ *
+ * Every answer is computed by `runPlayground`, which runs the same
+ * `@trazum/core` functions the CLI imports — and, like every feature of
+ * this app, nothing here fetches. The suite greps this file and the
  * dispatcher for the whole family of network calls, the same guard Bill
  * carries.
  */
@@ -23,6 +31,9 @@ interface TerminalLine {
   kind: 'input' | 'output';
   text: string;
 }
+
+/** Milliseconds per typed character — slow enough to read as writing. */
+const TYPE_MS = 18;
 
 export function Playground({ t, locale }: { t: WebMessages; locale: Locale }) {
   const [lines, setLines] = useState<TerminalLine[]>([]);
@@ -36,10 +47,11 @@ export function Playground({ t, locale }: { t: WebMessages; locale: Locale }) {
   if (filesRef.current === null) filesRef.current = createPlaygroundFiles();
   const outputRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  // The typing hand's pending timers; non-empty means the hand is writing.
+  const typistRef = useRef<ReturnType<typeof setTimeout>[]>([]);
 
-  function submit() {
-    const line = input.trim();
-    setInput('');
+  /** One line through the whole pipe — the visitor's Enter and the demo share it. */
+  function execute(line: string) {
     historyIndexRef.current = null;
     if (line === '') return;
     historyRef.current.push(line);
@@ -58,7 +70,55 @@ export function Playground({ t, locale }: { t: WebMessages; locale: Locale }) {
     });
   }
 
+  function submit() {
+    const line = input.trim();
+    setInput('');
+    execute(line);
+  }
+
+  /** Stop the hand and drop what it half-typed. The visitor's input wins. */
+  function cancelTypist() {
+    if (typistRef.current.length === 0) return;
+    for (const timer of typistRef.current) clearTimeout(timer);
+    typistRef.current = [];
+    setInput('');
+  }
+
+  const executeRef = useRef(execute);
+  executeRef.current = execute;
+  useEffect(() => {
+    return onDemo((action) => {
+      if (action.kind !== 'playground-run') return;
+      cancelTypist();
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if (reduced) {
+        setInput('');
+        executeRef.current(action.line);
+        return;
+      }
+      const timers: ReturnType<typeof setTimeout>[] = [];
+      for (let i = 1; i <= action.line.length; i += 1) {
+        timers.push(setTimeout(() => setInput(action.line.slice(0, i)), i * TYPE_MS));
+      }
+      timers.push(
+        setTimeout(() => {
+          typistRef.current = [];
+          setInput('');
+          executeRef.current(action.line);
+        }, (action.line.length + 8) * TYPE_MS),
+      );
+      typistRef.current = timers;
+    });
+    // Subscribed once — re-subscribing per render would double-type a line
+    // mid-hand; the ref reassigned every render keeps `execute` current.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // A hand still writing when the tab unmounts must not type into the void.
+  useEffect(() => () => cancelTypist(), []);
+
   function onKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    cancelTypist();
     if (event.key === 'Enter') {
       event.preventDefault();
       submit();
@@ -115,7 +175,7 @@ export function Playground({ t, locale }: { t: WebMessages; locale: Locale }) {
                   : 'whitespace-pre text-muted-foreground'
               }
             >
-              {line.text === '' ? ' ' : line.text}
+              {line.text === '' ? ' ' : line.text}
             </div>
           ))}
         </div>
@@ -126,7 +186,13 @@ export function Playground({ t, locale }: { t: WebMessages; locale: Locale }) {
           <input
             ref={inputRef}
             value={input}
-            onChange={(event) => setInput(event.target.value)}
+            onChange={(event) => {
+              // React fires onChange only for real user input, never for the
+              // hand's own setState — so any change here is the visitor, and
+              // the visitor wins.
+              cancelTypist();
+              setInput(event.target.value);
+            }}
             onKeyDown={onKeyDown}
             aria-label={t.playground.inputAriaLabel}
             placeholder="help"

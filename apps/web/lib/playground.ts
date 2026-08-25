@@ -354,7 +354,7 @@ export function runPlayground(
       const level = flags.get('level') === 'aggressive' ? 'aggressive' : 'safe';
       const result = optimize(text, { level, locale });
       const lines = [
-        p.optimizeTokens(result.tokensBefore, result.tokensAfter, result.reductionPct),
+        p.optimizeTokens(result.tokensBefore, result.tokensAfter, Math.round(result.reductionPct * 10) / 10),
         ...result.rules.map((rule) => `  - ${rule.title} (x${rule.hits})`),
       ];
       if (result.advisories.length > 0) lines.push(p.optimizeAdvisories(result.advisories.length));

@@ -31,4 +31,14 @@ jobs:
           path-to-signatures: '.github/cla-signatures.json'
           path-to-document: 'https://github.com/Davmunrey/Trazum/blob/main/docs/cla/CLA.md'
           branch: 'cla-signatures'
-          allowlist: 'Davmunrey,dependabot[bot],github-actions[bot],*[bot]'
+          # "Claude" is this repository's own agent. Verified against the
+          # action's source rather than guessed: it matches
+          # `committer.login || committer.name`, and this agent's commits
+          # carry an email no GitHub account owns, so the raw name is what
+          # the allowlist is compared against. The CLA exists for external
+          # contributors, not for the maintainer's tools.
+          allowlist: 'Davmunrey,Claude,dependabot[bot],github-actions[bot],*[bot]'
+          # Chosen, not inherited: the action defaults this to true, which
+          # locks the conversation on every merged pull request. A merged
+          # PR is still where somebody asks why a change was made.
+          lock-pullrequest-aftermerge: false
