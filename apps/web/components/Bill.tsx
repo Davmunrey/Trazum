@@ -31,6 +31,8 @@ import type { BillLevers, CacheEconomics, PricingCatalogue, UsageProfileReport }
 import { Plan } from './Plan';
 import { PositionCard } from './Position';
 import { track } from './Analytics';
+import { onDemo } from '../lib/demo';
+import { createPlaygroundFiles } from '../lib/playground';
 import { AnimatedContent } from './motion/AnimatedContent';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -173,6 +175,24 @@ export function Bill({ t }: { t: WebMessages }) {
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (fraction: number): string =>
     fraction > 0 && fraction < 0.005 ? '<1%' : `${(fraction * 100).toFixed(0)}%`;
+
+  /**
+   * The tour's demo — the 1.76 arc: stepping onto the Bill page prices the
+   * playground's sample month as if the visitor had pasted it, through the
+   * same analyze path a paste uses. The sample is the terminal's own
+   * `usage.jsonl`, so the report here and `trazum profile usage.jsonl` in
+   * the playground show one month. Nothing fetches: the sample ships with
+   * the page.
+   */
+  const analyzeRef = useRef<(text: string, previous: string | null) => void>(() => {});
+  analyzeRef.current = (text, previous) => analyze(text, previous);
+  useEffect(() => {
+    return onDemo((action) => {
+      if (action.kind !== 'bill-sample') return;
+      const sample = createPlaygroundFiles().get('usage.jsonl') ?? '';
+      if (sample !== '') analyzeRef.current(sample, null);
+    });
+  }, []);
 
   function analyze(
     text: string,

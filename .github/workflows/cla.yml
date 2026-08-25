@@ -31,4 +31,7 @@ jobs:
           path-to-signatures: '.github/cla-signatures.json'
           path-to-document: 'https://github.com/Davmunrey/Trazum/blob/main/docs/cla/CLA.md'
           branch: 'cla-signatures'
-          allowlist: 'Davmunrey,dependabot[bot],github-actions[bot],*[bot]'
+          # "Claude" is this repository's own agent, committing under the
+          # owner's account and attribution trailer — the CLA exists for
+          # external contributors, not for the maintainer's tools.
+          allowlist: 'Davmunrey,Claude,dependabot[bot],github-actions[bot],*[bot]'

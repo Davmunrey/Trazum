@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.75.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.76.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,23 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.76.0 — "The tour that does the work"
+
+The guided tour used to describe each door; now it opens them. Step onto
+Optimise and the sample prompt shortens in front of you; onto Compare and
+the edit on screen is judged; onto Bill and the sample month prices itself
+the way your own pasted log would. Then the terminal takes over: the tour
+types `trazum profile usage.jsonl` character by character, runs it, follows
+with `optimize` and closes with `position` — the real CLI's own functions,
+in the page, on sample files. Touch the keyboard mid-word and the hand
+stops: it is your terminal, and the demo yields.
+
+Also in this release: the README split landed just before it — the front
+door at ~1,150 lines, every deep chapter verbatim in `docs/commands.md` —
+and the CLA gate's first live run surfaced two defects, both fixed: its
+signatures branch now exists, and the repository's own agent is allowlisted
+so the gate asks strangers, not the furniture.
 
 ## 1.75.0 — "The readable terminal"
 

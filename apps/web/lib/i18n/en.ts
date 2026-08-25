@@ -904,7 +904,7 @@ export const en: WebMessages = {
       optimise: {
         title: 'Optimise',
         body:
-          'Paste a prompt and the deterministic rules shorten it without changing what it asks for — tokens before and after, the saving priced, and the advisories that are usually worth more than the trim.',
+          'The sample prompt just ran: the deterministic rules shortened it without changing what it asks for — tokens before and after, the saving priced, and the advisories that are usually worth more than the trim. Paste your own and it answers the same way.',
       },
       write: {
         title: 'Write',
@@ -914,17 +914,32 @@ export const en: WebMessages = {
       compare: {
         title: 'Compare',
         body:
-          'Two versions of a prompt, judged as an edit: what it does to tokens and money, which rules started firing, and any contradiction the change introduced — correctness before cost.',
+          'Two versions of a prompt, judged as an edit — and the pair on screen was just analysed: what the change does to tokens and money, which rules started firing, and any contradiction it introduced. Positive means worse, and the page says so.',
       },
       bill: {
         title: 'Your bill',
         body:
-          'Paste a usage log — or drag your ~/.claude/projects folder or an OpenTelemetry export straight onto it — and read where the money went and the one change that would actually move it. Converted in this tab, nothing uploaded.',
+          'The sample month just priced itself, the way a pasted log, a dragged ~/.claude/projects folder or an OpenTelemetry export would: where the money went, whether caching paid off, and the one change that would actually move the bill. Converted in this tab, nothing uploaded.',
       },
       playground: {
         title: 'Playground',
         body:
-          'The CLI itself, runnable here: type "trazum profile usage.jsonl" against sample files already loaded, or "help" for the full list. The same functions the terminal runs.',
+          'A real terminal, with the CLI\'s pure subset behind it: the same @trazum/core functions the installed tool runs, against sample files already loaded. Watch — the next steps type for themselves, and the keyboard is yours the moment you touch it.',
+      },
+      'playground-profile': {
+        title: 'The bill, read',
+        body:
+          '"trazum profile usage.jsonl": the sample month priced by workload, through the same functions the installed CLI runs — where the full report adds the cache verdict, the levers and the gates. The first command to run on a log of your own.',
+      },
+      'playground-optimize': {
+        title: 'The prompt, shortened',
+        body:
+          '"trazum optimize prompt.txt" on a deliberately wasteful sample: tokens before and after, and the advisory block that is usually worth more than the trim. Read the last lines first — that is where the money is.',
+      },
+      cli: {
+        title: 'The CLI, complete',
+        body:
+          '"trazum position usage.jsonl" closes the loop in one line: the month against its configured ceiling, measured, verdict attached. Everything you just watched is the real CLI — forty-two commands install with "npm i -g @trazum/cli", and "help" lists what the browser can run.',
       },
       finish: {
         title: 'That is the tour',

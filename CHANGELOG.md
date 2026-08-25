@@ -20,7 +20,51 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
-## Unreleased
+## 1.76.0 — "The tour that does the work"
+
+### Added
+
+- **The tour stopped describing and started doing.** [The 1.76
+  plan](docs/plan-1.76.md): each step, as it opens its tab, performs the
+  thing its card is talking about — the sample prompt optimised in front of
+  the visitor (through the Optimiser's own auto pass, out of their
+  history), the comparison run over the pair on screen, the sample month
+  priced in Bill exactly as a paste would, and the terminal **typing** real
+  commands character by character and executing them through the same path
+  the visitor's Enter uses. The walk grows from seven steps to ten: the
+  playground's one step becomes three (`trazum profile usage.jsonl`,
+  `trazum optimize prompt.txt`), and a new "the CLI, complete" step closes
+  the loop with `trazum position usage.jsonl` and the one line that
+  installs the other forty-two-command reality. Copy rewritten in both
+  locales to say what just happened rather than what would.
+
+- **The demo bus** (`lib/demo.ts`): a typed union and a module-scoped Set —
+  no DOM, no React, no `window` events. The tour dispatches; the component
+  that owns the page decides what the action means, through its existing
+  run path, with a latest-ref so a dispatch always sees today's state.
+
+- **The typing hand yields.** A visitor keystroke or edit cancels the hand
+  mid-word and their input wins — it is their terminal. Reduced motion
+  types instantly. A hand still writing when the tab unmounts is cancelled
+  with it.
+
+### Guarded
+
+- **Every demo is real** (`tour.test.mjs`): each `playground-run` line is
+  executed in the test against the shipped samples and must answer — a
+  renamed sample or broken invocation fails in CI, not in front of a
+  first-time visitor. Demo dispatch exists only in the Tour's step effect
+  (grepped across every other component), the cancel contract is pinned in
+  two places, and the bus is held to the no-fetch invariant.
+
+### Fixed
+
+- **The CLA gate's first live run found two defects**: the action does not
+  create its signatures branch (`cla-signatures` now exists), and the
+  repository's own agent — committing as "Claude" under the owner's
+  account — was not allowlisted, so every PR would have demanded a
+  signature from a name that cannot sign. Allowlisted, with the reasoning
+  in the workflow.
 
 ### Changed
 

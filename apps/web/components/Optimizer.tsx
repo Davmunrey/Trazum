@@ -1,7 +1,7 @@
 'use client';
 
 import { Skeleton } from '@/components/ui/skeleton';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type {
   Locale,
@@ -14,6 +14,8 @@ import type {
 import { formatUsd } from '@trazum/core';
 
 import { track } from './Analytics';
+import { onDemo } from '../lib/demo';
+import { createPlaygroundFiles } from '../lib/playground';
 import { diffTexts } from './diff';
 import type { WebMessages } from '../lib/i18n';
 import type { PromptText } from '../lib/prompt-text';
@@ -245,7 +247,33 @@ export function Optimizer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [model, callsPerMonth, avgOutputTokens, cacheHitRate, batchEligible, level, reorder]);
 
-  async function run(options: { auto?: boolean } = {}) {
+  /**
+   * The tour's demo — the 1.76 arc. Stepping onto the Optimise page fills
+   * the textarea with the playground's sample prompt and runs the free
+   * deterministic pass, exactly as the visitor's own Optimise would.
+   * `auto: true` keeps a demo out of the reader's history; the sample comes
+   * from the same file the terminal's `optimize prompt.txt` reads, so the
+   * two demos show one prompt.
+   */
+  const runRef = useRef(run);
+  runRef.current = run;
+  useEffect(() => {
+    return onDemo((action) => {
+      if (action.kind !== 'optimise-sample') return;
+      const sample = createPlaygroundFiles().get('prompt.txt') ?? '';
+      if (sample === '') return;
+      setPrompt(sample);
+      void runRef.current({ auto: true, promptOverride: sample });
+    });
+    // Subscribed once; the ref reassigned every render keeps the dispatch on
+    // today's state instead of the first render's.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  async function run(options: { auto?: boolean; promptOverride?: string } = {}) {
+    // The tour's demo sets the prompt state and runs in the same breath;
+    // state is asynchronous, so the demo passes the text it just set.
+    const promptUsed = options.promptOverride ?? prompt;
     setLoading(true);
     setError(null);
     setCopied(false);
@@ -254,7 +282,7 @@ export function Optimizer({
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
-          prompt,
+          prompt: promptUsed,
           level,
           locale,
           reorder,
@@ -297,7 +325,7 @@ export function Optimizer({
         setSuggestions(optimization.suggestions ?? null);
         // An automatic re-run refreshes the answer on screen; it is not a new
         // decision by the reader, so it does not append to their history.
-        if (options.auto !== true) recordHistory(prompt, optimization);
+        if (options.auto !== true) recordHistory(promptUsed, optimization);
         // Aggregate metrics, never the content of the prompt.
         track('optimize', {
           level,

@@ -744,6 +744,9 @@ export interface WebMessages {
       compare: { title: string; body: string };
       bill: { title: string; body: string };
       playground: { title: string; body: string };
+      'playground-profile': { title: string; body: string };
+      'playground-optimize': { title: string; body: string };
+      cli: { title: string; body: string };
       finish: { title: string; body: string };
     };
   };

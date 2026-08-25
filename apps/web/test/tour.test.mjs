@@ -138,6 +138,59 @@ describe('the guided tour', () => {
     assert.match(tour, /tour-card-in/);
   });
 
+  it('every demo is real: the typed commands run, against the shipped samples', async () => {
+    /**
+     * The 1.76 contract. A step's demo is not copy — it executes. Every
+     * `playground-run` line is run here through the same dispatcher the
+     * page uses, against the same sample files, and must produce a real
+     * answer: a renamed sample or a broken invocation fails in CI, not in
+     * front of a first-time visitor.
+     */
+    const { createPlaygroundFiles, runPlayground } = await import('../lib/playground.ts');
+    const KINDS = new Set(['optimise-sample', 'compare-sample', 'bill-sample', 'playground-run']);
+    let demos = 0;
+    for (const step of TOUR_STEPS) {
+      if (step.demo === undefined) continue;
+      demos += 1;
+      assert.ok(KINDS.has(step.demo.kind), `step "${step.id}" carries unknown demo "${step.demo.kind}"`);
+      if (step.demo.kind !== 'playground-run') continue;
+      const out = runPlayground(step.demo.line, createPlaygroundFiles(), en, 'en');
+      const text = out.lines.join('\n');
+      // `position` answers in one honest line; emptiness is the failure.
+      assert.ok(out.lines.length >= 1, `"${step.demo.line}" printed nothing`);
+      assert.equal(/No such file/.test(text), false, `"${step.demo.line}" hit a missing sample`);
+      assert.equal(/CLI-only|only in the CLI/i.test(text), false, `"${step.demo.line}" is CLI-only in the playground`);
+    }
+    // The walk actually demos: optimise, compare, bill and three terminal runs.
+    assert.ok(demos >= 6, `only ${demos} steps carry a demo`);
+    // And the finale exists: the CLI use-case step is part of the walk.
+    assert.ok(TOUR_STEPS.some((step) => step.id === 'cli'), 'the CLI use-case step is gone');
+  });
+
+  it('the demo can only fire from the open tour, and the visitor always wins', () => {
+    const tour = codeOf('components/Tour.tsx');
+    // Dispatch lives in the Tour's own step effect — closing the tour
+    // unmounts the effect and the pending dispatch with it.
+    assert.match(tour, /runDemo\(/);
+    const components = readdirSync(join(web, 'components'))
+      .filter((name) => name.endsWith('.tsx') && name !== 'Tour.tsx')
+      .map((name) => codeOf(`components/${name}`))
+      .join('\n');
+    assert.equal(/runDemo\(/.test(components), false, 'a component other than Tour dispatches demos');
+    // The typing hand yields: visitor keystrokes and edits cancel it.
+    const playground = codeOf('components/Playground.tsx');
+    assert.match(playground, /cancelTypist\(\)/);
+    assert.ok(
+      playground.indexOf('cancelTypist();') !== playground.lastIndexOf('cancelTypist();'),
+      'the typist is cancelled in fewer than two places — keydown and change must both yield',
+    );
+    // Reduced motion types instantly rather than performing.
+    assert.match(playground, /prefers-reduced-motion/);
+    // And the bus itself never fetches.
+    const demo = codeOf('lib/demo.ts');
+    assert.equal(/\bfetch\s*\(|XMLHttpRequest|WebSocket|sendBeacon/.test(demo), false, 'demo.ts touches the network');
+  });
+
   it('scrolls with the reader, not at them', () => {
     const tour = readFileSync(join(web, 'components/Tour.tsx'), 'utf8');
     assert.match(tour, /prefers-reduced-motion/, 'the scroll ignores prefers-reduced-motion');
