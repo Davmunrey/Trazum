@@ -1,12 +1,22 @@
 {
   "name": "trazum",
-  "version": "1.74.0",
+  "version": "1.75.0",
   "description": "Price a prompt before it costs money, and read the bill after. Deterministic prompt optimisation (no API key, no network), token budgets and drift gates for CI, usage-log profiling that names what would actually move the bill, and seven MCP tools including a spend guard that judges configured USD ceilings before a call is made.",
   "author": {
-    "name": "David Muñoz Rey"
+    "name": "David Mu\u00f1oz Rey"
   },
   "homepage": "https://github.com/Davmunrey/Trazum",
   "repository": "https://github.com/Davmunrey/Trazum",
   "license": "MIT",
-  "keywords": ["prompt", "tokens", "cost", "llm", "budget", "optimiser", "usage", "mcp", "spend"]
+  "keywords": [
+    "prompt",
+    "tokens",
+    "cost",
+    "llm",
+    "budget",
+    "optimiser",
+    "usage",
+    "mcp",
+    "spend"
+  ]
 }

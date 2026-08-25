@@ -75,7 +75,7 @@ In the order somebody actually meets them:
 
 ## The arcs, as they were planned
 
-Sixteen plans have been written down **before** the code. Fifteen delivered in
+Seventeen plans have been written down **before** the code. Sixteen delivered in
 full; one landed six of its nine arcs. The delivered plans are kept because
 the reasoning is the useful part, not because anything in them is still
 forthcoming: every chapter in them shipped. The 1.52–1.60 plan keeps its three
@@ -100,6 +100,7 @@ is the half a reader cannot reconstruct.
 | [1.72](plan-1.72.md) | The playground: the CLI's pure subset, runnable in the page on sample files | 1.72.0 — all four chapters, ten commands in the tab and the honest CLI-only note |
 | [1.73](plan-1.73.md) | The guided tour: five doors walked once, offered never imposed | 1.73.0 — all four chapters, no library and no auto-play |
 | [1.74](plan-1.74.md) | Any model's money: bring your own price card, and the switch priced honestly | 1.74.0 — all four chapters, commands forty-one and forty-two and the web card |
+| [1.75](plan-1.75.md) | The readable terminal: hierarchy the eye can use, with a guard that colour adds nothing | 1.75.0 — all four chapters, fifty-four ruled headings and the parity guard |
 
 What each of them **refused** to ship — which is the more useful half, since a
 plan and its implementation shared a hand — is in

@@ -1184,6 +1184,16 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.75.0 — "The readable terminal" — released
+
+**The reports became scannable without changing a word.** A style module —
+ANSI-aware measurement, one table renderer, a proportion bar, a heading
+rule — and the profile, models and the rest repainted through it. The
+chapter-four guard makes "presentation only" enforceable: painted output,
+stripped, must equal plain output byte for byte, and a pipe never sees
+paint. Asked for as "que sea fácil de leer al 100%", and shipped with the
+two sentence-fragment headings deliberately left unruled.
+
 ## 1.74.0 — "Any model's money" — released
 
 **The bill went fully vendor-agnostic where it still was not: the prices.**
@@ -2267,12 +2277,14 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-Nothing is planned. [The 1.74 plan](docs/plan-1.74.md) was delivered in
-full — any model's money: the dropped price card in the Bill tab, `trazum
-switch` pricing the decision with its refusals named, and `trazum ownrate`
-deriving a self-hosted rate from declared numbers. The verdict bridge —
-quality beside cost, from a dropped `route`/`eval` result — is named as the
-natural 1.75 and waits to be asked for.
+1.76.0 — the agent's bill, told honestly. Asked for after a real forty-day
+Claude Code profile surfaced four gaps in `from-claude-code`: labels taken
+from the project folder the way the web drop already does, documented
+aliases for dated model ids, the `<synthetic>` lines counted and excluded
+by name rather than surfacing as an unpriceable model, and `stop_reason`
+carried through so cut-off answers stop being invisible. The verdict
+bridge — quality beside cost, from a dropped `route`/`eval` result — stays
+named and waits to be asked for.
 
 Before it, [the 1.73 plan](docs/plan-1.73.md) was delivered in
 full — the guided tour: five doors walked once, offered on first visit and

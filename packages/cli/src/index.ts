@@ -255,15 +255,11 @@ import type { CliMessages } from './i18n/index.js';
 // Presentation
 // --------------------------------------------------------------------------
 
-const useColor = process.stdout.isTTY && !process.env.NO_COLOR;
-const c = {
-  bold: (s: string) => (useColor ? `\u001b[1m${s}\u001b[22m` : s),
-  dim: (s: string) => (useColor ? `\u001b[2m${s}\u001b[22m` : s),
-  green: (s: string) => (useColor ? `\u001b[32m${s}\u001b[39m` : s),
-  red: (s: string) => (useColor ? `\u001b[31m${s}\u001b[39m` : s),
-  yellow: (s: string) => (useColor ? `\u001b[33m${s}\u001b[39m` : s),
-  cyan: (s: string) => (useColor ? `\u001b[36m${s}\u001b[39m` : s),
-};
+// The painters, the ANSI-aware measurer, the one table renderer, the
+// proportion bar and the heading rule — the 1.75 style module. The guard in
+// style.test.js holds the contract: stripped colour output is byte-identical
+// to plain output, and a pipe stays plain.
+import { bar, c, sectionHeading, table } from './style.js';
 
 // --------------------------------------------------------------------------
 // Argument parsing
@@ -928,7 +924,7 @@ function printReport(
   // above already told them nothing changed.
   if (reorder !== null && (reorder.moved.length > 0 || reorder.declined.length > 0)) {
     console.log();
-    console.log(c.bold(t.report.reorderHeading()));
+    console.log(sectionHeading(t.report.reorderHeading()));
     if (reorder.moved.length === 0) {
       console.log(`  ${c.dim(t.report.reorderNothing())}`);
     } else {
@@ -1240,7 +1236,7 @@ function printTokensOnly(
   const saved = result.tokensBefore - result.tokensAfter;
 
   console.log();
-  console.log(c.bold(t.report.tokensOnlyHeading(host.displayName)));
+  console.log(sectionHeading(t.report.tokensOnlyHeading(host.displayName)));
   // Only claim the host bills by subscription when it does. Forced with the
   // flag on GitHub Actions, the first version said "GitHub Actions bills by
   // subscription", which is simply false.
@@ -1724,7 +1720,7 @@ function renderInit(proposal: InitProposal, ctx: InitRenderContext): void {
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
 
   console.log();
-  console.log(c.bold(t.init.heading()));
+  console.log(sectionHeading(t.init.heading()));
   console.log();
 
   // 1. Where this is running.
@@ -1752,7 +1748,7 @@ function renderInit(proposal: InitProposal, ctx: InitRenderContext): void {
   console.log();
 
   // 4. What the config would say, and what it will not.
-  console.log(c.bold(t.init.configHeading()));
+  console.log(sectionHeading(t.init.configHeading()));
   if (proposal.justified.length === 0) {
     console.log(`  ${c.dim(t.init.nothingJustified())}`);
   }
@@ -1769,7 +1765,7 @@ function renderInit(proposal: InitProposal, ctx: InitRenderContext): void {
   console.log();
 
   // 5. The single most valuable thing found — arithmetic first.
-  console.log(c.bold(t.init.findingHeading()));
+  console.log(sectionHeading(t.init.findingHeading()));
   if (proposal.headline === null) {
     console.log(`  ${c.dim(t.init.noFinding(proposal.noHeadline ?? 'nothing-measured'))}`);
     console.log();
@@ -2151,7 +2147,7 @@ async function commandConform(args: Args, t: CliMessages): Promise<void> {
 
   if (report.unavailable.length > 0) {
     console.log();
-    console.log(c.bold(t.conform.unavailableHeading()));
+    console.log(sectionHeading(t.conform.unavailableHeading()));
     for (const gap of report.unavailable) {
       console.log(`  ${c.dim(wrap(t.conform.unavailable(gap.finding, gap.because, gap.unlockedBy), 74, '    '))}`);
     }
@@ -2290,7 +2286,7 @@ async function commandRollup(args: Args, t: CliMessages): Promise<void> {
   }
 
   console.log();
-  console.log(c.bold(t.rollup.contributorsHeading()));
+  console.log(sectionHeading(t.rollup.contributorsHeading()));
   for (const contributor of document.contributors) {
     console.log(
       `  ${t.rollup.contributor(
@@ -2338,7 +2334,7 @@ async function commandRollup(args: Args, t: CliMessages): Promise<void> {
 
   if (document.rejected.length > 0) {
     console.log();
-    console.log(c.bold(t.rollup.rejectedHeading()));
+    console.log(sectionHeading(t.rollup.rejectedHeading()));
     for (const rejection of document.rejected) {
       // The roll-up it arrived through, when it came through one: a rejection
       // whose origin got lost is a machine nobody knows to go and fix.
@@ -2366,7 +2362,7 @@ async function commandRollup(args: Args, t: CliMessages): Promise<void> {
 
   if (document.byLabel.length > 0) {
     console.log();
-    console.log(c.bold(t.rollup.byLabelHeading()));
+    console.log(sectionHeading(t.rollup.byLabelHeading()));
     for (const row of document.byLabel.slice(0, 8)) {
       console.log(`  ${t.rollup.labelRow(row.label, formatUsd(row.breakdown.totalUsd), row.breakdown.calls)}`);
     }
@@ -2374,7 +2370,7 @@ async function commandRollup(args: Args, t: CliMessages): Promise<void> {
 
   if (document.notMerged.length > 0) {
     console.log();
-    console.log(c.bold(t.rollup.notMergedHeading()));
+    console.log(sectionHeading(t.rollup.notMergedHeading()));
     for (const finding of document.notMerged) {
       console.log(`  ${wrap(t.rollup.notMerged(finding.finding, finding.because), 72, '    ')}`);
       if (finding.presentIn.length > 0) {
@@ -2385,7 +2381,7 @@ async function commandRollup(args: Args, t: CliMessages): Promise<void> {
 
   if (document.cannotSay.length > 0) {
     console.log();
-    console.log(c.bold(t.rollup.cannotSayHeading()));
+    console.log(sectionHeading(t.rollup.cannotSayHeading()));
     for (const caveat of document.cannotSay) {
       console.log(`  ${c.dim(wrap(t.rollup.caveat(caveat), 72, '    '))}`);
     }
@@ -2692,7 +2688,7 @@ async function commandSwitch(args: Args, pricing: PricingCatalogue, t: CliMessag
 
   const { reprice, savingUsd, measuredDays, breakEven, evalCost } = analysis;
   console.log();
-  console.log(c.bold(t.switchCmd.heading(reprice.target.displayName)));
+  console.log(sectionHeading(t.switchCmd.heading(reprice.target.displayName)));
   if (reprice.slices.length === 0) {
     console.log(`  ${wrap(t.switchCmd.nothingMovable(), 74, '  ')}`);
   } else {
@@ -2899,7 +2895,7 @@ async function commandPosition(
         : t.position.scopeLabel(position.label ?? '');
 
   console.log();
-  console.log(c.bold(t.position.heading(document.month.id)));
+  console.log(sectionHeading(t.position.heading(document.month.id)));
   for (const position of document.positions) {
     const name = scopeName(position);
     if (position.verdict === 'cannot-tell') {
@@ -3004,7 +3000,7 @@ async function commandPulse(args: Args, t: CliMessages): Promise<void> {
   const when = (ms: number): string => new Date(ms).toISOString().replace('T', ' ').slice(0, 16);
 
   console.log();
-  console.log(c.bold(t.pulse.heading()));
+  console.log(sectionHeading(t.pulse.heading()));
   for (const heartbeat of report.beats) {
     const name = t.pulse.kind(heartbeat.kind);
     if (heartbeat.lastMs === null) {
@@ -3297,7 +3293,7 @@ function printBenchTable(measurements: BenchMeasurement[], t: CliMessages, machi
   const idWidth = Math.max(...measurements.map((m) => m.id.length), t.bench.colWorkload().length);
 
   console.log();
-  console.log(c.bold(t.bench.heading()));
+  console.log(sectionHeading(t.bench.heading()));
   if (machine !== undefined) {
     console.log(`  ${c.dim(t.bench.machine(machine.node, machine.platform, machine.cpus, machine.cpuModel))}`);
   }
@@ -3500,11 +3496,11 @@ function commandFeedback(t: CliMessages): void {
     `${FEEDBACK_REPO}/issues/new?body=${encodeURIComponent(body)}`;
 
   console.log();
-  console.log(c.bold(t.feedback.heading()));
+  console.log(sectionHeading(t.feedback.heading()));
   console.log(`  ${c.dim(wrap(t.feedback.sendsNothing(), 74, '    '))}`);
   console.log();
 
-  console.log(c.bold(t.feedback.whereHeading()));
+  console.log(sectionHeading(t.feedback.whereHeading()));
   console.log(`  ${t.feedback.wrongOptimisation()}`);
   console.log(`    ${c.dim(`${FEEDBACK_REPO}/issues/new?template=wrong_optimisation.yml`)}`);
   console.log(`  ${t.feedback.bug()}`);
@@ -3515,12 +3511,12 @@ function commandFeedback(t: CliMessages): void {
   console.log(`    ${c.dim(`${FEEDBACK_REPO}/security/advisories/new`)}`);
   console.log();
 
-  console.log(c.bold(t.feedback.environmentHeading()));
+  console.log(sectionHeading(t.feedback.environmentHeading()));
   for (const line of environment) console.log(`  ${line}`);
   console.log(`  ${c.dim(wrap(t.feedback.environmentOnly(), 74, '    '))}`);
   console.log();
 
-  console.log(c.bold(t.feedback.linkHeading()));
+  console.log(sectionHeading(t.feedback.linkHeading()));
   console.log(`  ${url}`);
   console.log();
 }
@@ -3716,7 +3712,7 @@ async function commandLadder(
   const pct = (value: number): string => `${(value * 100).toFixed(1)}%`;
 
   console.log();
-  console.log(c.bold(t.ladder.heading()));
+  console.log(sectionHeading(t.ladder.heading()));
   if (Object.keys(ladders).length === 0) {
     console.log(`  ${c.dim(wrap(t.ladder.noLadders(), 74, '  '))}`);
     console.log();
@@ -3870,7 +3866,7 @@ async function commandExperiment(
   );
 
   console.log();
-  console.log(c.bold(t.experiment.heading(aName, bName)));
+  console.log(sectionHeading(t.experiment.heading(aName, bName)));
   console.log();
   for (const side of [result.a, result.b]) {
     console.log(
@@ -4009,7 +4005,7 @@ async function commandQuality(
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
 
   console.log();
-  console.log(c.bold(t.quality.heading(label)));
+  console.log(sectionHeading(t.quality.heading(label)));
   console.log(`  ${c.dim(wrap(t.quality.notRandomised(), 74, '  '))}`);
   console.log();
   console.log(
@@ -4120,7 +4116,7 @@ async function commandSemantic(
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
 
   console.log();
-  console.log(c.bold(t.semantic.heading(args.positional[0] ?? '-')));
+  console.log(sectionHeading(t.semantic.heading(args.positional[0] ?? '-')));
   console.log();
   console.log(
     `  ${wrap(
@@ -4236,7 +4232,7 @@ async function commandOwners(
   if (path === undefined) throw new Error(t.errors.missingInputFile());
 
   console.log();
-  console.log(c.bold(t.owners.heading()));
+  console.log(sectionHeading(t.owners.heading()));
   if (config.owners === undefined) {
     console.log(`  ${c.dim(wrap(t.owners.noOwners(), 74, '  '))}`);
     console.log();
@@ -4426,7 +4422,7 @@ async function commandCommitment(
   const pct = (value: number): string => `${(value * 100).toFixed(0)}%`;
 
   console.log();
-  console.log(c.bold(t.commitment.heading(formatUsd(floor), pct(discount), n(months))));
+  console.log(sectionHeading(t.commitment.heading(formatUsd(floor), pct(discount), n(months))));
   console.log(`  ${c.dim(wrap(t.commitment.asIf(), 74, '  '))}`);
   console.log();
 
@@ -4601,7 +4597,7 @@ async function commandReport(
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
 
   console.log();
-  console.log(c.bold(t.annual.heading(year)));
+  console.log(sectionHeading(t.annual.heading(year)));
   console.log();
   console.log(
     `  ${t.annual.spent(formatUsd(record.totalUsd), n(record.totalCalls), n(record.months.length))}`,
@@ -4662,7 +4658,7 @@ function commandModels(t: CliMessages, pricing: PricingCatalogue): void {
   const col = t.models.columns;
 
   console.log();
-  console.log(c.bold(t.models.title()) + c.dim(t.models.unit()));
+  console.log(sectionHeading(`${t.models.title()}${t.models.unit()}`));
   console.log(
     c.dim(t.models.reviewedOn(pricing.lastReviewed, reviewAgeDays(pricing.lastReviewed, new Date()))),
   );
@@ -4677,27 +4673,17 @@ function commandModels(t: CliMessages, pricing: PricingCatalogue): void {
     // "caches from the first token" — and it is the wrong one.
     cache: m.cacheMinTokens === null ? '—' : n(m.cacheMinTokens),
   }));
-  const widths = {
-    id: Math.max(...rows.map((r) => r.id.length), col.model.length),
-    input: Math.max(...rows.map((r) => r.input.length), col.input.length),
-    output: Math.max(...rows.map((r) => r.output.length), col.output.length),
-    context: Math.max(...rows.map((r) => r.context.length), col.context.length),
-    cache: Math.max(...rows.map((r) => r.cache.length), col.cacheMin.length),
-  };
-
-  console.log(
-    c.bold(
-      `  ${col.model.padEnd(widths.id)}  ${col.input.padStart(widths.input)}  ` +
-        `${col.output.padStart(widths.output)}  ${col.context.padStart(widths.context)}  ` +
-        `${col.cacheMin.padStart(widths.cache)}`,
-    ),
-  );
-  for (const row of rows) {
-    console.log(
-      `  ${row.id.padEnd(widths.id)}  ${row.input.padStart(widths.input)}  ` +
-        `${row.output.padStart(widths.output)}  ${row.context.padStart(widths.context)}  ` +
-        `${row.cache.padStart(widths.cache)}`,
-    );
+  for (const line of table(
+    [
+      { header: col.model, align: 'left' },
+      { header: col.input, align: 'right' },
+      { header: col.output, align: 'right' },
+      { header: col.context, align: 'right' },
+      { header: col.cacheMin, align: 'right' },
+    ],
+    rows.map((row) => [row.id, row.input, row.output, row.context, row.cache]),
+  )) {
+    console.log(line);
   }
 
   console.log();
@@ -4713,7 +4699,7 @@ function commandRules(t: CliMessages, locale: Locale): void {
   const copy = getMessages(locale).rules;
 
   console.log();
-  console.log(c.bold(t.rules.title()));
+  console.log(sectionHeading(t.rules.title()));
   console.log(c.dim(t.rules.disableHint()));
   console.log();
   for (const rule of RULES) {
@@ -4791,7 +4777,7 @@ async function commandRulesMeasure(
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
 
   console.log();
-  console.log(c.bold(t.rules.measureHeading(root, report.prompts, level)));
+  console.log(sectionHeading(t.rules.measureHeading(root, report.prompts, level)));
   console.log(`  ${c.dim(t.rules.measureTotals(n(report.tokensBefore), n(report.tokensSaved), n(report.floor)))}`);
   console.log();
 
@@ -4942,7 +4928,7 @@ async function commandOptimize(
     rows.sort((a, b) => b.savingUsd - a.savingUsd);
 
     const n = (value: number): string => value.toLocaleString(t.numberLocale);
-    console.log(c.bold(t.report.allLabelsHeading(n(rows.length))));
+    console.log(sectionHeading(t.report.allLabelsHeading(n(rows.length))));
     for (const row of rows) {
       const saving = row.periodOnly
         ? t.report.allLabelsRowPeriod(formatUsd(row.savingUsd))
@@ -5622,7 +5608,7 @@ async function checkEmbedded(
   }
 
   console.log();
-  console.log(c.bold(t.check.embeddedHeading(path, extraction.prompts.length)));
+  console.log(sectionHeading(t.check.embeddedHeading(path, extraction.prompts.length)));
 
   for (const verdict of verdicts) {
     const over = isOverBudget(verdict);
@@ -6205,7 +6191,7 @@ function renderBudget(report: BudgetReport, t: CliMessages, n: (value: number) =
   }
 
   console.log();
-  console.log(c.bold(t.store.budgetHeading(standing.period.id)));
+  console.log(sectionHeading(t.store.budgetHeading(standing.period.id)));
 
   if (standing.coverage === 'none') {
     // Nothing measured is never rendered as nothing spent. A dead store and a
@@ -6963,7 +6949,7 @@ async function commandPlan(
     return;
   }
 
-  console.log(c.bold(t.plan.heading(n(actions.length), formatUsd(plan.totalUsd))));
+  console.log(sectionHeading(t.plan.heading(n(actions.length), formatUsd(plan.totalUsd))));
   console.log(
     `  ${wrap(t.plan.totals(formatUsd(stamped.projectedSavingUsd), formatUsd(stamped.measuredStakeUsd)), 74, '  ')}`,
   );
@@ -7208,7 +7194,7 @@ async function commandProfile(
         ),
       );
     } else {
-      console.log(c.bold(t.profile.fleetHeading(n(rollup.sources.length), formatUsd(rollup.totalUsd), t.profile.calls(rollup.calls))));
+      console.log(sectionHeading(t.profile.fleetHeading(n(rollup.sources.length), formatUsd(rollup.totalUsd), t.profile.calls(rollup.calls))));
       for (const row of rollup.sources) {
         const span = row.spanDays === null ? t.profile.fleetNoClock() : t.profile.fleetSpan(row.spanDays.toFixed(1));
         console.log(
@@ -7282,7 +7268,7 @@ async function commandProfile(
     }
     const cov = report.fieldCoverage;
     const parsed = cov.parsed;
-    console.log(c.bold(t.profile.dryRunHeading()));
+    console.log(sectionHeading(t.profile.dryRunHeading()));
     console.log(`  ${wrap(t.profile.dryRunParsed(n(parsed), n(report.skippedLines.length)), 74, '  ')}`);
     if (report.unpricedModels.length > 0) {
       console.log(`  ${c.yellow('!')} ${wrap(t.profile.dryRunUnpriced(report.unpricedModels.join(', ')), 74, '    ')}`);
@@ -8060,7 +8046,7 @@ async function commandProfile(
   ];
 
   console.log();
-  console.log(c.bold(t.profile.heading()));
+  console.log(sectionHeading(t.profile.heading()));
   console.log(`  ${t.profile.spent(t.profile.calls(report.total.calls), formatUsd(report.total.totalUsd))}`);
   /**
    * The period, when the log carries a clock — stated, never extrapolated. A
@@ -8126,7 +8112,7 @@ async function commandProfile(
   // Every part, including the zero ones. A row missing because it was zero reads
   // as a row somebody forgot, and "you are not caching at all" is a finding.
   for (const [name, usd, share, tokens] of parts) {
-    console.log(`  ${c.dim(t.profile.part(name, formatUsd(usd), pct(share), n(tokens)))}`);
+    console.log(`  ${bar(share)}  ${t.profile.part(name, formatUsd(usd), pct(share), n(tokens))}`);
   }
 
   /**
@@ -8570,7 +8556,7 @@ async function commandProfile(
    */
   const levers = billLevers(report, { catalogue: pricing });
   console.log();
-  console.log(c.bold(t.profile.leversHeading()));
+  console.log(sectionHeading(t.profile.leversHeading()));
   /**
    * Every lever below describes a mixture when nothing carries a label.
    *
@@ -8644,7 +8630,7 @@ async function commandProfile(
    */
   if (whatIf !== null) {
     console.log();
-    console.log(c.bold(t.profile.whatIfHeading(whatIf.target.displayName)));
+    console.log(sectionHeading(t.profile.whatIfHeading(whatIf.target.displayName)));
     console.log(`  ${c.dim(wrap(t.profile.whatIfAssumption(), 74, '  '))}`);
     console.log();
     if (whatIf.slices.length === 0) {
@@ -8731,7 +8717,7 @@ async function commandProfile(
    */
   if (report.conversations.length > 0) {
     console.log();
-    console.log(c.bold(t.profile.historyHeading()));
+    console.log(sectionHeading(t.profile.historyHeading()));
     for (const growth of report.conversations.slice(0, 3)) {
       const label = growth.label === UNLABELLED ? t.profile.unlabelled() : growth.label;
       console.log();
@@ -8749,7 +8735,7 @@ async function commandProfile(
      * on the line most likely to be the biggest.
      */
     console.log();
-    console.log(c.bold(t.profile.historyHeading()));
+    console.log(sectionHeading(t.profile.historyHeading()));
     console.log(`  ${c.dim(wrap(t.profile.historyNoSessions(), 74, '  '))}`);
   }
 
@@ -8767,7 +8753,7 @@ async function commandProfile(
    */
   if (report.outputShapes.length > 0) {
     console.log();
-    console.log(c.bold(t.profile.outputShapeHeading()));
+    console.log(sectionHeading(t.profile.outputShapeHeading()));
     for (const shape of report.outputShapes.slice(0, 3)) {
       const label = shape.label === UNLABELLED ? t.profile.unlabelled() : shape.label;
       const isTail = shape.heavyCallShare < 0.25;
@@ -8813,7 +8799,7 @@ async function commandProfile(
    */
   if (report.inputShapes.length > 0) {
     console.log();
-    console.log(c.bold(t.profile.inputShapeHeading()));
+    console.log(sectionHeading(t.profile.inputShapeHeading()));
     for (const shape of report.inputShapes.slice(0, 3)) {
       const label = shape.label === UNLABELLED ? t.profile.unlabelled() : shape.label;
       console.log();
@@ -8877,7 +8863,7 @@ async function commandProfile(
   {
     if (pressures.length > 0) {
       console.log();
-      console.log(c.bold(t.profile.pressureHeading()));
+      console.log(sectionHeading(t.profile.pressureHeading()));
       for (const row of pressures.slice(0, 3)) {
         const label = row.label === UNLABELLED ? t.profile.unlabelled() : row.label;
         const line = t.profile.pressureLine(
@@ -8909,7 +8895,7 @@ async function commandProfile(
     );
     if (moved.length > 0) {
       console.log();
-      console.log(c.bold(t.profile.mixDriftHeading()));
+      console.log(sectionHeading(t.profile.mixDriftHeading()));
       for (const m of moved.slice(0, 3)) {
         console.log();
         console.log(
@@ -8932,7 +8918,7 @@ async function commandProfile(
    */
   if (report.repeatedTurns.length > 0) {
     console.log();
-    console.log(c.bold(t.profile.repeatsHeading()));
+    console.log(sectionHeading(t.profile.repeatsHeading()));
     for (const row of report.repeatedTurns.slice(0, 3)) {
       const label = row.label === UNLABELLED ? t.profile.unlabelled() : row.label;
       console.log();
@@ -9026,7 +9012,7 @@ async function commandProfile(
    */
   if (previous !== null) {
     console.log();
-    console.log(c.bold(t.profile.againstHeading()));
+    console.log(sectionHeading(t.profile.againstHeading()));
     if (previous.total.calls === 0) {
       console.log(`  ${c.dim(wrap(t.profile.againstNothingPriced(), 74, '  '))}`);
     } else {
@@ -9133,10 +9119,10 @@ async function commandProfile(
   ] as const) {
     if (rows.length <= 1) continue; // One row is the total again, said twice.
     console.log();
-    console.log(c.bold(heading));
+    console.log(sectionHeading(heading));
     for (const [name, breakdown] of rows) {
       const share = report.total.totalUsd > 0 ? breakdown.totalUsd / report.total.totalUsd : 0;
-      console.log(`  ${t.profile.row(name, formatUsd(breakdown.totalUsd), pct(share), t.profile.calls(breakdown.calls))}`);
+      console.log(`  ${bar(share)}  ${t.profile.row(name, formatUsd(breakdown.totalUsd), pct(share), t.profile.calls(breakdown.calls))}`);
     }
   }
 
@@ -9169,7 +9155,7 @@ async function commandProfile(
     const outcomes = outcomeReport(report.outcomeTally, config.outcomes ?? null);
     if (outcomes.coverage.recorded > 0) {
       console.log();
-      console.log(c.bold(t.profile.outcomeHeading()));
+      console.log(sectionHeading(t.profile.outcomeHeading()));
 
       const col = t.profile.outcomeColumns;
       const rows = [...outcomes.slices, ...outcomes.undeclared].map((slice) => ({
@@ -9250,7 +9236,7 @@ async function commandProfile(
       );
       if (ranking.byCall.length > 0) {
         console.log();
-        console.log(c.bold(t.profile.perOutcomeHeading()));
+        console.log(sectionHeading(t.profile.perOutcomeHeading()));
         const pcol = t.profile.perOutcomeColumns;
         const prows = ranking.byCall.map((slice) => ({
           key: slice.key,
@@ -9343,7 +9329,7 @@ async function commandProfile(
     }
     if (missing.length > 0) {
       console.log();
-      console.log(c.bold(t.profile.coverageHeading()));
+      console.log(sectionHeading(t.profile.coverageHeading()));
       for (const line of missing) console.log(`  ${c.dim(wrap(line, 74, '  '))}`);
     }
   }
@@ -9999,7 +9985,7 @@ async function checkDirectory(
   );
 
   console.log();
-  console.log(c.bold(t.check.directoryHeading(root, verdicts.length)));
+  console.log(sectionHeading(t.check.directoryHeading(root, verdicts.length)));
   console.log();
 
   for (const verdict of verdicts) {
@@ -10148,7 +10134,7 @@ async function commandPrune(args: Args, t: CliMessages): Promise<void> {
 
   const pct = (value: number): string => `${(value * 100).toFixed(0)}%`;
   console.log();
-  console.log(c.bold(t.prune.heading(provider.model)));
+  console.log(sectionHeading(t.prune.heading(provider.model)));
   console.log(`  ${c.dim(t.prune.selfAgreement(pct(report.selfAgreement)))}`);
   console.log();
 
@@ -10241,7 +10227,7 @@ async function commandEval(
 
   const pct = (value: number): string => `${(value * 100).toFixed(0)}%`;
   console.log();
-  console.log(c.bold(t.eval.heading()));
+  console.log(sectionHeading(t.eval.heading()));
   console.log(`  ${t.eval.selfAgreement(pct(report.selfAgreement))}`);
   console.log(`  ${t.eval.crossAgreement(pct(report.crossAgreement))}`);
   console.log();
@@ -10443,7 +10429,7 @@ function printComparison(
   const signed = (value: number): string => `${value > 0 ? '+' : ''}${n(value)}`;
 
   console.log();
-  console.log(c.bold(t.diff.heading(beforePath, afterPath)));
+  console.log(sectionHeading(t.diff.heading(beforePath, afterPath)));
   if (optimized) console.log(c.dim(`  ${t.diff.measuringOptimised()}`));
   console.log();
   console.log(
