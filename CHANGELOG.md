@@ -32,7 +32,7 @@ merged commit with no entry is a change only `git log` remembers.
   fails without a remedy is one people learn to route around.
 
   Read-only permissions, the plain `pull_request` event, and
-  `fetch-depth: 0` — a shallow checkout would walk an empty range and report
+  `fetch-depth: 0`, because a shallow checkout would walk an empty range and report
   clean while examining nothing. Merge commits are skipped: GitHub writes
   those itself when a branch is updated from the web.
 
@@ -63,6 +63,39 @@ merged commit with no entry is a change only `git log` remembers.
   target now, with no regex at all. It rejects a bare mention in prose, a
   subdomain impostor, and the domain embedded in somebody else's query
   string, none of which the first version rejected.
+
+- **docs/licensing.md**, for somebody deciding whether to depend on this. It
+  answers the three questions LICENSE leaves open: what the licence covers
+  today, what will never move out of it, and what it never covered at all.
+
+  The promise it makes is that no analysis this repository can perform today
+  moves out of the open set, and the argument is not generosity: the case for
+  trusting a figure here has always been that the code producing it can be
+  read, so a withheld capability would break the product's thesis before it
+  broke its licence. What is not open is anything needing infrastructure
+  somebody else operates. None of it exists, and if it is ever built it ships
+  proprietary from its first commit rather than being moved out of the open
+  set. What is reserved is the name, which the licence has never covered.
+
+  The list of what is open is derived, not typed. `licensing.test.js` reads
+  every non-private package manifest plus each shipping surface directory and
+  fails when one is missing from the page, checks that every published package
+  really declares MIT, pins the three promises by the shape of their claim so
+  the prose can be rewritten and the promise cannot vanish with it, and
+  asserts the page is linked from the section a deciding reader actually
+  reads. This repository has four recorded cases of a hand-typed fact going
+  stale (1.51.2, 1.53.2, 1.53.3, 1.60.3), which is why nothing here is typed.
+
+  Proved by planting eight violations: a published package dropped from the
+  page, a shipping surface dropped, a brand new package nobody named, a
+  package declaring GPL-3.0, each of the three promises reworded away, and the
+  page unlinked from the index section. All eight fail, and each names what
+  went missing.
+
+  Two open items are named on the page rather than implied: Apache-2.0 is
+  under consideration and undecided, and the licences of vendored and
+  development dependencies have not been audited. Runtime dependencies outside
+  this repository are zero by design and a guard already holds that.
 
 Nothing installable changes: no package code, no command, no flag.
 

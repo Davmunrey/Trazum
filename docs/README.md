@@ -23,6 +23,10 @@ Then, if you want to know whether to trust the numbers:
 - **[Any input](hardening.md)** — what is promised about input this tool was
   never meant to see, and the seeded fuzz suite in CI that holds each promise:
   never throws, never grows, idempotent, masks intact, money never negative.
+- **[What is open, what is not](licensing.md)**: the three questions LICENSE
+  leaves unanswered: what the licence covers today, what will never move out of
+  it, and what it never covered at all. Written while there is one copyright
+  holder and nothing to gain from a convenient answer.
 
 ## I am using it
 
