@@ -188,7 +188,16 @@ jobs:
           # OIDC identity, which is independent of how the upload
           # authenticates.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish -w @trazum/core --provenance --access public
+        # Published from the package directory, not `-w @trazum/core` from the
+        # root. With `-w`, npm builds the tarball with the README inside it (pack
+        # --dry-run confirms it) but leaves the `readme` field of the version
+        # metadata empty, so npmjs.com renders "This package does not have a
+        # README" while the file is right there in the tarball. Publishing from
+        # the package's own directory makes npm read the README into the
+        # metadata. Provenance is unaffected: it is signed from the job's OIDC
+        # identity and the Actions environment, not the cwd.
+        working-directory: packages/core
+        run: npm publish --provenance --access public
 
       # Second, and only if the first succeeded. @trazum/cli depends on
       # @trazum/core at an exact version, so publishing the CLI first would leave
@@ -198,7 +207,10 @@ jobs:
         env:
           # Same fallback as core's step, documented there.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish -w @trazum/cli --provenance --access public
+        # From the package directory, so the README reaches the metadata — see
+        # the note on core's step.
+        working-directory: packages/cli
+        run: npm publish --provenance --access public
 
       # Third, for the same reason the CLI is second: @trazum/mcp pins
       # @trazum/core at an exact version too, so publishing it before core exists
@@ -208,7 +220,10 @@ jobs:
         env:
           # Same fallback as core's step, documented there.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: npm publish -w @trazum/mcp --provenance --access public
+        # From the package directory, so the README reaches the metadata — see
+        # the note on core's step.
+        working-directory: packages/mcp
+        run: npm publish --provenance --access public
 
       # npm reports a write you are not authorised for as `404 Not Found`, which
       # reads as a missing package and is an auth failure. That cost an hour at

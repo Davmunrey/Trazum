@@ -300,16 +300,38 @@ describe('what npm would publish', () => {
     assert.deepEqual(PACKAGES, ['packages/cli', 'packages/core', 'packages/mcp']);
   });
 
-  it('the release workflow publishes exactly those, and publicly', () => {
+  it('the release workflow publishes exactly those, publicly, and from each package directory', () => {
     /**
      * The manifest and the workflow have to agree about the *set*, not only
      * about the flag. A package that is publishable and never published is a
      * release that ships half of itself — and `@trazum/cli` pins
      * `@trazum/core` at an exact version, so the half that shipped would not
      * install.
+     *
+     * **And the publish must not use `-w`.** Publishing a workspace with
+     * `npm publish -w @trazum/core` from the repo root builds the tarball with
+     * the README inside it — `npm pack --dry-run` confirms the file is there —
+     * but leaves the `readme` field of the version metadata empty, so
+     * npmjs.com renders "This package does not have a README" over a package
+     * whose tarball contains one. 1.70.0, 1.71.0 and 1.71.1 all shipped that
+     * way. The fix, and what this now asserts, is that each package is
+     * published from its own directory (`working-directory: packages/<x>`),
+     * which is what makes npm read the README into the metadata.
      */
     const workflow = readFileSync(join(repoRoot, '.github/workflows/release.yml'), 'utf8');
-    const published = [...workflow.matchAll(/npm publish -w (\S+)([^\n]*)/g)];
+
+    // No `-w` publish anywhere: that flag is the whole bug this guards against.
+    assert.equal(
+      /npm publish\b[^\n]*\s-w\b/.test(workflow),
+      false,
+      'a publish step uses `npm publish -w`, which drops the README from the npm metadata',
+    );
+
+    // Each publish step is a `working-directory:` naming a package, immediately
+    // followed by a `run: npm publish` with its flags.
+    const published = [
+      ...workflow.matchAll(/working-directory:\s*(packages\/\S+)\s*\n\s*run:\s*npm publish([^\n]*)/g),
+    ];
 
     assert.equal(
       published.length,
@@ -318,14 +340,13 @@ describe('what npm would publish', () => {
     );
 
     for (const pkg of PACKAGES) {
-      const { name } = manifestOf(pkg);
-      const step = published.find((match) => match[1] === name);
-      assert.ok(step, `the release workflow never publishes ${name}`);
-      assert.match(step[2], /--access public/, `${name} is published without --access public`);
+      const step = published.find((match) => match[1] === pkg);
+      assert.ok(step, `the release workflow never publishes from ${pkg}`);
+      assert.match(step[2], /--access public/, `${pkg} is published without --access public`);
       // Provenance is what lets somebody verify the tarball was built from this
       // repository at this commit — most of what "open source" is worth to a
       // person deciding whether to install it.
-      assert.match(step[2], /--provenance/, `${name} is published without provenance`);
+      assert.match(step[2], /--provenance/, `${pkg} is published without provenance`);
     }
   });
 

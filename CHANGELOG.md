@@ -20,6 +20,30 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## 1.71.2 — "The README the npm page never showed"
+
+### Fixed
+
+- **The npm page for every package now shows its README.** The release
+  workflow published each package with `npm publish -w @trazum/<pkg>` from the
+  repo root. That builds the tarball with the README inside it (`npm pack
+  --dry-run` confirmed the file was there), but leaves the `readme` field of
+  the version metadata empty, so npmjs.com rendered "This package does not have
+  a README" over a package whose tarball contained one. 1.70.0, 1.71.0 and
+  1.71.1 all shipped that way. Each package is now published from its own
+  directory (`working-directory: packages/<pkg>`), which is what makes npm read
+  the README into the metadata. Provenance is unaffected. The fix only reaches
+  npm from this release forward; the already-published versions cannot be
+  amended.
+
+### Guards
+
+- **`publish.test.js` now forbids `npm publish -w` in the release workflow** and
+  asserts each package is published from its own directory with `--access
+  public` and `--provenance`. The old guard matched `npm publish -w ...` to
+  count the steps, so it would have gone green on the exact bug; it now checks
+  the shape that keeps the README, with the `-w` form proven to fail it.
+
 ## 1.71.1 — "The help, in the language it was asked in"
 
 ### Fixed
