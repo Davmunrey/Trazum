@@ -24,6 +24,17 @@ Two deliberate exceptions:
 - **`packages/*/src/i18n/es.ts`, `apps/web/lib/i18n/es.ts`** and the Spanish
   sample prompt are Spanish by definition.
 
+## The CLA
+
+Your first pull request will be greeted by the CLA workflow: it asks you to
+post one sentence, records the signature in the repository, and turns its
+check green — once, covering everything you contribute afterwards. What you
+sign is [docs/cla/CLA.md](docs/cla/CLA.md), and its preamble says plainly
+what it is for: Trazum stays MIT, you keep your copyright, and the
+maintainer gets a licence broad enough that no future relicensing of new
+modules needs a per-contributor hunt. If you cannot sign, say so in the pull
+request — the code can still be discussed; it just cannot be merged.
+
 ## Setup
 
 ```bash

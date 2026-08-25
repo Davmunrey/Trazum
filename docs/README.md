@@ -52,6 +52,8 @@ In the order somebody actually meets them:
 - **[The prompt writer](prompt-writer.md)** — the questions `trazum write` asks,
   why each one is asked only when its answer can change the output, and what a
   declined answer costs you.
+- **[The CLA](cla/CLA.md)** — what a contributor signs, what it grants and
+  refuses to take, and how the gate in the pull request works.
 - **[Contributing](../CONTRIBUTING.md)** — how to propose a change here.
 
 ## I am maintaining it

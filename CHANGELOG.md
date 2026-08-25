@@ -20,6 +20,23 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+- **The Contributor License Agreement, gated in CI.** `docs/cla/CLA.md` — an
+  individual CLA whose preamble says what it is for: the project stays MIT,
+  contributors keep their copyright, and the maintainer receives a licence
+  broad enough (sublicensing and relicensing included) that future modules
+  under other terms never need a per-contributor permissions hunt. Signing
+  is one sentence in the pull request, recorded by
+  `contributor-assistant/github-action` into `.github/cla-signatures.json`
+  on its own branch; maintainer and bots are allowlisted. The workflow is
+  the repository's one argued exception to the `pull_request_target` ban —
+  it checks out nothing, and the security guard now pins exactly that: the
+  exception exists only for `cla.yml`, only while no checkout appears in
+  it, and the guard fails if the file leaves or the event does.
+
 ## 1.75.0 — "The readable terminal"
 
 ### Added
