@@ -660,6 +660,7 @@ export interface WebMessages {
     unmeasured(scope: string, why: string): string;
     why(reason: 'no-clock' | 'no-labels' | 'nothing-recorded' | 'label-unseen'): string;
     cannotSayHeading: string;
+    cannotSay: Record<string, string>;
     unpriced(count: number): string;
     source: string;
   };

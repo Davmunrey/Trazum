@@ -832,6 +832,12 @@ export const es: WebMessages = {
             ? 'el log está vacío: no se registró nada'
             : 'el log registra etiquetas y no ha visto esta en todo el mes: quizá renombrada, quizá parada, y ninguna de las dos es «dentro del presupuesto»',
     cannotSayHeading: 'Lo que deliberadamente no responde',
+    cannotSay: {
+      'session-limit-at-the-doors':
+        'limits.sessionUsd se juzga llamada a llamada en las puertas. Una sesión no es un ámbito de calendario, y una «posición de sesión para el mes» sería una media disfrazada de límite.',
+      'no-ceiling-configured':
+        'No hay presupuesto mensual ni límites configurados, así que no existe techo contra el que declarar una posición. Los techos viven en spend.monthlyUsd y en el bloque limits.',
+    },
     unpriced: (count) =>
       `${count} registro(s) nombran un modelo que el catálogo no puede tasar. No aportan nada a ninguna cifra de arriba: dinero que nadie ve, dicho aquí en vez de escondido.`,
     source:

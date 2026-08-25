@@ -233,8 +233,8 @@ export function PositionCard({ logText, t }: { logText: string; t: WebMessages }
               {document.cannotSay.length > 0 && (
                 <div className="flex flex-col gap-1 text-[13px] text-muted-foreground">
                   <span className="font-semibold">{t.position.cannotSayHeading}</span>
-                  {document.cannotSay.map((line) => (
-                    <span key={line.slice(0, 32)}>{line}</span>
+                  {document.cannotSay.map((code) => (
+                    <span key={code}>{t.position.cannotSay[code] ?? code}</span>
                   ))}
                 </div>
               )}

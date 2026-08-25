@@ -108,10 +108,22 @@ describe('the position, as one answer', () => {
       { spend: { monthlyUsd: 100 }, limits: { sessionUsd: 2 } },
     );
     assert.equal(document.unpricedRecords, 1);
-    assert.ok(document.cannotSay.some((line) => line.includes('sessionUsd')));
+    /**
+     * Codes since 1.78.0, and the intent is what it always was: the
+     * document states what it will not answer. It used to state it in
+     * baked English prose, which a Spanish reader met as a localized
+     * heading over an untranslated paragraph. The assertion moved to the
+     * code; the sentence now lives in each rendering.
+     */
+    assert.ok(document.cannotSay.includes('session-limit-at-the-doors'));
 
     const bare = report(eightDays(), {});
-    assert.ok(bare.cannotSay.some((line) => line.includes('No monthly budget and no limits')));
+    assert.ok(bare.cannotSay.includes('no-ceiling-configured'));
+    // And the property the prose version could never have: nothing in this
+    // field is a sentence. A space is the cheapest evidence of one.
+    for (const code of [...document.cannotSay, ...bare.cannotSay]) {
+      assert.match(code, /^[a-z][a-z-]*$/, `"${code}" is prose in a field that must carry codes`);
+    }
     assert.deepEqual(bare.positions, []);
   });
 });

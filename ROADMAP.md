@@ -1184,6 +1184,15 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.78.0 — "A sentence no locale could reach" — released
+
+**The position document joins its own family.** Its caveats were English
+prose baked into the document, so a Spanish reader met a localized
+heading over an untranslated block; its three siblings had used codes
+all along, for the reason the contract already stated. Codes now, with
+the sentences in both renderings and a guard that no code can reach a
+reader as a bare slug.
+
 ## 1.77.1 — "The folder name stands" — released
 
 **A guess, retracted the day it shipped.** The project-folder label

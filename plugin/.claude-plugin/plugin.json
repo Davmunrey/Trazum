@@ -1,6 +1,6 @@
 {
   "name": "trazum",
-  "version": "1.77.1",
+  "version": "1.78.0",
   "description": "Price a prompt before it costs money, and read the bill after. Deterministic prompt optimisation (no API key, no network), token budgets and drift gates for CI, usage-log profiling that names what would actually move the bill, and seven MCP tools including a spend guard that judges configured USD ceilings before a call is made.",
   "author": {
     "name": "David Mu\u00f1oz Rey"
