@@ -2571,6 +2571,23 @@ async function commandWrite(args: Args, t: CliMessages): Promise<void> {
  * `cwd`, no branch name crosses the conversion; the suite plants one of
  * each in a fixture and greps the whole output for them.
  */
+/**
+ * The workload name inside a Claude Code project folder.
+ *
+ * Claude Code names those folders by encoding the project's absolute path,
+ * `/` becoming `-`: `~/.claude/projects/-Users-mac-Trazum`. The last
+ * segment of that encoding is the project's own directory name, which is
+ * the word a person would have chosen. A documented decoding, not a guess
+ * — and when decoding would leave nothing, the raw folder name stands,
+ * because a label somebody can trace beats a tidy one they cannot.
+ */
+function projectLabelFor(file: string): string | undefined {
+  const folder = dirname(resolvePath(file)).split('/').pop();
+  if (folder === undefined || folder === '') return undefined;
+  const decoded = folder.split('-').filter((part) => part !== '').pop();
+  return decoded !== undefined && decoded !== '' ? decoded : folder;
+}
+
 async function commandFromClaudeCode(args: Args, t: CliMessages): Promise<void> {
   const target = args.positional[0];
   if (target === undefined) throw new Error(t.fromClaudeCode.noPath());
@@ -2596,7 +2613,20 @@ async function commandFromClaudeCode(args: Args, t: CliMessages): Promise<void> 
   }
 
   const label = stringFlag(args, 'label');
-  const labelFromProject = boolFlag(args, 'label-from-project');
+  /**
+   * A folder of projects is a folder of workloads — the 1.77 default.
+   *
+   * The flag has existed since the folder walk did, and nobody found it: a
+   * real forty-day run produced `label` on 0 of 10,393 records, and the
+   * report could then only describe a mixture, which is exactly what it
+   * said. The web app's folder drop has labelled by project since 1.70, so
+   * the two surfaces disagreed about the same gesture.
+   *
+   * Default-on for a directory, `--no-label-from-project` to decline. A
+   * single file is untouched: one file is one workload only if the caller
+   * says so.
+   */
+  const labelFromProject = boolFlag(args, 'label-from-project', info.isDirectory());
   const lines: string[] = [];
   let records = 0;
   let collapsed = 0;
@@ -2606,9 +2636,10 @@ async function commandFromClaudeCode(args: Args, t: CliMessages): Promise<void> 
   let withoutUsage = 0;
   let streamed = 0;
   let disagreements = 0;
+  let synthetic = 0;
   for (const file of files) {
     const text = await readFile(file, 'utf8');
-    const projectLabel = labelFromProject ? dirname(resolvePath(file)).split('/').pop() : undefined;
+    const projectLabel = labelFromProject ? projectLabelFor(file) : undefined;
     const conversion = claudeCodeRecords(text, {
       ...(label !== undefined
         ? { label }
@@ -2625,6 +2656,7 @@ async function commandFromClaudeCode(args: Args, t: CliMessages): Promise<void> 
     withoutUsage += conversion.assistantWithoutUsage;
     streamed += conversion.streamed;
     disagreements += conversion.disagreements;
+    synthetic += conversion.synthetic;
   }
 
   const out = stringFlag(args, 'out') ?? stringFlag(args, 'o');
@@ -2640,6 +2672,8 @@ async function commandFromClaudeCode(args: Args, t: CliMessages): Promise<void> 
   if (streamed > 0) console.error(t.fromClaudeCode.streamed(streamed));
   if (disagreements > 0) console.error(t.fromClaudeCode.disagreements(disagreements));
   if (noRequestId > 0) console.error(t.fromClaudeCode.noRequestId(noRequestId));
+  if (synthetic > 0) console.error(t.fromClaudeCode.synthetic(synthetic));
+  if (labelFromProject && label === undefined) console.error(t.fromClaudeCode.labelled());
   console.error(t.fromClaudeCode.skipped(otherLines, unparseable, withoutUsage));
 }
 

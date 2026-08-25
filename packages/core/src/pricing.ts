@@ -160,6 +160,10 @@ export const MODELS: ModelPricing[] = [
   },
   {
     id: 'claude-haiku-4-5',
+    // The dated form is the canonical API id and is what a real usage log
+    // carries; the short id above is the alias people recognise. Declared,
+    // not derived: see `aliases` in types.ts.
+    aliases: ['claude-haiku-4-5-20251001'],
     provider: 'anthropic',
     displayName: 'Claude Haiku 4.5',
     inputPerMTok: 1,
@@ -357,7 +361,13 @@ function makeCatalogue(
 ): PricingCatalogue {
   return {
     models,
-    byId: new Map(models.map((m) => [m.id, m])),
+    // Aliases sit in the same index as ids: a lookup does not need to know
+    // which spelling it was handed. A declared alias never shadows a real
+    // id, because the ids are written last.
+    byId: new Map([
+      ...models.flatMap((m) => (m.aliases ?? []).map((alias) => [alias, m] as const)),
+      ...models.map((m) => [m.id, m] as const),
+    ]),
     lastReviewed,
     overriddenModels,
     addedModels,

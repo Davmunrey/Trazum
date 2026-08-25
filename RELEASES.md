@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.76.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.77.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,28 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.77.0 — "The agent's bill, told honestly"
+
+A real forty-day Claude Code profile ran through this tool and answered
+well. It also said four things it should not have had to say: every one of
+its 10,393 calls arrived unlabelled, 164 sat outside the totals because
+their ids were not recognised, some of those ids were not models at all,
+and three sections reported that no answer could be checked for truncation.
+
+None of that was the profiler being wrong. It was the converter handing the
+profiler less than the transcript already knew, and the profiler then being
+scrupulously honest about the gap. So: a folder of projects now labels
+itself by project, a dated model id prices as the model it is, the turns
+Claude Code wrote itself are excluded by name and counted rather than
+priced at zero, and `stop_reason` reaches the log it was always in the
+transcript for.
+
+The alias mechanism is worth one sentence of its own, because it would have
+been easy to do badly: every alias is declared and reviewed like a price,
+never derived from a pattern. An id that merely looks like a dated version
+of a known model is still unknown here, because guessing that two ids bill
+alike is guessing a price.
 
 ## 1.76.0 — "The tour that does the work"
 

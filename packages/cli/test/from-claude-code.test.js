@@ -111,7 +111,17 @@ describe('from-claude-code, run', () => {
     assert.ok(labelled.stdout.trim().split('\n').every((l) => JSON.parse(l).label === 'agents'));
     const byProject = run(['from-claude-code', join(dir, 'projects'), '--label-from-project']);
     const labels = new Set(byProject.stdout.trim().split('\n').map((l) => JSON.parse(l).label));
-    assert.deepEqual([...labels].sort(), ['-home-me-etl', '-home-me-webapp']);
+    /**
+     * The expected value changed in 1.77, and the intent did not.
+     *
+     * This used to read the raw folder name, `-home-me-etl`. Claude Code
+     * encodes the project's absolute path with `/` as `-`, so that string
+     * is a path wearing a costume; the last segment of it is the project's
+     * own directory name, which is the word a person would have chosen and
+     * the word the report then puts beside the money. What this guard
+     * holds is unchanged: one label, or the project's name, never both.
+     */
+    assert.deepEqual([...labels].sort(), ['etl', 'webapp']);
   });
 
   it('-o writes the log and the pipe into profile works', async () => {
@@ -124,5 +134,65 @@ describe('from-claude-code, run', () => {
     const profiled = run(['profile', log]);
     assert.equal(profiled.status, 0, profiled.stderr);
     assert.match(profiled.stdout, /3 calls/);
+  });
+});
+
+/**
+ * The 1.77 default: a folder of projects is a folder of workloads.
+ *
+ * The flag existed and nobody found it, so a real forty-day run produced a
+ * label on 0 of 10,393 records and the report could only ever describe a
+ * mixture. These hold the new default, its opt-out, and the fact that a
+ * single file is still nobody's workload unless the caller says so.
+ */
+describe('a folder of projects labels itself', () => {
+  const tree = async () => {
+    const root = await mkdtemp(join(tmpdir(), 'trazum-projects-'));
+    // Claude Code encodes the project's absolute path, `/` becoming `-`.
+    for (const folder of ['-Users-mac-Trazum', '-Users-mac-other-app']) {
+      await mkdir(join(root, folder), { recursive: true });
+      await writeFile(join(root, folder, 'session.jsonl'), assistantLine('req-1', 20));
+    }
+    return root;
+  };
+
+  const labelsOf = (stdout) =>
+    stdout
+      .trim()
+      .split('\n')
+      .filter((line) => line !== '')
+      .map((line) => JSON.parse(line).label);
+
+  it('labels by project folder without being asked, decoding the encoded path', () => {
+    return tree().then((root) => {
+      const out = run(['from-claude-code', root]);
+      assert.equal(out.status, 0, out.stderr);
+      // The last segment of the encoding is the project's own directory
+      // name, which is the word a person would have chosen.
+      assert.deepEqual(labelsOf(out.stdout).sort(), ['Trazum', 'app']);
+      // And it says so, rather than relabelling somebody's log in silence.
+      assert.match(out.stderr, /--no-label-from-project/);
+    });
+  });
+
+  it('declines when told to, and an explicit label still wins', () => {
+    return tree().then((root) => {
+      const off = run(['from-claude-code', root, '--no-label-from-project']);
+      assert.equal(off.status, 0, off.stderr);
+      assert.deepEqual(labelsOf(off.stdout), [undefined, undefined]);
+
+      const explicit = run(['from-claude-code', root, '--label', 'everything']);
+      assert.equal(explicit.status, 0, explicit.stderr);
+      assert.deepEqual(labelsOf(explicit.stdout), ['everything', 'everything']);
+    });
+  });
+
+  it('a single file is nobody\'s workload unless the caller says so', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'trazum-one-'));
+    const file = join(root, 'session.jsonl');
+    await writeFile(file, assistantLine('req-1', 20));
+    const out = run(['from-claude-code', file]);
+    assert.equal(out.status, 0, out.stderr);
+    assert.deepEqual(labelsOf(out.stdout), [undefined]);
   });
 });

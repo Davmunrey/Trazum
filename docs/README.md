@@ -78,7 +78,7 @@ In the order somebody actually meets them:
 
 ## The arcs, as they were planned
 
-Eighteen plans have been written down **before** the code. Seventeen delivered in
+Nineteen plans have been written down **before** the code. Eighteen delivered in
 full; one landed six of its nine arcs. The delivered plans are kept because
 the reasoning is the useful part, not because anything in them is still
 forthcoming: every chapter in them shipped. The 1.52–1.60 plan keeps its three
@@ -105,6 +105,7 @@ is the half a reader cannot reconstruct.
 | [1.74](plan-1.74.md) | Any model's money: bring your own price card, and the switch priced honestly | 1.74.0 — all four chapters, commands forty-one and forty-two and the web card |
 | [1.75](plan-1.75.md) | The readable terminal: hierarchy the eye can use, with a guard that colour adds nothing | 1.75.0 — all four chapters, fifty-four ruled headings and the parity guard |
 | [1.76](plan-1.76.md) | The tour that does the work: every step performs its page, and the terminal types | 1.76.0 — all four chapters, three commands typed and a guard that runs them |
+| [1.77](plan-1.77.md) | The agent's bill, told honestly: the four things a real profile should not have had to say | 1.77.0 — all five chapters, and a dated id prices as the model it is |
 
 What each of them **refused** to ship — which is the more useful half, since a
 plan and its implementation shared a hand — is in

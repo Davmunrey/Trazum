@@ -20,7 +20,55 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
-## Unreleased
+## 1.77.0 — "The agent's bill, told honestly"
+
+### Added
+
+- **A dated id prices as the model it is.** [The 1.77
+  plan](docs/plan-1.77.md): `ModelPricing` gains `aliases`, and the
+  catalogue indexes every alias beside its id, so
+  `claude-haiku-4-5-20251001` — the canonical API id, while the catalogue
+  lists the short form a person recognises — stops landing in `unpriced`.
+  Declared one line at a time, **never derived**: a rule that stripped
+  anything resembling a date from an id would be a machine guessing that
+  two ids bill alike, which is the one guess this product does not make.
+  An id that merely resembles a known one is still unknown, and the guard
+  says so in both directions.
+
+- **`stop_reason`, carried at last.** The transcript records it on the
+  assistant message and the converter never read it, so truncation, the
+  retry bill and the coverage gate all answered "cannot be measured" about
+  a log whose own source knew. Read and emitted now, and nothing is
+  inferred: a turn without the field still produces a record without it.
+
+### Changed
+
+- **A folder of projects is a folder of workloads.** For a directory
+  target, `from-claude-code` labels by project folder by default, with
+  `--no-label-from-project` to decline and `--label` still winning. A
+  single file is untouched: one file is one workload only if the caller
+  says so. The flag has existed since the folder walk did and nobody found
+  it, which is why a real forty-day run produced a label on 0 of 10,393
+  records and the report could then only describe a mixture. The web app's
+  folder drop has labelled by project since 1.70; the two surfaces
+  disagreed about the same gesture.
+
+- **The label is the decoded project name.** Claude Code names those
+  folders by encoding the project's absolute path, `/` becoming `-`, so
+  `-Users-mac-Trazum` is a path wearing a costume. The last segment of the
+  encoding is the project's own directory name, which is the word a person
+  would have chosen; the raw folder name stands whenever decoding would
+  leave nothing.
+
+### Fixed
+
+- **`<synthetic>` is not a model.** Claude Code writes it for turns it
+  produced locally — interrupts, error notices — which carry a usage
+  object of zeros that no provider ever billed. Priced, they were noise in
+  the totals; they are excluded **by name** now, counted, and reported.
+  Matching the exact string rather than anything in angle brackets is
+  deliberate: a pattern that swallowed an oddly-named real model would
+  delete spend from a bill without saying so.
 
 ### Changed
 
