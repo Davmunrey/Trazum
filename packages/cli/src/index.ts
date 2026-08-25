@@ -2574,18 +2574,27 @@ async function commandWrite(args: Args, t: CliMessages): Promise<void> {
 /**
  * The workload name inside a Claude Code project folder.
  *
- * Claude Code names those folders by encoding the project's absolute path,
- * `/` becoming `-`: `~/.claude/projects/-Users-mac-Trazum`. The last
- * segment of that encoding is the project's own directory name, which is
- * the word a person would have chosen. A documented decoding, not a guess
- * — and when decoding would leave nothing, the raw folder name stands,
- * because a label somebody can trace beats a tidy one they cannot.
+ * Claude Code names those folders by encoding the project's absolute path
+ * with `/` replaced by `-`: `~/.claude/projects/-Users-mac-Trazum`. **That
+ * encoding cannot be undone.** Both `/` and `-` map to `-`, so nothing in
+ * the folder name says which dashes were separators, and 1.77.0 shipped a
+ * decoder that guessed the last segment and was wrong on every project
+ * whose own name contains a hyphen — real examples from the run that found
+ * it: `-Users-mac-ai-job-search-ai-job-search` labelled `search`, and
+ * `-Users-mac-Desktop-Pulse-Coffee-pulse-coffee` labelled `coffee`. Two
+ * different projects, both renamed to a word that was never their name.
+ *
+ * So the folder name stands as it is, minus the leading separator. It is
+ * longer than a tidy guess and it is the one thing here that is certainly
+ * true: a reader can find the folder it names. Presenting a decoding as a
+ * fact when the encoding cannot support one is the failure this product
+ * exists to refuse, and it does not get an exception for being convenient.
  */
 function projectLabelFor(file: string): string | undefined {
   const folder = dirname(resolvePath(file)).split('/').pop();
   if (folder === undefined || folder === '') return undefined;
-  const decoded = folder.split('-').filter((part) => part !== '').pop();
-  return decoded !== undefined && decoded !== '' ? decoded : folder;
+  const trimmed = folder.replace(/^-+/, '');
+  return trimmed !== '' ? trimmed : folder;
 }
 
 async function commandFromClaudeCode(args: Args, t: CliMessages): Promise<void> {

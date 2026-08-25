@@ -112,16 +112,15 @@ describe('from-claude-code, run', () => {
     const byProject = run(['from-claude-code', join(dir, 'projects'), '--label-from-project']);
     const labels = new Set(byProject.stdout.trim().split('\n').map((l) => JSON.parse(l).label));
     /**
-     * The expected value changed in 1.77, and the intent did not.
+     * Back to the folder name in 1.77.1, and the intent never changed.
      *
-     * This used to read the raw folder name, `-home-me-etl`. Claude Code
-     * encodes the project's absolute path with `/` as `-`, so that string
-     * is a path wearing a costume; the last segment of it is the project's
-     * own directory name, which is the word a person would have chosen and
-     * the word the report then puts beside the money. What this guard
-     * holds is unchanged: one label, or the project's name, never both.
+     * 1.77.0 decoded the last segment, on the theory that Claude Code's
+     * `/`-as-`-` encoding could be undone. It cannot: both characters map
+     * to `-`, so nothing says which dashes were separators. The guard
+     * below is the fixture that proves it. What this test holds is what it
+     * always held: one label, or the project's folder, never both.
      */
-    assert.deepEqual([...labels].sort(), ['etl', 'webapp']);
+    assert.deepEqual([...labels].sort(), ['home-me-etl', 'home-me-webapp']);
   });
 
   it('-o writes the log and the pipe into profile works', async () => {
@@ -163,13 +162,11 @@ describe('a folder of projects labels itself', () => {
       .filter((line) => line !== '')
       .map((line) => JSON.parse(line).label);
 
-  it('labels by project folder without being asked, decoding the encoded path', () => {
+  it('labels by project folder without being asked, and never guesses at the encoding', () => {
     return tree().then((root) => {
       const out = run(['from-claude-code', root]);
       assert.equal(out.status, 0, out.stderr);
-      // The last segment of the encoding is the project's own directory
-      // name, which is the word a person would have chosen.
-      assert.deepEqual(labelsOf(out.stdout).sort(), ['Trazum', 'app']);
+      assert.deepEqual(labelsOf(out.stdout).sort(), ['Users-mac-Trazum', 'Users-mac-other-app']);
       // And it says so, rather than relabelling somebody's log in silence.
       assert.match(out.stderr, /--no-label-from-project/);
     });
@@ -185,6 +182,37 @@ describe('a folder of projects labels itself', () => {
       assert.equal(explicit.status, 0, explicit.stderr);
       assert.deepEqual(labelsOf(explicit.stdout), ['everything', 'everything']);
     });
+  });
+
+  it('the folder name stands: a hyphen in a project name is not a separator', () => {
+    /**
+     * The defect 1.77.0 shipped, kept as a fixture with the real folders
+     * that found it. `ai-job-search` became `search` and `pulse-coffee`
+     * became `coffee`: two projects renamed to a word that was never their
+     * name, because both `/` and `-` encode to `-` and no rule can tell
+     * them apart afterwards. Whatever else changes here, a label must
+     * never be a guess about which dashes used to be slashes.
+     */
+    return (async () => {
+      const root = await mkdtemp(join(tmpdir(), 'trazum-hyphen-'));
+      for (const folder of [
+        '-Users-mac-ai-job-search-ai-job-search',
+        '-Users-mac-Desktop-Pulse-Coffee-pulse-coffee',
+      ]) {
+        await mkdir(join(root, folder), { recursive: true });
+        await writeFile(join(root, folder, 'session.jsonl'), assistantLine('req-1', 20));
+      }
+      const out = run(['from-claude-code', root]);
+      assert.equal(out.status, 0, out.stderr);
+      const labels = labelsOf(out.stdout).sort();
+      assert.deepEqual(labels, [
+        'Users-mac-Desktop-Pulse-Coffee-pulse-coffee',
+        'Users-mac-ai-job-search-ai-job-search',
+      ]);
+      for (const wrong of ['search', 'coffee']) {
+        assert.equal(labels.includes(wrong), false, `a project was renamed to "${wrong}"`);
+      }
+    })();
   });
 
   it('a single file is nobody\'s workload unless the caller says so', async () => {

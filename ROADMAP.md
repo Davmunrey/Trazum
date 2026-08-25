@@ -1184,6 +1184,14 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.77.1 — "The folder name stands" — released
+
+**A guess, retracted the day it shipped.** The project-folder label
+decoded Claude Code's path encoding, which is not invertible: `/` and
+`-` both become `-`. Real folders proved it within minutes of release,
+so the folder name stands as it is, and the two that found it are
+fixtures now.
+
 ## 1.77.0 — "The agent's bill, told honestly" — released
 
 **Four things a real profile should not have had to say.** A folder of
