@@ -717,6 +717,33 @@ export interface WebMessages {
     wrote(name: string, count: number): string;
   };
 
+  /**
+   * The 1.73 guided tour. Offered, never imposed: a first visit gets a
+   * one-line offer, the launcher lives in the rail, and every sentence of the
+   * walk lives here — one title and one body per step id in `TOUR_STEPS`.
+   */
+  tour: {
+    launch: string;
+    offer: string;
+    offerStart: string;
+    offerDismiss: string;
+    next: string;
+    back: string;
+    skip: string;
+    done: string;
+    progress(current: number, total: number): string;
+    dialogLabel: string;
+    steps: {
+      welcome: { title: string; body: string };
+      optimise: { title: string; body: string };
+      write: { title: string; body: string };
+      compare: { title: string; body: string };
+      bill: { title: string; body: string };
+      playground: { title: string; body: string };
+      finish: { title: string; body: string };
+    };
+  };
+
   errors: {
     requestFailed: string;
     unreachable: string;

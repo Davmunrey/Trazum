@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.72.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.73.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,20 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.73.0 — "The guided tour"
+
+**Five doors, walked once, offered never imposed.** A first visit gets a
+one-line offer; the rail keeps a launcher forever; and the tour itself
+dims the page, rings one panel at a time and says what question each door
+answers — optimise, write, compare, the bill, the playground — ending
+where the visitor can type their first command. Escape leaves, focus
+travels with the card, the single scroll respects prefers-reduced-motion,
+and on a phone the card centres instead of pointing at nothing. No tour
+library, no fetch, no analytics on where anyone stopped, both languages.
+The suite pins the joins: every ringed step's anchor must exist in a
+component, every step must speak both locales in different words, and no
+effect may auto-open the overlay.
 
 ## 1.72.0 — "The playground"
 
