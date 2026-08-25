@@ -20,6 +20,41 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+- **DCO sign-off, enforced in CI.** `.github/workflows/dco.yml` walks
+  `base..head` on every pull request and fails on any commit without a
+  `Signed-off-by:` line, naming the SHA and its subject. The failure prints
+  both remedies verbatim: `git commit -s` for work not yet committed,
+  `git rebase --signoff <base>` for commits that already exist. A guard that
+  fails without a remedy is one people learn to route around.
+
+  Read-only permissions, the plain `pull_request` event, and
+  `fetch-depth: 0` — a shallow checkout would walk an empty range and report
+  clean while examining nothing. Merge commits are skipped: GitHub writes
+  those itself when a branch is updated from the web.
+
+  Proved by planting the violation, in a scratch repository for the script
+  and in the workflow file for the guard: an unsigned commit fails and names
+  itself, a sign-off with no address still fails, a merge commit does not
+  fire, an empty range passes rather than erroring, and each of the seven
+  pinned facts fails when removed. Two of those plants found the guard
+  reading the wrong thing rather than the workflow being wrong: `\s+` matched
+  the job-level `contents: read` when the top-level one was flipped to
+  `write`, and the sign-off assertion was satisfied by a header comment
+  rather than by the grep. Both are tightened.
+
+- **A sign-off section in CONTRIBUTING.md**, stating plainly that the DCO is
+  a certification of origin and not a copyright assignment, linking the text
+  being certified, and giving the reason a single-maintainer project bothers:
+  a repository that cannot account for the provenance of its own history
+  cannot answer a corporate legal review and cannot change its own licence.
+  Guarded, so the document and the workflow cannot drift apart.
+
+Nothing installable changes: no package code, no command, no flag.
+
 ## 1.79.0 — "The dash the sweep left behind"
 
 ### Changed
