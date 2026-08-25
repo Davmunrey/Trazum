@@ -75,7 +75,7 @@ so every per-call finding is reported as unavailable rather than computed from
 a call count nobody supplied. The key is an Admin API key with read access to
 the usage report, given as `TRAZUM_ANTHROPIC_ADMIN_KEY` (or `ANTHROPIC_ADMIN_KEY`);
 `trazum connect` names it, and what it needs, in its own refusal. The
-[README's `trazum connect` section](../README.md#your-bill-without-the-export-trazum-connect)
+[the command reference's `trazum connect` chapter](commands.md#your-bill-without-the-export-trazum-connect)
 is the walkthrough.
 
 ## OpenAI

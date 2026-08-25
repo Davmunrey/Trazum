@@ -30,6 +30,7 @@ In the order somebody actually meets them:
 
 | | |
 |---|---|
+| [The command reference](commands.md) | Every command's full chapter — the book behind the README's table |
 | [Usage logs](usage-logs.md) | What Trazum can read, and what each optional field unlocks |
 | [Accounts](accounts.md) | Signing in to the web app: the prompt library, share links, and what the database holds |
 | [The gateway](gateway.md) | Standing in the path of the call, and refusing |

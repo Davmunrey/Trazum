@@ -78,7 +78,8 @@ const realBlock = (() => {
 })();
 
   const transcript = (() => {
-    const readme = readFileSync(new URL('../../../README.md', import.meta.url).pathname, 'utf8');
+    // The doctor chapter moved to the command reference in the README split.
+    const readme = readFileSync(new URL('../../../docs/commands.md', import.meta.url).pathname, 'utf8');
     const section = sectionOf(readme, '### The whole workspace at once: `trazum doctor`');
     return section;
   })();

@@ -22,6 +22,17 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Changed
+
+- **The README became the front door it claimed to be.** Four thousand
+  lines answered every question in one file and therefore none quickly;
+  now the README holds the thesis, the forty-two-command table, the first
+  five minutes, the surfaces, the models, the limitations and the privacy
+  answer — and the deep chapters moved verbatim to
+  [`docs/commands.md`](docs/commands.md), anchors preserved, every link
+  re-pointed and machine-checked. Nothing was cut: the same prose exists,
+  one page over, and the README says so where each chapter used to be.
+
 ### Added
 
 - **The Contributor License Agreement, gated in CI.** `docs/cla/CLA.md` — an
