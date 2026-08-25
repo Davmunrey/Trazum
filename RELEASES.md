@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.73.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.73.1**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,23 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.73.1 — "The result follows the scenario"
+
+**Flip the model selector and the Optimizer's dollars follow.** The result
+panel used to hold whatever the last press of Optimise computed, so
+changing models left a report priced for another model on screen — and it
+looked like nothing changed. The token reduction genuinely should not
+change (the rules transform text; the counter is one honest heuristic, not
+a per-vendor tokenizer), but the money and the advisories should, and now
+they do: once a result exists, scenario changes re-run the free
+deterministic pass automatically. It never fires before your first
+Optimise, never while the LLM pass is on — a dropdown must never spend a
+provider call unasked — and automatic runs stay out of your history.
+
+Also carried: the `humanizer` prose-editing skill vendored (MIT, pinned to
+its commit) into the tracked skills tree, with a registry that finally
+survives the container it was written in.
 
 ## 1.73.0 — "The guided tour"
 

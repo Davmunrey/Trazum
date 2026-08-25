@@ -215,7 +215,37 @@ export function Optimizer({
     [result, showDiff],
   );
 
-  async function run() {
+  /**
+   * The result follows the scenario — the 1.73.1 fix.
+   *
+   * The result panel used to hold whatever the last press of Optimise
+   * computed, so changing the model in the selector left a report priced for
+   * another model on screen, labelled with the old name: a reader flipping
+   * models to compare saw "nothing changes". The rules pass is deterministic
+   * and free, so once a result exists it simply re-runs, debounced, when the
+   * scenario or the level moves.
+   *
+   * Two refusals hold the shape. It never runs before the reader's first
+   * Optimise — a page that fires requests while somebody is still typing has
+   * taken a decision that was theirs. And it never runs while the LLM pass or
+   * the suggestion pass is enabled: both cost real provider calls, and a
+   * dropdown change must never spend money unasked — those stay behind the
+   * button. An automatic run also stays out of the history (see `run`).
+   */
+  useEffect(() => {
+    if (result === null) return;
+    if (llmEnabled || suggest) return;
+    if (prompt.trim() === '') return;
+    const timer = setTimeout(() => {
+      void run({ auto: true });
+    }, 400);
+    return () => clearTimeout(timer);
+    // Deliberately keyed to the pricing inputs alone: `result` here would
+    // re-fire on every answer, and `prompt` would optimise half-typed text.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model, callsPerMonth, avgOutputTokens, cacheHitRate, batchEligible, level, reorder]);
+
+  async function run(options: { auto?: boolean } = {}) {
     setLoading(true);
     setError(null);
     setCopied(false);
@@ -265,12 +295,15 @@ export function Optimizer({
         setResult(optimization);
         setReorderResult(optimization.reorder ?? null);
         setSuggestions(optimization.suggestions ?? null);
-        recordHistory(prompt, optimization);
+        // An automatic re-run refreshes the answer on screen; it is not a new
+        // decision by the reader, so it does not append to their history.
+        if (options.auto !== true) recordHistory(prompt, optimization);
         // Aggregate metrics, never the content of the prompt.
         track('optimize', {
           level,
           model,
           locale,
+          auto: options.auto === true,
           reduction_pct: Math.round(optimization.reductionPct),
           tokens_before: optimization.tokensBefore,
           llm_applied: optimization.llm?.applied ?? false,
@@ -588,7 +621,7 @@ export function Optimizer({
             </Collapsible>
 
             <Button
-              onClick={run}
+              onClick={() => void run()}
               disabled={loading || !prompt.trim()}
               size="lg"
               className="mt-1 w-full text-[15px] font-semibold"
