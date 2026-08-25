@@ -20,6 +20,40 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## 1.73.1 — "The result follows the scenario"
+
+### Fixed
+
+- **Changing the model re-prices the Optimizer's answer.** The result panel
+  held whatever the last press of Optimise computed, so flipping the model
+  selector left a report priced for another model on screen, labelled with
+  the old name — a reader comparing models saw "nothing changes" (the token
+  reduction *should* not change: the rules are deterministic text transforms
+  and the counter is one heuristic, deliberately not a per-vendor
+  tokenizer). Now, once a result exists, a change to the scenario — model,
+  calls, output tokens, cache hit rate, batch, level, reorder — re-runs the
+  free deterministic pass, debounced, so the dollars and the advisories
+  follow the selector. Two refusals hold the shape: the auto-run never fires
+  before the reader's first Optimise, and never while the LLM or suggestion
+  pass is enabled — a dropdown change must never spend a provider call
+  unasked. Automatic runs also stay out of the reader's history.
+  `optimizer-reprice.test.mjs` pins all four properties.
+
+### Added
+
+- **The `humanizer` skill, vendored.** From
+  [blader/humanizer](https://github.com/blader/humanizer) at `e2e92e7`, MIT:
+  thirty-five patterns of AI-sounding prose and a two-pass rewrite
+  discipline, covering the one lane no vendored skill covered — the
+  human-facing English this repository writes constantly. Vendored as
+  `SKILL.md` only, into the **tracked** `.claude/skills/` tree with a new
+  `VENDORED.md` registry, because the earlier vendoring round's registry
+  lived under the gitignored `.agents/` and survived nothing. The registry
+  carries the style caveat (the skill's em-dash and bold-label rules lose to
+  this repository's voice sample) and records one idea adopted without
+  vendoring, from addyosmani/agent-skills: reviews get the artifact and the
+  contract, never the conclusion.
+
 ## 1.73.0 — "The guided tour"
 
 ### Added

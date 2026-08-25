@@ -1184,6 +1184,15 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.73.1 — "The result follows the scenario" — released
+
+**The Optimizer re-prices when the scenario moves.** A model change used to
+leave a stale report on screen, priced for the previous model; now the free
+deterministic pass re-runs debounced on any scenario change, never before
+the first manual Optimise, never while a paid pass is enabled, and without
+touching the reader's history. Plus the `humanizer` skill vendored into the
+tracked skills tree with a persistent registry.
+
 ## 1.73.0 — "The guided tour" — released
 
 **The app explains its own doors.** A guided tour — dimmed page, one ringed
