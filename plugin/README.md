@@ -28,6 +28,6 @@ claude plugin install trazum@trazum
 
 ## The rest of the product
 
-The CLI (40 commands), the HTTP gateway, the GitHub Action and the web app
+The CLI (42 commands), the HTTP gateway, the GitHub Action and the web app
 are documented in the [repository](https://github.com/Davmunrey/Trazum).
 Everything installable is on npm under `@trazum/*`.

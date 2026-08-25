@@ -36,6 +36,10 @@ npm install -g @trazum/cli
 | `trazum diff <before> <after>` | somebody edited this; did it get worse? |
 | `trazum blame <file>` | who made this prompt expensive, and when |
 | `trazum eval <file> --cases <file>` | does the shorter prompt still work |
+| `trazum from-claude-code <dir>` | what my Claude Code sessions cost — reads the transcripts already on disk, the numbers only and never the words |
+| `trazum from-otel <file>` | what the LLM calls in my OpenTelemetry export cost — the GenAI spans any exporter already emits, counts only |
+| `trazum switch <log> --to <model>` | should we move this traffic, and when does moving pay — measured saving, declared migration cost, break-even as division on the past |
+| `trazum ownrate` | what my self-hosted model costs per million tokens — your GPU rate over your measured throughput, derived rather than guessed |
 | `trazum where [file]` | which prompts hide in my source files, and which model they call |
 | `trazum models` · `trazum rules` | prices; what each rule does |
 

@@ -75,7 +75,7 @@ In the order somebody actually meets them:
 
 ## The arcs, as they were planned
 
-Nine plans have been written down **before** the code. Eight delivered in
+Sixteen plans have been written down **before** the code. Fifteen delivered in
 full; one landed six of its nine arcs. The delivered plans are kept because
 the reasoning is the useful part, not because anything in them is still
 forthcoming: every chapter in them shipped. The 1.52–1.60 plan keeps its three
