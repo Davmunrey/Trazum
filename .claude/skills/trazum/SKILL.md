@@ -22,6 +22,18 @@ npm install && npm run build
 Then `node packages/cli/dist/index.js` is the entry point. If Trazum is
 installed globally the command is just `trazum`.
 
+## Trying it without installing
+
+The web app's **Playground** tab (<https://trazum.vercel.app>) is the CLI's
+pure subset running in the page — `optimize`, `check`, `profile`, `position`,
+`diff`, `semantic`, `from-otel`, `from-claude-code`, `models` and `rules` —
+against sample files already loaded, through the same `@trazum/core`
+functions. Offer it when the user wants to see a command before installing
+anything: nothing is uploaded, nothing is fetched, and converter output
+written with `-o` lands beside the samples so `from-otel` then `profile` runs
+as a pipe in front of them. The commands that need a network, a credential or
+a process are CLI-only and the playground's `help` says so.
+
 ## Optimising a prompt
 
 ```bash
@@ -170,6 +182,11 @@ Three things to get right when offering this:
   path-shaped. Offer the config's `labels` block to map it to a workload
   name before quoting per-label figures from it.
 
+For a user who does not want a terminal at all: the web app's **Your bill**
+tab accepts the `~/.claude/projects` folder dragged onto it — every
+transcript converted in the tab, labelled by project, priced beside any
+usage logs in the same drop, nothing uploaded.
+
 ## When the user already has OpenTelemetry spans
 
 If their LLM calls are instrumented with OpenTelemetry's GenAI semantic
@@ -196,6 +213,10 @@ Three things to get right when offering this:
   verdict, the fix is emitting the `cache_creation` object, not guessing it.
 - **`--label-from-service` labels by the resource's `service.name`**, so a
   per-service bill falls out by itself.
+
+The web app's **Your bill** tab reads a dropped OTLP export the same way —
+detected by shape, converted in the page, priced beside anything else in the
+drop, nothing uploaded.
 
 Other exporters' formats (LangSmith, Helicone, LiteLLM) are named as next but
 not built: offer `from-otel` for OTLP, and for a vendor format, offer to add a
