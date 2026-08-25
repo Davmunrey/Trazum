@@ -5,7 +5,7 @@ import { describe, it } from 'node:test';
 import { SPAWN_ENV } from './env.mjs';
 import { sectionOf } from '../../../test-utils/section.mjs';
 
-import { BUNDLED_CATALOGUE, CONNECTORS } from '@trazum/core';
+import { BUNDLED_CATALOGUE, CONNECTORS, LOCALES } from '@trazum/core';
 import { UPSTREAMS } from '../dist/gateway-server.js';
 
 const CLI = new URL('../dist/index.js', import.meta.url).pathname;
@@ -247,6 +247,97 @@ describe('every command with flags has exactly one OPTIONS section', () => {
     const dupes = (list) => [...new Set(list.filter((c, i) => list.indexOf(c) !== i))];
     assert.deepEqual(dupes(['eval', 'rank', 'eval']), ['eval']);
     assert.deepEqual(dupes(['eval', 'rank']), []);
+  });
+});
+
+describe('every localised help documents the same commands as the English one', () => {
+  /**
+   * `--help --locale es` was missing two commands, and no check ran in Spanish.
+   *
+   * The suites above prove the English help lists every command and gives each
+   * one an OPTIONS section. Both spawn `--help` with the environment blanked, so
+   * both only ever read English. A Spanish reader running `trazum --help` got a
+   * USAGE block with no `from-claude-code` and no `from-otel`, and no `OPCIONES
+   * DE` section for either — the help is one big template per locale, so the
+   * type system cannot catch a command that a translator forgets to add.
+   *
+   * This holds every non-English locale to the English one: the same commands in
+   * USAGE, and an OPTIONS section for each command that takes flags of its own.
+   * The section heading is localised (`OPTIONS FOR` / `OPCIONES DE`), so the
+   * command name after it is what is compared, not the heading text.
+   */
+  const source = readFileSync(new URL('../src/index.ts', import.meta.url).pathname, 'utf8');
+
+  const commandBlock = source.slice(
+    source.indexOf('const COMMAND_FLAGS'),
+    source.indexOf('\n};', source.indexOf('const COMMAND_FLAGS')),
+  );
+  const known = [
+    ...new Set([...commandBlock.matchAll(/^ {2}'?([a-z][a-z-]*)'?:\s*\[/gm)].map((m) => m[1])),
+  ].sort();
+
+  const globals = new Set(
+    [...source
+      .slice(source.indexOf('const GLOBAL_FLAGS'), source.indexOf('\n', source.indexOf('const GLOBAL_FLAGS')))
+      .matchAll(/'([^']+)'/g)].map((m) => m[1]),
+  );
+  const withOwnFlags = [...commandBlock.matchAll(/^ {2}'?([a-z][a-z-]*)'?:\s*\[([\s\S]*?)\],?$/gm)]
+    .map((m) => [m[1], [...m[2].matchAll(/'([^']+)'/g)].map((x) => x[1])])
+    .filter(([, flags]) => flags.some((f) => !globals.has(f)))
+    .map(([name]) => name)
+    .sort();
+
+  // Every locale the CLI can render help in, beyond English, taken from the
+  // one place the reviewed locales are declared rather than typed here.
+  const otherLocales = LOCALES.filter((c) => c !== 'en');
+
+  const usageCommands = (text) => {
+    const head = text.match(/^(USAGE|USO)/m);
+    const start = head ? text.indexOf(head[0]) : 0;
+    const block = text.slice(start, text.indexOf('\n\n', start));
+    return [...new Set([...block.matchAll(/^ {2}trazum ([a-z][a-z-]*)/gm)].map((m) => m[1]))].sort();
+  };
+  const optionsHeadings = (text) =>
+    [...text.matchAll(/^(?:OPTIONS FOR|OPCIONES DE) ([a-z][a-z-]*)$/gm)].map((m) => m[1]);
+
+  it('reads a non-English locale to check at all', () => {
+    assert.ok(otherLocales.length >= 1, 'no non-English locale to check');
+    assert.ok(known.length >= 30, `only ${known.length} commands in the allowlist`);
+  });
+
+  for (const locale of otherLocales) {
+    const text = help(['--help', '--locale', locale]);
+
+    it(`${locale}: USAGE lists every command the CLI dispatches`, () => {
+      const usage = usageCommands(text);
+      const missing = known.filter((c) => !usage.includes(c));
+      assert.deepEqual(missing, [], `--help --locale ${locale} omits from USAGE: ${missing.join(', ')}`);
+    });
+
+    it(`${locale}: every command with its own flags has an OPTIONS section`, () => {
+      const headings = optionsHeadings(text);
+      const missing = withOwnFlags.filter((c) => !headings.includes(c));
+      assert.deepEqual(
+        missing,
+        [],
+        `--help --locale ${locale} documents no options for: ${missing.join(', ')}`,
+      );
+    });
+  }
+
+  it('and the detector would have caught the hole it was written for', () => {
+    // A Spanish USAGE block with the two from-* lines removed, handed to the same
+    // reader the real check uses — proof it fails on the shape, not just passes
+    // on today's corrected help.
+    const holed =
+      'USO\n  trazum position <uso.jsonl>\n  trazum pulse [--max-stale-hours <n>]\n\n';
+    const usage = usageCommands(holed);
+    assert.equal(usage.includes('from-otel'), false);
+    assert.equal(known.includes('from-otel'), true);
+    assert.ok(
+      known.filter((c) => !usage.includes(c)).includes('from-otel'),
+      'the USAGE-parity check cannot see a missing from-otel',
+    );
   });
 });
 

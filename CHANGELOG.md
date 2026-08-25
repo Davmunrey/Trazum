@@ -20,6 +20,29 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## 1.71.1 — "The help, in the language it was asked in"
+
+### Fixed
+
+- **`trazum --help --locale es` documents `from-claude-code` and `from-otel`
+  again.** The Spanish help is one large per-locale template, so the type
+  system cannot catch a command a translation forgets. `from-claude-code` (from
+  1.69) and `from-otel` (from 1.71) were both absent from the Spanish USAGE
+  block and had no `OPCIONES DE` section, so a Spanish reader could not learn
+  from `--help` that the two conversion commands exist. Both are now in the
+  USAGE block and each has its options section, translated. The error messages
+  for those commands were already localised; the gap was only the help text.
+
+### Guards
+
+- **`help-enumerations.test.js` now runs the help in every reviewed locale, not
+  just English.** The existing suite proved the English help lists every command
+  and gives each one an options section, but it only ever spawned the English
+  help, so the Spanish hole went unseen. It now asserts USAGE parity and an
+  options section per flag-bearing command for each locale in `LOCALES` beyond
+  English, and carries a planted Spanish USAGE block missing a `from-` line to
+  prove the check fails on the shape it was written for.
+
 ## 1.71.0 — "The universal cost lens"
 
 ### Added
