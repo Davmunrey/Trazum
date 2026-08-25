@@ -81,16 +81,16 @@ const UNREVIEWED_NOTE: Record<MarketingLocale, string> = {
 const COPY: Record<MarketingLocale, Copy> = {
   en: {
     localeName: 'English',
-    heroEyebrow: 'Trazum — prompt cost analyser',
+    heroEyebrow: 'Trazum: prompt cost analyser',
     heroTitle: 'You know what you spend on LLMs. Trazum tells you where.',
     heroLede:
-      'Deterministic prompt optimisation, token budgets in CI, a usage-log profiler that names what would actually move the bill, and spend ceilings enforced before a call is made. Measured, never estimated — every figure ships with its denominator.',
+      'Deterministic prompt optimisation, token budgets in CI, a usage-log profiler that names what would actually move the bill, and spend ceilings enforced before a call is made. Measured, never estimated: every figure ships with its denominator.',
     ctaDemo: 'Open the live demo',
     ctaGitHub: 'Star on GitHub',
     storyEyebrow: 'The problem',
     story1Title: 'The bill grows and nobody can say which workload did it.',
     story1Body:
-      'A support bot, a RAG pipeline and an agent share one invoice. Without labels on the calls, a 3x spike has no owner — and the tools that promise answers estimate instead of measuring.',
+      'A support bot, a RAG pipeline and an agent share one invoice. Without labels on the calls, a 3x spike has no owner, and the tools that promise answers estimate instead of measuring.',
     story2Title: 'Estimates are how the wrong thing gets fixed.',
     story2Body:
       'Trazum prices the usage records your provider already returns, record by record, and refuses to print a forecast. A stale month is "cannot tell", a quiet day is a measured $0, and unpriced models are named instead of hidden in the total.',
@@ -106,24 +106,24 @@ const COPY: Record<MarketingLocale, Copy> = {
       '39 commands. Token budgets and drift baselines that exit 1, a pre-commit hook that is one pipe, and a GitHub Action that comments the report on your PR.',
     doorGatewayTitle: 'Gateway',
     doorGatewayBody:
-      'Stands in front of the provider and refuses a call that breaks your spend policy — per day, per session, per label — with waivers that carry an author and an expiry.',
+      'Stands in front of the provider and refuses a call that breaks your spend policy (per day, per session, per label), with waivers that carry an author and an expiry.',
     doorBrowserTitle: 'Browser',
     doorBrowserBody:
-      'Paste a usage log and read your bill, the what-if, and where the month stands against your ceilings. Nothing you paste leaves the page — there is no fetch, and a test holds it.',
+      'Paste a usage log and read your bill, the what-if, and where the month stands against your ceilings. Nothing you paste leaves the page: there is no fetch, and a test holds it.',
     doorAgentTitle: 'Agents',
     doorAgentBody:
-      'An MCP server with a spend guard your agent consults before it spends, and a converter that prices your Claude Code sessions from the transcripts already on disk — numbers only, never the words.',
+      'An MCP server with a spend guard your agent consults before it spends, and a converter that prices your Claude Code sessions from the transcripts already on disk: numbers only, never the words.',
     proofEyebrow: 'Measured on the demo prompt',
     proofTitle: 'What one wordy support prompt gave back',
     proofBody:
-      'The bundled demo prompt, aggressive level, one million calls a month — the product’s own output, not a projection:',
+      'The bundled demo prompt, aggressive level, one million calls a month. The product’s own output, not a projection:',
     proofRules: 'recovered by the rules, semantics intact',
     proofRoute: 'moving eligible calls to a cheaper model',
     proofBatch: 'flat, when the work tolerates a batch window',
     openEyebrow: 'Open source',
     openTitle: 'The core is MIT, and stays MIT.',
     openBody:
-      'The engine, the CLI, the MCP server, the format and its nineteen contracts are open source — adopt the format without adopting the tool. What will be paid, when it exists, is the hosted convenience around it: teams, a managed gateway, org-wide policy. The measuring never goes behind a paywall.',
+      'The engine, the CLI, the MCP server, the format and its nineteen contracts are open source. Adopt the format without adopting the tool. What will be paid, when it exists, is the hosted convenience around it: teams, a managed gateway, org-wide policy. The measuring never goes behind a paywall.',
     openCta: 'Read the code',
     finalTitle: 'Try it on your own bill.',
     finalBody:
@@ -132,16 +132,16 @@ const COPY: Record<MarketingLocale, Copy> = {
   },
   es: {
     localeName: 'Español',
-    heroEyebrow: 'Trazum — analizador de costes de prompts',
+    heroEyebrow: 'Trazum: analizador de costes de prompts',
     heroTitle: 'Sabes lo que gastas en LLMs. Trazum te dice dónde.',
     heroLede:
-      'Optimización determinista de prompts, presupuestos de tokens en CI, un perfilador de logs de uso que nombra lo que de verdad movería la factura, y techos de gasto aplicados antes de hacer la llamada. Medido, nunca estimado — cada cifra viaja con su denominador.',
+      'Optimización determinista de prompts, presupuestos de tokens en CI, un perfilador de logs de uso que nombra lo que de verdad movería la factura, y techos de gasto aplicados antes de hacer la llamada. Medido, nunca estimado: cada cifra viaja con su denominador.',
     ctaDemo: 'Abrir la demo',
     ctaGitHub: 'Estrella en GitHub',
     storyEyebrow: 'El problema',
     story1Title: 'La factura crece y nadie sabe qué workload fue.',
     story1Body:
-      'Un bot de soporte, un pipeline RAG y un agente comparten una factura. Sin etiquetas en las llamadas, un pico de 3x no tiene dueño — y las herramientas que prometen respuestas estiman en vez de medir.',
+      'Un bot de soporte, un pipeline RAG y un agente comparten una factura. Sin etiquetas en las llamadas, un pico de 3x no tiene dueño, y las herramientas que prometen respuestas estiman en vez de medir.',
     story2Title: 'Las estimaciones son cómo se arregla lo que no era.',
     story2Body:
       'Trazum tasa los registros de uso que tu proveedor ya devuelve, registro a registro, y se niega a imprimir un pronóstico. Un mes rancio es «no se puede saber», un día tranquilo es un $0 medido, y los modelos sin precio se nombran en vez de esconderse en el total.',
@@ -157,24 +157,24 @@ const COPY: Record<MarketingLocale, Copy> = {
       '39 comandos. Presupuestos de tokens y baselines de deriva que salen con 1, un hook de pre-commit que es una tubería, y una GitHub Action que comenta el informe en tu PR.',
     doorGatewayTitle: 'Gateway',
     doorGatewayBody:
-      'Se pone delante del proveedor y rechaza la llamada que rompe tu política de gasto — por día, por sesión, por etiqueta — con waivers que llevan autor y caducidad.',
+      'Se pone delante del proveedor y rechaza la llamada que rompe tu política de gasto (por día, por sesión, por etiqueta), con waivers que llevan autor y caducidad.',
     doorBrowserTitle: 'Navegador',
     doorBrowserBody:
-      'Pega un log de uso y lee tu factura, el what-if y dónde está el mes contra tus techos. Nada de lo que pegas sale de la página — no hay ningún fetch, y un test lo vigila.',
+      'Pega un log de uso y lee tu factura, el what-if y dónde está el mes contra tus techos. Nada de lo que pegas sale de la página: no hay ningún fetch, y un test lo vigila.',
     doorAgentTitle: 'Agentes',
     doorAgentBody:
-      'Un servidor MCP con un guardián de gasto que tu agente consulta antes de gastar, y un conversor que tasa tus sesiones de Claude Code desde los transcripts que ya tienes en disco — solo los números, jamás las palabras.',
+      'Un servidor MCP con un guardián de gasto que tu agente consulta antes de gastar, y un conversor que tasa tus sesiones de Claude Code desde los transcripts que ya tienes en disco: solo los números, jamás las palabras.',
     proofEyebrow: 'Medido sobre el prompt de demo',
     proofTitle: 'Lo que devolvió un prompt de soporte verborreico',
     proofBody:
-      'El prompt de demo incluido, nivel agresivo, un millón de llamadas al mes — la salida del propio producto, no una proyección:',
+      'El prompt de demo incluido, nivel agresivo, un millón de llamadas al mes. La salida del propio producto, no una proyección:',
     proofRules: 'recuperado por las reglas, semántica intacta',
     proofRoute: 'moviendo llamadas elegibles a un modelo más barato',
     proofBatch: 'plano, cuando el trabajo tolera una ventana de batch',
     openEyebrow: 'Open source',
     openTitle: 'El núcleo es MIT, y seguirá siendo MIT.',
     openBody:
-      'El motor, el CLI, el servidor MCP, el formato y sus diecinueve contratos son open source — adopta el formato sin adoptar la herramienta. Lo que será de pago, cuando exista, es la comodidad alojada alrededor: equipos, gateway gestionado, política a escala de organización. La medición nunca irá detrás de un muro de pago.',
+      'El motor, el CLI, el servidor MCP, el formato y sus diecinueve contratos son open source. Adopta el formato sin adoptar la herramienta. Lo que será de pago, cuando exista, es la comodidad alojada alrededor: equipos, gateway gestionado, política a escala de organización. La medición nunca irá detrás de un muro de pago.',
     openCta: 'Leer el código',
     finalTitle: 'Pruébalo con tu propia factura.',
     finalBody:
@@ -183,16 +183,16 @@ const COPY: Record<MarketingLocale, Copy> = {
   },
   fr: {
     localeName: 'Français',
-    heroEyebrow: 'Trazum — analyseur de coût des prompts',
+    heroEyebrow: 'Trazum : analyseur de coût des prompts',
     heroTitle: 'Vous savez ce que vous dépensez en LLM. Trazum vous dit où.',
     heroLede:
-      'Optimisation déterministe des prompts, budgets de tokens en CI, un profileur de journaux d’usage qui nomme ce qui ferait vraiment bouger la facture, et des plafonds de dépense appliqués avant même l’appel. Mesuré, jamais estimé — chaque chiffre arrive avec son dénominateur.',
+      'Optimisation déterministe des prompts, budgets de tokens en CI, un profileur de journaux d’usage qui nomme ce qui ferait vraiment bouger la facture, et des plafonds de dépense appliqués avant même l’appel. Mesuré, jamais estimé : chaque chiffre arrive avec son dénominateur.',
     ctaDemo: 'Ouvrir la démo',
     ctaGitHub: 'Star sur GitHub',
     storyEyebrow: 'Le problème',
     story1Title: 'La facture grimpe et personne ne sait quelle charge l’a fait.',
     story1Body:
-      'Un bot de support, un pipeline RAG et un agent partagent une même facture. Sans étiquette sur les appels, un pic de 3× n’a pas de responsable — et les outils qui promettent des réponses estiment au lieu de mesurer.',
+      'Un bot de support, un pipeline RAG et un agent partagent une même facture. Sans étiquette sur les appels, un pic de 3× n’a pas de responsable, et les outils qui promettent des réponses estiment au lieu de mesurer.',
     story2Title: 'Les estimations, c’est ainsi qu’on corrige la mauvaise chose.',
     story2Body:
       'Trazum tarifie les enregistrements d’usage que votre fournisseur renvoie déjà, un par un, et refuse d’imprimer une prévision. Un mois périmé est « impossible à dire », une journée calme est un 0 $ mesuré, et les modèles non tarifés sont nommés plutôt que cachés dans le total.',
@@ -208,24 +208,24 @@ const COPY: Record<MarketingLocale, Copy> = {
       '39 commandes. Budgets de tokens et lignes de base de dérive qui sortent en 1, un hook de pré-commit tenant en un pipe, et une GitHub Action qui commente le rapport sur votre PR.',
     doorGatewayTitle: 'Passerelle',
     doorGatewayBody:
-      'Se place devant le fournisseur et refuse un appel qui casse votre politique de dépense — par jour, par session, par étiquette — avec des dérogations portant un auteur et une échéance.',
+      'Se place devant le fournisseur et refuse un appel qui casse votre politique de dépense (par jour, par session, par étiquette), avec des dérogations portant un auteur et une échéance.',
     doorBrowserTitle: 'Navigateur',
     doorBrowserBody:
-      'Collez un journal d’usage et lisez votre facture, le what-if, et où en est le mois face à vos plafonds. Rien de ce que vous collez ne quitte la page — aucun fetch, et un test le garantit.',
+      'Collez un journal d’usage et lisez votre facture, le what-if, et où en est le mois face à vos plafonds. Rien de ce que vous collez ne quitte la page : aucun fetch, et un test le garantit.',
     doorAgentTitle: 'Agents',
     doorAgentBody:
-      'Un serveur MCP avec un garde de dépense que votre agent consulte avant de dépenser, et un convertisseur qui tarifie vos sessions Claude Code depuis les transcriptions déjà sur le disque — les chiffres seulement, jamais les mots.',
+      'Un serveur MCP avec un garde de dépense que votre agent consulte avant de dépenser, et un convertisseur qui tarifie vos sessions Claude Code depuis les transcriptions déjà sur le disque : les chiffres seulement, jamais les mots.',
     proofEyebrow: 'Mesuré sur le prompt de démo',
     proofTitle: 'Ce qu’un prompt de support verbeux a rendu',
     proofBody:
-      'Le prompt de démo fourni, niveau agressif, un million d’appels par mois — la sortie du produit lui-même, pas une projection :',
+      'Le prompt de démo fourni, niveau agressif, un million d’appels par mois. La sortie du produit lui-même, pas une projection :',
     proofRules: 'récupéré par les règles, sémantique intacte',
     proofRoute: 'en déplaçant les appels éligibles vers un modèle moins cher',
     proofBatch: 'à plat, quand le travail tolère une fenêtre de batch',
     openEyebrow: 'Open source',
     openTitle: 'Le cœur est MIT, et reste MIT.',
     openBody:
-      'Le moteur, le CLI, le serveur MCP, le format et ses dix-neuf contrats sont open source — adoptez le format sans adopter l’outil. Ce qui sera payant, le jour où cela existera, c’est le confort hébergé autour : équipes, passerelle gérée, politique à l’échelle de l’organisation. La mesure ne passe jamais derrière un péage.',
+      'Le moteur, le CLI, le serveur MCP, le format et ses dix-neuf contrats sont open source. Adoptez le format sans adopter l’outil. Ce qui sera payant, le jour où cela existera, c’est le confort hébergé autour : équipes, passerelle gérée, politique à l’échelle de l’organisation. La mesure ne passe jamais derrière un péage.',
     openCta: 'Lire le code',
     finalTitle: 'Essayez-le sur votre propre facture.',
     finalBody:
@@ -234,16 +234,16 @@ const COPY: Record<MarketingLocale, Copy> = {
   },
   de: {
     localeName: 'Deutsch',
-    heroEyebrow: 'Trazum — Prompt-Kostenanalyse',
+    heroEyebrow: 'Trazum: Prompt-Kostenanalyse',
     heroTitle: 'Sie wissen, was Sie für LLMs ausgeben. Trazum sagt Ihnen, wofür.',
     heroLede:
-      'Deterministische Prompt-Optimierung, Token-Budgets in der CI, ein Nutzungsprotokoll-Profiler, der benennt, was die Rechnung wirklich bewegt, und Ausgabengrenzen, die vor dem Aufruf greifen. Gemessen, nie geschätzt — jede Zahl kommt mit ihrem Nenner.',
+      'Deterministische Prompt-Optimierung, Token-Budgets in der CI, ein Nutzungsprotokoll-Profiler, der benennt, was die Rechnung wirklich bewegt, und Ausgabengrenzen, die vor dem Aufruf greifen. Gemessen, nie geschätzt: Jede Zahl kommt mit ihrem Nenner.',
     ctaDemo: 'Live-Demo öffnen',
     ctaGitHub: 'Auf GitHub sternen',
     storyEyebrow: 'Das Problem',
     story1Title: 'Die Rechnung wächst, und niemand weiß, welche Last es war.',
     story1Body:
-      'Ein Support-Bot, eine RAG-Pipeline und ein Agent teilen sich eine Rechnung. Ohne Labels an den Aufrufen hat ein 3×-Ausschlag keinen Verantwortlichen — und die Tools, die Antworten versprechen, schätzen, statt zu messen.',
+      'Ein Support-Bot, eine RAG-Pipeline und ein Agent teilen sich eine Rechnung. Ohne Labels an den Aufrufen hat ein 3×-Ausschlag keinen Verantwortlichen, und die Tools, die Antworten versprechen, schätzen, statt zu messen.',
     story2Title: 'Schätzungen sind der Weg, das Falsche zu beheben.',
     story2Body:
       'Trazum bepreist die Nutzungsdatensätze, die Ihr Anbieter ohnehin zurückgibt, Datensatz für Datensatz, und weigert sich, eine Prognose auszugeben. Ein veralteter Monat ist „nicht feststellbar“, ein ruhiger Tag ein gemessener 0 $, und nicht bepreiste Modelle werden benannt statt in der Summe versteckt.',
@@ -259,24 +259,24 @@ const COPY: Record<MarketingLocale, Copy> = {
       '39 Befehle. Token-Budgets und Drift-Baselines, die mit 1 beenden, ein Pre-Commit-Hook aus einer einzigen Pipe, und eine GitHub-Action, die den Bericht an Ihre PR kommentiert.',
     doorGatewayTitle: 'Gateway',
     doorGatewayBody:
-      'Stellt sich vor den Anbieter und verweigert einen Aufruf, der Ihre Ausgaben-Richtlinie bricht — pro Tag, pro Sitzung, pro Label — mit Ausnahmen, die Autor und Ablaufdatum tragen.',
+      'Stellt sich vor den Anbieter und verweigert einen Aufruf, der Ihre Ausgaben-Richtlinie bricht (pro Tag, pro Sitzung, pro Label), mit Ausnahmen, die Autor und Ablaufdatum tragen.',
     doorBrowserTitle: 'Browser',
     doorBrowserBody:
-      'Fügen Sie ein Nutzungsprotokoll ein und lesen Sie Ihre Rechnung, das Was-wäre-wenn und wo der Monat gegen Ihre Grenzen steht. Nichts, was Sie einfügen, verlässt die Seite — kein Fetch, und ein Test hält das fest.',
+      'Fügen Sie ein Nutzungsprotokoll ein und lesen Sie Ihre Rechnung, das Was-wäre-wenn und wo der Monat gegen Ihre Grenzen steht. Nichts, was Sie einfügen, verlässt die Seite: kein Fetch, und ein Test hält das fest.',
     doorAgentTitle: 'Agenten',
     doorAgentBody:
-      'Ein MCP-Server mit einem Ausgaben-Wächter, den Ihr Agent vor dem Ausgeben befragt, und ein Konverter, der Ihre Claude-Code-Sitzungen aus den bereits auf der Platte liegenden Transkripten bepreist — nur die Zahlen, nie die Worte.',
+      'Ein MCP-Server mit einem Ausgaben-Wächter, den Ihr Agent vor dem Ausgeben befragt, und ein Konverter, der Ihre Claude-Code-Sitzungen aus den bereits auf der Platte liegenden Transkripten bepreist: nur die Zahlen, nie die Worte.',
     proofEyebrow: 'Am Demo-Prompt gemessen',
     proofTitle: 'Was ein wortreicher Support-Prompt zurückgab',
     proofBody:
-      'Der mitgelieferte Demo-Prompt, aggressive Stufe, eine Million Aufrufe im Monat — die eigene Ausgabe des Produkts, keine Projektion:',
+      'Der mitgelieferte Demo-Prompt, aggressive Stufe, eine Million Aufrufe im Monat. Die eigene Ausgabe des Produkts, keine Projektion:',
     proofRules: 'von den Regeln zurückgeholt, Semantik intakt',
     proofRoute: 'geeignete Aufrufe auf ein günstigeres Modell verschoben',
     proofBatch: 'glatt, wenn die Arbeit ein Batch-Fenster verträgt',
     openEyebrow: 'Open Source',
     openTitle: 'Der Kern ist MIT und bleibt MIT.',
     openBody:
-      'Die Engine, das CLI, der MCP-Server, das Format und seine neunzehn Verträge sind Open Source — übernehmen Sie das Format, ohne das Tool zu übernehmen. Was kosten wird, sobald es existiert, ist der gehostete Komfort drumherum: Teams, ein verwaltetes Gateway, organisationsweite Richtlinien. Das Messen kommt nie hinter eine Bezahlschranke.',
+      'Die Engine, das CLI, der MCP-Server, das Format und seine neunzehn Verträge sind Open Source. Übernehmen Sie das Format, ohne das Tool zu übernehmen. Was kosten wird, sobald es existiert, ist der gehostete Komfort drumherum: Teams, ein verwaltetes Gateway, organisationsweite Richtlinien. Das Messen kommt nie hinter eine Bezahlschranke.',
     openCta: 'Den Code lesen',
     finalTitle: 'Probieren Sie es an Ihrer eigenen Rechnung.',
     finalBody:
@@ -285,16 +285,16 @@ const COPY: Record<MarketingLocale, Copy> = {
   },
   pt: {
     localeName: 'Português',
-    heroEyebrow: 'Trazum — analisador de custo de prompts',
+    heroEyebrow: 'Trazum: analisador de custo de prompts',
     heroTitle: 'Você sabe quanto gasta em LLMs. O Trazum diz onde.',
     heroLede:
-      'Otimização determinística de prompts, orçamentos de tokens no CI, um analisador de registos de uso que nomeia o que realmente moveria a fatura, e tetos de gasto aplicados antes de fazer a chamada. Medido, nunca estimado — cada número viaja com o seu denominador.',
+      'Otimização determinística de prompts, orçamentos de tokens no CI, um analisador de registos de uso que nomeia o que realmente moveria a fatura, e tetos de gasto aplicados antes de fazer a chamada. Medido, nunca estimado: cada número viaja com o seu denominador.',
     ctaDemo: 'Abrir a demo',
     ctaGitHub: 'Estrela no GitHub',
     storyEyebrow: 'O problema',
     story1Title: 'A fatura cresce e ninguém sabe qual carga a fez.',
     story1Body:
-      'Um bot de suporte, um pipeline RAG e um agente partilham uma fatura. Sem rótulos nas chamadas, um pico de 3× não tem dono — e as ferramentas que prometem respostas estimam em vez de medir.',
+      'Um bot de suporte, um pipeline RAG e um agente partilham uma fatura. Sem rótulos nas chamadas, um pico de 3× não tem dono, e as ferramentas que prometem respostas estimam em vez de medir.',
     story2Title: 'As estimativas são como se corrige a coisa errada.',
     story2Body:
       'O Trazum tarifa os registos de uso que o seu fornecedor já devolve, registo a registo, e recusa imprimir uma previsão. Um mês desatualizado é «não dá para saber», um dia calmo é um 0 $ medido, e os modelos sem preço são nomeados em vez de escondidos no total.',
@@ -310,24 +310,24 @@ const COPY: Record<MarketingLocale, Copy> = {
       '39 comandos. Orçamentos de tokens e baselines de deriva que saem com 1, um hook de pré-commit que é um só pipe, e uma GitHub Action que comenta o relatório no seu PR.',
     doorGatewayTitle: 'Gateway',
     doorGatewayBody:
-      'Coloca-se à frente do fornecedor e recusa uma chamada que quebra a sua política de gasto — por dia, por sessão, por rótulo — com dispensas que trazem autor e validade.',
+      'Coloca-se à frente do fornecedor e recusa uma chamada que quebra a sua política de gasto (por dia, por sessão, por rótulo), com dispensas que trazem autor e validade.',
     doorBrowserTitle: 'Navegador',
     doorBrowserBody:
-      'Cole um registo de uso e leia a sua fatura, o what-if, e onde está o mês face aos seus tetos. Nada do que cola sai da página — não há fetch, e um teste garante-o.',
+      'Cole um registo de uso e leia a sua fatura, o what-if, e onde está o mês face aos seus tetos. Nada do que cola sai da página: não há fetch, e um teste garante-o.',
     doorAgentTitle: 'Agentes',
     doorAgentBody:
-      'Um servidor MCP com um guarda de gasto que o seu agente consulta antes de gastar, e um conversor que tarifa as suas sessões de Claude Code a partir das transcrições já em disco — só os números, nunca as palavras.',
+      'Um servidor MCP com um guarda de gasto que o seu agente consulta antes de gastar, e um conversor que tarifa as suas sessões de Claude Code a partir das transcrições já em disco: só os números, nunca as palavras.',
     proofEyebrow: 'Medido no prompt de demo',
     proofTitle: 'O que um prompt de suporte prolixo devolveu',
     proofBody:
-      'O prompt de demo incluído, nível agressivo, um milhão de chamadas por mês — a saída do próprio produto, não uma projeção:',
+      'O prompt de demo incluído, nível agressivo, um milhão de chamadas por mês. A saída do próprio produto, não uma projeção:',
     proofRules: 'recuperado pelas regras, semântica intacta',
     proofRoute: 'movendo chamadas elegíveis para um modelo mais barato',
     proofBatch: 'fixo, quando o trabalho tolera uma janela de batch',
     openEyebrow: 'Open source',
     openTitle: 'O núcleo é MIT, e continua MIT.',
     openBody:
-      'O motor, o CLI, o servidor MCP, o formato e os seus dezanove contratos são open source — adote o formato sem adotar a ferramenta. O que será pago, quando existir, é a comodidade alojada à volta: equipas, gateway gerido, política à escala da organização. A medição nunca vai para trás de um muro de pagamento.',
+      'O motor, o CLI, o servidor MCP, o formato e os seus dezanove contratos são open source. Adote o formato sem adotar a ferramenta. O que será pago, quando existir, é a comodidade alojada à volta: equipas, gateway gerido, política à escala da organização. A medição nunca vai para trás de um muro de pagamento.',
     openCta: 'Ler o código',
     finalTitle: 'Experimente na sua própria fatura.',
     finalBody:

@@ -142,7 +142,7 @@ export function Plan({
                     <span>
                       <span className="text-muted-foreground">{index + 1}. </span>
                       {t.plan.action(action.kind, labelName(action.label), action.model)}
-                      {' — '}
+                      {': '}
                       <span className="font-semibold">{moneyFor(action, t)}</span>
                     </span>
                     {action.detail.routeTo && (

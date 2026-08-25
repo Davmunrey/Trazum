@@ -992,7 +992,7 @@ function Report({
                     const growthPct =
                       prev.total.totalUsd > 0
                         ? `${delta >= 0 ? '+' : ''}${((delta / prev.total.totalUsd) * 100).toFixed(1)}%`
-                        : '—';
+                        : 'n/a';
                     // Drivers over the union of keys — core's one
                     // implementation, shared with the CLI and the MCP, so
                     // three surfaces cannot disagree about what a vanished

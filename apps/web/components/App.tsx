@@ -603,7 +603,7 @@ export function App({
             target="_blank"
             rel="noreferrer noopener"
             title={railCollapsed ? label : undefined}
-            aria-label={`${label} — ${t.page.opensExternal}`}
+            aria-label={`${label}, ${t.page.opensExternal}`}
             className={cn(
               'group/link flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[13px] text-muted-foreground transition-colors hover:bg-layer-hover hover:text-foreground',
               FOCUS_RING,

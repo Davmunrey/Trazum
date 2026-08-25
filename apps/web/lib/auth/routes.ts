@@ -33,7 +33,7 @@ export function jsonError(message: string, status: number, headers?: HeadersInit
 
 /** 503, not 404: the route exists, the deployment has not configured it. */
 export function authDisabled(config: Extract<AuthConfig, { enabled: false }>): Response {
-  return jsonError(`sign-in is not configured on this deployment — ${config.reason}`, 503);
+  return jsonError(`sign-in is not configured on this deployment: ${config.reason}`, 503);
 }
 
 /**

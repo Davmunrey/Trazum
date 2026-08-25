@@ -65,14 +65,14 @@ export async function GET(request: Request): Promise<Response> {
     // arrive here — a forged callback, and a real one that sat in a tab past the
     // ten-minute window — are indistinguishable from the outside, and telling
     // them apart would tell an attacker which half of the attack worked.
-    return jsonError('sign-in could not be verified — start again', 400, {
+    return jsonError('sign-in could not be verified; start again', 400, {
       'set-cookie': cleared,
     });
   }
 
   const code = params.get('code');
   if (!code) {
-    return jsonError('sign-in could not be verified — start again', 400, {
+    return jsonError('sign-in could not be verified; start again', 400, {
       'set-cookie': cleared,
     });
   }
