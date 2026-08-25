@@ -20,6 +20,45 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## 1.77.1 — "The folder name stands"
+
+### Fixed
+
+- **An alias that survived only the bundled catalogue.** Two functions
+  built a catalogue index and 1.77.0 taught aliases to one of them, so a
+  dated model id priced correctly until somebody passed `--pricing-live`
+  and then eight calls quietly left the totals. Found by running 1.77.1
+  against a real bill: 10,238 calls became 10,230. There is one index
+  builder now, `indexModels`, and the guard prices the same id through the
+  bundled catalogue, a live-shaped feed and a hand-written overlay.
+
+- **An overlay declaration silently discarded.** The same change made
+  membership tests see aliases, so an overlay declaring an id that is
+  another model's alias was neither patched nor added: an operator stated
+  a price and nothing happened, without a word. Membership is tested by
+  real id now, and an explicit declaration outranks a convenience alias.
+
+- **Two small ones from the same session.** `trazum switch` printed an
+  ASCII `->` where every other report prints `→`, and an unknown-option
+  error listed a command's own flags twice when they overlapped the global
+  ones. A refusal that stutters reads like a tool unsure of what it takes.
+
+- **A decoding presented as a fact, when the encoding could not support
+  one.** 1.77.0 labelled by the last segment of a Claude Code project
+  folder, on the theory that its `/`-as-`-` path encoding could be undone.
+  It cannot: **both `/` and `-` map to `-`**, so nothing in the folder name
+  says which dashes were separators. The first real run found it in
+  minutes: `-Users-mac-ai-job-search-ai-job-search` was labelled `search`
+  and `-Users-mac-Desktop-Pulse-Coffee-pulse-coffee` was labelled
+  `coffee`, two projects renamed to a word that was never their name, with
+  a report then attributing money to them.
+
+  The folder name now stands as it is, minus the leading separator. It is
+  longer than the guess and it is the one thing here that is certainly
+  true: a reader can find the folder it names. Both real folders are
+  fixtures in the suite now, asserted by the wrong labels they must never
+  produce again.
+
 ## 1.77.0 — "The agent's bill, told honestly"
 
 ### Added

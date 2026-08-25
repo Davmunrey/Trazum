@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.77.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.77.1**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,29 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.77.1 — "The folder name stands"
+
+1.77.0 taught `from-claude-code` to label by project folder, and decoded
+the folder name into something tidy. The first real run found the flaw in
+minutes: Claude Code encodes a path by turning `/` into `-`, and since a
+project name may already contain `-`, nothing afterwards can tell the two
+apart. `ai-job-search` was labelled `search`. `pulse-coffee` was labelled
+`coffee`. Two projects renamed to words that were never their names, with
+money attributed to them.
+
+The same session found three more, all of them the shape of a change that
+was applied in one place and not the other: the model aliases 1.77.0 added
+were indexed by one of the two catalogue builders, so `--pricing-live`
+dropped eight calls out of a real bill; an overlay declaring an id that was
+already an alias was silently discarded; and `switch` printed an ASCII
+arrow where every other report prints `→`. One index builder now, one
+arrow, and a refusal that no longer lists a flag twice.
+
+The folder name stands as it is now, minus the leading separator: longer,
+uglier, and true. Presenting a decoding as a fact when the encoding cannot
+support one is the failure this product exists to refuse, and it does not
+get an exception for being convenient.
 
 ## 1.77.0 — "The agent's bill, told honestly"
 
