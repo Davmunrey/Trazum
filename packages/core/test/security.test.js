@@ -1722,6 +1722,47 @@ describe('the packaged Action', () => {
     assert.ok(claSeen, 'cla.yml is gone — remove its exception from this guard');
   });
 
+  it('the CLA gate allowlists the identities that commit here, and chooses its own locking', () => {
+    /**
+     * The gate's first live run failed on two pull requests before anybody
+     * had read a line of the action's source, and both defects were of the
+     * same kind: something true about *this* repository that the workflow
+     * did not say.
+     *
+     * The action resolves a committer as
+     * `commit.author.user || commit.committer.user || commit.author || …`
+     * and compares the allowlist against `login || name`. This repository's
+     * agent commits under an email no GitHub account owns, so there is no
+     * login and the raw name is what must be listed. Drop either identity
+     * from that line and *every* pull request here blocks on a signature
+     * from somebody who cannot give one — loudly, but only after the fact.
+     * This is the promise kept next to the inventory instead.
+     */
+    const cla = readFileSync(join(repoRoot, '.github/workflows/cla.yml'), 'utf8');
+    const allowlist = /allowlist:\s*'([^']*)'/.exec(cla);
+    assert.ok(allowlist, 'cla.yml declares no allowlist — every PR would demand a signature');
+    const listed = allowlist[1].split(',').map((entry) => entry.trim());
+    for (const identity of ['Davmunrey', 'Claude']) {
+      assert.ok(
+        listed.includes(identity),
+        `"${identity}" commits in this repository and is not allowlisted — the gate would block every pull request it authors`,
+      );
+    }
+
+    /**
+     * `lock-pullrequest-aftermerge` defaults to **true**, which locks the
+     * conversation on every merged pull request. That default was inherited
+     * silently for exactly one release. A locked thread is where somebody
+     * would have asked why a change was made, so the value is stated here
+     * whichever way it is chosen — the point is that it is chosen.
+     */
+    assert.match(
+      cla,
+      /lock-pullrequest-aftermerge:\s*(true|false)/,
+      'cla.yml inherits the action\'s locking default instead of choosing one',
+    );
+  });
+
   it('passes every declared input through to the CLI', () => {
     // A declared input nobody reads is a promise the action does not keep.
     // Scoped to the `inputs:` block — matching two-space keys across the whole
