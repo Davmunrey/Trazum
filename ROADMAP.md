@@ -1184,6 +1184,17 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.74.0 — "Any model's money" — released
+
+**The bill went fully vendor-agnostic where it still was not: the prices.**
+A dropped price card (overlay JSON or raw OpenRouter response, transformed
+by pure core in the page) widens the catalogue every figure prices with —
+Qwen included. `trazum switch` prices the switching decision: measured
+delta, declared migration cost over the measured daily saving with both
+refusals named, the required evaluation itself priced, quality always
+deferred to route. `trazum ownrate` derives a self-hosted $/MTok from the
+operator's own numbers, snippet proven to paste. Forty-two commands.
+
 ## 1.73.1 — "The result follows the scenario" — released
 
 **The Optimizer re-prices when the scenario moves.** A model change used to
@@ -2256,7 +2267,14 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-Nothing is planned. [The 1.73 plan](docs/plan-1.73.md) was delivered in
+Nothing is planned. [The 1.74 plan](docs/plan-1.74.md) was delivered in
+full — any model's money: the dropped price card in the Bill tab, `trazum
+switch` pricing the decision with its refusals named, and `trazum ownrate`
+deriving a self-hosted rate from declared numbers. The verdict bridge —
+quality beside cost, from a dropped `route`/`eval` result — is named as the
+natural 1.75 and waits to be asked for.
+
+Before it, [the 1.73 plan](docs/plan-1.73.md) was delivered in
 full — the guided tour: five doors walked once, offered on first visit and
 launched from the rail forever after, with no tour library, no auto-play, no
 analytics and the one scroll respecting prefers-reduced-motion. No new plan

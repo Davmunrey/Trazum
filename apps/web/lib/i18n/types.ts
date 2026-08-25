@@ -360,6 +360,10 @@ export interface WebMessages {
     transcriptAlsoLogs(logs: number): string;
     transcriptCollapsed(lines: number): string;
     transcriptStreamed(calls: number): string;
+    /** The 1.74 arm: a dropped price card widens the catalogue in place. */
+    priceCardApplied(touched: number, added: number): string;
+    priceCardBad(message: string): string;
+    priceCardClear: string;
     /** The 1.71 arm: a dropped OpenTelemetry export, priced in this tab. */
     otelSummary(exports: number, spans: number): string;
     otelSkipped(spans: number): string;

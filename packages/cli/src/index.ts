@@ -112,6 +112,7 @@ import {
   plannedCalls,
   claudeCodeRecords,
   otelRecords,
+  ownRate,
   positionAt,
   positionReport,
   PRICING_LAST_REVIEWED,
@@ -125,6 +126,7 @@ import {
   rejectionText,
   reorderForCache,
   repriceProfile,
+  switchAnalysis,
   reviewAgeDays,
   reviewExamples,
   RULES,
@@ -348,6 +350,12 @@ const VALUE_FLAGS = new Set([
   'prompt',
   'out',
   'o',
+  'to',
+  'migration-usd',
+  'cases',
+  'gpu-usd-hour',
+  'tokens-per-second',
+  'utilization',
 ]);
 
 function parseArgs(argv: string[], t: CliMessages): Args {
@@ -672,6 +680,8 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   position: ['json', 'html-out', 'pricing', 'pricing-live'],
   'from-claude-code': ['label', 'label-from-project', 'out', 'o'],
   'from-otel': ['label-from-service', 'out', 'o'],
+  switch: ['to', 'migration-usd', 'cases'],
+  ownrate: ['gpu-usd-hour', 'tokens-per-second', 'utilization'],
   pulse: ['json', 'max-stale-hours'],
   bench: ['workload', 'json', 'record', 'against', 'max-ratio'],
   write: ['answers', 'json', 'out', 'o', 'calls', 'avg-output'],
@@ -2648,6 +2658,138 @@ async function commandFromClaudeCode(args: Args, t: CliMessages): Promise<void> 
  * standardised the TTL split). Prompt content, trace ids and every other span
  * attribute stay in the span; a fixture greps the whole output to prove it.
  */
+/**
+ * `trazum switch` — the forty-first command, from the 1.74 plan: the decision
+ * every what-if serves, priced. Rests on `switchAnalysis`, which rests on
+ * `repriceProfile`, so over-context slices and cache minimums keep their
+ * honesty. Ends, always, on the refusal: quality is `trazum route`'s verdict.
+ */
+async function commandSwitch(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
+  const file = args.positional[0];
+  if (file === undefined) throw new Error(t.switchCmd.noLog());
+  const target = stringFlag(args, 'to');
+  if (target === undefined) throw new Error(t.switchCmd.noTarget());
+  // Optional numbers: absent stays absent — a defaulted migration cost or
+  // case count would be an invented one.
+  const optional = (name: string): number | undefined => {
+    const raw = stringFlag(args, name);
+    if (raw === undefined) return undefined;
+    const value = Number(raw);
+    if (!Number.isFinite(value) || value < 0) throw new Error(t.errors.mustBeNonNegative(name, raw));
+    return value;
+  };
+  const migrationUsd = optional('migration-usd');
+  const cases = optional('cases');
+
+  const text = await readUsageLog(file, t);
+  const report = profileUsage(text, { catalogue: pricing });
+  const analysis = switchAnalysis(report, target, {
+    catalogue: pricing,
+    ...(migrationUsd !== undefined ? { migrationUsd } : {}),
+    ...(cases !== undefined ? { evalCases: cases } : {}),
+  });
+  if (analysis === null) throw new Error(t.switchCmd.unknownModel(target));
+
+  const { reprice, savingUsd, measuredDays, breakEven, evalCost } = analysis;
+  console.log();
+  console.log(c.bold(t.switchCmd.heading(reprice.target.displayName)));
+  if (reprice.slices.length === 0) {
+    console.log(`  ${wrap(t.switchCmd.nothingMovable(), 74, '  ')}`);
+  } else {
+    const line =
+      savingUsd >= 0
+        ? t.switchCmd.saves(formatUsd(reprice.currentUsd), formatUsd(reprice.targetUsd), formatUsd(savingUsd))
+        : t.switchCmd.costs(formatUsd(reprice.currentUsd), formatUsd(reprice.targetUsd), formatUsd(-savingUsd));
+    console.log(`  ${savingUsd >= 0 ? c.green('->') : c.red('->')} ${wrap(line, 72, '    ')}`);
+    const movableCalls = reprice.slices.reduce((sum, slice) => sum + slice.calls, 0);
+    console.log(`  ${wrap(t.switchCmd.movable(movableCalls, reprice.slices.length), 74, '  ')}`);
+  }
+  if (reprice.overContext.length > 0) {
+    const usd = reprice.overContext.reduce((sum, slice) => sum + slice.currentUsd, 0);
+    console.log(`  ${c.yellow('!')} ${wrap(t.switchCmd.overContext(reprice.overContext.length, formatUsd(usd)), 72, '    ')}`);
+  }
+  if (reprice.alreadyOnTarget.calls > 0) {
+    console.log(`  ${wrap(t.switchCmd.alreadyOnTarget(reprice.alreadyOnTarget.calls, formatUsd(reprice.alreadyOnTarget.usd)), 74, '  ')}`);
+  }
+  console.log(
+    `  ${wrap(measuredDays !== null ? t.switchCmd.window(measuredDays) : t.switchCmd.noWindow(), 74, '  ')}`,
+  );
+  if (breakEven !== null) {
+    const sentence =
+      'days' in breakEven
+        ? t.switchCmd.breakEvenDays(formatUsd(breakEven.migrationUsd), Math.ceil(breakEven.days), measuredDays ?? 0)
+        : breakEven.refused === 'no-saving'
+          ? t.switchCmd.breakEvenNoSaving(formatUsd(breakEven.migrationUsd))
+          : t.switchCmd.breakEvenNoClock(formatUsd(breakEven.migrationUsd));
+    console.log(`  ${wrap(sentence, 74, '  ')}`);
+  }
+  if (evalCost !== null) {
+    console.log(`  ${wrap(t.switchCmd.evalCost(evalCost.cases, formatUsd(evalCost.totalUsd)), 74, '  ')}`);
+  } else if (reprice.slices.length > 0) {
+    console.log(`  ${c.dim(wrap(t.switchCmd.evalCostHint(), 74, '  '))}`);
+  }
+  console.log();
+  console.log(
+    `  ${wrap(t.switchCmd.quality(`trazum route ${file} --prompt-file <prompt> --cases <cases> --yes`), 74, '  ')}`,
+  );
+}
+
+/**
+ * `trazum ownrate` — the forty-second: a self-hosted model's $/MTok, derived
+ * from the operator's own declared numbers, with the overlay snippet ready to
+ * paste. Division and a label, nothing modelled.
+ */
+function commandOwnrate(args: Args, t: CliMessages): void {
+  const optional = (name: string): number | undefined => {
+    const raw = stringFlag(args, name);
+    if (raw === undefined) return undefined;
+    const value = Number(raw);
+    if (!Number.isFinite(value)) throw new Error(t.ownrate.invalid(name));
+    return value;
+  };
+  const gpuUsdPerHour = optional('gpu-usd-hour');
+  const tokensPerSecond = optional('tokens-per-second');
+  const utilization = optional('utilization');
+  if (gpuUsdPerHour === undefined || tokensPerSecond === undefined) throw new Error(t.ownrate.missing());
+  if (!(gpuUsdPerHour > 0)) throw new Error(t.ownrate.invalid('gpu-usd-hour'));
+  if (!(tokensPerSecond > 0)) throw new Error(t.ownrate.invalid('tokens-per-second'));
+  if (utilization !== undefined && !(utilization > 0 && utilization <= 1))
+    throw new Error(t.ownrate.invalid('utilization'));
+
+  const { usdPerMTok } = ownRate({
+    gpuUsdPerHour,
+    tokensPerSecond,
+    ...(utilization !== undefined ? { utilization } : {}),
+  });
+  const pct = Math.round((utilization ?? 1) * 100);
+  console.log();
+  console.log(
+    `  ${wrap(t.ownrate.result(formatUsd(usdPerMTok), tokensPerSecond, formatUsd(gpuUsdPerHour), pct), 74, '  ')}`,
+  );
+  console.log(`  ${c.dim(wrap(t.ownrate.declared(), 74, '  '))}`);
+  console.log();
+  console.log(`  ${t.ownrate.snippetHeading()}`);
+  // Complete on purpose: the overlay parser refuses a new model with fields
+  // missing, and a snippet that does not paste is worse than none. The
+  // honest values for what a self-hosted model has not measured are the
+  // catalogue's own unknowns, never a guess.
+  const snippet = {
+    lastReviewed: new Date().toISOString().slice(0, 10),
+    models: {
+      'my-self-hosted-model': {
+        displayName: 'My self-hosted model',
+        inputPerMTok: Number(usdPerMTok.toFixed(4)),
+        outputPerMTok: Number(usdPerMTok.toFixed(4)),
+        contextWindow: 32768,
+        cacheMinTokens: null,
+        tier: 'unknown',
+        capability: 'unknown',
+      },
+    },
+  };
+  console.log(JSON.stringify(snippet, null, 2));
+}
+
 async function commandFromOtel(args: Args, t: CliMessages): Promise<void> {
   const target = args.positional[0];
   if (target === undefined) throw new Error(t.fromOtel.noPath());
@@ -11096,6 +11238,12 @@ async function main(): Promise<void> {
       break;
     case 'from-otel':
       await commandFromOtel(args, t);
+      break;
+    case 'switch':
+      await commandSwitch(args, pricing, t);
+      break;
+    case 'ownrate':
+      commandOwnrate(args, t);
       break;
     case 'pulse':
       await commandPulse(args, t);

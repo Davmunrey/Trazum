@@ -1,9 +1,12 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import {
   BUNDLED_CATALOGUE,
+  applyPricingOverlay,
+  openrouterOverlay,
+  parsePricingOverlay,
   TTL_1H_MS,
   UNLABELLED,
   billLevers,
@@ -23,7 +26,7 @@ import {
   reviewAgeDays,
   sharesOf,
 } from '@trazum/core';
-import type { BillLevers, CacheEconomics, UsageProfileReport } from '@trazum/core';
+import type { BillLevers, CacheEconomics, PricingCatalogue, UsageProfileReport } from '@trazum/core';
 
 import { Plan } from './Plan';
 import { PositionCard } from './Position';
@@ -62,10 +65,90 @@ const MAX_ROWS = 8;
 const MAX_SLICES = 5;
 const MAX_SECTIONS = 3;
 
+/**
+ * A dropped price card, detected by shape — the 1.74 arc's first chapter.
+ *
+ * Two shapes, both already core: the overlay JSON the config's `pricing` key
+ * takes (`{ lastReviewed, models: { id: {...} } }`), and a raw OpenRouter
+ * `/models` response (`{ data: [ { id, pricing, ... } ] }`) transformed by the
+ * pure `openrouterOverlay` — the same transformation the CLI runs on a live
+ * fetch, run here on a pasted file, which is what keeps the no-fetch
+ * invariant intact while covering Qwen, Llama, or the model only your company
+ * runs. Returns null for anything that is not a price card; a malformed card
+ * of the right shape throws with the parser's own sentence, which the caller
+ * shows verbatim.
+ */
+function priceCardFrom(text: string): { catalogue: PricingCatalogue; touched: number; added: number } | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return null;
+  }
+  if (typeof parsed !== 'object' || parsed === null) return null;
+  const doc = parsed as { data?: unknown; models?: unknown; lastReviewed?: unknown };
+
+  const known = new Set(BUNDLED_CATALOGUE.models.map((model) => model.id));
+  if (Array.isArray(doc.data) && doc.data.some((entry) => (entry as { pricing?: unknown })?.pricing !== undefined)) {
+    const { overlay } = openrouterOverlay(parsed, {
+      knownIds: known,
+      // The card is the source; its freshness is the day it was saved, which
+      // the file does not carry — today is the honest upper bound the reader
+      // themselves chose by dropping it now.
+      lastReviewed: new Date().toISOString().slice(0, 10),
+    });
+    const ids = Object.keys(overlay.models);
+    return {
+      catalogue: applyPricingOverlay(BUNDLED_CATALOGUE, overlay, 'dropped price card'),
+      touched: ids.length,
+      added: ids.filter((id) => !known.has(id)).length,
+    };
+  }
+
+  if (typeof doc.models === 'object' && doc.models !== null && !Array.isArray(doc.models)) {
+    // Through the real parser, not a cast: its validation and its sentences
+    // are the contract, and the banner shows them verbatim. A card with no
+    // lastReviewed gets today — the reader dropping it now is its provenance.
+    const normalised = JSON.stringify({
+      lastReviewed: typeof doc.lastReviewed === 'string' ? doc.lastReviewed : new Date().toISOString().slice(0, 10),
+      models: doc.models,
+    });
+    const overlay = parsePricingOverlay(normalised, 'dropped price card');
+    const ids = Object.keys(overlay.models);
+    return {
+      catalogue: applyPricingOverlay(BUNDLED_CATALOGUE, overlay, 'dropped price card'),
+      touched: ids.length,
+      added: ids.filter((id) => !known.has(id)).length,
+    };
+  }
+  return null;
+}
+
 export function Bill({ t }: { t: WebMessages }) {
   const [pasted, setPasted] = useState('');
   const [logText, setLogText] = useState<string | null>(null);
   const [previousText, setPreviousText] = useState<string | null>(null);
+  /**
+   * The active price card — the 1.74 arc: a dropped overlay or OpenRouter
+   * response widens the catalogue every figure below prices with. Null means
+   * the bundled snapshot, as ever; the banner names what a card touched and
+   * clearing it restores the snapshot and re-prices in place.
+   */
+  const [priceCard, setPriceCard] = useState<{
+    catalogue: PricingCatalogue;
+    touched: number;
+    added: number;
+  } | null>(null);
+  const catalogue = priceCard === null ? BUNDLED_CATALOGUE : priceCard.catalogue;
+  const [priceCardError, setPriceCardError] = useState<string | null>(null);
+
+  // A new card re-prices whatever is already on screen, in place: the same
+  // log, the same window, the new rates. The bundled snapshot returns the
+  // same way when the card is cleared.
+  useEffect(() => {
+    if (logText !== null) analyze(logText, previousText);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [priceCard]);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   /** The time window, as `YYYY-MM-DD` strings; `''` is no bound. */
   const [since, setSince] = useState('');
@@ -113,7 +196,7 @@ export function Bill({ t }: { t: WebMessages }) {
       return;
     }
     const report = profileUsage(text, {
-      catalogue: BUNDLED_CATALOGUE,
+      catalogue,
       sinceMs,
       untilMs,
       ...(label !== null ? { label } : {}),
@@ -122,7 +205,7 @@ export function Bill({ t }: { t: WebMessages }) {
     if (windowed && report.total.calls === 0 && report.unpriced.calls === 0) {
       // The CLI's refusals, kept in step: a window matching nothing names
       // what the log does cover; a clockless log cannot be windowed at all.
-      const unfiltered = profileUsage(text, { catalogue: BUNDLED_CATALOGUE });
+      const unfiltered = profileUsage(text, { catalogue });
       if (unfiltered.total.calls > 0 || unfiltered.unpriced.calls > 0) {
         setWindowError(
           unfiltered.span === null
@@ -137,7 +220,7 @@ export function Bill({ t }: { t: WebMessages }) {
       }
     }
     setWindowError(null);
-    const levers = billLevers(report, { catalogue: BUNDLED_CATALOGUE });
+    const levers = billLevers(report, { catalogue });
     const cache = cacheEconomics(report.total);
     setAnalysis({
       report,
@@ -151,7 +234,7 @@ export function Bill({ t }: { t: WebMessages }) {
       previous:
         previous !== null
           ? profileUsage(previous, {
-              catalogue: BUNDLED_CATALOGUE,
+              catalogue,
               sinceMs,
               untilMs,
               ...(label !== null ? { label } : {}),
@@ -244,8 +327,21 @@ export function Bill({ t }: { t: WebMessages }) {
         collapsed += conversion.collapsed;
         streamed += conversion.streamed;
       } else {
-        logs += 1;
-        parts.push(text.trim());
+        let card: ReturnType<typeof priceCardFrom> = null;
+        let cardFailed = false;
+        try {
+          card = priceCardFrom(text);
+        } catch (error) {
+          cardFailed = true;
+          setPriceCardError(error instanceof Error ? error.message : String(error));
+        }
+        if (card !== null) {
+          setPriceCard(card);
+          setPriceCardError(null);
+        } else if (!cardFailed) {
+          logs += 1;
+          parts.push(text.trim());
+        }
       }
     }
     setIngest(
@@ -253,7 +349,9 @@ export function Bill({ t }: { t: WebMessages }) {
         ? { transcripts, convertedCalls, collapsed, streamed, logs, otelExports, otelSpans, otelSkipped, otelNoCache }
         : null,
     );
-    analyze(parts.join('\n'), previousText);
+    // A drop that was only a price card feeds nothing new to price; the
+    // effect above re-prices whatever is already on screen with it.
+    if (parts.length > 0) analyze(parts.join('\n'), previousText);
   }
 
   /**
@@ -415,6 +513,25 @@ export function Bill({ t }: { t: WebMessages }) {
             the sentence that earns the feature: the transcripts were read in
             this tab, the numbers kept and the words not.
           */}
+          {priceCardError !== null && (
+            <div className="rounded-lg border border-l-[3px] border-l-destructive px-3.5 py-3 text-[13px] leading-snug">
+              {t.bill.priceCardBad(priceCardError)}
+            </div>
+          )}
+          {priceCard !== null && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-l-[3px] border-l-good px-3.5 py-3 text-[13px] leading-snug">
+              <span className="font-semibold">
+                {t.bill.priceCardApplied(priceCard.touched, priceCard.added)}
+              </span>
+              <button
+                type="button"
+                onClick={() => setPriceCard(null)}
+                className="text-faint underline-offset-2 hover:underline"
+              >
+                {t.bill.priceCardClear}
+              </button>
+            </div>
+          )}
           {ingest !== null && (
             <div className="rounded-lg border border-l-[3px] border-l-good px-3.5 py-3 text-[13px] leading-snug">
               {ingest.transcripts > 0 && (
@@ -538,6 +655,7 @@ export function Bill({ t }: { t: WebMessages }) {
           labelName={labelName}
           drillLabel={drillLabel}
           onDrill={drillTo}
+          catalogue={catalogue}
         />
       )}
       {/*
@@ -561,6 +679,7 @@ function Report({
   labelName,
   drillLabel,
   onDrill,
+  catalogue,
 }: {
   analysis: Analysis;
   drillLabel: string | null;
@@ -569,6 +688,8 @@ function Report({
   n: (value: number) => string;
   pct: (fraction: number) => string;
   labelName: (label: string) => string;
+  /** The active catalogue — the bundled snapshot, or the dropped price card. */
+  catalogue: PricingCatalogue;
 }) {
   const { report, levers, cache } = analysis;
   const { total } = report;
@@ -583,7 +704,7 @@ function Report({
    */
   const [whatIfModel, setWhatIfModel] = useState('');
   const whatIf =
-    whatIfModel === '' ? null : repriceProfile(report, whatIfModel, BUNDLED_CATALOGUE);
+    whatIfModel === '' ? null : repriceProfile(report, whatIfModel, catalogue);
 
   if (total.calls === 0) {
     return (
@@ -1161,7 +1282,7 @@ function Report({
                   onChange={(event) => setWhatIfModel(event.target.value)}
                 >
                   <option value="">{t.bill.whatIfNone}</option>
-                  {BUNDLED_CATALOGUE.models.map((model) => (
+                  {catalogue.models.map((model) => (
                     <option key={model.id} value={model.id}>
                       {model.displayName}
                     </option>
@@ -1432,7 +1553,7 @@ function Report({
           )}
 
           {(() => {
-            const pressures = contextPressure(report, BUNDLED_CATALOGUE);
+            const pressures = contextPressure(report, catalogue);
             if (pressures.length === 0) return null;
             return (
               <Card className="gap-4 py-[18px]">

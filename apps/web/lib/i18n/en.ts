@@ -421,6 +421,10 @@ export const en: WebMessages = {
       `${lines} extra line(s) of already-counted calls collapsed — one API call is written as one line per content block.`,
     transcriptStreamed: (calls) =>
       `${calls} call(s) were captured mid-stream; their final counts stood.`,
+    priceCardApplied: (touched, added) =>
+      `Price card applied: ${touched} model(s), ${added} of them new beside the bundled snapshot. Every figure on this page now prices with it.`,
+    priceCardBad: (message) => `That looked like a price card and did not parse: ${message}`,
+    priceCardClear: 'Back to the bundled snapshot',
     otelSummary: (exports, spans) =>
       `Converted ${exports} OpenTelemetry export(s) into ${spans} priced LLM span(s), here in your browser.`,
     otelSkipped: (spans) => `${spans} non-LLM span(s) skipped — counted, never priced.`,

@@ -20,6 +20,61 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## 1.74.0 — "Any model's money"
+
+### Added
+
+- **Bring your own price card, in the browser.** [The 1.74
+  plan](docs/plan-1.74.md): the Bill tab accepts a dropped or pasted pricing
+  document, two shapes detected not configured — the overlay JSON the
+  config's `pricing` key takes (through the real `parsePricingOverlay`, so a
+  malformed card refuses with the parser's own sentence in the banner), and
+  a raw OpenRouter `/models` response transformed in the page by the pure
+  `openrouterOverlay` — the same transformation the CLI runs on a live
+  fetch, run here on a file, no-fetch invariant intact. From there every
+  figure in the tab — the profile, the levers, the what-if, the context
+  pressure — prices Qwen, Llama, or the model only your company runs. A
+  banner names how many models the card touched and how many are new, and
+  clearing it restores the bundled snapshot and re-prices in place.
+
+- **`trazum switch` — the forty-first command.** The decision every what-if
+  serves, priced: the reprice-backed delta with its sign said in words, the
+  movable calls, the over-context and already-on-target money named, the
+  measured window, break-even as a declared `--migration-usd` over the
+  measured daily saving — division on the past, denominator attached, with
+  both refusals rendered by name (`no-saving`, `no-clock`) — and, with
+  `--cases`, the evaluation the switch requires priced at the log's own
+  mean call, two calls on the incumbent and one on the candidate per case,
+  because the cost of knowing the cheaper model is good enough is part of
+  the cost of switching. Every rendering ends on the refusal: quality is
+  `trazum route`'s verdict, and the command to get it is printed.
+
+- **`trazum ownrate` — the forty-second.** A self-hosted model's $/MTok
+  derived from the operator's own declared numbers — GPU dollars per hour
+  over measured tokens per second at a declared utilisation — with the
+  pricing-overlay snippet printed ready to paste, complete on purpose: the
+  first draft omitted `cacheMinTokens`, `tier` and `capability`, the overlay
+  parser rightly refused it, and a round-trip guard now proves the snippet
+  pastes (`parsePricingOverlay` accepts the command's own output whole). The
+  unknowns are declared as the catalogue's own `unknown`/`null`, never
+  guessed.
+
+### Honest gaps, stated
+
+- **No quality column, anywhere in this arc.** Cost is arithmetic; quality
+  is an evaluation that costs provider calls. The bridge — dropping a
+  `route`/`eval` verdict into the Bill tab so quality stands beside cost —
+  is named as the natural 1.75 and not built here.
+- **No forecast in the break-even.** It divides a declared cost by a
+  measured rate and says over how many days that rate was measured. A log
+  with no timestamps has no rate, and the answer is the `no-clock` refusal
+  rather than an invented calendar.
+- **The sign convention crossed a boundary and was caught.** `repriceProfile`
+  carries `target - current` (negative is cheaper); `switchAnalysis` states
+  `savingUsd` with its own name and proves it in both directions, because a
+  sign read across that boundary ships a break-even for a switch that loses
+  money.
+
 ## 1.73.1 — "The result follows the scenario"
 
 ### Fixed

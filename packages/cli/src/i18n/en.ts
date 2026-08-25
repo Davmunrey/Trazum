@@ -61,6 +61,8 @@ ${bold('USAGE')}
   trazum position <usage.jsonl>
   trazum from-claude-code <file|dir> [--label <name>] [-o <file>]
   trazum from-otel <file|dir> [--label-from-service] [-o <file>]
+  trazum switch <usage.jsonl> --to <model> [--migration-usd <n>] [--cases <n>]
+  trazum ownrate --gpu-usd-hour <n> --tokens-per-second <n> [--utilization <0-1>]
   trazum pulse [--max-stale-hours <n>]
   trazum bench [--workload <id>] [--record <file>] [--against <file> --max-ratio <n>] [--json]
   trazum write [--answers <file>] [--json] [-o <file>]
@@ -137,6 +139,33 @@ ${bold('OPTIONS FOR write')}
                               with everything else on stderr.
   --calls <n>                 Calls per month, for the estimate.
   --avg-output <n>            Average output tokens per call, for the estimate.
+
+${bold('OPTIONS FOR switch')}
+  --to <model>                The candidate model, by catalogue id.
+  --migration-usd <n>         What the migration itself would cost, declared
+                              by you. Unlocks the break-even line.
+  --cases <n>                 How many evaluation cases you would run.
+                              Unlocks the line pricing that evaluation.
+
+  The decision every what-if serves, priced: what this measured mix costs on
+  the candidate, the saving with its sign stated, and — with a declared
+  migration cost — the break-even as division on the measured past, days of
+  window attached, never a forecast. The evaluation the switch requires is
+  priced at this log's own mean call, two calls on the incumbent and one on
+  the candidate per case. What it refuses: any sentence about quality — that
+  verdict belongs to trazum route, and the report ends by printing it.
+
+${bold('OPTIONS FOR ownrate')}
+  --gpu-usd-hour <n>          What an hour of your hardware costs you.
+  --tokens-per-second <n>     Throughput you measured on your own serving.
+  --utilization <0-1>         Fraction of the hour actually serving.
+                              Defaults to 1.
+
+  Your self-hosted model's $/MTok, derived from your own two numbers —
+  division, nothing else: no amortisation, no energy model, no guessed
+  efficiency. Prints the figure and the pricing-overlay snippet to paste
+  into trazum.config.json, so the model you run yourself becomes a
+  first-class row in every report, priced by you and marked as such.
 
 ${bold('OPTIONS FOR from-otel')}
   --label-from-service        Label each record with its span's service name,
@@ -1623,6 +1652,47 @@ ${bold('EXAMPLES')}
           return code;
       }
     },
+  },
+
+  switchCmd: {
+    noLog: () => 'Name a usage log: trazum switch <usage.jsonl> --to <model>',
+    noTarget: () => 'Name the candidate: --to <model>. trazum models lists the catalogue.',
+    unknownModel: (id) =>
+      `The catalogue has no price for "${id}", and a comparison against a price nobody has is worse than none. trazum models lists what it knows; a pricing overlay adds what it does not.`,
+    heading: (target) => `Switching this traffic to ${target}, measured`,
+    saves: (current, target, saving) =>
+      `${current} on this log becomes ${target} on the candidate — ${saving} less, on the same tokens.`,
+    costs: (current, target, extra) =>
+      `${current} on this log becomes ${target} on the candidate — ${extra} MORE. This switch loses money before quality is even asked.`,
+    nothingMovable: () => 'Nothing here can move: every slice is already on the candidate or exceeds its context window.',
+    movable: (calls, slices) => `${calls} call(s) across ${slices} slice(s) could move.`,
+    overContext: (slices, usd) =>
+      `${slices} slice(s) worth ${usd} cannot move — at least one call exceeds the candidate's context window. Their money is in none of the figures above.`,
+    alreadyOnTarget: (calls, usd) => `${calls} call(s) worth ${usd} are already on the candidate.`,
+    window: (days) => `Measured over ${days} day(s) of this log — every figure above is arithmetic on that window.`,
+    noWindow: () => 'No record carries a timestamp, so this log has no measured rate.',
+    breakEvenDays: (migration, days, measuredDays) =>
+      `A declared migration cost of ${migration} is recovered after ~${days} day(s) at the saving measured over ${measuredDays} day(s). Division on the past — what next month does is next month's business.`,
+    breakEvenNoSaving: (migration) =>
+      `Break-even refused: the switch saves nothing, so the declared ${migration} has nothing to recover.`,
+    breakEvenNoClock: (migration) =>
+      `Break-even refused for ${migration}: no record carries a timestamp, so there is no measured rate to divide by.`,
+    evalCost: (cases, total) =>
+      `Knowing whether the candidate is good enough costs money too: ${cases} case(s) through trazum route is ~${total} at this log's own mean call (two calls on the incumbent, one on the candidate, per case).`,
+    evalCostHint: () => 'Pass --cases <n> to price the evaluation the switch requires.',
+    quality: (routeCommand) =>
+      `Nothing above says whether the candidate can do the work. That is an evaluation, not arithmetic: ${routeCommand}`,
+  },
+
+  ownrate: {
+    missing: () =>
+      'Both numbers are yours to declare: trazum ownrate --gpu-usd-hour <n> --tokens-per-second <n> [--utilization <0-1>]',
+    invalid: (flag) => `--${flag} must be a positive number (utilization: greater than 0, at most 1).`,
+    result: (usdPerMTok, tokensPerSecond, gpuUsdPerHour, utilizationPct) =>
+      `${usdPerMTok} per million tokens — ${gpuUsdPerHour}/hour over ${tokensPerSecond} tokens/second at ${utilizationPct}% serving.`,
+    declared: () =>
+      'Derived from your declaration, honest only if the throughput was measured. Every report that prices this model will rest on these two numbers.',
+    snippetHeading: () => 'Paste into trazum.config.json (the "pricing" overlay file):',
   },
 
   fromOtel: {

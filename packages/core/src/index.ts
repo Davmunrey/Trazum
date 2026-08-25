@@ -324,6 +324,8 @@ export type { RepeatedTurns, RepeatsOptions, RepeatsTracker } from './repeats.js
 export { contextPressure } from './context-pressure.js';
 export type { ContextPressure, ContextPressureOptions } from './context-pressure.js';
 export { priceTokensOn, repriceProfile } from './reprice.js';
+export { ownRate, switchAnalysis } from './switch.js';
+export type { BreakEvenRefusal, SwitchAnalysis, SwitchOptions } from './switch.js';
 export type { OverContextSlice, RepriceReport, RepricedSlice } from './reprice.js';
 export { createSessionLedgerTracker, singleTurnCacheWrites } from './session-ledger.js';
 // What one conversation costs — median and p95, exact. See session-cost.ts.

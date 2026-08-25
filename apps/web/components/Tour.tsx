@@ -6,25 +6,31 @@ import { TOUR_STEPS } from '@/lib/tour';
 import type { WebMessages } from '@/lib/i18n';
 
 /**
- * The guided tour's overlay — the 1.73 arc, and deliberately not a library.
+ * The guided tour's overlay — the 1.73 arc, polished under Playwright in
+ * 1.74.x, and still deliberately not a library.
  *
  * One dimmed page, one ringed rectangle, one card. The dimming is the ring's
  * own box-shadow spread over the viewport, so there is exactly one moving
- * element to measure and the target stays fully visible inside it. The card
- * carries the step's copy from `t.tour`, next/back, a skip that is always on
- * screen, and the progress count.
+ * element to measure — and it *glides*: the ring transitions between targets
+ * instead of jumping, which is most of what makes a tour feel alive. The
+ * global reduced-motion rule turns every transition instant, so nothing here
+ * needs its own motion gate beyond the one scroll.
  *
- * What it gets right on purpose:
- * - **Never auto-plays.** `App` renders it only after the visitor asked.
- * - **A missing target is a layout, not a crash.** On a phone, or after a
- *   refactor the suite should have caught, the card centres and the ring is
- *   skipped.
- * - **Reduced motion is instant motion.** Scrolling to a target respects
- *   `prefers-reduced-motion`; nothing else here animates at all.
- * - **Escape leaves, focus enters.** The card takes focus on every step so
- *   arrow-less keyboards and screen readers travel with the tour, and the
- *   body is announced politely.
- * - **Nothing fetches**, held by the suite alongside Bill and the playground.
+ * What the screenshots taught, kept as law:
+ * - **A panel taller than the viewport still gets a ring.** The measured
+ *   rectangle is clamped to the viewport before anything is drawn; ringing
+ *   the raw rectangle of a tall panel painted the shadow off-screen and the
+ *   "dim" vanished entirely.
+ * - **The card can never leave the screen.** Its top is clamped into the
+ *   viewport whatever the target's shape — the un-clamped card sat off-view
+ *   on tall panels and clipped its title on phones.
+ * - **The welcome dim is inline style, not a class.** The class form
+ *   silently failed once; a backdrop that can quietly not render is a modal
+ *   with no modality.
+ *
+ * The rest of the 1.73 contract stands: never auto-plays, `Escape` leaves,
+ * focus travels with the card, the step body is announced politely, arrow
+ * keys walk the steps, and nothing fetches.
  */
 
 interface TargetRect {
@@ -35,6 +41,9 @@ interface TargetRect {
 }
 
 const RING_PADDING = 6;
+const EDGE = 12;
+const CARD_WIDTH = 372;
+const CARD_ESTIMATED_HEIGHT = 240;
 
 export function Tour({
   t,
@@ -63,13 +72,21 @@ export function Tour({
       return;
     }
     const box = element.getBoundingClientRect();
-    // Off-screen or collapsed means the ring would point at nothing readable;
-    // the centred card is the honest fallback.
     if (box.width === 0 || box.height === 0) {
       setRect(null);
       return;
     }
-    setRect({ top: box.top, left: box.left, width: box.width, height: box.height });
+    // Clamp to the viewport: a panel taller than the screen is ringed by its
+    // visible part, which is the part the sentence beside it is about.
+    const top = Math.max(EDGE, box.top);
+    const left = Math.max(EDGE, box.left);
+    const right = Math.min(window.innerWidth - EDGE, box.left + box.width);
+    const bottom = Math.min(window.innerHeight - EDGE, box.top + box.height);
+    if (right - left < 40 || bottom - top < 40) {
+      setRect(null);
+      return;
+    }
+    setRect({ top, left, width: right - left, height: bottom - top });
   }, [step.target]);
 
   // Each step: open its tab, let the panel mount, scroll the target into
@@ -81,10 +98,19 @@ export function Tour({
         step.target !== null ? document.querySelector(`[data-tour="${step.target}"]`) : null;
       if (element !== null) {
         const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        element.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' });
+        const taller = element.getBoundingClientRect().height > window.innerHeight * 0.8;
+        // A tall panel centred puts its middle — often empty scroll — on
+        // screen; its top is where the panel introduces itself.
+        element.scrollIntoView({
+          behavior: reduced ? 'auto' : 'smooth',
+          block: taller ? 'start' : 'center',
+        });
       }
       measure();
+      // The smooth scroll lands over a few frames; measure again when it has.
+      const settle = setTimeout(measure, 360);
       cardRef.current?.focus();
+      return () => clearTimeout(settle);
     });
     return () => cancelAnimationFrame(frame);
   }, [step, onTabChange, measure]);
@@ -99,30 +125,42 @@ export function Tour({
     };
   }, [measure]);
 
+  const last = index === TOUR_STEPS.length - 1;
+  const advance = useCallback(() => (last ? onClose() : setIndex((i) => i + 1)), [last, onClose]);
+  const retreat = useCallback(() => setIndex((i) => Math.max(0, i - 1)), []);
+
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent) {
       if (event.key === 'Escape') onClose();
+      else if (event.key === 'ArrowRight') advance();
+      else if (event.key === 'ArrowLeft') retreat();
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
+  }, [onClose, advance, retreat]);
 
-  const last = index === TOUR_STEPS.length - 1;
+  /**
+   * The card sits under the ring when there is room, above it otherwise, and
+   * its top is clamped into the viewport either way — with a height cap and
+   * its own scroll as the last line, so no copy is ever unreachable.
+   */
+  const viewportH = typeof window !== 'undefined' ? window.innerHeight : 800;
+  const viewportW = typeof window !== 'undefined' ? window.innerWidth : 1200;
+  let cardTop: number;
+  let cardLeft: number;
+  if (rect === null) {
+    cardTop = Math.max(EDGE, viewportH / 2 - CARD_ESTIMATED_HEIGHT / 2);
+    cardLeft = Math.max(EDGE, viewportW / 2 - CARD_WIDTH / 2);
+  } else {
+    const below = rect.top + rect.height + RING_PADDING + 14;
+    const above = rect.top - RING_PADDING - 14 - CARD_ESTIMATED_HEIGHT;
+    cardTop = below + CARD_ESTIMATED_HEIGHT <= viewportH - EDGE ? below : Math.max(EDGE, above);
+    cardTop = Math.min(cardTop, viewportH - EDGE - Math.min(CARD_ESTIMATED_HEIGHT, viewportH * 0.6));
+    cardLeft = Math.max(EDGE, Math.min(rect.left, viewportW - CARD_WIDTH - EDGE));
+  }
 
-  // The card sits under the ring when there is room, above it otherwise, and
-  // centres when there is no ring at all.
-  const cardPosition =
-    rect === null
-      ? { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }
-      : rect.top + rect.height + 200 < window.innerHeight
-        ? {
-            top: rect.top + rect.height + RING_PADDING + 12,
-            left: Math.max(16, Math.min(rect.left, window.innerWidth - 380)),
-          }
-        : {
-            bottom: window.innerHeight - rect.top + RING_PADDING + 12,
-            left: Math.max(16, Math.min(rect.left, window.innerWidth - 380)),
-          };
+  // The glide. Instant under reduced motion via the global rule.
+  const glide = 'top 320ms cubic-bezier(0.2, 0.8, 0.2, 1), left 320ms cubic-bezier(0.2, 0.8, 0.2, 1), width 320ms cubic-bezier(0.2, 0.8, 0.2, 1), height 320ms cubic-bezier(0.2, 0.8, 0.2, 1)';
 
   return (
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={t.tour.dialogLabel}>
@@ -130,28 +168,37 @@ export function Tour({
       {rect !== null ? (
         <div
           aria-hidden="true"
-          className="pointer-events-none fixed rounded-lg border-2 border-primary"
+          className="pointer-events-none fixed rounded-xl border-2 border-primary"
           style={{
             top: rect.top - RING_PADDING,
             left: rect.left - RING_PADDING,
             width: rect.width + RING_PADDING * 2,
             height: rect.height + RING_PADDING * 2,
-            boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.55)',
+            boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.55), 0 0 0 4px color-mix(in oklab, var(--primary) 35%, transparent)',
+            transition: glide,
           }}
         />
       ) : (
-        <div aria-hidden="true" className="fixed inset-0 bg-black/55" />
+        <div aria-hidden="true" className="fixed inset-0" style={{ backgroundColor: 'rgba(0, 0, 0, 0.55)' }} />
       )}
 
       <div
+        key={step.id}
         ref={cardRef}
         tabIndex={-1}
-        className="fixed w-[min(360px,calc(100vw-32px))] rounded-lg border bg-background p-4 shadow-lg outline-none"
-        style={cardPosition}
+        className="tour-card-in fixed rounded-xl border bg-background p-4 shadow-2xl outline-none"
+        style={{
+          top: cardTop,
+          left: cardLeft,
+          width: `min(${CARD_WIDTH}px, calc(100vw - ${EDGE * 2}px))`,
+          maxHeight: '60vh',
+          overflowY: 'auto',
+          transition: glide,
+        }}
       >
         <div className="mb-1 flex items-baseline justify-between gap-3">
           <h2 className="text-[15px] font-semibold">{copy.title}</h2>
-          <span className="shrink-0 text-[12px] tabular-nums text-faint">
+          <span className="shrink-0 text-[11.5px] tabular-nums text-faint">
             {t.tour.progress(index + 1, TOUR_STEPS.length)}
           </span>
         </div>
@@ -166,20 +213,41 @@ export function Tour({
           >
             {t.tour.skip}
           </button>
+          {/*
+            The walked path, drawn: one dot per step, the current one a pill.
+            Buttons, so a reader can jump — and the glide makes the jump read.
+          */}
+          <div className="flex items-center gap-1.5" aria-hidden="true">
+            {TOUR_STEPS.map((s, i) => (
+              <button
+                key={s.id}
+                type="button"
+                tabIndex={-1}
+                onClick={() => setIndex(i)}
+                className={
+                  i === index
+                    ? 'h-1.5 w-5 rounded-full bg-primary transition-all duration-300'
+                    : i < index
+                      ? 'h-1.5 w-1.5 rounded-full bg-primary/50 transition-all duration-300'
+                      : 'h-1.5 w-1.5 rounded-full bg-border transition-all duration-300'
+                }
+              />
+            ))}
+          </div>
           <div className="flex gap-2">
             {index > 0 && (
               <button
                 type="button"
-                onClick={() => setIndex(index - 1)}
-                className="rounded-md border px-3 py-1.5 text-[13px] hover:bg-layer-hover"
+                onClick={retreat}
+                className="rounded-md border px-3 py-1.5 text-[13px] transition-colors hover:bg-layer-hover"
               >
                 {t.tour.back}
               </button>
             )}
             <button
               type="button"
-              onClick={() => (last ? onClose() : setIndex(index + 1))}
-              className="rounded-md border border-primary bg-primary px-3 py-1.5 text-[13px] font-medium text-primary-foreground hover:opacity-90"
+              onClick={advance}
+              className="rounded-md border border-primary bg-primary px-3 py-1.5 text-[13px] font-medium text-primary-foreground transition-opacity hover:opacity-90"
             >
               {last ? t.tour.done : t.tour.next}
             </button>

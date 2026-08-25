@@ -48,6 +48,8 @@ ${bold('USO')}
   trazum position <uso.jsonl>
   trazum from-claude-code <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-otel <fichero|dir> [--label-from-service] [-o <fichero>]
+  trazum switch <uso.jsonl> --to <modelo> [--migration-usd <n>] [--cases <n>]
+  trazum ownrate --gpu-usd-hour <n> --tokens-per-second <n> [--utilization <0-1>]
   trazum pulse [--max-stale-hours <n>]
   trazum bench [--workload <id>] [--record <fichero>] [--against <fichero> --max-ratio <n>] [--json]
   trazum write [--answers <fichero>] [--json] [-o <fichero>]
@@ -139,6 +141,34 @@ ${bold('OPCIONES DE position')}
   división sobre el pasado, etiquetada como tal, y ausente bajo el suelo de
   siete días, con un techo superado o con tasa cero: nunca un pronóstico, y
   ningún campo del documento nombra una fecha.
+
+${bold('OPCIONES DE switch')}
+  --to <modelo>               El modelo candidato, por id del catálogo.
+  --migration-usd <n>         Lo que costaría la migración en sí, declarado
+                              por ti. Desbloquea la línea de break-even.
+  --cases <n>                 Cuántos casos de evaluación correrías.
+                              Desbloquea la línea que tasa esa evaluación.
+
+  La decisión a la que sirve cada what-if, tasada: qué cuesta este mix medido
+  en el candidato, el ahorro con su signo dicho, y — con un coste de
+  migración declarado — el break-even como división sobre el pasado medido,
+  con los días de ventana adjuntos, nunca un pronóstico. La evaluación que el
+  cambio exige se tasa a la llamada media de este log: dos llamadas al
+  titular y una al candidato por caso. Lo que se niega a decir: nada sobre
+  calidad — ese veredicto es de trazum route, y el informe termina
+  imprimiéndolo.
+
+${bold('OPCIONES DE ownrate')}
+  --gpu-usd-hour <n>          Lo que te cuesta una hora de tu hardware.
+  --tokens-per-second <n>     Rendimiento que mediste en tu propio serving.
+  --utilization <0-1>         Fracción de la hora realmente sirviendo.
+                              Por defecto 1.
+
+  El $/MTok de tu modelo self-hosted, derivado de tus dos números — división
+  y nada más: sin amortización, sin modelo de energía, sin eficiencia
+  supuesta. Imprime la cifra y el snippet de overlay de precios para pegar
+  en trazum.config.json, de modo que el modelo que tú mismo sirves sea una
+  fila de primera en cada informe, tasado por ti y marcado como tal.
 
 ${bold('OPCIONES DE from-otel')}
   --label-from-service        Etiqueta cada registro con el nombre de servicio
@@ -1640,6 +1670,47 @@ ${bold('EJEMPLOS')}
           return code;
       }
     },
+  },
+
+  switchCmd: {
+    noLog: () => 'Nombra un log de uso: trazum switch <uso.jsonl> --to <modelo>',
+    noTarget: () => 'Nombra el candidato: --to <modelo>. trazum models lista el catálogo.',
+    unknownModel: (id) =>
+      `El catálogo no tiene precio para «${id}», y una comparación contra un precio que nadie tiene es peor que ninguna. trazum models lista lo que conoce; un overlay de precios añade lo que no.`,
+    heading: (target) => `Cambiar este tráfico a ${target}, medido`,
+    saves: (current, target, saving) =>
+      `${current} en este log se vuelven ${target} en el candidato — ${saving} menos, sobre los mismos tokens.`,
+    costs: (current, target, extra) =>
+      `${current} en este log se vuelven ${target} en el candidato — ${extra} MÁS. Este cambio pierde dinero antes siquiera de preguntar por la calidad.`,
+    nothingMovable: () => 'Aquí no puede moverse nada: cada porción ya está en el candidato o excede su ventana de contexto.',
+    movable: (calls, slices) => `${calls} llamada(s) en ${slices} porción(es) podrían moverse.`,
+    overContext: (slices, usd) =>
+      `${slices} porción(es) por valor de ${usd} no pueden moverse — al menos una llamada excede la ventana de contexto del candidato. Su dinero no está en ninguna cifra de arriba.`,
+    alreadyOnTarget: (calls, usd) => `${calls} llamada(s) por valor de ${usd} ya están en el candidato.`,
+    window: (days) => `Medido sobre ${days} día(s) de este log — cada cifra de arriba es aritmética sobre esa ventana.`,
+    noWindow: () => 'Ningún registro lleva marca de tiempo, así que este log no tiene tasa medida.',
+    breakEvenDays: (migration, days, measuredDays) =>
+      `Un coste de migración declarado de ${migration} se recupera tras ~${days} día(s) al ahorro medido sobre ${measuredDays} día(s). División sobre el pasado — lo que haga el mes que viene es asunto del mes que viene.`,
+    breakEvenNoSaving: (migration) =>
+      `Break-even rechazado: el cambio no ahorra nada, así que los ${migration} declarados no tienen nada que recuperar.`,
+    breakEvenNoClock: (migration) =>
+      `Break-even rechazado para ${migration}: ningún registro lleva marca de tiempo, así que no hay tasa medida por la que dividir.`,
+    evalCost: (cases, total) =>
+      `Saber si el candidato vale también cuesta dinero: ${cases} caso(s) por trazum route son ~${total} a la llamada media de este log (dos llamadas al titular y una al candidato por caso).`,
+    evalCostHint: () => 'Pasa --cases <n> para tasar la evaluación que el cambio exige.',
+    quality: (routeCommand) =>
+      `Nada de lo de arriba dice si el candidato puede hacer el trabajo. Eso es una evaluación, no aritmética: ${routeCommand}`,
+  },
+
+  ownrate: {
+    missing: () =>
+      'Los dos números los declaras tú: trazum ownrate --gpu-usd-hour <n> --tokens-per-second <n> [--utilization <0-1>]',
+    invalid: (flag) => `--${flag} debe ser un número positivo (utilization: mayor que 0, como mucho 1).`,
+    result: (usdPerMTok, tokensPerSecond, gpuUsdPerHour, utilizationPct) =>
+      `${usdPerMTok} por millón de tokens — ${gpuUsdPerHour}/hora entre ${tokensPerSecond} tokens/segundo al ${utilizationPct}% de servicio.`,
+    declared: () =>
+      'Derivado de tu declaración, honesto solo si el rendimiento se midió. Cada informe que tase este modelo descansará sobre estos dos números.',
+    snippetHeading: () => 'Pega en trazum.config.json (el fichero de overlay «pricing»):',
   },
 
   fromOtel: {

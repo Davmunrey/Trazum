@@ -528,6 +528,41 @@ export interface CliMessages {
    * is the command's honesty: LLM spans converted, non-LLM spans skipped, and
    * how many carried no cache data (OTel has no TTL split to give).
    */
+  /**
+   * The 1.74 switching decision. Named `switchCmd` because the command is
+   * `switch`, which is a reserved word too load-bearing to fight in every
+   * file that touches this section.
+   */
+  switchCmd: {
+    noLog(): string;
+    noTarget(): string;
+    unknownModel(id: string): string;
+    heading(target: string): string;
+    saves(current: string, target: string, saving: string): string;
+    costs(current: string, target: string, extra: string): string;
+    nothingMovable(): string;
+    movable(calls: number, slices: number): string;
+    overContext(slices: number, usd: string): string;
+    alreadyOnTarget(calls: number, usd: string): string;
+    window(days: number): string;
+    noWindow(): string;
+    breakEvenDays(migration: string, days: number, measuredDays: number): string;
+    breakEvenNoSaving(migration: string): string;
+    breakEvenNoClock(migration: string): string;
+    evalCost(cases: number, total: string): string;
+    evalCostHint(): string;
+    /** The refusal every rendering ends on: quality is route's verdict. */
+    quality(routeCommand: string): string;
+  };
+
+  ownrate: {
+    missing(): string;
+    invalid(flag: string): string;
+    result(usdPerMTok: string, tokensPerSecond: number, gpuUsdPerHour: string, utilizationPct: number): string;
+    declared(): string;
+    snippetHeading(): string;
+  };
+
   fromOtel: {
     noPath(): string;
     notFound(path: string): string;

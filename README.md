@@ -53,7 +53,7 @@ never runs unless you ask.
                  for your agents
 ```
 
-## The forty commands
+## The forty-two commands
 
 | Command | What it answers |
 |---|---|
@@ -93,6 +93,8 @@ never runs unless you ask.
 | [`trazum position`](#where-the-month-stands-trazum-position) | Where does the month stand against every ceiling? *Measured, denominators attached, no forecast anywhere.* |
 | [`trazum from-claude-code`](#the-agents-own-bill-trazum-from-claude-code) | What did my Claude Code sessions cost? *Reads the transcripts already on disk — the numbers only, never the words.* |
 | [`trazum from-otel`](#the-universal-cost-lens-trazum-from-otel) | What did the LLM calls in my OpenTelemetry export cost? *Reads the GenAI spans any exporter already emits — the counts only, never the prompts.* |
+| [`trazum switch`](#when-does-the-switch-pay-trazum-switch) | Should we move this traffic, and when does moving pay? *Measured delta, declared migration cost, break-even as division on the past — and the required evaluation itself priced.* |
+| [`trazum ownrate`](#the-model-you-run-yourself-trazum-ownrate) | What does my self-hosted model cost per million tokens? *Your GPU rate over your measured throughput — derived from your declaration, never guessed.* |
 | [`trazum bench`](#this-machine-measured-trazum-bench) | How fast is Trazum here, and on what? *One shot per workload, no judgement — run it before and after a change.* |
 | [`trazum write`](#you-describe-it-it-asks-trazum-write) | What should this prompt say, and what will it cost before I ever send it? *Asks; nothing is generated.* |
 | [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
@@ -209,8 +211,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of forty commands — [the table
-above](#the-forty-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of forty-two commands — [the table
+above](#the-forty-two-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -373,7 +375,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other thirty-nine commands, each with its own section below:
+The other forty-one commands, each with its own section below:
 
 ```bash
 trazum doctor                        # survey the whole workspace
@@ -446,7 +448,7 @@ In GitHub Actions, use the packaged action — nothing to install:
 
 ```yaml
 - uses: actions/checkout@v7
-- uses: Davmunrey/Trazum@4d15cbae03d7c6dc17c5098177ea8adc8153583c  # 1.73.0
+- uses: Davmunrey/Trazum@d7b79eadc26e6488038dbeeb7f918c72654b5fc7  # 1.73.1
   with:
     target: prompts/system.txt
     max-tokens: 2000
@@ -492,7 +494,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v7
-  - uses: Davmunrey/Trazum@4d15cbae03d7c6dc17c5098177ea8adc8153583c  # 1.73.0
+  - uses: Davmunrey/Trazum@d7b79eadc26e6488038dbeeb7f918c72654b5fc7  # 1.73.1
     with:
       target: prompts/            # a directory uses trazum.config.json budgets
       comment: true
@@ -521,7 +523,7 @@ run gates tokens before the money is spent or the spend itself, and saying
 which is the caller's job:
 
 ```yaml
-- uses: Davmunrey/Trazum@4d15cbae03d7c6dc17c5098177ea8adc8153583c  # 1.73.0
+- uses: Davmunrey/Trazum@d7b79eadc26e6488038dbeeb7f918c72654b5fc7  # 1.73.1
   with:
     usage-log: logs/yesterday.jsonl
     max-usd: '50'            # exit 1 over budget — no period assumed
@@ -3327,6 +3329,47 @@ a fabricated one — the same refusal as inventing a price. Cache reads are
 taken only where a `gen_ai.usage.cache_read_input_tokens`-shaped key is
 actually present. Vendor-specific converters (LangSmith, Helicone, LiteLLM)
 are named as next, not built now: each ships when a real export of it is seen.
+
+### When does the switch pay: `trazum switch`
+
+Every what-if reader is really asking one question: *should we move this
+traffic, and when does moving pay?* This prices the whole decision:
+
+```bash
+trazum switch usage.jsonl --to claude-haiku-4-5 --migration-usd 500 --cases 50
+```
+
+The delta rests on the same slice-by-slice reprice the what-if uses — slices
+whose calls exceed the candidate's context window are excluded and said,
+cache traffic the candidate could not grant is priced without it. With a
+declared `--migration-usd`, break-even is **division on the past**: your
+cost over the saving's measured daily rate, with the days of window
+attached — never a forecast, and refused by name when the switch saves
+nothing or the log carries no timestamps. With `--cases`, the evaluation the
+switch requires is itself priced at this log's own mean call — two calls on
+the incumbent and one on the candidate per case — because the cost of
+*knowing* the cheaper model is good enough is part of the cost of switching.
+
+What it refuses: any sentence about quality. Whether the candidate can do
+the work is an evaluation, not arithmetic, and the report ends by printing
+the `trazum route` command that settles it.
+
+### The model you run yourself: `trazum ownrate`
+
+The one model this product cannot price is the one only you run — and the
+honest answer is not a guess, it is your own numbers, divided:
+
+```bash
+trazum ownrate --gpu-usd-hour 2.50 --tokens-per-second 250 --utilization 0.7
+```
+
+GPU dollars per hour over measured tokens per second, at a utilisation you
+declare, is dollars per million tokens — no amortisation, no energy model,
+no assumed efficiency, because a calculator that estimated those would be an
+invented price wearing arithmetic's clothes. It prints the figure and the
+pricing-overlay snippet ready to paste into `trazum.config.json`, so a
+self-hosted Qwen or Llama becomes a first-class row in every report —
+priced by you, and marked as priced by you everywhere the figure travels.
 
 ### What would actually move this bill
 

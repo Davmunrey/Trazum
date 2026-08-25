@@ -111,6 +111,33 @@ describe('the guided tour', () => {
     }
   });
 
+  it('what the screenshots taught, kept as law', () => {
+    const tour = readFileSync(join(web, 'components/Tour.tsx'), 'utf8');
+    // The ring is clamped to the viewport: a panel taller than the screen is
+    // ringed by its visible part — the un-clamped rectangle painted the dim
+    // off-screen and the tour looked like nothing at all.
+    assert.match(tour, /Math.min\(window.innerWidth/);
+    assert.match(tour, /Math.min\(window.innerHeight/);
+    // The card's top is clamped into the viewport; on phones the un-clamped
+    // card clipped its title above the screen edge.
+    assert.match(tour, /cardTop = Math.min\(/);
+    // The welcome dim is inline style: a backdrop that can quietly not render
+    // is a modal with no modality.
+    assert.match(tour, /backgroundColor: 'rgba\(0, 0, 0, 0.55\)'/);
+    // The ring glides between targets; the global reduced-motion rule makes
+    // it instant, so the transition needs no gate of its own.
+    assert.match(tour, /cubic-bezier/);
+    // Arrow keys walk the steps; the dots draw the walked path.
+    assert.match(tour, /ArrowRight/);
+    assert.match(tour, /ArrowLeft/);
+    assert.match(tour, /TOUR_STEPS.map\(/);
+    // The entrance animation lives in globals.css, under the same
+    // reduced-motion rule as everything else.
+    const globals = readFileSync(join(web, 'app/globals.css'), 'utf8');
+    assert.match(globals, /@keyframes tour-card-in/);
+    assert.match(tour, /tour-card-in/);
+  });
+
   it('scrolls with the reader, not at them', () => {
     const tour = readFileSync(join(web, 'components/Tour.tsx'), 'utf8');
     assert.match(tour, /prefers-reduced-motion/, 'the scroll ignores prefers-reduced-motion');
