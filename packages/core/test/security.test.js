@@ -1728,7 +1728,7 @@ describe('the packaged Action', () => {
      *
      * The first is a shallow checkout. `base..head` over a depth-1 clone walks
      * nothing, the loop finds no commits, and the job goes green while
-     * examining zero of them — the failure mode where a guard reports clean
+     * examining zero of them: the failure mode where a guard reports clean
      * because it was never given anything to read. `fetch-depth: 0` is pinned
      * below for that reason and no other.
      *
@@ -1749,7 +1749,7 @@ describe('the packaged Action', () => {
     assert.doesNotMatch(
       dco,
       /pull_request_target/,
-      'dco.yml uses pull_request_target — a read-only check does not need a writable token',
+      'dco.yml uses pull_request_target: a read-only check does not need a writable token',
     );
     // Anchored to column zero. A loose `\\s+` also matched the job-level block
     // six spaces in, so planting `contents: write` at the top of the file left
@@ -1762,7 +1762,7 @@ describe('the packaged Action', () => {
     assert.match(
       dco,
       /fetch-depth: 0/,
-      'dco.yml checks out shallow — base..head would walk nothing and the job would pass',
+      'dco.yml checks out shallow: base..head would walk nothing and the job would pass',
     );
     // The grep pattern itself, not the bare words. Planting a typo in the
     // header comment left the old assertion green, which means it was pinning
