@@ -66,8 +66,17 @@ if (registry.version !== manifest.version) {
 const timeout = Number(process.env.MCP_PREFLIGHT_TIMEOUT_MS ?? 300_000);
 const interval = Number(process.env.MCP_PREFLIGHT_INTERVAL_MS ?? 10_000);
 
-/** The per-version document, which propagates ahead of the aggregated packument. */
-const url = `https://registry.npmjs.org/${manifest.name.replace('/', '%2f')}/${manifest.version}`;
+/**
+ * The per-version document, which propagates ahead of the aggregated packument.
+ *
+ * `encodeURIComponent` rather than replacing the slash. The first version of
+ * this line was `.replace('/', '%2f')`, which CodeQL flagged as incomplete
+ * escaping and was right to: a string pattern replaces the first occurrence
+ * only, so the encoding is correct for `@scope/name` by luck of that shape
+ * rather than by construction. Both spellings answer 200 from npm today
+ * (`@trazum%2fmcp` and `%40trazum%2Fmcp`); only one of them is an encoder.
+ */
+const url = `https://registry.npmjs.org/${encodeURIComponent(manifest.name)}/${manifest.version}`;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 

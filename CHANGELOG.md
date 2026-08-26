@@ -70,6 +70,13 @@ merged commit with no entry is a change only `git log` remembers.
   passed loudest exactly when the step it ordered had been deleted. Presence is
   asserted before order now.
 
+- **The npm URL is encoded, not patched.** `scripts/mcp-registry-preflight.mjs`
+  first built it with `.replace('/', '%2f')`, which CodeQL flagged as incomplete
+  escaping and was right to: a string pattern replaces the first occurrence
+  only, so that line was correct for `@scope/name` by luck of the shape rather
+  than by construction. `encodeURIComponent` now. Both spellings answer 200 from
+  npm; only one of them is an encoder.
+
 ### Changed
 
 - **`docs/releasing.md`** documents the job, the three choices behind it, and
