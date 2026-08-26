@@ -11,6 +11,46 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+- **Two `--json` documents carried the prompt text this file promises they never
+  do.** `docs/json-output.md` opens by promising that *"nothing here carries a
+  session key or prompt text"*. `trazum route --json` printed the whole
+  `EvalReport`, whose `cases[]` holds `input` — the caller's own case text — plus
+  `baseline[0]`, `baseline[1]` and `optimized`, three model answers.
+  `trazum prune --json` printed `ExampleContribution.text`, which is a few-shot
+  example and therefore prompt text by any reading. Neither carried a
+  `schemaVersion`.
+
+  **Nothing said so, and the guard that enforces the promise explains why.**
+  `format-promises.test.js` runs it over *"every document this package can
+  build — the profile, the roll-up and the prompt draft"*. Both of these are
+  built in the CLI, so they sat outside a guard whose own comment describes the
+  state they were in: a promise that quietly stops being true, because nothing
+  would say so.
+
+  **The measurement survives; only the strings go.** Both documents keep their
+  per-item shape, because the similarity scores are the evidence behind the
+  verdict and `index` says which example a verdict is about. Anyone who wants to
+  read the answers has the human-readable output, which never left the terminal.
+
+  `routeDocument` and `pruneDocument` are named functions now rather than inline
+  objects, which is what makes the guard possible at all: reaching either
+  document for real costs provider calls and an API key, so a test that demanded
+  a live run would never run in CI.
+
+  Three plants, three failures, including the one that matters in the other
+  direction: returning a nearly empty document passes a stripping guard
+  perfectly, and fails `the per-example evidence went with the text`.
+
+  **Named and not built:** five commands emit `--json` with no contract table in
+  `docs/json-output.md` at all — `route`, `prune`, `store`, `conform` and
+  `watch`. `contract-coverage.test.js` checks documented-against-tested in both
+  directions and cannot see a document nobody ever wrote down. The guard that
+  derives the list from `COMMAND_FLAGS` was written and set aside: it fails
+  until those five tables exist, and writing them is its own piece of work.
+
+
 ### Added
 
 - **The tier heuristic refuses when the prompt argues with itself.** The score is

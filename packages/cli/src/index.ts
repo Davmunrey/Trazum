@@ -145,9 +145,11 @@ import { cacheDir, cacheStats, cachingProvider, clearCache } from './suggest-cac
 import { dayOf, formatGap, median, spanDays } from './time.js';
 import type {
   BucketedReport,
+  EvalReport,
   FleetSource,
   HistoryRun,
   MeasuredUsage,
+  PruneReport,
   PlanDocument,
   StoredReport,
   VerifiedAction,
@@ -9643,6 +9645,76 @@ function reportProfileGaps(
  * exactly as `prune` does. A command that can spend somebody's money without
  * telling them first is a command they stop trusting.
  */
+/**
+ * The routing measurement, without the text that produced it.
+ *
+ * `route --json` printed `{ slice, evaluation }` — the whole `EvalReport`,
+ * whose `cases[]` carries `input` (the caller's own case text), `baseline[0]`,
+ * `baseline[1]` and `optimized` (three model answers). It carried no
+ * `schemaVersion` either.
+ *
+ * `docs/json-output.md` opens by promising that **nothing here carries a
+ * session key or prompt text**, and this is the document most likely to be
+ * piped into a dashboard, pasted into a ticket or dropped into a browser. A
+ * tool whose headline is that prompts never leave the machine cannot have its
+ * most portable artefact be the one that carries them.
+ *
+ * The per-case *shape* survives: the two similarity scores are the evidence
+ * behind the verdict, and a reader checking a borderline call needs them. Only
+ * the strings go. Anyone who wants the answers has the human-readable output,
+ * which never left the terminal.
+ *
+ * A named function rather than an inline object so the stripping is a thing a
+ * test can call without spending a provider call to reach it.
+ */
+export function routeDocument(slice: unknown, result: EvalReport): unknown {
+  return {
+    schemaVersion: 1,
+    slice,
+    evaluation: {
+      provider: result.provider,
+      model: result.model,
+      candidateModel: result.candidateModel,
+      verdict: result.verdict,
+      selfAgreement: result.selfAgreement,
+      crossAgreement: result.crossAgreement,
+      callsMade: result.callsMade,
+      cases: result.cases.map((one: EvalReport['cases'][number]) => ({
+        selfSimilarity: one.selfSimilarity,
+        crossSimilarity: one.crossSimilarity,
+      })),
+    },
+  };
+}
+
+/**
+ * The example-pruning measurement, likewise.
+ *
+ * `ExampleContribution.text` is *"the example itself, so a report can quote its
+ * first line"* — true of the terminal rendering and wrong of a document that
+ * promises to carry no prompt text. A few-shot example **is** prompt text, and
+ * this was the second command emitting it.
+ *
+ * `index` and `tokens` say which example without quoting it, which is what a
+ * machine reading this needs: it already has the prompt.
+ */
+export function pruneDocument(report: PruneReport): unknown {
+  return {
+    schemaVersion: 1,
+    provider: report.provider,
+    model: report.model,
+    selfAgreement: report.selfAgreement,
+    recoverableTokens: report.recoverableTokens,
+    callsMade: report.callsMade,
+    contributions: report.contributions.map((one: PruneReport['contributions'][number]) => ({
+      index: one.index,
+      tokens: one.tokens,
+      agreementWithout: one.agreementWithout,
+      verdict: one.verdict,
+    })),
+  };
+}
+
 async function commandRoute(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
   const path = args.positional[0];
   if (path === undefined) {
@@ -9742,7 +9814,7 @@ async function commandRoute(args: Args, pricing: PricingCatalogue, t: CliMessage
   });
 
   if (boolFlag(args, 'json')) {
-    console.log(JSON.stringify({ slice, evaluation: result }, null, 2));
+    console.log(JSON.stringify(routeDocument(slice, result), null, 2));
     return;
   }
 
@@ -10372,7 +10444,7 @@ async function commandPrune(args: Args, t: CliMessages): Promise<void> {
   });
 
   if (boolFlag(args, 'json')) {
-    console.log(JSON.stringify(report, null, 2));
+    console.log(JSON.stringify(pruneDocument(report), null, 2));
     return;
   }
 
