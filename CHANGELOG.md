@@ -20,6 +20,41 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## 1.80.1 — "The capital letter the grant keeps"
+
+### Fixed
+
+- **The MCP registry namespace is case-sensitive, and both files said it
+  wrong.** `packages/mcp/package.json`'s `mcpName` and `packages/mcp/server.json`'s
+  `name` were `io.github.davmunrey/trazum`. GitHub grants
+  `io.github.Davmunrey/*`, the login exactly as GitHub spells it, so the
+  publish came back 403 with both strings quoted at each other. Corrected in
+  both files.
+
+  This could not be fixed locally. The registry verifies a name by reading
+  `mcpName` back out of the package on npm, so the corrected field only counts
+  once it is published, and publishing is a release. Hence a version number for
+  a two-character change.
+
+### Changed
+
+- **`publish.test.js` derives the namespace owner instead of guessing its
+  shape.** The assertion matched the owner segment against `[a-z0-9-]+`, a
+  pattern written before anyone here had published to this registry: it encoded
+  an assumption about the registry as though it were a rule, and it passed the
+  name the registry refused. It now reads the owner out of the `repository.url`
+  in `server.json` and asserts `mcpName` starts with `io.github.<owner>/`,
+  case included.
+
+  Both plants fire: lowercasing the name in both files fails with the two
+  namespaces named in the message, and changing the repository URL's owner
+  while leaving the name alone fails as well, which is what proves the owner
+  is read rather than hardcoded under a different spelling. Restoring either
+  passes.
+
+- **The README's Action pin advances to `12d181a`, the 1.80.0 release commit.**
+  Structural lag, as always: the pin can only name a commit that exists.
+
 ## 1.80.0 — "The doors somebody else walks through"
 
 ### Added

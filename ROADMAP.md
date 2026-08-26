@@ -1184,6 +1184,16 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.80.1 — "The capital letter the grant keeps" — released
+
+**The correction 1.80.0's own guard let through.** The MCP registry
+namespace carries the GitHub login exactly as GitHub spells it, and both
+manifests lowercased it, so the publish came back 403. The name is
+corrected in both files, and the guard no longer guesses the owner's
+shape: it reads the owner out of the repository URL `server.json`
+already carries. A release rather than a local fix, because the registry
+verifies the name by reading it off the published package.
+
 ## 1.80.0 — "The doors somebody else walks through" — released
 
 **The distribution pass, with nothing new built.** The Action's
