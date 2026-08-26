@@ -485,7 +485,7 @@ describe('what would actually move this bill', () => {
     const out = flat(result);
 
     assert.match(out, /What would actually move this bill/);
-    assert.match(out, /support-rag on Claude Opus 5 — up to \$16\.80/, 'the combined figure is wrong or missing');
+    assert.match(out, /support-rag on Claude Opus 5, up to \$16\.80/, 'the combined figure is wrong or missing');
     assert.match(out, /route it to Claude Sonnet 5, \$12\.60/);
     assert.match(out, /send it through the Batch API, \$10\.50/);
 
@@ -953,7 +953,7 @@ describe('closing the cache loop through the labels map', () => {
     // The file is whatever the repository holds now, which may not be what
     // produced the log. Presenting a fresh file as the history's explanation
     // would be a figure attributed to something it does not describe.
-    assert.match(out, /as it is today — the log may predate it/);
+    assert.match(out, /as it is today, and the log may predate it/);
   });
 
   it('names stable tokens stranded behind the first placeholder', async () => {

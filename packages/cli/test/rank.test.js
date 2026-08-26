@@ -170,7 +170,7 @@ describe('what it measures, and what it skips', () => {
 
     const entry = report.prompts.find((p) => p.path === 'a.ts');
     assert.ok(entry, 'the source file was dropped entirely');
-    assert.ok(entry.tokens < 20, `counted ${entry.tokens} tokens — the imports are included`);
+    assert.ok(entry.tokens < 20, `counted ${entry.tokens} tokens: the imports are included`);
   });
 
   it('skips a source file with no marker instead of ranking its code', async () => {
@@ -212,7 +212,7 @@ describe('rank --markdown-out', () => {
     assert.equal(run(['.', '--markdown-out', out], root).code, 0);
 
     const md = await readFile(out, 'utf8');
-    assert.match(md, /^### Trazum — what to fix first/m);
+    assert.match(md, /^### Trazum, what to fix first/m);
     assert.match(md, /\| Recover \| Tokens \|/);
     assert.match(md, /padded\.txt/);
     // The claim the terminal report makes, carried over rather than dropped.

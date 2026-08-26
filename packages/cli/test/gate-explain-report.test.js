@@ -100,7 +100,7 @@ describe('a failing gate explains itself', () => {
     const result = run([await write(lopsided()), '--max-usd', '8', '--markdown-out', out]);
     assert.equal(result.status, 1);
     const md = await readFile(out, 'utf8');
-    assert.match(md, /> ❌ \*\*FAILED — this log spent \$12\.00/);
+    assert.match(md, /> ❌ \*\*FAILED: this log spent \$12\.00/);
     // One mark, on the verdict: the lines under it explain it and are not
     // themselves failures.
     assert.equal((md.match(/❌/g) ?? []).length, 1);

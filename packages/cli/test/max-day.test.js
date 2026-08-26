@@ -46,7 +46,7 @@ describe('trazum profile --max-day-usd', () => {
     );
     const out = flat(result);
     assert.equal(result.status, 1);
-    assert.match(out, /FAILED — 2026-08-02 spent \$10\.00, over the --max-day-usd limit of \$5\.00/);
+    assert.match(out, /FAILED, 2026-08-02 spent \$10\.00, over the --max-day-usd limit of \$5\.00/);
     // The total gate passed in the same run, which is the whole point.
     assert.match(out, /Bill within budget|within budget|\$12\.00/);
   });

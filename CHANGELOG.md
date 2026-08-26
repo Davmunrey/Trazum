@@ -87,6 +87,47 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **The English catalogues lost their em-dashes, and the guard covers them
+  now.** 341 in `packages/cli/src/i18n/en.ts` (30 of them written as `\u2014`),
+  17 in `packages/core/src/i18n/en.ts`, 1 in `apps/web/lib/i18n/en.ts`. Three of
+  them were not punctuation at all but table cells, and they became words the
+  way the Spanish sweep did: `none`, `other`, `no verdict`.
+
+  **This reverses a decision the guard itself argued for**, and the comment now
+  says why rather than being quietly deleted. The old argument was that the
+  em-dash is ordinary English punctuation and the product's whole English voice
+  rests on it, so sweeping one file and not the rest reads as two writers. That
+  holds for prose somebody opens on purpose and does not hold for the line that
+  appears in their terminal unasked. The README, `docs/` and this file keep
+  theirs, deliberately: the line is what a user reads on screen versus what a
+  reader opens.
+
+  **What the mechanical pass got wrong, and how it was found.** A comma was
+  right 249 times and a colon 99, chosen by reading the clause after the dash,
+  and then every changed line was read back. Three kinds of damage turned up
+  that no rule would have avoided: a dash ending a wrapped help line became a
+  comma at the start of the next one; the config help table used the dash as a
+  column separator, so a comma read as part of the value (that table is a colon
+  against the value now, the same shape the Spanish sweep gave it); and one
+  regex reached inside a JSON literal in that table and moved a comma belonging
+  to the data, which is why the block was restored and rewritten by hand.
+
+  **An existing guard caught the sharpest one.** `markdown.test.js` forbids
+  `score:`, `grade:`, `rating:` in the report, because a report that looks like
+  it scores you is a report that invented one. The sweep turned *"There is no
+  score — every column is a measurement"* into *"There is no score: every
+  column…"*, and the guard failed on a copy change nobody would have connected
+  to it. The sentence is two sentences now.
+
+  Twenty-four test assertions quote this copy and were realigned to it, and 75
+  more were reverted after an over-eager pass touched assertions whose strings
+  live in `packages/core/src/*.ts` rather than in a catalogue and were never
+  swept.
+
+  Three plants, three failures: a literal em-dash in the CLI's English
+  catalogue, an escaped one in core's, and the guard being narrowed back to
+  Spanish, which fails on finding three catalogues where it expects six.
+
 - **`trazum from-claude-code --state <file>` reads only what is new.** A
   transcript is append-only and can be enormous, so anything converting it on a
   loop spends its time re-reading bytes that cannot have changed. On the largest

@@ -427,7 +427,7 @@ describe('the npm page does not present a partial command table as the whole set
     const listed = commands.filter((c) => new RegExp(`\`trazum ${c}\\b`).test(text));
     assert.ok(
       listed.length <= 1,
-      `the disclaimer enumerates omitted commands (${listed.join(', ')}) — a list typed ` +
+      `the disclaimer enumerates omitted commands (${listed.join(', ')}), a list typed ` +
         'beside the thing, stale the moment one is added. Name at most one as an example.',
     );
   });

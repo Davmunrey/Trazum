@@ -339,7 +339,7 @@ describe('the format page and the contracts it documents', () => {
       16: 'sixteenth', 17: 'seventeenth', 18: 'eighteenth', 19: 'nineteenth',
     };
     const ordinal = ordinals[rows];
-    assert.ok(ordinal !== undefined, `no ordinal known for ${rows} rows — add it above`);
+    assert.ok(ordinal !== undefined, `no ordinal known for ${rows} rows, add it above`);
     assert.match(
       page,
       new RegExp(`defines an? ${ordinal} it does not\\s+emit`),

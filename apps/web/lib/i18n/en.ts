@@ -1,6 +1,6 @@
 import type { WebMessages } from './types';
 
-/** English dictionary — the source of truth. */
+/** English dictionary, the source of truth. */
 export const en: WebMessages = {
   locale: 'en',
   numberLocale: 'en-US',

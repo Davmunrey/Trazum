@@ -262,13 +262,21 @@ describe('the Spanish catalogues carry no em-dash', () => {
    * out: it is postponed until somebody reintroduces it. So the sweep is a rule
    * now, and this is the rule.
    *
-   * English is deliberately not covered. The em-dash is ordinary English
-   * punctuation and the whole English voice of this product rests on it, from
-   * the READMEs to `en.ts` itself. Removing it from one English file and not the
-   * rest would make the product read as though two people wrote it.
+   * **English used to be excluded, and this comment used to argue for it.** The
+   * argument was that the em-dash is ordinary English punctuation and the
+   * product's whole English voice rests on it, so sweeping one English file and
+   * not the rest would read as though two people wrote it. That argument holds
+   * for prose a reader chooses to read, and it does not hold for the line that
+   * appears in somebody's terminal without being asked for. The catalogues are
+   * the second kind, and they are covered now.
    *
-   * The Spanish catalogues are found by walking, not by a hard-coded list, so a
-   * Spanish dictionary added tomorrow is covered the day it lands.
+   * The README, `docs/` and the changelog keep theirs, deliberately: they are
+   * documents, they are read as documents, and the em-dash there is punctuation
+   * rather than a tic. The line this guard draws is what a user reads on screen
+   * versus what a reader opens on purpose.
+   *
+   * Both languages are found by walking, not by a hard-coded list, so a
+   * dictionary added tomorrow is covered the day it lands.
    */
   const catalogues = () => {
     const found = [];
@@ -277,16 +285,24 @@ describe('the Spanish catalogues carry no em-dash', () => {
         if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name === '.next') continue;
         const full = join(dir, entry.name);
         if (entry.isDirectory()) walk(full);
-        else if (entry.name === 'es.ts' && full.includes(`${sep}i18n${sep}`)) found.push(full);
+        else if ((entry.name === 'es.ts' || entry.name === 'en.ts') && full.includes(`${sep}i18n${sep}`))
+          found.push(full);
       }
     };
     walk(join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..'));
     return found;
   };
 
-  it('finds the Spanish catalogues at all, so this guard cannot pass by finding nothing', () => {
+  it('finds the catalogues at all, so this guard cannot pass by finding nothing', () => {
     const found = catalogues();
-    assert.ok(found.length >= 3, `expected the core, CLI and web Spanish catalogues, found ${found.length}`);
+    // Core, CLI and web, in both languages.
+    assert.ok(found.length >= 6, `expected the core, CLI and web catalogues in both languages, found ${found.length}`);
+    for (const name of ['es.ts', 'en.ts']) {
+      assert.ok(
+        found.some((file) => file.endsWith(`${sep}${name}`)),
+        `no ${name} was found, so half of this guard is watching nothing`,
+      );
+    }
   });
 
   it('holds no em-dash in any of them, in either spelling, comments included', () => {
@@ -305,7 +321,7 @@ describe('the Spanish catalogues carry no em-dash', () => {
         )
         .filter((entry) => entry !== null);
       // Named with the line, so a contributor who adds one is told where.
-      assert.deepEqual(offending, [], `em-dash in Spanish copy: ${offending.join(', ')}`);
+      assert.deepEqual(offending, [], `em-dash in shipped copy: ${offending.join(', ')}`);
     }
   });
 });

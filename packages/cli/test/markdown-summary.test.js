@@ -78,7 +78,7 @@ describe('--markdown-summary', () => {
       '8',
     ]);
     assert.equal(result.status, 1);
-    assert.match(md, /> ❌ \*\*FAILED — this log spent \$12\.00/);
+    assert.match(md, /> ❌ \*\*FAILED: this log spent \$12\.00/);
     // One mark here too: the summary states the verdict, not its explanation.
     assert.equal((md.match(/❌/g) ?? []).length, 1);
   });

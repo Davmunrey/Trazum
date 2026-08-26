@@ -94,7 +94,7 @@ describe('when the rules did change the prompt, whose judgement changed it', () 
     const text = await run(DUTCH, ['--level', 'aggressive']);
     assert.match(text, /Rules applied/);
     assert.match(text, /These changes came from the Dutch dictionary, which nobody here reads/);
-    assert.match(text, /read the diff before trusting it/);
+    assert.match(text, /Read the diff before trusting it/);
   });
 
   it('stays quiet on a prompt in a language somebody here reads', async () => {

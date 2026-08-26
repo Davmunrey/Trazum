@@ -148,7 +148,7 @@ describe('whether the TTL fits the gaps, on screen', () => {
         },
       ]),
     );
-    assert.match(flat(result), /could not be measured — it needs both "session" and "ts"/);
+    assert.match(flat(result), /could not be measured, it needs both "session" and "ts"/);
   });
 
   it('never prints the session key in the fit lines', async () => {

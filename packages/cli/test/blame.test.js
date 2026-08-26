@@ -437,7 +437,7 @@ describe('blame --markdown-out', () => {
     assert.equal(run(['p.txt', '--markdown-out', out], root).code, 0);
 
     const md = await readFile(out, 'utf8');
-    assert.match(md, /^### Trazum — token history for/m);
+    assert.match(md, /^### Trazum, token history for/m);
     assert.match(md, /\| Date \| Tokens \| Change \|/);
     // A rise is what somebody has to act on, so it is what gets the weight.
     assert.match(md, /\*\*\+\d+\*\*/);

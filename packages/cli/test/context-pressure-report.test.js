@@ -42,7 +42,7 @@ describe('the context window on screen', () => {
   it('is loud at 95% and names the numbers, not a date', async () => {
     const out = flat(await run([call(190_000)]));
     assert.match(out, /Approaching the context window/);
-    assert.match(out, /chat on Claude Haiku 4\.5: the largest call carried 190,000 input tokens against a 200,000-token window — 95\.0% of the ceiling/);
+    assert.match(out, /chat on Claude Haiku 4\.5: the largest call carried 190,000 input tokens against a 200,000-token window, 95\.0% of the ceiling/);
     assert.match(out, /At 100% the call fails outright/);
     // The refusal, pinned: no prediction of when.
     assert.match(out, /When it crosses is not predicted here|the trajectory is yours to know/);

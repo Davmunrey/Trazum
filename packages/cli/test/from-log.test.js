@@ -57,7 +57,7 @@ describe('optimize --from-log', () => {
     // Two calls over ten days: the rate is 6/month and the arithmetic shows.
     const { prompt, log } = await setup([call('2026-08-01'), call('2026-08-11')]);
     const out = flat(run([prompt, '--from-log', log, '--label', 'chat']));
-    assert.match(out, /2 calls measured over 10\.0 days — 6\/month at that rate/);
+    assert.match(out, /2 calls measured over 10\.0 days, 6\/month at that rate/);
     assert.match(out, /500 output tokens per call, measured/);
     assert.match(out, /saving .*\/month/);
   });
@@ -128,7 +128,7 @@ describe('optimize --from-log', () => {
       call('2026-08-01', { usage: { input_tokens: 200_000, output_tokens: 0 } }),
       call('2026-08-11', { usage: { input_tokens: 200_000, output_tokens: 0 } }),
     ]);
-    assert.match(flat(run([prompt, '--from-log', log, '--label', 'chat'])), /\$0 measured — not \$0 assumed/);
+    assert.match(flat(run([prompt, '--from-log', log, '--label', 'chat'])), /\$0 measured, not \$0 assumed/);
   });
 
   it('--all-labels ranks every mapped prompt by its own measured traffic', async () => {

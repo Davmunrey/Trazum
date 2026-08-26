@@ -86,7 +86,7 @@ describe('coverage drift in --against', () => {
     // and would be certifying a comparison the log went blind to.
     const result = run([current, '--against', previous, '--max-growth-usd', '100']);
     assert.equal(result.status, 1);
-    assert.match(flat(result), /FAILED — this log stopped recording session/);
+    assert.match(flat(result), /FAILED: this log stopped recording session/);
     assert.match(flat(result), /is not a bill that stayed flat/);
   });
 
