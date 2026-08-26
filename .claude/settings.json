@@ -10,5 +10,6 @@
         ]
       }
     ]
-  }
+  },
+  "includeCoAuthoredBy": false
 }
