@@ -13,6 +13,40 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **`GET /api/auth/session` is rate limited, and it was the only auth route that
+  was not.** Every call below the disabled branch is an indexed lookup by token
+  hash, made for an unauthenticated caller, keyed on a cookie that caller chose.
+  `lib/auth/routes.ts` has exported a limiter for the sign-in hops since they
+  were written; this route imported the file for nothing else and never asked
+  for one. The gap was an omission, not a decision.
+
+  **Its own budget, not the sign-in one, and that is the part worth a guard.**
+  The header asks this endpoint before it can draw anything, so a person
+  clicking around calls it far more often than they sign in. One shared bucket
+  means ordinary browsing spends what the sign-in hops need and refuses somebody
+  at the moment they press the button. Reusing `authRateLimited` fails with
+  `reading the session locked this address out of signing in`, which is the
+  regression a future reader is most likely to make while tidying.
+
+  Sixty a minute, the same as `/api/write` and for the same reason: the limiter
+  keys on an address rather than a person, so the budget has to be an office's.
+  That is a policy matched to an existing precedent in this repository, not a
+  measurement, and the comment says so rather than dressing it up. What it does
+  not bound is a distributed attacker, which `rate-limit.ts` already states in
+  its own terms; guessing a token is not among the risks, since they are 256
+  bits.
+
+  **The refusal sits after the disabled branch, not before it.** That branch
+  exists so an operator whose sign-in never appeared can curl this endpoint and
+  read why, and it touches no store; rationing it would ration the one answer
+  somebody debugging a deployment needs. Moving the limiter above it fails on
+  call 61 of a test with its own address, which is the only way that failure
+  names the ordering rather than a budget two tests above already spent.
+
+  Three plants, three failures: deleting the limiter, sharing the sign-in
+  bucket, and moving it above the disabled branch. The 429 carries
+  `cache-control: private, no-store` like every other branch of this route.
+
 - **The English catalogues lost their em-dashes, and the guard covers them
   now.** 341 in `packages/cli/src/i18n/en.ts` (30 of them written as `\u2014`),
   17 in `packages/core/src/i18n/en.ts`, 1 in `apps/web/lib/i18n/en.ts`. Three of

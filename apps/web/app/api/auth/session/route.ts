@@ -1,4 +1,5 @@
 import { authConfig } from '../../../../lib/auth/config';
+import { sessionRateLimited } from '../../../../lib/auth/routes';
 import { currentUser } from '../../../../lib/auth/session';
 import { getStore } from '../../../../lib/store';
 
@@ -42,6 +43,31 @@ export async function GET(request: Request): Promise<Response> {
     return Response.json(
       { enabled: false, user: null, ephemeralSessions: false, reason: config.reason },
       { headers: { 'cache-control': 'private, no-store' } },
+    );
+  }
+
+  /**
+   * Bounded from here down, which is where the work is.
+   *
+   * Below this line every call is an indexed lookup by token hash, made for an
+   * unauthenticated caller, keyed on a cookie that caller chose. This was the
+   * one auth route with no limiter while `lib/auth/routes.ts` exported one
+   * twenty lines away, so the gap was an omission rather than a decision.
+   *
+   * After the disabled branch, not before it, and that ordering is deliberate.
+   * The branch above exists so an operator whose sign-in never appeared can
+   * `curl` this endpoint and read why; it touches no store and costs nothing,
+   * and putting the limiter in front of it would ration the one answer somebody
+   * debugging a deployment needs.
+   *
+   * `no-store` on the refusal as well. Every other branch here carries it
+   * because a cached identity is somebody else's identity served to a stranger,
+   * and a cached 429 is the same mistake with a smaller blast radius.
+   */
+  if (sessionRateLimited(request, Date.now())) {
+    return Response.json(
+      { error: 'too many requests, try again in a minute' },
+      { status: 429, headers: { 'cache-control': 'private, no-store' } },
     );
   }
 

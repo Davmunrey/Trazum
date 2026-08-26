@@ -27,6 +27,28 @@ import type { AuthConfig, AuthEnabled } from './config';
  */
 export const authRateLimited = createRateLimiter({ windowMs: 60_000, max: 30 });
 
+/**
+ * A separate budget for `GET /api/auth/session`, and separate on purpose.
+ *
+ * It is the endpoint the header asks before it can draw anything, so a person
+ * clicking around the app calls it far more often than they sign in. Sharing
+ * `authRateLimited` would let ordinary browsing spend the budget the sign-in
+ * hops need, and refuse somebody at the moment they press the button. That is
+ * the same reasoning `rate-limit.ts` gives for handing every caller its own
+ * `Map`, applied one level up.
+ *
+ * Sixty a minute, the same as `/api/write` and for the same reason: the key is
+ * an address rather than a person, so the budget has to be an office's. The
+ * number is a policy matched to an existing precedent in this repository, not a
+ * measurement, and it is worth saying so rather than dressing it up.
+ *
+ * What it bounds is one indexed lookup by token hash on every call, from an
+ * unauthenticated caller, with a cookie that caller chose. What it does not
+ * bound is a distributed attacker, which `rate-limit.ts` already states in its
+ * own terms. Guessing a token is not among the risks: they are 256 bits.
+ */
+export const sessionRateLimited = createRateLimiter({ windowMs: 60_000, max: 60 });
+
 export function jsonError(message: string, status: number, headers?: HeadersInit): Response {
   return Response.json({ error: message }, { status, headers });
 }
