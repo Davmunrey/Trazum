@@ -368,25 +368,57 @@ jobs:
 
       # The listing is metadata somebody else reads, so the job does not end on
       # "the command exited zero". It asks the registry what it now believes.
+      # Asks whether the version we just sent is *among* the listings, and keeps
+      # asking for a minute. The first version of this step got both halves
+      # wrong and failed 1.81.0's release while the publish itself had
+      # succeeded, which is the worst way for a check to be wrong: it reported a
+      # broken release that was not broken.
+      #
+      # **It took the first entry the search returned.** The registry keeps
+      # every version of a server, so `find(entry => entry.name === name)`
+      # answers "some version is listed" and calls it "this version is listed".
+      # After 1.81.0 published, the search returned 1.80.1 first and 1.81.0
+      # second, so the check read 1.80.1 and failed. That would have failed
+      # every release from here on, not just this one.
+      #
+      # **And it asked once, 0.6 seconds after the publish returned.** The
+      # publisher confirms the write; the search index catches up afterwards.
+      # `mcp-registry-preflight.mjs` already learned this about npm and polls
+      # until the answer arrives. The same lesson had not been applied one step
+      # further down.
       - name: The registry serves what we just sent
         run: |
           set -euo pipefail
           name="$(node -p "require('./packages/mcp/server.json').name")"
           want="$(node -p "require('./packages/mcp/server.json').version")"
-          got="$(curl -fsSL "https://registry.modelcontextprotocol.io/v0.1/servers?search=$name" \
-            | node -e "
-              let raw = '';
-              process.stdin.on('data', (chunk) => { raw += chunk; });
-              process.stdin.on('end', () => {
-                const found = JSON.parse(raw).servers?.find((entry) => entry.server?.name === process.argv[1]);
-                console.log(found?.server?.version ?? '');
-              });
-            " "$name")"
-          if [ "$got" != "$want" ]; then
-            echo "::error::the registry serves '$got' for $name, expected '$want'"
-            exit 1
-          fi
-          echo "$name is listed at $got"
+
+          for attempt in $(seq 1 12); do
+            listed="$(curl -fsSL "https://registry.modelcontextprotocol.io/v0.1/servers?search=$name" \
+              | node -e "
+                let raw = '';
+                process.stdin.on('data', (chunk) => { raw += chunk; });
+                process.stdin.on('end', () => {
+                  const [name, want] = process.argv.slice(1);
+                  const versions = (JSON.parse(raw).servers ?? [])
+                    .map((entry) => entry.server)
+                    .filter((server) => server?.name === name)
+                    .map((server) => server.version);
+                  // Every version the registry holds, so the answer cannot
+                  // depend on which one the search happens to return first.
+                  console.log(versions.includes(want) ? 'yes' : versions.join(',') || 'none');
+                });
+              " "$name" "$want")" || listed='unreachable'
+
+            if [ "$listed" = "yes" ]; then
+              echo "$name is listed at $want (after $attempt $([ "$attempt" = 1 ] && echo ask || echo asks))"
+              exit 0
+            fi
+            echo "  $name: registry holds [$listed], waiting for $want"
+            sleep 5
+          done
+
+          echo "::error::the registry does not list $want for $name after a minute; it holds [$listed]"
+          exit 1
 
       - name: What that failure probably means
         if: failure()
