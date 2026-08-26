@@ -589,6 +589,12 @@ export interface CliMessages {
     labelled(): string;
     skipped(other: number, unparseable: number, withoutUsage: number): string;
     written(file: string): string;
+    /** `--state` was pointed at a folder, which it cannot resume. */
+    stateNeedsFile(): string;
+    /** `--state` with nowhere to append: the records were going to stdout. */
+    stateNeedsOut(): string;
+    /** How much of the transcript was skipped, and where the next run starts. */
+    resumed(skipped: number, offset: number): string;
   };
 
   position: {

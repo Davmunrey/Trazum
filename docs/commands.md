@@ -2355,6 +2355,39 @@ passed over is said on stderr, never silently. `--label <name>` stamps one
 workload; `--label-from-project` uses each transcript's project directory
 name, which the config's `labels` block can map to something readable.
 
+**`--state <file>` reads only what is new.** A transcript is append-only and
+can be enormous, so anything that converts it on a loop spends most of its time
+re-reading bytes that cannot have changed. The state file records where the last
+conversion stopped, and the next one starts there. On the largest real
+transcript on one machine, 212 MB, that is 2.6s down to 0.19s, and the records
+appended are byte for byte what a full read would have produced.
+
+The resume point is **not** the end of the file, and that is the whole design.
+One call is written as several lines and the last one stands, so a run that
+stopped at the end would record the call that was still streaming from its first
+line and never see the lines that finished it: the bill would be short by
+whatever that call grew by, on every pass, with nothing looking wrong. So the
+resume point is the first line of the last call, that call is re-derived every
+time, and the output is truncated back to the settled records before the new
+ones are appended.
+
+Three refusals come with it, each because the exact answer is not available
+otherwise:
+
+- **It needs `--out`.** There is nothing to truncate and append to when the
+  records are going to stdout.
+- **It takes one transcript, not a folder.** The state ties one transcript
+  offset to one output length, and several transcripts appending to one output
+  have no single length that means "everything settled".
+- **It re-reads from the top when the file is not the one it left.** The bytes
+  before the resume point are fingerprinted, so a transcript that was truncated,
+  rotated or replaced by a different session at the same path is read again
+  rather than resumed into. Slow and correct beats fast and a bill assembled
+  from two unrelated sessions.
+
+A missing or unreadable state file is a cold start rather than an error: it is a
+cache, and losing it costs one full read.
+
 Other agents' transcript formats are deliberately not guessed at: the command
 names the one it reads. A second format arrives when a real transcript of it
 does.

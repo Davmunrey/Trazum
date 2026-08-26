@@ -87,6 +87,45 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **`trazum from-claude-code --state <file>` reads only what is new.** A
+  transcript is append-only and can be enormous, so anything converting it on a
+  loop spends its time re-reading bytes that cannot have changed. On the largest
+  real transcript on one machine, 212 MB, the conversion drops from **2.6s to
+  0.19s**, and the records appended are byte for byte what a full read would have
+  produced. The status line's `Stop` hook uses it, so its per-turn cost on that
+  session goes from 2.7s to 0.72s.
+
+  **The resume point is not the end of the file, and that is the whole design.**
+  One call is written as several lines and the last one stands, so a run that
+  stopped at the end would record the call that was still streaming from its
+  first line and never see the lines that finished it. The bill would be short
+  by whatever that call grew by, on every pass, with nothing looking wrong. So
+  the resume point is the first line of the last call, that call is re-derived
+  every time, and the output is truncated back to the settled records before the
+  new ones are appended.
+
+  Contiguity was measured rather than assumed: across 208 real transcripts and
+  36,468 lines carrying a `requestId`, no request ever reappeared after another
+  had begun. The design does not lean on that; it re-derives the final call
+  whether or not it needed re-deriving, because a measurement on one machine is
+  evidence and not a guarantee.
+
+  Three refusals, each because the exact answer is not available otherwise: it
+  needs `--out` (nothing to truncate when the records go to stdout), it takes one
+  transcript rather than a folder (several transcripts appending to one output
+  have no single settled length), and it re-reads from the top when the bytes
+  before the resume point do not match what it left, so a rotated or replaced
+  transcript is never resumed into. A missing or corrupt state file is a cold
+  start, not an error: it is a cache.
+
+  Five plants, and **three of them found holes in the tests rather than in the
+  code**. Deleting the digest passed, because the replacement transcript was
+  shorter and the length check alone refused it. Deleting the output truncation
+  passed, because every append in the suite made the tail longer. Deleting the
+  partial-line cap passed, because the half-written line was planted after a real
+  call, where the cap changes nothing. All three tests were rewritten until the
+  deletion they name is the reason they fail.
+
 - **A Claude Code status line that costs nothing.**
   `plugin/statusline/trazum-statusline.sh` shows what the session has cost at
   the bottom of the terminal:

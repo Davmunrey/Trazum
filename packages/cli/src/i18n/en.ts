@@ -1719,6 +1719,13 @@ ${bold('EXAMPLES')}
     labelled: () => 'Labelled by project folder. Pass --no-label-from-project to leave the label off, or --label <name> to set one.',
     skipped: (other, unparseable, withoutUsage) => `Passed over: ${other} non-assistant line(s) (the transcript's other business), ${unparseable} unparseable, ${withoutUsage} assistant line(s) without usage.`,
     written: (file) => `Wrote ${file}.`,
+    stateNeedsFile: () =>
+      '--state reads one transcript, not a folder: the state ties an offset in the transcript to a length of the output, and several transcripts appending to one output have no single such length. Point it at the .jsonl file.',
+    stateNeedsOut: () => '--state needs --out: there is nothing to resume against when the records go to stdout.',
+    resumed: (skipped, offset) =>
+      skipped === 0
+        ? `Read the transcript in full and recorded a resume point at byte ${offset}.`
+        : `Resumed at byte ${skipped}, so ${skipped} byte(s) were not re-read. Next resume point: byte ${offset}.`,
   },
 
   position: {
