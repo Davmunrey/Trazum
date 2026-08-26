@@ -439,6 +439,87 @@ describe('GET /api/auth/session', () => {
     }
   });
 
+  /**
+   * The limiter, which this route did without while `lib/auth/routes.ts`
+   * exported one twenty lines away.
+   *
+   * A pinned address, outside the `203.0.113.x` block `freshClient` cycles
+   * through, so burning a budget here cannot refuse a test somewhere else in
+   * this file.
+   */
+  const HAMMER = { 'x-forwarded-for': '198.51.100.7' };
+  const ask = (headers = {}) =>
+    sessionRoute(new Request(`${ORIGIN}/api/auth/session`, { headers: { ...HAMMER, ...headers } }));
+
+  it('refuses an unauthenticated caller who asks more than sixty times a minute', async () => {
+    for (let i = 1; i <= 60; i += 1) {
+      const response = await ask();
+      assert.equal(response.status, 200, `call ${i} was refused inside the budget`);
+    }
+
+    const refused = await ask();
+    assert.equal(refused.status, 429, 'the sixty-first call was served');
+    assert.equal((await refused.json()).error, 'too many requests, try again in a minute');
+    // Every other branch of this route says no-store, because a cached identity
+    // is somebody else's identity served to a stranger. The refusal is the same
+    // mistake with a smaller blast radius.
+    assert.match(refused.headers.get('cache-control'), /no-store/);
+
+    // Another address in the same window is untouched, which is what makes this
+    // a limiter rather than a switch.
+    const elsewhere = await sessionRoute(
+      new Request(`${ORIGIN}/api/auth/session`, { headers: { 'x-forwarded-for': '198.51.100.8' } }),
+    );
+    assert.equal(elsewhere.status, 200, 'one address exhausted the limit for every other');
+  });
+
+  it('does not spend the sign-in budget, so browsing cannot lock somebody out', async () => {
+    /**
+     * The reason this route has its own limiter rather than reusing
+     * `authRateLimited`, asserted rather than left to the comment that claims
+     * it. The header asks this endpoint on every page load and a person signs
+     * in twice a year, so one shared bucket means ordinary browsing spends the
+     * budget the sign-in hops need and refuses somebody at the moment they
+     * press the button.
+     *
+     * Reuse `authRateLimited` in the route and this fails: the sign-in redirect
+     * comes back 429 from the same address that did nothing but read its own
+     * session.
+     */
+    for (let i = 0; i < 61; i += 1) await ask();
+    assert.equal((await ask()).status, 429, 'the session budget was not exhausted');
+
+    const started = await signIn(
+      new Request(`${ORIGIN}/api/auth/github`, { headers: { ...HAMMER } }),
+    );
+    assert.equal(started.status, 303, 'reading the session locked this address out of signing in');
+    assert.match(started.headers.get('location'), /github\.com\/login\/oauth\/authorize/);
+  });
+
+  it('answers a deployment with sign-in off without spending the budget', async () => {
+    /**
+     * The disabled branch returns before the limiter, and that ordering is the
+     * point of the test rather than an accident of where the line went. That
+     * branch exists so an operator whose sign-in never appeared can curl this
+     * endpoint and read why; it touches no store and costs nothing, and
+     * rationing it would ration the one answer somebody debugging a deployment
+     * needs.
+     */
+    delete process.env.TRAZUM_GITHUB_CLIENT_ID;
+
+    // Its own address, so this fails because the limiter moved and not because
+    // the two tests above already spent `HAMMER`'s budget. Without it the plant
+    // still fails, on call one, for a reason that is not the one named here.
+    const operator = { 'x-forwarded-for': '198.51.100.9' };
+    for (let i = 0; i < 80; i += 1) {
+      const response = await sessionRoute(
+        new Request(`${ORIGIN}/api/auth/session`, { headers: operator }),
+      );
+      assert.equal(response.status, 200, `the operator was refused on call ${i + 1}`);
+      assert.equal((await response.json()).enabled, false);
+    }
+  });
+
   it('admits that a memory store forgets', async () => {
     const response = await sessionRoute(req(`${ORIGIN}/api/auth/session`));
     assert.equal((await response.json()).ephemeralSessions, true);
