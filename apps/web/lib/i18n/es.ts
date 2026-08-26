@@ -266,6 +266,7 @@ export const es: WebMessages = {
       'cache-prefix-reorder': 'Hay instrucciones estables tras el primer placeholder',
       'batch-api': 'La API por lotes aplica a esta carga',
       'model-downgrade': 'Puede bastar un modelo más barato de la misma familia',
+      'tier-signals-conflict': 'El prompt pide profundidad y brevedad a la vez',
       'output-dominated': 'El coste está en la salida, no en el prompt',
       'promo-pricing': 'El precio usado aquí es promocional',
       'contradictory-instructions': 'Dos instrucciones se contradicen',

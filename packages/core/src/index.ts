@@ -424,7 +424,8 @@ export type {
 export { RULES, getRule } from './rules.js';
 export { segment, join, protectedTexts } from './segment.js';
 export { computeSavings, costOfCall, formatUsd, formatSignedUsd } from './savings.js';
-export { buildAdvisories, recommendTier } from './advisories.js';
+export { buildAdvisories, recommendTier, recommendTierDetailed } from './advisories.js';
+export type { TierRecommendation } from './advisories.js';
 export type { AdvisoryOptions } from './advisories.js';
 export { analyzeCachePrefix } from './cache.js';
 

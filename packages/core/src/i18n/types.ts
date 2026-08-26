@@ -247,6 +247,17 @@ export interface PromptCachingNotWorthItParams {
   breakEvenPct: number | null;
 }
 
+/**
+ * What the tier heuristic saw when it declined to answer.
+ *
+ * Both counts, because "three of each" and "one of each" are different degrees
+ * of the same refusal and the reader can act on the difference.
+ */
+export interface TierSignalsConflictParams {
+  complexSignals: number;
+  simpleSignals: number;
+}
+
 /** Why a proposed rewrite did not survive checking against the prompt. */
 export interface SuggestMessages {
   'not-found'(): string;
@@ -273,6 +284,7 @@ export interface CoreMessages {
     cachePrefixReorder(p: CachePrefixReorderParams): LocalizedMessage;
     batchApi(): LocalizedMessage;
     modelDowngrade(p: ModelDowngradeParams): LocalizedMessage;
+    tierSignalsConflict(p: TierSignalsConflictParams): LocalizedMessage;
     outputDominated(p: OutputDominatedParams): LocalizedMessage;
     promoPricing(p: PromoPricingParams): LocalizedMessage;
     contradictoryInstructions(p: ContradictoryInstructionsParams): LocalizedMessage;
