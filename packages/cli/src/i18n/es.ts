@@ -1737,6 +1737,13 @@ ${bold('EJEMPLOS')}
     labelled: () => 'Etiquetado por carpeta de proyecto. Usa --no-label-from-project para dejarlo sin etiqueta, o --label <nombre> para poner una.',
     skipped: (other, unparseable, withoutUsage) => `Omitidas: ${other} línea(s) no-assistant (el resto del negocio del transcript), ${unparseable} imparseables, ${withoutUsage} línea(s) assistant sin usage.`,
     written: (file) => `Escrito ${file}.`,
+    stateNeedsFile: () =>
+      '--state lee un transcript, no una carpeta: el estado ata un desplazamiento del transcript a una longitud del fichero de salida, y varios transcripts escribiendo en una sola salida no tienen una longitud así. Apúntalo al fichero .jsonl.',
+    stateNeedsOut: () => '--state necesita --out: sin fichero de salida no hay nada contra lo que reanudar.',
+    resumed: (skipped, offset) =>
+      skipped === 0
+        ? `Transcript leído entero; punto de reanudación anotado en el byte ${offset}.`
+        : `Reanudado en el byte ${skipped}, así que ${skipped} byte(s) no se releyeron. Siguiente punto de reanudación: byte ${offset}.`,
   },
 
   position: {

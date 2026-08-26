@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, open, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { cpus, tmpdir } from 'node:os';
@@ -352,6 +353,7 @@ const VALUE_FLAGS = new Set([
   'gpu-usd-hour',
   'tokens-per-second',
   'utilization',
+  'state',
 ]);
 
 function parseArgs(argv: string[], t: CliMessages): Args {
@@ -674,7 +676,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   schema: [],
   rollup: ['json', 'html-out'],
   position: ['json', 'html-out', 'pricing', 'pricing-live'],
-  'from-claude-code': ['label', 'label-from-project', 'out', 'o'],
+  'from-claude-code': ['label', 'label-from-project', 'out', 'o', 'state'],
   'from-otel': ['label-from-service', 'out', 'o'],
   switch: ['to', 'migration-usd', 'cases'],
   ownrate: ['gpu-usd-hour', 'tokens-per-second', 'utilization'],
@@ -2600,6 +2602,122 @@ function projectLabelFor(file: string): string | undefined {
   return trimmed !== '' ? trimmed : folder;
 }
 
+
+/**
+ * `--state`: read the part of a transcript that is new since last time.
+ *
+ * A Claude Code transcript is append-only and can be enormous — the largest on
+ * one real machine is 212 MB, and re-reading it to price the last thirty
+ * seconds takes six and a half seconds. That is the whole cost of the status
+ * line in `plugin/statusline`, and it is paid on every turn for a file whose
+ * first two hundred megabytes cannot have changed.
+ *
+ * The state file ties three numbers together, and it is the third that makes
+ * this exact rather than approximately right:
+ *
+ * - `offset`: where to start reading the transcript.
+ * - `out`: how long the output file was when everything before `offset` had
+ *   been written. The tail after that is the last call as it looked last time,
+ *   and it is dropped and re-derived, because the converter's rule is that a
+ *   call arrives as several lines and the last one stands.
+ * - `digest`: what the bytes just before `offset` were. A transcript that was
+ *   truncated, rotated or replaced would otherwise be resumed into the middle
+ *   of a different file, and the output would be a bill assembled from two
+ *   unrelated sessions. On a mismatch the whole thing is re-read, which is
+ *   slow and correct.
+ */
+interface TranscriptState {
+  schemaVersion: 1;
+  files: Record<string, { offset: number; out: number; digest: string }>;
+}
+
+/** How much of the run-up to `offset` is fingerprinted. */
+const STATE_DIGEST_BYTES = 4096;
+
+const digestOf = (bytes: Buffer): string => createHash('sha256').update(bytes).digest('hex');
+
+const readState = async (path: string): Promise<TranscriptState> => {
+  try {
+    const parsed: unknown = JSON.parse(await readFile(path, 'utf8'));
+    if (
+      typeof parsed === 'object' &&
+      parsed !== null &&
+      (parsed as TranscriptState).schemaVersion === 1 &&
+      typeof (parsed as TranscriptState).files === 'object'
+    ) {
+      return parsed as TranscriptState;
+    }
+  } catch {
+    // A missing, unreadable or unrecognised state file is a cold start, not an
+    // error: the answer it produces is the same one, computed the slow way.
+  }
+  return { schemaVersion: 1, files: {} };
+};
+
+/**
+ * The byte offset of a line index within a chunk, counted in bytes rather than
+ * characters.
+ *
+ * `String.prototype.split` counts UTF-16 code units and a transcript is UTF-8
+ * with prompts in it, so a character index used as a byte offset would land
+ * mid-sequence on the first accented character and corrupt every resume after
+ * it. The newlines are found in the Buffer.
+ */
+const byteOffsetOfLine = (chunk: Buffer, line: number): number => {
+  if (line <= 0) return 0;
+  let seen = 0;
+  for (let i = 0; i < chunk.length; i += 1) {
+    if (chunk[i] !== 0x0a) continue;
+    seen += 1;
+    if (seen === line) return i + 1;
+  }
+  return chunk.length;
+};
+
+/** What a resumable read decided, so the caller can report it honestly. */
+interface ResumedRead {
+  text: string;
+  /** Bytes skipped because a previous run had already settled them. */
+  skipped: number;
+  /** Where the output must be truncated to before appending. */
+  truncateOutTo: number;
+  /** Records the previous run had settled, and this one must not re-emit. */
+  chunkStart: number;
+}
+
+const resumableRead = async (
+  file: string,
+  state: TranscriptState,
+): Promise<{ chunk: Buffer; read: ResumedRead }> => {
+  const key = resolvePath(file);
+  const entry = state.files[key];
+  const handle = await open(key, 'r');
+  try {
+    const { size } = await handle.stat();
+    let start = 0;
+    let truncateOutTo = 0;
+
+    if (entry !== undefined && entry.offset > 0 && entry.offset <= size) {
+      const runUp = Math.min(STATE_DIGEST_BYTES, entry.offset);
+      const before = Buffer.alloc(runUp);
+      await handle.read(before, 0, runUp, entry.offset - runUp);
+      if (digestOf(before) === entry.digest) {
+        start = entry.offset;
+        truncateOutTo = entry.out;
+      }
+    }
+
+    const chunk = Buffer.alloc(size - start);
+    if (chunk.length > 0) await handle.read(chunk, 0, chunk.length, start);
+    return {
+      chunk,
+      read: { text: chunk.toString('utf8'), skipped: start, truncateOutTo, chunkStart: start },
+    };
+  } finally {
+    await handle.close();
+  }
+};
+
 async function commandFromClaudeCode(args: Args, t: CliMessages): Promise<void> {
   const target = args.positional[0];
   if (target === undefined) throw new Error(t.fromClaudeCode.noPath());
@@ -2639,6 +2757,28 @@ async function commandFromClaudeCode(args: Args, t: CliMessages): Promise<void> 
    * says so.
    */
   const labelFromProject = boolFlag(args, 'label-from-project', info.isDirectory());
+  /**
+   * `--state` is for one transcript, deliberately.
+   *
+   * The state ties a transcript offset to a length of the output file, and
+   * with several transcripts appending to one output there is no single length
+   * that means "everything settled": the second file's records sit after the
+   * first file's unsettled tail. A directory is re-read in full, which is what
+   * it was doing before and is the right cost for a walk that is not a status
+   * line refreshing every turn.
+   */
+  const statePath = stringFlag(args, 'state');
+  if (statePath !== undefined && info.isDirectory()) throw new Error(t.fromClaudeCode.stateNeedsFile());
+  if (statePath !== undefined && stringFlag(args, 'out') === undefined && stringFlag(args, 'o') === undefined) {
+    throw new Error(t.fromClaudeCode.stateNeedsOut());
+  }
+  const state = statePath !== undefined ? await readState(statePath) : undefined;
+  let resumed: ResumedRead | undefined;
+  let chunk: Buffer | undefined;
+  let resumeLine = 0;
+  let settledRecords = 0;
+  let settledOutBytes = 0;
+
   const lines: string[] = [];
   let records = 0;
   let collapsed = 0;
@@ -2650,7 +2790,15 @@ async function commandFromClaudeCode(args: Args, t: CliMessages): Promise<void> 
   let disagreements = 0;
   let synthetic = 0;
   for (const file of files) {
-    const text = await readFile(file, 'utf8');
+    let text: string;
+    if (state !== undefined) {
+      const read = await resumableRead(file, state);
+      chunk = read.chunk;
+      resumed = read.read;
+      text = read.read.text;
+    } else {
+      text = await readFile(file, 'utf8');
+    }
     const projectLabel = labelFromProject ? projectLabelFor(file) : undefined;
     const conversion = claudeCodeRecords(text, {
       ...(label !== undefined
@@ -2660,6 +2808,8 @@ async function commandFromClaudeCode(args: Args, t: CliMessages): Promise<void> 
           : {}),
     });
     for (const record of conversion.records) lines.push(JSON.stringify(record));
+    resumeLine = conversion.resume.line;
+    settledRecords = conversion.resume.records;
     records += conversion.records.length;
     collapsed += conversion.collapsed;
     noRequestId += conversion.noRequestId;
@@ -2673,10 +2823,55 @@ async function commandFromClaudeCode(args: Args, t: CliMessages): Promise<void> 
 
   const out = stringFlag(args, 'out') ?? stringFlag(args, 'o');
   if (out !== undefined) {
-    await writeFile(out, lines.join('\n') + (lines.length > 0 ? '\n' : ''), 'utf8');
+    if (statePath !== undefined) {
+      /**
+       * Append rather than rewrite, and drop the tail first.
+       *
+       * The tail is the last call as the previous run recorded it, and this
+       * run has just re-derived it from its own first line. Truncating is what
+       * makes the two runs add up to exactly one reading of the transcript
+       * rather than one and a bit.
+       */
+      const handle = await open(out, resumed!.truncateOutTo > 0 ? 'r+' : 'w');
+      try {
+        await handle.truncate(resumed!.truncateOutTo);
+        const body = lines.join('\n') + (lines.length > 0 ? '\n' : '');
+        if (body !== '') await handle.write(body, resumed!.truncateOutTo, 'utf8');
+        settledOutBytes =
+          resumed!.truncateOutTo +
+          lines
+            .slice(0, settledRecords)
+            .reduce((sum, line) => sum + Buffer.byteLength(line + '\n', 'utf8'), 0);
+      } finally {
+        await handle.close();
+      }
+    } else {
+      await writeFile(out, lines.join('\n') + (lines.length > 0 ? '\n' : ''), 'utf8');
+    }
     console.error(t.fromClaudeCode.written(out));
   } else {
     for (const line of lines) console.log(line);
+  }
+
+  if (statePath !== undefined) {
+    const key = resolvePath(files[0]!);
+    const nextOffset = resumed!.chunkStart + byteOffsetOfLine(chunk!, resumeLine);
+    const runUp = Math.min(STATE_DIGEST_BYTES, nextOffset);
+    const before = Buffer.alloc(runUp);
+    if (runUp > 0) {
+      const handle = await open(key, 'r');
+      try {
+        await handle.read(before, 0, runUp, nextOffset - runUp);
+      } finally {
+        await handle.close();
+      }
+    }
+    const next: TranscriptState = {
+      schemaVersion: 1,
+      files: { [key]: { offset: nextOffset, out: settledOutBytes, digest: digestOf(before) } },
+    };
+    await writeFile(statePath, JSON.stringify(next, null, 2) + '\n', 'utf8');
+    console.error(t.fromClaudeCode.resumed(resumed!.skipped, nextOffset));
   }
 
   console.error(t.fromClaudeCode.summary(files.length, records));

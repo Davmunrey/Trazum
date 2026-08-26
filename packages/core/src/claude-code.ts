@@ -81,6 +81,34 @@ export interface ClaudeCodeConversion {
    * are excluded by name and counted here, and the caller says how many.
    */
   synthetic: number;
+  /**
+   * Where a later run may safely pick this transcript up again.
+   *
+   * A transcript is append-only, so re-reading two hundred megabytes to learn
+   * what the last thirty seconds added is waste, and on the largest real
+   * session on one machine it is six and a half seconds of waste. The obstacle
+   * to resuming is this converter's own rule: **one call arrives as several
+   * lines and the last one stands**, so a call whose lines straddle the point
+   * where a run stopped would be recorded from its later half only.
+   *
+   * So the resume point is not the end of what was read. It is the first line
+   * of the last call seen, which is the only call that can still gain lines.
+   * `records` says how many of `records` above are settled and will never be
+   * revised; everything from `line` onwards is re-derived next time, and the
+   * caller drops the unsettled tail before appending.
+   *
+   * Measured on 208 real transcripts, 36,468 lines carrying a `requestId`: a
+   * call's lines are contiguous, and no `requestId` ever reappeared after
+   * another had begun. The design does not lean on that. It re-derives the
+   * final call whether or not it needed re-deriving, because a measurement on
+   * one machine is evidence and not a guarantee.
+   */
+  resume: {
+    /** Line index to start from next time, counting every line of the text read. */
+    line: number;
+    /** How many leading entries of `records` are settled. */
+    records: number;
+  };
 }
 
 /** The model id Claude Code writes for a turn no provider ever saw. */
@@ -109,13 +137,16 @@ export function claudeCodeRecords(
     streamed: 0,
     disagreements: 0,
     synthetic: 0,
+    resume: { line: 0, records: 0 },
   };
   /** requestId → index into out.records, so a later line can replace the usage. */
   const byRequest = new Map<string, number>();
   /** requestId → the usage currently standing, to classify a change when one arrives. */
   const seenUsage = new Map<string, ClaudeCodeRecord['usage']>();
 
-  for (const line of text.split('\n')) {
+  const lines = text.split('\n');
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index]!;
     if (line.trim() === '') continue;
     let raw: unknown;
     try {
@@ -186,14 +217,20 @@ export function claudeCodeRecords(
 
     const requestId = typeof entry.requestId === 'string' ? entry.requestId : null;
     if (requestId === null) {
+      // Nothing keys this line, so nothing can ever revise it: it is settled
+      // the moment it is read, and the resume point moves past it.
       out.noRequestId += 1;
       out.records.push(record);
+      out.resume = { line: index + 1, records: out.records.length };
       continue;
     }
     const standing = byRequest.get(requestId);
     if (standing === undefined) {
+      // A call begins. Everything before it is settled; this call is not,
+      // because the next line of the transcript may still revise it.
       byRequest.set(requestId, out.records.length);
       seenUsage.set(requestId, record.usage);
+      out.resume = { line: index, records: out.records.length };
       out.records.push(record);
       continue;
     }
@@ -216,6 +253,21 @@ export function claudeCodeRecords(
       seenUsage.set(requestId, record.usage);
     }
     out.records[standing] = { ...record };
+  }
+
+  /**
+   * Nothing carrying usage was found, so everything read is settled and the
+   * resume point is the end of it.
+   *
+   * With one exception, and it is the one that would lose a record rather than
+   * merely re-derive one: a transcript being appended to can be read mid-line,
+   * and that half-line parses as nothing. Resuming past it would drop the call
+   * it becomes. So when the text does not end in a newline, the resume point
+   * never passes the start of its final line.
+   */
+  if (out.records.length === 0) out.resume = { line: lines.length, records: 0 };
+  if (text !== '' && !text.endsWith('\n')) {
+    out.resume = { ...out.resume, line: Math.min(out.resume.line, lines.length - 1) };
   }
   return out;
 }

@@ -57,6 +57,11 @@ Two lines in `~/.claude/settings.json`:
 }
 ```
 
+The hook does not re-read the transcript either: it converts with `--state`, so
+each turn reads only what that turn appended. On the 212 MB session the hook's
+conversion is 2.6s the first time and 0.19s after, and what it appends is byte
+for byte what a full read would have produced.
+
 **The split is the design, not tidiness.** Claude Code runs the status line on
 every assistant message and cancels the script if another update arrives while
 it is still running, so a status line that reads the whole transcript does not

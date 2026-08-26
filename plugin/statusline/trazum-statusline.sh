@@ -25,6 +25,12 @@
 # status line only reads a file, and the Stop hook pays the cost once per turn,
 # after the turn, where taking a second does not matter.
 #
+# **And the hook does not re-read the transcript either.** `--state` records
+# where the last conversion stopped and the next one resumes there, re-deriving
+# only the call that was still streaming. On that same 212 MB session the hook's
+# conversion drops from 2.6s to 0.19s, and the records it appends are byte for
+# byte what a full read would have produced.
+#
 # Install (both lines, in ~/.claude/settings.json):
 #
 #   "statusLine": { "type": "command", "command": "/path/to/trazum-statusline.sh" },
@@ -74,8 +80,14 @@ path="$(field transcript_path)"
 
 mkdir -p "$cache_dir" || exit 0
 
+# The converted log and its resume point live beside the cached line, so a
+# session that ends takes its working files with it when $TMPDIR is cleared.
+log="$cache.log"
+"$trazum_bin" from-claude-code "$path" -o "$log" --state "$cache.state" >/dev/null 2>&1 || exit 0
+[ -s "$log" ] || exit 0
+
 line="$(
-  "$trazum_bin" profile <("$trazum_bin" from-claude-code "$path" 2>/dev/null) --json 2>/dev/null | node -e '
+  "$trazum_bin" profile "$log" --json 2>/dev/null | node -e '
     let raw = "";
     process.stdin.on("data", (c) => { raw += c; });
     process.stdin.on("end", () => {
