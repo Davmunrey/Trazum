@@ -26,7 +26,7 @@ export async function GET(request: Request): Promise<Response> {
   const nonce = mintNonce();
   const next = safeNextPath(new URL(request.url).searchParams.get('next'));
 
-  const stateCookie = serializeCookie(stateCookieName(config.secure), packState(nonce, next), {
+  const stateCookie = serializeCookie(stateCookieName(config.secure), packState(nonce, next, new Date()), {
     maxAge: OAUTH_STATE_TTL_SECONDS,
     secure: config.secure,
     httpOnly: true,

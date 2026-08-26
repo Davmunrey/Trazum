@@ -60,11 +60,17 @@ export async function GET(request: Request): Promise<Response> {
     stateCookieName(config.secure),
   );
 
-  if (!stateMatches(cookieValue ?? null, params.get('state'))) {
+  if (!stateMatches(cookieValue ?? null, params.get('state'), new Date())) {
     // Deliberately vague to the caller and deliberately a 400. The two ways to
-    // arrive here — a forged callback, and a real one that sat in a tab past the
-    // ten-minute window — are indistinguishable from the outside, and telling
+    // arrive here, a forged callback and a real one that sat in a tab past the
+    // ten-minute window, are indistinguishable from the outside, and telling
     // them apart would tell an attacker which half of the attack worked.
+    //
+    // The second of those is a case this route now actually handles. It named
+    // the window here while nothing measured it: the ten minutes lived only in
+    // the cookie's `maxAge`, which is a request to the browser. `stateMatches`
+    // reads an issue time out of the cookie and checks it, so the sentence
+    // above describes the code rather than an intention.
     return jsonError('sign-in could not be verified; start again', 400, {
       'set-cookie': cleared,
     });

@@ -34,6 +34,7 @@ let getStore;
 let resetStore;
 let hashToken;
 let packState;
+let unpackState;
 
 const saved = {};
 const realFetch = globalThis.fetch;
@@ -88,7 +89,7 @@ before(async () => {
   ({ GET: sessionRoute } = await import('../app/api/auth/session/route.ts'));
   ({ getStore, resetStore } = await import('../lib/store/index.ts'));
   ({ hashToken } = await import('../lib/auth/session.ts'));
-  ({ packState } = await import('../lib/auth/github.ts'));
+  ({ packState, unpackState } = await import('../lib/auth/github.ts'));
 });
 
 after(() => {
@@ -174,10 +175,15 @@ describe('GET /api/auth/github', () => {
     const safe = await signIn(req(`${ORIGIN}/api/auth/github?next=%2Flibrary`));
     const hostile = await signIn(req(`${ORIGIN}/api/auth/github?next=https%3A%2F%2Fevil.example`));
 
+    /**
+     * Through the real parser rather than by slicing at the first dot. This
+     * test used to spell the cookie's layout out a second time, so the day the
+     * state gained an issue time it failed on the format instead of on the
+     * destination it is about.
+     */
     const decode = (response) => {
       const cookie = cookieNamed(response, '__Host-trazum_oauth');
-      const packed = cookie.slice(cookie.indexOf('=') + 1, cookie.indexOf(';'));
-      return Buffer.from(packed.slice(packed.indexOf('.') + 1), 'base64url').toString();
+      return unpackState(cookie.slice(cookie.indexOf('=') + 1, cookie.indexOf(';'))).next;
     };
 
     assert.equal(decode(safe), '/library');
@@ -200,7 +206,7 @@ describe('GET /api/auth/github/callback', () => {
 
     const response = await callback(
       req(`${ORIGIN}/api/auth/github/callback?code=stolen&state=attacker`, {
-        headers: { cookie: `__Host-trazum_oauth=${packState('victim', '/')}` },
+        headers: { cookie: `__Host-trazum_oauth=${packState('victim', '/', new Date())}` },
       }),
     );
 
@@ -222,7 +228,7 @@ describe('GET /api/auth/github/callback', () => {
     // which half of the attack worked.
     const forged = await callback(
       req(`${ORIGIN}/api/auth/github/callback?code=a&state=wrong`, {
-        headers: { cookie: `__Host-trazum_oauth=${packState('right', '/')}` },
+        headers: { cookie: `__Host-trazum_oauth=${packState('right', '/', new Date())}` },
       }),
     );
     const expired = await callback(
@@ -236,7 +242,7 @@ describe('GET /api/auth/github/callback', () => {
 
     const rejected = await callback(
       req(`${ORIGIN}/api/auth/github/callback?code=a&state=wrong`, {
-        headers: { cookie: `__Host-trazum_oauth=${packState('right', '/')}` },
+        headers: { cookie: `__Host-trazum_oauth=${packState('right', '/', new Date())}` },
       }),
     );
     assert.match(cookieNamed(rejected, '__Host-trazum_oauth'), /Max-Age=0/);

@@ -2,7 +2,7 @@ import { randomBytes } from 'node:crypto';
 
 import type { NewUser } from '../store/types';
 import type { AuthEnabled } from './config';
-import { safeEqual } from './session';
+import { OAUTH_STATE_TTL_SECONDS, safeEqual } from './session';
 
 /**
  * The GitHub half of signing in: three HTTP hops and the rules about each.
@@ -87,31 +87,67 @@ export function safeNextPath(raw: string | null): string {
 // ---------------------------------------------------------------------------
 
 /**
- * The state cookie carries two things: the nonce, and where to go afterwards.
+ * The state cookie carries three things: the nonce, when it was issued, and
+ * where to go afterwards.
  *
  * The destination rides in the cookie rather than in the URL so that it makes
  * the round trip through GitHub without being visible or editable at the point
  * the browser comes back. Encoded so it cannot contain the separator or any
  * character a cookie value may not hold.
+ *
+ * **The timestamp is the half that used to be missing.** `OAUTH_STATE_TTL_SECONDS`
+ * was applied only as the cookie's `maxAge`, which is a request to the browser
+ * rather than a rule this app keeps, while the callback's own comment described
+ * "a real one that sat in a tab past the ten-minute window" as a case it
+ * handled. Nothing checked it. The window is in the value now, and
+ * `stateMatches` reads it.
+ *
+ * **What that binds, and what it does not.** It binds a browser, which is the
+ * case the window is about: a callback URL left in an open tab, in history, or
+ * in a proxy log stops being usable ten minutes after it was issued rather than
+ * whenever the browser gets round to dropping the cookie. It does not bind a
+ * client that writes its own cookie, and it is not signed to make it so,
+ * because there is nothing there to gain: anyone who can set this cookie can
+ * equally ask for a fresh one, so a forged timestamp buys an attacker a state
+ * they could have had for free.
  */
-export function packState(nonce: string, next: string): string {
-  return `${nonce}.${Buffer.from(next, 'utf8').toString('base64url')}`;
+export function packState(nonce: string, next: string, issuedAt: Date): string {
+  const seconds = Math.floor(issuedAt.getTime() / 1000);
+  return `${nonce}.${seconds}.${Buffer.from(next, 'utf8').toString('base64url')}`;
 }
 
-export function unpackState(packed: string | null): { nonce: string; next: string } | null {
+export function unpackState(
+  packed: string | null,
+): { nonce: string; next: string; issuedAt: number } | null {
   if (!packed) return null;
-  const dot = packed.indexOf('.');
-  if (dot < 1) return null;
 
-  const nonce = packed.slice(0, dot);
+  const first = packed.indexOf('.');
+  if (first < 1) return null;
+  const second = packed.indexOf('.', first + 1);
+  /**
+   * A two-part value is the old format, and it is refused rather than accepted
+   * without a window. During a deploy a browser can be mid-sign-in holding one,
+   * and the cost of refusing is a 400 that says "start again" and one more
+   * click, inside a ten-minute window. Accepting it would mean the guard has a
+   * shape that switches itself off, which is the kind of guard that survives
+   * long after the format it was written for.
+   */
+  if (second < first + 2) return null;
+
+  const nonce = packed.slice(0, first);
+  const issuedAt = Number(packed.slice(first + 1, second));
+  // `Number` turns an empty string into 0 and anything else odd into NaN, and
+  // both are values a clock never produced.
+  if (!Number.isSafeInteger(issuedAt) || issuedAt <= 0) return null;
+
   let next = '/';
   try {
-    next = Buffer.from(packed.slice(dot + 1), 'base64url').toString('utf8');
+    next = Buffer.from(packed.slice(second + 1), 'base64url').toString('utf8');
   } catch {
     return null;
   }
 
-  return { nonce, next: safeNextPath(next) };
+  return { nonce, next: safeNextPath(next), issuedAt };
 }
 
 export function mintNonce(): string {
@@ -126,9 +162,25 @@ export function mintNonce(): string {
  * victim, silently signing the victim into the attacker's account — after which
  * everything the victim saves is in a library the attacker can read.
  */
-export function stateMatches(cookieValue: string | null, queryState: string | null): boolean {
+export function stateMatches(
+  cookieValue: string | null,
+  queryState: string | null,
+  now: Date,
+): boolean {
   const unpacked = unpackState(cookieValue);
   if (!unpacked || !queryState) return false;
+
+  /**
+   * The window, checked here rather than left to the browser.
+   *
+   * Both ends of it. Past the TTL is the case the ten minutes were written
+   * for; issued in the future is a clock that disagrees with ours, and a state
+   * whose age is negative has no window at all, so it is refused too rather
+   * than granted an unbounded one.
+   */
+  const age = Math.floor(now.getTime() / 1000) - unpacked.issuedAt;
+  if (age < 0 || age > OAUTH_STATE_TTL_SECONDS) return false;
+
   return safeEqual(unpacked.nonce, queryState);
 }
 
