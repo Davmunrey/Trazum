@@ -26,6 +26,52 @@ claude plugin marketplace add Davmunrey/Trazum
 claude plugin install trazum@trazum
 ```
 
+## The status line, which costs nothing
+
+`statusline/trazum-statusline.sh` puts what the session has cost at the bottom
+of Claude Code:
+
+```
+Sonnet  $0.7761 · 10 calls · cache 88% · saved $2.91
+```
+
+**Nothing there is tokens.** Claude Code draws the status line's stdout in the
+terminal, and writes a `Stop` hook's stdout to the debug log. Neither is
+context, so neither is billed. The one hook whose stdout *is* handed to the
+model is `SessionStart`, which is why the refresh is not wired to it and why a
+test refuses it by name.
+
+Two lines in `~/.claude/settings.json`:
+
+```json
+{
+  "statusLine": { "type": "command", "command": "/path/to/trazum-statusline.sh" },
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [{ "type": "command", "command": "/path/to/trazum-statusline.sh --refresh" }]
+      }
+    ]
+  }
+}
+```
+
+**The split is the design, not tidiness.** Claude Code runs the status line on
+every assistant message and cancels the script if another update arrives while
+it is still running, so a status line that reads the whole transcript does not
+show a stale number, it shows nothing. Measured on 208 real transcripts: the
+median took 0.50s, and the largest, 212 MB, took 6.5s. With the work moved into
+the hook, the status line reads one small file and returns in 0.08s on that same
+212 MB session, while the hook pays the cost once per turn, after the turn.
+
+The status line works without the hook. It just has no cache to read, so it
+shows the figure Claude Code computes itself, labelled `(Claude Code)` rather
+than passed off as Trazum's.
+
+Set `TRAZUM_BIN` if `trazum` is not on `PATH`, and `TRAZUM_STATUSLINE_CACHE` to
+move the cache off `$TMPDIR`.
+
 ## The rest of the product
 
 The CLI (42 commands), the HTTP gateway, the GitHub Action and the web app
