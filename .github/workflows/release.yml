@@ -293,3 +293,110 @@ jobs:
         run: |
           node scripts/release-notes.mjs "$(node -p "require('./package.json').version")" > /dev/null
           echo "Dry run — nothing published. Release notes present."
+
+  # The listing on the official MCP registry, which is a separate publish to a
+  # separate service and was a manual step until it failed twice in a row.
+  #
+  # **A separate job on purpose, and the isolation is the point.** This job
+  # downloads a third-party binary and runs it. Keeping it out of the release
+  # job means that binary never shares a process with `secrets.NPM_TOKEN`, never
+  # sees `contents: write`, and cannot touch the packages: by the time it runs,
+  # npm has already been published and the GitHub release already exists. The
+  # worst this job can do on a bad day is fail, and a failed listing is
+  # recoverable by hand — a bad npm publish is not.
+  #
+  # Gated exactly like the publish steps it follows, so a merge that releases
+  # nothing lists nothing.
+  mcp-registry:
+    name: List on the MCP registry
+    needs: [decide, release]
+    if: github.event_name == 'push' && needs.decide.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # The whole reason this can work without a stored credential. The registry
+      # exchanges this job's OIDC token for a short-lived registry token, and
+      # grants it the namespace matching the token's `repository_owner` claim —
+      # `io.github.Davmunrey/*` for this repository. Nothing to rotate, nothing
+      # to leak, and a fork cannot mint it.
+      id-token: write
+    env:
+      # Pinned like every action in this repository, and for the same reason:
+      # `releases/latest/download` is a movable ref, and this binary runs in a
+      # job that can mint a token for the whole namespace. The checksum is the
+      # one published for this tag in `registry_<version>_checksums.txt`.
+      #
+      # When the registry rotates its OIDC audience, an old binary fails with
+      # `invalid audience` and the fix is to bump these two lines together. The
+      # failure note at the bottom of this job says so, because that error names
+      # nothing that would lead you here.
+      MCP_PUBLISHER_VERSION: '1.8.1'
+      MCP_PUBLISHER_SHA256: 'a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: 22
+
+      # The race this job exists to avoid. The registry verifies a listing by
+      # reading `mcpName` off the package on npm, and npm serves a new version
+      # minutes after the publish returns. See the script.
+      - name: Wait for npm to serve this version
+        run: node scripts/mcp-registry-preflight.mjs
+
+      - name: Install mcp-publisher
+        run: |
+          set -euo pipefail
+          asset="mcp-publisher_linux_amd64.tar.gz"
+          base="https://github.com/modelcontextprotocol/registry/releases/download/v${MCP_PUBLISHER_VERSION}"
+          curl -fsSL "$base/$asset" -o "$asset"
+          echo "${MCP_PUBLISHER_SHA256}  $asset" | sha256sum --check --strict
+          tar xzf "$asset" mcp-publisher
+          ./mcp-publisher --version || true
+
+      - name: Authenticate to the MCP registry
+        run: ./mcp-publisher login github-oidc
+
+      - name: Publish the listing
+        working-directory: packages/mcp
+        run: |
+          set -euo pipefail
+          "$GITHUB_WORKSPACE/mcp-publisher" publish
+
+      # The listing is metadata somebody else reads, so the job does not end on
+      # "the command exited zero". It asks the registry what it now believes.
+      - name: The registry serves what we just sent
+        run: |
+          set -euo pipefail
+          name="$(node -p "require('./packages/mcp/server.json').name")"
+          want="$(node -p "require('./packages/mcp/server.json').version")"
+          got="$(curl -fsSL "https://registry.modelcontextprotocol.io/v0.1/servers?search=$name" \
+            | node -e "
+              let raw = '';
+              process.stdin.on('data', (chunk) => { raw += chunk; });
+              process.stdin.on('end', () => {
+                const found = JSON.parse(raw).servers?.find((entry) => entry.server?.name === process.argv[1]);
+                console.log(found?.server?.version ?? '');
+              });
+            " "$name")"
+          if [ "$got" != "$want" ]; then
+            echo "::error::the registry serves '$got' for $name, expected '$want'"
+            exit 1
+          fi
+          echo "$name is listed at $got"
+
+      - name: What that failure probably means
+        if: failure()
+        run: |
+          echo "::error::npm is unaffected: the packages published before this job started, and"
+          echo "::error::the listing can be published by hand — see 'Listing on the MCP registry'"
+          echo "::error::in docs/releasing.md."
+          echo "::error::'invalid audience' means MCP_PUBLISHER_VERSION is older than the registry"
+          echo "::error::deployment expects. Bump it and MCP_PUBLISHER_SHA256 together, taking the"
+          echo "::error::checksum from registry_<version>_checksums.txt on that release."
+          echo "::error::A 403 naming two namespaces is the casing of the owner: the grant carries"
+          echo "::error::the GitHub login exactly as GitHub spells it. publish.test.js holds"
+          echo "::error::server.json and mcpName to the owner in the repository URL."

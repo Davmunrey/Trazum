@@ -20,6 +20,69 @@ nowhere: the changelog is the record of what happened to this repository, and a
 merged commit with no entry is a change only `git log` remembers.
 
 
+## Unreleased
+
+### Added
+
+- **The MCP registry listing is published by the release workflow.** A new
+  `mcp-registry` job in `release.yml` waits for npm to serve the new
+  `@trazum/mcp`, authenticates with GitHub OIDC, publishes
+  `packages/mcp/server.json`, and then asks the registry what it serves and
+  fails if it is not the version just sent. It was the last manual step in a
+  release, and it failed on both of its two manual runs.
+
+- **`scripts/mcp-registry-preflight.mjs`.** The registry verifies a listing by
+  reading `mcpName` off the package on npm, and npm serves a new version
+  minutes after the publish returns, so chaining the two publishes produces a
+  400 that reads like a manifest bug and is a propagation race. This asks npm
+  for the exact version until it answers 200 *and* serves the right `mcpName`,
+  for up to five minutes. A fixed sleep would be too short on a slow day and too
+  long on every other one.
+
+  It also re-checks the `server.json` / `mcpName` agreement at the point of use,
+  which is not redundant with `publish.test.js`: that runs against the commit,
+  this runs against the checkout a release job is about to publish from, and a
+  hand-pushed tag can skip the first.
+
+  Proved by planting all three failures: a version npm does not have times out
+  with the 404 quoted, a name mismatch fails before any request, and the real
+  version passes on the first ask.
+
+### Security
+
+- **The publisher binary is pinned by version and checksum.** The upstream guide
+  installs it from `releases/latest/download`, a movable ref, into a job holding
+  `id-token: write` for a namespace-wide grant. It is pinned to a version and
+  verified against the checksum published for that tag, the same rule every
+  action in this repository already follows.
+
+- **The listing runs in its own job, outside `environment: release`.** That job
+  downloads a third-party binary and runs it, so it must never share a process
+  with `secrets.NPM_TOKEN` or with `contents: write`. It runs after npm and the
+  GitHub release are done, so the worst it can do is fail, and a failed listing
+  is recoverable by hand while a bad publish is not.
+
+- **`security.test.js` holds all of it**: the job exists, it is gated on the
+  same decision the uploads are, it waits before it publishes, the binary is
+  pinned and verified, and it is not in the release environment. Seven plants,
+  seven failures, and one of them found a hole in the guard itself: the ordering
+  assertion used `indexOf` alone, and `-1` is less than every real index, so it
+  passed loudest exactly when the step it ordered had been deleted. Presence is
+  asserted before order now.
+
+- **The npm URL is encoded, not patched.** `scripts/mcp-registry-preflight.mjs`
+  first built it with `.replace('/', '%2f')`, which CodeQL flagged as incomplete
+  escaping and was right to: a string pattern replaces the first occurrence
+  only, so that line was correct for `@scope/name` by luck of the shape rather
+  than by construction. `encodeURIComponent` now. Both spellings answer 200 from
+  npm; only one of them is an encoder.
+
+### Changed
+
+- **`docs/releasing.md`** documents the job, the three choices behind it, and
+  keeps the manual route as the fallback, now with the 401 (an expired
+  device-flow token) alongside the 400 and the 403.
+
 ## 1.80.1 — "The capital letter the grant keeps"
 
 ### Fixed
