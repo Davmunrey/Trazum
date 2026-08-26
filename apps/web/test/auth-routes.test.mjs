@@ -493,7 +493,15 @@ describe('GET /api/auth/session', () => {
       new Request(`${ORIGIN}/api/auth/github`, { headers: { ...HAMMER } }),
     );
     assert.equal(started.status, 303, 'reading the session locked this address out of signing in');
-    assert.match(started.headers.get('location'), /github\.com\/login\/oauth\/authorize/);
+
+    // Parsed rather than matched. An unanchored regular expression against a
+    // URL matches anywhere in it, so `https://evil.example/?x=github.com/login/
+    // oauth/authorize` would have satisfied the assertion this replaces. The
+    // file already reads the redirect this way twenty lines above, and CodeQL
+    // was right to say so.
+    const authorize = new URL(started.headers.get('location'));
+    assert.equal(authorize.host, 'github.com');
+    assert.equal(authorize.pathname, '/login/oauth/authorize');
   });
 
   it('answers a deployment with sign-in off without spending the budget', async () => {
