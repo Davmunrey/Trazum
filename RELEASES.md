@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.79.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.80.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,47 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.80.0 — "The doors somebody else walks through"
+
+Six releases of work went into this repository and none of it into the
+doors a stranger arrives by. This release is those doors.
+
+**The Action's one line named half the product.** `action.yml` runs two
+gates, a prompt against a token budget and a usage log against a spend
+budget, and seven of its eighteen inputs exist only for the second. Its
+description said "Token budget for prompts" and stopped. That is the one
+sentence the GitHub Marketplace shows, and it described a version that
+stopped being the whole story several releases ago. A guard now reads the
+modes out of the script and fails when the description does not name what
+each one gates.
+
+**The MCP registry had nothing true to read.** `packages/mcp/server.json`
+and an `mcpName` on the package are what the official registry verifies
+against npm, and they now ride the same version lockstep as the six
+manifests, so a release cannot leave the registry advertising a version
+nobody can install.
+
+**The npm pages had one destination and it was the one npm already
+shows.** `homepage` and `bugs` were absent on all three packages for 103
+releases, so the only route from the registry to the thing that runs
+without installing anything was a README somebody had to scroll.
+
+**The front door leads with the loop this is for.** A fleet of agents
+spends money in a loop nobody watches per iteration; `spend_guard` prices
+the call before it happens, and it is now the first tool the MCP server
+offers rather than the sixth of seven. The tool descriptions were written
+as documentation and are the most-read copy in the project; they now say
+where their numbers come from, which is what an agent needs to act on them.
+
+**And the demo link lands.** `?tab=playground` opens that panel directly.
+It did not exist: the web app read neither the query string nor the hash,
+so any such link in a README would have quietly dropped a visitor on a
+different tab.
+
+Underneath all of it, provenance written down while nothing was at stake:
+a DCO gate on every commit, and `docs/licensing.md` saying what is open
+permanently, what was never open, and what the licence never covered.
 
 ## 1.79.0 — "The dash the sweep left behind"
 
