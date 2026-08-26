@@ -96,7 +96,6 @@ function saveHistory(entries: HistoryEntry[]): void {
 
 interface Metadata {
   models: ModelPricing[];
-  llmConfiguredOnServer: boolean;
   /**
    * Endpoints this deployment is willing to call, from the server's
    * `TRAZUM_ALLOWED_LLM_ENDPOINTS`. Empty by default, and the field below
@@ -631,11 +630,10 @@ export function Optimizer({
                         type="password"
                         value={llmApiKey}
                         onChange={(e) => setLlmApiKey(e.target.value)}
-                        placeholder={
-                          meta?.llmConfiguredOnServer
-                            ? t.llm.apiKeyOnServer
-                            : t.llm.apiKeyPlaceholder
-                        }
+                        // One placeholder, because there is one answer: this
+                        // server never lends a key, so a caller always brings
+                        // their own.
+                        placeholder={t.llm.apiKeyPlaceholder}
                         autoComplete="off"
                         className="bg-muted"
                       />
