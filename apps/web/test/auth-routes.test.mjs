@@ -116,8 +116,12 @@ afterEach(() => {
  * The tests below need one and building it by hand would let them agree with
  * each other about a cookie the real routes never issue.
  */
-async function signInFully(next = '/') {
-  globalThis.fetch = fakeGitHub();
+async function signInFully(next = '/', identity) {
+  // `identity` lets one test sign in as a second person, which is the only way
+  // to prove that revoking an account's sessions leaves another account's
+  // alone. Omitted, every call is the same GitHub user, which is what the rest
+  // of the file wants.
+  globalThis.fetch = identity ? fakeGitHub({ identity }) : fakeGitHub();
 
   const started = await signIn(req(`${ORIGIN}/api/auth/github?next=${encodeURIComponent(next)}`));
   const stateCookie = cookieNamed(started, '__Host-trazum_oauth');
@@ -366,6 +370,122 @@ describe('POST /api/auth/signout', () => {
 
   it('answers 204 whether or not there was anything to end', async () => {
     const response = await signOut(req(`${ORIGIN}/api/auth/signout`, { method: 'POST' }));
+    assert.equal(response.status, 204);
+  });
+
+  it('signs out one device by default, and leaves the others alone', async () => {
+    /**
+     * The default has to stay narrow. The common sign-out is one person
+     * leaving one shared machine, and taking their phone with them would be a
+     * surprise nobody asked for.
+     */
+    const laptop = await signInFully();
+    const phone = await signInFully();
+    const store = await getStore();
+
+    const response = await signOut(
+      new Request(`${ORIGIN}/api/auth/signout`, {
+        method: 'POST',
+        headers: { ...freshClient(), cookie: laptop.cookie },
+      }),
+    );
+    assert.equal(response.status, 204);
+
+    assert.equal(await store.findSession(hashToken(laptop.token), new Date()), null);
+    assert.ok(
+      await store.findSession(hashToken(phone.token), new Date()),
+      'signing out of one device signed the account out of all of them',
+    );
+  });
+
+  it('?all=1 ends every session the account has, this one included', async () => {
+    /**
+     * The finding this closes: `deleteSessionsForUser` existed in the store
+     * interface and in both drivers with no caller anywhere, so a stolen cookie
+     * stayed valid for the rest of its thirty days and its owner had no way to
+     * end it. Three devices, because two cannot tell "revoked them all" from
+     * "revoked the other one".
+     */
+    const laptop = await signInFully();
+    const phone = await signInFully();
+    const tablet = await signInFully();
+    const store = await getStore();
+
+    const response = await signOut(
+      new Request(`${ORIGIN}/api/auth/signout?all=1`, {
+        method: 'POST',
+        headers: { ...freshClient(), cookie: laptop.cookie },
+      }),
+    );
+    // The same 204 as the narrow sign-out, and no count. A number would answer
+    // a question nobody holding a valid cookie needs and every holder of a
+    // stolen one would like.
+    assert.equal(response.status, 204);
+    assert.equal(await response.text(), '');
+
+    for (const [name, session] of [['laptop', laptop], ['phone', phone], ['tablet', tablet]]) {
+      assert.equal(
+        await store.findSession(hashToken(session.token), new Date()),
+        null,
+        `the ${name} session survived a sign-out that claimed to end every one`,
+      );
+    }
+  });
+
+  it('revokes only the account that asked, however the caller names another', async () => {
+    /**
+     * There is no parameter naming whose sessions to end, and this test is what
+     * that absence is worth. The first version of it signed in as two people
+     * and checked that revoking one left the other alone, which the route
+     * passes by simply not having the parameter, and which a route that grew
+     * one would pass too: planting `?user=` left every assertion green.
+     *
+     * So the test tries the attack rather than describing it. Each spelling
+     * below is one a future version of this handler could plausibly read, and
+     * the other account has to survive all of them.
+     */
+    const mine = await signInFully();
+    const theirs = await signInFully('/', {
+      id: 999001,
+      login: 'someone-else',
+      name: 'Someone Else',
+      avatar_url: 'https://avatars.example/s.png',
+    });
+    const store = await getStore();
+
+    const target = (await store.findSession(hashToken(theirs.token), new Date())).user;
+
+    for (const query of [
+      `all=1&user=${encodeURIComponent(target.id)}`,
+      `all=1&userId=${encodeURIComponent(target.id)}`,
+      `all=1&login=${encodeURIComponent(target.login)}`,
+      `all=1&user_id=${encodeURIComponent(target.id)}`,
+    ]) {
+      const response = await signOut(
+        new Request(`${ORIGIN}/api/auth/signout?${query}`, {
+          method: 'POST',
+          headers: { ...freshClient(), cookie: mine.cookie },
+          body: JSON.stringify({ all: true, user: target.id }),
+        }),
+      );
+      assert.equal(response.status, 204, `${query} was answered differently`);
+      assert.ok(
+        await store.findSession(hashToken(theirs.token), new Date()),
+        `one account revoked another account's sessions through ?${query}`,
+      );
+    }
+
+    // And the caller's own session did go, so the refusal above is the route
+    // ignoring the parameter rather than the route ignoring the request.
+    assert.equal(await store.findSession(hashToken(mine.token), new Date()), null);
+  });
+
+  it('answers 204 for ?all=1 with no session, without reaching for a user', async () => {
+    // The unauthenticated call must look exactly like the authenticated one, or
+    // the difference is an oracle for testing whether a cookie is live.
+    const response = await signOut(
+      new Request(`${ORIGIN}/api/auth/signout?all=1`, { method: 'POST', headers: freshClient() }),
+    );
     assert.equal(response.status, 204);
   });
 

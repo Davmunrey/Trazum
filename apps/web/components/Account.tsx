@@ -68,10 +68,13 @@ export function Account({
 
   if (!state?.enabled) return null;
 
-  async function signOut() {
+  async function signOut(everywhere = false) {
     setBusy(true);
     try {
-      await fetch('/api/auth/signout', { method: 'POST', credentials: 'same-origin' });
+      await fetch(`/api/auth/signout${everywhere ? '?all=1' : ''}`, {
+        method: 'POST',
+        credentials: 'same-origin',
+      });
       // A full reload rather than clearing the state locally: signing out has
       // to drop anything the page is holding about the account, and the only
       // way to be sure it did is to stop holding anything.
@@ -253,6 +256,28 @@ export function Account({
         >
           <LogOut aria-hidden="true" />
           {busy ? t.account.signingOut : t.account.signOut}
+        </DropdownMenuItem>
+        {/*
+          Second, and below, because it is the rarer and the heavier of the two.
+          Somebody reaching for this has decided a session is somewhere it
+          should not be, so the label says what it ends rather than dressing it
+          up: every device, this one included.
+        */}
+        <DropdownMenuItem
+          onSelect={(event) => {
+            event.preventDefault();
+            void signOut(true);
+          }}
+          disabled={busy}
+          className="text-muted-foreground focus:text-foreground"
+        >
+          <LogOut aria-hidden="true" />
+          <span className="flex flex-col">
+            <span>{busy ? t.account.signingOut : t.account.signOutEverywhere}</span>
+            <span className="text-xs text-muted-foreground">
+              {t.account.signOutEverywhereHint}
+            </span>
+          </span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

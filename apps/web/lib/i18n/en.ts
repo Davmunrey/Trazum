@@ -98,6 +98,8 @@ export const en: WebMessages = {
     signIn: 'Sign in',
     signOut: 'Sign out',
     signingOut: 'Signing out…',
+    signOutEverywhere: 'Sign out everywhere',
+    signOutEverywhereHint: 'Ends every session on every device, including this one.',
     ephemeral: 'temporary session',
     ephemeralHint:
       'This deployment keeps sessions in memory, so you will be signed out when the server restarts. Set TRAZUM_DATABASE_URL to keep them.',

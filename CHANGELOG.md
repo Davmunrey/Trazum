@@ -13,6 +13,48 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **`POST /api/auth/signout?all=1` ends every session the account has, and the
+  account menu offers it.** `deleteSessionsForUser` existed in the store
+  interface and in both drivers, with no caller anywhere. The only revocation
+  available was for the session doing the asking, so somebody whose laptop was
+  stolen could sign out on their phone and the stolen cookie stayed valid for
+  the rest of its thirty days, with nothing they could do about it.
+
+  **Opt-in rather than the default.** The common sign-out is one person leaving
+  one shared machine, and taking their phone with them would be a surprise
+  nobody asked for. The narrow sign-out is unchanged and stays first in the
+  menu; the wide one sits below it and its label says what it ends, this device
+  included.
+
+  **The authorisation is an absence.** There is no parameter naming whose
+  sessions to end: the user is resolved from the caller's own cookie, so the
+  worst any caller can do is sign themselves out. The response is the same 204
+  with the same empty body whether one session went or twenty and whether the
+  caller held a live cookie at all, because a count answers a question nobody
+  holding a valid cookie needs and every holder of a stolen one would like.
+
+  **One of the three plants did not fire, and the test was the thing that was
+  wrong.** The isolation test signed in as two people and checked that revoking
+  one left the other alone, which a route that grew a `?user=` parameter passes
+  just as happily as a route that never had one: planting it left every
+  assertion green. It attempts the attack now, in four spellings a future
+  handler could plausibly read plus a JSON body, and fails with `one account
+  revoked another account's sessions through ?all=1&user=…`.
+
+  The other two: reverting to `deleteSession` alone fails the wide sign-out, and
+  making `all` unconditional fails `signing out of one device signed the account
+  out of all of them`.
+
+  **A UI guard broke on the change and was rewritten rather than relaxed.**
+  `ui.test.mjs` proved the sign-out uses POST by quoting the source text
+  `'/api/auth/signout', { method: 'POST' }`, which stopped matching when the
+  path became a template literal. Quoting a spelling is not proving a property:
+  that guard would also have gone on passing if somebody had added a second
+  sign-out call on GET beside the first. It now walks every occurrence of the
+  path in the component and requires POST at each, and separately requires the
+  wide sign-out to exist. Both halves were planted: `GET` fails with `a sign-out
+  call does not say POST, so an image tag could forge it`, and dropping `?all=1`
+  fails with `the account control cannot revoke every device`.
 - **The ten-minute window on an OAuth state is checked here now, not asked of
   the browser.** `OAUTH_STATE_TTL_SECONDS` existed and was applied in exactly one
   place: the state cookie's `maxAge`. That is a request a browser is free to

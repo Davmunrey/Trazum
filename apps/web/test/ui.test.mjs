@@ -405,7 +405,32 @@ describe('the account control does not advertise what the deployment lacks', () 
   });
 
   it('signs out with POST, which an image tag cannot forge', () => {
-    assert.match(account, /'\/api\/auth\/signout', \{ method: 'POST'/);
+    /**
+     * Every call to the sign-out path, not one spelling of one of them. The
+     * previous version quoted the exact source text `'/api/auth/signout', {
+     * method: 'POST'`, so it broke the day the path became a template literal
+     * and, worse, would have gone on passing if a second sign-out call had been
+     * added on GET beside the first.
+     *
+     * The wide sign-out shares this one call rather than adding a second, which
+     * is why the count below is a floor and not a two: the difference between
+     * ending one session and ending all of them belongs in the query string,
+     * not in a duplicated request somebody has to remember to keep in step.
+     */
+    const calls = [...account.matchAll(/\/api\/auth\/signout/g)];
+    assert.ok(calls.length >= 1, 'the account control does not sign out at all');
+
+    for (const call of calls) {
+      const options = account.slice(call.index, call.index + 200);
+      assert.match(
+        options,
+        /method: 'POST'/,
+        'a sign-out call does not say POST, so an image tag could forge it',
+      );
+    }
+
+    // And the wide sign-out travels on that same POST rather than on a link.
+    assert.match(account, /\?all=1/, 'the account control cannot revoke every device');
   });
 
   it('proposes a destination that is a path, never a whole URL', () => {

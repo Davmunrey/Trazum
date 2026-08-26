@@ -107,6 +107,9 @@ export interface WebMessages {
     signIn: string;
     signOut: string;
     signingOut: string;
+    /** Revokes every session the account has, not only this browser's. */
+    signOutEverywhere: string;
+    signOutEverywhereHint: string;
     /** Shown beside the name when the store forgets on restart. */
     ephemeral: string;
     ephemeralHint: string;
