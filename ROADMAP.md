@@ -1184,6 +1184,18 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.80.0 — "The doors somebody else walks through" — released
+
+**The distribution pass, with nothing new built.** The Action's
+Marketplace line names both of its gates instead of one; the MCP registry
+gets `server.json` and an `mcpName` in the version lockstep; the npm pages
+get a destination that is not the repository they already link; the tool
+descriptions are rewritten for the agent that selects on them, with
+`spend_guard` leading; the README opens on the agent loop and the
+Playground deep link actually lands, because it did not exist until this
+arc built it. Provenance underneath: a DCO gate and a licensing page whose
+open set is derived from the repository.
+
 ## 1.79.0 — "The dash the sweep left behind" — released
 
 **An instruction obeyed on one surface, finished on the other and turned
@@ -2327,9 +2339,11 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-Nothing is planned. [The 1.79 plan](docs/plan-1.79.md) was delivered in
-full: the Spanish catalogues are swept and the sweep is a guard rather
-than an edit. Before it, [the 1.77 plan](docs/plan-1.77.md) was delivered
+Nothing is planned. 1.80.0 was a distribution pass rather than a plan:
+no new command, no new flag, no new analysis, and the feature surface
+deliberately frozen while the doors were fixed. Before it, [the 1.79
+plan](docs/plan-1.79.md) was delivered in full: the Spanish catalogues are
+swept and the sweep is a guard rather than an edit. Before it, [the 1.77 plan](docs/plan-1.77.md) was delivered
 in full: the four gaps a real forty-day profile exposed are closed at
 their source. The verdict bridge — quality beside cost, from a dropped
 `route`/`eval` result — stays named and waits to be asked for, as do the
