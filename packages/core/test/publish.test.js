@@ -140,6 +140,36 @@ describe('what npm would publish', () => {
         assert.equal(manifest.repository?.directory, pkg);
         assert.ok(manifest.repository?.url?.includes('Davmunrey/Trazum'));
       });
+
+      it('gives a reader somewhere to go and somewhere to complain', () => {
+        /**
+         * The npm page renders `homepage` and `bugs` as its own links, and
+         * without them the page offers a stranger exactly one destination: the
+         * repository, which `repository` already supplies. Both were absent on
+         * all three packages for 103 releases, so the only route from the
+         * registry to the thing that runs without installing anything was a
+         * README somebody had to scroll.
+         *
+         * Asserted per package, off the derived list, so the fourth package
+         * cannot ship without them the way the first three did.
+         */
+        assert.ok(manifest.homepage, 'no homepage: the npm page links only back to the repository');
+        assert.ok(
+          manifest.bugs?.url?.includes('Davmunrey/Trazum'),
+          'no bugs.url pointing at this repository: npm shows no way to report anything',
+        );
+      });
+
+      it('carries keywords, because npm search is the only discovery npm has', () => {
+        // All three carry them today, so this guards nothing that is currently
+        // broken. That is the point: every other field on this list was also
+        // fine until it was not, and the drift here is always the package added
+        // later rather than the ones already shipping.
+        assert.ok(
+          Array.isArray(manifest.keywords) && manifest.keywords.length > 0,
+          'no keywords: the package is unreachable by npm search',
+        );
+      });
     });
   }
 

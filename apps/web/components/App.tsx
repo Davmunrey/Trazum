@@ -426,6 +426,57 @@ export function App({
   ];
 
   /**
+   * `?tab=<value>` opens that panel, and selecting one writes it back.
+   *
+   * The README could send somebody to the Playground and could not land them
+   * on it: the demo that runs without installing anything was a link plus an
+   * instruction to find a tab. A visitor who does not take the second step
+   * lands on Optimise and never sees the thing they were sent for.
+   *
+   * The default is untouched. With no parameter this still opens Optimise,
+   * because which panel a bare visit lands on is a product decision and this
+   * is a way to bypass it deliberately, not to move it.
+   *
+   * The set is read off `GROUPS` rather than listed here, so a panel added to
+   * the rail is linkable the day it lands. An unknown value is ignored rather
+   * than blanking the page. Library only exists for a signed-in reader and
+   * the answer arrives after this runs, so it is reachable by link only once
+   * the rail already shows it: seeding a panel that is not on screen would be
+   * worse than not seeding.
+   */
+  const seededFromUrl = useRef(false);
+  useEffect(() => {
+    if (seededFromUrl.current) return;
+    seededFromUrl.current = true;
+    try {
+      const requested = new URLSearchParams(window.location.search).get('tab');
+      if (requested === null) return;
+      if (!GROUPS.some((group) => group.items.some((item) => item.value === requested))) return;
+      setActiveTab(requested);
+    } catch {
+      // A URL this browser will not parse is not worth a blank panel.
+    }
+  });
+
+  /**
+   * Selecting a tab rewrites the address, so the tab somebody is looking at is
+   * the tab they can send to somebody else. `replaceState`, not `pushState`:
+   * the rail is navigation within one page, and filling the back button with
+   * every glance at another panel is how a tab bar starts trapping people.
+   */
+  const selectTab = (value: string) => {
+    setActiveTab(value);
+    try {
+      const url = new URL(window.location.href);
+      if (value === 'optimise') url.searchParams.delete('tab');
+      else url.searchParams.set('tab', value);
+      window.history.replaceState(null, '', url);
+    } catch {
+      // The panel changed, which is the part that matters.
+    }
+  };
+
+  /**
    * Straight to the repository, the package and the docs — the places this
    * page otherwise only alludes to. External on purpose and marked as such:
    * `no-referrer` is already site-wide, so a share token can never ride
@@ -694,7 +745,7 @@ export function App({
     */
     <Tabs
       value={activeTab}
-      onValueChange={setActiveTab}
+      onValueChange={selectTab}
       orientation="vertical"
       className="min-h-screen flex-col gap-0 lg:flex-row"
     >
@@ -895,7 +946,7 @@ export function App({
       </main>
 
       {tourOpen && (
-        <Tour t={t} onTabChange={setActiveTab} onClose={() => setTourOpen(false)} />
+        <Tour t={t} onTabChange={selectTab} onClose={() => setTourOpen(false)} />
       )}
     </Tabs>
   );

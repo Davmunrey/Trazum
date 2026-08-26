@@ -201,7 +201,10 @@ const CHECK: ToolDefinition = {
   title: 'Check a prompt against a token budget',
   description:
     'Answers whether a prompt fits a maximum, and if not, whether optimising it would. '
-    + 'This is the one to call before sending a prompt you are unsure about.',
+    + 'maxTokens comes from the budgets block of trazum.config.json, matched against the '
+    + "prompt's path; read it yourself, since this server never opens a file. Without a "
+    + 'budget somebody set there is nothing to check and this is not the tool to call. '
+    + 'Offline and free: no model is called.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -1211,13 +1214,18 @@ const SPEND_GUARD: ToolDefinition = {
   name: 'spend_guard',
   title: 'May I spend this? — with the cheaper way if not',
   description:
-    'Answers whether a call you are about to make fits the budget: yes, no, or cannot-tell. '
-    + 'A refusal carries the cheaper ways to make the same call — a smaller model the prompt '
-    + 'still fits in, a batch window — each priced for this call and each naming what it '
-    + 'assumes. The budget consumed is measured from real billed usage you pass in; the cost '
-    + 'of your call is an estimate of something that has not happened, and the answer keeps '
-    + 'the two apart and says which the verdict rests on. Nothing is called and nothing is '
-    + 'spent to produce this answer.',
+    'Call this before making a model call, when a budget exists and you do not know whether '
+    + 'this call fits inside it. Answers yes, no, or cannot-tell. Where the numbers come '
+    + 'from: the ceilings are in trazum.config.json in the working directory (spend.maxUsd, '
+    + 'spend.monthlyUsd, the limits block), and the spend so far is in the usage log the '
+    + 'host already writes. Read both yourself and pass the figures: this server never opens '
+    + 'a file. Without a ceiling somebody set the answer is cannot-tell, never a yes nobody '
+    + 'measured. A refusal carries the cheaper ways to make the same call (a smaller model '
+    + 'the prompt still fits in, a batch window), each priced for this call and each naming '
+    + 'what it assumes. The budget consumed is measured from real billed usage you pass in; '
+    + 'the cost of your call is an estimate of something that has not happened, and the '
+    + 'answer keeps the two apart and says which the verdict rests on. Nothing is called and '
+    + 'nothing is spent to produce this answer.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -1582,4 +1590,12 @@ const POSITION: ToolDefinition = {
   },
 };
 
-export const TOOLS: readonly ToolDefinition[] = [OPTIMIZE, CHECK, MODELS, PROFILE, POSITION, SPEND_GUARD, WRITER];
+/**
+ * Ordered by when an agent would reach for them, not by when they were written.
+ *
+ * A client renders this list in order and some truncate it. `spend_guard` is the
+ * only tool here whose trigger is an event inside the agent's own loop rather
+ * than a sentence somebody typed: every other tool answers "do this", and that
+ * one answers "I am about to spend". It sat sixth of seven.
+ */
+export const TOOLS: readonly ToolDefinition[] = [SPEND_GUARD, CHECK, OPTIMIZE, PROFILE, POSITION, MODELS, WRITER];

@@ -98,3 +98,47 @@ describe('the trazum skill describes the configuration it tells agents about', (
     );
   });
 });
+
+describe('the description an agent selects on', () => {
+  /**
+   * The front matter `description` is the most-read string in this project and
+   * the least examined. A client shows it when deciding whether to load the
+   * skill at all, so it is selection copy, not documentation, and it was
+   * written as documentation.
+   *
+   * The old one opened on "Optimise a prompt to cost fewer tokens", and every
+   * trigger after it was a sentence somebody types. An agent mid-task never
+   * types that sentence to itself, so nothing here was reachable except on
+   * request. The rewrite leads with the one moment that arrives inside the
+   * agent's own loop, and names where the ceiling comes from, because a
+   * trigger an agent cannot satisfy is not a trigger.
+   *
+   * Both halves are pinned. Losing the second is the quieter failure: the
+   * string still reads well, still invites the call, and still leaves the
+   * agent with no way to produce the number it needs.
+   */
+  const description = (() => {
+    const match = /^description:\s*(.+)$/m.exec(skill);
+    assert.ok(match, 'the skill has no description in its front matter');
+    return match[1].trim();
+  })();
+
+  it('names the moment an agent reaches for this without being asked', () => {
+    assert.match(
+      description,
+      /before spending|before making/i,
+      'every trigger in the description is now a sentence somebody types, so nothing here '
+        + 'fires inside an agent\'s own loop',
+    );
+  });
+
+  it('says where the ceiling comes from, so the trigger can be acted on', () => {
+    assert.match(
+      description,
+      /trazum\.config\.json/,
+      'the description invites a budget check without naming the file the budget lives in, '
+        + 'which leaves an agent inventing a number or skipping the call',
+    );
+  });
+});
+
