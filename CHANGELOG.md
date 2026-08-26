@@ -107,6 +107,50 @@ merged commit with no entry is a change only `git log` remembers.
 
 Nothing installable changes: no package code, no command, no flag.
 
+## Unreleased
+
+### Changed
+
+- **The Action's one line names both of its gates.** `action.yml` builds two
+  argument vectors, `check` against a token budget and `profile` against a
+  spend budget, and seven of its eighteen inputs exist only for the second.
+  Its description said "Token budget for prompts" and stopped, so the single
+  sentence the Marketplace shows described a version that stopped being the
+  whole story several releases ago. Every other assertion about this file is
+  about its inputs and its script; nothing looked at the sentence on top.
+
+  `security.test.js` now reads the modes out of the script, requires the
+  description to name what each one gates, and checks the 125-character limit
+  the Marketplace enforces. Proved by planting four violations: the old
+  description, the spend gate dropped from the sentence, a description over
+  the limit, and a third mode with no phrase pinned for it, which fails
+  naming the mode rather than passing quietly.
+
+### Added
+
+- **`packages/mcp/server.json` and an `mcpName` on the MCP package**, the two
+  files the official MCP registry reads. The registry hosts metadata rather
+  than artefacts: it records that a name maps to a package on npm and verifies
+  the claim by reading `mcpName` back out of that package, so three facts in
+  two hand-edited files have to agree.
+
+  `publish.test.js` holds them in the same lockstep as the six version
+  manifests, and `docs/releasing.md` names the file in the release checklist.
+  The namespace prefix is pinned as well: GitHub authentication grants only
+  `io.github.<user>/*`, and a name off that prefix is refused at publish time
+  by a registry the maintainer must already be logged into to find out.
+  Cheaper to fail in CI.
+
+  Proved by planting six violations: a version left behind in either place,
+  `mcpName` removed, the two names drifting apart, both names moved off the
+  granted namespace consistently, and a pointer at a package this repository
+  does not publish.
+
+  **Publishing itself is not done here.** It needs `mcp-publisher login
+  github`, which is the maintainer's account. This is the repository half.
+
+Nothing installable changes: no package code, no command, no flag.
+
 ## 1.79.0 — "The dash the sweep left behind"
 
 ### Changed

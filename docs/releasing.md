@@ -204,7 +204,10 @@ including what it costs a reader pinning with a tilde, is in
    lockstep**: `plugin/.claude-plugin/plugin.json` carries the same version,
    held by `claude-plugin.test.js` — a plugin claiming one version over a CLI
    at another would describe commands that behave differently than its skill
-   says.
+   says. **`packages/mcp/server.json` joins it**, held by `publish.test.js`:
+   the MCP registry hosts metadata rather than artefacts, so a stale version
+   there advertises a server that is no longer the one on npm, and a stranger
+   is the one who finds out.
 4. **Update the README's action pin** to the release commit, with the new version
    in the trailing comment. `security.test.js` asks git what version *that commit*
    declares and fails if the label disagrees — so the pin can only be advanced

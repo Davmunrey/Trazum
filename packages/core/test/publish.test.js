@@ -173,6 +173,63 @@ describe('what npm would publish', () => {
     });
   }
 
+  it('the MCP registry manifest agrees with the package it points at', () => {
+    /**
+     * The official MCP registry hosts metadata, not artefacts: it records that
+     * a name maps to a package on npm, and it verifies the claim by reading
+     * `mcpName` back out of that package. So three facts have to agree, and
+     * two of them live in different files that are edited by hand.
+     *
+     * This is the same lockstep the six version manifests are already in, and
+     * it fails the same way: a release bumps the packages, nobody remembers
+     * the registry manifest, and the registry goes on advertising a version
+     * that is no longer the one on npm. The difference is that a stranger
+     * reads this one, so the failure is somebody installing an old server
+     * because the registry told them to.
+     *
+     * The namespace prefix is pinned too. GitHub authentication only grants
+     * `io.github.<user>/*`, so a name that drifts off that prefix is refused
+     * at publish time by a registry the maintainer has to be logged into to
+     * find out. Cheaper to fail here.
+     */
+    const mcp = manifestOf('packages/mcp');
+    const registry = JSON.parse(readFileSync(join(repoRoot, 'packages/mcp/server.json'), 'utf8'));
+
+    assert.ok(mcp.mcpName, 'packages/mcp/package.json has no mcpName, so the registry cannot verify the package');
+    assert.equal(
+      registry.name,
+      mcp.mcpName,
+      'server.json and package.json disagree about the server name, which is the one thing the registry checks',
+    );
+    assert.match(
+      String(mcp.mcpName),
+      /^io\.github\.[a-z0-9-]+\//,
+      'the server name is off the io.github.<user>/ namespace that GitHub authentication grants',
+    );
+    assert.equal(registry.version, mcp.version, 'server.json advertises a version the package does not carry');
+    assert.equal(
+      registry.packages?.[0]?.version,
+      mcp.version,
+      'the package entry in server.json advertises a version the package does not carry',
+    );
+    assert.equal(
+      registry.packages?.[0]?.identifier,
+      mcp.name,
+      'server.json points the registry at a package name this repository does not publish',
+    );
+    assert.equal(registry.packages?.[0]?.registryType, 'npm');
+    assert.equal(
+      registry.description,
+      mcp.description,
+      'the registry listing and the npm page describe the same server differently',
+    );
+    assert.match(
+      String(registry.repository?.url ?? ''),
+      /Davmunrey\/Trazum/,
+      'server.json points somewhere other than this repository',
+    );
+  });
+
   it('is published publicly, which a scoped package is not by default', () => {
     /**
      * **A scoped package is private unless it says otherwise.** `npm publish`
