@@ -1,6 +1,6 @@
 ---
 name: trazum
-description: Optimise a prompt to cost fewer tokens, or check one against a token budget. Use when asked to shorten, optimise, or cut the cost of a prompt or system prompt; when asked what a prompt costs per month; when asked whether a prompt fits a token budget; or when reviewing a change to a prompt file. Also use when asked to find contradictory instructions or redundant few-shot examples in a prompt.
+description: Price and budget a model call before making it, and cut what a prompt costs. Use before spending on a call when trazum.config.json sets a ceiling and you do not know whether the call fits; when asked to shorten, optimise or cut the cost of a prompt or system prompt; when asked what a prompt costs per month; when asked whether a prompt fits a token budget; when reviewing a change to a prompt file; or when asked where an LLM bill actually went. Also use when asked to find contradictory instructions or redundant few-shot examples in a prompt.
 ---
 
 # Trazum — prompt optimiser

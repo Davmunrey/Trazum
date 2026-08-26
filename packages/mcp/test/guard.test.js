@@ -11,11 +11,38 @@ import { sectionOf } from '../../../test-utils/section.mjs';
 const guard = TOOLS.find((tool) => tool.name === 'spend_guard');
 
 describe('spend_guard over MCP', () => {
-  it('is offered alongside the other tools', () => {
+  it('is offered alongside the other tools, and leads them', () => {
     assert.ok(guard, 'the server must expose spend_guard');
+
+    // The set, order-independent: nothing has been dropped or added quietly.
     assert.deepEqual(
-      TOOLS.map((tool) => tool.name),
-      ['optimize_prompt', 'check_prompt', 'list_models', 'profile_usage', 'position', 'spend_guard', 'prompt_writer'],
+      [...TOOLS.map((tool) => tool.name)].sort(),
+      [
+        'check_prompt',
+        'list_models',
+        'optimize_prompt',
+        'position',
+        'profile_usage',
+        'prompt_writer',
+        'spend_guard',
+      ],
+    );
+
+    /**
+     * And the order, which is a decision rather than the sequence they were
+     * written in. A client renders this list in order and some truncate it.
+     * `spend_guard` is the only tool here whose trigger is an event inside the
+     * agent's own loop rather than a sentence somebody typed: every other one
+     * answers "do this", and it answers "I am about to spend". It sat sixth of
+     * seven while being the only one an agent could reach for unprompted.
+     *
+     * Pinned as first rather than as a full sequence, so the four below it can
+     * be reordered without a test telling somebody they are wrong.
+     */
+    assert.equal(
+      TOOLS[0].name,
+      'spend_guard',
+      'the tool an agent reaches for unprompted is no longer the one it meets first',
     );
   });
 
