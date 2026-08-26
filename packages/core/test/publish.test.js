@@ -191,6 +191,16 @@ describe('what npm would publish', () => {
      * `io.github.<user>/*`, so a name that drifts off that prefix is refused
      * at publish time by a registry the maintainer has to be logged into to
      * find out. Cheaper to fail here.
+     *
+     * **The prefix is case-sensitive, and this guard used to say otherwise.**
+     * It matched the user segment against `[a-z0-9-]+`, which is a guess about
+     * a registry nobody here had published to yet, and the guess was wrong: the
+     * grant carries the GitHub login exactly as GitHub spells it, so a
+     * lowercased name is a *different* namespace and the registry answers 403
+     * with the two strings side by side. The owner is not typed here any more,
+     * it is read out of the repository URL the same manifest already carries,
+     * so the one place this repository states who owns it also decides what the
+     * server may be called.
      */
     const mcp = manifestOf('packages/mcp');
     const registry = JSON.parse(readFileSync(join(repoRoot, 'packages/mcp/server.json'), 'utf8'));
@@ -201,10 +211,11 @@ describe('what npm would publish', () => {
       mcp.mcpName,
       'server.json and package.json disagree about the server name, which is the one thing the registry checks',
     );
-    assert.match(
-      String(mcp.mcpName),
-      /^io\.github\.[a-z0-9-]+\//,
-      'the server name is off the io.github.<user>/ namespace that GitHub authentication grants',
+    const owner = String(registry.repository?.url ?? '').split('github.com/')[1]?.split('/')[0];
+    assert.ok(owner, 'server.json carries no GitHub repository URL, so there is no owner to derive the namespace from');
+    assert.ok(
+      String(mcp.mcpName).startsWith(`io.github.${owner}/`),
+      `the server name is off the io.github.${owner}/ namespace that GitHub authentication grants, and the grant is case-sensitive`,
     );
     assert.equal(registry.version, mcp.version, 'server.json advertises a version the package does not carry');
     assert.equal(

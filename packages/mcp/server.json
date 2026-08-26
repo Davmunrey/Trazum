@@ -1,17 +1,17 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.davmunrey/trazum",
+  "name": "io.github.Davmunrey/trazum",
   "description": "Trazum as an MCP server: let an agent price and budget its own prompts before it sends them.",
   "repository": {
     "url": "https://github.com/Davmunrey/Trazum",
     "source": "github"
   },
-  "version": "1.80.0",
+  "version": "1.80.1",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@trazum/mcp",
-      "version": "1.80.0",
+      "version": "1.80.1",
       "transport": {
         "type": "stdio"
       }

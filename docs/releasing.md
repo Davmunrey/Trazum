@@ -257,6 +257,45 @@ what the tag was for.
 other order leaves a window where installing the CLI fails on a dependency that
 does not exist yet.
 
+## Listing on the MCP registry
+
+Separate from npm, and not automated. The official MCP registry hosts
+*metadata*: it records that a name maps to a package, and it verifies the claim
+by fetching that package from npm and reading `mcpName` out of its manifest. So
+the listing can only ever point at a version that is already published.
+
+```bash
+cd packages/mcp
+mcp-publisher login github     # device flow, opens a code in the browser
+mcp-publisher publish          # reads ./server.json
+```
+
+Three things that cost real attempts:
+
+- **Do not run `mcp-publisher init`.** It writes a `server.json` named after the
+  *directory*, `io.github.<user>/mcp`, overwriting the one this repository
+  keeps in the version lockstep. The committed file is the source of truth; if
+  it is missing, the checkout is stale, not the tool.
+- **The namespace is case-sensitive.** GitHub authentication grants
+  `io.github.<login>/*` with the login spelled exactly as GitHub spells it, so
+  `io.github.davmunrey` and `io.github.Davmunrey` are two different namespaces
+  and only one of them is yours. Getting this wrong returns a 403 that quotes
+  both strings, and it cost 1.80.1: the corrected `mcpName` only counts once it
+  is on npm, so the fix was a release. `publish.test.js` now derives the owner
+  from `server.json`'s repository URL and holds both files to it.
+- **A 400 saying the package is "missing required `mcpName` field"** means the
+  version `server.json` advertises does not carry that field on npm, usually
+  because the manifest was edited after the last publish. Check what the
+  registry sees before blaming the login:
+
+  ```bash
+  curl -s https://registry.npmjs.org/@trazum%2fmcp/<version> | grep mcpName
+  ```
+
+Republish after every release that changes the server, for the same reason the
+version is in the lockstep: the registry goes on advertising whatever it was
+last told.
+
 ## The token fallback
 
 The publish steps authenticate with OIDC when nothing else is configured, and

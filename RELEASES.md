@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.80.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.80.1**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,41 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.80.1 — "The capital letter the grant keeps"
+
+1.80.0 wrote the MCP registry manifest and the `mcpName` field that
+proves it. Both spelled the owner in lowercase. The registry refused the
+publish with a 403 that put the two strings next to each other:
+
+```
+You have permission to publish: io.github.Davmunrey/*
+Attempting to publish: io.github.davmunrey/trazum
+```
+
+**The namespace carries the GitHub login exactly as GitHub spells it.**
+`io.github.davmunrey` and `io.github.Davmunrey` are two different
+namespaces, and the account is only granted one of them. Both files now
+say `io.github.Davmunrey/trazum`, and because the registry verifies the
+claim by reading `mcpName` back out of the published npm package, the
+fix could not be a local edit. It had to be a release. That is what this
+one is.
+
+**The guard was the reason nobody caught it.** It matched the owner
+segment against `[a-z0-9-]+`, a pattern written before anyone here had
+published to this registry, encoding a guess about it that read as a
+rule. It passed the wrong name and would have gone on passing it. The
+owner is no longer typed into the test at all: it is read out of the
+repository URL that `server.json` already carries, so the one place this
+repository states who owns it is the place that decides what the server
+may be called. Planting the lowercase name fails the guard with the two
+namespaces in the message; changing the repository URL's owner and
+leaving the name alone fails it too, which is what proves the derivation
+is live rather than a hardcoded string in disguise.
+
+Nothing else changed. No command, no flag, no output.
 
 ---
 
