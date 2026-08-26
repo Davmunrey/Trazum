@@ -103,6 +103,29 @@ export async function GET(request: Request): Promise<Response> {
   const session = issueSession(user.id, now, config.secure);
   await store.createSession(session.record);
 
+  /**
+   * And take the dead rows out on the way past.
+   *
+   * `findSession` reaps the row it was handed, which covers a session somebody
+   * comes back to. It does not cover the ones nobody ever comes back for, and
+   * those are the majority: a browser that clears its cookies, a laptop that is
+   * replaced, anyone who signs in from somewhere once. Those rows sat in the
+   * table for ever.
+   *
+   * Here rather than on a timer, for the same reason `rate-limit.ts` sweeps on
+   * use: this deploys to a platform with no long-lived process to hang an
+   * interval on, and a route that stops being called should stop doing work.
+   * Signing in is the event that grows this table, so it is the right event to
+   * shrink it by, and after the first sweep the delete matches nothing and
+   * costs an index probe.
+   *
+   * Awaited rather than fired and forgotten. A floating promise on a serverless
+   * function is one the runtime may kill mid-statement, and this is a delete.
+   * `catch` because a sweep that fails must never cost somebody their sign-in:
+   * the session is already written and the cookie is already earned.
+   */
+  await store.deleteExpiredSessions(now).catch(() => {});
+
   // `next` comes back out of the cookie, not out of the URL, and has already
   // been through `safeNextPath` on both the way in and the way out.
   const next = unpackState(cookieValue ?? null)?.next ?? '/';

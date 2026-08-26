@@ -13,6 +13,38 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **Expired sessions are swept, and nothing was sweeping them.** `findSession`
+  deletes the row it was handed on its way out, which covers a session somebody
+  comes back and presents. It does not cover the ones nobody ever comes back
+  for, and those are the majority: a browser that cleared its cookies, a laptop
+  that was replaced, anyone who signed in from somewhere once. Those rows sat in
+  `trazum_sessions` for ever and nothing about the deployment looked wrong while
+  they piled up.
+
+  **This is unbounded growth, not a way in, and the test says so.** `findSession`
+  excludes anything past `expires_at`, so a dead row cannot authenticate
+  anybody. The assertion is therefore about how many rows are left rather than
+  about what a lookup answers, which is the honest shape for a fix whose whole
+  subject is a table that only grows.
+
+  **On sign-in rather than on a timer**, for the reason `rate-limit.ts` already
+  gives for sweeping on use: this deploys to a platform with no long-lived
+  process to hang an interval on, and a route that stops being called should
+  stop doing work. Signing in is the event that grows this table, so it is the
+  right event to shrink it by, and after the first sweep the delete matches
+  nothing and costs an index probe. Awaited rather than fired and forgotten, and
+  wrapped in a `catch`, because a floating promise on a serverless function is
+  one the runtime may kill mid-delete and a failed sweep must never cost
+  somebody their sign-in.
+
+  No migration: `trazum_sessions_expires_at_idx` was added with the table in
+  `db/001_accounts.sql` and is exactly the index this delete wants.
+
+  Two plants, two failures: removing the sweep fails with `expired sessions
+  survived a sign-in and were left to accumulate`, and a sweep that ignores
+  `expires_at` fails with `the sweep took a session that had not expired`, which
+  is the half that would turn this from a fix into an outage.
+
 - **`POST /api/auth/signout?all=1` ends every session the account has, and the
   account menu offers it.** `deleteSessionsForUser` existed in the store
   interface and in both drivers, with no caller anywhere. The only revocation

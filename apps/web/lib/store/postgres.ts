@@ -141,6 +141,16 @@ export function postgresStore(sql: SqlClient): Store {
       await sql`delete from trazum_sessions where user_id = ${userId}`;
     },
 
+    async deleteExpiredSessions(now: Date): Promise<number> {
+      // One indexed range delete: `trazum_sessions_expires_at_idx` already
+      // exists for exactly this shape, added with the table in
+      // `db/001_accounts.sql`, so this needs no migration.
+      const rows = await sql`
+        delete from trazum_sessions where expires_at <= ${now} returning token_hash
+      `;
+      return rows.length;
+    },
+
     async close(): Promise<void> {
       await sql.end?.();
     },
