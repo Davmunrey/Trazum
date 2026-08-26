@@ -76,7 +76,6 @@ export const es: WebMessages = {
     model: 'Modelo',
     modelPlaceholder: 'identificador del modelo',
     apiKey: 'Clave de API',
-    apiKeyOnServer: 'configurada en el servidor: déjalo vacío',
     apiKeyPlaceholder: 'tu clave',
     keyNote:
       'La clave viaja a este servidor para hacer la llamada y se descarta al terminar: no se guarda ni se registra. Si prefieres no escribirla aquí, define las variables de entorno en el servidor y deja los campos vacíos.',
@@ -1006,7 +1005,7 @@ export const es: WebMessages = {
       '"applySuggestions" no tiene nada que aplicar sin "suggest". Por su cuenta habría '
       + 'respondido en silencio sin cambiar nada, y eso no es una respuesta.',
     llmNotConfigured:
-      'Has activado la pasada por LLM pero no hay proveedor configurado. Rellena endpoint y modelo, o define TRAZUM_LLM_BASE_URL y TRAZUM_LLM_MODEL en el servidor.',
+      'La pasada asistida por modelo necesita tu propia clave de API, y esta petición no la traía. Este servidor nunca presta la suya: una clave configurada aquí la gastaría quien preguntase, sin nada a lo que atribuirla. Pega una clave, y endpoint y modelo si no usas Anthropic. Todo lo demás de esta página es determinista y no necesita clave.',
     unexpected: 'Error inesperado.',
   },
 };

@@ -8,7 +8,6 @@ import {
   listModels,
   openAiCompatible,
   optimize,
-  providerFromEnv,
   applyRewrites,
   computeSavings,
   estimateTokens,
@@ -183,24 +182,62 @@ function buildProvider(
 ): LlmProvider | null {
   const { provider, model, apiKey } = config;
 
+  /**
+   * **The caller's key, or nothing.**
+   *
+   * This read `process.env.TRAZUM_LLM_API_KEY`, then `ANTHROPIC_API_KEY`, and
+   * fell through to `providerFromEnv()` when a request carried no key of its
+   * own. On a deployment with either variable set, any stranger who posted
+   * `{"suggest": true}` spent the operator's money, with no account, no session
+   * and nothing to attribute it to.
+   *
+   * **The bug is a function used outside the world it was written for.**
+   * `providerFromEnv`'s own comment says it is *"trusted because it came from
+   * the environment: the operator configuring their own machine, not a stranger
+   * naming a host for this server to fetch"*. That is exactly right for the
+   * CLI, where the operator and the caller are the same person. In a web app
+   * they are not, and reusing it here quietly turned "my key on my machine"
+   * into "my key for anyone with the URL".
+   *
+   * The deterministic path is untouched. It needs no key and never did, and it
+   * is the whole of what this page promises.
+   */
+  if (!apiKey) return null;
+
   if (provider === 'anthropic') {
-    const key = apiKey || process.env.TRAZUM_LLM_API_KEY || process.env.ANTHROPIC_API_KEY;
-    if (!key) return providerFromEnv();
-    return anthropicProvider({ apiKey: key, ...(model ? { model } : {}) });
+    return anthropicProvider({ apiKey, ...(model ? { model } : {}) });
   }
 
-  if (endpoint && model) {
+  /**
+   * The endpoint and the model may still come from the operator; the key may
+   * not.
+   *
+   * Those are different kinds of setting and collapsing them is what caused
+   * this. `TRAZUM_LLM_BASE_URL` is the documented Ollama-on-localhost case, and
+   * it costs an operator nothing when a stranger uses it, because the stranger
+   * still has to bring the credential that pays.
+   */
+  const fromOperator = endpoint === null;
+  const base = endpoint ?? process.env.TRAZUM_LLM_BASE_URL ?? null;
+  const named = model ?? process.env.TRAZUM_LLM_MODEL ?? null;
+  if (base && named) {
     return openAiCompatible({
-      baseUrl: endpoint,
-      model,
-      ...(apiKey || process.env.TRAZUM_LLM_API_KEY
-        ? { apiKey: apiKey || process.env.TRAZUM_LLM_API_KEY! }
-        : {}),
+      baseUrl: base,
+      model: named,
+      apiKey,
       name: 'llm',
+      /**
+       * Only for the operator's own host. `http://127.0.0.1:11434` is the
+       * documented Ollama setup and has to work; the same string named by a
+       * caller is a request for this server to fetch a host it was not
+       * configured for, which `resolveRequestedEndpoint` already refuses and
+       * which must not become reachable through this argument instead.
+       */
+      ...(fromOperator ? { allowInsecure: true } : {}),
     });
   }
 
-  return providerFromEnv();
+  return null;
 }
 
 export async function POST(request: Request) {
@@ -356,10 +393,25 @@ export async function POST(request: Request) {
 }
 
 /** Metadata the UI needs to render its dropdowns. */
-export async function GET() {
+export async function GET(request: Request) {
+  /**
+   * The limiter was on `POST` only, so the one route that answered without a
+   * body was also the one nothing bounded.
+   */
+  if (rateLimited(request, Date.now())) {
+    const t = getWebMessages(localeOf(request));
+    return NextResponse.json({ error: t.api.rateLimited }, { status: 429 });
+  }
   return NextResponse.json({
     models: listModels(),
-    llmConfiguredOnServer: providerFromEnv() !== null,
+    /**
+     * `llmConfiguredOnServer` used to be here, and it was an oracle: it told
+     * anyone who asked whether this deployment had a key worth attacking. It is
+     * gone rather than set to `false` because the question no longer has
+     * meaning. The server never lends a key, so the answer a caller needs is
+     * always the same one, and the placeholder in the key field says it without
+     * a round trip.
+     */
     // What the UI is allowed to offer. Empty is the default and the honest
     // answer: this server will not fetch an endpoint a visitor names.
     allowedEndpoints: allowedEndpoints(process.env),

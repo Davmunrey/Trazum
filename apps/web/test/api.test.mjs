@@ -62,6 +62,14 @@ before(async () => {
    */
   process.env.TRAZUM_LLM_BASE_URL = endpoint;
   process.env.TRAZUM_LLM_MODEL = 'fake';
+  /**
+   * **Set on purpose, and now inert.**
+   *
+   * This variable is what the hole was made of: the route read it and served a
+   * caller who had brought no key. It stays set so these tests run against the
+   * configuration that used to be dangerous rather than a tidy one where the
+   * question cannot arise, and the two guards below assert it is never spent.
+   */
   process.env.TRAZUM_LLM_API_KEY = 'test-key';
   delete process.env.TRAZUM_ALLOWED_LLM_ENDPOINTS;
 
@@ -69,6 +77,15 @@ before(async () => {
 });
 
 after(() => server?.close());
+
+/**
+ * The caller's own key, which the model-assisted path now requires.
+ *
+ * The endpoint and the model still come from the operator's environment, which
+ * is the documented Ollama-on-localhost case and costs them nothing when a
+ * stranger uses it. The credential is the part that is never lent.
+ */
+const CALLER_KEY = { apiKey: 'the-callers-own-key' };
 
 /** One request, with the fields under test and nothing else. */
 async function post(body, headers = {}) {
@@ -128,7 +145,7 @@ describe('a request field that cannot be honoured is refused, not ignored', () =
 
 describe('suggestions over HTTP', () => {
   it('returns them without touching the prompt', async () => {
-    const { status, body } = await post({ prompt: PROMPT, suggest: true });
+    const { status, body } = await post({ prompt: PROMPT, suggest: true, llm: CALLER_KEY });
 
     assert.equal(status, 200);
     assert.equal(body.suggestions.applied, false);
@@ -145,6 +162,7 @@ describe('suggestions over HTTP', () => {
       prompt: PROMPT,
       suggest: true,
       applySuggestions: true,
+      llm: CALLER_KEY,
     });
 
     assert.equal(body.suggestions.applied, true);
@@ -162,10 +180,41 @@ describe('suggestions over HTTP', () => {
       prompt: PROMPT,
       suggest: true,
       applySuggestions: 'true',
+      llm: CALLER_KEY,
     });
 
     assert.equal(body.suggestions.applied, false);
     assert.equal(body.optimized, PROMPT);
+  });
+
+  it('never spends the operator\u2019s key on a caller who brought none', async () => {
+    /**
+     * The hole, planted as the configuration that had it.
+     *
+     * `TRAZUM_LLM_API_KEY` is set in this file's setup, so a deployment in
+     * exactly this state used to serve `{"suggest": true}` from a stranger and
+     * bill the operator: no account, no session, nothing to attribute it to,
+     * and a rate limiter in front of it keyed on a header the caller controls.
+     *
+     * `calls` is asserted beside the status, because a 400 that arrives after
+     * the model was called is a refusal too late to matter.
+     */
+    const before = calls;
+    const { status, body } = await post({ prompt: PROMPT, suggest: true });
+
+    assert.equal(status, 400, 'a keyless request was served');
+    assert.match(body.error, /your own API key/i);
+    assert.equal(calls, before, 'the model was called before the refusal');
+  });
+
+  it('refuses the refining pass on the same terms', async () => {
+    // Two doors into the same room: `suggest` and `llm.enabled`. Closing one
+    // and leaving the other is how this kind of fix is usually half-made.
+    const before = calls;
+    const { status } = await post({ prompt: PROMPT, llm: { enabled: true } });
+
+    assert.equal(status, 400, 'a keyless refining request was served');
+    assert.equal(calls, before, 'the model was called before the refusal');
   });
 
   it('will not fetch an endpoint the caller names', async () => {

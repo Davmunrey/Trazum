@@ -194,6 +194,49 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The web app never lends its own LLM key.** `POST /api/optimize` read
+  `TRAZUM_LLM_API_KEY`, then `ANTHROPIC_API_KEY`, and fell through to
+  `providerFromEnv()` when a request carried no key of its own. On a deployment
+  with either variable set, any stranger who posted `{"suggest": true}` spent the
+  operator's money: no account, no session, nothing to attribute it to, and a
+  rate limiter in front of it keyed on a header the caller controls.
+
+  **It is not armed on the live deployment.** `https://trazum.vercel.app/api/optimize`
+  answered `"llmConfiguredOnServer": false` while this was being written, so no
+  key was configured and nothing was ever spent. It was a trap set rather than a
+  leak open, and it would have armed itself the day somebody set that variable.
+
+  **The bug is a function used outside the world it was written for.**
+  `providerFromEnv`'s own comment says it is *"trusted because it came from the
+  environment: the operator configuring their own machine, not a stranger naming
+  a host for this server to fetch"*. That is exactly right for the CLI, where
+  the operator and the caller are the same person. In a web app they are not,
+  and reusing it there turned "my key on my machine" into "my key for anyone
+  with the URL".
+
+  The endpoint and the model may still come from the operator, and the key may
+  not. Collapsing those two kinds of setting is what caused this:
+  `TRAZUM_LLM_BASE_URL` is the documented Ollama-on-localhost case and costs an
+  operator nothing when a stranger uses it, because the stranger still brings
+  the credential that pays. `allowInsecure` is scoped to the operator's own host
+  for the same reason.
+
+- **`GET /api/optimize` stops answering whether there is a key worth
+  attacking.** It returned `llmConfiguredOnServer`, unauthenticated and
+  unlimited, which is an oracle. The field is gone rather than set to `false`,
+  because the question no longer has meaning once the server never lends a key,
+  and the placeholder in the key field says it without a round trip. The route
+  also gains the rate limiter that was on `POST` only: the one endpoint that
+  answered without a body was the one nothing bounded.
+
+  Two plants, both firing. Restoring the environment fallback fails with `a
+  keyless request was served` and `a keyless refining request was served`.
+  Closing only `suggest` and leaving `llm.enabled` open fails with the second
+  alone, which is how this kind of fix is usually half-made. The suite keeps
+  `TRAZUM_LLM_API_KEY` set so the tests run against the configuration that used
+  to be dangerous rather than a tidy one where the question cannot arise.
+
+
 - **Half of this file was a second copy of itself.** 100 of its 116 version
   headings appeared twice, 11,336 lines of duplicate history, concatenated in
   #411 and unnoticed for sixty-nine releases. The two copies differed by exactly

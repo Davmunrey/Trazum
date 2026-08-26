@@ -87,7 +87,6 @@ export interface WebMessages {
     model: string;
     modelPlaceholder: string;
     apiKey: string;
-    apiKeyOnServer: string;
     apiKeyPlaceholder: string;
     keyNote: string;
     safetyNote: string;

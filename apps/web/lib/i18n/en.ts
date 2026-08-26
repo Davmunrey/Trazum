@@ -77,7 +77,6 @@ export const en: WebMessages = {
     model: 'Model',
     modelPlaceholder: 'model identifier',
     apiKey: 'API key',
-    apiKeyOnServer: 'configured on the server; leave empty',
     apiKeyPlaceholder: 'your key',
     keyNote:
       'The key travels to this server to make the call and is discarded afterwards: it is never stored or logged. If you would rather not type it here, set the environment variables on the server and leave the fields empty.',
@@ -986,7 +985,7 @@ export const en: WebMessages = {
       '"applySuggestions" has nothing to apply without "suggest". On its own it would have '
       + 'returned silently and changed nothing, which is not an answer.',
     llmNotConfigured:
-      'You enabled the LLM pass but no provider is configured. Fill in the endpoint and model, or set TRAZUM_LLM_BASE_URL and TRAZUM_LLM_MODEL on the server.',
+      'The model-assisted pass needs your own API key, which this request did not carry. This server never lends its own: a key configured here would be spent by whoever asked, with nothing to attribute it to. Paste a key, and an endpoint and model if you are not using Anthropic. Everything else on this page is deterministic and needs no key.',
     unexpected: 'Unexpected error.',
   },
 };
