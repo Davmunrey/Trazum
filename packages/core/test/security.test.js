@@ -1963,6 +1963,60 @@ describe('the packaged Action', () => {
     );
   });
 
+  it('the description names every gate the action actually runs', () => {
+    /**
+     * The Marketplace shows one line, and this one described half the product.
+     *
+     * `action.yml` builds two argument vectors: `check`, which gates a prompt
+     * against a token budget, and `profile`, which gates a usage log against a
+     * spend budget. Seven of the eighteen inputs exist only for the second.
+     * The description said "Token budget for prompts" and stopped, so the one
+     * sentence a visitor reads before deciding to try this described a version
+     * that stopped being the whole story several releases ago. Nothing was
+     * checking, because every other assertion here is about the inputs and the
+     * script rather than about the sentence on top of them.
+     *
+     * The modes are read out of the script rather than listed here, for the
+     * reason every derived guard in this repository exists: a third mode added
+     * next year is covered the day it lands, and a list kept in a test is the
+     * thing that stops covering what came after it.
+     */
+    const modes = [...action.matchAll(/^\s*args=\(([a-z-]+)\s/gm)].map((m) => m[1]);
+    assert.ok(
+      modes.length >= 2,
+      `only parsed ${modes.length} mode(s) out of the script — has the shape changed?`,
+    );
+
+    const described = /^description: '(.*)'$/m.exec(action);
+    assert.ok(described, 'action.yml has no description — the Marketplace requires one');
+    const description = described[1].toLowerCase();
+
+    // Each mode by what it gates, not by its command name: a visitor is
+    // reading English, and "profile" on its own tells them nothing about
+    // whether this can fail a build over money.
+    const evidence = {
+      check: /token budget/,
+      profile: /spend budget/,
+    };
+    const unnamed = modes.filter((mode) => {
+      const pattern = evidence[mode];
+      assert.ok(pattern, `the script gained a "${mode}" mode with no phrase pinned for it here`);
+      return !pattern.test(description);
+    });
+    assert.deepEqual(
+      unnamed,
+      [],
+      `action.yml runs these and its description does not say so: ${unnamed.join(', ')}`,
+    );
+
+    // The limit the Marketplace enforces, checked here rather than discovered
+    // at publish time.
+    assert.ok(
+      described[1].length <= 125,
+      `the description is ${described[1].length} characters; the Marketplace rejects anything over 125`,
+    );
+  });
+
   it('passes every declared input through to the CLI', () => {
     // A declared input nobody reads is a promise the action does not keep.
     // Scoped to the `inputs:` block — matching two-space keys across the whole

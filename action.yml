@@ -1,7 +1,13 @@
 name: 'Trazum Check'
 # Kept under 125 characters: the Marketplace rejects anything longer, and it
 # is the one line most people read before deciding to try this.
-description: 'Token budget for prompts. Fails the build when a prompt busts its maximum, and says whether optimising would fit.'
+#
+# It has to name BOTH gates. This said "Token budget for prompts" while seven
+# of the eighteen inputs below drove a spend gate that reads a usage log, so
+# the one line a Marketplace visitor reads described a version of this action
+# that stopped being the whole story several releases ago. security.test.js
+# now derives the modes from the script and fails when one is unnamed.
+description: 'Fails the build when a prompt busts its token budget, or a usage log busts its spend budget. Says what would fit.'
 author: 'David Muñoz Rey'
 branding:
   icon: 'scissors'

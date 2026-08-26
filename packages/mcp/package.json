@@ -1,6 +1,7 @@
 {
   "name": "@trazum/mcp",
   "version": "1.79.0",
+  "mcpName": "io.github.davmunrey/trazum",
   "description": "Trazum as an MCP server: let an agent price and budget its own prompts before it sends them.",
   "license": "MIT",
   "author": "David Mu\u00f1oz Rey",
