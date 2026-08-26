@@ -239,7 +239,9 @@ including what it costs a reader pinning with a tilde, is in
    `decide` job, which sees a manifest version the registry does not have and
    hands it to the release job: verify again, publish all three packages,
    create the `v<version>` tag on the merge commit, and publish the GitHub
-   release from `RELEASES.md`. No tag to type, no second step to remember.
+   release from `RELEASES.md`. Then a third job waits for npm to serve the new
+   `@trazum/mcp` and updates the MCP registry listing, which was the last
+   manual step until 1.80.2. No tag to type, no second step to remember.
 
    A pushed tag still works as the manual override — for re-running a release
    whose publish failed, or releasing a commit that is not the newest merge:
@@ -259,10 +261,54 @@ does not exist yet.
 
 ## Listing on the MCP registry
 
-Separate from npm, and not automated. The official MCP registry hosts
+Separate from npm, and automated since 1.80.2. The official MCP registry hosts
 *metadata*: it records that a name maps to a package, and it verifies the claim
 by fetching that package from npm and reading `mcpName` out of its manifest. So
-the listing can only ever point at a version that is already published.
+the listing can only ever point at a version that is already published, which is
+what shapes the job.
+
+`release.yml` has an `mcp-registry` job that runs after the npm publishes:
+
+1. `scripts/mcp-registry-preflight.mjs` asks npm for the exact version until it
+   answers 200 *and* serves the right `mcpName`, up to five minutes.
+2. `mcp-publisher` is downloaded at a pinned version and checked against the
+   checksum published for that tag.
+3. `mcp-publisher login github-oidc` exchanges the job's OIDC token for a
+   registry token. No stored credential: the registry grants the namespace
+   matching the token's `repository_owner` claim.
+4. `mcp-publisher publish` sends `packages/mcp/server.json`.
+5. The job then asks the registry what it now serves, and fails if it is not the
+   version just sent.
+
+**Three deliberate choices, each paid for.**
+
+- **A separate job, not a step in the release job.** It downloads a third-party
+  binary and runs it, in a process that can mint a token for the whole
+  `io.github.<owner>/*` namespace. Keeping it out of `environment: release`
+  means that binary never shares a process with `secrets.NPM_TOKEN` or with
+  `contents: write`. By the time it runs, npm and the GitHub release are done,
+  so the worst it can do is fail, and a failed listing is recoverable by hand.
+- **The publisher binary is pinned by version and checksum**, not fetched from
+  `releases/latest/download` as the upstream guide shows. Same rule as every
+  action in this repository. The cost is a maintenance edge: when the registry
+  rotates its OIDC audience, an old binary fails with `invalid audience` and the
+  fix is to bump `MCP_PUBLISHER_VERSION` and `MCP_PUBLISHER_SHA256` together,
+  taking the checksum from `registry_<version>_checksums.txt` on that release.
+  The job's failure note says exactly that, because the error names nothing that
+  would lead you here.
+- **The wait is a poll, not a sleep.** npm serves a new version minutes after
+  the publish returns, and chaining the two publishes without waiting produces a
+  400 that reads like a manifest bug and is a propagation race. A fixed sleep is
+  either too short on a slow day or too long on every other day.
+
+`security.test.js` holds all of it: the job exists, it is gated on the same
+decision the uploads are, it waits before it publishes, the binary is pinned and
+verified, and the job is not in the release environment.
+
+### Publishing the listing by hand
+
+Still the fallback when the job fails, and the only route for a listing that has
+to move without a release:
 
 ```bash
 cd packages/mcp
@@ -270,12 +316,12 @@ mcp-publisher login github     # device flow, opens a code in the browser
 mcp-publisher publish          # reads ./server.json
 ```
 
-Three things that cost real attempts:
+Four things that cost real attempts:
 
 - **Do not run `mcp-publisher init`.** It writes a `server.json` named after the
-  *directory*, `io.github.<user>/mcp`, overwriting the one this repository
-  keeps in the version lockstep. The committed file is the source of truth; if
-  it is missing, the checkout is stale, not the tool.
+  *directory*, `io.github.<user>/mcp`, overwriting the one this repository keeps
+  in the version lockstep. The committed file is the source of truth; if it is
+  missing, the checkout is stale, not the tool.
 - **The namespace is case-sensitive.** GitHub authentication grants
   `io.github.<login>/*` with the login spelled exactly as GitHub spells it, so
   `io.github.davmunrey` and `io.github.Davmunrey` are two different namespaces
@@ -285,16 +331,15 @@ Three things that cost real attempts:
   from `server.json`'s repository URL and holds both files to it.
 - **A 400 saying the package is "missing required `mcpName` field"** means the
   version `server.json` advertises does not carry that field on npm, usually
-  because the manifest was edited after the last publish. Check what the
-  registry sees before blaming the login:
+  because the manifest was edited after the last publish, or because npm has not
+  propagated yet. Check what the registry sees before blaming the login:
 
   ```bash
   curl -s https://registry.npmjs.org/@trazum%2fmcp/<version> | grep mcpName
   ```
 
-Republish after every release that changes the server, for the same reason the
-version is in the lockstep: the registry goes on advertising whatever it was
-last told.
+- **A 401 saying the token is expired** is exactly that. The device-flow
+  credential is short-lived; `mcp-publisher login github` again and republish.
 
 ## The token fallback
 

@@ -1680,6 +1680,120 @@ describe('the packaged Action', () => {
     );
   });
 
+  it('the MCP registry listing runs a pinned binary, gated like the publishes it follows', () => {
+    /**
+     * The listing was a manual step and it failed twice in a row: once because
+     * a stale checkout had no `server.json`, once because npm had not yet
+     * propagated the version the registry was told to verify. Automating it
+     * removes both, and introduces the thing this test is actually about.
+     *
+     * **This job downloads a third-party binary and runs it, in a job that can
+     * mint a registry token for the whole `io.github.<owner>/*` namespace.**
+     * The documented install line fetches `releases/latest/download`, which is
+     * a movable ref, the exact shape every action in this repository is pinned
+     * away from. So it is pinned by version and checked against the checksum
+     * published for that tag, and the isolation is structural: a separate job,
+     * so the binary never shares a process with the npm credential or with
+     * `contents: write`.
+     *
+     * Derived rather than described: the gate is read off a publish step
+     * rather than written out a second time, so a publish gate that changes
+     * and a listing gate that does not is a failure here rather than a listing
+     * for a release that never happened.
+     */
+    const release = readFileSync(join(repoRoot, '.github/workflows/release.yml'), 'utf8');
+
+    const jobs = release.split(/^  (?=[a-z][a-z-]*:$)/m);
+    const listing = jobs.find((job) => job.startsWith('mcp-registry:'));
+    assert.ok(listing, 'the mcp-registry job is gone, so a release no longer updates the listing');
+
+    // The same decision as the uploads, which is not the same *string* and
+    // cannot be: a step output is not addressable from another job, so the
+    // uploads read `steps.versions` and this job reads `needs.decide`. Tying
+    // the two by text would only pin a coincidence. They are tied through
+    // where the answer comes from instead.
+    const publishStep = release.split(/^      - /m).find((step) => /run: npm publish/.test(step));
+    assert.ok(publishStep, 'no npm publish step to take the gate from');
+    const gate = publishStep.match(/if:\s*(.+)/)?.[1]?.trim();
+    assert.equal(
+      gate,
+      "github.event_name == 'push' && steps.versions.outputs.publish == 'true'",
+      'the publish gate moved, so the listing gate below is no longer its counterpart',
+    );
+    assert.ok(
+      listing.includes("if: github.event_name == 'push' && needs.decide.outputs.publish == 'true'"),
+      'the listing job is gated differently from the publish steps',
+    );
+
+    // And `decide` answers with the same preflight the in-job gate reads, so
+    // both conditions are one decision wearing two addresses.
+    const decide = jobs.find((job) => job.startsWith('decide:'));
+    assert.ok(decide, 'the decide job is gone');
+    assert.match(
+      decide,
+      /publish: \$\{\{ steps\.versions\.outputs\.publish \}\}/,
+      'decide no longer exports the preflight answer, so the listing gate reads nothing',
+    );
+    assert.match(
+      decide,
+      /npm-publish-preflight\.mjs versions/,
+      'decide answers from something other than the registry preflight',
+    );
+
+    // Runs after the packages exist, and after the wait that makes the
+    // registry's own verification possible.
+    assert.match(listing, /needs:\s*\[decide, release\]/, 'the listing does not wait for the release job');
+
+    // Presence before order. `indexOf` answers -1 for a string that is not
+    // there, and -1 is less than every real index, so an ordering assertion on
+    // its own passes loudest exactly when the step it is ordering has been
+    // deleted. That is not a hypothetical: the plant written to prove this
+    // assertion removed the step by accident and the test went green.
+    const waited = listing.indexOf('mcp-registry-preflight.mjs');
+    const published = listing.indexOf('mcp-publisher" publish');
+    assert.ok(waited !== -1, 'nothing waits for npm to serve the version the listing advertises');
+    assert.ok(published !== -1, 'the listing job never publishes anything');
+    assert.ok(
+      waited < published,
+      'the listing is published before waiting for npm to serve the version it advertises',
+    );
+
+    // Pinned and verified. A version with no checksum beside it is a download
+    // nobody checked; `latest` is not a version at all.
+    assert.match(
+      listing,
+      /MCP_PUBLISHER_VERSION: '\d+\.\d+\.\d+'/,
+      'the publisher binary is not pinned to a version',
+    );
+    assert.match(
+      listing,
+      /MCP_PUBLISHER_SHA256: '[0-9a-f]{64}'/,
+      'the publisher binary has no checksum to verify against',
+    );
+    assert.ok(
+      listing.includes('sha256sum --check --strict'),
+      'the checksum is stated and never checked',
+    );
+    // The negative assertions read the job with its comments removed. Both of
+    // the things banned below are *named* in the prose that explains why they
+    // are banned, and the first version of this test failed on its own
+    // explanation.
+    const code = listing.replace(/^\s*#.*$/gm, '').replace(/\s#.*$/gm, '');
+    assert.ok(
+      !code.includes('releases/latest/download'),
+      'the publisher binary is fetched from a movable ref',
+    );
+
+    // The isolation. `environment: release` is where the npm credential lives,
+    // and this job must not be able to read it.
+    assert.ok(
+      !/environment:\s*release/.test(code),
+      'the listing job joins the release environment, so the downloaded binary can read the npm credential',
+    );
+    assert.match(listing, /contents: read/, 'the listing job asks for more than read on the repository');
+    assert.match(listing, /id-token: write/, 'without OIDC the listing needs a stored credential');
+  });
+
   it('a finding already on main fails a build, not only a new one', () => {
     // The gap the rest of this suite could not see. CodeQL's pull-request
     // check reports *new* alerts in the code that pull request changed, so a
