@@ -93,6 +93,20 @@ export function memoryStore(): Store {
       }
     },
 
+    async deleteExpiredSessions(now: Date): Promise<number> {
+      let gone = 0;
+      for (const [hash, session] of sessions) {
+        // `<=` rather than `<`, matching `findSession`: a session whose expiry
+        // is exactly now is over, and the two must agree or a row is dead to
+        // one and alive to the other.
+        if (session.expiresAt.getTime() <= now.getTime()) {
+          sessions.delete(hash);
+          gone += 1;
+        }
+      }
+      return gone;
+    },
+
     async close(): Promise<void> {},
   };
 }

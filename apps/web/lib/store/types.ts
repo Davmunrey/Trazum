@@ -120,9 +120,9 @@ export interface Store {
    * The session and its owner, or `null` when there is no such session or it
    * has expired.
    *
-   * An expired session is deleted on the way out. Otherwise the only thing that
-   * ever removes one is a sign-out, and a table of month-old dead rows is a
-   * table someone eventually has to be told about.
+   * An expired session is deleted on the way out. That covers the row somebody
+   * comes back and presents; `deleteExpiredSessions` covers the ones nobody
+   * ever comes back for.
    */
   findSession(tokenHash: string, now: Date): Promise<{ session: SessionRecord; user: UserRecord } | null>;
 
@@ -130,6 +130,20 @@ export interface Store {
 
   /** Drop every session belonging to a user. Sign out everywhere. */
   deleteSessionsForUser(userId: string): Promise<void>;
+
+  /**
+   * Drop every session that has expired, and say how many went.
+   *
+   * `findSession` only reaps the row it was handed, so a session that expires
+   * and is never presented again sits in the table for ever. That is not a way
+   * in: the lookup excludes anything past `expires_at`, so a dead row cannot
+   * authenticate anybody. It is unbounded growth in a table whose rows are all
+   * dead weight after thirty days.
+   *
+   * The count is returned so a test can prove the sweep happened. Nothing in
+   * the app reads it and no response ever carries it.
+   */
+  deleteExpiredSessions(now: Date): Promise<number>;
 
   /** Release connections. A no-op for the memory driver. */
   close(): Promise<void>;

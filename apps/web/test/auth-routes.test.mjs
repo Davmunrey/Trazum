@@ -326,6 +326,54 @@ describe('GET /api/auth/github/callback', () => {
     assert.equal(calls.length, 0);
   });
 
+  it('takes the dead rows out on the way past', async () => {
+    /**
+     * `findSession` reaps the row it was handed, which covers a session
+     * somebody comes back to. It does not cover the ones nobody ever comes back
+     * for: a browser that cleared its cookies, a laptop that was replaced,
+     * anyone who signed in from somewhere once. Those rows sat in
+     * `trazum_sessions` for ever, and nothing about the deployment looked wrong
+     * while they piled up.
+     *
+     * A dead row is not a way in, because `findSession` excludes anything past
+     * `expires_at`. What this closes is unbounded growth, so the assertion is
+     * about how many rows are left and not about what a lookup answers.
+     */
+    const store = await getStore();
+    const { token } = await signInFully();
+    const live = hashToken(token);
+    const owner = (await store.findSession(live, new Date())).user.id;
+
+    // Three sessions that expired an hour ago, written straight to the store:
+    // there is no way to make the routes issue one in the past.
+    const now = new Date();
+    const expired = new Date(now.getTime() - 60 * 60 * 1000);
+    for (const tokenHash of ['dead-a', 'dead-b', 'dead-c']) {
+      await store.createSession({ tokenHash, userId: owner, createdAt: expired, expiresAt: expired });
+    }
+
+    await signInFully();
+
+    /**
+     * Nothing left to reap, and that is the whole assertion. Had the sign-in
+     * not swept, the three rows would still be here and this call would return
+     * 3 rather than 0. Reading them back with `findSession` could not have
+     * proved it, because that reaps what it reads.
+     */
+    assert.equal(
+      await store.deleteExpiredSessions(new Date()),
+      0,
+      'expired sessions survived a sign-in and were left to accumulate',
+    );
+
+    // And the live session survived the sweep, which is the half that would
+    // turn this from a fix into an outage.
+    assert.ok(
+      await store.findSession(live, new Date()),
+      'the sweep took a session that had not expired',
+    );
+  });
+
   it('sends a returning user back to the same account', async () => {
     const first = await signInFully();
     const second = await signInFully();
