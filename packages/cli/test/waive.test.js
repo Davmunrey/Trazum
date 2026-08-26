@@ -48,8 +48,8 @@ describe('waive: findings as policy', () => {
     assert.equal(result.status, 0, 'an active waiver must quiet the exit code');
     const out = flat(result);
     // Shown as waived, never hidden: the failure prints, then the waiver.
-    assert.match(out, /FAILED — this log spent \$12\.00/);
-    assert.match(out, /WAIVED — the maxUsd failure above is on the record and silenced until 2099-01-01/);
+    assert.match(out, /FAILED: this log spent \$12\.00/);
+    assert.match(out, /WAIVED: the maxUsd failure above is on the record and silenced until 2099-01-01/);
     assert.match(out, /"August migration doubles traffic"/);
     assert.match(out, /the day the waiver expires this gate fails again/);
   });
@@ -75,8 +75,8 @@ describe('waive: findings as policy', () => {
     });
     const result = run(log, config);
     assert.equal(result.status, 1, 'the unwaived label budget must still fail');
-    assert.match(flat(result), /WAIVED — the maxUsd failure/);
-    assert.match(flat(result), /FAILED — rag spent/);
+    assert.match(flat(result), /WAIVED: the maxUsd failure/);
+    assert.match(flat(result), /FAILED, rag spent/);
   });
 
   it('waives one label budget through byLabel:<label>', async () => {
@@ -86,7 +86,7 @@ describe('waive: findings as policy', () => {
     });
     const result = run(log, config);
     assert.equal(result.status, 0);
-    assert.match(flat(result), /WAIVED — the byLabel:rag failure/);
+    assert.match(flat(result), /WAIVED: the byLabel:rag failure/);
   });
 
   it('refuses a waiver with no reason, no expiry, or an unknown gate', async () => {

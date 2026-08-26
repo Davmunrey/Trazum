@@ -115,7 +115,7 @@ const HOSTS = {
  */
 const WHY_NOT_FRONTED = {
   'https://bedrock-runtime.':
-    'the default is `https://bedrock-runtime.${region}.amazonaws.com` — the harvest ' +
+    'the default is `https://bedrock-runtime.${region}.amazonaws.com`, the harvest ' +
     'truncates at the interpolation, which is itself the evidence — and `signRequest` ' +
     'is given `host`, so SigV4 signs the origin: a proxy that rewrote it would invalidate ' +
     'the signature it forwarded',
@@ -160,7 +160,7 @@ describe('every host this repository names has been decided about', () => {
   const found = harvest();
 
   it('found the hosts at all', () => {
-    assert.ok(found.size >= 20, `only ${found.size} hosts harvested — has the scan broken?`);
+    assert.ok(found.size >= 20, `only ${found.size} hosts harvested, has the scan broken?`);
   });
 
   it('has a decision for every one', () => {

@@ -57,7 +57,7 @@ describe('--max-cache-loss-usd', () => {
     const log = await write('usage.jsonl', [settledWrites]);
     const result = run([log, '--max-cache-loss-usd', '1']);
     assert.equal(result.status, 1);
-    assert.match(flat(result), /FAILED — caching added \$1\.25 .*limit of \$1\.00/);
+    assert.match(flat(result), /FAILED, caching added \$1\.25 .*limit of \$1\.00/);
   });
 
   it('passes a settled loss under the limit, and says so', async () => {
@@ -74,7 +74,7 @@ describe('--max-cache-loss-usd', () => {
     const result = run([log, '--max-cache-loss-usd', '2']);
     assert.equal(result.status, 1);
     const text = flat(result);
-    assert.match(text, /FAILED — 1 call did not record which cache-write TTL/);
+    assert.match(text, /FAILED, 1 call did not record which cache-write TTL/);
     assert.match(text, /up to \$5\.00, over the --max-cache-loss-usd limit of \$2\.00/);
     assert.match(text, /worst case on purpose/);
   });

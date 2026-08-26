@@ -44,7 +44,7 @@ describe('--max-usd, the spend gate', () => {
     const log = await write('usage.jsonl', [call(), call()]); // $10.00
     const result = run([log, '--max-usd', '9.50']);
     assert.equal(result.status, 1);
-    assert.match(flat(result), /FAILED — this log spent \$10\.00 against a --max-usd of \$9\.50/);
+    assert.match(flat(result), /FAILED: this log spent \$10\.00 against a --max-usd of \$9\.50/);
   });
 
   it('passes under budget, and says so instead of staying silent', async () => {

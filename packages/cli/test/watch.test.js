@@ -46,8 +46,8 @@ describe('watch', () => {
     const result = run(dir, []);
     assert.equal(result.status, 1, 'a crossing must fail the run');
     const out = flat(result);
-    assert.match(out, /CROSSED — Total spend is \$50\.00 against a limit of \$25\.00/);
-    assert.match(out, /CROSSED — Spend on 2026-08-03 is \$30\.00 against a limit of \$15\.00/);
+    assert.match(out, /CROSSED, Total spend is \$50\.00 against a limit of \$25\.00/);
+    assert.match(out, /CROSSED, Spend on 2026-08-03 is \$30\.00 against a limit of \$15\.00/);
     // The rule that makes an alert at 3am trustworthy, in the copy itself.
     assert.match(out, /Measured, not projected/);
   });
@@ -59,7 +59,7 @@ describe('watch', () => {
     // Quiet is not clean: the budget is still blown, and the run still fails.
     assert.equal(second.status, 1);
     const out = flat(second);
-    assert.match(out, /STILL OVER — Total spend is \$50\.00/);
+    assert.match(out, /STILL OVER, Total spend is \$50\.00/);
     assert.match(out, /Quiet is not clean/);
     assert.doesNotMatch(out, /Within every threshold/);
   });

@@ -49,7 +49,7 @@ describe('spend budgets in trazum.config.json', () => {
     const result = run(dir, [log]);
     assert.equal(result.status, 1);
     const text = flat(result);
-    assert.match(text, /FAILED — chat spent \$5\.00 against its budget of \$2\.00/);
+    assert.match(text, /FAILED, chat spent \$5\.00 against its budget of \$2\.00/);
     assert.match(text, /Within budget: batch spent \$1\.00 against \$10\.00/);
   });
 
@@ -95,7 +95,7 @@ describe('spend budgets in trazum.config.json', () => {
     );
     const result = run(dir, [log]);
     assert.equal(result.status, 1);
-    assert.match(flat(result), /FAILED — 2026-08-02 spent \$10\.00, over the --max-day-usd limit of \$5\.00/);
+    assert.match(flat(result), /FAILED, 2026-08-02 spent \$10\.00, over the --max-day-usd limit of \$5\.00/);
 
     // And the flag beats the config, like every gate here.
     const loose = run(dir, [log, '--max-day-usd', '15']);

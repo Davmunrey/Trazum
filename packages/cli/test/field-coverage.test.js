@@ -51,7 +51,7 @@ describe('what this log cannot answer yet', () => {
     assert.match(text, /"ts" on 0\/2 records/);
     assert.match(text, /"stop_reason".*on 0\/2 records/);
     // The one that changes what every other figure in the report means.
-    assert.match(text, /an "outcome" — 0\/2/);
+    assert.match(text, /an "outcome", 0\/2/);
     assert.match(text, /cannot say whether it stopped working/);
   });
 

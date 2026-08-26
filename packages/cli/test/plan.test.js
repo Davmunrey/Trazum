@@ -54,7 +54,7 @@ describe('plan', () => {
     assert.match(out, /The plan: \d+ actions against a \$\d/);
     // Both columns named, never merged.
     assert.match(out, /projected savings/);
-    assert.match(out, /already spent on problems this plan names — measured, not projected/);
+    assert.match(out, /already spent on problems this plan names, measured, not projected/);
     // The composition arrives combined, and says so.
     assert.match(out, /Route and batch support/);
     assert.match(out, /combined with batching where both apply, never summed/);

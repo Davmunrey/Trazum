@@ -73,11 +73,11 @@ describe('verify', () => {
     const out = flat(result);
     assert.match(out, /Did it work\? \d+ actions from the plan of \d{4}-\d{2}-\d{2}/);
     // The route arrived, and the movement of the world travels with it.
-    assert.match(out, /Route and batch support .* — ARRIVED/);
+    assert.match(out, /Route and batch support .*, ARRIVED/);
     assert.match(out, /dearest model is now claude-sonnet-5/);
     assert.match(out, /calls 3 → 6/);
     // The retry bill persists, priced.
-    assert.match(out, /Fix the truncation retries on digest .* — DID NOT ARRIVE/);
+    assert.match(out, /Fix the truncation retries on digest .*, DID NOT ARRIVE/);
     assert.match(out, /still shows \$8\.00 of truncation waste/);
     // The batch half is named as unobservable, never counted as arrived.
     assert.match(out, /tokens do not say which tier billed them|batch half of this action cannot be seen/);
@@ -87,7 +87,7 @@ describe('verify', () => {
     const dir = await setup();
     const result = run([join(dir, 'plan.json'), '--against', join(dir, 'new.jsonl'), '--gate']);
     assert.equal(result.status, 1);
-    assert.match(flat(result), /GATE FAILED — \d+ of \d+ actions/);
+    assert.match(flat(result), /GATE FAILED, \d+ of \d+ actions/);
   });
 
   it('emits the verification as data, prices-changed flag included', async () => {
@@ -111,7 +111,7 @@ describe('verify', () => {
     assert.equal(result.status, 0, result.stderr);
     const body = await readFile(md, 'utf8');
     assert.match(body, /^## Did it work\?/m);
-    assert.match(body, /### Route and batch support .* — ARRIVED/);
+    assert.match(body, /### Route and batch support .*, ARRIVED/);
   });
 
   it('speaks Spanish', async () => {

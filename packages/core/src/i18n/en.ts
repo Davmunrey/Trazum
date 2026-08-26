@@ -82,7 +82,7 @@ export const en: CoreMessages = {
 
   suggest: {
     'not-found': () =>
-      'the quoted phrase is not in the prompt — the model paraphrased what it was copying',
+      'the quoted phrase is not in the prompt: the model paraphrased what it was copying',
     'touches-protected': () =>
       'it would edit code, a URL, a placeholder or a tag, which are copied verbatim',
     'introduces-protected': () => 'the replacement adds a placeholder or URL that was not there',
@@ -95,10 +95,10 @@ export const en: CoreMessages = {
      * Three shapes, not two, because *"how wrong might this estimate be"* has
      * three answers and only two were written down.
      *
-     * The count is exact — then the window verdict is a fact. The count is an
-     * estimate on the family the estimator was measured against — then the
+     * The count is exact, and then the window verdict is a fact. The count is an
+     * estimate on the family the estimator was measured against, and then the
      * margin is known and the verdict is a probability. Or the count is an
-     * estimate on a family nobody has measured — and then the margin itself is
+     * estimate on a family nobody has measured, and then the margin itself is
      * the unknown, which is neither of the first two and used to be told as the
      * second.
      *
@@ -116,15 +116,15 @@ export const en: CoreMessages = {
       detail: !uncertain
         ? `The optimised prompt is ~${n(tokens)} tokens and ${modelName} accepts ${n(contextWindow)}. The call will fail: split the content or move to a model with a larger window.`
         : bandApplies
-          ? `The optimised prompt is ~${n(tokens)} tokens against ${modelName}'s ${n(contextWindow)}. That count is an estimate and it is close to the line, so the call will probably fail but might not — settle it with --exact-tokens before rewriting anything. The counting endpoint is free. If it does exceed the window, split the content or move to a model with a larger one.`
-          : `The optimised prompt is ~${n(tokens)} tokens against ${modelName}'s ${n(contextWindow)}, which is over. That count is an estimate, and the estimator's error was measured against Claude's tokenizer — not ${modelName}'s — so how far over it really is cannot be said from here. Trazum will not tell you the call fails on a number it has not measured for this family. Count with your provider's own tooling before rewriting anything.`,
+          ? `The optimised prompt is ~${n(tokens)} tokens against ${modelName}'s ${n(contextWindow)}. That count is an estimate and it is close to the line, so the call will probably fail but might not. Settle it with --exact-tokens before rewriting anything. The counting endpoint is free. If it does exceed the window, split the content or move to a model with a larger one.`
+          : `The optimised prompt is ~${n(tokens)} tokens against ${modelName}'s ${n(contextWindow)}, which is over. That count is an estimate, and the estimator's error was measured against Claude's tokenizer rather than ${modelName}'s, so how far over it really is cannot be said from here. Trazum will not tell you the call fails on a number it has not measured for this family. Count with your provider's own tooling before rewriting anything.`,
     }),
 
     contextNearLimit: ({ tokens, modelName, contextWindow, bandApplies }) => ({
       title: 'The prompt may not fit in the context window',
       detail: bandApplies
-        ? `The optimised prompt is ~${n(tokens)} tokens against ${modelName}'s ${n(contextWindow)}, which fits — but that count is an estimate and its error range reaches past the window, so the real prompt may not. A call that exceeds the window fails outright rather than degrading, and nothing else here warns about it. Confirm with --exact-tokens; the counting endpoint is free.`
-        : `The optimised prompt is ~${n(tokens)} tokens against ${modelName}'s ${n(contextWindow)}, which fits on the estimate. This warning is raised because the estimator's measured error — against Claude's tokenizer, not ${modelName}'s — would reach past the window, and nobody has measured what that error is on this family. A call that exceeds the window fails outright rather than degrading. Count with your provider's own tooling before relying on the margin.`,
+        ? `The optimised prompt is ~${n(tokens)} tokens against ${modelName}'s ${n(contextWindow)}, which fits, but that count is an estimate and its error range reaches past the window, so the real prompt may not. A call that exceeds the window fails outright rather than degrading, and nothing else here warns about it. Confirm with --exact-tokens; the counting endpoint is free.`
+        : `The optimised prompt is ~${n(tokens)} tokens against ${modelName}'s ${n(contextWindow)}, which fits on the estimate. This warning is raised because the estimator's measured error, against Claude's tokenizer rather than ${modelName}'s, would reach past the window, and nobody has measured what that error is on this family. A call that exceeds the window fails outright rather than degrading. Count with your provider's own tooling before relying on the margin.`,
     }),
 
     promptCaching: ({
@@ -140,13 +140,13 @@ export const en: CoreMessages = {
       nearMinimum,
     }) => {
       const scope = placeholder
-        ? `The stable prefix — everything before the first placeholder ${placeholder} — is ~${n(prefixTokens)} of the prompt's ${n(totalTokens)} tokens, and clears ${modelName}'s ${n(minTokens)}-token cacheable minimum.`
+        ? `The stable prefix (everything before the first placeholder ${placeholder}) is ~${n(prefixTokens)} of the prompt's ${n(totalTokens)} tokens, and clears ${modelName}'s ${n(minTokens)}-token cacheable minimum.`
         : `The prompt has no variable placeholders, so the whole thing is a cacheable prefix and it clears ${modelName}'s ${n(minTokens)}-token minimum.`;
       const how = explicit
         ? 'Put the cache marker at the end of the stable prefix: any byte that changes before the cut invalidates everything after it.'
-        : `${modelName} caches automatically above its minimum, so there is nothing to set — but the same rule applies: any byte that changes before the cut invalidates everything after it.`;
+        : `${modelName} caches automatically above its minimum, so there is nothing to set, but the same rule applies: any byte that changes before the cut invalidates everything after it.`;
       const hedge = nearMinimum
-        ? ` One caveat on the figure: that prefix count is an estimate and it is close to the line, so the real one may be below the ${n(minTokens)}-token minimum — in which case nothing caches and this saving is not there. Settle it with --exact-tokens before budgeting from it. The counting endpoint is free.`
+        ? ` One caveat on the figure: that prefix count is an estimate and it is close to the line, so the real one may be below the ${n(minTokens)}-token minimum, in which case nothing caches and this saving is not there. Settle it with --exact-tokens before budgeting from it. The counting endpoint is free.`
         : '';
       return {
         title: 'Turn on prompt caching for the stable prefix',
@@ -180,14 +180,14 @@ export const en: CoreMessages = {
             ? ' Claude Opus 5 lowers that minimum to 512 tokens, so short prompts that miss here would cache there.'
             : '') +
           (couldReachMinimum
-            ? ' That prefix count is an estimate and it is close to the line, so the real one may already be above it — check with --exact-tokens before deciding this is not available to you. The counting endpoint is free.'
+            ? ' That prefix count is an estimate and it is close to the line, so the real one may already be above it. Check with --exact-tokens before deciding this is not available to you. The counting endpoint is free.'
             : ''),
       };
     },
 
     cachePrefixReorder: ({ staticTokensAfter, sharePct, placeholder, command }) => ({
       title: 'Move the stable instructions ahead of the first placeholder',
-      detail: `About ~${n(staticTokensAfter)} tokens of stable content (${sharePct}% of the prompt) sit after the first variable placeholder ${placeholder}, so today they never get cached. Fixed instructions and context first, placeholders last, and that content starts being read from cache at 10% of the price. Run \`${command}\` to attempt it: whole blocks only, and it refuses to move anything that refers back to earlier text. Read the diff — order carries meaning, and "summarise the text above" is nonsense in front of the text it points at.`,
+      detail: `About ~${n(staticTokensAfter)} tokens of stable content (${sharePct}% of the prompt) sit after the first variable placeholder ${placeholder}, so today they never get cached. Fixed instructions and context first, placeholders last, and that content starts being read from cache at 10% of the price. Run \`${command}\` to attempt it: whole blocks only, and it refuses to move anything that refers back to earlier text. Read the diff: order carries meaning, and "summarise the text above" is nonsense in front of the text it points at.`,
     }),
 
     batchApi: () => ({
@@ -222,7 +222,7 @@ export const en: CoreMessages = {
       title: `Two instructions disagree about ${axis}`,
       detail:
         `One says ${firstValue} ("${firstSnippet}") and another says ${secondValue} ("${secondSnippet}"). ` +
-        'The model has to pick one, and which one it picks can change between calls — so this is a correctness problem before it is a cost one. ' +
+        'The model has to pick one, and which one it picks can change between calls, so this is a correctness problem before it is a cost one. ' +
         'Deleting the instruction you did not mean also shortens the prompt.' +
         (otherCount > 0
           ? ` ${otherCount} other ${otherCount === 1 ? 'pair' : 'pairs'} of instructions disagree too.`
@@ -241,8 +241,8 @@ export const en: CoreMessages = {
       title: 'The output schema could travel in the request instead of the prompt',
       detail:
         `${blocks === 1 ? 'A schema block' : `${blocks} schema blocks`} introduced by "${cue}" defines ${keyList}, costing about ${n(tokens)} tokens on every call. ` +
-        'Every major API now takes a response schema as a request parameter — output_config.format, response_format, responseSchema — and moving it there is the rare change that is both cheaper and stricter: prose asks the model to comply, a parameter makes the decoder comply. ' +
-        'Trazum cannot make this edit, because it changes the call rather than the prompt, and it does not check whether your provider offers the parameter — if it does not, this is not available to you.',
+        'Every major API now takes a response schema as a request parameter (output_config.format, response_format, responseSchema), and moving it there is the rare change that is both cheaper and stricter: prose asks the model to comply, a parameter makes the decoder comply. ' +
+        'Trazum cannot make this edit, because it changes the call rather than the prompt, and it does not check whether your provider offers the parameter; if it does not, this is not available to you.',
     }),
 
     restatedOutputFormat: ({ restatedCount, totalCount, restatedTokens, keyList }) => ({
@@ -250,7 +250,7 @@ export const en: CoreMessages = {
       detail:
         `The prose describes ${restatedCount} of the ${totalCount} fields your schema already defines (${keyList}), costing about ${n(restatedTokens)} tokens on every call. ` +
         'The code block is the version worth keeping: it is unambiguous, and Trazum never edits it. ' +
-        'Check the two agree before deleting either — when a prompt says one thing in prose and another in its schema, the prose is usually the one that went stale.',
+        'Check the two agree before deleting either: when a prompt says one thing in prose and another in its schema, the prose is usually the one that went stale.',
     }),
   },
 

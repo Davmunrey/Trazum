@@ -71,7 +71,7 @@ describe('why this is not the API feature that was asked for', () => {
 
     assert.ok(
       tokens < smallest,
-      `the suggest prompt is ${tokens} tokens and the smallest cacheable prefix is ${smallest} — ` +
+      `the suggest prompt is ${tokens} tokens and the smallest cacheable prefix is ${smallest}, ` +
         'API prompt caching has become possible, and the comment in suggest-cache.ts saying it ' +
         'cannot work is now wrong',
     );

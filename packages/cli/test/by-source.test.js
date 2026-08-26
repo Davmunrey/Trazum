@@ -71,7 +71,7 @@ describe('profile --by-source', () => {
     const result = run(dir, config);
     assert.equal(result.status, 1, 'the failing source must fail the run');
     const out = flat(result);
-    assert.match(out, /FAILED — api spent \$20\.00 against its budget of \$5\.00/);
+    assert.match(out, /FAILED, api spent \$20\.00 against its budget of \$5\.00/);
     assert.match(out, /Within budget: web spent \$1\.00/);
     // A budgeted source with no logs is named, not passed: "did not appear"
     // is not "under budget".

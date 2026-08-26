@@ -47,7 +47,7 @@ describe('trazum profile --max-session-usd', () => {
     const result = await run(LOG, ['--max-usd', '20', '--max-session-usd', '5']);
     assert.equal(result.status, 1);
     const out = flat(result);
-    assert.match(out, /FAILED — the most expensive of 3 conversations cost \$8\.00, over the --max-session-usd limit of \$5\.00/);
+    assert.match(out, /FAILED: the most expensive of 3 conversations cost \$8\.00, over the --max-session-usd limit of \$5\.00/);
   });
 
   it('never prints the session key, even in the failure', async () => {

@@ -545,7 +545,7 @@ describe('the blame report', () => {
   it('names the single worst commit, which is what the command is for', () => {
     const md = render();
     assert.match(md, /Biggest single increase/);
-    assert.match(md, /\+310 tokens — Dana/);
+    assert.match(md, /\+310 tokens, Dana/);
   });
 
   it('reports the net movement across the history', () => {

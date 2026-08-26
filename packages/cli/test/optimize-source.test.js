@@ -68,7 +68,7 @@ describe('it optimises the prompt, not the file around it', () => {
     const { out } = run(['a.ts', '-o', '/dev/null'], root);
 
     const tokens = Number(/Input tokens\s*\n\s*(\d+)/.exec(out)?.[1]);
-    assert.ok(tokens > 0 && tokens < 60, `counted ${tokens} tokens — the code is still included`);
+    assert.ok(tokens > 0 && tokens < 60, `counted ${tokens} tokens: the code is still included`);
   });
 
   it('prices against the provider the file actually calls', async () => {
