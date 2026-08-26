@@ -138,10 +138,12 @@ export const es: CoreMessages = {
       };
     },
 
-    promptCachingNotWorthIt: () => ({
+    promptCachingNotWorthIt: ({ readPct, writePct, breakEvenPct }) => ({
       title: 'Con esa tasa de acierto, la caché no compensa',
       detail:
-        'Escribir en caché cuesta un 125% del precio de entrada y leer un 10%. Por debajo de un ~28% de aciertos pagas más de lo que ahorras. Sube la reutilización del prefijo o deja la caché desactivada.',
+        breakEvenPct === null
+          ? `En este modelo escribir en caché cuesta un ${writePct}% del precio de entrada, lo mismo que no usarla, y leer un ${readPct}%. Así que aquí la caché no puede costarte dinero: con esta tasa de acierto simplemente no te aporta nada. En cuanto subas la reutilización del prefijo, empieza a compensar.`
+          : `En este modelo escribir en caché cuesta un ${writePct}% del precio de entrada y leer un ${readPct}%. Por debajo de un ${breakEvenPct}% de aciertos pagas más de lo que ahorras. Sube la reutilización del prefijo o deja la caché desactivada.`,
     }),
 
     belowCacheMinimum: ({

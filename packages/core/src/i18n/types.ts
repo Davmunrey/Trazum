@@ -215,6 +215,38 @@ export interface LlmMessages {
   suspiciousShrink(retainedPct: number): string;
 }
 
+/**
+ * What the caching-does-not-pay advisory needs to state a threshold that is
+ * true about **this** model.
+ *
+ * It used to take nothing and print one sentence for every model: *"a cache
+ * write costs 125% of the input price and a read costs 10%. Below roughly a 28%
+ * hit rate you pay more than you save."* Two of those three numbers were the
+ * Anthropic multipliers stated as universal, and the third was not derivable
+ * from any model in the catalogue: at 125% and 10% the break-even is 21.74%,
+ * not 28%.
+ *
+ * The multipliers were already in hand at the call site and already passed to
+ * the advisory next door. Only this message invented its own.
+ */
+export interface PromptCachingNotWorthItParams {
+  /** The model's cache read multiplier as a percentage of the input price. */
+  readPct: number;
+  /** Its 5-minute cache write multiplier, likewise. */
+  writePct: number;
+  /**
+   * The hit rate at which caching stops costing money, derived rather than
+   * quoted: `(1 - write) / (read - write)`.
+   *
+   * `null` when the write multiplier is 1, which is not a smaller threshold but
+   * a different situation: writing costs exactly what not caching costs, so
+   * caching can never lose money and there is no rate below which it does. Eight
+   * of the eighteen models in the catalogue are that shape, and the old sentence
+   * told all eight to consider turning caching off.
+   */
+  breakEvenPct: number | null;
+}
+
 /** Why a proposed rewrite did not survive checking against the prompt. */
 export interface SuggestMessages {
   'not-found'(): string;
@@ -236,7 +268,7 @@ export interface CoreMessages {
     contextOverflow(p: ContextOverflowParams): LocalizedMessage;
     contextNearLimit(p: ContextNearLimitParams): LocalizedMessage;
     promptCaching(p: PromptCachingParams): LocalizedMessage;
-    promptCachingNotWorthIt(): LocalizedMessage;
+    promptCachingNotWorthIt(p: PromptCachingNotWorthItParams): LocalizedMessage;
     belowCacheMinimum(p: BelowCacheMinimumParams): LocalizedMessage;
     cachePrefixReorder(p: CachePrefixReorderParams): LocalizedMessage;
     batchApi(): LocalizedMessage;

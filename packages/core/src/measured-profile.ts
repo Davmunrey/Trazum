@@ -70,6 +70,10 @@ export interface MeasuredUsage {
    * call is the same size. It is handed over as the better of two
    * approximations — a measured token share beats a typed call share — and
    * named honestly here so no rendering can call it something it is not.
+   *
+   * The denominator is every input token, **writes included**. Leaving writes
+   * out made a constantly-rewritten cache report a high hit rate, which is the
+   * one workload that most needs to be told otherwise.
    */
   cacheReadShare: number;
   /**
@@ -105,6 +109,7 @@ export function measuredUsage(
   const outputTokens = slices.reduce((sum, row) => sum + row.breakdown.outputTokens, 0);
   const inputTokens = slices.reduce((sum, row) => sum + row.breakdown.inputTokens, 0);
   const cacheReadTokens = slices.reduce((sum, row) => sum + row.breakdown.cacheReadTokens, 0);
+  const cacheWriteTokens = slices.reduce((sum, row) => sum + row.breakdown.cacheWriteTokens, 0);
 
   // The model carrying the most spend. Ties break on the larger call count, so
   // the answer is stable rather than dependent on map ordering.
@@ -127,8 +132,27 @@ export function measuredUsage(
       ? { fromDays: spanDays, factor: SCALE_TO_DAYS / spanDays }
       : null;
 
-  const readShare =
-    inputTokens + cacheReadTokens > 0 ? cacheReadTokens / (inputTokens + cacheReadTokens) : 0;
+  /**
+   * Every input token in the denominator, writes included.
+   *
+   * This was `reads / (input + reads)`, which leaves cache *writes* out of the
+   * total it is a share of. A workload that rewrites its prefix on every call
+   * and reads it back rarely then reports a **high** hit rate: with 100 read
+   * tokens, no plain input and 10,000 written, the old expression answers 100%
+   * where the truth is 1%.
+   *
+   * That is the worst direction for this number to be wrong in. It is handed
+   * to `optimize` as `cacheHitRate`, which decides whether caching is paying
+   * off — so the shape that is burning money on writes was the shape most
+   * likely to be told its cache was working perfectly.
+   *
+   * Writes are input tokens: they are billed at the input rate times the write
+   * multiplier, they arrive in the same `usage` block, and any accounting of
+   * "what share of the input came from cache" that omits them is answering a
+   * narrower question than the one it is named for.
+   */
+  const allInputTokens = inputTokens + cacheReadTokens + cacheWriteTokens;
+  const readShare = allInputTokens > 0 ? cacheReadTokens / allInputTokens : 0;
 
   return {
     profile: {

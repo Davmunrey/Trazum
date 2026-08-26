@@ -13,6 +13,50 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The caching advisory quoted a threshold that was true of no model.** It said,
+  for every model in the catalogue, *"a cache write costs 125% of the input price
+  and a read costs 10%. Below roughly a 28% hit rate you pay more than you
+  save."* Two of those numbers were Anthropic's multipliers stated as universal.
+  The third was not derivable from anything: break-even is where a cached token
+  costs what an uncached one does, `h·read + (1−h)·write = 1`, so
+  `h = (1 − write) / (read − write)`, and at 1.25 and 0.1 that is **21.74%**.
+
+  **The advice was actively wrong for eight of the eighteen models.** `gpt-5`,
+  `gpt-5-mini`, `gpt-5-nano`, `gemini-2.5-pro`, `gemini-2.5-flash`, `kimi-k2`,
+  `deepseek-v3` and `grok-4` write at **1× input price**, so caching cannot lose
+  money at any hit rate: `(1 − 1) / (r − 1)` is zero, which is the absence of a
+  threshold rather than a small one. All eight were being told to consider
+  turning caching off. The message now takes the model's own multipliers and
+  says the different thing that is true of them.
+
+  The multipliers were in hand at the call site and already passed to the
+  advisory next door, whose comment says why a global constant is *"an invented
+  saving rather than an imprecise one"*. Only this message invented its own.
+  The guard recomputes the threshold from the catalogue rather than typing it in,
+  and one plant fired on the number while a second, matched against the wording
+  of the replacement rather than the claim, did not: the sentence it was written
+  to catch reads `Below **roughly** a 28%` and `Below a` does not match it. It
+  is matched on `you pay more than you save` now, which is the claim itself.
+
+- **A measured cache hit rate rose the more the cache was rewritten.**
+  `cacheReadShare` was `reads / (input + reads)`, leaving cache **writes** out of
+  the total it claims to be a share of. With 100 read tokens, no plain input and
+  9,900 written, it answered **100%** where the truth is 1%.
+
+  That is the worst direction for this number to be wrong in. It is handed to
+  `optimize` as `cacheHitRate`, which decides whether caching is paying off, so
+  the workload burning money on writes was the one most likely to be told its
+  cache was working perfectly. Writes are input tokens: billed at the input rate
+  times the write multiplier, arriving in the same `usage` block.
+
+- **The downgrade advisory halved candidates that have no batch API.** The saving
+  multiplied the cheaper model by a hardcoded `0.5` whenever the caller said
+  `batchEligible`, while the current model's cost twenty lines above already used
+  `rates.batch ?? 1`. Three models carry `batch: null` — `kimi-k2`, `deepseek-v3`
+  and `grok-4` — meaning no batch API at all, so the advisory offered money that
+  cannot be bought at any price, made the downgrade look twice as good as it is,
+  and could turn a negative saving into a reported one.
+
 - **The MCP registry read-back failed 1.81.0's release while the publish had
   succeeded.** The listing job's last step asks the registry whether it now
   serves what was just sent. It reported `the registry serves '1.80.1' for

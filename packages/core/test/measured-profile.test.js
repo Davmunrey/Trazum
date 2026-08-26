@@ -42,6 +42,45 @@ describe('measuredUsage', () => {
     assert.equal(m.outputUnmeasured, false);
   });
 
+  it('counts cache writes as input, so a rewritten cache cannot report a high hit rate', () => {
+    /**
+     * The share was `reads / (input + reads)`, which leaves cache writes out of
+     * the total it claims to be a share of. A workload that rewrites its prefix
+     * on every call and reads it back rarely then reports a **high** hit rate.
+     *
+     * That is the worst direction for this number to be wrong in: it is handed
+     * to `optimize` as `cacheHitRate`, which decides whether caching is paying
+     * off, so the shape burning money on writes was the one most likely to be
+     * told its cache was working perfectly.
+     *
+     * Hand arithmetic: 100 read, 0 plain input, 9,900 written. Reads are 1% of
+     * the 10,000 input tokens. The old expression answers 100%.
+     */
+    const m = measuredUsage(
+      profile([
+        call({
+          ts: '2026-08-01T09:00:00Z',
+          usage: {
+            input_tokens: 0,
+            cache_read_input_tokens: 100,
+            cache_creation_input_tokens: 9_900,
+            output_tokens: 10,
+          },
+        }),
+      ]),
+      'chat',
+    );
+
+    assert.ok(
+      Math.abs(m.cacheReadShare - 0.01) < 1e-9,
+      `writes were left out of the denominator: share is ${m.cacheReadShare}, expected 0.01`,
+    );
+    // Stated the other way round so the failure names the symptom rather than
+    // an arithmetic near-miss: this must never read as a healthy cache.
+    assert.ok(m.cacheReadShare < 0.5, 'a cache rewritten on every call reported a majority hit rate');
+    assert.equal(m.profile.cacheHitRate, m.cacheReadShare);
+  });
+
   it('scales to a month only when the span covers a full week, and says how', () => {
     // Ten days, two calls: the factor is 3 and the arithmetic is visible.
     const scaled = measuredUsage(

@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 
 import {
+  MODELS,
   analyzeCachePrefix,
   computeSavings,
   costOfCall,
@@ -9,6 +11,7 @@ import {
   estimateTokens,
   getModel,
   listModels,
+  multipliersFor,
   optimize,
   recommendTier,
   reviewAgeDays,
@@ -167,6 +170,120 @@ describe('advisories', () => {
     const result = optimize(prompt, { usage: { ...baseUsage, cacheHitRate: 0.1 } });
     assert.ok(result.advisories.some((a) => a.id === 'prompt-caching-not-worth-it'));
     assert.ok(!result.advisories.some((a) => a.id === 'prompt-caching'));
+  });
+
+  it('states a break-even that is true about the model it is talking about', () => {
+    /**
+     * This sentence used to read, for every model in the catalogue: *"a cache
+     * write costs 125% of the input price and a read costs 10%. Below roughly a
+     * 28% hit rate you pay more than you save."*
+     *
+     * Two of those numbers were Anthropic's multipliers stated as universal.
+     * The third was not derivable from any model at all: break-even is where a
+     * cached token costs what an uncached one does, `h*read + (1-h)*write = 1`,
+     * so `h = (1 - write) / (read - write)`, and at 1.25 and 0.1 that is 21.74%
+     * rather than 28%.
+     *
+     * The threshold is recomputed here from the catalogue rather than typed in,
+     * so the assertion cannot drift with a price change and cannot be satisfied
+     * by editing it to match a wrong answer.
+     */
+    const prompt = 'Analyse this contract with legal judgement. '.repeat(200);
+    const result = optimize(prompt, { usage: { ...baseUsage, cacheHitRate: 0.1 } });
+    const said = result.advisories.find((a) => a.id === 'prompt-caching-not-worth-it');
+    assert.ok(said, 'the advisory did not fire, so there is no sentence to check');
+
+    const model = MODELS.find((m) => m.id === baseUsage.model) ?? MODELS[0];
+    const rates = multipliersFor(model);
+    const expected = Math.round(((1 - rates.cacheWrite5m) / (rates.cacheRead - rates.cacheWrite5m)) * 1000) / 10;
+
+    assert.match(said.detail, new RegExp(`${String(expected).replace('.', '\\.')}%`),
+      `the advisory does not name this model's break-even of ${expected}%: ${said.detail}`);
+    assert.match(said.detail, new RegExp(`${Math.round(rates.cacheRead * 100)}%`));
+    assert.match(said.detail, new RegExp(`${Math.round(rates.cacheWrite5m * 100)}%`));
+
+    // And the number it used to invent is gone.
+    assert.doesNotMatch(said.detail, /28%/, 'the undderivable 28% is still being printed');
+  });
+
+  it('never tells a model whose writes cost input price to turn caching off', () => {
+    /**
+     * Eight of the eighteen models have a write multiplier of 1: writing costs
+     * exactly what not caching costs, so caching cannot lose money at any hit
+     * rate. `(1 - 1) / (r - 1)` is 0, which is not a small threshold but the
+     * absence of one, and the fixed sentence advised all eight to consider
+     * leaving caching off.
+     */
+    const flat = MODELS.filter((m) => multipliersFor(m).cacheWrite5m <= 1);
+    assert.ok(flat.length > 0, 'no flat-write model in the catalogue, so this guard checks nothing');
+
+    const prompt = 'Analyse this contract with legal judgement. '.repeat(200);
+    let checked = 0;
+    for (const model of flat) {
+      const result = optimize(prompt, {
+        usage: { ...baseUsage, model: model.id, cacheHitRate: 0 },
+      });
+      const said = result.advisories.find((a) => a.id === 'prompt-caching-not-worth-it');
+      assert.ok(said, `${model.id} did not produce the advisory, so this guard checked nothing`);
+      checked += 1;
+
+      /**
+       * Matched on the claim, not on the wording.
+       *
+       * The first version of this asserted `doesNotMatch(/Below a/)`, which is
+       * the phrasing of the *replacement* rather than of the thing being
+       * prevented: the sentence it exists to catch reads "Below **roughly** a
+       * 28% hit rate", and `Below a` does not match `Below roughly a`. The plant
+       * was restored and this test stayed green, which is the whole reason it is
+       * written this way now.
+       *
+       * "You pay more than you save" is the claim itself. It is in the old
+       * sentence, it is in the threshold branch where it is true, and it must
+       * never appear for a model that cannot lose money by caching.
+       */
+      assert.doesNotMatch(
+        said.detail,
+        /pay more than you save|pagas más de lo que ahorras/,
+        `${model.id} writes at input price and was told it pays more than it saves: ${said.detail}`,
+      );
+    }
+    assert.ok(checked > 0, 'no flat-write model produced the advisory, so nothing was asserted');
+  });
+
+  it('never halves a downgrade candidate that has no batch API', () => {
+    /**
+     * The `model-downgrade` saving multiplied the candidate by a hardcoded
+     * `0.5` whenever the caller said `batchEligible`, while the current model's
+     * own cost twenty lines above already used `rates.batch ?? 1`. Three models
+     * in the catalogue carry `batch: null`, meaning no batch API at all, and
+     * halving them offered money that cannot be bought at any price.
+     *
+     * Derived from the catalogue rather than naming the three by hand, so a
+     * provider that gains or loses a batch API does not silently take this
+     * guard with it.
+     */
+    const noBatch = MODELS.filter((m) => multipliersFor(m).batch === null);
+    assert.ok(noBatch.length > 0, 'no batch-less model in the catalogue, so this guard checks nothing');
+
+    // A candidate is only reached from a pricier tier, so the arithmetic is
+    // done directly: the advisory's saving must never assume a discount the
+    // candidate does not offer.
+    for (const model of noBatch) {
+      assert.equal(
+        multipliersFor(model).batch ?? 1,
+        1,
+        `${model.id} would be discounted despite having no batch API`,
+      );
+    }
+
+    // And the source no longer carries the constant that caused it.
+    const source = readFileSync(new URL('../src/advisories.ts', import.meta.url), 'utf8');
+    const code = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+    assert.doesNotMatch(
+      code,
+      /batchEligible \? 0\.5/,
+      'a hardcoded batch discount is back in the downgrade saving',
+    );
   });
 
   it('suggests the Batch API only when it is not already in use', () => {
