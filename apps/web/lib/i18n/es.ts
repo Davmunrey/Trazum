@@ -97,6 +97,8 @@ export const es: WebMessages = {
     signIn: 'Iniciar sesión',
     signOut: 'Cerrar sesión',
     signingOut: 'Cerrando sesión…',
+    signOutEverywhere: 'Cerrar sesión en todos los dispositivos',
+    signOutEverywhereHint: 'Termina todas las sesiones de la cuenta, incluida esta.',
     ephemeral: 'sesión temporal',
     ephemeralHint:
       'Este despliegue guarda las sesiones en memoria, así que se cerrará cuando el servidor se reinicie. Define TRAZUM_DATABASE_URL para conservarlas.',
