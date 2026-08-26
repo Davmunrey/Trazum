@@ -150,6 +150,48 @@ merged commit with no entry is a change only `git log` remembers.
   with the 404 quoted, a name mismatch fails before any request, and the real
   version passes on the first ask.
 
+- **The gateway forwards two paths that spend nothing, without judging them.**
+  `POST /v1/messages/count_tokens` and `GET /v1/models` on Anthropic. Until now
+  the rule was one path per provider, and a coding agent pointed at this gateway
+  got a 404 within its first second from a proxy that was otherwise working.
+
+  **Refusing them was never the stricter answer.** `count_tokens` is the call you
+  make to find out whether you can afford the other one, so answering it with a
+  402 blinds a caller at the exact moment they are trying to behave. A budget
+  refusal only means something when there is money on the line; on a free call it
+  is theatre with a real cost.
+
+  What it widens is stated in `docs/gateway.md` rather than glossed: the origin
+  is still compiled in, so the credential still reaches one host, and what grows
+  is the set of *operations* somebody who can reach the loopback port may perform
+  with it, from one to three. So the list is literal strings rather than
+  patterns, the method is part of the match, and the comparison is against the
+  whole path.
+
+  The free branch reaches no decision, records no usage and never substitutes a
+  model, because there is no money to judge, no counts to keep and nothing to
+  swap. Any of those would be a figure invented about a call that cost nothing.
+
+  **Two security guards were strengthened rather than relaxed.** Adding a
+  destination for somebody's credential already meant editing an allowlist in
+  `security.test.js`; adding a path forwarded *without a budget decision* now
+  means the same, method included. And the fetch-target guard pinned a
+  single-element array, which is the wrong thing to hold: it fails on a second
+  call site that is correct and passes on a first that is not. It asserts the
+  set of distinct targets now.
+
+  Eight refusals are planted and pass: `/v1/messages/batches` (bills, and reads
+  as administrative), `/v1/models/../messages`, `/v1/models?limit=1`,
+  `/v1/modelsX`, `/v1/model`, both right paths on the wrong method, and a method
+  nothing answers. Four design failures are planted too, and all four fail: the
+  free branch moved after the budget decision, a `startsWith` comparison, a
+  billing path added to the free list, and the free branch recording usage.
+
+  Proved live as well as in tests: against the real `api.anthropic.com`, the
+  spending path returns 402 while `count_tokens` and `/v1/models` return
+  Anthropic's own 401 for a fake key, on the same gateway, configured
+  `fail-closed` with no budget.
+
 ### Fixed
 
 - **Half of this file was a second copy of itself.** 100 of its 116 version
