@@ -247,33 +247,86 @@ describe('session tokens', () => {
 // ---------------------------------------------------------------------------
 
 describe('oauth state', () => {
+  const AT = new Date('2026-08-26T10:00:00.000Z');
+  /** Somewhere inside the window, so a match is about the nonce and not the clock. */
+  const SOON = new Date(AT.getTime() + 60_000);
+
   it('round-trips the nonce and the destination', () => {
-    const packed = github.packState('nonce123', '/library?tab=diff');
+    const packed = github.packState('nonce123', '/library?tab=diff', AT);
     const unpacked = github.unpackState(packed);
     assert.equal(unpacked.nonce, 'nonce123');
     assert.equal(unpacked.next, '/library?tab=diff');
+    assert.equal(unpacked.issuedAt, Math.floor(AT.getTime() / 1000));
   });
 
   it('produces a value a cookie can legally hold', () => {
-    const packed = github.packState(github.mintNonce(), '/a b/ü');
+    const packed = github.packState(github.mintNonce(), '/a b/ü', AT);
     assert.doesNotThrow(() => cookies.serializeCookie('t', packed, { maxAge: 1, secure: true }));
   });
 
   it('sanitises the destination on the way out, not only on the way in', () => {
     // Belt and braces against a tampered cookie: the value is HttpOnly, but the
     // filter costs nothing and the alternative is an open redirect.
-    const forged = github.packState('n', 'https://evil.example');
+    const forged = github.packState('n', 'https://evil.example', AT);
     assert.equal(github.unpackState(forged).next, '/');
   });
 
   it('matches only the nonce it issued', () => {
-    const packed = github.packState('nonce123', '/');
-    assert.equal(github.stateMatches(packed, 'nonce123'), true);
-    assert.equal(github.stateMatches(packed, 'nonce124'), false);
-    assert.equal(github.stateMatches(packed, ''), false);
-    assert.equal(github.stateMatches(packed, null), false);
-    assert.equal(github.stateMatches(null, 'nonce123'), false);
-    assert.equal(github.stateMatches('no-dot-here', 'no-dot-here'), false);
+    const packed = github.packState('nonce123', '/', AT);
+    assert.equal(github.stateMatches(packed, 'nonce123', SOON), true);
+    assert.equal(github.stateMatches(packed, 'nonce124', SOON), false);
+    assert.equal(github.stateMatches(packed, '', SOON), false);
+    assert.equal(github.stateMatches(packed, null, SOON), false);
+    assert.equal(github.stateMatches(null, 'nonce123', SOON), false);
+    assert.equal(github.stateMatches('no-dot-here', 'no-dot-here', SOON), false);
+  });
+
+  it('refuses a state older than the window, whatever the browser did with the cookie', () => {
+    /**
+     * The window used to live only in the cookie's `maxAge`, which is a request
+     * to the browser and not a rule this app kept, while the callback's comment
+     * described an expired state as a case it handled. This is that sentence
+     * turned into code.
+     *
+     * The right nonce every time. What is being asserted is the clock and only
+     * the clock: at the last second inside the window the state still works,
+     * and one second later the same bytes do not.
+     */
+    const packed = github.packState('nonce123', '/', AT);
+    const ttl = session.OAUTH_STATE_TTL_SECONDS * 1000;
+
+    assert.equal(github.stateMatches(packed, 'nonce123', new Date(AT.getTime() + ttl)), true,
+      'the last second of the window was refused');
+    assert.equal(github.stateMatches(packed, 'nonce123', new Date(AT.getTime() + ttl + 1000)), false,
+      'a state past the ten-minute window was accepted');
+    assert.equal(github.stateMatches(packed, 'nonce123', new Date(AT.getTime() + 60 * 60 * 1000)), false,
+      'an hour-old state was accepted');
+  });
+
+  it('refuses a state issued in the future rather than granting it an open window', () => {
+    // A clock that disagrees with ours, or a hand-written cookie. Either way the
+    // age is negative, and a negative age is not a small one: read as a number
+    // it is inside every window there is, for as long as the skew lasts.
+    const packed = github.packState('nonce123', '/', new Date(AT.getTime() + 5 * 60_000));
+    assert.equal(github.stateMatches(packed, 'nonce123', AT), false);
+  });
+
+  it('refuses the format that carried no window at all', () => {
+    /**
+     * The two-part value this cookie used to hold. A browser can be holding one
+     * across a deploy, and the cost of refusing is a 400 saying "start again"
+     * and one more click inside a ten-minute window. Accepting it would give
+     * the guard a shape that switches itself off for anything shaped like the
+     * format it replaced.
+     */
+    const legacy = `nonce123.${Buffer.from('/', 'utf8').toString('base64url')}`;
+    assert.equal(github.unpackState(legacy), null);
+    assert.equal(github.stateMatches(legacy, 'nonce123', SOON), false);
+
+    // And a timestamp that is not one.
+    assert.equal(github.unpackState('nonce123.notanumber./'), null);
+    assert.equal(github.unpackState('nonce123..Lw'), null);
+    assert.equal(github.unpackState('nonce123.-5.Lw'), null);
   });
 
   it('puts the state, the callback and the minimum scope on the authorize URL', () => {

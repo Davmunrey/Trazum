@@ -13,6 +13,43 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **The ten-minute window on an OAuth state is checked here now, not asked of
+  the browser.** `OAUTH_STATE_TTL_SECONDS` existed and was applied in exactly one
+  place: the state cookie's `maxAge`. That is a request a browser is free to
+  ignore and a non-browser never sees. Meanwhile the callback's own comment
+  described *"a real one that sat in a tab past the ten-minute window"* as one of
+  the two cases it handled, and nothing measured it. The state carries an issue
+  time now, and `stateMatches` reads it.
+
+  **What that binds, and what it does not.** It binds a browser, which is the
+  case the window was written for: a callback URL left in an open tab, in
+  history, or in a proxy log stops working ten minutes after it was issued
+  rather than whenever the browser gets round to dropping the cookie. It does
+  not bind a client that writes its own cookie, and the timestamp is
+  deliberately not signed to make it so, because there is nothing there to gain:
+  anyone who can set this cookie can equally ask for a fresh one, so a forged
+  issue time buys an attacker a state they could have had for free. Saying that
+  is the point; an HMAC would have looked like it closed something.
+
+  **Both ends of the window.** Past the TTL is the case the ten minutes are
+  about. Issued in the future is a clock that disagrees with ours, and a
+  negative age is not a small one: read as a number it sits inside every window
+  there is, for as long as the skew lasts. So it is refused rather than granted
+  an unbounded one.
+
+  **The old two-part value is refused, not accepted.** A browser can be holding
+  one across a deploy, and the cost of refusing is a 400 saying start again and
+  one more click, inside a ten-minute window. Accepting it would give the guard
+  a shape that switches itself off for anything resembling the format it
+  replaced, which is the kind of guard that outlives its own reason.
+
+  One test that quoted the cookie's layout by hand now reads it through
+  `unpackState`, so it fails on the destination it is about rather than on a
+  format change.
+
+  Three plants, three failures: deleting the window check, keeping only its
+  upper bound, and accepting the two-part format.
+
 - **`GET /api/auth/session` is rate limited, and it was the only auth route that
   was not.** Every call below the disabled branch is an indexed lookup by token
   hash, made for an unauthenticated caller, keyed on a cookie that caller chose.
