@@ -9,6 +9,10 @@
     "url": "git+https://github.com/Davmunrey/Trazum.git",
     "directory": "packages/core"
   },
+  "homepage": "https://trazum.vercel.app",
+  "bugs": {
+    "url": "https://github.com/Davmunrey/Trazum/issues"
+  },
   "keywords": [
     "prompt",
     "llm",

@@ -1,6 +1,7 @@
 {
   "name": "@trazum/web",
   "version": "1.79.0",
+  "license": "MIT",
   "private": true,
   "type": "module",
   "scripts": {
