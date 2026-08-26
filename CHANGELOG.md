@@ -83,6 +83,42 @@ merged commit with no entry is a change only `git log` remembers.
   keeps the manual route as the fallback, now with the 401 (an expired
   device-flow token) alongside the 400 and the 403.
 
+## Unreleased
+
+### Added
+
+- **A Claude Code status line that costs nothing.**
+  `plugin/statusline/trazum-statusline.sh` shows what the session has cost at
+  the bottom of the terminal:
+
+  ```
+  Sonnet  $0.7761 · 10 calls · cache 88% · saved $2.91
+  ```
+
+  None of it is tokens. Claude Code draws the status line's stdout in the
+  terminal and writes a `Stop` hook's stdout to the debug log, so neither is
+  context. `SessionStart` is the hook whose stdout the model *does* see, which
+  is why the refresh is not wired to it and why a test refuses it by name in
+  both the script and the README somebody copies from.
+
+  **The split between the two is the design.** Claude Code runs the status line
+  on every assistant message and cancels the script if another update arrives
+  while it is still running, so a status line that reads the whole transcript
+  does not show a stale number, it shows nothing. Measured on 208 real
+  transcripts on one machine: median 0.50s, largest 6.5s on a 212 MB session.
+  With the work in the hook, the status line returns in **0.08s on that same
+  212 MB session**, and the hook pays the cost once per turn, after the turn.
+
+  Without the hook it still works, and shows the figure Claude Code computes
+  itself labelled `(Claude Code)` rather than passing somebody else's estimate
+  off as Trazum's.
+
+  Five plants, five failures: moving the computation back into the status line
+  is caught by a `trazum` that writes a marker and fails, dropping the
+  attribution is caught, writing the cache in place rather than renaming it
+  into place is caught, and naming `SessionStart` in either the script or the
+  README is caught both when it replaces `Stop` and when it is added beside it.
+
 ## 1.80.1 — "The capital letter the grant keeps"
 
 ### Fixed
