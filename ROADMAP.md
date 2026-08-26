@@ -1184,12 +1184,21 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
-## Unreleased
+## 1.81.0 — "The things nobody had checked" — released
 
-Merged into `main` and not yet tagged. Named here rather than left for the
-release notes because `ROADMAP.md` is what somebody reads before opening a pull
-request, and a route the file does not mention is a route they will assume does
-not exist.
+**The pass where the product read its own code.** Fourteen of this release's
+twenty-two changelog entries are things that had been here for weeks or months,
+looked finished, and had never been opened and read against what they claimed to
+do: a web app one environment variable away from spending the operator's
+credit on strangers, an account with no way to close it, a revocation the store
+could always do and nothing called, a ten-minute window only the browser was
+keeping, the one auth route nothing rate limited, and sessions that expired and
+were never swept.
+
+Two things here are new rather than audited: a Claude Code status line that
+costs nothing, because the surfaces it uses are the ones whose output never
+becomes context, and `from-claude-code --state`, which reads only what a
+transcript appended since last time.
 
 **Deleting an account** (`/api/account`). The accounts that arrived in 1.7.0
 could be signed out of and never closed: there was no `deleteUser` anywhere in

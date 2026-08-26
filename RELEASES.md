@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.80.1**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.81.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,91 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.81.0 — "The things nobody had checked"
+
+Nothing here is a new idea. Every item is something that had been in this
+repository for weeks or months, that looked finished, and that nobody had ever
+opened and read against what it claimed to do. Fourteen of the twenty-two
+entries in the changelog are that shape.
+
+**The web app was one environment variable away from spending your money on
+strangers.** `POST /api/optimize` fell back to `TRAZUM_LLM_API_KEY`, then
+`ANTHROPIC_API_KEY`, then to the CLI's `providerFromEnv()`, whenever a request
+carried no key of its own. On a deployment with either variable set, anyone who
+posted `{"suggest": true}` spent the operator's credit: no account, no session,
+nothing to attribute the call to, and the rate limiter in front of it keyed on a
+header the caller chooses. It was never armed on trazum.vercel.app, which
+answered `"llmConfiguredOnServer": false` the whole time, so nothing was ever
+spent. It was a trap set, and it would have armed itself the day somebody
+configured a key. The endpoint and the model may still come from the operator;
+the key may not.
+
+That same `GET` stopped publishing `llmConfiguredOnServer` at all, because an
+unauthenticated, unlimited endpoint answering "is there a key here worth
+attacking" is an oracle. It also gained the rate limiter that only `POST` had.
+
+**An account you could never close.** Accounts arrived in 1.7.0 and there was no
+way out of them: `deleteUser` did not exist in the store interface, in either
+driver, or anywhere else. `DELETE /api/account` closes one now, and takes with it
+every session, every prompt, every version of each, and every share link the
+account published. Immediate, with no grace period, because a screen that says
+deleted should mean deleted. Shared `/c/<token>` links stop working, which is the
+answer rather than an oversight: keeping them would mean keeping the deleted
+person's prompt text.
+
+**Sign out everywhere**, which the store could always do. `deleteSessionsForUser`
+existed in the interface and in both drivers with no caller anywhere, so somebody
+whose laptop was stolen could sign out on their phone and the stolen cookie
+stayed valid for the rest of its thirty days.
+
+**A ten-minute window that only the browser was keeping.** The OAuth state cookie
+had a `maxAge` and nothing else, while the callback's own comment described an
+expired state as a case it handled. The state carries an issue time now and the
+server checks it. It is deliberately not signed, and the code says why: anyone
+who can write that cookie can ask for a fresh one, so a forged timestamp buys an
+attacker nothing. An HMAC would have looked like it closed something.
+
+**The one auth route nothing bounded.** `GET /api/auth/session` ran a database
+lookup on every call, for an unauthenticated caller, with a cookie that caller
+chose, while the limiter for the sign-in routes sat exported twenty lines away in
+the same file. It has its own budget rather than sharing that one, because the
+header polls this endpoint and sharing would refuse somebody at the moment they
+pressed sign in.
+
+**Sessions that expired and were never swept.** The lookup reaped the row it was
+handed, which covers a session somebody comes back to. Nobody was reaping the
+ones nobody comes back for, and those are the majority. Not a way in, since an
+expired row cannot authenticate anybody; unbounded growth in a table whose rows
+are all dead weight after thirty days.
+
+### And two things that are new
+
+**A Claude Code status line that costs nothing.** It shows what the session has
+spent, in Trazum's numbers rather than an estimate, and it is free because of
+where it runs: the status line's output is drawn in the terminal and a `Stop`
+hook's goes to the debug log, so neither is context and neither is billed.
+`SessionStart` is the hook whose output *is* context, and a test refuses it by
+name.
+
+**`trazum from-claude-code --state`** reads only what a transcript appended since
+last time. On the largest real transcript on one machine, 212 MB, the conversion
+drops from 2.6s to 0.19s, and the records it appends are byte for byte what a
+full read would have produced.
+
+### The part worth saying about how this was built
+
+**Four guards were planted and did not fail.** Each time the test was what was
+wrong, not the code. A test that checked one account could not revoke another's
+sessions passed just as happily against a route that grew a `?user=` parameter;
+it attempts the attack now. A test that checked account deletion removed a
+prompt could not see the orphaned version rows left behind, because no public
+call can reach a version without its prompt; and the count added to make it
+visible summed what the loop was *about* to delete, so it reported success with
+the delete removed. A number that fails in the same direction as the code it
+reports on is not evidence.
 
 ---
 

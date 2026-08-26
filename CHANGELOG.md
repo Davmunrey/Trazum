@@ -11,6 +11,11 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+
+## 1.81.0 — "The things nobody had checked"
+
 ### Added
 
 - **`DELETE /api/account` closes an account, which nothing could do.** The
