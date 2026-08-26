@@ -184,7 +184,12 @@ export const es: CoreMessages = {
 
     modelDowngrade: ({ modelName, tier, candidateName, currentUsd, candidateUsd }) => ({
       title: `Esta tarea quizá no necesite ${modelName}`,
-      detail: `Por longitud y vocabulario, el prompt parece de complejidad "${tier}". Con ${candidateName} pasarías de ${currentUsd} a ${candidateUsd} al mes. Es una heurística por palabras clave, no un juicio de calidad: mide la diferencia con tus propias evaluaciones antes de cambiar en producción.`,
+      detail: `Por longitud y vocabulario, el prompt parece de complejidad "${tier}". Con ${candidateName} pasarías de ${currentUsd} a ${candidateUsd} al mes. Es una heurística por palabras clave, no un juicio de calidad. Mídelo antes de cambiar en producción: \`trazum route <log.jsonl> --prompt-file <prompt> --cases <casos> --yes\` envía los mismos casos a ambos modelos y dice si el barato sigue haciendo el trabajo.`,
+    }),
+
+    tierSignalsConflict: ({ complexSignals, simpleSignals }) => ({
+      title: 'El prompt pide profundidad y brevedad a la vez',
+      detail: `Lleva ${complexSignals} señal${complexSignals === 1 ? '' : 'es'} de tarea difícil y ${simpleSignals} de tarea fácil, y esta heurística las resta entre sí, así que se anulan. Aquí no se recomienda ningún nivel: un número que sale de dos lecturas opuestas cancelándose se parece exactamente a un prompt sin ninguna señal, y no son lo mismo. Decídelo midiendo y no por vocabulario: \`trazum route <log.jsonl> --prompt-file <prompt> --cases <casos> --yes\`.`,
     }),
 
     outputDominated: ({ outputUsd, inputUsd }) => ({

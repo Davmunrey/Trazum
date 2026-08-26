@@ -14,6 +14,7 @@ import {
   multipliersFor,
   optimize,
   recommendTier,
+  recommendTierDetailed,
   reviewAgeDays,
   PRICING_LAST_REVIEWED,
 } from '../dist/index.js';
@@ -248,6 +249,52 @@ describe('advisories', () => {
       );
     }
     assert.ok(checked > 0, 'no flat-write model produced the advisory, so nothing was asserted');
+  });
+
+  it('refuses a tier when the prompt asks for depth and brevity at once', () => {
+    /**
+     * The score subtracts one side from the other, so a prompt carrying four
+     * hard signals and three easy ones cancels to a `sonnet` that is
+     * **indistinguishable from a prompt with no signals at all**. Those are
+     * opposite situations reported with one number, and only one of them is
+     * worth telling anybody about.
+     *
+     * The refusal is the point: no tier recommendation is emitted, so no dollar
+     * figure is attached to a reading the heuristic cannot stand behind.
+     */
+    const conflict =
+      'Think step by step and analyze the trade-offs in depth, prove the design. ' +
+      'Just classify it, translate briefly, one label only.';
+
+    const seen = recommendTierDetailed(conflict, 500);
+    assert.ok(seen.complexSignals > 0 && seen.simpleSignals > 0, 'the fixture carries no conflict');
+    assert.equal(seen.conflicted, true);
+
+    const result = optimize(conflict, { usage: baseUsage });
+    const ids = result.advisories.map((a) => a.id);
+    assert.ok(ids.includes('tier-signals-conflict'), `the refusal was not stated: ${ids}`);
+    assert.ok(
+      !ids.includes('model-downgrade'),
+      'a downgrade was recommended from a reading the heuristic itself does not trust',
+    );
+
+    const said = result.advisories.find((a) => a.id === 'tier-signals-conflict');
+    assert.equal(said.estimatedMonthlyUsd, null, 'a refusal came with a dollar figure attached');
+    // A refusal names what is missing, and what to do instead.
+    assert.match(said.detail, /trazum route/, 'the refusal does not name the command that settles it');
+  });
+
+  it('still recommends a tier when one side clearly leads', () => {
+    /**
+     * The other half: a lead of two or more signals is a majority the size term
+     * cannot manufacture, so the heuristic still answers. Without this the
+     * refusal could be widened to everything and every test above would pass.
+     */
+    const clear = 'Classify this sentence. Translate it. Extract the label. Summarize in one word.';
+    const seen = recommendTierDetailed(clear, 200);
+    assert.equal(seen.simpleSignals >= seen.complexSignals + 2, true, `not a clear lead: ${JSON.stringify(seen)}`);
+    assert.equal(seen.conflicted, false);
+    assert.equal(seen.tier, 'haiku');
   });
 
   it('never halves a downgrade candidate that has no batch API', () => {

@@ -61,6 +61,7 @@ export type AdvisoryId =
   | 'cache-prefix-reorder'
   | 'batch-api'
   | 'model-downgrade'
+  | 'tier-signals-conflict'
   | 'output-dominated'
   | 'promo-pricing'
   | 'contradictory-instructions'

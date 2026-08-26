@@ -200,7 +200,12 @@ export const en: CoreMessages = {
 
     modelDowngrade: ({ modelName, tier, candidateName, currentUsd, candidateUsd }) => ({
       title: `This task may not need ${modelName}`,
-      detail: `By length and vocabulary the prompt looks like "${tier}" complexity. On ${candidateName} you would go from ${currentUsd} to ${candidateUsd} per month. This is a keyword heuristic, not a judgement about answer quality: measure the difference with your own evaluations before switching in production.`,
+      detail: `By length and vocabulary the prompt looks like "${tier}" complexity. On ${candidateName} you would go from ${currentUsd} to ${candidateUsd} per month. This is a keyword heuristic, not a judgement about answer quality. Measure it before switching in production: \`trazum route <log.jsonl> --prompt-file <prompt> --cases <cases> --yes\` sends the same cases to both models and reports whether the cheaper one still does the job.`,
+    }),
+
+    tierSignalsConflict: ({ complexSignals, simpleSignals }) => ({
+      title: 'The prompt asks for depth and for brevity at once',
+      detail: `It carries ${complexSignals} signal${complexSignals === 1 ? '' : 's'} of a hard task and ${simpleSignals} of an easy one, and this heuristic scores those against each other, so they cancel. No tier is recommended here: a number produced by two opposite readings cancelling out looks exactly like a prompt with no signals at all, and they are not the same thing. Decide it by measurement rather than by vocabulary: \`trazum route <log.jsonl> --prompt-file <prompt> --cases <cases> --yes\`.`,
     }),
 
     outputDominated: ({ outputUsd, inputUsd }) => ({

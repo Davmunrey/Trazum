@@ -16,17 +16,43 @@ function countSignals(haystack: string, signals: readonly string[]): number {
   return count;
 }
 
+/** What `recommendTierDetailed` saw, not only what it concluded. */
+export interface TierRecommendation {
+  tier: ModelPricing['tier'];
+  complexSignals: number;
+  simpleSignals: number;
+  /**
+   * True when the prompt asks for depth and for brevity at once, and the
+   * heuristic has no business preferring either.
+   *
+   * The score subtracts one side from the other, so three complex signals
+   * against three simple ones cancels to zero and returns `sonnet` — the same
+   * answer as a prompt with **no signals at all**. Those are opposite
+   * situations reported identically: one is "nothing here suggests a tier", the
+   * other is "this prompt contradicts itself about which tier it needs", and
+   * only the second is worth telling somebody about.
+   *
+   * The threshold is a lead of one signal or fewer, and it comes from the
+   * weights above rather than from taste: each signal moves the score by 2,
+   * prompt size moves it by up to 2, so a one-signal lead is inside what
+   * length alone contributes. A lead of two or more is a majority the size
+   * term cannot manufacture.
+   */
+  conflicted: boolean;
+}
+
 /**
- * Estimates the capability tier the prompt needs.
+ * Estimates the capability tier the prompt needs, and says what it saw.
  *
  * This is a keyword-and-size heuristic, not a judgement about answer quality.
  * Treat it as a hypothesis to validate with your own evaluations before
  * moving down a tier in production.
  */
-export function recommendTier(prompt: string, tokens: number): ModelPricing['tier'] {
+export function recommendTierDetailed(prompt: string, tokens: number): TierRecommendation {
   const haystack = prompt.toLowerCase();
-  let score =
-    countSignals(haystack, COMPLEX_SIGNALS) * 2 - countSignals(haystack, SIMPLE_SIGNALS) * 2;
+  const complexSignals = countSignals(haystack, COMPLEX_SIGNALS);
+  const simpleSignals = countSignals(haystack, SIMPLE_SIGNALS);
+  let score = complexSignals * 2 - simpleSignals * 2;
 
   if (tokens > 4000) score += 2;
   else if (tokens > 1500) score += 1;
@@ -34,9 +60,25 @@ export function recommendTier(prompt: string, tokens: number): ModelPricing['tie
 
   if (/```|~~~/.test(prompt)) score += 1;
 
-  if (score >= 3) return 'opus';
-  if (score >= 0) return 'sonnet';
-  return 'haiku';
+  const tier = score >= 3 ? 'opus' : score >= 0 ? 'sonnet' : 'haiku';
+  return {
+    tier,
+    complexSignals,
+    simpleSignals,
+    conflicted:
+      complexSignals > 0 && simpleSignals > 0 && Math.abs(complexSignals - simpleSignals) <= 1,
+  };
+}
+
+/**
+ * The tier alone, unchanged.
+ *
+ * Kept because it is public API and the 1.x line does not change shapes.
+ * Callers that need to know whether the answer is trustworthy reach for
+ * `recommendTierDetailed`.
+ */
+export function recommendTier(prompt: string, tokens: number): ModelPricing['tier'] {
+  return recommendTierDetailed(prompt, tokens).tier;
 }
 
 const TIER_ORDER: Record<ModelPricing['tier'], number> = {
@@ -395,7 +437,34 @@ export function buildAdvisories(
   }
 
   // --- Recommended model ---
-  const suggestedTier = recommendTier(optimizedPrompt, tokensAfter);
+  const recommendation = recommendTierDetailed(optimizedPrompt, tokensAfter);
+  const suggestedTier = recommendation.tier;
+
+  /**
+   * When the prompt argues with itself about which tier it needs, say so and
+   * recommend nothing.
+   *
+   * The score subtracts one side from the other, so a prompt demanding depth
+   * and brevity in equal measure cancels to zero and lands on `sonnet` — the
+   * identical answer to a prompt with no signals at all. Reporting two opposite
+   * situations with one number is the failure; the fix is not a better score,
+   * it is declining to pretend there is one.
+   *
+   * This returns before the downgrade block rather than alongside it, because a
+   * saving computed from a tier the heuristic cannot stand behind is a figure
+   * with a dollar sign on it and nothing underneath.
+   */
+  if (recommendation.conflicted) {
+    advisories.push({
+      id: 'tier-signals-conflict',
+      severity: 'info',
+      ...t.advisories.tierSignalsConflict({
+        complexSignals: recommendation.complexSignals,
+        simpleSignals: recommendation.simpleSignals,
+      }),
+      estimatedMonthlyUsd: null,
+    });
+  }
   /**
    * A model whose capability nobody recorded is never told it is overpowered.
    *
@@ -413,7 +482,7 @@ export function buildAdvisories(
    * and a condition that forgets it both have to happen before a model of
    * unrecorded capability is told it is overpowered.
    */
-  if (model.tier !== 'unknown' && TIER_ORDER[suggestedTier] < TIER_ORDER[model.tier]) {
+  if (!recommendation.conflicted && model.tier !== 'unknown' && TIER_ORDER[suggestedTier] < TIER_ORDER[model.tier]) {
     const candidate = cheapestInTier(suggestedTier, on, pricing, model.provider);
     if (candidate) {
       const candidatePricing = effectivePricing(candidate, on);

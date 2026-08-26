@@ -11,6 +11,43 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+- **The tier heuristic refuses when the prompt argues with itself.** The score is
+  `complex × 2 − simple × 2`, so a prompt carrying four signals of a hard task
+  and three of an easy one cancels to `sonnet` — **the identical answer to a
+  prompt with no signals at all**. Those are opposite situations reported with
+  one number: one is *"nothing here suggests a tier"*, the other is *"this prompt
+  contradicts itself about which tier it needs"*, and only the second is worth
+  saying out loud.
+
+  A new `tier-signals-conflict` advisory says it, and `model-downgrade` does not
+  fire while it holds. That order matters: a saving computed from a tier the
+  heuristic cannot stand behind is a dollar figure with nothing underneath.
+
+  **The threshold is derived from the weights, not from taste.** A lead of one
+  signal or fewer counts as conflict, because each signal moves the score by 2
+  and prompt length moves it by up to 2 on its own: a one-signal lead is inside
+  what length alone contributes, and a lead of two or more is a majority the
+  size term cannot manufacture. `recommendTierDetailed` reports the counts and
+  the verdict; `recommendTier` keeps its shape, because the 1.x line does not
+  change one.
+
+  Four plants, four failures, including the one that matters most in the other
+  direction: making the refusal unconditional fails `still recommends a tier when
+  one side clearly leads`, so the guard cannot be satisfied by refusing
+  everything.
+
+### Changed
+
+- **`model-downgrade` names the command that settles it.** It said *"measure the
+  difference with your own evaluations"*, which is advice nobody can follow
+  without already knowing how. It now names
+  `trazum route <log.jsonl> --prompt-file <prompt> --cases <cases> --yes`, which
+  is the command that sends the same cases to both models and reports whether
+  the cheaper one still does the job. The refusal above names it too, because a
+  refusal that does not say what would settle the question is only half of one.
+
 ### Fixed
 
 - **The caching advisory quoted a threshold that was true of no model.** It said,
