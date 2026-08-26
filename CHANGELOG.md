@@ -13,6 +13,51 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **`DELETE /api/account` closes an account, which nothing could do.** The
+  accounts that arrived in 1.7.0 could be signed out of and never closed: there
+  was no `deleteUser` in the store interface, in either driver, or anywhere
+  else. The only way out of this product was to stop using it.
+
+  It takes the account row and, with it, every session, every prompt, every
+  version of each, and every `/c/<token>` link the account published. Postgres
+  does that with the four `on delete cascade` clauses the schema already
+  carried; the memory driver walks the same graph by hand.
+
+  **Immediate, with no grace period.** A screen that says deleted should mean
+  deleted, and a `deleted_at` column would have meant touching every read, a
+  second reaper, and an account that both exists and does not.
+
+  **The confirmation is checked on the server.** The browser asks for the login
+  to be typed, and a browser is bypassed by anyone with a terminal, so the same
+  string is compared against the session the request resolved. Whose account is
+  never a parameter: the worst any caller can do is delete themselves, asserted
+  against four spellings of a target plus a query string.
+
+  **Published share links stop working, and that is the answer rather than an
+  oversight.** Keeping them would mean keeping the deleted person's prompt text
+  and their denormalised `owner_login` in `trazum_shares`.
+
+  **One plant refused to fire twice, and both times the test was what was
+  wrong.** Removing `versions.delete(id)` leaves version rows orphaned in a map
+  no public call can reach, and all seven tests through the route stayed green,
+  because every route reaches a version through its prompt and the prompt is
+  gone. Adding a count did not fix it: the count summed what each iteration was
+  *about* to delete, so it reported three removed with the delete taken out. It
+  measures the map before and after now, and the plant fails with `the versions
+  were left behind, unreachable and undeleted`. The guard for it runs against
+  `promptTablesInMemory` rather than through the `Store`, because that is the
+  level the bug lives at.
+
+  **An existing guard caught this before CI did.** `every route the web app
+  serves is named in the roadmap` failed on `/api/account`, so `ROADMAP.md`
+  gains an `Unreleased` section on the same terms `CHANGELOG.md` has one.
+
+  Left alone deliberately: `trazum_prompt_versions.author_id` references
+  `trazum_users` with neither cascade nor `set null`. It cannot bite today,
+  because prompts are private so `author_id` always equals the owner and the
+  cascade from `trazum_prompts` reaches those rows first. The day collaboration
+  exists, deleting an account will fail on a foreign key. Migrating the schema
+  for a feature that does not exist would be inventing a requirement.
 - **Expired sessions are swept, and nothing was sweeping them.** `findSession`
   deletes the row it was handed on its way out, which covers a session somebody
   comes back and presents. It does not cover the ones nobody ever comes back

@@ -6,13 +6,29 @@ export function sharePreview(beforeText: string): string {
   return beforeText.replace(/\s+/g, ' ').trim().slice(0, SHARE_PREVIEW_CHARS);
 }
 
-export function sharesInMemory(): ShareStore {
+/**
+ * The in-memory shares table, and the one operation that is not a `ShareStore`
+ * method.
+ *
+ * `purgeOwner` is returned beside the store rather than added to it because
+ * `ShareStore`'s methods are the ones a request can reach, and every one of
+ * them either binds an owner or is `findShare`, which is documented as the
+ * deliberate exception. Deleting an account is not a request against a share;
+ * it is the account table reaching in. Postgres does this with a foreign key
+ * and needs no method at all, so putting one on the interface would add
+ * reachable surface for a driver that does not want it.
+ *
+ * It takes no `now`: an expired share is still a row, and a deletion that left
+ * the expired ones behind would leave the deleted person's prompt text in the
+ * table. `listShares` filters by `now` and is exactly the wrong tool here.
+ */
+export function sharesInMemory(): { shares: ShareStore; purgeOwner(ownerId: string): number } {
   const shares = new Map<string, ShareRecord>();
 
   const live = (share: ShareRecord, now: Date) =>
     share.expiresAt === null || share.expiresAt.getTime() > now.getTime();
 
-  return {
+  const store: ShareStore = {
     async createShare(input): Promise<ShareRecord | null> {
       const mine = [...shares.values()].filter((s) => s.ownerId === input.ownerId);
       if (mine.length >= MAX_SHARES_PER_OWNER) return null;
@@ -66,6 +82,22 @@ export function sharesInMemory(): ShareStore {
       if (!share || share.ownerId !== ownerId) return false;
       shares.delete(token);
       return true;
+    },
+  };
+
+  return {
+    shares: store,
+    purgeOwner(ownerId: string): number {
+      let gone = 0;
+      for (const [token, share] of shares) {
+        // No `now` in this condition, deliberately. An expired share is still a
+        // row holding somebody's prompt text and their login.
+        if (share.ownerId === ownerId) {
+          shares.delete(token);
+          gone += 1;
+        }
+      }
+      return gone;
     },
   };
 }

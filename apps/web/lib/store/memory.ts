@@ -28,12 +28,13 @@ export function memoryStore(): Store {
   // Both read the same maps; only one of them binds an owner. Built together
   // because there is no honest way for the overview to reach them from outside.
   const tables = promptTablesInMemory();
+  const shareTable = sharesInMemory();
 
   return {
     kind: 'memory',
     ephemeral: true,
     prompts: tables.prompts,
-    shares: sharesInMemory(),
+    shares: shareTable.shares,
     admin: tables.adminFor((ownerId) => users.get(ownerId)?.login ?? ownerId),
 
     async upsertUser(input: NewUser, now: Date): Promise<UserRecord> {
@@ -105,6 +106,32 @@ export function memoryStore(): Store {
         }
       }
       return gone;
+    },
+
+    async deleteUser(userId: string): Promise<boolean> {
+      const user = users.get(userId);
+      if (!user) return false;
+
+      /**
+       * The cascade Postgres gets from its foreign keys, written out.
+       *
+       * Every one of these is a `references trazum_users (id) on delete
+       * cascade` over there, which is why the test for this runs against both
+       * drivers: the version that is one `delete` in SQL is five statements
+       * here, and five is where one gets forgotten.
+       */
+      tables.purgeOwner(userId);
+      shareTable.purgeOwner(userId);
+      for (const [hash, session] of sessions) {
+        if (session.userId === userId) sessions.delete(hash);
+      }
+
+      // The provider index last, and by the key the row itself carries rather
+      // than by a key rebuilt from arguments: a user who renamed upstream has a
+      // login that no longer derives the entry that points at them.
+      byProvider.delete(key(user.provider, user.providerId));
+      users.delete(userId);
+      return true;
     },
 
     async close(): Promise<void> {},

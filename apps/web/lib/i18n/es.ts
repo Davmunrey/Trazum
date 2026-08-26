@@ -102,6 +102,10 @@ export const es: WebMessages = {
     ephemeral: 'sesión temporal',
     ephemeralHint:
       'Este despliegue guarda las sesiones en memoria, así que se cerrará cuando el servidor se reinicie. Define TRAZUM_DATABASE_URL para conservarlas.',
+    deleteAccount: 'Eliminar cuenta',
+    deleteConfirm: (login) =>
+      `Esto elimina tu cuenta, todos los prompts y versiones que guardaste, y todos los enlaces que publicaste. Los enlaces que ya enviaste a otras personas dejarán de funcionar. No se puede deshacer.\n\nEscribe ${login} para confirmar.`,
+    deleteFailed: 'La cuenta no se eliminó. No ha cambiado nada.',
     menuLabel: (login) => `Cuenta: ${login}`,
   },
 
