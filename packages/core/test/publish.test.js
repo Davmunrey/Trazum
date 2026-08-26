@@ -2153,3 +2153,83 @@ describe('the publish preflight', () => {
     assert.match(release, /E404/, 'the failure note does not name the error it explains');
   });
 });
+
+describe('the changelog has one shape', () => {
+  /**
+   * Three defects lived in this file at once, and none of them broke a test.
+   *
+   * **Two `## Unreleased` headings**, because two pull requests each prepended
+   * their own instead of adding to the one already there. The second is
+   * invisible on GitHub's rendering until you scroll past the first, and a
+   * reader who stops at the first one is told less than happened.
+   *
+   * **A third `## Unreleased`, sitting below `## 1.80.0`**, holding two entries
+   * that shipped in 1.80.0: `packages/mcp/server.json` exists at the `v1.80.0`
+   * tag and `action.yml` carries the corrected description there. So the file
+   * said "not released yet" about work a stranger could already install. That
+   * is the one that matters: the changelog is the document people check before
+   * depending on this, and it was wrong in the direction that undersells what
+   * they get.
+   *
+   * **Two `# Changelog` preambles**, duplicated since #411 and never noticed.
+   *
+   * All three are one rule: this file has exactly one title, exactly one
+   * `Unreleased`, and `Unreleased` comes before every released version. Nothing
+   * else in the suite was looking at its structure, only at whether a given
+   * version had a heading somewhere in it.
+   */
+  const text = readFileSync(join(repoRoot, 'CHANGELOG.md'), 'utf8');
+  const lines = text.split('\n');
+
+  it('carries one title', () => {
+    const titles = lines.filter((line) => line === '# Changelog');
+    assert.equal(titles.length, 1, `CHANGELOG.md has ${titles.length} titles, and a reader sees the first`);
+  });
+
+  it('carries one Unreleased, and it is the first section', () => {
+    const headings = lines
+      .map((line, index) => ({ line, index }))
+      .filter(({ line }) => line.startsWith('## '));
+
+    const unreleased = headings.filter(({ line }) => line === '## Unreleased');
+    assert.equal(
+      unreleased.length,
+      1,
+      `CHANGELOG.md has ${unreleased.length} Unreleased sections. Add to the one that is there rather than opening another: ` +
+        unreleased.map(({ index }) => `line ${index + 1}`).join(', '),
+    );
+
+    const first = headings[0];
+    assert.ok(first, 'CHANGELOG.md has no sections at all');
+    assert.equal(
+      first.line,
+      '## Unreleased',
+      `the first section of CHANGELOG.md is "${first.line}". Anything above Unreleased is a released version ` +
+        'being described as unreleased, which is what happened to 1.80.0.',
+    );
+  });
+
+  it('releases its versions newest first, with no Unreleased among them', () => {
+    // The ordering is what makes "the first section" a meaningful check above,
+    // and a version heading out of order is how the stale section hid: it read
+    // as an ordinary part of the descent through the releases.
+    const versions = [...text.matchAll(/^## (\d+\.\d+\.\d+)/gm)].map((m) => m[1]);
+    assert.ok(versions.length > 5, 'no version headings found, so this guard is watching nothing');
+
+    const rank = (v) => v.split('.').map(Number);
+    const descends = (a, b) => {
+      const [x, y] = [rank(a), rank(b)];
+      for (let i = 0; i < 3; i += 1) {
+        if (x[i] !== y[i]) return x[i] > y[i];
+      }
+      return false;
+    };
+
+    const wrong = versions
+      .slice(1)
+      .map((version, index) => (descends(versions[index], version) ? null : `${versions[index]} then ${version}`))
+      .filter((entry) => entry !== null);
+
+    assert.deepEqual(wrong, [], `CHANGELOG.md versions are out of order: ${wrong.join(', ')}`);
+  });
+});
