@@ -103,7 +103,16 @@ describe('catalogue parity', () => {
         modelName: 'Claude Opus 5',
         hitRatePct: 90,
       },
-      promptCachingNotWorthIt: undefined,
+      /**
+       * An array, because this message has two branches and a fixture that
+       * exercises one leaves the other unrendered in every locale. The
+       * `breakEvenPct: null` shape is the one a model whose writes cost input
+       * price gets, which is eight of the eighteen in the catalogue.
+       */
+      promptCachingNotWorthIt: [
+        { readPct: 10, writePct: 125, breakEvenPct: 21.7 },
+        { readPct: 10, writePct: 100, breakEvenPct: null },
+      ],
       belowCacheMinimum: {
         modelName: 'Claude Opus 5',
         minTokens: 512,
@@ -155,9 +164,13 @@ describe('catalogue parity', () => {
     for (const locale of LOCALES) {
       const { advisories } = getMessages(locale);
       for (const [key, params] of Object.entries(samples)) {
-        const message = advisories[key](params);
-        assert.ok(message.title.trim().length > 0, `${locale}/${key}: empty title`);
-        assert.ok(message.detail.trim().length > 0, `${locale}/${key}: empty detail`);
+        // An array lists several shapes of the same message, for the ones whose
+        // copy branches. One fixture per branch, all of them rendered.
+        for (const shape of Array.isArray(params) ? params : [params]) {
+          const message = advisories[key](shape);
+          assert.ok(message.title.trim().length > 0, `${locale}/${key}: empty title`);
+          assert.ok(message.detail.trim().length > 0, `${locale}/${key}: empty detail`);
+        }
       }
     }
   });

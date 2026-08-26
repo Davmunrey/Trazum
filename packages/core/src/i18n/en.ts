@@ -154,10 +154,12 @@ export const en: CoreMessages = {
       };
     },
 
-    promptCachingNotWorthIt: () => ({
+    promptCachingNotWorthIt: ({ readPct, writePct, breakEvenPct }) => ({
       title: 'At that hit rate, caching does not pay off',
       detail:
-        'A cache write costs 125% of the input price and a read costs 10%. Below roughly a 28% hit rate you pay more than you save. Either raise prefix reuse or leave caching off.',
+        breakEvenPct === null
+          ? `A cache write costs ${writePct}% of the input price on this model, the same as not caching, and a read costs ${readPct}%. So caching cannot lose you money here: at this hit rate it simply buys nothing. Raise prefix reuse and it starts paying immediately.`
+          : `A cache write costs ${writePct}% of the input price on this model and a read costs ${readPct}%. Below a ${breakEvenPct}% hit rate you pay more than you save. Either raise prefix reuse or leave caching off.`,
     }),
 
     belowCacheMinimum: ({

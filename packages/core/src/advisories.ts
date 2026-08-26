@@ -259,10 +259,31 @@ export function buildAdvisories(
           estimatedMonthlyUsd: saving,
         });
       } else {
+        /**
+         * The threshold is derived from this model's own multipliers, not
+         * quoted.
+         *
+         * Break-even is where a cached token costs exactly what an uncached one
+         * does: `h*read + (1-h)*write = 1`, so `h = (1 - write) / (read -
+         * write)`. At Anthropic's 1.25 and 0.1 that is 21.74%, and the sentence
+         * this replaces said 28% for every model in the catalogue.
+         *
+         * A write multiplier of 1 has no such threshold. Writing then costs
+         * exactly what not caching costs, so caching cannot lose money at any
+         * hit rate, and `(1 - 1) / (r - 1)` is 0 rather than a small number.
+         * Eight of the eighteen models are that shape, and the fixed sentence
+         * advised all eight to consider turning caching off.
+         */
+        const write = rates.cacheWrite5m;
         advisories.push({
           id: 'prompt-caching-not-worth-it',
           severity: 'info',
-          ...t.advisories.promptCachingNotWorthIt(),
+          ...t.advisories.promptCachingNotWorthIt({
+            readPct: Math.round(rates.cacheRead * 100),
+            writePct: Math.round(write * 100),
+            breakEvenPct:
+              write <= 1 ? null : Math.round(((1 - write) / (rates.cacheRead - write)) * 1000) / 10,
+          }),
           estimatedMonthlyUsd: null,
         });
       }
@@ -396,11 +417,26 @@ export function buildAdvisories(
     const candidate = cheapestInTier(suggestedTier, on, pricing, model.provider);
     if (candidate) {
       const candidatePricing = effectivePricing(candidate, on);
+      /**
+       * The candidate's own batch multiplier, not a constant.
+       *
+       * This line read `usage.batchEligible ? 0.5 : 1`, while the current
+       * model's cost twenty lines above already used `rates.batch ?? 1` for
+       * exactly the reason stated there: a discount that is not per model is an
+       * invented saving rather than an imprecise one.
+       *
+       * Three models in the catalogue carry `batch: null` — kimi-k2,
+       * deepseek-v3 and grok-4 — which means no batch API at all. Halving their
+       * cost offered money that cannot be bought at any price, made the
+       * downgrade look twice as good as it is, and could turn a saving that was
+       * negative into one this advisory reports.
+       */
+      const candidateBatch = usage.batchEligible ? (multipliersFor(candidate).batch ?? 1) : 1;
       const candidateMonthly =
         ((tokensAfter / 1_000_000) * candidatePricing.inputPerMTok +
           (usage.avgOutputTokens / 1_000_000) * candidatePricing.outputPerMTok) *
         usage.callsPerMonth *
-        (usage.batchEligible ? 0.5 : 1);
+        candidateBatch;
       const saving = monthlyInputUsd + monthlyOutputUsd - candidateMonthly;
       if (saving > 0) {
         advisories.push({
