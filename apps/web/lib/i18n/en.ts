@@ -103,6 +103,10 @@ export const en: WebMessages = {
     ephemeral: 'temporary session',
     ephemeralHint:
       'This deployment keeps sessions in memory, so you will be signed out when the server restarts. Set TRAZUM_DATABASE_URL to keep them.',
+    deleteAccount: 'Delete account',
+    deleteConfirm: (login) =>
+      `This deletes your account, every prompt and version you saved, and every share link you published. Links you already sent to other people will stop working. It cannot be undone.\n\nType ${login} to confirm.`,
+    deleteFailed: 'The account was not deleted. Nothing has changed.',
     menuLabel: (login) => `Account: ${login}`,
   },
 

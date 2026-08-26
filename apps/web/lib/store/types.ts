@@ -145,6 +145,26 @@ export interface Store {
    */
   deleteExpiredSessions(now: Date): Promise<number>;
 
+  /**
+   * Delete a user and everything that belongs to them.
+   *
+   * Immediate and irreversible. In Postgres the work is done by the foreign
+   * keys: `trazum_sessions`, `trazum_prompts` and `trazum_shares` all reference
+   * `trazum_users (id) on delete cascade`, and `trazum_prompt_versions`
+   * cascades from `trazum_prompts`. The memory driver has no such machinery and
+   * walks the same graph by hand, which is why the test for this runs against
+   * both drivers rather than the one that is convenient.
+   *
+   * **Shared links go with it.** `/c/<token>` rows live in `trazum_shares` and
+   * somebody's colleague may be holding one. Keeping them would mean keeping
+   * the deleted person's prompt text and their denormalised `owner_login`,
+   * which is not a deletion.
+   *
+   * Returns false when no such user existed, so a caller can tell a delete from
+   * a no-op. No route ever passes that difference on to a browser.
+   */
+  deleteUser(userId: string): Promise<boolean>;
+
   /** Release connections. A no-op for the memory driver. */
   close(): Promise<void>;
 }

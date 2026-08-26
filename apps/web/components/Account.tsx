@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronsUpDown, LogOut } from 'lucide-react';
+import { ChevronsUpDown, LogOut, Trash2 } from 'lucide-react';
 
 import {
   DropdownMenu,
@@ -84,6 +84,37 @@ export function Account({
     }
   }
 
+  async function deleteAccount(login: string) {
+    /**
+     * `window.prompt` rather than a styled dialog, and that is a deliberate
+     * stop rather than a shortcut taken. It cannot be dismissed by a stray
+     * click, and typing a login exactly is work somebody has to mean to do.
+     * The server checks the same string against the session it resolved, so
+     * this is the friendly half of a rule rather than the rule itself.
+     */
+    const typed = window.prompt(t.account.deleteConfirm(login));
+    if (typed !== login) return;
+
+    setBusy(true);
+    try {
+      const response = await fetch('/api/account', {
+        method: 'DELETE',
+        credentials: 'same-origin',
+        body: JSON.stringify({ confirm: typed }),
+      });
+      if (!response.ok) {
+        // Said out loud rather than swallowed. A failed deletion that looks
+        // like a successful one is somebody believing their data is gone.
+        window.alert(t.account.deleteFailed);
+        setBusy(false);
+        return;
+      }
+      window.location.assign('/');
+    } catch {
+      setBusy(false);
+    }
+  }
+
   if (!state.user) {
     // The current path travels in the query so the round trip through GitHub
     // comes back where it started. The server filters it; this only proposes it.
@@ -104,6 +135,18 @@ export function Account({
       </a>
     );
   }
+
+
+  /**
+   * Captured once, past the guard above.
+   *
+   * `state.user` is narrowed to non-null by that early return everywhere the
+   * JSX reads it directly, and not inside the `onSelect` closure: a callback
+   * runs later, so the compiler will not carry a property narrowing into it.
+   * Reaching for a non-null assertion there would silence the compiler about
+   * the one call in this file that deletes somebody's account.
+   */
+  const login = state.user.login;
 
   return (
     <DropdownMenu>
@@ -278,6 +321,25 @@ export function Account({
               {t.account.signOutEverywhereHint}
             </span>
           </span>
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+        {/*
+          Last, separated, and the only destructive colour in this menu. Both
+          items above it are undone by signing in again; this one is not, and
+          the menu should not read as though the three are variations on a
+          theme.
+        */}
+        <DropdownMenuItem
+          onSelect={(event) => {
+            event.preventDefault();
+            void deleteAccount(login);
+          }}
+          disabled={busy}
+          className="text-destructive focus:text-destructive"
+        >
+          <Trash2 aria-hidden="true" />
+          {t.account.deleteAccount}
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

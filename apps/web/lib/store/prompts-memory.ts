@@ -35,6 +35,16 @@ import type {
 export function promptTablesInMemory(): {
   prompts: PromptStore;
   /**
+   * Every prompt of one owner, and every version of each, gone.
+   *
+   * Beside the store rather than on it, for the same reason `adminFor` is:
+   * `PromptStore`'s rule is that every lookup binds an owner, and this is not a
+   * lookup a request makes. Postgres does it with `on delete cascade` on
+   * `trazum_prompts.owner_id` and needs no method, so adding one to the shared
+   * interface would be surface that exists for one driver.
+   */
+  purgeOwner(ownerId: string): { prompts: number; versions: number };
+  /**
    * @param loginOf how to name an owner. Injected because the accounts live in
    * a different map owned by a different module, and this one has no business
    * reading the user table. Falls back to the id so an overview is never blank.
@@ -173,6 +183,45 @@ export function promptTablesInMemory(): {
 
   return {
     prompts,
+    /**
+     * Both counts are returned, and the second one is the whole reason this
+     * signature is not a plain number.
+     *
+     * Versions live in their own map keyed by prompt id. Delete the prompt and
+     * forget the versions and **nothing in the public API can see it**: every
+     * route reaches a version through its prompt, the prompt is gone, so the
+     * rows are unreachable and invisible while still holding the deleted
+     * person's prompt text. That omission was planted and every test through
+     * the `Store` stayed green. Returning the count is what makes it a thing a
+     * test can look at.
+     */
+    purgeOwner(ownerId: string): { prompts: number; versions: number } {
+      /**
+       * Counted by measuring the map before and after, not by adding up what
+       * each delete was about to remove.
+       *
+       * The first version of this did the latter, and it reported three
+       * versions removed with the `versions.delete(id)` line taken out: the
+       * number described what the loop intended rather than what it did, so the
+       * test that existed to catch that omission passed while the rows sat
+       * there. A count that cannot go wrong in the same direction as the code
+       * it reports on is not evidence of anything.
+       */
+      const rows = () => [...versions.values()].reduce((n, list) => n + list.length, 0);
+      const before = rows();
+
+      let prompts = 0;
+      for (const [id, prompt] of promptRows) {
+        if (prompt.ownerId !== ownerId) continue;
+        promptRows.delete(id);
+        // Postgres gets this from `trazum_prompt_versions.prompt_id ... on
+        // delete cascade`; here it is one more `delete`.
+        versions.delete(id);
+        prompts += 1;
+      }
+
+      return { prompts, versions: before - rows() };
+    },
     adminFor: (loginOf) => adminInMemory(() => promptRows.values(), newestFirst, loginOf),
   };
 }

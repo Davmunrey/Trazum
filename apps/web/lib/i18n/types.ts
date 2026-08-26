@@ -113,6 +113,10 @@ export interface WebMessages {
     /** Shown beside the name when the store forgets on restart. */
     ephemeral: string;
     ephemeralHint: string;
+    /** Irreversible, and the copy says what goes rather than implying it. */
+    deleteAccount: string;
+    deleteConfirm(login: string): string;
+    deleteFailed: string;
     /** Names the account menu's trigger, which collapses to a bare avatar. */
     menuLabel(login: string): string;
   };

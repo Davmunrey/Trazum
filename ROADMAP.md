@@ -1184,6 +1184,32 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## Unreleased
+
+Merged into `main` and not yet tagged. Named here rather than left for the
+release notes because `ROADMAP.md` is what somebody reads before opening a pull
+request, and a route the file does not mention is a route they will assume does
+not exist.
+
+**Deleting an account** (`/api/account`). The accounts that arrived in 1.7.0
+could be signed out of and never closed: there was no `deleteUser` anywhere in
+the store, in either driver, so the only way out of this product was to stop
+using it. `DELETE /api/account` takes the account row and, with it, every
+session, every prompt, every version of each, and every `/c/<token>` link the
+account published. Postgres does that with the four `on delete cascade` clauses
+the schema already carried; the memory driver walks the same graph by hand,
+which is why the guard runs against the factory and not only through the route.
+
+Immediate, with no grace period and no recoverable state, because a screen that
+says deleted should mean deleted. Irreversible enough that the confirmation is
+checked on the server: the browser asks for the login to be typed, and a browser
+is bypassed by anyone with a terminal. Whose account is never a parameter, so
+the worst any caller can do is delete themselves.
+
+Published share links stop working, and that is the intended answer rather than
+an oversight. Keeping them would mean keeping the deleted person's prompt text
+and their login in `trazum_shares`, which is not a deletion.
+
 ## 1.80.1 — "The capital letter the grant keeps" — released
 
 **The correction 1.80.0's own guard let through.** The MCP registry

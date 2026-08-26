@@ -151,6 +151,23 @@ export function postgresStore(sql: SqlClient): Store {
       return rows.length;
     },
 
+    async deleteUser(userId: string): Promise<boolean> {
+      /**
+       * One statement, because the schema already says what goes with it.
+       * `trazum_sessions`, `trazum_prompts` and `trazum_shares` all declare
+       * `references trazum_users (id) on delete cascade`, and
+       * `trazum_prompt_versions` cascades from `trazum_prompts`. Deleting the
+       * rows by hand first would be a second, drifting copy of a rule the
+       * database already enforces.
+       *
+       * `returning id` rather than a count: a delete that matched nothing and a
+       * delete that matched one row are different answers, and the caller is
+       * entitled to know which without a second round trip.
+       */
+      const rows = await sql`delete from trazum_users where id = ${userId} returning id`;
+      return rows.length > 0;
+    },
+
     async close(): Promise<void> {
       await sql.end?.();
     },
