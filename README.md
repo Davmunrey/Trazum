@@ -4,10 +4,11 @@
 
 ### Most of your LLM bill is not the prompt. Trazum finds where it is.
 
-**A deterministic cost analyser for prompts** — offline, free, same answer every
-time. It reports fourteen findings priced in dollars per month: caching you are
-not getting, a model tier you may not need, a schema you pay to describe on
-every call. Shortening the prompt is one of them, and it is rarely the biggest.
+**A deterministic cost analyser for prompts and usage logs.** Offline, free,
+same answer every time. It reports fourteen findings priced in dollars per
+month: caching you are not getting, a model tier you may not need, a schema you
+pay to describe on every call. Shortening the prompt is one of them, and it is
+rarely the biggest.
 
 [![CI](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml/badge.svg)](https://github.com/Davmunrey/Trazum/actions/workflows/security.yml)
@@ -15,17 +16,49 @@ every call. Shortening the prompt is one of them, and it is rarely the biggest.
 [![Node](https://img.shields.io/badge/node-%E2%89%A520-3c873a.svg)](package.json)
 [![Runtime dependencies](https://img.shields.io/badge/runtime%20dependencies-0-2f855a.svg)](#layout)
 
-<img src="docs/assets/demo.svg" alt="trazum optimize on a wordy support prompt: 238 tokens down to 142 (-40.3%), $24.00/month saved by the rules — and an advisory pointing at $528.40/month, 22× more" width="760">
+</div>
 
-**[Try it live → trazum.vercel.app](https://trazum.vercel.app)** — the web app,
-deployed from `main` on every merge. Paste a prompt or a usage log; nothing you
-paste leaves your browser. The **Playground** tab is the CLI itself, runnable
-in the page: `trazum profile usage.jsonl` against sample files already loaded,
-through the same `@trazum/core` functions the terminal runs.
+## Your agents spend money in a loop. This prices the call before it happens.
+
+One agent costs what it costs. A fleet of them spends in a loop nobody is
+watching per iteration, and the bill arrives a month later as one number with
+no per-decision detail inside it.
+
+Trazum installs into that loop. The MCP server's first tool is `spend_guard`,
+and it is the only one here whose trigger is not a sentence somebody types:
+
+```
+"May I spend this?"  ->  yes, no, or cannot-tell.
+```
+
+A refusal carries the cheaper ways to make the same call, each priced for that
+call and each naming what it assumes. The ceilings come from your
+`trazum.config.json`; the spend so far comes from the usage log your host
+already writes. Nothing is called and nothing is spent to answer.
+
+```bash
+claude plugin marketplace add Davmunrey/Trazum
+claude plugin install trazum@trazum
+```
+
+That one line brings the skill and the MCP server. For any other MCP client,
+`npx -y @trazum/mcp` over stdio does the same.
+
+**[Or run it right now, without installing anything: the Playground](https://trazum.vercel.app/?tab=playground)**
+
+That link opens the CLI's pure subset running in the page, against sample files
+already loaded, through the same `@trazum/core` functions the terminal runs.
+Nothing you paste leaves your browser.
+
+## The argument, in one screenshot
+
+<div align="center">
+
+<img src="docs/assets/demo.svg" alt="trazum optimize on a wordy support prompt: 238 tokens down to 142 (-40.3%), $24.00/month saved by the rules, and an advisory pointing at $528.40/month, 22 times more" width="760">
 
 *Real output, transcribed. Read the last two lines: the rules recovered $24.00
-a month, and the advisory above them is worth $528.40 — **22× more**. That gap
-is the entire argument for this tool.*
+a month, and the advisory above them is worth $528.40, **22 times more**. That
+gap is the entire argument for this tool.*
 
 </div>
 
@@ -35,7 +68,7 @@ What moved the rest was a question nobody was asking: does this task need the
 model it is running on?
 
 **Every figure has a receipt.** Fourteen advisories, each priced per month and
-reproducible on a single file — caching you are not getting, work that could go
+reproducible on a single file: caching you are not getting, work that could go
 through the Batch API, a schema costing tokens on every call to describe a shape
 the request could carry as a parameter. Underneath them, twelve deterministic
 rules that shorten the text itself: same input, same output, free, offline, and
@@ -53,56 +86,10 @@ never runs unless you ask.
                  for your agents
 ```
 
-## The forty-two commands
-
-| Command | What it answers |
-|---|---|
-| [`trazum init`](#the-first-five-minutes-trazum-init) | What is in this repository, and what is the one thing worth fixing? *The first command to run.* |
-| [`trazum optimize`](#cli) | What can come out of this prompt, and what is that worth a month? |
-| [`trazum check`](#cli) | Does this prompt fit its token budget, and has the repository drifted past its recorded baseline? *Exits 1 when either fails — this is the CI gate.* |
-| [`trazum baseline`](docs/commands.md#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate) | What does this repository's prompts cost right now? *Records it, to commit.* |
-| [`trazum diff`](docs/commands.md#did-this-edit-make-it-worse) | What did this edit cost? |
-| [`trazum rank`](docs/commands.md#which-prompt-to-fix-first-trazum-rank) | Of these forty prompts, which is worth an afternoon? |
-| [`trazum doctor`](docs/commands.md#the-whole-workspace-at-once-trazum-doctor) | What is wrong across the whole workspace? |
-| [`trazum prune`](docs/commands.md#which-few-shot-examples-earn-their-tokens-trazum-prune) | Which few-shot examples earn their tokens? Measured, and it asks before spending. |
-| [`trazum blame`](docs/commands.md#who-made-this-prompt-expensive-trazum-blame) | Who made this prompt expensive, and when? |
-| [`trazum eval`](docs/commands.md#does-the-shorter-prompt-still-work) | Does the shorter prompt still do the job? |
-| [`trazum where`](docs/commands.md#prompts-where-they-actually-live) | Which prompts are hiding inside my source files? |
-| [`trazum models`](#every-model-you-pay-for-by-the-token) | What does each model cost, and what is its cache minimum? |
-| [`trazum profile`](#where-the-money-actually-went-trazum-profile) | Where did the money actually go? *Reads a usage log, not a prompt.* |
-| [`trazum route`](docs/commands.md#is-the-cheaper-model-good-enough-trazum-route) | Is the cheaper model good enough? *Measured, and it asks before spending.* |
-| [`trazum plan`](docs/commands.md#the-plan-trazum-plan) | Of everything the log shows, what do I do first, and what is each move worth? |
-| [`trazum verify`](docs/commands.md#did-it-work-trazum-verify) | Did the plan's savings actually arrive? *Three outcomes, never two.* |
-| [`trazum history`](docs/commands.md#the-long-run-trazum-history) | What have twenty reports been saying that no two of them could? *Shapes, never forecasts.* |
-| [`trazum connect`](docs/commands.md#your-bill-without-the-export-trazum-connect) | What did the provider actually bill me? *Read from their API, nothing exported by hand.* |
-| [`trazum store`](docs/commands.md#keeping-it-trazum-store) | What have I measured and kept? *Aggregates only — no prompt text, ever.* |
-| [`trazum watch`](docs/commands.md#the-afternoon-it-happened-trazum-watch) | Has anything crossed a budget? *Measured crossings only — never a forecast.* |
-| [`trazum serve`](docs/commands.md#before-the-call-is-sent-trazum-serve) | What will this call cost, and is there budget? *Answered in milliseconds, halves kept apart.* |
-| [`trazum gateway`](docs/commands.md#in-the-path-of-the-call-trazum-gateway) | Can it stop the call instead of advising against it? *Refuses; never substitutes.* |
-| [`trazum ladder`](docs/commands.md#is-the-ladder-saving-money-or-is-it-a-bill-trazum-ladder) | Is cheap-first-escalate-on-failure saving money, or costing it? *Break-even rate, stated.* |
-| [`trazum experiment`](docs/commands.md#two-arms-on-real-traffic-trazum-experiment) | Which of two arms is better on real traffic? *A winner only when there is one.* |
-| [`trazum quality`](docs/commands.md#the-gate-that-fails-a-build-for-quality-trazum-quality) | Did that prompt change quietly make the product worse? *Refuses to blame what it cannot attribute.* |
-| [`trazum semantic`](docs/commands.md#the-findings-a-dictionary-cannot-see-trazum-semantic) | Does this prompt say the same thing twice, or contradict itself? *The model proposes; the checker disposes.* |
-| [`trazum owners`](docs/commands.md#whose-money-trazum-owners) | Whose budget does this land on? *The unallocated is never spread.* |
-| [`trazum commitment`](docs/commands.md#should-you-sign-that-commitment-trazum-commitment) | What would that committed-use deal have been worth? *On measured months, both directions priced.* |
-| [`trazum report`](docs/commands.md#the-year-from-what-was-already-written-down-trazum-report) | What did the year actually look like? *No new data, and it lists its own blind spots.* |
-| [`trazum schema`](docs/commands.md#building-on-the-format-trazum-conform) | Which fields must a document of this format carry? *A JSON Schema, for validators that are not Trazum.* |
-| [`trazum conform`](docs/commands.md#building-on-the-format-trazum-conform) | Does the document my tool emits conform, and what will it not be able to answer? |
-| [`trazum rollup`](docs/commands.md#more-than-one-machine-trazum-rollup) | Four of us measured four things — what is the total, and what did merging lose? *A format and a merge, not a service.* |
-| [`trazum pulse`](docs/commands.md#did-anything-stop-running-trazum-pulse) | Did the things that are supposed to run, run? *Runs nothing itself — your CI is the thing that notices.* |
-| [`trazum position`](docs/commands.md#where-the-month-stands-trazum-position) | Where does the month stand against every ceiling? *Measured, denominators attached, no forecast anywhere.* |
-| [`trazum from-claude-code`](docs/commands.md#the-agents-own-bill-trazum-from-claude-code) | What did my Claude Code sessions cost? *Reads the transcripts already on disk — the numbers only, never the words.* |
-| [`trazum from-otel`](docs/commands.md#the-universal-cost-lens-trazum-from-otel) | What did the LLM calls in my OpenTelemetry export cost? *Reads the GenAI spans any exporter already emits — the counts only, never the prompts.* |
-| [`trazum switch`](docs/commands.md#when-does-the-switch-pay-trazum-switch) | Should we move this traffic, and when does moving pay? *Measured delta, declared migration cost, break-even as division on the past — and the required evaluation itself priced.* |
-| [`trazum ownrate`](docs/commands.md#the-model-you-run-yourself-trazum-ownrate) | What does my self-hosted model cost per million tokens? *Your GPU rate over your measured throughput — derived from your declaration, never guessed.* |
-| [`trazum bench`](docs/commands.md#this-machine-measured-trazum-bench) | How fast is Trazum here, and on what? *One shot per workload, no judgement — run it before and after a change.* |
-| [`trazum write`](docs/commands.md#you-describe-it-it-asks-trazum-write) | What should this prompt say, and what will it cost before I ever send it? *Asks; nothing is generated.* |
-| [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
-| [`trazum feedback`](docs/commands.md#telling-us-something-trazum-feedback) | Where do I report this, and what will you ask me for? *Sends nothing.* |
-
 ## Contents
 
 - [What it actually does](#what-it-actually-does) — the five things, and what it refuses to touch
+- [The forty-two commands](#the-forty-two-commands): the whole surface, one line each
 - [Getting started](#getting-started) — CLI, web, the GitHub Action, pre-commit
 - [The first five minutes](#the-first-five-minutes-trazum-init) — `init`, and the four things it refuses to write
 - [Building on the format](docs/commands.md#building-on-the-format-trazum-conform) — the contracts, the guarantees, and the doctrine
@@ -225,6 +212,53 @@ land in a pull request comment rather than a terminal nobody is looking at.
 from the exit codes it is supposed to relay.
 
 ---
+
+## The forty-two commands
+
+| Command | What it answers |
+|---|---|
+| [`trazum init`](#the-first-five-minutes-trazum-init) | What is in this repository, and what is the one thing worth fixing? *The first command to run.* |
+| [`trazum optimize`](#cli) | What can come out of this prompt, and what is that worth a month? |
+| [`trazum check`](#cli) | Does this prompt fit its token budget, and has the repository drifted past its recorded baseline? *Exits 1 when either fails — this is the CI gate.* |
+| [`trazum baseline`](docs/commands.md#the-ci-gate-a-budget-is-a-ceiling-a-baseline-is-a-gate) | What does this repository's prompts cost right now? *Records it, to commit.* |
+| [`trazum diff`](docs/commands.md#did-this-edit-make-it-worse) | What did this edit cost? |
+| [`trazum rank`](docs/commands.md#which-prompt-to-fix-first-trazum-rank) | Of these forty prompts, which is worth an afternoon? |
+| [`trazum doctor`](docs/commands.md#the-whole-workspace-at-once-trazum-doctor) | What is wrong across the whole workspace? |
+| [`trazum prune`](docs/commands.md#which-few-shot-examples-earn-their-tokens-trazum-prune) | Which few-shot examples earn their tokens? Measured, and it asks before spending. |
+| [`trazum blame`](docs/commands.md#who-made-this-prompt-expensive-trazum-blame) | Who made this prompt expensive, and when? |
+| [`trazum eval`](docs/commands.md#does-the-shorter-prompt-still-work) | Does the shorter prompt still do the job? |
+| [`trazum where`](docs/commands.md#prompts-where-they-actually-live) | Which prompts are hiding inside my source files? |
+| [`trazum models`](#every-model-you-pay-for-by-the-token) | What does each model cost, and what is its cache minimum? |
+| [`trazum profile`](#where-the-money-actually-went-trazum-profile) | Where did the money actually go? *Reads a usage log, not a prompt.* |
+| [`trazum route`](docs/commands.md#is-the-cheaper-model-good-enough-trazum-route) | Is the cheaper model good enough? *Measured, and it asks before spending.* |
+| [`trazum plan`](docs/commands.md#the-plan-trazum-plan) | Of everything the log shows, what do I do first, and what is each move worth? |
+| [`trazum verify`](docs/commands.md#did-it-work-trazum-verify) | Did the plan's savings actually arrive? *Three outcomes, never two.* |
+| [`trazum history`](docs/commands.md#the-long-run-trazum-history) | What have twenty reports been saying that no two of them could? *Shapes, never forecasts.* |
+| [`trazum connect`](docs/commands.md#your-bill-without-the-export-trazum-connect) | What did the provider actually bill me? *Read from their API, nothing exported by hand.* |
+| [`trazum store`](docs/commands.md#keeping-it-trazum-store) | What have I measured and kept? *Aggregates only — no prompt text, ever.* |
+| [`trazum watch`](docs/commands.md#the-afternoon-it-happened-trazum-watch) | Has anything crossed a budget? *Measured crossings only — never a forecast.* |
+| [`trazum serve`](docs/commands.md#before-the-call-is-sent-trazum-serve) | What will this call cost, and is there budget? *Answered in milliseconds, halves kept apart.* |
+| [`trazum gateway`](docs/commands.md#in-the-path-of-the-call-trazum-gateway) | Can it stop the call instead of advising against it? *Refuses; never substitutes.* |
+| [`trazum ladder`](docs/commands.md#is-the-ladder-saving-money-or-is-it-a-bill-trazum-ladder) | Is cheap-first-escalate-on-failure saving money, or costing it? *Break-even rate, stated.* |
+| [`trazum experiment`](docs/commands.md#two-arms-on-real-traffic-trazum-experiment) | Which of two arms is better on real traffic? *A winner only when there is one.* |
+| [`trazum quality`](docs/commands.md#the-gate-that-fails-a-build-for-quality-trazum-quality) | Did that prompt change quietly make the product worse? *Refuses to blame what it cannot attribute.* |
+| [`trazum semantic`](docs/commands.md#the-findings-a-dictionary-cannot-see-trazum-semantic) | Does this prompt say the same thing twice, or contradict itself? *The model proposes; the checker disposes.* |
+| [`trazum owners`](docs/commands.md#whose-money-trazum-owners) | Whose budget does this land on? *The unallocated is never spread.* |
+| [`trazum commitment`](docs/commands.md#should-you-sign-that-commitment-trazum-commitment) | What would that committed-use deal have been worth? *On measured months, both directions priced.* |
+| [`trazum report`](docs/commands.md#the-year-from-what-was-already-written-down-trazum-report) | What did the year actually look like? *No new data, and it lists its own blind spots.* |
+| [`trazum schema`](docs/commands.md#building-on-the-format-trazum-conform) | Which fields must a document of this format carry? *A JSON Schema, for validators that are not Trazum.* |
+| [`trazum conform`](docs/commands.md#building-on-the-format-trazum-conform) | Does the document my tool emits conform, and what will it not be able to answer? |
+| [`trazum rollup`](docs/commands.md#more-than-one-machine-trazum-rollup) | Four of us measured four things — what is the total, and what did merging lose? *A format and a merge, not a service.* |
+| [`trazum pulse`](docs/commands.md#did-anything-stop-running-trazum-pulse) | Did the things that are supposed to run, run? *Runs nothing itself — your CI is the thing that notices.* |
+| [`trazum position`](docs/commands.md#where-the-month-stands-trazum-position) | Where does the month stand against every ceiling? *Measured, denominators attached, no forecast anywhere.* |
+| [`trazum from-claude-code`](docs/commands.md#the-agents-own-bill-trazum-from-claude-code) | What did my Claude Code sessions cost? *Reads the transcripts already on disk — the numbers only, never the words.* |
+| [`trazum from-otel`](docs/commands.md#the-universal-cost-lens-trazum-from-otel) | What did the LLM calls in my OpenTelemetry export cost? *Reads the GenAI spans any exporter already emits — the counts only, never the prompts.* |
+| [`trazum switch`](docs/commands.md#when-does-the-switch-pay-trazum-switch) | Should we move this traffic, and when does moving pay? *Measured delta, declared migration cost, break-even as division on the past — and the required evaluation itself priced.* |
+| [`trazum ownrate`](docs/commands.md#the-model-you-run-yourself-trazum-ownrate) | What does my self-hosted model cost per million tokens? *Your GPU rate over your measured throughput — derived from your declaration, never guessed.* |
+| [`trazum bench`](docs/commands.md#this-machine-measured-trazum-bench) | How fast is Trazum here, and on what? *One shot per workload, no judgement — run it before and after a change.* |
+| [`trazum write`](docs/commands.md#you-describe-it-it-asks-trazum-write) | What should this prompt say, and what will it cost before I ever send it? *Asks; nothing is generated.* |
+| [`trazum rules`](#what-it-actually-does) | Which rules exist, and what does each one do? |
+| [`trazum feedback`](docs/commands.md#telling-us-something-trazum-feedback) | Where do I report this, and what will you ask me for? *Sends nothing.* |
 
 ## Getting started
 
