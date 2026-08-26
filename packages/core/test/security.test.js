@@ -473,7 +473,34 @@ describe('the gateway, which stands between somebody and their provider', () => 
     ]);
 
     const paths = [...text.matchAll(/path: '([^']*)'/g)].map((m) => m[1]).sort();
-    assert.deepEqual(paths, ['/chat/completions', '/v1/chat/completions', '/v1/messages']);
+    assert.deepEqual(paths, [
+      '/chat/completions',
+      '/v1/chat/completions',
+      '/v1/messages',
+      '/v1/messages/count_tokens',
+      '/v1/models',
+    ]);
+
+    /**
+     * The last two are forwarded **without a budget decision**, and that is a
+     * second allowlist deserving the same friction as the first.
+     *
+     * The one-path rule was never about the number. It was that a caller could
+     * not choose what this gateway does with their credential. A free path
+     * keeps the origin compiled in, so the key still reaches one host, but it
+     * grows the set of *operations* somebody who can reach the loopback port
+     * may perform with it. Growing that set silently is the thing to prevent,
+     * and no test can derive "this operation is free" from an API this project
+     * does not own. So it is enumerated here, method included, and adding one
+     * means editing a security test and `docs/gateway.md` in the same commit.
+     *
+     * Method and path together: `POST /v1/models` is not this list, and
+     * `GET /v1/messages/count_tokens` is not either.
+     */
+    const free = [...text.matchAll(/\{ method: '([A-Z]+)', path: '([^']*)' \}/g)]
+      .map((m) => `${m[1]} ${m[2]}`)
+      .sort();
+    assert.deepEqual(free, ['GET /v1/models', 'POST /v1/messages/count_tokens']);
 
     /**
      * Pattern paths are extracted too, and compared just as exactly.
@@ -522,8 +549,23 @@ describe('the gateway, which stands between somebody and their provider', () => 
      * that satisfied it back into the outgoing URL would forward whatever else
      * the pattern happened to tolerate.
      */
+    /**
+     * **Every** call site, not the only one.
+     *
+     * This pinned a single-element array until the free branch added a second
+     * `doFetch`, and a count is the wrong thing to hold: it fails on a second
+     * call that is correct and passes on a first call that is not. What has to
+     * be true is that no call site interpolates anything but the compiled-in
+     * origin and a path this module built, which is what is asserted now, once
+     * per call site.
+     */
     const targets = [...text.matchAll(/doFetch\(([^,]+),/g)].map((m) => m[1].trim());
-    assert.deepEqual(targets, ['`${upstream.origin}${routed.path}`']);
+    assert.ok(targets.length > 0, 'nothing calls doFetch, so this guard is watching nothing');
+    assert.deepEqual(
+      [...new Set(targets)],
+      ['`${upstream.origin}${routed.path}`'],
+      'a fetch target interpolates something other than the compiled-in origin and a built path',
+    );
     assert.doesNotMatch(text, /doFetch\([^,]*request\.url/);
     assert.doesNotMatch(text, /stringFlag|process\.env|config\?\.[a-z]*[Uu]pstream/);
   });
@@ -574,7 +616,7 @@ describe('the gateway, which stands between somebody and their provider', () => 
     assert.doesNotMatch(text, /writeHead\(429/);
   });
 
-  it('forwards exactly one path', () => {
+  it('forwards one path that spends, decided in one place', () => {
     /**
      * One path per provider, decided in one place.
      *
@@ -582,15 +624,50 @@ describe('the gateway, which stands between somebody and their provider', () => 
      * upstream.path`, which stopped being writable when Google's model moved
      * into the URL. What matters was never the `!==`: it is that **one**
      * function decides whether a request is the call this gateway speaks for,
-     * that a POST is the only method that gets there, and that nothing else
-     * in the module reaches a decision about `request.url`.
+     * and that nothing else in the module reaches a decision about
+     * `request.url`.
+     *
+     * The method moved inside that function when free paths arrived, because
+     * `GET /v1/models` has to be told apart from `POST /v1/models` and a check
+     * outside `route` would be the second opinion this guard exists to
+     * prevent.
      */
     const text = server();
-    assert.match(text, /const routed = request\.method === 'POST' \? route\(upstream, request\.url\) : null;/);
+    assert.match(text, /const routed = route\(upstream, request\.method, request\.url\);/);
     assert.match(text, /if \(routed === null\) \{/);
     // `route` is the only reader of the caller's URL. A second one would be a
     // second opinion about what this gateway forwards.
     assert.equal([...text.matchAll(/request\.url/g)].length, 1);
+  });
+
+  it('judges the budget after the free branch has already returned', () => {
+    /**
+     * The property that makes a free path safe to forward: it never reaches a
+     * decision, so it can never be refused for a budget it does not spend, and
+     * it can never be substituted for a model nobody asked for.
+     *
+     * Asserted structurally rather than by running it, because the runtime
+     * proof lives in `gateway-free-paths.test.js` and this is the half that
+     * fails when somebody moves the branch: a `!routed.spends` check placed
+     * *after* `gatewayDecision` would still pass every behavioural test on a
+     * gateway with a budget, and refuse `count_tokens` on one without.
+     */
+    const text = server();
+    const free = text.indexOf('if (!routed.spends) {');
+    const decision = text.indexOf('gatewayDecision(');
+    assert.ok(free > 0, 'the free branch is gone, so nothing forwards without a budget decision');
+    assert.ok(decision > 0, 'the budget decision is gone, which is a larger problem than this test');
+    assert.ok(
+      free < decision,
+      'a path that spends nothing now reaches the budget decision, and will be refused for money it does not spend',
+    );
+    // And it leaves. A branch that falls through would be judged anyway.
+    const branch = text.slice(free, decision);
+    assert.match(branch, /\n        return;\n      \}/, 'the free branch does not return, so it falls into the decision');
+    assert.ok(
+      !branch.includes('context.record('),
+      'the free branch records usage, which is a figure no provider charged',
+    );
   });
 });
 

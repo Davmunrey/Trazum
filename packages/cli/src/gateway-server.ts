@@ -89,10 +89,62 @@ export interface Upstream {
    * in the path was for.
    */
   modelIn?: 'path';
+  /**
+   * Paths that spend no tokens, forwarded without a budget decision.
+   *
+   * **Refusing these would be the wrong answer, not a stricter one.**
+   * `count_tokens` is the call you make to find out whether you can afford the
+   * other one; answering it with a 402 blinds a caller at exactly the moment
+   * they are trying to behave. And a budget refusal only means something when
+   * there is money on the line: a call that spends nothing has nothing to
+   * judge, so judging it would be theatre with a real cost.
+   *
+   * **What this does and does not widen.** The origin is still compiled in, so
+   * the credential can still only ever reach one host. What grows is the set
+   * of *operations* somebody who can reach the loopback port may perform with
+   * it, and that is why the list is literal strings only, enumerated here, and
+   * why each entry has to be written into `docs/gateway.md` before a guard
+   * will let it exist. A pattern here would be a widening with no budget check
+   * behind it, which is the general-proxy shape this gateway is built to
+   * refuse.
+   *
+   * Nothing that spends belongs here. `/v1/messages/batches` is the near miss:
+   * it looks administrative and it bills.
+   */
+  free?: readonly FreePath[];
+}
+
+/** One path that costs nothing, and the method it answers on. */
+export interface FreePath {
+  method: 'GET' | 'POST';
+  path: string;
 }
 
 export const UPSTREAMS: Readonly<Record<string, Upstream>> = {
-  anthropic: { origin: 'https://api.anthropic.com', path: '/v1/messages' },
+  anthropic: {
+    origin: 'https://api.anthropic.com',
+    path: '/v1/messages',
+    /**
+     * The two an agent asks for beside the call itself.
+     *
+     * `POST /v1/messages/count_tokens` returns a token count and bills nothing:
+     * `packages/core/src/tokenizer.ts` has called it for `--exact-tokens` since
+     * the band harness needed a ground truth, and this repository documents it
+     * as free in the same breath every time it suggests using it.
+     *
+     * `GET /v1/models` lists what the account may call. It carries no body,
+     * spends nothing, and is the call a client makes on startup to find out
+     * what exists.
+     *
+     * Both are here because a coding agent pointed at this gateway hits them
+     * within its first second and got a 404 from a proxy that was otherwise
+     * working, which reads as the gateway being broken rather than narrow.
+     */
+    free: [
+      { method: 'POST', path: '/v1/messages/count_tokens' },
+      { method: 'GET', path: '/v1/models' },
+    ],
+  },
   openai: { origin: 'https://api.openai.com', path: '/v1/chat/completions' },
   /**
    * DeepSeek's host is not a new fact: `scripts/measure-token-band.mjs` has
@@ -138,6 +190,17 @@ export function forwards(upstream: Upstream): string {
 }
 
 /**
+ * The paths this gateway forwards without judging, as a person reads them.
+ *
+ * Same reason `forwards` exists: the refusal body, the documentation guard and
+ * the page itself have to render this from one place, or they drift into three
+ * different accounts of what is actually reachable.
+ */
+export function alsoForwards(upstream: Upstream): readonly string[] {
+  return (upstream.free ?? []).map((entry) => `${entry.method} ${entry.path}`);
+}
+
+/**
  * Whether this request is the one call this gateway speaks for, and the model
  * the path named if it named one.
  *
@@ -147,10 +210,28 @@ export function forwards(upstream: Upstream): string {
  * except the compiled-in origin and a path assembled from a model id that has
  * already been restricted to `[A-Za-z0-9._-]`.
  */
-export function route(upstream: Upstream, url: string | undefined): { path: string; model: string | null } | null {
+export function route(
+  upstream: Upstream,
+  method: string | undefined,
+  url: string | undefined,
+): { path: string; model: string | null; spends: boolean } | null {
   if (url === undefined) return null;
+
+  /**
+   * The free paths are checked first and compared as whole strings, method
+   * included. A `startsWith` here would forward `/v1/models/../messages` and
+   * anything else a caller could suffix onto a prefix that looked harmless.
+   */
+  for (const entry of upstream.free ?? []) {
+    if (method === entry.method && url === entry.path) {
+      return { path: entry.path, model: null, spends: false };
+    }
+  }
+
+  // Everything below spends, and only POST spends.
+  if (method !== 'POST') return null;
   if (typeof upstream.path === 'string') {
-    return url === upstream.path ? { path: upstream.path, model: null } : null;
+    return url === upstream.path ? { path: upstream.path, model: null, spends: true } : null;
   }
   const matched = upstream.path.exec(url);
   const model = matched?.[1];
@@ -158,7 +239,7 @@ export function route(upstream: Upstream, url: string | undefined): { path: stri
   // containing the word `undefined` and forward it. Refusing is the only
   // answer: there is no model, so there is nothing to price the call against.
   if (model === undefined) return null;
-  return { path: `/v1beta/models/${model}:generateContent`, model };
+  return { path: `/v1beta/models/${model}:generateContent`, model, spends: true };
 }
 
 /**
@@ -379,19 +460,75 @@ export function buildGateway(context: GatewayContext): Server {
         response.end(`${JSON.stringify({ error: 'no upstream configured for this provider' })}\n`);
         return;
       }
-      const routed = request.method === 'POST' ? route(upstream, request.url) : null;
+      const routed = route(upstream, request.method, request.url);
       if (routed === null) {
-        // Only the one path that spends tokens. A gateway forwarding anything
-        // else is a general proxy for somebody's API key.
+        // The one path that spends tokens, plus the short list that spends
+        // nothing. A gateway forwarding anything else is a general proxy for
+        // somebody's API key.
         response.writeHead(404, { 'content-type': 'application/json' });
         response.end(
-          // A refusal never arrives bare: the one thing it does forward, said
-          // from the upstream table rather than written out again here.
+          // A refusal never arrives bare: what it does forward, said from the
+          // upstream table rather than written out again here.
           `${JSON.stringify({
             error: 'not a path this gateway forwards',
             forwards: `POST ${forwards(upstream)}`,
+            ...(alsoForwards(upstream).length === 0 ? {} : { alsoForwards: alsoForwards(upstream) }),
           })}\n`,
         );
+        return;
+      }
+
+      /**
+       * A path that spends nothing is forwarded and nothing else happens to it.
+       *
+       * **Deliberately the dumbest branch in this file.** It reaches no
+       * decision, records no usage and never substitutes a model, because
+       * there is no money to judge, no counts to keep and nothing to swap. Any
+       * of those would be a figure invented about a call that cost nothing,
+       * which is worse than the 404 this replaces.
+       *
+       * It is placed before `readBody`'s model check on purpose: `GET
+       * /v1/models` has no body and no model, and running it through machinery
+       * that exists to price a call would refuse it with "could not read a
+       * model out of this request", which is true and useless.
+       */
+      if (!routed.spends) {
+        const passthrough = new Headers();
+        for (const [name, value] of Object.entries(request.headers)) {
+          if (HOP_BY_HOP.has(name.toLowerCase()) || value === undefined) continue;
+          passthrough.set(name, Array.isArray(value) ? value.join(', ') : value);
+        }
+        const sent = request.method === 'GET' ? '' : await readBody(request);
+        if (sent === null && request.method === 'POST') {
+          response.writeHead(413, { 'content-type': 'application/json' });
+          response.end(`${JSON.stringify({ error: 'request body too large' })}\n`);
+          return;
+        }
+        let free: Response;
+        try {
+          free = await doFetch(`${upstream.origin}${routed.path}`, {
+            method: request.method === 'GET' ? 'GET' : 'POST',
+            headers: passthrough,
+            ...(request.method === 'GET' ? {} : { body: sent ?? '' }),
+          });
+        } catch (error) {
+          response.writeHead(502, { 'content-type': 'application/json' });
+          response.end(
+            `${JSON.stringify({
+              error: {
+                type: 'trazum_upstream_unreachable',
+                message: error instanceof Error ? error.message : String(error),
+              },
+            })}\n`,
+          );
+          return;
+        }
+        const headers: Record<string, string> = {};
+        free.headers.forEach((value, name) => {
+          if (!HOP_BY_HOP.has(name.toLowerCase())) headers[name] = value;
+        });
+        response.writeHead(free.status, headers);
+        response.end(Buffer.from(await free.arrayBuffer()));
         return;
       }
 

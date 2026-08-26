@@ -28,6 +28,36 @@ spends tokens:
 | `deepseek` | `https://api.deepseek.com` | `/chat/completions` |
 | `google` | `https://generativelanguage.googleapis.com` | `/v1beta/models/{model}:generateContent` |
 
+### And two that spend nothing
+
+Anthropic's row has a second, shorter list: paths forwarded **without a budget
+decision**, because there is no money on the line to decide about.
+
+| Provider | Also forwarded | Why it costs nothing |
+| --- | --- | --- |
+| `anthropic` | `POST /v1/messages/count_tokens` | Returns a token count and bills nothing. `--exact-tokens` has called it since the band harness needed a ground truth, and this repository documents it as free every time it suggests it. |
+| `anthropic` | `GET /v1/models` | Lists what the account may call. No body, no tokens, and the call a client makes on startup to find out what exists. |
+
+**Refusing these was never the stricter answer.** `count_tokens` is the call you
+make to find out whether you can afford the other one, so answering it with a 402
+blinds a caller at the exact moment they are trying to behave. A budget refusal
+only means something when there is money on the line; a refusal on a free call is
+theatre with a real cost.
+
+**What it widens, stated plainly.** The origin is still compiled in, so your
+credential can still only ever reach one host. What grows is the set of
+*operations* somebody who can reach the loopback port may perform with it, from
+one to three. That is why the list is literal strings rather than a pattern, why
+the method is part of the match, and why a comparison is against the whole path:
+`/v1/models/../messages` and `/v1/models?limit=1` are both refused, and
+`gateway-free-paths.test.js` plants each of them.
+
+**Nothing that bills belongs on that list.** `POST /v1/messages/batches` is the
+near miss: it reads as administrative and it charges. It is refused, and a test
+plants it. No test can derive "this operation is free" from an API this project
+does not own, so the real defence is that adding a row here is a decision
+somebody wrote down: a free path missing from this table fails the build.
+
 **Google's row is the only one with a brace in it**, because Google puts the
 model in the URL rather than the request body. That path is matched against an
 anchored pattern whose model segment accepts only the characters a model id is

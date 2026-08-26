@@ -213,19 +213,20 @@ describe('route is the only thing that decides, and it decides the same way twic
      * whatever else that string contained cannot travel to the upstream, even
      * if a future pattern were loosened by accident.
      */
-    const decided = route(UPSTREAMS.google, PATH);
-    assert.deepEqual(decided, { path: PATH, model: 'gemini-2.5-pro' });
+    const decided = route(UPSTREAMS.google, 'POST', PATH);
+    assert.deepEqual(decided, { path: PATH, model: 'gemini-2.5-pro', spends: true });
 
     // A literal-path provider names no model; its body does.
-    assert.deepEqual(route(UPSTREAMS.openai, '/v1/chat/completions'), {
+    assert.deepEqual(route(UPSTREAMS.openai, 'POST', '/v1/chat/completions'), {
       path: '/v1/chat/completions',
       model: null,
+      spends: true,
     });
-    assert.equal(route(UPSTREAMS.openai, '/v1/chat/completions?stream=1'), null);
+    assert.equal(route(UPSTREAMS.openai, 'POST', '/v1/chat/completions?stream=1'), null);
   });
 
   it('refuses an absent URL rather than defaulting to the path it forwards', () => {
-    assert.equal(route(UPSTREAMS.google, undefined), null);
-    assert.equal(route(UPSTREAMS.anthropic, undefined), null);
+    assert.equal(route(UPSTREAMS.google, 'POST', undefined), null);
+    assert.equal(route(UPSTREAMS.anthropic, 'POST', undefined), null);
   });
 });
