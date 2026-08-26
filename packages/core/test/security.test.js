@@ -1380,6 +1380,45 @@ describe('the packaged Action', () => {
     // movable ref SECURITY.md warns against. Nothing was checking.
     const SHA_PIN = /^Davmunrey\/Trazum@[0-9a-f]{40}$/;
     const bad = [];
+
+    /**
+     * Every released version, from the tags rather than from a document.
+     *
+     * The four assertions below this were each written for a pin that was
+     * *wrong*, and between them they never asked the one question that catches
+     * a pin nobody touched: **how old is it**. A pin at 1.20.0 names a real
+     * commit, on `main`, whose manifest really says 1.20.0. It stays green
+     * forever while the release it points at recedes, which is exactly how the
+     * README came to be recommending a two-release-old Action.
+     *
+     * `docs/releasing.md` step 4 explains why one release of lag is structural:
+     * the pin can only advance to the release commit once that commit exists,
+     * which is after the merge rather than in it. So the convention is at most
+     * one, and this derives the count from `git tag` instead of trusting
+     * anybody to have remembered.
+     */
+    const releasedVersions = (() => {
+      const tags = spawnSync('git', ['tag', '--list', 'v*.*.*'], {
+        cwd: repoRoot,
+        encoding: 'utf8',
+      });
+      if (tags.status !== 0) return null;
+      const parsed = tags.stdout
+        .split('\n')
+        .filter(Boolean)
+        .map((tag) => tag.slice(1))
+        .filter((version) => /^\d+\.\d+\.\d+$/.test(version));
+      return parsed.length === 0 ? null : parsed;
+    })();
+    /** Numeric, because "1.10.0" sorts before "1.9.0" as a string. */
+    const isNewer = (a, b) => {
+      const left = a.split('.').map(Number);
+      const right = b.split('.').map(Number);
+      for (let i = 0; i < 3; i += 1) {
+        if (left[i] !== right[i]) return left[i] > right[i];
+      }
+      return false;
+    };
     /** Pins whose commit this clone does not have, reported rather than ignored. */
     const unchecked = [];
     let pins = 0;
@@ -1474,6 +1513,50 @@ describe('the packaged Action', () => {
         } else if (merged.status !== 0) {
           // No `origin/main` in this clone. Named, never passed over silently.
           unchecked.push(`${name}: ${sha.slice(0, 7)} ancestry unknown (no origin/main here)`);
+        }
+
+        if (releasedVersions === null) {
+          unchecked.push(`${name}: no release tags in this clone, pin age not checked`);
+          continue;
+        }
+
+        /**
+         * The commit has to be **the release commit**, not a commit that
+         * happens to declare the same version.
+         *
+         * Everything above passes on the squash of any pull request merged
+         * after a release, because those carry the released manifest until the
+         * next bump. `d959be1` would satisfy the label, the ancestry and the
+         * manifest while being a documentation merge. The tag is the only thing
+         * that separates the two, and consumers pin what the tag points at.
+         */
+        const pointsAt = spawnSync('git', ['tag', '--points-at', sha], {
+          cwd: repoRoot,
+          encoding: 'utf8',
+        });
+        if (pointsAt.status !== 0) {
+          unchecked.push(`${name}: ${sha.slice(0, 7)} tags unreadable`);
+        } else if (!pointsAt.stdout.split('\n').filter(Boolean).includes(`v${pinned}`)) {
+          bad.push(
+            `${name}: ${sha.slice(0, 7)} declares ${pinned} and is not the v${pinned} release ` +
+              'commit, so it is some other merge that inherited the version',
+          );
+        }
+
+        /**
+         * And at most one release may stand between the pin and today. This is
+         * the assertion that kills the class rather than an instance: it fails
+         * on a pin nobody touched, which is the only way this ever went wrong.
+         */
+        const since = releasedVersions
+          .filter((version) => isNewer(version, pinned))
+          .sort((a, b) => (isNewer(a, b) ? 1 : -1));
+        if (since.length > 1) {
+          bad.push(
+            `${name}: pinned at ${pinned} with ${since.length} releases since ` +
+              `(${since.join(', ')}). docs/releasing.md allows one, because the pin can only ` +
+              'advance after the release commit exists',
+          );
         }
       }
     }
