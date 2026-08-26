@@ -1856,6 +1856,38 @@ describe('the packaged Action', () => {
     // are banned, and the first version of this test failed on its own
     // explanation.
     const code = listing.replace(/^\s*#.*$/gm, '').replace(/\s#.*$/gm, '');
+
+    /**
+     * The read-back asks whether *this* version is listed, not whether some
+     * version is.
+     *
+     * This is written from a live failure. 1.81.0 published correctly and the
+     * job failed anyway, because the check took the first entry the search
+     * returned and the registry keeps every version of a server: the search
+     * answered 1.80.1 first, so the step read 1.80.1 and reported a broken
+     * release that was not broken. `find(... .name === name)` answers a
+     * different question from the one the step is asking, and it would have
+     * failed every release from that day on.
+     *
+     * It also asked once, 0.6 seconds after the publisher returned, while the
+     * search index was still catching up. `mcp-registry-preflight.mjs` had
+     * already learned that about npm and polls; the lesson had not travelled
+     * one step further down.
+     */
+    const readback = code.slice(code.indexOf('registry serves what we just sent'));
+    assert.ok(
+      readback.includes('.includes(want)') || readback.includes('versions.includes'),
+      'the read-back does not ask whether this version is among the ones listed',
+    );
+    assert.ok(
+      !/\.find\(\s*\(?entry\)?\s*=>\s*entry\.server\?\.name/.test(readback),
+      'the read-back takes the first listing by name, which is whichever version the search returns first',
+    );
+    assert.ok(
+      /for attempt in \$\(seq/.test(readback) && readback.includes('sleep'),
+      'the read-back asks once rather than waiting for the registry to catch up',
+    );
+
     assert.ok(
       !code.includes('releases/latest/download'),
       'the publisher binary is fetched from a movable ref',

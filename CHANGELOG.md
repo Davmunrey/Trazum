@@ -11,7 +11,43 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Fixed
+
+- **The MCP registry read-back failed 1.81.0's release while the publish had
+  succeeded.** The listing job's last step asks the registry whether it now
+  serves what was just sent. It reported `the registry serves '1.80.1' for
+  io.github.Davmunrey/trazum, expected '1.81.0'` seconds after the publisher
+  printed `✓ Successfully published — version 1.81.0`. Both statements were
+  true, and the check was wrong twice over.
+
+  **It took the first entry the search returned.** The registry keeps every
+  version of a server, so `find((entry) => entry.server?.name === name)` answers
+  *"some version is listed"* while the step reads it as *"this version is
+  listed"*. After 1.81.0 published, the search returned 1.80.1 first and 1.81.0
+  second. Verified against the live registry rather than reasoned about: the old
+  expression reads `1.80.1` today, and would have failed **every release from
+  here on**, not only this one. It now collects every version under that name
+  and asks whether the wanted one is among them, so the answer cannot depend on
+  ordering. When it is absent the error names what the registry does hold.
+
+  **And it asked once, 0.6 seconds after the publisher returned.** The publisher
+  confirms the write; the search index catches up afterwards.
+  `scripts/mcp-registry-preflight.mjs` already learned exactly this about npm
+  and polls until the answer arrives, and the lesson had not travelled one step
+  further down. The read-back now asks for up to a minute.
+
+  Nothing was actually broken by this: `@trazum/core`, `@trazum/cli` and
+  `@trazum/mcp` are live on npm at 1.81.0, the tag exists, and the registry
+  lists `io.github.Davmunrey/trazum` at 1.81.0 with status `active`. The failure
+  was a check reporting a broken release that was not broken, which is the worst
+  direction for a check to be wrong in: it teaches whoever sees it to stop
+  believing the red.
+
+  Two plants, two failures: restoring the first-match expression fails with `the
+  read-back takes the first listing by name`, and removing the polling fails
+  with `the read-back asks once rather than waiting for the registry to catch
+  up`.
+
 
 
 ## 1.81.0 — "The things nobody had checked"
