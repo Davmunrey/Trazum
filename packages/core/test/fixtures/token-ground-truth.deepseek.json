@@ -1,0 +1,157 @@
+{
+  "provider": "deepseek",
+  "governsPublishedBand": false,
+  "model": "deepseek-chat",
+  "measuredAt": "2026-08-27",
+  "corpusDigest": "ec3124820b13497d",
+  "envelopeTokens": 4,
+  "samples": [
+    {
+      "file": "cjk-chinese.txt",
+      "type": "cjk",
+      "chars": 306,
+      "actualTokens": 163,
+      "digest": "19fcd3e76dfa2d6e"
+    },
+    {
+      "file": "cjk-japanese.txt",
+      "type": "cjk",
+      "chars": 379,
+      "actualTokens": 243,
+      "digest": "35fcef684f0c8538"
+    },
+    {
+      "file": "code-heavy.txt",
+      "type": "code",
+      "chars": 1284,
+      "actualTokens": 340,
+      "digest": "de7f2ec8a6850b95"
+    },
+    {
+      "file": "dutch-prose.txt",
+      "type": "prose-latin",
+      "chars": 728,
+      "actualTokens": 199,
+      "digest": "3abd1666b39a9ec7"
+    },
+    {
+      "file": "dutch-technical.txt",
+      "type": "prose-latin",
+      "chars": 745,
+      "actualTokens": 214,
+      "digest": "105a97d485369903"
+    },
+    {
+      "file": "english-prose.txt",
+      "type": "prose-latin",
+      "chars": 1332,
+      "actualTokens": 269,
+      "digest": "798f05ec3630190c"
+    },
+    {
+      "file": "english-technical.txt",
+      "type": "prose-latin",
+      "chars": 742,
+      "actualTokens": 155,
+      "digest": "eaaf9f5b260e1d42"
+    },
+    {
+      "file": "few-shot.txt",
+      "type": "few-shot",
+      "chars": 865,
+      "actualTokens": 201,
+      "digest": "85d58c550747a167"
+    },
+    {
+      "file": "french-prose.txt",
+      "type": "prose-latin",
+      "chars": 687,
+      "actualTokens": 167,
+      "digest": "c96a4005a729adb1"
+    },
+    {
+      "file": "french-technical.txt",
+      "type": "prose-latin",
+      "chars": 790,
+      "actualTokens": 204,
+      "digest": "a81134be0c092872"
+    },
+    {
+      "file": "german-prose.txt",
+      "type": "prose-latin",
+      "chars": 661,
+      "actualTokens": 177,
+      "digest": "3cd8c20a0a0aaf15"
+    },
+    {
+      "file": "german-technical.txt",
+      "type": "prose-latin",
+      "chars": 795,
+      "actualTokens": 216,
+      "digest": "ab392ec50f0d586d"
+    },
+    {
+      "file": "italian-prose.txt",
+      "type": "prose-latin",
+      "chars": 720,
+      "actualTokens": 195,
+      "digest": "7d862f9cf3971d7e"
+    },
+    {
+      "file": "italian-technical.txt",
+      "type": "prose-latin",
+      "chars": 702,
+      "actualTokens": 185,
+      "digest": "223ef1eca8fdd740"
+    },
+    {
+      "file": "numeric-heavy.txt",
+      "type": "numeric",
+      "chars": 729,
+      "actualTokens": 333,
+      "digest": "0b6dd59425f7642f"
+    },
+    {
+      "file": "portuguese-prose.txt",
+      "type": "prose-latin",
+      "chars": 689,
+      "actualTokens": 191,
+      "digest": "a05ba3b0e1f1b378"
+    },
+    {
+      "file": "portuguese-technical.txt",
+      "type": "prose-latin",
+      "chars": 710,
+      "actualTokens": 183,
+      "digest": "9e7f9bbe245791b7"
+    },
+    {
+      "file": "punctuation-heavy.txt",
+      "type": "punctuation",
+      "chars": 871,
+      "actualTokens": 303,
+      "digest": "62944c8e47e623cc"
+    },
+    {
+      "file": "spanish-prose.txt",
+      "type": "prose-latin",
+      "chars": 1158,
+      "actualTokens": 306,
+      "digest": "bec0195bcd1ad76a"
+    },
+    {
+      "file": "spanish-technical.txt",
+      "type": "prose-latin",
+      "chars": 760,
+      "actualTokens": 198,
+      "digest": "7391550f3b51cbc9"
+    },
+    {
+      "file": "spanish-unaccented.txt",
+      "type": "prose-latin",
+      "chars": 727,
+      "actualTokens": 194,
+      "digest": "6f092aade2c77b74"
+    }
+  ]
+}

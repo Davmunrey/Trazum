@@ -264,6 +264,36 @@ const PROVIDERS = {
       return tokens;
     },
   },
+
+  mistral: {
+    label: 'Mistral',
+    envVar: 'MISTRAL_API_KEY',
+    defaultModel: 'mistral-small-latest',
+    fixture: 'token-ground-truth.mistral.json',
+    free: false,
+    governsPublishedBand: false,
+    async count(text, { apiKey, model }) {
+      // Same shape as DeepSeek: no counting endpoint, so the prompt count is a
+      // by-product of a completion held to one generated token.
+      const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: 'Bearer ' + apiKey },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content: text }],
+          max_tokens: 1,
+          temperature: 0,
+          stream: false,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error('chat/completions returned ' + response.status + ': ' + (await response.text()));
+      }
+      const tokens = (await response.json())?.usage?.prompt_tokens;
+      if (typeof tokens !== 'number') throw new Error('no usage.prompt_tokens in the response');
+      return tokens;
+    },
+  },
 };
 
 const flag = process.argv.indexOf('--provider');
