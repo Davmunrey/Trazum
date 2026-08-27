@@ -116,12 +116,18 @@ merged commit with no entry is a change only `git log` remembers.
   checklist's job, and step 7 of [docs/releasing.md](docs/releasing.md) is now
   it.
 
-  The lever table's headline moved with the price: **Opus 5 → Sonnet 5 is 60%
-  off, not 40%.** It had been computed from the $3/$15 list price while every
-  test, every transcript and the product's own output used the $2/$10 actually
-  charged, so `docs/commands.md` disagreed with the sample printed four lines
-  below it. Both spellings — the table and the doc comment on `levers.ts` — are
-  now derived from `MODELS` and checked.
+  The lever table's headline moved with the price, and it turned out to be the
+  product's headline argument. **Opus 5 → Sonnet 5 is 60% off, not 40%**, and
+  the span "which model a call goes to moves 40% to 80%" was wrong in **15
+  places**: both CLI locales, the type documenting them, two comments in the
+  CLI, the README, the Claude Code skill and the plugin copy generated from
+  it, and the landing in five languages plus its proof row. Its floor had been
+  computed from the $3/$15 list price while every test, transcript and the
+  product's own output used the $2/$10 actually charged, so `docs/commands.md`
+  disagreed with the sample printed four lines below it and the first sentence
+  a visitor reads was 20 points low. Floor and ceiling are now derived from
+  `MODELS`, and the guard reads the ceiling and checks the number in front of
+  it, so it holds in a language it cannot parse.
 
 - **Seven copies of one staleness threshold.** `profile`, the MCP report and
   the browser's bill each typed `45` into their own comparison, and four locale

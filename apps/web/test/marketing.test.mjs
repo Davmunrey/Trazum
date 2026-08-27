@@ -141,10 +141,10 @@ describe('the marketing pages play by the app’s rules', () => {
 
   it('the landing’s figures are the product’s own, with their sources named', () => {
     // −37.4% is optimize --level aggressive over the demo prompt at 1M
-    // calls; 40–80% and 50% are the spans the profile report itself states.
+    // calls; 60–80% and 50% are the spans the profile report itself states.
     // A figure added here without a measurement behind it should fail loudly
     // in review — this pins the ones that exist today.
-    for (const figure of ['−37.4%', '40–80%', '−50%']) {
+    for (const figure of ['−37.4%', '60–80%', '−50%']) {
       assert.ok(landing.includes(figure), `the measured figure ${figure} left the landing`);
     }
     assert.equal(/testimonial|logo/i.test(landing), false, 'invented social proof on the landing');

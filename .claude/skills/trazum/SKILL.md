@@ -109,7 +109,7 @@ into pipelines.
 
 **Lead with "What would actually move this bill".** It is the section the command
 exists for, and the one that answers the fair complaint that Trazum saves 1%. The
-rules recover about 1%; which model a call goes to moves 40% to 80% and the Batch
+rules recover about 1%; which model a call goes to moves 60% to 80% and the Batch
 API moves 50% flat, and both are priced there from the user's own tokens. If you
 summarise the report and leave that section out, you have handed the user the
 smallest lever in the tool.

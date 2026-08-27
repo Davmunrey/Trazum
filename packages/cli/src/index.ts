@@ -1147,7 +1147,7 @@ function printReport(
    *
    * `optimize` is the first command anybody runs, and it reports the smallest
    * line item on the bill: measured, about 1% of a monthly figure. Everything
-   * that moves 40% to 80% — which model the call goes to, the Batch API,
+   * that moves 60% to 80% — which model the call goes to, the Batch API,
    * caching, what re-sending the conversation costs — lives in `profile`, which
    * needs a usage log a new reader does not have and has no reason to go looking
    * for.
@@ -9100,7 +9100,7 @@ async function commandProfile(
    * That figure is right — measured, three tokens out of three hundred and six on
    * an ordinary support prompt. The conclusion is not that the tool is worthless
    * but that it had been looking at the smallest line item. Which model a call
-   * goes to moves 40% to 80%. The Batch API moves 50% flat. Both are priced here
+   * goes to moves 60% to 80%. The Batch API moves 50% flat. Both are priced here
    * from the reader's own tokens, at published rates, with no modelling in
    * between — and printed above the breakdowns, because a lever nobody scrolls to
    * is a lever nobody pulls.

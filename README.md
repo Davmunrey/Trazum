@@ -1051,7 +1051,7 @@ what the command just did:
 ```
   Shortening a prompt is the smallest lever there is: measured on an ordinary
   support prompt, the rules recover about 1% of a monthly bill. On a metered
-  API the things that move 40% to 80% are which model the call goes to, the
+  API the things that move 60% to 80% are which model the call goes to, the
   Batch API, prompt caching, and what re-sending the conversation costs — and
   "trazum profile <usage.jsonl>" prices all four from what the provider
   actually charged.

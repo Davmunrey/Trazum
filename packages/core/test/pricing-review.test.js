@@ -174,6 +174,59 @@ describe('what the documentation says a tier step is worth', () => {
   });
 });
 
+/**
+ * The same arithmetic as a span, which is where it did the most damage.
+ *
+ * "which model a call goes to moves 40% to 80%" is the product's headline
+ * argument, and its floor is Opus 5 → Sonnet 5 while its ceiling is Opus 5 →
+ * Haiku 4.5. The floor was computed from Sonnet 5's $3/$15 list price, so when
+ * that price turned out to be $2/$10 the sentence was wrong in thirteen
+ * places at once: both CLI locales, the type that documents them, the README,
+ * the Claude Code skill and the plugin copy generated from it, and the landing
+ * in five languages plus its proof row. It is the first thing a visitor reads.
+ *
+ * Written differently in each language — `40% to 80%`, `del 40% al 80%`,
+ * `40–80 %`, `40 bis 80 %` — so the ceiling is what this looks for and the
+ * number in front of it is what it checks.
+ */
+describe('the span a model switch is worth', () => {
+  const SPANS = [
+    'packages/cli/src/i18n/en.ts',
+    'packages/cli/src/i18n/es.ts',
+    'packages/cli/src/i18n/types.ts',
+    'packages/cli/src/index.ts',
+    'README.md',
+    '.claude/skills/trazum/SKILL.md',
+    'plugin/skills/trazum/SKILL.md',
+    'apps/web/app/landing/page.tsx',
+  ];
+
+  it('states the prices as its floor and its ceiling, in every language', () => {
+    const from = MODELS.find((model) => model.id === 'claude-opus-5');
+    const toFloor = MODELS.find((model) => model.id === 'claude-sonnet-5');
+    const toCeiling = MODELS.find((model) => model.id === 'claude-haiku-4-5');
+    assert.ok(from && toFloor && toCeiling, 'the three models this span is drawn from are gone');
+    const floor = Math.round((1 - toFloor.inputPerMTok / from.inputPerMTok) * 100);
+    const ceiling = Math.round((1 - toCeiling.inputPerMTok / from.inputPerMTok) * 100);
+
+    /* `40% to 80%`, `del 40% al 80%`, `40–80 %`, `40 bis 80 %`, `40-80%`. */
+    const span = new RegExp(`(\\d+)\\s*%?\\s*(?:to|al|a|à|bis|[–-])\\s*${ceiling}\\s*%`, 'g');
+    let found = 0;
+    for (const path of SPANS) {
+      const text = read(path);
+      for (const match of text.matchAll(span)) {
+        found += 1;
+        assert.equal(
+          Number(match[1]),
+          floor,
+          `${path} says the span starts at ${match[1]}%; Opus 5 → Sonnet 5 is ${floor}% off`,
+        );
+      }
+    }
+    assert.ok(found >= 10, `only ${found} statements of the span found across ${SPANS.length} files`);
+  });
+});
+
 describe('the staleness threshold is one number', () => {
   const sources = () => {
     const found = [];

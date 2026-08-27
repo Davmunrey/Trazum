@@ -21,7 +21,7 @@ import type { MarketingLocale } from '../../components/marketing';
  *
  * Every number on this page is one the product itself printed: the -37.4%
  * is `optimize --level aggressive` over the demo prompt with a 1M-call
- * scenario, the 40-80% and 50% are the model-routing and Batch spans the
+ * scenario, the 60-80% and 50% are the model-routing and Batch spans the
  * profile report states, and none of it is a testimonial, a logo wall or a
  * projection — the product refuses to forecast, and so does its landing.
  */
@@ -91,7 +91,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'Trazum prices the usage records your provider already returns, record by record, and refuses to print a forecast. A stale month is "cannot tell", a quiet day is a measured $0, and unpriced models are named instead of hidden in the total.',
     story3Title: 'The savings that matter are rarely in the prompt.',
     story3Body:
-      'Shortening recovers about 1%. Which model a call goes to moves 40–80%, the Batch API moves 50% flat, and a cache whose TTL outlives its reuse loses money quietly. Trazum prices all of it from your own tokens.',
+      'Shortening recovers about 1%. Which model a call goes to moves 60–80%, the Batch API moves 50% flat, and a cache whose TTL outlives its reuse loses money quietly. Trazum prices all of it from your own tokens.',
     doorsTitle: 'The same answer at the CLI, the gateway, the browser and the agent.',
     doorsLede:
       'One core does the measuring; four surfaces carry it. They cannot disagree, because they are the same functions.',
@@ -138,7 +138,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'Trazum tasa los registros de uso que tu proveedor ya devuelve, registro a registro, y se niega a imprimir un pronóstico. Un mes rancio es «no se puede saber», un día tranquilo es un $0 medido, y los modelos sin precio se nombran en vez de esconderse en el total.',
     story3Title: 'El ahorro que importa casi nunca está en el prompt.',
     story3Body:
-      'Acortar recupera ~1%. A qué modelo va cada llamada mueve un 40–80%, el Batch API un 50% plano, y una caché cuyo TTL sobrevive a su reuso pierde dinero en silencio. Trazum lo tasa todo desde tus propios tokens.',
+      'Acortar recupera ~1%. A qué modelo va cada llamada mueve un 60–80%, el Batch API un 50% plano, y una caché cuyo TTL sobrevive a su reuso pierde dinero en silencio. Trazum lo tasa todo desde tus propios tokens.',
     doorsTitle: 'La misma respuesta en el CLI, el gateway, el navegador y el agente.',
     doorsLede:
       'Un solo núcleo mide; cuatro superficies lo llevan. No pueden estar en desacuerdo, porque son las mismas funciones.',
@@ -185,7 +185,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'Trazum tarifie les enregistrements d’usage que votre fournisseur renvoie déjà, un par un, et refuse d’imprimer une prévision. Un mois périmé est « impossible à dire », une journée calme est un 0 $ mesuré, et les modèles non tarifés sont nommés plutôt que cachés dans le total.',
     story3Title: 'Les économies qui comptent sont rarement dans le prompt.',
     story3Body:
-      'Raccourcir récupère environ 1 %. Le modèle vers lequel part un appel déplace 40–80 %, l’API Batch déplace 50 % à plat, et un cache dont le TTL survit à sa réutilisation perd de l’argent en silence. Trazum tarifie tout cela à partir de vos propres tokens.',
+      'Raccourcir récupère environ 1 %. Le modèle vers lequel part un appel déplace 60–80 %, l’API Batch déplace 50 % à plat, et un cache dont le TTL survit à sa réutilisation perd de l’argent en silence. Trazum tarifie tout cela à partir de vos propres tokens.',
     doorsTitle: 'La même réponse au CLI, à la passerelle, au navigateur et à l’agent.',
     doorsLede:
       'Un seul cœur mesure ; quatre surfaces le portent. Ils ne peuvent pas diverger, car ce sont les mêmes fonctions.',
@@ -232,7 +232,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'Trazum bepreist die Nutzungsdatensätze, die Ihr Anbieter ohnehin zurückgibt, Datensatz für Datensatz, und weigert sich, eine Prognose auszugeben. Ein veralteter Monat ist „nicht feststellbar“, ein ruhiger Tag ein gemessener 0 $, und nicht bepreiste Modelle werden benannt statt in der Summe versteckt.',
     story3Title: 'Die Einsparungen, die zählen, stecken selten im Prompt.',
     story3Body:
-      'Kürzen bringt etwa 1 %. Welches Modell einen Aufruf bekommt, bewegt 40–80 %, die Batch-API bewegt glatt 50 %, und ein Cache, dessen TTL seine Wiederverwendung überdauert, verliert still Geld. Trazum bepreist all das aus Ihren eigenen Tokens.',
+      'Kürzen bringt etwa 1 %. Welches Modell einen Aufruf bekommt, bewegt 60–80 %, die Batch-API bewegt glatt 50 %, und ein Cache, dessen TTL seine Wiederverwendung überdauert, verliert still Geld. Trazum bepreist all das aus Ihren eigenen Tokens.',
     doorsTitle: 'Dieselbe Antwort am CLI, am Gateway, im Browser und beim Agenten.',
     doorsLede:
       'Ein Kern misst; vier Oberflächen tragen es. Sie können nicht widersprechen, denn es sind dieselben Funktionen.',
@@ -279,7 +279,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'O Trazum tarifa os registos de uso que o seu fornecedor já devolve, registo a registo, e recusa imprimir uma previsão. Um mês desatualizado é «não dá para saber», um dia calmo é um 0 $ medido, e os modelos sem preço são nomeados em vez de escondidos no total.',
     story3Title: 'As poupanças que importam raramente estão no prompt.',
     story3Body:
-      'Encurtar recupera cerca de 1 %. Para que modelo vai uma chamada move 40–80 %, a API Batch move 50 % fixos, e uma cache cujo TTL sobrevive à sua reutilização perde dinheiro em silêncio. O Trazum tarifa tudo isso a partir dos seus próprios tokens.',
+      'Encurtar recupera cerca de 1 %. Para que modelo vai uma chamada move 60–80 %, a API Batch move 50 % fixos, e uma cache cujo TTL sobrevive à sua reutilização perde dinheiro em silêncio. O Trazum tarifa tudo isso a partir dos seus próprios tokens.',
     doorsTitle: 'A mesma resposta no CLI, no gateway, no navegador e no agente.',
     doorsLede:
       'Um só núcleo mede; quatro superfícies levam-no. Não podem discordar, porque são as mesmas funções.',
@@ -560,7 +560,7 @@ export default function Landing() {
             <div className="mt-10 overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-raised)]">
               {[
                 ['−37.4%', t.proofRules],
-                ['40–80%', t.proofRoute],
+                ['60–80%', t.proofRoute],
                 ['−50%', t.proofBatch],
               ].map(([figure, caption], index) => (
                 <div
