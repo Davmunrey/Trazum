@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -178,14 +178,16 @@ describe('the staleness threshold is one number', () => {
   const sources = () => {
     const found = [];
     const walk = (absolute) => {
-      for (const entry of readdirSync(absolute)) {
-        if (entry === 'node_modules' || entry === 'dist' || entry.startsWith('.')) continue;
-        const child = join(absolute, entry);
-        if (statSync(child).isDirectory()) {
+      /* Entry types off the one readdir, so no name is stat'd separately. */
+      for (const entry of readdirSync(absolute, { withFileTypes: true })) {
+        const name = entry.name;
+        if (name === 'node_modules' || name === 'dist' || name.startsWith('.')) continue;
+        const child = join(absolute, name);
+        if (entry.isDirectory()) {
           walk(child);
           continue;
         }
-        if (!/\.(ts|tsx)$/.test(entry) || entry.endsWith('.d.ts')) continue;
+        if (!/\.(ts|tsx)$/.test(name) || name.endsWith('.d.ts')) continue;
         found.push({ path: relative(ROOT, child), code: readFileSync(child, 'utf8') });
       }
     };

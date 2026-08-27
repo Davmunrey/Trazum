@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -39,14 +39,19 @@ const SOURCES = ['app', 'components', 'lib'];
 function surfaces() {
   const found = [];
   const walk = (absolute) => {
-    for (const entry of readdirSync(absolute)) {
-      if (entry === 'node_modules' || entry.startsWith('.')) continue;
-      const child = join(absolute, entry);
-      if (statSync(child).isDirectory()) {
+    /*
+      One readdir with the entry types, rather than a readdir and a stat per
+      name. Same walk the rest of the suite does, and it does not ask the
+      filesystem the same question twice.
+    */
+    for (const entry of readdirSync(absolute, { withFileTypes: true })) {
+      if (entry.name === 'node_modules' || entry.name.startsWith('.')) continue;
+      const child = join(absolute, entry.name);
+      if (entry.isDirectory()) {
         walk(child);
         continue;
       }
-      if (!entry.endsWith('.tsx')) continue;
+      if (!entry.name.endsWith('.tsx')) continue;
       const raw = readFileSync(child, 'utf8');
       found.push({
         path: relative(web, child),
