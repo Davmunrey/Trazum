@@ -129,6 +129,24 @@ merged commit with no entry is a change only `git log` remembers.
   `MODELS`, and the guard reads the ceiling and checks the number in front of
   it, so it holds in a language it cannot parse.
 
+- **The landing's headline figure was not one the product printed.** The page
+  says, in a comment above its own copy, that every number on it is the
+  product's own output, and the largest — **−37.4%**, in the proof row, drawn
+  in the hero ledger and printed on the share card every link to the page
+  renders — described itself as `optimize --level aggressive` over the demo
+  prompt. No prompt in this repository produces it. The demo prompt is the one
+  the Playground tab loads and the Optimiser fills itself with when a visitor
+  clicks through, so it is the prompt whose figure the page is entitled to
+  quote, and the rules take **20.1%** off it.
+
+  `marketing.test.mjs` used to pin the figure by listing it — `['−37.4%',
+  '40–80%', '−50%']`, asserted to appear on the page. Both halves of that were
+  the same hand-typed number, so it could catch a figure being deleted and
+  never one being wrong. It now runs the rules over the demo prompt and
+  compares **every** reduction on the landing and on the share card against
+  what comes out, because the hero draws the figure and the proof row states
+  it and either could drift alone.
+
 - **Seven copies of one staleness threshold.** `profile`, the MCP report and
   the browser's bill each typed `45` into their own comparison, and four locale
   strings stated it again in prose. It is `STALE_PRICING_DAYS` in

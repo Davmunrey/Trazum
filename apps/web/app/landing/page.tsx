@@ -19,11 +19,22 @@ import type { MarketingLocale } from '../../components/marketing';
  * complete by construction — the type below makes a missing key a build
  * error, which is the same guarantee the catalogue gives the app.
  *
- * Every number on this page is one the product itself printed: the -37.4%
- * is `optimize --level aggressive` over the demo prompt with a 1M-call
- * scenario, the 60-80% and 50% are the model-routing and Batch spans the
- * profile report states, and none of it is a testimonial, a logo wall or a
- * projection — the product refuses to forecast, and so does its landing.
+ * Every number on this page is one the product itself printed, and the
+ * headline one now says which prompt printed it.
+ *
+ * It read -37.4% and described itself as `optimize --level aggressive` over
+ * the demo prompt. No prompt in this repository produces that: the demo
+ * prompt — the one the Playground tab loads and the Optimiser fills itself
+ * with, so the one a visitor clicking through actually runs — comes out at
+ * -20.1%. The figure was a real number from a prompt nobody committed,
+ * which is the same thing as a number a reader cannot check, and it would
+ * have gone on drifting every time a rule changed.
+ *
+ * marketing.test.mjs derives it now: it runs the rules over that prompt and
+ * fails if the page states anything else. The 60-80% and 50% are the
+ * model-routing and Batch spans the profile report states, and none of it
+ * is a testimonial, a logo wall or a projection — the product refuses to
+ * forecast, and so does its landing.
  */
 
 interface Copy {
@@ -319,7 +330,7 @@ const GITHUB = 'https://github.com/Davmunrey/Trazum';
  *
  * Geometry, not illustration. Six rules of falling length under a heading
  * rule, the lower three drawn in the saving colour and clipped to the width
- * the measured reduction leaves — the same −37.4% the proof section states, so
+ * the measured reduction leaves — the same −20.1% the proof section states, so
  * the picture is an index of the claim rather than decoration invented to fill
  * a column. Every colour is a token, so it themes with the page instead of
  * carrying one theme's palette into the other.
@@ -331,7 +342,7 @@ function LedgerFigure() {
   /*
     Each row is a call: what it costs, and what is left once the rules have
     run. The pair is the shape of the claim, so the figure is an index of the
-    −37.4% stated below rather than decoration invented to fill a column.
+    −20.1% stated below rather than decoration invented to fill a column.
   */
   const rows = [
     [186, 117],
@@ -400,7 +411,7 @@ function LedgerFigure() {
         fontWeight="700"
         style={{ fontVariantNumeric: 'tabular-nums' }}
       >
-        −37.4%
+        −20.1%
       </text>
     </svg>
   );
@@ -559,7 +570,7 @@ export default function Landing() {
             </p>
             <div className="mt-10 overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-raised)]">
               {[
-                ['−37.4%', t.proofRules],
+                ['−20.1%', t.proofRules],
                 ['60–80%', t.proofRoute],
                 ['−50%', t.proofBatch],
               ].map(([figure, caption], index) => (

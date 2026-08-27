@@ -140,7 +140,7 @@ export default async function OpengraphImage() {
                 display: 'flex',
               }}
             >
-              −37.4%
+              −20.1%
             </div>
           </div>
         </div>
