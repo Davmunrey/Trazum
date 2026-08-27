@@ -62,6 +62,7 @@ ${bold('USAGE')}
   trazum from-claude-code <file|dir> [--label <name>] [-o <file>]
   trazum from-otel <file|dir> [--label-from-service] [-o <file>]
   trazum from-litellm <file|dir> [-o <file>]
+  trazum from-helicone <file|dir> [-o <file>]
   trazum switch <usage.jsonl> --to <model> [--migration-usd <n>] [--cases <n>]
   trazum ownrate --gpu-usd-hour <n> --tokens-per-second <n> [--utilization <0-1>]
   trazum pulse [--max-stale-hours <n>]
@@ -167,6 +168,18 @@ ${bold('OPTIONS FOR ownrate')}
   efficiency. Prints the figure and the pricing-overlay snippet to paste
   into trazum.config.json, so the model you run yourself becomes a
   first-class row in every report, priced by you and marked as such.
+
+${bold('OPTIONS FOR from-helicone')}
+  -o, --out <file>            Write the usage log there instead of stdout.
+
+  A Helicone request export, read as a usage log: model, timestamp, label and
+  the token counts from each row, and nothing else. The request body, the
+  response body and the user id stay in the row. The model that answered is
+  what is priced, and rows answered by a different model than the one
+  requested are counted. cache_enabled is a flag and never a token split, so
+  cache verdicts read "cannot tell". A request id is one call and never a
+  conversation, so the records carry no session and the conversation findings
+  cannot be answered from this log; that is said on every run.
 
 ${bold('OPTIONS FOR from-litellm')}
   -o, --out <file>            Write the usage log there instead of stdout.
@@ -1714,6 +1727,27 @@ ${bold('EXAMPLES')}
     summary: (files, llmSpans) => `${files} file(s), ${llmSpans} LLM span(s) priced.`,
     skipped: (otherSpans) => `${otherSpans} non-LLM span(s) skipped, the trace's other work, not a bill.`,
     noCache: (count) => `${count} span(s) carried no cache data. OpenTelemetry has not standardised the cache TTL split, so the cache verdicts read "cannot tell" on this log rather than a fabricated one.`,
+    unparseable: (count) => `${count} line(s) did not parse as JSON.`,
+    written: (file) => `Wrote ${file}.`,
+  },
+
+  fromHelicone: {
+    noPath: () =>
+      'from-helicone needs a request export or a directory: trazum from-helicone requests.json',
+    notFound: (path) => `${path}: not found`,
+    noExports: (path) =>
+      `${path}: no .json/.jsonl/.ndjson exports under it. Helicone's requests come out of its POST /v1/request/query endpoint, or the export button on the requests table.`,
+    summary: (files, rows) => `${files} file(s), ${rows} request(s) read.`,
+    unnamedModel: (count) =>
+      `${count} row(s) named no model in any of the three columns and are not in the output: nothing on the row says what answered, so nothing can price it.`,
+    disagreements: (count) =>
+      `${count} row(s) were answered by a different model than the one requested. The model that answered is what is priced, because a bill is about what was billed; the count is here so a substitution is something you see rather than find inside a total.`,
+    noTokens: (count) =>
+      `${count} row(s) carried zero tokens on both sides: logged requests nobody can price. Counted here and worth a look at Helicone.`,
+    cacheFlagged: (count) =>
+      `${count} row(s) were served from Helicone's cache. That is a flag on the row and never a token split, so the cache verdicts read "cannot tell" on this log rather than a fabricated one.`,
+    noSessions: () =>
+      'No session identity: a Helicone request id names one call, not a conversation, so the conversation findings (single-turn cache waste, context pressure) cannot be answered from this log. Passing a per-call id off as a conversation would report every call as a conversation of one.',
     unparseable: (count) => `${count} line(s) did not parse as JSON.`,
     written: (file) => `Wrote ${file}.`,
   },

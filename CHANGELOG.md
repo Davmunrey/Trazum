@@ -53,6 +53,46 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **`trazum from-helicone` reads a Helicone request export as a usage log.** The
+  fourth converter in the pattern `from-claude-code` started: a pure function
+  turns one tool's export into Trazum's records and every door prices it from
+  there. Helicone sits as a proxy in front of the provider and keeps every
+  request it saw, so a team using it already has the export and needed no new
+  instrumentation to answer *where did the money go*.
+
+  **The format is derived, not remembered.** The columns are the SELECT that
+  builds Helicone's own request table — `web/lib/api/request/request.ts` in
+  Helicone/helicone — and the shape its `POST /v1/request/query` endpoint
+  documents. A converter written from memory of an API is a converter that
+  silently mis-reads somebody's bill.
+
+  **It takes three columns to answer what model ran.** `request_model`,
+  `model_override` and `response_model` can disagree, because the override
+  exists precisely so a proxy can send a different model than the caller asked
+  for. The response wins, then the override, then the request — a bill is about
+  what was billed, not what was intended — and `modelDisagreements` counts the
+  rows where they differed, so a substitution is a fact a reader sees rather
+  than one they discover inside a total.
+
+  **What does not cross.** A Helicone row carries the request body, the response
+  body and `request_user_id`, which is an email address in Helicone's own
+  documented example. None of it is read: the converter names the fields it
+  takes and takes nothing else, and a fixture plants one marker in each and
+  greps the whole conversion for it.
+
+  **What it refuses to invent.** `cache_enabled` is a flag with no token split
+  behind it, so a converted record carries no cache fields and the caching
+  questions come back `cannot-tell` — the same refusal `from-otel` and
+  `from-litellm` make. And `request_id` is one call, not a conversation, so the
+  records carry no `session` and the conversation findings stay unavailable
+  rather than being answered from a per-call id, which would report every call
+  as a conversation of one.
+
+  `looksLikeHelicone` is deliberately narrow, and the plant that proves it is a
+  LiteLLM spend log and an OpenAI usage response: both carry `prompt_tokens`,
+  and a detector loose enough to claim either would take somebody's export away
+  from the converter that understands it.
+
 - **The tier heuristic refuses when the prompt argues with itself.** The score is
   `complex × 2 − simple × 2`, so a prompt carrying four signals of a hard task
   and three of an easy one cancels to `sonnet` — **the identical answer to a
