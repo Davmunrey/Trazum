@@ -479,7 +479,7 @@ this: the optimised prompt will not have broken someone's JSON schema.
   comparing two versions of the same prompt, which is what they are for. For
   exact figures use `--exact-tokens` with `ANTHROPIC_API_KEY` set — the counting
   endpoint does not charge for tokens. The band is measured against Claude's
-  tokenizer over forty-seven samples in ten languages; against a non-Anthropic
+  tokenizer over 47 samples in ten languages; against a non-Anthropic
   model the report drops it, names the family, and gives the error measured
   there where anybody has measured it — 94.5% on DeepSeek, 103.1% on Mistral.
   Do not reinstate the Claude band on a prompt priced against another family.

@@ -56,6 +56,14 @@ function listCount(path, declaration, floor) {
   return names.size;
 }
 
+/** The ground-truth corpus the published band is measured over. */
+function groundTruth() {
+  const truth = JSON.parse(read('packages/core/test/fixtures/token-ground-truth.json'));
+  assert.ok(Array.isArray(truth.samples), 'the ground-truth fixture has no samples array');
+  assert.ok(truth.samples.length >= 20, `only ${truth.samples.length} ground-truth samples`);
+  return truth.samples;
+}
+
 /** The providers with at least one model priced. */
 function providerCount() {
   const source = read('packages/core/src/pricing.ts');
@@ -100,6 +108,25 @@ function playgroundCommandCount() {
  * Matched per paragraph rather than per line because prose wraps: the sentence
  * that said "ten commands" had "Playground" two lines above it.
  */
+/**
+ * A paragraph about a figure this product no longer publishes.
+ *
+ * The corpus grew from 21 samples to 47, and two live pages say so — one
+ * explaining that the old single ±10% band "was measured over a corpus of
+ * twenty-one samples", the other that "extending the corpus from 21 samples to
+ * 47" is what found the error. Both are true, both are about the past, and
+ * rewriting either into the present size would delete the point being made.
+ *
+ * `token-band.test.js` solved the same problem by letting a document declare
+ * itself history and reading that declaration off the page rather than
+ * listing filenames. This is the paragraph-sized version of it, and it is
+ * deliberately narrow: two phrases, both of which state outright that the
+ * figure beside them has been superseded. It applies only to the counts that
+ * ask for it — a paragraph saying the CLI "used to" do something is still
+ * held to today's command count.
+ */
+const SUPERSEDED = /\bused to\b|\bfrom \d+ samples? to\b/i;
+
 const COUNTED = [
   { noun: 'commands', of: playgroundCommandCount, only: /playground/i },
   { noun: 'commands', of: commandCount, unless: /playground/i },
@@ -107,6 +134,8 @@ const COUNTED = [
   { noun: 'providers', of: providerCount },
   { noun: 'rules', of: doctrineRuleCount, only: /doctrine/i },
   { noun: 'rules', of: optimisationRuleCount, unless: /doctrine/i },
+  { noun: 'samples', of: () => groundTruth().length, unless: SUPERSEDED },
+  { noun: 'text types', of: () => new Set(groundTruth().map((sample) => sample.type)).size },
 ];
 
 /** Number words that have stood in for a figure in this repository's prose. */
@@ -138,6 +167,8 @@ const DATED = new Set(['CHANGELOG.md', 'RELEASES.md', 'ROADMAP.md']);
  * table row inside a page that is otherwise present tense.
  */
 const RECORD = /\b\d+\.\d+\.\d+\b/;
+
+
 
 function pages() {
   const found = [];
@@ -218,9 +249,12 @@ describe('every count this repository states about itself', () => {
   });
 
   it('is written in digits, never spelled', () => {
-    for (const { noun } of COUNTED) {
+    for (const { noun, only, unless } of COUNTED) {
       for (const { path, text } of surfaces()) {
-        for (const line of text.split(/\n(?=[^\n])/)) {
+        for (const block of paragraphs(text)) {
+          if (only !== undefined && !only.test(block)) continue;
+          if (unless !== undefined && unless.test(block)) continue;
+          for (const line of block.split(/\n(?=[^\n])/)) {
           if (RECORD.test(line)) continue;
           /* Rejoined, because prose wraps and a count can straddle the break. */
           const flat = line.replace(/\s+/g, ' ');
@@ -234,6 +268,7 @@ describe('every count this repository states about itself', () => {
                   + '  Write the digits, so the figure can be checked against the product.',
               );
             }
+          }
           }
         }
       }
