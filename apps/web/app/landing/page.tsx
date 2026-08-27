@@ -115,7 +115,7 @@ const COPY: Record<MarketingLocale, Copy> = {
     proofBatch: 'flat, when the work tolerates a batch window',
     openTitle: 'The core is MIT, and stays MIT.',
     openBody:
-      'The engine, the CLI, the MCP server, the format and its twenty-four contracts are open source. Adopt the format without adopting the tool. What will be paid, when it exists, is the hosted convenience around it: teams, a managed gateway, org-wide policy. The measuring never goes behind a paywall.',
+      'The engine, the CLI, the MCP server, the format and its 24 contracts are open source. Adopt the format without adopting the tool. What will be paid, when it exists, is the hosted convenience around it: teams, a managed gateway, org-wide policy. The measuring never goes behind a paywall.',
     openCta: 'Read the code',
     finalTitle: 'Try it on your own bill.',
     finalBody:
@@ -162,7 +162,7 @@ const COPY: Record<MarketingLocale, Copy> = {
     proofBatch: 'plano, cuando el trabajo tolera una ventana de batch',
     openTitle: 'El núcleo es MIT, y seguirá siendo MIT.',
     openBody:
-      'El motor, el CLI, el servidor MCP, el formato y sus veinticuatro contratos son open source. Adopta el formato sin adoptar la herramienta. Lo que será de pago, cuando exista, es la comodidad alojada alrededor: equipos, gateway gestionado, política a escala de organización. La medición nunca irá detrás de un muro de pago.',
+      'El motor, el CLI, el servidor MCP, el formato y sus 24 contratos son open source. Adopta el formato sin adoptar la herramienta. Lo que será de pago, cuando exista, es la comodidad alojada alrededor: equipos, gateway gestionado, política a escala de organización. La medición nunca irá detrás de un muro de pago.',
     openCta: 'Leer el código',
     finalTitle: 'Pruébalo con tu propia factura.',
     finalBody:
@@ -209,7 +209,7 @@ const COPY: Record<MarketingLocale, Copy> = {
     proofBatch: 'à plat, quand le travail tolère une fenêtre de batch',
     openTitle: 'Le cœur est MIT, et reste MIT.',
     openBody:
-      'Le moteur, le CLI, le serveur MCP, le format et ses vingt-quatre contrats sont open source. Adoptez le format sans adopter l’outil. Ce qui sera payant, le jour où cela existera, c’est le confort hébergé autour : équipes, passerelle gérée, politique à l’échelle de l’organisation. La mesure ne passe jamais derrière un péage.',
+      'Le moteur, le CLI, le serveur MCP, le format et ses 24 contrats sont open source. Adoptez le format sans adopter l’outil. Ce qui sera payant, le jour où cela existera, c’est le confort hébergé autour : équipes, passerelle gérée, politique à l’échelle de l’organisation. La mesure ne passe jamais derrière un péage.',
     openCta: 'Lire le code',
     finalTitle: 'Essayez-le sur votre propre facture.',
     finalBody:
@@ -256,7 +256,7 @@ const COPY: Record<MarketingLocale, Copy> = {
     proofBatch: 'glatt, wenn die Arbeit ein Batch-Fenster verträgt',
     openTitle: 'Der Kern ist MIT und bleibt MIT.',
     openBody:
-      'Die Engine, das CLI, der MCP-Server, das Format und seine vierundzwanzig Verträge sind Open Source. Übernehmen Sie das Format, ohne das Tool zu übernehmen. Was kosten wird, sobald es existiert, ist der gehostete Komfort drumherum: Teams, ein verwaltetes Gateway, organisationsweite Richtlinien. Das Messen kommt nie hinter eine Bezahlschranke.',
+      'Die Engine, das CLI, der MCP-Server, das Format und seine 24 Verträge sind Open Source. Übernehmen Sie das Format, ohne das Tool zu übernehmen. Was kosten wird, sobald es existiert, ist der gehostete Komfort drumherum: Teams, ein verwaltetes Gateway, organisationsweite Richtlinien. Das Messen kommt nie hinter eine Bezahlschranke.',
     openCta: 'Den Code lesen',
     finalTitle: 'Probieren Sie es an Ihrer eigenen Rechnung.',
     finalBody:
@@ -303,7 +303,7 @@ const COPY: Record<MarketingLocale, Copy> = {
     proofBatch: 'fixo, quando o trabalho tolera uma janela de batch',
     openTitle: 'O núcleo é MIT, e continua MIT.',
     openBody:
-      'O motor, o CLI, o servidor MCP, o formato e os seus vinte e quatro contratos são open source. Adote o formato sem adotar a ferramenta. O que será pago, quando existir, é a comodidade alojada à volta: equipas, gateway gerido, política à escala da organização. A medição nunca vai para trás de um muro de pagamento.',
+      'O motor, o CLI, o servidor MCP, o formato e os seus 24 contratos são open source. Adote o formato sem adotar a ferramenta. O que será pago, quando existir, é a comodidade alojada à volta: equipas, gateway gerido, política à escala da organização. A medição nunca vai para trás de um muro de pagamento.',
     openCta: 'Ler o código',
     finalTitle: 'Experimente na sua própria fatura.',
     finalBody:
