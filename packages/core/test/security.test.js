@@ -465,16 +465,32 @@ describe('the gateway, which stands between somebody and their provider', () => 
      * trusts in `scripts/measure-token-band.mjs`, and its path genuinely has no
      * `/v1` — a detail that would have been got wrong from memory.
      */
+    /*
+      Mistral joined the same way DeepSeek did, and the order the edits happened
+      in is the part worth recording: the harness learned Mistral first, and
+      `trusted-hosts.test.js` refused it — "a measuring script is not a side
+      door" — until the gateway declared it here. The guard did its job on the
+      person adding the feature the guard was written for.
+    */
     assert.deepEqual(origins, [
       'https://api.anthropic.com',
       'https://api.deepseek.com',
+      'https://api.mistral.ai',
       'https://api.openai.com',
       'https://generativelanguage.googleapis.com',
     ]);
 
     const paths = [...text.matchAll(/path: '([^']*)'/g)].map((m) => m[1]).sort();
+    /*
+      `/v1/chat/completions` appears twice, and the duplicate is the assertion
+      rather than an oversight. OpenAI and Mistral both serve that path, and a
+      list deduplicated for tidiness would pass on a source where one upstream's
+      path had been deleted — which is exactly the edit that would send a key to
+      the wrong place. One entry per compiled upstream, counted.
+    */
     assert.deepEqual(paths, [
       '/chat/completions',
+      '/v1/chat/completions',
       '/v1/chat/completions',
       '/v1/messages',
       '/v1/messages/count_tokens',

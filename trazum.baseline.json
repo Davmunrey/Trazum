@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "recorded": "2026-08-22",
+  "recorded": "2026-08-27",
   "scenario": {
     "model": "claude-opus-5",
     "callsPerMonth": 1000,
@@ -10,11 +10,11 @@
   },
   "pricingReviewed": "2026-06-24",
   "totals": {
-    "tokens": 531,
-    "monthlyUsd": 10.155000000000001
+    "tokens": 551,
+    "monthlyUsd": 10.255
   },
   "files": {
-    "examples/sample-prompt.en.txt": 225,
-    "examples/sample-prompt.es.txt": 306
+    "examples/sample-prompt.en.txt": 235,
+    "examples/sample-prompt.es.txt": 316
   }
 }

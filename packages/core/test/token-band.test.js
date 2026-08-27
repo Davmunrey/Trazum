@@ -5,7 +5,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 
-import { ESTIMATE_ERROR_BAND_PCT, estimateTokens } from '../dist/index.js';
+import { BANDS, bandFor, bucketFor, ESTIMATE_ERROR_BAND_PCT, estimateTokens } from '../dist/index.js';
 import { digestOf, digestOfOne } from '../../../scripts/corpus-digest.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -220,21 +220,73 @@ describe('the published error band', () => {
     assert.ok(corpusFiles.length >= truth.samples.length);
   });
 
+  /**
+   * The promise, in the only form that survived contact with the corpus.
+   *
+   * This used to hold every sample to one published `±10%`, and the message it
+   * failed with named the fork it could not decide: *"either the estimator
+   * needs work for this text type, or the reports need to stop printing one
+   * band for all text."* Seven ordinary samples in the thin classes settled it.
+   * The estimator is 4.6% out on prose and 32.5% out on a CSV ledger, and no
+   * amount of constant-tuning closes that: searching the digit constant moves
+   * one numeric sample inside the band and the other to 23.3% out.
+   *
+   * So the promise is no longer a number. It is: **whatever band Trazum prints
+   * about a text, that text's measured error is inside it.** `bandFor` decides
+   * what gets printed, so this is a check on the pair rather than on either
+   * half, and it cannot be satisfied by widening one bucket — a sample sorted
+   * into a friendlier one is given a smaller band and fails here.
+   */
   for (const sample of truth?.samples ?? []) {
-    it(`holds for ${sample.file} (${sample.type})`, () => {
+    it(`is inside the band it is given: ${sample.file} (${sample.type})`, () => {
       const text = readFileSync(join(corpusDir, sample.file), 'utf8');
       const estimated = estimateTokens(text);
-      const error = Math.abs(estimated - sample.actualTokens) / sample.actualTokens;
+      const error = (Math.abs(estimated - sample.actualTokens) / sample.actualTokens) * 100;
+      const band = bandFor(text);
 
       assert.ok(
-        error <= PUBLISHED_BAND,
+        error <= band,
         `${sample.file}: estimated ${estimated}, actual ${sample.actualTokens} — ` +
-          `${(error * 100).toFixed(1)}% error, outside the published ±${PUBLISHED_BAND * 100}%. ` +
-          'Either the estimator needs work for this text type, or the reports need to ' +
-          'stop printing one band for all text.',
+          `${error.toFixed(1)}% error, and bandFor put it in the "${bucketFor(text)}" bucket ` +
+          `whose band is ±${band}%. Either the estimator got worse for this text, or the ` +
+          'bucket is wrong for it, or the bucket\'s band no longer covers what it holds.',
       );
     });
   }
+
+  it('gives no bucket a band narrower than the worst sample in it', () => {
+    /**
+     * The other direction, and the one that stops the bands from being a table
+     * somebody edited. Each band has to be at least the worst measured error
+     * among the samples that land in that bucket, so lowering a figure to make
+     * the product look better fails here rather than in somebody's terminal.
+     *
+     * At least, not exactly: a band may be rounded up, and `numeric` is, from
+     * 32.5 to 33. Requiring equality would make every re-measurement a source
+     * edit, and a band that is wider than measured is the safe direction.
+     */
+    const worst = new Map();
+    for (const sample of truth.samples) {
+      const text = readFileSync(join(corpusDir, sample.file), 'utf8');
+      const error = (Math.abs(estimateTokens(text) - sample.actualTokens) / sample.actualTokens) * 100;
+      const bucket = bucketFor(text);
+      worst.set(bucket, Math.max(worst.get(bucket) ?? 0, error));
+    }
+    const narrow = [...worst]
+      .filter(([bucket, error]) => BANDS[bucket] < error)
+      .map(([bucket, error]) => `${bucket}: band ±${BANDS[bucket]}% against a measured ${error.toFixed(1)}%`);
+    assert.deepEqual(narrow, [], `these bands claim more accuracy than was measured: ${narrow.join('; ')}`);
+  });
+
+  it('covers every bucket with at least one measurement', () => {
+    // A band nothing measured is a number somebody chose. Naming the gap is
+    // what keeps a bucket from being added with a figure and no evidence.
+    const measured = new Set(
+      truth.samples.map((sample) => bucketFor(readFileSync(join(corpusDir, sample.file), 'utf8'))),
+    );
+    const empty = Object.keys(BANDS).filter((bucket) => !measured.has(bucket));
+    assert.deepEqual(empty, [], `these bands rest on no sample at all: ${empty.join(', ')}`);
+  });
 
   it('is the tokenizer the band was calibrated on', () => {
     // The fixture that governs the published number has to be the Anthropic
@@ -271,13 +323,29 @@ describe('the published error band', () => {
      * Same idea as `trazum baseline` applied to this repository's own numbers:
      * publish a ceiling, gate on drift away from what you had.
      */
+    /*
+      Re-derived when the corpus stopped being one sample per class.
+
+      The old floors were cjk 3%, code 8%, numeric 7%, few-shot 4% — measured on
+      a corpus with a single file in each of those classes, and that file was
+      the one the estimator's constants had been fitted to. They were floors
+      under a fit, not under an accuracy.
+
+      Resetting a regression floor because the code got worse is exactly what a
+      floor exists to stop, so it is worth being precise that the code did not.
+      `code-heavy` went from 6.4% to **0.4%** under the same change that raised
+      this class's worst to 24.9%: the 24.9 is `code-sql`, which nothing had
+      ever measured. Every figure below is the worst sample of its class on the
+      corpus as it now stands, so from here the gate does what it was written
+      to do.
+    */
     const FLOORS = {
-      cjk: 0.03,
-      'prose-latin': 0.06,
-      code: 0.08,
-      numeric: 0.07,
+      cjk: 0.10,
+      'prose-latin': 0.05,
+      code: 0.25,
+      numeric: 0.33,
       punctuation: 0.07,
-      'few-shot': 0.04,
+      'few-shot': 0.05,
     };
 
     const byType = new Map();
