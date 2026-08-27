@@ -76,13 +76,30 @@ merged commit with no entry is a change only `git log` remembers.
   are written identically, because proving mutual exclusion means evaluating
   them.
 
-- **The landing counted things by hand, in five languages.** `every-page.test.js`
-  has derived `docs/` from `COMMAND_FLAGS` for a long time and the walk stops at
-  `docs/`; the landing shipped saying 39 commands against a CLI that dispatched
-  45, and spelled its contract count as a word in each locale, which no
-  derivation can reach. The words are digits, the digits come from
-  `COMMAND_FLAGS` and `CONTRACT_NAMES`, and a count spelled as a word is
-  refused rather than translated.
+- **Every page counted the commands by hand, and three of them were wrong.**
+  `README.md`, `docs/licensing.md` and `plugin/README.md` all said **42
+  commands** against a CLI dispatching 45; the README disagreed with itself,
+  saying 42 in its architecture diagram and forty-five in the table of contents
+  four lines below. The landing said **39**, in five languages, and spelled its
+  contract count as a word. `plugin/README.md` ships with the Claude Code
+  plugin, so that one was wrong in an artefact a stranger installs.
+
+  `every-page.test.js` reads every documented `trazum <command>` invocation out
+  of `docs/` and checks it against `COMMAND_FLAGS`, so a *renamed* command
+  cannot survive in the prose. A wrong total can, and its walk stops at `docs/`.
+
+  `derived-counts.test.js` reads every page that describes the product as it is,
+  plus the landing's copy in five languages, and holds five counts to what the
+  product has: commands from `COMMAND_FLAGS`, the playground's subset from
+  `PLAYGROUND_COMMANDS`, contracts from `CONTRACT_NAMES`, providers from the
+  pricing catalogue, and rules from either `RULES` or the doctrine's headings
+  depending on which the paragraph is about. Counts are written in digits: a
+  figure spelled as a word is outside what any derivation can reach.
+
+  Fenced blocks, lines naming the release they describe, and the dated files
+  end to end are excluded, because each would otherwise fail on a true
+  sentence or invite rewriting history. The README's architecture diagram is
+  the one claim living in a fence, so it is checked by name.
 
 - **Sonnet 5 was priced at a number nobody charges, on a timer.** The catalogue
   carried it as $3/$15 with an introductory promotion of $2/$10 running to
