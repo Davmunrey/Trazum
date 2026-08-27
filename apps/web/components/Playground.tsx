@@ -146,25 +146,59 @@ export function Playground({ t, locale }: { t: WebMessages; locale: Locale }) {
 
   return (
     <section>
-      <p className="mt-0 mb-4 max-w-[68ch] text-[14px] leading-relaxed text-muted-foreground">
-        {t.playground.lead}
+      {/*
+        The page header already states this panel's purpose, read off the rail's
+        own label. `t.playground.lead` said the same thing again directly under
+        it — "the same functions the terminal runs" twice on one screen — and
+        pushed the terminal itself down. The line that is left is the one the
+        header does not carry: what to type.
+      */}
+      <p className="mt-0 mb-5 max-w-[68ch] text-[14px] leading-relaxed text-muted-foreground">
+        {t.playground.start}
       </p>
 
       {/*
-        The terminal. A click anywhere inside focuses the prompt, because that
-        is what a terminal does; the output region is still selectable text.
+        The terminal, and now it looks like one.
+
+        It was a paper-coloured card with monospace text in it: the same white
+        surface as every panel around it, so the one place in the app where a
+        reader types commands read as another form. A terminal is dark — that
+        is its use scene, not a preference — and this repository already draws
+        one, in `docs/assets/demo.svg` at the top of the README. Same window,
+        same mark, same palette, so the thing the README promises and the thing
+        the page delivers are recognisably the same object.
+
+        The colours are the dark theme's own tokens, applied in both schemes on
+        purpose. A terminal that turns to paper under a light scheme is not the
+        light version of a terminal; it is a text box.
+
+        A click anywhere inside focuses the prompt, because that is what a
+        terminal does; the output region is still selectable text.
       */}
       <div
-        className="rounded-lg border bg-background font-mono text-[13px] leading-relaxed"
+        className="overflow-hidden rounded-xl border border-[#363329] bg-[#171512] font-mono text-[13px] leading-relaxed text-[#efece4] shadow-[var(--shadow-focal)]"
         onClick={() => inputRef.current?.focus()}
       >
+        <div className="flex items-center gap-2.5 border-b border-[#363329] bg-[#1e1c18] px-3.5 py-2.5">
+          <svg viewBox="0 0 24 24" aria-hidden="true" className="size-[18px] shrink-0">
+            <rect width="24" height="24" rx="5.5" fill="#b0522f" />
+            <g strokeWidth="2" strokeLinecap="round">
+              <path d="M5.5 7h13.5" stroke="#fff" />
+              <path d="M5.5 12h9.5" stroke="#fff" opacity=".45" />
+              <path d="M5.5 12h6" stroke="#fff" />
+              <path d="M5.5 17h6" stroke="#fff" opacity=".45" />
+              <path d="M5.5 17h3.5" stroke="#fff" />
+            </g>
+          </svg>
+          <span className="text-[12px] text-[#a8a495]">trazum</span>
+        </div>
         <div
           ref={outputRef}
-          className="h-[420px] overflow-y-auto overflow-x-auto px-3.5 py-3"
+          className="h-[420px] overflow-x-auto overflow-y-auto px-3.5 py-3"
           aria-live="polite"
         >
           {lines.length === 0 && (
-            <div className="whitespace-pre-wrap text-muted-foreground">help</div>
+            <div className="whitespace-pre-wrap text-[#a8a495]">{t.playground.lead}</div>
           )}
           {lines.map((line, index) => (
             <div
@@ -172,15 +206,15 @@ export function Playground({ t, locale }: { t: WebMessages; locale: Locale }) {
               className={
                 line.kind === 'input'
                   ? 'whitespace-pre-wrap font-semibold'
-                  : 'whitespace-pre text-muted-foreground'
+                  : 'whitespace-pre text-[#a8a495]'
               }
             >
               {line.text === '' ? ' ' : line.text}
             </div>
           ))}
         </div>
-        <div className="flex items-center gap-2 border-t px-3.5 py-2.5">
-          <span aria-hidden="true" className="select-none text-faint">
+        <div className="flex items-center gap-2 border-t border-[#363329] px-3.5 py-2.5">
+          <span aria-hidden="true" className="select-none text-[#e08a63]">
             $
           </span>
           <input
@@ -199,7 +233,7 @@ export function Playground({ t, locale }: { t: WebMessages; locale: Locale }) {
             autoCapitalize="off"
             autoCorrect="off"
             spellCheck={false}
-            className="w-full bg-transparent outline-none placeholder:text-faint"
+            className="w-full bg-transparent text-[#efece4] caret-[#e08a63] outline-none placeholder:text-[#93907f]"
           />
         </div>
       </div>

@@ -59,6 +59,19 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The Playground's terminal was a paper-coloured card.** The one place in
+  the app where a reader types commands was the same white surface as the forms
+  around it, with monospace text in it — so it read as another text box. A
+  terminal is dark; that is its use scene, not a preference, and this
+  repository already draws one at the top of its own README. It is now the same
+  window as `docs/assets/demo.svg`: the same dark tokens in both schemes, the
+  same mark in the title bar, and a terracotta prompt. What the README promises
+  and what the page delivers are recognisably the same object.
+
+  Its lede was the fourth panel heading printed twice; the sentence survives as
+  the empty terminal's own first line, which is where a reader looking at a
+  blank prompt actually wants it.
+
 - **The Write panel opened with two buttons, both reading "Skip this", and the
   emphasised one skipped.** The primary control's label was
   `typed ? t.write.tab : t.write.decline` — the rail's own label ("Write") once

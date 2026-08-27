@@ -767,6 +767,14 @@ export interface WebMessages {
    */
   playground: {
     tab: string;
+    /**
+     * The one line the page header does not carry: what to type.
+     *
+     * `lead` restated the header's own sentence under it and pushed the
+     * terminal down; it survives as the empty terminal's own first line, which
+     * is where a reader looking at a blank prompt actually wants it.
+     */
+    start: string;
     lead: string;
     inputAriaLabel: string;
     helpIntro: string;
