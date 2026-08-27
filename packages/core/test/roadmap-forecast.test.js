@@ -128,14 +128,38 @@ describe('the roadmap does not promise what it already delivered', () => {
      * So the sentence that motivated all of this is pinned where it belongs —
      * in the record, saying what was true when it was written.
      */
-    const released = roadmap.slice(roadmap.indexOf('## Released'), roadmap.indexOf('## Next'));
+    /*
+      The record is *everything the forecast is not*, computed from the same
+      boundary the check above uses rather than from a heading named here.
+
+      Two earlier drafts got this wrong in the two ways this repository has a
+      history of. The first ended the record at the heading that happens to
+      follow it, and `publish.test.js` caught it: naming the next heading is
+      the pattern that has had to be fixed nine times, because it is correct
+      exactly until a section is inserted between the two. That guard reads the
+      raw file, comments included, so this paragraph cannot spell the offending
+      call either. The second draft reached for `sectionOf`,
+      which ends at the next heading of any kind, and `## Released` is
+      immediately followed by a per-version heading, so it returned the
+      introduction and none of the record.
+    */
+    const record = forecastSections().reduce((rest, { text }) => rest.replace(text, ''), roadmap);
     assert.match(
-      released,
+      record,
       /converters stay named and unbuilt until a real export of each is seen/,
       'a released entry was rewritten to match the present, which falsifies the record',
     );
-    // And that sentence names commands that now exist, so it would fail the
-    // check above. That is the whole reason the record is excluded.
+    // The sentence is in the record and not in the forecast, which is the
+    // whole shape of this exclusion.
+    for (const { title, text } of forecastSections()) {
+      assert.doesNotMatch(
+        text,
+        /converters stay named and unbuilt/,
+        `${title} carries the record's sentence`,
+      );
+    }
+    // And it names commands that now exist, so it would fail the check above.
+    assert.ok(dispatched.has('from-otel'));
     assert.ok(dispatched.has('from-otel'));
   });
 });

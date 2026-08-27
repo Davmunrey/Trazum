@@ -92,6 +92,14 @@ merged commit with no entry is a change only `git log` remembers.
   Proven by planting the sentence back in and watching it fail with
   *"from-litellm is dispatched, and this calls it pending"*.
 
+  An existing guard then caught the new one twice, which is the ratchet
+  working. `publish.test.js` fails any suite that bounds a section of prose by
+  naming the heading after it, *"the pattern this repository has had to fix
+  nine times"* — and the first draft did exactly that, then wrote the offending
+  call into a comment explaining why it had stopped, which fails too because
+  that guard reads the raw file. The record is now computed as everything the
+  forecast is not, from the same boundary the check itself uses.
+
 ## 1.82.0 — "The band was a measurement of its own training set"
 
 ### Fixed
