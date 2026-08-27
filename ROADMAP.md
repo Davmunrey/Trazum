@@ -2452,11 +2452,13 @@ the universal cost lens, generalising the `from-claude-code` pattern to the
 whole observability ecosystem: the standards-based `from-otel` (the fortieth
 command) reads OpenTelemetry's GenAI spans as a usage log, so Trazum prices
 whatever telemetry a team already emits, and the web tab gained a third arm
-for a dropped OTLP export. Vendor-specific converters (LangSmith, Helicone,
-LiteLLM) are named as next but stay unbuilt until a real export of each is
-seen — the same refusal as inventing a price. No new plan is written until one
-is asked for: a plan exists to be written before the code, not to keep a
-section warm.
+for a dropped OTLP export. It also named three vendor-specific converters as
+what should come next, and declined to write any of them until each format
+could be read out of the tool's own source, which is the same refusal as
+inventing a price. All three exist now, and the paragraph above says when.
+
+No new plan is written until one is asked for: a plan exists to be written
+before the code, not to keep a section warm.
 
 Before it, [the 1.70 plan](docs/plan-1.70.md) was delivered in
 full — the whole 1.69 pipe collapsed to a drag of the transcripts folder,
@@ -2668,16 +2670,28 @@ Not scheduled. Listed so the reasoning is on the record.
   absolute figures at the cost of the dependency-free promise — worth doing
   only as an optional package.
 
-  **Still unscheduled, still pending the error band, and now weightier.** Pricing
-  seven providers made this the question it always was in miniature: the estimator
-  is tuned against Claude's tokenizer, and a GPT or Kimi figure carries whatever
-  error that mismatch produces. Nobody has measured it, so the report stops
-  claiming a Claude band for those models and says which tokenizer it was calibrated on
-  instead — honest, and no substitute for knowing.
+  **Still unscheduled, and the number that was missing now exists for two
+  families out of six.** Pricing seven providers made this the question it
+  always was in miniature: the estimator is tuned against Claude's tokenizer,
+  and a GPT or Kimi figure carries whatever error that mismatch produces. This
+  entry set the threshold itself — *within 5% across families and the
+  dependency is not worth taking; 40% out and it is* — and said deciding
+  without that number would be deciding blind.
 
-  Measuring the band is what decides whether the dependency is worth taking:
-  within 5% across families and it is not; 40% out and it is. Deciding now would
-  be deciding without the one number that settles it.
+  1.82.0 measured it. Against DeepSeek's own counter the estimator is **94.5%
+  out** at worst over the 47-sample corpus, and against Mistral's **103.1%**.
+  Both are more than twice the threshold this entry set for *worth taking*, so
+  for those two families the question is answered and the answer is yes.
+
+  **It stays unscheduled anyway, and the reason is not the measurement.** A
+  real tokenizer per family is a dependency in packages that have none, and
+  that is a distribution decision rather than a measurement one — the same
+  shape as the editor extension above. What has changed is that it can no
+  longer be deferred *for want of evidence*: the report now names the family
+  and prints the measured error where one exists, and says nobody has measured
+  it where one does not. OpenAI, Google, xAI and Moonshot are the four still
+  unmeasured, each needs a key for its own counter, and each has its own named
+  skip in the suite carrying the command to run.
 - ~~**Prompt library.**~~ **Shipped in 1.7.0, and the reasoning here was
   wrong in an instructive way.** This entry said storing prompts "would mean
   sending them to a server. Trazum's privacy story is that it never does" — and
