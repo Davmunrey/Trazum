@@ -50,6 +50,7 @@ ${bold('USO')}
   trazum from-otel <fichero|dir> [--label-from-service] [-o <fichero>]
   trazum from-litellm <fichero|dir> [-o <fichero>]
   trazum from-helicone <fichero|dir> [-o <fichero>]
+  trazum from-langsmith <fichero|dir> [-o <fichero>]
   trazum switch <uso.jsonl> --to <modelo> [--migration-usd <n>] [--cases <n>]
   trazum ownrate --gpu-usd-hour <n> --tokens-per-second <n> [--utilization <0-1>]
   trazum pulse [--max-stale-hours <n>]
@@ -184,6 +185,19 @@ ${bold('OPCIONES DE from-helicone')}
   saber". Un request id es una llamada y nunca una conversación, así que los
   registros no llevan sesión y los hallazgos de conversación no se pueden
   responder desde este registro; se dice en cada ejecución.
+
+${bold('OPCIONES DE from-langsmith')}
+  -o, --out <fichero>         Escribe el log de uso ahí en vez de en stdout.
+
+  Un export de runs de LangSmith, leído como un log de uso: modelo, marca de
+  tiempo, etiqueta, la traza como sesión y los recuentos de tokens, y nada más.
+  Los inputs y los outputs se quedan en el run, y de los metadatos se leen
+  claves con nombre y nunca se copian enteros. Solo run_type "llm" es una
+  llamada: cadenas, herramientas y retrievers se saltan y se cuentan, porque la
+  cadena que envuelve una llamada repite los tokens de su hijo. Un run cuyos
+  metadatos no nombran modelo se rechaza en lugar de tarifarlo por el nombre
+  del run, que es una clase cliente. El coste propio de LangSmith se informa
+  aparte y nunca se mezcla con el de Trazum.
 
 ${bold('OPCIONES DE from-litellm')}
   -o, --out <fichero>         Escribe el log de uso ahí en vez de en stdout.
@@ -1773,6 +1787,25 @@ ${bold('EJEMPLOS')}
     noSessions: () =>
       'Sin identidad de sesión: un request id de Helicone nombra una llamada, no una conversación, así que los hallazgos de conversación (caché desperdiciada en un solo turno, presión de contexto) no se pueden responder desde este registro. Hacer pasar un id por llamada como conversación reportaría cada llamada como una conversación de una.',
     unparseable: (count) => `${count} línea(s) no se pudieron leer como JSON.`,
+    written: (file) => `Escrito ${file}.`,
+  },
+
+  fromLangsmith: {
+    noPath: () =>
+      'from-langsmith necesita un export de runs o un directorio: trazum from-langsmith runs.json',
+    notFound: (path) => `${path}: no encontrado`,
+    noExports: (path) =>
+      `${path}: no hay exports .json/.jsonl/.ndjson dentro. Los runs de LangSmith salen de su endpoint de listado, del list_runs() del SDK o del botón de exportar en la tabla de runs de un proyecto.`,
+    summary: (files, rows) => `${files} archivo(s), ${rows} llamada(s) al modelo leídas.`,
+    notModelCalls: (count) =>
+      `${count} run(s) no eran llamadas al modelo y no están en la salida: cadenas, herramientas, retrievers y prompts. Una traza de LangSmith es un árbol y la cadena que envuelve una llamada repite los tokens de su hijo, así que sumar el árbol facturaría los mismos tokens una vez por nivel.`,
+    unnamedModel: (count) =>
+      `${count} llamada(s) no nombran modelo en sus metadatos y no están en la salida. El nombre del run es una clase cliente: «ChatAnthropic» no es un modelo que nadie pueda tarifar, así que se rechaza en lugar de adivinarlo. Pon ls_model_name o registra los invocation params.`,
+    noTokens: (count) =>
+      `${count} llamada(s) no traían recuento de tokens y no están en la salida: runs registrados que nadie puede tarifar. Se cuentan aquí y merecen una mirada en el tracer.`,
+    reportedCost: (usd) =>
+      `LangSmith tarifó estas mismas llamadas en ${usd} con su propia tabla. Esa cifra no se mezcla con nada que calcule Trazum: sumar dos tablas de precios en un total es como un informe se vuelve silenciosamente falso. Compáralas a propósito o no las compares.`,
+    unparseable: (count) => `${count} línea(s) no se han podido leer como JSON.`,
     written: (file) => `Escrito ${file}.`,
   },
 

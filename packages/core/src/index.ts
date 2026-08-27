@@ -218,6 +218,8 @@ export { litellmRecords, looksLikeLiteLlm } from './litellm.js';
 export type { LiteLlmConversion, LiteLlmRecord } from './litellm.js';
 export { heliconeRecords, looksLikeHelicone } from './helicone.js';
 export type { HeliconeConversion, HeliconeRecord } from './helicone.js';
+export { langsmithRecords, looksLikeLangsmith } from './langsmith.js';
+export type { LangsmithConversion, LangsmithRecord } from './langsmith.js';
 export type { ClaudeCodeConversion, ClaudeCodeRecord } from './claude-code.js';
 export { positionReport } from './position-report.js';
 export type {

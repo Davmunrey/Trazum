@@ -615,6 +615,27 @@ export interface CliMessages {
     written(file: string): string;
   };
 
+  fromLangsmith: {
+    noPath(): string;
+    notFound(path: string): string;
+    noExports(path: string): string;
+    summary(files: number, rows: number): string;
+    /**
+     * Runs that were not model calls: chains, tools, retrievers, prompts.
+     *
+     * Most of a LangSmith export, and said out loud because a reader who
+     * converted a thousand runs into three hundred records is owed the reason.
+     */
+    notModelCalls(count: number): string;
+    /** Runs whose metadata named no model: counted, never priced by the client class. */
+    unnamedModel(count: number): string;
+    noTokens(count: number): string;
+    /** LangSmith's own priced figure, stated and never merged into Trazum's. */
+    reportedCost(usd: string): string;
+    unparseable(count: number): string;
+    written(file: string): string;
+  };
+
   fromLiteLlm: {
     noPath(): string;
     notFound(path: string): string;

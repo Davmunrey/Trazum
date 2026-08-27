@@ -63,6 +63,7 @@ ${bold('USAGE')}
   trazum from-otel <file|dir> [--label-from-service] [-o <file>]
   trazum from-litellm <file|dir> [-o <file>]
   trazum from-helicone <file|dir> [-o <file>]
+  trazum from-langsmith <file|dir> [-o <file>]
   trazum switch <usage.jsonl> --to <model> [--migration-usd <n>] [--cases <n>]
   trazum ownrate --gpu-usd-hour <n> --tokens-per-second <n> [--utilization <0-1>]
   trazum pulse [--max-stale-hours <n>]
@@ -180,6 +181,18 @@ ${bold('OPTIONS FOR from-helicone')}
   cache verdicts read "cannot tell". A request id is one call and never a
   conversation, so the records carry no session and the conversation findings
   cannot be answered from this log; that is said on every run.
+
+${bold('OPTIONS FOR from-langsmith')}
+  -o, --out <file>            Write the usage log there instead of stdout.
+
+  A LangSmith run export, read as a usage log: model, timestamp, label, the
+  trace as the session, and the token counts, and nothing else. The inputs and
+  the outputs stay in the run, and the metadata bag is read for named keys and
+  never copied. Only run_type "llm" is a call: chains, tools and retrievers are
+  skipped and counted, because the chain wrapping a call repeats its child's
+  tokens. A run whose metadata names no model is refused rather than priced by
+  the run's name, which is a client class. LangSmith's own cost is reported on
+  its own and never merged into Trazum's.
 
 ${bold('OPTIONS FOR from-litellm')}
   -o, --out <file>            Write the usage log there instead of stdout.
@@ -1752,6 +1765,25 @@ ${bold('EXAMPLES')}
       `${count} row(s) were served from Helicone's cache. That is a flag on the row and never a token split, so the cache verdicts read "cannot tell" on this log rather than a fabricated one.`,
     noSessions: () =>
       'No session identity: a Helicone request id names one call, not a conversation, so the conversation findings (single-turn cache waste, context pressure) cannot be answered from this log. Passing a per-call id off as a conversation would report every call as a conversation of one.',
+    unparseable: (count) => `${count} line(s) did not parse as JSON.`,
+    written: (file) => `Wrote ${file}.`,
+  },
+
+  fromLangsmith: {
+    noPath: () =>
+      'from-langsmith needs a run export or a directory: trazum from-langsmith runs.json',
+    notFound: (path) => `${path}: not found`,
+    noExports: (path) =>
+      `${path}: no .json/.jsonl/.ndjson exports under it. LangSmith's runs come out of its list-runs endpoint, the SDK's list_runs(), or the export button on a project's runs table.`,
+    summary: (files, rows) => `${files} file(s), ${rows} model call(s) read.`,
+    notModelCalls: (count) =>
+      `${count} run(s) were not model calls and are not in the output: chains, tools, retrievers and prompts. A LangSmith trace is a tree and the chain wrapping a call repeats its child's tokens, so summing the tree would bill the same tokens once per level.`,
+    unnamedModel: (count) =>
+      `${count} model call(s) named no model in their metadata and are not in the output. The run's own name is a client class: "ChatAnthropic" is not a model anybody can price, so it is refused rather than guessed at. Set ls_model_name, or record the invocation params.`,
+    noTokens: (count) =>
+      `${count} model call(s) carried no token counts and are not in the output: logged runs nobody can price. Counted here and worth a look at the tracer.`,
+    reportedCost: (usd) =>
+      `LangSmith priced these same calls at ${usd} with its own table. That figure is not merged into anything Trazum computes: two price tables summed into one total is how a report becomes quietly wrong. Compare them deliberately or not at all.`,
     unparseable: (count) => `${count} line(s) did not parse as JSON.`,
     written: (file) => `Wrote ${file}.`,
   },

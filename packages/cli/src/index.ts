@@ -117,6 +117,7 @@ import {
   foreignTokenizer,
   measuredForeignError,
   heliconeRecords,
+  langsmithRecords,
   litellmRecords,
   otelRecords,
   ownRate,
@@ -688,6 +689,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   'from-otel': ['label-from-service', 'out', 'o'],
   'from-litellm': ['out', 'o'],
   'from-helicone': ['out', 'o'],
+  'from-langsmith': ['out', 'o'],
   switch: ['to', 'migration-usd', 'cases'],
   ownrate: ['gpu-usd-hour', 'tokens-per-second', 'utilization'],
   pulse: ['json', 'max-stale-hours'],
@@ -3193,6 +3195,88 @@ async function commandFromLiteLlm(args: Args, t: CliMessages): Promise<void> {
   if (cacheFlagged > 0) console.error(t.fromLiteLlm.cacheFlagged(cacheFlagged));
   if (sawSpend) console.error(t.fromLiteLlm.reportedSpend(formatUsd(reportedSpend)));
   if (unparseable > 0) console.error(t.fromLiteLlm.unparseable(unparseable));
+}
+
+/**
+ * `trazum from-langsmith <file|dir>` — a LangSmith run export as a usage log.
+ *
+ * The fifth converter, and the one where the unit is wrong before anything
+ * else can be right: LangSmith records a **run**, and a trace is a tree of
+ * them. The chain that wrapped a model call carries the same tokens as the
+ * call, so summing the export bills them once per level. Only `run_type: llm`
+ * is a call, and every run that is not one is counted out loud — skipping two
+ * thirds of a file silently would look exactly like reading it.
+ *
+ * The model is refused rather than inferred. There is no model column; the
+ * name lives in the metadata, and the obvious substitute is the run's own
+ * `name`, which LangChain sets to the client class. Pricing a call by
+ * `ChatAnthropic` would attribute a figure to something it does not describe.
+ *
+ * LangSmith's own cost is reported on its own line and never merged into
+ * anything Trazum computes, the way `from-litellm` keeps the gateway's
+ * arithmetic apart. Two price tables summed into one total is how a report
+ * becomes quietly wrong.
+ */
+async function commandFromLangsmith(args: Args, t: CliMessages): Promise<void> {
+  const target = args.positional[0];
+  if (target === undefined) throw new Error(t.fromLangsmith.noPath());
+
+  let info;
+  try {
+    info = await stat(target);
+  } catch {
+    throw new Error(t.fromLangsmith.notFound(target));
+  }
+  const files: string[] = [];
+  if (info.isDirectory()) {
+    const entries = await readdir(target, { recursive: true, withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isFile() && /\.(json|jsonl|ndjson)$/i.test(entry.name)) {
+        files.push(join(entry.parentPath, entry.name));
+      }
+    }
+    files.sort();
+    if (files.length === 0) throw new Error(t.fromLangsmith.noExports(target));
+  } else {
+    files.push(target);
+  }
+
+  const lines: string[] = [];
+  let rows = 0;
+  let notModelCalls = 0;
+  let unnamedModel = 0;
+  let noTokens = 0;
+  let unparseable = 0;
+  let reportedCostUsd: number | null = null;
+  for (const file of files) {
+    const conversion = langsmithRecords(await readFile(file, 'utf8'));
+    for (const record of conversion.records) lines.push(JSON.stringify(record));
+    rows += conversion.rows;
+    notModelCalls += conversion.notModelCalls;
+    unnamedModel += conversion.unnamedModel;
+    noTokens += conversion.noTokens;
+    unparseable += conversion.unparseable;
+    if (conversion.reportedCostUsd !== null) {
+      reportedCostUsd = (reportedCostUsd ?? 0) + conversion.reportedCostUsd;
+    }
+  }
+
+  const out = stringFlag(args, 'out') ?? stringFlag(args, 'o');
+  if (out !== undefined) {
+    await writeFile(out, lines.join('\n') + (lines.length > 0 ? '\n' : ''), 'utf8');
+    console.error(t.fromLangsmith.written(out));
+  } else {
+    for (const line of lines) console.log(line);
+  }
+
+  console.error(t.fromLangsmith.summary(files.length, rows));
+  if (notModelCalls > 0) console.error(t.fromLangsmith.notModelCalls(notModelCalls));
+  if (unnamedModel > 0) console.error(t.fromLangsmith.unnamedModel(unnamedModel));
+  if (noTokens > 0) console.error(t.fromLangsmith.noTokens(noTokens));
+  if (reportedCostUsd !== null) {
+    console.error(t.fromLangsmith.reportedCost(formatUsd(reportedCostUsd)));
+  }
+  if (unparseable > 0) console.error(t.fromLangsmith.unparseable(unparseable));
 }
 
 /**
@@ -11818,6 +11902,9 @@ async function main(): Promise<void> {
       break;
     case 'from-litellm':
       await commandFromLiteLlm(args, t);
+      break;
+    case 'from-langsmith':
+      await commandFromLangsmith(args, t);
       break;
     case 'from-helicone':
       await commandFromHelicone(args, t);

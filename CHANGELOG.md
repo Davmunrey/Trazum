@@ -11,6 +11,52 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+- **`trazum from-langsmith` reads a LangSmith run export as a usage log.** The
+  fifth converter, and the only one where the unit is wrong before anything
+  else can be right: LangSmith records a **run**, and a trace is a tree of
+  them. The chain that wrapped a model call carries the same tokens as the
+  call, and the agent above it carries them again, so summing an export bills
+  the same tokens once per level.
+
+  **Only `run_type: "llm"` is a call**, and every run that is not one is
+  counted out loud. Most of a LangSmith export is chains, tools and retrievers;
+  a converter that turned a thousand runs into three hundred records without
+  saying why would look exactly like one that failed to read the file.
+
+  **The model is refused rather than inferred.** There is no model column — the
+  name lives in `extra.metadata.ls_model_name` or in the invocation parameters
+  beside it — and the obvious substitute is right there and wrong: LangChain
+  sets a run's `name` to the client class, so pricing a call by `ChatAnthropic`
+  would attribute a figure to something that is not a model. Those runs are
+  counted in `unnamedModel` and dropped. A test plants exactly that run and
+  asserts the class never reaches a record.
+
+  **The trace is the conversation.** `trace_id` spans the calls one request
+  made, which is the identity Trazum's conversation findings need; `id` is a
+  single call. This is the one converter of the five that can answer those
+  questions rather than declining them.
+
+  **What does not cross:** `inputs` and `outputs` are the prompt and the
+  completion on every run, and neither is read. `extra.metadata` is a free-form
+  bag the operator fills, so it is read for named keys and never copied — the
+  next thing somebody puts in there is not a leak by default. One marker is
+  planted in each and the whole conversion is grepped for it.
+
+  **What it refuses to invent:** `total_cost` and `prompt_cost_details` are
+  LangSmith's arithmetic over LangSmith's price table. They never enter a
+  record and the figure is printed beside Trazum's rather than inside it.
+  `prompt_cost_details` looks like a cache split and is dollars rather than
+  tokens, so the cache verdicts read `cannot-tell`.
+
+  `looksLikeLangsmith` is planted against a Helicone export, a LiteLLM spend
+  log and an OpenAI usage response: all three carry `prompt_tokens`, and a
+  detector loose enough to claim any of them would take somebody's export away
+  from the converter that understands it.
+
+  Forty-five commands.
+
 ## 1.82.0 — "The band was a measurement of its own training set"
 
 ### Fixed
