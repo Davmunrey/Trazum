@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
-  ESTIMATE_ERROR_BAND_PCT,
+  BANDS,
   buildAdvisories,
   estimateTokens,
   listModels,
@@ -54,7 +54,20 @@ import {
  * rather than in a commit message, because it is the kind that gets made again.
  */
 
-const BAND = ESTIMATE_ERROR_BAND_PCT / 100;
+/**
+ * The narrowest band the code can possibly be hedging by.
+ *
+ * There is no single published band any more: `buildAdvisories` hedges by
+ * `bandFor` of the prompt in front of it, and that is 4% on CJK and 33% on a
+ * ledger. The obvious fix — compute the band of the prompt this test builds —
+ * is circular, because the prompt is built to hit a size derived from the band.
+ *
+ * The narrowest published band breaks the circle and makes the property
+ * stronger rather than weaker: a point inside the narrowest band is inside
+ * every band, so whatever bucket the generated prompt lands in, the code is
+ * hedging across this sample and a flat answer here is a fault.
+ */
+const NARROWEST = Math.min(...Object.values(BANDS)) / 100;
 
 /** Words that count as admitting the number might be on the other side. */
 /**
@@ -125,6 +138,8 @@ const usageFor = (model) => ({
  */
 
 /** The context advisories read the count directly, so a number is the real input. */
+const isWindowThreshold = (name) => name === 'context window';
+
 const reportForCount = (model, tokens) => buildAdvisories('x {{q}}', tokens, usageFor(model), {});
 
 /**
@@ -177,11 +192,11 @@ describe('no threshold produces an unqualified claim', () => {
            * covered: it should be flat, not hedged.
            */
           const straddling = [
-            Math.round(threshold * (1 - BAND * 0.5)),
-            Math.round(threshold * (1 + BAND * 0.5)),
+            Math.round(threshold * (1 - NARROWEST * 0.5)),
+            Math.round(threshold * (1 + NARROWEST * 0.5)),
           ];
 
-          const isWindow = name === 'context window';
+          const isWindow = isWindowThreshold(name);
           for (const tokens of straddling) {
             if (tokens < 1) continue;
             const advisories = isWindow

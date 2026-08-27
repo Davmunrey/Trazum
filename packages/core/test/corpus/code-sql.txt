@@ -1,0 +1,28 @@
+You are a database review assistant. Given a migration, return the risks.
+
+Review this migration and say what it locks and for how long:
+
+```sql
+BEGIN;
+
+ALTER TABLE orders
+  ADD COLUMN settled_at timestamptz,
+  ADD COLUMN settlement_ref text;
+
+CREATE INDEX CONCURRENTLY idx_orders_settled_at
+  ON orders (settled_at)
+  WHERE settled_at IS NOT NULL;
+
+UPDATE orders
+   SET settled_at = created_at + interval '3 days'
+ WHERE status = 'complete'
+   AND settled_at IS NULL;
+
+ALTER TABLE orders
+  ALTER COLUMN settlement_ref SET NOT NULL;
+
+COMMIT;
+```
+
+Answer with three sections: LOCKS, DURATION, SAFER. Do not rewrite the SQL
+unless SAFER requires it, and if it does, show only the changed statements.

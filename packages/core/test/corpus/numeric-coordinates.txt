@@ -1,0 +1,13 @@
+You are a routing assistant. Given these stops, order them for one van.
+
+depot 40.416775,-3.703790
+stop A 40.452530,-3.688340 window 09:00-11:30 weight 118.4
+stop B 40.389670,-3.699190 window 08:30-10:00 weight 42.75
+stop C 40.427730,-3.713330 window 11:00-13:45 weight 205.9
+stop D 40.401120,-3.634460 window 09:15-12:00 weight 8.2
+stop E 40.463500,-3.688330 window 13:00-16:30 weight 331.05
+stop F 40.376390,-3.716670 window 08:00-09:30 weight 64.8
+
+Van capacity 700.0 kg. Average speed 22.5 km/h in the centre, 41.0 km/h north
+of 40.45. Answer with the stop order and the arrival time at each. If a window
+cannot be met, say which and do not reorder around it silently.

@@ -1,0 +1,24 @@
+You are a build assistant. Given a failing CI step, name the cause.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+readonly ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly OUT="${ROOT}/dist"
+
+rm -rf "${OUT}"
+mkdir -p "${OUT}/assets"
+
+for pkg in core cli mcp; do
+  ( cd "${ROOT}/packages/${pkg}" && npm run build --silent ) \
+    || { echo "::error::${pkg} failed to build" >&2; exit 1; }
+  cp -R "${ROOT}/packages/${pkg}/dist/." "${OUT}/${pkg}/"
+done
+
+find "${OUT}" -name '*.map' -delete
+tar --sort=name --mtime='@0' --owner=0 --group=0 -czf "${OUT}.tgz" -C "${OUT}" .
+sha256sum "${OUT}.tgz" | tee "${OUT}.tgz.sha256"
+```
+
+Answer with CAUSE and FIX. One sentence each.

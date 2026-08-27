@@ -39,7 +39,7 @@ export const en: WebMessages = {
         + 'terminal runs, with nothing to install.',
     },
     footerLead: (pricingReviewed) =>
-      `Pricing reviewed on ${pricingReviewed}. Token counts are estimates (±10%); for exact figures use the official counting endpoint from the CLI with `,
+      `Pricing reviewed on ${pricingReviewed}. Token counts are estimates and the band depends on the text (±6% on prose, up to ±33% on tabular numbers); for exact figures use the official counting endpoint from the CLI with `,
     footerTail:
       '. Savings are projections over the scenario you describe, not billing.',
     localeSwitchLabel: 'Language',

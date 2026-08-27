@@ -1,0 +1,15 @@
+You are a parsing assistant. Given these patterns, say which input breaks them.
+
+```js
+const RULES = [
+  { id: 'iso',    re: /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(Z|[+-]\d{2}:\d{2})$/ },
+  { id: 'semver', re: /^v?(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+([0-9A-Za-z.-]+))?$/ },
+  { id: 'path',   re: /^(?:\.{1,2}\/)*(?:[^/\0]+\/)*[^/\0]+$/ },
+  { id: 'header', re: /^([!#$%&'*+.^_`|~0-9A-Za-z-]+):[ \t]*(.*?)[ \t]*$/ },
+  { id: 'env',    re: /^([A-Z_][A-Z0-9_]*)=(?:"((?:[^"\\]|\\.)*)"|(\S*))$/m },
+];
+```
+
+For each rule name one input that a reader would expect to match and that does
+not, and one that matches and should not. Give the input verbatim, escaped as a
+JS string literal. Do not modify a pattern.

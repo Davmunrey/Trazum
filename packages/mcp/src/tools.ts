@@ -7,6 +7,7 @@ import {
   PricingOverlayError,
   UNLABELLED,
   assemble,
+  bandFor,
   billLevers,
   cacheEconomics,
   cacheHitRate,
@@ -66,10 +67,18 @@ import type { ToolDefinition } from './rpc.js';
  */
 export const MAX_PROMPT_CHARS = MAX_INPUT_CHARS;
 
-/** Every figure this server prints descends from the estimator, so it says so. */
-const BAND_NOTE =
-  'token counts are estimates (±10% on prose, calibrated on Claude); prices reviewed '
-  + PRICING_LAST_REVIEWED;
+/**
+ * Every figure this server prints descends from the estimator, so it says so —
+ * with the band the text it just measured actually earns.
+ *
+ * It was one constant reading `±10% on prose` for every prompt, which is the
+ * fault `band.ts` was written to end: the same estimator is 5.6% out on prose
+ * and 32.5% out on a CSV ledger, and a tool answering an agent has no reader to
+ * notice the difference.
+ */
+const bandNote = (text: string) =>
+  `token counts are estimates (±${bandFor(text)}% for text of this kind, calibrated on `
+  + `Claude); prices reviewed ${PRICING_LAST_REVIEWED}`;
 
 function promptFrom(args: Record<string, unknown>): string {
   const prompt = args.prompt;
@@ -175,7 +184,7 @@ const OPTIMIZE: ToolDefinition = {
         + ` (${result.tokensBefore - result.tokensAfter} fewer)`,
       `monthly saving at ${callsPerMonth.toLocaleString('en-US')} calls:`
         + ` ${formatUsd(result.savings.monthlySavingsUsd)}`,
-      BAND_NOTE,
+      bandNote(result.optimized),
       '',
       '--- optimised prompt ---',
       result.optimized,
@@ -243,8 +252,9 @@ const CHECK: ToolDefinition = {
 
     return [
       verdict,
-      'token counts are estimates (±10% on prose, calibrated on Claude), so a prompt within'
-        + ' a few percent of its budget should be treated as uncertain',
+      `token counts are estimates (±${bandFor(result.optimized)}% for text of this kind,`
+        + ' calibrated on Claude), so a prompt within a few percent of its budget should be'
+        + ' treated as uncertain',
     ].join('\n');
   },
 };

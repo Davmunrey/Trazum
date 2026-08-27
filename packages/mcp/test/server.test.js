@@ -5,6 +5,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { after, before, describe, it } from 'node:test';
 
+import { bandFor } from '@trazum/core';
+
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = join(here, '..');
 const entry = join(packageRoot, 'dist/index.js');
@@ -165,8 +167,12 @@ describe('optimize_prompt', () => {
   });
 
   it('states the error band, so a figure quoted onward carries its uncertainty', async () => {
-    const answer = await client.call('optimize_prompt', { prompt: 'Please be brief.' });
-    assert.match(bodyOf(answer), /estimates \(±10%/);
+    const prompt = 'Please be brief.';
+    const answer = await client.call('optimize_prompt', { prompt });
+    // The band the text earns, read from the same function the server reads it
+    // from. A literal here would pass while the server printed a band measured
+    // on somebody else's prose.
+    assert.match(bodyOf(answer), new RegExp(`estimates \\(±${bandFor(prompt)}%`));
   });
 
   it('refuses a prompt past the size cap rather than working through it', async () => {

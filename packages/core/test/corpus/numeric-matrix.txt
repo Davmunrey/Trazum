@@ -1,0 +1,15 @@
+Given this confusion matrix, report precision and recall per class.
+
+        pred_a pred_b pred_c pred_d pred_e
+true_a    814     22     41      7      3
+true_b     19    762     58     11      6
+true_c     37     44    691     28     14
+true_d      9     15     33    877     21
+true_e      4      8     17     26    903
+
+Totals per true class 887 856 814 955 958. Totals per predicted class 883 851
+840 949 947. Grand total 4470.
+
+Report to three decimal places. Give macro and micro averages separately and do
+not present one as the other. If a class has fewer than 900 true instances, mark
+its recall LOW SUPPORT rather than reporting it as comparable to the rest.

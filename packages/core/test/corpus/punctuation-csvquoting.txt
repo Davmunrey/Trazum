@@ -1,0 +1,15 @@
+Normalise these rows. Keep every field, change only the quoting.
+
+name,note,amount
+"Smith, J.","said ""fine"" twice",1200
+O'Neill,"line one
+line two",-45
+"Ács, Béla","tab	inside; semicolon too",0
+,"empty name, quoted",99
+"trailing space ","leading space",  7
+"a,b,c","""fully quoted""",1e3
+
+Rules: quote a field if and only if it contains a comma, a quote, a newline or
+a leading or trailing space. Double an inner quote. Never trim a field's
+contents. Never re-type a number. If a row cannot be normalised without
+changing what it says, return it unchanged and add a line beginning REFUSED.

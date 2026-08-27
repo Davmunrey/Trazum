@@ -112,6 +112,10 @@ import {
   parseUsageLine,
   plannedCalls,
   claudeCodeRecords,
+  ESTIMATE_ERROR_BAND_PCT,
+  bandFor,
+  foreignTokenizer,
+  measuredForeignError,
   heliconeRecords,
   litellmRecords,
   otelRecords,
@@ -795,16 +799,28 @@ function renderDiff(before: string, after: string, t: CliMessages): string {
 /**
  * The provider's name when the estimator was not calibrated for it.
  *
- * `estimateTokens` is a heuristic tuned against Claude's tokenizer, and the
- * ±10% band descends from that. Printing the same band beside a GPT or Kimi
- * figure states a precision nobody has measured for that family — and since the
- * catalogue grew past Anthropic, that is most of it. Returns null when the model
- * is Anthropic's, where the band is at least the claim it was written for.
+ * `estimateTokens` is a heuristic tuned against Claude's tokenizer, and every
+ * band descends from that. Printing one beside a GPT or Kimi figure states a
+ * precision nobody has measured for that family — and since the catalogue grew
+ * past Anthropic, that is most of it. Returns null when the model is
+ * Anthropic's, where the band is at least the claim it was written for.
  */
 function offFamilyName(modelId: string): string | null {
   const provider = getModel(modelId).provider;
   if (provider === undefined || provider === 'anthropic') return null;
   return getModel(modelId).displayName;
+}
+
+/**
+ * How far off the estimator has been measured on this model's family.
+ *
+ * Read from the catalogue's provider rather than from the display name, because
+ * the name is what a reader sees and the id is what was measured. Null on the
+ * calibrated family and on every family nobody has run — an unmeasured one gets
+ * a sentence saying so, never a borrowed figure.
+ */
+function offFamilyError(modelId: string): number | null {
+  return measuredForeignError(foreignTokenizer(getModel(modelId).provider ?? null));
 }
 
 /**
@@ -889,7 +905,13 @@ function printReport(
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const sourceNote =
     result.tokenSource === 'heuristic'
-      ? c.dim(t.report.estimated(offFamilyName(result.usage.model)))
+      ? c.dim(
+          t.report.estimated(
+            offFamilyName(result.usage.model),
+            bandFor(result.optimized),
+            offFamilyError(result.usage.model),
+          ),
+        )
       : c.dim(t.report.exactCount());
 
   /**
@@ -5851,6 +5873,7 @@ async function commandCheck(
       verdicts: [verdict],
       level,
       tokenSource: counter.source,
+      band: bandFor(prompt),
       truncated: false,
       t,
     }),
@@ -5986,12 +6009,18 @@ async function checkEmbedded(
   const failures = verdicts.filter(isOverBudget);
   const ok = failures.length === 0 && extraction.declined.length === 0;
 
+  // Widest across the prompts this report covers, never an average: a run over
+  // prose and a CSV covers text the estimator is 6% and 33% out on, and a
+  // figure between them would describe neither.
+  const band = widestBand(extraction.prompts.map((prompt) => prompt.text));
+
   await writeMarkdown(args, () =>
     renderCheckMarkdown({
       target: path,
       verdicts,
       level,
       tokenSource: counter.source,
+      band,
       truncated: false,
       t,
     }),
@@ -10192,6 +10221,14 @@ interface PromptScan {
   truncated: boolean;
   /** The extensions actually walked, so an error can name them. */
   extensions: string[];
+  /**
+   * The widest measured band across the prompts this scan judged.
+   *
+   * Computed here because this is where the texts are, and widest rather than
+   * averaged: a scan over a prose prompt and a CSV covers text the estimator
+   * is 6% and 33% out on, and a figure between them describes neither.
+   */
+  band: number;
 }
 
 /**
@@ -10271,6 +10308,9 @@ async function scanPrompts(
   const verdicts: FileVerdict[] = [];
   const declined: Array<{ path: string; line: number; detail: string }> = [];
 
+  // Every prompt this run judged, so the report's band is the widest of them
+  // rather than one figure asserted over text of several kinds.
+  const judgedTexts: string[] = [];
   for (const relativePath of files) {
     const text = capInput(
       await readFile(join(root, relativePath), 'utf8'),
@@ -10278,6 +10318,7 @@ async function scanPrompts(
       maxInputFlag(args, t),
       t,
     );
+    judgedTexts.push(text);
     // Budgets are keyed on paths as written in the repository, so a pattern like
     // `prompts/**` has to be matched against the path including the root the
     // user passed — not against the name relative to it.
@@ -10311,7 +10352,7 @@ async function scanPrompts(
     throw new Error(t.errors.noPromptsFound(root, extensions.join(' ')));
   }
 
-  return { verdicts, declined, truncated, extensions };
+  return { verdicts, declined, truncated, extensions, band: widestBand(judgedTexts) };
 }
 
 async function checkDirectory(
@@ -10343,7 +10384,7 @@ async function checkDirectory(
     only = checkable;
   }
 
-  const { verdicts, declined, truncated, extensions } = await scanPrompts(
+  const { verdicts, declined, truncated, extensions, band } = await scanPrompts(
     root,
     args,
     flagBudget,
@@ -10421,6 +10462,7 @@ async function checkDirectory(
     renderCheckMarkdown({
       target: root,
       verdicts,
+      band,
       level,
       tokenSource: counter.source,
       truncated,
@@ -11006,6 +11048,18 @@ const DOCTOR_LIST_LIMIT = 8;
 const BLAME_DEFAULT_LIMIT = 20;
 const BLAME_MAX_LIMIT = 500;
 
+/**
+ * The band for a report covering several prompts.
+ *
+ * The widest of them, and the empty case is the widest published band rather
+ * than a narrow default: a report over nothing has measured nothing, and
+ * guessing narrow there is the one direction that produces a false claim.
+ */
+function widestBand(texts: readonly string[]): number {
+  if (texts.length === 0) return ESTIMATE_ERROR_BAND_PCT;
+  return Math.max(...texts.map((text) => bandFor(text)));
+}
+
 interface BlameRow {
   revision: Revision;
   /** `null` when the file did not exist at that commit, or held no marked prompt. */
@@ -11104,17 +11158,35 @@ async function commandBlame(
   const shown = rows.slice(revisions.length > limit ? 1 : 0).reverse();
   const truncatedHistory = revisions.length > limit;
 
+  /*
+    The band of this file's own text, read once and handed to both renderers.
+
+    `blame` walks one file across revisions, so the kind of text is a property
+    of the file, and today's content is the closest thing to it that exists
+    here. A file that is gone from the working tree — renamed away, or deleted
+    in the commit being blamed — falls back to the widest published band, which
+    is exactly what that constant is for: a caller that cannot see the text can
+    only guess in the safe direction.
+  */
+  let band = ESTIMATE_ERROR_BAND_PCT;
+  try {
+    band = bandFor(await readFile(resolvePath(process.cwd(), target), 'utf8'));
+  } catch {
+    // Not on disk now. The wide band stands and says so by being wide.
+  }
+
   await writeMarkdown(args, () =>
     renderBlameMarkdown({
       repoPath,
       rows: shown,
       truncated: truncatedHistory,
       netCost: netCostOf(shown, args, config, pricing, t),
+      band,
       t,
     }),
   );
 
-  printBlame(shown, { repoPath, args, config, pricing, t, truncated: truncatedHistory });
+  printBlame(shown, { repoPath, args, config, pricing, t, truncated: truncatedHistory, band });
 }
 
 /**
@@ -11171,6 +11243,15 @@ function printBlame(
     pricing: PricingCatalogue;
     t: CliMessages;
     truncated: boolean;
+    /**
+     * The band of this file's own text, computed once by the caller.
+     *
+     * `blame` walks one file across revisions, so the kind of text is a
+     * property of the file rather than of any one revision. The caller has
+     * today's content and this renderer does not, which is why it arrives
+     * here rather than being read again.
+     */
+    band: number;
   },
 ): void {
   const { repoPath, args, config, pricing, t, truncated } = context;
@@ -11305,7 +11386,7 @@ function printBlame(
     );
   }
 
-  console.log(`\n${c.dim(t.blame.estimateNote())}\n`);
+  console.log(`\n${c.dim(t.blame.estimateNote(context.band))}\n`);
 }
 
 // --------------------------------------------------------------------------

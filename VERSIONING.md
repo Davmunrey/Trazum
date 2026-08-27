@@ -63,7 +63,9 @@ breaking:
 - **New** exports, options, commands, flags, rules and advisories. An addition
   cannot break code that does not use it.
 - The **text** of any message, in any language.
-- The exact output of the heuristic token estimator, within its documented ±10%.
+- The exact output of the heuristic token estimator, within the band documented
+  for that kind of text (±4% on CJK, ±6% on Latin prose, ±26% on code, ±33% on
+  tabular numbers).
 - Prices, which move on someone else's schedule — see below.
 
 ### Deprecating something

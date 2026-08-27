@@ -72,7 +72,7 @@ trazum optimize --all-labels --from-log usage.jsonl
 
 ```
 Input tokens
-  190 → 137   -27.9% (estimated, ±10%)
+  190 → 137   -27.9% (estimated, ±6%)
 
 Cost with Claude Opus 5
   50,000 calls/month · 300 output tokens per call

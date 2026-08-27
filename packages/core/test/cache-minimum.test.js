@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import {
-  ESTIMATE_ERROR_BAND_PCT,
+  bandFor,
   analyzeCachePrefix,
   buildAdvisories,
   estimateTokens,
@@ -264,7 +264,6 @@ describe('prompt-caching hedges above the line, not only below it', () => {
      * claim while the band still straddles the line.
      */
     const min = MODEL.cacheMinTokens ?? 0;
-    const band = ESTIMATE_ERROR_BAND_PCT / 100;
     const unqualified = [];
 
     for (let reps = 20; reps <= 40; reps += 1) {
@@ -282,6 +281,14 @@ describe('prompt-caching hedges above the line, not only below it', () => {
        * a test asserting its own parsing rather than the property.
        */
       const prefix = analyzeCachePrefix(prompt, estimateTokens).stablePrefixTokens;
+      /*
+        The band this prompt's own text is entitled to, which is the band the
+        advisories hedge by. The test used to compute it from the one published
+        figure, and once the code started asking `bandFor` the two were checking
+        different widths: the sweep reported unqualified claims against
+        behaviour that was correct for the band actually in use.
+      */
+      const band = bandFor(prompt) / 100;
       const straddles = prefix * (1 - band) < min && prefix * (1 + band) >= min;
       if (straddles && !HEDGE.test(advisory.detail)) unqualified.push(`${reps} (prefix ~${prefix})`);
     }
@@ -374,10 +381,14 @@ describe('the context window is an estimate against a hard edge too', () => {
      * some context advisory — the fault was a range of sizes where none did, and
      * only a sweep shows the seam between "fits" and "does not" is covered.
      */
-    const band = ESTIMATE_ERROR_BAND_PCT / 100;
     const silent = [];
     for (let pct = 80; pct <= 125; pct += 1) {
       const tokens = Math.round((WINDOW * pct) / 100);
+      // Same band the advisory uses, from the same prompt, for the same reason
+      // as the sweep above.
+      // `contextIdsFor` builds its advisories from the literal 'x', so that is
+      // the text whose band the code hedges by.
+      const band = bandFor('x') / 100;
       const straddles = tokens * (1 - band) <= WINDOW && tokens * (1 + band) > WINDOW;
       if (straddles && contextIdsFor(tokens).length === 0) silent.push(`${pct}%`);
     }

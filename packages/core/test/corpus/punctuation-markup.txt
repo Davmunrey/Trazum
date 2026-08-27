@@ -1,0 +1,15 @@
+Rewrite the following, keeping every tag, entity and attribute exactly as-is.
+
+<section id="terms" data-rev="2026-02" aria-labelledby="terms-h">
+  <h2 id="terms-h">Terms &amp; conditions</h2>
+  <p>Fees are billed monthly (see &sect;4.2); late payment attracts 1.5%/month.</p>
+  <ul>
+    <li><strong>Notice:</strong> 30&nbsp;days &mdash; in writing.</li>
+    <li><em>Refunds:</em> pro&#8209;rata, minus any &ldquo;setup&rdquo; charge.</li>
+  </ul>
+  <!-- do not touch: legal review 2026-02-11 -->
+</section>
+
+Rules: never re-encode an entity; never reflow a line inside <pre>; never drop
+a comment. If a sentence cannot be shortened without changing its meaning,
+return it unchanged and say why in one line after the markup.

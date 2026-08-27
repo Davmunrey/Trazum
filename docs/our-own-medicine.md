@@ -233,14 +233,23 @@ Measured by running the optimiser on them, at the aggressive level:
 
 | Prompt | Tokens | Recovered |
 |---|---|---|
-| `suggest` | 291 | 2 |
-| `semantic` | 382 | 4 |
-| `refiner` | 198 | 0 |
-| `example-review` | 305 | 0 |
+| `suggest` | 307 | 4 |
+| `semantic` | 402 | 8 |
+| `refiner` | 203 | 0 |
+| `example-review` | 313 | 0 |
 
-**1176 tokens**, and this project's own deterministic rules recover **6 of them**
-— half a per cent. Eleven of the twelve rules are inert on all four; the six
-tokens come entirely from `emphasis`, which lower-cases shouted words.
+**1225 tokens**, and this project's own deterministic rules recover **12 of them**
+— under one per cent. Eleven of the twelve rules are inert on all four; the
+recovered tokens come entirely from `emphasis`, which lower-cases shouted words.
+
+The figures moved in the 1.82 arc and the reason is worth stating, because a
+table that quietly changed would be exactly what this page exists to argue
+against. Nothing was edited in the prompts. The estimator changed: symbol runs
+had been charged one token per two, and every symbol-dense sample in the corpus
+measured under that rule. These four prompts are full of backticks, braces and
+JSON, so their counts went up when the rule was corrected against measurement.
+The recovered figure doubled for the same reason and is still under one per
+cent.
 
 **The honest reading is not "the rules are bad".** These are prompts written to
 be read by a model, edited repeatedly, with no politeness, no hedging and nothing

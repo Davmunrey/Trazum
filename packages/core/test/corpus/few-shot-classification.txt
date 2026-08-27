@@ -1,0 +1,22 @@
+Label each support message with one of: refund, outage, howto, abuse, other.
+
+Message: My card was charged twice for the same order last Tuesday.
+Label: refund
+
+Message: The dashboard has been returning 503 for about twenty minutes.
+Label: outage
+
+Message: Where do I change the billing address on my account?
+Label: howto
+
+Message: Someone is using my logo on their storefront, please take it down.
+Label: abuse
+
+Message: Just wanted to say the new export button is great, thanks.
+Label: other
+
+Message: I was billed after cancelling and the site is also down for me.
+Label: refund
+
+Answer with the label word only. When two apply, choose the one that costs the
+customer money.

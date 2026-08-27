@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { comparePrompts } from '@trazum/core';
+import { BANDS, comparePrompts } from '@trazum/core';
 
 import {
   MAX_COMMENT_CHARS,
@@ -124,7 +124,7 @@ const verdict = (over) => ({
 });
 
 describe('the check report', () => {
-  const base = { level: 'safe', tokenSource: 'heuristic', truncated: false, t };
+  const base = { level: 'safe', tokenSource: 'heuristic', truncated: false, band: BANDS.prose, t };
 
   it('leads with the verdict, then the table', () => {
     const md = renderCheckMarkdown({ ...base, target: 'prompts/', verdicts: [verdict(true)] });
@@ -185,7 +185,7 @@ describe('the check report', () => {
 
   it('states where the numbers came from', () => {
     const estimated = renderCheckMarkdown({ ...base, target: 'p/', verdicts: [verdict(false)] });
-    assert.match(estimated, /estimated, ±10%/);
+    assert.match(estimated, new RegExp(`estimated, ±${base.band}%`));
     const exact = renderCheckMarkdown({
       ...base,
       target: 'p/',
@@ -515,7 +515,15 @@ describe('the blame report', () => {
   ];
 
   const render = (over = {}) =>
-    renderBlameMarkdown({ repoPath: 'prompts/support.txt', rows, truncated: false, netCost: null, t, ...over });
+    renderBlameMarkdown({
+      repoPath: 'prompts/support.txt',
+      rows,
+      truncated: false,
+      netCost: null,
+      band: BANDS.prose,
+      t,
+      ...over,
+    });
 
   it('shows the date only, not the time', () => {
     const table = tableRows(render());
@@ -624,7 +632,7 @@ describe('the blame report', () => {
 });
 
 describe('the cost diff a pull-request comment leads with', () => {
-  const base = { level: 'safe', tokenSource: 'heuristic', truncated: false, t };
+  const base = { level: 'safe', tokenSource: 'heuristic', truncated: false, band: BANDS.prose, t };
   const verdict = (path, tokens) => ({
     path,
     tokens,

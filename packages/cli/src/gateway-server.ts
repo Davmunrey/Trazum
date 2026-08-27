@@ -156,6 +156,20 @@ export const UPSTREAMS: Readonly<Record<string, Upstream>> = {
    */
   deepseek: { origin: 'https://api.deepseek.com', path: '/chat/completions' },
   /**
+   * Mistral, on the same rule as DeepSeek and from the same evidence.
+   *
+   * `scripts/measure-token-band.mjs` sends a real key to
+   * `https://api.mistral.ai/v1/chat/completions`, and it was run: the corpus is
+   * measured against Mistral's own tokenizer and the fixture is committed. The
+   * guard in `trusted-hosts.test.js` is what forced this entry to exist rather
+   * than letting the harness quietly become a second place credentials leave
+   * from — *"a measuring script is not a side door"*. Reusing the endpoint the
+   * repository already trusts with a credential is the difference between
+   * adding an upstream and inventing one, and this path does carry `/v1` where
+   * DeepSeek's does not.
+   */
+  mistral: { origin: 'https://api.mistral.ai', path: '/v1/chat/completions' },
+  /**
    * Google, on the same rule and from a fuller record than DeepSeek's.
    *
    * `packages/core/src/llm.ts` has sent a real key to

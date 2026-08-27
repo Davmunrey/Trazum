@@ -1,0 +1,16 @@
+Summarise this ledger. State the largest three movements and the net.
+
+date,account,debit,credit,balance
+2026-01-02,4000,0.00,12450.75,12450.75
+2026-01-05,5100,3200.40,0.00,9250.35
+2026-01-09,5100,118.99,0.00,9131.36
+2026-01-11,4000,0.00,7800.00,16931.36
+2026-01-14,6200,15420.10,0.00,1511.26
+2026-01-18,4000,0.00,22310.55,23821.81
+2026-01-22,5100,940.25,0.00,22881.56
+2026-01-27,6200,11004.00,0.00,11877.56
+2026-01-29,4000,0.00,3199.99,15077.55
+2026-01-31,7300,2750.00,0.00,12327.55
+
+Report figures to two decimal places. Do not annualise. If the closing balance
+does not follow from the movements, say so instead of reconciling it.

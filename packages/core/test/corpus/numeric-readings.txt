@@ -1,0 +1,30 @@
+Estas son lecturas horarias de un contador. Di en qué horas hubo consumo anómalo.
+
+hora consumo_wh acumulado_wh temperatura_c
+00 412 412 18
+01 388 800 18
+02 371 1171 17
+03 366 1537 17
+04 359 1896 16
+05 402 2298 16
+06 918 3216 17
+07 1442 4658 18
+08 1601 6259 20
+09 1388 7647 22
+10 1104 8751 24
+11 998 9749 26
+12 1211 10960 28
+13 1877 12837 31
+14 2044 14881 33
+15 1932 16813 34
+16 1655 18468 33
+17 1402 19870 31
+18 1198 21068 28
+19 1344 22412 25
+20 1521 23933 23
+21 1288 25221 21
+22 844 26065 20
+23 566 26631 19
+
+Una hora es anómala si su consumo supera en más de la mitad la mediana de las
+seis horas anteriores. Responde solo con las horas y el consumo de cada una.

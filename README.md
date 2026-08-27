@@ -394,7 +394,7 @@ node packages/cli/dist/index.js optimize prompt.txt --calls 50000 --diff
 
 ```
 Input tokens
-  190 → 137   -27.9% (estimated, ±10%)
+  190 → 137   -27.9% (estimated, ±6%)
 
 Rules applied
   [safe] Repeated paragraphs (1×, ~19 tokens)
@@ -485,7 +485,7 @@ In GitHub Actions, use the packaged action — nothing to install:
 
 ```yaml
 - uses: actions/checkout@v7
-- uses: Davmunrey/Trazum@a877be98e92dcc187eb89cc376c394a084c74560  # 1.80.1
+- uses: Davmunrey/Trazum@6a28e556fa688f615b65d5c6c1d1f622f1baab81  # 1.81.0
   with:
     target: prompts/system.txt
     max-tokens: 2000
@@ -531,7 +531,7 @@ permissions:
 
 steps:
   - uses: actions/checkout@v7
-  - uses: Davmunrey/Trazum@a877be98e92dcc187eb89cc376c394a084c74560  # 1.80.1
+  - uses: Davmunrey/Trazum@6a28e556fa688f615b65d5c6c1d1f622f1baab81  # 1.81.0
     with:
       target: prompts/            # a directory uses trazum.config.json budgets
       comment: true
@@ -560,7 +560,7 @@ run gates tokens before the money is spent or the spend itself, and saying
 which is the caller's job:
 
 ```yaml
-- uses: Davmunrey/Trazum@a877be98e92dcc187eb89cc376c394a084c74560  # 1.80.1
+- uses: Davmunrey/Trazum@6a28e556fa688f615b65d5c6c1d1f622f1baab81  # 1.81.0
   with:
     usage-log: logs/yesterday.jsonl
     max-usd: '50'            # exit 1 over budget — no period assumed
@@ -1057,9 +1057,11 @@ not told you what it knows.
 
 ## Token counting
 
-A dependency-free estimator with a **measured ±10% band** (worst observed
-error 6.4% over 21 samples in seven languages), language-aware because one
-English divisor was 37% wrong on German. `--exact-tokens` settles any doubt
+A dependency-free estimator with a **band measured per kind of text** — ±4% on
+CJK, ±6% on Latin prose, ±26% on code and markup, ±33% on tabular numbers —
+measured over 47 samples in ten languages, where the worst error in each bucket
+is 3.2%, 5.6%, 25.1% and 32.5%. Language-aware because one English divisor was
+37% wrong on German. `--exact-tokens` settles any doubt
 against the provider's free counting endpoint. The measurement story is in
 [the command reference](docs/commands.md#token-counting).
 ---

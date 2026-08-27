@@ -1,0 +1,13 @@
+You are a shell assistant. Say what each line actually runs.
+
+```
+find . -name '*.ts' -not -path "./node_modules/*" -print0 | xargs -0 grep -l 'TODO'
+echo "${ARR[@]/#/--flag=}" | tr ' ' '\n'
+: "${PORT:?PORT must be set}" && exec node --enable-source-maps ./dist/main.js
+printf '%s\n' "${@}" | while IFS= read -r line; do printf '[%q]\n' "$line"; done
+git log --format='%H%x09%an%x09%s' --since="$(date -d '7 days ago' +%F)"
+awk -F'\t' 'NR>1 && $3 ~ /^[0-9]+$/ { s += $3 } END { printf "%.2f\n", s }' in.tsv
+```
+
+For each line answer with EXPANDS TO and BREAKS WHEN. Do not rewrite a command,
+and do not assume bash where the line would also run under dash.

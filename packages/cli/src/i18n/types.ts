@@ -127,10 +127,25 @@ export interface CliMessages {
   report: {
     inputTokens(): string;
     /**
-   * @param offFamily Provider name when the model is not the family the
-   * estimator was calibrated on, otherwise null.
-   */
-    estimated(offFamily: string | null): string;
+     * Where the input-token figure came from, and how far it can be trusted.
+     *
+     * Three cases, and the third is the one that took a measurement to earn.
+     * `band` is this text's own band, printed alone when the model is the family
+     * the estimator was calibrated on. `offFamily` names a tokenizer it was not
+     * measured on, and then the Claude band is dropped rather than annotated —
+     * a number qualified into meaninglessness is still read as a number.
+     * `measuredOff` is the worst error actually measured against that family's
+     * own counter, or null where nobody has run it: the difference between
+     * *this may be off* and *this was 94.5% off* is the difference between a
+     * hedge a reader discounts and one they act on.
+     *
+     * @param offFamily Provider name when the model is not the calibrated
+     * family, otherwise null.
+     * @param band This text's own measured band, as a percentage.
+     * @param measuredOff Worst measured error against that family's tokenizer,
+     * or null when it has never been measured.
+     */
+    estimated(offFamily: string | null, band: number, measuredOff: number | null): string;
     exactCount(): string;
     rulesApplied(): string;
     nothingToTrim(): string;
@@ -813,7 +828,8 @@ export interface CliMessages {
     goneAt(): string;
     truncated(shown: number): string;
     followedRename(from: string): string;
-    estimateNote(): string;
+    /** `band` is the widest band across the texts the trend covers. */
+    estimateNote(band: number): string;
   };
 
   /** `trazum doctor` — the survey across a whole workspace. */
@@ -925,7 +941,13 @@ export interface CliMessages {
     truncated(): string;
     footer(source: string, level: string): string;
     pricingOverlaid(count: number, lastReviewed: string): string;
-    sourceEstimated(): string;
+    /**
+     * `band` is this text's own measured band, from `bandFor` in core.
+     *
+     * Never a constant again: the estimator is 6% out on prose and 33% out on
+     * a CSV ledger, so one figure printed on both was wrong about one of them.
+     */
+    sourceEstimated(band: number): string;
     sourceExact(): string;
     measuringOptimised(): string;
     metricTokens(before: string, after: string): string;

@@ -7,7 +7,8 @@ import type { PricingCatalogue } from './pricing.js';
 import { formatUsd } from './savings.js';
 import { analyzeExamples, findContradictions, findMovableSchema,
   findRestatedFormat } from './structure.js';
-import { ESTIMATE_ERROR_BAND_PCT, bandGoverns, estimateTokens } from './tokenizer.js';
+import { bandGoverns, estimateTokens } from './tokenizer.js';
+import { bandFor } from './band.js';
 import type { Advisory, ModelPricing, TokenCounter, UsageProfile } from './types.js';
 
 function countSignals(haystack: string, signals: readonly string[]): number {
@@ -184,7 +185,18 @@ export function buildAdvisories(
    * outright rather than degrading, so there is no partial result to notice.
    */
   const estimated = count === estimateTokens;
-  const band = ESTIMATE_ERROR_BAND_PCT / 100;
+  /**
+   * The band of **this prompt**, not one number for all text.
+   *
+   * These three hedges — the context window, the cache minimum both ways — are
+   * the places an estimate is compared against a hard threshold and the answer
+   * stated as fact, so the width of the hedge decides whether the statement is
+   * safe. A single 10% was measured on a corpus of thirteen prose files and one
+   * each of code, numeric and punctuation, and the estimator is 25% out on a
+   * SQL migration and 33% out on a CSV ledger. Hedging a code prompt by ten
+   * points was hedging by a third of what it needed.
+   */
+  const band = bandFor(optimizedPrompt) / 100;
 
   /**
    * Whether that band describes **this** model's tokenizer.
@@ -296,7 +308,7 @@ export function buildAdvisories(
              */
             nearMinimum:
               count === estimateTokens &&
-              cache.stablePrefixTokens * (1 - ESTIMATE_ERROR_BAND_PCT / 100) < minTokens,
+              cache.stablePrefixTokens * (1 - band) < minTokens,
           }),
           estimatedMonthlyUsd: saving,
         });
@@ -350,7 +362,7 @@ export function buildAdvisories(
            */
           couldReachMinimum:
             count === estimateTokens &&
-            cache.stablePrefixTokens * (1 + ESTIMATE_ERROR_BAND_PCT / 100) >= minTokens,
+            cache.stablePrefixTokens * (1 + band) >= minTokens,
         }),
         estimatedMonthlyUsd: null,
       });

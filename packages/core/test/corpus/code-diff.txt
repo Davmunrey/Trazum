@@ -1,0 +1,20 @@
+You are a review assistant. Given this diff, say what it changes about behaviour.
+
+```diff
+@@ -14,9 +14,12 @@ export function settle(rows: Row[], now: number): Settlement {
+-  const due = rows.filter((r) => r.dueAt <= now);
+-  const total = due.reduce((sum, r) => sum + r.amountCents, 0);
+-  return { count: due.length, totalCents: total };
++  const due = rows.filter((r) => r.dueAt <= now && r.state !== 'void');
++  const total = due.reduce((sum, r) => sum + r.amountCents, 0);
++  if (due.some((r) => r.currency !== due[0]?.currency)) {
++    throw new MixedCurrency(due.map((r) => r.currency));
++  }
++  return { count: due.length, totalCents: total, currency: due[0]?.currency ?? null };
+ }
+@@ -3,4 +3,4 @@ describe('settle', () => {
+-  it('sums everything due', () => {
++  it('sums everything due that is not void', () => {
+```
+
+Answer with BEHAVIOUR, COMPATIBILITY and MISSING TEST. One line each.

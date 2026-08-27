@@ -5,7 +5,16 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 
-import { ESTIMATE_ERROR_BAND_PCT, estimateTokens } from '../dist/index.js';
+import {
+  BANDS,
+  ESTIMATE_ERROR_BAND_PCT,
+  MEASURED_FOREIGN_ERROR_PCT,
+  bandFor,
+  bucketFor,
+  estimateTokens,
+  foreignTokenizer,
+  measuredForeignError,
+} from '../dist/index.js';
 import { digestOf, digestOfOne } from '../../../scripts/corpus-digest.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -220,21 +229,117 @@ describe('the published error band', () => {
     assert.ok(corpusFiles.length >= truth.samples.length);
   });
 
+  /**
+   * The promise, in the only form that survived contact with the corpus.
+   *
+   * This used to hold every sample to one published `±10%`, and the message it
+   * failed with named the fork it could not decide: *"either the estimator
+   * needs work for this text type, or the reports need to stop printing one
+   * band for all text."* Seven ordinary samples in the thin classes settled it.
+   * The estimator is 4.6% out on prose and 32.5% out on a CSV ledger, and no
+   * amount of constant-tuning closes that: searching the digit constant moves
+   * one numeric sample inside the band and the other to 23.3% out.
+   *
+   * So the promise is no longer a number. It is: **whatever band Trazum prints
+   * about a text, that text's measured error is inside it.** `bandFor` decides
+   * what gets printed, so this is a check on the pair rather than on either
+   * half, and it cannot be satisfied by widening one bucket — a sample sorted
+   * into a friendlier one is given a smaller band and fails here.
+   */
   for (const sample of truth?.samples ?? []) {
-    it(`holds for ${sample.file} (${sample.type})`, () => {
+    it(`is inside the band it is given: ${sample.file} (${sample.type})`, () => {
       const text = readFileSync(join(corpusDir, sample.file), 'utf8');
       const estimated = estimateTokens(text);
-      const error = Math.abs(estimated - sample.actualTokens) / sample.actualTokens;
+      const error = (Math.abs(estimated - sample.actualTokens) / sample.actualTokens) * 100;
+      const band = bandFor(text);
 
       assert.ok(
-        error <= PUBLISHED_BAND,
+        error <= band,
         `${sample.file}: estimated ${estimated}, actual ${sample.actualTokens} — ` +
-          `${(error * 100).toFixed(1)}% error, outside the published ±${PUBLISHED_BAND * 100}%. ` +
-          'Either the estimator needs work for this text type, or the reports need to ' +
-          'stop printing one band for all text.',
+          `${error.toFixed(1)}% error, and bandFor put it in the "${bucketFor(text)}" bucket ` +
+          `whose band is ±${band}%. Either the estimator got worse for this text, or the ` +
+          'bucket is wrong for it, or the bucket\'s band no longer covers what it holds.',
       );
     });
   }
+
+  it('gives no bucket a band narrower than the worst sample in it', () => {
+    /**
+     * The other direction, and the one that stops the bands from being a table
+     * somebody edited. Each band has to be at least the worst measured error
+     * among the samples that land in that bucket, so lowering a figure to make
+     * the product look better fails here rather than in somebody's terminal.
+     *
+     * At least, not exactly: a band may be rounded up, and `numeric` is, from
+     * 32.5 to 33. Requiring equality would make every re-measurement a source
+     * edit, and a band that is wider than measured is the safe direction.
+     */
+    const worst = new Map();
+    for (const sample of truth.samples) {
+      const text = readFileSync(join(corpusDir, sample.file), 'utf8');
+      const error = (Math.abs(estimateTokens(text) - sample.actualTokens) / sample.actualTokens) * 100;
+      const bucket = bucketFor(text);
+      worst.set(bucket, Math.max(worst.get(bucket) ?? 0, error));
+    }
+    const narrow = [...worst]
+      .filter(([bucket, error]) => BANDS[bucket] < error)
+      .map(([bucket, error]) => `${bucket}: band ±${BANDS[bucket]}% against a measured ${error.toFixed(1)}%`);
+    assert.deepEqual(narrow, [], `these bands claim more accuracy than was measured: ${narrow.join('; ')}`);
+  });
+
+  it('covers every bucket with at least one measurement', () => {
+    // A band nothing measured is a number somebody chose. Naming the gap is
+    // what keeps a bucket from being added with a figure and no evidence.
+    const measured = new Set(
+      truth.samples.map((sample) => bucketFor(readFileSync(join(corpusDir, sample.file), 'utf8'))),
+    );
+    const empty = Object.keys(BANDS).filter((bucket) => !measured.has(bucket));
+    assert.deepEqual(empty, [], `these bands rest on no sample at all: ${empty.join(', ')}`);
+  });
+
+  it('gives the narrowest band only to scripts it was measured on', () => {
+    /**
+     * The bug this was written for, planted one block at a time.
+     *
+     * `CJK` was five ranges typed as literal characters, and the last pair
+     * meant to say *"compatibility ideographs, U+F900 to U+FAFF"*. Its opening
+     * character was U+8C48 — the ordinary unified ideograph that shares the
+     * glyph — so the range ran from U+8C48 to U+FAFF and took in the Yi
+     * syllables, the private-use area and both surrogate halves along the way.
+     * A page of astral emoji came out `cjk` and was handed ±4%: the narrowest
+     * band in the file, about text nothing has ever measured.
+     *
+     * It survived every assertion above because no corpus sample lives in any
+     * of those blocks, which is exactly what a planted character is for.
+     * CodeQL found it; this keeps it found.
+     */
+    const outsideCjk = {
+      'Yi syllables': '\u{A000}\u{A001}\u{A002}\u{A003}',
+      'the private-use area': '\u{E000}\u{E001}\u{E002}\u{E003}',
+      'astral emoji': '\u{1F600}\u{1F601}\u{1F602}\u{1F603}',
+      'Hangul Jamo Extended-B': '\u{D7B0}\u{D7B1}\u{D7B2}\u{D7B3}',
+    };
+    for (const [what, text] of Object.entries(outsideCjk)) {
+      assert.notEqual(
+        bucketFor(text),
+        'cjk',
+        `${what} was sorted cjk and handed ±${BANDS.cjk}%, a band measured on none of it`,
+      );
+    }
+
+    // And the silent half: a guard that rejects everything passes the four
+    // above and breaks the feature. Each script the band was actually
+    // measured on still sorts cjk.
+    for (const [what, text] of Object.entries({
+      hiragana: 'ひらがなのぶんしょう',
+      katakana: 'カタカナノブンショウ',
+      han: '这是一段中文文本内容',
+      hangul: '한국어로쓴문장입니다',
+      'compatibility ideographs': '\u{F900}\u{F901}\u{F902}\u{F903}',
+    })) {
+      assert.equal(bucketFor(text), 'cjk', `${what} stopped being read as CJK`);
+    }
+  });
 
   it('is the tokenizer the band was calibrated on', () => {
     // The fixture that governs the published number has to be the Anthropic
@@ -271,13 +376,29 @@ describe('the published error band', () => {
      * Same idea as `trazum baseline` applied to this repository's own numbers:
      * publish a ceiling, gate on drift away from what you had.
      */
+    /*
+      Re-derived when the corpus stopped being one sample per class.
+
+      The old floors were cjk 3%, code 8%, numeric 7%, few-shot 4% — measured on
+      a corpus with a single file in each of those classes, and that file was
+      the one the estimator's constants had been fitted to. They were floors
+      under a fit, not under an accuracy.
+
+      Resetting a regression floor because the code got worse is exactly what a
+      floor exists to stop, so it is worth being precise that the code did not.
+      `code-heavy` went from 6.4% to **0.4%** under the same change that raised
+      this class's worst to 24.9%: the 24.9 is `code-sql`, which nothing had
+      ever measured. Every figure below is the worst sample of its class on the
+      corpus as it now stands, so from here the gate does what it was written
+      to do.
+    */
     const FLOORS = {
-      cjk: 0.03,
+      cjk: 0.04,
       'prose-latin': 0.06,
-      code: 0.08,
-      numeric: 0.07,
-      punctuation: 0.07,
-      'few-shot': 0.04,
+      code: 0.26,
+      numeric: 0.33,
+      punctuation: 0.12,
+      'few-shot': 0.05,
     };
 
     const byType = new Map();
@@ -458,8 +579,64 @@ describe('the estimator against tokenizers it was never tuned for', () => {
 
         assert.ok(worst.length > 0, 'nothing was measured');
       });
+
+      it('is the figure the report prints about this family, to one decimal', () => {
+        /**
+         * The number that reaches a reader, held against the fixture it came
+         * from.
+         *
+         * `MEASURED_FOREIGN_ERROR_PCT` ships and these fixtures do not, so the
+         * value is written in `band.ts` by hand — which is exactly the shape
+         * that drifts. Adding a sample can move the worst error, and nothing
+         * would have said so: the report would go on printing a figure that
+         * was true of a corpus this repository no longer has.
+         *
+         * A family with no entry is not a failure. It is the unmeasured case
+         * the report has a sentence for, and the two tests below hold that
+         * distinction from both sides.
+         */
+        const provider = other.provider ?? name;
+        const claimed = MEASURED_FOREIGN_ERROR_PCT[provider];
+        if (claimed === undefined) return;
+
+        let worst = 0;
+        for (const sample of other.samples) {
+          const text = readFileSync(join(corpusDir, sample.file), 'utf8');
+          const error = Math.abs(estimateTokens(text) - sample.actualTokens) / sample.actualTokens;
+          worst = Math.max(worst, error * 100);
+        }
+
+        assert.equal(
+          Number(worst.toFixed(1)),
+          claimed,
+          `band.ts says the estimator is ${claimed}% out on ${provider}; the fixture says ` +
+            `${worst.toFixed(1)}% — re-read it off the measurement rather than editing this`,
+        );
+      });
     });
   }
+
+  it('claims a measured error only for families that have been measured', () => {
+    /**
+     * The direction the fixture check above cannot cover: an entry for a
+     * provider with no fixture at all would pass every test in this file by
+     * never being reached, and the report would print a figure with nothing
+     * behind it.
+     */
+    const measured = new Set(
+      others.map((name) => JSON.parse(readFileSync(join(fixturesDir, name), 'utf8')).provider),
+    );
+    const unbacked = Object.keys(MEASURED_FOREIGN_ERROR_PCT).filter((p) => !measured.has(p));
+    assert.deepEqual(unbacked, [], 'band.ts states an error for a family nobody has measured');
+  });
+
+  it('answers null for an unmeasured family rather than the nearest number', () => {
+    // The flattering reading of missing information, refused once more.
+    assert.equal(measuredForeignError('openai'), null);
+    assert.equal(measuredForeignError('anthropic'), null);
+    assert.equal(measuredForeignError(null), null);
+    assert.equal(measuredForeignError(foreignTokenizer('anthropic')), null);
+  });
 });
 
 describe('the published band has one source', () => {
@@ -483,6 +660,44 @@ describe('the published band has one source', () => {
    */
   const skip = new Set(['CHANGELOG.md', 'RELEASES.md', 'ROADMAP.md']);
 
+  /**
+   * A delivered plan is a record too, and it says so itself.
+   *
+   * `docs/plan-1.36-1.40.md` opens with *"This file is kept as it was written,
+   * before the code, rather than rewritten in hindsight. It is history now, not
+   * a forecast."* Rewriting its ±10% to today's figure would falsify a record to
+   * satisfy a test, which is the same objection the three files above are
+   * excluded for.
+   *
+   * Read off the document rather than listed here, so a plan written next year
+   * is covered by making the same declaration and a live page cannot join the
+   * skip set by being added to an array.
+   */
+  const declaresItselfHistory = (text) =>
+    /kept as it was written|history now, not a forecast/i.test(text.slice(0, 2000));
+
+  /**
+   * A comment narrates; a string, a heading or a table cell claims.
+   *
+   * This guard was written when there was one band, and then every figure
+   * anywhere was the same claim. With a band per text type that stopped being
+   * true: `advisories.ts` explains what happened under the old band, and
+   * `band.ts` opens by describing the number it replaced. Rewriting those to
+   * the current figure would make each comment false about its own history,
+   * which is the same objection the delivered plan is skipped for.
+   *
+   * So source files are scanned with their comments removed and prose files
+   * whole. Markdown and SVG have no comments to strip, and every figure in
+   * them reaches a reader, which is exactly what a published band is.
+   *
+   * Deliberately crude, and safe in the direction that matters: the stripper
+   * can only ever remove text, so a claim it fails to recognise as code stays
+   * in and is checked. It cannot smuggle one out.
+   */
+  const CODE = /[.](ts|tsx|js|mjs|cjs)$/;
+  const withoutComments = (text) =>
+    text.replace(/[/][*][\s\S]*?[*][/]/g, ' ').replace(/(^|[^:])[/][/].*$/gm, '$1');
+
   it('no file states a band the code does not publish', () => {
     const listed = spawnSync('git', ['grep', '-l', '-E', '±[0-9]+%'], {
       cwd: repoRoot,
@@ -492,17 +707,22 @@ describe('the published band has one source', () => {
     assert.ok(files.length > 5, 'git grep found almost nothing — has the notation changed?');
 
     const wrong = [];
+    const published = new Set([ESTIMATE_ERROR_BAND_PCT, ...Object.values(BANDS)]);
     for (const file of files) {
-      const text = readFileSync(join(repoRoot, file), 'utf8');
+      const raw = readFileSync(join(repoRoot, file), 'utf8');
+      if (declaresItselfHistory(raw)) continue;
+      const text = CODE.test(file) ? withoutComments(raw) : raw;
       for (const match of text.matchAll(/±(\d+)%/g)) {
-        if (Number(match[1]) !== ESTIMATE_ERROR_BAND_PCT) wrong.push(`${file}: ±${match[1]}%`);
+        if (!published.has(Number(match[1]))) wrong.push(`${file}: ±${match[1]}%`);
       }
     }
 
     assert.deepEqual(
       wrong,
       [],
-      `these publish a band other than ±${ESTIMATE_ERROR_BAND_PCT}%: ${wrong.join(', ')}`,
+      'these publish a band the code does not: every ±N% in a live file has to be ' +
+        `one the code publishes — ${[...published].sort((a, b) => a - b).map((n) => `±${n}%`).join(', ')} — ` +
+        `and these are not: ${wrong.join(', ')}`,
     );
   });
 });

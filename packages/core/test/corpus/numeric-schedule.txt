@@ -1,0 +1,14 @@
+You are a capacity assistant. Given this roster, say where the gaps are.
+
+Week 14, shifts of 8h, demand in calls per hour:
+
+Mon 09:00 12 | 10:00 18 | 11:00 24 | 12:00 31 | 13:00 22 | 14:00 19 | 15:00 14
+Tue 09:00 9  | 10:00 15 | 11:00 28 | 12:00 44 | 13:00 38 | 14:00 21 | 15:00 11
+Wed 09:00 14 | 10:00 21 | 11:00 26 | 12:00 29 | 13:00 25 | 14:00 20 | 15:00 16
+Thu 09:00 8  | 10:00 12 | 11:00 19 | 12:00 27 | 13:00 24 | 14:00 18 | 15:00 10
+Fri 09:00 22 | 10:00 34 | 11:00 51 | 12:00 62 | 13:00 47 | 14:00 29 | 15:00 17
+
+One agent handles 6 calls per hour. Staffed: Mon 4, Tue 5, Wed 4, Thu 4, Fri 6.
+
+Report SHORTFALL per day and hour, in agents, rounded up. Do not average across
+the day: an hour short is an hour short.

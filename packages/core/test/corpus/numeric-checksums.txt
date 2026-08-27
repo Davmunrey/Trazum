@@ -1,0 +1,21 @@
+Verify these records. Each line is id, quantity, unit price in cents, and total.
+
+100001 3 1299 3897
+100002 12 450 5400
+100003 7 8999 62993
+100004 1 124999 124999
+100005 25 199 4975
+100006 144 75 10800
+100007 6 2450 14700
+100008 33 1050 34650
+100009 2 599999 1199998
+100010 18 325 5850
+100011 9 1111 9999
+100012 60 250 15000
+100013 4 78999 315996
+100014 250 12 3000
+100015 11 4545 49995
+
+A record is correct when quantity times unit price equals the total exactly.
+Report only the incorrect ones, with the total the arithmetic gives. Do not
+correct the file and do not round: every figure is an integer number of cents.

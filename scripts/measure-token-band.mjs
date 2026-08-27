@@ -2,7 +2,7 @@
 /**
  * Measures the token estimator against the official counting endpoint.
  *
- * `±10%` is printed on every report Trazum produces, appears in both READMEs and
+ * A band is printed on every report Trazum produces, appears in every README and
  * in the estimator's own doc comment, and every dollar figure the tool prints
  * descends from it. Until this script has been run, that number is a claim
  * rather than a measurement.
@@ -36,7 +36,7 @@ const corpusDir = join(repoRoot, 'packages/core/test/corpus');
  *
  * The types are the point: the estimator is calibrated per character class, so
  * "one band for all text" is an assumption rather than a finding. If Japanese is
- * 40% out while English prose is 5%, printing ±10% on a Japanese prompt is
+ * 40% out while English prose is 5%, printing one band on a Japanese prompt is
  * telling somebody a number that is wrong about their prompt specifically.
  */
 const TYPES = {
@@ -84,6 +84,73 @@ const TYPES = {
   'italian-technical.txt': 'prose-latin',
   'portuguese-technical.txt': 'prose-latin',
   'dutch-technical.txt': 'prose-latin',
+  /**
+   * Seven samples added where the corpus was thinnest, and it was thinnest
+   * exactly where the error is worst.
+   *
+   * The first cross-provider measurement put DeepSeek at 94.5% on CJK and
+   * Mistral at 102.1%, with few-shot at 41.8% and code at 32.4% — and those
+   * three classes had one or two files each against thirteen for Latin prose.
+   * Any per-family calibration resting on that shape would be fitted to two
+   * samples of the class it is worst at, which is fitting the metric to the
+   * answer. Korean joins Japanese and Chinese so "CJK" is not two scripts
+   * wearing a third's name.
+   */
+  'code-sql.txt': 'code',
+  'code-shell.txt': 'code',
+  'few-shot-extraction.txt': 'few-shot',
+  'few-shot-classification.txt': 'few-shot',
+  'cjk-korean.txt': 'cjk',
+  'numeric-tabular.txt': 'numeric',
+  'punctuation-markup.txt': 'punctuation',
+  /**
+   * Fifteen more, and this batch is designed rather than collected.
+   *
+   * The first extension proved the band was a fit; the spread it exposed showed
+   * where the corpus still could not answer. Latin prose had seventeen samples
+   * with a 1.2-point standard deviation — converged, and the eighteenth would
+   * move nothing. `numeric` had **two**, twenty-seven points apart, so its band
+   * rested on one sample and the next CSV could have made it a lie again.
+   *
+   * The six numeric samples vary deliberately in the one dimension suspected of
+   * driving the error: the length of a digit run. Versions and schedules are
+   * one and two digits, ports and years three and four, amounts and epoch
+   * milliseconds five to thirteen. If run length is what the estimator gets
+   * wrong, this is the shape that shows it — and a shape can be fixed, where a
+   * constant fitted to two samples can only choose which one to be wrong about.
+   */
+  'numeric-versions.txt': 'numeric',
+  'numeric-identifiers.txt': 'numeric',
+  'numeric-metrics.txt': 'numeric',
+  'numeric-coordinates.txt': 'numeric',
+  'numeric-financial.txt': 'numeric',
+  'numeric-schedule.txt': 'numeric',
+  'code-typescript.txt': 'code',
+  'code-yaml.txt': 'code',
+  'code-regex.txt': 'code',
+  'code-diff.txt': 'code',
+  'punctuation-csvquoting.txt': 'punctuation',
+  'punctuation-shell-quoting.txt': 'punctuation',
+  'cjk-japanese-technical.txt': 'cjk',
+  'cjk-chinese-technical.txt': 'cjk',
+  'cjk-korean-technical.txt': 'cjk',
+  /**
+   * Four written to land in the bucket, after four failed to.
+   *
+   * The first numeric batch was designed for digit-run length and half of it
+   * ended up in `symbolic`: versions, metrics, identifiers and financial rows
+   * carry more punctuation than digits, so `bucketFor` put them where their
+   * composition says they belong. That is the bucketing working, and it left
+   * the ±33% band resting on one sample again.
+   *
+   * These four are digits with almost nothing else: a meter reading, a
+   * confusion matrix, OHLC rows and a line-item checksum. No prose framing
+   * beyond the instruction, no markup, no quoting.
+   */
+  'numeric-readings.txt': 'numeric',
+  'numeric-matrix.txt': 'numeric',
+  'numeric-timeseries.txt': 'numeric',
+  'numeric-checksums.txt': 'numeric',
 };
 
 /**
@@ -97,7 +164,7 @@ const TYPES = {
  * Where ground truth comes from, per provider.
  *
  * **Two providers measure two different things, and conflating them would be
- * the whole mistake.** The published `±10%` is the estimator's accuracy against
+ * the whole mistake.** The published band is the estimator's accuracy against
  * *Claude's* tokenizer — the one it was calibrated on, and the one every claim
  * in the documentation refers to. A DeepSeek measurement is the error against
  * DeepSeek's tokenizer: a real and currently unanswered question, since Trazum
@@ -117,7 +184,11 @@ const PROVIDERS = {
   anthropic: {
     label: 'Anthropic',
     envVar: 'ANTHROPIC_API_KEY',
-    defaultModel: 'claude-opus-4-1',
+    // The model the committed fixture was measured against. The default said
+    // claude-opus-4-1 long after it was retired, so the one script that
+    // discharges this project's central claim failed with a 404 the moment
+    // somebody finally had a key to run it.
+    defaultModel: 'claude-opus-5',
     fixture: 'token-ground-truth.json',
     free: true,
     governsPublishedBand: true,
@@ -264,6 +335,36 @@ const PROVIDERS = {
       return tokens;
     },
   },
+
+  mistral: {
+    label: 'Mistral',
+    envVar: 'MISTRAL_API_KEY',
+    defaultModel: 'mistral-small-latest',
+    fixture: 'token-ground-truth.mistral.json',
+    free: false,
+    governsPublishedBand: false,
+    async count(text, { apiKey, model }) {
+      // Same shape as DeepSeek: no counting endpoint, so the prompt count is a
+      // by-product of a completion held to one generated token.
+      const response = await fetch('https://api.mistral.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: 'Bearer ' + apiKey },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: 'user', content: text }],
+          max_tokens: 1,
+          temperature: 0,
+          stream: false,
+        }),
+      });
+      if (!response.ok) {
+        throw new Error('chat/completions returned ' + response.status + ': ' + (await response.text()));
+      }
+      const tokens = (await response.json())?.usage?.prompt_tokens;
+      if (typeof tokens !== 'number') throw new Error('no usage.prompt_tokens in the response');
+      return tokens;
+    },
+  },
 };
 
 const flag = process.argv.indexOf('--provider');
@@ -304,7 +405,7 @@ if (!provider.governsPublishedBand) {
     'This measures the estimator against ' +
       provider.label +
       "'s tokenizer, which is NOT the\n" +
-      'published ±10%. That band is Claude-calibrated and only the Anthropic run\n' +
+      'published band. That band is Claude-calibrated and only the Anthropic run\n' +
       'discharges it. This answers a different and genuinely open question: how far\n' +
       'off the estimator is on a family it was never tuned for.\n',
   );
@@ -312,7 +413,45 @@ if (!provider.governsPublishedBand) {
 
 
 
-const countTokens = (text) => provider.count(text, { apiKey, model: MODEL });
+/**
+ * One count, retried on the failures that are the provider's weather.
+ *
+ * The first draft sent one request per sample with no pacing and no retry, so a
+ * single transient answer threw away the whole run — and Mistral's free tier
+ * threw three in a row, 503 then 503 then 429, on a corpus of forty-three. The
+ * measurement is free on Anthropic and pennies elsewhere; the thing that is
+ * expensive is a run that gets forty samples in and dies.
+ *
+ * Only 429 and 5xx are retried. A 401 or a 404 is an answer, not weather, and
+ * retrying it would turn a clear message about a wrong key or a retired model
+ * into a slow one.
+ */
+const RETRYABLE = /returned (429|5\d\d):/;
+
+const countTokens = async (text) => {
+  let wait = 2000;
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await provider.count(text, { apiKey, model: MODEL });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (attempt >= 4 || !RETRYABLE.test(message)) throw error;
+      console.error(`  retrying in ${wait / 1000}s: ${message.slice(0, 80)}`);
+      await new Promise((resolve) => setTimeout(resolve, wait));
+      wait *= 2;
+    }
+  }
+};
+
+/**
+ * Pause between samples, for providers that meter rather than count.
+ *
+ * Anthropic's counting endpoint is free and unthrottled, so it waits for
+ * nothing. The completion-based providers are measured one call at a time with
+ * a gap, which is slower and is the difference between a run that finishes and
+ * a run that gets rate-limited at sample thirty.
+ */
+const PACE_MS = provider.free ? 0 : 700;
 
 /**
  * The endpoint counts a *message*, which carries a few tokens of envelope beyond
@@ -394,6 +533,7 @@ console.log(`Message envelope: ${envelope} tokens (subtracted from every figure)
 
 const samples = [];
 for (const [name, text] of entries) {
+  if (PACE_MS > 0) await new Promise((resolve) => setTimeout(resolve, PACE_MS));
   const counted = (await countTokens(text)) - envelope;
   // The digest of *this* sample, so adding a ninth file does not retire the
   // measurements of the first eight — each of which costs an API call.

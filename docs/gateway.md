@@ -26,6 +26,7 @@ spends tokens:
 | `anthropic` | `https://api.anthropic.com` | `/v1/messages` |
 | `openai` | `https://api.openai.com` | `/v1/chat/completions` |
 | `deepseek` | `https://api.deepseek.com` | `/chat/completions` |
+| `mistral` | `https://api.mistral.ai` | `/v1/chat/completions` |
 | `google` | `https://generativelanguage.googleapis.com` | `/v1beta/models/{model}:generateContent` |
 
 ### And two that spend nothing

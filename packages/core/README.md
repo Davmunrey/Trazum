@@ -291,31 +291,47 @@ const refined = await refineWithLlm(result, openAiCompatible({
 ## Token counts
 
 The bundled estimator is a dependency-free heuristic, and it compares two versions
-of the same prompt well — which is what it is for. Its error band is **±10%**,
-exported as `ESTIMATE_ERROR_BAND_PCT` so you can print the same number the report
-prints rather than hard-coding it.
+of the same prompt well — which is what it is for. Its error band is **measured
+per kind of text**, because one band for all text was a measurement of its own
+calibration set rather than of the estimator:
 
-That band is measured, against the official counting endpoint, over 21 samples in
-seven languages and six text types. **The worst error in the corpus is 6.4%** and
-the published band is 10 — the margin is deliberate, because 21 samples across six
-types cannot bound a seventh, and a band that becomes false the first time somebody
-measures something new is the fault this whole exercise was fixing.
+| Kind of text | Band | Worst sample | Samples |
+| --- | --- | --- | --- |
+| CJK, all three scripts | ±4% | 3.2% | 6 |
+| Latin prose and few-shot blocks | ±6% | 5.6% | 18 |
+| Code, markup and quoting | ±26% | 25.1% | 16 |
+| Digit-dominant tables and ledgers | ±33% | 32.5% | 7 |
 
-It was an unchecked design target for eight releases and it was false; the 1.9.0
-entry in the changelog says what was wrong.
+Call `bandFor(text)` to get the band for a specific prompt. `ESTIMATE_ERROR_BAND_PCT`
+is still exported and is the widest of the four, for callers that have to print one
+figure without holding the text.
+
+That band is measured, against the official counting endpoint, over 47 samples in
+ten languages and six text types. The margin between each bucket and its own worst
+sample is a point or less, and no bucket is allowed to overlap the next: a sample
+sorted into a friendlier bucket gets a smaller band and fails the test.
+
+The single band of 10% this replaced was an unchecked design target for eight
+releases and it was false; the 1.9.0 entry in the changelog says what was wrong, and the 1.82.0
+entry says what extending the corpus from 21 samples to 47 found.
 
 Three things follow from how it was measured, and they matter if you depend on the
 number:
 
-- **The band is a Claude number.** The estimator is tuned against Claude's
-  tokenizer. Other families tokenize differently and nothing here bounds the error
-  for them.
+- **The band is a Claude number, and the others are far outside it.** The same 47
+  samples measured against DeepSeek's own counter came out **94.5% wrong** at
+  worst, and against Mistral's **103.1%** — Trazum prices seven providers and the
+  band belongs to one. `foreignTokenizer` answers with the provider id whenever
+  the model is not Anthropic's, and the report says so on the line rather than
+  printing a figure that was measured somewhere else.
 - **It detects the language and divides accordingly**, because one divisor
   calibrated on English measured −37.3% on German. `detectTextLanguage` answers
   `null` when it cannot tell, which falls back to the English behaviour.
-- **Kana and han cost different amounts.** Charging one token per CJK character put
-  Japanese at +11.2% and Chinese at −3.2% under the same rule; kana measure 0.75
-  tokens per character and han 1.05, which takes both inside 1.5%.
+- **Kana, han and hangul cost different amounts.** Charging one token per CJK
+  character put Japanese at +11.2% and Chinese at −3.2%; kana measure 0.75 tokens
+  per character, han 1.05 and hangul 1.35. Hangul had been carrying a placeholder
+  nothing measured until two Korean samples agreed in lockstep on 1.35, which took
+  the CJK bucket's worst error from 10.6% to 3.2%.
 
 For exact figures, pass a real counter — the counting endpoint is free:
 

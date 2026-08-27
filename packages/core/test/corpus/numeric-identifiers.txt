@@ -1,0 +1,14 @@
+You are a deduplication assistant. Given these records, say which are the same.
+
+order_id=884120397, customer=41882, placed=1767225600000, total_cents=124050
+order_id=884120398, customer=41882, placed=1767225603000, total_cents=124050
+order_id=884120412, customer=41882, placed=1767312000000, total_cents=98900
+order_id=884120397, customer=41882, placed=1767225600000, total_cents=124050
+order_id=990041773, customer=228104, placed=1767398400000, total_cents=124050
+order_id=884120500, customer=41882, placed=1767225601500, total_cents=124051
+
+Two records are the same order when order_id matches. Two records are a
+suspected double-submit when the customer, the total and the placed timestamp
+agree to within 5000 milliseconds and the order ids differ.
+
+Report EXACT and SUSPECTED as lists of order_id. Never merge a suspected pair.

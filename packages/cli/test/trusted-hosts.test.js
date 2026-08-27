@@ -68,6 +68,7 @@ const HOSTS = {
   'https://api.anthropic.com': 'gateway upstream',
   'https://api.openai.com': 'gateway upstream',
   'https://api.deepseek.com': 'gateway upstream',
+  'https://api.mistral.ai': 'gateway upstream',
   'https://generativelanguage.googleapis.com': 'gateway upstream',
 
   'https://aiplatform.googleapis.com': 'model call, cannot be fronted',

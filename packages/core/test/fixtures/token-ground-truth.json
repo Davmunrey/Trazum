@@ -2,16 +2,30 @@
   "provider": "anthropic",
   "governsPublishedBand": true,
   "model": "claude-opus-5",
-  "measuredAt": "2026-08-13",
-  "corpusDigest": "ec3124820b13497d",
+  "measuredAt": "2026-08-27",
+  "corpusDigest": "5e48c0f50a776348",
   "envelopeTokens": 6,
   "samples": [
+    {
+      "file": "cjk-chinese-technical.txt",
+      "type": "cjk",
+      "chars": 234,
+      "actualTokens": 241,
+      "digest": "8a9cb1263dbaf381"
+    },
     {
       "file": "cjk-chinese.txt",
       "type": "cjk",
       "chars": 306,
       "actualTokens": 313,
       "digest": "19fcd3e76dfa2d6e"
+    },
+    {
+      "file": "cjk-japanese-technical.txt",
+      "type": "cjk",
+      "chars": 336,
+      "actualTokens": 285,
+      "digest": "377083b32d196e2e"
     },
     {
       "file": "cjk-japanese.txt",
@@ -21,11 +35,67 @@
       "digest": "35fcef684f0c8538"
     },
     {
+      "file": "cjk-korean-technical.txt",
+      "type": "cjk",
+      "chars": 328,
+      "actualTokens": 339,
+      "digest": "37ff591edb86f1b4"
+    },
+    {
+      "file": "cjk-korean.txt",
+      "type": "cjk",
+      "chars": 286,
+      "actualTokens": 290,
+      "digest": "88cd06b8fce5d920"
+    },
+    {
+      "file": "code-diff.txt",
+      "type": "code",
+      "chars": 901,
+      "actualTokens": 399,
+      "digest": "5ddbbd35adea0607"
+    },
+    {
       "file": "code-heavy.txt",
       "type": "code",
       "chars": 1284,
       "actualTokens": 481,
       "digest": "de7f2ec8a6850b95"
+    },
+    {
+      "file": "code-regex.txt",
+      "type": "code",
+      "chars": 739,
+      "actualTokens": 451,
+      "digest": "12e4719c500f6c11"
+    },
+    {
+      "file": "code-shell.txt",
+      "type": "code",
+      "chars": 687,
+      "actualTokens": 389,
+      "digest": "e6752c92ce6d7687"
+    },
+    {
+      "file": "code-sql.txt",
+      "type": "code",
+      "chars": 698,
+      "actualTokens": 317,
+      "digest": "72c91c71f6d9cad2"
+    },
+    {
+      "file": "code-typescript.txt",
+      "type": "code",
+      "chars": 990,
+      "actualTokens": 422,
+      "digest": "446a98a35902b1b6"
+    },
+    {
+      "file": "code-yaml.txt",
+      "type": "code",
+      "chars": 979,
+      "actualTokens": 401,
+      "digest": "c5d846e996715136"
     },
     {
       "file": "dutch-prose.txt",
@@ -54,6 +124,20 @@
       "chars": 742,
       "actualTokens": 224,
       "digest": "eaaf9f5b260e1d42"
+    },
+    {
+      "file": "few-shot-classification.txt",
+      "type": "few-shot",
+      "chars": 679,
+      "actualTokens": 219,
+      "digest": "ecf41a3590d923ca"
+    },
+    {
+      "file": "few-shot-extraction.txt",
+      "type": "few-shot",
+      "chars": 854,
+      "actualTokens": 422,
+      "digest": "5c0a13cd6612aafc"
     },
     {
       "file": "few-shot.txt",
@@ -105,11 +189,88 @@
       "digest": "223ef1eca8fdd740"
     },
     {
+      "file": "numeric-checksums.txt",
+      "type": "numeric",
+      "chars": 620,
+      "actualTokens": 257,
+      "digest": "577212e99bdb76d6"
+    },
+    {
+      "file": "numeric-coordinates.txt",
+      "type": "numeric",
+      "chars": 673,
+      "actualTokens": 314,
+      "digest": "34993ce49e672105"
+    },
+    {
+      "file": "numeric-financial.txt",
+      "type": "numeric",
+      "chars": 664,
+      "actualTokens": 307,
+      "digest": "eca501abccfa02dc"
+    },
+    {
       "file": "numeric-heavy.txt",
       "type": "numeric",
       "chars": 729,
       "actualTokens": 399,
       "digest": "0b6dd59425f7642f"
+    },
+    {
+      "file": "numeric-identifiers.txt",
+      "type": "numeric",
+      "chars": 834,
+      "actualTokens": 307,
+      "digest": "18f40d28ca7c8d79"
+    },
+    {
+      "file": "numeric-matrix.txt",
+      "type": "numeric",
+      "chars": 669,
+      "actualTokens": 233,
+      "digest": "ac8f59663e87b076"
+    },
+    {
+      "file": "numeric-metrics.txt",
+      "type": "numeric",
+      "chars": 684,
+      "actualTokens": 311,
+      "digest": "33c922b118d2f602"
+    },
+    {
+      "file": "numeric-readings.txt",
+      "type": "numeric",
+      "chars": 666,
+      "actualTokens": 342,
+      "digest": "1ae3d796cc0929f2"
+    },
+    {
+      "file": "numeric-schedule.txt",
+      "type": "numeric",
+      "chars": 722,
+      "actualTokens": 431,
+      "digest": "9d99d1a8322f34f1"
+    },
+    {
+      "file": "numeric-tabular.txt",
+      "type": "numeric",
+      "chars": 634,
+      "actualTokens": 317,
+      "digest": "d20766d49c419dfe"
+    },
+    {
+      "file": "numeric-timeseries.txt",
+      "type": "numeric",
+      "chars": 748,
+      "actualTokens": 339,
+      "digest": "163fa2a1b48a89b0"
+    },
+    {
+      "file": "numeric-versions.txt",
+      "type": "numeric",
+      "chars": 722,
+      "actualTokens": 348,
+      "digest": "5e9961eebcb90e1b"
     },
     {
       "file": "portuguese-prose.txt",
@@ -126,11 +287,32 @@
       "digest": "9e7f9bbe245791b7"
     },
     {
+      "file": "punctuation-csvquoting.txt",
+      "type": "punctuation",
+      "chars": 592,
+      "actualTokens": 235,
+      "digest": "92b7eeeabe950b5c"
+    },
+    {
       "file": "punctuation-heavy.txt",
       "type": "punctuation",
       "chars": 871,
       "actualTokens": 404,
       "digest": "62944c8e47e623cc"
+    },
+    {
+      "file": "punctuation-markup.txt",
+      "type": "punctuation",
+      "chars": 724,
+      "actualTokens": 325,
+      "digest": "71934868772b4c32"
+    },
+    {
+      "file": "punctuation-shell-quoting.txt",
+      "type": "punctuation",
+      "chars": 657,
+      "actualTokens": 332,
+      "digest": "c35511da878cadde"
     },
     {
       "file": "spanish-prose.txt",

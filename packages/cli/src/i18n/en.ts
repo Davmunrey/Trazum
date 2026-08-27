@@ -1082,10 +1082,14 @@ ${bold('EXAMPLES')}
 
   report: {
     inputTokens: () => 'Input tokens',
-    estimated: (offFamily) =>
-      offFamily === null
-        ? ' (estimated, ±10%)'
-        : ` (estimated: the counter is calibrated on Claude, not ${offFamily})`,
+    estimated: (offFamily, band, measuredOff) => {
+      if (offFamily === null) return ` (estimated, ±${band}%)`;
+      return measuredOff === null
+        ? ` (estimated: the counter is calibrated on Claude, not ${offFamily}, and nobody has`
+          + ' measured how far off it is there)'
+        : ` (estimated: the counter is calibrated on Claude, not ${offFamily}, where it has`
+          + ` measured up to ${measuredOff}% out)`;
+    },
     exactCount: () => ' (exact count)',
     rulesApplied: () => 'Rules applied',
     nothingToTrim: () => '  No rule found anything to trim.',
@@ -2003,8 +2007,8 @@ ${bold('EXAMPLES')}
     truncated: (shown) =>
       `Showing the most recent ${shown}. Pass --limit for more.`,
     followedRename: (from) => `Followed a rename: earlier revisions are ${from}.`,
-    estimateNote: () =>
-      'Token counts are estimates (±10%). The trend is the point; the absolute figures are not.',
+    estimateNote: (band) =>
+      `Token counts are estimates (±${band}% for text of this kind). The trend is the point; the absolute figures are not.`,
   },
 
   languages: {
@@ -2225,7 +2229,7 @@ ${bold('EXAMPLES')}
     footer: (source, level) => `Token counts ${source} · rule level \`${level}\``,
     pricingOverlaid: (count, lastReviewed) =>
       `Prices for ${count} ${count === 1 ? 'model' : 'models'} came from a local overlay reviewed ${lastReviewed}.`,
-    sourceEstimated: () => 'estimated, ±10%',
+    sourceEstimated: (band) => `estimated, ±${band}%`,
     sourceExact: () => 'counted exactly',
     measuringOptimised: () =>
       'Measuring what the rules would leave, not what is written in the file.',

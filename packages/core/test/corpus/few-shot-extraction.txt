@@ -1,0 +1,15 @@
+Extract the invoice fields. Return JSON only, no commentary.
+
+Input: Invoice 4471, Acme Ltd, due 2026-03-14, total EUR 1,240.50, VAT 21%
+Output: {"number":"4471","vendor":"Acme Ltd","due":"2026-03-14","total":1240.50,"currency":"EUR","vat":0.21}
+
+Input: INV-0092 from Northwind BV dated 2026-01-02, 890 USD net, no VAT
+Output: {"number":"INV-0092","vendor":"Northwind BV","due":null,"total":890.00,"currency":"USD","vat":0}
+
+Input: Rechnung 7781, Muster GmbH, faellig 2026-05-30, 3.410,00 EUR inkl. 19% MwSt
+Output: {"number":"7781","vendor":"Muster GmbH","due":"2026-05-30","total":3410.00,"currency":"EUR","vat":0.19}
+
+Input: Receipt 12, corner shop, paid in cash today, 8.40
+Output: {"number":"12","vendor":"corner shop","due":null,"total":8.40,"currency":null,"vat":null}
+
+If a field is absent, use null. Never guess a currency from the vendor name.

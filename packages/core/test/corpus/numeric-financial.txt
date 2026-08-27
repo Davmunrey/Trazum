@@ -1,0 +1,16 @@
+You are an audit assistant. Reconcile the statement against the ledger.
+
+Statement:
+2026-02-03  BACS IN    18,442.19   ref 8841203
+2026-02-07  CARD OUT      -94.50   ref 4471992
+2026-02-11  BACS OUT  -12,000.00   ref 8841204
+2026-02-14  FEE           -18.75   ref 0000112
+2026-02-19  BACS IN     6,310.42   ref 8841205
+2026-02-27  BACS OUT   -3,499.99   ref 8841206
+
+Ledger totals: income 24752.61, expenditure 15613.24, net 9139.37.
+Opening balance 41,208.83. Closing balance per statement 50,348.20.
+
+Report MATCHES, UNMATCHED and DIFFERENCE. Give the difference to two decimal
+places and say which side it falls on. Do not adjust either set to make them
+agree.
