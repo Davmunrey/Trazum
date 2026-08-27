@@ -22,11 +22,19 @@ import {
   looksLikeOtel,
   otelRecords,
   profileUsage,
+  readDroppedVerdict,
   repriceProfile,
   reviewAgeDays,
   sharesOf,
+  verdictMatchesSlice,
 } from '@trazum/core';
-import type { BillLevers, CacheEconomics, PricingCatalogue, UsageProfileReport } from '@trazum/core';
+import type {
+  BillLevers,
+  CacheEconomics,
+  DroppedVerdict,
+  PricingCatalogue,
+  UsageProfileReport,
+} from '@trazum/core';
 
 import { Plan } from './Plan';
 import { PositionCard } from './Position';
@@ -143,6 +151,22 @@ export function Bill({ t }: { t: WebMessages }) {
   } | null>(null);
   const catalogue = priceCard === null ? BUNDLED_CATALOGUE : priceCard.catalogue;
   const [priceCardError, setPriceCardError] = useState<string | null>(null);
+
+  /**
+   * A dropped `trazum route --json` verdict — quality standing beside cost.
+   *
+   * Held as one measurement rather than a list on purpose. A bill offers one
+   * route per slice, and a second verdict for the same slice would be an
+   * older answer competing with a newer one with nothing on screen to say
+   * which is which; the last one dropped wins, visibly, which is what the
+   * reader just did.
+   *
+   * The refusal lives beside it because a file that looked like a
+   * measurement and could not be read has to say so. Dropping it silently
+   * would leave the reader believing a verdict is loaded when none is.
+   */
+  const [verdict, setVerdict] = useState<DroppedVerdict | null>(null);
+  const [verdictError, setVerdictError] = useState<string | null>(null);
 
   // A new card re-prices whatever is already on screen, in place: the same
   // log, the same window, the new rates. The bundled snapshot returns the
@@ -347,6 +371,27 @@ export function Bill({ t }: { t: WebMessages }) {
         collapsed += conversion.collapsed;
         streamed += conversion.streamed;
       } else {
+        /**
+         * The verdict bridge, tried before the price card and before the log.
+         *
+         * Order matters and is not arbitrary: a routing measurement is JSON
+         * with a `models`-free shape that neither the card reader nor the
+         * log parser would claim, but reading it first means the one file
+         * that *is* a verdict never reaches a parser that would report it as
+         * an unreadable log. `readDroppedVerdict` returns null for anything
+         * else, so nothing that is not one is taken away from the code that
+         * can price it.
+         */
+        const bridged = readDroppedVerdict(text);
+        if (bridged !== null) {
+          if (bridged.kind === 'verdict') {
+            setVerdict(bridged.verdict);
+            setVerdictError(null);
+          } else {
+            setVerdictError(bridged.because);
+          }
+          continue;
+        }
         let card: ReturnType<typeof priceCardFrom> = null;
         let cardFailed = false;
         try {
@@ -676,6 +721,8 @@ export function Bill({ t }: { t: WebMessages }) {
           drillLabel={drillLabel}
           onDrill={drillTo}
           catalogue={catalogue}
+          verdict={verdict}
+          verdictError={verdictError}
         />
       )}
       {/*
@@ -700,10 +747,21 @@ function Report({
   drillLabel,
   onDrill,
   catalogue,
+  verdict,
+  verdictError,
 }: {
   analysis: Analysis;
   drillLabel: string | null;
   onDrill: (label: string | null) => void;
+  /**
+   * The dropped routing measurement, or null. Passed down rather than read
+   * here because the drop that produced it happens in the tab above, and one
+   * owner for the file-ingest state is what keeps the price card, the
+   * transcripts and this from disagreeing about what was dropped last.
+   */
+  verdict: DroppedVerdict | null;
+  /** Why a file that looked like one could not be read. Null when none did. */
+  verdictError: string | null;
   t: WebMessages;
   n: (value: number) => string;
   pct: (fraction: number) => string;
@@ -1262,12 +1320,73 @@ function Report({
                           slice.route.candidate.displayName,
                           formatUsd(slice.route.savingUsd),
                         )}
+                        {/*
+                          The verdict bridge. Shown only against the slice it
+                          was measured on — same workload, same model, same
+                          candidate, all three checked by the core's own
+                          matcher. A verdict measured on one workload set
+                          beside another's saving would be a number describing
+                          something other than what was measured, which is the
+                          fault this repository keeps finding in itself.
+                        */}
+                        {verdict !== null && verdictMatchesSlice(verdict, slice) && (
+                          <div
+                            className={`mt-1.5 rounded-lg border border-l-[3px] px-3 py-2 text-[13px] leading-snug ${
+                              verdict.verdict === 'diverges'
+                                ? 'border-l-warn text-warn'
+                                : 'text-muted-foreground'
+                            }`}
+                          >
+                            {verdict.verdict === 'inconclusive'
+                              ? t.bill.verdictInconclusive(pct(verdict.selfAgreement), verdict.cases)
+                              : verdict.verdict === 'diverges'
+                                ? t.bill.verdictDiverges(
+                                    slice.route.candidate.displayName,
+                                    pct(verdict.crossAgreement),
+                                    pct(verdict.selfAgreement),
+                                    verdict.cases,
+                                  )
+                                : t.bill.verdictHolds(
+                                    slice.route.candidate.displayName,
+                                    pct(verdict.crossAgreement),
+                                    pct(verdict.selfAgreement),
+                                    verdict.cases,
+                                  )}{' '}
+                            {/*
+                              Printed on every verdict including the good one,
+                              exactly as the terminal prints it. A green tick
+                              that let somebody forget this would be the tool
+                              overstating what it knows.
+                            */}
+                            <span className="opacity-80">{t.bill.verdictCaveat}</span>
+                          </div>
+                        )}
                       </li>
                     )}
                     {slice.batch !== null && <li>{t.bill.leverBatch(formatUsd(slice.batch.savingUsd))}</li>}
                   </ul>
                 </div>
               ))}
+              {verdictError !== null && (
+                <div className="rounded-lg border border-l-[3px] border-l-warn px-3.5 py-3 text-[13px] leading-snug text-warn">
+                  {t.bill.verdictRefused(verdictError)}
+                </div>
+              )}
+              {/*
+                A verdict on screen that describes no route in this bill.
+                Named rather than dropped: the reader paid provider calls for
+                it, and silence would read as "no measurement was loaded".
+              */}
+              {verdict !== null &&
+                !levers.slices.some((slice) => verdictMatchesSlice(verdict, slice)) && (
+                  <div className="rounded-lg border px-3.5 py-3 text-[13px] leading-snug text-muted-foreground">
+                    {t.bill.verdictUnmatched(
+                      verdict.label === null ? labelName(UNLABELLED) : verdict.label,
+                      verdict.model,
+                      verdict.candidateModel,
+                    )}
+                  </div>
+                )}
               {levers.slices.some((slice) => slice.route !== null) && (
                 <span className="text-[13px] text-muted-foreground">{t.bill.routeVerify}</span>
               )}

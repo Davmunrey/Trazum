@@ -2603,6 +2603,26 @@ Three provider calls per case, and it prints the count and stops unless you pass
 original was too inconsistent to judge anything against — and it says **agreement
 is not correctness** on every verdict, including the good one.
 
+**Carrying the verdict to the bill.** `--json` writes the measurement as the
+[`routing-measurement`](format.md) contract. Drop that file into the web app's
+Bill tab and the verdict sits beside the saving it is about:
+
+```bash
+trazum route usage.jsonl --prompt-file prompts/support.txt --cases cases.txt --yes --json > verdict.json
+```
+
+The pairing is on all three of the workload, the model those calls go to and
+the candidate they were measured against. A verdict measured on `chat` will not
+be shown against `summarise`'s saving even when both offer the same route, and a
+verdict that describes no route in the bill on screen is said out loud rather
+than dropped — you paid provider calls for it.
+
+Nothing crosses but the measurement. The document carries no prompt, no case
+input and no model answer, so the file is safe to drop into a browser, paste
+into a ticket or hand to somebody who should not see the prompt. The bridge
+reads it back through `conform` against the published contract, so a file it
+refuses is refused in the contract's own words.
+
 ### Did the caching actually pay for itself?
 
 The rest of Trazum tells you to cache. This is the one report that can tell you

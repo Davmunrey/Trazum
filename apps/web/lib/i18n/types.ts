@@ -412,6 +412,25 @@ export interface WebMessages {
     leverBatch(usd: string): string;
     leverCalls(calls: number, spent: string): string;
     routeVerify: string;
+    /**
+     * The verdict bridge: a `trazum route --json` document dropped into this
+     * tab, set beside the slice it was measured on.
+     *
+     * Every one of these takes the case count, because a verdict from three
+     * cases and a verdict from three hundred are not the same claim and a
+     * caption that hid the difference would be the tool overstating what it
+     * knows. `self` travels with `cross` for the same reason: agreement is
+     * read against the model's agreement with itself, never on its own.
+     */
+    verdictHolds(candidate: string, cross: string, self: string, cases: number): string;
+    verdictDiverges(candidate: string, cross: string, self: string, cases: number): string;
+    verdictInconclusive(self: string, cases: number): string;
+    /** Printed on every verdict, good one included: agreement is not correctness. */
+    verdictCaveat: string;
+    /** A verdict on screen that describes no slice of this bill. */
+    verdictUnmatched(label: string, model: string, candidate: string): string;
+    /** The document looked like a routing measurement and could not be read. */
+    verdictRefused(because: string): string;
     leverPromptCeiling(usd: string, pct: string): string;
     leversNone: string;
     leversUnlabelled: string;

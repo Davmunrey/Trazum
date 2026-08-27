@@ -500,7 +500,29 @@ export const en: WebMessages = {
     routeVerify:
       'Whether a route holds is an evaluation question, not an arithmetic one; nothing here '
       + 'has seen a single answer. The CLI measures it: trazum route <log> --prompt-file '
-      + '<prompt> --cases <cases>.',
+      + '<prompt> --cases <cases>. Drop the --json document back here and the answer sits '
+      + 'beside the saving.',
+    verdictHolds: (candidate, cross, self, cases) =>
+      `Measured: ${candidate} agreed with the model you use now ${cross} of the time, against `
+      + `${self} the model agrees with itself, across ${cases} `
+      + `${cases === 1 ? 'case' : 'cases'}. The answers did not move.`,
+    verdictDiverges: (candidate, cross, self, cases) =>
+      `Measured: ${candidate} agreed only ${cross} of the time, against ${self} the model `
+      + `agrees with itself, across ${cases} ${cases === 1 ? 'case' : 'cases'}. `
+      + 'The answers moved. This saving costs you something.',
+    verdictInconclusive: (self, cases) =>
+      `Measured, and inconclusive: the model agreed with itself only ${self} of the time across `
+      + `${cases} ${cases === 1 ? 'case' : 'cases'}, so there is no yardstick to read a `
+      + 'comparison against. Nothing about this route is settled either way.',
+    verdictCaveat:
+      'Agreement is not correctness. This measured whether the answers moved, never whether '
+      + 'they were ever right.',
+    verdictUnmatched: (label, model, candidate) =>
+      `A routing measurement is loaded (${label} on ${model} against ${candidate}) and this `
+      + 'bill has no such route to set it beside. It is shown here rather than dropped, '
+      + 'because a measurement you paid for should not disappear silently.',
+    verdictRefused: (because) =>
+      `That file looks like a routing measurement and could not be read: ${because}`,
     leverPromptCeiling: (usd, pct) =>
       `For comparison: shortening the prompt text can touch ${usd} at the very most (${pct} of `
       + 'this bill), and only if you deleted every input token. The real figure is far below '

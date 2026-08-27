@@ -167,6 +167,8 @@ export type {
   RefuseReason,
 } from './gateway.js';
 export { conform, CONTRACT_NAMES, requiredFieldsOf } from './conform.js';
+export { readDroppedVerdict, verdictMatchesSlice } from './verdict-bridge.js';
+export type { DroppedVerdict, BridgeReading } from './verdict-bridge.js';
 export { CONTRACT_SCHEMAS, contractSchema } from './schemas.js';
 export type {
   ConformOptions,

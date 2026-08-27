@@ -505,7 +505,28 @@ export const es: WebMessages = {
     routeVerify:
       'Que una ruta aguante es una pregunta de evaluación, no de aritmética: nada aquí ha visto '
       + 'una sola respuesta. La CLI lo mide: trazum route <log> --prompt-file <prompt> --cases '
-      + '<cases>.',
+      + '<cases>. Suelta aquí el documento --json y la respuesta queda junto al ahorro.',
+    verdictHolds: (candidate, cross, self, cases) =>
+      `Medido: ${candidate} coincidió con el modelo que usas ahora el ${cross} de las veces, `
+      + `frente al ${self} que el modelo coincide consigo mismo, en ${cases} `
+      + `${cases === 1 ? 'caso' : 'casos'}. Las respuestas no se movieron.`,
+    verdictDiverges: (candidate, cross, self, cases) =>
+      `Medido: ${candidate} solo coincidió el ${cross} de las veces, frente al ${self} que el `
+      + `modelo coincide consigo mismo, en ${cases} ${cases === 1 ? 'caso' : 'casos'}. `
+      + 'Las respuestas se movieron. Este ahorro te cuesta algo.',
+    verdictInconclusive: (self, cases) =>
+      `Medido, y no concluyente: el modelo coincidió consigo mismo solo el ${self} de las veces `
+      + `en ${cases} ${cases === 1 ? 'caso' : 'casos'}, así que no hay vara con la que leer una `
+      + 'comparación. Nada sobre esta ruta queda decidido, ni a favor ni en contra.',
+    verdictCaveat:
+      'Coincidir no es acertar. Esto midió si las respuestas se movieron, nunca si alguna vez '
+      + 'fueron correctas.',
+    verdictUnmatched: (label, model, candidate) =>
+      `Hay una medición de enrutado cargada (${label} en ${model} frente a ${candidate}) y `
+      + 'esta factura no tiene esa ruta para ponerla al lado. Se muestra aquí en vez de '
+      + 'descartarse, porque una medición que pagaste no debería desaparecer en silencio.',
+    verdictRefused: (because) =>
+      `Ese archivo parece una medición de enrutado y no se pudo leer: ${because}`,
     leverPromptCeiling: (usd, pct) =>
       `Como referencia: acortar el texto del prompt puede tocar como muchísimo ${usd} (${pct} `
       + 'de esta factura), y solo si borraras todos los tokens de entrada. La cifra real queda '
