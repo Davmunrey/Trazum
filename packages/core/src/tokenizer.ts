@@ -174,6 +174,25 @@ const KANA_TOKENS_PER_CHAR = 0.75;
 const HAN_TOKENS_PER_CHAR = 1.05;
 
 /**
+ * Hangul, measured at last.
+ *
+ * The comment above used to end *"Hangul keeps the old cost of 1, because
+ * nothing here measures Korean. Guessing it from Japanese would be inventing a
+ * figure."* That was right, and it stayed right for exactly as long as nobody
+ * measured Korean. `cjk-korean.txt` now does: at 1 token per character the
+ * estimate came out **20.0% under** — 232 against 290 — and 1.20 takes it to
+ * -10.0%.
+ *
+ * Still in-sample, and still one sample, so it is a measured placeholder rather
+ * than a calibration. What makes it worth taking is that it replaces a number
+ * nothing had ever checked with a number one real Korean prompt produced, and
+ * that it moves nothing else in the corpus by more than a point: Hangul appears
+ * in no other sample.
+ */
+const HANGUL_TOKENS_PER_CHAR = 1.2;
+const HANGUL = /[가-힯]/;
+
+/**
  * What a prompt gets when the language could not be told.
  *
  * The English value on purpose. An unknown-language prompt is most often English
@@ -248,7 +267,11 @@ export function estimateTokens(text: string): number {
        * where the loop happens to break, not of what the text costs.
        */
       while (i < chars.length && CJK.test(chars[i]!)) {
-        cjkTokens += KANA.test(chars[i]!) ? KANA_TOKENS_PER_CHAR : HAN_TOKENS_PER_CHAR;
+        cjkTokens += KANA.test(chars[i]!)
+          ? KANA_TOKENS_PER_CHAR
+          : HANGUL.test(chars[i]!)
+            ? HANGUL_TOKENS_PER_CHAR
+            : HAN_TOKENS_PER_CHAR;
         i++;
       }
       continue;
@@ -315,7 +338,29 @@ export function estimateTokens(text: string): number {
       total += 1;
       i++;
     } else {
-      total += Math.ceil(n / 2);
+      /**
+       * One token per symbol, not one per two.
+       *
+       * Two was the shipped value and every symbol-dense sample in the corpus
+       * undercounted under it, in the same direction, by amounts that grow with
+       * density: punctuation-heavy -5.7%, code-heavy -6.4%,
+       * punctuation-markup -11.4%, code-sql -25.6%, code-shell -29.8%. Five
+       * samples agreeing on a direction is a shape, not a fit — a merge table
+       * covers `, ` and `. ` and covers `${`, `"$`, `--` and `&#8209;` far less
+       * well, and shell and SQL are made of the second kind.
+       *
+       * Searched over the whole corpus rather than the class it helps, so a
+       * value that fixed code by wrecking prose could not look like a win: at
+       * 1.0 the samples outside the published band drop from five to three and
+       * the mean error from 6.6% to 5.1%, with no sample moved more than a
+       * point in the wrong direction.
+       *
+       * The search wanted to go below 1.0 and was not allowed to. Below one is
+       * more than a token per symbol, which may well be true of SQL — code-sql
+       * is still 24.9% under — but it is a claim about a class this corpus has
+       * two samples of, and two samples do not earn a constant.
+       */
+      total += Math.ceil(n / 1);
     }
   }
 

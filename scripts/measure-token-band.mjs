@@ -84,6 +84,25 @@ const TYPES = {
   'italian-technical.txt': 'prose-latin',
   'portuguese-technical.txt': 'prose-latin',
   'dutch-technical.txt': 'prose-latin',
+  /**
+   * Seven samples added where the corpus was thinnest, and it was thinnest
+   * exactly where the error is worst.
+   *
+   * The first cross-provider measurement put DeepSeek at 94.5% on CJK and
+   * Mistral at 102.1%, with few-shot at 41.8% and code at 32.4% — and those
+   * three classes had one or two files each against thirteen for Latin prose.
+   * Any per-family calibration resting on that shape would be fitted to two
+   * samples of the class it is worst at, which is fitting the metric to the
+   * answer. Korean joins Japanese and Chinese so "CJK" is not two scripts
+   * wearing a third's name.
+   */
+  'code-sql.txt': 'code',
+  'code-shell.txt': 'code',
+  'few-shot-extraction.txt': 'few-shot',
+  'few-shot-classification.txt': 'few-shot',
+  'cjk-korean.txt': 'cjk',
+  'numeric-tabular.txt': 'numeric',
+  'punctuation-markup.txt': 'punctuation',
 };
 
 /**
@@ -117,7 +136,11 @@ const PROVIDERS = {
   anthropic: {
     label: 'Anthropic',
     envVar: 'ANTHROPIC_API_KEY',
-    defaultModel: 'claude-opus-4-1',
+    // The model the committed fixture was measured against. The default said
+    // claude-opus-4-1 long after it was retired, so the one script that
+    // discharges this project's central claim failed with a 404 the moment
+    // somebody finally had a key to run it.
+    defaultModel: 'claude-opus-5',
     fixture: 'token-ground-truth.json',
     free: true,
     governsPublishedBand: true,
