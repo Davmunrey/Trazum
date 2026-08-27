@@ -19,6 +19,8 @@ import {
   formatSignedUsd,
   formatUsd,
   looksLikeClaudeCodeTranscript,
+  litellmRecords,
+  looksLikeLiteLlm,
   looksLikeOtel,
   otelRecords,
   profileUsage,
@@ -329,6 +331,12 @@ export function Bill({ t }: { t: WebMessages }) {
     otelSpans: number;
     otelSkipped: number;
     otelNoCache: number;
+    litellmExports: number;
+    litellmRows: number;
+    /** Rows naming no model: counted, never priced by the route they took. */
+    litellmUnnamed: number;
+    /** Rows flagged as a cache hit, with no token split behind the flag. */
+    litellmCacheFlagged: number;
   } | null>(null);
 
   async function readFile(file: File | undefined) {
@@ -357,12 +365,28 @@ export function Bill({ t }: { t: WebMessages }) {
     let otelSpans = 0;
     let otelSkipped = 0;
     let otelNoCache = 0;
+    let litellmExports = 0;
+    let litellmRows = 0;
+    let litellmUnnamed = 0;
+    let litellmCacheFlagged = 0;
     for (const file of files) {
       const text = await file.text();
       // The 1.71 arm: an OpenTelemetry GenAI export, detected by its shape and
       // converted in this tab. Only the token counts cross; prompts, trace ids
       // and every other span attribute stay behind, held by the core suite.
-      if (looksLikeOtel(text)) {
+      // The gateway arm: a LiteLLM spend log, converted in this tab. Tried
+      // before OTel because both are JSON and only this one carries the
+      // proxy's own columns. The prompt, the completion, the hashed key, the
+      // requester address and the end user stay in the row; the core suite
+      // plants a marker in each and greps the whole conversion.
+      if (looksLikeLiteLlm(text)) {
+        litellmExports += 1;
+        const conversion = litellmRecords(text);
+        for (const record of conversion.records) parts.push(JSON.stringify(record));
+        litellmRows += conversion.rows;
+        litellmUnnamed += conversion.unnamedModel;
+        litellmCacheFlagged += conversion.cacheFlagged;
+      } else if (looksLikeOtel(text)) {
         otelExports += 1;
         const conversion = otelRecords(text);
         for (const record of conversion.records) parts.push(JSON.stringify(record));
@@ -421,8 +445,22 @@ export function Bill({ t }: { t: WebMessages }) {
       }
     }
     setIngest(
-      transcripts > 0 || otelExports > 0
-        ? { transcripts, convertedCalls, collapsed, streamed, logs, otelExports, otelSpans, otelSkipped, otelNoCache }
+      transcripts > 0 || otelExports > 0 || litellmExports > 0
+        ? {
+            transcripts,
+            convertedCalls,
+            collapsed,
+            streamed,
+            logs,
+            otelExports,
+            otelSpans,
+            otelSkipped,
+            otelNoCache,
+            litellmExports,
+            litellmRows,
+            litellmUnnamed,
+            litellmCacheFlagged,
+          }
         : null,
     );
     // A drop that was only a price card feeds nothing new to price; the
@@ -637,6 +675,21 @@ export function Bill({ t }: { t: WebMessages }) {
               )}
               {ingest.otelSkipped > 0 && <div>{t.bill.otelSkipped(ingest.otelSkipped)}</div>}
               {ingest.otelNoCache > 0 && <div>{t.bill.otelNoCache(ingest.otelNoCache)}</div>}
+              {ingest.litellmExports > 0 && (
+                <div className="font-semibold">
+                  {t.bill.litellmSummary(ingest.litellmExports, ingest.litellmRows)}
+                </div>
+              )}
+              {/*
+                Both counts are the honest half. A row naming no model is left
+                out because `model_group` is a route and several models can sit
+                behind one, and a cache flag is not a token split. Silence on
+                either would read as "everything was converted and priced".
+              */}
+              {ingest.litellmUnnamed > 0 && <div>{t.bill.litellmUnnamed(ingest.litellmUnnamed)}</div>}
+              {ingest.litellmCacheFlagged > 0 && (
+                <div>{t.bill.litellmCacheFlagged(ingest.litellmCacheFlagged)}</div>
+              )}
               {ingest.logs > 0 && <div>{t.bill.transcriptAlsoLogs(ingest.logs)}</div>}
               {ingest.collapsed > 0 && <div>{t.bill.transcriptCollapsed(ingest.collapsed)}</div>}
               {ingest.streamed > 0 && <div>{t.bill.transcriptStreamed(ingest.streamed)}</div>}

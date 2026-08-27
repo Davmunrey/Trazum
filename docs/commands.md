@@ -2428,6 +2428,50 @@ taken only where a `gen_ai.usage.cache_read_input_tokens`-shaped key is
 actually present. Vendor-specific converters (LangSmith, Helicone, LiteLLM)
 are named as next, not built now: each ships when a real export of it is seen.
 
+### The gateway everybody already runs: `trazum from-litellm`
+
+The first of the three that were named as next. LiteLLM is the proxy a great
+many teams already put in front of every provider, and it writes every call it
+routes into `LiteLLM_SpendLogs` — which makes it the export most likely to
+already exist on somebody's disk, with no instrumentation to add.
+
+```bash
+trazum from-litellm spend.json -o usage.jsonl
+trazum profile usage.jsonl
+```
+
+**The format is derived, not guessed.** Every column below is read off
+`litellm/proxy/schema.prisma` in BerriAI's own repository: `model`,
+`prompt_tokens`, `completion_tokens`, `startTime`, `session_id`, and the
+label from `request_tags`, then `metadata.tags`, then `model_group`. A
+converter written from memory of an API is a converter that silently
+mis-reads somebody's bill.
+
+It accepts the four shapes an export actually arrives in: a JSON array of
+rows, a single row, `{ "data": [...] }` as the proxy's own `/spend` endpoints
+return it, and newline-delimited rows.
+
+**The counts only.** The row carries `messages` and `response` — the prompt
+itself and the completion — plus `api_key`, `requester_ip_address`, `user`
+and `end_user`. None of it is read. The converter names the fields it takes
+and takes nothing else, and a fixture plants a marker in every one of those
+columns and greps the whole output for it.
+
+**Three things it counts rather than guesses.** A row naming no model is
+counted and left out: `model_group` is the name of a proxy *route* and several
+models can sit behind one, so pricing those calls by the route they took would
+attribute a figure to something it does not describe. A row with zero tokens on
+both sides is a logged call nobody can price, counted and worth a look at the
+proxy. And `cache_hit` is a flag, never a token split — so a converted record
+carries no cache fields at all and the cache verdicts read *cannot tell*, the
+same refusal `from-otel` makes.
+
+**Two price tables, never one total.** LiteLLM prices the same calls with its
+own table in the `spend` column. That figure is printed beside Trazum's and is
+**never merged into it**: two price tables summed into one number is how a
+report becomes quietly wrong. Compare them deliberately or not at all — the
+same rule that keeps the store's provider-billed standing apart from the log's.
+
 ### When does the switch pay: `trazum switch`
 
 Every what-if reader is really asking one question: *should we move this

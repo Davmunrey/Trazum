@@ -112,6 +112,7 @@ import {
   parseUsageLine,
   plannedCalls,
   claudeCodeRecords,
+  litellmRecords,
   otelRecords,
   ownRate,
   positionAt,
@@ -680,6 +681,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   position: ['json', 'html-out', 'pricing', 'pricing-live'],
   'from-claude-code': ['label', 'label-from-project', 'out', 'o', 'state'],
   'from-otel': ['label-from-service', 'out', 'o'],
+  'from-litellm': ['out', 'o'],
   switch: ['to', 'migration-usd', 'cases'],
   ownrate: ['gpu-usd-hour', 'tokens-per-second', 'utilization'],
   pulse: ['json', 'max-stale-hours'],
@@ -3082,6 +3084,91 @@ async function commandFromOtel(args: Args, t: CliMessages): Promise<void> {
   if (otherSpans > 0) console.error(t.fromOtel.skipped(otherSpans));
   if (noCacheData > 0) console.error(t.fromOtel.noCache(noCacheData));
   if (unparseable > 0) console.error(t.fromOtel.unparseable(unparseable));
+}
+
+/**
+ * `trazum from-litellm <file|dir>` — a LiteLLM spend log as a usage log.
+ *
+ * The same pure-converter pattern again, pointed at the gateway a great many
+ * teams already put in front of every provider: `LiteLLM_SpendLogs` is the
+ * export most likely to already exist on somebody's disk. `litellmRecords` in
+ * core does the reading; this is the walk and the honesty.
+ *
+ * Three of the four counts it prints exist because the alternative is a
+ * flattering silence. Rows naming no model are not priced by the route they
+ * took, rows with no tokens are logged calls nobody can price, and a
+ * `cache_hit` flag is not a token split — so the cache verdicts read "cannot
+ * tell" rather than a fabricated one, exactly as `from-otel` does.
+ *
+ * The fourth is the one that matters most: LiteLLM prices the same calls with
+ * its own table, and that figure is printed beside Trazum's and never merged
+ * into it. Two price tables summed into one total is how a report becomes
+ * quietly wrong.
+ *
+ * The row carries `messages`, `response`, `api_key`, `requester_ip_address`
+ * and `end_user`. None of it is read; a fixture plants a marker in each and
+ * greps the whole output.
+ */
+async function commandFromLiteLlm(args: Args, t: CliMessages): Promise<void> {
+  const target = args.positional[0];
+  if (target === undefined) throw new Error(t.fromLiteLlm.noPath());
+
+  let info;
+  try {
+    info = await stat(target);
+  } catch {
+    throw new Error(t.fromLiteLlm.notFound(target));
+  }
+  const files: string[] = [];
+  if (info.isDirectory()) {
+    const entries = await readdir(target, { recursive: true, withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isFile() && /\.(json|jsonl|ndjson)$/i.test(entry.name)) {
+        files.push(join(entry.parentPath, entry.name));
+      }
+    }
+    files.sort();
+    if (files.length === 0) throw new Error(t.fromLiteLlm.noExports(target));
+  } else {
+    files.push(target);
+  }
+
+  const lines: string[] = [];
+  let rows = 0;
+  let unnamedModel = 0;
+  let noTokens = 0;
+  let cacheFlagged = 0;
+  let unparseable = 0;
+  let reportedSpend = 0;
+  let sawSpend = false;
+  for (const file of files) {
+    const conversion = litellmRecords(await readFile(file, 'utf8'));
+    for (const record of conversion.records) lines.push(JSON.stringify(record));
+    rows += conversion.rows;
+    unnamedModel += conversion.unnamedModel;
+    noTokens += conversion.noTokens;
+    cacheFlagged += conversion.cacheFlagged;
+    unparseable += conversion.unparseable;
+    if (conversion.reportedSpendUsd !== null) {
+      reportedSpend += conversion.reportedSpendUsd;
+      sawSpend = true;
+    }
+  }
+
+  const out = stringFlag(args, 'out') ?? stringFlag(args, 'o');
+  if (out !== undefined) {
+    await writeFile(out, lines.join('\n') + (lines.length > 0 ? '\n' : ''), 'utf8');
+    console.error(t.fromLiteLlm.written(out));
+  } else {
+    for (const line of lines) console.log(line);
+  }
+
+  console.error(t.fromLiteLlm.summary(files.length, rows));
+  if (unnamedModel > 0) console.error(t.fromLiteLlm.unnamedModel(unnamedModel));
+  if (noTokens > 0) console.error(t.fromLiteLlm.noTokens(noTokens));
+  if (cacheFlagged > 0) console.error(t.fromLiteLlm.cacheFlagged(cacheFlagged));
+  if (sawSpend) console.error(t.fromLiteLlm.reportedSpend(formatUsd(reportedSpend)));
+  if (unparseable > 0) console.error(t.fromLiteLlm.unparseable(unparseable));
 }
 
 /**
@@ -11567,6 +11654,9 @@ async function main(): Promise<void> {
       break;
     case 'from-otel':
       await commandFromOtel(args, t);
+      break;
+    case 'from-litellm':
+      await commandFromLiteLlm(args, t);
       break;
     case 'switch':
       await commandSwitch(args, pricing, t);

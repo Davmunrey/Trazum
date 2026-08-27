@@ -61,6 +61,7 @@ ${bold('USAGE')}
   trazum position <usage.jsonl>
   trazum from-claude-code <file|dir> [--label <name>] [-o <file>]
   trazum from-otel <file|dir> [--label-from-service] [-o <file>]
+  trazum from-litellm <file|dir> [-o <file>]
   trazum switch <usage.jsonl> --to <model> [--migration-usd <n>] [--cases <n>]
   trazum ownrate --gpu-usd-hour <n> --tokens-per-second <n> [--utilization <0-1>]
   trazum pulse [--max-stale-hours <n>]
@@ -166,6 +167,17 @@ ${bold('OPTIONS FOR ownrate')}
   efficiency. Prints the figure and the pricing-overlay snippet to paste
   into trazum.config.json, so the model you run yourself becomes a
   first-class row in every report, priced by you and marked as such.
+
+${bold('OPTIONS FOR from-litellm')}
+  -o, --out <file>            Write the usage log there instead of stdout.
+
+  A LiteLLM spend log, read as a usage log: model, timestamp, label, session
+  and the token counts from each row, and nothing else. The messages, the
+  response, the hashed key, the requester address and the end user stay in the
+  row. cache_hit is a flag and never a token split, so cache verdicts read
+  "cannot tell" rather than a guessed one. Rows naming no model are counted
+  and left out: model_group is a route, not a model. LiteLLM's own spend
+  figure is printed beside Trazum's and never merged into it.
 
 ${bold('OPTIONS FOR from-otel')}
   --label-from-service        Label each record with its span's service name,
@@ -1702,6 +1714,25 @@ ${bold('EXAMPLES')}
     summary: (files, llmSpans) => `${files} file(s), ${llmSpans} LLM span(s) priced.`,
     skipped: (otherSpans) => `${otherSpans} non-LLM span(s) skipped, the trace's other work, not a bill.`,
     noCache: (count) => `${count} span(s) carried no cache data. OpenTelemetry has not standardised the cache TTL split, so the cache verdicts read "cannot tell" on this log rather than a fabricated one.`,
+    unparseable: (count) => `${count} line(s) did not parse as JSON.`,
+    written: (file) => `Wrote ${file}.`,
+  },
+
+  fromLiteLlm: {
+    noPath: () =>
+      'from-litellm needs a spend-log export or a directory: trazum from-litellm spend.json',
+    notFound: (path) => `${path}: not found`,
+    noExports: (path) =>
+      `${path}: no .json/.jsonl/.ndjson exports under it. LiteLLM's spend logs come out of the LiteLLM_SpendLogs table, or from the proxy's own /spend endpoints.`,
+    summary: (files, rows) => `${files} file(s), ${rows} logged call(s) read.`,
+    unnamedModel: (count) =>
+      `${count} row(s) named no model and are not in the output. "model_group" is the name of a proxy route and several models can sit behind one, so pricing those calls by the route they took would attribute a figure to something it does not describe.`,
+    noTokens: (count) =>
+      `${count} row(s) carried zero tokens on both sides: logged calls nobody can price. They are counted here and worth a look at the proxy.`,
+    cacheFlagged: (count) =>
+      `${count} row(s) are marked as a cache hit. LiteLLM records that as a flag and never as a token split, so the cache verdicts read "cannot tell" on this log rather than a fabricated one.`,
+    reportedSpend: (usd) =>
+      `LiteLLM priced these same calls at ${usd} with its own table. That figure is not merged into anything Trazum computes: two price tables summed into one total is how a report becomes quietly wrong. Compare them deliberately or not at all.`,
     unparseable: (count) => `${count} line(s) did not parse as JSON.`,
     written: (file) => `Wrote ${file}.`,
   },
