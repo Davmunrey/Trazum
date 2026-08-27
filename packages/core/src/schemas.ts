@@ -163,6 +163,30 @@ export const CONTRACT_SCHEMAS: Record<ContractName, Record<string, unknown>> = {
     callsMade: number,
     contributions: array,
   }),
+  'store-inventory': doc('store-inventory', {
+    providers: array,
+    totalRecords: number,
+    span: objectOrNull,
+    possiblyDouble: number,
+    unknownVersion: number,
+    totalUsd: number,
+    unreadable: array,
+  }),
+  conformance: doc('conformance', {
+    contract: stringOrNull,
+    because: stringOrNull,
+    problems: array,
+    unavailable: array,
+    records: { type: ['number', 'null'] },
+    conforms: boolean,
+  }),
+  'watch-cycle': doc('watch-cycle', {
+    firedAtMs: number,
+    crossings: array,
+    suppressed: array,
+    abstentions: array,
+    gap: objectOrNull,
+  }),
 };
 
 /** The schema for one named contract — the object `trazum schema` prints. */

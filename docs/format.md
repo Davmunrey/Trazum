@@ -1,14 +1,15 @@
 # The interchange format
 
-Trazum emits **twenty** documents as data, and defines a twenty-first it does not
-emit. All twenty-one are contracts, enforced in both directions by parity tests in
-this repository, and this page is what makes them something another tool can
-build against rather than something to reverse engineer from output.
+Trazum emits **twenty-three** documents as data, and it
+defines a twenty-fourth it does not emit. All twenty-four are contracts,
+enforced in both directions by parity tests in this repository, and this page
+is what makes them something another tool can build against rather than
+something to reverse engineer from output.
 
 Two distinctions are drawn in the table rather than blurred, because each one
 changes what you can actually do:
 
-- **`--contract` names twenty-one of them.** Every documented contract — the
+- **`--contract` names twenty-four of them.** Every documented contract — the
   defined-but-not-emitted outcome report included — can be checked against a
   document *you* produced with a single command. The distinction between named
   and merely documented existed for releases and closed in the 1.65 arc: a
@@ -42,6 +43,9 @@ changes what you can actually do:
 | **position** | `trazum position --json` | `position` | [json-output.md](json-output.md#the-position-document) |
 | **routing measurement** | `trazum route --json --yes` | `routing-measurement` | [json-output.md](json-output.md#the-routing-measurement-document) |
 | **example pruning** | `trazum prune --json --yes` | `example-pruning` | [json-output.md](json-output.md#the-example-pruning-document) |
+| **store inventory** | `trazum store --json` | `store-inventory` | [json-output.md](json-output.md#the-store-inventory-document) |
+| **conformance** | `trazum conform --json` | `conformance` | [json-output.md](json-output.md#the-conformance-document) |
+| **watch cycle** | `trazum watch --json` | `watch-cycle` | [json-output.md](json-output.md#the-watch-cycle-document) |
 
 The count above said **seven** for as long as the table had ten rows in it, and
 it was still saying seven after the outcome report and the annual record were

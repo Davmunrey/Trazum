@@ -56,6 +56,9 @@ export const CONTRACT_NAMES = [
   'position',
   'routing-measurement',
   'example-pruning',
+  'store-inventory',
+  'conformance',
+  'watch-cycle',
 ] as const;
 
 export type ContractName = (typeof CONTRACT_NAMES)[number];
@@ -399,6 +402,50 @@ const DOCUMENT_RULES: Record<Exclude<ContractName, 'usage-log'>, FieldRule[]> = 
   'routing-measurement': [
     rule('slice', 'the workload object — the calls this measured', isObject),
     rule('evaluation', 'the measurement object — verdict and agreement rates', isObject),
+  ],
+  'store-inventory': [
+    rule('providers', 'an array — one entry per provider held', isArray),
+    rule('totalRecords', 'records the store resolves to', isNumber),
+    rule(
+      'span',
+      'an object, or null when the store holds nothing',
+      (v) => v === null || isObject(v),
+    ),
+    rule('possiblyDouble', 'records the store could not tell apart', isNumber),
+    rule('unknownVersion', 'records written by a newer schema', isNumber),
+    rule('totalUsd', 'what the held records priced to', isNumber),
+    rule('unreadable', 'an array — files the store could not parse', isArray),
+  ],
+  conformance: [
+    rule(
+      'contract',
+      'the contract the input looked like, or null when nothing did',
+      (v) => v === null || typeof v === 'string',
+    ),
+    rule(
+      'because',
+      'why nothing matched, or null when something did — never a bare refusal',
+      (v) => v === null || typeof v === 'string',
+    ),
+    rule(
+      'records',
+      'records examined for a log, or null for a single document',
+      (v) => v === null || isNumber(v),
+    ),
+    rule('problems', 'an array — one entry per fault found', isArray),
+    rule('unavailable', 'an array — findings this shape cannot support', isArray),
+    rule('conforms', 'a boolean — the verdict', (v) => typeof v === 'boolean'),
+  ],
+  'watch-cycle': [
+    rule('firedAtMs', 'the instant the cycle ran', isNumber),
+    rule('crossings', 'an array — gates over their limit, news this cycle', isArray),
+    rule('suppressed', 'an array — still over, already reported', isArray),
+    rule('abstentions', 'an array — gates that could not be judged', isArray),
+    rule(
+      'gap',
+      'an object, or null when this cycle watched the whole stretch',
+      (v) => v === null || isObject(v),
+    ),
   ],
   'example-pruning': [
     rule('provider', 'the provider the calls went to', (v) => typeof v === 'string'),

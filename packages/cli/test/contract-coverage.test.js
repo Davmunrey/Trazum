@@ -76,6 +76,9 @@ const CLAIMED = {
   '## The position document': 'packages/cli/test/contract-coverage.test.js',
   '## The routing-measurement document': 'packages/cli/test/json-carries-no-text.test.js',
   '## The example-pruning document': 'packages/cli/test/json-carries-no-text.test.js',
+  '## The store inventory document': 'packages/cli/test/contract-coverage.test.js',
+  '## The conformance document': 'packages/cli/test/contract-coverage.test.js',
+  '## The watch cycle document': 'packages/cli/test/contract-coverage.test.js',
 };
 
 describe('every contract in docs/json-output.md is claimed by a guard', () => {
@@ -354,6 +357,64 @@ describe('the six contracts that had no guard', () => {
     bothWays('## The outcome report document', promised(document, '## The outcome report document'), emitted);
   });
 
+  it('holds the store inventory document', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'trazum-store-contract-'));
+    await writeFile(
+      join(dir, 'usage.json'),
+      JSON.stringify({
+        data: [1, 2, 3].map((d) => ({
+          starting_at: `2026-08-0${d}T00:00:00Z`,
+          ending_at: `2026-08-0${d + 1}T00:00:00Z`,
+          results: [{ model: 'claude-opus-5', uncached_input_tokens: 200_000, output_tokens: 0 }],
+        })),
+      }),
+    );
+    const filled = spawnSync(
+      process.execPath,
+      [CLI, 'connect', 'anthropic', '--payload', 'usage.json', '--store'],
+      { encoding: 'utf8', env: SPAWN_ENV, timeout: 60000, cwd: dir },
+    );
+    assert.equal(filled.status, 0, filled.stderr);
+    const document = await readFile(DOC, 'utf8');
+    const emitted = Object.keys(run(['store', '--json'], dir));
+    bothWays('## The store inventory document', promised(document, '## The store inventory document'), emitted);
+  });
+
+  it('holds the conformance document', async () => {
+    const dir = await workspace();
+    const document = await readFile(DOC, 'utf8');
+    const emitted = Object.keys(run(['conform', join(dir, 'src', 'a.jsonl'), '--json'], dir));
+    bothWays('## The conformance document', promised(document, '## The conformance document'), emitted);
+  });
+
+  it('holds the watch cycle document', async () => {
+    /**
+     * The thresholds are set high enough that nothing crosses, because a
+     * crossing exits 1 by design and this guard is about the shape rather than
+     * the verdict. Every field is emitted either way — an empty `crossings`
+     * is what a clean cycle looks like, and the document says so with the
+     * array rather than by leaving it out.
+     */
+    const dir = await mkdtemp(join(tmpdir(), 'trazum-watch-contract-'));
+    await writeFile(
+      join(dir, 'usage.json'),
+      JSON.stringify({
+        data: [1, 2, 3].map((d) => ({
+          starting_at: `2026-08-0${d}T00:00:00Z`,
+          ending_at: `2026-08-0${d + 1}T00:00:00Z`,
+          results: [{ model: 'claude-opus-5', uncached_input_tokens: 200_000, output_tokens: 0 }],
+        })),
+      }),
+    );
+    await writeFile(
+      join(dir, 'trazum.config.json'),
+      JSON.stringify({ spend: { maxUsd: 10_000, maxDayUsd: 5_000 } }),
+    );
+    const document = await readFile(DOC, 'utf8');
+    const emitted = Object.keys(run(['watch', '--once', '--payload', 'usage.json', '--json'], dir));
+    bothWays('## The watch cycle document', promised(document, '## The watch cycle document'), emitted);
+  });
+
   it('reads a row that names several fields, and one that names none at this level', () => {
     /**
      * The harvest above decides what every guard in this file demands, and on
@@ -411,7 +472,7 @@ const WORDS = [
   'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight',
   'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen',
   'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty', 'twenty-one',
-  'twenty-two',
+  'twenty-two', 'twenty-three', 'twenty-four', 'twenty-five',
 ];
 const ORDINALS = {
   13: 'thirteenth',
@@ -424,6 +485,9 @@ const ORDINALS = {
   20: 'twentieth',
   21: 'twenty-first',
   22: 'twenty-second',
+  23: 'twenty-third',
+  24: 'twenty-fourth',
+  25: 'twenty-fifth',
 };
 
 /** "a seventeenth", "an eighteenth" — the article belongs to the word, not the template. */

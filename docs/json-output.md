@@ -544,3 +544,58 @@ whether the answers moved.
 **No example text.** A few-shot example *is* prompt text, and the terminal
 rendering quotes its first line; the document carries the index and the token
 count instead. Same test, same planted marker.
+
+## The store inventory document
+
+`trazum store --json` — what the local store holds, resolved and priced. The
+store is append-only and converges on read, so this is the state a reader would
+see, not the state on disk line by line.
+
+| Field | What it holds |
+| --- | --- |
+| `schemaVersion` | `1`. |
+| `providers` | One entry per provider held, oldest first by the span it covers: `provider`, `records`, the `span` those records cover, `calls` (null when no provider in the set serves request counts), and the `models` seen. |
+| `totalRecords` | Records the store resolves to, after overlapping pulls are collapsed. Not lines on disk — a re-pull of a period already held converges to one record, and the difference is what `possiblyDouble` counts. |
+| `span` | The stretch every held record falls inside — `fromMs`, `toMs` — or null when nothing is held. |
+| `possiblyDouble` | Records the store could not tell apart from each other. Counted rather than dropped or merged: a figure that silently deduplicated two genuine pulls would be quietly wrong, and one that summed two copies of the same pull would be quietly wrong the other way. |
+| `unknownVersion` | Records written by a schema this build does not know. They are held, counted, and contribute to nothing — a newer Trazum wrote them and this one will not guess at what they mean. |
+| `totalUsd` | What the resolved records priced to, from the catalogue. `unknownVersion` and `unreadable` contribute nothing to it. |
+| `unreadable` | Lines that would not parse, each named by `file` and `line`. The path is store-relative — the provider directory and the month file — which is what an operator needs to find the line and nothing more. |
+
+**No prompt text, no session key, no absolute path.** The store holds billing
+records, never call bodies; the inventory holds counts of those records.
+
+## The conformance document
+
+`trazum conform <file> --json` — whether somebody else's document or log is one
+Trazum can read, and what is missing when it is not. This is the document a
+connector author checks their own emitter against, so it is the one place a
+refusal has to be more useful than "invalid".
+
+| Field | What it holds |
+| --- | --- |
+| `schemaVersion` | `1`. |
+| `contract` | Which contract the input looked like, or null when nothing did. Named with `--contract` or inferred from the shape. |
+| `because` | Why nothing matched. Present only when `contract` is null, and never a bare "invalid": a refusal with nothing after it is indistinguishable from a bug, which is the rule this project applies to every other refusal. |
+| `problems` | One entry per fault: `at` (`line 12` for a log, a dotted path inside a document), `kind`, and a `detail` naming the field and what the contract asks of it. |
+| `problems[].kind` | `missing` (a required field is absent), `wrong-type` (present, and not the type the contract states), `absence-as-zero` (present as `0` where the contract requires `null` — the fault that turns "nobody measured it" into "it was nothing"), or `unreadable` (the line or the document would not parse at all). |
+| `unavailable` | Findings a valid document of this shape simply cannot support: the `finding`, the `because`, and the `unlockedBy` that would buy it. A conforming log with no labels is not broken, and it also cannot produce a per-workload bill — both are true, and only saying the first would be the flattering half. |
+| `records` | Records examined, for a log. Null for a single document, which is one thing rather than a count of things. |
+| `conforms` | The verdict. True only when `problems` is empty — `unavailable` never makes a document non-conforming. |
+
+## The watch cycle document
+
+`trazum watch --json` — one cycle of the spend watcher, whether it fired or
+not. A cycle that reports nothing is not the same as a cycle that had nothing
+to report, and this document is shaped so a reader cannot mistake one for the
+other.
+
+| Field | What it holds |
+| --- | --- |
+| `schemaVersion` | `1`. |
+| `firedAtMs` | The instant the cycle ran, so a consumer can see how stale a figure is rather than assume it is current. |
+| `crossings` | Gates over their limit, and news this cycle. Each carries the `gate`, the `measuredUsd` that crossed and the `limitUsd` it crossed, the `window` the figure covers, the `day` a day gate means, and `provenance`. |
+| `crossings[].provenance` | Always `measured`. A projected crossing is not a crossing, and the field is emitted anyway so a later version of this file cannot smuggle an estimate past a reader by leaving the question unasked. |
+| `suppressed` | Still over the limit, and already reported on an earlier cycle. Same shape as `crossings`. These are why a quiet cycle is not a clean one: the alert was suppressed, the crossing was not, and only one of those is news. |
+| `abstentions` | Gates that could not be judged, which is neither a pass nor a failure: the `gate`, a `reason` (`window-too-short`, `dimension-unavailable`), and a `detail` with `coveredMs` and `neededMs` where there is a figure to give. A gate silently skipped for a week reads exactly like a gate that has been passing for a week. |
+| `gap` | The stretch this cycle did not watch — `fromMs`, `toMs` — when the watcher was down or is starting for the first time. Null when there is none. A resumed watcher that said nothing would imply coverage it did not have. |

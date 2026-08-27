@@ -131,7 +131,7 @@ describe('what the library builds, the library accepts', () => {
 
   it('names the contracts it cannot reach, rather than implying it covers them all', () => {
     /**
-     * Seventeen of the twenty-one contracts need something this test cannot make
+     * Twenty of the twenty-four contracts need something this test cannot make
      * from the package alone — a log on disk, a plan and a later log to
      * verify it against, a connector's credentials, a CLI run for the
      * documents the CLI stamps. Listing them is the difference between "two
@@ -145,6 +145,7 @@ describe('what the library builds, the library accepts', () => {
     assert.deepEqual(uncovered.sort(), [
       'annual-record',
       'bench',
+      'conformance',
       'connected',
       'cost-answer',
       'example-pruning',
@@ -158,8 +159,10 @@ describe('what the library builds, the library accepts', () => {
       'routing-measurement',
       'rule-yield',
       'spend-guard',
+      'store-inventory',
       'usage-log',
       'verification',
+      'watch-cycle',
     ]);
   });
 });

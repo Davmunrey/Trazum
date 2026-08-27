@@ -267,6 +267,11 @@ describe('contract-article', () => {
     // on a consonant sound, so the sound rule and the letter rule agree again.
     'routing-measurement': 'a',
     'example-pruning': 'an',
+    // The three the same sweep finished: `store`, `conformance` and `watch`
+    // all open on a consonant sound, so the two rules agree once more.
+    'store-inventory': 'a',
+    conformance: 'a',
+    'watch-cycle': 'a',
   };
 
   it('has a decided article for every contract, and refuses to guess a new one', () => {
