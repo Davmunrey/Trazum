@@ -904,6 +904,7 @@ export const en: WebMessages = {
 
   playground: {
     tab: 'Playground',
+    start: 'Type "help" to see what runs here. Nothing is uploaded and nothing is fetched.',
     lead:
       'The CLI, runnable here: the same @trazum/core functions the terminal runs, on sample files already loaded. Nothing is uploaded and nothing is fetched. Type "help" to start.',
     inputAriaLabel: 'Playground command line',

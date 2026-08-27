@@ -920,6 +920,7 @@ export const es: WebMessages = {
 
   playground: {
     tab: 'Playground',
+    start: 'Escribe «help» para ver qué se ejecuta aquí. No se sube nada ni se descarga nada.',
     lead:
       'La CLI, ejecutable aquí: las mismas funciones de @trazum/core que corre el terminal, sobre ficheros de ejemplo ya cargados. No se sube nada y no se descarga nada. Escribe «help» para empezar.',
     inputAriaLabel: 'Línea de comandos del playground',
