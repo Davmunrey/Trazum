@@ -574,6 +574,27 @@ export interface CliMessages {
     written(file: string): string;
   };
 
+  /**
+   * `from-litellm` — the gateway a great many teams already put in front of
+   * every provider, so its spend log is the export most likely to already
+   * exist on somebody's disk.
+   */
+  fromLiteLlm: {
+    noPath(): string;
+    notFound(path: string): string;
+    noExports(path: string): string;
+    summary(files: number, rows: number): string;
+    /** Rows naming no model: counted, never priced by the route they took. */
+    unnamedModel(count: number): string;
+    noTokens(count: number): string;
+    /** A cache flag is not a token split, and this says so rather than guessing. */
+    cacheFlagged(count: number): string;
+    /** LiteLLM's own figure, stated and never merged into Trazum's. */
+    reportedSpend(usd: string): string;
+    unparseable(count: number): string;
+    written(file: string): string;
+  };
+
   fromClaudeCode: {
     noPath(): string;
     notFound(path: string): string;

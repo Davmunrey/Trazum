@@ -89,7 +89,7 @@ never runs unless you ask.
 ## Contents
 
 - [What it actually does](#what-it-actually-does) — the five things, and what it refuses to touch
-- [The forty-two commands](#the-forty-two-commands): the whole surface, one line each
+- [The forty-three commands](#the-forty-three-commands): the whole surface, one line each
 - [Getting started](#getting-started) — CLI, web, the GitHub Action, pre-commit
 - [The first five minutes](#the-first-five-minutes-trazum-init) — `init`, and the four things it refuses to write
 - [Building on the format](docs/commands.md#building-on-the-format-trazum-conform) — the contracts, the guarantees, and the doctrine
@@ -198,8 +198,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of forty-two commands — [the table
-above](#the-forty-two-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of forty-three commands — [the table
+above](#the-forty-three-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -213,7 +213,7 @@ from the exit codes it is supposed to relay.
 
 ---
 
-## The forty-two commands
+## The forty-three commands
 
 | Command | What it answers |
 |---|---|
@@ -253,6 +253,7 @@ from the exit codes it is supposed to relay.
 | [`trazum position`](docs/commands.md#where-the-month-stands-trazum-position) | Where does the month stand against every ceiling? *Measured, denominators attached, no forecast anywhere.* |
 | [`trazum from-claude-code`](docs/commands.md#the-agents-own-bill-trazum-from-claude-code) | What did my Claude Code sessions cost? *Reads the transcripts already on disk — the numbers only, never the words.* |
 | [`trazum from-otel`](docs/commands.md#the-universal-cost-lens-trazum-from-otel) | What did the LLM calls in my OpenTelemetry export cost? *Reads the GenAI spans any exporter already emits — the counts only, never the prompts.* |
+| [`trazum from-litellm`](docs/commands.md#the-gateway-everybody-already-runs-trazum-from-litellm) | What did the calls my LiteLLM proxy logged cost? *Reads the spend log the gateway already writes — the counts only, never the prompts, keys or addresses on the same row.* |
 | [`trazum switch`](docs/commands.md#when-does-the-switch-pay-trazum-switch) | Should we move this traffic, and when does moving pay? *Measured delta, declared migration cost, break-even as division on the past — and the required evaluation itself priced.* |
 | [`trazum ownrate`](docs/commands.md#the-model-you-run-yourself-trazum-ownrate) | What does my self-hosted model cost per million tokens? *Your GPU rate over your measured throughput — derived from your declaration, never guessed.* |
 | [`trazum bench`](docs/commands.md#this-machine-measured-trazum-bench) | How fast is Trazum here, and on what? *One shot per workload, no judgement — run it before and after a change.* |
@@ -409,7 +410,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other forty-one commands, each with its own chapter in [the command
+The other forty-two commands, each with its own chapter in [the command
 reference](docs/commands.md):
 
 ```bash
@@ -596,7 +597,7 @@ in **[the command reference](docs/commands.md)**: the
 measured multiplication (`--from-log`), the cache reorder, the CI baseline,
 the fleet, the plan and its verification, the provider pull, the gateway,
 the evaluations that spend money and say so first, and everything else the
-[table above](#the-forty-two-commands) links to.
+[table above](#the-forty-three-commands) links to.
 
 `trazum --version` prints the version on its own, and works when your config is
 broken — which is exactly when somebody is asking.

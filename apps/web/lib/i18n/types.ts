@@ -434,6 +434,12 @@ export interface WebMessages {
      * and the line would be describing a state nobody is in.
      */
     inputFolded: string;
+    /** A dropped LiteLLM spend log, converted in this tab. */
+    litellmSummary(files: number, rows: number): string;
+    /** Rows naming no model: counted, never priced by the route they took. */
+    litellmUnnamed(count: number): string;
+    /** Rows flagged as a cache hit, with no token split behind the flag. */
+    litellmCacheFlagged(count: number): string;
     routeVerify: string;
     /**
      * The verdict bridge: a `trazum route --json` document dropped into this

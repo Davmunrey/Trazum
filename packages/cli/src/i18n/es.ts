@@ -48,6 +48,7 @@ ${bold('USO')}
   trazum position <uso.jsonl>
   trazum from-claude-code <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-otel <fichero|dir> [--label-from-service] [-o <fichero>]
+  trazum from-litellm <fichero|dir> [-o <fichero>]
   trazum switch <uso.jsonl> --to <modelo> [--migration-usd <n>] [--cases <n>]
   trazum ownrate --gpu-usd-hour <n> --tokens-per-second <n> [--utilization <0-1>]
   trazum pulse [--max-stale-hours <n>]
@@ -169,6 +170,18 @@ ${bold('OPCIONES DE ownrate')}
   supuesta. Imprime la cifra y el snippet de overlay de precios para pegar
   en trazum.config.json, de modo que el modelo que tú mismo sirves sea una
   fila de primera en cada informe, tasado por ti y marcado como tal.
+
+${bold('OPCIONES DE from-litellm')}
+  -o, --out <fichero>         Escribe el log de uso ahí en vez de en stdout.
+
+  Un spend log de LiteLLM, leído como un log de uso: modelo, marca de tiempo,
+  etiqueta, sesión y los recuentos de tokens de cada fila, y nada más. Los
+  mensajes, la respuesta, la clave con hash, la dirección del solicitante y el
+  usuario final se quedan en la fila. cache_hit es una bandera y nunca un
+  reparto de tokens, así que los veredictos de caché dicen "no se puede saber"
+  en vez de uno inventado. Las filas que no nombran modelo se cuentan y se
+  dejan fuera: model_group es una ruta, no un modelo. La cifra de gasto propia
+  de LiteLLM se imprime al lado de la de Trazum y nunca se funde con ella.
 
 ${bold('OPCIONES DE from-otel')}
   --label-from-service        Etiqueta cada registro con el nombre de servicio
@@ -1721,6 +1734,25 @@ ${bold('EJEMPLOS')}
     skipped: (otherSpans) => `${otherSpans} span(s) no-LLM omitidos: el resto del trabajo de la traza, no una factura.`,
     noCache: (count) => `${count} span(s) sin datos de caché. OpenTelemetry no ha estandarizado el reparto del TTL de caché, así que los veredictos de caché dicen «no se puede saber» en este log en vez de uno inventado.`,
     unparseable: (count) => `${count} línea(s) no se pudieron parsear como JSON.`,
+    written: (file) => `Escrito ${file}.`,
+  },
+
+  fromLiteLlm: {
+    noPath: () =>
+      'from-litellm necesita un export de spend log o un directorio: trazum from-litellm spend.json',
+    notFound: (path) => `${path}: no encontrado`,
+    noExports: (path) =>
+      `${path}: no hay exports .json/.jsonl/.ndjson dentro. Los spend logs de LiteLLM salen de la tabla LiteLLM_SpendLogs, o de los endpoints /spend del propio proxy.`,
+    summary: (files, rows) => `${files} archivo(s), ${rows} llamada(s) registrada(s) leída(s).`,
+    unnamedModel: (count) =>
+      `${count} fila(s) no nombran modelo y no están en la salida. "model_group" es el nombre de una ruta del proxy y detrás pueden ir varios modelos, así que poner precio a esas llamadas por la ruta que tomaron sería atribuir una cifra a algo que no describe.`,
+    noTokens: (count) =>
+      `${count} fila(s) traían cero tokens en ambos lados: llamadas registradas a las que nadie puede poner precio. Se cuentan aquí y merecen un vistazo al proxy.`,
+    cacheFlagged: (count) =>
+      `${count} fila(s) están marcadas como acierto de caché. LiteLLM lo registra como una bandera y nunca como un reparto de tokens, así que los veredictos de caché dicen "no se puede saber" en este registro en vez de uno inventado.`,
+    reportedSpend: (usd) =>
+      `LiteLLM puso precio a estas mismas llamadas en ${usd} con su propia tabla. Esa cifra no se funde con nada que calcule Trazum: sumar dos tablas de precios en un total es como un informe se vuelve callado y equivocado. Compáralas a propósito o no las compares.`,
+    unparseable: (count) => `${count} línea(s) no se pudieron leer como JSON.`,
     written: (file) => `Escrito ${file}.`,
   },
 

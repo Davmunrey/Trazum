@@ -521,6 +521,12 @@ export const en: WebMessages = {
       `${calls.toLocaleString('en-US')} ${calls === 1 ? 'call' : 'calls'}, ${spent} spent`,
     inputHeading: 'The log',
     inputFolded: 'open to read another log',
+    litellmSummary: (files, rows) =>
+      `${files} LiteLLM spend log${files === 1 ? '' : 's'}, ${rows.toLocaleString('en-US')} logged call${rows === 1 ? '' : 's'} read in this tab. The messages, the response, the hashed key and the requester address stayed in the row.`,
+    litellmUnnamed: (count) =>
+      `${count.toLocaleString('en-US')} row${count === 1 ? '' : 's'} named no model and ${count === 1 ? 'is' : 'are'} not priced above: "model_group" is the name of a proxy route and several models can sit behind one.`,
+    litellmCacheFlagged: (count) =>
+      `${count.toLocaleString('en-US')} row${count === 1 ? '' : 's'} marked as a cache hit. LiteLLM records that as a flag, never as a token split, so the cache figures read "cannot tell" rather than a guessed one.`,
     routeVerify:
       'Whether a route holds is an evaluation question, not an arithmetic one; nothing here '
       + 'has seen a single answer. The CLI measures it: trazum route <log> --prompt-file '

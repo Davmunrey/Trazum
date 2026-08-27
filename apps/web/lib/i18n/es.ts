@@ -526,6 +526,12 @@ export const es: WebMessages = {
       `${calls.toLocaleString('es-ES')} ${calls === 1 ? 'llamada' : 'llamadas'}, ${spent} gastados`,
     inputHeading: 'El registro',
     inputFolded: 'abre para leer otro registro',
+    litellmSummary: (files, rows) =>
+      `${files} spend log${files === 1 ? '' : 's'} de LiteLLM, ${rows.toLocaleString('es-ES')} llamada${rows === 1 ? '' : 's'} registrada${rows === 1 ? '' : 's'} leída${rows === 1 ? '' : 's'} en esta pestaña. Los mensajes, la respuesta, la clave con hash y la dirección del solicitante se quedaron en la fila.`,
+    litellmUnnamed: (count) =>
+      `${count.toLocaleString('es-ES')} fila${count === 1 ? '' : 's'} no nombran modelo y no ${count === 1 ? 'está' : 'están'} con precio arriba: "model_group" es el nombre de una ruta del proxy y detrás pueden ir varios modelos.`,
+    litellmCacheFlagged: (count) =>
+      `${count.toLocaleString('es-ES')} fila${count === 1 ? '' : 's'} marcada${count === 1 ? '' : 's'} como acierto de caché. LiteLLM lo registra como una bandera, nunca como un reparto de tokens, así que las cifras de caché dicen "no se puede saber" en vez de una inventada.`,
     routeVerify:
       'Que una ruta aguante es una pregunta de evaluación, no de aritmética: nada aquí ha visto '
       + 'una sola respuesta. La CLI lo mide: trazum route <log> --prompt-file <prompt> --cases '

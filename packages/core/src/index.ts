@@ -205,6 +205,8 @@ export type { MeasuredIndex } from './position.js';
 export { claudeCodeRecords, looksLikeClaudeCodeTranscript } from './claude-code.js';
 export { otelRecords, looksLikeOtel } from './otel.js';
 export type { OtelConversion, OtelRecord } from './otel.js';
+export { litellmRecords, looksLikeLiteLlm } from './litellm.js';
+export type { LiteLlmConversion, LiteLlmRecord } from './litellm.js';
 export type { ClaudeCodeConversion, ClaudeCodeRecord } from './claude-code.js';
 export { positionReport } from './position-report.js';
 export type {
