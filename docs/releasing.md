@@ -234,8 +234,24 @@ including what it costs a reader pinning with a tilde, is in
    straggler: it can only advance to the release commit *after* that commit
    exists, so it moves in the next PR — `security.test.js` keeps the label
    honest either way.
-7. `npm run verify`, and read the exit code rather than the output.
-8. **Merge. That is the release.** The push to main triggers the workflow's
+7. **Check the prices, per provider.** The one set of numbers in this product
+   that cannot be derived from anything in the repository. `PROVIDER_REVIEWED`
+   in `packages/core/src/pricing.ts` carries a date per provider; open the
+   pricing page for any provider whose date is more than
+   `STALE_PRICING_DAYS` old, compare every model this table prices, and move
+   that provider's date only if you actually looked. The catalogue's headline
+   date is derived as the oldest of the seven, so a partial review records
+   itself honestly instead of overstating the rest.
+
+   Two things `pricing-review.test.js` will catch and one it cannot. It catches
+   a promotion that expires before the next review is due — a price change this
+   table can see coming, and the reason Sonnet 5 nearly went out 50% too high —
+   and it catches a review date in the future or a provider priced with no date
+   at all. It cannot catch a provider quietly changing a price, which is what
+   this step is.
+
+8. `npm run verify`, and read the exit code rather than the output.
+9. **Merge. That is the release.** The push to main triggers the workflow's
    `decide` job, which sees a manifest version the registry does not have and
    hands it to the release job: verify again, publish all three packages,
    create the `v<version>` tag on the merge commit, and publish the GitHub

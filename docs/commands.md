@@ -2607,7 +2607,7 @@ money was.
 
 | lever | what it moves |
 |---|---|
-| **which model the call goes to** | Opus 5 → Sonnet 5 is **40%** off; → Haiku 4.5 is **80%** |
+| **which model the call goes to** | Opus 5 → Sonnet 5 is **60%** off; → Haiku 4.5 is **80%** |
 | **the Batch API** | **50%** flat, on input and output |
 | prompt caching | 3–4× the rules |
 | shortening the prompt | **~1%** |

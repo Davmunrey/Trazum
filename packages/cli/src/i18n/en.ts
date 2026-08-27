@@ -1981,6 +1981,8 @@ ${bold('EXAMPLES')}
     unit: () => '  (USD per million tokens)',
     reviewedOn: (date, days) =>
       `  Table reviewed on ${date}${ago(days)}. Verify before budgeting.`,
+    reviewedByProvider: (rows) => `  Per provider: ${rows}`,
+    reviewedGroup: (date, days, providers) => `${date}${ago(days)} ${providers}`,
     columns: {
       model: 'model',
       input: 'input',

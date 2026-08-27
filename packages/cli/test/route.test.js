@@ -56,7 +56,7 @@ describe('measuring whether a route is safe', () => {
   it('names the slice, the candidate, and what the route is worth', async () => {
     /**
      * 400 calls of 9,000 input and 300 output on Opus 5 is $21.00; the same tokens
-     * on Sonnet 5 at its introductory rate are $8.40. The route is worth $12.60,
+     * on Sonnet 5 at $2/$10 are $8.40. The route is worth $12.60,
      * and the command picks that slice out of the log on its own — the reader does
      * not have to know which workload to point it at.
      */

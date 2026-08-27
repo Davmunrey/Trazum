@@ -785,6 +785,15 @@ export interface CliMessages {
     unit(): string;
     /** `days` is null when the date is unusable or in the future. */
     reviewedOn(date: string, days: number | null): string;
+    /**
+     * Said only when the providers disagree, which is the case the headline
+     * date cannot carry: it is the oldest of them, so a reader pricing only
+     * Anthropic calls is told the table is two months old when their half of
+     * it was checked today.
+     */
+    reviewedByProvider(rows: string): string;
+    /** The providers that share one review date, joined into the line above. */
+    reviewedGroup(date: string, days: number | null, providers: string): string;
     columns: {
       model: string;
       input: string;

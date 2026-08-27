@@ -882,11 +882,15 @@ in [the command reference](docs/commands.md#connecting-your-own-llm).
 
 Trazum prices Anthropic, OpenAI, Google, Moonshot, DeepSeek, xAI and Mistral:
 
-**Every report says how old the prices are** — `Prices reviewed 2026-06-24 (46 days
-ago)` — because every dollar figure descends from that list, and a date alone makes
-you subtract against today to learn whether to trust it. There is deliberately no
-"stale" threshold: that would be a number nobody could check, and the age is the
-fact.
+**Every report says how old the prices are** — the date the table was checked and
+how many days ago that was — because every dollar figure descends from that list,
+and a date on its own makes you subtract against today to learn whether to trust
+it. Past 45 days the report says so in a sentence, rather than leaving the reader
+to decide what "old" means.
+
+The seven providers publish independently, so each carries its own review date and
+`trazum models` prints them; the headline figure above is the oldest of the seven,
+because the question "how old is this table" is about its worst part.
 
 ```bash
 trazum optimize prompt.txt --model gpt-5 --calls 50000

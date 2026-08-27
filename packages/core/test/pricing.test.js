@@ -48,16 +48,37 @@ describe('pricing catalogue', () => {
   });
 
   it('applies promotional pricing only while it is live', () => {
-    const sonnet = getModel('claude-sonnet-5');
-    assert.ok(sonnet.promo, 'Sonnet 5 should have introductory pricing');
+    /**
+     * Built here rather than picked out of the catalogue.
+     *
+     * This used to read Sonnet 5, which shipped on introductory pricing, and
+     * so it asserted `sonnet.promo` existed before testing what `promo` does.
+     * When Anthropic made that introductory price the standard one and the
+     * promotion left the catalogue, the test failed — not because the window
+     * logic broke, but because the fixture had stopped being an example. A
+     * catalogue is data that changes; the behaviour under test is that a
+     * promotion applies up to its last day and not after it.
+     */
+    const promoted = {
+      id: 'test-promoted',
+      displayName: 'Promoted',
+      inputPerMTok: 3,
+      outputPerMTok: 15,
+      contextWindow: 200_000,
+      cacheMinTokens: 1024,
+      tier: 'sonnet',
+      promo: { inputPerMTok: 2, outputPerMTok: 10, until: '2026-08-31' },
+    };
 
-    const inside = effectivePricing(sonnet, new Date('2026-08-01T00:00:00Z'));
+    const inside = effectivePricing(promoted, new Date('2026-08-31T23:00:00Z'));
     assert.equal(inside.promoApplied, true);
-    assert.equal(inside.inputPerMTok, sonnet.promo.inputPerMTok);
+    assert.equal(inside.inputPerMTok, 2);
+    assert.equal(inside.outputPerMTok, 10);
 
-    const outside = effectivePricing(sonnet, new Date('2026-09-01T00:00:00Z'));
+    const outside = effectivePricing(promoted, new Date('2026-09-01T00:00:00Z'));
     assert.equal(outside.promoApplied, false);
-    assert.equal(outside.inputPerMTok, sonnet.inputPerMTok);
+    assert.equal(outside.inputPerMTok, 3);
+    assert.equal(outside.outputPerMTok, 15);
   });
 
   it('rejects unknown models with a useful message', () => {

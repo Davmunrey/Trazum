@@ -59,6 +59,74 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **Two shipped defects the suite had no shape for.** It verifies prose and
+  arithmetic exhaustively and verified nothing about what a reader could see or
+  press, so both of these passed CI and were visible on first paint. The
+  landing rendered five of its six sections at zero opacity for two days — a
+  `Reveal` wrapper whose observer never fired below the fold — and the Write
+  panel opened with two buttons both reading "Skip this" for four days, because
+  a ternary label's falsy branch was its neighbour's label and the falsy branch
+  is the state the panel opens in.
+
+  Neither needed a browser to catch. `apps/web/test/reachable.test.mjs` refuses
+  content hidden behind client state that starts falsy, a reveal on a timeline
+  that may not advance (the *second* attempt at fixing the blank landing, also
+  blank), and two buttons in one component that can carry one label at once. It
+  claims a collision between two conditional labels only when the conditions
+  are written identically, because proving mutual exclusion means evaluating
+  them.
+
+- **The landing counted things by hand, in five languages.** `every-page.test.js`
+  has derived `docs/` from `COMMAND_FLAGS` for a long time and the walk stops at
+  `docs/`; the landing shipped saying 39 commands against a CLI that dispatched
+  45, and spelled its contract count as a word in each locale, which no
+  derivation can reach. The words are digits, the digits come from
+  `COMMAND_FLAGS` and `CONTRACT_NAMES`, and a count spelled as a word is
+  refused rather than translated.
+
+- **Sonnet 5 was priced at a number nobody charges, on a timer.** The catalogue
+  carried it as $3/$15 with an introductory promotion of $2/$10 running to
+  2026-08-31 on top. Anthropic cancelled that increase and made $2/$10 the
+  standard price; the table did not know, so on 2026-09-01 every Sonnet 5
+  figure this tool printed would have risen 50% with no code change, no release
+  and nothing for a reader to notice. Four days out when it was found.
+
+  **A promotion is the one price change this table can see coming**, so
+  `pricing-review.test.js` now refuses one that expires inside
+  `STALE_PRICING_DAYS` — before the next review this product tells readers it
+  performs. That check would have asked the question on 2026-07-17. It cannot
+  catch a provider quietly changing a price, and says so; that is the release
+  checklist's job, and step 7 of [docs/releasing.md](docs/releasing.md) is now
+  it.
+
+  The lever table's headline moved with the price: **Opus 5 → Sonnet 5 is 60%
+  off, not 40%.** It had been computed from the $3/$15 list price while every
+  test, every transcript and the product's own output used the $2/$10 actually
+  charged, so `docs/commands.md` disagreed with the sample printed four lines
+  below it. Both spellings — the table and the doc comment on `levers.ts` — are
+  now derived from `MODELS` and checked.
+
+- **Seven copies of one staleness threshold.** `profile`, the MCP report and
+  the browser's bill each typed `45` into their own comparison, and four locale
+  strings stated it again in prose. It is `STALE_PRICING_DAYS` in
+  `@trazum/core` now, and a guard refuses both a surface that compares an age
+  to a typed number and a locale sentence that tells the reader a different
+  one.
+
+- **One review date for seven providers.** The date was written on 2026-08-04
+  already reading 2026-06-24 and never moved, because moving it required
+  reviewing all seven at once: a partial review could only overstate the rest
+  or throw itself away. `PROVIDER_REVIEWED` carries a date per provider, the
+  catalogue's headline date is derived as the oldest of them, and `trazum
+  models` prints the breakdown when they disagree — so a reader pricing Claude
+  calls is no longer told their prices are two months old when that half of the
+  table was checked this morning.
+
+- **The README said there was deliberately no staleness threshold.** There has
+  been one for as long as three surfaces have been printing a warning past 45
+  days. Corrected, along with the illustrative day count beside it, which was a
+  number that could only rot.
+
 - **The Playground's terminal was a paper-coloured card.** The one place in
   the app where a reader types commands was the same white surface as the forms
   around it, with monospace text in it — so it read as another text box. A

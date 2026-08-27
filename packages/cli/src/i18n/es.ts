@@ -2003,6 +2003,8 @@ ${bold('EJEMPLOS')}
     unit: () => '  (USD por millón de tokens)',
     reviewedOn: (date, days) =>
       `  Tabla revisada el ${date}${hace(days)}. Verifica antes de presupuestar.`,
+    reviewedByProvider: (rows) => `  Por proveedor: ${rows}`,
+    reviewedGroup: (date, days, providers) => `${date}${hace(days)} ${providers}`,
     columns: {
       model: 'modelo',
       input: 'entrada',

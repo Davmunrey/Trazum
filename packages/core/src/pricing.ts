@@ -8,7 +8,45 @@ import type { ModelPricing } from './types.js';
  * Amazon Bedrock and Vertex AI pricing is set by each partner and is NOT the
  * pricing in this table.
  */
-export const PRICING_LAST_REVIEWED = '2026-06-24';
+/**
+ * When each provider's prices were last checked against that provider's own
+ * published table.
+ *
+ * One date for the whole catalogue was the wrong shape, and it cost a real
+ * error. Seven providers publish independently and are checked independently;
+ * a single date forces a partial review to either overstate itself by moving
+ * the date for everyone, or throw itself away by leaving it. What happened is
+ * the second: this constant was written on 2026-08-04 already reading
+ * 2026-06-24, and never moved again.
+ *
+ * Meanwhile Anthropic cancelled the increase that was going to take Sonnet 5
+ * from its 2/10 introductory price to 3/15 on 2026-09-01, and made 2/10
+ * standard. The catalogue still carried the promotion with its end date, so on
+ * 2026-09-01 every Sonnet 5 figure this tool printed would have risen 50% with
+ * no code change and no way for a reader to tell. A price nobody charges is
+ * the one error this product cannot make, and it was four days out on a timer.
+ *
+ * So: a date per provider, checked against that provider's own page, and the
+ * catalogue's headline date derived as the oldest of them rather than typed.
+ */
+export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze({
+  /* platform.claude.com/docs/en/about-claude/pricing, read 2026-08-27. */
+  anthropic: '2026-08-27',
+  openai: '2026-06-24',
+  google: '2026-06-24',
+  moonshot: '2026-06-24',
+  deepseek: '2026-06-24',
+  xai: '2026-06-24',
+  mistral: '2026-06-24',
+});
+
+/**
+ * The catalogue's age is its oldest provider's, because a reader asking how
+ * old this table is wants the answer for the worst part of it, not the best.
+ */
+export const PRICING_LAST_REVIEWED: string = Object.values(PROVIDER_REVIEWED).reduce(
+  (oldest, date) => (date < oldest ? date : oldest),
+);
 
 /** Cost multipliers relative to the input price. */
 /**
@@ -138,14 +176,15 @@ export const MODELS: ModelPricing[] = [
     id: 'claude-sonnet-5',
     provider: 'anthropic',
     displayName: 'Claude Sonnet 5',
-    inputPerMTok: 3,
-    outputPerMTok: 15,
+    inputPerMTok: 2,
+    outputPerMTok: 10,
     contextWindow: 1_000_000,
     cacheMinTokens: 1024,
     capability: 'mid',
     tier: 'sonnet',
-    promo: { inputPerMTok: 2, outputPerMTok: 10, until: '2026-08-31' },
-    notes: 'Introductory pricing of 2/10 until 2026-08-31; 3/15 afterwards.',
+    notes:
+      'Launched with 2/10 as introductory pricing through 2026-08-31; the scheduled'
+      + ' increase to 3/15 on 2026-09-01 was cancelled and 2/10 is the standard price.',
   },
   {
     id: 'claude-sonnet-4-6',
@@ -514,6 +553,21 @@ export function cheapestOfTier(tier: ModelPricing['tier']): ModelPricing {
  * a date — an overlay supplies this string, and a wrong one should read as
  * unknown rather than as a confident number computed from `NaN`.
  */
+/**
+ * The age at which this product stops treating its own price table as current.
+ *
+ * Three surfaces warn a reader that the figures above may be off — `profile`,
+ * the MCP report, the browser's bill — and each of them had typed `45` into
+ * its own comparison, with four locale sentences stating it again in prose.
+ * Seven copies of one claim, and nothing that would notice when they
+ * disagreed; the sentence a reader sees names the number, so a drift between
+ * them would have been a surface telling the reader one threshold and applying
+ * another.
+ *
+ * The value is what those surfaces already published, not a new judgement.
+ */
+export const STALE_PRICING_DAYS = 45;
+
 export function reviewAgeDays(lastReviewed: string, now: Date): number | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(lastReviewed)) return null;
   const then = Date.parse(`${lastReviewed}T00:00:00Z`);
