@@ -320,7 +320,7 @@ number:
 
 - **The band is a Claude number, and the others are far outside it.** The same 47
   samples measured against DeepSeek's own counter came out **94.5% wrong** at
-  worst, and against Mistral's **103.1%** — Trazum prices seven providers and the
+  worst, and against Mistral's **103.1%** — Trazum prices 7 providers and the
   band belongs to one. `foreignTokenizer` answers with the provider id whenever
   the model is not Anthropic's, and the report says so on the line rather than
   printing a figure that was measured somewhere else.

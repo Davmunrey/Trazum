@@ -239,7 +239,7 @@ Measured by running the optimiser on them, at the aggressive level:
 | `example-review` | 313 | 0 |
 
 **1225 tokens**, and this project's own deterministic rules recover **12 of them**
-— under one per cent. Eleven of the twelve rules are inert on all four; the
+— under one per cent. Eleven of the 12 rules are inert on all four; the
 recovered tokens come entirely from `emphasis`, which lower-cases shouted words.
 
 The figures moved in the 1.82 arc and the reason is worth stating, because a

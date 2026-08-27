@@ -16,7 +16,7 @@ Everything in this repository is MIT, and the file is
 
 - **`@trazum/core`**, the analysis. Every figure this product prints is
   computed here.
-- **`@trazum/cli`**, the 42 commands.
+- **`@trazum/cli`**, the 45 commands.
 - **`@trazum/mcp`**, the MCP server.
 - **`action/`**, the GitHub Action.
 - **`apps/web`**, the web app, including everything the hosted page runs.

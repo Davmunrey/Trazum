@@ -3057,7 +3057,7 @@ sorted into a friendlier bucket gets a smaller band.
 
 **The band is a Claude number, and the others are now measured rather than
 gestured at.** The same 47 samples against DeepSeek's own counter come out
-**94.5% wrong** at worst, and against Mistral's **103.1%**. Trazum prices seven
+**94.5% wrong** at worst, and against Mistral's **103.1%**. Trazum prices 7
 providers; this estimator is one provider's. When you price against a
 non-Anthropic model the report names the provider and drops the band instead of
 printing a figure that belongs to a different tokenizer:

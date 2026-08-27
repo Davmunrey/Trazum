@@ -82,14 +82,14 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- 42 commands       MCP server      Next.js     comments on pull requests
+ 45 commands       MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
 ## Contents
 
 - [What it actually does](#what-it-actually-does) — the five things, and what it refuses to touch
-- [The forty-five commands](#the-forty-five-commands): the whole surface, one line each
+- [The 45 commands](#the-45-commands): the whole surface, one line each
 - [Getting started](#getting-started) — CLI, web, the GitHub Action, pre-commit
 - [The first five minutes](#the-first-five-minutes-trazum-init) — `init`, and the four things it refuses to write
 - [Building on the format](docs/commands.md#building-on-the-format-trazum-conform) — the contracts, the guarantees, and the doctrine
@@ -99,7 +99,7 @@ never runs unless you ask.
 - [An MCP server for your agents](docs/commands.md#an-mcp-server-so-an-agent-can-budget-its-own-prompts) — budget a prompt before sending it
 - [Languages](#languages) — what the dictionaries cover, and what they deliberately do not
 - [Connecting your own LLM](#connecting-your-own-llm) — one wire format, four native providers, and the SSRF rules
-- [Every model you pay for by the token](#every-model-you-pay-for-by-the-token) — pricing across seven providers, live via OpenRouter
+- [Every model you pay for by the token](#every-model-you-pay-for-by-the-token) — pricing across 7 providers, live via OpenRouter
 - [Token counting](#token-counting) — the estimator, and the error band it prints
 - [Limitations, stated plainly](#limitations-stated-plainly) — read this one
 - [Running it on a schedule](docs/running.md) — cron, systemd, Actions, and where the answer runs out
@@ -198,8 +198,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of forty-five commands — [the table
-above](#the-forty-five-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of 45 commands — [the table
+above](#the-45-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -213,7 +213,7 @@ from the exit codes it is supposed to relay.
 
 ---
 
-## The forty-five commands
+## The 45 commands
 
 | Command | What it answers |
 |---|---|
@@ -412,7 +412,7 @@ Beyond shortening the prompt
   → If the work tolerates latency, use the Batch API ~$204.62/month
 ```
 
-The other forty-four commands, each with its own chapter in [the command
+Every other command, each with its own chapter in [the command
 reference](docs/commands.md):
 
 ```bash
@@ -599,7 +599,7 @@ in **[the command reference](docs/commands.md)**: the
 measured multiplication (`--from-log`), the cache reorder, the CI baseline,
 the fleet, the plan and its verification, the provider pull, the gateway,
 the evaluations that spend money and say so first, and everything else the
-[table above](#the-forty-five-commands) links to.
+[table above](#the-45-commands) links to.
 
 `trazum --version` prints the version on its own, and works when your config is
 broken — which is exactly when somebody is asking.
@@ -684,7 +684,7 @@ question nobody has designed. [The plan format is documented](docs/plan-format.m
 the Playground — ringing each panel in place with a sentence on what it
 answers. It never auto-plays: a first visit is offered it once, and the compass
 in the rail starts it any time after. The **Playground** tab is the CLI itself
-in the page — ten commands that spend nothing and touch no network, over
+in the page — 10 commands that spend nothing and touch no network, over
 sample files already loaded, through the same `@trazum/core` functions the
 terminal runs, so `trazum profile usage.jsonl` can be tried before anything is
 installed, against data that never existed outside the browser.
@@ -888,7 +888,7 @@ and a date on its own makes you subtract against today to learn whether to trust
 it. Past 45 days the report says so in a sentence, rather than leaving the reader
 to decide what "old" means.
 
-The seven providers publish independently, so each carries its own review date and
+The 7 providers publish independently, so each carries its own review date and
 `trazum models` prints them; the headline figure above is the oldest of the seven,
 because the question "how old is this table" is about its worst part.
 
@@ -956,7 +956,7 @@ provider you use.
 
 ### Which provider is this prompt even going to?
 
-Since Trazum prices seven providers, defaulting to Claude became a **wrong
+Since Trazum prices 7 providers, defaulting to Claude became a **wrong
 number**: a file calling OpenAI was billed against Claude Opus 5 without comment.
 `trazum where` reads what the code already says.
 
