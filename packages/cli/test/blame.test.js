@@ -5,6 +5,8 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { after, describe, it } from 'node:test';
+import { bandFor } from '@trazum/core';
+
 import { SPAWN_ENV } from './env.mjs';
 
 const CLI = new URL('../dist/index.js', import.meta.url).pathname;
@@ -126,9 +128,15 @@ describe('it reports what the prompt cost at each commit', () => {
     assert.match(out, /Claude Opus 5/);
   });
 
-  it('says the counts are estimates, since every figure descends from one', async () => {
+  it('says the counts are estimates, with the band this text actually earns', async () => {
+    /**
+     * Derived rather than written down. This asserted a literal band while the
+     * code printed one constant for every prompt, and both were the same
+     * mistake: the estimator is 5.6% out on prose and 32.5% out on a ledger,
+     * and a test spelling the number cannot tell the two apart.
+     */
     const root = await repo([['first', { 'p.txt': SHORT }]]);
-    assert.match(run(['p.txt'], root).out, /estimates \(±10%\)/);
+    assert.match(run(['p.txt'], root).out, new RegExp(`estimates \\(±${bandFor(SHORT)}% `));
   });
 });
 

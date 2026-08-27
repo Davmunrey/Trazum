@@ -479,7 +479,8 @@ this: the optimised prompt will not have broken someone's JSON schema.
 
 ## Things to get right
 
-- **Token counts are estimates (±10%).** Fine for comparing two versions of the
+- **Token counts are estimates, and the band depends on the text** (±4% on CJK,
+  ±6% on Latin prose, ±26% on code and markup, ±33% on tabular numbers). Fine for comparing two versions of the
   same prompt, which is what they are for. For exact figures use
   `--exact-tokens` with `ANTHROPIC_API_KEY` set — the counting endpoint does not
   charge for tokens. The band is measured against Claude's tokenizer over

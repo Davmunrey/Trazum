@@ -1115,10 +1115,14 @@ ${bold('EJEMPLOS')}
 
   report: {
     inputTokens: () => 'Tokens de entrada',
-    estimated: (offFamily) =>
-      offFamily === null
-        ? ' (estimado, ±10%)'
-        : ` (estimado: el contador está calibrado sobre Claude, no sobre ${offFamily})`,
+    estimated: (offFamily, band, measuredOff) => {
+      if (offFamily === null) return ` (estimado, ±${band}%)`;
+      return measuredOff === null
+        ? ` (estimado: el contador está calibrado sobre Claude, no sobre ${offFamily}, y nadie ha`
+          + ' medido cuánto se desvía ahí)'
+        : ` (estimado: el contador está calibrado sobre Claude, no sobre ${offFamily}, donde se ha`
+          + ` medido hasta un ${measuredOff}% de desviación)`;
+    },
     exactCount: () => ' (recuento exacto)',
     rulesApplied: () => 'Reglas aplicadas',
     nothingToTrim: () => '  Ninguna regla ha encontrado nada que recortar.',
@@ -2024,8 +2028,8 @@ ${bold('EJEMPLOS')}
     truncated: (shown) =>
       `Mostrando las ${shown} más recientes. Usa --limit para ver más.`,
     followedRename: (from) => `Se ha seguido un renombrado: las revisiones anteriores son ${from}.`,
-    estimateNote: () =>
-      'Los recuentos son estimaciones (±10%). Lo que importa es la tendencia, no las cifras absolutas.',
+    estimateNote: (band) =>
+      `Los recuentos son estimaciones (±${band}% para texto de este tipo). Lo que importa es la tendencia, no las cifras absolutas.`,
   },
 
   languages: {
@@ -2244,7 +2248,7 @@ ${bold('EJEMPLOS')}
     footer: (source, level) => `Recuento de tokens ${source} · nivel de reglas \`${level}\``,
     pricingOverlaid: (count, lastReviewed) =>
       `Los precios de ${count} ${count === 1 ? 'modelo' : 'modelos'} vienen de un overlay local revisado el ${lastReviewed}.`,
-    sourceEstimated: () => 'estimado, ±10%',
+    sourceEstimated: (band) => `estimado, ±${band}%`,
     sourceExact: () => 'exacto',
     measuringOptimised: () =>
       'Se mide lo que dejarían las reglas, no lo que está escrito en el fichero.',

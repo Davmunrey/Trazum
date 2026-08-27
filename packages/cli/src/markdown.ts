@@ -169,6 +169,14 @@ export interface CheckMarkdownInput {
   verdicts: MarkdownFileVerdict[];
   level: RuleLevel;
   tokenSource: 'heuristic' | 'external';
+  /**
+   * The widest band across the prompts this report covers.
+   *
+   * Widest and never averaged: a report over a prose prompt and a CSV covers
+   * text the estimator is 6% and 33% out on, and a figure between them
+   * describes neither. The caller holds the texts and computes it.
+   */
+  band: number;
   /** True when a walk limit stopped the run early. */
   truncated: boolean;
   /** Absent when no baseline governed the run. */
@@ -270,7 +278,7 @@ function baselineBlock(baseline: BaselineMarkdown, t: CliMessages): string[] {
 }
 
 export function renderCheckMarkdown(input: CheckMarkdownInput): string {
-  const { target, verdicts, level, tokenSource, truncated, t } = input;
+  const { target, verdicts, level, tokenSource, band, truncated, t } = input;
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const md = t.markdown;
 
@@ -347,7 +355,7 @@ export function renderCheckMarkdown(input: CheckMarkdownInput): string {
 
   lines.push(
     `<sub>${md.footer(
-      tokenSource === 'external' ? md.sourceExact() : md.sourceEstimated(),
+      tokenSource === 'external' ? md.sourceExact() : md.sourceEstimated(band),
       level,
     )}</sub>`,
   );
@@ -600,6 +608,8 @@ export interface BlameMarkdownInput {
   truncated: boolean;
   /** The priced movement across the history, when a model was resolved. */
   netCost: { amount: string; modelDisplayName: string; callsPerMonth: number } | null;
+  /** This file's own measured band, computed by the caller that holds its text. */
+  band: number;
   t: CliMessages;
 }
 
@@ -617,7 +627,7 @@ export interface BlameMarkdownInput {
  * `|` in the output to split a row and no backtick arithmetic to get wrong.
  */
 export function renderBlameMarkdown(input: BlameMarkdownInput): string {
-  const { repoPath, rows, truncated, netCost, t } = input;
+  const { repoPath, rows, truncated, netCost, band, t } = input;
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const cols = t.blame.columns;
 
@@ -713,7 +723,7 @@ export function renderBlameMarkdown(input: BlameMarkdownInput): string {
     lines.push('');
   }
 
-  lines.push(`<sub>${mdText(t.blame.estimateNote())}</sub>`);
+  lines.push(`<sub>${mdText(t.blame.estimateNote(band))}</sub>`);
 
   return lines.join('\n');
 }

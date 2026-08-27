@@ -394,7 +394,7 @@ node packages/cli/dist/index.js optimize prompt.txt --calls 50000 --diff
 
 ```
 Input tokens
-  190 → 137   -27.9% (estimated, ±10%)
+  190 → 137   -27.9% (estimated, ±6%)
 
 Rules applied
   [safe] Repeated paragraphs (1×, ~19 tokens)
@@ -1057,9 +1057,11 @@ not told you what it knows.
 
 ## Token counting
 
-A dependency-free estimator with a **measured ±10% band** (worst observed
-error 6.4% over 21 samples in seven languages), language-aware because one
-English divisor was 37% wrong on German. `--exact-tokens` settles any doubt
+A dependency-free estimator with a **band measured per kind of text** — ±4% on
+CJK, ±6% on Latin prose, ±26% on code and markup, ±33% on tabular numbers —
+measured over 47 samples in ten languages, where the worst error in each bucket
+is 3.2%, 5.6%, 25.1% and 32.5%. Language-aware because one English divisor was
+37% wrong on German. `--exact-tokens` settles any doubt
 against the provider's free counting endpoint. The measurement story is in
 [the command reference](docs/commands.md#token-counting).
 ---

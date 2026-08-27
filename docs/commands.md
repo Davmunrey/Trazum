@@ -1610,7 +1610,7 @@ That movement is +$189.75 a month on Claude Opus 5 at 50,000 calls.
 Biggest single increase
   +402 tokens — Dana, "paste in the refund policy" (5c1d8e2)
 
-Token counts are estimates (±10%). The trend is the point; the absolute figures are not.
+Token counts are estimates (±6% for text of this kind). The trend is the point; the absolute figures are not.
 ```
 
 Git already knows who changed a prompt and when. What it does not know is that
@@ -2958,14 +2958,66 @@ prefix may have read them), a plain fact when it has none.
 ## Token counting
 
 By default Trazum uses a **dependency-free heuristic estimator**: it classifies
-by character type (words, numbers, punctuation, CJK, emoji). It targets ±10% on
-ordinary prose, and it is built for comparing two versions of the same prompt,
-which is what it is used for.
+by character type (words, numbers, punctuation, CJK, emoji). It is built for
+comparing two versions of the same prompt, which is what it is used for.
 
-**The band is a Claude number.** The estimator is tuned against Claude's
-tokenizer, and other families tokenize differently. When you price against a
-non-Anthropic model the report says so instead of printing a band that was never
-measured for it:
+**There is no single band, and the single band it used to print was a mistake.**
+For eight releases every report said one figure, 10%, about every prompt. That figure was
+measured over a corpus of twenty-one samples holding thirteen files of Latin
+prose and exactly one each of code, numeric and punctuation — and those single
+files were the set the estimator's constants had been fitted to. It was not a
+measurement of the estimator. It was a measurement of its own calibration set.
+
+Extending the corpus to **47 samples in ten languages** put the same estimator at
+32.5% on a CSV ledger and 25.1% on a run of identifiers. So the band is now a
+property of the text:
+
+| Kind of text | Band | Worst sample | Samples |
+|---|---|---|---|
+| CJK, all three scripts | ±4% | 3.2% (`cjk-japanese-technical`) | 6 |
+| Latin prose and few-shot blocks | ±6% | 5.6% (`numeric-matrix`) | 18 |
+| Code, markup and quoting | ±26% | 25.1% (`numeric-identifiers`) | 16 |
+| Digit-dominant tables and ledgers | ±33% | 32.5% (`numeric-tabular`) | 7 |
+
+`bandFor(text)` is the exported answer and every surface prints it: the CLI's
+estimate line, the markdown report, the MCP tools, the advisories that hedge near
+a threshold. `ESTIMATE_ERROR_BAND_PCT` is still exported and is now the widest of
+the four, for the callers that must print one figure without holding the text.
+
+**It does not classify by text type, and that is the finding rather than a
+shortcut.** Measured by character mix, code and punctuation overlap completely —
+`code-sql` is 7.7% symbols and `punctuation-markup` is 17.5%, with `code-heavy`
+at 15.6% sitting between them — and two of the three few-shot samples are
+indistinguishable from prose. A classifier over those would be a guess wearing a
+measurement's name. The buckets are the separations the corpus actually offers,
+and where two classes overlap the worse band wins.
+
+**Two hypotheses were tested and rejected**, which is what the larger corpus
+bought. Digit-run length does not predict the numeric error (`numeric-tabular`
+averages 2.79 digits per run and is +32.5%; `numeric-heavy` averages 3.13 and is
+−5.0%), and neither does grouped-number density (`numeric-versions` at 0.44 is
+−11.5%; `numeric-tabular` at 0.60 is +32.5%). With two samples each would have
+been fitted and shipped as a fix.
+
+**One calibration did succeed.** Hangul had been charged a placeholder that
+nothing measured. Two Korean samples in different registers agree in lockstep
+across the whole search — −10.6% and −10.0% at 1.20 tokens per character, −3.5%
+and −3.1% at 1.30, 0.0% and 0.0% at 1.35 — so 1.35 is what the estimator charges,
+and the CJK bucket's worst error went from 10.6% to 3.2%.
+
+The harness is committed (`ANTHROPIC_API_KEY=... npm run measure:tokens` — the
+endpoint is free), and `token-band.test.js` asserts every sample against the band
+`bandFor` gives it: a sample edited since it was measured **fails**, one never
+measured **skips out loud**, and a bucket whose band is narrower than its own
+worst sample **fails**. Tuning a threshold cannot satisfy it, because a sample
+sorted into a friendlier bucket gets a smaller band.
+
+**The band is a Claude number, and the others are now measured rather than
+gestured at.** The same 47 samples against DeepSeek's own counter come out
+**94.5% wrong** at worst, and against Mistral's **103.1%**. Trazum prices seven
+providers; this estimator is one provider's. When you price against a
+non-Anthropic model the report names the provider and drops the band instead of
+printing a figure that belongs to a different tokenizer:
 
 ```
 1,021 → 1,020   -0.1% (estimated — the counter is calibrated on Claude, not GPT-5)
@@ -2973,42 +3025,23 @@ measured for it:
 
 Use `--exact-tokens` for figures you can budget from.
 
-**That band is measured, and it was false when it was not.** For eight releases
-`±10%` was a design target nobody had checked; the first run against the official
-counting endpoint found two of eight samples outside it, both underestimating —
-the direction that under-reports cost. The corpus is now 21 samples across seven
-languages and six text types, the harness is committed
-(`ANTHROPIC_API_KEY=... npm run measure:tokens` — the endpoint is free), and
-`token-band.test.js` asserts the band per text type against that ground truth: a
-sample edited since it was measured **fails**, and one never measured **skips out
-loud**.
-
-| what | worst error |
-|---|---|
-| the whole corpus | **6.4%** (`code-heavy`, fitted to nothing) |
-| the samples nothing was fitted to | 6.4% — they are what sets the band |
-| every language divisor, on a held-out sample in another register | 3.8% |
-| samples outside `±10%` | 0 of 21 |
-
-**The band is Claude's, and the other families are an open question rather than
-a footnote.** Trazum prices seven providers with an estimator calibrated on one.
 The harness measures whichever family you give it a key for — `--provider
-openai`, `--provider google`, `--provider deepseek` — writing a separate fixture
-that is asserted against nothing it was never calibrated for. Only the Anthropic
-run discharges `±10%`. Every family nobody has run gets its **own named skip**
-in the suite, with the command to run, so an open question reads as an open
-question rather than as one sentence covering all of them. Those three cost
-real tokens: none has a free counting endpoint, so each sample is a completion
-held to one output token, and the harness says so before it sends anything.
+openai`, `--provider google`, `--provider deepseek`, `--provider mistral` —
+writing a separate fixture that is asserted against nothing it was never
+calibrated for. Only the Anthropic run discharges a published band. Every family
+nobody has run gets its **own named skip** in the suite, with the command to run,
+so an open question reads as an open question rather than as one sentence
+covering all of them. Those cost real tokens: openai and google have no free
+counting endpoint, so each sample is a completion held to one output token, and
+the harness says so before it sends anything.
 
-**The published band is 10 and the worst measurement is 6.4**, deliberately:
-twenty-one samples across six text types cannot bound a seventh — no Korean, no
-Cyrillic prose, no mixed-script document — and overstating the uncertainty is the
-safe direction for a tool that reports money. One caveat stated rather than
-buried: the Latin-language divisors were calibrated on the samples they are
-measured against, so the band rests on the samples nothing was fitted to.
+Two caveats stated rather than buried. The margin between each band and its own
+worst sample is a point or less, so a seventh text type nobody has measured is
+not bounded by any of them; and the Latin-language divisors were calibrated on
+samples they are also measured against, so the prose band rests on the samples
+nothing was fitted to.
 
-**`--exact-tokens` is Claude-only, and now says so instead of trying.** It
+**`--exact-tokens` is Claude-only, and says so instead of trying.** It
 counts with Anthropic's endpoint — Claude's tokenizer. Asked for on a `gpt-5` or
 `gemini-2.5-pro` prompt it used to forward that model id to Anthropic, which
 either fails upstream or returns a number counted with the wrong tokenizer and
@@ -3134,7 +3167,7 @@ instructions. A boolean throws away the actionable half.
 text**, and answers with the spend split, the per-label and per-model tables, the
 cache verdict — including the unsettled one, when the log cannot say — the levers,
 conversation growth, and the gaps. The one tool here whose figures are exact
-rather than ±10%: they are the provider's own billed counts. The session key is
+rather than estimated: they are the provider's own billed counts. The session key is
 grouped by and never echoed, and a test feeds one through to prove it.
 
 **What it cannot do is the design.** No paths — every tool takes text, and the

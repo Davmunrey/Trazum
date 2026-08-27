@@ -39,7 +39,7 @@ export const es: WebMessages = {
         + 'mismas funciones que corre el terminal, sin instalar nada.',
     },
     footerLead: (pricingReviewed) =>
-      `Precios revisados el ${pricingReviewed}. El recuento de tokens es una estimación (±10%); para cifras exactas usa el endpoint oficial de recuento desde la CLI con `,
+      `Precios revisados el ${pricingReviewed}. El recuento de tokens es una estimación y su margen depende del texto (±6% en prosa, hasta ±33% en tablas numéricas); para cifras exactas usa el endpoint oficial de recuento desde la CLI con `,
     footerTail: '. Los ahorros son proyecciones sobre el escenario que indiques, no facturación.',
     localeSwitchLabel: 'Idioma',
     closeMenu: 'Cerrar menú',

@@ -5,7 +5,16 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 
-import { BANDS, bandFor, bucketFor, ESTIMATE_ERROR_BAND_PCT, estimateTokens } from '../dist/index.js';
+import {
+  BANDS,
+  ESTIMATE_ERROR_BAND_PCT,
+  MEASURED_FOREIGN_ERROR_PCT,
+  bandFor,
+  bucketFor,
+  estimateTokens,
+  foreignTokenizer,
+  measuredForeignError,
+} from '../dist/index.js';
 import { digestOf, digestOfOne } from '../../../scripts/corpus-digest.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -341,7 +350,7 @@ describe('the published error band', () => {
     */
     const FLOORS = {
       cjk: 0.04,
-      'prose-latin': 0.05,
+      'prose-latin': 0.06,
       code: 0.26,
       numeric: 0.33,
       punctuation: 0.12,
@@ -526,8 +535,64 @@ describe('the estimator against tokenizers it was never tuned for', () => {
 
         assert.ok(worst.length > 0, 'nothing was measured');
       });
+
+      it('is the figure the report prints about this family, to one decimal', () => {
+        /**
+         * The number that reaches a reader, held against the fixture it came
+         * from.
+         *
+         * `MEASURED_FOREIGN_ERROR_PCT` ships and these fixtures do not, so the
+         * value is written in `band.ts` by hand — which is exactly the shape
+         * that drifts. Adding a sample can move the worst error, and nothing
+         * would have said so: the report would go on printing a figure that
+         * was true of a corpus this repository no longer has.
+         *
+         * A family with no entry is not a failure. It is the unmeasured case
+         * the report has a sentence for, and the two tests below hold that
+         * distinction from both sides.
+         */
+        const provider = other.provider ?? name;
+        const claimed = MEASURED_FOREIGN_ERROR_PCT[provider];
+        if (claimed === undefined) return;
+
+        let worst = 0;
+        for (const sample of other.samples) {
+          const text = readFileSync(join(corpusDir, sample.file), 'utf8');
+          const error = Math.abs(estimateTokens(text) - sample.actualTokens) / sample.actualTokens;
+          worst = Math.max(worst, error * 100);
+        }
+
+        assert.equal(
+          Number(worst.toFixed(1)),
+          claimed,
+          `band.ts says the estimator is ${claimed}% out on ${provider}; the fixture says ` +
+            `${worst.toFixed(1)}% — re-read it off the measurement rather than editing this`,
+        );
+      });
     });
   }
+
+  it('claims a measured error only for families that have been measured', () => {
+    /**
+     * The direction the fixture check above cannot cover: an entry for a
+     * provider with no fixture at all would pass every test in this file by
+     * never being reached, and the report would print a figure with nothing
+     * behind it.
+     */
+    const measured = new Set(
+      others.map((name) => JSON.parse(readFileSync(join(fixturesDir, name), 'utf8')).provider),
+    );
+    const unbacked = Object.keys(MEASURED_FOREIGN_ERROR_PCT).filter((p) => !measured.has(p));
+    assert.deepEqual(unbacked, [], 'band.ts states an error for a family nobody has measured');
+  });
+
+  it('answers null for an unmeasured family rather than the nearest number', () => {
+    // The flattering reading of missing information, refused once more.
+    assert.equal(measuredForeignError('openai'), null);
+    assert.equal(measuredForeignError('anthropic'), null);
+    assert.equal(measuredForeignError(null), null);
+    assert.equal(measuredForeignError(foreignTokenizer('anthropic')), null);
+  });
 });
 
 describe('the published band has one source', () => {
@@ -551,6 +616,44 @@ describe('the published band has one source', () => {
    */
   const skip = new Set(['CHANGELOG.md', 'RELEASES.md', 'ROADMAP.md']);
 
+  /**
+   * A delivered plan is a record too, and it says so itself.
+   *
+   * `docs/plan-1.36-1.40.md` opens with *"This file is kept as it was written,
+   * before the code, rather than rewritten in hindsight. It is history now, not
+   * a forecast."* Rewriting its ±10% to today's figure would falsify a record to
+   * satisfy a test, which is the same objection the three files above are
+   * excluded for.
+   *
+   * Read off the document rather than listed here, so a plan written next year
+   * is covered by making the same declaration and a live page cannot join the
+   * skip set by being added to an array.
+   */
+  const declaresItselfHistory = (text) =>
+    /kept as it was written|history now, not a forecast/i.test(text.slice(0, 2000));
+
+  /**
+   * A comment narrates; a string, a heading or a table cell claims.
+   *
+   * This guard was written when there was one band, and then every figure
+   * anywhere was the same claim. With a band per text type that stopped being
+   * true: `advisories.ts` explains what happened under the old band, and
+   * `band.ts` opens by describing the number it replaced. Rewriting those to
+   * the current figure would make each comment false about its own history,
+   * which is the same objection the delivered plan is skipped for.
+   *
+   * So source files are scanned with their comments removed and prose files
+   * whole. Markdown and SVG have no comments to strip, and every figure in
+   * them reaches a reader, which is exactly what a published band is.
+   *
+   * Deliberately crude, and safe in the direction that matters: the stripper
+   * can only ever remove text, so a claim it fails to recognise as code stays
+   * in and is checked. It cannot smuggle one out.
+   */
+  const CODE = /[.](ts|tsx|js|mjs|cjs)$/;
+  const withoutComments = (text) =>
+    text.replace(/[/][*][\s\S]*?[*][/]/g, ' ').replace(/(^|[^:])[/][/].*$/gm, '$1');
+
   it('no file states a band the code does not publish', () => {
     const listed = spawnSync('git', ['grep', '-l', '-E', '±[0-9]+%'], {
       cwd: repoRoot,
@@ -560,17 +663,22 @@ describe('the published band has one source', () => {
     assert.ok(files.length > 5, 'git grep found almost nothing — has the notation changed?');
 
     const wrong = [];
+    const published = new Set([ESTIMATE_ERROR_BAND_PCT, ...Object.values(BANDS)]);
     for (const file of files) {
-      const text = readFileSync(join(repoRoot, file), 'utf8');
+      const raw = readFileSync(join(repoRoot, file), 'utf8');
+      if (declaresItselfHistory(raw)) continue;
+      const text = CODE.test(file) ? withoutComments(raw) : raw;
       for (const match of text.matchAll(/±(\d+)%/g)) {
-        if (Number(match[1]) !== ESTIMATE_ERROR_BAND_PCT) wrong.push(`${file}: ±${match[1]}%`);
+        if (!published.has(Number(match[1]))) wrong.push(`${file}: ±${match[1]}%`);
       }
     }
 
     assert.deepEqual(
       wrong,
       [],
-      `these publish a band other than ±${ESTIMATE_ERROR_BAND_PCT}%: ${wrong.join(', ')}`,
+      'these publish a band the code does not: every ±N% in a live file has to be ' +
+        `one the code publishes — ${[...published].sort((a, b) => a - b).map((n) => `±${n}%`).join(', ')} — ` +
+        `and these are not: ${wrong.join(', ')}`,
     );
   });
 });

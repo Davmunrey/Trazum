@@ -120,6 +120,103 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+- **The published `±10%` token band was a fit over its own calibration set, and
+  there is no single band any more.** For eight releases every report said the
+  same figure about every prompt. It was measured over a corpus of twenty-one
+  samples that held **thirteen files of Latin prose and exactly one each of
+  code, numeric and punctuation** — and those single files were the set the
+  estimator's constants had been fitted to. So the number was not a measurement
+  of the estimator. It was a measurement of its own training set.
+
+  **Twenty-six ordinary samples broke it.** Measured against Anthropic's
+  counting endpoint, the same estimator that is 5.6% out on prose is **25.1% out
+  on a run of identifiers** and **32.5% out on a CSV ledger**. Telling somebody
+  ±10% about their ledger was telling them a number that is wrong about their
+  prompt specifically, and every dollar figure below it inherited the error.
+
+  The band is a property of the text now. `bandFor(text)` in the new `band.ts`
+  answers with one of four measured figures, and every surface prints it: the
+  report's estimate line, the check and blame markdown, the MCP tool output, and
+  the two advisories that hedge near a threshold.
+
+  | Kind of text | Band | Worst sample | Samples |
+  |---|---|---|---|
+  | CJK, all three scripts | ±4% | 3.2% (`cjk-japanese-technical`) | 6 |
+  | Latin prose and few-shot blocks | ±6% | 5.6% (`numeric-matrix`) | 18 |
+  | Code, markup and quoting | ±26% | 25.1% (`numeric-identifiers`) | 16 |
+  | Digit-dominant tables and ledgers | ±33% | 32.5% (`numeric-tabular`) | 7 |
+
+  **It deliberately does not classify by text type**, and that is a finding
+  rather than a shortcut. Measured by character mix, code and punctuation
+  overlap completely — `code-sql` is 7.7% symbols and `punctuation-markup` is
+  17.5%, with `code-heavy` at 15.6% sitting between them — and two of the three
+  few-shot samples are indistinguishable from prose. A classifier over those
+  would be a guess wearing a measurement's name, and it would hand out the wrong
+  band precisely where the band matters most. So the buckets are the separations
+  the corpus actually offers, and where two classes overlap the worse band wins:
+  an overstated uncertainty costs a reader some confidence, an understated one
+  tells them a wrong number and lets them act on it.
+
+  **The thresholds are the widest gaps the corpus offers**, not round numbers
+  somebody liked. CJK at 0.5 — the CJK samples are 90.1% to 94.5% CJK and every
+  other sample is 0.0%, with nothing in between. Digits at 0.30 — the two purely
+  numeric samples are 47.7% and 49.7% digits and the next highest anywhere is
+  15.3%. Symbols at 0.07, and this one is stated as thin: `code-sql` at 7.7%
+  against `portuguese-prose` at 6.1% is 1.6 points of margin. Thin in the safe
+  direction, because a prose sample that crosses it is given a wider band than
+  it needs and no sample is ever given one narrower than its own error.
+
+  `ESTIMATE_ERROR_BAND_PCT` is now **33** rather than 10, and it is only for
+  callers that must print one figure without holding the text — a figure
+  covering the whole catalogue of text can only be the worst of it. Widening it
+  makes every claim that reads it true where it had been false, at the cost of
+  understating the estimator on prose. A caller with no text cannot know which
+  it is holding, and there is one safe direction to guess in.
+
+  **The guard is planted rather than asserted.** `token-band.test.js` holds every
+  sample against the band `bandFor` gives it, requires no bucket's band to be
+  narrower than its own worst sample, and requires every bucket to carry at
+  least one measurement. It cannot be satisfied by tuning a threshold: a sample
+  sorted into a friendlier bucket gets a smaller band and fails. The
+  single-source guard was extended too — it now reads a `±N%` in any live file
+  and fails unless the code publishes that exact number, with source comments
+  stripped first so a file explaining what the band *was* is not forced to
+  falsify its own history.
+
+- **The estimator's error against a foreign tokenizer is said out loud, with the
+  number.** The report already knew to name the provider when the model was not
+  Anthropic's. What it could not say is how far off — and a hedge with no figure
+  is a hedge a reader discounts. The same 47 samples run against DeepSeek's own
+  counter come out **94.5% wrong** at worst and against Mistral's **103.1%**, so
+  those two families now get the measurement on the line:
+
+  ```
+  26 → 21   -19.2% (estimated: the counter is calibrated on Claude,
+                    not DeepSeek V3, where it has measured up to 94.5% out)
+  ```
+
+  A family nobody has run gets *"nobody has measured how far off it is there"*
+  instead, because `measuredForeignError` answers null rather than the nearest
+  number. Both halves are held: one test recomputes each published figure from
+  that provider's fixture and fails on drift, another fails if `band.ts` ever
+  states an error for a family with no fixture behind it at all.
+
+- **The corpus is 47 samples in ten languages, and the harness reaches
+  Mistral.** Twenty-six were added: seven code and markup samples, three
+  few-shot, four more CJK including the first two Korean ones, and twelve purely
+  numeric. Mistral joins Anthropic, DeepSeek, OpenAI and Google as a family the
+  harness can measure — through the gateway's upstream allowlist, because
+  `trusted-hosts.test.js` refused to let a measuring script be a side door, and
+  it was right to.
+
+  The harness also retries a rate limit or a 5xx with doubling backoff and paces
+  paid providers, after a 43-sample run died three times on the same endpoint.
+
+- **`--exact-tokens` and the default measurement model.** The band script's
+  default Anthropic model was `claude-opus-4-1`, which is retired: the first run
+  anybody had a key for returned a 404 from a model id nobody had checked since
+  the catalogue moved. It is `claude-opus-5` now.
+
 - **`model-downgrade` names the command that settles it.** It said *"measure the
   difference with your own evaluations"*, which is advice nobody can follow
   without already knowing how. It now names
@@ -129,6 +226,33 @@ merged commit with no entry is a change only `git log` remembers.
   refusal that does not say what would settle the question is only half of one.
 
 ### Fixed
+
+- **Hangul was charged a placeholder nothing had measured.** Every CJK character
+  that was not kana was billed han's 1.05 tokens, and the corpus had no Korean in
+  it to say otherwise. Two Korean samples in different registers — a support
+  script and a technical note — agree in lockstep across the whole search:
+  −10.6% and −10.0% at 1.20 tokens per character, −3.5% and −3.1% at 1.30, 0.0%
+  and 0.0% at 1.35, and +3.2% and +3.4% at 1.40. `HANGUL_TOKENS_PER_CHAR` is
+  1.35, the CJK bucket's worst error went from 10.6% to 3.2%, and its standard
+  deviation from 4.0 points to 1.0.
+
+  This is the only calibration in the release that succeeded, and the reason it
+  is trusted is that two independent samples moved together at every candidate
+  rather than one sample landing on a number.
+
+- **Punctuation was charged half a token each and costs closer to one.** The
+  divisor was `n / 2`, fitted against a single punctuation-heavy sample. Five
+  symbol-dense samples added this release all undercounted, and `n / 1` takes
+  them in. The digit divisor was deliberately left alone: no single constant
+  serves both numeric samples, and moving it to fit one would be the same fault
+  as the band itself.
+
+  **Two hypotheses were tested and rejected**, which is what the larger corpus
+  bought. Digit-run length does not predict the numeric error — `numeric-tabular`
+  averages 2.79 digits per run and is +32.5% out, `numeric-heavy` averages 3.13
+  and is −5.0% — and neither does grouped-number density: `numeric-versions` at
+  0.44 is −11.5%, `numeric-tabular` at 0.60 is +32.5%. With two samples each
+  would have been fitted and shipped as a fix.
 
 - **The caching advisory quoted a threshold that was true of no model.** It said,
   for every model in the catalogue, *"a cache write costs 125% of the input price

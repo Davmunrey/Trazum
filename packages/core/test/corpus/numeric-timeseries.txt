@@ -1,0 +1,19 @@
+Estas son las cotizaciones de cierre. Di en qué días hubo hueco de apertura.
+
+fecha apertura maximo minimo cierre volumen
+20260202 118 122 117 121 4482100
+20260203 121 124 119 123 3910400
+20260204 129 133 128 131 6221700
+20260205 131 134 129 130 4008800
+20260206 130 132 126 127 5117300
+20260209 121 123 118 119 7844200
+20260210 119 121 117 120 4102900
+20260211 120 126 120 125 5330100
+20260212 125 128 124 127 3988600
+20260213 127 129 125 126 3441200
+20260216 133 137 132 136 6702400
+20260217 136 138 133 134 4219800
+
+Hay hueco cuando la apertura de un día queda fuera del rango entre el mínimo y
+el máximo del día anterior. Responde con la fecha, el tamaño del hueco y si fue
+al alza o a la baja. No anualices nada ni proyectes el siguiente día.

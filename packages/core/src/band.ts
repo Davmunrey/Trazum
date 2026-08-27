@@ -68,8 +68,15 @@ export const BANDS = {
    * deviation from 4.0 to 1.0.
    */
   cjk: 4,
-  /** Latin prose and few-shot blocks made of it. What most prompts are. */
-  prose: 5,
+  /**
+   * Latin prose and few-shot blocks made of it. What most prompts are.
+   *
+   * Widened from 5 by `numeric-matrix`, a confusion matrix whose class labels
+   * make letters the dominant class: composition put it here, its error came
+   * out at 5.6%, and the band follows the measurement rather than the other way
+   * round. Eighteen samples, deviation 1.4 points.
+   */
+  prose: 6,
 } as const;
 
 export type BandBucket = keyof typeof BANDS;
@@ -142,10 +149,10 @@ export function bandFor(text: string): number {
  * Whether the published band applies to a model at all.
  *
  * It does not, and this is the sentence that has been missing. The estimator is
- * calibrated on Claude's tokenizer, and the same corpus measured against
- * DeepSeek's own counter came out **94.5% wrong on CJK** and against Mistral's
- * **102.1% wrong on Latin prose**. Trazum prices seven providers; the band is
- * one provider's.
+ * calibrated on Claude's tokenizer, and the same 47 samples measured against
+ * DeepSeek's own counter came out **94.5% wrong** at worst and against
+ * Mistral's **103.1%**. Trazum prices seven providers; the band is one
+ * provider's.
  *
  * Returns null when the model is one the band was measured on, and the provider
  * id otherwise, so a caller can say which foreign tokenizer it is estimating
@@ -153,4 +160,40 @@ export function bandFor(text: string): number {
  */
 export function foreignTokenizer(provider: string | null): string | null {
   return provider === null || provider === 'anthropic' ? null : provider;
+}
+
+/**
+ * The worst error measured against a provider's own tokenizer, where anybody
+ * has run it.
+ *
+ * Two entries, and the emptiness of the rest is the point. `foreignTokenizer`
+ * could always say *this is not Claude*; what it could not say is how far off.
+ * A hedge with no figure reads as a formality, and a reader discounts it — so
+ * where the corpus has been run against the family's own counter, the report
+ * says the number, and where it has not, it says nobody has measured rather
+ * than borrowing one of these.
+ *
+ * Every value is the worst of the 47 samples in
+ * `test/fixtures/token-ground-truth.<provider>.json`, and
+ * `token-band.test.js` recomputes both from the fixtures and fails on drift.
+ * Written here rather than imported because this file ships and the fixtures
+ * do not.
+ */
+export const MEASURED_FOREIGN_ERROR_PCT: Readonly<Record<string, number>> = {
+  /** Worst on `cjk-chinese`: the estimator's CJK charge is Claude's, not this one's. */
+  deepseek: 94.5,
+  /** Worst on `german-technical`, where even Latin prose is more than twice out. */
+  mistral: 103.1,
+};
+
+/**
+ * How far out the estimator has been measured against this provider, or null.
+ *
+ * Null means unmeasured, never zero: a family nobody has run is an open
+ * question, and answering it with a number would be the exact fault this whole
+ * file exists to undo.
+ */
+export function measuredForeignError(provider: string | null): number | null {
+  if (provider === null) return null;
+  return MEASURED_FOREIGN_ERROR_PCT[provider] ?? null;
 }

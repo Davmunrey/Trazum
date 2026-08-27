@@ -3,7 +3,7 @@
   "governsPublishedBand": false,
   "model": "mistral-small-latest",
   "measuredAt": "2026-08-27",
-  "corpusDigest": "e6e0005470f76e94",
+  "corpusDigest": "5e48c0f50a776348",
   "envelopeTokens": 15,
   "samples": [
     {
@@ -189,6 +189,13 @@
       "digest": "223ef1eca8fdd740"
     },
     {
+      "file": "numeric-checksums.txt",
+      "type": "numeric",
+      "chars": 620,
+      "actualTokens": 371,
+      "digest": "577212e99bdb76d6"
+    },
+    {
       "file": "numeric-coordinates.txt",
       "type": "numeric",
       "chars": 673,
@@ -217,11 +224,25 @@
       "digest": "18f40d28ca7c8d79"
     },
     {
+      "file": "numeric-matrix.txt",
+      "type": "numeric",
+      "chars": 669,
+      "actualTokens": 250,
+      "digest": "ac8f59663e87b076"
+    },
+    {
       "file": "numeric-metrics.txt",
       "type": "numeric",
       "chars": 684,
       "actualTokens": 330,
       "digest": "33c922b118d2f602"
+    },
+    {
+      "file": "numeric-readings.txt",
+      "type": "numeric",
+      "chars": 666,
+      "actualTokens": 456,
+      "digest": "1ae3d796cc0929f2"
     },
     {
       "file": "numeric-schedule.txt",
@@ -236,6 +257,13 @@
       "chars": 634,
       "actualTokens": 439,
       "digest": "d20766d49c419dfe"
+    },
+    {
+      "file": "numeric-timeseries.txt",
+      "type": "numeric",
+      "chars": 748,
+      "actualTokens": 482,
+      "digest": "163fa2a1b48a89b0"
     },
     {
       "file": "numeric-versions.txt",
