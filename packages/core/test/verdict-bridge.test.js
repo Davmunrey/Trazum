@@ -61,6 +61,7 @@ describe('reading a dropped routing measurement', () => {
     assert.deepEqual(reading.verdict, {
       label: 'chat',
       model: 'claude-opus-5',
+      measuredOn: null,
       candidateModel: 'claude-haiku-4-5',
       verdict: 'indistinguishable',
       selfAgreement: 0.94,
@@ -138,6 +139,47 @@ describe('reading a dropped routing measurement', () => {
       document({ slice: { label: 'chat', model: 'claude-opus-5', route: null } }),
     );
     assert.equal(noRoute.verdict.savingUsd, null, 'a saving nobody measured is not a saving of nothing');
+  });
+});
+
+describe('a measurement made against a different model than the log records', () => {
+  /**
+   * `route` builds its baseline provider from the environment, so the model
+   * that answered is whatever `TRAZUM_LLM_MODEL` names — the log's model only
+   * when the reader configured it that way. Pairing on the model that answered
+   * matched nothing on a real run against an OpenAI-compatible endpoint: the
+   * evaluation said `stub-strong` while the log said `claude-opus-5`, and the
+   * bill showed no verdict with no explanation.
+   *
+   * So the pairing is on the slice's model, which is the fact the bill has,
+   * and the model that answered is carried separately and said out loud.
+   */
+  const reading = readDroppedVerdict(
+    document({
+      evaluation: {
+        provider: 'stub',
+        model: 'some-other-model',
+        candidateModel: 'claude-haiku-4-5',
+        verdict: 'diverges',
+        selfAgreement: 1,
+        crossAgreement: 0.66,
+        callsMade: 9,
+        cases: [{ selfSimilarity: 1, crossSimilarity: 0.66 }],
+      },
+    }),
+  );
+
+  it('pairs on the slice, not on the model that answered', () => {
+    assert.equal(reading.verdict.model, 'claude-opus-5');
+    assert.equal(verdictMatchesSlice(reading.verdict, slice()), true);
+  });
+
+  it('says which model actually answered, rather than hiding the substitution', () => {
+    assert.equal(reading.verdict.measuredOn, 'some-other-model');
+  });
+
+  it('reports no substitution when the two agree', () => {
+    assert.equal(readDroppedVerdict(document()).verdict.measuredOn, null);
   });
 });
 

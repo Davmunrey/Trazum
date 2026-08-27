@@ -24,6 +24,15 @@ export interface WebMessages {
 
   page: {
     lede: string;
+    /**
+     * One line per panel, saying what that panel answers.
+     *
+     * Keyed by the rail's own tab values, and a guard requires one for every
+     * value the rail carries: a panel added tomorrow arrives with a heading
+     * and a purpose or it fails the suite, rather than opening on a title
+     * with nothing under it.
+     */
+    purpose: Record<string, string>;
     /** Text before the inline `--exact-tokens` code element. */
     footerLead(pricingReviewed: string): string;
     /** Text after it. */
@@ -431,6 +440,15 @@ export interface WebMessages {
     verdictUnmatched(label: string, model: string, candidate: string): string;
     /** The document looked like a routing measurement and could not be read. */
     verdictRefused(because: string): string;
+    /**
+     * The measurement was made against a different model than the log records.
+     *
+     * `route` builds its baseline from the environment, so the model that
+     * answered is whatever `TRAZUM_LLM_MODEL` named. When it is not the log's
+     * model the verdict is a weaker claim about this workload, and the only
+     * honest thing to do is say which model actually answered.
+     */
+    verdictMeasuredOn(model: string): string;
     leverPromptCeiling(usd: string, pct: string): string;
     leversNone: string;
     leversUnlabelled: string;

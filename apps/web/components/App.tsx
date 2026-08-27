@@ -426,6 +426,17 @@ export function App({
   ];
 
   /**
+   * The heading for the panel on screen, taken from the rail's own label.
+   *
+   * One name per panel, in one place. A separate list of page titles would be
+   * a second source for the same fact, and the two would disagree the first
+   * time somebody renamed a tab.
+   */
+  const activeLabel =
+    GROUPS.flatMap((group) => group.items).find((item) => item.value === activeTab)?.label ??
+    activeTab;
+
+  /**
    * `?tab=<value>` opens that panel, and selecting one writes it back.
    *
    * The README could send somebody to the Playground and could not land them
@@ -542,9 +553,18 @@ export function App({
           </svg>
           {!railCollapsed && (
             <span className="flex min-w-0 flex-col">
-              <h1 className="font-display text-[19px] leading-none font-semibold tracking-[-0.01em]">
+              {/*
+                A wordmark, not the document's heading.
+
+                It was an `h1`, and the page's own title is now one too, which
+                would have given every page two — and made the first one the
+                brand rather than the panel the reader is on. A screen reader
+                walking the headings should land on what this page is, not on
+                what the product is called.
+              */}
+              <span className="font-display text-[19px] leading-none font-semibold tracking-[-0.01em]">
                 Trazum
-              </h1>
+              </span>
               <span className="truncate text-[11px] text-faint" title={t.meta.tagline}>
               {t.meta.tagline}
             </span>
@@ -885,9 +905,28 @@ export function App({
               </span>
             </div>
           )}
-          <p className="mt-0 mb-6 max-w-[62ch] text-[15px] leading-relaxed text-muted-foreground">
-            {t.page.lede}
-          </p>
+          {/*
+            The page had no top.
+
+            Every panel opened on the same paragraph: five lines describing
+            the whole product, above a card whose small uppercase label was
+            the only thing acting as a title. The reader arriving on Your bill
+            read three sentences about the Optimise tab before anything said
+            which page they were on, and the squint test found no primary
+            element at all.
+
+            The heading is the rail's own label for the panel on screen, read
+            off `GROUPS` rather than typed here, so a panel added to the rail
+            cannot arrive with a title that disagrees with its own nav entry.
+          */}
+          <header className="mb-7 border-b pb-6">
+            <h1 className="font-display text-[27px] leading-[1.12] font-semibold tracking-[-0.02em] text-balance sm:text-[32px]">
+              {activeLabel}
+            </h1>
+            <p className="mt-2.5 max-w-[68ch] text-[15px] leading-relaxed text-muted-foreground">
+              {t.page.purpose[activeTab] ?? t.page.lede}
+            </p>
+          </header>
 
           {/*
             `forceMount`, like every tab holding state the server does not have.

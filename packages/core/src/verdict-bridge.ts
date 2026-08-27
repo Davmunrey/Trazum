@@ -29,8 +29,28 @@ import { UNLABELLED } from './usage.js';
 export interface DroppedVerdict {
   /** The workload the measurement was made on, or null when it was unlabelled. */
   label: string | null;
-  /** The model those calls go to today. */
+  /**
+   * The model those calls go to today, from the bill's own slice.
+   *
+   * Not the model that answered. `route` builds its baseline provider from
+   * the environment, so the model in the measurement is whatever
+   * `TRAZUM_LLM_MODEL` names, and it is only the log's model when the reader
+   * configured it that way. Pairing on it matched nothing on a real run
+   * against an OpenAI-compatible endpoint — `evaluation.model` said
+   * `stub-strong` while the log said `claude-opus-5` — and the bill would
+   * have shown no verdict at all with no explanation.
+   */
   model: string;
+  /**
+   * The model that actually answered, when it is not the one the log records.
+   *
+   * Null when they agree, which is the ordinary case. Not null is worth
+   * saying out loud rather than smoothing over: a verdict measured on a
+   * stand-in is a weaker claim about this workload than one measured on the
+   * model the workload actually uses, and only this field can tell the
+   * difference.
+   */
+  measuredOn: string | null;
   /** The model measured against it. */
   candidateModel: string;
   verdict: EvalVerdict;
@@ -117,7 +137,9 @@ export function readDroppedVerdict(text: string): BridgeReading | null {
    * with a thinner slice is a document this reads what it can from, not one
    * it crashes on.
    */
-  const model = typeof evaluation.model === 'string' ? evaluation.model : null;
+  const answered = typeof evaluation.model === 'string' ? evaluation.model : null;
+  // The slice's model first: that is the fact the bill can be matched against.
+  const model = typeof slice.model === 'string' ? slice.model : answered;
   const candidateModel =
     typeof evaluation.candidateModel === 'string' ? evaluation.candidateModel : null;
   const verdict = typeof evaluation.verdict === 'string' ? (evaluation.verdict as EvalVerdict) : null;
@@ -142,6 +164,7 @@ export function readDroppedVerdict(text: string): BridgeReading | null {
       // than leaking an internal marker into a caption.
       label: rawLabel === null || rawLabel === UNLABELLED ? null : rawLabel,
       model,
+      measuredOn: answered !== null && answered !== model ? answered : null,
       candidateModel,
       verdict,
       selfAgreement: number(evaluation.selfAgreement),
