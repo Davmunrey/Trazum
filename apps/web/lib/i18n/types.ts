@@ -420,6 +420,20 @@ export interface WebMessages {
     leverRoute(candidate: string, usd: string): string;
     leverBatch(usd: string): string;
     leverCalls(calls: number, spent: string): string;
+    /**
+     * The folded input block's own name.
+     *
+     * Not the tab's name: the page heading already says that, and a summary
+     * repeating it tells the reader nothing about what is behind it.
+     */
+    inputHeading: string;
+    /**
+     * The summary line on the folded input block: what pressing it does.
+     *
+     * Shown only once there is a report, because until then the block is open
+     * and the line would be describing a state nobody is in.
+     */
+    inputFolded: string;
     routeVerify: string;
     /**
      * The verdict bridge: a `trazum route --json` document dropped into this

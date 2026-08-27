@@ -501,11 +501,26 @@ export function Bill({ t }: { t: WebMessages }) {
 
   return (
     <div className="flex flex-col gap-[18px]">
+      {/*
+        The machinery gets out of the way once it has answered.
+
+        Everything below — the explanation, the privacy note, the drop zone,
+        the textarea, the compare control, the date range and the recording
+        recipe — is how you ask the question. It stayed on screen at full
+        height after the answer arrived, so a reader who had just read a bill
+        scrolled past two hundred pixels of input to reach it again, every
+        time. It is a `<details>`, open until there is a report and reachable
+        by keyboard forever after: nothing is hidden, it is folded.
+      */}
       <Card className="gap-4 py-[18px]">
-        <CardHeader className="px-[18px]">
-          <Eyebrow>{t.bill.tab}</Eyebrow>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3.5 px-[18px]">
+        <details open={analysis === null} className="group">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-[18px] text-[13px] font-semibold tracking-[0.08em] text-muted-foreground uppercase [&::-webkit-details-marker]:hidden">
+            {t.bill.inputHeading}
+            <span className="text-[12px] font-normal tracking-normal normal-case">
+              {analysis === null ? '' : t.bill.inputFolded}
+            </span>
+          </summary>
+        <CardContent className="mt-3.5 flex flex-col gap-3.5 px-[18px]">
           <p className="m-0 max-w-[72ch] text-sm text-muted-foreground">{t.bill.lede}</p>
 
           {/*
@@ -720,6 +735,7 @@ export function Bill({ t }: { t: WebMessages }) {
 
           <p className="m-0 max-w-[72ch] text-xs text-muted-foreground">{t.bill.recipe}</p>
         </CardContent>
+        </details>
       </Card>
 
       {analysis !== null && (
@@ -959,6 +975,19 @@ function Report({
                       />
                     ))}
                   </div>
+                  {/*
+                    The bars had no axis, so five grey rectangles read as
+                    decoration rather than as a measurement. Both ends of the
+                    span, under a hairline: enough to know which direction time
+                    runs and where each bar sits, without an axis library and
+                    without repeating what the sentence below already says.
+                  */}
+                  {days.length > 1 && (
+                    <div className="flex justify-between border-t pt-1 text-[11px] tabular-nums text-muted-foreground">
+                      <span>{days[0]!.day}</span>
+                      <span>{days[days.length - 1]!.day}</span>
+                    </div>
+                  )}
                   <span
                     className={`text-[13px] ${peak.usd > 2 * medianUsd ? 'text-terracotta' : 'text-muted-foreground'}`}
                   >

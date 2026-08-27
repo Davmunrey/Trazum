@@ -524,6 +524,8 @@ export const es: WebMessages = {
     leverBatch: (usd) => `enviarlo por la Batch API: ${usd}`,
     leverCalls: (calls, spent) =>
       `${calls.toLocaleString('es-ES')} ${calls === 1 ? 'llamada' : 'llamadas'}, ${spent} gastados`,
+    inputHeading: 'El registro',
+    inputFolded: 'abre para leer otro registro',
     routeVerify:
       'Que una ruta aguante es una pregunta de evaluación, no de aritmética: nada aquí ha visto '
       + 'una sola respuesta. La CLI lo mide: trazum route <log> --prompt-file <prompt> --cases '

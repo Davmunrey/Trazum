@@ -519,6 +519,8 @@ export const en: WebMessages = {
     leverBatch: (usd) => `send it through the Batch API: ${usd}`,
     leverCalls: (calls, spent) =>
       `${calls.toLocaleString('en-US')} ${calls === 1 ? 'call' : 'calls'}, ${spent} spent`,
+    inputHeading: 'The log',
+    inputFolded: 'open to read another log',
     routeVerify:
       'Whether a route holds is an evaluation question, not an arithmetic one; nothing here '
       + 'has seen a single answer. The CLI measures it: trazum route <log> --prompt-file '
