@@ -263,6 +263,15 @@ describe('contract-article', () => {
     bench: 'a',
     // The 1.67 arc's document: consonant onset, same rule as the seven above.
     position: 'a',
+    // The two the JSON-text sweep contracted. `routing` and `example` both open
+    // on a consonant sound, so the sound rule and the letter rule agree again.
+    'routing-measurement': 'a',
+    'example-pruning': 'an',
+    // The three the same sweep finished: `store`, `conformance` and `watch`
+    // all open on a consonant sound, so the two rules agree once more.
+    'store-inventory': 'a',
+    conformance: 'a',
+    'watch-cycle': 'a',
   };
 
   it('has a decided article for every contract, and refuses to guess a new one', () => {
@@ -317,11 +326,13 @@ describe('the format page and the contracts it documents', () => {
       seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11,
       twelve: 12, thirteen: 13, fourteen: 14, fifteen: 15,
       sixteen: 16, seventeen: 17, eighteen: 18, nineteen: 19,
+      twenty: 20, 'twenty-one': 21, 'twenty-two': 22, 'twenty-three': 23,
+      'twenty-four': 24,
     };
     const rows = [...page.matchAll(/^\| \*\*[^*]+\*\* \|/gm)].length;
     assert.ok(rows > 5, `only ${rows} contract rows parsed out of docs/format.md — has the table moved?`);
 
-    const claim = page.match(/Trazum emits \*\*([a-z]+)\*\* documents/);
+    const claim = page.match(/Trazum emits \*\*([a-z-]+)\*\* documents/);
     assert.ok(claim, 'docs/format.md no longer opens with a document count — if it never does again, delete this test');
     const claimed = words[claim[1]];
     assert.ok(claimed !== undefined, `"${claim[1]}" is not a number this test knows`);
@@ -337,6 +348,8 @@ describe('the format page and the contracts it documents', () => {
       10: 'tenth', 11: 'eleventh', 12: 'twelfth',
       13: 'thirteenth', 14: 'fourteenth', 15: 'fifteenth',
       16: 'sixteenth', 17: 'seventeenth', 18: 'eighteenth', 19: 'nineteenth',
+      20: 'twentieth', 21: 'twenty-first', 22: 'twenty-second',
+      23: 'twenty-third', 24: 'twenty-fourth', 25: 'twenty-fifth',
     };
     const ordinal = ordinals[rows];
     assert.ok(ordinal !== undefined, `no ordinal known for ${rows} rows, add it above`);

@@ -1686,7 +1686,7 @@ believe a limit is set.
 
 ### Building on the format: `trazum conform`
 
-Trazum emits eighteen documents, defines a nineteenth it does not emit, and every
+Trazum emits twenty-three documents, defines a twenty-fourth it does not emit, and every
 one of them is a contract, enforced in both directions by parity tests. [docs/format.md](format.md) is the index;
 this is how you check your own emitter against it.
 

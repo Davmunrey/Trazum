@@ -74,6 +74,11 @@ const CLAIMED = {
   '## The gateway refusal document': 'packages/cli/test/gateway-proxy.test.js',
   '## The prompt-draft document': 'packages/core/test/write-assembly.test.js',
   '## The position document': 'packages/cli/test/contract-coverage.test.js',
+  '## The routing-measurement document': 'packages/cli/test/json-carries-no-text.test.js',
+  '## The example-pruning document': 'packages/cli/test/json-carries-no-text.test.js',
+  '## The store inventory document': 'packages/cli/test/contract-coverage.test.js',
+  '## The conformance document': 'packages/cli/test/contract-coverage.test.js',
+  '## The watch cycle document': 'packages/cli/test/contract-coverage.test.js',
 };
 
 describe('every contract in docs/json-output.md is claimed by a guard', () => {
@@ -352,6 +357,64 @@ describe('the six contracts that had no guard', () => {
     bothWays('## The outcome report document', promised(document, '## The outcome report document'), emitted);
   });
 
+  it('holds the store inventory document', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'trazum-store-contract-'));
+    await writeFile(
+      join(dir, 'usage.json'),
+      JSON.stringify({
+        data: [1, 2, 3].map((d) => ({
+          starting_at: `2026-08-0${d}T00:00:00Z`,
+          ending_at: `2026-08-0${d + 1}T00:00:00Z`,
+          results: [{ model: 'claude-opus-5', uncached_input_tokens: 200_000, output_tokens: 0 }],
+        })),
+      }),
+    );
+    const filled = spawnSync(
+      process.execPath,
+      [CLI, 'connect', 'anthropic', '--payload', 'usage.json', '--store'],
+      { encoding: 'utf8', env: SPAWN_ENV, timeout: 60000, cwd: dir },
+    );
+    assert.equal(filled.status, 0, filled.stderr);
+    const document = await readFile(DOC, 'utf8');
+    const emitted = Object.keys(run(['store', '--json'], dir));
+    bothWays('## The store inventory document', promised(document, '## The store inventory document'), emitted);
+  });
+
+  it('holds the conformance document', async () => {
+    const dir = await workspace();
+    const document = await readFile(DOC, 'utf8');
+    const emitted = Object.keys(run(['conform', join(dir, 'src', 'a.jsonl'), '--json'], dir));
+    bothWays('## The conformance document', promised(document, '## The conformance document'), emitted);
+  });
+
+  it('holds the watch cycle document', async () => {
+    /**
+     * The thresholds are set high enough that nothing crosses, because a
+     * crossing exits 1 by design and this guard is about the shape rather than
+     * the verdict. Every field is emitted either way — an empty `crossings`
+     * is what a clean cycle looks like, and the document says so with the
+     * array rather than by leaving it out.
+     */
+    const dir = await mkdtemp(join(tmpdir(), 'trazum-watch-contract-'));
+    await writeFile(
+      join(dir, 'usage.json'),
+      JSON.stringify({
+        data: [1, 2, 3].map((d) => ({
+          starting_at: `2026-08-0${d}T00:00:00Z`,
+          ending_at: `2026-08-0${d + 1}T00:00:00Z`,
+          results: [{ model: 'claude-opus-5', uncached_input_tokens: 200_000, output_tokens: 0 }],
+        })),
+      }),
+    );
+    await writeFile(
+      join(dir, 'trazum.config.json'),
+      JSON.stringify({ spend: { maxUsd: 10_000, maxDayUsd: 5_000 } }),
+    );
+    const document = await readFile(DOC, 'utf8');
+    const emitted = Object.keys(run(['watch', '--once', '--payload', 'usage.json', '--json'], dir));
+    bothWays('## The watch cycle document', promised(document, '## The watch cycle document'), emitted);
+  });
+
   it('reads a row that names several fields, and one that names none at this level', () => {
     /**
      * The harvest above decides what every guard in this file demands, and on
@@ -408,7 +471,8 @@ const anchor = (heading) =>
 const WORDS = [
   'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight',
   'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen',
-  'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty',
+  'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty', 'twenty-one',
+  'twenty-two', 'twenty-three', 'twenty-four', 'twenty-five',
 ];
 const ORDINALS = {
   13: 'thirteenth',
@@ -418,6 +482,12 @@ const ORDINALS = {
   17: 'seventeenth',
   18: 'eighteenth',
   19: 'nineteenth',
+  20: 'twentieth',
+  21: 'twenty-first',
+  22: 'twenty-second',
+  23: 'twenty-third',
+  24: 'twenty-fourth',
+  25: 'twenty-fifth',
 };
 
 /** "a seventeenth", "an eighteenth" — the article belongs to the word, not the template. */
@@ -519,6 +589,76 @@ describe('docs/format.md counts what exists', () => {
     assert.ok(
       page.includes(`**\`--contract\` names ${WORDS[CONTRACT_NAMES.length]} of them.**`),
       `the prose does not say ${WORDS[CONTRACT_NAMES.length]}, and --contract accepts ${CONTRACT_NAMES.length}`,
+    );
+  });
+
+  it('has a row for every command that emits `--json`', async () => {
+    /**
+     * The check that closes the loop, derived from the CLI rather than typed.
+     *
+     * Five commands emitted a document nobody had written down — `route`,
+     * `prune`, `store`, `conform` and `watch`. Each was reachable, each printed
+     * JSON, and none of them appeared in the table a connector author reads,
+     * so a consumer building against any of them was building against output
+     * rather than a contract. Nothing said so, because every guard on this page
+     * ran from the table outwards: it could tell that a documented contract was
+     * missing a section, and never that a command was missing a row.
+     *
+     * `interchange.test.js` already reads `COMMAND_FLAGS` for a different
+     * question — whether a `--json` command is *driven* by a test. That one is
+     * about coverage. This one is about the promise: a command whose document
+     * has no row is a shape somebody will depend on and nobody has agreed to.
+     */
+    const cli = await readFile(join(ROOT, 'packages/cli/src/index.ts'), 'utf8');
+    const block = cli.slice(
+      cli.indexOf('const COMMAND_FLAGS'),
+      cli.indexOf('};', cli.indexOf('const COMMAND_FLAGS')),
+    );
+    const emitters = [...block.matchAll(/^ {2}'?([a-z][a-z-]*)'?: \[(.*?)\],$/gm)]
+      .filter((entry) => entry[2].includes("'json'"))
+      .map((entry) => entry[1]);
+    assert.ok(emitters.length > 8, `only ${emitters.length} --json commands parsed out of COMMAND_FLAGS`);
+
+    const page = await readFile(FORMAT, 'utf8');
+    const cells = [...page.matchAll(/^\| \*\*[^*]+\*\* \| ([^|]*) \|/gm)].map((row) => row[1]);
+    assert.equal(
+      cells.length,
+      formatRows(page).length,
+      'the "written by" column and the full row reading disagree about how many rows there are',
+    );
+
+    const undocumented = emitters.filter(
+      (name) => !cells.some((cell) => new RegExp(`\`trazum ${name}\\b`).test(cell)),
+    );
+    assert.deepEqual(
+      undocumented,
+      [],
+      'these commands emit a JSON document that docs/format.md does not list, so nothing tells ' +
+        `a consumer what shape they may depend on: ${undocumented.join(', ')}`,
+    );
+  });
+
+  it('would notice a command whose document nobody wrote down', () => {
+    /**
+     * The guard above can only ever return today's answer on this repository,
+     * so the reading it depends on is exercised against the state it was
+     * written for: a `--json` command whose name appears in no row.
+     */
+    const block = [
+      "const COMMAND_FLAGS: Record<string, string[]> = {",
+      "  profile: ['json', 'locale'],",
+      "  invented: ['json'],",
+      "  quiet: ['locale'],",
+      '};',
+    ].join('\n');
+    const emitters = [...block.matchAll(/^ {2}'?([a-z][a-z-]*)'?: \[(.*?)\],$/gm)]
+      .filter((entry) => entry[2].includes("'json'"))
+      .map((entry) => entry[1]);
+    assert.deepEqual(emitters, ['profile', 'invented']);
+    const cells = ['`trazum profile --json`'];
+    assert.deepEqual(
+      emitters.filter((name) => !cells.some((cell) => new RegExp(`\`trazum ${name}\\b`).test(cell))),
+      ['invented'],
     );
   });
 
