@@ -109,7 +109,7 @@ into pipelines.
 
 **Lead with "What would actually move this bill".** It is the section the command
 exists for, and the one that answers the fair complaint that Trazum saves 1%. The
-rules recover about 1%; which model a call goes to moves 40% to 80% and the Batch
+rules recover about 1%; which model a call goes to moves 60% to 80% and the Batch
 API moves 50% flat, and both are priced there from the user's own tokens. If you
 summarise the report and leave that section out, you have handed the user the
 smallest lever in the tool.
@@ -484,7 +484,7 @@ this: the optimised prompt will not have broken someone's JSON schema.
   comparing two versions of the same prompt, which is what they are for. For
   exact figures use `--exact-tokens` with `ANTHROPIC_API_KEY` set — the counting
   endpoint does not charge for tokens. The band is measured against Claude's
-  tokenizer over forty-seven samples in ten languages; against a non-Anthropic
+  tokenizer over 47 samples in ten languages; against a non-Anthropic
   model the report drops it, names the family, and gives the error measured
   there where anybody has measured it — 94.5% on DeepSeek, 103.1% on Mistral.
   Do not reinstate the Claude band on a prompt priced against another family.

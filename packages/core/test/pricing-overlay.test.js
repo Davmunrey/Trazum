@@ -111,11 +111,37 @@ describe('applying an overlay', () => {
   });
 
   it('can withdraw a promotion with null', () => {
-    // Sonnet 5 ships with introductory pricing. When a promotion ends early, the
-    // overlay has to be able to remove it, not just change its numbers.
-    assert.ok(modelFrom(BUNDLED_CATALOGUE, 'claude-sonnet-5').promo, 'fixture assumes a promo');
-    const catalogue = catalogueFromOverlay(overlay({ 'claude-sonnet-5': { promo: null } }));
-    assert.equal(modelFrom(catalogue, 'claude-sonnet-5').promo, undefined);
+    /**
+     * An overlay has to be able to remove a promotion, not just change its
+     * numbers, and "remove" has to be distinguishable from "did not mention".
+     *
+     * This used to assert against Sonnet 5, which shipped on introductory
+     * pricing — until Anthropic made that price standard and the promotion
+     * left the catalogue, at which point the test failed on its fixture rather
+     * than on its subject. The catalogue is data; what is being tested is that
+     * `null` reaches the merge as a deletion.
+     */
+    const withdrawn = parsePricingOverlay(overlay({ 'claude-opus-5': { promo: null } }));
+    const patch = withdrawn.models['claude-opus-5'];
+    assert.ok('promo' in patch, '`promo: null` was dropped instead of recorded as a withdrawal');
+    assert.equal(patch.promo, undefined);
+
+    /* And a promotion can still be added, which is the same field going the other way. */
+    const promoted = catalogueFromOverlay(
+      overlay({
+        'claude-opus-5': { promo: { inputPerMTok: 1, outputPerMTok: 2, until: '2027-01-01' } },
+      }),
+    );
+    assert.deepEqual(modelFrom(promoted, 'claude-opus-5').promo, {
+      inputPerMTok: 1,
+      outputPerMTok: 2,
+      until: '2027-01-01',
+    });
+    assert.equal(
+      modelFrom(catalogueFromOverlay(overlay({ 'claude-opus-5': { promo: null } })), 'claude-opus-5')
+        .promo,
+      undefined,
+    );
   });
 
   it('ranks a tier on the effective price, promotion included', () => {

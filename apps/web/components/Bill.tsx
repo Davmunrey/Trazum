@@ -27,6 +27,7 @@ import {
   readDroppedVerdict,
   repriceProfile,
   reviewAgeDays,
+  STALE_PRICING_DAYS,
   sharesOf,
   verdictMatchesSlice,
 } from '@trazum/core';
@@ -2072,10 +2073,11 @@ function Gaps({
    * The provenance caveat, said only when old enough to matter and loud
    * then: a stale price table qualifies every dollar above, and unlike a
    * skipped line it does not name its own size — the error is exactly
-   * whatever the provider changed. The 45-day threshold matches the CLI's.
+   * whatever the provider changed. The threshold is `STALE_PRICING_DAYS`,
+   * shared with the CLI and the MCP report rather than retyped here.
    */
   const staleDays = reviewAgeDays(BUNDLED_CATALOGUE.lastReviewed, new Date());
-  const stale = staleDays !== null && staleDays > 45;
+  const stale = staleDays !== null && staleDays > STALE_PRICING_DAYS;
   if (
     unpricedModels.length === 0 &&
     skippedLines.length === 0 &&

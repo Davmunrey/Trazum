@@ -59,6 +59,131 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **Two shipped defects the suite had no shape for.** It verifies prose and
+  arithmetic exhaustively and verified nothing about what a reader could see or
+  press, so both of these passed CI and were visible on first paint. The
+  landing rendered five of its six sections at zero opacity for two days — a
+  `Reveal` wrapper whose observer never fired below the fold — and the Write
+  panel opened with two buttons both reading "Skip this" for four days, because
+  a ternary label's falsy branch was its neighbour's label and the falsy branch
+  is the state the panel opens in.
+
+  Neither needed a browser to catch. `apps/web/test/reachable.test.mjs` refuses
+  content hidden behind client state that starts falsy, a reveal on a timeline
+  that may not advance (the *second* attempt at fixing the blank landing, also
+  blank), and two buttons in one component that can carry one label at once. It
+  claims a collision between two conditional labels only when the conditions
+  are written identically, because proving mutual exclusion means evaluating
+  them.
+
+- **Every page counted the commands by hand, and three of them were wrong.**
+  `README.md`, `docs/licensing.md` and `plugin/README.md` all said **42
+  commands** against a CLI dispatching 45; the README disagreed with itself,
+  saying 42 in its architecture diagram and forty-five in the table of contents
+  four lines below. The landing said **39**, in five languages, and spelled its
+  contract count as a word. `plugin/README.md` ships with the Claude Code
+  plugin, so that one was wrong in an artefact a stranger installs.
+
+  `every-page.test.js` reads every documented `trazum <command>` invocation out
+  of `docs/` and checks it against `COMMAND_FLAGS`, so a *renamed* command
+  cannot survive in the prose. A wrong total can, and its walk stops at `docs/`.
+
+  `derived-counts.test.js` reads every page that describes the product as it is,
+  plus the landing's copy in five languages, and holds five counts to what the
+  product has: commands from `COMMAND_FLAGS`, the playground's subset from
+  `PLAYGROUND_COMMANDS`, contracts from `CONTRACT_NAMES`, providers from the
+  pricing catalogue, and rules from either `RULES` or the doctrine's headings
+  depending on which the paragraph is about. Counts are written in digits: a
+  figure spelled as a word is outside what any derivation can reach.
+
+  Fenced blocks, lines naming the release they describe, and the dated files
+  end to end are excluded, because each would otherwise fail on a true
+  sentence or invite rewriting history. The README's architecture diagram is
+  the one claim living in a fence, so it is checked by name.
+
+- **Sonnet 5 was priced at a number nobody charges, on a timer.** The catalogue
+  carried it as $3/$15 with an introductory promotion of $2/$10 running to
+  2026-08-31 on top. Anthropic cancelled that increase and made $2/$10 the
+  standard price; the table did not know, so on 2026-09-01 every Sonnet 5
+  figure this tool printed would have risen 50% with no code change, no release
+  and nothing for a reader to notice. Four days out when it was found.
+
+  **A promotion is the one price change this table can see coming**, so
+  `pricing-review.test.js` now refuses one that expires inside
+  `STALE_PRICING_DAYS` — before the next review this product tells readers it
+  performs. That check would have asked the question on 2026-07-17. It cannot
+  catch a provider quietly changing a price, and says so; that is the release
+  checklist's job, and step 7 of [docs/releasing.md](docs/releasing.md) is now
+  it.
+
+  The lever table's headline moved with the price, and it turned out to be the
+  product's headline argument. **Opus 5 → Sonnet 5 is 60% off, not 40%**, and
+  the span "which model a call goes to moves 40% to 80%" was wrong in **15
+  places**: both CLI locales, the type documenting them, two comments in the
+  CLI, the README, the Claude Code skill and the plugin copy generated from
+  it, and the landing in five languages plus its proof row. Its floor had been
+  computed from the $3/$15 list price while every test, transcript and the
+  product's own output used the $2/$10 actually charged, so `docs/commands.md`
+  disagreed with the sample printed four lines below it and the first sentence
+  a visitor reads was 20 points low. Floor and ceiling are now derived from
+  `MODELS`, and the guard reads the ceiling and checks the number in front of
+  it, so it holds in a language it cannot parse.
+
+- **The landing's headline figure was not one the product printed.** The page
+  says, in a comment above its own copy, that every number on it is the
+  product's own output, and the largest — **−37.4%**, in the proof row, drawn
+  in the hero ledger and printed on the share card every link to the page
+  renders — described itself as `optimize --level aggressive` over the demo
+  prompt. No prompt in this repository produces it. The demo prompt is the one
+  the Playground tab loads and the Optimiser fills itself with when a visitor
+  clicks through, so it is the prompt whose figure the page is entitled to
+  quote, and the rules take **20.1%** off it.
+
+  `marketing.test.mjs` used to pin the figure by listing it — `['−37.4%',
+  '40–80%', '−50%']`, asserted to appear on the page. Both halves of that were
+  the same hand-typed number, so it could catch a figure being deleted and
+  never one being wrong. It now runs the rules over the demo prompt and
+  compares **every** reduction on the landing and on the share card against
+  what comes out, because the hero draws the figure and the proof row states
+  it and either could drift alone.
+
+- **The picture at the top of the README was arithmetic nothing checked.** It
+  is a terminal transcript: a prompt of 238 tokens shortened to 142, priced on
+  Claude Opus 5 at 50,000 calls a month, with the model switch and the Batch
+  API underneath. The prompt is illustrative and allowed to be — a drawing may
+  invent its subject. The money may not: every dollar in it follows from two
+  token counts and the prices of two models, and those prices live in a table
+  that changes. An Opus 5 re-price would have left the first thing every
+  visitor sees showing figures that were right once.
+
+  `demo-image.test.js` reads the scenario out of the drawing — the token
+  counts, the calls, the output length — and recomputes each figure from
+  `MODELS`: the bill before and after, what the rules save, the output and
+  input halves, and what the switch to Haiku 4.5 is worth. Its band comes from
+  `bandFor` rather than the number that happened to be published when it was
+  drawn.
+
+- **Seven copies of one staleness threshold.** `profile`, the MCP report and
+  the browser's bill each typed `45` into their own comparison, and four locale
+  strings stated it again in prose. It is `STALE_PRICING_DAYS` in
+  `@trazum/core` now, and a guard refuses both a surface that compares an age
+  to a typed number and a locale sentence that tells the reader a different
+  one.
+
+- **One review date for seven providers.** The date was written on 2026-08-04
+  already reading 2026-06-24 and never moved, because moving it required
+  reviewing all seven at once: a partial review could only overstate the rest
+  or throw itself away. `PROVIDER_REVIEWED` carries a date per provider, the
+  catalogue's headline date is derived as the oldest of them, and `trazum
+  models` prints the breakdown when they disagree — so a reader pricing Claude
+  calls is no longer told their prices are two months old when that half of the
+  table was checked this morning.
+
+- **The README said there was deliberately no staleness threshold.** There has
+  been one for as long as three surfaces have been printing a warning past 45
+  days. Corrected, along with the illustrative day count beside it, which was a
+  number that could only rot.
+
 - **The Playground's terminal was a paper-coloured card.** The one place in
   the app where a reader types commands was the same white surface as the forms
   around it, with monospace text in it — so it read as another text box. A

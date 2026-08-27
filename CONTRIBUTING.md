@@ -218,7 +218,7 @@ on code and markup, ±33% on tabular numbers. 47 samples, ten languages, six tex
 types, and the worst measured error in each bucket is **3.2%**, **5.6%**,
 **25.1%** and **32.5%** — the margin between each band and its own worst sample
 is a point or less, and it is deliberate that the buckets do not overlap,
-because six text types cannot bound a seventh. It was a design target for eight releases and it was false — see the 1.9.0
+because 6 text types cannot bound a seventh. It was a design target for eight releases and it was false — see the 1.9.0
 entry in [CHANGELOG.md](CHANGELOG.md) for what that cost.
 
 The corpus and harness are committed; re-measuring needs a key and one command:

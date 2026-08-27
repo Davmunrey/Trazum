@@ -19,11 +19,22 @@ import type { MarketingLocale } from '../../components/marketing';
  * complete by construction — the type below makes a missing key a build
  * error, which is the same guarantee the catalogue gives the app.
  *
- * Every number on this page is one the product itself printed: the -37.4%
- * is `optimize --level aggressive` over the demo prompt with a 1M-call
- * scenario, the 40-80% and 50% are the model-routing and Batch spans the
- * profile report states, and none of it is a testimonial, a logo wall or a
- * projection — the product refuses to forecast, and so does its landing.
+ * Every number on this page is one the product itself printed, and the
+ * headline one now says which prompt printed it.
+ *
+ * It read -37.4% and described itself as `optimize --level aggressive` over
+ * the demo prompt. No prompt in this repository produces that: the demo
+ * prompt — the one the Playground tab loads and the Optimiser fills itself
+ * with, so the one a visitor clicking through actually runs — comes out at
+ * -20.1%. The figure was a real number from a prompt nobody committed,
+ * which is the same thing as a number a reader cannot check, and it would
+ * have gone on drifting every time a rule changed.
+ *
+ * marketing.test.mjs derives it now: it runs the rules over that prompt and
+ * fails if the page states anything else. The 60-80% and 50% are the
+ * model-routing and Batch spans the profile report states, and none of it
+ * is a testimonial, a logo wall or a projection — the product refuses to
+ * forecast, and so does its landing.
  */
 
 interface Copy {
@@ -91,7 +102,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'Trazum prices the usage records your provider already returns, record by record, and refuses to print a forecast. A stale month is "cannot tell", a quiet day is a measured $0, and unpriced models are named instead of hidden in the total.',
     story3Title: 'The savings that matter are rarely in the prompt.',
     story3Body:
-      'Shortening recovers about 1%. Which model a call goes to moves 40–80%, the Batch API moves 50% flat, and a cache whose TTL outlives its reuse loses money quietly. Trazum prices all of it from your own tokens.',
+      'Shortening recovers about 1%. Which model a call goes to moves 60–80%, the Batch API moves 50% flat, and a cache whose TTL outlives its reuse loses money quietly. Trazum prices all of it from your own tokens.',
     doorsTitle: 'The same answer at the CLI, the gateway, the browser and the agent.',
     doorsLede:
       'One core does the measuring; four surfaces carry it. They cannot disagree, because they are the same functions.',
@@ -115,7 +126,7 @@ const COPY: Record<MarketingLocale, Copy> = {
     proofBatch: 'flat, when the work tolerates a batch window',
     openTitle: 'The core is MIT, and stays MIT.',
     openBody:
-      'The engine, the CLI, the MCP server, the format and its twenty-four contracts are open source. Adopt the format without adopting the tool. What will be paid, when it exists, is the hosted convenience around it: teams, a managed gateway, org-wide policy. The measuring never goes behind a paywall.',
+      'The engine, the CLI, the MCP server, the format and its 24 contracts are open source. Adopt the format without adopting the tool. What will be paid, when it exists, is the hosted convenience around it: teams, a managed gateway, org-wide policy. The measuring never goes behind a paywall.',
     openCta: 'Read the code',
     finalTitle: 'Try it on your own bill.',
     finalBody:
@@ -138,7 +149,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'Trazum tasa los registros de uso que tu proveedor ya devuelve, registro a registro, y se niega a imprimir un pronóstico. Un mes rancio es «no se puede saber», un día tranquilo es un $0 medido, y los modelos sin precio se nombran en vez de esconderse en el total.',
     story3Title: 'El ahorro que importa casi nunca está en el prompt.',
     story3Body:
-      'Acortar recupera ~1%. A qué modelo va cada llamada mueve un 40–80%, el Batch API un 50% plano, y una caché cuyo TTL sobrevive a su reuso pierde dinero en silencio. Trazum lo tasa todo desde tus propios tokens.',
+      'Acortar recupera ~1%. A qué modelo va cada llamada mueve un 60–80%, el Batch API un 50% plano, y una caché cuyo TTL sobrevive a su reuso pierde dinero en silencio. Trazum lo tasa todo desde tus propios tokens.',
     doorsTitle: 'La misma respuesta en el CLI, el gateway, el navegador y el agente.',
     doorsLede:
       'Un solo núcleo mide; cuatro superficies lo llevan. No pueden estar en desacuerdo, porque son las mismas funciones.',
@@ -162,7 +173,7 @@ const COPY: Record<MarketingLocale, Copy> = {
     proofBatch: 'plano, cuando el trabajo tolera una ventana de batch',
     openTitle: 'El núcleo es MIT, y seguirá siendo MIT.',
     openBody:
-      'El motor, el CLI, el servidor MCP, el formato y sus veinticuatro contratos son open source. Adopta el formato sin adoptar la herramienta. Lo que será de pago, cuando exista, es la comodidad alojada alrededor: equipos, gateway gestionado, política a escala de organización. La medición nunca irá detrás de un muro de pago.',
+      'El motor, el CLI, el servidor MCP, el formato y sus 24 contratos son open source. Adopta el formato sin adoptar la herramienta. Lo que será de pago, cuando exista, es la comodidad alojada alrededor: equipos, gateway gestionado, política a escala de organización. La medición nunca irá detrás de un muro de pago.',
     openCta: 'Leer el código',
     finalTitle: 'Pruébalo con tu propia factura.',
     finalBody:
@@ -185,7 +196,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'Trazum tarifie les enregistrements d’usage que votre fournisseur renvoie déjà, un par un, et refuse d’imprimer une prévision. Un mois périmé est « impossible à dire », une journée calme est un 0 $ mesuré, et les modèles non tarifés sont nommés plutôt que cachés dans le total.',
     story3Title: 'Les économies qui comptent sont rarement dans le prompt.',
     story3Body:
-      'Raccourcir récupère environ 1 %. Le modèle vers lequel part un appel déplace 40–80 %, l’API Batch déplace 50 % à plat, et un cache dont le TTL survit à sa réutilisation perd de l’argent en silence. Trazum tarifie tout cela à partir de vos propres tokens.',
+      'Raccourcir récupère environ 1 %. Le modèle vers lequel part un appel déplace 60–80 %, l’API Batch déplace 50 % à plat, et un cache dont le TTL survit à sa réutilisation perd de l’argent en silence. Trazum tarifie tout cela à partir de vos propres tokens.',
     doorsTitle: 'La même réponse au CLI, à la passerelle, au navigateur et à l’agent.',
     doorsLede:
       'Un seul cœur mesure ; quatre surfaces le portent. Ils ne peuvent pas diverger, car ce sont les mêmes fonctions.',
@@ -209,7 +220,7 @@ const COPY: Record<MarketingLocale, Copy> = {
     proofBatch: 'à plat, quand le travail tolère une fenêtre de batch',
     openTitle: 'Le cœur est MIT, et reste MIT.',
     openBody:
-      'Le moteur, le CLI, le serveur MCP, le format et ses vingt-quatre contrats sont open source. Adoptez le format sans adopter l’outil. Ce qui sera payant, le jour où cela existera, c’est le confort hébergé autour : équipes, passerelle gérée, politique à l’échelle de l’organisation. La mesure ne passe jamais derrière un péage.',
+      'Le moteur, le CLI, le serveur MCP, le format et ses 24 contrats sont open source. Adoptez le format sans adopter l’outil. Ce qui sera payant, le jour où cela existera, c’est le confort hébergé autour : équipes, passerelle gérée, politique à l’échelle de l’organisation. La mesure ne passe jamais derrière un péage.',
     openCta: 'Lire le code',
     finalTitle: 'Essayez-le sur votre propre facture.',
     finalBody:
@@ -232,7 +243,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'Trazum bepreist die Nutzungsdatensätze, die Ihr Anbieter ohnehin zurückgibt, Datensatz für Datensatz, und weigert sich, eine Prognose auszugeben. Ein veralteter Monat ist „nicht feststellbar“, ein ruhiger Tag ein gemessener 0 $, und nicht bepreiste Modelle werden benannt statt in der Summe versteckt.',
     story3Title: 'Die Einsparungen, die zählen, stecken selten im Prompt.',
     story3Body:
-      'Kürzen bringt etwa 1 %. Welches Modell einen Aufruf bekommt, bewegt 40–80 %, die Batch-API bewegt glatt 50 %, und ein Cache, dessen TTL seine Wiederverwendung überdauert, verliert still Geld. Trazum bepreist all das aus Ihren eigenen Tokens.',
+      'Kürzen bringt etwa 1 %. Welches Modell einen Aufruf bekommt, bewegt 60–80 %, die Batch-API bewegt glatt 50 %, und ein Cache, dessen TTL seine Wiederverwendung überdauert, verliert still Geld. Trazum bepreist all das aus Ihren eigenen Tokens.',
     doorsTitle: 'Dieselbe Antwort am CLI, am Gateway, im Browser und beim Agenten.',
     doorsLede:
       'Ein Kern misst; vier Oberflächen tragen es. Sie können nicht widersprechen, denn es sind dieselben Funktionen.',
@@ -256,7 +267,7 @@ const COPY: Record<MarketingLocale, Copy> = {
     proofBatch: 'glatt, wenn die Arbeit ein Batch-Fenster verträgt',
     openTitle: 'Der Kern ist MIT und bleibt MIT.',
     openBody:
-      'Die Engine, das CLI, der MCP-Server, das Format und seine vierundzwanzig Verträge sind Open Source. Übernehmen Sie das Format, ohne das Tool zu übernehmen. Was kosten wird, sobald es existiert, ist der gehostete Komfort drumherum: Teams, ein verwaltetes Gateway, organisationsweite Richtlinien. Das Messen kommt nie hinter eine Bezahlschranke.',
+      'Die Engine, das CLI, der MCP-Server, das Format und seine 24 Verträge sind Open Source. Übernehmen Sie das Format, ohne das Tool zu übernehmen. Was kosten wird, sobald es existiert, ist der gehostete Komfort drumherum: Teams, ein verwaltetes Gateway, organisationsweite Richtlinien. Das Messen kommt nie hinter eine Bezahlschranke.',
     openCta: 'Den Code lesen',
     finalTitle: 'Probieren Sie es an Ihrer eigenen Rechnung.',
     finalBody:
@@ -279,7 +290,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'O Trazum tarifa os registos de uso que o seu fornecedor já devolve, registo a registo, e recusa imprimir uma previsão. Um mês desatualizado é «não dá para saber», um dia calmo é um 0 $ medido, e os modelos sem preço são nomeados em vez de escondidos no total.',
     story3Title: 'As poupanças que importam raramente estão no prompt.',
     story3Body:
-      'Encurtar recupera cerca de 1 %. Para que modelo vai uma chamada move 40–80 %, a API Batch move 50 % fixos, e uma cache cujo TTL sobrevive à sua reutilização perde dinheiro em silêncio. O Trazum tarifa tudo isso a partir dos seus próprios tokens.',
+      'Encurtar recupera cerca de 1 %. Para que modelo vai uma chamada move 60–80 %, a API Batch move 50 % fixos, e uma cache cujo TTL sobrevive à sua reutilização perde dinheiro em silêncio. O Trazum tarifa tudo isso a partir dos seus próprios tokens.',
     doorsTitle: 'A mesma resposta no CLI, no gateway, no navegador e no agente.',
     doorsLede:
       'Um só núcleo mede; quatro superfícies levam-no. Não podem discordar, porque são as mesmas funções.',
@@ -303,7 +314,7 @@ const COPY: Record<MarketingLocale, Copy> = {
     proofBatch: 'fixo, quando o trabalho tolera uma janela de batch',
     openTitle: 'O núcleo é MIT, e continua MIT.',
     openBody:
-      'O motor, o CLI, o servidor MCP, o formato e os seus vinte e quatro contratos são open source. Adote o formato sem adotar a ferramenta. O que será pago, quando existir, é a comodidade alojada à volta: equipas, gateway gerido, política à escala da organização. A medição nunca vai para trás de um muro de pagamento.',
+      'O motor, o CLI, o servidor MCP, o formato e os seus 24 contratos são open source. Adote o formato sem adotar a ferramenta. O que será pago, quando existir, é a comodidade alojada à volta: equipas, gateway gerido, política à escala da organização. A medição nunca vai para trás de um muro de pagamento.',
     openCta: 'Ler o código',
     finalTitle: 'Experimente na sua própria fatura.',
     finalBody:
@@ -319,7 +330,7 @@ const GITHUB = 'https://github.com/Davmunrey/Trazum';
  *
  * Geometry, not illustration. Six rules of falling length under a heading
  * rule, the lower three drawn in the saving colour and clipped to the width
- * the measured reduction leaves — the same −37.4% the proof section states, so
+ * the measured reduction leaves — the same −20.1% the proof section states, so
  * the picture is an index of the claim rather than decoration invented to fill
  * a column. Every colour is a token, so it themes with the page instead of
  * carrying one theme's palette into the other.
@@ -331,7 +342,7 @@ function LedgerFigure() {
   /*
     Each row is a call: what it costs, and what is left once the rules have
     run. The pair is the shape of the claim, so the figure is an index of the
-    −37.4% stated below rather than decoration invented to fill a column.
+    −20.1% stated below rather than decoration invented to fill a column.
   */
   const rows = [
     [186, 117],
@@ -400,7 +411,7 @@ function LedgerFigure() {
         fontWeight="700"
         style={{ fontVariantNumeric: 'tabular-nums' }}
       >
-        −37.4%
+        −20.1%
       </text>
     </svg>
   );
@@ -559,8 +570,8 @@ export default function Landing() {
             </p>
             <div className="mt-10 overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-raised)]">
               {[
-                ['−37.4%', t.proofRules],
-                ['40–80%', t.proofRoute],
+                ['−20.1%', t.proofRules],
+                ['60–80%', t.proofRoute],
                 ['−50%', t.proofBatch],
               ].map(([figure, caption], index) => (
                 <div

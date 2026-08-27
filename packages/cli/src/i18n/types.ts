@@ -785,6 +785,15 @@ export interface CliMessages {
     unit(): string;
     /** `days` is null when the date is unusable or in the future. */
     reviewedOn(date: string, days: number | null): string;
+    /**
+     * Said only when the providers disagree, which is the case the headline
+     * date cannot carry: it is the oldest of them, so a reader pricing only
+     * Anthropic calls is told the table is two months old when their half of
+     * it was checked today.
+     */
+    reviewedByProvider(rows: string): string;
+    /** The providers that share one review date, joined into the line above. */
+    reviewedGroup(date: string, days: number | null, providers: string): string;
     columns: {
       model: string;
       input: string;
@@ -1086,7 +1095,7 @@ export interface CliMessages {
      * The section the whole command builds towards.
      *
      * Trazum's rules recover about 1% of a bill. Which model a call goes to moves
-     * 40% to 80%, and the Batch API moves 50% flat. A report that shows where the
+     * 60% to 80%, and the Batch API moves 50% flat. A report that shows where the
      * money went and then stops is a report that leaves the reader with the
      * smallest lever in their hand.
      */

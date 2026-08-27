@@ -16,9 +16,11 @@ import { BUNDLED_CATALOGUE, billLevers, catalogueFromOverlay, profileUsage } fro
  * a recorded string. A snapshot of a wrong number is a test that defends the bug.
  */
 
-// 2026-08-16 is inside Sonnet 5's introductory window ($2/$10 rather than $3/$15),
-// so the date is pinned: a test that silently reprices when a promotion lapses is
-// a test that will one day fail for a reason nobody changed.
+// The date is pinned so a promotion coming or going cannot silently reprice these
+// figures. It used to matter here: Sonnet 5's $2/$10 was introductory, with $3/$15
+// underneath it, and 2026-08-16 sat inside that window. Anthropic cancelled the
+// increase and $2/$10 is now the standard price, so the pin no longer changes the
+// arithmetic — it stays because the next promotion should not change it either.
 const ON = new Date('2026-08-16T00:00:00Z');
 
 const levers = (records, options = {}) =>
@@ -45,7 +47,7 @@ describe('routing to a cheaper model', () => {
      * 400 calls of 9,000 input and 300 output on Opus 5 ($5/$25):
      * 3.6M input = $18.00, 120k output = $3.00, so $21.00.
      *
-     * The same tokens on Sonnet 5 at its introductory $2/$10: $7.20 + $1.20 =
+     * The same tokens on Sonnet 5 at $2/$10: $7.20 + $1.20 =
      * $8.40. The route is worth $12.60 — 60% of that slice, against the ~1% a
      * rules pass over the prompt file would recover.
      */

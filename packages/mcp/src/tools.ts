@@ -19,6 +19,7 @@ import {
   interview,
   nearestName,
   reviewAgeDays,
+  STALE_PRICING_DAYS,
   listModels,
   optimize,
   contextPressure,
@@ -533,9 +534,10 @@ const PROFILE: ToolDefinition = {
      * name its own size — the error is exactly whatever the provider changed.
      */
     const pricingAge = reviewAgeDays(catalogue.lastReviewed, new Date());
-    if (pricingAge !== null && pricingAge > 45) {
+    if (pricingAge !== null && pricingAge > STALE_PRICING_DAYS) {
       lines.push(
-        `That review was ${pricingAge} days ago, past the 45 this tool considers current. If the`
+        `That review was ${pricingAge} days ago, past the ${STALE_PRICING_DAYS} this tool`
+          + ' considers current. If the'
           + ' provider changed prices since, every figure here is off by exactly that change —'
           + ' the CLI can fetch current prices (trazum profile --pricing-live).',
       );

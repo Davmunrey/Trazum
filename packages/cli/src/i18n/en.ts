@@ -1184,7 +1184,7 @@ ${bold('EXAMPLES')}
     beyondThisPromptTokensOnly: () =>
       'Shortening a prompt is the smallest lever there is: measured on an ordinary support prompt, the rules recover about 1% of a monthly bill. If any of your prompts go to a metered API, "trazum profile <usage.jsonl>" reads what the provider actually charged and prices the levers that are not the prompt. Recording that log is a few lines and it never contains prompt text.',
     beyondThisPrompt: () =>
-      'Shortening a prompt is the smallest lever there is: measured on an ordinary support prompt, the rules recover about 1% of a monthly bill. On a metered API the things that move 40% to 80% are which model the call goes to, the Batch API, prompt caching, and what re-sending the conversation costs, and "trazum profile <usage.jsonl>" prices all four from what the provider actually charged. Recording that log is a few lines and it never contains prompt text.',
+      'Shortening a prompt is the smallest lever there is: measured on an ordinary support prompt, the rules recover about 1% of a monthly bill. On a metered API the things that move 60% to 80% are which model the call goes to, the Batch API, prompt caching, and what re-sending the conversation costs, and "trazum profile <usage.jsonl>" prices all four from what the provider actually charged. Recording that log is a few lines and it never contains prompt text.',
     windowUse: (before, after, model, window) =>
       `Context window: ${before} → ${after} of ${model}'s ${window} tokens, room the conversation gets instead.`,
     tokensOnlyAskedFor: () =>
@@ -1981,6 +1981,8 @@ ${bold('EXAMPLES')}
     unit: () => '  (USD per million tokens)',
     reviewedOn: (date, days) =>
       `  Table reviewed on ${date}${ago(days)}. Verify before budgeting.`,
+    reviewedByProvider: (rows) => `  Per provider: ${rows}`,
+    reviewedGroup: (date, days, providers) => `${date}${ago(days)} ${providers}`,
     columns: {
       model: 'model',
       input: 'input',

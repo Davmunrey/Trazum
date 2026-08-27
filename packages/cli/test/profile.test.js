@@ -462,7 +462,7 @@ describe('what would actually move this bill', () => {
    *
    * That figure is right — three tokens out of three hundred and six, measured. The
    * conclusion is not that the tool is worthless but that it had been reading the
-   * smallest line item. Which model a call goes to moves 40% to 80%; the Batch API
+   * smallest line item. Which model a call goes to moves 60% to 80%; the Batch API
    * moves 50% flat. Both are priced here from the reader's own tokens.
    */
 

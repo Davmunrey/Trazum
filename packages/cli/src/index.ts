@@ -124,6 +124,8 @@ import {
   positionAt,
   positionReport,
   PRICING_LAST_REVIEWED,
+  PROVIDER_REVIEWED,
+  STALE_PRICING_DAYS,
   profilePrompt,
   profileToCsv,
   profileUsage,
@@ -1145,7 +1147,7 @@ function printReport(
    *
    * `optimize` is the first command anybody runs, and it reports the smallest
    * line item on the bill: measured, about 1% of a monthly figure. Everything
-   * that moves 40% to 80% — which model the call goes to, the Batch API,
+   * that moves 60% to 80% — which model the call goes to, the Batch API,
    * caching, what re-sending the conversation costs — lives in `profile`, which
    * needs a usage log a new reader does not have and has no reason to go looking
    * for.
@@ -5178,9 +5180,36 @@ function commandModels(t: CliMessages, pricing: PricingCatalogue): void {
 
   console.log();
   console.log(sectionHeading(`${t.models.title()}${t.models.unit()}`));
-  console.log(
-    c.dim(t.models.reviewedOn(pricing.lastReviewed, reviewAgeDays(pricing.lastReviewed, new Date()))),
-  );
+  const now = new Date();
+  console.log(c.dim(t.models.reviewedOn(pricing.lastReviewed, reviewAgeDays(pricing.lastReviewed, now))));
+  /**
+   * The headline date is the oldest provider's, which is the honest answer to
+   * "how old is this table" and the wrong answer to "how old is the price I am
+   * being quoted". A reader pricing Claude calls was told two months when
+   * their half had been checked that morning, so the providers say for
+   * themselves — and only when they disagree, since one date repeated seven
+   * times is noise.
+   *
+   * Suppressed under an overlay: `--pricing` and `--pricing-live` replace
+   * prices with numbers whose provenance is the overlay's own date, and these
+   * are the bundled table's.
+   */
+  const dates = [...new Set(Object.values(PROVIDER_REVIEWED))];
+  if (dates.length > 1 && pricing.lastReviewed === PRICING_LAST_REVIEWED) {
+    const priced = new Set(pricing.models.map((m) => m.provider));
+    /* Grouped by date: six providers repeating one date is noise, not provenance. */
+    const byDate = new Map<string, string[]>();
+    for (const [provider, date] of Object.entries(PROVIDER_REVIEWED)) {
+      if (!priced.has(provider)) continue;
+      byDate.set(date, [...(byDate.get(date) ?? []), provider]);
+    }
+    const rows = [...byDate.entries()]
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([date, providers]) =>
+        t.models.reviewedGroup(date, reviewAgeDays(date, now), providers.join(', ')),
+      );
+    console.log(c.dim(t.models.reviewedByProvider(rows.join(' · '))));
+  }
   console.log();
 
   const rows = pricing.models.map((m) => ({
@@ -7618,9 +7647,10 @@ async function commandProfile(
    * is old enough to matter: `models` and `doctor` always print the date, but
    * a profile is read for its figures, and the one fact that silently
    * invalidates all of them is a table the provider has re-priced since.
-   * The threshold is in the sentence, not hidden here.
+   * The threshold is in the sentence, and the number behind it is
+   * `STALE_PRICING_DAYS` — shared with the MCP report and the browser's bill,
+   * which used to keep their own copies of it.
    */
-  const STALE_PRICING_DAYS = 45;
   const pricingAgeDays = reviewAgeDays(pricing.lastReviewed, new Date());
   const pricingStale =
     pricingAgeDays !== null && pricingAgeDays > STALE_PRICING_DAYS
@@ -9070,7 +9100,7 @@ async function commandProfile(
    * That figure is right — measured, three tokens out of three hundred and six on
    * an ordinary support prompt. The conclusion is not that the tool is worthless
    * but that it had been looking at the smallest line item. Which model a call
-   * goes to moves 40% to 80%. The Batch API moves 50% flat. Both are priced here
+   * goes to moves 60% to 80%. The Batch API moves 50% flat. Both are priced here
    * from the reader's own tokens, at published rates, with no modelling in
    * between — and printed above the breakdowns, because a lever nobody scrolls to
    * is a lever nobody pulls.

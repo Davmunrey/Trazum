@@ -13,7 +13,7 @@ const CLI = new URL('../dist/index.js', import.meta.url).pathname;
  * item on the bill.
  *
  * That is not a defect in the measurement — the rules really do recover about 1%,
- * measured. It was a defect in the product: everything that moves 40% to 80% lives
+ * measured. It was a defect in the product: everything that moves 60% to 80% lives
  * in `profile`, which needs a usage log a new reader does not have and has no
  * reason to go looking for. A tool that learned that and only said it in the
  * command you reach last has not said it.

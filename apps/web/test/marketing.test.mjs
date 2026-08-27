@@ -139,12 +139,63 @@ describe('the marketing pages play by the app’s rules', () => {
     assert.equal(/LOCALE_STORAGE_KEY/.test(marketing), false, 'the marketing locale reuses the tool key');
   });
 
-  it('the landing’s figures are the product’s own, with their sources named', () => {
-    // −37.4% is optimize --level aggressive over the demo prompt at 1M
-    // calls; 40–80% and 50% are the spans the profile report itself states.
-    // A figure added here without a measurement behind it should fail loudly
-    // in review — this pins the ones that exist today.
-    for (const figure of ['−37.4%', '40–80%', '−50%']) {
+  it('the landing’s headline figure is the one the rules actually produce', async () => {
+    /**
+     * This used to be a list of literals: `['−37.4%', '40–80%', '−50%']`,
+     * asserted to appear on the landing. Both halves of that were the same
+     * hand-typed number, so it could only catch a figure being deleted, never
+     * one being wrong — and one of them was.
+     *
+     * −37.4% described itself as `optimize --level aggressive` over the demo
+     * prompt. No prompt in this repository produces it. The demo prompt is the
+     * one `createPlaygroundFiles` loads as `prompt.txt`, which is what the
+     * Playground tab runs and what the Optimiser fills itself with when a
+     * visitor clicks through from this page — so it is the prompt whose figure
+     * the landing is allowed to quote, and it comes out at −20.1%.
+     *
+     * Derived here by running the rules, so the landing cannot claim a
+     * reduction the product does not deliver, and cannot drift the next time a
+     * rule is added.
+     */
+    const { optimize } = await import('@trazum/core');
+    const { createPlaygroundFiles } = await import('../lib/playground.ts');
+    const prompt = createPlaygroundFiles().get('prompt.txt');
+    assert.ok(prompt, 'the demo prompt the landing quotes is no longer in the playground files');
+
+    const result = optimize(prompt, { level: 'aggressive' });
+    const figure = `−${result.reductionPct.toFixed(1)}%`;
+
+    /*
+      Every reduction on both surfaces, not just one of them. `includes` was
+      the first spelling of this and it is too weak to be worth having: the
+      hero draws the figure and the proof row states it, so either could drift
+      alone and the page would still contain the right string somewhere.
+      A reduction is the only figure written to one decimal here; the Batch
+      50% and the routing span carry none.
+    */
+    const stated = (text) => [...text.matchAll(/−\d+\.\d%/g)].map((match) => match[0]);
+    for (const [where, text] of [
+      ['the landing', landing],
+      ['the share card', read('app/opengraph-image.tsx')],
+    ]) {
+      const figures = stated(text);
+      assert.ok(figures.length > 0, `${where} states no reduction at all`);
+      for (const said of figures) {
+        assert.equal(
+          said,
+          figure,
+          `${where} states ${said}; the rules take ${figure} off the demo prompt`,
+        );
+      }
+    }
+  });
+
+  it('the landing’s other figures are the product’s own, with their sources named', () => {
+    // The model-routing and Batch spans the profile report itself states. The
+    // routing span's floor is derived from the prices in
+    // packages/core/test/pricing-review.test.js, which is where it belongs:
+    // it is arithmetic on the catalogue, not a property of this page.
+    for (const figure of ['60–80%', '−50%']) {
       assert.ok(landing.includes(figure), `the measured figure ${figure} left the landing`);
     }
     assert.equal(/testimonial|logo/i.test(landing), false, 'invented social proof on the landing');

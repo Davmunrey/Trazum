@@ -2607,7 +2607,7 @@ money was.
 
 | lever | what it moves |
 |---|---|
-| **which model the call goes to** | Opus 5 → Sonnet 5 is **40%** off; → Haiku 4.5 is **80%** |
+| **which model the call goes to** | Opus 5 → Sonnet 5 is **60%** off; → Haiku 4.5 is **80%** |
 | **the Batch API** | **50%** flat, on input and output |
 | prompt caching | 3–4× the rules |
 | shortening the prompt | **~1%** |
@@ -3057,7 +3057,7 @@ sorted into a friendlier bucket gets a smaller band.
 
 **The band is a Claude number, and the others are now measured rather than
 gestured at.** The same 47 samples against DeepSeek's own counter come out
-**94.5% wrong** at worst, and against Mistral's **103.1%**. Trazum prices seven
+**94.5% wrong** at worst, and against Mistral's **103.1%**. Trazum prices 7
 providers; this estimator is one provider's. When you price against a
 non-Anthropic model the report names the provider and drops the band instead of
 printing a figure that belongs to a different tokenizer:

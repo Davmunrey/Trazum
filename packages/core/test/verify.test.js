@@ -7,7 +7,7 @@ import { BUNDLED_CATALOGUE, billLevers, buildPlan, profileUsage, verifyPlan } fr
  * Did it work? — three outcomes, never two.
  *
  * Hand figures as everywhere: Claude Opus 5 at $5/MTok input makes 400k
- * input tokens $2.00 a call. Pinned inside Sonnet 5's introductory window.
+ * input tokens $2.00 a call. The date is pinned so a promotion cannot reprice it.
  */
 
 const ON = new Date('2026-08-16T00:00:00Z');
