@@ -592,6 +592,76 @@ describe('docs/format.md counts what exists', () => {
     );
   });
 
+  it('has a row for every command that emits `--json`', async () => {
+    /**
+     * The check that closes the loop, derived from the CLI rather than typed.
+     *
+     * Five commands emitted a document nobody had written down — `route`,
+     * `prune`, `store`, `conform` and `watch`. Each was reachable, each printed
+     * JSON, and none of them appeared in the table a connector author reads,
+     * so a consumer building against any of them was building against output
+     * rather than a contract. Nothing said so, because every guard on this page
+     * ran from the table outwards: it could tell that a documented contract was
+     * missing a section, and never that a command was missing a row.
+     *
+     * `interchange.test.js` already reads `COMMAND_FLAGS` for a different
+     * question — whether a `--json` command is *driven* by a test. That one is
+     * about coverage. This one is about the promise: a command whose document
+     * has no row is a shape somebody will depend on and nobody has agreed to.
+     */
+    const cli = await readFile(join(ROOT, 'packages/cli/src/index.ts'), 'utf8');
+    const block = cli.slice(
+      cli.indexOf('const COMMAND_FLAGS'),
+      cli.indexOf('};', cli.indexOf('const COMMAND_FLAGS')),
+    );
+    const emitters = [...block.matchAll(/^ {2}'?([a-z][a-z-]*)'?: \[(.*?)\],$/gm)]
+      .filter((entry) => entry[2].includes("'json'"))
+      .map((entry) => entry[1]);
+    assert.ok(emitters.length > 8, `only ${emitters.length} --json commands parsed out of COMMAND_FLAGS`);
+
+    const page = await readFile(FORMAT, 'utf8');
+    const cells = [...page.matchAll(/^\| \*\*[^*]+\*\* \| ([^|]*) \|/gm)].map((row) => row[1]);
+    assert.equal(
+      cells.length,
+      formatRows(page).length,
+      'the "written by" column and the full row reading disagree about how many rows there are',
+    );
+
+    const undocumented = emitters.filter(
+      (name) => !cells.some((cell) => new RegExp(`\`trazum ${name}\\b`).test(cell)),
+    );
+    assert.deepEqual(
+      undocumented,
+      [],
+      'these commands emit a JSON document that docs/format.md does not list, so nothing tells ' +
+        `a consumer what shape they may depend on: ${undocumented.join(', ')}`,
+    );
+  });
+
+  it('would notice a command whose document nobody wrote down', () => {
+    /**
+     * The guard above can only ever return today's answer on this repository,
+     * so the reading it depends on is exercised against the state it was
+     * written for: a `--json` command whose name appears in no row.
+     */
+    const block = [
+      "const COMMAND_FLAGS: Record<string, string[]> = {",
+      "  profile: ['json', 'locale'],",
+      "  invented: ['json'],",
+      "  quiet: ['locale'],",
+      '};',
+    ].join('\n');
+    const emitters = [...block.matchAll(/^ {2}'?([a-z][a-z-]*)'?: \[(.*?)\],$/gm)]
+      .filter((entry) => entry[2].includes("'json'"))
+      .map((entry) => entry[1]);
+    assert.deepEqual(emitters, ['profile', 'invented']);
+    const cells = ['`trazum profile --json`'];
+    assert.deepEqual(
+      emitters.filter((name) => !cells.some((cell) => new RegExp(`\`trazum ${name}\\b`).test(cell))),
+      ['invented'],
+    );
+  });
+
   it('keeps the plan\'s two tables agreeing on what the document holds', async () => {
     /**
      * Documented twice is documented twice: `plan-format.md` breaks the actions
