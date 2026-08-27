@@ -92,6 +92,30 @@ merged commit with no entry is a change only `git log` remembers.
   Proven by planting the sentence back in and watching it fail with
   *"from-litellm is dispatched, and this calls it pending"*.
 
+- **The new guard missed the sentence next to the one it was written for.** It
+  matched a command inside backticks, and four lines below the paragraph it
+  fixed sat *"Vendor-specific converters (LangSmith, Helicone, LiteLLM) are
+  named as next but stay unbuilt"* — three shipped converters, named as the
+  products they read rather than as the commands that read them. A guard that
+  only knows one spelling of its subject is a guard with a hole in it.
+
+  A `from-x` command is now also looked for by its subject: `from-langsmith`
+  answers to *LangSmith*, `from-claude-code` to *Claude Code*. Adding it fired
+  on all three immediately, which is how the miss was found.
+
+- **`Under consideration` still said nobody had measured the per-family
+  tokenizer error.** That entry set its own threshold — *within 5% across
+  families the dependency is not worth taking; 40% out and it is* — and said
+  deciding without the number would be deciding blind. 1.82.0 measured two
+  families at 94.5% and 103.1%, both more than twice that threshold. The entry
+  now says the question is answered for those two, that four remain unmeasured
+  and what each needs, and that the item stays unscheduled for a distribution
+  reason rather than an evidentiary one.
+
+  This is the same defect as the one above, in the section the guard does read,
+  and the guard did not catch it: it keys on command names, and this entry
+  names no command. Written down rather than papered over.
+
   An existing guard then caught the new one twice, which is the ratchet
   working. `publish.test.js` fails any suite that bounds a section of prose by
   naming the heading after it, *"the pattern this repository has had to fix

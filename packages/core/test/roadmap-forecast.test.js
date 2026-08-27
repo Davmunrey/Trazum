@@ -96,15 +96,35 @@ describe('the roadmap does not promise what it already delivered', () => {
     const PENDING =
       /stays? named|waits? to be asked|not (yet )?built|unbuilt|yet to be built|still waiting/i;
 
+    /*
+      Two spellings, because the first draft of this guard only knew one and a
+      live falsehood walked straight past it.
+
+      It matched a command inside backticks, and the sentence it missed said
+      *"Vendor-specific converters (LangSmith, Helicone, LiteLLM) are named as
+      next but stay unbuilt"* — three shipped converters, named as the products
+      they read rather than as the commands that read them, in plain prose. So
+      a `from-x` command is also looked for by its subject: `from-langsmith`
+      answers to "LangSmith", `from-claude-code` to "Claude Code".
+    */
+    const subjectOf = (command) => command.slice('from-'.length).replace(/-/g, '[- ]?');
+
     const wrong = [];
     for (const { title, text } of forecastSections()) {
       for (const sentence of text.split(/(?<=[.!?])\s+/)) {
         if (!PENDING.test(sentence)) continue;
+
         for (const match of sentence.matchAll(/`trazum ([a-z][a-z-]*)[^`]*`|`(from-[a-z-]+)`/g)) {
           const command = match[1] ?? match[2];
           if (dispatched.has(command)) {
             wrong.push(`${title}: "${command}" is dispatched, and this calls it pending`);
           }
+        }
+
+        for (const command of dispatched) {
+          if (!command.startsWith('from-')) continue;
+          if (!new RegExp(`\\b${subjectOf(command)}\\b`, 'i').test(sentence)) continue;
+          wrong.push(`${title}: "${command}" is dispatched, and this calls its subject pending`);
         }
       }
     }
