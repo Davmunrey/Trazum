@@ -229,6 +229,24 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **A character range that looked right sorted astral emoji as CJK.** `band.ts`
+  wrote its CJK test as five ranges of literal characters, and the last pair
+  meant *"compatibility ideographs, U+F900 to U+FAFF"*. Its opening character
+  was **U+8C48** — the ordinary unified ideograph that shares the glyph, not the
+  compatibility one — so the range ran from U+8C48 to U+FAFF and took in the Yi
+  syllables, the private-use area and both surrogate halves on the way.
+
+  A page of emoji therefore came out `cjk` and was handed **±4%**: the narrowest
+  band in the file, about text nothing has ever measured. It passed every
+  assertion in `token-band.test.js` because no corpus sample lives in any of
+  those blocks. CodeQL found it on the pull request that introduced it, in the
+  same release whose entire subject is a figure that looked measured and was
+  not.
+
+  The ranges are numeric escapes now, and a test plants one character from each
+  block that used to be caught — with the silent half checked too, so a guard
+  that rejects everything cannot pass it.
+
 - **Hangul was charged a placeholder nothing had measured.** Every CJK character
   that was not kana was billed han's 1.05 tokens, and the corpus had no Korean in
   it to say otherwise. Two Korean samples in different registers — a support

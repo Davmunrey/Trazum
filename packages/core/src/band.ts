@@ -101,7 +101,21 @@ const CJK_SHARE = 0.5;
 const DIGIT_SHARE = 0.3;
 const SYMBOL_SHARE = 0.07;
 
-const CJK = /[぀-ヿ㐀-䶿一-鿿가-힯豈-﫿]/;
+/*
+  Written as escapes rather than as the characters themselves, and CodeQL is
+  why. The last range was typed as a pair of literal ideographs meaning
+  "compatibility ideographs, U+F900 to U+FAFF" — and the opening character was
+  U+8C48, the ordinary unified ideograph that shares the glyph, not the
+  compatibility one. So the range ran from U+8C48 to U+FAFF and swallowed the
+  Yi syllables, the private-use area and both surrogate halves, which meant a
+  page of astral emoji was sorted `cjk` and handed the narrowest band in the
+  file: ±4% about text nothing has ever measured.
+
+  A literal that looks right and is not is the failure mode this release exists
+  to fix, so the ranges are numbers now and the test below plants one character
+  from each block that used to be caught.
+*/
+const CJK = /[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uf900-\ufaff]/;
 const LETTER = /[A-Za-zÀ-ɏͰ-ϿЀ-ӿ]/;
 const DIGIT = /[0-9]/;
 

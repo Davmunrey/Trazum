@@ -297,6 +297,50 @@ describe('the published error band', () => {
     assert.deepEqual(empty, [], `these bands rest on no sample at all: ${empty.join(', ')}`);
   });
 
+  it('gives the narrowest band only to scripts it was measured on', () => {
+    /**
+     * The bug this was written for, planted one block at a time.
+     *
+     * `CJK` was five ranges typed as literal characters, and the last pair
+     * meant to say *"compatibility ideographs, U+F900 to U+FAFF"*. Its opening
+     * character was U+8C48 — the ordinary unified ideograph that shares the
+     * glyph — so the range ran from U+8C48 to U+FAFF and took in the Yi
+     * syllables, the private-use area and both surrogate halves along the way.
+     * A page of astral emoji came out `cjk` and was handed ±4%: the narrowest
+     * band in the file, about text nothing has ever measured.
+     *
+     * It survived every assertion above because no corpus sample lives in any
+     * of those blocks, which is exactly what a planted character is for.
+     * CodeQL found it; this keeps it found.
+     */
+    const outsideCjk = {
+      'Yi syllables': '\u{A000}\u{A001}\u{A002}\u{A003}',
+      'the private-use area': '\u{E000}\u{E001}\u{E002}\u{E003}',
+      'astral emoji': '\u{1F600}\u{1F601}\u{1F602}\u{1F603}',
+      'Hangul Jamo Extended-B': '\u{D7B0}\u{D7B1}\u{D7B2}\u{D7B3}',
+    };
+    for (const [what, text] of Object.entries(outsideCjk)) {
+      assert.notEqual(
+        bucketFor(text),
+        'cjk',
+        `${what} was sorted cjk and handed ±${BANDS.cjk}%, a band measured on none of it`,
+      );
+    }
+
+    // And the silent half: a guard that rejects everything passes the four
+    // above and breaks the feature. Each script the band was actually
+    // measured on still sorts cjk.
+    for (const [what, text] of Object.entries({
+      hiragana: 'ひらがなのぶんしょう',
+      katakana: 'カタカナノブンショウ',
+      han: '这是一段中文文本内容',
+      hangul: '한국어로쓴문장입니다',
+      'compatibility ideographs': '\u{F900}\u{F901}\u{F902}\u{F903}',
+    })) {
+      assert.equal(bucketFor(text), 'cjk', `${what} stopped being read as CJK`);
+    }
+  });
+
   it('is the tokenizer the band was calibrated on', () => {
     // The fixture that governs the published number has to be the Anthropic
     // one. If somebody points this file at a cross-family measurement, the
