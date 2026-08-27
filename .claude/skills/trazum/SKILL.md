@@ -480,12 +480,14 @@ this: the optimised prompt will not have broken someone's JSON schema.
 ## Things to get right
 
 - **Token counts are estimates, and the band depends on the text** (±4% on CJK,
-  ±6% on Latin prose, ±26% on code and markup, ±33% on tabular numbers). Fine for comparing two versions of the
-  same prompt, which is what they are for. For exact figures use
-  `--exact-tokens` with `ANTHROPIC_API_KEY` set — the counting endpoint does not
-  charge for tokens. The band is measured against Claude's tokenizer over
-  twenty-one samples; against a non-Anthropic model the report drops it and says
-  so, and you should not reinstate it.
+  ±6% on Latin prose, ±26% on code and markup, ±33% on tabular numbers). Fine for
+  comparing two versions of the same prompt, which is what they are for. For
+  exact figures use `--exact-tokens` with `ANTHROPIC_API_KEY` set — the counting
+  endpoint does not charge for tokens. The band is measured against Claude's
+  tokenizer over forty-seven samples in ten languages; against a non-Anthropic
+  model the report drops it, names the family, and gives the error measured
+  there where anybody has measured it — 94.5% on DeepSeek, 103.1% on Mistral.
+  Do not reinstate the Claude band on a prompt priced against another family.
 - **A percentage is more trustworthy than a total.** The estimator's error is
   largely a per-language constant, so it mostly cancels in a before/after ratio:
   `-27.9%` survives an error that moves both totals. Lead with the percentage

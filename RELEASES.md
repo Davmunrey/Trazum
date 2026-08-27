@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.81.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.82.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -41,6 +41,61 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.82.0 — "The band was a measurement of its own training set"
+
+For eight releases every report Trazum printed said the same thing about every
+prompt: **±10%**. It was measured, it was committed, a test asserted it, and it
+was wrong in a way none of that could catch.
+
+The corpus it was measured on held twenty-one samples: **thirteen files of Latin
+prose and exactly one each of code, numeric and punctuation**. Those single
+files were the set the estimator's constants had been fitted to. So the number
+was never a measurement of the estimator. It was a measurement of its own
+calibration set, and every dollar figure in the product descended from it.
+
+Twenty-six ordinary samples broke it. Against Anthropic's own counting endpoint,
+the same estimator that is 5.6% out on prose is **32.5% out on a CSV ledger**.
+Telling somebody ±10% about their ledger was telling them a number that is wrong
+about their prompt specifically.
+
+**There is no single band any more.** `bandFor(text)` answers with one of four
+measured figures, and every surface prints the one the text in front of it
+earns:
+
+| Kind of text | Band | Worst sample | Samples |
+|---|---|---|---|
+| CJK, all three scripts | ±4% | 3.2% | 6 |
+| Latin prose and few-shot blocks | ±6% | 5.6% | 18 |
+| Code, markup and quoting | ±26% | 25.1% | 16 |
+| Digit-dominant tables and ledgers | ±33% | 32.5% | 7 |
+
+It deliberately does not classify by text type, and that is the finding rather
+than a shortcut: measured by character mix, code and punctuation overlap
+completely, and two of the three few-shot samples are indistinguishable from
+prose. A classifier over those would be a guess wearing a measurement's name.
+
+**The report says how far off it is on a foreign tokenizer, with the number.**
+The same 47 samples against DeepSeek's own counter are 94.5% out at worst, and
+against Mistral's 103.1%. Those two families get the figure on the line; a
+family nobody has run is told that nobody has run it.
+
+**Hangul was a placeholder nothing had measured**, charged han's rate because
+the corpus had no Korean in it to say otherwise. Two Korean samples in different
+registers agree in lockstep at every candidate, and 1.35 zeroes both: the CJK
+class went from 10.6% out to 3.2%.
+
+**Two hypotheses were tested and rejected**, which is what a bigger corpus buys.
+Digit-run length does not predict the numeric error, and neither does
+grouped-number density. With two samples each would have been fitted and shipped
+as a fix.
+
+**`trazum from-helicone`** reads a Helicone request export as a usage log —
+the fourth converter, and the one that needs three columns to answer what model
+ran. The model that answered is what gets priced, and every substitution is
+counted. Forty-four commands.
 
 ---
 

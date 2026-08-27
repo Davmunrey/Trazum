@@ -1184,6 +1184,43 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.82.0 — "The band was a measurement of its own training set" — released
+
+**The release where the central claim was read against its own evidence.** For
+eight releases every report said `±10%` about every prompt. It was measured, it
+was committed, and a test asserted it — and the corpus it rested on held
+thirteen files of Latin prose and exactly one each of code, numeric and
+punctuation, which were the files the estimator's constants had been fitted to.
+The number was never about the estimator. It was about its own calibration set.
+
+Twenty-six ordinary samples in the thin classes broke it: 32.5% out on a CSV
+ledger, 25.1% on a run of identifiers, against a claim of ten. The band is a
+property of the text now — ±4% CJK, ±6% Latin prose, ±26% code and markup, ±33%
+tabular numbers — and the guard holds every sample against the band `bandFor`
+gives it, so a threshold cannot be tuned to make it pass.
+
+**It deliberately does not classify by text type.** The corpus says that
+classifier cannot be built: measured by character mix, code and punctuation
+overlap completely and two of three few-shot samples are indistinguishable from
+prose. So it sorts on the separations the evidence offers and, where two classes
+overlap, gives the worse band.
+
+**Two hypotheses were tested and rejected** — digit-run length and
+grouped-number density both fail to predict the numeric error — which is what a
+corpus of forty-seven buys over one of twenty-one. **One calibration succeeded**:
+hangul had been charged a placeholder nothing measured, two Korean samples agreed
+in lockstep, and 1.35 took the class from 10.6% out to 3.2%.
+
+**The blocked arc moved, and only as far as the keys reached.** 1.54.0 asks for
+the estimator's error against each family's own counter. Two of the six foreign
+families are now measured — DeepSeek 94.5% at worst, Mistral 103.1% — and the
+report prints those figures rather than a hedge with no number in it. OpenAI,
+Google, xAI and Moonshot are still unmeasured and still say so by name. The arc
+is not finished; it is smaller.
+
+`trazum from-helicone` shipped in the same release: the fourth converter, and
+the one that needs three columns to answer what model ran. Forty-four commands.
+
 ## 1.81.0 — "The things nobody had checked" — released
 
 **The pass where the product read its own code.** Fourteen of this release's
@@ -2492,10 +2529,18 @@ the plan points at the line of code for it — but it is **blocked**, which is w
 
 1. **1.54.0 — the counter, per family.** The estimator is calibrated on Claude
    and prices seven families. This roadmap has called the per-family error the
-   one number that settles the real-tokenizer question, and nobody has measured
-   it. Measuring it needs a key for each family's own counting endpoint, and
-   inventing a band instead is the estimating-and-measuring merge 1.36–1.40
-   spent five releases removing.
+   one number that settles the real-tokenizer question. **Two families are now
+   measured and four are not.** 1.82.0 ran the harness against DeepSeek (94.5%
+   out at worst) and Mistral (103.1%) on the full forty-seven-sample corpus, and
+   the report prints those numbers rather than a hedge with no figure in it. The
+   answer for those two is already past the threshold this roadmap set — *"within
+   5% and a real tokenizer dependency is not worth taking; 40% out and it is"* —
+   which makes the dependency question live rather than theoretical.
+
+   OpenAI, Google, xAI and Moonshot are still unmeasured, each needs a key for
+   its own counter, and each has its own named skip in the suite carrying the
+   command to run. Inventing a band for them instead is the
+   estimating-and-measuring merge 1.36–1.40 spent five releases removing.
 
 **1.56.0 asked a question and answered it.** Whether alerting can be given
 without becoming a hosted service holding other teams' metrics: yes for the

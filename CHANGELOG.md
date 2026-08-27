@@ -11,6 +11,8 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+## 1.82.0 — "The band was a measurement of its own training set"
+
 ### Fixed
 
 - **Two `--json` documents carried the prompt text this file promises they never
