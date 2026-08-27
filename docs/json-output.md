@@ -497,3 +497,50 @@ about where the month is.
 | `unmeasured` | Configured ceilings this log cannot answer for, each with `scope`, `label`, `limitUsd` and a `why`: `no-clock`, `no-labels`, `nothing-recorded`, or `label-unseen` — a label the log records but has not seen this month, which may be renamed or idle and is neither "under budget". |
 | `cannotSay` | Typed codes for what the document deliberately does not answer: `session-limit-at-the-doors` (a per-session ceiling is judged per call at the doors, and a "session position for the month" would be an average wearing a limit's name) and `no-ceiling-configured` (no monthly budget and no limits, so there is no ceiling to state a position against). Codes rather than prose, like every other document here, so a consumer can branch and each rendering carries the sentence in its own language. |
 | `unpricedRecords` | Records naming a model the catalogue cannot price. They contribute nothing to any figure above — money nobody can see, counted instead of dropped. |
+
+## The routing-measurement document
+
+`trazum route <usage.jsonl> --prompt-file <file> --cases <file> --json --yes` —
+whether the cheaper model still does the job, on the workload `profile` already
+priced. Two measurements meet here and stay apart: the money comes from the
+usage log, the agreement comes from calls actually made.
+
+| Field | What it holds |
+| --- | --- |
+| `schemaVersion` | `1`. |
+| `slice` | The workload measured, straight from the bill: `label`, `model` and `modelName`, `calls`, `spentUsd`, the `route` that was tried (`candidate.id`, `candidate.displayName`, `savingUsd`), `batch`, `combinedUsd`, and `shareOfBill`. The saving is for these calls, and `shareOfBill` is what they are of the whole log — not of this slice. |
+| `evaluation` | The measurement: `provider`, `model`, `candidateModel`, `verdict`, `selfAgreement`, `crossAgreement`, `callsMade` and `cases`. |
+| `evaluation.verdict` | `holds` (the cheaper model's answers moved no more than the model moves against itself), `diverges` (they moved further), or `inconclusive` (the model disagreed with itself too much for any of this to mean anything). Agreement is not correctness: this measures whether the answers moved, never whether they were ever right. |
+| `evaluation.selfAgreement` | The model's agreement with itself on the same prompt. The yardstick — every other figure here is read against it, and a document that carried the cross rate alone would be a number without its denominator. |
+| `evaluation.crossAgreement` | Mean agreement between the model in the log and the candidate, same prompt on both sides. |
+| `evaluation.callsMade` | Calls actually spent reaching the verdict, so the bill is never a surprise. |
+| `evaluation.cases` | One entry per input: `selfSimilarity` and `crossSimilarity`. The inputs themselves are not here, and neither are the answers. |
+
+**No prompt, no cases, no completions, no credential.** The prompt under test,
+the inputs it ran against and everything the models said are what this command
+reads; none of it comes back out. A test plants a marker in the prompt and
+asserts the document does not carry it.
+
+## The example-pruning document
+
+`trazum prune --prompt-file <file> --cases <file> --json --yes` — which few-shot
+examples are paying for themselves, measured by removing each one and asking
+whether the answers moved.
+
+| Field | What it holds |
+| --- | --- |
+| `schemaVersion` | `1`. |
+| `provider` | The provider the calls went to. |
+| `model` | The model that answered. |
+| `selfAgreement` | The model's agreement with itself given the full prompt. The yardstick every removal is judged against. |
+| `recoverableTokens` | Tokens held by examples whose removal changed nothing this measurement can see. Tokens, not money: what they cost depends on the model and the call volume, and this command measures neither. |
+| `callsMade` | Calls actually spent. |
+| `contributions` | One entry per example, in prompt order. |
+| `contributions[].index` | Position in the prompt's example block, from zero. Which example, without quoting it — the caller already has the prompt. |
+| `contributions[].tokens` | What that example costs to send. |
+| `contributions[].agreementWithout` | Mean agreement between the full prompt's answer and the answer with this example removed, across every input. |
+| `contributions[].verdict` | `indistinguishable` and `within-noise` both mean the removal changed nothing measurable; `diverges` means it did; `inconclusive` means the model disagreed with itself too much for the comparison to mean anything. |
+
+**No example text.** A few-shot example *is* prompt text, and the terminal
+rendering quotes its first line; the document carries the index and the token
+count instead. Same test, same planted marker.

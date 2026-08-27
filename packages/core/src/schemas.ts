@@ -151,6 +151,18 @@ export const CONTRACT_SCHEMAS: Record<ContractName, Record<string, unknown>> = {
     cannotSay: array,
     unpricedRecords: number,
   }),
+  'routing-measurement': doc('routing-measurement', {
+    slice: object,
+    evaluation: object,
+  }),
+  'example-pruning': doc('example-pruning', {
+    provider: string,
+    model: string,
+    selfAgreement: number,
+    recoverableTokens: number,
+    callsMade: number,
+    contributions: array,
+  }),
 };
 
 /** The schema for one named contract — the object `trazum schema` prints. */

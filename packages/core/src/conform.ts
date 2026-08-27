@@ -54,6 +54,8 @@ export const CONTRACT_NAMES = [
   'bench',
   'prompt-draft',
   'position',
+  'routing-measurement',
+  'example-pruning',
 ] as const;
 
 export type ContractName = (typeof CONTRACT_NAMES)[number];
@@ -393,6 +395,18 @@ const DOCUMENT_RULES: Record<Exclude<ContractName, 'usage-log'>, FieldRule[]> = 
     rule('unmeasured', 'an array — configured ceilings this log cannot answer for, with reasons', isArray),
     rule('cannotSay', 'an array of sentences — what is deliberately not answered', isArray),
     rule('unpricedRecords', 'a count of records the catalogue cannot price', isNumber),
+  ],
+  'routing-measurement': [
+    rule('slice', 'the workload object — the calls this measured', isObject),
+    rule('evaluation', 'the measurement object — verdict and agreement rates', isObject),
+  ],
+  'example-pruning': [
+    rule('provider', 'the provider the calls went to', (v) => typeof v === 'string'),
+    rule('model', 'the model that answered', (v) => typeof v === 'string'),
+    rule('selfAgreement', 'the model’s agreement with itself, the yardstick every removal is judged against', isNumber),
+    rule('recoverableTokens', 'tokens held by examples whose removal changed nothing measurable', isNumber),
+    rule('callsMade', 'calls actually spent', isNumber),
+    rule('contributions', 'an array — one entry per example', isArray),
   ],
   pulse: [
     rule('beats', 'an array — one per kind', isArray),

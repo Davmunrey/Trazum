@@ -74,6 +74,8 @@ const CLAIMED = {
   '## The gateway refusal document': 'packages/cli/test/gateway-proxy.test.js',
   '## The prompt-draft document': 'packages/core/test/write-assembly.test.js',
   '## The position document': 'packages/cli/test/contract-coverage.test.js',
+  '## The routing-measurement document': 'packages/cli/test/json-carries-no-text.test.js',
+  '## The example-pruning document': 'packages/cli/test/json-carries-no-text.test.js',
 };
 
 describe('every contract in docs/json-output.md is claimed by a guard', () => {
@@ -408,7 +410,8 @@ const anchor = (heading) =>
 const WORDS = [
   'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight',
   'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen',
-  'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty',
+  'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty', 'twenty-one',
+  'twenty-two',
 ];
 const ORDINALS = {
   13: 'thirteenth',
@@ -418,6 +421,9 @@ const ORDINALS = {
   17: 'seventeenth',
   18: 'eighteenth',
   19: 'nineteenth',
+  20: 'twentieth',
+  21: 'twenty-first',
+  22: 'twenty-second',
 };
 
 /** "a seventeenth", "an eighteenth" — the article belongs to the word, not the template. */

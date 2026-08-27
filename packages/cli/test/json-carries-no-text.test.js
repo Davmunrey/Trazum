@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { describe, it } from 'node:test';
 
 import { pruneDocument, routeDocument } from '../dist/index.js';
+import { sectionOf } from '../../../test-utils/section.mjs';
 
 /**
  * `docs/json-output.md` opens with a promise: **nothing here carries a session
@@ -102,5 +105,65 @@ describe('the CLI documents keep the promise the core documents are held to', ()
       'without an index nothing says which example a verdict is about',
     );
     assert.equal(prune.contributions[1].verdict, 'diverges');
+  });
+});
+
+/**
+ * The other half of contracting these two: the field tables in
+ * `docs/json-output.md` against what the builders actually return.
+ *
+ * `contract-coverage.test.js` requires every contract table to be harvested by
+ * a named file, and this is that file for both of them. The harvest lives here
+ * rather than there for the same reason the stripping guards do: the documents
+ * come from pure builders, so a table can be held against real output without
+ * an API key and without spending a call.
+ */
+
+const DOC = join(new URL('../../../', import.meta.url).pathname, 'docs/json-output.md');
+
+/** Every row's first cell, minus the nested names a row documents but no document emits at the top. */
+const promised = (document, heading) => {
+  const rows = [...sectionOf(document, heading).matchAll(/^\| ((?:`[^`]+`(?:, )?)+) \|/gm)];
+  assert.notEqual(rows.length, 0, `no readable row under ${heading}`);
+  const names = new Set();
+  for (const row of rows) {
+    for (const token of [...row[1].matchAll(/`([^`]+)`/g)].map((match) => match[1])) {
+      if (token.includes('.')) continue;
+      names.add(token.replace(/\[\]$/, ''));
+    }
+  }
+  return names;
+};
+
+const bothWays = (heading, names, emitted) => {
+  assert.deepEqual(
+    emitted.filter((key) => !names.has(key)),
+    [],
+    `fields emitted with no line under ${heading} in docs/json-output.md`,
+  );
+  assert.deepEqual(
+    [...names].filter((key) => !emitted.includes(key)),
+    [],
+    `fields promised under ${heading} and not emitted`,
+  );
+};
+
+describe('the two measurement documents match their contract tables', () => {
+  it('holds the routing-measurement document', async () => {
+    const document = await readFile(DOC, 'utf8');
+    bothWays(
+      '## The routing-measurement document',
+      promised(document, '## The routing-measurement document'),
+      Object.keys(documents['route --json']),
+    );
+  });
+
+  it('holds the example-pruning document', async () => {
+    const document = await readFile(DOC, 'utf8');
+    bothWays(
+      '## The example-pruning document',
+      promised(document, '## The example-pruning document'),
+      Object.keys(documents['prune --json']),
+    );
   });
 });

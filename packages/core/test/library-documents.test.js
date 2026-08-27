@@ -131,7 +131,7 @@ describe('what the library builds, the library accepts', () => {
 
   it('names the contracts it cannot reach, rather than implying it covers them all', () => {
     /**
-     * Fifteen of the nineteen contracts need something this test cannot make
+     * Seventeen of the twenty-one contracts need something this test cannot make
      * from the package alone — a log on disk, a plan and a later log to
      * verify it against, a connector's credentials, a CLI run for the
      * documents the CLI stamps. Listing them is the difference between "two
@@ -147,6 +147,7 @@ describe('what the library builds, the library accepts', () => {
       'bench',
       'connected',
       'cost-answer',
+      'example-pruning',
       'first-run',
       'fleet',
       'gateway-refusal',
@@ -154,6 +155,7 @@ describe('what the library builds, the library accepts', () => {
       'outcome-report',
       'plan',
       'pulse',
+      'routing-measurement',
       'rule-yield',
       'spend-guard',
       'usage-log',
