@@ -45,6 +45,7 @@ import { onDemo } from '../lib/demo';
 import { createPlaygroundFiles } from '../lib/playground';
 import { AnimatedContent } from './motion/AnimatedContent';
 import { Button } from '@/components/ui/button';
+import { Note } from '@/components/ui/note';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import type { WebMessages } from '../lib/i18n';
@@ -81,7 +82,8 @@ interface Analysis {
  * page, shipped as bare terracotta prose with no container at all and read as
  * an error the reader had caused rather than a fact about the price table.
  */
-const NOTE = 'rounded-lg border border-l-[3px] border-l-warn px-3.5 py-3 text-[13px] leading-snug text-warn';
+/* Kept as a name for the one call site that needs the classes inline. */
+const NOTE = '';
 
 /** Rows shown per table before "…and N more". Enough to act on, short enough to read. */
 const MAX_ROWS = 8;
@@ -559,7 +561,17 @@ export function Bill({ t }: { t: WebMessages }) {
             </span>
           </summary>
         <CardContent className="mt-3.5 flex flex-col gap-3.5 px-[18px]">
-          <p className="m-0 max-w-[72ch] text-sm text-muted-foreground">{t.bill.lede}</p>
+          {/*
+            The page header already prints this panel's purpose, read off the
+            rail's own label. `t.bill.lede` said it again in longer words
+            directly underneath — "Reads a usage log and says where the money
+            actually went: which workload, which model, whether caching paid
+            for itself" twice on one screen — and pushed the drop zone, which is
+            the only thing a reader came here to use, further down. What the
+            header does not say is the shape of the file, so that is what is
+            left.
+          */}
+          <p className="m-0 max-w-[72ch] text-sm text-muted-foreground">{t.bill.format}</p>
 
           {/*
             Before the drop zone, deliberately: the decision to paste a log is
@@ -567,9 +579,7 @@ export function Bill({ t }: { t: WebMessages }) {
             reachable — the same ordering rule the Compare tab applies to its
             sign convention.
           */}
-          <div className="rounded-lg border border-l-[3px] border-l-good px-3.5 py-3 text-[13px] leading-snug">
-            {t.bill.privacy}
-          </div>
+          <Note tone="good">{t.bill.privacy}</Note>
 
           <div
             onDragOver={(event) => event.preventDefault()}
@@ -643,12 +653,10 @@ export function Bill({ t }: { t: WebMessages }) {
             this tab, the numbers kept and the words not.
           */}
           {priceCardError !== null && (
-            <div className="rounded-lg border border-l-[3px] border-l-destructive px-3.5 py-3 text-[13px] leading-snug">
-              {t.bill.priceCardBad(priceCardError)}
-            </div>
+            <Note tone="bad">{t.bill.priceCardBad(priceCardError)}</Note>
           )}
           {priceCard !== null && (
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-l-[3px] border-l-good px-3.5 py-3 text-[13px] leading-snug">
+            <Note tone="good" className="flex flex-wrap items-center gap-x-4 gap-y-1">
               <span className="font-semibold">
                 {t.bill.priceCardApplied(priceCard.touched, priceCard.added)}
               </span>
@@ -659,10 +667,10 @@ export function Bill({ t }: { t: WebMessages }) {
               >
                 {t.bill.priceCardClear}
               </button>
-            </div>
+            </Note>
           )}
           {ingest !== null && (
-            <div className="rounded-lg border border-l-[3px] border-l-good px-3.5 py-3 text-[13px] leading-snug">
+            <Note tone="good">
               {ingest.transcripts > 0 && (
                 <div className="font-semibold">
                   {t.bill.transcriptSummary(ingest.transcripts, ingest.convertedCalls)}
@@ -696,7 +704,7 @@ export function Bill({ t }: { t: WebMessages }) {
               {ingest.transcripts > 0 && (
                 <div className="mt-1 text-muted-foreground">{t.bill.transcriptPrivacy}</div>
               )}
-            </div>
+            </Note>
           )}
 
           <span className="text-xs text-muted-foreground">{t.bill.orPaste}</span>
@@ -1252,7 +1260,7 @@ function Report({
                           <div
                             key={`coverage:${drift.field}`}
                             className={`rounded-lg border px-3.5 py-3 text-[13px] ${
-                              drift.delta < 0 ? 'border-l-[3px] border-l-warn text-warn' : 'text-muted-foreground'
+                              drift.delta < 0 ? 'text-warn' : 'text-muted-foreground'
                             }`}
                           >
                             {t.bill.coverageDrift(
@@ -1442,9 +1450,9 @@ function Report({
                         */}
                         {verdict !== null && verdictMatchesSlice(verdict, slice) && (
                           <div
-                            className={`mt-1.5 rounded-lg border border-l-[3px] px-3 py-2 text-[13px] leading-snug ${
+                            className={`mt-1.5 rounded-lg border px-3 py-2 text-[13px] leading-snug ${
                               verdict.verdict === 'diverges'
-                                ? 'border-l-warn text-warn'
+                                ? 'border-warn/25 bg-warn-wash text-warn'
                                 : 'text-muted-foreground'
                             }`}
                           >
@@ -1799,7 +1807,7 @@ function Report({
                 {report.repeatedTurns.slice(0, MAX_SECTIONS).map((row) => (
                   <div
                     key={`${row.label}\n${row.model}`}
-                    className="rounded-lg border border-l-[3px] border-l-warn px-3.5 py-3 leading-snug text-warn"
+                    className="rounded-lg border border-warn/25 bg-warn-wash px-3.5 py-3 leading-snug text-warn"
                   >
                     {t.bill.repeatsLine(
                       labelName(row.label),

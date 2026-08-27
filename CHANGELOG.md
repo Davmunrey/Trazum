@@ -59,6 +59,97 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The Write panel opened with two buttons, both reading "Skip this", and the
+  emphasised one skipped.** The primary control's label was
+  `typed ? t.write.tab : t.write.decline` — the rail's own label ("Write") once
+  something had been typed, and the decline label while the box was empty,
+  which is the state every reader arrives in. There was no key for the action
+  the button performs, so it borrowed two that were not it. `write.answer`
+  exists now in both locales, the control names one action, and it is disabled
+  until there is an answer to record rather than quietly turning into the
+  button beside it.
+
+- **Three panels printed their own heading twice.** Write, Your bill and
+  Compare each rendered a lede directly under the page header that already
+  states the panel's purpose — read off the rail's label so it cannot disagree
+  with the nav. On Your bill the two sentences were near-identical
+  ("*says where the money actually went: which workload, which model, whether
+  caching paid for itself*") and the repetition pushed the drop zone, the one
+  thing a reader came for, further down. Each panel now says the half the
+  header does not: the file's shape on Your bill, the privacy claim on Write,
+  and on Compare an empty state naming what the report will hold instead of a
+  card containing the title again.
+
+- **A coloured 3px left border was the notice style in ten places.** The class
+  string was typed at each call site across three panels, each picking its own
+  tone — the callout every framework ships and no design chose, and one that
+  vanishes entirely under `forced-colors`, for the reader who most needs the
+  distinction. One `Note` component with four tones replaces it, carrying its
+  meaning in the surface and the text colour, both of which survive a
+  high-contrast substitution.
+
+- **A disabled primary button looked like a loading one.** shadcn's
+  `disabled:opacity-50` on the terracotta fill produced a full-width slab of
+  half-strength brand colour; on Your bill that slab sat under an empty paste
+  box reading "Read the bill", and the only way to tell *waiting for you* from
+  *working* was to notice nothing moved. Disabled now drops out of the brand
+  entirely — the muted surface and the faint ink tier — so it cannot be
+  confused with the loading state, which keeps the fill and animates its label.
+
+- **The results column scrolled away from the reader editing what it priced.**
+  On Optimise and Compare the answer sat at the top of a column beside a form
+  three times its height, so going back to change the prompt took the report
+  off screen. Both are sticky from `lg` now.
+
+- **The landing page was blank below the fold, and had been since it shipped.**
+  `Reveal` rendered its children at `opacity-0` and waited for an
+  IntersectionObserver to say otherwise. A full-page capture of the built site
+  showed the hero and two paragraphs on **seven thousand pixels of blank
+  paper**: the four doors, the measured figures, the licence and the closing
+  call were all in the DOM, laid out, and invisible, because nothing had
+  scrolled and so nothing had intersected. A crawler, a print, a link preview
+  and a screenshot all got that version.
+
+  The app's own `AnimatedContent` had written the rule down two releases
+  earlier — *"content is present before it animates"*, *"failing open is the
+  only acceptable direction when the alternative is invisible content"* — and
+  the one page that sells the product had never been held to it.
+
+  **Two fixes were tried and the second was also wrong.** Replacing the
+  observer with `animation-timeline: view()` removed the script and kept the
+  fault: a scroll timeline has no progress when there is nothing to scroll, so
+  on a document shorter than the viewport `fill-mode: both` pins the element at
+  the `from` keyframe, which is zero opacity. Tightening the range moved the
+  boundary without removing it, and a capture caught it again.
+
+  **`Reveal` is deleted.** Fourteen identical fade-ups were buying a real risk
+  of invisible copy for the effect the craft floor names as the failure mode —
+  *one identical entrance on every section*. The page's motion is now one
+  authored moment: the hero's ledger figure filling once on load, time-based so
+  it cannot wait on a scroll position that may not exist, and written so the
+  finished state is the element's own style and the animation is subtracted
+  from it. Text is text, and it is there on the first paint.
+
+- **`bg-layer` was a class that painted nothing.** The landing asked for it on
+  the story and proof bands; no `--layer` token existed, Tailwind emitted no
+  rule, and three sections meant to alternate against the hero were flat. The
+  token exists now, in both themes, a hair off the paper rather than the full
+  sunken step — on a long page a band is a change of ground, not a panel.
+
+- **Two stale figures on the landing, in five languages each.** It advertised
+  *39 commands* (45) and *nineteen contracts* (24). Both are the kind of number
+  this repository treats as load-bearing, and both were wrong in every locale.
+
+- **The prompt editor grew to 900 pixels and pushed its own button off the
+  screen.** shadcn's `Textarea` carries `field-sizing-content`, so the box
+  grows to whatever is pasted in it. With the bundled demo prompt the input
+  column measured **1307px against a results column of 270** — a thousand
+  pixels of empty paper beside the form — and the Optimise button sat below the
+  fold on a 1000px display, so the first thing a first-time reader had to do
+  was scroll past a wall of somebody else's prompt to find the one control on
+  the page. It is capped at 26rem and scrolls past that; short prompts still
+  get short boxes, which is the point of content sizing.
+
 - **The roadmap promised four things it had already delivered.**
   `ROADMAP.md`'s `Next` section said the verdict bridge *"stays named and waits
   to be asked for, as do the `from-langsmith`, `from-helicone` and

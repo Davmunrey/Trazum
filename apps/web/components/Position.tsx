@@ -147,12 +147,12 @@ export function PositionCard({ logText, t }: { logText: string; t: WebMessages }
           </div>
 
           {config.kind === 'error' && (
-            <div className="rounded-lg border border-l-[3px] border-l-warn px-3.5 py-3 text-[13px] leading-snug text-warn">
+            <div className="rounded-lg border border-warn/25 bg-warn-wash px-3.5 py-3 text-[13px] leading-snug text-warn">
               {t.position.configError(config.message)}
             </div>
           )}
           {config.kind === 'no-ceilings' && (
-            <div className="rounded-lg border border-l-[3px] border-l-warn px-3.5 py-3 text-[13px] leading-snug">
+            <div className="rounded-lg border border-warn/25 bg-warn-wash px-3.5 py-3 text-[13px] leading-snug">
               {t.position.noCeilings}
             </div>
           )}
@@ -168,14 +168,14 @@ export function PositionCard({ logText, t }: { logText: string; t: WebMessages }
                 const key = `${position.scope}:${position.label ?? ''}`;
                 if (position.verdict === 'cannot-tell') {
                   return (
-                    <div key={key} className="rounded-lg border border-l-[3px] border-l-warn px-3.5 py-3 text-[13px] leading-snug">
+                    <div key={key} className="rounded-lg border border-warn/25 bg-warn-wash px-3.5 py-3 text-[13px] leading-snug">
                       {t.position.cannotTell(scope)}
                     </div>
                   );
                 }
                 if (position.verdict === 'over') {
                   return (
-                    <div key={key} className="rounded-lg border border-l-[3px] border-l-warn px-3.5 py-3 text-[13px] leading-snug text-terracotta">
+                    <div key={key} className="rounded-lg border border-warn/25 bg-warn-wash px-3.5 py-3 text-[13px] leading-snug text-terracotta">
                       {t.position.over(
                         scope,
                         formatUsd(position.measuredUsd),
@@ -186,7 +186,7 @@ export function PositionCard({ logText, t }: { logText: string; t: WebMessages }
                   );
                 }
                 return (
-                  <div key={key} className="rounded-lg border border-l-[3px] border-l-good px-3.5 py-3 text-[13px] leading-snug">
+                  <div key={key} className="rounded-lg border border-good/25 bg-good-wash px-3.5 py-3 text-[13px] leading-snug">
                     {t.position.within(
                       scope,
                       formatUsd(position.measuredUsd),

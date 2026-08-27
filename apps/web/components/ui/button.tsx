@@ -4,8 +4,22 @@ import { Slot } from "radix-ui"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * `disabled:opacity-50` was the shipped treatment, and on the primary variant
+ * it produced a full-width slab of half-strength terracotta — which is what a
+ * button in flight looks like, not one that is not ready. On the Bill panel
+ * that slab sat under an empty paste box reading "Read the bill", and the only
+ * way to tell "waiting for you" from "working" was to notice nothing was
+ * moving.
+ *
+ * A disabled control drops out of the brand entirely: the muted surface and
+ * the faint ink tier the rest of the app uses for "here for the record". It
+ * stays legible — `--ink-faint` clears 4.5:1 on that surface, which is the
+ * reason that tier is the colour it is — and it can no longer be mistaken for
+ * the loading state, which keeps the fill and animates its label.
+ */
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring disabled:pointer-events-none disabled:border-transparent disabled:bg-muted disabled:text-faint disabled:shadow-none aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {

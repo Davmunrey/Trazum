@@ -875,14 +875,29 @@ export function App({
       </aside>
 
       <main className="min-w-0 flex-1 px-5 pt-6 pb-16 lg:px-8">
-        <div className="mx-auto max-w-[1080px]">
+        {/*
+          1080 was the whole page at every width. On a 1440 display it left
+          180px of paper down each side while the Optimise panel's two columns
+          fought over the middle; the reader's eye had to cross a gutter that
+          existed for no reason. It opens up once there is room and stops
+          there, because a measure that keeps growing stops being readable.
+        */}
+        <div className="mx-auto max-w-[1080px] 2xl:max-w-[1200px]">
           {/*
             The first-visit offer: one line, two buttons, made once. Never a
             modal — software that grabs the mouse on arrival has taught the
             visitor the wrong first lesson.
           */}
           {tourOffered && !tourOpen && (
-            <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-l-[3px] border-l-primary px-3.5 py-2.5 text-[13px]">
+            /*
+              A notice, not a bar with a coloured edge.
+
+              The 3px terracotta `border-left` is the callout every framework
+              ships and no design chose; it also put the brand's one accent on
+              the least important thing on the page. The row earns its place
+              through the surface it sits on and the weight of its action.
+            */
+            <div className="mb-6 flex flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border bg-muted/70 px-4 py-3 text-[13px]">
               <span className="text-muted-foreground">{t.tour.offer}</span>
               <span className="flex gap-3">
                 <button
@@ -919,11 +934,11 @@ export function App({
             off `GROUPS` rather than typed here, so a panel added to the rail
             cannot arrive with a title that disagrees with its own nav entry.
           */}
-          <header className="mb-7 border-b pb-6">
-            <h1 className="font-display text-[27px] leading-[1.12] font-semibold tracking-[-0.02em] text-balance sm:text-[32px]">
+          <header className="mb-9 border-b pb-7">
+            <h1 className="font-display text-[29px] leading-[1.08] font-semibold tracking-[-0.025em] text-balance sm:text-[35px]">
               {activeLabel}
             </h1>
-            <p className="mt-2.5 max-w-[68ch] text-[15px] leading-relaxed text-muted-foreground">
+            <p className="mt-3 max-w-[66ch] text-[15px] leading-[1.65] text-muted-foreground">
               {t.page.purpose[activeTab] ?? t.page.lede}
             </p>
           </header>

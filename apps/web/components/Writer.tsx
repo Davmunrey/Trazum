@@ -127,11 +127,15 @@ export function Writer({ t, locale }: { t: WebMessages; locale: Locale }) {
   }, [measured, t]);
 
   return (
-    <div className="flex flex-col gap-6">
-      <div>
-        <p className="text-[15px] text-muted-foreground">{t.write.lede}</p>
-        <p className="mt-1 text-[13px] text-muted-foreground">{t.write.privacy}</p>
-      </div>
+    <div className="flex max-w-[76ch] flex-col gap-6">
+      {/*
+        The page's own header already carries the lede for this panel, read off
+        the rail's label so a panel cannot disagree with its nav entry. Printing
+        `t.write.lede` here too put two paragraphs saying the same thing one
+        under the other, and pushed the first question below both of them. The
+        privacy line stays: it is the one claim the header does not make.
+      */}
+      <p className="max-w-[70ch] text-[13px] text-muted-foreground">{t.write.privacy}</p>
 
       {error !== null && (
         <p role="alert" className="text-[14px] text-destructive">
@@ -155,9 +159,23 @@ export function Writer({ t, locale }: { t: WebMessages; locale: Locale }) {
               onChange={(event) => setTyped(event.target.value)}
               rows={3}
             />
-            <div className="flex flex-wrap items-center gap-2">
-              <Button onClick={() => answer(typed.trim().length > 0 ? typed.trim() : null)}>
-                {typed.trim().length > 0 ? t.write.tab : t.write.decline}
+            <div className="flex flex-wrap items-center gap-2 pt-1">
+              {/*
+                One control, one name.
+
+                This read `typed ? t.write.tab : t.write.decline` — the rail's
+                own label once something was typed, and "Skip this" while the
+                box was empty. Every reader arrives with an empty box, so the
+                page opened showing two buttons side by side both reading "Skip
+                this", with the emphasised one skipping the question. It says
+                what it does now, and it is disabled until there is an answer
+                to record rather than quietly becoming the other button.
+              */}
+              <Button
+                disabled={typed.trim().length === 0}
+                onClick={() => answer(typed.trim())}
+              >
+                {t.write.answer}
               </Button>
               {/*
                 Skipping is an answer, and it is offered as one. A question a
