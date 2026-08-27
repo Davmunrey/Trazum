@@ -49,6 +49,7 @@ ${bold('USO')}
   trazum from-claude-code <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-otel <fichero|dir> [--label-from-service] [-o <fichero>]
   trazum from-litellm <fichero|dir> [-o <fichero>]
+  trazum from-helicone <fichero|dir> [-o <fichero>]
   trazum switch <uso.jsonl> --to <modelo> [--migration-usd <n>] [--cases <n>]
   trazum ownrate --gpu-usd-hour <n> --tokens-per-second <n> [--utilization <0-1>]
   trazum pulse [--max-stale-hours <n>]
@@ -170,6 +171,19 @@ ${bold('OPCIONES DE ownrate')}
   supuesta. Imprime la cifra y el snippet de overlay de precios para pegar
   en trazum.config.json, de modo que el modelo que tú mismo sirves sea una
   fila de primera en cada informe, tasado por ti y marcado como tal.
+
+${bold('OPCIONES DE from-helicone')}
+  -o, --out <fichero>         Escribe el log de uso ahí en vez de en stdout.
+
+  Un export de peticiones de Helicone, leído como un log de uso: modelo, marca
+  de tiempo, etiqueta y los recuentos de tokens de cada fila, y nada más. El
+  cuerpo de la petición, el de la respuesta y el id de usuario se quedan en la
+  fila. Se pone precio al modelo que respondió, y las filas respondidas por un
+  modelo distinto del pedido se cuentan. cache_enabled es una bandera y nunca
+  un reparto de tokens, así que los veredictos de caché dicen "no se puede
+  saber". Un request id es una llamada y nunca una conversación, así que los
+  registros no llevan sesión y los hallazgos de conversación no se pueden
+  responder desde este registro; se dice en cada ejecución.
 
 ${bold('OPCIONES DE from-litellm')}
   -o, --out <fichero>         Escribe el log de uso ahí en vez de en stdout.
@@ -1734,6 +1748,27 @@ ${bold('EJEMPLOS')}
     skipped: (otherSpans) => `${otherSpans} span(s) no-LLM omitidos: el resto del trabajo de la traza, no una factura.`,
     noCache: (count) => `${count} span(s) sin datos de caché. OpenTelemetry no ha estandarizado el reparto del TTL de caché, así que los veredictos de caché dicen «no se puede saber» en este log en vez de uno inventado.`,
     unparseable: (count) => `${count} línea(s) no se pudieron parsear como JSON.`,
+    written: (file) => `Escrito ${file}.`,
+  },
+
+  fromHelicone: {
+    noPath: () =>
+      'from-helicone necesita un export de peticiones o un directorio: trazum from-helicone requests.json',
+    notFound: (path) => `${path}: no encontrado`,
+    noExports: (path) =>
+      `${path}: no hay exports .json/.jsonl/.ndjson dentro. Las peticiones de Helicone salen de su endpoint POST /v1/request/query, o del botón de exportar de la tabla de peticiones.`,
+    summary: (files, rows) => `${files} archivo(s), ${rows} petición(es) leída(s).`,
+    unnamedModel: (count) =>
+      `${count} fila(s) no nombran modelo en ninguna de las tres columnas y no están en la salida: nada en la fila dice qué respondió, así que nada puede ponerle precio.`,
+    disagreements: (count) =>
+      `${count} fila(s) las respondió un modelo distinto del pedido. Se pone precio al que respondió, porque una factura va de lo que se facturó; el recuento está aquí para que una sustitución sea algo que ves y no algo que encuentras dentro de un total.`,
+    noTokens: (count) =>
+      `${count} fila(s) traían cero tokens en ambos lados: peticiones registradas a las que nadie puede poner precio. Se cuentan aquí y merecen un vistazo a Helicone.`,
+    cacheFlagged: (count) =>
+      `${count} fila(s) las sirvió la caché de Helicone. Eso es una bandera en la fila y nunca un reparto de tokens, así que los veredictos de caché dicen "no se puede saber" en este registro en vez de uno inventado.`,
+    noSessions: () =>
+      'Sin identidad de sesión: un request id de Helicone nombra una llamada, no una conversación, así que los hallazgos de conversación (caché desperdiciada en un solo turno, presión de contexto) no se pueden responder desde este registro. Hacer pasar un id por llamada como conversación reportaría cada llamada como una conversación de una.',
+    unparseable: (count) => `${count} línea(s) no se pudieron leer como JSON.`,
     written: (file) => `Escrito ${file}.`,
   },
 

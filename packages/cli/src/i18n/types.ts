@@ -579,6 +579,27 @@ export interface CliMessages {
    * every provider, so its spend log is the export most likely to already
    * exist on somebody's disk.
    */
+  /**
+   * `from-helicone` — the proxy that keeps every request it saw, so a team
+   * using it already has the export.
+   */
+  fromHelicone: {
+    noPath(): string;
+    notFound(path: string): string;
+    noExports(path: string): string;
+    summary(files: number, rows: number): string;
+    unnamedModel(count: number): string;
+    /** A proxy answered with a different model than was asked for. */
+    disagreements(count: number): string;
+    noTokens(count: number): string;
+    /** A cache flag is not a token split, and this says so rather than guessing. */
+    cacheFlagged(count: number): string;
+    /** Said once per run: a request id is one call, never a conversation. */
+    noSessions(): string;
+    unparseable(count: number): string;
+    written(file: string): string;
+  };
+
   fromLiteLlm: {
     noPath(): string;
     notFound(path: string): string;

@@ -112,6 +112,7 @@ import {
   parseUsageLine,
   plannedCalls,
   claudeCodeRecords,
+  heliconeRecords,
   litellmRecords,
   otelRecords,
   ownRate,
@@ -682,6 +683,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   'from-claude-code': ['label', 'label-from-project', 'out', 'o', 'state'],
   'from-otel': ['label-from-service', 'out', 'o'],
   'from-litellm': ['out', 'o'],
+  'from-helicone': ['out', 'o'],
   switch: ['to', 'migration-usd', 'cases'],
   ownrate: ['gpu-usd-hour', 'tokens-per-second', 'utilization'],
   pulse: ['json', 'max-stale-hours'],
@@ -3169,6 +3171,84 @@ async function commandFromLiteLlm(args: Args, t: CliMessages): Promise<void> {
   if (cacheFlagged > 0) console.error(t.fromLiteLlm.cacheFlagged(cacheFlagged));
   if (sawSpend) console.error(t.fromLiteLlm.reportedSpend(formatUsd(reportedSpend)));
   if (unparseable > 0) console.error(t.fromLiteLlm.unparseable(unparseable));
+}
+
+/**
+ * `trazum from-helicone <file|dir>` — a Helicone request export as a usage log.
+ *
+ * The third converter, and the one that needs three columns where the others
+ * need one: Helicone carries `request_model`, `model_override` and
+ * `response_model`, and they can disagree. The response wins, because a bill
+ * is about what was billed rather than what was intended, and the
+ * disagreements are counted so a substitution is something the reader sees.
+ *
+ * Two absences are stated rather than filled in. There is no cache token
+ * split on the row, only a flag; and a Helicone request id names one call and
+ * never a conversation, so the records carry no session and the
+ * conversation-shaped findings stay unavailable. Both are printed, because a
+ * gap that is not said reads as a gap that is not there.
+ */
+async function commandFromHelicone(args: Args, t: CliMessages): Promise<void> {
+  const target = args.positional[0];
+  if (target === undefined) throw new Error(t.fromHelicone.noPath());
+
+  let info;
+  try {
+    info = await stat(target);
+  } catch {
+    throw new Error(t.fromHelicone.notFound(target));
+  }
+  const files: string[] = [];
+  if (info.isDirectory()) {
+    const entries = await readdir(target, { recursive: true, withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isFile() && /\.(json|jsonl|ndjson)$/i.test(entry.name)) {
+        files.push(join(entry.parentPath, entry.name));
+      }
+    }
+    files.sort();
+    if (files.length === 0) throw new Error(t.fromHelicone.noExports(target));
+  } else {
+    files.push(target);
+  }
+
+  const lines: string[] = [];
+  let rows = 0;
+  let unnamedModel = 0;
+  let disagreements = 0;
+  let noTokens = 0;
+  let cacheFlagged = 0;
+  let unparseable = 0;
+  for (const file of files) {
+    const conversion = heliconeRecords(await readFile(file, 'utf8'));
+    for (const record of conversion.records) lines.push(JSON.stringify(record));
+    rows += conversion.rows;
+    unnamedModel += conversion.unnamedModel;
+    disagreements += conversion.modelDisagreements;
+    noTokens += conversion.noTokens;
+    cacheFlagged += conversion.cacheFlagged;
+    unparseable += conversion.unparseable;
+  }
+
+  const out = stringFlag(args, 'out') ?? stringFlag(args, 'o');
+  if (out !== undefined) {
+    await writeFile(out, lines.join('\n') + (lines.length > 0 ? '\n' : ''), 'utf8');
+    console.error(t.fromHelicone.written(out));
+  } else {
+    for (const line of lines) console.log(line);
+  }
+
+  console.error(t.fromHelicone.summary(files.length, rows));
+  if (unnamedModel > 0) console.error(t.fromHelicone.unnamedModel(unnamedModel));
+  if (disagreements > 0) console.error(t.fromHelicone.disagreements(disagreements));
+  if (noTokens > 0) console.error(t.fromHelicone.noTokens(noTokens));
+  if (cacheFlagged > 0) console.error(t.fromHelicone.cacheFlagged(cacheFlagged));
+  // Said on every run that produced records, not only when something is
+  // missing: the absence is a property of the format, and a reader who has
+  // just converted a month needs to know which questions this log cannot
+  // answer before they go looking for the answers.
+  if (rows > 0) console.error(t.fromHelicone.noSessions());
+  if (unparseable > 0) console.error(t.fromHelicone.unparseable(unparseable));
 }
 
 /**
@@ -11657,6 +11737,9 @@ async function main(): Promise<void> {
       break;
     case 'from-litellm':
       await commandFromLiteLlm(args, t);
+      break;
+    case 'from-helicone':
+      await commandFromHelicone(args, t);
       break;
     case 'switch':
       await commandSwitch(args, pricing, t);

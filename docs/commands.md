@@ -2472,6 +2472,47 @@ own table in the `spend` column. That figure is printed beside Trazum's and is
 report becomes quietly wrong. Compare them deliberately or not at all — the
 same rule that keeps the store's provider-billed standing apart from the log's.
 
+### The proxy that kept every request: `trazum from-helicone`
+
+The second of the three. Helicone sits as a proxy in front of the provider and
+keeps every request it saw, so a team using it already has the export — no
+instrumentation to add, and no new place for the prompts to go.
+
+```bash
+trazum from-helicone requests.json -o usage.jsonl
+trazum profile usage.jsonl
+```
+
+**The format is derived, not guessed.** The columns are the SELECT that builds
+Helicone's own request table, `web/lib/api/request/request.ts` in
+Helicone/helicone, plus the response shape its `POST /v1/request/query`
+endpoint documents.
+
+**Three columns for one fact, and the reason matters.** Helicone carries
+`request_model`, `model_override` and `response_model`, and they can disagree:
+the override exists precisely because a proxy can send a different model than
+the caller asked for. **The model that answered is what is priced** — a bill is
+about what was billed, not what was intended — and every row where the two
+differed is counted, so a substitution is something you see rather than
+something you find inside a total.
+
+**The counts only.** The row carries the request body, the response body and
+`request_user_id`, which is an email address in Helicone's own documented
+example. None of it is read, and a fixture plants a marker in each and greps
+the whole output.
+
+**Two absences, stated rather than filled in.** There is no cache-token split
+anywhere on the row — `cache_enabled` is a flag — so a converted record carries
+no cache fields and the cache verdicts read *cannot tell*. And a Helicone
+request id names **one call, never a conversation**, so the records carry no
+session and the conversation findings (single-turn cache waste, context
+pressure) cannot be answered from this log. That one is printed on every run
+that produced records: a gap nobody mentions reads as a gap that is not there.
+
+A custom property can carry a workload name, and `request_properties` is where
+the label comes from when it does. One property, never several joined: a
+workload has one name in a bill.
+
 ### When does the switch pay: `trazum switch`
 
 Every what-if reader is really asking one question: *should we move this
