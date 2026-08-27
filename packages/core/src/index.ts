@@ -166,6 +166,8 @@ export type {
   GatewayStanding,
   RefuseReason,
 } from './gateway.js';
+export { BANDS, bandFor, bucketFor, foreignTokenizer } from './band.js';
+export type { BandBucket } from './band.js';
 export { conform, CONTRACT_NAMES, requiredFieldsOf } from './conform.js';
 export { readDroppedVerdict, verdictMatchesSlice } from './verdict-bridge.js';
 export type { DroppedVerdict, BridgeReading } from './verdict-bridge.js';
