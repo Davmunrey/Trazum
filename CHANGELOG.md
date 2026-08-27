@@ -57,6 +57,49 @@ merged commit with no entry is a change only `git log` remembers.
 
   Forty-five commands.
 
+### Fixed
+
+- **The roadmap promised four things it had already delivered.**
+  `ROADMAP.md`'s `Next` section said the verdict bridge *"stays named and waits
+  to be asked for, as do the `from-langsmith`, `from-helicone` and
+  `from-litellm` converters, which need real exports before their formats can
+  be read rather than guessed"*. All four were in `main`. A reader deciding
+  whether Trazum could read their LiteLLM spend log was told, by the file whose
+  whole job is saying what exists, that it could not.
+
+  **Every guard here pointed one way, and this is the other way.**
+  `every-page.test.js` fails a page that shows a command the CLI does not
+  dispatch; nothing failed a page claiming *less* than is built. That direction
+  is not harmless: this project's rule is that a blocked arc stays named and is
+  never faked, and the mirror of that rule is that a delivered arc stops being
+  called pending.
+
+  `roadmap-forecast.test.js` reads the `Next` and `Under consideration`
+  sections, sentence by sentence, and fails when one of this repository's
+  named-not-built phrasings lands in the same sentence as a command
+  `COMMAND_FLAGS` dispatches. It is sentence-bounded on purpose, so a paragraph
+  that mentions a shipped command near an unbuilt one is not rewritten to
+  please a test.
+
+  **The released record is excluded, and a test says so.** *"The
+  vendor-specific converters stay named and unbuilt until a real export of each
+  is seen"* is a true statement about 1.71.0, and sweeping it to match the
+  present would falsify a record — the same objection `token-band.test.js`
+  skips the changelog for. A third assertion pins that sentence where it is, so
+  the exclusion is a decision something checks rather than one that quietly
+  becomes a bug.
+
+  Proven by planting the sentence back in and watching it fail with
+  *"from-litellm is dispatched, and this calls it pending"*.
+
+  An existing guard then caught the new one twice, which is the ratchet
+  working. `publish.test.js` fails any suite that bounds a section of prose by
+  naming the heading after it, *"the pattern this repository has had to fix
+  nine times"* — and the first draft did exactly that, then wrote the offending
+  call into a comment explaining why it had stopped, which fails too because
+  that guard reads the raw file. The record is now computed as everything the
+  forecast is not, from the same boundary the check itself uses.
+
 ## 1.82.0 — "The band was a measurement of its own training set"
 
 ### Fixed

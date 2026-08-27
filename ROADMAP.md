@@ -2421,16 +2421,22 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-Nothing is planned. 1.80.0 was a distribution pass rather than a plan:
-no new command, no new flag, no new analysis, and the feature surface
-deliberately frozen while the doors were fixed. Before it, [the 1.79
-plan](docs/plan-1.79.md) was delivered in full: the Spanish catalogues are
-swept and the sweep is a guard rather than an edit. Before it, [the 1.77 plan](docs/plan-1.77.md) was delivered
-in full: the four gaps a real forty-day profile exposed are closed at
-their source. The verdict bridge — quality beside cost, from a dropped
-`route`/`eval` result — stays named and waits to be asked for, as do the
-`from-langsmith`, `from-helicone` and `from-litellm` converters, which
-need real exports before their formats can be read rather than guessed.
+Nothing is planned. 1.82.0 was a correction rather than a plan: the
+published token band turned out to be a measurement of its own calibration
+set, and the release replaced it with four that are measurements of the
+estimator. Before it, 1.80.0 was a distribution pass: no new command, no
+new flag, no new analysis, and the feature surface deliberately frozen
+while the doors were fixed. Before that, [the 1.79 plan](docs/plan-1.79.md)
+and [the 1.77 plan](docs/plan-1.77.md) were both delivered in full.
+
+**Four things this section listed as waiting have since been built**, and
+they are named here because a forecast that keeps promising delivered work
+is the same fault as a claim nobody checks. The verdict bridge shipped in
+1.82.0, along with `from-litellm` and `from-helicone`; `from-langsmith` is
+merged and unreleased. Each converter waited for the same thing and got
+it: a format read out of the tool's own source rather than guessed at.
+`roadmap-forecast.test.js` fails if this section ever again describes a
+command the CLI already dispatches.
 
 Before it, [the 1.73 plan](docs/plan-1.73.md) was delivered in
 full — the guided tour: five doors walked once, offered on first visit and
