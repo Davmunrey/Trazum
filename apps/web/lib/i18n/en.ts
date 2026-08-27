@@ -16,6 +16,28 @@ export const en: WebMessages = {
 
   page: {
     lede: 'Prices every way this prompt costs more than it needs to (caching, model tier, the Batch API) and shortens the text itself without changing what it asks for. Code, URLs and template placeholders stay exactly as they were. The Your bill tab reads a usage log instead, entirely in this browser, and says where the money actually went.',
+    purpose: {
+      optimise:
+        'Prices every way this prompt costs more than it needs to, then shortens the text '
+        + 'without changing what it asks for. Code, URLs and template placeholders stay exactly '
+        + 'as they were.',
+      write:
+        'Answer what the prompt needs and Trazum assembles it. Nothing is invented: a question '
+        + 'left unanswered becomes a refusal naming what is missing.',
+      compare:
+        'Two prompts, side by side, priced against the same scenario. The difference is '
+        + 'arithmetic, not an opinion.',
+      library:
+        'Prompts you have saved and every version of each. Saving keeps the old text, so the '
+        + 'history is the record of what changed and what it cost.',
+      bill:
+        'Reads a usage log and says where the money actually went: which workload, which model, '
+        + 'whether caching paid for itself, and which levers would move the bill. Read entirely '
+        + 'in this browser tab.',
+      playground:
+        'The CLI\u2019s pure subset, run in the page against sample files. The same functions the '
+        + 'terminal runs, with nothing to install.',
+    },
     footerLead: (pricingReviewed) =>
       `Pricing reviewed on ${pricingReviewed}. Token counts are estimates (±10%); for exact figures use the official counting endpoint from the CLI with `,
     footerTail:
@@ -497,10 +519,38 @@ export const en: WebMessages = {
     leverBatch: (usd) => `send it through the Batch API: ${usd}`,
     leverCalls: (calls, spent) =>
       `${calls.toLocaleString('en-US')} ${calls === 1 ? 'call' : 'calls'}, ${spent} spent`,
+    inputHeading: 'The log',
+    inputFolded: 'open to read another log',
     routeVerify:
       'Whether a route holds is an evaluation question, not an arithmetic one; nothing here '
       + 'has seen a single answer. The CLI measures it: trazum route <log> --prompt-file '
-      + '<prompt> --cases <cases>.',
+      + '<prompt> --cases <cases>. Drop the --json document back here and the answer sits '
+      + 'beside the saving.',
+    verdictHolds: (candidate, cross, self, cases) =>
+      `Measured: ${candidate} agreed with the model you use now ${cross} of the time, against `
+      + `${self} the model agrees with itself, across ${cases} `
+      + `${cases === 1 ? 'case' : 'cases'}. The answers did not move.`,
+    verdictDiverges: (candidate, cross, self, cases) =>
+      `Measured: ${candidate} agreed only ${cross} of the time, against ${self} the model `
+      + `agrees with itself, across ${cases} ${cases === 1 ? 'case' : 'cases'}. `
+      + 'The answers moved. This saving costs you something.',
+    verdictInconclusive: (self, cases) =>
+      `Measured, and inconclusive: the model agreed with itself only ${self} of the time across `
+      + `${cases} ${cases === 1 ? 'case' : 'cases'}, so there is no yardstick to read a `
+      + 'comparison against. Nothing about this route is settled either way.',
+    verdictCaveat:
+      'Agreement is not correctness. This measured whether the answers moved, never whether '
+      + 'they were ever right.',
+    verdictUnmatched: (label, model, candidate) =>
+      `A routing measurement is loaded (${label} on ${model} against ${candidate}) and this `
+      + 'bill has no such route to set it beside. It is shown here rather than dropped, '
+      + 'because a measurement you paid for should not disappear silently.',
+    verdictRefused: (because) =>
+      `That file looks like a routing measurement and could not be read: ${because}`,
+    verdictMeasuredOn: (model) =>
+      `Measured against ${model}, not against the model this log records. The comparison is `
+      + 'real; the claim about these calls is weaker than one measured on the model they '
+      + 'actually use.',
     leverPromptCeiling: (usd, pct) =>
       `For comparison: shortening the prompt text can touch ${usd} at the very most (${pct} of `
       + 'this bill), and only if you deleted every input token. The real figure is far below '

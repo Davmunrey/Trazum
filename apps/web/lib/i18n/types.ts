@@ -24,6 +24,15 @@ export interface WebMessages {
 
   page: {
     lede: string;
+    /**
+     * One line per panel, saying what that panel answers.
+     *
+     * Keyed by the rail's own tab values, and a guard requires one for every
+     * value the rail carries: a panel added tomorrow arrives with a heading
+     * and a purpose or it fails the suite, rather than opening on a title
+     * with nothing under it.
+     */
+    purpose: Record<string, string>;
     /** Text before the inline `--exact-tokens` code element. */
     footerLead(pricingReviewed: string): string;
     /** Text after it. */
@@ -411,7 +420,49 @@ export interface WebMessages {
     leverRoute(candidate: string, usd: string): string;
     leverBatch(usd: string): string;
     leverCalls(calls: number, spent: string): string;
+    /**
+     * The folded input block's own name.
+     *
+     * Not the tab's name: the page heading already says that, and a summary
+     * repeating it tells the reader nothing about what is behind it.
+     */
+    inputHeading: string;
+    /**
+     * The summary line on the folded input block: what pressing it does.
+     *
+     * Shown only once there is a report, because until then the block is open
+     * and the line would be describing a state nobody is in.
+     */
+    inputFolded: string;
     routeVerify: string;
+    /**
+     * The verdict bridge: a `trazum route --json` document dropped into this
+     * tab, set beside the slice it was measured on.
+     *
+     * Every one of these takes the case count, because a verdict from three
+     * cases and a verdict from three hundred are not the same claim and a
+     * caption that hid the difference would be the tool overstating what it
+     * knows. `self` travels with `cross` for the same reason: agreement is
+     * read against the model's agreement with itself, never on its own.
+     */
+    verdictHolds(candidate: string, cross: string, self: string, cases: number): string;
+    verdictDiverges(candidate: string, cross: string, self: string, cases: number): string;
+    verdictInconclusive(self: string, cases: number): string;
+    /** Printed on every verdict, good one included: agreement is not correctness. */
+    verdictCaveat: string;
+    /** A verdict on screen that describes no slice of this bill. */
+    verdictUnmatched(label: string, model: string, candidate: string): string;
+    /** The document looked like a routing measurement and could not be read. */
+    verdictRefused(because: string): string;
+    /**
+     * The measurement was made against a different model than the log records.
+     *
+     * `route` builds its baseline from the environment, so the model that
+     * answered is whatever `TRAZUM_LLM_MODEL` named. When it is not the log's
+     * model the verdict is a weaker claim about this workload, and the only
+     * honest thing to do is say which model actually answered.
+     */
+    verdictMeasuredOn(model: string): string;
     leverPromptCeiling(usd: string, pct: string): string;
     leversNone: string;
     leversUnlabelled: string;

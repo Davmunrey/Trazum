@@ -16,6 +16,28 @@ export const es: WebMessages = {
 
   page: {
     lede: 'Calcula todo lo que hace que este prompt cueste más de lo necesario (el caching, la gama de modelo, la Batch API) y acorta el texto sin cambiar lo que pide. El código, las URLs y los marcadores de plantilla se quedan intactos. La pestaña Tu factura lee en cambio un registro de uso, por completo en este navegador, y dice adónde fue el dinero de verdad.',
+    purpose: {
+      optimise:
+        'Pone precio a todo lo que este prompt cuesta de más y luego acorta el texto sin cambiar '
+        + 'lo que pide. El código, las URL y los marcadores de plantilla quedan exactamente como '
+        + 'estaban.',
+      write:
+        'Responde lo que el prompt necesita y Trazum lo ensambla. No se inventa nada: una '
+        + 'pregunta sin responder se convierte en una negativa que dice qué falta.',
+      compare:
+        'Dos prompts, lado a lado, con precio sobre el mismo escenario. La diferencia es '
+        + 'aritmética, no una opinión.',
+      library:
+        'Los prompts que has guardado y todas sus versiones. Guardar conserva el texto anterior, '
+        + 'así que el historial es el registro de qué cambió y cuánto costó.',
+      bill:
+        'Lee un registro de uso y dice adónde fue el dinero de verdad: qué carga, qué modelo, si '
+        + 'la caché se pagó sola y qué palancas moverían la factura. Se lee entero en esta '
+        + 'pestaña del navegador.',
+      playground:
+        'El subconjunto puro de la CLI, ejecutado en la página sobre archivos de ejemplo. Las '
+        + 'mismas funciones que corre el terminal, sin instalar nada.',
+    },
     footerLead: (pricingReviewed) =>
       `Precios revisados el ${pricingReviewed}. El recuento de tokens es una estimación (±10%); para cifras exactas usa el endpoint oficial de recuento desde la CLI con `,
     footerTail: '. Los ahorros son proyecciones sobre el escenario que indiques, no facturación.',
@@ -502,10 +524,37 @@ export const es: WebMessages = {
     leverBatch: (usd) => `enviarlo por la Batch API: ${usd}`,
     leverCalls: (calls, spent) =>
       `${calls.toLocaleString('es-ES')} ${calls === 1 ? 'llamada' : 'llamadas'}, ${spent} gastados`,
+    inputHeading: 'El registro',
+    inputFolded: 'abre para leer otro registro',
     routeVerify:
       'Que una ruta aguante es una pregunta de evaluación, no de aritmética: nada aquí ha visto '
       + 'una sola respuesta. La CLI lo mide: trazum route <log> --prompt-file <prompt> --cases '
-      + '<cases>.',
+      + '<cases>. Suelta aquí el documento --json y la respuesta queda junto al ahorro.',
+    verdictHolds: (candidate, cross, self, cases) =>
+      `Medido: ${candidate} coincidió con el modelo que usas ahora el ${cross} de las veces, `
+      + `frente al ${self} que el modelo coincide consigo mismo, en ${cases} `
+      + `${cases === 1 ? 'caso' : 'casos'}. Las respuestas no se movieron.`,
+    verdictDiverges: (candidate, cross, self, cases) =>
+      `Medido: ${candidate} solo coincidió el ${cross} de las veces, frente al ${self} que el `
+      + `modelo coincide consigo mismo, en ${cases} ${cases === 1 ? 'caso' : 'casos'}. `
+      + 'Las respuestas se movieron. Este ahorro te cuesta algo.',
+    verdictInconclusive: (self, cases) =>
+      `Medido, y no concluyente: el modelo coincidió consigo mismo solo el ${self} de las veces `
+      + `en ${cases} ${cases === 1 ? 'caso' : 'casos'}, así que no hay vara con la que leer una `
+      + 'comparación. Nada sobre esta ruta queda decidido, ni a favor ni en contra.',
+    verdictCaveat:
+      'Coincidir no es acertar. Esto midió si las respuestas se movieron, nunca si alguna vez '
+      + 'fueron correctas.',
+    verdictUnmatched: (label, model, candidate) =>
+      `Hay una medición de enrutado cargada (${label} en ${model} frente a ${candidate}) y `
+      + 'esta factura no tiene esa ruta para ponerla al lado. Se muestra aquí en vez de '
+      + 'descartarse, porque una medición que pagaste no debería desaparecer en silencio.',
+    verdictRefused: (because) =>
+      `Ese archivo parece una medición de enrutado y no se pudo leer: ${because}`,
+    verdictMeasuredOn: (model) =>
+      `Medido contra ${model}, no contra el modelo que registra este log. La comparación es `
+      + 'real; la afirmación sobre estas llamadas es más débil que una medida sobre el modelo '
+      + 'que usan de verdad.',
     leverPromptCeiling: (usd, pct) =>
       `Como referencia: acortar el texto del prompt puede tocar como muchísimo ${usd} (${pct} `
       + 'de esta factura), y solo si borraras todos los tokens de entrada. La cifra real queda '

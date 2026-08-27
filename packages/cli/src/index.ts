@@ -9716,11 +9716,31 @@ export function pruneDocument(report: PruneReport): unknown {
 }
 
 async function commandRoute(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
+  /**
+   * Under `--json`, stdout carries the document and nothing else.
+   *
+   * It carried the human preamble too — the slice it picked, the call count,
+   * the "nothing has been spent yet" line — straight into the same stream as
+   * the JSON, so `route --json > verdict.json` wrote a file no parser would
+   * read. Found by running the command and feeding the file to the bridge
+   * that reads it, which is the one thing the pure-function guards could not
+   * do: `interchange.test.js` names `route` among the commands it cannot
+   * drive, so nothing checked that its `--json` output was a document.
+   *
+   * The lines go to stderr rather than away. A reader running this in a
+   * terminal still needs to see which slice was picked and what it will cost
+   * before it costs it; a pipe needs the document. stderr gives both.
+   */
+  const asJson = boolFlag(args, 'json');
+  const say = (line = ''): void => {
+    if (asJson) console.error(line);
+    else console.log(line);
+  };
   const path = args.positional[0];
   if (path === undefined) {
-    console.log();
-    console.log(c.dim(wrap(t.route.noTarget(), 74, '  ')));
-    console.log();
+    say();
+    say(c.dim(wrap(t.route.noTarget(), 74, '  ')));
+    say();
     return;
   }
 
@@ -9743,18 +9763,18 @@ async function commandRoute(args: Args, pricing: PricingCatalogue, t: CliMessage
     const available = report.byLabel
       .map((r) => (r.label === UNLABELLED ? t.profile.unlabelled() : r.label))
       .join(', ');
-    console.log();
-    console.log(c.dim(wrap(t.route.labelNotFound(wanted, available), 74, '  ')));
-    console.log();
+    say();
+    say(c.dim(wrap(t.route.labelNotFound(wanted, available), 74, '  ')));
+    say();
     return;
   }
   const slice = levers.slices.find(
     (s) => s.route !== null && (wanted === undefined || s.label === wanted),
   );
   if (!slice?.route) {
-    console.log();
-    console.log(c.dim(wrap(t.route.noRoute(), 74, '  ')));
-    console.log();
+    say();
+    say(c.dim(wrap(t.route.noRoute(), 74, '  ')));
+    say();
     return;
   }
 
@@ -9778,8 +9798,8 @@ async function commandRoute(args: Args, pricing: PricingCatalogue, t: CliMessage
 
   const label = slice.label === UNLABELLED ? t.profile.unlabelled() : slice.label;
   const worth = formatUsd(slice.route.savingUsd);
-  console.log();
-  console.log(
+  say();
+  say(
     `  ${c.bold(t.route.picked(label, slice.modelName, slice.route.candidate.displayName, worth, `${(slice.shareOfBill * 100).toFixed(1)}%`))}`,
   );
   /**
@@ -9792,20 +9812,20 @@ async function commandRoute(args: Args, pricing: PricingCatalogue, t: CliMessage
    * counts, so it is stated rather than guessed at.
    */
   if (slice.label === UNLABELLED) {
-    console.log(`  ${c.yellow('!')} ${c.dim(wrap(t.route.unlabelledSlice(), 74, '    '))}`);
+    say(`  ${c.yellow('!')} ${c.dim(wrap(t.route.unlabelledSlice(), 74, '    '))}`);
   }
-  console.log();
-  console.log(
+  say();
+  say(
     `  ${c.dim(wrap(t.route.willSpend(inputs.length * 3, provider.model, candidate.model), 74, '  '))}`,
   );
 
   if (!boolFlag(args, 'yes')) {
-    console.log(`  ${c.dim(t.route.dryRun())}`);
-    console.log();
+    say(`  ${c.dim(t.route.dryRun())}`);
+    say();
     return;
   }
 
-  console.log(`  ${c.dim(t.route.running(inputs.length))}`);
+  say(`  ${c.dim(t.route.running(inputs.length))}`);
   // Same prompt on both sides. The axis under test is the model, and passing the
   // prompt twice is what says so at the call site.
   const result = await evaluate(prompt, prompt, inputs, provider, {
@@ -9819,17 +9839,17 @@ async function commandRoute(args: Args, pricing: PricingCatalogue, t: CliMessage
   }
 
   const asPct = (v: number): string => `${(v * 100).toFixed(0)}%`;
-  console.log();
-  console.log(
+  say();
+  say(
     `  ${c.dim(wrap(t.route.agreement(asPct(result.crossAgreement), asPct(result.selfAgreement)), 74, '  '))}`,
   );
-  console.log();
+  say();
   if (result.verdict === 'inconclusive') {
-    console.log(`  ${c.bold(wrap(t.route.inconclusive(), 74, '  '))}`);
+    say(`  ${c.bold(wrap(t.route.inconclusive(), 74, '  '))}`);
   } else if (result.verdict === 'diverges') {
-    console.log(`  ${c.yellow('!')} ${c.bold(wrap(t.route.diverges(worth), 74, '    '))}`);
+    say(`  ${c.yellow('!')} ${c.bold(wrap(t.route.diverges(worth), 74, '    '))}`);
   } else {
-    console.log(`  ${c.green('✓')} ${c.bold(wrap(t.route.holds(worth), 74, '    '))}`);
+    say(`  ${c.green('✓')} ${c.bold(wrap(t.route.holds(worth), 74, '    '))}`);
   }
   /**
    * Printed on every verdict including the good one. Agreement is not
@@ -9837,8 +9857,8 @@ async function commandRoute(args: Args, pricing: PricingCatalogue, t: CliMessage
    * ever right, and a green tick that let somebody forget that would be the tool
    * overstating what it knows.
    */
-  console.log(`  ${c.dim(wrap(t.route.yours(), 74, '  '))}`);
-  console.log();
+  say(`  ${c.dim(wrap(t.route.yours(), 74, '  '))}`);
+  say();
 }
 
 /**
@@ -10414,6 +10434,13 @@ function joinPosix(root: string, relativePath: string): string {
  * never "delete this", and nothing here edits the prompt.
  */
 async function commandPrune(args: Args, t: CliMessages): Promise<void> {
+  // Same as `route`: under `--json` stdout is the document, and the estimate
+  // a reader has to see before spending goes to stderr rather than away.
+  const asJson = boolFlag(args, 'json');
+  const say = (line = ''): void => {
+    if (asJson) console.error(line);
+    else console.log(line);
+  };
   const prompt = await readInput(args.positional[0], t, maxInputFlag(args, t));
 
   const casesPath = stringFlag(args, 'cases');
@@ -10428,11 +10455,11 @@ async function commandPrune(args: Args, t: CliMessages): Promise<void> {
 
   // Printed before the key is even looked up, so somebody weighing it up does not
   // need a configured provider to see the number.
-  console.log();
-  console.log(c.bold(t.prune.estimate(examples.length, inputs.length, calls)));
+  say();
+  say(c.bold(t.prune.estimate(examples.length, inputs.length, calls)));
 
   if (!boolFlag(args, 'yes')) {
-    console.log(c.yellow(`  ${t.prune.needsConsent()}`));
+    say(c.yellow(`  ${t.prune.needsConsent()}`));
     return;
   }
 
@@ -10449,10 +10476,10 @@ async function commandPrune(args: Args, t: CliMessages): Promise<void> {
   }
 
   const pct = (value: number): string => `${(value * 100).toFixed(0)}%`;
-  console.log();
-  console.log(sectionHeading(t.prune.heading(provider.model)));
-  console.log(`  ${c.dim(t.prune.selfAgreement(pct(report.selfAgreement)))}`);
-  console.log();
+  say();
+  say(sectionHeading(t.prune.heading(provider.model)));
+  say(`  ${c.dim(t.prune.selfAgreement(pct(report.selfAgreement)))}`);
+  say();
 
   for (const contribution of report.contributions) {
     /**
@@ -10471,7 +10498,7 @@ async function commandPrune(args: Args, t: CliMessages): Promise<void> {
         ? t.prune.verdictNeeded()
         : t.prune.verdictRecoverable();
 
-    console.log(
+    say(
       `  ${mark} ${t.prune.line(contribution.index + 1, contribution.tokens, pct(contribution.agreementWithout))}`
         + `  ${unknown ? c.yellow(label) : needed ? c.dim(label) : c.green(label)}`,
     );
@@ -10484,16 +10511,16 @@ async function commandPrune(args: Args, t: CliMessages): Promise<void> {
      */
     const lines = contribution.text.split('\n').filter((line) => line.trim() !== '');
     const body = lines.find((line) => !/^\s*(?:#+\s*)?(?:example|ejemplo)\b[\s:.-]*$/i.test(line));
-    console.log(`      ${c.dim(truncate((body ?? lines[0] ?? '').trim(), 60))}`);
+    say(`      ${c.dim(truncate((body ?? lines[0] ?? '').trim(), 60))}`);
   }
 
-  console.log();
+  say();
   if (report.recoverableTokens > 0) {
-    console.log(`  ${t.prune.recoverable(report.recoverableTokens)}`);
+    say(`  ${t.prune.recoverable(report.recoverableTokens)}`);
   }
-  console.log(`  ${c.dim(wrap(t.prune.caveat(), 74, '  '))}`);
-  console.log();
-  console.log(c.dim(`  ${t.eval.callsMade(report.callsMade)}`));
+  say(`  ${c.dim(wrap(t.prune.caveat(), 74, '  '))}`);
+  say();
+  say(c.dim(`  ${t.eval.callsMade(report.callsMade)}`));
 }
 
 async function commandEval(

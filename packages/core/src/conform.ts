@@ -615,6 +615,44 @@ function contractOf(doc: Record<string, unknown>): Exclude<ContractName, 'usage-
   if (Array.isArray(doc.actions) && typeof doc.arrived === 'number') return 'verification';
   if (Array.isArray(doc.actions)) return 'plan';
   if (typeof doc.verdict === 'string' && 'restsOn' in doc) return 'cost-answer';
+  /*
+    Two the inference could never reach, found by the guard that demands every
+    contract be recognisable from a document of its own shape.
+
+    The cost answer's branch above tested `restsOn`, which its contract does
+    not require: the required set is verdict, call and budget, so a conforming
+    answer that omitted the optional field was recognised as nothing at all.
+    The prompt draft had no branch of any kind — its schema has been published
+    since 1.68 and `trazum conform draft.json` has never known what it was.
+  */
+  if (typeof doc.verdict === 'string' && 'call' in doc && 'budget' in doc) return 'cost-answer';
+  if (typeof doc.prompt === 'string' && Array.isArray(doc.sections) && Array.isArray(doc.missing)) {
+    return 'prompt-draft';
+  }
+  /*
+    The five the JSON sweep contracted, and the reason they are here.
+
+    All five arrived with rules, a schema, a row in the interchange table and
+    a parity test, and none of them arrived with a branch in this function —
+    so `trazum conform verdict.json` read a real routing measurement as a
+    usage log and answered with advice about `stop_reason`. A contract that
+    cannot be recognised is a contract only reachable by somebody who already
+    knows its name, which is the opposite of what this page is for. Found by
+    running the command against its own output; `contract-coverage.test.js`
+    now requires every name to be inferable from a document.
+
+    Conformance sits before the connected report deliberately: both carry an
+    `unavailable` array, and only the conformance verdict carries `conforms`.
+  */
+  if (Array.isArray(doc.problems) && Array.isArray(doc.unavailable) && typeof doc.conforms === 'boolean') {
+    return 'conformance';
+  }
+  if (isObject(doc.evaluation) && 'slice' in doc) return 'routing-measurement';
+  if (Array.isArray(doc.contributions) && typeof doc.recoverableTokens === 'number') {
+    return 'example-pruning';
+  }
+  if (Array.isArray(doc.providers) && typeof doc.totalRecords === 'number') return 'store-inventory';
+  if (Array.isArray(doc.crossings) && Array.isArray(doc.abstentions)) return 'watch-cycle';
   if (typeof doc.provider === 'string' && Array.isArray(doc.unavailable)) return 'connected';
   return null;
 }
@@ -711,7 +749,7 @@ export function conform(text: string, options: ConformOptions = {}): Conformance
       schemaVersion: 1,
       contract: null,
       because:
-        'no contract recognised it — a roll-up has contributors and notMerged, a profile has byLabelAndModel, a plan has actions, a verification adds arrived, a history has periods and runs, a connected report has provider and unavailable, a cost answer has verdict and restsOn',
+        'no contract recognised it — a roll-up has contributors and notMerged, a profile has byLabelAndModel, a plan has actions, a verification adds arrived, a history has periods and runs, a connected report has provider and unavailable, a cost answer has verdict with call and budget, a prompt draft has prompt, sections and missing, a routing measurement has slice and evaluation, an example pruning has contributions and recoverableTokens, a store inventory has providers and totalRecords, a conformance verdict has problems and conforms, a watch cycle has crossings and abstentions',
       problems: [],
       unavailable: [],
       records: null,

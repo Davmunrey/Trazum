@@ -22,11 +22,19 @@ import {
   looksLikeOtel,
   otelRecords,
   profileUsage,
+  readDroppedVerdict,
   repriceProfile,
   reviewAgeDays,
   sharesOf,
+  verdictMatchesSlice,
 } from '@trazum/core';
-import type { BillLevers, CacheEconomics, PricingCatalogue, UsageProfileReport } from '@trazum/core';
+import type {
+  BillLevers,
+  CacheEconomics,
+  DroppedVerdict,
+  PricingCatalogue,
+  UsageProfileReport,
+} from '@trazum/core';
 
 import { Plan } from './Plan';
 import { PositionCard } from './Position';
@@ -61,6 +69,17 @@ interface Analysis {
   /** The previous log's report, when one was handed over to compare against. */
   previous: UsageProfileReport | null;
 }
+
+/**
+ * The callout device, in one place instead of nine.
+ *
+ * This exact class string was written out by hand nine times in this file, so
+ * the device had no owner and the tenth use was guaranteed to drift. It
+ * already had: the provenance caveat, which qualifies every dollar on the
+ * page, shipped as bare terracotta prose with no container at all and read as
+ * an error the reader had caused rather than a fact about the price table.
+ */
+const NOTE = 'rounded-lg border border-l-[3px] border-l-warn px-3.5 py-3 text-[13px] leading-snug text-warn';
 
 /** Rows shown per table before "…and N more". Enough to act on, short enough to read. */
 const MAX_ROWS = 8;
@@ -143,6 +162,22 @@ export function Bill({ t }: { t: WebMessages }) {
   } | null>(null);
   const catalogue = priceCard === null ? BUNDLED_CATALOGUE : priceCard.catalogue;
   const [priceCardError, setPriceCardError] = useState<string | null>(null);
+
+  /**
+   * A dropped `trazum route --json` verdict — quality standing beside cost.
+   *
+   * Held as one measurement rather than a list on purpose. A bill offers one
+   * route per slice, and a second verdict for the same slice would be an
+   * older answer competing with a newer one with nothing on screen to say
+   * which is which; the last one dropped wins, visibly, which is what the
+   * reader just did.
+   *
+   * The refusal lives beside it because a file that looked like a
+   * measurement and could not be read has to say so. Dropping it silently
+   * would leave the reader believing a verdict is loaded when none is.
+   */
+  const [verdict, setVerdict] = useState<DroppedVerdict | null>(null);
+  const [verdictError, setVerdictError] = useState<string | null>(null);
 
   // A new card re-prices whatever is already on screen, in place: the same
   // log, the same window, the new rates. The bundled snapshot returns the
@@ -347,6 +382,27 @@ export function Bill({ t }: { t: WebMessages }) {
         collapsed += conversion.collapsed;
         streamed += conversion.streamed;
       } else {
+        /**
+         * The verdict bridge, tried before the price card and before the log.
+         *
+         * Order matters and is not arbitrary: a routing measurement is JSON
+         * with a `models`-free shape that neither the card reader nor the
+         * log parser would claim, but reading it first means the one file
+         * that *is* a verdict never reaches a parser that would report it as
+         * an unreadable log. `readDroppedVerdict` returns null for anything
+         * else, so nothing that is not one is taken away from the code that
+         * can price it.
+         */
+        const bridged = readDroppedVerdict(text);
+        if (bridged !== null) {
+          if (bridged.kind === 'verdict') {
+            setVerdict(bridged.verdict);
+            setVerdictError(null);
+          } else {
+            setVerdictError(bridged.because);
+          }
+          continue;
+        }
         let card: ReturnType<typeof priceCardFrom> = null;
         let cardFailed = false;
         try {
@@ -445,11 +501,26 @@ export function Bill({ t }: { t: WebMessages }) {
 
   return (
     <div className="flex flex-col gap-[18px]">
+      {/*
+        The machinery gets out of the way once it has answered.
+
+        Everything below — the explanation, the privacy note, the drop zone,
+        the textarea, the compare control, the date range and the recording
+        recipe — is how you ask the question. It stayed on screen at full
+        height after the answer arrived, so a reader who had just read a bill
+        scrolled past two hundred pixels of input to reach it again, every
+        time. It is a `<details>`, open until there is a report and reachable
+        by keyboard forever after: nothing is hidden, it is folded.
+      */}
       <Card className="gap-4 py-[18px]">
-        <CardHeader className="px-[18px]">
-          <Eyebrow>{t.bill.tab}</Eyebrow>
-        </CardHeader>
-        <CardContent className="flex flex-col gap-3.5 px-[18px]">
+        <details open={analysis === null} className="group">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-[18px] text-[13px] font-semibold tracking-[0.08em] text-muted-foreground uppercase [&::-webkit-details-marker]:hidden">
+            {t.bill.inputHeading}
+            <span className="text-[12px] font-normal tracking-normal normal-case">
+              {analysis === null ? '' : t.bill.inputFolded}
+            </span>
+          </summary>
+        <CardContent className="mt-3.5 flex flex-col gap-3.5 px-[18px]">
           <p className="m-0 max-w-[72ch] text-sm text-muted-foreground">{t.bill.lede}</p>
 
           {/*
@@ -657,13 +728,14 @@ export function Bill({ t }: { t: WebMessages }) {
             <span>{t.bill.windowHint}</span>
           </div>
           {windowError !== null && (
-            <div className="rounded-lg border border-l-[3px] border-l-warn px-3.5 py-3 text-[13px] leading-snug text-warn">
+            <div className={NOTE}>
               {windowError}
             </div>
           )}
 
           <p className="m-0 max-w-[72ch] text-xs text-muted-foreground">{t.bill.recipe}</p>
         </CardContent>
+        </details>
       </Card>
 
       {analysis !== null && (
@@ -676,6 +748,8 @@ export function Bill({ t }: { t: WebMessages }) {
           drillLabel={drillLabel}
           onDrill={drillTo}
           catalogue={catalogue}
+          verdict={verdict}
+          verdictError={verdictError}
         />
       )}
       {/*
@@ -700,10 +774,21 @@ function Report({
   drillLabel,
   onDrill,
   catalogue,
+  verdict,
+  verdictError,
 }: {
   analysis: Analysis;
   drillLabel: string | null;
   onDrill: (label: string | null) => void;
+  /**
+   * The dropped routing measurement, or null. Passed down rather than read
+   * here because the drop that produced it happens in the tab above, and one
+   * owner for the file-ingest state is what keeps the price card, the
+   * transcripts and this from disagreeing about what was dropped last.
+   */
+  verdict: DroppedVerdict | null;
+  /** Why a file that looked like one could not be read. Null when none did. */
+  verdictError: string | null;
   t: WebMessages;
   n: (value: number) => string;
   pct: (fraction: number) => string;
@@ -775,13 +860,31 @@ function Report({
 
   return (
     <AnimatedContent>
-      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2">
+      {/*
+        Two columns of unequal content had equal width.
+
+        The left column carries the whole money breakdown — three tables and
+        every caveat under them — and the right carries the caching reading
+        and the levers. At 50/50 the left ran hundreds of pixels past the
+        right and the page ended in a void beside nothing. The ratio belongs
+        to the content, not to the framework's default.
+      */}
+      <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
         <Card className="gap-4 py-[18px]">
-          <CardHeader className="px-[18px]">{eyebrow(t.bill.heading)}</CardHeader>
-          <CardContent className="flex flex-col gap-3.5 px-[18px]">
-            <div className="font-display text-[26px] leading-tight font-semibold">
+          {/*
+            The figure is the heading.
+
+            It sat under a small uppercase label, which made the answer the
+            second thing in its own card and the label the first: a reader
+            skimming the page found "WHERE THE MONEY WENT" and had to read on
+            to learn where it went. Tabular numerals because it is a figure.
+          */}
+          <CardHeader className="px-[18px]">
+            <CardTitle className="font-display text-[30px] leading-[1.1] font-semibold tracking-[-0.02em] tabular-nums sm:text-[36px]">
               {t.bill.headline(total.calls, formatUsd(total.totalUsd))}
-            </div>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-3.5 px-[18px]">
             {/*
               The period, stated and never extrapolated: the span makes the
               reader's own monthly arithmetic valid. Partial coverage is said
@@ -817,7 +920,7 @@ function Report({
               would otherwise misread as "chat is 100% of our spend".
             */}
             {drillLabel !== null && (
-              <div className="flex flex-wrap items-center gap-2 rounded-lg border border-l-[3px] border-l-warn px-3.5 py-3 text-[13px] leading-snug text-warn">
+              <div className={`flex flex-wrap items-center gap-2 ${NOTE}`}>
                 <span>{t.bill.drillActive(labelName(drillLabel))}</span>
                 <Button type="button" variant="ghost" size="sm" onClick={() => onDrill(null)}>
                   {t.bill.drillClear}
@@ -834,7 +937,7 @@ function Report({
               same placement rule as the CLI and the CI summary.
             */}
             {report.duplicateLines.count > 0 && (
-              <div className="rounded-lg border border-l-[3px] border-l-warn px-3.5 py-3 text-[13px] leading-snug text-warn">
+              <div className={NOTE}>
                 {t.bill.duplicateLines(report.duplicateLines.count, formatUsd(report.duplicateLines.usd))}
               </div>
             )}
@@ -872,6 +975,19 @@ function Report({
                       />
                     ))}
                   </div>
+                  {/*
+                    The bars had no axis, so five grey rectangles read as
+                    decoration rather than as a measurement. Both ends of the
+                    span, under a hairline: enough to know which direction time
+                    runs and where each bar sits, without an axis library and
+                    without repeating what the sentence below already says.
+                  */}
+                  {days.length > 1 && (
+                    <div className="flex justify-between border-t pt-1 text-[11px] tabular-nums text-muted-foreground">
+                      <span>{days[0]!.day}</span>
+                      <span>{days[days.length - 1]!.day}</span>
+                    </div>
+                  )}
                   <span
                     className={`text-[13px] ${peak.usd > 2 * medianUsd ? 'text-terracotta' : 'text-muted-foreground'}`}
                   >
@@ -946,9 +1062,9 @@ function Report({
                 {parts.map(([name, usd, share, tokens]) => (
                   <tr key={name} className="border-t">
                     <td className="py-1 pr-2">{name}</td>
-                    <td className="py-1 pr-2 text-right font-mono">{formatUsd(usd)}</td>
-                    <td className="py-1 pr-2 text-right">{pct(share)}</td>
-                    <td className="py-1 text-right font-mono">{n(tokens)}</td>
+                    <td className="py-1 pr-2 text-right font-mono tabular-nums">{formatUsd(usd)}</td>
+                    <td className="py-1 pr-2 text-right tabular-nums">{pct(share)}</td>
+                    <td className="py-1 text-right font-mono tabular-nums">{n(tokens)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -1015,7 +1131,7 @@ function Report({
                     return (
                       <>
                         {/* The convention, before the first figure it governs. */}
-                        <div className="rounded-lg border border-l-[3px] border-l-warn px-3.5 py-3 text-[13px] leading-snug text-warn">
+                        <div className={NOTE}>
                           {t.bill.againstConvention}
                         </div>
                         <div
@@ -1107,7 +1223,7 @@ function Report({
             <CardHeader className="px-[18px]">{eyebrow(t.bill.cacheHeading)}</CardHeader>
             <CardContent className="flex flex-col gap-2 px-[18px] text-sm">
               {unsettled ? (
-                <div className="rounded-lg border border-l-[3px] border-l-warn px-3.5 py-3 text-[13px] leading-snug text-warn">
+                <div className={NOTE}>
                   {t.bill.cacheUnsettled(
                     total.assumedWriteTtlCalls,
                     formatUsd(Math.abs(cache.deltaUsd)),
@@ -1227,7 +1343,7 @@ function Report({
             <CardHeader className="px-[18px]">{eyebrow(t.bill.leversHeading)}</CardHeader>
             <CardContent className="flex flex-col gap-3 px-[18px] text-sm">
               {report.byLabel.length === 1 && report.byLabel[0]!.label === UNLABELLED && (
-                <div className="rounded-lg border border-l-[3px] border-l-warn px-3.5 py-3 text-[13px] leading-snug text-warn">
+                <div className={NOTE}>
                   {t.bill.leversUnlabelled}
                 </div>
               )}
@@ -1262,12 +1378,87 @@ function Report({
                           slice.route.candidate.displayName,
                           formatUsd(slice.route.savingUsd),
                         )}
+                        {/*
+                          The verdict bridge. Shown only against the slice it
+                          was measured on — same workload, same model, same
+                          candidate, all three checked by the core's own
+                          matcher. A verdict measured on one workload set
+                          beside another's saving would be a number describing
+                          something other than what was measured, which is the
+                          fault this repository keeps finding in itself.
+                        */}
+                        {verdict !== null && verdictMatchesSlice(verdict, slice) && (
+                          <div
+                            className={`mt-1.5 rounded-lg border border-l-[3px] px-3 py-2 text-[13px] leading-snug ${
+                              verdict.verdict === 'diverges'
+                                ? 'border-l-warn text-warn'
+                                : 'text-muted-foreground'
+                            }`}
+                          >
+                            {verdict.verdict === 'inconclusive'
+                              ? t.bill.verdictInconclusive(pct(verdict.selfAgreement), verdict.cases)
+                              : verdict.verdict === 'diverges'
+                                ? t.bill.verdictDiverges(
+                                    slice.route.candidate.displayName,
+                                    pct(verdict.crossAgreement),
+                                    pct(verdict.selfAgreement),
+                                    verdict.cases,
+                                  )
+                                : t.bill.verdictHolds(
+                                    slice.route.candidate.displayName,
+                                    pct(verdict.crossAgreement),
+                                    pct(verdict.selfAgreement),
+                                    verdict.cases,
+                                  )}{' '}
+                            {/*
+                              Printed on every verdict including the good one,
+                              exactly as the terminal prints it. A green tick
+                              that let somebody forget this would be the tool
+                              overstating what it knows.
+                            */}
+                            <span className="opacity-80">{t.bill.verdictCaveat}</span>
+                            {/*
+                              The measurement was made against a different
+                              model than the log records, which `route` allows
+                              because it builds its baseline from the
+                              environment. Said out loud rather than smoothed
+                              over: a verdict measured on a stand-in is a
+                              weaker claim about these calls, and only this
+                              line can tell the difference.
+                            */}
+                            {verdict.measuredOn !== null && (
+                              <span className="mt-1 block opacity-80">
+                                {t.bill.verdictMeasuredOn(verdict.measuredOn)}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </li>
                     )}
                     {slice.batch !== null && <li>{t.bill.leverBatch(formatUsd(slice.batch.savingUsd))}</li>}
                   </ul>
                 </div>
               ))}
+              {verdictError !== null && (
+                <div className={NOTE}>
+                  {t.bill.verdictRefused(verdictError)}
+                </div>
+              )}
+              {/*
+                A verdict on screen that describes no route in this bill.
+                Named rather than dropped: the reader paid provider calls for
+                it, and silence would read as "no measurement was loaded".
+              */}
+              {verdict !== null &&
+                !levers.slices.some((slice) => verdictMatchesSlice(verdict, slice)) && (
+                  <div className="rounded-lg border px-3.5 py-3 text-[13px] leading-snug text-muted-foreground">
+                    {t.bill.verdictUnmatched(
+                      verdict.label === null ? labelName(UNLABELLED) : verdict.label,
+                      verdict.model,
+                      verdict.candidateModel,
+                    )}
+                  </div>
+                )}
               {levers.slices.some((slice) => slice.route !== null) && (
                 <span className="text-[13px] text-muted-foreground">{t.bill.routeVerify}</span>
               )}
@@ -1376,7 +1567,7 @@ function Report({
                   {whatIf.overContext.slice(0, MAX_SECTIONS).map((slice) => (
                     <div
                       key={`${slice.label}\n${slice.model}`}
-                      className="rounded-lg border border-l-[3px] border-l-warn px-3.5 py-3 text-[13px] leading-snug text-warn"
+                      className={NOTE}
                     >
                       {t.bill.whatIfOverContext(
                         labelName(slice.label),
@@ -1765,11 +1956,11 @@ function BreakdownTable({
                   row.name
                 )}
               </td>
-              <td className="py-1 pr-2 text-right font-mono">{formatUsd(row.breakdown.totalUsd)}</td>
-              <td className="py-1 pr-2 text-right">
+              <td className="py-1 pr-2 text-right font-mono tabular-nums">{formatUsd(row.breakdown.totalUsd)}</td>
+              <td className="py-1 pr-2 text-right tabular-nums">
                 {pct(totalUsd > 0 ? row.breakdown.totalUsd / totalUsd : 0)}
               </td>
-              <td className="py-1 text-right font-mono">{n(row.breakdown.calls)}</td>
+              <td className="py-1 text-right font-mono tabular-nums">{n(row.breakdown.calls)}</td>
             </tr>
           ))}
         </tbody>
@@ -1833,19 +2024,41 @@ function Gaps({
     return null;
   }
   const shownLines = skippedLines.slice(0, 8).join(', ') + (skippedLines.length > 8 ? '…' : '');
+  /*
+    Two different statements, and they had one shape between them.
+
+    The first three qualify the figures above: the price table is old, a model
+    could not be priced, lines would not parse. The fourth is not a warning at
+    all — it lists findings this log cannot buy, which is the difference
+    between "the numbers may be wrong" and "these questions are unanswerable
+    from what you recorded". Loose terracotta prose said both in the same
+    voice, with no container, so the whole block read as an error the reader
+    had caused.
+  */
+  const caveats = [
+    stale ? t.bill.pricesStale(BUNDLED_CATALOGUE.lastReviewed, staleDays) : null,
+    unpricedModels.length > 0 ? t.bill.unpriced(unpricedModels.join(', '), unpriced.calls) : null,
+    skippedLines.length > 0 ? t.bill.skipped(skippedLines.length, shownLines) : null,
+  ].filter((line): line is string => line !== null);
   return (
-    <div className="flex flex-col gap-1 text-[13px] text-terracotta">
-      {stale && <span>{t.bill.pricesStale(BUNDLED_CATALOGUE.lastReviewed, staleDays)}</span>}
-      {unpricedModels.length > 0 && (
-        <span>{t.bill.unpriced(unpricedModels.join(', '), unpriced.calls)}</span>
+    <div className="flex flex-col gap-2.5">
+      {caveats.length > 0 && (
+        <div className={NOTE}>
+          <div className="flex flex-col gap-1.5">
+            {caveats.map((line) => (
+              <span key={line.slice(0, 24)}>{line}</span>
+            ))}
+          </div>
+        </div>
       )}
-      {skippedLines.length > 0 && <span>{t.bill.skipped(skippedLines.length, shownLines)}</span>}
       {missingFields.length > 0 && (
-        <div className="mt-1 flex flex-col gap-1 text-muted-foreground">
-          <span className="font-semibold">{t.bill.coverageHeading}</span>
-          {missingFields.map((line) => (
-            <span key={line.slice(0, 24)}>{line}</span>
-          ))}
+        <div className="rounded-lg border px-3.5 py-3 text-[13px] leading-snug text-muted-foreground">
+          <span className="font-semibold text-foreground">{t.bill.coverageHeading}</span>
+          <ul className="m-0 mt-1.5 flex list-disc flex-col gap-1 pl-5">
+            {missingFields.map((line) => (
+              <li key={line.slice(0, 24)}>{line}</li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

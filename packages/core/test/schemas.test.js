@@ -106,6 +106,36 @@ describe('the schemas agree with conform, by construction', () => {
     }
   });
 
+  it('recognises every contract from its own minimum, with nothing told to it', () => {
+    /**
+     * The guard the five new contracts were missing.
+     *
+     * All five arrived with rules, a schema, a row in the interchange table
+     * and a parity test, and none of them arrived with a branch in `conform`'s
+     * shape inference. So `trazum conform verdict.json` read a real routing
+     * measurement as a usage log and answered with advice about `stop_reason`.
+     * Every check above passes a `contract` in, which is exactly the path a
+     * reader who already knows the answer takes — and the reader this page
+     * exists for does not.
+     *
+     * The document handed over is the schema's own minimum, so a contract
+     * whose required fields cannot tell it apart from another fails here
+     * rather than in somebody's terminal.
+     */
+    const wrong = [];
+    for (const name of CONTRACT_NAMES) {
+      if (name === 'usage-log') continue; // a log is lines, and has its own check below
+      const report = conform(JSON.stringify(minimumOf(name)));
+      if (report.contract !== name) wrong.push(`${name} -> ${report.contract ?? 'nothing'}`);
+    }
+    assert.deepEqual(
+      wrong,
+      [],
+      'these contracts cannot be recognised from a document of their own shape, so they are ' +
+        `reachable only by somebody who already knows the name: ${wrong.join(', ')}`,
+    );
+  });
+
   it('holds the usage-log record schema against the line parser', () => {
     const schema = contractSchema('usage-log');
     const record = { model: 'claude-opus-5', usage: { input_tokens: 1, output_tokens: 1 } };
