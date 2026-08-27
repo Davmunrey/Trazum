@@ -1,4 +1,23 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Trazum">
+  <!--
+    The mark: a ledger shortening.
+
+    Three rules of falling length said the idea already. What they did not say
+    was which part is the saving — every stroke was the same white, so the mark
+    was a generic "list" glyph that any tool could wear. The lower two now carry
+    a shorter overlay in the saving colour, which is the product in one shape:
+    the line is this long, and this much of it comes back.
+
+    Drawn at 32 with round caps so it survives a 16px favicon: at that size the
+    overlay reads as a colour shift on the bar rather than as two shapes, which
+    is the correct thing to lose first.
+  -->
   <rect width="32" height="32" rx="7" fill="#b0522f"/>
-  <path d="M7 9h18M7 15h13M7 21h8" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/>
+  <g stroke-width="2.6" stroke-linecap="round">
+    <path d="M7 9h18" stroke="#fff"/>
+    <path d="M7 15h13" stroke="#fff" opacity=".45"/>
+    <path d="M7 15h8" stroke="#fff"/>
+    <path d="M7 21h8" stroke="#fff" opacity=".45"/>
+    <path d="M7 21h4.5" stroke="#fff"/>
+  </g>
 </svg>

@@ -83,6 +83,21 @@
   --layer-hover: #efeeeb;
   --layer-active: #e6e5e1;
 
+  /*
+   * The alternating band, and the reason it is a token rather than a reach for
+   * `--paper-sunken`.
+   *
+   * The landing already asked for it — `bg-layer` on the story section — and
+   * the utility did not exist, so a band meant to separate three beats from
+   * the hero above them painted nothing at all. Tailwind emits no class for a
+   * token nobody declared, and a class that emits nothing fails silently: the
+   * section looked finished in the source and was flat on the page.
+   *
+   * A hair off `--paper` rather than the full sunken step: on a long page the
+   * band is a change of ground, not a panel.
+   */
+  --layer: #f7f6f4;
+
   --radius: 0.625rem;
 
   /*
@@ -125,6 +140,7 @@
   --color-scrim: var(--scrim);
   --color-faint: var(--ink-faint);
   --color-rule-strong: var(--rule-strong);
+  --color-layer: var(--layer);
   --color-layer-hover: var(--layer-hover);
   --color-layer-active: var(--layer-active);
 }
@@ -159,6 +175,9 @@
      */
     --layer-hover: #2b2924;
     --layer-active: #33302a;
+    /* Redefined here for the reason the block above states: a token defined
+       only in the light theme is one the dark theme silently inherits. */
+    --layer: #1b1915;
     --terracotta: #e08a63;
     --terracotta-wash: #2e211b;
     --good: #6fc99a;
@@ -215,6 +234,118 @@
 
   --shadow-raised: var(--shadow-raised);
   --shadow-focal: var(--shadow-focal);
+}
+
+/*
+ * The landing's one authored moment: the ledger filling.
+ *
+ * ## What it replaced
+ *
+ * Fourteen identical fade-ups, driven first by an IntersectionObserver and
+ * then by `animation-timeline: view()`. Both rendered text at zero opacity and
+ * waited for a scroll position to say otherwise, and both left whole sections
+ * invisible when that position never arrived — a full-page capture, a document
+ * shorter than the viewport, a print. The craft floor asks for *one authored
+ * moment, not scattered effects and not one identical entrance on every
+ * section*, and paying a risk of invisible copy for the scattered version was
+ * the wrong trade twice.
+ *
+ * ## Why this one is safe
+ *
+ * It animates `width` on a bar in a decorative, `aria-hidden` figure. No text
+ * depends on it, it is time-based rather than scroll-driven so it cannot stall
+ * on a page with nothing to scroll, and the keyframes run **to** the finished
+ * state that is already the element's own style: a browser that ignores the
+ * animation entirely draws the completed ledger, which is the correct failure.
+ */
+@keyframes ledger-fill {
+  from {
+    transform: scaleX(0.12);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.ledger-bar {
+  transform-origin: left center;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ledger-bar {
+    animation: ledger-fill 620ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+/*
+ * The skeleton's sheen.
+ *
+ * `animate-pulse` fades a block in and out, which reads as *something is
+ * broken and retrying*. A sweep travelling one way reads as *this is filling
+ * in*, which is what is actually happening. The gradient rides on the same
+ * hover token the rest of the app uses for a lifted surface, so the shimmer is
+ * the palette rather than a white streak borrowed from a component library.
+ */
+@keyframes trazum-shimmer {
+  from {
+    background-position: -180% 0;
+  }
+  to {
+    background-position: 180% 0;
+  }
+}
+
+/*
+ * The boot state, for the moment before the app's own JavaScript has run.
+ *
+ * Three strokes of the wordmark's own mark, drawn in sequence. It is a
+ * `stroke-dashoffset` animation on real geometry rather than a spinner: a
+ * spinner says "waiting", and a mark drawing itself says "this is Trazum, and
+ * it is arriving".
+ */
+@keyframes trazum-draw {
+  from {
+    stroke-dashoffset: var(--draw-length, 40);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes trazum-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/*
+ * The panel change, when one tab replaces another.
+ *
+ * Radix swaps the panel instantly, so five modes of an application that shares
+ * one heading and one container changed by *substitution*: the reader's eye had
+ * no event to follow and no way to tell a slow render from a click that missed.
+ * A short rise from an already-visible state gives the swap a direction — down
+ * the page, the way the rail reads — and costs nothing when it is switched off.
+ */
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  [data-slot='tabs-content'][data-state='active'] {
+    animation: panel-in 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
 }
 
 /*

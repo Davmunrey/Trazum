@@ -32,11 +32,43 @@ describe('the marketing pages play by the app’s rules', () => {
     }
   });
 
-  it('respects prefers-reduced-motion by not observing at all', () => {
-    // The observer is never attached under reduced motion — everything
-    // renders visible — rather than attached and softened.
-    assert.match(marketing, /prefers-reduced-motion/);
-    assert.match(marketing, /setShown\(true\);\s*return;/);
+  it('respects prefers-reduced-motion, wherever the motion lives', () => {
+    /**
+     * The claim is the landing's, not one component's, and this guard used to
+     * be pinned to the component.
+     *
+     * It asserted that `marketing.tsx` mentioned `prefers-reduced-motion` and
+     * contained `setShown(true); return;` — the two lines inside `Reveal`. So
+     * it passed for as long as `Reveal` existed and failed the moment it was
+     * deleted, which is backwards: `Reveal` was deleted **because** it
+     * rendered copy at zero opacity and left whole sections invisible when its
+     * observer never fired, and a guard that fails when a defect is removed is
+     * guarding an implementation rather than a promise.
+     *
+     * The promise is that the landing's motion is switched off for a reader
+     * who asked for less of it. It is now one animation — the hero ledger
+     * filling — and it lives in the stylesheet, so that is where this looks.
+     */
+    const css = read('app/globals.css');
+    assert.match(css, /prefers-reduced-motion/, 'nothing gates motion for the reader who asked for less');
+
+    /*
+      Every keyframe animation the landing runs has to be inside a
+      no-preference block. Read off the stylesheet rather than listed here, so
+      an animation added next year is covered by existing rather than by
+      somebody remembering to add it to an array.
+    */
+    const guarded = css
+      .split(/@media \(prefers-reduced-motion: no-preference\)/)
+      .slice(1)
+      .join('\n');
+    for (const name of ['ledger-fill']) {
+      assert.match(guarded, new RegExp(`animation:\\s*${name}`), `${name} runs regardless of the reader's preference`);
+    }
+
+    // And the finished state is the default, so a browser that runs no
+    // animation at all still draws the completed figure.
+    assert.match(landing, /ledger-bar/, 'the landing no longer uses the class this guard describes');
   });
 
   it('carries its own locale key, so an unreviewed language stays on the landing', () => {

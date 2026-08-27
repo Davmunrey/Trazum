@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 /**
  * Shared plumbing for the marketing surface — the landing.
@@ -96,56 +96,35 @@ export function LocaleToggle({
   );
 }
 
-/**
- * Scroll-linked reveal. One IntersectionObserver per element, unobserved on
- * first reveal; under `prefers-reduced-motion` everything renders visible
- * from the start — the observer is never attached, rather than attached and
- * softened.
+/*
+ * `Reveal` used to live here, and deleting it is the fix rather than a
+ * retreat from one.
+ *
+ * ## Two attempts, one failure mode
+ *
+ * The first rendered its children at `opacity-0` and waited for an
+ * IntersectionObserver. A full-page capture of the built landing showed the
+ * hero and two paragraphs on seven thousand pixels of blank paper: nothing had
+ * scrolled, so nothing had intersected, and every section below the fold was
+ * in the DOM, laid out, and invisible.
+ *
+ * The second replaced the observer with `animation-timeline: view()`, which
+ * removed the script and kept the fault: a scroll timeline has no progress
+ * when there is nothing to scroll, so on a document shorter than the viewport
+ * — a large display, a short locale, a print, a capture — `fill-mode: both`
+ * pins the element at the `from` keyframe, which is opacity zero. Tightening
+ * the range moved the boundary without removing it.
+ *
+ * ## Why nothing replaced it
+ *
+ * Both attempts were paying a real risk of invisible copy for fourteen
+ * identical fade-ups, which the craft floor names directly: *one authored
+ * moment, not scattered effects and not one identical entrance on every
+ * section*. The page's motion is now the hero ledger filling once on load —
+ * time-based, so it cannot depend on a scroll position that may not exist, and
+ * written so the finished state is the default and the animation is subtracted
+ * from it. Text is text, and it is on the page from the first paint.
  */
-export function Reveal({
-  children,
-  delay = 0,
-  className = '',
-}: {
-  children: React.ReactNode;
-  delay?: number;
-  className?: string;
-}) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [shown, setShown] = useState(false);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setShown(true);
-      return;
-    }
-    const observer = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting) {
-            setShown(true);
-            observer.disconnect();
-          }
-        }
-      },
-      { threshold: 0.18 },
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-  return (
-    <div
-      ref={ref}
-      style={{ transitionDelay: `${delay}ms` }}
-      className={`transition-all duration-700 ease-out ${
-        shown ? 'translate-y-0 opacity-100' : 'translate-y-6 opacity-0'
-      } ${className}`}
-    >
-      {children}
-    </div>
-  );
-}
 
 /** Thin scroll-progress line under the marketing header. */
 export function ScrollProgress() {

@@ -33,7 +33,9 @@ export async function generateMetadata(): Promise<Metadata> {
       siteName: 'Trazum',
     },
     twitter: {
-      card: 'summary',
+      // `summary_large_image` now that there is one: the card the app ships is
+      // 1200x630 and a `summary` crop throws two thirds of it away.
+      card: 'summary_large_image',
       title: meta.title,
       description: meta.description,
     },

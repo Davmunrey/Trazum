@@ -14,6 +14,8 @@ export const en: WebMessages = {
     ogLocale: 'en_US',
   },
 
+  booting: 'Loading Trazum…',
+
   page: {
     lede: 'Prices every way this prompt costs more than it needs to (caching, model tier, the Batch API) and shortens the text itself without changing what it asks for. Code, URLs and template placeholders stay exactly as they were. The Your bill tab reads a usage log instead, entirely in this browser, and says where the money actually went.',
     purpose: {
@@ -204,6 +206,7 @@ export const en: WebMessages = {
 
   write: {
     tab: 'Write',
+    answer: 'Answer',
     lede: 'Describe what you want. Trazum asks what it needs, and writes the prompt.',
     privacy: 'Nothing is generated and nothing is sent to a model. The questions are fixed, and the words in the prompt are yours.',
     slots: {
@@ -252,6 +255,12 @@ export const en: WebMessages = {
 
   compare: {
     tab: 'Compare',
+    emptyTitle: 'Nothing compared yet',
+    emptyWillShow: [
+      'the token count before and after, and what the difference costs',
+      'the monthly figure at your call volume, signed either way',
+      'which advisories the edit introduced, and which it resolved',
+    ],
     optimiseTab: 'Optimise',
     lede:
       'Two versions of the same prompt. What the edit did to the token count, what '
@@ -429,6 +438,10 @@ export const en: WebMessages = {
 
   bill: {
     tab: 'Your bill',
+    format:
+      'One JSON object per line, each with a "model" and the "usage" object the API returned. '
+      + 'A "label" names the workload and a "session" names the conversation; both are optional, '
+      + 'and both unlock findings the log cannot answer without them.',
     lede:
       'Reads a usage log (one JSON object per line, each with a "model" and the "usage" object '
       + 'the API returned) and says where the money went: which workload, which model, whether '

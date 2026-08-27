@@ -22,6 +22,9 @@ export interface WebMessages {
     ogLocale: string;
   };
 
+  /** What the boot screen says while a route's JavaScript is still arriving. */
+  booting: string;
+
   page: {
     lede: string;
     /**
@@ -212,6 +215,16 @@ export interface WebMessages {
    */
   write: {
     tab: string;
+    /**
+     * The primary control on the interview card.
+     *
+     * It exists because there was no such key and the button reached for two
+     * that were not it: `tab` (the rail's label, "Write") once something was
+     * typed, and `decline` ("Skip this") while the box was empty — which is
+     * the state every reader arrives in. So the page opened with two buttons
+     * side by side, both reading "Skip this", and the emphasised one skipped.
+     */
+    answer: string;
     lede: string;
     /** Stated above the form, before anybody types. */
     privacy: string;
@@ -237,6 +250,17 @@ export interface WebMessages {
 
   compare: {
     tab: string;
+    /**
+     * The empty state, and why it is not the lede.
+     *
+     * This column used to hold `lede` and nothing else — the same sentence the
+     * page header already prints, in a card, beside 900 pixels of empty paper.
+     * It is the first thing a reader sees on this panel and it was spent
+     * repeating the title. These three say what pressing Compare is worth,
+     * which is what the Optimise panel's empty state already did.
+     */
+    emptyTitle: string;
+    emptyWillShow: readonly string[];
     optimiseTab: string;
     lede: string;
     beforeLabel: string;
@@ -363,6 +387,14 @@ export interface WebMessages {
 
   bill: {
     tab: string;
+    /**
+     * The shape of the file, which the page header does not say.
+     *
+     * `lede` restated the header's own sentence in longer words directly under
+     * it — the same claim twice on one screen — and pushed the drop zone down.
+     * This is the half a reader with a log in their hand actually needs.
+     */
+    format: string;
     lede: string;
     /** Stated above the input, before anyone pastes. The whole privacy story. */
     privacy: string;

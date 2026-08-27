@@ -274,7 +274,13 @@ export function Comparer({
         </Card>
       </div>
 
-      <div className="flex flex-col gap-[18px]">
+      {/*
+        Sticky from `lg`, for the reason the Optimise panel's results column is:
+        the two prompt editors make this column tall, and an answer that scrolls
+        away the moment the reader goes back to edit the version they are
+        pricing is an answer they have to hunt for twice.
+      */}
+      <div className="flex flex-col gap-[18px] lg:sticky lg:top-6 lg:self-start">
         {error !== null && (
           <Card className="gap-0 border-terracotta py-[18px]">
             <CardContent className="px-[18px] text-sm text-terracotta">{error}</CardContent>
@@ -312,11 +318,39 @@ export function Comparer({
             </CardContent>
           </Card>
         ) : result === null ? (
-          <Card className="gap-0 py-[18px]">
-            <CardContent className="px-[18px] text-sm text-muted-foreground">
-              {t.compare.lede}
-            </CardContent>
-          </Card>
+          /*
+            An empty state that names what the report will contain.
+
+            It was a card holding `t.compare.lede` — the same sentence the page
+            header prints two inches above it — beside nine hundred pixels of
+            empty paper. That is the first thing a reader sees on this panel,
+            and it was spent repeating the title. Same shape as the Optimise
+            panel's empty state, deliberately: two panels answering "nothing
+            yet" should not answer it in two different voices.
+
+            Still a sunken panel and still no card: borrowing the elevation the
+            real report will have would make the wait look like a result.
+          */
+          <div className="rounded-xl bg-muted/60 px-7 py-11">
+            <div className="mx-auto flex max-w-[42ch] flex-col gap-3.5">
+              <h3 className="font-display text-[17px] leading-snug font-semibold">
+                {t.compare.emptyTitle}
+              </h3>
+              <p className="text-[13px] leading-relaxed text-muted-foreground">{t.compare.lede}</p>
+              <ul className="mt-1 flex flex-col gap-2 border-t pt-4 text-[13px] leading-snug text-faint">
+                {t.compare.emptyWillShow.map((line) => (
+                  <li key={line} className="flex gap-2.5">
+                    {/* A rule, not a bullet glyph: three parts of one answer. */}
+                    <span
+                      aria-hidden="true"
+                      className="mt-[0.55em] h-px w-3 shrink-0 bg-rule-strong"
+                    />
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
         ) : (
           <AnimatedContent>
             <Card className="gap-4 py-[18px]">
@@ -329,7 +363,7 @@ export function Comparer({
                   has the opposite convention loaded, and a caveat under the number
                   is a caveat read after the conclusion.
                 */}
-                <div className="rounded-lg border border-l-[3px] border-l-warn px-3.5 py-3 text-[13px] leading-snug text-warn">
+                <div className="rounded-lg border border-warn/25 bg-warn-wash px-3.5 py-3 text-[13px] leading-snug text-warn">
                   {t.compare.convention}
                 </div>
 

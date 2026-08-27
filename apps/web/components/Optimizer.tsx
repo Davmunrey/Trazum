@@ -390,7 +390,23 @@ export function Optimizer({
               onChange={(e) => setPrompt(e.target.value)}
               spellCheck={false}
               aria-label={t.input.promptAriaLabel}
-              className="min-h-80 resize-y bg-muted font-mono text-[13px] leading-relaxed"
+              /*
+                Capped, and the cap is the fix for the page's worst measurement.
+
+                shadcn's Textarea carries `field-sizing-content`, so the box
+                grows to whatever is pasted into it. With the bundled demo
+                prompt that was 900-odd pixels: the input column stood 1307px
+                tall against a results column of 270, the Optimise button sat
+                far below the fold on a 1000px display, and the first thing a
+                first-time reader had to do was scroll past a wall of somebody
+                else's prompt to find the one control on the page.
+
+                It still grows — a short prompt gets a short box, which is the
+                whole point of content sizing — and stops at a height that
+                keeps the button in view. Past that it scrolls, and `resize-y`
+                is still there for anyone who wants the wall back.
+              */
+              className="max-h-[26rem] min-h-64 resize-y overflow-auto bg-muted font-mono text-[13px] leading-relaxed"
             />
           </CardContent>
         </Card>
@@ -704,8 +720,17 @@ export function Optimizer({
         )}
       </div>
 
-      {/* ---------------- Results ---------------- */}
-      <div className="contents lg:flex lg:flex-col lg:gap-[18px]">
+      {/*
+        ---------------- Results ----------------
+
+        Sticky from `lg`, and the measurement is why. At 1440 the input column
+        stood 1307px tall against a results column of 270 — a thousand pixels
+        of empty paper beside the form, and an answer that scrolled away the
+        moment the reader went back to edit the prompt they were pricing. The
+        panel follows them down instead. `items-start` on the grid is what
+        makes it possible: a stretched column has no room to move in.
+      */}
+      <div className="contents lg:sticky lg:top-6 lg:flex lg:flex-col lg:gap-[18px] lg:self-start">
         {error && (
           <Card className="border-warn bg-warn-wash py-3.5">
             <CardContent className="px-3.5 text-sm text-warn">{error}</CardContent>
@@ -753,8 +778,8 @@ export function Optimizer({
         )}
 
         {!result && !error && !loading && (
-          <div className="rounded-xl bg-muted/60 px-7 py-9">
-            <div className="mx-auto flex max-w-[40ch] flex-col gap-3">
+          <div className="rounded-xl bg-muted/60 px-7 py-11">
+            <div className="mx-auto flex max-w-[42ch] flex-col gap-3.5">
               <h3 className="font-display text-[17px] leading-snug font-semibold">
                 {t.results.emptyTitle}
               </h3>

@@ -14,6 +14,8 @@ export const es: WebMessages = {
     ogLocale: 'es_ES',
   },
 
+  booting: 'Cargando Trazum…',
+
   page: {
     lede: 'Calcula todo lo que hace que este prompt cueste más de lo necesario (el caching, la gama de modelo, la Batch API) y acorta el texto sin cambiar lo que pide. El código, las URLs y los marcadores de plantilla se quedan intactos. La pestaña Tu factura lee en cambio un registro de uso, por completo en este navegador, y dice adónde fue el dinero de verdad.',
     purpose: {
@@ -203,6 +205,7 @@ export const es: WebMessages = {
 
   write: {
     tab: 'Escribir',
+    answer: 'Responder',
     lede: 'Describe lo que quieres. Trazum pregunta lo que necesita y escribe el prompt.',
     privacy: 'No se genera nada ni se envía nada a un modelo. Las preguntas son fijas y las palabras del prompt son tuyas.',
     slots: {
@@ -251,6 +254,12 @@ export const es: WebMessages = {
 
   compare: {
     tab: 'Comparar',
+    emptyTitle: 'Nada comparado todavía',
+    emptyWillShow: [
+      'el recuento de tokens antes y después, y lo que cuesta la diferencia',
+      'la cifra mensual a tu volumen de llamadas, con su signo',
+      'qué advertencias introdujo la edición y cuáles resolvió',
+    ],
     optimiseTab: 'Optimizar',
     lede:
       'Dos versiones del mismo prompt. Qué le hizo la edición al número de tokens, '
@@ -432,6 +441,10 @@ export const es: WebMessages = {
 
   bill: {
     tab: 'Tu factura',
+    format:
+      'Un objeto JSON por línea, cada uno con un "model" y el objeto "usage" que devolvió la API. '
+      + 'Un "label" nombra la carga de trabajo y una "session" nombra la conversación; ambos son '
+      + 'opcionales, y ambos desbloquean hallazgos que el registro no puede responder sin ellos.',
     lede:
       'Lee un registro de uso (un objeto JSON por línea, cada uno con un "model" y el objeto '
       + '"usage" que devolvió la API) y dice adónde fue el dinero: qué carga de trabajo, qué '
