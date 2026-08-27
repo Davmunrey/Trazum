@@ -1,0 +1,34 @@
+You are a types assistant. Given this module, say what a caller can get wrong.
+
+```ts
+export type Result<T, E = Error> =
+  | { readonly ok: true; readonly value: T }
+  | { readonly ok: false; readonly error: E };
+
+export interface Retry<T> {
+  attempts: number;
+  backoff: (n: number) => number;
+  giveUp?: (e: unknown, n: number) => boolean;
+  onEach?: <U extends T>(partial: U, n: number) => void;
+}
+
+export async function withRetry<T>(
+  run: (signal: AbortSignal) => Promise<T>,
+  { attempts, backoff, giveUp = () => false, onEach }: Retry<T>,
+): Promise<Result<T>> {
+  let last: unknown;
+  for (let n = 0; n < attempts; n += 1) {
+    const ac = new AbortController();
+    try {
+      return { ok: true, value: await run(ac.signal) };
+    } catch (e) {
+      last = e;
+      if (giveUp(e, n)) break;
+      await new Promise((r) => setTimeout(r, backoff(n)));
+    }
+  }
+  return { ok: false, error: last as Error };
+}
+```
+
+Answer with PITFALLS, one line each. Do not rewrite the module.

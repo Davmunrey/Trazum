@@ -1,0 +1,11 @@
+You are an on-call assistant. Given these series, say what is worth waking for.
+
+http_requests_total{route="/api/write"} 1 2 4 3 2 9 41 88 74 12 3 2
+http_request_duration_p99_ms{route="/api/write"} 82 91 88 94 90 210 1840 2210 1990 320 96 88
+process_resident_memory_bytes 412000000 415000000 418000000 802000000 811000000 809000000
+pg_connections_active 4 5 4 6 5 38 41 40 39 7 5 4
+cache_hit_ratio 0.97 0.97 0.96 0.97 0.42 0.39 0.41 0.44 0.95 0.97 0.97 0.96
+
+Samples are one minute apart. Report WAKE and WATCH. A series belongs in WAKE
+only when it crosses a level it has not held before and stays there for at
+least three samples. State the sample index where each crossing starts.

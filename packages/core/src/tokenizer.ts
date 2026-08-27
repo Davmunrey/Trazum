@@ -183,13 +183,22 @@ const HAN_TOKENS_PER_CHAR = 1.05;
  * estimate came out **20.0% under** — 232 against 290 — and 1.20 takes it to
  * -10.0%.
  *
- * Still in-sample, and still one sample, so it is a measured placeholder rather
- * than a calibration. What makes it worth taking is that it replaces a number
- * nothing had ever checked with a number one real Korean prompt produced, and
- * that it moves nothing else in the corpus by more than a point: Hangul appears
- * in no other sample.
+ * **1.20 was the one-sample answer and it was wrong by ten points.** A second
+ * Korean sample in a different register — a deployment review against support
+ * copy — put both at -10.6% and -10.0% under it, and solving the constant on
+ * the two together lands on 1.35, where both come out at 0.0%.
+ *
+ * Two independent texts agreeing to within four tenths of a point across the
+ * whole search is what makes this a property of Hangul rather than a fit to a
+ * file. Their residuals move in lockstep at every candidate value: -10.6/-10.0
+ * at 1.20, -3.5/-3.1 at 1.30, 3.2/3.4 at 1.40. One sample cannot show that and
+ * two can, which is the entire argument for measuring more of the thin classes
+ * rather than tuning harder on the thin ones.
+ *
+ * Still in-sample: the honest test is a third Korean prompt, and the corpus
+ * grows one at a time.
  */
-const HANGUL_TOKENS_PER_CHAR = 1.2;
+const HANGUL_TOKENS_PER_CHAR = 1.35;
 const HANGUL = /[가-힯]/;
 
 /**

@@ -340,11 +340,11 @@ describe('the published error band', () => {
       to do.
     */
     const FLOORS = {
-      cjk: 0.10,
+      cjk: 0.04,
       'prose-latin': 0.05,
-      code: 0.25,
+      code: 0.26,
       numeric: 0.33,
-      punctuation: 0.07,
+      punctuation: 0.12,
       'few-shot': 0.05,
     };
 

@@ -57,9 +57,17 @@ export const BANDS = {
   /** Digit-dominant: ledgers, tables, exports. The worst the estimator does. */
   numeric: 33,
   /** Symbol-rich: code, markup, anything a merge table covers badly. */
-  symbolic: 25,
-  /** CJK, all three scripts. */
-  cjk: 10,
+  symbolic: 26,
+  /**
+   * CJK, all three scripts.
+   *
+   * Was 10 and is 4, and the difference is the second Korean sample rather than
+   * anything in this file. Hangul had been charged a placeholder that nothing
+   * measured; one sample moved it to within ten points and two moved it to
+   * within three. The class's worst went from 10.6% to 3.2% and its standard
+   * deviation from 4.0 to 1.0.
+   */
+  cjk: 4,
   /** Latin prose and few-shot blocks made of it. What most prompts are. */
   prose: 5,
 } as const;

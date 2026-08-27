@@ -103,6 +103,37 @@ const TYPES = {
   'cjk-korean.txt': 'cjk',
   'numeric-tabular.txt': 'numeric',
   'punctuation-markup.txt': 'punctuation',
+  /**
+   * Fifteen more, and this batch is designed rather than collected.
+   *
+   * The first extension proved the band was a fit; the spread it exposed showed
+   * where the corpus still could not answer. Latin prose had seventeen samples
+   * with a 1.2-point standard deviation — converged, and the eighteenth would
+   * move nothing. `numeric` had **two**, twenty-seven points apart, so its band
+   * rested on one sample and the next CSV could have made it a lie again.
+   *
+   * The six numeric samples vary deliberately in the one dimension suspected of
+   * driving the error: the length of a digit run. Versions and schedules are
+   * one and two digits, ports and years three and four, amounts and epoch
+   * milliseconds five to thirteen. If run length is what the estimator gets
+   * wrong, this is the shape that shows it — and a shape can be fixed, where a
+   * constant fitted to two samples can only choose which one to be wrong about.
+   */
+  'numeric-versions.txt': 'numeric',
+  'numeric-identifiers.txt': 'numeric',
+  'numeric-metrics.txt': 'numeric',
+  'numeric-coordinates.txt': 'numeric',
+  'numeric-financial.txt': 'numeric',
+  'numeric-schedule.txt': 'numeric',
+  'code-typescript.txt': 'code',
+  'code-yaml.txt': 'code',
+  'code-regex.txt': 'code',
+  'code-diff.txt': 'code',
+  'punctuation-csvquoting.txt': 'punctuation',
+  'punctuation-shell-quoting.txt': 'punctuation',
+  'cjk-japanese-technical.txt': 'cjk',
+  'cjk-chinese-technical.txt': 'cjk',
+  'cjk-korean-technical.txt': 'cjk',
 };
 
 /**
@@ -365,7 +396,45 @@ if (!provider.governsPublishedBand) {
 
 
 
-const countTokens = (text) => provider.count(text, { apiKey, model: MODEL });
+/**
+ * One count, retried on the failures that are the provider's weather.
+ *
+ * The first draft sent one request per sample with no pacing and no retry, so a
+ * single transient answer threw away the whole run — and Mistral's free tier
+ * threw three in a row, 503 then 503 then 429, on a corpus of forty-three. The
+ * measurement is free on Anthropic and pennies elsewhere; the thing that is
+ * expensive is a run that gets forty samples in and dies.
+ *
+ * Only 429 and 5xx are retried. A 401 or a 404 is an answer, not weather, and
+ * retrying it would turn a clear message about a wrong key or a retired model
+ * into a slow one.
+ */
+const RETRYABLE = /returned (429|5\d\d):/;
+
+const countTokens = async (text) => {
+  let wait = 2000;
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await provider.count(text, { apiKey, model: MODEL });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (attempt >= 4 || !RETRYABLE.test(message)) throw error;
+      console.error(`  retrying in ${wait / 1000}s: ${message.slice(0, 80)}`);
+      await new Promise((resolve) => setTimeout(resolve, wait));
+      wait *= 2;
+    }
+  }
+};
+
+/**
+ * Pause between samples, for providers that meter rather than count.
+ *
+ * Anthropic's counting endpoint is free and unthrottled, so it waits for
+ * nothing. The completion-based providers are measured one call at a time with
+ * a gap, which is slower and is the difference between a run that finishes and
+ * a run that gets rate-limited at sample thirty.
+ */
+const PACE_MS = provider.free ? 0 : 700;
 
 /**
  * The endpoint counts a *message*, which carries a few tokens of envelope beyond
@@ -447,6 +516,7 @@ console.log(`Message envelope: ${envelope} tokens (subtracted from every figure)
 
 const samples = [];
 for (const [name, text] of entries) {
+  if (PACE_MS > 0) await new Promise((resolve) => setTimeout(resolve, PACE_MS));
   const counted = (await countTokens(text)) - envelope;
   // The digest of *this* sample, so adding a ninth file does not retire the
   // measurements of the first eight — each of which costs an API call.
