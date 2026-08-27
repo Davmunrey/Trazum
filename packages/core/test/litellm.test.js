@@ -34,7 +34,7 @@ const row = (over = {}) => ({
   model: 'claude-opus-5',
   model_group: 'opus-route',
   custom_llm_provider: 'anthropic',
-  api_base: 'https://api.anthropic.com',
+  api_base: `https://gateway.invalid/${SECRET}`,
   user: `person-${SECRET}@example.com`,
   metadata: { tags: ['support'] },
   cache_hit: '',
@@ -42,7 +42,7 @@ const row = (over = {}) => ({
   request_tags: ['support'],
   team_id: 'team-1',
   end_user: `end-${SECRET}`,
-  requester_ip_address: '203.0.113.9',
+  requester_ip_address: `203.0.113.9 ${SECRET}`,
   // The prompt and the completion, on every single row.
   messages: [{ role: 'user', content: `Summarise ${SECRET}` }],
   response: { choices: [{ message: { content: `About ${SECRET}` } }] },
@@ -75,11 +75,21 @@ describe('reading a LiteLLM spend log', () => {
      */
     const out = litellmRecords(JSON.stringify([row()]));
     const serialised = JSON.stringify(out);
+    /*
+      One marker, planted in every sensitive column, rather than a substring
+      of each real value.
+
+      The first draft asserted on the literal host in `api_base` and on the
+      literal address in `requester_ip_address`, and CodeQL was right to flag
+      the first: matching a host by substring is a habit worth not having even
+      when the assertion runs the other way. The marker is in all six columns
+      now, so this checks the plant rather than something that merely looks
+      like a real value.
+    */
     assert.ok(!serialised.includes(SECRET), 'the conversion carried text out of the row');
-    assert.ok(!serialised.includes('203.0.113.9'), 'the conversion carried the requester address');
-    assert.ok(!serialised.includes('api.anthropic.com'), 'the conversion carried the endpoint');
     // And the measurement survives, so this is not passing by emptiness.
     assert.equal(out.records[0].usage.input_tokens, 1200);
+    assert.equal(out.records[0].model, 'claude-opus-5');
   });
 
   it('reads the four shapes an export actually arrives in', () => {
