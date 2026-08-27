@@ -2513,6 +2513,49 @@ A custom property can carry a workload name, and `request_properties` is where
 the label comes from when it does. One property, never several joined: a
 workload has one name in a bill.
 
+### The tree that is not a list: `trazum from-langsmith`
+
+The last of the four converters, and the one where the unit is wrong before
+anything else can be right. LangSmith records a **run**, and a trace is a tree
+of them: the chain that wrapped a model call carries the same tokens as the
+call, and the agent above it carries them again.
+
+```bash
+trazum from-langsmith runs.json -o usage.jsonl
+trazum profile usage.jsonl
+```
+
+**Only `run_type: "llm"` is a call.** Chains, tools, retrievers and prompts are
+structure, and summing the tree would bill the same tokens once per level. They
+are skipped, and the count is printed: most of a LangSmith export is not model
+calls, and a converter that turned a thousand runs into three hundred records
+without saying why would look exactly like one that failed to read the file.
+
+**The model is refused rather than inferred.** There is no model column. The
+name lives in `extra.metadata.ls_model_name`, or in the invocation parameters
+the SDK records beside it, and a run carrying neither cannot be priced. The
+obvious substitute is right there and is wrong: LangChain sets a run's `name`
+to the client class, so pricing a call by `ChatAnthropic` would attribute a
+figure to something that is not a model. Those runs are counted and dropped.
+
+**The trace is the conversation.** `trace_id` spans the calls one request made,
+which is the identity the conversation findings need; `id` is a single call, and
+answering from it would report every call as a conversation of one. This is the
+only converter of the four that can answer those questions honestly.
+
+**The counts only.** `inputs` and `outputs` are the prompt and the completion,
+on every run, and neither is read. `extra.metadata` is a free-form bag the
+operator fills — the next thing they put in it might be a credential — so it is
+read for named keys and never copied. A fixture plants a marker in each and
+greps the whole output.
+
+**LangSmith's own cost is reported on its own.** `total_cost` and
+`prompt_cost_details` are LangSmith's arithmetic over LangSmith's price table.
+They never enter a record, and the figure is printed beside Trazum's rather than
+inside it: two price tables summed into one total is how a report becomes
+quietly wrong. `prompt_cost_details` in particular looks like a cache split and
+is not — it is dollars, not tokens — so the cache verdicts read *cannot tell*.
+
 ### When does the switch pay: `trazum switch`
 
 Every what-if reader is really asking one question: *should we move this
