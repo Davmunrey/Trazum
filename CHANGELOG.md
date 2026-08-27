@@ -147,6 +147,22 @@ merged commit with no entry is a change only `git log` remembers.
   what comes out, because the hero draws the figure and the proof row states
   it and either could drift alone.
 
+- **The picture at the top of the README was arithmetic nothing checked.** It
+  is a terminal transcript: a prompt of 238 tokens shortened to 142, priced on
+  Claude Opus 5 at 50,000 calls a month, with the model switch and the Batch
+  API underneath. The prompt is illustrative and allowed to be — a drawing may
+  invent its subject. The money may not: every dollar in it follows from two
+  token counts and the prices of two models, and those prices live in a table
+  that changes. An Opus 5 re-price would have left the first thing every
+  visitor sees showing figures that were right once.
+
+  `demo-image.test.js` reads the scenario out of the drawing — the token
+  counts, the calls, the output length — and recomputes each figure from
+  `MODELS`: the bill before and after, what the rules save, the output and
+  input halves, and what the switch to Haiku 4.5 is worth. Its band comes from
+  `bandFor` rather than the number that happened to be published when it was
+  drawn.
+
 - **Seven copies of one staleness threshold.** `profile`, the MCP report and
   the browser's bill each typed `45` into their own comparison, and four locale
   strings stated it again in prose. It is `STALE_PRICING_DAYS` in
