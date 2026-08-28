@@ -14,6 +14,8 @@ import { sectionOf } from '../../../test-utils/section.mjs';
  * socket can get wrong: what reaches the provider, what comes back, what is
  * written down, and — the one that matters — that a refusal is a refusal and
  * never a quietly different request.
+ *
+ * Doctrine: [A proxy refuses and never answers something else](../../../docs/doctrine.md#a-proxy-refuses-and-never-answers-something-else)
  */
 
 const started = [];

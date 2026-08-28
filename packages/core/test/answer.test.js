@@ -7,6 +7,8 @@ import { BUNDLED_CATALOGUE, answerCost } from '../dist/index.js';
  *
  * Hand figures: Claude Opus 5 at $5/MTok input makes 200k input tokens $1.00.
  * The date is pinned so a lapsing promotion never fails a test nobody changed.
+ *
+ * Doctrine: [Measured never merges with estimated without saying which half is which](../../../docs/doctrine.md#measured-never-merges-with-estimated-without-saying-which-half-is-which)
  */
 
 const ON = new Date('2026-08-16T00:00:00Z');

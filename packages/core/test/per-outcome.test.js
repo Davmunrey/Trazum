@@ -18,6 +18,8 @@ import {
  * ends up in a slide and in an argument about whether to keep a feature — and
  * every way of getting it slightly wrong is a way of getting somebody's
  * decision badly wrong.
+ *
+ * Doctrine: [Cheaper per call is not cheaper per outcome](../../../docs/doctrine.md#cheaper-per-call-is-not-cheaper-per-outcome)
  */
 
 const ON = new Date('2026-08-16T00:00:00Z');

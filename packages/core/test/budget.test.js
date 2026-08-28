@@ -13,6 +13,8 @@ import { BUNDLED_CATALOGUE, budgetPositions, monthOf } from '../dist/index.js';
  * Hand figures: Claude Opus 5 at $5/MTok input makes 1,000,000 input tokens
  * exactly $5.00, so a day's record is a round number and a month's arithmetic
  * is checkable without a calculator.
+ *
+ * Doctrine: [A period, or a service, nobody measured is not one under budget](../../../docs/doctrine.md#a-period-or-a-service-nobody-measured-is-not-one-under-budget)
  */
 
 const JAN = monthOf(new Date('2026-01-15T00:00:00Z'));

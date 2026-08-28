@@ -16,6 +16,8 @@ import {
  * computing one from a guess, never letting "nobody told me" and "it failed"
  * come out as the same number, and never deciding on somebody's behalf which
  * of their words means success.
+ *
+ * Doctrine: [Quality is recorded, never inferred](../../../docs/doctrine.md#quality-is-recorded-never-inferred)
  */
 
 const ON = new Date('2026-08-16T00:00:00Z');

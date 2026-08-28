@@ -8,6 +8,8 @@ import { BUNDLED_CATALOGUE, billLevers, buildPlan, profileUsage, verifyPlan } fr
  *
  * Hand figures as everywhere: Claude Opus 5 at $5/MTok input makes 400k
  * input tokens $2.00 a call. The date is pinned so a promotion cannot reprice it.
+ *
+ * Doctrine: [Three outcomes, never two](../../../docs/doctrine.md#three-outcomes-never-two)
  */
 
 const ON = new Date('2026-08-16T00:00:00Z');

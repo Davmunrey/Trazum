@@ -5,6 +5,8 @@ import { buildHistory, storedReportFrom, MIN_RUN } from '../dist/index.js';
 /**
  * The long run: series from stored reports, shapes named, no forecasts.
  * Reports are built by hand so every figure is checkable by eye.
+ *
+ * Doctrine: [No series becomes a forecast](../../../docs/doctrine.md#no-series-becomes-a-forecast)
  */
 
 const DAY = 86_400_000;

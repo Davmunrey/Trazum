@@ -19,6 +19,8 @@ const repoRoot = join(here, '..', '..', '..');
  * npm allows unpublishing for 72 hours and then it is permanent. So the things
  * that are embarrassing to get wrong are checked here rather than noticed by
  * whoever installs it first.
+ *
+ * Doctrine: [A guard that quietly stops guarding is worse than no guard](../../../docs/doctrine.md#a-guard-that-quietly-stops-guarding-is-worse-than-no-guard)
  */
 
 const manifestOf = (pkg) =>
