@@ -46,6 +46,7 @@ ${bold('USO')}
   trazum schema <contrato>
   trazum rollup <documento...|dir> [--json] [--html-out <fichero>]
   trazum position <uso.jsonl>
+  trazum receipt <uso.jsonl|dir> [--stamp] [-o <fichero>]
   trazum from-claude-code <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-otel <fichero|dir> [--label-from-service] [-o <fichero>]
   trazum from-litellm <fichero|dir> [-o <fichero>]
@@ -121,6 +122,29 @@ ${bold('OPCIONES DE rollup')}
   el mismo tráfico duplican la factura y ninguna fusión de resúmenes lo ve.
 
   Sale con 1 cuando una contribución se entregó y no se pudo agregar.
+
+${bold('OPCIONES DE receipt')}
+  --stamp                     Registra la hora de emisión en el documento.
+                              Desactivado por defecto para que dos ejecuciones
+                              sobre un log den los mismos bytes: el periodo que
+                              cubren las cifras ya está dentro, leído del reloj
+                              del propio log.
+  -o, --out <fichero>         Escribe el recibo ahí en vez de en la salida
+                              estándar. El resumen siempre va al error
+                              estándar, así que una redirección escribe un
+                              documento y no un documento con un resumen
+                              pegado delante.
+  --pricing <fichero>         Lo precia con tu propia tarjeta de precios en
+                              vez de con el catálogo incluido.
+  --pricing-live              Lo precia con tarifas en vivo vía OpenRouter.
+
+  Un perfil responde donde se ejecutó. Un recibo son las mismas cifras con la
+  forma que las deja seguir respondiendo en otro sitio: cada línea lleva las
+  tarifas que produjeron su dinero y la fecha en que las de ese proveedor se
+  leyeron por última vez de su propia página. Lo que no lleva es texto del
+  prompt, respuestas, rutas de fichero, nombres de rama, credenciales ni
+  sesiones: no censurados, ausentes, porque la forma de la que se construye no
+  tiene campo donde meterlos. No envía nada a ningún sitio.
 
 ${bold('OPCIONES DE write')}
   --answers <fichero>         Un objeto JSON de ids de slot y respuestas. Sin
@@ -1764,6 +1788,19 @@ ${bold('EJEMPLOS')}
     declared: () =>
       'Derivado de tu declaración, honesto solo si el rendimiento se midió. Cada informe que tase este modelo descansará sobre estos dos números.',
     snippetHeading: () => 'Pega en trazum.config.json (el fichero de overlay «pricing»):',
+  },
+
+  receipt: {
+    noLog: () => 'Nombra un log de uso del que hacer el recibo.',
+    written: (file, lines) => `Recibo de ${lines} línea(s) escrito en ${file}.`,
+    summary: (lines, usd) =>
+      `${lines} línea(s), ${usd} con precio. Cada cifra lleva la tarifa que la produjo y la fecha en que se revisó esa tarifa.`,
+    unpriced: (models, calls) =>
+      `${models} modelo(s) que el catálogo no precia, con ${calls} llamada(s): nombrados en los huecos del recibo y fuera del total, en vez de costados a cero.`,
+    unread: (count) => `${count} línea(s) del log no se pudieron leer, y el recibo lo dice.`,
+    noClock: () =>
+      'El log no lleva reloj, así que el recibo no está acotado en el tiempo y lo declara en vez de inventarse un periodo.',
+    nothingToBill: () => 'Nada de este log se pudo precificar, así que el recibo no tiene líneas.',
   },
 
   fromOtel: {

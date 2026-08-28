@@ -1915,6 +1915,60 @@ clock behind it, a label the log has never seen this month (renamed? idle?
 neither is "under budget"), and the per-session ceiling — judged per call at
 the doors, because a session is not a calendar scope.
 
+### A figure that still answers elsewhere: `trazum receipt`
+
+```bash
+trazum receipt usage.jsonl                  # the document, to standard output
+trazum receipt usage.jsonl -o receipt.json  # and the summary to standard error
+```
+
+A profile answers a question on the terminal that ran it. The same figures filed
+against an invoice, or read next month by somebody who was not there, stop
+answering it: a dollar total with no provenance cannot tell a repricing from a
+team whose spend moved.
+
+A receipt is the shape that keeps answering. Every line carries the rates behind
+its money and **the date those rates were last read off the provider's own
+page**, per provider, because looking at a page and finding nothing changed is
+not the same event as not looking.
+
+| In the receipt | Why |
+| --- | --- |
+| input, output and cache token counts | the arithmetic |
+| model, provider, and the rates applied | so the figure can be recomputed |
+| that provider's review date | so a repricing reads as a repricing |
+| the label the log carried | so the money can be attributed |
+| the period, from the log's own clock | so a figure can be bounded |
+| what could not be priced, with its size | so a total is never mistaken for the whole bill |
+
+**What is not in it.** Prompt text. The model's answer. File paths. Branch
+names. Credentials. Session identifiers. Not redacted, not hashed, not
+truncated: absent, because `receiptFrom` takes a usage profile, and a usage
+profile has no field that can hold any of them.
+
+That is a property rather than a policy, and it is held the way this repository
+holds every claim it cannot afford to be wrong about.
+[`receipt-redaction.test.js`](../packages/core/test/receipt-redaction.test.js)
+plants prompt text, an absolute file path, a branch name and an API-key-shaped
+string into a log, in the session field among other places, and searches the
+whole serialised document for each. Planted against the emitter, both halves
+fire: the content search catches the string, and the published field whitelist
+catches the field that carried it.
+
+**The one thing it cannot check** is a label. A label is yours and is meant to
+be read on the other side, so a label named after a prompt's text travels. No
+guard can tell that from a label named `summarise`, and saying so is better than
+implying otherwise.
+
+**It sends nothing anywhere.** There is no endpoint, no key, no retry and no
+queue: the document goes to a path you name or to standard output. What happens
+to it next is not this command's business, and a command here that phoned home
+would break the first rule of the roadmap in the same release that claims to
+protect it.
+
+The summary goes to standard error, so `trazum receipt log.jsonl > receipt.json`
+writes a document rather than a document with a summary stapled to the front.
+
 ### Did anything stop running: `trazum pulse`
 
 `watch --once` is built for a scheduler — a cron entry is the whole daemon — and
