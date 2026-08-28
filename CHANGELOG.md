@@ -11,6 +11,35 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Changed
+
+- **The offline promise is now proven for every command, not three.** *"Your
+  prompts never leave your machine"* is the sentence the README opens with and
+  the reason a reader who cannot use a hosted tool is reading at all. It was
+  proven for `optimize`, `check` and `rules`: the right three to pick first, and
+  seven percent of the product.
+
+  `offline.test.js` now builds a workspace with a real log, a real prompt, a
+  plan and four months of reports, and runs **all forty** commands that do work
+  against it with `fetch` removed. `--help` would prove nothing, so each command
+  gets the arguments that make it read something.
+
+  **Twice each, and compared.** Checking only for the stub's marker would pass a
+  command that failed before it reached anything — an early error touches no
+  network either, and forty commands quietly erroring would look exactly like
+  forty commands working. Every command is run with the network and without,
+  and the two have to answer the same bytes.
+
+  The invocation table is required to be complete: a command with no entry and
+  no documented reason fails the first check, so a forty-sixth cannot be added
+  without proving it offline. Five are excused by name — `connect` and `gateway`
+  are declared outbound surfaces that `outbound-surfaces.test.js` already holds
+  the list of, and `serve`, `write` and `bench` never return on their own.
+
+  It runs in eight seconds. The first version took 108, because it rebuilt the
+  workspace for each of eighty runs and building it runs the product six times;
+  the workspace is built once and copied now.
+
 ### Fixed
 
 - **A spend gate passed on a log nobody could read.** `trazum profile
