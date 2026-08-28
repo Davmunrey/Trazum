@@ -208,22 +208,26 @@ The section this document would be dishonest without.
 - **No outcome is recorded for any of it.** By the standard this product set in
   1.50.4, "the arc delivered" is a cost with no counterpart: nothing here says
   whether the features are used or whether they help.
-- **Four of the eighteen models this catalogue prices are refused by the
-  provider that sells them**, and the replacement prices are not here. On
+- **Four of the models this catalogue prices are refused by the provider that
+  sells them**, and three of the four now have a priced replacement. On
   2026-08-28 a real request to `gemini-2.5-pro`, `gemini-2.5-flash`,
   `deepseek-v3` and `mistral-large-2` came back 404, 404, 400 and 400. Each is
-  now marked retired with the provider's own sentence, kept priced — those calls
-  really happened and somebody's log is full of them — and removed from every
-  recommendation. What is **not** here is what the successors cost:
-  `api-docs.deepseek.com`, `mistral.ai` and `ai.google.dev` are all refused by
-  this environment's egress policy, and a price read anywhere but the provider's
-  own page is the one number this product does not write down. So the gap stays
-  named. `scripts/check-model-availability.mjs` is what found it and is what
-  will find the next one.
+  marked retired with the provider's own sentence and kept priced, because those
+  calls really happened and somebody's log is full of them.
+  `gemini-3.6-flash`, `deepseek-v4-flash` and `deepseek-v4-pro` were then read
+  off their providers' own pricing pages and added, and all three answer a real
+  request. **Two are still unpriced and both for stated reasons.**
+  `gemini-3.1-pro-preview` bills by prompt size, which the catalogue can now
+  express and most callers cannot decide, so it waits for the report to carry an
+  undecided tier rather than being added with a figure that would be a ceiling
+  everywhere. And Mistral's replacement is not priced at all: `mistral.ai`
+  renders its table in the browser, so the only figure its page serves is an
+  example inside an FAQ, without a dated model id. An example in an FAQ is not a
+  price list, and this product does not take a number from anywhere else.
 - **Two providers were not asked at all.** There is no probe for Moonshot or
   xAI, so nothing is known about `kimi-k2` or `grok-4` either way. That is in
   the record by name rather than left out of it, because a report covering
-  eleven of eighteen and reading like a clean bill is the exact failure this
+  part of a catalogue and reading like a clean bill is the exact failure this
   page exists to admit.
 - **The record is *almost* self-reported**, and the exception is counted below
   rather than waved at. A miss nobody noticed is still, by construction, not on

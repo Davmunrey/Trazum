@@ -3136,6 +3136,57 @@ it, update `PRICING_LAST_REVIEWED` too. The test suite checks the table stays
 coherent (output dearer than input, promotions with an expiry date, plausible
 context windows).
 
+### When a price is not one number
+
+2 of the 7 providers do not charge a flat rate, and the catalogue says so
+in data rather than in a footnote, because a footnote is arithmetic a reader has
+to do by hand and this product exists to stop that.
+
+**DeepSeek V4 bills by the clock.** Peak is 01:00-04:00 and 06:00-10:00 UTC,
+Monday to Friday, and off-peak is exactly half. Peak is 35 hours of 168, so the
+common case is the cheap one, and a single figure would have been wrong by 2x in
+whichever direction it was chosen. Every figure Trazum prints for these models is
+already correct for the moment it prices, because every caller passes the date it
+is pricing for and the condition is decided from it. A report of a usage log
+prices each call at the rate that applied when the call happened.
+
+**Gemini 3.1 Pro bills by prompt size**, $2/$12 up to 200k input tokens and
+$4/$18 above. That one is decidable only where the token count is known, which is
+every place that prices a specific call and no place that merely ranks models —
+and it is **not in the catalogue yet** for that reason: it is the example this
+field was shaped around, not a model Trazum prices today. Adding it before the
+report can carry an undecided tier would put a ceiling in front of every reader
+ranking models, which is a different kind of wrong from the one being fixed.
+Where it cannot be decided, Trazum returns the **dearer** rate and marks the
+figure undecided, naming what would settle it: a cost figure that is a ceiling
+can prove "under budget" and can never surprise a bill, and a floor picked for
+looking better is the direction this product does not take.
+
+A tier is declared as a condition, an id and a pair of rates:
+
+```ts
+tiers: [
+  {
+    id: 'peak',
+    when: { kind: 'utc-hours', hours: [1, 2, 3, 6, 7, 8, 9], weekdaysOnly: true },
+    inputPerMTok: 0.44,
+    outputPerMTok: 1.32,
+  },
+],
+```
+
+`hours` lists the hour each window *starts*, so 01:00-04:00 is `[1, 2, 3]` and
+never `[1, 4]` — an endpoint convention is the kind of thing two readers disagree
+about silently, and reading it the other way inverts the whole schedule. The base
+rate stays the one that applies when no condition matches, so every model without
+tiers is untouched, and `pricing-tiers.test.js` refuses a tier cheaper than its
+own base: the fallback for an undecided condition is the dearest candidate, so a
+tier below the base would turn the ceiling into a floor.
+
+A tier and a promotion may not appear on the same model. No provider here does
+both, and a rate composed from two real ones is the first thing
+[the doctrine](doctrine.md) rules out.
+
 ### Which few-shot examples earn their tokens: `trazum prune`
 
 The `redundant-examples` advisory asks a *textual* question: does this example look

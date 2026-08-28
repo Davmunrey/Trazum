@@ -150,6 +150,59 @@ export type CachingMode =
  */
 export type Capability = 'small' | 'mid' | 'large' | 'frontier' | 'unknown';
 
+/**
+ * What makes a conditional rate apply, as data a machine can evaluate.
+ *
+ * Deliberately a closed union rather than a predicate function. A catalogue
+ * entry is reviewed the way a price is reviewed, and a reviewer can check
+ * "peak is 01:00-04:00 and 06:00-10:00 UTC on weekdays" against a provider's
+ * page; nobody can review a closure. It also means the condition survives
+ * `JSON.stringify`, which matters because the catalogue can be overlaid from a
+ * file.
+ */
+export type TierCondition =
+  /**
+   * The prompt is larger than `tokens` input tokens.
+   *
+   * Decidable only where the token count is known, which is most of the places
+   * that price a specific call and none of the places that merely rank models.
+   * `effectivePricing` says which happened rather than guessing.
+   */
+  | { kind: 'input-tokens-above'; tokens: number }
+  /**
+   * The call falls inside one of `hours` in UTC, optionally on weekdays only.
+   *
+   * Decidable everywhere, because every caller already passes the date it is
+   * pricing for. `hours` lists the hour each window *starts*, so 01:00-04:00
+   * is `[1, 2, 3]` and not `[1, 4]`: an endpoint convention is the kind of
+   * thing two readers disagree about silently.
+   */
+  | { kind: 'utc-hours'; hours: number[]; weekdaysOnly: boolean };
+
+/**
+ * A rate that applies when its condition holds.
+ *
+ * Deliberately carries no multipliers of its own, and the first draft did. The
+ * reasoning for adding them was that DeepSeek halves the cache-hit price at
+ * off-peak along with everything else, so a cache read priced off the base
+ * would be wrong about the money — which is true of the *price* and false of
+ * the *ratio*: $0.007 against $0.22 and $0.014 against $0.44 are the same
+ * 3.18% to the last digit, on both models. Multiplying a tier's own input rate
+ * by the model's multiplier already gives the right answer.
+ *
+ * It was removed because the guard written to prove it mattered could not: with
+ * the tier multiplier equal to the base one, dropping it changed nothing and
+ * the test passed either way. An option nothing can distinguish from its
+ * absence is a claim nobody checks, which is worse than not having it.
+ */
+export interface PricingTier {
+  /** Short, stable, and printed: a reader has to be able to see which applied. */
+  id: string;
+  when: TierCondition;
+  inputPerMTok: number;
+  outputPerMTok: number;
+}
+
 export interface ModelPricing {
   id: string;
   displayName: string;
@@ -222,6 +275,29 @@ export interface ModelPricing {
     /** ISO date (inclusive) the promotional price applies until. */
     until: string;
   };
+  /**
+   * Rates that apply only under a stated condition.
+   *
+   * The catalogue held one input price and one output price per model until a
+   * real credential was pointed at the providers and two of them turned out not
+   * to charge that way:
+   *
+   * - **DeepSeek V4 bills by the clock.** Peak is 01:00-04:00 and 06:00-10:00
+   *   UTC, Monday to Friday, and off-peak is exactly half. That is 35 hours of
+   *   168, so the common case is the cheap one and a single number would have
+   *   been wrong by 2x in whichever direction it was chosen.
+   * - **Gemini 3.1 Pro bills by prompt size**, $2/$12 up to 200k input tokens
+   *   and $4/$18 above it.
+   *
+   * Both are *conditions*, so both are written as data rather than as prose in
+   * `notes`: a note is something a reader has to apply by hand, and this
+   * product exists to stop people doing arithmetic by hand.
+   *
+   * The base `inputPerMTok` and `outputPerMTok` stay the rate that applies when
+   * no condition matches, which keeps every model that has no tiers unchanged
+   * and keeps this field optional in effect as well as in the type.
+   */
+  tiers?: PricingTier[];
   /**
    * Other ids that bill at exactly this rate.
    *

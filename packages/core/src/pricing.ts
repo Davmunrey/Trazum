@@ -1,4 +1,4 @@
-import type { ModelPricing } from './types.js';
+import type { ModelPricing, PricingTier, TierCondition } from './types.js';
 
 /**
  * Model and pricing catalogue (USD per million tokens).
@@ -33,10 +33,19 @@ export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze
   /* platform.claude.com/docs/en/about-claude/pricing, read 2026-08-27. */
   anthropic: '2026-08-27',
   openai: '2026-06-24',
-  google: '2026-06-24',
+  /* ai.google.dev/gemini-api/docs/pricing, read 2026-08-28. */
+  google: '2026-08-28',
   moonshot: '2026-06-24',
-  deepseek: '2026-06-24',
+  /* api-docs.deepseek.com/quick_start/pricing, read 2026-08-28. */
+  deepseek: '2026-08-28',
   xai: '2026-06-24',
+  /*
+   * Not moved, and the reason is the point of having a date per provider.
+   * `mistral.ai/pricing` renders its table in the browser, so the page serves
+   * no rate to a reader who is not one: the only figure in the document is an
+   * example inside an FAQ, without a dated model id. Looking and finding
+   * nothing is not the same as checking, and moving this date would say it was.
+   */
   mistral: '2026-06-24',
 });
 
@@ -306,6 +315,40 @@ export const MODELS: ModelPricing[] = [
     tier: 'sonnet',
   },
 
+  {
+    /*
+     * Google's own error message names this as the replacement for the two
+     * retired 2.5 models, and ai.google.dev/gemini-api/docs/pricing carries the
+     * rates, read 2026-08-28.
+     *
+     * The introductory price has a published end date and a published successor,
+     * which is exactly what `promo` is for and is the shape the catalogue nearly
+     * shipped Sonnet 5 wrong on: on 2027-01-01 every figure here doubles with no
+     * code change, and `pricing-review.test.js` fails before that arrives.
+     */
+    id: 'gemini-3.6-flash',
+    provider: 'google',
+    displayName: 'Gemini 3.6 Flash',
+    inputPerMTok: 1.5,
+    outputPerMTok: 7.5,
+    promo: { inputPerMTok: 0.75, outputPerMTok: 3.75, until: '2026-12-31' },
+    contextWindow: 1_048_576,
+    cacheMinTokens: 1024,
+    caching: 'explicit',
+    /*
+     * $0.075 against $0.75 inside the introductory window, and $0.15 against
+     * $1.50 after it: Google scales the cache price with the headline one, so
+     * a single ratio is right on both sides of 2027-01-01 and the multiplier
+     * does not need a date of its own.
+     */
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    capability: 'mid',
+    tier: 'sonnet',
+    notes:
+      'Context caching is billed for storage per hour as well as per read:'
+      + ' $0.50 per 1M tokens per hour through 2026-12-31, $1.00 after.',
+  },
+
   // ------------------------------------------------------------------------
   // Moonshot
   // ------------------------------------------------------------------------
@@ -345,6 +388,61 @@ export const MODELS: ModelPricing[] = [
     },
     capability: 'mid',
     tier: 'sonnet',
+  },
+  {
+    /*
+     * DeepSeek V4 Flash, from api-docs.deepseek.com/quick_start/pricing, read
+     * 2026-08-28. It replaced `deepseek-v3`, which the API now refuses.
+     *
+     * The base rate is off-peak because off-peak is the common case: peak is
+     * 01:00-04:00 and 06:00-10:00 UTC on weekdays, which is 35 hours of 168.
+     * The peak tier is exactly double, published as such.
+     */
+    id: 'deepseek-v4-flash',
+    provider: 'deepseek',
+    displayName: 'DeepSeek V4 Flash',
+    inputPerMTok: 0.22,
+    outputPerMTok: 0.66,
+    tiers: [
+      {
+        id: 'peak',
+        when: { kind: 'utc-hours', hours: [1, 2, 3, 6, 7, 8, 9], weekdaysOnly: true },
+        inputPerMTok: 0.44,
+        outputPerMTok: 1.32,
+      },
+    ],
+    contextWindow: 1_000_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    /* $0.007 cache hit against $0.22 input off-peak. */
+    multipliers: { cacheRead: 0.0318, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    capability: 'mid',
+    tier: 'sonnet',
+    notes: 'Maximum output 384K tokens.',
+  },
+  {
+    /* Same page, same clock. Pro is three times Flash at both ends. */
+    id: 'deepseek-v4-pro',
+    provider: 'deepseek',
+    displayName: 'DeepSeek V4 Pro',
+    inputPerMTok: 0.66,
+    outputPerMTok: 1.98,
+    tiers: [
+      {
+        id: 'peak',
+        when: { kind: 'utc-hours', hours: [1, 2, 3, 6, 7, 8, 9], weekdaysOnly: true },
+        inputPerMTok: 1.32,
+        outputPerMTok: 3.96,
+      },
+    ],
+    contextWindow: 1_000_000,
+    cacheMinTokens: 1024,
+    caching: 'automatic',
+    /* $0.022 cache hit against $0.66 input off-peak. */
+    multipliers: { cacheRead: 0.0333, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    capability: 'large',
+    tier: 'opus',
+    notes: 'Maximum output 384K tokens.',
   },
 
   // ------------------------------------------------------------------------
@@ -538,41 +636,167 @@ export function listModels(): ModelPricing[] {
  * possible answers; `on` still decides which answer applies on every call,
  * so behaviour is unchanged to the millisecond.
  */
+interface Rates {
+  inputPerMTok: number;
+  outputPerMTok: number;
+  promoApplied: boolean;
+  tier: { applied: string | null; decided: boolean; because: string } | null;
+}
+
 const pricingMemo = new WeakMap<
   ModelPricing,
-  {
-    untilMs: number | null;
-    promo: { inputPerMTok: number; outputPerMTok: number; promoApplied: boolean } | null;
-    base: { inputPerMTok: number; outputPerMTok: number; promoApplied: boolean };
-  }
+  { untilMs: number | null; promo: Rates | null; base: Rates }
 >();
 
+/** The two unconditional answers for one model, parsed once. */
+function cache(model: ModelPricing): {
+  untilMs: number | null;
+  promo: Rates | null;
+  base: Rates;
+} {
+  const entry = {
+    untilMs: model.promo ? new Date(`${model.promo.until}T23:59:59.999Z`).getTime() : null,
+    promo: model.promo
+      ? Object.freeze({
+          inputPerMTok: model.promo.inputPerMTok,
+          outputPerMTok: model.promo.outputPerMTok,
+          promoApplied: true,
+          tier: null,
+        })
+      : null,
+    base: Object.freeze({
+      inputPerMTok: model.inputPerMTok,
+      outputPerMTok: model.outputPerMTok,
+      promoApplied: false,
+      tier: null,
+    }),
+  };
+  pricingMemo.set(model, entry);
+  return entry;
+}
+
+/**
+ * Whether one condition holds, for a call at `on` of `inputTokens` tokens.
+ *
+ * Returns `null` rather than `false` when the condition cannot be decided,
+ * because "this does not apply" and "nobody said" lead to different reports and
+ * collapsing them is the oldest mistake in this repository.
+ */
+function holds(
+  when: TierCondition,
+  on: Date,
+  inputTokens: number | undefined,
+): boolean | null {
+  if (when.kind === 'utc-hours') {
+    const day = on.getUTCDay();
+    if (when.weekdaysOnly && (day === 0 || day === 6)) return false;
+    return when.hours.includes(on.getUTCHours());
+  }
+  if (inputTokens === undefined) return null;
+  return inputTokens > when.tokens;
+}
+
+/**
+ * What one call is billed at, and what decided it.
+ *
+ * `tier` is the field this grew for, and it carries three states rather than
+ * two. A model with no tiers gets `null`. A model whose condition could be
+ * evaluated gets the tier that applied, or the base rate with `applied: null`
+ * and `decided: true`. A model whose condition could **not** be evaluated —
+ * a size tier priced without a token count — gets `decided: false`, the
+ * **dearer** of the candidate rates, and `because` naming what would settle it.
+ *
+ * The dearer one is not a shrug. A cost figure that is a ceiling can prove
+ * "under budget" and can never surprise a bill; a floor chosen for looking
+ * better is the flattering direction this product spends its time refusing.
+ * The reader still has to be told, which is what `decided: false` is for, and
+ * `pricing.test.js` fails a tiered model whose report drops it.
+ */
 export function effectivePricing(
   model: ModelPricing,
   on: Date = new Date(),
-): { inputPerMTok: number; outputPerMTok: number; promoApplied: boolean } {
-  let memo = pricingMemo.get(model);
-  if (memo === undefined) {
-    memo = {
-      untilMs: model.promo ? new Date(`${model.promo.until}T23:59:59.999Z`).getTime() : null,
-      promo: model.promo
+  context: { inputTokens?: number } = {},
+): Rates {
+  const memo = pricingMemo.get(model) ?? cache(model);
+
+  /**
+   * Tiers first, and a promotion never runs on top of one.
+   *
+   * No provider here does both, and combining them would be this repository
+   * inventing a price out of two real ones — the composed figure the first rule
+   * in the doctrine is about. A model that grew both would fail the guard in
+   * `pricing.test.js` rather than quietly getting a multiplied rate.
+   */
+  if (model.tiers !== undefined && model.tiers.length > 0) {
+    const undecided: PricingTier[] = [];
+    for (const tier of model.tiers) {
+      const verdict = holds(tier.when, on, context.inputTokens);
+      if (verdict === true) {
+        return {
+          inputPerMTok: tier.inputPerMTok,
+          outputPerMTok: tier.outputPerMTok,
+          promoApplied: false,
+          tier: { applied: tier.id, decided: true, because: describe(tier.when) },
+        };
+      }
+      if (verdict === null) undecided.push(tier);
+    }
+
+    if (undecided.length === 0) {
+      return {
+        ...memo.base,
+        tier: { applied: null, decided: true, because: 'no conditional rate applies' },
+      };
+    }
+
+    /* The dearest candidate, so the figure is a ceiling rather than a wish. */
+    const dearest = undecided.reduce((worst, tier) =>
+      tier.inputPerMTok > worst.inputPerMTok ? tier : worst,
+    );
+    const ceiling =
+      dearest.inputPerMTok > model.inputPerMTok
         ? {
-            inputPerMTok: model.promo.inputPerMTok,
-            outputPerMTok: model.promo.outputPerMTok,
-            promoApplied: true,
+            inputPerMTok: dearest.inputPerMTok,
+            outputPerMTok: dearest.outputPerMTok,
+            applied: dearest.id,
           }
-        : null,
-      base: Object.freeze({
-        inputPerMTok: model.inputPerMTok,
-        outputPerMTok: model.outputPerMTok,
-        promoApplied: false,
-      }),
+        : {
+            inputPerMTok: model.inputPerMTok,
+            outputPerMTok: model.outputPerMTok,
+            applied: null,
+          };
+    return {
+      inputPerMTok: ceiling.inputPerMTok,
+      outputPerMTok: ceiling.outputPerMTok,
+      promoApplied: false,
+      tier: {
+        applied: ceiling.applied,
+        decided: false,
+        because: `${describe(dearest.when)}, and the token count was not given`,
+      },
     };
-    if (memo.promo) Object.freeze(memo.promo);
-    pricingMemo.set(model, memo);
   }
+
   if (memo.untilMs !== null && on.getTime() <= memo.untilMs) return memo.promo!;
   return memo.base;
+}
+
+/** One condition as a sentence a reader can check against a provider's page. */
+function describe(when: TierCondition): string {
+  if (when.kind === 'input-tokens-above') {
+    return `prompts over ${when.tokens.toLocaleString('en-US')} input tokens`;
+  }
+  const windows = [];
+  let start = null;
+  const sorted = [...when.hours].sort((a, b) => a - b);
+  for (let i = 0; i < sorted.length; i += 1) {
+    if (start === null) start = sorted[i]!;
+    if (sorted[i]! + 1 !== sorted[i + 1]) {
+      windows.push(`${String(start).padStart(2, '0')}:00-${String(sorted[i]! + 1).padStart(2, '0')}:00`);
+      start = null;
+    }
+  }
+  return `${windows.join(' and ')} UTC${when.weekdaysOnly ? ', Monday to Friday' : ''}`;
 }
 
 /** Cheapest model of each capability tier, for recommendations. */
