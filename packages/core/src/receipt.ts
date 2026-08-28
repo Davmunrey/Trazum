@@ -18,10 +18,33 @@ import type { UsageBreakdown, UsageProfileReport } from './usage.js';
  * repricing from a team whose spend moved, and the consumer that most needs
  * that distinction is the one that cannot read a sentence explaining it.
  *
+ * ## Why a line carries money per bucket and not only a rate
+ *
+ * The first version of this module published the catalogue's `inputPerMTok`
+ * and `outputPerMTok` beside a dollar figure computed by `profileUsage`. Those
+ * are not always the same rates. A model in a promotional window, or one whose
+ * long-context tier applied, is billed at `effectivePricing`'s figure, and a
+ * cached read is billed at a fraction of input that no published field named at
+ * all. **A consumer multiplying the stated rates by the stated tokens got a
+ * different number from the stated total, with nothing saying which was
+ * wrong.**
+ *
+ * That is a bad defect in a document whose entire purpose is that a figure can
+ * be recomputed by whoever receives it, and it is the exact failure the
+ * doctrine line at the foot of this comment is about.
+ *
+ * So a line now carries the **money as it was actually apportioned** -- input,
+ * cache reads, cache writes and output -- and `usd` is their sum. The rates stay
+ * as provenance, labelled as the catalogue's published figures rather than as
+ * the arithmetic. `receipt-arithmetic.test.js` fails if the four stop adding up,
+ * which is a property a reader can check on any receipt they are handed rather
+ * than a promise they have to take.
+ *
  * ## What it carries, and what it has no field for
  *
- * Counts, model, provider, the rates applied, the review date, the label the
- * log carried, the period, and what could not be priced. There is **no field
+ * Counts, model, provider, the money split by bucket, the published rates, the
+ * review date, the label the log carried, the period, and what could not be
+ * priced. There is **no field
  * for prompt text, for an answer, for a file path, for a branch name or for a
  * credential** — not redacted, not hashed, absent, because the input this takes
  * has nowhere to hold them either.
@@ -46,7 +69,17 @@ import type { UsageBreakdown, UsageProfileReport } from './usage.js';
  * Doctrine: [A machine reader gets the provenance too](../../../docs/doctrine.md#a-machine-reader-gets-the-provenance-too)
  */
 
-/** Which price produced a line's money, and when a human last checked it. */
+/**
+ * The catalogue's published rates for this model, and when a human last read
+ * them off the provider's own page.
+ *
+ * **Provenance, not the arithmetic.** These are list rates. The money that was
+ * actually apportioned is in `ReceiptLine.money`, and the two differ whenever a
+ * promotion or a long-context tier applied, or for any token billed at a
+ * fraction of input -- which is every cached read. A consumer wanting the rate
+ * that was really charged divides a bucket's money by its tokens; a consumer
+ * wanting to know whether a provider repriced compares these.
+ */
 export interface ReceiptPricing {
   provider: string;
   inputPerMTok: number;
@@ -64,6 +97,14 @@ export interface ReceiptPricing {
   reviewedOn: string | null;
 }
 
+/** Where a line's money went. The four add to `ReceiptLine.usd`. */
+export interface ReceiptMoney {
+  inputUsd: number;
+  cacheReadUsd: number;
+  cacheWriteUsd: number;
+  outputUsd: number;
+}
+
 /** One slice of a bill: a label's calls to one model. */
 export interface ReceiptLine {
   /**
@@ -78,11 +119,36 @@ export interface ReceiptLine {
   calls: number;
   inputTokens: number;
   cacheReadTokens: number;
+  /** Every cache write, whatever its TTL. The sum of the two fields below. */
   cacheWriteTokens: number;
+  /**
+   * The two write TTLs kept apart, because they are billed at different rates.
+   *
+   * They are here for the same reason `UsageBreakdown` keeps them: the ratio
+   * between them is not a constant across providers, so a total that has lost
+   * the split can be repriced only by guessing at it. A consumer repricing this
+   * traffic against another model's rates needs both.
+   */
+  cacheWrite5mTokens: number;
+  cacheWrite1hTokens: number;
   outputTokens: number;
-  /** What it cost. Every line here is priced; what is not is in `gaps`. */
+  /**
+   * What it cost, which is exactly the sum of `money` below.
+   *
+   * Every line here is priced; what is not is in `gaps`.
+   */
   usd: number;
-  /** The rates behind `usd`. */
+  /**
+   * Where the money went, as it was apportioned rather than as it might be
+   * recomputed.
+   *
+   * This is the field that makes a receipt checkable. `usd` alone can only be
+   * believed; these four can be added up, and each can be divided by its own
+   * token count to recover the rate that was really charged -- including the
+   * one for cached reads, which no published rate names.
+   */
+  money: ReceiptMoney;
+  /** The catalogue's published rates, as provenance. */
   pricing: ReceiptPricing;
 }
 
@@ -106,7 +172,17 @@ export type ReceiptGap =
    */
   | { kind: 'unpriced'; models: string[]; calls: number; inputTokens: number; outputTokens: number }
   | { kind: 'unread-lines'; count: number }
-  | { kind: 'no-clock' };
+  | { kind: 'no-clock' }
+  /**
+   * Calls whose cache-write TTL the log did not state, so the cheaper rate was
+   * assumed.
+   *
+   * Reported because it changes what kind of figure this is. A total that
+   * includes an assumed TTL is a **floor** on those calls, not a measurement,
+   * and a document that says `counting: 'counted'` while quietly resting on an
+   * assumption is claiming a precision it does not have.
+   */
+  | { kind: 'assumed-write-ttl'; calls: number };
 
 export interface ReceiptDocument {
   /** The one thing a consumer must branch on. Set here, by the builder. */
@@ -157,8 +233,11 @@ export const RECEIPT_LINE_FIELDS = Object.freeze([
   'inputTokens',
   'cacheReadTokens',
   'cacheWriteTokens',
+  'cacheWrite5mTokens',
+  'cacheWrite1hTokens',
   'outputTokens',
   'usd',
+  'money',
   'pricing',
 ] as const);
 
@@ -181,8 +260,22 @@ const lineFrom = (
     inputTokens: breakdown.inputTokens,
     cacheReadTokens: breakdown.cacheReadTokens,
     cacheWriteTokens: breakdown.cacheWriteTokens,
+    cacheWrite5mTokens: breakdown.cacheWrite5mTokens,
+    cacheWrite1hTokens: breakdown.cacheWrite1hTokens,
     outputTokens: breakdown.outputTokens,
     usd: breakdown.totalUsd,
+    /*
+     * Copied from the breakdown rather than recomputed from the rates below.
+     * Recomputing would reintroduce the defect this field exists to fix: the
+     * published rates are list rates, and a promotion, a long-context tier or
+     * any cached token is billed at something else.
+     */
+    money: {
+      inputUsd: breakdown.inputUsd,
+      cacheReadUsd: breakdown.cacheReadUsd,
+      cacheWriteUsd: breakdown.cacheWriteUsd,
+      outputUsd: breakdown.outputUsd,
+    },
     pricing: {
       provider: priced.provider ?? 'unknown',
       inputPerMTok: priced.inputPerMTok,
@@ -228,6 +321,16 @@ export function receiptFrom(
     gaps.push({ kind: 'unread-lines', count: report.skippedLines.length });
   }
   if (report.span === null) gaps.push({ kind: 'no-clock' });
+
+  /*
+   * Summed across the lines rather than read off a total, because the profile
+   * keeps this per slice and a receipt reports it once for the document.
+   */
+  const assumed = report.byLabelAndModel.reduce(
+    (sum, slice) => sum + slice.breakdown.assumedWriteTtlCalls,
+    0,
+  );
+  if (assumed > 0) gaps.push({ kind: 'assumed-write-ttl', calls: assumed });
 
   return {
     schemaVersion: 1,

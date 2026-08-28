@@ -57,6 +57,15 @@ it: the invocation appears when the command does.
 | the gate verdict and the rule that produced it | so a policy can be audited |
 | timestamp | so a period can be bounded |
 
+*Two rows of that table were written before the code and did not survive it.*
+The **gate verdict** and the **environment id** are not reachable from a usage
+profile, which is the only input the emitter takes -- and narrowing that input is
+what makes the redaction promise checkable rather than merely stated, so the rows
+went rather than the constraint. What shipped instead is a row the plan did not
+think to ask for: **the money split by bucket**, because the rates alone turned
+out not to reconstruct the total. That is written here rather than quietly
+corrected, like every other reversal in this directory.
+
 **What is not in it.** The prompt text. The model's answer. File paths. Branch
 names. Credentials. Not redacted, not hashed, not truncated — absent, because
 the emitter never reads them into the document at all.
