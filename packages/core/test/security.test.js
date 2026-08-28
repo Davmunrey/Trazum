@@ -2500,6 +2500,21 @@ describe('the one module that runs another program', () => {
         }
         if (!/\.(ts|tsx|mjs|js)$/.test(entry.name)) continue;
         if (path === gitModule) continue;
+        /*
+          Tests spawn things, and that is not what this rule is about.
+
+          The rule is about shipped source: what a filename can do to Trazum
+          when git is handed it. `packages/cli/test` has spawned the CLI in
+          dozens of files since this guard was written and was never an
+          offender, because the two package roots below are `src`. The web app
+          has no `src` — its source sits at the top — so its tests were swept in
+          by the shape of the tree rather than by the rule, and the first test
+          under it that spoke to a subprocess found that out.
+
+          Named here rather than left to the walk, so the boundary is a
+          decision on the record instead of an accident of directory layout.
+        */
+        if (prefix.includes('/test/')) continue;
         if (/\bfrom\s+['"]node:child_process['"]/.test(codeOf(path))) {
           offenders.push(`${prefix}${entry.name}`);
         }

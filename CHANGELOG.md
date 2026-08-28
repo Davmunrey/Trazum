@@ -13,6 +13,47 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+- **The claim that the four surfaces cannot disagree is now checked.** *"One
+  core does the measuring; four surfaces carry it. They cannot disagree,
+  because they are the same functions"* is on the landing in five languages,
+  and it is the reason a reader is expected to believe the figure in their
+  terminal, the one their agent quotes and the one on the page are the same
+  figure. Nothing checked it.
+
+  "The same functions" is an argument, not a proof: two surfaces can call one
+  core and still disagree if either rounds, filters, defaults or windows
+  differently on the way in or out, and each of the four does its own argument
+  handling, formatting and locale.
+
+  `surface-parity.test.mjs` sends one log and one prompt through all four and
+  compares **what a reader is shown**: the money and the call count from the
+  core, the CLI's `--json`, the MCP server and the browser's own run. The MCP
+  server is spoken to over stdio with real JSON-RPC framing rather than called
+  as a function, which is the standard `packages/mcp/test/server.test.js`
+  already sets — a tool registered under a name no client can reach is a tool
+  that does not exist.
+
+  It lives in the web package because that is the only one that can reach all
+  four, and it reads the claim off the landing rather than quoting it, so if
+  the sentence ever goes the guard for it is reconsidered rather than left
+  running against a promise nobody makes.
+
+  Proven by planting a disagreement in each surface in turn: the MCP rounding
+  differently, the browser counting one call more, and the CLI repacking a
+  token count on its way out.
+
+- **`security.test.js`'s subprocess rule was scoped by directory layout rather
+  than by intent.** It forbids `node:child_process` outside `git.ts` across
+  `packages/core/src`, `packages/cli/src` and `apps/web` — two package *source*
+  roots, and the web app whole, because the web app has no `src`. So
+  `packages/cli/test` has spawned the CLI in dozens of files since the guard
+  was written and was never an offender, while the first test under `apps/web`
+  to speak to a subprocess was. Test directories are excluded by name now, with
+  the reason on the record; a `child_process` import in shipped web source is
+  still caught, which is planted and proven.
+
+### Changed
+
 - **The offline promise is now proven for every command, not three.** *"Your
   prompts never leave your machine"* is the sentence the README opens with and
   the reason a reader who cannot use a hosted tool is reading at all. It was
