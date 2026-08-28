@@ -2421,7 +2421,36 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-Nothing is planned. 1.82.0 was a correction rather than a plan: the
+**[The 1.83–2.0 plan](docs/plan-1.83-2.0.md) is written**, and it is the first
+one in this directory to answer a different question from all the others: not
+what this should do next, but when it is finished.
+
+The reason it was written now is in the section below this one. `Under
+consideration` holds 5 entries, and 4 of them are deferred for a reason that is
+not engineering — a key somebody has to hold, a maintainer who reads a
+language, a marketplace listing, a service somebody operates. That is a product
+standing at its own edge, and the arc walks the last stretch on purpose rather
+than adding surface until the question goes away.
+
+It runs 1.83.0 through 2.0.0: the receipt and the redaction guard that holds it;
+the 4 estimator families that need a key each; the optional per-family
+tokenizer, whose own threshold 1.82.0 crossed twice over; the editor extension,
+taking the distribution commitment deliberately; and then 2.0.0, which adds no
+analysis and exists to say the surface is frozen. After it, this repository does
+maintenance: prices re-reviewed on their per-provider clocks, models added and
+retired, corrections.
+
+Two things about that arc are worth repeating here, because a plan can be moved
+and this file cannot. **1.84.0 does not ship if the keys do not arrive**, and
+every report touching an unmeasured family goes on saying nobody has measured
+it. And the receipt is analysis output rather than plumbing: it is the figures
+`profileUsage` already computes, shaped so they still carry their provenance
+when they are read somewhere other than the terminal that produced them.
+
+---
+
+Before the plan above, nothing was planned. 1.82.0 was a correction rather than
+a plan: the
 published token band turned out to be a measurement of its own calibration
 set, and the release replaced it with four that are measurements of the
 estimator. Before it, 1.80.0 was a distribution pass: no new command, no
