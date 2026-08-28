@@ -11,6 +11,50 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+- **A spend gate passed on a log nobody could read.** `trazum profile
+  broken.jsonl --max-usd 50` exited **0**. So did an empty log, and so did one
+  whose every model is unpriced, on the human path and under `--json`. The
+  doctrine has a rule for exactly this, learned twice: *a period, or a service,
+  nobody measured is not one under budget. Name the gap; never report the
+  absence as a pass.*
+
+  The product had already applied that rule **once**. A `--since` matching no
+  record throws, and the comment above it says why in the same words: under
+  `--max-usd` it would pass a budget gate over a period the log does not cover.
+  Three other ways of measuring nothing reached the same gate and were never
+  given the same answer.
+
+  All four now exit 1 and name which gap they found. `--allow-empty` is how a
+  nightly job says a period with no calls is the expected answer, because that
+  is a real thing to want and it should be said rather than inferred from
+  silence. `gate-nothing-measured.test.js` holds the whole matrix — three
+  emptinesses × four gate flags × two output paths — and is proven from both
+  sides: 25 of its checks fail when the refusal is removed, and one fails when
+  it fires without a gate armed.
+
+- **Seven commands answered a mistyped path with a syscall.** `optimize`,
+  `check`, `profile`, `position`, `diff`, `semantic` and `conform` printed
+  `ENOENT: no such file or directory, open '/nope/x.txt'`, while the five
+  converters answered `/nope/x.json: not found`. The CLI disagreed with itself
+  about how to refuse, and the majority spelling named a syscall — against the
+  doctrine's *a refusal never arrives bare*, a rule three other tests already
+  cite.
+
+  Translated at the top-level handler rather than at each of the seven, because
+  the seven is the part that changes: a command added next year reads a path
+  too. `EISDIR` and `EACCES` are covered with it, including the pathless
+  `EISDIR` Node raises from `read` rather than `open`.
+
+  `bare-refusals.test.js` runs **every** command out of `COMMAND_FLAGS` against
+  a missing path and a directory, so a command added later is covered by
+  existing rather than by anyone remembering. Three that neither read a path
+  nor terminate on their own — `serve`, `write`, `bench` — are named with their
+  reason, and the guard fails if the coverage drops below forty commands. It
+  runs eight at a time: in series it took 100 seconds, which is a guard that
+  gets deleted rather than kept.
+
 ### Changed
 
 - **The `profile` report was 1,200 lines of sequential printing inside one

@@ -2911,6 +2911,23 @@ yesterday's log has a daily budget without Trazum ever guessing what a day is.
 silently gates nothing — and both fire under `--json` too, because CI reads the
 exit code there.
 
+**A gate never passes on an absence.** `$0 of $50` is the healthiest-looking
+budget a dead store can produce, and a pipeline that stopped writing looks
+exactly like a quiet month. When a gate is armed and the log holds nothing it
+could judge — every line unreadable, every model unpriced, or no records at all
+— `profile` exits 1 and names which of the three it found, on the human path
+and under `--json`. This was already true of a `--since` that matched no
+record; it is now true of the other three ways of measuring nothing.
+
+```bash
+trazum profile empty.jsonl --max-usd 50                # exit 1: nothing to judge
+trazum profile empty.jsonl --max-usd 50 --allow-empty  # exit 0: a quiet period, said out loud
+```
+
+`--allow-empty` is how a nightly job says a period with no calls is the
+expected answer. It has to be said rather than inferred from silence, which is
+the whole distinction the gate exists to keep.
+
 **A third gate, and it reads the worst case.** `--max-cache-loss-usd` exits 1
 when caching *added* more than the limit to the bill. When the log did not
 record which write TTL was paid, the settled figure and the 1-hour worst case

@@ -1059,6 +1059,14 @@ ${bold('EJEMPLOS')}
   },
 
   errors: {
+    fileNotFound: (path) =>
+      `${path}: no encontrado. Revisa la ruta, o apunta esto al directorio que lo contiene.`,
+    fileIsDirectory: (path) =>
+      `${path} es un directorio, y este comando lee un fichero. Nombra el fichero de dentro, o usa un comando que recorra una carpeta.`,
+    fileIsDirectoryUnnamed: () =>
+      'esa ruta es un directorio, y este comando lee un fichero. Nombra el fichero de dentro, o usa un comando que recorra una carpeta.',
+    fileNotReadable: (path) =>
+      `${path}: sin permiso de lectura. Revisa el dueño y los permisos del fichero, y vuelve a ejecutarlo.`,
     livePricingFailed: (url: string, detail: string) =>
       `No se han podido cargar los precios en vivo desde ${url}: ${detail}. Los precios incluidos siguen ahí: quita --pricing-live para usarlos.`,
     optionNeedsValue: (name) => `La opción --${name} necesita un valor.`,
@@ -2731,6 +2739,13 @@ ${bold('EJEMPLOS')}
       'Ningún registro lleva marca de tiempo, así que --since/--until no tienen por qué filtrar. Una ventana temporal sobre un registro sin reloj no vigilaría nada, y eso no es una respuesta. Añade "ts" a los registros: la receta del README dice dónde.',
     windowMatchesNothing: (from, to) =>
       `Ningún registro cae dentro de esta ventana. El registro cubre ${from} → ${to}. Una ventana que no encuentra nada no debe volverse un informe de $0: bajo --max-usd pasaría una puerta de presupuesto sobre un periodo que el registro no cubre.`,
+    gateNothingMeasured: (reason) =>
+      `Hay una puerta de gasto armada y no había nada que juzgar: ${reason}. Una ausencia no es un aprobado, así que esto sale con 1 en vez de reportar $0 contra tu presupuesto. Arregla el registro, o pasa --allow-empty si un periodo sin llamadas es la respuesta esperada.`,
+    nothingUnreadable: (lines) =>
+      `las ${count(lines)} ${lines === 1 ? 'línea del fichero era ilegible' : 'líneas del fichero eran ilegibles'}`,
+    nothingUnpriced: (calls) =>
+      `se ${count(calls) && calls === 1 ? 'registró 1 llamada' : `registraron ${count(calls)} llamadas`} y ninguno de sus modelos está en la tabla de precios`,
+    nothingEmpty: () => 'el registro no tiene ni un solo apunte',
     sinceAfterUntil: () =>
       '--since es igual o posterior a --until, así que la ventana no contiene tiempo alguno. Revisa las dos fechas.',
     badWhen: (flag, value) =>

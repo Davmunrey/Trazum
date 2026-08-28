@@ -668,7 +668,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   ],
   check: ['max-tokens', 'level', 'exact-tokens', 'markdown-out', 'baseline', 'files-from'],
   baseline: ['model', 'calls', 'output-tokens', 'cache-hit-rate', 'batch', 'exact-tokens', 'out', 'o'],
-  profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'html-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd', 'label', 'since', 'until', 'dry-run', 'markdown-summary', 'by-source'],
+  profile: ['json', 'pricing', 'pricing-live', 'against', 'what-if', 'markdown-out', 'html-out', 'csv-out', 'csv-shape', 'max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd', 'label', 'since', 'until', 'dry-run', 'markdown-summary', 'by-source', 'allow-empty'],
   plan: ['json', 'out', 'markdown-out', 'min-usd', 'pricing', 'pricing-live'],
   verify: ['against', 'gate', 'json', 'markdown-out', 'pricing', 'pricing-live'],
   history: ['store', 'json', 'markdown-out'],
@@ -9809,6 +9809,44 @@ async function commandProfile(
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
 
+  /**
+   * A gate armed over a report with nothing in it, refused rather than passed.
+   *
+   * The product had already made this call once and only once. A `--since` that
+   * matches no record throws, and the comment above it says why: "under
+   * --max-usd it would pass a budget gate over a period the log does not
+   * cover". Two other ways of measuring nothing reached the same gate and were
+   * never given the same answer — a log whose every line was unreadable, and a
+   * log with no records at all. Both exited 0 against a budget, on the human
+   * path and under `--json`.
+   *
+   * That is the doctrine's own rule, verbatim: *a period, or a service, nobody
+   * measured is not one under budget. Name the gap; never report the absence as
+   * a pass.* A pipeline that stopped writing looks exactly like a quiet month,
+   * and the whole reason the rule exists is that the quiet month is the one
+   * that reads as green.
+   *
+   * `--allow-empty` is the way to say a period with no calls is the expected
+   * answer, because that is a real thing a nightly job wants and it should be
+   * said out loud rather than inferred from silence.
+   */
+  const gateArmed =
+    typeof args.flags.get('max-usd') === 'string' ||
+    typeof args.flags.get('max-growth-usd') === 'string' ||
+    typeof args.flags.get('max-cache-loss-usd') === 'string' ||
+    typeof args.flags.get('max-day-usd') === 'string' ||
+    typeof args.flags.get('max-session-usd') === 'string' ||
+    config.spend !== undefined;
+  if (gateArmed && report.total.calls === 0 && !boolFlag(args, 'allow-empty')) {
+    const gap =
+      report.unpriced.calls > 0
+        ? t.profile.nothingUnpriced(report.unpriced.calls)
+        : report.skippedLines.length > 0
+          ? t.profile.nothingUnreadable(report.skippedLines.length)
+          : t.profile.nothingEmpty();
+    throw new Error(t.profile.gateNothingMeasured(gap));
+  }
+
   if (boolFlag(args, 'by-source')) {
     await profileBySource(args, config, logFiles, logTexts, pricing, { onlyLabel, sinceMs, untilMs }, t);
     return;
@@ -12309,9 +12347,47 @@ async function main(): Promise<void> {
   }
 }
 
+/**
+ * A filesystem error, said in this product's voice.
+ *
+ * `optimize`, `check`, `profile`, `position`, `diff`, `semantic` and `conform`
+ * all read a path the reader typed, and all seven let Node's own error through:
+ * `ENOENT: no such file or directory, open '/nope/x.txt'` on the commonest
+ * mistake there is. The five converters `stat` first and answer
+ * `/nope/x.json: not found`, so the CLI disagreed with itself about how to
+ * refuse, and the majority spelling was the one that names a syscall.
+ *
+ * Translated here rather than at each of the seven, because the seven is the
+ * part that changes: a command added next year reads a path too, and a fix
+ * applied per call site is one somebody has to remember. A converter's own
+ * message is more specific and is thrown earlier, so it still wins.
+ */
+function filesystemRefusal(error: unknown, t: CliMessages): string | null {
+  if (!(error instanceof Error) || !('code' in error)) return null;
+  const path = 'path' in error && typeof error.path === 'string' ? error.path : null;
+  /*
+    `readFile` on a directory fails at `read` rather than `open`, and Node
+    attaches no path to that one. The refusal still has to arrive with
+    something in it, so it names what went wrong without naming which file.
+  */
+  if (path === null) return error.code === 'EISDIR' ? t.errors.fileIsDirectoryUnnamed() : null;
+  switch (error.code) {
+    case 'ENOENT':
+      return t.errors.fileNotFound(path);
+    case 'EISDIR':
+      return t.errors.fileIsDirectory(path);
+    case 'EACCES':
+    case 'EPERM':
+      return t.errors.fileNotReadable(path);
+    default:
+      return null;
+  }
+}
+
 main().catch((error: unknown) => {
-  const message = error instanceof Error ? error.message : String(error);
   const t = getCliMessages(localeFromArgv(process.argv.slice(2)));
+  const message =
+    filesystemRefusal(error, t) ?? (error instanceof Error ? error.message : String(error));
   console.error(`\n${c.red(t.errors.errorLabel())}: ${message}\n`);
   process.exitCode = 1;
 });
