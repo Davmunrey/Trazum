@@ -562,7 +562,7 @@ export { NothingToPrune, plannedCalls, pruneExamples, withoutExample } from './p
 export type { ExampleContribution, PruneOptions, PruneReport } from './prune.js';
 
 // Golden-set evaluation (optional, costs three LLM calls per case)
-export { evaluate, fillPrompt, verdictFor } from './evaluate.js';
+export { agreement, evaluate, fillPrompt, pooled, verdictFor } from './evaluate.js';
 export type { EvalCase, EvalReport, EvalVerdict, EvaluateOptions } from './evaluate.js';
 
 // Comparing two prompt versions

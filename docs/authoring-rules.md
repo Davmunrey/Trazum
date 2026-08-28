@@ -179,6 +179,35 @@ of 0.6.0 every rule reports what it changed so an aggressive run can be reviewed
 rule by rule. A rule at `aggressive` with a good rationale is more useful than
 the same rule at `safe` with a caveat in the docs.
 
+### And now it is measured, not only asserted
+
+That paragraph was the strongest claim in this repository and the only load
+bearing one nobody checked. `scripts/measure-rule-safety.mjs` applies each rule
+**alone** to the corpus sample written for it, answers the original and the
+optimised prompt 5 times each against a real model, and asks that model
+whether the two sets of answers would satisfy the same reader. The noise floor
+is measured in the same run, because a model asked one question twice does not
+answer it twice the same way, and without that floor the measurement says every
+rule changes the meaning, including one that only collapses blank lines.
+
+    ANTHROPIC_API_KEY=sk-... node scripts/measure-rule-safety.mjs
+
+It writes `packages/core/test/fixtures/rule-safety.json`; `rule-safety.test.js`
+reads it offline and fails a `safe` rule recorded as `diverges`. **Run it when
+you add a rule, or move one between levels**, and commit what it writes. A rule
+in neither list fails the test rather than passing quietly.
+
+Two things it will not do. It will not fail an `aggressive` rule for diverging,
+because that is what the level is for, and a guard that treated it as a defect
+would push every useful rule down to `safe`. And it will not conclude from a
+sample the model cannot answer consistently: `inconclusive` is a real verdict
+and is recorded as one. 2 of the 12 rules come back that way today, and
+both are tasks with no determinate answer — a scheduling prompt where the model
+invents different slots each time is measuring the corpus, not the rule.
+
+The first run of it found the line this page draws: **no `safe` rule diverged,
+and three of the five `aggressive` ones did.**
+
 ---
 
 ## The one hard constraint: bounded regexes

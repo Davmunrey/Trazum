@@ -2,7 +2,7 @@
   "provider": "anthropic",
   "governsPublishedBand": true,
   "model": "claude-opus-5",
-  "measuredAt": "2026-08-27",
+  "measuredAt": "2026-08-28",
   "corpusDigest": "5e48c0f50a776348",
   "envelopeTokens": 6,
   "samples": [

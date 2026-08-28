@@ -1,0 +1,17 @@
+{
+  "note": "One case input per rules-corpus sample, used by scripts/measure-rule-safety.mjs through the product's own fillPrompt. Without an input the corpus prompts ask the model to invent the thing it is being asked about, and a first run showed what that costs: the whitespace sample -- a scheduling assistant with no request to schedule -- agreed with itself on 1 of 6 pairs, so the method could say nothing about a rule that only collapses blank lines. These are written to be answerable and dull: a case whose answer is a judgement call measures the case, not the rule.",
+  "cases": {
+    "decoration": "Release 4.2.0 went out on Tuesday. It adds CSV export, fixes a crash when a filter is empty, and drops support for Node 18.",
+    "duplicate-blocks": "Order 88213, placed in French. The customer writes that the parcel arrived with one of the two items missing and wants to know what happens now.",
+    "duplicate-lines": "Informe en espanol. TypeError: cannot read property 'id' of undefined, en checkout.ts linea 210, al aplicar un cupon caducado. Afecta a todos los pagos con cupon.",
+    "emphasis": "Diff: three files. api/user.ts adds a delete endpoint with no auth check, db/schema.sql drops a column, and tests/user.test.ts is unchanged.",
+    "filler": "Document the endpoint POST /v1/exports. It takes a date range and a format, returns a job id, and the job result is fetched from GET /v1/exports/{id}.",
+    "hedges": "Task: migrate the billing cron from a single node to the queue, including a backfill of the last 90 days and a rollback path.",
+    "intensifiers": "Draft a paragraph announcing that the company has hired a new head of engineering who joins in March from another firm in the same sector.",
+    "near-duplicate-blocks": "New starter: Priya, joining the platform team on Monday as a senior engineer. Her manager is Tom.",
+    "politeness": "Question: does the 2024 report agree with the 2023 one about headcount growth? Source A says 12 percent, source B says 9 percent, source C gives no figure.",
+    "self-check": "A train leaves at 09:40 and arrives at 13:15, stopping for 12 minutes twice on the way. How long is it moving?",
+    "verbose-phrases": "Customer asks where order 55190 is. The order shows as dispatched four days ago with no tracking scan since.",
+    "whitespace": "Request: a 30 minute review with the design team, some time on Thursday afternoon, the requester is in Madrid."
+  }
+}
