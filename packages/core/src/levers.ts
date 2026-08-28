@@ -1,4 +1,4 @@
-import { effectivePricing, multipliersFor } from './pricing.js';
+import { effectivePricing, isOffered, multipliersFor } from './pricing.js';
 import { UNLABELLED } from './usage.js';
 import type { PricingCatalogue } from './pricing.js';
 import type { UsageBreakdown, UsageProfileReport } from './usage.js';
@@ -204,7 +204,7 @@ function candidateFor(
       m.id !== model.id &&
       m.capability === target &&
       m.provider === model.provider &&
-      m.recommendable !== false &&
+      isOffered(m) &&
       m.contextWindow >= avgInput,
   );
   if (candidates.length === 0) return null;

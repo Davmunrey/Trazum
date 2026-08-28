@@ -301,6 +301,7 @@ export const en: WebMessages = {
       'tier-signals-conflict': 'The prompt asks for depth and brevity at once',
       'output-dominated': 'The cost is in the output, not the prompt',
       'promo-pricing': 'The price used here is promotional',
+      'model-retired': 'The provider refuses this model id',
       'contradictory-instructions': 'Two instructions contradict each other',
       'redundant-examples': 'Some examples repeat what others already show',
       'restated-output-format': 'The output format is stated more than once',

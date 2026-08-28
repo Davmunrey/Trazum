@@ -250,6 +250,23 @@ including what it costs a reader pinning with a tilde, is in
    at all. It cannot catch a provider quietly changing a price, which is what
    this step is.
 
+   **And ask whether the models still exist**, which is a different question
+   from whether the prices are right and was unasked for eighty releases:
+
+   ```bash
+   ANTHROPIC_API_KEY=... OPENAI_API_KEY=... npm run check:models
+   ```
+
+   It sends one real request per priced model and rewrites
+   `packages/core/test/fixtures/model-availability.json`; commit what it writes.
+   The first run found four ids the provider refuses outright, two of which that
+   provider's own model list still returns. Any key you have is worth using and
+   any you lack is recorded as unasked, so a partial run is honest rather than
+   reassuring. A newly refused model is marked `retired` in the provider's own
+   words and keeps its price, because the calls in somebody's log really
+   happened; what it costs to move off it is a price, and comes off the
+   provider's page under the step above or not at all.
+
 8. `npm run verify`, and read the exit code rather than the output.
 9. **Merge. That is the release.** The push to main triggers the workflow's
    `decide` job, which sees a manifest version the registry does not have and

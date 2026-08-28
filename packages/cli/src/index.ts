@@ -142,6 +142,7 @@ import {
   RULES,
   sharedPrefixes,
   sharesOf,
+  isOffered,
   SOURCE_EXTENSIONS,
   suggestRewrites,
   toOtlpMetrics,
@@ -1464,9 +1465,24 @@ function defaultModelFor(provider: string, pricing: PricingCatalogue): string | 
   const RANK: Record<string, number> = { small: 0, mid: 1, large: 2, frontier: 3 };
   const want = RANK[getModel(DEFAULT_USAGE.model).capability] ?? 2;
 
-  const candidates = pricing.models.filter(
-    (m) => m.provider === provider && m.recommendable !== false,
-  );
+  /**
+   * Offered first, and a retired model only when the provider has nothing else.
+   *
+   * `isOffered` is the rule everywhere a model is recommended, and this is not
+   * quite that: nothing is being recommended here, a provider's call is being
+   * priced. The distinction matters because three providers in this catalogue
+   * have **only** retired ids today, and dropping them would return null and
+   * fall through to the global default — printing "goes to deepseek / priced as
+   * Claude Opus 5", which is wrong by an order of magnitude in the direction
+   * this function exists to avoid.
+   *
+   * So a retired model's price is still that provider's price and is used as a
+   * last resort. What the reader is not left to infer is that it is current:
+   * `buildAdvisories` warns by name on a retired id, quoting the provider.
+   */
+  const offered = pricing.models.filter((m) => m.provider === provider && isOffered(m));
+  const candidates =
+    offered.length > 0 ? offered : pricing.models.filter((m) => m.provider === provider);
 
   const best = candidates.reduce<(typeof candidates)[number] | null>((chosen, m) => {
     if (chosen === null) return m;

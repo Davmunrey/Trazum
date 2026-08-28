@@ -276,6 +276,12 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 2048,
     caching: 'explicit',
     multipliers: { cacheRead: 0.25, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    /* Refused on 2026-08-28: still in `GET /v1beta/models`, and a 404 to a request. */
+    retired: {
+      on: '2026-08-28',
+      because:
+        'This model models/gemini-2.5-pro is no longer available to new users. Please update your code to use models/gemini-3.1-pro-preview for the latest features and improvements. We recommend you to use the Interactions API.',
+    },
     capability: 'large',
     tier: 'opus',
     notes: 'Context caching is billed for storage per hour as well as per read.',
@@ -290,6 +296,12 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 1024,
     caching: 'explicit',
     multipliers: { cacheRead: 0.25, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    /* Refused on 2026-08-28: still in `GET /v1beta/models`, and a 404 to a request. */
+    retired: {
+      on: '2026-08-28',
+      because:
+        'This model models/gemini-2.5-flash is no longer available to new users. Please update your code to use models/gemini-3.6-flash for the latest features and improvements. We recommend you to use the Interactions API.',
+    },
     capability: 'mid',
     tier: 'sonnet',
   },
@@ -325,6 +337,12 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 1024,
     caching: 'automatic',
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    /* Refused on 2026-08-28: the id itself is rejected, and the error names the survivors. */
+    retired: {
+      on: '2026-08-28',
+      because:
+        'The supported API model names are deepseek-v4-pro, deepseek-v4-flash, and deepseek-v4-flash-vision-exp, but you passed deepseek-v3.',
+    },
     capability: 'mid',
     tier: 'sonnet',
   },
@@ -359,6 +377,12 @@ export const MODELS: ModelPricing[] = [
     cacheMinTokens: 0,
     caching: 'none',
     multipliers: { batch: 0.5 },
+    /* Refused on 2026-08-28: the id itself is rejected. */
+    retired: {
+      on: '2026-08-28',
+      because:
+        'Invalid model: mistral-large-2',
+    },
     capability: 'large',
     tier: 'opus',
     notes: 'No prompt caching: reordering still helps readability but saves nothing here.',
@@ -429,6 +453,28 @@ function makeCatalogue(
 /** The prices compiled into this release. */
 export const BUNDLED_CATALOGUE: PricingCatalogue = makeCatalogue(MODELS, PRICING_LAST_REVIEWED);
 
+/**
+ * Whether this model may be offered to a reader as something to move to.
+ *
+ * One home for a two-part rule that used to be written in four places as one
+ * part. `recommendable: false` — a private programme, a waitlist — was honoured
+ * at every one of them. `retired` is the stronger statement: the provider
+ * answered a real request for the id with an error, so a switch to it is not a
+ * worse recommendation, it is one that cannot be carried out at all.
+ *
+ * Written as a function rather than as a second `&&` at four call sites,
+ * because the fifth call site is always the one that gets written with only the
+ * first half. `pricing.test.js` fails a source file that filters on
+ * `recommendable` without coming through here, and that guard was proved by
+ * planting exactly that filter.
+ *
+ * Pricing is a separate question and stays answered: a retired model keeps its
+ * price, because a log full of its calls records money that was really spent.
+ */
+export function isOffered(model: ModelPricing): boolean {
+  return model.recommendable !== false && model.retired === undefined;
+}
+
 /** Looks a model up in a specific catalogue. */
 export function modelFrom(catalogue: PricingCatalogue, id: string): ModelPricing {
   const model = catalogue.byId.get(id);
@@ -461,7 +507,7 @@ export function cheapestOfTierIn(
   const candidates = catalogue.models.filter(
     (m) =>
       m.tier === tier &&
-      m.recommendable !== false &&
+      isOffered(m) &&
       (provider === undefined || m.provider === provider),
   );
   const first = candidates[0];
@@ -531,7 +577,7 @@ export function effectivePricing(
 
 /** Cheapest model of each capability tier, for recommendations. */
 export function cheapestOfTier(tier: ModelPricing['tier']): ModelPricing {
-  const candidates = MODELS.filter((m) => m.tier === tier && m.recommendable !== false);
+  const candidates = MODELS.filter((m) => m.tier === tier && isOffered(m));
   const first = candidates[0];
   if (!first) throw new Error(`No models for tier "${tier}"`);
   return candidates.reduce((best, m) => (m.inputPerMTok < best.inputPerMTok ? m : best), first);

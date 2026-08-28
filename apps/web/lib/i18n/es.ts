@@ -300,6 +300,7 @@ export const es: WebMessages = {
       'tier-signals-conflict': 'El prompt pide profundidad y brevedad a la vez',
       'output-dominated': 'El coste está en la salida, no en el prompt',
       'promo-pricing': 'El precio usado aquí es promocional',
+      'model-retired': 'El proveedor rechaza este id de modelo',
       'contradictory-instructions': 'Dos instrucciones se contradicen',
       'redundant-examples': 'Algunos ejemplos repiten lo que ya muestran otros',
       'restated-output-format': 'El formato de salida se repite más de una vez',

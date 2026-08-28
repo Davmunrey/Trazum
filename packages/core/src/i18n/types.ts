@@ -160,6 +160,23 @@ export interface OutputDominatedParams {
   inputUsd: string;
 }
 
+/**
+ * The provider's own refusal, carried through to the reader unchanged.
+ *
+ * `because` is quoted rather than summarised: it is the only part of this
+ * message that is evidence, it usually names the replacement, and a paraphrase
+ * of a provider's error is a sentence this repository would then be the author
+ * of.
+ */
+export interface ModelRetiredParams {
+  modelName: string;
+  modelId: string;
+  /** ISO date the refusal was recorded. */
+  on: string;
+  /** The provider's own words. */
+  because: string;
+}
+
 export interface PromoPricingParams {
   modelName: string;
   promoInput: number;
@@ -287,6 +304,7 @@ export interface CoreMessages {
     tierSignalsConflict(p: TierSignalsConflictParams): LocalizedMessage;
     outputDominated(p: OutputDominatedParams): LocalizedMessage;
     promoPricing(p: PromoPricingParams): LocalizedMessage;
+    modelRetired(p: ModelRetiredParams): LocalizedMessage;
     contradictoryInstructions(p: ContradictoryInstructionsParams): LocalizedMessage;
     redundantExamples(p: RedundantExamplesParams): LocalizedMessage;
     restatedOutputFormat(p: RestatedOutputFormatParams): LocalizedMessage;

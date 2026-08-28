@@ -64,6 +64,7 @@ export type AdvisoryId =
   | 'tier-signals-conflict'
   | 'output-dominated'
   | 'promo-pricing'
+  | 'model-retired'
   | 'contradictory-instructions'
   | 'redundant-examples'
   | 'restated-output-format'
@@ -180,6 +181,32 @@ export interface ModelPricing {
    * buy is advice that wastes their time.
    */
   recommendable?: boolean;
+  /**
+   * Set when the provider refused a real request for this id.
+   *
+   * A retired model keeps its price and loses its future. Both halves matter:
+   * a log full of `deepseek-v3` calls records money that was genuinely spent,
+   * so deleting the row would make somebody's own history unpriceable — and a
+   * *new* call on that id will not happen at all, so quoting it as an option is
+   * a number for a question nobody can ask.
+   *
+   * `on` is the day `scripts/check-model-availability.mjs` was refused, and
+   * `because` is the provider's own sentence, quoted rather than paraphrased.
+   * Neither is a judgement, and neither implies anything about what the
+   * replacement costs: that is a price, and a price comes off the provider's
+   * own page or not at all.
+   *
+   * A retired model is never recommended, never offered as a cheaper
+   * alternative and never chosen as a tier's representative, in the same places
+   * `recommendable: false` is honoured — this is a stronger statement than that
+   * one and must not be weaker in effect.
+   */
+  retired?: {
+    /** ISO date the refusal was recorded. */
+    on: string;
+    /** What the provider answered, in the provider's words. */
+    because: string;
+  };
   /** Capability, on a vendor-neutral scale. */
   capability: Capability;
   /**

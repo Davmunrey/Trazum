@@ -2,7 +2,13 @@ import { analyzeCachePrefix } from './cache.js';
 import { getMessages } from './i18n/index.js';
 import type { Locale } from './i18n/types.js';
 import { COMPLEX_SIGNALS, SIMPLE_SIGNALS } from './phrases.js';
-import { BUNDLED_CATALOGUE, effectivePricing, modelFrom, multipliersFor } from './pricing.js';
+import {
+  BUNDLED_CATALOGUE,
+  effectivePricing,
+  isOffered,
+  modelFrom,
+  multipliersFor,
+} from './pricing.js';
 import type { PricingCatalogue } from './pricing.js';
 import { formatUsd } from './savings.js';
 import { analyzeExamples, findContradictions, findMovableSchema,
@@ -124,9 +130,10 @@ function cheapestInTier(
     (m) =>
       m.tier === tier &&
       m.provider === provider &&
-      // Not generally available: recommending a model the reader cannot call is
-      // worse than recommending nothing.
-      m.recommendable !== false,
+      // Not generally available, or refused outright by the provider:
+      // recommending a model the reader cannot call is worse than
+      // recommending nothing. Both halves live in `isOffered`.
+      isOffered(m),
   );
   if (candidates.length === 0) return undefined;
   return candidates.reduce((best, m) =>
@@ -636,6 +643,29 @@ export function buildAdvisories(
         keyList: restated.restatedKeys.map((k) => `\`${k}\``).join(', '),
       }),
       estimatedMonthlyUsd: saving > 0 ? saving : null,
+    });
+  }
+
+  if (model.retired) {
+    /**
+     * The most severe thing this function can say about a model, and it is
+     * placed before the promotional note deliberately: a price that is about to
+     * change matters less than a model that cannot be called at all.
+     *
+     * Not suppressed when the reader asked for this model by name. They asked
+     * because something in their world still says this id, and the whole value
+     * of the answer is that it no longer works.
+     */
+    advisories.push({
+      id: 'model-retired',
+      severity: 'warning',
+      ...t.advisories.modelRetired({
+        modelName: model.displayName,
+        modelId: model.id,
+        on: model.retired.on,
+        because: model.retired.because,
+      }),
+      estimatedMonthlyUsd: null,
     });
   }
 
