@@ -29,17 +29,17 @@ says the tool is finished**, and after it the open repository does maintenance:
 prices re-reviewed, models added and retired, corrections. Not a smaller
 ambition. A stated one.
 
-One thing is added along the way, in 1.83.0, and the reason it belongs in this
-repository rather than somewhere private is the whole argument of the chapter
-that describes it.
+One thing is added along the way, in 1.83.0, and it is output rather than
+analysis: the figures this package already computes, shaped so they still carry
+their provenance when they are read somewhere other than the terminal that
+produced them.
 
 ---
 
 ## Chapter 1 — 1.83.0, the receipt
 
-**What it is.** A new command, `receipt`, that writes exactly what a fleet
-server would need in order to price and supervise a team's spend, and nothing
-else:
+**What it is.** A new command, `receipt`, that writes a bill's counts with the
+provenance of every figure attached, and nothing else:
 
 *It is named here rather than invoked, and that is not a stylistic choice.*
 `every-page.test.js` fails any page in this repository that shows a command the
@@ -61,17 +61,15 @@ it: the invocation appears when the command does.
 names. Credentials. Not redacted, not hashed, not truncated — absent, because
 the emitter never reads them into the document at all.
 
-**Why this is in the open repository.** There is a commercial product coming
-that consumes this file, and it will make a claim no proxy-based competitor can
-make: *your prompts never leave your machines*. That sentence is worth nothing
-if the only people who can check it are the people selling it. Put the emitter
-here and the claim becomes what every other claim in this project is: a
-statement anybody can read the source of.
+**Why it belongs here.** A profile answers a question on the terminal that ran
+it. The same figures filed against an invoice, or read next month by somebody
+who was not there, stop answering it: a dollar total with no provenance cannot
+tell a repricing from a team whose spend moved. The receipt is the shape that
+keeps answering, and shaping an analysis's own output is analysis work, which
+`docs/licensing.md` already says never leaves this repository.
 
-This is the same reasoning `docs/licensing.md` already committed to, applied to
-a new case. The analysis stays open. What needs a machine somebody pays for is
-a different repository's problem, and it is a consumer of this format rather
-than the author of it.
+Whoever consumes the file is a separate question and not this plan's. What
+matters here is that the emitter can be read by whoever is handed one.
 
 **The guard, which is the actual deliverable.** `receipt-redaction.test.js`
 plants prompt text, an absolute file path, a branch name and an API-key-shaped
@@ -190,9 +188,9 @@ named blocker or declares a finish, and none of them is surface added because
 the calendar wanted some.
 
 **Move an analysis out of the open set.** `docs/licensing.md` promises that no
-analysis this repository can perform today will ever leave it, and the receipt
-in Chapter 1 is the test of whether that promise survives contact with a
-commercial product. It survives by the receipt being written here.
+analysis this repository can perform today will ever leave it. The receipt in
+Chapter 1 is new output for figures this package already computes, so it lands
+inside that promise rather than beside it.
 
 **Pretend the blockers are technical.** Two of the 5 remaining entries need a
 person, not a patch. Saying so is the same discipline as refusing to price a

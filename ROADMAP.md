@@ -2428,7 +2428,7 @@ what this should do next, but when it is finished.
 The reason it was written now is in the section below this one. `Under
 consideration` holds 5 entries, and 4 of them are deferred for a reason that is
 not engineering — a key somebody has to hold, a maintainer who reads a
-language, a marketplace listing, a machine somebody pays for. That is a product
+language, a marketplace listing, a service somebody operates. That is a product
 standing at its own edge, and the arc walks the last stretch on purpose rather
 than adding surface until the question goes away.
 
@@ -2443,9 +2443,9 @@ retired, corrections.
 Two things about that arc are worth repeating here, because a plan can be moved
 and this file cannot. **1.84.0 does not ship if the keys do not arrive**, and
 every report touching an unmeasured family goes on saying nobody has measured
-it. And the receipt is emitted from *this* repository rather than a private one,
-because it exists so that a claim about what never leaves your machine can be
-checked by the people it is made to.
+it. And the receipt is analysis output rather than plumbing: it is the figures
+`profileUsage` already computes, shaped so they still carry their provenance
+when they are read somewhere other than the terminal that produced them.
 
 ---
 
