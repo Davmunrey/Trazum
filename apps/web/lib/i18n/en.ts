@@ -921,6 +921,9 @@ export const en: WebMessages = {
       semantic: 'find contradictory instructions, structurally',
       'from-otel': 'OpenTelemetry GenAI spans, read as a usage log',
       'from-claude-code': 'Claude Code transcripts, read as a usage log',
+      'from-litellm': 'a LiteLLM spend log, read as a usage log',
+      'from-helicone': 'a Helicone export, read as a usage log',
+      'from-langsmith': 'a LangSmith run export, read as a usage log',
     },
     helpLs: 'list the loaded files',
     helpCat: 'print one of them',
@@ -959,6 +962,23 @@ export const en: WebMessages = {
       'This is the structural scan. The model-assisted pass costs real provider calls and lives in the CLI.',
     notOtel: (name) => `${name} does not look like an OpenTelemetry export.`,
     notTranscript: (name) => `${name} does not look like a Claude Code transcript.`,
+    notLiteLlm: (name) => `${name} does not look like a LiteLLM spend log.`,
+    notHelicone: (name) => `${name} does not look like a Helicone export.`,
+    notLangsmith: (name) => `${name} does not look like a LangSmith run export.`,
+    litellmSummary: (rows, records) =>
+      `${rows} spend row(s) read, ${records} priceable: the counts and the model, never the payload.`,
+    heliconeSummary: (rows, records) =>
+      `${rows} request(s) read, ${records} priceable: the counts and the model, never the payload.`,
+    langsmithSummary: (rows, records) =>
+      `${rows} model call(s) read, ${records} priceable: the counts and the model, never the payload.`,
+    rowsWithNoModel: (count) =>
+      `${count} row(s) named no model, so they are counted here and priced nowhere: a route name is not a model.`,
+    modelSubstituted: (count) =>
+      `${count} request(s) were answered by a different model than was asked for. The bill rests on the model that answered.`,
+    notModelCalls: (count) =>
+      `${count} run(s) were chains, tools or retrievers rather than model calls, and carry no tokens to price.`,
+    reportedSpendKeptApart: (usd) =>
+      `LiteLLM reported $${usd.toFixed(4)} for these rows, from its own price table. Kept beside Trazum's figure and never added to it.`,
     otelSummary: (llmSpans, otherSpans) =>
       `${llmSpans} LLM span(s) converted; ${otherSpans} non-LLM span(s) counted and skipped.`,
     otelNoCache: (count) =>
@@ -1022,7 +1042,7 @@ export const en: WebMessages = {
       cli: {
         title: 'The CLI, complete',
         body:
-          '"trazum position usage.jsonl" closes the loop in one line: the month against its configured ceiling, measured, verdict attached. Everything you just watched is the real CLI: forty-two commands install with "npm i -g @trazum/cli", and "help" lists what the browser can run.',
+          '"trazum position usage.jsonl" closes the loop in one line: the month against its configured ceiling, measured, verdict attached. Everything you just watched is the real CLI: 45 commands install with "npm i -g @trazum/cli", and "help" lists what the browser can run.',
       },
       finish: {
         title: 'That is the tour',

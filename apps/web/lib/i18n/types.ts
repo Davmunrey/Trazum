@@ -790,6 +790,9 @@ export interface WebMessages {
       semantic: string;
       'from-otel': string;
       'from-claude-code': string;
+      'from-litellm': string;
+      'from-helicone': string;
+      'from-langsmith': string;
     };
     helpLs: string;
     helpCat: string;
@@ -819,6 +822,24 @@ export interface WebMessages {
     semanticStructuralOnly: string;
     notOtel(name: string): string;
     notTranscript(name: string): string;
+    notLiteLlm(name: string): string;
+    notHelicone(name: string): string;
+    notLangsmith(name: string): string;
+    /**
+     * Rows read against rows priceable, kept as two numbers.
+     *
+     * One figure would hide the gap, and the gap is the interesting half: an
+     * export whose rows mostly carry no model is an export somebody should
+     * look at before trusting a total derived from it.
+     */
+    litellmSummary(rows: number, records: number): string;
+    heliconeSummary(rows: number, records: number): string;
+    langsmithSummary(rows: number, records: number): string;
+    rowsWithNoModel(count: number): string;
+    modelSubstituted(count: number): string;
+    notModelCalls(count: number): string;
+    /** LiteLLM's own arithmetic, reported beside Trazum's and never merged. */
+    reportedSpendKeptApart(usd: number): string;
     otelSummary(llmSpans: number, otherSpans: number): string;
     otelNoCache(count: number): string;
     transcriptSummary(count: number): string;
