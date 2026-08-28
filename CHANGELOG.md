@@ -13,6 +13,19 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The README recommended a two-release-old Action.** Its three copy-pasteable
+  examples pinned `Davmunrey/Trazum` at 1.81.0. `security.test.js` allows the
+  pin to lag by exactly one release, because the pin can only advance to a
+  release commit once that commit exists — which is after the merge rather than
+  in it — so cutting 1.83.0 took the lag from one to two and the guard fired on
+  the next pull request.
+
+  That is the designed behaviour rather than a hole: a release cannot carry its
+  own pin, and the check derives the count from `git tag` instead of trusting
+  anybody to have remembered. Advanced to 1.83.0's commit. Reproduced with the
+  old pin before the fix and green after, since a guard that has never been
+  seen to fail is a guard nobody has tested.
+
 - **A release could report success for a package npm was not serving.** 1.83.0's
   job published all three: `+ @trazum/cli@1.83.0` on screen, provenance signed,
   transparency log written. Twenty minutes later `@trazum/core` and
