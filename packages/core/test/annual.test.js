@@ -9,6 +9,8 @@ import { annualRecord, conform } from '../dist/index.js';
  * An annual report is the document most likely to be quoted out of the room it
  * was written in, and the one nobody goes back to verify. So the tests are
  * about what it refuses to say.
+ *
+ * Doctrine: [Report the record, not the team](../../../docs/doctrine.md#report-the-record-not-the-team)
  */
 
 const period = (month, usd, over = {}) => ({ month, usd, calls: Math.round(usd), ...over });

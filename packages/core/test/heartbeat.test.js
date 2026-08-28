@@ -9,6 +9,8 @@ import { heartbeats } from '@trazum/core';
  * watcher with nothing to report. Only the age of the last run tells them
  * apart — and the three refusals below are what stop that from becoming a
  * tool that nags.
+ *
+ * Doctrine: [Quiet is not clean](../../../docs/doctrine.md#quiet-is-not-clean)
  */
 
 const NOW = Date.parse('2026-08-22T12:00:00Z');

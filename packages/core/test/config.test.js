@@ -13,6 +13,18 @@ import {
   walkPrompts,
 } from '../dist/node.js';
 
+/**
+ * The config file, and every shape it must refuse.
+ *
+ * The one worth naming is `limits.monthlyUsd`, which is rejected rather than
+ * accepted quietly. A month is not the period a usage log happens to cover, and
+ * a key that reads as either is how two surfaces of one product come to
+ * disagree by exactly as much history as the machine holds. Monthly spend has
+ * its own block, and this file is where the two stay apart.
+ *
+ * Doctrine: [One key, one denominator](../../../docs/doctrine.md#one-key-one-denominator)
+ */
+
 const scratch = () => mkdtemp(join(tmpdir(), 'trazum-config-'));
 
 describe('a valid config', () => {

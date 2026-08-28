@@ -22,6 +22,8 @@ const repoRoot = join(here, '..', '..', '..');
  * prompt, on a public server, with contributions from strangers. They are
  * tests rather than documentation because a promise nobody checks is a promise
  * that expires.
+ *
+ * Doctrine: [A credential is borrowed, never held](../../../docs/doctrine.md#a-credential-is-borrowed-never-held)
  */
 
 describe('SSRF: endpoint validation', () => {

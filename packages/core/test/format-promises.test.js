@@ -18,6 +18,8 @@ import { sectionOf } from '../../../test-utils/section.mjs';
  * The section's own text is harvested first: deleting a promise from the page
  * fails here, so the guard cannot outlive the claim it enforces or the other
  * way round.
+ *
+ * Doctrine: [Not recorded is not not-happened](../../../docs/doctrine.md#not-recorded-is-not-not-happened)
  */
 
 const DOC = new URL('../../../docs/json-output.md', import.meta.url).pathname;

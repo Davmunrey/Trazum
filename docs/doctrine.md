@@ -40,6 +40,21 @@ reserved for rule names**, which is not a style note: the check reads every one
 of them as a rule and fails on any that is not. It caught this paragraph's own
 first draft.
 
+**And each rule now names what holds it.** The paragraph above said the rules
+below are enforced by tests. Nothing checked that sentence, and it was the
+weakest claim on a page about checking your own claims: when it was measured, 11
+of the 24 rules were quoted by name anywhere in the suite, and which test held
+which rule was written down nowhere at all — so a rule quoted in one file could
+be enforced in another, or in none. Every rule below now ends with a `Held by`
+line naming the file that fails when the product stops doing what the rule says
+— 21 of the 24 — or naming nothing and giving the reason, which 3 of them do.
+The link runs both ways: each named file carries a `Doctrine:` line pointing
+back at its rule, and `packages/core/test/doctrine-ledger.test.js` fails when a
+rule loses its line, when a named file stops citing the rule it is said to hold,
+when a file cites a rule that no longer exists, or when either count above stops
+matching the page. That is the last rule on this page applied to the page
+itself: put the promise next to the inventory.
+
 ---
 
 ## Measured never merges with estimated without saying which half is which
@@ -51,6 +66,9 @@ them in separate fields with a `restsOn` saying what the verdict depends on,
 and a composed figure never travels without its two halves beside it.
 
 *Learned in 1.44, building an endpoint that had to answer both at once.*
+
+**Held by**
+[`packages/core/test/answer.test.js`](../packages/core/test/answer.test.js).
 
 ## Not recorded is not not-happened
 
@@ -66,6 +84,9 @@ emits.
 *Learned repeatedly. Named in 1.46, when `init` was one line away from writing
 `cacheHitRate: 0` into everybody's config.*
 
+**Held by**
+[`packages/core/test/format-promises.test.js`](../packages/core/test/format-promises.test.js).
+
 ## Three outcomes, never two
 
 A check has three answers: it passed, it failed, and it could not be judged. A
@@ -80,6 +101,9 @@ convert one into a pass.
 
 *Learned in 1.39.*
 
+**Held by**
+[`packages/core/test/verify.test.js`](../packages/core/test/verify.test.js).
+
 ## No series becomes a forecast
 
 Twenty points make a trend visible. They do not make next month knowable. A
@@ -93,6 +117,9 @@ cannot be added by accident.
 
 *Learned in 1.27. Enforced structurally in 1.49.*
 
+**Held by**
+[`packages/core/test/history.test.js`](../packages/core/test/history.test.js).
+
 ## A floor can prove "over" and can never prove "under"
 
 When measurement covers only part of a period, the figure is a floor: the
@@ -103,6 +130,9 @@ comfortable turns missing measurement into good news.
 *Learned in 1.49, by writing the reassuring version first and printing it
 directly under a warning that contradicted it.*
 
+**Held by**
+[`packages/cli/test/gate-floor.test.js`](../packages/cli/test/gate-floor.test.js).
+
 ## A period, or a service, nobody measured is not one under budget
 
 `$0 of $400` is the healthiest-looking budget a dead store can produce. A
@@ -110,6 +140,9 @@ pipeline that stopped writing looks exactly like a quiet month. Name the gap;
 never report the absence as a pass.
 
 *Learned in 1.37 for services, 1.49 for time.*
+
+**Held by**
+[`packages/core/test/budget.test.js`](../packages/core/test/budget.test.js).
 
 ## Quiet is not clean
 
@@ -121,6 +154,9 @@ the budget is still blown.
 *Learned in 1.43, when the watch reported all-clear across a restart with the
 budget still over.*
 
+**Held by**
+[`packages/core/test/heartbeat.test.js`](../packages/core/test/heartbeat.test.js).
+
 ## A refusal never arrives bare
 
 "Denied" with nothing after it leaves a caller two moves: do it anyway, or fail.
@@ -131,12 +167,18 @@ a refusal a human can act on says what to do next. Do both.
 
 *Learned in 1.45, designing a guard an agent would otherwise stop consulting.*
 
+**Held by**
+[`packages/core/test/guard.test.js`](../packages/core/test/guard.test.js).
+
 ## Quality is recorded, never inferred
 
 Whether a cheaper model can do the work is a question about quality, and no
 usage log answers it. Every projection that depends on one carries the
 assumption as a typed value, so a reader knows exactly which human judgement the
 number is resting on.
+
+**Held by**
+[`packages/core/test/outcome.test.js`](../packages/core/test/outcome.test.js).
 
 ## A credential is borrowed, never held
 
@@ -149,12 +191,18 @@ it came from; that is checkable and harmless.
 not what is printed, because code that happens not to log a secret today is one
 refactor from logging it tomorrow.*
 
+**Held by**
+[`packages/core/test/security.test.js`](../packages/core/test/security.test.js).
+
 ## Nothing continuous invents a number
 
 A process that runs every fifteen minutes must not fire on a projection, and
 must not report a figure it did not measure this cycle. An alert on a
 measurement is worth having; an alert on an extrapolation trains people to
 ignore alerts.
+
+**Held by**
+[`packages/core/test/watch.test.js`](../packages/core/test/watch.test.js).
 
 ## A machine reader gets the provenance too
 
@@ -163,11 +211,17 @@ depends on is structured — the verdict, what it rests on, the assumption, the
 window, the coverage — because the consumer that most needs to know a figure is
 an estimate is the one that cannot read the sentence saying so.
 
+**Held by**
+[`packages/cli/test/json-contract.test.js`](../packages/cli/test/json-contract.test.js).
+
 ## A proxy refuses and never answers something else
 
 When something cannot be done, fail. Do not substitute the nearest thing that
 can be. A tool that quietly answers a different question than the one asked is
 worse than one that errors, because the answer looks right.
+
+**Held by**
+[`packages/cli/test/gateway-proxy.test.js`](../packages/cli/test/gateway-proxy.test.js).
 
 ## One key, one denominator
 
@@ -178,12 +232,18 @@ eventually disagree, by exactly as much history as the machine happens to hold.
 
 *Learned in 1.49, five releases after the disagreement started.*
 
+**Held by**
+[`packages/core/test/config.test.js`](../packages/core/test/config.test.js).
+
 ## What stays out gets its reason on the record
 
 Every release here names what it did not ship and why. A feature dropped
 silently looks like a feature nobody thought of, and the next person to think of
 it repeats the reasoning from scratch — or worse, ships the version that was
 rejected for a reason.
+
+**Held by**
+[`packages/core/test/roadmap-forecast.test.js`](../packages/core/test/roadmap-forecast.test.js).
 
 ## A guard that quietly stops guarding is worse than no guard
 
@@ -195,11 +255,22 @@ cannot arise.
 
 *Learned in 1.45.*
 
+**Held by**
+[`packages/core/test/publish.test.js`](../packages/core/test/publish.test.js).
+
 ## Prove a guard by breaking it
 
 Write the check, then plant the violation it exists to catch and watch it fail
 **by name**. Remove the probe, watch it pass. A guard nobody has seen fail is a
 guard nobody knows is connected — and roughly one in five turns out not to be.
+
+**Held by** nothing, and not for want of trying. Every mechanical version of
+this check is a proxy for it: that a suite holds a failing case, that a commit
+touched a guard and a fixture together, that a negative assertion exists
+somewhere in the file. Each of those correlates with the practice until the day
+it does not, which is the rule underneath. The plant is a step in writing the
+guard and a line in the commit that adds it, and it stays a habit rather than a
+test.
 
 ## And prove it does not fire on anything else
 
@@ -230,6 +301,13 @@ written beside.
 *Learned at #295 and again at #355, which is why it is written down rather than
 remembered.*
 
+**Held by** nothing, for the same reason said more sharply: a guard on this rule
+would be exactly the kind of proxy this rule exists to warn about, and it would
+fire on innocent suites until somebody deleted it. What holds it is running the
+finished check against the whole real document rather than against the fixture
+it was written beside — which is what caught the tenth instance above, before it
+merged.
+
 ## Cheaper per call is not cheaper per outcome
 
 The two are different rankings and a workload can move up one while moving down
@@ -242,6 +320,9 @@ matters more today, and that is not a judgement a cost tool has standing to
 make on somebody's behalf.
 
 *Learned in 1.50.5.*
+
+**Held by**
+[`packages/core/test/per-outcome.test.js`](../packages/core/test/per-outcome.test.js).
 
 ## An unallocated share is never spread
 
@@ -257,6 +338,9 @@ for.
 Keep it as its own line, name what is in it, and wait for somebody to claim it.
 
 *Learned in 1.50.10.*
+
+**Held by**
+[`packages/core/test/owners.test.js`](../packages/core/test/owners.test.js).
 
 ## Bound an assertion by its subject, never by its neighbour
 
@@ -320,6 +404,9 @@ after the ninth, and broken again on the tenth by a guard against itself — whi
 is the argument for asking, when a rule keeps recurring, whether the rule's own
 prescription is what keeps producing it.*
 
+**Held by**
+[`packages/core/test/write.test.js`](../packages/core/test/write.test.js).
+
 ## A rule you wrote for yourself is a claim like any other
 
 The rules above are enforced by tests because a rule with nothing checking it
@@ -348,6 +435,12 @@ the inventory.
 *Learned across 1.56.2 and 1.59.0 — the arc whose own premise had been broken for
 as long as the premise existed.*
 
+**Held by** nothing, and the rule says why: it is a rule and a catalogue, each
+correct alone, disagreeing with each other. No regex compares those. What holds
+it is putting the promise next to the inventory, which is what the `Held by`
+line on every rule above is — the page now carries its own coverage, so a rule
+that quietly loses its test cannot go on reading like one that has one.
+
 ## Record, do not reconstruct
 
 When you want to say "this has happened nine times", the honest way is to have
@@ -358,8 +451,14 @@ the record be short until it is not.
 
 *Learned in 1.40, which refused to fake it, and fixed in 1.48 by recording.*
 
+**Held by**
+[`packages/core/test/waivers.test.js`](../packages/core/test/waivers.test.js).
+
 ## Report the record, not the team
 
 "The expiry moved three times and the reason did not" is a statement about dates
 in a file. Whether that was the right call is a conversation the tool does not
 get to have. Name the shape; leave the judgement to the people who know why.
+
+**Held by**
+[`packages/core/test/annual.test.js`](../packages/core/test/annual.test.js).

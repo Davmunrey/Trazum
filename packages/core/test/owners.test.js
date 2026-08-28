@@ -10,6 +10,8 @@ import { UNLABELLED, allocate, validateOwners } from '../dist/index.js';
  * spreading it proportionally is the single most common lie in cost reporting
  * — attractive because it makes every line add up, and wrong because it makes
  * every team's number wrong by an amount nobody can see.
+ *
+ * Doctrine: [An unallocated share is never spread](../../../docs/doctrine.md#an-unallocated-share-is-never-spread)
  */
 
 const CONFIG = {

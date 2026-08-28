@@ -15,6 +15,8 @@ const CLI = new URL('../dist/index.js', import.meta.url).pathname;
  * models and clockless calls under a window all hide spend from it. Passing
  * on a floor is fine; passing on a floor *silently* is the flattering
  * omission this repository refuses. $5.00 = 1M input tokens on Claude Opus 5.
+ *
+ * Doctrine: [A floor can prove "over" and can never prove "under"](../../../docs/doctrine.md#a-floor-can-prove-over-and-can-never-prove-under)
  */
 
 const write = async (dir, name, lines) => {

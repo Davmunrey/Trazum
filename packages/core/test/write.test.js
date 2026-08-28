@@ -10,6 +10,8 @@ import { OUTPUT_FORMATS, SECTIONS, SLOTS, SLOT_IDS, interview, isOpen, slot } fr
  * The catalogue is the product here: a question whose answer cannot change the
  * output is waste, and this tool charges people to find exactly that in their
  * prompts. So the rules are not comments — each one is run.
+ *
+ * Doctrine: [Bound an assertion by its subject, never by its neighbour](../../../docs/doctrine.md#bound-an-assertion-by-its-subject-never-by-its-neighbour)
  */
 
 const DOC = new URL('../../../docs/prompt-writer.md', import.meta.url).pathname;

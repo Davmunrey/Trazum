@@ -10,6 +10,8 @@ import { isWaiverUse, waiverDay, waiverHistory } from '../dist/index.js';
  * config says what is waived now, and a past invented from it would be a guess
  * presented as evidence. Everything here rests on the opposite move — the use
  * is written down when it happens, and this reads it back.
+ *
+ * Doctrine: [Record, do not reconstruct](../../../docs/doctrine.md#record-do-not-reconstruct)
  */
 
 const use = (over = {}) => ({

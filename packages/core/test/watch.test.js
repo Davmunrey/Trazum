@@ -7,6 +7,8 @@ import { COVERAGE_FLOOR, DAY_MS, evaluateWatch, firedKey } from '../dist/index.j
  *
  * The reports here are built by hand rather than pulled, because the rule
  * being tested is about thresholds and coverage, not about pricing.
+ *
+ * Doctrine: [Nothing continuous invents a number](../../../docs/doctrine.md#nothing-continuous-invents-a-number)
  */
 
 const day = (n) => Date.UTC(2026, 7, n);

@@ -8,6 +8,8 @@ import { BUNDLED_CATALOGUE, guardSpend } from '../dist/index.js';
  * Hand figures: Claude Opus 5 at $5/MTok input makes 200k input tokens $1.00;
  * Claude Haiku 4.5 makes the same tokens $0.20. Pinned inside Sonnet 5's
  * introductory window so a lapsing promotion never fails a test.
+ *
+ * Doctrine: [A refusal never arrives bare](../../../docs/doctrine.md#a-refusal-never-arrives-bare)
  */
 
 const ON = new Date('2026-08-16T00:00:00Z');

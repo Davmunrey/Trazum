@@ -18,6 +18,8 @@ const DOC = new URL('../../../docs/json-output.md', import.meta.url).pathname;
  * output cannot tell "old Trazum" from "no data", so the shape has to be
  * something the repository is held to rather than something it happens to
  * emit today.
+ *
+ * Doctrine: [A machine reader gets the provenance too](../../../docs/doctrine.md#a-machine-reader-gets-the-provenance-too)
  */
 
 const report = async (extra = []) => {

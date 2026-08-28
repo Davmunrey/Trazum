@@ -39,6 +39,8 @@ const ROOT = join(here, '..', '..', '..');
  * off the headings rather than written down here, so a section added later is
  * covered or excluded by what it is called, not by what somebody remembered to
  * add to an array.
+ *
+ * Doctrine: [What stays out gets its reason on the record](../../../docs/doctrine.md#what-stays-out-gets-its-reason-on-the-record)
  */
 
 const roadmap = readFileSync(join(ROOT, 'ROADMAP.md'), 'utf8');
