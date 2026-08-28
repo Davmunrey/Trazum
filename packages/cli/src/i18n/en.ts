@@ -1021,6 +1021,14 @@ ${bold('EXAMPLES')}
   },
 
   errors: {
+    fileNotFound: (path) =>
+      `${path}: not found. Check the path, or point this at the directory that holds it.`,
+    fileIsDirectory: (path) =>
+      `${path} is a directory, and this command reads a file. Name the file inside it, or use a command that walks a folder.`,
+    fileIsDirectoryUnnamed: () =>
+      'that path is a directory, and this command reads a file. Name the file inside it, or use a command that walks a folder.',
+    fileNotReadable: (path) =>
+      `${path}: no permission to read it. Check the file's owner and mode, then run this again.`,
     livePricingFailed: (url: string, detail: string) =>
       `Could not load live prices from ${url}: ${detail}. The bundled prices are still there. Drop --pricing-live to use them.`,
     optionNeedsValue: (name) => `Option --${name} needs a value.`,
@@ -2712,6 +2720,13 @@ ${bold('EXAMPLES')}
       'No record in this log carries a timestamp, so --since/--until have nothing to filter by. A time window over a clockless log would gate nothing, which is not an answer. Add "ts" to the records, the recipe in the README shows where.',
     windowMatchesNothing: (from, to) =>
       `No record falls inside this window. The log covers ${from} → ${to}. A window matching nothing must not become a $0 report, under --max-usd it would pass a budget gate over a period the log does not cover.`,
+    gateNothingMeasured: (reason) =>
+      `A spend gate is armed and there was nothing to judge: ${reason}. An absence is not a pass, so this exits 1 rather than reporting $0 against your budget. Fix the log, or pass --allow-empty if a period with no calls is the expected answer.`,
+    nothingUnreadable: (lines) =>
+      `every one of the ${count(lines)} ${lines === 1 ? 'line' : 'lines'} in that file was unreadable`,
+    nothingUnpriced: (calls) =>
+      `${count(calls)} ${calls === 1 ? 'call was' : 'calls were'} recorded and none of their models are in the price table`,
+    nothingEmpty: () => 'the log holds no records at all',
     sinceAfterUntil: () =>
       '--since is at or after --until, so the window contains no time at all. Check the two dates.',
     badWhen: (flag, value) =>

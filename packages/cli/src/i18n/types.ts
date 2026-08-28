@@ -81,6 +81,20 @@ export interface CliMessages {
   };
 
   errors: {
+    /**
+     * A filesystem refusal, said in this product's voice rather than Node's.
+     *
+     * Seven commands used to let `ENOENT: no such file or directory, open
+     * '/nope/x.txt'` reach the reader on the commonest mistake there is, a
+     * mistyped path, while the five converters answered `/nope/x.json: not
+     * found`. The doctrine's rule is that a refusal never arrives bare, so
+     * these say the path, what was wrong with it, and the move that settles it.
+     */
+    fileNotFound(path: string): string;
+    fileIsDirectory(path: string): string;
+    /** Node reports EISDIR from `read` with no path on it, so this one names none. */
+    fileIsDirectoryUnnamed(): string;
+    fileNotReadable(path: string): string;
     livePricingFailed: (url: string, detail: string) => string;
     optionNeedsValue(name: string): string;
     mustBeNonNegative(name: string, raw: string): string;
@@ -1651,6 +1665,18 @@ export interface CliMessages {
     windowNeedsClock(): string;
     /** A window matching nothing must not become a passing $0 gate. */
     windowMatchesNothing(from: string, to: string): string;
+    /**
+     * A gate armed over a report with nothing in it.
+     *
+     * `reason` names the gap: unreadable lines, models with no price, or a log
+     * that is genuinely empty. The doctrine's rule is that an absence is never
+     * reported as a pass, and this is the sentence that refuses to.
+     */
+    gateNothingMeasured(reason: string): string;
+    /** The three gaps, for the sentence above. */
+    nothingUnreadable(lines: number): string;
+    nothingUnpriced(calls: number): string;
+    nothingEmpty(): string;
     sinceAfterUntil(): string;
     badWhen(flag: string, value: string): string;
     /**
