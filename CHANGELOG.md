@@ -11,6 +11,35 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Changed
+
+- **`commandProfile` was a single 2,359-line function.** The largest thing in
+  this repository by a factor of five, and four complete outputs shared its
+  scope with the report they are alternatives to: `--by-source`, `--dry-run`,
+  the money gates and the side-file writer could each only be understood by
+  reading the body they sat in.
+
+  They are four named functions now, and naming them is most of the point:
+  `--dry-run` needs three of the thirty-one values that were in scope around
+  it, and `--by-source` needs seven. `commandProfile` is 1,673 lines.
+
+  **The gates stopped writing to their enclosing scope.** `gateFailed` and
+  `gateVerdicts` were declared three hundred lines above where the gates set
+  them and read three hundred lines below, an output channel nothing declared.
+  `runProfileGates` returns them. `failed` is still read off `process.exitCode`
+  exactly as it was, because the gates set the exit code and the function
+  reports what they set.
+
+  One reach forward was removed rather than reproduced: the gate block's
+  failure explanation used `levers`, declared several hundred lines later in
+  the same function, which was legal only because the closure that read it ran
+  after. `billLevers` is pure, so the extracted function asks for it.
+
+  Verified byte-for-byte: `trazum profile` was run over one fixed log across
+  fifteen flag combinations in both locales, thirty captures of every byte on
+  stdout and stderr, before and after each extraction. Identical every time,
+  and the 1,167 CLI tests unchanged.
+
 ### Added
 
 - **`trazum from-langsmith` reads a LangSmith run export as a usage log.** The

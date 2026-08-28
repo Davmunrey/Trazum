@@ -7405,6 +7405,815 @@ async function commandVerify(
 }
 
 /**
+ * `--by-source`: one report per service, plus the rollup, the fleet.
+ *
+ * A merged bill is right for one service and wrong for twelve: it hides which
+ * service the money comes from, per-service budgets cannot exist, and the
+ * findings a comparison between services could make are invisible. Files are
+ * assigned to sources by the most specific matching glob from the config’s
+ * `sources` block; a file matching no source is named loudly, because a log
+ * that silently joined no report is spend missing from every bill.
+ *
+ * Lifted out of `commandProfile` unchanged. It was one of several complete
+ * outputs sharing a 2,359-line body with the report they are alternatives to,
+ * and it needs a fraction of what that body had in scope: naming the fraction
+ * is most of the point of moving it.
+ */
+async function profileBySource(
+  args: Args,
+  config: TrazumConfig,
+  logFiles: string[],
+  logTexts: string[],
+  pricing: PricingCatalogue,
+  window: {
+    onlyLabel: string | undefined;
+    sinceMs: number | undefined;
+    untilMs: number | undefined;
+  },
+  t: CliMessages,
+): Promise<void> {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
+  const { onlyLabel, sinceMs, untilMs } = window;
+  /* The same join the caller makes, from the same texts: one log, all files. */
+  const raw = logTexts.map((text) => (text.endsWith('\n') ? text : `${text}\n`)).join('');
+  const sourceDefs = config.sources;
+  if (sourceDefs === undefined || Object.keys(sourceDefs).length === 0) {
+    throw new Error(t.profile.bySourceNeedsConfig());
+  }
+  const { bySource, unmatched } = assignSources(logFiles, sourceDefs);
+  if (bySource.size === 0) {
+    throw new Error(t.profile.bySourceNothingMatched(Object.keys(sourceDefs).join(', ')));
+  }
+
+  const textByFile = new Map(logFiles.map((file, i) => [file, logTexts[i]!]));
+  const fleetSources: FleetSource[] = [];
+  const cacheDeltas = new Map<string, number>();
+  for (const [name, files] of [...bySource.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
+    const text = files
+      .map((file) => textByFile.get(file)!)
+      .map((chunk) => (chunk.endsWith('\n') ? chunk : `${chunk}\n`))
+      .join('');
+    const sourceReport = profileUsage(text, { catalogue: pricing, label: onlyLabel, sinceMs, untilMs });
+    fleetSources.push({ name, report: sourceReport });
+    cacheDeltas.set(name, cacheEconomics(sourceReport.total).deltaUsd);
+  }
+  const aggregate = profileUsage(raw, { catalogue: pricing, label: onlyLabel, sinceMs, untilMs });
+  const rollup = fleetRollup(fleetSources, {
+    cacheDeltas,
+    aggregateCacheDelta: cacheEconomics(aggregate.total).deltaUsd,
+  });
+
+  if (boolFlag(args, 'json')) {
+    console.log(
+      JSON.stringify(
+        {
+          schemaVersion: 1,
+          bySource: fleetSources.map((source) => ({ name: source.name, report: source.report })),
+          rollup: {
+            totalUsd: rollup.totalUsd,
+            calls: rollup.calls,
+            sources: rollup.sources,
+            worst: rollup.worst,
+            mismatchedSpans: rollup.mismatchedSpans,
+            splitBrains: rollup.splitBrains,
+            cacheUnderwater: rollup.cacheUnderwater,
+            unmatchedFiles: unmatched,
+          },
+        },
+        (key, value) => (value instanceof Map ? undefined : value),
+        2,
+      ),
+    );
+  } else {
+    console.log(sectionHeading(t.profile.fleetHeading(n(rollup.sources.length), formatUsd(rollup.totalUsd), t.profile.calls(rollup.calls))));
+    for (const row of rollup.sources) {
+      const span = row.spanDays === null ? t.profile.fleetNoClock() : t.profile.fleetSpan(row.spanDays.toFixed(1));
+      console.log(
+        `  ${t.profile.fleetRow(row.name, formatUsd(row.usd), pct(row.share), t.profile.calls(row.calls), span)}`,
+      );
+    }
+    if (rollup.worst !== null && rollup.sources.length > 1) {
+      console.log();
+      console.log(`  ${c.yellow('!')} ${c.bold(wrap(t.profile.fleetWorst(rollup.worst.name, formatUsd(rollup.worst.usd), pct(rollup.worst.share)), 74, '    '))}`);
+    }
+    if (rollup.mismatchedSpans) {
+      console.log(`  ${c.dim(wrap(t.profile.fleetMismatchedSpans(), 74, '  '))}`);
+    }
+    for (const split of rollup.splitBrains.slice(0, 3)) {
+      console.log();
+      console.log(
+        `  ${c.yellow('!')} ${wrap(t.profile.fleetSplitBrain(split.label, split.sources.map((v) => `${v.name} → ${v.model} (${formatUsd(v.usd)})`).join(', ')), 74, '    ')}`,
+      );
+    }
+    for (const under of rollup.cacheUnderwater.slice(0, 3)) {
+      console.log(
+        `  ${c.yellow('!')} ${wrap(t.profile.fleetCacheUnderwater(under.name, formatUsd(under.deltaUsd)), 74, '    ')}`,
+      );
+    }
+    for (const file of unmatched) {
+      console.log(`  ${c.yellow('!')} ${wrap(t.profile.fleetUnmatched(file), 74, '    ')}`);
+    }
+    console.log();
+    console.log(`  ${c.dim(wrap(t.profile.fleetFooter(), 74, '  '))}`);
+  }
+
+  /**
+   * The per-source gates. Each budget judges its own service and the run
+   * fails naming the service — a total that hides which source crossed its
+   * line is the rendering this mode exists to end. Waivable per source
+   * through `bySource:<name>`, under the same expiry discipline.
+   */
+  const bySourceBudgets = config.spend?.bySource ?? {};
+  for (const [name, limit] of Object.entries(bySourceBudgets)) {
+    const found = fleetSources.find((source) => source.name === name);
+    if (found === undefined) {
+      console.error(c.dim(t.profile.fleetBudgetMissing(name)));
+      continue;
+    }
+    const usd = found.report.total.totalUsd;
+    if (usd > limit) {
+      console.error(c.red(t.profile.fleetBudgetFailed(name, formatUsd(usd), formatUsd(limit))));
+      process.exitCode = 1;
+    } else {
+      console.error(c.dim(t.profile.fleetBudgetOk(name, formatUsd(usd), formatUsd(limit))));
+    }
+  }
+}
+
+/**
+ * `--dry-run`: what this log could and could not answer, and no bill.
+ *
+ * The question somebody has *before* wiring Trazum into CI is not "what did we
+ * spend" but "will this log support the gates I want", and answering it with a
+ * full report makes them read a bill to find out a field is missing. This path
+ * states readiness per capability and produces no dollar figure at all, so
+ * nothing here can be mistaken for spend. It also refuses to coexist with the
+ * gates: a gate over a report that was never produced would exit green having
+ * judged nothing.
+ */
+function profileDryRun(args: Args, report: UsageProfileReport, t: CliMessages): void {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
+  const gateFlags = ['max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd'];
+  if (gateFlags.some((flag) => typeof args.flags.get(flag) === 'string')) {
+    throw new Error(t.profile.dryRunNoGates());
+  }
+  const cov = report.fieldCoverage;
+  const parsed = cov.parsed;
+  console.log(sectionHeading(t.profile.dryRunHeading()));
+  console.log(`  ${wrap(t.profile.dryRunParsed(n(parsed), n(report.skippedLines.length)), 74, '  ')}`);
+  if (report.unpricedModels.length > 0) {
+    console.log(`  ${c.yellow('!')} ${wrap(t.profile.dryRunUnpriced(report.unpricedModels.join(', ')), 74, '    ')}`);
+  }
+  console.log();
+  const can = (ok: boolean, line: string): void => {
+    console.log(`  ${ok ? c.green('✓') : c.yellow('✗')} ${wrap(line, 74, '    ')}`);
+  };
+  const share = (count: number): string => (parsed > 0 ? pct(count / parsed) : '0%');
+  can(parsed > 0, t.profile.dryRunTotals());
+  can(cov.label > 0, t.profile.dryRunLabels(share(cov.label)));
+  can(cov.ts > 0, t.profile.dryRunClock(share(cov.ts)));
+  can(cov.session > 0, t.profile.dryRunSessions(share(cov.session)));
+  can(cov.outcome > 0, t.profile.dryRunOutcomes(share(cov.outcome)));
+  can(cov.stopReason > 0, t.profile.dryRunStopReason(share(cov.stopReason)));
+  // "No cache traffic" is not a missing field: the split can only exist on
+  // records that wrote, and a log that never wrote has nothing to record.
+  if (cov.cacheWrites > 0) {
+    can(cov.cacheTtl > 0, t.profile.dryRunCacheTtl(n(cov.cacheTtl), n(cov.cacheWrites)));
+  } else {
+    console.log(`  ${c.dim('·')} ${wrap(t.profile.dryRunNoCacheTraffic(), 74, '    ')}`);
+  }
+  console.log();
+  console.log(`  ${c.dim(wrap(t.profile.dryRunFooter(), 74, '  '))}`);
+  if (parsed === 0) process.exitCode = 1;
+}
+
+/**
+ * The money gates: run them, and say what they said.
+ *
+ * `check` gates tokens before the money is spent; these gate the spend itself,
+ * from the provider’s own billed counts. No period is assumed — the budget
+ * applies to exactly the log handed in, so a nightly job that profiles
+ * yesterday’s log has a daily budget without Trazum ever guessing what a day is.
+ *
+ * ## Why this is one function and not five
+ *
+ * `waiverFor`, `waived`, the uses it collects, the verdict capture and the
+ * flush to the waiver log were five closures inside `commandProfile`, sharing
+ * its 2,359-line scope with the report they have nothing to do with. They are
+ * one concern — policy — and the only two things the rest of the command needs
+ * from them are whether a gate failed and what the gates said.
+ *
+ * ## Why it returns rather than assigns
+ *
+ * `gateFailed` and `gateVerdicts` were `let` and `const` in the enclosing
+ * scope, written here and read three hundred lines away by the side-file
+ * writer. That is an output channel nothing declares. They are the return
+ * value now, and `failed` is still read off `process.exitCode` exactly as it
+ * was — the gates set the exit code, and this reports what they set.
+ */
+async function runProfileGates(context: {
+  args: Args;
+  config: TrazumConfig;
+  configDir: string;
+  report: UsageProfileReport;
+  previous: UsageProfileReport | null;
+  againstDelta: number | null;
+  windowed: boolean;
+  now: number;
+  pricing: PricingCatalogue;
+  t: CliMessages;
+}): Promise<{ failed: boolean; verdicts: string[] }> {
+  const { args, config, configDir, report, previous, againstDelta, windowed, now, pricing, t } =
+    context;
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
+  /*
+    What a failing gate points at. The enclosing command computes this too, a
+    few hundred lines further down, and the gate block used to reach forward
+    into that declaration — legal only because the closure that read it was
+    called later. `billLevers` is pure, so the honest fix is to ask for it here.
+  */
+  const levers = billLevers(report, { catalogue: pricing });
+/**
+ * The money gates, armed by flags and applied on every output path.
+ *
+ * `check` gates tokens before the money is spent; these gate the spend
+ * itself, from the provider's own billed counts. No period is assumed —
+ * the budget applies to exactly the log handed in, so a nightly job that
+ * profiles yesterday's log has a daily budget without Trazum ever
+ * guessing what a day is.
+ */
+/**
+ * The gate verdicts, kept so the markdown summary can carry them.
+ *
+ * Collected by wrapping `console.error` for the duration of `applyGates`
+ * rather than by threading a return value through every gate. That is the
+ * unusual choice here and it is deliberate: a gate added later reaches the
+ * summary without anyone remembering to register it, and the alternative —
+ * one push per verdict at a dozen call sites — is a list that goes stale
+ * silently. Colour is stripped, because a summary is markdown and an
+ * escape sequence in it is noise a reader has to look past.
+ */
+const gateVerdicts: string[] = [];
+let gateFailed = false;
+/**
+ * Findings as policy. A waiver silences one gate's exit code for a bounded
+ * time, on the record: the failure still prints (waived is shown as
+ * waived, never hidden — the bill still counts it), the reason and the
+ * days left print beside it, and the day the waiver expires the gate
+ * fails again louder, naming the date and the reason somebody wrote.
+ * That expiry is the entire mechanism by which a waiver stays a decision
+ * instead of becoming a habit.
+ */
+const waiverFor = (gate: string): { entry: { gate: string; reason: string; until: string }; expired: boolean } | null => {
+  const entry = (config.waive ?? []).find((w) => w.gate === gate);
+  if (entry === undefined) return null;
+  // The waiver covers its named day whole: expiry begins the next UTC day.
+  const expiresMs = Date.parse(`${entry.until}T00:00:00Z`) + 86_400_000;
+  return { entry, expired: Date.now() >= expiresMs };
+};
+/**
+ * Applies a waiver to one failing gate. Returns true when the failure is
+ * silenced — the caller skips its exitCode — and prints the record either
+ * way, because a waived failure that vanished from the output would be a
+ * finding deleted with extra steps.
+ */
+/**
+ * Uses recorded this run, flushed after the gates have finished.
+ *
+ * Collected rather than written inline because `waived` is synchronous and
+ * called from seven places inside the gate pass. Writing from each of them
+ * would mean seven awaits threaded through the exit-code logic — the one
+ * part of this command where a mistake turns a red build green.
+ */
+const waiverUses: WaiverUse[] = [];
+const waived = (gate: string, measuredUsd: number | null = null, limitUsd: number | null = null): boolean => {
+  const found = waiverFor(gate);
+  if (found === null) return false;
+  if (found.expired) {
+    console.error(
+      c.red(t.profile.waiveExpired(gate, found.entry.until, found.entry.reason)),
+    );
+    return false;
+  }
+  const daysLeft = Math.max(
+    0,
+    Math.ceil((Date.parse(`${found.entry.until}T00:00:00Z`) + 86_400_000 - Date.now()) / 86_400_000),
+  );
+  console.error(
+    c.yellow(t.profile.waiveActive(gate, found.entry.reason, found.entry.until, String(daysLeft))),
+  );
+  /**
+   * Recorded **when it silences something**, never when it is configured.
+   *
+   * A waiver nobody's build has ever hit is not a habit — it is dead config
+   * — and the history reports the two apart. This is also the only honest
+   * way to build the record 1.40 refused to invent: it starts today and
+   * says so, rather than reconstructing a past from the present.
+   *
+   * The reason and the expiry are taken from the config **as it stands at
+   * this moment**, because that is the decision that was actually in force.
+   * Reading today's reason back onto last quarter's use is the same mistake
+   * one layer down.
+   */
+  waiverUses.push({
+    schemaVersion: 1,
+    day: waiverDay(new Date()),
+    gate,
+    reason: found.entry.reason,
+    until: found.entry.until,
+    commit: process.env.GITHUB_SHA ?? process.env.CI_COMMIT_SHA ?? null,
+    measuredUsd,
+    limitUsd,
+  });
+  return true;
+};
+const applyGates = (): void => {
+  /**
+   * Before any verdict: whether the gated figure is the whole bill. A gate
+   * can only judge the money it can see, and three things hide money from
+   * it — unreadable lines, unpriced models, and clockless calls left
+   * outside a window. Passing on a floor is acceptable; passing on a floor
+   * *silently* is the flattering omission this repository refuses, because
+   * an over-budget bill with three corrupt lines would read as green.
+   */
+  const anyGate =
+    typeof args.flags.get('max-usd') === 'string' ||
+    typeof args.flags.get('max-growth-usd') === 'string' ||
+    typeof args.flags.get('max-cache-loss-usd') === 'string' ||
+    typeof args.flags.get('max-day-usd') === 'string' ||
+    typeof args.flags.get('max-session-usd') === 'string' ||
+    config.spend !== undefined;
+  if (anyGate) {
+    const reasons: string[] = [];
+    if (report.skippedLines.length > 0) reasons.push(t.profile.floorSkipped(report.skippedLines.length));
+    if (report.unpriced.calls > 0) reasons.push(t.profile.floorUnpriced(report.unpriced.calls));
+    if (report.timeWindow !== null && report.timeWindow.undatedExcluded > 0) {
+      reasons.push(t.profile.floorUndated(report.timeWindow.undatedExcluded));
+    }
+    if (reasons.length > 0) {
+      console.error(c.yellow(t.profile.gateOnFloor(reasons.join('; '))));
+    }
+  }
+  /**
+   * Per-workload budgets from the config — the policy in the repository
+   * rather than in one CI invocation. Each label is gated against its own
+   * spend in the same run, and a budgeted label with no calls in this log
+   * is reported as **not measured**: a workload that did not appear is not
+   * a workload that came in under budget, and printing green over an
+   * absence is exactly the flattering direction this tool refuses.
+   */
+  const byLabel = config.spend?.byLabel;
+  if (byLabel !== undefined && !windowed) {
+    const spent = new Map(report.byLabel.map((r) => [r.label, r.breakdown.totalUsd]));
+    for (const [label, limit] of Object.entries(byLabel)) {
+      const usd = spent.get(label);
+      if (usd === undefined) {
+        console.error(c.dim(t.profile.labelBudgetMissing(label)));
+        continue;
+      }
+      if (usd > limit) {
+        console.error(c.red(t.profile.labelBudgetFailed(label, formatUsd(usd), formatUsd(limit))));
+        if (!waived(`byLabel:${label}`, usd, limit)) process.exitCode = 1;
+      } else {
+        console.error(c.dim(t.profile.labelBudgetOk(label, formatUsd(usd), formatUsd(limit))));
+      }
+    }
+  } else if (byLabel !== undefined && windowed) {
+    // A window changes what "this label spent" means, and a budget written
+    // for a period the caller did not name would gate against a slice.
+    console.error(c.dim(t.profile.labelBudgetWindowed()));
+  }
+
+  /**
+   * Why a gate failed and how much room a pass had — written once, called by
+   * every gate, because four hand-rolled copies of the same three sentences
+   * is four chances for one of them to soften.
+   */
+  const explainFailure = (overUsd: number, { namesLargest = false } = {}): void => {
+    const why = explainGateFailure(report, levers, overUsd);
+    // The day gate already names its own day's biggest label; repeating the
+    // whole bill's biggest slice under it reads as the same sentence twice.
+    if (why.largest !== null && !namesLargest) {
+      const name = why.largest.label === UNLABELLED ? t.profile.unlabelled() : why.largest.label;
+      console.error(
+        c.dim(wrap(t.profile.gateLargest(name, why.largest.model, formatUsd(why.largest.usd), pct(why.largest.share)), 74, '  ')),
+      );
+    }
+    if (why.lever !== null) {
+      const leverName = why.lever.label === UNLABELLED ? t.profile.unlabelled() : why.lever.label;
+      // The action, not the slice's current model: a slice with only a batch
+      // price has no destination, and naming the model it already runs on as
+      // somewhere to move it would be plainly false.
+      const route = why.lever.route;
+      const action =
+        route !== null && why.lever.batch !== null
+          ? t.profile.gateLeverBoth(route.candidate.displayName)
+          : route !== null
+            ? t.profile.gateLeverRoute(route.candidate.displayName)
+            : t.profile.gateLeverBatch();
+      console.error(
+        c.dim(
+          wrap(
+            t.profile.gateLever(leverName, action, formatUsd(why.lever.combinedUsd), formatUsd(why.overageUsd), why.coversIt),
+            74,
+            '  ',
+          ),
+        ),
+      );
+    }
+  };
+  /** How much room a pass had, said only when tight, threshold in the copy. */
+  const explainMargin = (judgedUsd: number, limitUsd: number): void => {
+    const margin = gateMargin(judgedUsd, limitUsd);
+    if (margin !== null && margin < GATE_MARGIN_TIGHT) {
+      console.error(c.yellow(wrap(t.profile.gateMarginTight(pct(margin), formatUsd(limitUsd - judgedUsd)), 74, '  ')));
+    }
+  };
+
+  if (typeof args.flags.get('max-usd') === 'string' || config.spend?.maxUsd !== undefined) {
+    const maxUsd =
+      typeof args.flags.get('max-usd') === 'string'
+        ? numberFlag(args, 'max-usd', 0, t)
+        : config.spend!.maxUsd!;
+    if (report.total.totalUsd > maxUsd) {
+      console.error(c.red(t.profile.maxUsdFailed(formatUsd(report.total.totalUsd), formatUsd(maxUsd))));
+      /**
+       * What to change, next to the fact that something must. A red build in
+       * CI is the one place nobody opens the full report, so the failure
+       * carries its own next step: which slice holds the money, and the one
+       * lever the report already priced. Nothing here is a recommendation —
+       * whether that model can do the work is the reader's to judge, and the
+       * copy says so.
+       */
+      explainFailure(report.total.totalUsd - maxUsd);
+      if (!waived('maxUsd', report.total.totalUsd, maxUsd)) process.exitCode = 1;
+    } else {
+      console.error(c.dim(t.profile.maxUsdOk(formatUsd(report.total.totalUsd), formatUsd(maxUsd))));
+      explainMargin(report.total.totalUsd, maxUsd);
+    }
+  }
+  if (typeof args.flags.get('max-growth-usd') === 'string' && againstDelta !== null) {
+    const maxGrowth = numberFlag(args, 'max-growth-usd', 0, t);
+    /**
+     * A comparison that went blind fails before it is judged.
+     *
+     * The dollars can hold flat while the current log stopped recording a
+     * field the previous one carried — and every finding that needed the
+     * field is now silent for a reason that has nothing to do with spend.
+     * A gate passing there would be certifying a comparison it could not
+     * make: "not measured" is not "did not grow", the same refusal
+     * --max-day-usd makes on a clockless log and --max-session-usd on a
+     * sessionless one. Only a collapse fails; a field that appeared means
+     * this side can see more, which is never a reason to refuse.
+     */
+    const blinded = previous !== null
+      ? coverageDrift(previous.fieldCoverage, report.fieldCoverage).filter((d) => d.delta < 0)
+      : [];
+    const worst = blinded[0];
+    if (worst !== undefined) {
+      console.error(
+        c.red(
+          t.profile.maxGrowthCoverageLost(
+            blinded.map((d) => t.profile.coverageField(d.field)).join(', '),
+            pct(worst.was),
+            pct(worst.now),
+          ),
+        ),
+      );
+      // Deliberately unwaivable: this failure is "the comparison cannot
+      // be made", and a waiver on unmeasurability would be a decision to
+      // stop measuring — not a budget decision with an end date.
+      process.exitCode = 1;
+    } else if (againstDelta > maxGrowth) {
+      console.error(c.red(t.profile.maxGrowthUsdFailed(formatSignedUsd(againstDelta), formatUsd(maxGrowth))));
+      if (!waived('maxGrowthUsd', againstDelta, maxGrowth)) process.exitCode = 1;
+    }
+  }
+  /**
+   * The cache gate, and it reads the worst case on purpose. A log carrying
+   * only the flat cache-write count cannot say which TTL was paid, and the
+   * two verdicts can straddle the limit — a gate reading the flattering
+   * half would pass exactly the bills it exists to catch. The failure
+   * message says which claim fired: a settled loss, or a ceiling only the
+   * missing "cache_creation" field can settle.
+   */
+  if (typeof args.flags.get('max-cache-loss-usd') === 'string') {
+    const maxLoss = numberFlag(args, 'max-cache-loss-usd', 0, t);
+    const gateCache = cacheEconomics(report.total);
+    if (gateCache.deltaUsd > maxLoss) {
+      console.error(
+        c.red(t.profile.maxCacheLossFailed(formatUsd(gateCache.deltaUsd), formatUsd(maxLoss))),
+      );
+      if (!waived('maxCacheLossUsd', gateCache.deltaUsd, maxLoss)) process.exitCode = 1;
+    } else if (gateCache.worstCaseDeltaUsd > maxLoss) {
+      console.error(
+        c.red(
+          t.profile.maxCacheLossWorstCase(
+            report.total.assumedWriteTtlCalls,
+            formatUsd(gateCache.worstCaseDeltaUsd),
+            formatUsd(maxLoss),
+          ),
+        ),
+      );
+      if (!waived('maxCacheLossUsd', gateCache.worstCaseDeltaUsd, maxLoss)) process.exitCode = 1;
+    } else {
+      console.error(
+        c.dim(t.profile.maxCacheLossOk(formatUsd(Math.max(0, gateCache.worstCaseDeltaUsd)), formatUsd(maxLoss))),
+      );
+    }
+  }
+  /**
+   * The per-day gate — the one a total cannot arm.
+   *
+   * A month at $3,000 against a $4,000 budget passes while one afternoon's
+   * runaway agent loop burned $900 of it in four hours. `--max-usd` gates
+   * the sum handed in; this gates the **worst single UTC day inside it**,
+   * which is the shape a loop, a bad deploy or a retry storm actually has.
+   *
+   * Two refusals it inherits from the rest of the tool:
+   *
+   * A log with **no clock at all** cannot be judged by day, and that is an
+   * error rather than a pass. "Not measured" is not "under budget", and a
+   * gate that silently green-lights an unmeasurable log is worse than one
+   * that was never armed.
+   *
+   * The first and last day of a log are usually **partial**, so a day under
+   * the limit here is under it for the hours the log contains. A day *over*
+   * the limit is over it whatever the missing hours held — the failure is
+   * sound in both directions, the pass is a floor, and the pass message
+   * says so when the span does not start and end on a day boundary.
+   */
+  if (typeof args.flags.get('max-day-usd') === 'string' || config.spend?.maxDayUsd !== undefined) {
+    // The flag beats the config, like every gate here: the config is the
+    // repository's standing policy, the flag is this invocation's word.
+    const maxDay =
+      typeof args.flags.get('max-day-usd') === 'string'
+        ? numberFlag(args, 'max-day-usd', 0, t)
+        : config.spend!.maxDayUsd!;
+    if (report.spendByDay.length === 0) {
+      console.error(c.red(t.profile.maxDayNoClock()));
+      process.exitCode = 1;
+    } else {
+      const worst = report.spendByDay.reduce((a, b) => (b.usd > a.usd ? b : a));
+      const suspect =
+        worst.topLabel !== null && report.byLabel.length > 1
+          ? ` ${t.profile.dayPeakLabel(worst.topLabel === UNLABELLED ? t.profile.unlabelled() : worst.topLabel, formatUsd(worst.topLabelUsd))}`
+          : '';
+      if (worst.usd > maxDay) {
+        console.error(
+          c.red(`${t.profile.maxDayFailed(worst.day, formatUsd(worst.usd), formatUsd(maxDay))}${suspect}`),
+        );
+        explainFailure(worst.usd - maxDay, { namesLargest: true });
+        if (!waived('maxDayUsd', worst.usd, maxDay)) process.exitCode = 1;
+      } else {
+        console.error(c.dim(t.profile.maxDayOk(worst.day, formatUsd(worst.usd), formatUsd(maxDay))));
+        explainMargin(worst.usd, maxDay);
+        /**
+         * Calls with no clock are in the bill above and in no day below, so
+         * the worst day is a floor by exactly that much. Said only on a
+         * pass: a failure stands whatever the undated calls held.
+         */
+        const undated = report.fieldCoverage.parsed - report.fieldCoverage.ts;
+        if (undated > 0) {
+          console.error(c.yellow(t.profile.maxDayUndated(n(undated))));
+        }
+      }
+    }
+  }
+  /**
+   * The per-conversation gate — the unit an agent product actually blows
+   * up in. A month's budget and a day's budget both pass while one
+   * conversation loops its way through $400; the single most expensive
+   * conversation is the number a per-conversation policy has to judge,
+   * and the log already carries it.
+   *
+   * The refusals it inherits: a log with **no sessions** fails rather
+   * than passes ("not measured" is not "under budget"), and a
+   * conversation that started before this log is counted only for the
+   * turns recorded here — so a pass is a floor, and the pass message says
+   * so. The session key itself is never printed, here or anywhere.
+   */
+  if (typeof args.flags.get('max-session-usd') === 'string' || config.spend?.maxSessionUsd !== undefined) {
+    const maxSession =
+      typeof args.flags.get('max-session-usd') === 'string'
+        ? numberFlag(args, 'max-session-usd', 0, t)
+        : config.spend!.maxSessionUsd!;
+    if (report.sessionSpend === null) {
+      console.error(c.red(t.profile.maxSessionNoSessions()));
+      process.exitCode = 1;
+    } else if (report.sessionSpend.maxUsd > maxSession) {
+      console.error(
+        c.red(t.profile.maxSessionFailed(formatUsd(report.sessionSpend.maxUsd), formatUsd(maxSession), n(report.sessionSpend.sessions))),
+      );
+      explainFailure(report.sessionSpend.maxUsd - maxSession);
+      if (!waived('maxSessionUsd', report.sessionSpend.maxUsd, maxSession)) process.exitCode = 1;
+    } else {
+      console.error(
+        c.dim(t.profile.maxSessionOk(formatUsd(report.sessionSpend.maxUsd), formatUsd(maxSession), n(report.sessionSpend.sessions))),
+      );
+      explainMargin(report.sessionSpend.maxUsd, maxSession);
+    }
+  }
+};
+
+/**
+ * Run the gates, keeping what they said. Exit codes and stderr behave
+ * exactly as before — this only also remembers, so `--markdown-out` can put
+ * the verdict where the person reading CI will actually see it.
+ */
+const recordGates = (): void => {
+  const original = console.error;
+  console.error = (...parts: unknown[]): void => {
+    const text = parts.map((part) => String(part)).join(' ');
+    // Colour stripped and the terminal's wrap collapsed: markdown re-wraps
+    // to its own width, and the escape sequences and hanging indents that
+    // make a terminal readable are noise a summary reader looks past.
+    // eslint-disable-next-line no-control-regex
+    gateVerdicts.push(text.replace(/\u001b\[[0-9;]*m/g, '').replace(/\s+/g, ' ').trim());
+    original(...(parts as []));
+  };
+  try {
+    applyGates();
+  } finally {
+    console.error = original;
+    gateFailed = process.exitCode === 1;
+  }
+};
+
+/**
+ * Writes down every waiver that silenced something this run.
+ *
+ * **A failure here never fails the build.** The gate's job is the exit code;
+ * a read-only checkout or a full disk must not turn a passing build red on
+ * account of bookkeeping. The problem is reported and the gate's own verdict
+ * stands — which is also why this runs after `recordGates` rather than
+ * inside it: nothing about the exit code depends on the write.
+ */
+const recordWaiverUses = async (): Promise<void> => {
+  if (waiverUses.length === 0) return;
+  for (const use of waiverUses) {
+    const failed = await appendWaiverUse(configDir, use);
+    if (failed !== null) {
+      console.error(c.dim(t.profile.waiveNotRecorded(WAIVER_LOG, failed)));
+      return;
+    }
+  }
+};
+
+  recordGates();
+  await recordWaiverUses();
+  return { failed: gateFailed, verdicts: gateVerdicts };
+}
+
+/**
+ * The side files the caller asked for.
+ *
+ * Written on **both** output paths: under `--json` the human rendering returns
+ * early, and the first version of `--csv-out` therefore wrote nothing at all
+ * there — a flag that silently did nothing, which is the fault this repository
+ * keeps refusing elsewhere.
+ *
+ * Its inputs are named because it had eleven of them and declared none: it was
+ * a closure over `commandProfile`’s scope, so what a CSV or a markdown summary
+ * is built from could only be learned by reading the whole body it sat in.
+ */
+async function writeProfileSideFiles(context: {
+  args: Args;
+  path: string;
+  report: UsageProfileReport;
+  previous: UsageProfileReport | null;
+  pressures: ReturnType<typeof contextPressure>;
+  labelDrivers: ReturnType<typeof driversBetween>;
+  modelDrivers: ReturnType<typeof driversBetween>;
+  againstOverlap: { fromMs: number; toMs: number } | null;
+  whatIf: ReturnType<typeof repriceProfile>;
+  pricingStale: { date: string; days: number } | null;
+  windowed: boolean;
+  gates: { failed: boolean; verdicts: string[] };
+  pricing: PricingCatalogue;
+  t: CliMessages;
+}): Promise<void> {
+  const {
+    args, path, report, previous, pressures, labelDrivers, modelDrivers, againstOverlap,
+    whatIf, pricingStale, windowed, gates, pricing, t,
+  } = context;
+  /**
+   * Where the "wrote to" notice goes. Under `--json`, stdout carries the
+   * report and nothing else — a status line there turns a parseable
+   * document into a parse error, which is how a pipeline discovers the
+   * feature. The gates already route their verdicts to stderr for the same
+   * reason.
+   */
+  const notice = boolFlag(args, 'json')
+    ? (message: string): void => console.error(message)
+    : (message: string): void => console.log(message);
+/**
+   * The same report as GitHub-flavoured markdown, for a job summary or a PR
+   * comment. Written from the same message catalogue the terminal used, because
+   * two renderings of one finding drift the moment they are worded twice.
+   */
+  const markdownOut = stringFlag(args, 'markdown-out');
+  const htmlOut = stringFlag(args, 'html-out');
+  if (markdownOut !== undefined || htmlOut !== undefined) {
+    /**
+     * Derived here, not borrowed from the terminal path. Under `--json`
+     * that path never runs, and the outer `levers` this block used to
+     * reach for was an uninitialised binding — `profile --json
+     * --markdown-out` crashed with a ReferenceError from 1.59 until the
+     * HTML door's test drove both flags together and found it. The flag
+     * did not silently do nothing; it loudly did nothing, and no test had
+     * ever asked.
+     */
+    const levers = billLevers(report, { catalogue: pricing });
+    const cache = cacheEconomics(report.total);
+    /**
+     * One input object for both doors, built once: the HTML file and the
+     * Markdown file are two projections of the same figures, and building
+     * the input twice is how two renderings of one bill start disagreeing.
+     */
+    const renderInput = ({
+        report,
+        levers,
+        cache,
+        t,
+        ...(windowed
+          ? { window: { since: stringFlag(args, 'since') ?? '—', until: stringFlag(args, 'until') ?? '—' } }
+          : {}),
+        ...(pricingStale !== null ? { stalePricing: pricingStale } : {}),
+        // The verdict, where the person reading CI will see it. recordGates()
+        // runs before the side files for exactly this.
+        ...(gates.verdicts.length > 0 ? { gates: { failed: gates.failed, lines: gates.verdicts } } : {}),
+        // The short form, for a reader who is not in the terminal.
+        ...(boolFlag(args, 'markdown-summary') ? { summary: true } : {}),
+        // The repricing, when --what-if was given: computed once above and
+        // handed over, so the summary in a pull request cannot disagree
+        // with the terminal about what a move would cost.
+        ...(whatIf !== null ? { whatIf } : {}),
+        pressure: pressures,
+        // The comparison, when there was one — the same figures and the same
+        // drivers the terminal printed, never re-derived here.
+        ...(previous !== null
+          ? {
+              against: {
+                previousTotalUsd: previous.total.totalUsd,
+                previousCalls: previous.total.calls,
+                labelDrivers,
+                modelDrivers:
+                  new Set([
+                    ...previous.byModel.map((r) => r.model),
+                    ...report.byModel.map((r) => r.model),
+                  ]).size > 1
+                    ? modelDrivers
+                    : [],
+                overlap:
+                  againstOverlap !== null
+                    ? { from: dayOf(againstOverlap.fromMs), to: dayOf(againstOverlap.toMs) }
+                    : null,
+                nothingPriced: previous.total.calls === 0,
+              },
+            }
+          : {}),
+    });
+    if (markdownOut !== undefined) {
+      await writeFile(markdownOut, renderProfileMarkdown(renderInput), 'utf8');
+      notice(c.dim(t.report.wroteTo(markdownOut)));
+    }
+    if (htmlOut !== undefined) {
+      await writeFile(htmlOut, renderProfileHtml(renderInput), 'utf8');
+      notice(c.dim(t.html.written(htmlOut)));
+    }
+  }
+
+  /**
+   * The same report as a spreadsheet, one row per label and model — the grain
+   * a routing or budget decision is made at. Deliberately without a total
+   * row: a total inside a data file is summed with the data and doubles every
+   * figure downstream.
+   */
+  const csvOut = stringFlag(args, 'csv-out');
+  if (csvOut !== undefined) {
+    /**
+     * Which table the file holds. One row shape per file on purpose: a
+     * spreadsheet that has to filter before it can sum is a spreadsheet
+     * somebody sums wrong.
+     */
+    const shape = stringFlag(args, 'csv-shape') ?? 'slice';
+    if (shape !== 'slice' && shape !== 'day' && shape !== 'hour' && shape !== 'model-day') {
+      throw new Error(t.profile.badCsvShape(shape));
+    }
+    await writeFile(
+      csvOut,
+      profileToCsv(report, { unlabelled: t.profile.unlabelled(), shape }),
+      'utf8',
+    );
+    notice(c.dim(t.report.wroteTo(csvOut)));
+  }
+}
+
+/**
  * `trazum plan <log>` — not a list of findings, a ranked plan of what to do.
  *
  * The composition (route and batch on one slice never summed) happens in
@@ -7689,167 +8498,13 @@ async function commandProfile(
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
 
-  /**
-   * `--by-source`: one report per service, plus the rollup — the fleet.
-   *
-   * A merged bill is right for one service and wrong for twelve: it hides
-   * which service the money comes from, per-service budgets cannot exist,
-   * and the findings a comparison between services could make are invisible.
-   * Files are assigned to sources by the most specific matching glob from the
-   * config's `sources` block; a file matching no source is named loudly,
-   * because a log that silently joined no report is spend missing from every
-   * bill.
-   */
   if (boolFlag(args, 'by-source')) {
-    const sourceDefs = config.sources;
-    if (sourceDefs === undefined || Object.keys(sourceDefs).length === 0) {
-      throw new Error(t.profile.bySourceNeedsConfig());
-    }
-    const { bySource, unmatched } = assignSources(logFiles, sourceDefs);
-    if (bySource.size === 0) {
-      throw new Error(t.profile.bySourceNothingMatched(Object.keys(sourceDefs).join(', ')));
-    }
-
-    const textByFile = new Map(logFiles.map((file, i) => [file, logTexts[i]!]));
-    const fleetSources: FleetSource[] = [];
-    const cacheDeltas = new Map<string, number>();
-    for (const [name, files] of [...bySource.entries()].sort((a, b) => a[0].localeCompare(b[0]))) {
-      const text = files
-        .map((file) => textByFile.get(file)!)
-        .map((chunk) => (chunk.endsWith('\n') ? chunk : `${chunk}\n`))
-        .join('');
-      const sourceReport = profileUsage(text, { catalogue: pricing, label: onlyLabel, sinceMs, untilMs });
-      fleetSources.push({ name, report: sourceReport });
-      cacheDeltas.set(name, cacheEconomics(sourceReport.total).deltaUsd);
-    }
-    const aggregate = profileUsage(raw, { catalogue: pricing, label: onlyLabel, sinceMs, untilMs });
-    const rollup = fleetRollup(fleetSources, {
-      cacheDeltas,
-      aggregateCacheDelta: cacheEconomics(aggregate.total).deltaUsd,
-    });
-
-    if (boolFlag(args, 'json')) {
-      console.log(
-        JSON.stringify(
-          {
-            schemaVersion: 1,
-            bySource: fleetSources.map((source) => ({ name: source.name, report: source.report })),
-            rollup: {
-              totalUsd: rollup.totalUsd,
-              calls: rollup.calls,
-              sources: rollup.sources,
-              worst: rollup.worst,
-              mismatchedSpans: rollup.mismatchedSpans,
-              splitBrains: rollup.splitBrains,
-              cacheUnderwater: rollup.cacheUnderwater,
-              unmatchedFiles: unmatched,
-            },
-          },
-          (key, value) => (value instanceof Map ? undefined : value),
-          2,
-        ),
-      );
-    } else {
-      console.log(sectionHeading(t.profile.fleetHeading(n(rollup.sources.length), formatUsd(rollup.totalUsd), t.profile.calls(rollup.calls))));
-      for (const row of rollup.sources) {
-        const span = row.spanDays === null ? t.profile.fleetNoClock() : t.profile.fleetSpan(row.spanDays.toFixed(1));
-        console.log(
-          `  ${t.profile.fleetRow(row.name, formatUsd(row.usd), pct(row.share), t.profile.calls(row.calls), span)}`,
-        );
-      }
-      if (rollup.worst !== null && rollup.sources.length > 1) {
-        console.log();
-        console.log(`  ${c.yellow('!')} ${c.bold(wrap(t.profile.fleetWorst(rollup.worst.name, formatUsd(rollup.worst.usd), pct(rollup.worst.share)), 74, '    '))}`);
-      }
-      if (rollup.mismatchedSpans) {
-        console.log(`  ${c.dim(wrap(t.profile.fleetMismatchedSpans(), 74, '  '))}`);
-      }
-      for (const split of rollup.splitBrains.slice(0, 3)) {
-        console.log();
-        console.log(
-          `  ${c.yellow('!')} ${wrap(t.profile.fleetSplitBrain(split.label, split.sources.map((v) => `${v.name} → ${v.model} (${formatUsd(v.usd)})`).join(', ')), 74, '    ')}`,
-        );
-      }
-      for (const under of rollup.cacheUnderwater.slice(0, 3)) {
-        console.log(
-          `  ${c.yellow('!')} ${wrap(t.profile.fleetCacheUnderwater(under.name, formatUsd(under.deltaUsd)), 74, '    ')}`,
-        );
-      }
-      for (const file of unmatched) {
-        console.log(`  ${c.yellow('!')} ${wrap(t.profile.fleetUnmatched(file), 74, '    ')}`);
-      }
-      console.log();
-      console.log(`  ${c.dim(wrap(t.profile.fleetFooter(), 74, '  '))}`);
-    }
-
-    /**
-     * The per-source gates. Each budget judges its own service and the run
-     * fails naming the service — a total that hides which source crossed its
-     * line is the rendering this mode exists to end. Waivable per source
-     * through `bySource:<name>`, under the same expiry discipline.
-     */
-    const bySourceBudgets = config.spend?.bySource ?? {};
-    for (const [name, limit] of Object.entries(bySourceBudgets)) {
-      const found = fleetSources.find((source) => source.name === name);
-      if (found === undefined) {
-        console.error(c.dim(t.profile.fleetBudgetMissing(name)));
-        continue;
-      }
-      const usd = found.report.total.totalUsd;
-      if (usd > limit) {
-        console.error(c.red(t.profile.fleetBudgetFailed(name, formatUsd(usd), formatUsd(limit))));
-        process.exitCode = 1;
-      } else {
-        console.error(c.dim(t.profile.fleetBudgetOk(name, formatUsd(usd), formatUsd(limit))));
-      }
-    }
+    await profileBySource(args, config, logFiles, logTexts, pricing, { onlyLabel, sinceMs, untilMs }, t);
     return;
   }
 
-  /**
-   * `--dry-run`: what this log could and could not answer, and no bill.
-   *
-   * The question somebody has *before* wiring Trazum into CI is not "what did
-   * we spend" but "will this log support the gates I want" — and answering it
-   * with a full report makes them read a bill to find out a field is missing.
-   * This path states readiness per capability and produces no dollar figure
-   * at all, so nothing here can be mistaken for spend. It also refuses to
-   * coexist with the gates: a gate over a report that was never produced
-   * would exit green having judged nothing.
-   */
   if (boolFlag(args, 'dry-run')) {
-    const gateFlags = ['max-usd', 'max-growth-usd', 'max-cache-loss-usd', 'max-day-usd', 'max-session-usd'];
-    if (gateFlags.some((flag) => typeof args.flags.get(flag) === 'string')) {
-      throw new Error(t.profile.dryRunNoGates());
-    }
-    const cov = report.fieldCoverage;
-    const parsed = cov.parsed;
-    console.log(sectionHeading(t.profile.dryRunHeading()));
-    console.log(`  ${wrap(t.profile.dryRunParsed(n(parsed), n(report.skippedLines.length)), 74, '  ')}`);
-    if (report.unpricedModels.length > 0) {
-      console.log(`  ${c.yellow('!')} ${wrap(t.profile.dryRunUnpriced(report.unpricedModels.join(', ')), 74, '    ')}`);
-    }
-    console.log();
-    const can = (ok: boolean, line: string): void => {
-      console.log(`  ${ok ? c.green('✓') : c.yellow('✗')} ${wrap(line, 74, '    ')}`);
-    };
-    const share = (count: number): string => (parsed > 0 ? pct(count / parsed) : '0%');
-    can(parsed > 0, t.profile.dryRunTotals());
-    can(cov.label > 0, t.profile.dryRunLabels(share(cov.label)));
-    can(cov.ts > 0, t.profile.dryRunClock(share(cov.ts)));
-    can(cov.session > 0, t.profile.dryRunSessions(share(cov.session)));
-    can(cov.outcome > 0, t.profile.dryRunOutcomes(share(cov.outcome)));
-    can(cov.stopReason > 0, t.profile.dryRunStopReason(share(cov.stopReason)));
-    // "No cache traffic" is not a missing field: the split can only exist on
-    // records that wrote, and a log that never wrote has nothing to record.
-    if (cov.cacheWrites > 0) {
-      can(cov.cacheTtl > 0, t.profile.dryRunCacheTtl(n(cov.cacheTtl), n(cov.cacheWrites)));
-    } else {
-      console.log(`  ${c.dim('·')} ${wrap(t.profile.dryRunNoCacheTraffic(), 74, '    ')}`);
-    }
-    console.log();
-    console.log(`  ${c.dim(wrap(t.profile.dryRunFooter(), 74, '  '))}`);
-    if (parsed === 0) process.exitCode = 1;
+    profileDryRun(args, report, t);
     return;
   }
 
@@ -7859,6 +8514,11 @@ async function commandProfile(
    * code, and a gate that only arms in the human rendering is a gate CI never
    * had.
    */
+  /* Filled by `runProfileGates` on whichever output path runs, and read by
+     the side-file writer, which is why it is declared here rather than
+     inlined at either call. */
+  let gates: { failed: boolean; verdicts: string[] } = { failed: false, verdicts: [] };
+
   const againstPath = stringFlag(args, 'against');
   // The same filter on both sides: comparing one workload's bill against the
   // whole previous log would report every sibling workload as vanished savings.
@@ -7951,552 +8611,7 @@ async function commandProfile(
     throw new Error(t.profile.maxGrowthNeedsAgainst());
   }
 
-  /**
-   * The money gates, armed by flags and applied on every output path.
-   *
-   * `check` gates tokens before the money is spent; these gate the spend
-   * itself, from the provider's own billed counts. No period is assumed —
-   * the budget applies to exactly the log handed in, so a nightly job that
-   * profiles yesterday's log has a daily budget without Trazum ever
-   * guessing what a day is.
-   */
-  /**
-   * The gate verdicts, kept so the markdown summary can carry them.
-   *
-   * Collected by wrapping `console.error` for the duration of `applyGates`
-   * rather than by threading a return value through every gate. That is the
-   * unusual choice here and it is deliberate: a gate added later reaches the
-   * summary without anyone remembering to register it, and the alternative —
-   * one push per verdict at a dozen call sites — is a list that goes stale
-   * silently. Colour is stripped, because a summary is markdown and an
-   * escape sequence in it is noise a reader has to look past.
-   */
-  const gateVerdicts: string[] = [];
-  let gateFailed = false;
-  /**
-   * Findings as policy. A waiver silences one gate's exit code for a bounded
-   * time, on the record: the failure still prints (waived is shown as
-   * waived, never hidden — the bill still counts it), the reason and the
-   * days left print beside it, and the day the waiver expires the gate
-   * fails again louder, naming the date and the reason somebody wrote.
-   * That expiry is the entire mechanism by which a waiver stays a decision
-   * instead of becoming a habit.
-   */
-  const waiverFor = (gate: string): { entry: { gate: string; reason: string; until: string }; expired: boolean } | null => {
-    const entry = (config.waive ?? []).find((w) => w.gate === gate);
-    if (entry === undefined) return null;
-    // The waiver covers its named day whole: expiry begins the next UTC day.
-    const expiresMs = Date.parse(`${entry.until}T00:00:00Z`) + 86_400_000;
-    return { entry, expired: Date.now() >= expiresMs };
-  };
-  /**
-   * Applies a waiver to one failing gate. Returns true when the failure is
-   * silenced — the caller skips its exitCode — and prints the record either
-   * way, because a waived failure that vanished from the output would be a
-   * finding deleted with extra steps.
-   */
-  /**
-   * Uses recorded this run, flushed after the gates have finished.
-   *
-   * Collected rather than written inline because `waived` is synchronous and
-   * called from seven places inside the gate pass. Writing from each of them
-   * would mean seven awaits threaded through the exit-code logic — the one
-   * part of this command where a mistake turns a red build green.
-   */
-  const waiverUses: WaiverUse[] = [];
-  const waived = (gate: string, measuredUsd: number | null = null, limitUsd: number | null = null): boolean => {
-    const found = waiverFor(gate);
-    if (found === null) return false;
-    if (found.expired) {
-      console.error(
-        c.red(t.profile.waiveExpired(gate, found.entry.until, found.entry.reason)),
-      );
-      return false;
-    }
-    const daysLeft = Math.max(
-      0,
-      Math.ceil((Date.parse(`${found.entry.until}T00:00:00Z`) + 86_400_000 - Date.now()) / 86_400_000),
-    );
-    console.error(
-      c.yellow(t.profile.waiveActive(gate, found.entry.reason, found.entry.until, String(daysLeft))),
-    );
-    /**
-     * Recorded **when it silences something**, never when it is configured.
-     *
-     * A waiver nobody's build has ever hit is not a habit — it is dead config
-     * — and the history reports the two apart. This is also the only honest
-     * way to build the record 1.40 refused to invent: it starts today and
-     * says so, rather than reconstructing a past from the present.
-     *
-     * The reason and the expiry are taken from the config **as it stands at
-     * this moment**, because that is the decision that was actually in force.
-     * Reading today's reason back onto last quarter's use is the same mistake
-     * one layer down.
-     */
-    waiverUses.push({
-      schemaVersion: 1,
-      day: waiverDay(new Date()),
-      gate,
-      reason: found.entry.reason,
-      until: found.entry.until,
-      commit: process.env.GITHUB_SHA ?? process.env.CI_COMMIT_SHA ?? null,
-      measuredUsd,
-      limitUsd,
-    });
-    return true;
-  };
-  const applyGates = (): void => {
-    /**
-     * Before any verdict: whether the gated figure is the whole bill. A gate
-     * can only judge the money it can see, and three things hide money from
-     * it — unreadable lines, unpriced models, and clockless calls left
-     * outside a window. Passing on a floor is acceptable; passing on a floor
-     * *silently* is the flattering omission this repository refuses, because
-     * an over-budget bill with three corrupt lines would read as green.
-     */
-    const anyGate =
-      typeof args.flags.get('max-usd') === 'string' ||
-      typeof args.flags.get('max-growth-usd') === 'string' ||
-      typeof args.flags.get('max-cache-loss-usd') === 'string' ||
-      typeof args.flags.get('max-day-usd') === 'string' ||
-      typeof args.flags.get('max-session-usd') === 'string' ||
-      config.spend !== undefined;
-    if (anyGate) {
-      const reasons: string[] = [];
-      if (report.skippedLines.length > 0) reasons.push(t.profile.floorSkipped(report.skippedLines.length));
-      if (report.unpriced.calls > 0) reasons.push(t.profile.floorUnpriced(report.unpriced.calls));
-      if (report.timeWindow !== null && report.timeWindow.undatedExcluded > 0) {
-        reasons.push(t.profile.floorUndated(report.timeWindow.undatedExcluded));
-      }
-      if (reasons.length > 0) {
-        console.error(c.yellow(t.profile.gateOnFloor(reasons.join('; '))));
-      }
-    }
-    /**
-     * Per-workload budgets from the config — the policy in the repository
-     * rather than in one CI invocation. Each label is gated against its own
-     * spend in the same run, and a budgeted label with no calls in this log
-     * is reported as **not measured**: a workload that did not appear is not
-     * a workload that came in under budget, and printing green over an
-     * absence is exactly the flattering direction this tool refuses.
-     */
-    const byLabel = config.spend?.byLabel;
-    if (byLabel !== undefined && !windowed) {
-      const spent = new Map(report.byLabel.map((r) => [r.label, r.breakdown.totalUsd]));
-      for (const [label, limit] of Object.entries(byLabel)) {
-        const usd = spent.get(label);
-        if (usd === undefined) {
-          console.error(c.dim(t.profile.labelBudgetMissing(label)));
-          continue;
-        }
-        if (usd > limit) {
-          console.error(c.red(t.profile.labelBudgetFailed(label, formatUsd(usd), formatUsd(limit))));
-          if (!waived(`byLabel:${label}`, usd, limit)) process.exitCode = 1;
-        } else {
-          console.error(c.dim(t.profile.labelBudgetOk(label, formatUsd(usd), formatUsd(limit))));
-        }
-      }
-    } else if (byLabel !== undefined && windowed) {
-      // A window changes what "this label spent" means, and a budget written
-      // for a period the caller did not name would gate against a slice.
-      console.error(c.dim(t.profile.labelBudgetWindowed()));
-    }
 
-    /**
-     * Why a gate failed and how much room a pass had — written once, called by
-     * every gate, because four hand-rolled copies of the same three sentences
-     * is four chances for one of them to soften.
-     */
-    const explainFailure = (overUsd: number, { namesLargest = false } = {}): void => {
-      const why = explainGateFailure(report, levers, overUsd);
-      // The day gate already names its own day's biggest label; repeating the
-      // whole bill's biggest slice under it reads as the same sentence twice.
-      if (why.largest !== null && !namesLargest) {
-        const name = why.largest.label === UNLABELLED ? t.profile.unlabelled() : why.largest.label;
-        console.error(
-          c.dim(wrap(t.profile.gateLargest(name, why.largest.model, formatUsd(why.largest.usd), pct(why.largest.share)), 74, '  ')),
-        );
-      }
-      if (why.lever !== null) {
-        const leverName = why.lever.label === UNLABELLED ? t.profile.unlabelled() : why.lever.label;
-        // The action, not the slice's current model: a slice with only a batch
-        // price has no destination, and naming the model it already runs on as
-        // somewhere to move it would be plainly false.
-        const route = why.lever.route;
-        const action =
-          route !== null && why.lever.batch !== null
-            ? t.profile.gateLeverBoth(route.candidate.displayName)
-            : route !== null
-              ? t.profile.gateLeverRoute(route.candidate.displayName)
-              : t.profile.gateLeverBatch();
-        console.error(
-          c.dim(
-            wrap(
-              t.profile.gateLever(leverName, action, formatUsd(why.lever.combinedUsd), formatUsd(why.overageUsd), why.coversIt),
-              74,
-              '  ',
-            ),
-          ),
-        );
-      }
-    };
-    /** How much room a pass had, said only when tight, threshold in the copy. */
-    const explainMargin = (judgedUsd: number, limitUsd: number): void => {
-      const margin = gateMargin(judgedUsd, limitUsd);
-      if (margin !== null && margin < GATE_MARGIN_TIGHT) {
-        console.error(c.yellow(wrap(t.profile.gateMarginTight(pct(margin), formatUsd(limitUsd - judgedUsd)), 74, '  ')));
-      }
-    };
-
-    if (typeof args.flags.get('max-usd') === 'string' || config.spend?.maxUsd !== undefined) {
-      const maxUsd =
-        typeof args.flags.get('max-usd') === 'string'
-          ? numberFlag(args, 'max-usd', 0, t)
-          : config.spend!.maxUsd!;
-      if (report.total.totalUsd > maxUsd) {
-        console.error(c.red(t.profile.maxUsdFailed(formatUsd(report.total.totalUsd), formatUsd(maxUsd))));
-        /**
-         * What to change, next to the fact that something must. A red build in
-         * CI is the one place nobody opens the full report, so the failure
-         * carries its own next step: which slice holds the money, and the one
-         * lever the report already priced. Nothing here is a recommendation —
-         * whether that model can do the work is the reader's to judge, and the
-         * copy says so.
-         */
-        explainFailure(report.total.totalUsd - maxUsd);
-        if (!waived('maxUsd', report.total.totalUsd, maxUsd)) process.exitCode = 1;
-      } else {
-        console.error(c.dim(t.profile.maxUsdOk(formatUsd(report.total.totalUsd), formatUsd(maxUsd))));
-        explainMargin(report.total.totalUsd, maxUsd);
-      }
-    }
-    if (typeof args.flags.get('max-growth-usd') === 'string' && againstDelta !== null) {
-      const maxGrowth = numberFlag(args, 'max-growth-usd', 0, t);
-      /**
-       * A comparison that went blind fails before it is judged.
-       *
-       * The dollars can hold flat while the current log stopped recording a
-       * field the previous one carried — and every finding that needed the
-       * field is now silent for a reason that has nothing to do with spend.
-       * A gate passing there would be certifying a comparison it could not
-       * make: "not measured" is not "did not grow", the same refusal
-       * --max-day-usd makes on a clockless log and --max-session-usd on a
-       * sessionless one. Only a collapse fails; a field that appeared means
-       * this side can see more, which is never a reason to refuse.
-       */
-      const blinded = previous !== null
-        ? coverageDrift(previous.fieldCoverage, report.fieldCoverage).filter((d) => d.delta < 0)
-        : [];
-      const worst = blinded[0];
-      if (worst !== undefined) {
-        console.error(
-          c.red(
-            t.profile.maxGrowthCoverageLost(
-              blinded.map((d) => t.profile.coverageField(d.field)).join(', '),
-              pct(worst.was),
-              pct(worst.now),
-            ),
-          ),
-        );
-        // Deliberately unwaivable: this failure is "the comparison cannot
-        // be made", and a waiver on unmeasurability would be a decision to
-        // stop measuring — not a budget decision with an end date.
-        process.exitCode = 1;
-      } else if (againstDelta > maxGrowth) {
-        console.error(c.red(t.profile.maxGrowthUsdFailed(formatSignedUsd(againstDelta), formatUsd(maxGrowth))));
-        if (!waived('maxGrowthUsd', againstDelta, maxGrowth)) process.exitCode = 1;
-      }
-    }
-    /**
-     * The cache gate, and it reads the worst case on purpose. A log carrying
-     * only the flat cache-write count cannot say which TTL was paid, and the
-     * two verdicts can straddle the limit — a gate reading the flattering
-     * half would pass exactly the bills it exists to catch. The failure
-     * message says which claim fired: a settled loss, or a ceiling only the
-     * missing "cache_creation" field can settle.
-     */
-    if (typeof args.flags.get('max-cache-loss-usd') === 'string') {
-      const maxLoss = numberFlag(args, 'max-cache-loss-usd', 0, t);
-      const gateCache = cacheEconomics(report.total);
-      if (gateCache.deltaUsd > maxLoss) {
-        console.error(
-          c.red(t.profile.maxCacheLossFailed(formatUsd(gateCache.deltaUsd), formatUsd(maxLoss))),
-        );
-        if (!waived('maxCacheLossUsd', gateCache.deltaUsd, maxLoss)) process.exitCode = 1;
-      } else if (gateCache.worstCaseDeltaUsd > maxLoss) {
-        console.error(
-          c.red(
-            t.profile.maxCacheLossWorstCase(
-              report.total.assumedWriteTtlCalls,
-              formatUsd(gateCache.worstCaseDeltaUsd),
-              formatUsd(maxLoss),
-            ),
-          ),
-        );
-        if (!waived('maxCacheLossUsd', gateCache.worstCaseDeltaUsd, maxLoss)) process.exitCode = 1;
-      } else {
-        console.error(
-          c.dim(t.profile.maxCacheLossOk(formatUsd(Math.max(0, gateCache.worstCaseDeltaUsd)), formatUsd(maxLoss))),
-        );
-      }
-    }
-    /**
-     * The per-day gate — the one a total cannot arm.
-     *
-     * A month at $3,000 against a $4,000 budget passes while one afternoon's
-     * runaway agent loop burned $900 of it in four hours. `--max-usd` gates
-     * the sum handed in; this gates the **worst single UTC day inside it**,
-     * which is the shape a loop, a bad deploy or a retry storm actually has.
-     *
-     * Two refusals it inherits from the rest of the tool:
-     *
-     * A log with **no clock at all** cannot be judged by day, and that is an
-     * error rather than a pass. "Not measured" is not "under budget", and a
-     * gate that silently green-lights an unmeasurable log is worse than one
-     * that was never armed.
-     *
-     * The first and last day of a log are usually **partial**, so a day under
-     * the limit here is under it for the hours the log contains. A day *over*
-     * the limit is over it whatever the missing hours held — the failure is
-     * sound in both directions, the pass is a floor, and the pass message
-     * says so when the span does not start and end on a day boundary.
-     */
-    if (typeof args.flags.get('max-day-usd') === 'string' || config.spend?.maxDayUsd !== undefined) {
-      // The flag beats the config, like every gate here: the config is the
-      // repository's standing policy, the flag is this invocation's word.
-      const maxDay =
-        typeof args.flags.get('max-day-usd') === 'string'
-          ? numberFlag(args, 'max-day-usd', 0, t)
-          : config.spend!.maxDayUsd!;
-      if (report.spendByDay.length === 0) {
-        console.error(c.red(t.profile.maxDayNoClock()));
-        process.exitCode = 1;
-      } else {
-        const worst = report.spendByDay.reduce((a, b) => (b.usd > a.usd ? b : a));
-        const suspect =
-          worst.topLabel !== null && report.byLabel.length > 1
-            ? ` ${t.profile.dayPeakLabel(worst.topLabel === UNLABELLED ? t.profile.unlabelled() : worst.topLabel, formatUsd(worst.topLabelUsd))}`
-            : '';
-        if (worst.usd > maxDay) {
-          console.error(
-            c.red(`${t.profile.maxDayFailed(worst.day, formatUsd(worst.usd), formatUsd(maxDay))}${suspect}`),
-          );
-          explainFailure(worst.usd - maxDay, { namesLargest: true });
-          if (!waived('maxDayUsd', worst.usd, maxDay)) process.exitCode = 1;
-        } else {
-          console.error(c.dim(t.profile.maxDayOk(worst.day, formatUsd(worst.usd), formatUsd(maxDay))));
-          explainMargin(worst.usd, maxDay);
-          /**
-           * Calls with no clock are in the bill above and in no day below, so
-           * the worst day is a floor by exactly that much. Said only on a
-           * pass: a failure stands whatever the undated calls held.
-           */
-          const undated = report.fieldCoverage.parsed - report.fieldCoverage.ts;
-          if (undated > 0) {
-            console.error(c.yellow(t.profile.maxDayUndated(n(undated))));
-          }
-        }
-      }
-    }
-    /**
-     * The per-conversation gate — the unit an agent product actually blows
-     * up in. A month's budget and a day's budget both pass while one
-     * conversation loops its way through $400; the single most expensive
-     * conversation is the number a per-conversation policy has to judge,
-     * and the log already carries it.
-     *
-     * The refusals it inherits: a log with **no sessions** fails rather
-     * than passes ("not measured" is not "under budget"), and a
-     * conversation that started before this log is counted only for the
-     * turns recorded here — so a pass is a floor, and the pass message says
-     * so. The session key itself is never printed, here or anywhere.
-     */
-    if (typeof args.flags.get('max-session-usd') === 'string' || config.spend?.maxSessionUsd !== undefined) {
-      const maxSession =
-        typeof args.flags.get('max-session-usd') === 'string'
-          ? numberFlag(args, 'max-session-usd', 0, t)
-          : config.spend!.maxSessionUsd!;
-      if (report.sessionSpend === null) {
-        console.error(c.red(t.profile.maxSessionNoSessions()));
-        process.exitCode = 1;
-      } else if (report.sessionSpend.maxUsd > maxSession) {
-        console.error(
-          c.red(t.profile.maxSessionFailed(formatUsd(report.sessionSpend.maxUsd), formatUsd(maxSession), n(report.sessionSpend.sessions))),
-        );
-        explainFailure(report.sessionSpend.maxUsd - maxSession);
-        if (!waived('maxSessionUsd', report.sessionSpend.maxUsd, maxSession)) process.exitCode = 1;
-      } else {
-        console.error(
-          c.dim(t.profile.maxSessionOk(formatUsd(report.sessionSpend.maxUsd), formatUsd(maxSession), n(report.sessionSpend.sessions))),
-        );
-        explainMargin(report.sessionSpend.maxUsd, maxSession);
-      }
-    }
-  };
-
-  /**
-   * Run the gates, keeping what they said. Exit codes and stderr behave
-   * exactly as before — this only also remembers, so `--markdown-out` can put
-   * the verdict where the person reading CI will actually see it.
-   */
-  const recordGates = (): void => {
-    const original = console.error;
-    console.error = (...parts: unknown[]): void => {
-      const text = parts.map((part) => String(part)).join(' ');
-      // Colour stripped and the terminal's wrap collapsed: markdown re-wraps
-      // to its own width, and the escape sequences and hanging indents that
-      // make a terminal readable are noise a summary reader looks past.
-      // eslint-disable-next-line no-control-regex
-      gateVerdicts.push(text.replace(/\u001b\[[0-9;]*m/g, '').replace(/\s+/g, ' ').trim());
-      original(...(parts as []));
-    };
-    try {
-      applyGates();
-    } finally {
-      console.error = original;
-      gateFailed = process.exitCode === 1;
-    }
-  };
-
-  /**
-   * Writes down every waiver that silenced something this run.
-   *
-   * **A failure here never fails the build.** The gate's job is the exit code;
-   * a read-only checkout or a full disk must not turn a passing build red on
-   * account of bookkeeping. The problem is reported and the gate's own verdict
-   * stands — which is also why this runs after `recordGates` rather than
-   * inside it: nothing about the exit code depends on the write.
-   */
-  const recordWaiverUses = async (): Promise<void> => {
-    if (waiverUses.length === 0) return;
-    for (const use of waiverUses) {
-      const failed = await appendWaiverUse(configDir, use);
-      if (failed !== null) {
-        console.error(c.dim(t.profile.waiveNotRecorded(WAIVER_LOG, failed)));
-        return;
-      }
-    }
-  };
-
-  /**
-   * The side files the caller asked for. Written on **both** output paths:
-   * under --json the human rendering returns early, and the first version of
-   * --csv-out therefore wrote nothing at all there — a flag that silently did
-   * nothing, which is the fault this repository keeps refusing elsewhere.
-   */
-  const writeSideFiles = async (): Promise<void> => {
-    /**
-     * Where the "wrote to" notice goes. Under `--json`, stdout carries the
-     * report and nothing else — a status line there turns a parseable
-     * document into a parse error, which is how a pipeline discovers the
-     * feature. The gates already route their verdicts to stderr for the same
-     * reason.
-     */
-    const notice = boolFlag(args, 'json')
-      ? (message: string): void => console.error(message)
-      : (message: string): void => console.log(message);
-  /**
-     * The same report as GitHub-flavoured markdown, for a job summary or a PR
-     * comment. Written from the same message catalogue the terminal used, because
-     * two renderings of one finding drift the moment they are worded twice.
-     */
-    const markdownOut = stringFlag(args, 'markdown-out');
-    const htmlOut = stringFlag(args, 'html-out');
-    if (markdownOut !== undefined || htmlOut !== undefined) {
-      /**
-       * Derived here, not borrowed from the terminal path. Under `--json`
-       * that path never runs, and the outer `levers` this block used to
-       * reach for was an uninitialised binding — `profile --json
-       * --markdown-out` crashed with a ReferenceError from 1.59 until the
-       * HTML door's test drove both flags together and found it. The flag
-       * did not silently do nothing; it loudly did nothing, and no test had
-       * ever asked.
-       */
-      const levers = billLevers(report, { catalogue: pricing });
-      const cache = cacheEconomics(report.total);
-      /**
-       * One input object for both doors, built once: the HTML file and the
-       * Markdown file are two projections of the same figures, and building
-       * the input twice is how two renderings of one bill start disagreeing.
-       */
-      const renderInput = ({
-          report,
-          levers,
-          cache,
-          t,
-          ...(windowed
-            ? { window: { since: stringFlag(args, 'since') ?? '—', until: stringFlag(args, 'until') ?? '—' } }
-            : {}),
-          ...(pricingStale !== null ? { stalePricing: pricingStale } : {}),
-          // The verdict, where the person reading CI will see it. recordGates()
-          // runs before the side files for exactly this.
-          ...(gateVerdicts.length > 0 ? { gates: { failed: gateFailed, lines: gateVerdicts } } : {}),
-          // The short form, for a reader who is not in the terminal.
-          ...(boolFlag(args, 'markdown-summary') ? { summary: true } : {}),
-          // The repricing, when --what-if was given: computed once above and
-          // handed over, so the summary in a pull request cannot disagree
-          // with the terminal about what a move would cost.
-          ...(whatIf !== null ? { whatIf } : {}),
-          pressure: pressures,
-          // The comparison, when there was one — the same figures and the same
-          // drivers the terminal printed, never re-derived here.
-          ...(previous !== null
-            ? {
-                against: {
-                  previousTotalUsd: previous.total.totalUsd,
-                  previousCalls: previous.total.calls,
-                  labelDrivers,
-                  modelDrivers:
-                    new Set([
-                      ...previous.byModel.map((r) => r.model),
-                      ...report.byModel.map((r) => r.model),
-                    ]).size > 1
-                      ? modelDrivers
-                      : [],
-                  overlap:
-                    againstOverlap !== null
-                      ? { from: dayOf(againstOverlap.fromMs), to: dayOf(againstOverlap.toMs) }
-                      : null,
-                  nothingPriced: previous.total.calls === 0,
-                },
-              }
-            : {}),
-      });
-      if (markdownOut !== undefined) {
-        await writeFile(markdownOut, renderProfileMarkdown(renderInput), 'utf8');
-        notice(c.dim(t.report.wroteTo(markdownOut)));
-      }
-      if (htmlOut !== undefined) {
-        await writeFile(htmlOut, renderProfileHtml(renderInput), 'utf8');
-        notice(c.dim(t.html.written(htmlOut)));
-      }
-    }
-
-    /**
-     * The same report as a spreadsheet, one row per label and model — the grain
-     * a routing or budget decision is made at. Deliberately without a total
-     * row: a total inside a data file is summed with the data and doubles every
-     * figure downstream.
-     */
-    const csvOut = stringFlag(args, 'csv-out');
-    if (csvOut !== undefined) {
-      /**
-       * Which table the file holds. One row shape per file on purpose: a
-       * spreadsheet that has to filter before it can sum is a spreadsheet
-       * somebody sums wrong.
-       */
-      const shape = stringFlag(args, 'csv-shape') ?? 'slice';
-      if (shape !== 'slice' && shape !== 'day' && shape !== 'hour' && shape !== 'model-day') {
-        throw new Error(t.profile.badCsvShape(shape));
-      }
-      await writeFile(
-        csvOut,
-        profileToCsv(report, { unlabelled: t.profile.unlabelled(), shape }),
-        'utf8',
-      );
-      notice(c.dim(t.report.wroteTo(csvOut)));
-    }
-  };
 
   if (boolFlag(args, 'json')) {
     /**
@@ -8568,9 +8683,13 @@ async function commandProfile(
         2,
       ),
     );
-    recordGates();
-    await recordWaiverUses();
-    await writeSideFiles();
+    gates = await runProfileGates({
+      args, config, configDir, report, previous, againstDelta, windowed, now, pricing, t,
+    });
+    await writeProfileSideFiles({
+      args, path, report, previous, pressures, labelDrivers, modelDrivers, againstOverlap,
+      whatIf, pricingStale, windowed, gates, pricing, t,
+    });
     return;
   }
 
@@ -9892,10 +10011,14 @@ async function commandProfile(
 
   reportProfileGaps(report, t, n, pricingStale);
 
-  recordGates();
-  await recordWaiverUses();
+  gates = await runProfileGates({
+    args, config, configDir, report, previous, againstDelta, windowed, now, pricing, t,
+  });
 
-  await writeSideFiles();
+  await writeProfileSideFiles({
+    args, path, report, previous, pressures, labelDrivers, modelDrivers, againstOverlap,
+    whatIf, pricingStale, windowed, gates, pricing, t,
+  });
 }
 
 /**
