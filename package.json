@@ -24,6 +24,7 @@
     "build:web": "npm run build -w @trazum/web",
     "trazum": "node packages/cli/dist/index.js",
     "test:action": "node --test action/test/*.test.mjs",
-    "measure:tokens": "node scripts/measure-token-band.mjs"
+    "measure:tokens": "node scripts/measure-token-band.mjs",
+    "check:models": "node scripts/check-model-availability.mjs"
   }
 }

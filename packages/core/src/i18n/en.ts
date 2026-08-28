@@ -218,6 +218,15 @@ export const en: CoreMessages = {
       detail: `${modelName} has introductory pricing of ${promoInput}/${promoOutput} per million tokens until ${until}. After that date it moves to ${listInput}/${listOutput}: your bill goes up even if you change nothing.`,
     }),
 
+    modelRetired: ({ modelName, modelId, on, because }) => ({
+      title: `${modelName} is priced here and refused by its provider`,
+      detail:
+        `A real request for \`${modelId}\` was answered with an error on ${on}: "${because}" `
+        + 'The price above is still the right one for calls already in your log, because that '
+        + 'money was spent. A new call on this id will not run. Nothing here proposes what the '
+        + 'replacement costs: that figure comes off the provider\'s own pricing page or not at all.',
+    }),
+
     contradictoryInstructions: ({
       axis,
       firstValue,

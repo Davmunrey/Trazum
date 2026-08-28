@@ -177,8 +177,11 @@ const TYPES = {
  *
  * `free` is not a footnote. Anthropic's endpoint counts without running the
  * model and costs nothing. DeepSeek has no counting endpoint, so the number has
- * to come from `usage.prompt_tokens` on a real completion — pennies at
- * `max_tokens: 1`, and still somebody's money.
+ * to come from `usage.prompt_tokens` on a real completion — pennies at the
+ * smallest generated half each provider will accept, and still somebody's
+ * money. That smallest half is not the same everywhere: a reasoning model
+ * spends the budget before it emits, so OpenAI's is sixteen tokens rather than
+ * one, and the note beside it says how that was found out.
  */
 const PROVIDERS = {
   anthropic: {
@@ -232,9 +235,10 @@ const PROVIDERS = {
     governsPublishedBand: false,
     async count(text, { apiKey, model }) {
       // Same shape as DeepSeek: no counting endpoint, so the prompt count is a
-      // by-product of a completion held to one generated token. The prompt half
-      // is billed either way, which is why `free` is false and the warning
-      // below prints before a single request goes out.
+      // by-product of a completion held to the smallest generated half this
+      // provider accepts. The prompt half is billed either way, which is why
+      // `free` is false and the warning below prints before a single request
+      // goes out.
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: { 'content-type': 'application/json', authorization: 'Bearer ' + apiKey },
@@ -245,7 +249,22 @@ const PROVIDERS = {
           // gateway reads `max_completion_tokens ?? max_tokens` when it
           // describes a call, so both are known here and this is the one that
           // belongs to this provider.
-          max_completion_tokens: 1,
+          //
+          // Sixteen, not one, and the reason is the whole point of measuring
+          // against a real endpoint. `gpt-5` is a reasoning model: it spends
+          // the completion budget thinking before it emits anything, so a
+          // budget of one is exhausted before the first visible token and the
+          // API answers **400 with no usage block at all** — "Please try again
+          // with higher max_tokens". A count that arrives as an error is not a
+          // count. Sixteen is the smallest budget that came back 200 here, and
+          // it buys sixteen reasoning tokens per sample: a few cents across the
+          // corpus, against a prompt half that was going to be billed anyway.
+          //
+          // This shape was committed in 1.53 without a key, on an endpoint
+          // nobody here had ever called. The first real credential refuted it.
+          // `reasoning_effort: 'minimal'` does not rescue the budget of one —
+          // tried, still 400 — so it is not written here as if it did.
+          max_completion_tokens: 16,
           stream: false,
         }),
       });
@@ -261,7 +280,22 @@ const PROVIDERS = {
   google: {
     label: 'Google',
     envVar: 'GOOGLE_API_KEY',
-    defaultModel: 'gemini-2.5-flash',
+    /**
+     * Not `gemini-2.5-flash`, which is what this line said until a real key
+     * was pointed at it.
+     *
+     * The model is still listed by `GET /v1beta/models`, and a request to it
+     * comes back **404 NOT_FOUND**: *"This model models/gemini-2.5-flash is no
+     * longer available to new users."* Listed and unusable are different
+     * states, and the catalogue reads the list. That is a finding about
+     * `pricing.ts` and not about this script, and it is filed rather than
+     * quietly patched: nothing here invents a price for the replacement.
+     *
+     * `gemini-3.6-flash` is the model Google's own error message names, and it
+     * is what the fixture records — so a reader can see the band was measured
+     * against a tokenizer that answers today rather than one that used to.
+     */
+    defaultModel: 'gemini-3.6-flash',
     fixture: 'token-ground-truth.google.json',
     free: false,
     governsPublishedBand: false,
@@ -394,9 +428,10 @@ if (!provider.free) {
     '\n' +
       provider.label +
       ' has no free counting endpoint. Every sample below is a real completion\n' +
-      'with max_tokens: 1, so the prompt half is billed. Pennies for this corpus, and\n' +
-      'still your money — said out loud because the Anthropic path is free and nobody\n' +
-      'should discover the difference on an invoice.\n',
+      'with the generated half held to the floor this provider accepts, so the\n' +
+      'prompt half is billed. Pennies for this corpus, and still your money — said\n' +
+      'out loud because the Anthropic path is free and nobody should discover the\n' +
+      'difference on an invoice.\n',
   );
 }
 

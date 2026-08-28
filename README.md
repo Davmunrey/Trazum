@@ -5,7 +5,7 @@
 ### Most of your LLM bill is not the prompt. Trazum finds where it is.
 
 **A deterministic cost analyser for prompts and usage logs.** Offline, free,
-same answer every time. It reports fifteen findings priced in dollars per
+same answer every time. It reports sixteen findings priced in dollars per
 month: caching you are not getting, a model tier you may not need, a schema you
 pay to describe on every call. Shortening the prompt is one of them, and it is
 rarely the biggest.
@@ -67,7 +67,7 @@ run above, forty percent of the text came out and it moved 3.5% of the bill.
 What moved the rest was a question nobody was asking: does this task need the
 model it is running on?
 
-**Every figure has a receipt.** Fifteen advisories, each priced per month and
+**Every figure has a receipt.** Sixteen advisories, each priced per month and
 reproducible on a single file: caching you are not getting, work that could go
 through the Batch API, a schema costing tokens on every call to describe a shape
 the request could carry as a parameter. Underneath them, twelve deterministic

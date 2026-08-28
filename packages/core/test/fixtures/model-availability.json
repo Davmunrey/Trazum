@@ -1,0 +1,55 @@
+{
+  "checkedOn": "2026-08-28",
+  "note": "Written by scripts/check-model-availability.mjs. Refused means the provider answered a real request for this id with an error, not that a list omitted it.",
+  "answered": [
+    "claude-fable-5",
+    "claude-opus-5",
+    "claude-opus-4-8",
+    "claude-opus-4-7",
+    "claude-opus-4-6",
+    "claude-sonnet-5",
+    "claude-sonnet-4-6",
+    "claude-haiku-4-5",
+    "gpt-5",
+    "gpt-5-mini",
+    "gpt-5-nano"
+  ],
+  "expectedUnreachable": [
+    {
+      "id": "claude-mythos-5",
+      "because": "priced as Glasswing-only and not recommendable"
+    }
+  ],
+  "refused": [
+    {
+      "id": "gemini-2.5-pro",
+      "status": 404,
+      "message": "This model models/gemini-2.5-pro is no longer available to new users. Please update your code to use models/gemini-3.1-pro-preview for the latest features and improvements. We recommend you to use the Interactions API."
+    },
+    {
+      "id": "gemini-2.5-flash",
+      "status": 404,
+      "message": "This model models/gemini-2.5-flash is no longer available to new users. Please update your code to use models/gemini-3.6-flash for the latest features and improvements. We recommend you to use the Interactions API."
+    },
+    {
+      "id": "deepseek-v3",
+      "status": 400,
+      "message": "The supported API model names are deepseek-v4-pro, deepseek-v4-flash, and deepseek-v4-flash-vision-exp, but you passed deepseek-v3."
+    },
+    {
+      "id": "mistral-large-2",
+      "status": 400,
+      "message": "Invalid model: mistral-large-2"
+    }
+  ],
+  "notAsked": [
+    {
+      "id": "kimi-k2",
+      "because": "no probe is written for moonshot"
+    },
+    {
+      "id": "grok-4",
+      "because": "no probe is written for xai"
+    }
+  ]
+}

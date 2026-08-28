@@ -229,6 +229,31 @@ ANTHROPIC_API_KEY=... npm run measure:tokens
 
 The counting endpoint is free and does not run the model. Commit what it writes.
 
+### The other thing a key buys: whether the model still exists
+
+The catalogue is held to a review date, so a stale **price** fails a test. The
+model **id** had no such guard until a real credential was pointed at one, and
+four of the eighteen priced models turned out to be refused by the provider that
+sells them, two of them still listed by that provider's own model endpoint.
+
+```bash
+ANTHROPIC_API_KEY=... OPENAI_API_KEY=... npm run check:models
+```
+
+Every key is optional and every provider independent; a provider with no key is
+named in the record as unasked rather than left out of it. Anthropic's probe is
+the free counting endpoint; every other provider is one real completion, a
+fraction of a cent per model. It writes
+`packages/core/test/fixtures/model-availability.json`, and
+`model-availability.test.js` then holds the catalogue to that record offline, in
+both directions: a refused model has to be marked `retired` in the provider's
+own words, and nothing may be marked `retired` that no recorded request refused.
+
+**It does not propose a price for the replacement, and must never be extended
+to.** Finding that a model is gone says nothing about what its successor costs.
+That figure comes off the provider's own pricing page, on a date, alongside a
+move in `PROVIDER_REVIEWED`, or it does not go in.
+
 **Adding a sample is the cheap, useful contribution here.** Drop a `.txt` file in
 `packages/core/test/corpus/`, run the script, commit the fixture. Digests are per
 sample, so a new file is measured on its own and nothing already measured is
