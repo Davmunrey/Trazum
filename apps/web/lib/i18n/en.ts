@@ -1042,7 +1042,7 @@ export const en: WebMessages = {
       cli: {
         title: 'The CLI, complete',
         body:
-          '"trazum position usage.jsonl" closes the loop in one line: the month against its configured ceiling, measured, verdict attached. Everything you just watched is the real CLI: 45 commands install with "npm i -g @trazum/cli", and "help" lists what the browser can run.',
+          '"trazum position usage.jsonl" closes the loop in one line: the month against its configured ceiling, measured, verdict attached. Everything you just watched is the real CLI: 46 commands install with "npm i -g @trazum/cli", and "help" lists what the browser can run.',
       },
       finish: {
         title: 'That is the tour',

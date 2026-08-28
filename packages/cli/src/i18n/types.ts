@@ -592,6 +592,20 @@ export interface CliMessages {
     snippetHeading(): string;
   };
 
+  /**
+   * `receipt` — the bill's counts with the provenance of every figure, shaped
+   * so they still answer somewhere other than the terminal that produced them.
+   */
+  receipt: {
+    noLog(): string;
+    written(file: string, lines: number): string;
+    summary(lines: number, usd: string): string;
+    unpriced(models: number, calls: number): string;
+    unread(count: number): string;
+    noClock(): string;
+    nothingToBill(): string;
+  };
+
   fromOtel: {
     noPath(): string;
     notFound(path: string): string;

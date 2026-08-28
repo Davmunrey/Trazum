@@ -308,6 +308,7 @@ const INVOCATION = {
   schema: ['usage-log'],
   rollup: ['report.json'],
   position: ['usage.jsonl'],
+  receipt: ['usage.jsonl'],
   'from-claude-code': ['transcript.jsonl', '-o', 'c1.jsonl'],
   'from-otel': ['spans.json', '-o', 'c2.jsonl'],
   'from-litellm': ['litellm.json', '-o', 'c3.jsonl'],

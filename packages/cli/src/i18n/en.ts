@@ -59,6 +59,7 @@ ${bold('USAGE')}
   trazum schema <contract>
   trazum rollup <document...|dir> [--json] [--html-out <file>]
   trazum position <usage.jsonl>
+  trazum receipt <usage.jsonl|dir> [--stamp] [-o <file>]
   trazum from-claude-code <file|dir> [--label <name>] [-o <file>]
   trazum from-otel <file|dir> [--label-from-service] [-o <file>]
   trazum from-litellm <file|dir> [-o <file>]
@@ -242,6 +243,26 @@ ${bold('OPTIONS FOR position')}
   division on the past, labelled as such, and absent under the seven-day
   floor, on an over, and on a zero rate: never a forecast, and no field in
   the document names a date.
+
+${bold('OPTIONS FOR receipt')}
+  --stamp                     Record the emission time in the document. Off by
+                              default so two runs on one log produce the same
+                              bytes: the period the figures cover is already in
+                              there, from the log's own clock.
+  -o, --out <file>            Write the receipt there instead of to standard
+                              output. The summary always goes to standard
+                              error, so a redirect writes a document and not a
+                              document with a summary stapled to the front.
+  --pricing <file>            Price it with your own card instead of the
+                              bundled catalogue.
+  --pricing-live              Price it against live rates via OpenRouter.
+
+  A profile answers where it ran. A receipt is the same figures shaped so they
+  still answer somewhere else: every line carries the rates behind its money
+  and the date that provider's rates were last read off its own page. What is
+  not in it is prompt text, answers, file paths, branch names, credentials and
+  sessions: not redacted, absent, because the shape it is built from has no
+  field that can hold them. It sends nothing anywhere.
 
 ${bold('OPTIONS FOR pulse')}
   --max-stale-hours <n>       Exit 1 when something that runs here has not run
@@ -1743,6 +1764,19 @@ ${bold('EXAMPLES')}
     declared: () =>
       'Derived from your declaration, honest only if the throughput was measured. Every report that prices this model will rest on these two numbers.',
     snippetHeading: () => 'Paste into trazum.config.json (the "pricing" overlay file):',
+  },
+
+  receipt: {
+    noLog: () => 'Name a usage log to make a receipt from.',
+    written: (file, lines) => `Wrote a receipt of ${lines} line(s) to ${file}.`,
+    summary: (lines, usd) =>
+      `${lines} line(s), ${usd} priced. Every figure carries the rate behind it and the date that rate was reviewed.`,
+    unpriced: (models, calls) =>
+      `${models} model(s) the catalogue does not price, covering ${calls} call(s): named in the receipt's gaps, and kept out of the total rather than costed at zero.`,
+    unread: (count) => `${count} line(s) of the log could not be read, and the receipt says so.`,
+    noClock: () =>
+      'The log carries no clock, so the receipt is unbounded in time and states that rather than inventing a period.',
+    nothingToBill: () => 'Nothing in this log could be priced, so the receipt has no lines.',
   },
 
   fromOtel: {

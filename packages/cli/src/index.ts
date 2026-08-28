@@ -87,6 +87,7 @@ import {
   formatBaseline,
   formatSignedUsd,
   formatUsd,
+  receiptFrom,
   getMessages,
   getModel,
   hasMarker,
@@ -688,6 +689,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   schema: [],
   rollup: ['json', 'html-out'],
   position: ['json', 'html-out', 'pricing', 'pricing-live'],
+  receipt: ['out', 'o', 'stamp', 'pricing', 'pricing-live'],
   'from-claude-code': ['label', 'label-from-project', 'out', 'o', 'state'],
   'from-otel': ['label-from-service', 'out', 'o'],
   'from-litellm': ['out', 'o'],
@@ -2930,6 +2932,84 @@ async function commandFromClaudeCode(args: Args, t: CliMessages): Promise<void> 
   if (synthetic > 0) console.error(t.fromClaudeCode.synthetic(synthetic));
   if (labelFromProject && label === undefined) console.error(t.fromClaudeCode.labelled());
   console.error(t.fromClaudeCode.skipped(otherLines, unparseable, withoutUsage));
+}
+
+/**
+ * `trazum receipt <usage.jsonl|dir>` — the bill's counts, with the provenance
+ * of every figure attached.
+ *
+ * A profile answers a question on the terminal that ran it. The same figures
+ * filed against an invoice, or read next month by somebody who was not there,
+ * stop answering it: a dollar total with no provenance cannot tell a repricing
+ * from a team whose spend moved. This writes the shape that keeps answering.
+ *
+ * **It sends nothing anywhere.** There is no endpoint, no key, no retry and no
+ * queue: the document goes to a path you name or to standard output, and what
+ * happens to it next is not this command's business. A command in this package
+ * that phoned home would break the roadmap's first rule in the same release
+ * that claims to be protecting it.
+ *
+ * **The document is undated unless you ask for a stamp**, and that is a
+ * deliberate default rather than an omission. This product's first promise is
+ * the same answer every time; a command that wrote the current clock into its
+ * output would produce different bytes on every run, so it could not be
+ * committed, diffed in a pull request, or compared against yesterday's. The
+ * period the figures actually cover is already in the document, read from the
+ * log's own clock. `--stamp` adds the emission time for whoever wants it, and
+ * an undated receipt is valid: `receiptFrom` says so, and says why.
+ *
+ * The offline guard found this. The command stamped by default, two runs
+ * disagreed, and the test that exists to catch a hidden network call caught a
+ * hidden clock instead.
+ *
+ * The redaction property is not enforced here. It is a property of
+ * `receiptFrom`, which takes a `UsageProfileReport` -- a shape with no field
+ * that can hold prompt text -- and it is held by `receipt-redaction.test.js`
+ * planting the 4 things that must never appear. This function only chooses the
+ * log and the destination.
+ */
+async function commandReceipt(
+  args: Args,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
+  const file = args.positional[0];
+  if (file === undefined) throw new Error(t.receipt.noLog());
+
+  const text = await readUsageLog(file, t);
+  const report = profileUsage(text, { catalogue: pricing });
+  const document = receiptFrom(
+    report,
+    pricing,
+    boolFlag(args, 'stamp') ? { emittedAt: new Date() } : {},
+  );
+  const json = JSON.stringify(document, null, 2);
+
+  const out = stringFlag(args, 'out') ?? stringFlag(args, 'o');
+  if (out !== undefined) {
+    await writeFile(out, json + '\n', 'utf8');
+    console.error(t.receipt.written(out, document.lines.length));
+  } else {
+    console.log(json);
+  }
+
+  /*
+   * Everything below goes to stderr, so `trazum receipt log.jsonl > receipt.json`
+   * writes a document and not a document with a summary stapled to the front.
+   * The gaps are read off the document rather than recomputed, so what the
+   * reader is told and what the file carries cannot drift apart.
+   */
+  if (document.lines.length === 0) {
+    console.error(t.receipt.nothingToBill());
+  } else {
+    console.error(t.receipt.summary(document.lines.length, formatUsd(document.total.usd)));
+  }
+
+  for (const gap of document.gaps) {
+    if (gap.kind === 'unpriced') console.error(t.receipt.unpriced(gap.models.length, gap.calls));
+    if (gap.kind === 'unread-lines') console.error(t.receipt.unread(gap.count));
+    if (gap.kind === 'no-clock') console.error(t.receipt.noClock());
+  }
 }
 
 /**
@@ -12311,6 +12391,9 @@ async function main(): Promise<void> {
       break;
     case 'from-claude-code':
       await commandFromClaudeCode(args, t);
+      break;
+    case 'receipt':
+      await commandReceipt(args, pricing, t);
       break;
     case 'from-otel':
       await commandFromOtel(args, t);

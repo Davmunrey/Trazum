@@ -82,14 +82,14 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
          ┌─────────────┬─────┴────────┬──────────────┐
    @trazum/cli    @trazum/mcp    @trazum/web       action/
- 45 commands       MCP server      Next.js     comments on pull requests
+ 46 commands       MCP server      Next.js     comments on pull requests
                  for your agents
 ```
 
 ## Contents
 
 - [What it actually does](#what-it-actually-does) — the five things, and what it refuses to touch
-- [The 45 commands](#the-45-commands): the whole surface, one line each
+- [The 46 commands](#the-46-commands): the whole surface, one line each
 - [Getting started](#getting-started) — CLI, web, the GitHub Action, pre-commit
 - [The first five minutes](#the-first-five-minutes-trazum-init) — `init`, and the four things it refuses to write
 - [Building on the format](docs/commands.md#building-on-the-format-trazum-conform) — the contracts, the guarantees, and the doctrine
@@ -198,8 +198,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of 45 commands — [the table
-above](#the-45-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of 46 commands — [the table
+above](#the-46-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -213,7 +213,7 @@ from the exit codes it is supposed to relay.
 
 ---
 
-## The 45 commands
+## The 46 commands
 
 | Command | What it answers |
 |---|---|
@@ -251,6 +251,7 @@ from the exit codes it is supposed to relay.
 | [`trazum rollup`](docs/commands.md#more-than-one-machine-trazum-rollup) | Four of us measured four things — what is the total, and what did merging lose? *A format and a merge, not a service.* |
 | [`trazum pulse`](docs/commands.md#did-anything-stop-running-trazum-pulse) | Did the things that are supposed to run, run? *Runs nothing itself — your CI is the thing that notices.* |
 | [`trazum position`](docs/commands.md#where-the-month-stands-trazum-position) | Where does the month stand against every ceiling? *Measured, denominators attached, no forecast anywhere.* |
+| [`trazum receipt`](docs/commands.md#a-figure-that-still-answers-elsewhere-trazum-receipt) | What did this cost, in a form that still answers when read somewhere else? *Counts and the rate behind each one. No prompt text, no answers, no paths: there is no field for them.* |
 | [`trazum from-claude-code`](docs/commands.md#the-agents-own-bill-trazum-from-claude-code) | What did my Claude Code sessions cost? *Reads the transcripts already on disk — the numbers only, never the words.* |
 | [`trazum from-otel`](docs/commands.md#the-universal-cost-lens-trazum-from-otel) | What did the LLM calls in my OpenTelemetry export cost? *Reads the GenAI spans any exporter already emits — the counts only, never the prompts.* |
 | [`trazum from-litellm`](docs/commands.md#the-gateway-everybody-already-runs-trazum-from-litellm) | What did the calls my LiteLLM proxy logged cost? *Reads the spend log the gateway already writes — the counts only, never the prompts, keys or addresses on the same row.* |
@@ -599,7 +600,7 @@ in **[the command reference](docs/commands.md)**: the
 measured multiplication (`--from-log`), the cache reorder, the CI baseline,
 the fleet, the plan and its verification, the provider pull, the gateway,
 the evaluations that spend money and say so first, and everything else the
-[table above](#the-45-commands) links to.
+[table above](#the-46-commands) links to.
 
 `trazum --version` prints the version on its own, and works when your config is
 broken — which is exactly when somebody is asking.
