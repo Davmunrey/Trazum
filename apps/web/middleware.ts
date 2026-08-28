@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 import { analyticsConnectSrc } from '@/lib/analytics';
+import { createRateLimiter } from '@/lib/rate-limit';
 
 /**
  * A Content-Security-Policy with a real `script-src`, which needs a nonce, which
@@ -48,7 +49,52 @@ export const config = {
   matcher: ['/((?!badge/|_next/static/|_next/image|favicon.ico).*)'],
 };
 
+/**
+ * The shared comparison page, and the one thing standing between it and a loop.
+ *
+ * `/c/:token` is unauthenticated by design — the token is the capability — and
+ * it runs `comparePrompts` over two whole prompts on every request, which is
+ * the most expensive computation this product performs: 52 ms on a 4,580
+ * character prompt, about 19 renders a second on one core. Anybody holding a
+ * link can spend that in a loop, and until now nothing said no.
+ *
+ * **Why a per-address limit here and a memo on the badge.** The two routes run
+ * the same comparison and needed opposite answers. `/badge/:token.svg` is
+ * fetched through an image proxy on behalf of every reader of a README, so a
+ * per-address limit would throttle a popular badge for everyone at once; it
+ * memoises instead. A page needs a person to open it, so there is no fan-out
+ * and the address is the right axis — and a memo would be the wrong tool there,
+ * because what it would hold for the whole window is a comparison carrying
+ * somebody's prompt, on the page whose own comment says it is never cached for
+ * exactly that reason.
+ *
+ * 120 a minute is deliberately far above a reader and far below a loop. Nobody
+ * opens a page twice a second by hand, and this is the same courtesy limit the
+ * API routes carry rather than a security control: each instance keeps its own
+ * counters, and `x-forwarded-for` is client-controllable where no proxy
+ * overwrites it. It raises the cost of the obvious abuse; it does not make it
+ * impossible, and `lib/rate-limit.ts` says so at length.
+ */
+const sharedPageLimited = createRateLimiter({ windowMs: 60_000, max: 120 });
+
 export function middleware(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith('/c/') && sharedPageLimited(request, Date.now())) {
+    /**
+     * 429 with a `Retry-After`, and no body worth reading. A refusal here says
+     * only that this address asked too often: naming the token, or whether it
+     * exists, would turn the limiter into the disclosure the page is careful
+     * not to be.
+     */
+    return new NextResponse('Too many requests.\n', {
+      status: 429,
+      headers: {
+        'retry-after': '60',
+        'content-type': 'text/plain; charset=utf-8',
+        'cache-control': 'no-store',
+      },
+    });
+  }
+
   const value = nonce();
 
   /**

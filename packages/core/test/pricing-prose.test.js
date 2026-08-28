@@ -60,6 +60,21 @@ describe('the provider-facts table describes the catalogue', () => {
   });
 
   it('puts every provider on the correct side of the cache-read split', () => {
+    /**
+     * This asserted one rate per provider until two providers changed theirs
+     * between generations, which is a fact rather than a defect: DeepSeek V4
+     * reads cache at about 3% where V3 read at 10%, and Google's 3.6 Flash
+     * reads at 10% where the retired 2.5 models read at 25%. Both retired
+     * models keep their real rate, because a log full of their calls records
+     * money that was really spent at it.
+     *
+     * So the check moved rather than loosened. A provider whose models agree
+     * must be named in the row; one whose models disagree must be named **and**
+     * the row must say a generation changed it, which is the same "per model,
+     * not per provider" shape the cache-minimum row already carries. A row
+     * naming one figure for a provider that has two is the failure this now
+     * catches, and it is the one it would have grown into.
+     */
     const text = table();
     const cacheRead = row(text, 'Cache read');
 
@@ -69,12 +84,17 @@ describe('the provider-facts table describes the catalogue', () => {
       if (models.every((m) => m.caching === 'none')) continue;
 
       const rates = new Set(models.map((m) => multipliersFor(m).cacheRead));
-      assert.equal(rates.size, 1, `${provider} prices cache reads more than one way: ${[...rates]}`);
-      const [rate] = rates;
       assert.ok(
         cacheRead.includes(LABEL[provider]),
-        `${LABEL[provider]} reads cache at ${rate * 100}% and the cache-read row does not name it`,
+        `${LABEL[provider]} caches and the cache-read row does not name it`,
       );
+      if (rates.size > 1) {
+        assert.match(
+          cacheRead,
+          /generation/i,
+          `${LABEL[provider]} reads cache at ${[...rates].join(' and ')} and the row states one figure`,
+        );
+      }
     }
   });
 

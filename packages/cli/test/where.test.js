@@ -81,7 +81,24 @@ describe('what it reads and refuses', () => {
     });
     const { out } = run(['ds.py'], root);
     assert.match(out, /go to\s*\n\s*deepseek/);
-    assert.match(out, /DeepSeek V3/);
+
+    /**
+     * Not by name, and the reason is worth a line.
+     *
+     * This asserted `DeepSeek V3` while V3 was the only DeepSeek model in the
+     * catalogue, so the test was pinned to *which* model happened to exist
+     * rather than to the thing it is about, which is that a base URL beats the
+     * SDK import. When V3 was refused by its provider and V4 arrived, the
+     * assertion failed on a change that made the product more correct: a
+     * DeepSeek call with no model named is now priced as a model somebody can
+     * actually call.
+     *
+     * Bounded by the subject: any DeepSeek model, and the sentence saying the
+     * provider was read from the source while the model was not.
+     */
+    assert.match(out, /Priced as\s*\n\s*DeepSeek /);
+    assert.match(out, /deepseek was read from the source/);
+    assert.doesNotMatch(out, /Claude|GPT|Gemini/, 'a DeepSeek call was priced as somebody else');
   });
 
   it('refuses when the file names two providers, and assumes nothing', async () => {

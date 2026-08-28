@@ -22,12 +22,30 @@ import { fileURLToPath } from 'node:url';
 
 const STUB = new URL('./next-server.mjs', import.meta.url).href;
 
+/**
+ * `@/x` is the app's own alias for its root, configured in `tsconfig.json` and
+ * resolved by Next's bundler. Plain Node has never heard of it.
+ *
+ * Added when `middleware.ts` became worth running rather than reading: it
+ * imports `@/lib/analytics` and `@/lib/rate-limit`, and a loader that could not
+ * follow those was the only reason the file was tested as text.
+ */
+const APP_ROOT = new URL('../../', import.meta.url);
+
 /** What a bare `./x` could mean, in TypeScript's order of preference. */
 const CANDIDATES = ['.ts', '.tsx', '/index.ts', '/index.tsx'];
 
 export function resolve(specifier, context, nextResolve) {
   if (specifier === 'next/server') {
     return { url: STUB, shortCircuit: true };
+  }
+
+  if (specifier.startsWith('@/')) {
+    const base = new URL(specifier.slice(2), APP_ROOT);
+    for (const suffix of ['', ...CANDIDATES]) {
+      const candidate = new URL(base.href + suffix);
+      if (existsSync(fileURLToPath(candidate))) return nextResolve(candidate.href, context);
+    }
   }
 
   if (specifier.startsWith('.') && !/\.[cm]?[jt]sx?$/.test(specifier)) {

@@ -12,7 +12,10 @@
     "claude-haiku-4-5",
     "gpt-5",
     "gpt-5-mini",
-    "gpt-5-nano"
+    "gpt-5-nano",
+    "gemini-3.6-flash",
+    "deepseek-v4-flash",
+    "deepseek-v4-pro"
   ],
   "expectedUnreachable": [
     {

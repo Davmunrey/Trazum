@@ -904,9 +904,9 @@ on text. What differs is the money, and **that is not one set of numbers**:
 
 | | |
 |---|---|
-| Cache read | 10% of input on Anthropic, OpenAI, Moonshot and DeepSeek; **25%** on Google and xAI |
+| Cache read | 10% of input on Anthropic, OpenAI and Moonshot; **25%** on xAI. Two providers changed it **between generations**: DeepSeek V4 reads at about **3%** where V3 read at 10%, and Google's 3.6 Flash reads at 10% where the retired 2.5 models read at 25% |
 | Cache write | 125% of input on Anthropic; 100% elsewhere |
-| Cache minimum | **Per model, not per provider.** Anthropic alone spans 512 to 4,096; 1,024 on OpenAI, Moonshot, DeepSeek and xAI; 2,048 on Gemini Pro and 1,024 on Flash |
+| Cache minimum | **Per model, not per provider.** Anthropic alone spans 512 to 4,096; 1,024 on OpenAI, Moonshot, DeepSeek, xAI and Gemini Flash; 2,048 on the retired Gemini Pro |
 | How caching starts | You mark the prefix on Anthropic and Google; it is **automatic** on OpenAI, Moonshot, DeepSeek and xAI |
 | Batch API | 50% on Anthropic, OpenAI, Google and Mistral; **none at all** on Moonshot, DeepSeek and xAI |
 | Prompt caching | **None at all** on Mistral |
