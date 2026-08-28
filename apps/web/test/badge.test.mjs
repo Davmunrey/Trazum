@@ -28,7 +28,7 @@ const ENV = {
   TRAZUM_PUBLIC_URL: ORIGIN,
 };
 
-let badge, svgLib, shareApi;
+let badge, svgLib, shareApi, createBadgeMemo;
 let getStore, resetStore, issueSession;
 
 const saved = {};
@@ -39,6 +39,7 @@ before(async () => {
 
   ({ GET: badge } = await import('../app/badge/[token]/route.ts'));
   svgLib = await import('../lib/badge/svg.ts');
+  ({ createBadgeMemo } = await import('../lib/badge/memo.ts'));
   shareApi = await import('../lib/shares/api.ts');
   ({ getStore, resetStore } = await import('../lib/store/index.ts'));
   ({ issueSession } = await import('../lib/auth/session.ts'));
@@ -359,5 +360,186 @@ describe('the route answers 200 to everything', () => {
     // Taken from the core's field rather than subtracted again here, so this
     // surface cannot end up with the opposite sign convention from the others.
     assert.match(route, /const delta = comparison\.tokenDelta;/);
+  });
+});
+
+describe('the comparison is computed once per window, and the lookup is not', () => {
+  /**
+   * The amplifier this route was, said plainly: unauthenticated, embedded in
+   * documents this project does not control, and running the rule engine, the
+   * estimator and the advisories over two whole prompts on every hit. Fetched
+   * through an image proxy on behalf of every reader of a README, one pasted
+   * URL bought a few bytes of request against the most expensive computation
+   * this product performs.
+   *
+   * The file above already said so — *"this route is the one behind a CDN that
+   * anybody can hammer"* — beside a test that only defended the malformed
+   * token. A well-formed one went all the way through, every time.
+   */
+  it('does not recompute the comparison for a token it has just answered', async () => {
+    const token = await share({ before: WORDY, after: 'Short.' });
+
+    // Cold first, so the token is in the memo and the swap below is the only
+    // thing that changes.
+    const first = await (await badge(request(), params(`${token}.svg`))).text();
+    assert.ok(!first.includes('unavailable'));
+
+    /**
+     * The seam this file already uses, pointed at the question.
+     *
+     * `findShare` is made to answer with the same token and completely
+     * different prompts. A route that recomputed would render the new numbers;
+     * one that reuses the comparison renders the old badge, and that difference
+     * is the whole claim. It also proves the memo is keyed on the token rather
+     * than on the text, which is what makes it sound: a share is
+     * create-and-revoke, so a token never comes to describe different prompts
+     * in production, and this is the only way to make it do so.
+     */
+    const store = await getStore();
+    const real = store.shares.findShare.bind(store.shares);
+    store.shares.findShare = async (value, now) => {
+      const found = await real(value, now);
+      return found === null ? null : { ...found, afterText: WORDY.repeat(4) };
+    };
+
+    try {
+      const bodies = await Promise.all(
+        (
+          await Promise.all(
+            Array.from({ length: 25 }, () => badge(request(), params(`${token}.svg`))),
+          )
+        ).map((response) => response.text()),
+      );
+      assert.equal(
+        new Set([first, ...bodies]).size,
+        1,
+        'a repeat hit recomputed the comparison instead of reusing it',
+      );
+    } finally {
+      store.shares.findShare = real;
+    }
+  });
+
+  it('still asks the store on every one of them, so revoking works at once', async () => {
+    /**
+     * The half a response cache would have quietly traded away. Memoising the
+     * rendered badge would have been simpler and would have kept a revoked link
+     * reporting for the rest of the window — the exact behaviour the route's
+     * own header comment promises it does not have.
+     */
+    const token = await share({ before: WORDY, after: 'Short.' });
+    await badge(request(), params(token));
+
+    const store = await getStore();
+    const real = store.shares.findShare.bind(store.shares);
+    let asked = 0;
+    store.shares.findShare = async (value, now) => {
+      asked += 1;
+      return real(value, now);
+    };
+
+    try {
+      for (let i = 0; i < 5; i += 1) await badge(request(), params(token));
+      assert.equal(asked, 5, 'the store was skipped, so a revoked link would keep reporting');
+
+      // And a revocation lands on the very next request, memo or no memo.
+      store.shares.findShare = async () => null;
+      const after = await (await badge(request(), params(token))).text();
+      assert.match(after, /unavailable/, 'a revoked share still rendered its old badge');
+    } finally {
+      store.shares.findShare = real;
+    }
+  });
+
+  it('holds the window the header promises, from one number', async () => {
+    // Two things read this: what a CDN is told, and how long the memo reuses a
+    // comparison. Typed twice they drift, and a memo longer than the header
+    // serves an answer every cache was told had already expired.
+    const { BADGE_HEADERS, BADGE_MAX_AGE_S } = svgLib;
+    assert.equal(typeof BADGE_MAX_AGE_S, 'number');
+    assert.ok(BADGE_MAX_AGE_S > 0);
+    assert.equal(
+      BADGE_HEADERS['cache-control'],
+      `public, max-age=${BADGE_MAX_AGE_S}, s-maxage=${BADGE_MAX_AGE_S}`,
+    );
+  });
+});
+
+describe('the memo cannot be turned into a memory amplifier', () => {
+  const clock = (start) => {
+    let at = start;
+    return { now: () => at, advance: (ms) => { at += ms; } };
+  };
+
+  it('holds no more entries than it was given, however many keys arrive', async () => {
+    const memo = createBadgeMemo({ ttlMs: 1000, max: 8 });
+    const time = clock(0);
+    // A well-formed token that names no share is free to generate, which is why
+    // an unbounded map here would trade a CPU amplifier for a memory one.
+    for (let i = 0; i < 500; i += 1) {
+      await memo(`token-${i}`, time.now(), async () => `badge-${i}`);
+    }
+    assert.equal(memo.size, 8);
+    assert.ok(memo.evictions >= 492, `only ${memo.evictions} evictions for 500 keys`);
+  });
+
+  it('drops the expired before the live, and never refuses to store', async () => {
+    const memo = createBadgeMemo({ ttlMs: 1000, max: 4 });
+    const time = clock(0);
+    for (const key of ['a', 'b', 'c', 'd']) await memo(key, time.now(), async () => key);
+    assert.equal(memo.size, 4);
+
+    time.advance(1001);
+    assert.equal(await memo('e', time.now(), async () => 'e'), 'e');
+    // The four expired went, so the newcomer did not have to displace a live one.
+    assert.equal(memo.size, 1);
+  });
+
+  it('recomputes once the window has passed', async () => {
+    const memo = createBadgeMemo({ ttlMs: 1000, max: 4 });
+    const time = clock(0);
+    let runs = 0;
+    const compute = async () => { runs += 1; return `run-${runs}`; };
+
+    assert.equal(await memo('k', time.now(), compute), 'run-1');
+    time.advance(999);
+    assert.equal(await memo('k', time.now(), compute), 'run-1');
+    time.advance(2);
+    assert.equal(await memo('k', time.now(), compute), 'run-2');
+    assert.equal(runs, 2);
+  });
+
+  it('serves one computation to a burst, which is when it matters most', async () => {
+    const memo = createBadgeMemo({ ttlMs: 1000, max: 4 });
+    let runs = 0;
+    let release;
+    const held = new Promise((resolve) => { release = resolve; });
+    const compute = async () => { runs += 1; await held; return 'one'; };
+
+    const all = Promise.all(Array.from({ length: 20 }, () => memo('k', 0, compute)));
+    release();
+    assert.deepEqual(new Set(await all), new Set(['one']));
+    assert.equal(runs, 1, 'a cold burst started the same computation more than once');
+  });
+
+  it('never memoises a failure', async () => {
+    // A failed store read served for the whole window would turn one bad moment
+    // into five minutes of it.
+    const memo = createBadgeMemo({ ttlMs: 1000, max: 4 });
+    let runs = 0;
+    await assert.rejects(
+      memo('k', 0, async () => { runs += 1; throw new Error('upstream'); }),
+      /upstream/,
+    );
+    assert.equal(await memo('k', 0, async () => { runs += 1; return 'ok'; }), 'ok');
+    assert.equal(runs, 2);
+    assert.equal(memo.size, 1);
+  });
+
+  it('refuses a window or a bound that would make it a no-op', () => {
+    for (const bad of [0, -1, Number.NaN]) {
+      assert.throws(() => createBadgeMemo({ ttlMs: bad, max: 4 }), /ttlMs/);
+      assert.throws(() => createBadgeMemo({ ttlMs: 1000, max: bad }), /max/);
+    }
   });
 });

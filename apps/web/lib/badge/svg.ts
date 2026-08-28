@@ -140,9 +140,20 @@ export function renderBadge({ label, message, colour }: BadgeParts): string {
  * and a README badge is fetched through GitHub's image proxy by every reader of
  * the page, which is not a load worth passing to the database.
  */
+/**
+ * How long a badge is allowed to be old, in seconds.
+ *
+ * One number, because two things depend on it: the header below, which is what
+ * a CDN and a browser are told, and the route's memo, which is how long the
+ * comparison behind a badge is reused. Typed twice, those two would drift, and
+ * the drift would be invisible — a memo longer than the header serves an answer
+ * the caches were told had already expired.
+ */
+export const BADGE_MAX_AGE_S = 300;
+
 export const BADGE_HEADERS = {
   'content-type': 'image/svg+xml; charset=utf-8',
-  'cache-control': 'public, max-age=300, s-maxage=300',
+  'cache-control': `public, max-age=${BADGE_MAX_AGE_S}, s-maxage=${BADGE_MAX_AGE_S}`,
   'x-content-type-options': 'nosniff',
   // `frame-ancestors` is in here rather than inherited from the site-wide
   // header in `next.config.mjs`, because a config header replaces a route's
