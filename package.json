@@ -25,6 +25,7 @@
     "trazum": "node packages/cli/dist/index.js",
     "test:action": "node --test action/test/*.test.mjs",
     "measure:tokens": "node scripts/measure-token-band.mjs",
-    "check:models": "node scripts/check-model-availability.mjs"
+    "check:models": "node scripts/check-model-availability.mjs",
+    "measure:safety": "node scripts/measure-rule-safety.mjs"
   }
 }

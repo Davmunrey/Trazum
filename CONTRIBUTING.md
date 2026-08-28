@@ -254,6 +254,24 @@ to.** Finding that a model is gone says nothing about what its successor costs.
 That figure comes off the provider's own pricing page, on a date, alongside a
 move in `PROVIDER_REVIEWED`, or it does not go in.
 
+### And whether a `safe` rule is safe
+
+The other claim a key buys. `docs/authoring-rules.md` says `safe` means a rule
+*cannot* change what a prompt asks for, and that was held by the judgement of
+whoever wrote each rule until a credential was pointed at it:
+
+```bash
+ANTHROPIC_API_KEY=... npm run measure:safety
+```
+
+Each rule is applied alone, both prompts are answered 5 times, and a model
+judges whether the two sets would satisfy the same reader, against the noise
+floor measured in the same run. Run it when you add a rule or move one between
+levels, and commit `packages/core/test/fixtures/rule-safety.json`;
+`rule-safety.test.js` holds the levels to it offline. Unlike the token band this
+one is real completions and costs cents rather than nothing, which is why it is
+a separate command and says so before it starts.
+
 **Adding a sample is the cheap, useful contribution here.** Drop a `.txt` file in
 `packages/core/test/corpus/`, run the script, commit the fixture. Digests are per
 sample, so a new file is measured on its own and nothing already measured is

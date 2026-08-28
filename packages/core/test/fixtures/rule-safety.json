@@ -1,0 +1,153 @@
+{
+  "checkedOn": "2026-08-28",
+  "model": "claude-haiku-4-5",
+  "samples": 5,
+  "note": "Written by scripts/measure-rule-safety.mjs. Each rule is applied alone to the rules-corpus sample written for it, and the verdict is relative to the model's own variance on the same prompt. A verdict is a fact about this model and this corpus, not about English.",
+  "measured": [
+    {
+      "id": "duplicate-blocks",
+      "level": "safe",
+      "hits": 1,
+      "charsBefore": 461,
+      "charsAfter": 281,
+      "judgedSelfAgreement": 0.85,
+      "judgedCrossAgreement": 0.8,
+      "jaccardSelfAgreement": 0.55,
+      "jaccardCrossAgreement": 0.5367,
+      "verdict": "within-noise"
+    },
+    {
+      "id": "near-duplicate-blocks",
+      "level": "aggressive",
+      "hits": 1,
+      "charsBefore": 434,
+      "charsAfter": 258,
+      "judgedSelfAgreement": 0.85,
+      "judgedCrossAgreement": 0.68,
+      "jaccardSelfAgreement": 0.4464,
+      "jaccardCrossAgreement": 0.4433,
+      "verdict": "diverges"
+    },
+    {
+      "id": "duplicate-lines",
+      "level": "safe",
+      "hits": 2,
+      "charsBefore": 281,
+      "charsAfter": 166,
+      "judgedSelfAgreement": 1,
+      "judgedCrossAgreement": 1,
+      "jaccardSelfAgreement": 0.4116,
+      "jaccardCrossAgreement": 0.4048,
+      "verdict": "indistinguishable"
+    },
+    {
+      "id": "verbose-phrases",
+      "level": "safe",
+      "hits": 4,
+      "charsBefore": 315,
+      "charsAfter": 259,
+      "judgedSelfAgreement": 0.95,
+      "judgedCrossAgreement": 0.96,
+      "jaccardSelfAgreement": 0.4573,
+      "jaccardCrossAgreement": 0.4531,
+      "verdict": "within-noise"
+    },
+    {
+      "id": "politeness",
+      "level": "safe",
+      "hits": 4,
+      "charsBefore": 266,
+      "charsAfter": 206,
+      "judgedSelfAgreement": 1,
+      "judgedCrossAgreement": 1,
+      "jaccardSelfAgreement": 0.5384,
+      "jaccardCrossAgreement": 0.5015,
+      "verdict": "indistinguishable"
+    },
+    {
+      "id": "filler",
+      "level": "safe",
+      "hits": 4,
+      "charsBefore": 293,
+      "charsAfter": 213,
+      "judgedSelfAgreement": 0.05,
+      "judgedCrossAgreement": 0,
+      "jaccardSelfAgreement": 0.7183,
+      "jaccardCrossAgreement": 0.7235,
+      "verdict": "inconclusive"
+    },
+    {
+      "id": "hedges",
+      "level": "aggressive",
+      "hits": 4,
+      "charsBefore": 264,
+      "charsAfter": 218,
+      "judgedSelfAgreement": 0.85,
+      "judgedCrossAgreement": 0.52,
+      "jaccardSelfAgreement": 0.2665,
+      "jaccardCrossAgreement": 0.1911,
+      "verdict": "diverges"
+    },
+    {
+      "id": "intensifiers",
+      "level": "aggressive",
+      "hits": 4,
+      "charsBefore": 221,
+      "charsAfter": 187,
+      "judgedSelfAgreement": 0.55,
+      "judgedCrossAgreement": 0.6,
+      "jaccardSelfAgreement": 0.4,
+      "jaccardCrossAgreement": 0.423,
+      "verdict": "within-noise"
+    },
+    {
+      "id": "self-check",
+      "level": "aggressive",
+      "hits": 2,
+      "charsBefore": 206,
+      "charsAfter": 108,
+      "judgedSelfAgreement": 1,
+      "judgedCrossAgreement": 1,
+      "jaccardSelfAgreement": 0.7712,
+      "jaccardCrossAgreement": 0.5547,
+      "verdict": "indistinguishable"
+    },
+    {
+      "id": "emphasis",
+      "level": "aggressive",
+      "hits": 4,
+      "charsBefore": 253,
+      "charsAfter": 252,
+      "judgedSelfAgreement": 0.7,
+      "judgedCrossAgreement": 0.64,
+      "jaccardSelfAgreement": 0.4138,
+      "jaccardCrossAgreement": 0.4012,
+      "verdict": "diverges"
+    },
+    {
+      "id": "decoration",
+      "level": "safe",
+      "hits": 4,
+      "charsBefore": 289,
+      "charsAfter": 201,
+      "judgedSelfAgreement": 0.9,
+      "judgedCrossAgreement": 0.88,
+      "jaccardSelfAgreement": 0.5367,
+      "jaccardCrossAgreement": 0.5855,
+      "verdict": "within-noise"
+    },
+    {
+      "id": "whitespace",
+      "level": "safe",
+      "hits": 4,
+      "charsBefore": 226,
+      "charsAfter": 218,
+      "judgedSelfAgreement": 0.35,
+      "judgedCrossAgreement": 0.44,
+      "jaccardSelfAgreement": 0.925,
+      "jaccardCrossAgreement": 0.93,
+      "verdict": "inconclusive"
+    }
+  ],
+  "unmeasured": []
+}
