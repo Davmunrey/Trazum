@@ -8214,6 +8214,1317 @@ async function writeProfileSideFiles(context: {
 }
 
 /**
+ * What this log recorded about outcomes, and what it cannot answer.
+ *
+ * Every finding past the totals needs a field the format does not require, and a
+ * reader who never adds them sees a report quietly missing half of itself, with no
+ * way to tell "nothing to report" from "nothing recorded". Named with counts rather
+ * than booleans: twelve labelled records out of forty thousand is not a labelled
+ * log, and a boolean would call it one.
+ *
+ * Outcomes print above coverage rather than below, and the two travel together here
+ * for the same reason they do on screen: coverage is the sentence that qualifies
+ * whatever the outcomes just claimed.
+ */
+function reportOutcomesAndCoverage(
+  report: UsageProfileReport,
+  config: TrazumConfig,
+  t: CliMessages,
+): void {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
+  /**
+   * What this log cannot answer, and what would fix it.
+   *
+   * Every finding past the totals needs a field the format does not require,
+   * and a reader who never adds them sees a report quietly missing half of
+   * itself — with no way to tell "nothing to report" from "nothing recorded".
+   * Named with counts rather than booleans: twelve labelled records out of
+   * forty thousand is not a labelled log, and a boolean would call it one.
+   *
+   * Only fields that are actually missing are listed. A complete log gets no
+   * section at all, because a paragraph of things that are fine is the
+   * paragraph readers learn to skip.
+   */
+  /**
+   * Outcomes — the counterpart, where somebody recorded one.
+   *
+   * Printed above the coverage section rather than below it, because when this
+   * section is present it is the most valuable thing on the page: every other
+   * figure in this report is a cost, and this is the only one that says what
+   * the money bought.
+   *
+   * Silent when nothing recorded an outcome. The coverage section below
+   * already names the missing field and what it would unlock, and printing an
+   * empty Outcomes heading above it would be the same sentence twice.
+   */
+  {
+    const outcomes = outcomeReport(report.outcomeTally, config.outcomes ?? null);
+    if (outcomes.coverage.recorded > 0) {
+      console.log();
+      console.log(sectionHeading(t.profile.outcomeHeading()));
+
+      const col = t.profile.outcomeColumns;
+      const rows = [...outcomes.slices, ...outcomes.undeclared].map((slice) => ({
+        value: slice.value,
+        verdict:
+          slice.verdict === 'success'
+            ? t.profile.verdictSuccess()
+            : slice.verdict === 'undeclared'
+              ? t.profile.verdictUndeclared()
+              : t.profile.verdictOther(),
+        calls: n(slice.calls),
+        spend: formatUsd(slice.usd),
+      }));
+      const w = {
+        value: Math.max(...rows.map((r) => r.value.length), col.outcome.length),
+        verdict: Math.max(...rows.map((r) => r.verdict.length), 0),
+        calls: Math.max(...rows.map((r) => r.calls.length), col.calls.length),
+        spend: Math.max(...rows.map((r) => r.spend.length), col.spend.length),
+      };
+      console.log(
+        c.dim(
+          `  ${col.outcome.padEnd(w.value)}  ${''.padEnd(w.verdict)}  ` +
+            `${col.calls.padStart(w.calls)}  ${col.spend.padStart(w.spend)}`,
+        ),
+      );
+      for (const row of rows) {
+        const tint =
+          row.verdict === t.profile.verdictUndeclared()
+            ? c.yellow
+            : row.verdict === t.profile.verdictSuccess()
+              ? c.green
+              : c.dim;
+        console.log(
+          `  ${row.value.padEnd(w.value)}  ${tint(row.verdict.padEnd(w.verdict))}  ` +
+            `${row.calls.padStart(w.calls)}  ${row.spend.padStart(w.spend)}`,
+        );
+      }
+
+      console.log();
+      if (outcomes.successShareOfRecordedUsd !== null) {
+        const declaredUsd = outcomes.slices.reduce((sum, slice) => sum + slice.usd, 0);
+        console.log(
+          `  ${wrap(t.profile.outcomeRate(pct(outcomes.successShareOfRecordedUsd), formatUsd(declaredUsd)), 74, '    ')}`,
+        );
+      } else if (outcomes.noRate !== null) {
+        console.log(`  ${c.dim(wrap(t.profile.outcomeNoRate(outcomes.noRate), 74, '    '))}`);
+      }
+
+      // What the rate does not cover, every time it is printed. A rate over a
+      // twelfth of the bill is a rate about a twelfth of the bill.
+      if (outcomes.coverage.unrecordedUsd > 0 && report.total.totalUsd > 0) {
+        console.log(
+          `  ${c.yellow('!')} ${wrap(
+            t.profile.outcomeUnrecorded(
+              pct(outcomes.coverage.unrecordedUsd / report.total.totalUsd),
+              formatUsd(outcomes.coverage.unrecordedUsd),
+            ),
+            74,
+            '    ',
+          )}`,
+        );
+      }
+      /**
+       * What an outcome costs, per workload — the finding a total cannot make.
+       *
+       * Printed only when at least one workload has enough recorded outcomes
+       * to say something, and every row that cannot state a figure says which
+       * of the five reasons applies rather than showing a blank.
+       */
+      const ranking = rankPerOutcome(
+        report.outcomeTallyByLabel.map((entry) => ({
+          key: entry.label,
+          calls: entry.calls,
+          totalUsd: entry.totalUsd,
+          tally: entry.tally,
+        })),
+        config.outcomes ?? null,
+      );
+      if (ranking.byCall.length > 0) {
+        console.log();
+        console.log(sectionHeading(t.profile.perOutcomeHeading()));
+        const pcol = t.profile.perOutcomeColumns;
+        const prows = ranking.byCall.map((slice) => ({
+          key: slice.key,
+          perCall: formatUsd(slice.usdPerCall),
+          perOutcome:
+            slice.per.usdPerSuccess !== null
+              ? formatUsd(slice.per.usdPerSuccess)
+              : t.profile.perOutcomeWithheld(
+                  slice.per.withheld ?? 'no-vocabulary',
+                  n(slice.per.successes),
+                  pct(slice.per.coverage),
+                ),
+          recorded: pct(slice.per.coverage),
+        }));
+        const pw = {
+          key: Math.max(...prows.map((r) => r.key.length), pcol.workload.length),
+          perCall: Math.max(...prows.map((r) => r.perCall.length), pcol.perCall.length),
+          perOutcome: Math.max(...prows.map((r) => r.perOutcome.length), pcol.perOutcome.length),
+          recorded: Math.max(...prows.map((r) => r.recorded.length), pcol.recorded.length),
+        };
+        console.log(
+          c.dim(
+            `  ${pcol.workload.padEnd(pw.key)}  ${pcol.perCall.padStart(pw.perCall)}  ` +
+              `${pcol.perOutcome.padStart(pw.perOutcome)}  ${pcol.recorded.padStart(pw.recorded)}`,
+          ),
+        );
+        for (const row of prows) {
+          console.log(
+            `  ${row.key.padEnd(pw.key)}  ${row.perCall.padStart(pw.perCall)}  ` +
+              `${row.perOutcome.padStart(pw.perOutcome)}  ${c.dim(row.recorded.padStart(pw.recorded))}`,
+          );
+        }
+        console.log();
+        console.log(`  ${c.dim(wrap(t.profile.perOutcomeNumerator(), 74, '    '))}`);
+
+        // The disagreement between the two orders, which is itself the finding.
+        if (ranking.disagreements.length > 0) {
+          console.log();
+          console.log(`  ${c.dim(wrap(t.profile.perOutcomeBothOrders(), 74, '    '))}`);
+          for (const d of ranking.disagreements) {
+            console.log(
+              `  ${c.yellow('→')} ${wrap(
+                t.profile.perOutcomeDisagreement(d.slice.key, n(d.callRank + 1), n(d.outcomeRank + 1)),
+                74,
+                '    ',
+              )}`,
+            );
+          }
+        }
+      }
+
+      if (outcomes.undeclared.length > 0) {
+        console.log(
+          `  ${c.yellow('!')} ${wrap(
+            t.profile.outcomeUndeclared(outcomes.undeclared.map((s) => s.value).join(', ')),
+            74,
+            '    ',
+          )}`,
+        );
+      }
+    }
+  }
+
+  const coverage = report.fieldCoverage;
+  if (coverage.parsed > 0) {
+    const missing: string[] = [];
+    const partial = (seen: number): string => `${n(seen)}/${n(coverage.parsed)}`;
+    if (coverage.label < coverage.parsed) {
+      missing.push(t.profile.needsLabel(partial(coverage.label)));
+    }
+    if (coverage.session < coverage.parsed) {
+      missing.push(t.profile.needsSession(partial(coverage.session)));
+    }
+    /**
+     * Listed first among the missing when it is missing entirely, because it
+     * is the one field that changes what every other figure here *means*. The
+     * rest sharpen a cost; this one gives it a counterpart.
+     */
+    if (coverage.outcome < coverage.parsed) {
+      missing.push(t.profile.needsOutcome(partial(coverage.outcome)));
+    }
+    if (coverage.ts < coverage.parsed) {
+      missing.push(t.profile.needsTs(partial(coverage.ts)));
+    }
+    if (coverage.stopReason < coverage.parsed) {
+      missing.push(t.profile.needsStopReason(partial(coverage.stopReason)));
+    }
+    if (coverage.cacheWrites > 0 && coverage.cacheTtl < coverage.cacheWrites) {
+      missing.push(t.profile.needsCacheTtl(`${n(coverage.cacheTtl)}/${n(coverage.cacheWrites)}`));
+    }
+    if (missing.length > 0) {
+      console.log();
+      console.log(sectionHeading(t.profile.coverageHeading()));
+      for (const line of missing) console.log(`  ${c.dim(wrap(line, 74, '  '))}`);
+    }
+  }
+}
+
+/**
+ * This bill against the previous one: how spend actually gets out of hand.
+ *
+ * Nobody adds five thousand a month in one day; bills grow four percent a week
+ * while every snapshot looks reasonable. This is the baseline gate the prompts
+ * already had, applied to the money itself. **Positive means the bill grew** (the
+ * diff convention), and every figure is between exactly these two files.
+ *
+ * Its inputs are stated because it had eight of them and declared none. Two are
+ * drivers computed three hundred lines earlier and used nowhere else, which is a
+ * thing you could only find out by reading both places.
+ */
+function reportAgainstPrevious(context: {
+  report: UsageProfileReport;
+  previous: UsageProfileReport | null;
+  againstOverlap: { fromMs: number; toMs: number } | null;
+  labelDrivers: ReturnType<typeof driversBetween>;
+  modelDrivers: ReturnType<typeof driversBetween>;
+  gates: { failed: boolean; verdicts: string[] };
+  now: number;
+  t: CliMessages;
+}): void {
+  const { report, previous, againstOverlap, labelDrivers, modelDrivers, gates, now, t } =
+    context;
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
+  /**
+   * This bill against the previous one — how spend actually gets out of hand.
+   *
+   * Nobody adds five thousand a month in one day; bills grow four percent a week
+   * while every snapshot looks reasonable. This is the baseline gate the prompts
+   * already had, applied to the money itself. **Positive means the bill grew**
+   * (the diff convention), and every figure is between exactly these two files:
+   * no period is assumed, so the call counts print beside the money for the
+   * reader to judge comparability before judging the trend.
+   */
+  if (previous !== null) {
+    console.log();
+    console.log(sectionHeading(t.profile.againstHeading()));
+    if (previous.total.calls === 0) {
+      console.log(`  ${c.dim(wrap(t.profile.againstNothingPriced(), 74, '  '))}`);
+    } else {
+      const delta = report.total.totalUsd - previous.total.totalUsd;
+      const growthPct =
+        previous.total.totalUsd > 0
+          ? `${delta >= 0 ? '+' : ''}${((delta / previous.total.totalUsd) * 100).toFixed(1)}%`
+          : '—';
+      console.log(
+        `  ${c.bold(wrap(t.profile.againstTotals(formatUsd(previous.total.totalUsd), formatUsd(report.total.totalUsd), formatSignedUsd(delta), growthPct, t.profile.calls(previous.total.calls), t.profile.calls(report.total.calls)), 74, '  '))}`,
+      );
+      // Overlapping spans mean part of this "growth" is the same money on
+      // both sides of the subtraction. Said after the figure it qualifies
+      // and before the drivers built from it.
+      if (againstOverlap !== null) {
+        console.log(
+          `  ${c.yellow('!')} ${c.dim(wrap(t.profile.againstOverlap(dayOf(againstOverlap.fromMs), dayOf(againstOverlap.toMs)), 74, '    '))}`,
+        );
+      }
+
+      // Drivers: per-key contribution to the change, largest magnitude first,
+      // computed once beside the gates so no rendering derives its own.
+      const driverLine = (d: { key: string; was: number | null; now: number | null; delta: number }, shown: string): string =>
+        d.was === null
+          ? t.profile.againstDriverNew(formatSignedUsd(d.delta), shown)
+          : d.now === null
+            ? t.profile.againstDriverGone(formatSignedUsd(d.delta), shown)
+            : t.profile.againstDriver(formatSignedUsd(d.delta), shown, formatUsd(d.was), formatUsd(d.now));
+
+      console.log();
+      for (const d of labelDrivers.slice(0, 5)) {
+        const line = driverLine(d, d.key === UNLABELLED ? t.profile.unlabelled() : d.key);
+        console.log(`  ${d.delta > 0 ? c.yellow(line) : c.dim(line)}`);
+      }
+      if (labelDrivers.length > 5) {
+        console.log(`  ${c.dim(t.profile.andMoreLabels(labelDrivers.length - 5))}`);
+      }
+
+      /**
+       * The same change, by model — where the mix moved. The label rows cannot
+       * show it: a workload that kept its name and switched from Haiku to Opus
+       * reads as "chat grew", and the reason is the model. Only printed when
+       * more than one model is involved; with one model on both sides, this
+       * section restates the totals line and says nothing new.
+       */
+      const modelsInvolved = new Set([
+        ...previous.byModel.map((r) => r.model),
+        ...report.byModel.map((r) => r.model),
+      ]);
+      if (modelDrivers.length > 0 && modelsInvolved.size > 1) {
+        console.log();
+        console.log(`  ${c.dim(t.profile.againstByModel())}`);
+        for (const d of modelDrivers.slice(0, 3)) {
+          const line = driverLine(d, d.key);
+          console.log(`  ${d.delta > 0 ? c.yellow(line) : c.dim(line)}`);
+        }
+      }
+
+      /**
+       * What the comparison stopped being able to see.
+       *
+       * Every figure above is dollars, and dollars cannot tell a finding that
+       * was fixed from a finding whose field the log stopped recording — both
+       * are silence. This is the only section that can, so it is loud: a
+       * collapse in coverage invalidates whichever findings depended on it,
+       * and reading the drop as good news is the specific mistake it exists
+       * to prevent.
+       */
+      const drifts = coverageDrift(previous.fieldCoverage, report.fieldCoverage);
+      if (drifts.length > 0) {
+        console.log();
+        for (const drift of drifts) {
+          const line = t.profile.coverageDrift(
+            t.profile.coverageField(drift.field),
+            pct(drift.was),
+            pct(drift.now),
+          );
+          console.log(
+            drift.delta < 0
+              ? `  ${c.yellow('!')} ${c.bold(wrap(line, 74, '    '))}`
+              : `  ${c.dim(wrap(line, 74, '  '))}`,
+          );
+          /**
+           * Which findings went with it, named. "Some findings are silent" is
+           * not something a reader can act on; knowing that conversation
+           * growth and the cache-TTL fit are now silence rather than absence
+           * tells them exactly which sections of this report to distrust.
+           */
+          if (drift.delta < 0) {
+            const silenced = t.profile.coverageSilenced(drift.field);
+            if (silenced !== '') console.log(`    ${c.dim(wrap(silenced, 72, '    '))}`);
+          }
+        }
+        if (drifts.some((d) => d.delta < 0)) {
+          console.log(`  ${c.dim(wrap(t.profile.coverageDriftWhy(), 74, '    '))}`);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * The same request, sent again a moment later.
+ *
+ * A conversation's input grows with every turn, so two calls of the same size
+ * seconds apart are not a conversation: they are a retry, a duplicated step, a
+ * loop. Loud, because the money bought nothing, and hedged, because this reads
+ * counts and cannot see content.
+ */
+function reportRepeatedCalls(report: UsageProfileReport, t: CliMessages): void {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
+  /**
+   * The same request, sent again a moment later.
+   *
+   * A conversation's input grows with every turn, so two consecutive calls in
+   * one conversation carrying the same size seconds apart is a thing going
+   * wrong rather than a thing working — a retry after a timeout, an agent
+   * step repeating, a loop. Loud, because the money bought nothing, and
+   * hedged, because this reads counts and cannot see content: the sentence
+   * says the pattern is *usually* a retry, never that it is one.
+   */
+  if (report.repeatedTurns.length > 0) {
+    console.log();
+    console.log(sectionHeading(t.profile.repeatsHeading()));
+    for (const row of report.repeatedTurns.slice(0, 3)) {
+      const label = row.label === UNLABELLED ? t.profile.unlabelled() : row.label;
+      console.log();
+      console.log(
+        `  ${c.yellow('!')} ${c.bold(wrap(t.profile.repeatsFound(label, row.modelName, n(row.repeats), n(row.checkedCalls), n(Math.round(row.withinMs / 1000)), formatUsd(row.usd)), 74, '    '))}`,
+      );
+      console.log(`  ${c.dim(wrap(t.profile.repeatsAdvice(), 74, '  '))}`);
+    }
+  }
+
+  /**
+   * Output spend that bought answers cut off mid-generation — the one slice of
+   * a bill that is waste without a counterpart. Paid in full, frequently
+   * retried and billed again, and the truncated attempt bought nothing.
+   *
+   * Three states, kept apart on purpose: waste found, none found on a log that
+   * measured, and a log that never recorded a stop reason at all — which gets
+   * the missing-field message, because silence there would read as a clean bill
+   * of health on a question the log never asked.
+   */
+  if (report.total.truncatedCalls > 0 && report.total.outputUsd > 0) {
+    console.log();
+    console.log(
+      `  ${c.yellow('!')} ${c.bold(wrap(t.profile.truncatedWaste(t.profile.calls(report.total.truncatedCalls), formatUsd(report.total.truncatedOutputUsd), pct(report.total.truncatedOutputUsd / report.total.outputUsd)), 74, '    '))}`,
+    );
+    /**
+     * Which workloads are paying for it, and at what rate — the actionable
+     * half the total hides. A 40% truncation rate is a max_tokens setting
+     * that is simply wrong; 1% is a long tail, and the two call for opposite
+     * responses.
+     *
+     * The rate is over calls that **recorded a stop reason**, never over all
+     * calls: a workload that logs the field on half its traffic must not be
+     * reported as though the unmeasured half completed. Both numbers print,
+     * so the denominator is visible rather than implied.
+     */
+    const truncatedLabels = report.byLabel
+      .filter((row) => row.breakdown.truncatedCalls > 0)
+      .sort((a, b) => b.breakdown.truncatedOutputUsd - a.breakdown.truncatedOutputUsd);
+    if (truncatedLabels.length > 0 && report.byLabel.length > 1) {
+      for (const row of truncatedLabels.slice(0, 3)) {
+        const name = row.label === UNLABELLED ? t.profile.unlabelled() : row.label;
+        console.log(
+          `    ${c.dim(wrap(t.profile.truncatedBy(name, n(row.breakdown.truncatedCalls), n(row.breakdown.stopReasonCalls), pct(row.breakdown.truncatedCalls / row.breakdown.stopReasonCalls), formatUsd(row.breakdown.truncatedOutputUsd)), 74, '    '))}`,
+        );
+      }
+    }
+    /**
+     * The ceiling the completed answers actually needed, when the output
+     * shapes measured it: "95% of the answers that finished fit within N
+     * tokens" is the number a max_tokens cap wants, and it sits next to the
+     * evidence that the current cap is too low. Measured on these calls,
+     * promised for nothing.
+     */
+    const ceiling = report.outputShapes.find((shape) => shape.p95WithinTokens !== null);
+    if (ceiling !== undefined) {
+      console.log(
+        `    ${c.dim(wrap(t.profile.truncatedCeiling(n(ceiling.p95WithinTokens!)), 74, '    '))}`,
+      );
+    }
+    /**
+     * The "billed again" half, measured. The sentence above has always said
+     * truncated answers are frequently retried; this is the count and the
+     * money, when the log can carry it — a pattern, never a certainty, and
+     * attributed to the truncated call's slice, where the ceiling that
+     * caused it lives.
+     */
+    for (const row of report.truncationRetries.slice(0, 3)) {
+      const name = row.label === UNLABELLED ? t.profile.unlabelled() : row.label;
+      console.log(
+        `  ${c.yellow('!')} ${c.bold(wrap(t.profile.truncationRetryLine(name, row.modelName, n(row.retried), n(row.truncatedCalls), n(Math.round(row.withinMs / 1000)), formatUsd(row.wastedUsd), formatUsd(row.retryUsd)), 74, '    '))}`,
+      );
+    }
+    if (report.truncationRetries.length > 0) {
+      console.log(`  ${c.dim(wrap(t.profile.truncationRetryNote(), 74, '  '))}`);
+    }
+  } else if (report.total.stopReasonCalls === 0) {
+    console.log();
+    console.log(`  ${c.dim(wrap(t.profile.truncatedNotRecorded(), 74, '  '))}`);
+  }
+}
+
+/**
+ * The mix moving inside one log: the drift `--against` needs two files to see.
+ *
+ * Spoken only past fifteen points, and hedged in the copy while the data states
+ * exact shares, because a mix that moved is a question rather than a finding.
+ */
+function reportMixDrift(report: UsageProfileReport, t: CliMessages): void {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
+  /**
+   * The mix moving inside one log — the drift `--against` needs a second log
+   * to see. Spoken only past fifteen points, a presentation threshold stated
+   * in the copy; the data states exact shares and the JSON carries them all.
+   */
+  if (report.modelMixDrift !== null) {
+    const moved = report.modelMixDrift.models.filter(
+      (m) => Math.abs(m.lastShare - m.firstShare) >= 0.15,
+    );
+    if (moved.length > 0) {
+      console.log();
+      console.log(sectionHeading(t.profile.mixDriftHeading()));
+      for (const m of moved.slice(0, 3)) {
+        console.log();
+        console.log(
+          `  ${c.yellow('!')} ${c.bold(wrap(t.profile.mixDriftLine(m.model, pct(m.firstShare), pct(m.lastShare), n(report.modelMixDrift.firstDays), n(report.modelMixDrift.lastDays), formatUsd(m.lastUsd)), 74, '    '))}`,
+        );
+      }
+      console.log(`  ${c.dim(wrap(t.profile.mixDriftNote(), 74, '  '))}`);
+    }
+  }
+}
+
+/**
+ * How close the largest call is to the model's ceiling.
+ *
+ * A window is a wall, not a budget: the call that hits it fails rather than costing
+ * more, so this is a different warning from every dollar above it and is kept a
+ * different shape.
+ */
+function reportContextPressure(
+  pressures: ReturnType<typeof contextPressure>,
+  t: CliMessages,
+): void {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
+  /**
+   * How close the largest call is to the model's ceiling.
+   *
+   * The failure a bill cannot show: input grows turn by turn or document by
+   * document, costs nothing extra to grow, and then one call crosses the
+   * context window and the API refuses it. Loud from 85% — close enough
+   * that the next retrieval bump or long conversation plausibly crosses —
+   * and quiet above half, so the reader sees it coming either way. No
+   * prediction of *when*: a straight line through two points is a guess
+   * wearing arithmetic's clothes.
+   */
+  {
+    if (pressures.length > 0) {
+      console.log();
+      console.log(sectionHeading(t.profile.pressureHeading()));
+      for (const row of pressures.slice(0, 3)) {
+        const label = row.label === UNLABELLED ? t.profile.unlabelled() : row.label;
+        const line = t.profile.pressureLine(
+          label,
+          row.modelName,
+          n(row.maxCallInputTokens),
+          n(row.contextWindow),
+          pct(row.share),
+        );
+        console.log();
+        if (row.share >= 0.85) {
+          console.log(`  ${c.yellow('!')} ${c.bold(wrap(line, 74, '    '))}`);
+          console.log(`  ${c.dim(wrap(t.profile.pressureAdvice(), 74, '  '))}`);
+        } else {
+          console.log(`  ${c.dim(wrap(line, 74, '  '))}`);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * How big the calls themselves are, which is the other half of the bill.
+ *
+ * The totals say what was spent; this says whether it went on many small calls or a
+ * few enormous ones, and those two bills are fixed by different things.
+ */
+function reportInputShape(report: UsageProfileReport, t: CliMessages): void {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
+  /**
+   * How big the calls themselves are — the other half of the bill.
+   *
+   * The section above describes output; on a RAG or agent workload input is
+   * most of the invoice, and a total could only ever say "input is 63% of
+   * this bill", which nobody can act on. The actionable question is whether
+   * the ordinary call is large or a few calls are enormous, and those two
+   * shapes want opposite responses: a cap on something, or a shorter prompt.
+   *
+   * Loud past **four times** the median — far enough from an even
+   * distribution that a bucket boundary cannot flip the message, and stated
+   * in the sentence rather than hidden here. Both figures are bucket
+   * ceilings, so the ratio is coarse by construction and the copy says so.
+   */
+  if (report.inputShapes.length > 0) {
+    console.log();
+    console.log(sectionHeading(t.profile.inputShapeHeading()));
+    for (const shape of report.inputShapes.slice(0, 3)) {
+      const label = shape.label === UNLABELLED ? t.profile.unlabelled() : shape.label;
+      console.log();
+      if (shape.medianWithinTokens === null || shape.p95WithinTokens === null || shape.p95OverMedian === null) {
+        /**
+         * The covering bucket is the open-ended last one, so there is no
+         * ceiling to name. Said rather than skipped: a slice whose calls are
+         * all above a million tokens is a finding, and silence would drop it.
+         */
+        console.log(
+          `  ${c.bold(wrap(t.profile.inputHuge(label, shape.modelName, t.profile.calls(shape.calls), formatUsd(shape.inputUsd)), 74, '  '))}`,
+        );
+        continue;
+      }
+      const skewed = shape.p95OverMedian >= 4;
+      const line = skewed
+        ? t.profile.inputSkewed(
+            label,
+            shape.modelName,
+            n(shape.medianWithinTokens),
+            n(shape.p95WithinTokens),
+            shape.p95OverMedian.toFixed(1),
+            formatUsd(shape.inputUsd),
+          )
+        : t.profile.inputEven(
+            label,
+            shape.modelName,
+            n(shape.medianWithinTokens),
+            n(shape.p95WithinTokens),
+            formatUsd(shape.inputUsd),
+          );
+      console.log(`  ${c.bold(wrap(line, 74, '  '))}`);
+      console.log(
+        `  ${c.dim(wrap(skewed ? t.profile.inputSkewedAdvice() : t.profile.inputEvenAdvice(), 74, '  '))}`,
+      );
+      /**
+       * What that size actually costs. A cache read is a tenth of input on
+       * Anthropic, so a large slice reading almost everything from cache is a
+       * very different bill from one paying full rate — and the token counts
+       * alone cannot tell them apart.
+       */
+      if (shape.cachedShare >= 0.5) {
+        console.log(`  ${c.dim(wrap(t.profile.inputMostlyCached(pct(shape.cachedShare)), 74, '  '))}`);
+      } else if (shape.cachedShare < 0.1) {
+        console.log(`  ${c.dim(wrap(t.profile.inputFullRate(), 74, '  '))}`);
+      }
+    }
+  }
+}
+
+/**
+ * Where the output spend concentrates.
+ *
+ * Output is usually most of the bill, so the shape of it is usually the actionable
+ * half of the report rather than a footnote to the totals.
+ */
+function reportOutputShape(report: UsageProfileReport, t: CliMessages): void {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
+  /**
+   * Where the output spend concentrates — the actionable half of "output
+   * dominates", which the headline above could only state as a total.
+   *
+   * Two bills with identical output spend want opposite responses. Six per cent
+   * of calls holding half of it is a tail, and a tail has a cause worth a
+   * morning; forty-five per cent is what evenly spread looks like, and the only
+   * lever there is asking every answer to be shorter. The threshold between the
+   * two is a quarter of the calls — far enough from both shapes that rounding
+   * cannot flip the message, and stated here because it is a presentation choice,
+   * not a measurement.
+   */
+  if (report.outputShapes.length > 0) {
+    console.log();
+    console.log(sectionHeading(t.profile.outputShapeHeading()));
+    for (const shape of report.outputShapes.slice(0, 3)) {
+      const label = shape.label === UNLABELLED ? t.profile.unlabelled() : shape.label;
+      const isTail = shape.heavyCallShare < 0.25;
+      console.log();
+      if (isTail) {
+        console.log(
+          `  ${c.bold(wrap(t.profile.outputTail(label, shape.modelName, pct(shape.heavyCallShare), pct(shape.heavySpendShare), n(shape.aboveTokens), formatUsd(shape.outputUsd)), 74, '  '))}`,
+        );
+        console.log(`  ${c.dim(wrap(t.profile.outputTailAdvice(), 74, '  '))}`);
+      } else {
+        console.log(
+          `  ${c.bold(wrap(t.profile.outputFlat(label, shape.modelName, pct(shape.heavyCallShare), pct(shape.heavySpendShare), formatUsd(shape.outputUsd)), 74, '  '))}`,
+        );
+        console.log(`  ${c.dim(wrap(t.profile.outputFlatAdvice(), 74, '  '))}`);
+      }
+      /**
+       * The ceilings a max_tokens cap actually wants, exact over the
+       * histogram: every measured answer at or under the named number is
+       * counted, none interpolated. Omitted when the covering bucket is the
+       * open-ended last one, which has no ceiling to name honestly.
+       */
+      if (shape.medianWithinTokens !== null && shape.p95WithinTokens !== null) {
+        console.log(
+          `  ${c.dim(wrap(t.profile.outputPercentiles(n(shape.medianWithinTokens), n(shape.p95WithinTokens)), 74, '  '))}`,
+        );
+      }
+    }
+  }
+}
+
+/**
+ * What re-sending the conversation costs.
+ *
+ * A chat or agent workload sends the whole conversation every turn, so the history
+ * is paid for again on each call. It is one of the four levers with real money on
+ * it and the one least likely to be noticed, because nothing in the bill is
+ * labelled "history".
+ */
+function reportConversationHistory(report: UsageProfileReport, t: CliMessages): void {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
+  /**
+   * What re-sending the conversation costs — the line nothing here could see.
+   *
+   * A chat or agent workload sends the whole conversation back on every turn, so
+   * the input grows with the turn count and that growth is routinely the largest
+   * item on the bill. A prompt file shows the system prompt and not the history; a
+   * total shows the sum and not the shape.
+   *
+   * Reported as a **ceiling**, because part of the growth is the user's own new
+   * messages and this reads counts rather than content, so it cannot separate the
+   * two. Saying nothing because the exact split is unknowable would be worse: the
+   * bound is exact, and the reader can act on it.
+   */
+  if (report.conversations.length > 0) {
+    console.log();
+    console.log(sectionHeading(t.profile.historyHeading()));
+    for (const growth of report.conversations.slice(0, 3)) {
+      const label = growth.label === UNLABELLED ? t.profile.unlabelled() : growth.label;
+      console.log();
+      console.log(
+        `  ${c.bold(wrap(t.profile.historyGrowth(label, growth.modelName, n(Math.round(growth.minTurnTokens)), n(Math.round(growth.maxTurnTokens)), n(growth.longestSession)), 74, '  '))}`,
+      );
+      console.log(
+        `  ${c.dim(wrap(t.profile.historyCeiling(formatUsd(growth.growthUsd), pct(growth.shareOfBill), formatUsd(growth.flatUsd), formatUsd(growth.inputUsd)), 74, '  '))}`,
+      );
+    }
+  } else if (!report.hasSessions) {
+    /**
+     * Not the same as "no growth". A log without a session field cannot be asked
+     * the question at all, and silence there would read as a clean bill of health
+     * on the line most likely to be the biggest.
+     */
+    console.log();
+    console.log(sectionHeading(t.profile.historyHeading()));
+    console.log(`  ${c.dim(wrap(t.profile.historyNoSessions(), 74, '  '))}`);
+  }
+}
+
+/**
+ * `--what-if <model>`: these exact calls, at another model's prices.
+ *
+ * Priced from the tokens that were actually billed rather than from an estimate,
+ * which is the only version of this question worth answering: a migration priced
+ * off a guess is a forecast, and this product does not forecast.
+ */
+function reportWhatIf(
+  whatIf: ReturnType<typeof repriceProfile>,
+  report: UsageProfileReport,
+  t: CliMessages,
+): void {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
+  /**
+   * `--what-if <model>`: these exact calls, at another model's rates.
+   *
+   * The levers above pick their own candidate; this answers the question the
+   * reader arrived with. It is multiplication, not advice, and every part of
+   * this section is built so it cannot be read as advice:
+   *
+   * - the caveat line prints **before** the figure, not after it;
+   * - calls the target's context window could not have accepted are named as
+   *   impossible rather than priced as cheap, and their money is in none of
+   *   the totals;
+   * - spend already on the target is stated separately, because a difference
+   *   computed over money that cannot move is a percentage of the wrong
+   *   denominator.
+   */
+  if (whatIf !== null) {
+    console.log();
+    console.log(sectionHeading(t.profile.whatIfHeading(whatIf.target.displayName)));
+    console.log(`  ${c.dim(wrap(t.profile.whatIfAssumption(), 74, '  '))}`);
+    console.log();
+    if (whatIf.slices.length === 0) {
+      console.log(`  ${c.dim(wrap(t.profile.whatIfNothingToMove(), 74, '  '))}`);
+    } else {
+      const cheaper = whatIf.deltaUsd < 0;
+      const line = t.profile.whatIfTotal(
+        formatUsd(whatIf.currentUsd),
+        formatUsd(whatIf.targetUsd),
+        formatUsd(Math.abs(whatIf.deltaUsd)),
+      );
+      console.log(`  ${cheaper ? c.green('→') : c.yellow('!')} ${c.bold(wrap(line, 74, '    '))}`);
+      console.log(
+        `  ${c.dim(wrap(cheaper ? t.profile.whatIfCheaper() : t.profile.whatIfDearer(), 74, '  '))}`,
+      );
+      /**
+       * The other half of the whole decision: the same move with the target's
+       * Batch API on top. Computed against the target's rates, never by
+       * adding two savings, and hedged the only honest way — whether these
+       * calls can wait is not in the log.
+       */
+      if (whatIf.batchOnTarget !== null) {
+        console.log(
+          `  ${c.dim(wrap(t.profile.whatIfBatchOnTarget(formatUsd(whatIf.batchOnTarget.targetUsd), formatUsd(whatIf.targetUsd)), 74, '  '))}`,
+        );
+      }
+      for (const slice of whatIf.slices.slice(0, 5)) {
+        const label = slice.label === UNLABELLED ? t.profile.unlabelled() : slice.label;
+        console.log(
+          `    ${c.dim('·')} ${c.dim(wrap(t.profile.whatIfSlice(label, slice.model, formatUsd(slice.currentUsd), formatUsd(slice.targetUsd)), 74, '      '))}`,
+        );
+        /**
+         * Cache traffic the target could not grant, said loudly and beside
+         * the figure it corrects. The standard row prices cache entries the
+         * target's minimum would refuse to create — an error that flatters
+         * the move, which is the direction this repository refuses.
+         */
+        if (slice.cacheBeyondTarget !== null) {
+          console.log(
+            `    ${c.yellow('!')} ${c.dim(wrap(t.profile.whatIfCacheBeyond(n(slice.maxCallInputTokens), n(slice.cacheBeyondTarget.minTokens), formatUsd(slice.cacheBeyondTarget.noCacheUsd)), 74, '      '))}`,
+          );
+        }
+      }
+    }
+    /**
+     * The refusal, and it is loud. A call larger than the target's window is
+     * not a cheaper call, and a comparison that priced it anyway would report
+     * a saving for traffic that would have failed outright.
+     */
+    for (const slice of whatIf.overContext.slice(0, 3)) {
+      const label = slice.label === UNLABELLED ? t.profile.unlabelled() : slice.label;
+      console.log(
+        `  ${c.yellow('!')} ${c.bold(wrap(t.profile.whatIfOverContext(label, n(slice.maxCallInputTokens), n(whatIf.target.contextWindow), formatUsd(slice.currentUsd)), 74, '    '))}`,
+      );
+    }
+    // Money that is already there cannot move, and leaving it out of the
+    // totals above is only honest if the reader is told it exists.
+    if (whatIf.alreadyOnTarget.calls > 0) {
+      console.log(
+        `  ${c.dim(wrap(t.profile.whatIfAlreadyThere(t.profile.calls(whatIf.alreadyOnTarget.calls), formatUsd(whatIf.alreadyOnTarget.usd)), 74, '  '))}`,
+      );
+    }
+    // Models with no current price have no difference to state — their target
+    // cost is knowable and the subtraction is not.
+    if (whatIf.unpricedCalls > 0) {
+      console.log(
+        `  ${c.dim(wrap(t.profile.whatIfUnpriced(t.profile.calls(whatIf.unpricedCalls), whatIf.unpricedModels.join(', ')), 74, '  '))}`,
+      );
+    }
+  }
+}
+
+/**
+ * The section this command exists for: what would actually move this bill.
+ *
+ * Shortening the prompt is the smallest line item there is. Which model a call goes
+ * to, the Batch API, caching and re-sent conversation history are the levers with
+ * real money on them, and all four are priced here from what the provider charged
+ * rather than from what a file would cost.
+ */
+function reportLevers(
+  report: UsageProfileReport,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): void {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
+  /**
+   * The section this command is for, and the answer to the fairest complaint the
+   * product has had: on a bill of twenty thousand, the rules recover two hundred.
+   *
+   * That figure is right — measured, three tokens out of three hundred and six on
+   * an ordinary support prompt. The conclusion is not that the tool is worthless
+   * but that it had been looking at the smallest line item. Which model a call
+   * goes to moves 60% to 80%. The Batch API moves 50% flat. Both are priced here
+   * from the reader's own tokens, at published rates, with no modelling in
+   * between — and printed above the breakdowns, because a lever nobody scrolls to
+   * is a lever nobody pulls.
+   *
+   * The ceiling on prompt shortening prints underneath them on purpose. A 1% win
+   * reported without saying 1% of what is not information, and this repository
+   * would rather say the uncomfortable number itself than let somebody else
+   * discover it.
+   */
+  const levers = billLevers(report, { catalogue: pricing });
+  console.log();
+  console.log(sectionHeading(t.profile.leversHeading()));
+  /**
+   * Every lever below describes a mixture when nothing carries a label.
+   *
+   * A 2,000-call classifier and a 400-call RAG pipeline merge into one slice, and
+   * the section then offers a single route for two workloads that need different
+   * answers — and `trazum route` would measure one prompt against a figure
+   * covering both. The session case already tells the reader to add the field;
+   * this one named the row `unlabelled` and said nothing, as though that were a
+   * workload.
+   */
+  const unlabelledOnly =
+    report.byLabel.length === 1 && report.byLabel[0]!.label === UNLABELLED;
+  if (unlabelledOnly && levers.slices.length > 0) {
+    console.log(`  ${c.yellow('!')} ${c.dim(wrap(t.profile.leversUnlabelled(), 74, '    '))}`);
+  }
+  if (levers.slices.length === 0) {
+    console.log(`  ${c.dim(wrap(t.profile.leversNone(), 74, '  '))}`);
+  } else {
+    for (const slice of levers.slices.slice(0, 5)) {
+      const label = slice.label === UNLABELLED ? t.profile.unlabelled() : slice.label;
+      console.log();
+      /**
+       * The headline is the **combined** figure, and the options underneath are
+       * the ways to reach it — not rows to add up. Batching a routed call
+       * discounts the cheaper model's price, so listing them separately printed
+       * $12.60 and $10.50 against a slice that had spent $21.00: a saving larger
+       * than the bill it came from, in the flattering direction.
+       */
+      console.log(
+        `  ${c.green('→')} ${c.bold(wrap(t.profile.leverSlice(label, slice.modelName, formatUsd(slice.combinedUsd), pct(slice.shareOfBill)), 74, '    '))}`,
+      );
+      console.log(`    ${c.dim(t.profile.leverCalls(t.profile.calls(slice.calls), formatUsd(slice.spentUsd)))}`);
+      if (slice.route) {
+        console.log(
+          `    ${c.dim('·')} ${c.dim(wrap(t.profile.leverRoute(slice.route.candidate.displayName, formatUsd(slice.route.savingUsd)), 74, '      '))}`,
+        );
+      }
+      if (slice.batch) {
+        console.log(
+          `    ${c.dim('·')} ${c.dim(wrap(t.profile.leverBatch(formatUsd(slice.batch.savingUsd)), 74, '      '))}`,
+        );
+      }
+      // The arithmetic is exact and the quality question is untouched by it.
+      // Naming the command is the difference between a saving and a gamble.
+      if (slice.route) {
+        console.log(
+          `    ${c.dim(wrap(t.profile.leverRouteVerify(slice.route.candidate.id), 74, '    '))}`,
+        );
+      }
+    }
+  }
+  console.log();
+  console.log(
+    `  ${c.dim(wrap(t.profile.leverPromptCeiling(formatUsd(levers.promptCeilingUsd), pct(levers.promptCeilingShare)), 74, '  '))}`,
+  );
+}
+
+/**
+ * What the labels, the budgets and the cache TTLs say about this bill.
+ *
+ * Why a label's caching is failing, read from the prompt file itself: the log
+ * carries counts, so `profile` can say *that* caching loses money on a label and
+ * nothing more, and `labels` in the config maps a label to the file it sends.
+ * Every sentence carries "as it is today", because the file is whatever the
+ * repository holds now and may not be what produced the log.
+ *
+ * Then the budgets, the TTL fits, the single-turn writes and the shape of the
+ * sessions: two hundred lines of one topic, what the configuration and the
+ * conversation did to the money.
+ */
+async function reportLabelsBudgetsAndCache(
+  report: UsageProfileReport,
+  config: TrazumConfig,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): Promise<void> {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
+  /**
+   * Why, read from the prompt file itself — the loop `profile` could not close.
+   *
+   * The log carries counts, so this command can say *that* caching loses money
+   * on a label and nothing more. `labels` in the config maps a label to the
+   * prompt file it sends, and for each mapped label whose cache is failing —
+   * losing money, or never attempted while money sat in cacheable input — the
+   * file is read and the reason named: a prefix under the model's minimum,
+   * stable tokens stranded behind the first placeholder, or a healthy file
+   * whose problem is byte-identity between calls.
+   *
+   * Every sentence carries "as it is today": the file is whatever the
+   * repository holds now, which may not be what produced the log, and a fresh
+   * file presented as the history's explanation would be a figure attributed to
+   * something it does not describe.
+   */
+  const labelMap = config.labels ?? {};
+  for (const { label, model: modelId, breakdown } of report.byLabelAndModel) {
+    const file = labelMap[label];
+    if (file === undefined) continue;
+    const labelCache = cacheEconomics(breakdown);
+    const failing =
+      labelCache.verdict === 'lost-money' ||
+      (labelCache.verdict === 'not-attempted' && breakdown.inputUsd > 0);
+    if (!failing) continue;
+
+    let text: string;
+    try {
+      text = await readFile(file, 'utf8');
+    } catch {
+      console.log(`  ${c.dim(wrap(t.profile.labelFileMissing(label, file), 74, '    '))}`);
+      continue;
+    }
+    const model = pricing.byId.get(modelId);
+    if (!model) continue;
+    const analysis = analyzeCachePrefix(text, estimateTokens);
+    const minimum = model.cacheMinTokens;
+    console.log();
+    if (minimum !== null && analysis.stablePrefixTokens < minimum) {
+      console.log(
+        `  ${c.dim(wrap(t.profile.labelPrefixBelowMinimum(file, n(analysis.stablePrefixTokens), n(minimum), model.displayName), 74, '    '))}`,
+      );
+    } else if (analysis.staticTokensAfter >= 200) {
+      console.log(
+        `  ${c.dim(wrap(t.profile.labelPrefixMovable(file, n(analysis.staticTokensAfter), n(analysis.stablePrefixTokens)), 74, '    '))}`,
+      );
+    } else {
+      console.log(
+        `  ${c.dim(wrap(t.profile.labelPrefixHealthy(file, n(analysis.stablePrefixTokens), n(minimum ?? 0)), 74, '    '))}`,
+      );
+    }
+  }
+
+  /**
+   * The token budget against what actually goes up the wire.
+   *
+   * `budgets` gates a prompt *file*; the log records what the *call* carried —
+   * system prompt, retrieved context, conversation history, tool results. The
+   * two are related only through `labels`, and when the gap is large the gate
+   * is real but tiny: a 2,000-token budget on a workload sending 47,000
+   * tokens a call governs four per cent of what is sent, and nobody looking
+   * at a green build would know it.
+   *
+   * Only stated when both ends are known — a label mapped to a file, and a
+   * budget covering that file — and the share is named as approximate,
+   * because the budget counts the file's tokens with the estimator while the
+   * log counts what the provider billed. It says which part of the bill the
+   * gate can see, and never that the budget is wrong.
+   */
+  const budgetPatterns = Object.keys(config.budgets ?? {});
+  if (budgetPatterns.length > 0) {
+    for (const row of report.byLabel) {
+      const file = labelMap[row.label];
+      if (file === undefined || row.breakdown.calls === 0) continue;
+      const pattern = mostSpecificMatch(budgetPatterns, file);
+      if (pattern === null) continue;
+      const budget = config.budgets![pattern]!;
+      if (budget <= 0) continue;
+      /**
+       * Input tokens per call over this label — every class that is billed
+       * as input, because a cached token was still sent and still counted
+       * against the model's window.
+       */
+      const perCall =
+        (row.breakdown.inputTokens + row.breakdown.cacheReadTokens + row.breakdown.cacheWriteTokens) /
+        row.breakdown.calls;
+      if (perCall <= 0) continue;
+      const share = budget / perCall;
+      // Only when the gap is wide enough to change what somebody believes.
+      // A budget covering most of the call is doing its job quietly.
+      if (share >= 0.5) continue;
+      console.log();
+      console.log(
+        `  ${c.yellow('!')} ${c.dim(wrap(t.profile.budgetVsWire(row.label === UNLABELLED ? t.profile.unlabelled() : row.label, file, n(budget), n(Math.round(perCall)), pct(share)), 74, '    '))}`,
+      );
+    }
+  }
+
+  /**
+   * Whether the TTL fits how fast the turns arrive — the mechanism behind the
+   * verdict above, readable only when the log carries a clock and a session.
+   *
+   * Rendered as four verdicts plus "could not be measured", the same
+   * three-state discipline truncation uses: a workload with cache writes and no
+   * clock has not been cleared, and silence here would read as fine.
+   */
+  const TTL_SHOWN = 3;
+  for (const fit of report.cacheTtlFit.slice(0, TTL_SHOWN)) {
+    const name = fit.label === UNLABELLED ? t.profile.unlabelled() : fit.label;
+    const gap = formatGap(fit.medianGapMs);
+    if (fit.verdict === 'expires-before-reuse') {
+      const line =
+        fit.medianGapMs > TTL_1H_MS
+          ? t.profile.ttlFitExpiresBoth(name, fit.modelName, gap)
+          : t.profile.ttlFitExpires(name, fit.modelName, gap);
+      console.log(`  ${c.yellow('!')} ${c.bold(wrap(line, 74, '    '))}`);
+    } else if (fit.verdict === 'overlong-ttl') {
+      console.log(
+        `  ${c.yellow('!')} ${c.bold(wrap(t.profile.ttlFitOverlong(name, fit.modelName, gap, formatUsd(fit.overpayUsd)), 74, '    '))}`,
+      );
+    } else if (fit.verdict === 'unsettled') {
+      console.log(
+        `  ${c.dim(wrap(t.profile.ttlFitUnsettledGap(name, fit.modelName, gap), 74, '    '))}`,
+      );
+    } else {
+      console.log(`  ${c.dim(wrap(t.profile.ttlFitFits(name, fit.modelName, gap), 74, '    '))}`);
+    }
+  }
+  if (report.total.cacheWriteTokens > 0 && report.cacheTtlFit.length === 0) {
+    console.log(`  ${c.dim(wrap(t.profile.ttlFitUnmeasured(), 74, '  '))}`);
+  }
+
+  /**
+   * Cache writes by conversations that never came back.
+   *
+   * Two sentences for the same tokens, and which one prints is decided by the
+   * slice's own reads: with zero cache reads anywhere in the slice, nothing
+   * read those writes — within the session, across sessions, at all — and the
+   * ceiling collapses into a fact said loudly. With reads present, another
+   * conversation sharing the prefix may have read them, the log cannot see
+   * whose write a read hit, and the figure prints as the ceiling it is.
+   */
+  const LEDGER_SHOWN = 3;
+  if (report.singleTurnCacheWrites.length > 0) {
+    const readsBySlice = new Map(
+      report.byLabelAndModel.map((r) => [`${r.label}\n${r.model}`, r.breakdown.cacheReadTokens]),
+    );
+    for (const row of report.singleTurnCacheWrites.slice(0, LEDGER_SHOWN)) {
+      const name = row.label === UNLABELLED ? t.profile.unlabelled() : row.label;
+      const reads = readsBySlice.get(`${row.label}\n${row.model}`) ?? 0;
+      if (reads === 0) {
+        console.log(
+          `  ${c.yellow('!')} ${c.bold(wrap(t.profile.singleTurnConfirmed(name, row.modelName, n(row.singleTurnSessions), n(row.sessions), formatUsd(row.singleTurnWriteUsd)), 74, '    '))}`,
+        );
+      } else {
+        console.log(
+          `  ${c.dim(wrap(t.profile.singleTurnCeiling(name, row.modelName, n(row.singleTurnSessions), n(row.sessions), formatUsd(row.singleTurnWriteUsd)), 74, '    '))}`,
+        );
+      }
+    }
+  }
+
+  /**
+   * What one conversation costs — the question a total cannot answer, and the
+   * one a per-seat price or a quota is set from. Median against p95, never a
+   * mean: one runaway agent loop would drag a mean up and hide the ordinary
+   * case, which is the figure somebody is actually pricing.
+   */
+  for (const shape of report.sessionCosts.slice(0, 3)) {
+    const name = shape.label === UNLABELLED ? t.profile.unlabelled() : shape.label;
+    console.log();
+    console.log(
+      `  ${c.dim(wrap(t.profile.sessionCost(name, shape.modelName, n(shape.sessions), formatUsd(shape.medianUsd), n(shape.medianTurns), formatUsd(shape.p95Usd), formatUsd(shape.maxUsd)), 74, '  '))}`,
+    );
+    /**
+     * The tail, when there is one. A p95 far above the median is a shape a
+     * quota can fix; a p95 beside it is a workload that is simply expensive,
+     * and saying "hunt the tail" there would send somebody after nothing.
+     * The threshold is in the sentence rather than hidden here.
+     */
+    if (shape.medianUsd > 0 && shape.p95Usd > 10 * shape.medianUsd) {
+      console.log(
+        `  ${c.yellow('!')} ${c.dim(wrap(t.profile.sessionCostTail((shape.p95Usd / shape.medianUsd).toFixed(0)), 74, '    '))}`,
+      );
+    }
+  }
+  /**
+   * The figure that survives a small log. `sessionCosts` refuses slices too
+   * thin for a percentile, and rightly — but a log of four conversations
+   * still has a most expensive one, and that maximum is a fact at any count.
+   * It is also exactly the number `--max-session-usd` judges, so the report
+   * states it rather than going silent where the gate would speak.
+   */
+  if (report.sessionCosts.length === 0 && report.sessionSpend !== null) {
+    console.log();
+    console.log(
+      `  ${c.dim(wrap(t.profile.sessionSpendOnly(n(report.sessionSpend.sessions), formatUsd(report.sessionSpend.maxUsd)), 74, '  '))}`,
+    );
+  }
+
+  /**
+   * A total that assumed a cache-write rate is a floor, and says so.
+   *
+   * Anthropic's 1-hour entry costs 2x input against the 5-minute entry's 1.25x. A
+   * log carrying only the flat `cache_creation_input_tokens` cannot say which, so
+   * the cheaper one is used — and the flattering direction is exactly the one this
+   * tool refuses to take quietly.
+   */
+  if (report.total.assumedWriteTtlCalls > 0) {
+    console.log(
+      `  ${c.dim(wrap(t.profile.assumedWriteTtl(report.total.assumedWriteTtlCalls), 74, '  '))}`,
+    );
+  }
+}
+
+/**
+ * What caching did to this bill, and what it is about to do.
+ *
+ * The hit rate, the money the cache made or lost, the labels bleeding on it, and
+ * the TTL question the hit rate cannot answer. One topic, and it needs the report
+ * and the messages: it was a hundred and thirty lines inside a function with
+ * twenty-three values in scope, and the only way to learn it used two of them was
+ * to read it.
+ */
+function reportCacheVerdict(report: UsageProfileReport, t: CliMessages): void {
+  const n = (value: number): string => value.toLocaleString(t.numberLocale);
+  const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
+  /**
+   * The hit rate, and then the question the hit rate does not answer.
+   *
+   * `cacheNever()` is keyed off the **verdict**, not off a null hit rate. Those
+   * two came apart on a log whose calls were entirely cache writes with no plain
+   * input: the rate is undefined there — zero reads over zero attempts — while
+   * caching was plainly in use, and the old branch printed "caching was never
+   * used" over a bill made of cache writes.
+   */
+  const cache = cacheEconomics(report.total);
+  const hitRate = cacheHitRate(report.total);
+  if (cache.verdict === 'not-attempted') {
+    console.log(`  ${c.dim(wrap(t.profile.cacheNever(), 74, '  '))}`);
+  } else if (hitRate !== null) {
+    console.log(`  ${c.dim(t.profile.cacheHit(pct(hitRate)))}`);
+  }
+
+  /**
+   * Whether the caching was worth doing — the one finding here that can
+   * contradict the advice Trazum gives everywhere else.
+   *
+   * A cache write costs 1.25x plain input on Anthropic and 2x at the one-hour
+   * TTL, so a prefix rebuilt faster than it is reused is billed at a premium and
+   * returns nothing: that workload is cheaper with caching switched off. The
+   * counterfactual is exact rather than a projection — caching changes the
+   * multiplier on a token, never the token — so this is the one place in `profile`
+   * where a comparison against what-might-have-been is arithmetic instead of a
+   * guess about a prompt nobody wrote.
+   */
+  /**
+   * The losing labels, **ranked by what caching cost them** and not by bill size.
+   *
+   * `byLabel` arrives sorted by total spend, which is the right order for the
+   * table above and the wrong one here: the worst cache in an estate usually sits
+   * on a small workload, so taking the first three off a spend-ordered list meant
+   * the biggest loser could be the one that went unnamed.
+   */
+  const lostLabels = report.byLabel
+    .map((r) => ({ row: r, cache: cacheEconomics(r.breakdown) }))
+    .filter((r) => r.cache.verdict === 'lost-money')
+    .sort((a, b) => b.cache.deltaUsd - a.cache.deltaUsd);
+
+  const NAMED = 3;
+  const nameOf = (row: { label: string }): string =>
+    row.label === UNLABELLED ? t.profile.unlabelled() : row.label;
+  /**
+   * The names, with the ones that did not fit **counted rather than dropped**.
+   *
+   * The first version sliced to three silently while the money beside it was
+   * summed over every loser — so four bleeding labels printed three names and a
+   * figure that charged them with a fourth label's loss. Truncating is fine;
+   * truncating without saying so is the flattering omission this repository keeps
+   * catching itself at, and `reportProfileGaps` already had the pattern.
+   */
+  const listNames = (rows: Array<{ row: { label: string } }>): string => {
+    const names = rows.slice(0, NAMED).map((r) => nameOf(r.row)).join(', ');
+    return rows.length <= NAMED
+      ? names
+      : `${names} ${t.profile.andMoreLabels(rows.length - NAMED)}`;
+  };
+  const namedLosers = listNames(lostLabels);
+  const bleeding = lostLabels.reduce((sum, r) => sum + r.cache.deltaUsd, 0);
+
+  /**
+   * Whether the log can settle the question at all.
+   *
+   * Decided before anything prints, because it governs whether the confident
+   * sentence prints — not merely whether a caveat follows it. The first attempt
+   * added the caveat and left the assertion above it, so the reader met `Caching
+   * took $0.1000 off this bill` and only afterwards learned it might be a $3.65
+   * loss. A finding a later line retracts is still a finding somebody acted on.
+   */
+  const unsettled =
+    cache.worstCaseVerdict !== cache.verdict && report.total.assumedWriteTtlCalls > 0;
+
+  if (unsettled) {
+    console.log(
+      `  ${c.yellow('!')} ${c.bold(wrap(t.profile.cacheTtlUnsettled(report.total.assumedWriteTtlCalls, formatUsd(-cache.deltaUsd), formatUsd(cache.worstCaseDeltaUsd)), 74, '    '))}`,
+    );
+  } else if (cache.verdict === 'lost-money') {
+    console.log(
+      `  ${c.yellow('!')} ${c.bold(wrap(t.profile.cacheLost(formatUsd(cache.deltaUsd), n(report.total.cacheWriteTokens), n(report.total.cacheReadTokens)), 74, '    '))}`,
+    );
+    // Only when it narrows the search. One label is the total again, said twice.
+    if (lostLabels.length > 0 && report.byLabel.length > 1) {
+      console.log(`    ${c.dim(wrap(t.profile.cacheLostBy(namedLosers), 74, '    '))}`);
+    }
+  } else {
+    if (cache.verdict === 'paid-off') {
+      console.log(`  ${c.dim(wrap(t.profile.cachePaidOff(formatUsd(-cache.deltaUsd)), 74, '  '))}`);
+    } else if (cache.verdict === 'no-difference') {
+      console.log(`  ${c.dim(wrap(t.profile.cacheNoDifference(), 74, '  '))}`);
+    }
+  }
+
+  /**
+   * A workload bleeding underneath a total that does not report a loss.
+   *
+   * The case the aggregate is actively hiding, so it prints as a warning: a cache
+   * paying for itself on one label and losing on another nets out to a comfortable
+   * number, and nothing else on screen would say otherwise.
+   *
+   * The sentence deliberately does not restate the total's verdict. It used to
+   * open "Caching pays off overall", which this position cannot claim — it also
+   * runs under `no-difference`, where the line immediately above has just said the
+   * opposite, and under `unsettled`, where there is no verdict to report at all.
+   */
+  if (lostLabels.length > 0 && cache.verdict !== 'lost-money') {
+    console.log(
+      `  ${c.yellow('!')} ${c.dim(wrap(t.profile.cacheLostHidden(formatUsd(bleeding), namedLosers), 74, '    '))}`,
+    );
+  }
+
+  /**
+   * A label that loses money only if its unstated TTL was the long one.
+   *
+   * The same ambiguity one level down, and it hides better here: a total whose
+   * TTLs are mostly recorded reads as settled while one workload inside it is
+   * entirely unstated. Listed apart from the confirmed losers because it is a
+   * different claim — this one is conditional, and merging the two would make
+   * every name in either list mean less.
+   */
+  const maybeLostLabels = report.byLabel
+    .map((r) => ({ row: r, cache: cacheEconomics(r.breakdown) }))
+    .filter((r) => r.cache.verdict !== 'lost-money' && r.cache.worstCaseVerdict === 'lost-money');
+  if (maybeLostLabels.length > 0) {
+    console.log(
+      `  ${c.dim(wrap(t.profile.cacheTtlUnsettledLabels(listNames(maybeLostLabels)), 74, '    '))}`,
+    );
+  }
+}
+
+/**
  * `trazum plan <log>` — not a list of findings, a ranked plan of what to do.
  *
  * The composition (route and batch on one slice never summed) happens in
@@ -8867,926 +10178,29 @@ async function commandProfile(
     );
   }
 
-  /**
-   * The hit rate, and then the question the hit rate does not answer.
-   *
-   * `cacheNever()` is keyed off the **verdict**, not off a null hit rate. Those
-   * two came apart on a log whose calls were entirely cache writes with no plain
-   * input: the rate is undefined there — zero reads over zero attempts — while
-   * caching was plainly in use, and the old branch printed "caching was never
-   * used" over a bill made of cache writes.
-   */
-  const cache = cacheEconomics(report.total);
-  const hitRate = cacheHitRate(report.total);
-  if (cache.verdict === 'not-attempted') {
-    console.log(`  ${c.dim(wrap(t.profile.cacheNever(), 74, '  '))}`);
-  } else if (hitRate !== null) {
-    console.log(`  ${c.dim(t.profile.cacheHit(pct(hitRate)))}`);
-  }
+  reportCacheVerdict(report, t);
 
-  /**
-   * Whether the caching was worth doing — the one finding here that can
-   * contradict the advice Trazum gives everywhere else.
-   *
-   * A cache write costs 1.25x plain input on Anthropic and 2x at the one-hour
-   * TTL, so a prefix rebuilt faster than it is reused is billed at a premium and
-   * returns nothing: that workload is cheaper with caching switched off. The
-   * counterfactual is exact rather than a projection — caching changes the
-   * multiplier on a token, never the token — so this is the one place in `profile`
-   * where a comparison against what-might-have-been is arithmetic instead of a
-   * guess about a prompt nobody wrote.
-   */
-  /**
-   * The losing labels, **ranked by what caching cost them** and not by bill size.
-   *
-   * `byLabel` arrives sorted by total spend, which is the right order for the
-   * table above and the wrong one here: the worst cache in an estate usually sits
-   * on a small workload, so taking the first three off a spend-ordered list meant
-   * the biggest loser could be the one that went unnamed.
-   */
-  const lostLabels = report.byLabel
-    .map((r) => ({ row: r, cache: cacheEconomics(r.breakdown) }))
-    .filter((r) => r.cache.verdict === 'lost-money')
-    .sort((a, b) => b.cache.deltaUsd - a.cache.deltaUsd);
+  await reportLabelsBudgetsAndCache(report, config, pricing, t);
 
-  const NAMED = 3;
-  const nameOf = (row: { label: string }): string =>
-    row.label === UNLABELLED ? t.profile.unlabelled() : row.label;
-  /**
-   * The names, with the ones that did not fit **counted rather than dropped**.
-   *
-   * The first version sliced to three silently while the money beside it was
-   * summed over every loser — so four bleeding labels printed three names and a
-   * figure that charged them with a fourth label's loss. Truncating is fine;
-   * truncating without saying so is the flattering omission this repository keeps
-   * catching itself at, and `reportProfileGaps` already had the pattern.
-   */
-  const listNames = (rows: Array<{ row: { label: string } }>): string => {
-    const names = rows.slice(0, NAMED).map((r) => nameOf(r.row)).join(', ');
-    return rows.length <= NAMED
-      ? names
-      : `${names} ${t.profile.andMoreLabels(rows.length - NAMED)}`;
-  };
-  const namedLosers = listNames(lostLabels);
-  const bleeding = lostLabels.reduce((sum, r) => sum + r.cache.deltaUsd, 0);
+  reportLevers(report, pricing, t);
 
-  /**
-   * Whether the log can settle the question at all.
-   *
-   * Decided before anything prints, because it governs whether the confident
-   * sentence prints — not merely whether a caveat follows it. The first attempt
-   * added the caveat and left the assertion above it, so the reader met `Caching
-   * took $0.1000 off this bill` and only afterwards learned it might be a $3.65
-   * loss. A finding a later line retracts is still a finding somebody acted on.
-   */
-  const unsettled =
-    cache.worstCaseVerdict !== cache.verdict && report.total.assumedWriteTtlCalls > 0;
+  reportWhatIf(whatIf, report, t);
 
-  if (unsettled) {
-    console.log(
-      `  ${c.yellow('!')} ${c.bold(wrap(t.profile.cacheTtlUnsettled(report.total.assumedWriteTtlCalls, formatUsd(-cache.deltaUsd), formatUsd(cache.worstCaseDeltaUsd)), 74, '    '))}`,
-    );
-  } else if (cache.verdict === 'lost-money') {
-    console.log(
-      `  ${c.yellow('!')} ${c.bold(wrap(t.profile.cacheLost(formatUsd(cache.deltaUsd), n(report.total.cacheWriteTokens), n(report.total.cacheReadTokens)), 74, '    '))}`,
-    );
-    // Only when it narrows the search. One label is the total again, said twice.
-    if (lostLabels.length > 0 && report.byLabel.length > 1) {
-      console.log(`    ${c.dim(wrap(t.profile.cacheLostBy(namedLosers), 74, '    '))}`);
-    }
-  } else {
-    if (cache.verdict === 'paid-off') {
-      console.log(`  ${c.dim(wrap(t.profile.cachePaidOff(formatUsd(-cache.deltaUsd)), 74, '  '))}`);
-    } else if (cache.verdict === 'no-difference') {
-      console.log(`  ${c.dim(wrap(t.profile.cacheNoDifference(), 74, '  '))}`);
-    }
-  }
+  reportConversationHistory(report, t);
 
-  /**
-   * A workload bleeding underneath a total that does not report a loss.
-   *
-   * The case the aggregate is actively hiding, so it prints as a warning: a cache
-   * paying for itself on one label and losing on another nets out to a comfortable
-   * number, and nothing else on screen would say otherwise.
-   *
-   * The sentence deliberately does not restate the total's verdict. It used to
-   * open "Caching pays off overall", which this position cannot claim — it also
-   * runs under `no-difference`, where the line immediately above has just said the
-   * opposite, and under `unsettled`, where there is no verdict to report at all.
-   */
-  if (lostLabels.length > 0 && cache.verdict !== 'lost-money') {
-    console.log(
-      `  ${c.yellow('!')} ${c.dim(wrap(t.profile.cacheLostHidden(formatUsd(bleeding), namedLosers), 74, '    '))}`,
-    );
-  }
+  reportOutputShape(report, t);
 
-  /**
-   * A label that loses money only if its unstated TTL was the long one.
-   *
-   * The same ambiguity one level down, and it hides better here: a total whose
-   * TTLs are mostly recorded reads as settled while one workload inside it is
-   * entirely unstated. Listed apart from the confirmed losers because it is a
-   * different claim — this one is conditional, and merging the two would make
-   * every name in either list mean less.
-   */
-  const maybeLostLabels = report.byLabel
-    .map((r) => ({ row: r, cache: cacheEconomics(r.breakdown) }))
-    .filter((r) => r.cache.verdict !== 'lost-money' && r.cache.worstCaseVerdict === 'lost-money');
-  if (maybeLostLabels.length > 0) {
-    console.log(
-      `  ${c.dim(wrap(t.profile.cacheTtlUnsettledLabels(listNames(maybeLostLabels)), 74, '    '))}`,
-    );
-  }
+  reportInputShape(report, t);
 
-  /**
-   * Why, read from the prompt file itself — the loop `profile` could not close.
-   *
-   * The log carries counts, so this command can say *that* caching loses money
-   * on a label and nothing more. `labels` in the config maps a label to the
-   * prompt file it sends, and for each mapped label whose cache is failing —
-   * losing money, or never attempted while money sat in cacheable input — the
-   * file is read and the reason named: a prefix under the model's minimum,
-   * stable tokens stranded behind the first placeholder, or a healthy file
-   * whose problem is byte-identity between calls.
-   *
-   * Every sentence carries "as it is today": the file is whatever the
-   * repository holds now, which may not be what produced the log, and a fresh
-   * file presented as the history's explanation would be a figure attributed to
-   * something it does not describe.
-   */
-  const labelMap = config.labels ?? {};
-  for (const { label, model: modelId, breakdown } of report.byLabelAndModel) {
-    const file = labelMap[label];
-    if (file === undefined) continue;
-    const labelCache = cacheEconomics(breakdown);
-    const failing =
-      labelCache.verdict === 'lost-money' ||
-      (labelCache.verdict === 'not-attempted' && breakdown.inputUsd > 0);
-    if (!failing) continue;
+  reportContextPressure(pressures, t);
 
-    let text: string;
-    try {
-      text = await readFile(file, 'utf8');
-    } catch {
-      console.log(`  ${c.dim(wrap(t.profile.labelFileMissing(label, file), 74, '    '))}`);
-      continue;
-    }
-    const model = pricing.byId.get(modelId);
-    if (!model) continue;
-    const analysis = analyzeCachePrefix(text, estimateTokens);
-    const minimum = model.cacheMinTokens;
-    console.log();
-    if (minimum !== null && analysis.stablePrefixTokens < minimum) {
-      console.log(
-        `  ${c.dim(wrap(t.profile.labelPrefixBelowMinimum(file, n(analysis.stablePrefixTokens), n(minimum), model.displayName), 74, '    '))}`,
-      );
-    } else if (analysis.staticTokensAfter >= 200) {
-      console.log(
-        `  ${c.dim(wrap(t.profile.labelPrefixMovable(file, n(analysis.staticTokensAfter), n(analysis.stablePrefixTokens)), 74, '    '))}`,
-      );
-    } else {
-      console.log(
-        `  ${c.dim(wrap(t.profile.labelPrefixHealthy(file, n(analysis.stablePrefixTokens), n(minimum ?? 0)), 74, '    '))}`,
-      );
-    }
-  }
+  reportMixDrift(report, t);
 
-  /**
-   * The token budget against what actually goes up the wire.
-   *
-   * `budgets` gates a prompt *file*; the log records what the *call* carried —
-   * system prompt, retrieved context, conversation history, tool results. The
-   * two are related only through `labels`, and when the gap is large the gate
-   * is real but tiny: a 2,000-token budget on a workload sending 47,000
-   * tokens a call governs four per cent of what is sent, and nobody looking
-   * at a green build would know it.
-   *
-   * Only stated when both ends are known — a label mapped to a file, and a
-   * budget covering that file — and the share is named as approximate,
-   * because the budget counts the file's tokens with the estimator while the
-   * log counts what the provider billed. It says which part of the bill the
-   * gate can see, and never that the budget is wrong.
-   */
-  const budgetPatterns = Object.keys(config.budgets ?? {});
-  if (budgetPatterns.length > 0) {
-    for (const row of report.byLabel) {
-      const file = labelMap[row.label];
-      if (file === undefined || row.breakdown.calls === 0) continue;
-      const pattern = mostSpecificMatch(budgetPatterns, file);
-      if (pattern === null) continue;
-      const budget = config.budgets![pattern]!;
-      if (budget <= 0) continue;
-      /**
-       * Input tokens per call over this label — every class that is billed
-       * as input, because a cached token was still sent and still counted
-       * against the model's window.
-       */
-      const perCall =
-        (row.breakdown.inputTokens + row.breakdown.cacheReadTokens + row.breakdown.cacheWriteTokens) /
-        row.breakdown.calls;
-      if (perCall <= 0) continue;
-      const share = budget / perCall;
-      // Only when the gap is wide enough to change what somebody believes.
-      // A budget covering most of the call is doing its job quietly.
-      if (share >= 0.5) continue;
-      console.log();
-      console.log(
-        `  ${c.yellow('!')} ${c.dim(wrap(t.profile.budgetVsWire(row.label === UNLABELLED ? t.profile.unlabelled() : row.label, file, n(budget), n(Math.round(perCall)), pct(share)), 74, '    '))}`,
-      );
-    }
-  }
+  reportRepeatedCalls(report, t);
 
-  /**
-   * Whether the TTL fits how fast the turns arrive — the mechanism behind the
-   * verdict above, readable only when the log carries a clock and a session.
-   *
-   * Rendered as four verdicts plus "could not be measured", the same
-   * three-state discipline truncation uses: a workload with cache writes and no
-   * clock has not been cleared, and silence here would read as fine.
-   */
-  const TTL_SHOWN = 3;
-  for (const fit of report.cacheTtlFit.slice(0, TTL_SHOWN)) {
-    const name = fit.label === UNLABELLED ? t.profile.unlabelled() : fit.label;
-    const gap = formatGap(fit.medianGapMs);
-    if (fit.verdict === 'expires-before-reuse') {
-      const line =
-        fit.medianGapMs > TTL_1H_MS
-          ? t.profile.ttlFitExpiresBoth(name, fit.modelName, gap)
-          : t.profile.ttlFitExpires(name, fit.modelName, gap);
-      console.log(`  ${c.yellow('!')} ${c.bold(wrap(line, 74, '    '))}`);
-    } else if (fit.verdict === 'overlong-ttl') {
-      console.log(
-        `  ${c.yellow('!')} ${c.bold(wrap(t.profile.ttlFitOverlong(name, fit.modelName, gap, formatUsd(fit.overpayUsd)), 74, '    '))}`,
-      );
-    } else if (fit.verdict === 'unsettled') {
-      console.log(
-        `  ${c.dim(wrap(t.profile.ttlFitUnsettledGap(name, fit.modelName, gap), 74, '    '))}`,
-      );
-    } else {
-      console.log(`  ${c.dim(wrap(t.profile.ttlFitFits(name, fit.modelName, gap), 74, '    '))}`);
-    }
-  }
-  if (report.total.cacheWriteTokens > 0 && report.cacheTtlFit.length === 0) {
-    console.log(`  ${c.dim(wrap(t.profile.ttlFitUnmeasured(), 74, '  '))}`);
-  }
-
-  /**
-   * Cache writes by conversations that never came back.
-   *
-   * Two sentences for the same tokens, and which one prints is decided by the
-   * slice's own reads: with zero cache reads anywhere in the slice, nothing
-   * read those writes — within the session, across sessions, at all — and the
-   * ceiling collapses into a fact said loudly. With reads present, another
-   * conversation sharing the prefix may have read them, the log cannot see
-   * whose write a read hit, and the figure prints as the ceiling it is.
-   */
-  const LEDGER_SHOWN = 3;
-  if (report.singleTurnCacheWrites.length > 0) {
-    const readsBySlice = new Map(
-      report.byLabelAndModel.map((r) => [`${r.label}\n${r.model}`, r.breakdown.cacheReadTokens]),
-    );
-    for (const row of report.singleTurnCacheWrites.slice(0, LEDGER_SHOWN)) {
-      const name = row.label === UNLABELLED ? t.profile.unlabelled() : row.label;
-      const reads = readsBySlice.get(`${row.label}\n${row.model}`) ?? 0;
-      if (reads === 0) {
-        console.log(
-          `  ${c.yellow('!')} ${c.bold(wrap(t.profile.singleTurnConfirmed(name, row.modelName, n(row.singleTurnSessions), n(row.sessions), formatUsd(row.singleTurnWriteUsd)), 74, '    '))}`,
-        );
-      } else {
-        console.log(
-          `  ${c.dim(wrap(t.profile.singleTurnCeiling(name, row.modelName, n(row.singleTurnSessions), n(row.sessions), formatUsd(row.singleTurnWriteUsd)), 74, '    '))}`,
-        );
-      }
-    }
-  }
-
-  /**
-   * What one conversation costs — the question a total cannot answer, and the
-   * one a per-seat price or a quota is set from. Median against p95, never a
-   * mean: one runaway agent loop would drag a mean up and hide the ordinary
-   * case, which is the figure somebody is actually pricing.
-   */
-  for (const shape of report.sessionCosts.slice(0, 3)) {
-    const name = shape.label === UNLABELLED ? t.profile.unlabelled() : shape.label;
-    console.log();
-    console.log(
-      `  ${c.dim(wrap(t.profile.sessionCost(name, shape.modelName, n(shape.sessions), formatUsd(shape.medianUsd), n(shape.medianTurns), formatUsd(shape.p95Usd), formatUsd(shape.maxUsd)), 74, '  '))}`,
-    );
-    /**
-     * The tail, when there is one. A p95 far above the median is a shape a
-     * quota can fix; a p95 beside it is a workload that is simply expensive,
-     * and saying "hunt the tail" there would send somebody after nothing.
-     * The threshold is in the sentence rather than hidden here.
-     */
-    if (shape.medianUsd > 0 && shape.p95Usd > 10 * shape.medianUsd) {
-      console.log(
-        `  ${c.yellow('!')} ${c.dim(wrap(t.profile.sessionCostTail((shape.p95Usd / shape.medianUsd).toFixed(0)), 74, '    '))}`,
-      );
-    }
-  }
-  /**
-   * The figure that survives a small log. `sessionCosts` refuses slices too
-   * thin for a percentile, and rightly — but a log of four conversations
-   * still has a most expensive one, and that maximum is a fact at any count.
-   * It is also exactly the number `--max-session-usd` judges, so the report
-   * states it rather than going silent where the gate would speak.
-   */
-  if (report.sessionCosts.length === 0 && report.sessionSpend !== null) {
-    console.log();
-    console.log(
-      `  ${c.dim(wrap(t.profile.sessionSpendOnly(n(report.sessionSpend.sessions), formatUsd(report.sessionSpend.maxUsd)), 74, '  '))}`,
-    );
-  }
-
-  /**
-   * A total that assumed a cache-write rate is a floor, and says so.
-   *
-   * Anthropic's 1-hour entry costs 2x input against the 5-minute entry's 1.25x. A
-   * log carrying only the flat `cache_creation_input_tokens` cannot say which, so
-   * the cheaper one is used — and the flattering direction is exactly the one this
-   * tool refuses to take quietly.
-   */
-  if (report.total.assumedWriteTtlCalls > 0) {
-    console.log(
-      `  ${c.dim(wrap(t.profile.assumedWriteTtl(report.total.assumedWriteTtlCalls), 74, '  '))}`,
-    );
-  }
-
-  /**
-   * The section this command is for, and the answer to the fairest complaint the
-   * product has had: on a bill of twenty thousand, the rules recover two hundred.
-   *
-   * That figure is right — measured, three tokens out of three hundred and six on
-   * an ordinary support prompt. The conclusion is not that the tool is worthless
-   * but that it had been looking at the smallest line item. Which model a call
-   * goes to moves 60% to 80%. The Batch API moves 50% flat. Both are priced here
-   * from the reader's own tokens, at published rates, with no modelling in
-   * between — and printed above the breakdowns, because a lever nobody scrolls to
-   * is a lever nobody pulls.
-   *
-   * The ceiling on prompt shortening prints underneath them on purpose. A 1% win
-   * reported without saying 1% of what is not information, and this repository
-   * would rather say the uncomfortable number itself than let somebody else
-   * discover it.
-   */
-  const levers = billLevers(report, { catalogue: pricing });
-  console.log();
-  console.log(sectionHeading(t.profile.leversHeading()));
-  /**
-   * Every lever below describes a mixture when nothing carries a label.
-   *
-   * A 2,000-call classifier and a 400-call RAG pipeline merge into one slice, and
-   * the section then offers a single route for two workloads that need different
-   * answers — and `trazum route` would measure one prompt against a figure
-   * covering both. The session case already tells the reader to add the field;
-   * this one named the row `unlabelled` and said nothing, as though that were a
-   * workload.
-   */
-  const unlabelledOnly =
-    report.byLabel.length === 1 && report.byLabel[0]!.label === UNLABELLED;
-  if (unlabelledOnly && levers.slices.length > 0) {
-    console.log(`  ${c.yellow('!')} ${c.dim(wrap(t.profile.leversUnlabelled(), 74, '    '))}`);
-  }
-  if (levers.slices.length === 0) {
-    console.log(`  ${c.dim(wrap(t.profile.leversNone(), 74, '  '))}`);
-  } else {
-    for (const slice of levers.slices.slice(0, 5)) {
-      const label = slice.label === UNLABELLED ? t.profile.unlabelled() : slice.label;
-      console.log();
-      /**
-       * The headline is the **combined** figure, and the options underneath are
-       * the ways to reach it — not rows to add up. Batching a routed call
-       * discounts the cheaper model's price, so listing them separately printed
-       * $12.60 and $10.50 against a slice that had spent $21.00: a saving larger
-       * than the bill it came from, in the flattering direction.
-       */
-      console.log(
-        `  ${c.green('→')} ${c.bold(wrap(t.profile.leverSlice(label, slice.modelName, formatUsd(slice.combinedUsd), pct(slice.shareOfBill)), 74, '    '))}`,
-      );
-      console.log(`    ${c.dim(t.profile.leverCalls(t.profile.calls(slice.calls), formatUsd(slice.spentUsd)))}`);
-      if (slice.route) {
-        console.log(
-          `    ${c.dim('·')} ${c.dim(wrap(t.profile.leverRoute(slice.route.candidate.displayName, formatUsd(slice.route.savingUsd)), 74, '      '))}`,
-        );
-      }
-      if (slice.batch) {
-        console.log(
-          `    ${c.dim('·')} ${c.dim(wrap(t.profile.leverBatch(formatUsd(slice.batch.savingUsd)), 74, '      '))}`,
-        );
-      }
-      // The arithmetic is exact and the quality question is untouched by it.
-      // Naming the command is the difference between a saving and a gamble.
-      if (slice.route) {
-        console.log(
-          `    ${c.dim(wrap(t.profile.leverRouteVerify(slice.route.candidate.id), 74, '    '))}`,
-        );
-      }
-    }
-  }
-  console.log();
-  console.log(
-    `  ${c.dim(wrap(t.profile.leverPromptCeiling(formatUsd(levers.promptCeilingUsd), pct(levers.promptCeilingShare)), 74, '  '))}`,
-  );
-
-  /**
-   * `--what-if <model>`: these exact calls, at another model's rates.
-   *
-   * The levers above pick their own candidate; this answers the question the
-   * reader arrived with. It is multiplication, not advice, and every part of
-   * this section is built so it cannot be read as advice:
-   *
-   * - the caveat line prints **before** the figure, not after it;
-   * - calls the target's context window could not have accepted are named as
-   *   impossible rather than priced as cheap, and their money is in none of
-   *   the totals;
-   * - spend already on the target is stated separately, because a difference
-   *   computed over money that cannot move is a percentage of the wrong
-   *   denominator.
-   */
-  if (whatIf !== null) {
-    console.log();
-    console.log(sectionHeading(t.profile.whatIfHeading(whatIf.target.displayName)));
-    console.log(`  ${c.dim(wrap(t.profile.whatIfAssumption(), 74, '  '))}`);
-    console.log();
-    if (whatIf.slices.length === 0) {
-      console.log(`  ${c.dim(wrap(t.profile.whatIfNothingToMove(), 74, '  '))}`);
-    } else {
-      const cheaper = whatIf.deltaUsd < 0;
-      const line = t.profile.whatIfTotal(
-        formatUsd(whatIf.currentUsd),
-        formatUsd(whatIf.targetUsd),
-        formatUsd(Math.abs(whatIf.deltaUsd)),
-      );
-      console.log(`  ${cheaper ? c.green('→') : c.yellow('!')} ${c.bold(wrap(line, 74, '    '))}`);
-      console.log(
-        `  ${c.dim(wrap(cheaper ? t.profile.whatIfCheaper() : t.profile.whatIfDearer(), 74, '  '))}`,
-      );
-      /**
-       * The other half of the whole decision: the same move with the target's
-       * Batch API on top. Computed against the target's rates, never by
-       * adding two savings, and hedged the only honest way — whether these
-       * calls can wait is not in the log.
-       */
-      if (whatIf.batchOnTarget !== null) {
-        console.log(
-          `  ${c.dim(wrap(t.profile.whatIfBatchOnTarget(formatUsd(whatIf.batchOnTarget.targetUsd), formatUsd(whatIf.targetUsd)), 74, '  '))}`,
-        );
-      }
-      for (const slice of whatIf.slices.slice(0, 5)) {
-        const label = slice.label === UNLABELLED ? t.profile.unlabelled() : slice.label;
-        console.log(
-          `    ${c.dim('·')} ${c.dim(wrap(t.profile.whatIfSlice(label, slice.model, formatUsd(slice.currentUsd), formatUsd(slice.targetUsd)), 74, '      '))}`,
-        );
-        /**
-         * Cache traffic the target could not grant, said loudly and beside
-         * the figure it corrects. The standard row prices cache entries the
-         * target's minimum would refuse to create — an error that flatters
-         * the move, which is the direction this repository refuses.
-         */
-        if (slice.cacheBeyondTarget !== null) {
-          console.log(
-            `    ${c.yellow('!')} ${c.dim(wrap(t.profile.whatIfCacheBeyond(n(slice.maxCallInputTokens), n(slice.cacheBeyondTarget.minTokens), formatUsd(slice.cacheBeyondTarget.noCacheUsd)), 74, '      '))}`,
-          );
-        }
-      }
-    }
-    /**
-     * The refusal, and it is loud. A call larger than the target's window is
-     * not a cheaper call, and a comparison that priced it anyway would report
-     * a saving for traffic that would have failed outright.
-     */
-    for (const slice of whatIf.overContext.slice(0, 3)) {
-      const label = slice.label === UNLABELLED ? t.profile.unlabelled() : slice.label;
-      console.log(
-        `  ${c.yellow('!')} ${c.bold(wrap(t.profile.whatIfOverContext(label, n(slice.maxCallInputTokens), n(whatIf.target.contextWindow), formatUsd(slice.currentUsd)), 74, '    '))}`,
-      );
-    }
-    // Money that is already there cannot move, and leaving it out of the
-    // totals above is only honest if the reader is told it exists.
-    if (whatIf.alreadyOnTarget.calls > 0) {
-      console.log(
-        `  ${c.dim(wrap(t.profile.whatIfAlreadyThere(t.profile.calls(whatIf.alreadyOnTarget.calls), formatUsd(whatIf.alreadyOnTarget.usd)), 74, '  '))}`,
-      );
-    }
-    // Models with no current price have no difference to state — their target
-    // cost is knowable and the subtraction is not.
-    if (whatIf.unpricedCalls > 0) {
-      console.log(
-        `  ${c.dim(wrap(t.profile.whatIfUnpriced(t.profile.calls(whatIf.unpricedCalls), whatIf.unpricedModels.join(', ')), 74, '  '))}`,
-      );
-    }
-  }
-
-  /**
-   * What re-sending the conversation costs — the line nothing here could see.
-   *
-   * A chat or agent workload sends the whole conversation back on every turn, so
-   * the input grows with the turn count and that growth is routinely the largest
-   * item on the bill. A prompt file shows the system prompt and not the history; a
-   * total shows the sum and not the shape.
-   *
-   * Reported as a **ceiling**, because part of the growth is the user's own new
-   * messages and this reads counts rather than content, so it cannot separate the
-   * two. Saying nothing because the exact split is unknowable would be worse: the
-   * bound is exact, and the reader can act on it.
-   */
-  if (report.conversations.length > 0) {
-    console.log();
-    console.log(sectionHeading(t.profile.historyHeading()));
-    for (const growth of report.conversations.slice(0, 3)) {
-      const label = growth.label === UNLABELLED ? t.profile.unlabelled() : growth.label;
-      console.log();
-      console.log(
-        `  ${c.bold(wrap(t.profile.historyGrowth(label, growth.modelName, n(Math.round(growth.minTurnTokens)), n(Math.round(growth.maxTurnTokens)), n(growth.longestSession)), 74, '  '))}`,
-      );
-      console.log(
-        `  ${c.dim(wrap(t.profile.historyCeiling(formatUsd(growth.growthUsd), pct(growth.shareOfBill), formatUsd(growth.flatUsd), formatUsd(growth.inputUsd)), 74, '  '))}`,
-      );
-    }
-  } else if (!report.hasSessions) {
-    /**
-     * Not the same as "no growth". A log without a session field cannot be asked
-     * the question at all, and silence there would read as a clean bill of health
-     * on the line most likely to be the biggest.
-     */
-    console.log();
-    console.log(sectionHeading(t.profile.historyHeading()));
-    console.log(`  ${c.dim(wrap(t.profile.historyNoSessions(), 74, '  '))}`);
-  }
-
-  /**
-   * Where the output spend concentrates — the actionable half of "output
-   * dominates", which the headline above could only state as a total.
-   *
-   * Two bills with identical output spend want opposite responses. Six per cent
-   * of calls holding half of it is a tail, and a tail has a cause worth a
-   * morning; forty-five per cent is what evenly spread looks like, and the only
-   * lever there is asking every answer to be shorter. The threshold between the
-   * two is a quarter of the calls — far enough from both shapes that rounding
-   * cannot flip the message, and stated here because it is a presentation choice,
-   * not a measurement.
-   */
-  if (report.outputShapes.length > 0) {
-    console.log();
-    console.log(sectionHeading(t.profile.outputShapeHeading()));
-    for (const shape of report.outputShapes.slice(0, 3)) {
-      const label = shape.label === UNLABELLED ? t.profile.unlabelled() : shape.label;
-      const isTail = shape.heavyCallShare < 0.25;
-      console.log();
-      if (isTail) {
-        console.log(
-          `  ${c.bold(wrap(t.profile.outputTail(label, shape.modelName, pct(shape.heavyCallShare), pct(shape.heavySpendShare), n(shape.aboveTokens), formatUsd(shape.outputUsd)), 74, '  '))}`,
-        );
-        console.log(`  ${c.dim(wrap(t.profile.outputTailAdvice(), 74, '  '))}`);
-      } else {
-        console.log(
-          `  ${c.bold(wrap(t.profile.outputFlat(label, shape.modelName, pct(shape.heavyCallShare), pct(shape.heavySpendShare), formatUsd(shape.outputUsd)), 74, '  '))}`,
-        );
-        console.log(`  ${c.dim(wrap(t.profile.outputFlatAdvice(), 74, '  '))}`);
-      }
-      /**
-       * The ceilings a max_tokens cap actually wants, exact over the
-       * histogram: every measured answer at or under the named number is
-       * counted, none interpolated. Omitted when the covering bucket is the
-       * open-ended last one, which has no ceiling to name honestly.
-       */
-      if (shape.medianWithinTokens !== null && shape.p95WithinTokens !== null) {
-        console.log(
-          `  ${c.dim(wrap(t.profile.outputPercentiles(n(shape.medianWithinTokens), n(shape.p95WithinTokens)), 74, '  '))}`,
-        );
-      }
-    }
-  }
-
-  /**
-   * How big the calls themselves are — the other half of the bill.
-   *
-   * The section above describes output; on a RAG or agent workload input is
-   * most of the invoice, and a total could only ever say "input is 63% of
-   * this bill", which nobody can act on. The actionable question is whether
-   * the ordinary call is large or a few calls are enormous, and those two
-   * shapes want opposite responses: a cap on something, or a shorter prompt.
-   *
-   * Loud past **four times** the median — far enough from an even
-   * distribution that a bucket boundary cannot flip the message, and stated
-   * in the sentence rather than hidden here. Both figures are bucket
-   * ceilings, so the ratio is coarse by construction and the copy says so.
-   */
-  if (report.inputShapes.length > 0) {
-    console.log();
-    console.log(sectionHeading(t.profile.inputShapeHeading()));
-    for (const shape of report.inputShapes.slice(0, 3)) {
-      const label = shape.label === UNLABELLED ? t.profile.unlabelled() : shape.label;
-      console.log();
-      if (shape.medianWithinTokens === null || shape.p95WithinTokens === null || shape.p95OverMedian === null) {
-        /**
-         * The covering bucket is the open-ended last one, so there is no
-         * ceiling to name. Said rather than skipped: a slice whose calls are
-         * all above a million tokens is a finding, and silence would drop it.
-         */
-        console.log(
-          `  ${c.bold(wrap(t.profile.inputHuge(label, shape.modelName, t.profile.calls(shape.calls), formatUsd(shape.inputUsd)), 74, '  '))}`,
-        );
-        continue;
-      }
-      const skewed = shape.p95OverMedian >= 4;
-      const line = skewed
-        ? t.profile.inputSkewed(
-            label,
-            shape.modelName,
-            n(shape.medianWithinTokens),
-            n(shape.p95WithinTokens),
-            shape.p95OverMedian.toFixed(1),
-            formatUsd(shape.inputUsd),
-          )
-        : t.profile.inputEven(
-            label,
-            shape.modelName,
-            n(shape.medianWithinTokens),
-            n(shape.p95WithinTokens),
-            formatUsd(shape.inputUsd),
-          );
-      console.log(`  ${c.bold(wrap(line, 74, '  '))}`);
-      console.log(
-        `  ${c.dim(wrap(skewed ? t.profile.inputSkewedAdvice() : t.profile.inputEvenAdvice(), 74, '  '))}`,
-      );
-      /**
-       * What that size actually costs. A cache read is a tenth of input on
-       * Anthropic, so a large slice reading almost everything from cache is a
-       * very different bill from one paying full rate — and the token counts
-       * alone cannot tell them apart.
-       */
-      if (shape.cachedShare >= 0.5) {
-        console.log(`  ${c.dim(wrap(t.profile.inputMostlyCached(pct(shape.cachedShare)), 74, '  '))}`);
-      } else if (shape.cachedShare < 0.1) {
-        console.log(`  ${c.dim(wrap(t.profile.inputFullRate(), 74, '  '))}`);
-      }
-    }
-  }
-
-  /**
-   * How close the largest call is to the model's ceiling.
-   *
-   * The failure a bill cannot show: input grows turn by turn or document by
-   * document, costs nothing extra to grow, and then one call crosses the
-   * context window and the API refuses it. Loud from 85% — close enough
-   * that the next retrieval bump or long conversation plausibly crosses —
-   * and quiet above half, so the reader sees it coming either way. No
-   * prediction of *when*: a straight line through two points is a guess
-   * wearing arithmetic's clothes.
-   */
-  {
-    if (pressures.length > 0) {
-      console.log();
-      console.log(sectionHeading(t.profile.pressureHeading()));
-      for (const row of pressures.slice(0, 3)) {
-        const label = row.label === UNLABELLED ? t.profile.unlabelled() : row.label;
-        const line = t.profile.pressureLine(
-          label,
-          row.modelName,
-          n(row.maxCallInputTokens),
-          n(row.contextWindow),
-          pct(row.share),
-        );
-        console.log();
-        if (row.share >= 0.85) {
-          console.log(`  ${c.yellow('!')} ${c.bold(wrap(line, 74, '    '))}`);
-          console.log(`  ${c.dim(wrap(t.profile.pressureAdvice(), 74, '  '))}`);
-        } else {
-          console.log(`  ${c.dim(wrap(line, 74, '  '))}`);
-        }
-      }
-    }
-  }
-
-  /**
-   * The mix moving inside one log — the drift `--against` needs a second log
-   * to see. Spoken only past fifteen points, a presentation threshold stated
-   * in the copy; the data states exact shares and the JSON carries them all.
-   */
-  if (report.modelMixDrift !== null) {
-    const moved = report.modelMixDrift.models.filter(
-      (m) => Math.abs(m.lastShare - m.firstShare) >= 0.15,
-    );
-    if (moved.length > 0) {
-      console.log();
-      console.log(sectionHeading(t.profile.mixDriftHeading()));
-      for (const m of moved.slice(0, 3)) {
-        console.log();
-        console.log(
-          `  ${c.yellow('!')} ${c.bold(wrap(t.profile.mixDriftLine(m.model, pct(m.firstShare), pct(m.lastShare), n(report.modelMixDrift.firstDays), n(report.modelMixDrift.lastDays), formatUsd(m.lastUsd)), 74, '    '))}`,
-        );
-      }
-      console.log(`  ${c.dim(wrap(t.profile.mixDriftNote(), 74, '  '))}`);
-    }
-  }
-
-  /**
-   * The same request, sent again a moment later.
-   *
-   * A conversation's input grows with every turn, so two consecutive calls in
-   * one conversation carrying the same size seconds apart is a thing going
-   * wrong rather than a thing working — a retry after a timeout, an agent
-   * step repeating, a loop. Loud, because the money bought nothing, and
-   * hedged, because this reads counts and cannot see content: the sentence
-   * says the pattern is *usually* a retry, never that it is one.
-   */
-  if (report.repeatedTurns.length > 0) {
-    console.log();
-    console.log(sectionHeading(t.profile.repeatsHeading()));
-    for (const row of report.repeatedTurns.slice(0, 3)) {
-      const label = row.label === UNLABELLED ? t.profile.unlabelled() : row.label;
-      console.log();
-      console.log(
-        `  ${c.yellow('!')} ${c.bold(wrap(t.profile.repeatsFound(label, row.modelName, n(row.repeats), n(row.checkedCalls), n(Math.round(row.withinMs / 1000)), formatUsd(row.usd)), 74, '    '))}`,
-      );
-      console.log(`  ${c.dim(wrap(t.profile.repeatsAdvice(), 74, '  '))}`);
-    }
-  }
-
-  /**
-   * Output spend that bought answers cut off mid-generation — the one slice of
-   * a bill that is waste without a counterpart. Paid in full, frequently
-   * retried and billed again, and the truncated attempt bought nothing.
-   *
-   * Three states, kept apart on purpose: waste found, none found on a log that
-   * measured, and a log that never recorded a stop reason at all — which gets
-   * the missing-field message, because silence there would read as a clean bill
-   * of health on a question the log never asked.
-   */
-  if (report.total.truncatedCalls > 0 && report.total.outputUsd > 0) {
-    console.log();
-    console.log(
-      `  ${c.yellow('!')} ${c.bold(wrap(t.profile.truncatedWaste(t.profile.calls(report.total.truncatedCalls), formatUsd(report.total.truncatedOutputUsd), pct(report.total.truncatedOutputUsd / report.total.outputUsd)), 74, '    '))}`,
-    );
-    /**
-     * Which workloads are paying for it, and at what rate — the actionable
-     * half the total hides. A 40% truncation rate is a max_tokens setting
-     * that is simply wrong; 1% is a long tail, and the two call for opposite
-     * responses.
-     *
-     * The rate is over calls that **recorded a stop reason**, never over all
-     * calls: a workload that logs the field on half its traffic must not be
-     * reported as though the unmeasured half completed. Both numbers print,
-     * so the denominator is visible rather than implied.
-     */
-    const truncatedLabels = report.byLabel
-      .filter((row) => row.breakdown.truncatedCalls > 0)
-      .sort((a, b) => b.breakdown.truncatedOutputUsd - a.breakdown.truncatedOutputUsd);
-    if (truncatedLabels.length > 0 && report.byLabel.length > 1) {
-      for (const row of truncatedLabels.slice(0, 3)) {
-        const name = row.label === UNLABELLED ? t.profile.unlabelled() : row.label;
-        console.log(
-          `    ${c.dim(wrap(t.profile.truncatedBy(name, n(row.breakdown.truncatedCalls), n(row.breakdown.stopReasonCalls), pct(row.breakdown.truncatedCalls / row.breakdown.stopReasonCalls), formatUsd(row.breakdown.truncatedOutputUsd)), 74, '    '))}`,
-        );
-      }
-    }
-    /**
-     * The ceiling the completed answers actually needed, when the output
-     * shapes measured it: "95% of the answers that finished fit within N
-     * tokens" is the number a max_tokens cap wants, and it sits next to the
-     * evidence that the current cap is too low. Measured on these calls,
-     * promised for nothing.
-     */
-    const ceiling = report.outputShapes.find((shape) => shape.p95WithinTokens !== null);
-    if (ceiling !== undefined) {
-      console.log(
-        `    ${c.dim(wrap(t.profile.truncatedCeiling(n(ceiling.p95WithinTokens!)), 74, '    '))}`,
-      );
-    }
-    /**
-     * The "billed again" half, measured. The sentence above has always said
-     * truncated answers are frequently retried; this is the count and the
-     * money, when the log can carry it — a pattern, never a certainty, and
-     * attributed to the truncated call's slice, where the ceiling that
-     * caused it lives.
-     */
-    for (const row of report.truncationRetries.slice(0, 3)) {
-      const name = row.label === UNLABELLED ? t.profile.unlabelled() : row.label;
-      console.log(
-        `  ${c.yellow('!')} ${c.bold(wrap(t.profile.truncationRetryLine(name, row.modelName, n(row.retried), n(row.truncatedCalls), n(Math.round(row.withinMs / 1000)), formatUsd(row.wastedUsd), formatUsd(row.retryUsd)), 74, '    '))}`,
-      );
-    }
-    if (report.truncationRetries.length > 0) {
-      console.log(`  ${c.dim(wrap(t.profile.truncationRetryNote(), 74, '  '))}`);
-    }
-  } else if (report.total.stopReasonCalls === 0) {
-    console.log();
-    console.log(`  ${c.dim(wrap(t.profile.truncatedNotRecorded(), 74, '  '))}`);
-  }
-
-  /**
-   * This bill against the previous one — how spend actually gets out of hand.
-   *
-   * Nobody adds five thousand a month in one day; bills grow four percent a week
-   * while every snapshot looks reasonable. This is the baseline gate the prompts
-   * already had, applied to the money itself. **Positive means the bill grew**
-   * (the diff convention), and every figure is between exactly these two files:
-   * no period is assumed, so the call counts print beside the money for the
-   * reader to judge comparability before judging the trend.
-   */
-  if (previous !== null) {
-    console.log();
-    console.log(sectionHeading(t.profile.againstHeading()));
-    if (previous.total.calls === 0) {
-      console.log(`  ${c.dim(wrap(t.profile.againstNothingPriced(), 74, '  '))}`);
-    } else {
-      const delta = report.total.totalUsd - previous.total.totalUsd;
-      const growthPct =
-        previous.total.totalUsd > 0
-          ? `${delta >= 0 ? '+' : ''}${((delta / previous.total.totalUsd) * 100).toFixed(1)}%`
-          : '—';
-      console.log(
-        `  ${c.bold(wrap(t.profile.againstTotals(formatUsd(previous.total.totalUsd), formatUsd(report.total.totalUsd), formatSignedUsd(delta), growthPct, t.profile.calls(previous.total.calls), t.profile.calls(report.total.calls)), 74, '  '))}`,
-      );
-      // Overlapping spans mean part of this "growth" is the same money on
-      // both sides of the subtraction. Said after the figure it qualifies
-      // and before the drivers built from it.
-      if (againstOverlap !== null) {
-        console.log(
-          `  ${c.yellow('!')} ${c.dim(wrap(t.profile.againstOverlap(dayOf(againstOverlap.fromMs), dayOf(againstOverlap.toMs)), 74, '    '))}`,
-        );
-      }
-
-      // Drivers: per-key contribution to the change, largest magnitude first,
-      // computed once beside the gates so no rendering derives its own.
-      const driverLine = (d: { key: string; was: number | null; now: number | null; delta: number }, shown: string): string =>
-        d.was === null
-          ? t.profile.againstDriverNew(formatSignedUsd(d.delta), shown)
-          : d.now === null
-            ? t.profile.againstDriverGone(formatSignedUsd(d.delta), shown)
-            : t.profile.againstDriver(formatSignedUsd(d.delta), shown, formatUsd(d.was), formatUsd(d.now));
-
-      console.log();
-      for (const d of labelDrivers.slice(0, 5)) {
-        const line = driverLine(d, d.key === UNLABELLED ? t.profile.unlabelled() : d.key);
-        console.log(`  ${d.delta > 0 ? c.yellow(line) : c.dim(line)}`);
-      }
-      if (labelDrivers.length > 5) {
-        console.log(`  ${c.dim(t.profile.andMoreLabels(labelDrivers.length - 5))}`);
-      }
-
-      /**
-       * The same change, by model — where the mix moved. The label rows cannot
-       * show it: a workload that kept its name and switched from Haiku to Opus
-       * reads as "chat grew", and the reason is the model. Only printed when
-       * more than one model is involved; with one model on both sides, this
-       * section restates the totals line and says nothing new.
-       */
-      const modelsInvolved = new Set([
-        ...previous.byModel.map((r) => r.model),
-        ...report.byModel.map((r) => r.model),
-      ]);
-      if (modelDrivers.length > 0 && modelsInvolved.size > 1) {
-        console.log();
-        console.log(`  ${c.dim(t.profile.againstByModel())}`);
-        for (const d of modelDrivers.slice(0, 3)) {
-          const line = driverLine(d, d.key);
-          console.log(`  ${d.delta > 0 ? c.yellow(line) : c.dim(line)}`);
-        }
-      }
-
-      /**
-       * What the comparison stopped being able to see.
-       *
-       * Every figure above is dollars, and dollars cannot tell a finding that
-       * was fixed from a finding whose field the log stopped recording — both
-       * are silence. This is the only section that can, so it is loud: a
-       * collapse in coverage invalidates whichever findings depended on it,
-       * and reading the drop as good news is the specific mistake it exists
-       * to prevent.
-       */
-      const drifts = coverageDrift(previous.fieldCoverage, report.fieldCoverage);
-      if (drifts.length > 0) {
-        console.log();
-        for (const drift of drifts) {
-          const line = t.profile.coverageDrift(
-            t.profile.coverageField(drift.field),
-            pct(drift.was),
-            pct(drift.now),
-          );
-          console.log(
-            drift.delta < 0
-              ? `  ${c.yellow('!')} ${c.bold(wrap(line, 74, '    '))}`
-              : `  ${c.dim(wrap(line, 74, '  '))}`,
-          );
-          /**
-           * Which findings went with it, named. "Some findings are silent" is
-           * not something a reader can act on; knowing that conversation
-           * growth and the cache-TTL fit are now silence rather than absence
-           * tells them exactly which sections of this report to distrust.
-           */
-          if (drift.delta < 0) {
-            const silenced = t.profile.coverageSilenced(drift.field);
-            if (silenced !== '') console.log(`    ${c.dim(wrap(silenced, 72, '    '))}`);
-          }
-        }
-        if (drifts.some((d) => d.delta < 0)) {
-          console.log(`  ${c.dim(wrap(t.profile.coverageDriftWhy(), 74, '    '))}`);
-        }
-      }
-    }
-  }
+  reportAgainstPrevious({
+    report, previous, againstOverlap, labelDrivers, modelDrivers, gates, now, t,
+  });
 
   for (const [heading, rows] of [
     [t.profile.byLabelHeading(), report.byLabel.map((r) => [r.label === UNLABELLED ? t.profile.unlabelled() : r.label, r.breakdown] as const)],
@@ -9801,213 +10215,7 @@ async function commandProfile(
     }
   }
 
-  /**
-   * What this log cannot answer, and what would fix it.
-   *
-   * Every finding past the totals needs a field the format does not require,
-   * and a reader who never adds them sees a report quietly missing half of
-   * itself — with no way to tell "nothing to report" from "nothing recorded".
-   * Named with counts rather than booleans: twelve labelled records out of
-   * forty thousand is not a labelled log, and a boolean would call it one.
-   *
-   * Only fields that are actually missing are listed. A complete log gets no
-   * section at all, because a paragraph of things that are fine is the
-   * paragraph readers learn to skip.
-   */
-  /**
-   * Outcomes — the counterpart, where somebody recorded one.
-   *
-   * Printed above the coverage section rather than below it, because when this
-   * section is present it is the most valuable thing on the page: every other
-   * figure in this report is a cost, and this is the only one that says what
-   * the money bought.
-   *
-   * Silent when nothing recorded an outcome. The coverage section below
-   * already names the missing field and what it would unlock, and printing an
-   * empty Outcomes heading above it would be the same sentence twice.
-   */
-  {
-    const outcomes = outcomeReport(report.outcomeTally, config.outcomes ?? null);
-    if (outcomes.coverage.recorded > 0) {
-      console.log();
-      console.log(sectionHeading(t.profile.outcomeHeading()));
-
-      const col = t.profile.outcomeColumns;
-      const rows = [...outcomes.slices, ...outcomes.undeclared].map((slice) => ({
-        value: slice.value,
-        verdict:
-          slice.verdict === 'success'
-            ? t.profile.verdictSuccess()
-            : slice.verdict === 'undeclared'
-              ? t.profile.verdictUndeclared()
-              : t.profile.verdictOther(),
-        calls: n(slice.calls),
-        spend: formatUsd(slice.usd),
-      }));
-      const w = {
-        value: Math.max(...rows.map((r) => r.value.length), col.outcome.length),
-        verdict: Math.max(...rows.map((r) => r.verdict.length), 0),
-        calls: Math.max(...rows.map((r) => r.calls.length), col.calls.length),
-        spend: Math.max(...rows.map((r) => r.spend.length), col.spend.length),
-      };
-      console.log(
-        c.dim(
-          `  ${col.outcome.padEnd(w.value)}  ${''.padEnd(w.verdict)}  ` +
-            `${col.calls.padStart(w.calls)}  ${col.spend.padStart(w.spend)}`,
-        ),
-      );
-      for (const row of rows) {
-        const tint =
-          row.verdict === t.profile.verdictUndeclared()
-            ? c.yellow
-            : row.verdict === t.profile.verdictSuccess()
-              ? c.green
-              : c.dim;
-        console.log(
-          `  ${row.value.padEnd(w.value)}  ${tint(row.verdict.padEnd(w.verdict))}  ` +
-            `${row.calls.padStart(w.calls)}  ${row.spend.padStart(w.spend)}`,
-        );
-      }
-
-      console.log();
-      if (outcomes.successShareOfRecordedUsd !== null) {
-        const declaredUsd = outcomes.slices.reduce((sum, slice) => sum + slice.usd, 0);
-        console.log(
-          `  ${wrap(t.profile.outcomeRate(pct(outcomes.successShareOfRecordedUsd), formatUsd(declaredUsd)), 74, '    ')}`,
-        );
-      } else if (outcomes.noRate !== null) {
-        console.log(`  ${c.dim(wrap(t.profile.outcomeNoRate(outcomes.noRate), 74, '    '))}`);
-      }
-
-      // What the rate does not cover, every time it is printed. A rate over a
-      // twelfth of the bill is a rate about a twelfth of the bill.
-      if (outcomes.coverage.unrecordedUsd > 0 && report.total.totalUsd > 0) {
-        console.log(
-          `  ${c.yellow('!')} ${wrap(
-            t.profile.outcomeUnrecorded(
-              pct(outcomes.coverage.unrecordedUsd / report.total.totalUsd),
-              formatUsd(outcomes.coverage.unrecordedUsd),
-            ),
-            74,
-            '    ',
-          )}`,
-        );
-      }
-      /**
-       * What an outcome costs, per workload — the finding a total cannot make.
-       *
-       * Printed only when at least one workload has enough recorded outcomes
-       * to say something, and every row that cannot state a figure says which
-       * of the five reasons applies rather than showing a blank.
-       */
-      const ranking = rankPerOutcome(
-        report.outcomeTallyByLabel.map((entry) => ({
-          key: entry.label,
-          calls: entry.calls,
-          totalUsd: entry.totalUsd,
-          tally: entry.tally,
-        })),
-        config.outcomes ?? null,
-      );
-      if (ranking.byCall.length > 0) {
-        console.log();
-        console.log(sectionHeading(t.profile.perOutcomeHeading()));
-        const pcol = t.profile.perOutcomeColumns;
-        const prows = ranking.byCall.map((slice) => ({
-          key: slice.key,
-          perCall: formatUsd(slice.usdPerCall),
-          perOutcome:
-            slice.per.usdPerSuccess !== null
-              ? formatUsd(slice.per.usdPerSuccess)
-              : t.profile.perOutcomeWithheld(
-                  slice.per.withheld ?? 'no-vocabulary',
-                  n(slice.per.successes),
-                  pct(slice.per.coverage),
-                ),
-          recorded: pct(slice.per.coverage),
-        }));
-        const pw = {
-          key: Math.max(...prows.map((r) => r.key.length), pcol.workload.length),
-          perCall: Math.max(...prows.map((r) => r.perCall.length), pcol.perCall.length),
-          perOutcome: Math.max(...prows.map((r) => r.perOutcome.length), pcol.perOutcome.length),
-          recorded: Math.max(...prows.map((r) => r.recorded.length), pcol.recorded.length),
-        };
-        console.log(
-          c.dim(
-            `  ${pcol.workload.padEnd(pw.key)}  ${pcol.perCall.padStart(pw.perCall)}  ` +
-              `${pcol.perOutcome.padStart(pw.perOutcome)}  ${pcol.recorded.padStart(pw.recorded)}`,
-          ),
-        );
-        for (const row of prows) {
-          console.log(
-            `  ${row.key.padEnd(pw.key)}  ${row.perCall.padStart(pw.perCall)}  ` +
-              `${row.perOutcome.padStart(pw.perOutcome)}  ${c.dim(row.recorded.padStart(pw.recorded))}`,
-          );
-        }
-        console.log();
-        console.log(`  ${c.dim(wrap(t.profile.perOutcomeNumerator(), 74, '    '))}`);
-
-        // The disagreement between the two orders, which is itself the finding.
-        if (ranking.disagreements.length > 0) {
-          console.log();
-          console.log(`  ${c.dim(wrap(t.profile.perOutcomeBothOrders(), 74, '    '))}`);
-          for (const d of ranking.disagreements) {
-            console.log(
-              `  ${c.yellow('→')} ${wrap(
-                t.profile.perOutcomeDisagreement(d.slice.key, n(d.callRank + 1), n(d.outcomeRank + 1)),
-                74,
-                '    ',
-              )}`,
-            );
-          }
-        }
-      }
-
-      if (outcomes.undeclared.length > 0) {
-        console.log(
-          `  ${c.yellow('!')} ${wrap(
-            t.profile.outcomeUndeclared(outcomes.undeclared.map((s) => s.value).join(', ')),
-            74,
-            '    ',
-          )}`,
-        );
-      }
-    }
-  }
-
-  const coverage = report.fieldCoverage;
-  if (coverage.parsed > 0) {
-    const missing: string[] = [];
-    const partial = (seen: number): string => `${n(seen)}/${n(coverage.parsed)}`;
-    if (coverage.label < coverage.parsed) {
-      missing.push(t.profile.needsLabel(partial(coverage.label)));
-    }
-    if (coverage.session < coverage.parsed) {
-      missing.push(t.profile.needsSession(partial(coverage.session)));
-    }
-    /**
-     * Listed first among the missing when it is missing entirely, because it
-     * is the one field that changes what every other figure here *means*. The
-     * rest sharpen a cost; this one gives it a counterpart.
-     */
-    if (coverage.outcome < coverage.parsed) {
-      missing.push(t.profile.needsOutcome(partial(coverage.outcome)));
-    }
-    if (coverage.ts < coverage.parsed) {
-      missing.push(t.profile.needsTs(partial(coverage.ts)));
-    }
-    if (coverage.stopReason < coverage.parsed) {
-      missing.push(t.profile.needsStopReason(partial(coverage.stopReason)));
-    }
-    if (coverage.cacheWrites > 0 && coverage.cacheTtl < coverage.cacheWrites) {
-      missing.push(t.profile.needsCacheTtl(`${n(coverage.cacheTtl)}/${n(coverage.cacheWrites)}`));
-    }
-    if (missing.length > 0) {
-      console.log();
-      console.log(sectionHeading(t.profile.coverageHeading()));
-      for (const line of missing) console.log(`  ${c.dim(wrap(line, 74, '  '))}`);
-    }
-  }
+  reportOutcomesAndCoverage(report, config, t);
 
   reportProfileGaps(report, t, n, pricingStale);
 
