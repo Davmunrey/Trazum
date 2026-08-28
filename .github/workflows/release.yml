@@ -225,6 +225,18 @@ jobs:
         working-directory: packages/mcp
         run: npm publish --provenance --access public
 
+      # A release is not the moment `npm publish` returns. It is the moment a
+      # stranger typing `npm install` gets what RELEASES.md says they will, and
+      # 1.83.0 proved the two are not the same: the CLI's publish was accepted,
+      # signed and logged, and fifteen minutes later the registry was still
+      # serving 1.82.0 while its two siblings from the same job were on 1.83.0.
+      # Nothing noticed, because the only wait in this workflow was for
+      # @trazum/mcp and only because the MCP registry refuses a listing whose
+      # package it cannot fetch.
+      - name: npm actually serves every package
+        if: github.event_name == 'push' && steps.versions.outputs.publish == 'true'
+        run: node scripts/npm-serves.mjs
+
       # npm reports a write you are not authorised for as `404 Not Found`, which
       # reads as a missing package and is an auth failure. That cost an hour at
       # the first publish and reappeared at 1.9.0, so the workflow says it out

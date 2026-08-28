@@ -11,7 +11,37 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet. The next merge writes here.
+### Fixed
+
+- **A release could report success for a package npm was not serving.** 1.83.0's
+  job published all three: `+ @trazum/cli@1.83.0` on screen, provenance signed,
+  transparency log written. Twenty minutes later `@trazum/core` and
+  `@trazum/mcp` were installable at 1.83.0 and `@trazum/cli` was still 1.82.0 on
+  every endpoint the registry has, while `RELEASES.md` said all three were
+  there.
+
+  It resolved on its own — the CLI's tarball is 862 kB against the MCP server's
+  65 kB, and npm's processing queue is the whole difference — but **nothing was
+  looking**, and the same silence covers a publish that never lands. The only
+  wait in the workflow was for `@trazum/mcp`, and only because the MCP registry
+  refuses a listing whose package it cannot fetch; core and the CLI had no such
+  downstream.
+
+  `scripts/npm-serves.mjs` asks the registry's dist-tags endpoint for every
+  publishable package until each serves the version being released, and fails
+  the job if one never does. The packages are derived from the root
+  `workspaces` globs rather than listed, because a fourth package added later
+  and not added to a hand-kept list is a package the check is blind to, which is
+  the shape of the defect it exists to catch.
+
+  **The first version of the script had no main check**, so the test file
+  importing it ran the whole wait and made three HTTPS calls — this repository's
+  offline promise broken in the place least likely to be looked at. The suite
+  gave it away by finishing in under a second with the script's own output among
+  the results. **And one of that file's tests was written as
+  `() => async function () {…}`**, which returns a function nobody calls: it
+  passed, asserted nothing, and would have gone on passing through any defect in
+  the thing it named. Both are fixed and both are guarded.
 
 ## 1.83.0 — "A receipt, and the surfaces that could not disagree"
 
