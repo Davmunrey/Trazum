@@ -38,6 +38,19 @@ npm publish -w @trazum/mcp  --access public
   "this scope does not exist" and "you may not write to it", so the first real
   attempt looked like a scope problem and was an expired token. `npm whoami` is
   the one-second check that says which.
+- **`npm view` 404s for several minutes after a successful publish, and 1.83.0
+  measured how long that can be.** `@trazum/cli` was accepted, signed and
+  written to the transparency log, and the registry served the previous version
+  for **twenty minutes** while its two siblings from the same job were
+  installable within seconds. The CLI's tarball is 862 kB against the MCP
+  server's 65 kB, which is the only difference between them.
+
+  Since 1.83.0 the release job waits for it: `scripts/npm-serves.mjs` asks the
+  registry's dist-tags endpoint for every publishable package until each serves
+  the version being released, and fails the job if one never does. A release is
+  not the moment `npm publish` returns; it is the moment a stranger typing
+  `npm install` gets what `RELEASES.md` says they will.
+
 - **`npm view` 404s for several minutes after a successful publish.** The
   aggregated packument propagates behind the per-version document and the
   tarball, so `+ @trazum/cli@1.8.0` on screen and `npm view` returning 404 are
