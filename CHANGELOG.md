@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet. The next merge writes here.
+
+## 1.83.0 — "A receipt, and the surfaces that could not disagree"
+
 ### Changed
 
 - **A receipt's rates did not reconstruct its money, and now the money is on
