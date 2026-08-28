@@ -32,7 +32,13 @@ import {
   findContradictions,
   formatUsd,
   getMessages,
+  heliconeRecords,
+  langsmithRecords,
+  litellmRecords,
   looksLikeClaudeCodeTranscript,
+  looksLikeHelicone,
+  looksLikeLangsmith,
+  looksLikeLiteLlm,
   looksLikeOtel,
   optimize,
   otelRecords,
@@ -162,6 +168,113 @@ const SAMPLE_TRANSCRIPT = [
   .map((line) => JSON.stringify(line))
   .join('\n');
 
+/**
+ * A LiteLLM spend log, a Helicone export and a LangSmith run export.
+ *
+ * **Every model in the three is deliberately not Anthropic's.** The tab used to
+ * load a Claude Code transcript and an OpenTelemetry export and nothing else,
+ * so a visitor reading `help` saw one vendor named and one standard, and drew
+ * the obvious conclusion about what this tool is for. It reads 7 providers'
+ * prices and converts 5 export formats; the samples now say so instead of
+ * leaving it to the price table.
+ *
+ * The shapes are the ones the converters accept, taken from their own parsers
+ * rather than invented: `request_id` beside the token columns for LiteLLM,
+ * `request_model` and `response_model` for Helicone, `run_type` beside a trace
+ * field for LangSmith.
+ */
+const SAMPLE_LITELLM = [
+  {
+    request_id: 'req-ll-1',
+    model: 'gpt-5-mini',
+    custom_llm_provider: 'openai',
+    prompt_tokens: 18200,
+    completion_tokens: 900,
+    spend: 0.0072,
+    cache_hit: false,
+    startTime: '2026-08-11T09:00:00Z',
+    metadata: { tags: ['classify'] },
+    session_id: 'sess-ll-1',
+  },
+  {
+    request_id: 'req-ll-2',
+    model: 'deepseek-v3',
+    custom_llm_provider: 'deepseek',
+    prompt_tokens: 24500,
+    completion_tokens: 1100,
+    spend: 0.0069,
+    cache_hit: true,
+    startTime: '2026-08-11T09:14:00Z',
+    metadata: { tags: ['classify'] },
+    session_id: 'sess-ll-1',
+  },
+]
+  .map((row) => JSON.stringify(row))
+  .join('\n');
+
+const SAMPLE_HELICONE = [
+  {
+    request_id: 'hel-1',
+    request_model: 'gpt-5',
+    response_model: 'gpt-5',
+    prompt_tokens: 31000,
+    completion_tokens: 2400,
+    cache_enabled: true,
+    request_created_at: '2026-08-12T11:00:00Z',
+    request_properties: { label: 'summarise' },
+  },
+  /* The proxy answered with a different model than was asked for, which the
+     converter counts rather than smoothing over: the bill rests on the model
+     that answered. */
+  {
+    request_id: 'hel-2',
+    request_model: 'gpt-5',
+    response_model: 'gpt-5-mini',
+    prompt_tokens: 12000,
+    completion_tokens: 700,
+    cache_enabled: false,
+    request_created_at: '2026-08-12T11:20:00Z',
+    request_properties: { label: 'summarise' },
+  },
+]
+  .map((row) => JSON.stringify(row))
+  .join('\n');
+
+const SAMPLE_LANGSMITH = [
+  {
+    id: 'ls-1',
+    run_type: 'llm',
+    trace_id: 'trace-1',
+    start_time: '2026-08-13T08:00:00Z',
+    extra: { metadata: { ls_model_name: 'mistral-large-2512' } },
+    tags: ['extract'],
+    prompt_tokens: 9500,
+    completion_tokens: 640,
+    total_cost: 0.0057,
+  },
+  /* Not a model call. Most of a LangSmith export is chains, tools and
+     retrievers, and the converter reports how many it skipped rather than
+     letting a reader wonder where the runs went. */
+  {
+    id: 'ls-2',
+    run_type: 'chain',
+    trace_id: 'trace-1',
+    start_time: '2026-08-13T08:00:01Z',
+    tags: ['extract'],
+  },
+  {
+    id: 'ls-3',
+    run_type: 'llm',
+    trace_id: 'trace-2',
+    start_time: '2026-08-13T08:30:00Z',
+    extra: { metadata: { ls_model_name: 'gemini-3.6-flash' } },
+    tags: ['extract'],
+    usage_metadata: { input_tokens: 14200, output_tokens: 880 },
+  },
+]
+  .map((row) => JSON.stringify(row))
+  .join('\n');
+
 const SAMPLE_CONFIG = JSON.stringify({ spend: { monthlyUsd: 25 } }, null, 2);
 
 /** The files every fresh terminal starts with. `-o` writes land beside them. */
@@ -171,6 +284,9 @@ export function createPlaygroundFiles(): Map<string, string> {
     ['usage.jsonl', SAMPLE_USAGE],
     ['spans.otlp.json', SAMPLE_OTEL],
     ['transcript.jsonl', SAMPLE_TRANSCRIPT],
+    ['litellm-spend.jsonl', SAMPLE_LITELLM],
+    ['helicone-export.jsonl', SAMPLE_HELICONE],
+    ['langsmith-runs.jsonl', SAMPLE_LANGSMITH],
     ['trazum.config.json', SAMPLE_CONFIG],
   ]);
 }
@@ -270,6 +386,9 @@ export const PLAYGROUND_COMMANDS = [
   'semantic',
   'from-otel',
   'from-claude-code',
+  'from-litellm',
+  'from-helicone',
+  'from-langsmith',
 ] as const;
 
 /** One line the visitor can copy for each command — `help`'s middle column. */
@@ -284,7 +403,36 @@ export const SAMPLE_INVOCATIONS: Record<(typeof PLAYGROUND_COMMANDS)[number], st
   semantic: 'trazum semantic prompt.txt',
   'from-otel': 'trazum from-otel spans.otlp.json -o converted.jsonl',
   'from-claude-code': 'trazum from-claude-code transcript.jsonl -o sessions.jsonl',
+  'from-litellm': 'trazum from-litellm litellm-spend.jsonl -o converted.jsonl',
+  'from-helicone': 'trazum from-helicone helicone-export.jsonl -o converted.jsonl',
+  'from-langsmith': 'trazum from-langsmith langsmith-runs.jsonl -o converted.jsonl',
 };
+
+/**
+ * Write the converted records to a file, or show the head of them.
+ *
+ * Shared by the three vendor converters because the alternative was a fourth
+ * copy of the same eight lines. `from-otel` and `from-claude-code` keep their
+ * own copies for now: each reports a different shape of summary above this
+ * point, and collapsing all 5 would mean a parameter for every difference.
+ */
+function emit(
+  p: WebMessages['playground'],
+  records: unknown[],
+  lines: string[],
+  flags: Map<string, string | boolean>,
+  files: Map<string, string>,
+): { lines: string[] } {
+  const jsonl = records.map((record) => JSON.stringify(record)).join('\n');
+  const out = flags.get('out');
+  if (typeof out === 'string') {
+    files.set(out, jsonl);
+    lines.push(p.wrote(out, records.length));
+  } else if (jsonl !== '') {
+    lines.push(...jsonl.split('\n').slice(0, 5));
+  }
+  return { lines };
+}
 
 export function runPlayground(
   line: string,
@@ -479,6 +627,51 @@ export function runPlayground(
         lines.push(...jsonl.split('\n').slice(0, 5));
       }
       return { lines };
+    }
+
+    /*
+     * The three vendor converters, each the same four steps: refuse a file that
+     * is not one, convert, summarise what was skipped, and either write or show
+     * the head. What differs is the count each format makes a reader owed --
+     * LiteLLM's rows with no model, Helicone's substituted models, LangSmith's
+     * runs that were never model calls -- and every one of them is reported
+     * rather than folded into a total that looks complete.
+     */
+    case 'from-litellm': {
+      const text = read(positional[0], 'trazum from-litellm <file> [-o <file>]');
+      if (typeof text !== 'string') return { lines: text.error };
+      if (!looksLikeLiteLlm(text)) return { lines: [p.notLiteLlm(positional[0])] };
+      const conversion = litellmRecords(text);
+      const lines = [p.litellmSummary(conversion.rows, conversion.records.length)];
+      if (conversion.unnamedModel > 0) lines.push(p.rowsWithNoModel(conversion.unnamedModel));
+      if (conversion.reportedSpendUsd !== null) {
+        lines.push(p.reportedSpendKeptApart(conversion.reportedSpendUsd));
+      }
+      return emit(p, conversion.records, lines, flags, files);
+    }
+
+    case 'from-helicone': {
+      const text = read(positional[0], 'trazum from-helicone <file> [-o <file>]');
+      if (typeof text !== 'string') return { lines: text.error };
+      if (!looksLikeHelicone(text)) return { lines: [p.notHelicone(positional[0])] };
+      const conversion = heliconeRecords(text);
+      const lines = [p.heliconeSummary(conversion.rows, conversion.records.length)];
+      if (conversion.modelDisagreements > 0) {
+        lines.push(p.modelSubstituted(conversion.modelDisagreements));
+      }
+      if (conversion.unnamedModel > 0) lines.push(p.rowsWithNoModel(conversion.unnamedModel));
+      return emit(p, conversion.records, lines, flags, files);
+    }
+
+    case 'from-langsmith': {
+      const text = read(positional[0], 'trazum from-langsmith <file> [-o <file>]');
+      if (typeof text !== 'string') return { lines: text.error };
+      if (!looksLikeLangsmith(text)) return { lines: [p.notLangsmith(positional[0])] };
+      const conversion = langsmithRecords(text);
+      const lines = [p.langsmithSummary(conversion.rows, conversion.records.length)];
+      if (conversion.notModelCalls > 0) lines.push(p.notModelCalls(conversion.notModelCalls));
+      if (conversion.unnamedModel > 0) lines.push(p.rowsWithNoModel(conversion.unnamedModel));
+      return emit(p, conversion.records, lines, flags, files);
     }
 
     default:

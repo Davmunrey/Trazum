@@ -937,6 +937,9 @@ export const es: WebMessages = {
       semantic: 'encuentra instrucciones contradictorias, estructuralmente',
       'from-otel': 'spans GenAI de OpenTelemetry, leídos como log de uso',
       'from-claude-code': 'transcripts de Claude Code, leídos como log de uso',
+      'from-litellm': 'un log de gasto de LiteLLM, leído como log de uso',
+      'from-helicone': 'una exportación de Helicone, leída como log de uso',
+      'from-langsmith': 'una exportación de ejecuciones de LangSmith, leída como log de uso',
     },
     helpLs: 'lista los ficheros cargados',
     helpCat: 'imprime uno de ellos',
@@ -977,6 +980,23 @@ export const es: WebMessages = {
       'Este es el escaneo estructural. El pase asistido por modelo cuesta llamadas reales al proveedor y vive en la CLI.',
     notOtel: (name) => `${name} no parece un export de OpenTelemetry.`,
     notTranscript: (name) => `${name} no parece un transcript de Claude Code.`,
+    notLiteLlm: (name) => `${name} no parece un log de gasto de LiteLLM.`,
+    notHelicone: (name) => `${name} no parece una exportación de Helicone.`,
+    notLangsmith: (name) => `${name} no parece una exportación de ejecuciones de LangSmith.`,
+    litellmSummary: (rows, records) =>
+      `${rows} fila(s) de gasto leídas, ${records} con precio: los contadores y el modelo, nunca el contenido.`,
+    heliconeSummary: (rows, records) =>
+      `${rows} petición(es) leídas, ${records} con precio: los contadores y el modelo, nunca el contenido.`,
+    langsmithSummary: (rows, records) =>
+      `${rows} llamada(s) al modelo leídas, ${records} con precio: los contadores y el modelo, nunca el contenido.`,
+    rowsWithNoModel: (count) =>
+      `${count} fila(s) no nombraban modelo, así que se cuentan aquí y no se precian en ningún sitio: el nombre de una ruta no es un modelo.`,
+    modelSubstituted: (count) =>
+      `${count} petición(es) las respondió un modelo distinto del pedido. La factura descansa sobre el modelo que respondió.`,
+    notModelCalls: (count) =>
+      `${count} ejecución(es) eran cadenas, herramientas o recuperadores, no llamadas al modelo, y no traen tokens que precificar.`,
+    reportedSpendKeptApart: (usd) =>
+      `LiteLLM declaró $${usd.toFixed(4)} para estas filas, con su propia tabla de precios. Se deja al lado de la cifra de Trazum y nunca se suma a ella.`,
     otelSummary: (llmSpans, otherSpans) =>
       `${llmSpans} span(s) LLM convertidos; ${otherSpans} span(s) no-LLM contados y omitidos.`,
     otelNoCache: (count) =>
@@ -1040,7 +1060,7 @@ export const es: WebMessages = {
       cli: {
         title: 'La CLI, completa',
         body:
-          '«trazum position usage.jsonl» cierra el bucle en una línea: el mes frente a su techo configurado, medido y con veredicto. Todo lo que acabas de ver es la CLI real; sus cuarenta y dos comandos se instalan con «npm i -g @trazum/cli», y «help» lista aquí lo que el navegador puede ejecutar.',
+          '«trazum position usage.jsonl» cierra el bucle en una línea: el mes frente a su techo configurado, medido y con veredicto. Todo lo que acabas de ver es la CLI real; sus 45 comandos se instalan con «npm i -g @trazum/cli», y «help» lista aquí lo que el navegador puede ejecutar.',
       },
       finish: {
         title: 'Ese es el tour',

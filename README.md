@@ -684,7 +684,7 @@ question nobody has designed. [The plan format is documented](docs/plan-format.m
 the Playground — ringing each panel in place with a sentence on what it
 answers. It never auto-plays: a first visit is offered it once, and the compass
 in the rail starts it any time after. The **Playground** tab is the CLI itself
-in the page — 10 commands that spend nothing and touch no network, over
+in the page — 13 commands that spend nothing and touch no network, over
 sample files already loaded, through the same `@trazum/core` functions the
 terminal runs, so `trazum profile usage.jsonl` can be tried before anything is
 installed, against data that never existed outside the browser.
