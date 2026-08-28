@@ -52,6 +52,14 @@ export { explainGateFailure, gateMargin, GATE_MARGIN_TIGHT } from './gate-explai
 export { measuredUsage, labelCoverage, MIN_SCALE_DAYS, SCALE_TO_DAYS } from './measured-profile.js';
 export { assignSources, fleetRollup } from './fleet.js';
 export { rollUp } from './rollup.js';
+export { receiptFrom, RECEIPT_LINE_FIELDS } from './receipt.js';
+export type {
+  ReceiptDocument,
+  ReceiptGap,
+  ReceiptLine,
+  ReceiptOptions,
+  ReceiptPricing,
+} from './receipt.js';
 export { heartbeats } from './heartbeat.js';
 export { ruleYield } from './rule-yield.js';
 export { buildPlan, planLabelName, parsePlanDocument, PLAN_ACTION_KINDS } from './plan.js';
