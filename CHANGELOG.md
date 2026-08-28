@@ -13,6 +13,29 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+- **The `profile` report was 1,200 lines of sequential printing inside one
+  function.** The four alternative outputs left it in 1.82.x; what remained was
+  the report itself, and it was one concern printed straight down with every
+  local it had ever needed still in scope.
+
+  It is twelve section printers now, one per heading a reader sees: the cache
+  verdict, the labels and budgets, the levers, `--what-if`, conversation
+  history, output shape, input shape, context pressure, mix drift, repeated
+  calls, the comparison against a previous log, and outcomes with coverage.
+  `commandProfile` is **570 lines**, from 2,359 before the arc began.
+
+  Most of them need two things. `reportCacheVerdict` is 134 lines and takes the
+  report and the messages; `reportMixDrift` takes the same two. The one with a
+  real parameter list is `reportAgainstPrevious`, which needs eight — two of
+  them drivers computed three hundred lines earlier and used nowhere else,
+  which was a thing you could only learn by reading both places.
+
+  Verified byte for byte at every step, the same way the first half was: one
+  fixed log, fifteen flag combinations, both locales, every byte of stdout and
+  stderr compared against a baseline captured before the first extraction.
+
+### Changed
+
 - **`commandProfile` was a single 2,359-line function.** The largest thing in
   this repository by a factor of five, and four complete outputs shared its
   scope with the report they are alternatives to: `--by-source`, `--dry-run`,
