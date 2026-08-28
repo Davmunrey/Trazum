@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.82.0**: `@trazum/core`, `@trazum/cli` and
+**All three packages are on npm at 1.83.0**: `@trazum/core`, `@trazum/cli` and
 `@trazum/mcp` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
@@ -43,6 +43,126 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 1.83.0 — "A receipt, and the surfaces that could not disagree"
+
+The release has two halves and they answer different questions. One is a new
+command. The other is a set of guards for claims this repository had been making
+in public and never checking.
+
+### The receipt, and the defect it shipped with
+
+`trazum receipt` writes a bill's counts with the provenance of every figure
+attached, and nothing else. No prompt text, no answers, no file paths, no branch
+names, no credentials, no session identifiers -- **absent rather than redacted**,
+because the emitter takes a usage profile and a usage profile has no field that
+can hold any of them. `receipt-redaction.test.js` plants all four in a log, the
+session field included, and searches the whole serialised document for each.
+
+It sends nothing anywhere. No endpoint, no key, no retry, no queue: the document
+goes to a path you name or to standard output.
+
+**Then the first version of it turned out to be wrong in the way this product
+exists to find in other people's numbers.** It published the catalogue's input
+and output rates beside a total the profiler had computed, and those are not
+always the same rates. A model inside a promotional window is billed at the
+promotion. One whose long-context tier applied is billed at the tier. And a
+cached read is billed at a fraction of input that **no published field named at
+all** -- the catalogue holds it as a multiplier, which never reached the
+document. So the obvious check a stranger would run, tokens times the stated
+rate, disagreed with the stated total, and nothing said which to believe.
+
+Every line now carries `money`: input, cache reads, cache writes and output, as
+they were actually apportioned, with `usd` their sum. The rates stay as
+provenance. Dividing a bucket by its own token count recovers the rate that was
+really charged, **including the cached-read rate**, which is the figure a reader
+most wants and the one nothing carried. Two write-TTL counts come with it,
+because the ratio between the TTLs is not constant across providers and a write
+total that has lost the split can only be repriced by guessing. And a new gap
+says when a TTL was assumed, because the cheaper rate is the right assumption and
+the flattering one, which makes the total a floor rather than a measurement.
+
+The receipt is the 46th command and the last one the surface will grow before
+2.0. [`docs/plan-1.83-2.0.md`](docs/plan-1.83-2.0.md) says where that ends.
+
+### Claims that were true and unchecked, which is not the same as true
+
+**Four surfaces, and nothing proved they agreed.** *"One core does the measuring;
+four surfaces carry it. They cannot disagree, because they are the same
+functions"* is on the landing in five languages, and it is the reason a reader is
+expected to believe the figure in their terminal, the one their agent quotes and
+the one on the page are the same figure. "The same functions" is an argument, not
+a proof: two surfaces can call one core and still disagree if either rounds,
+filters, defaults or windows differently. One log and one prompt now go through
+all four and the results are compared -- the MCP server over real stdio JSON-RPC
+framing, the browser through its own run. Planted three ways: the MCP rounding
+differently, the browser counting one call more, the CLI repacking a token count
+on the way out.
+
+**The offline promise was proven for three commands out of 46.** *"Your prompts
+never leave your machine"* is the sentence the README opens with. It is now
+proven for every command, in both locales.
+
+**A spend gate passed on a log nobody could read.** `trazum profile` on an
+unreadable log answered with a total of zero, and a CI gate comparing zero
+against a ceiling passed. A gate that cannot read its input now says so instead
+of blessing the build.
+
+**Seven commands answered a mistyped path with a syscall.** A stack trace where a
+sentence belonged.
+
+### Prices, dates and figures that had drifted
+
+**Sonnet 5 was priced at a number nobody charges, on a timer.** Its introductory
+rate had an end date; the catalogue kept it past that date.
+
+**One review date for seven providers.** A single date written across every
+provider says all seven pages were read the same afternoon. They were not. Each
+provider now carries its own, so looking at a page and finding nothing changed is
+recorded as a different event from not looking.
+
+**Seven copies of one staleness threshold**, and a README that said there was
+deliberately no threshold while seven places used one.
+
+**Three surfaces counted the commands by hand and were wrong.** The landing's
+headline figure was not one the product printed. The picture at the top of the
+README was arithmetic nothing checked. Two figures on the landing were stale in
+five languages each. All of them are derived and guarded now.
+
+### The web surfaces, which were the least finished thing here
+
+The Playground's terminal was a paper-coloured card. The Write panel opened with
+two buttons both reading "Skip this", and the emphasised one skipped. Three
+panels printed their own heading twice. A coloured 3px left border was the notice
+style in ten places. A disabled primary button looked like a loading one. The
+results column scrolled away from the reader editing what it priced. The prompt
+editor grew to 900 pixels and pushed its own button off the screen. `bg-layer`
+was a class that painted nothing, so a band meant to separate three beats from
+the hero painted nothing at all -- it looked finished in the source and was flat
+on the page.
+
+**And the landing was blank below the fold, and had been since it shipped.**
+
+### One more converter, and the tests that had no shape for two shipped defects
+
+`trazum from-langsmith` reads a LangSmith run export as a usage log, joining
+`from-litellm` and `from-helicone`.
+
+Two defects reached users because the suite verified prose and behaviour and had
+no shape for what it missed. It has one now.
+
+**Refactors, for readability rather than for speed.** `commandProfile` was a
+single 2,359-line function and the report inside it was 1,200 lines of sequential
+printing.
+
+### Honesty maintenance
+
+The roadmap promised four things it had already delivered. `Under consideration`
+still said nobody had measured the per-family tokenizer error after 1.82.0
+measured it. A guard written for one sentence missed the sentence next to it.
+`security.test.js`'s subprocess rule was scoped by directory layout rather than by
+intent, so a test directory that had never offended was covered and the first web
+test to reach a subprocess was not.
 
 ## 1.82.0 — "The band was a measurement of its own training set"
 

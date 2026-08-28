@@ -1184,6 +1184,37 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.83.0 — "A receipt, and the surfaces that could not disagree" — released
+
+**The release where the product started producing evidence somebody else can
+check, and then found its own first attempt at it unchecked.**
+
+`trazum receipt` writes a bill's counts with the provenance of every figure
+attached and nothing else: no prompt text, no answers, no paths, no branch names,
+no credentials, no session identifiers, absent rather than redacted because the
+emitter takes a usage profile and a profile has no field that can hold them. It
+sends nothing anywhere. It is the 46th command and the last the surface grows
+before 2.0.
+
+Its first version published the catalogue's rates beside a total the profiler had
+computed, and those are not always the same rates: a promotional window, a
+long-context tier, and above all a cached read, billed at a fraction of input
+that **no published field named at all**. Tokens times the stated rate disagreed
+with the stated total. Every line now carries the money as it was apportioned,
+four buckets summing to `usd`, so the rate really charged is recovered by
+dividing a bucket by its own tokens.
+
+The other half of the release is guards for claims that were true and unchecked,
+which is not the same as true. The landing says four surfaces cannot disagree
+because they are the same functions; that is an argument, and one log now goes
+through all four and is compared. The README opens by promising prompts never
+leave the machine; that was proven for three commands out of 46 and is now proven
+for all of them. A spend gate passed on a log nobody could read. Sonnet 5 was
+priced past the end of its own introductory window. One review date stood for
+seven providers. Three surfaces counted the commands by hand and were wrong.
+
+And the landing page was blank below the fold, and had been since it shipped.
+
 ## 1.82.0 — "The band was a measurement of its own training set" — released
 
 **The release where the central claim was read against its own evidence.** For
