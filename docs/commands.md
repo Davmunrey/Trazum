@@ -1927,19 +1927,39 @@ against an invoice, or read next month by somebody who was not there, stop
 answering it: a dollar total with no provenance cannot tell a repricing from a
 team whose spend moved.
 
-A receipt is the shape that keeps answering. Every line carries the rates behind
-its money and **the date those rates were last read off the provider's own
-page**, per provider, because looking at a page and finding nothing changed is
-not the same event as not looking.
+A receipt is the shape that keeps answering. Every line carries **the money as it
+was actually apportioned** -- input, cache reads, cache writes, output -- and the
+catalogue's published rates beside it, with **the date those rates were last read
+off the provider's own page**, per provider, because looking at a page and
+finding nothing changed is not the same event as not looking.
 
 | In the receipt | Why |
 | --- | --- |
-| input, output and cache token counts | the arithmetic |
-| model, provider, and the rates applied | so the figure can be recomputed |
+| input, output and cache token counts, with the write TTLs kept apart | the arithmetic, and the split is what lets this traffic be repriced against another model |
+| the money split four ways, adding to the line's total | so the figure can be **added up** rather than believed |
+| model, provider, and the catalogue's published rates | so a repricing can be spotted |
 | that provider's review date | so a repricing reads as a repricing |
 | the label the log carried | so the money can be attributed |
 | the period, from the log's own clock | so a figure can be bounded |
 | what could not be priced, with its size | so a total is never mistaken for the whole bill |
+| calls whose cache-write TTL the log did not state | so a floor is never read as a measurement |
+
+**Why the money is on the line and not just the rates.** The first version of
+this command published the catalogue's input and output rates next to a total,
+and those are not always the rates that produced it: a model inside a promotional
+window is billed at the promotion, one whose long-context tier applied is billed
+at the tier, and **a cached read is billed at a fraction of input that no
+published rate names at all**. A reader multiplying the stated rate by the stated
+tokens got a different number from the stated total, with nothing saying which to
+believe.
+
+So the four buckets are the arithmetic and the rates are the provenance. Dividing
+a bucket by its own token count recovers the rate that was really charged --
+including the cached-read rate, which is the one figure a reader most wants and
+the one no published field carries.
+[`receipt-arithmetic.test.js`](../packages/core/test/receipt-arithmetic.test.js)
+fails if the buckets stop adding up, if money appears in a bucket with no tokens
+in it, or if a cached read ever costs as much as fresh input.
 
 **What is not in it.** Prompt text. The model's answer. File paths. Branch
 names. Credentials. Session identifiers. Not redacted, not hashed, not

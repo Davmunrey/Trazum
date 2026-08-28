@@ -13,6 +13,55 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+- **A receipt's rates did not reconstruct its money, and now the money is on
+  the document.** `receiptFrom` published the catalogue's `inputPerMTok` and
+  `outputPerMTok` beside a total `profileUsage` had computed, and those are not
+  always the same rates. A model inside a promotional window is billed at the
+  promotion. One whose long-context tier applied is billed at the tier. And a
+  cached read is billed at a fraction of input that **no published field named
+  at all** — the catalogue holds it as a multiplier, which never reached the
+  receipt.
+
+  So the obvious check a stranger would run — tokens times the stated rate —
+  disagreed with the stated total, with nothing on the document saying which of
+  the two to believe. In a file whose entire purpose is that a figure still
+  answers when it is read somewhere else, that is the defect rather than a
+  rounding difference.
+
+  A line now carries `money`: input, cache reads, cache writes and output, as
+  they were actually apportioned, with `usd` their sum. The rates stay as
+  provenance and are labelled as the catalogue's published figures rather than
+  as the arithmetic. Dividing a bucket by its own token count recovers the rate
+  that was really charged, **including the cached-read rate**, which is the one
+  figure a consumer most wants and the one nothing carried.
+
+  Two more fields come with it, for the same reason `UsageBreakdown` keeps them:
+  `cacheWrite5mTokens` and `cacheWrite1hTokens`, because the ratio between the
+  TTLs is not a constant across providers and a write total that has lost the
+  split can be repriced only by guessing. And a new gap, `assumed-write-ttl`,
+  because a log that records a write without stating its TTL gets the cheaper
+  rate — the right assumption and the flattering one, which makes the total a
+  floor on those calls rather than a measurement.
+
+  `receipt-arithmetic.test.js` holds all of it: the buckets add to the line and
+  the lines to the document, no bucket holds money for tokens that are not
+  there, the charged rate is recoverable, and a cached read costs less than
+  fresh input. Five plants fire — a bucket dropped, every bucket's money moved
+  into `inputUsd` (which still balances, and is what the second check exists
+  for), the money recomputed from the published rates, the TTL split broken and
+  the assumed-TTL gap left unsaid.
+
+  **One plant did not fire on its first run and the plant was right; the
+  fixture was wrong.** Zeroing `cacheWrite1hTokens` changed nothing, because
+  every write in the fixture came from an unstated TTL and had landed in the
+  5-minute bucket. A second log line with a stated split was added, along with
+  an assertion that some line carries a 1-hour write at all — a guard that
+  cannot notice a field being dropped is not guarding it.
+
+  The receipt has never been published to npm, so no consumer can be holding
+  the older shape and `schemaVersion` stays at 1. Said here rather than assumed,
+  because the same change after 1.83.0 ships would have needed a 2.
+
 - **The claim that the four surfaces cannot disagree is now checked.** *"One
   core does the measuring; four surfaces carry it. They cannot disagree,
   because they are the same functions"* is on the landing in five languages,
