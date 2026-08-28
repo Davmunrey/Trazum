@@ -13,9 +13,11 @@
     "gpt-5",
     "gpt-5-mini",
     "gpt-5-nano",
-    "gemini-3.6-flash",
     "deepseek-v4-flash",
-    "deepseek-v4-pro"
+    "deepseek-v4-pro",
+    "mistral-large-2512",
+    "mistral-medium-2604",
+    "mistral-small-2603"
   ],
   "expectedUnreachable": [
     {
@@ -46,6 +48,10 @@
     }
   ],
   "notAsked": [
+    {
+      "id": "gemini-3.6-flash",
+      "because": "429 — rate limited, so this says nothing either way"
+    },
     {
       "id": "kimi-k2",
       "because": "no probe is written for moonshot"

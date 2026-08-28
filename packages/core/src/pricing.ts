@@ -40,13 +40,16 @@ export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze
   deepseek: '2026-08-28',
   xai: '2026-06-24',
   /*
-   * Not moved, and the reason is the point of having a date per provider.
-   * `mistral.ai/pricing` renders its table in the browser, so the page serves
-   * no rate to a reader who is not one: the only figure in the document is an
-   * example inside an FAQ, without a dated model id. Looking and finding
-   * nothing is not the same as checking, and moving this date would say it was.
+   * `mistral.ai/pricing`, read 2026-08-28 — by a human, because the page
+   * renders its table in the browser and serves a fetch only an FAQ example
+   * with no model id attached.
+   *
+   * This date stayed at 2026-06-24 for a few hours after the other two moved,
+   * which is the point of having one per provider: looking and finding nothing
+   * servable is not the same as checking, and moving the date then would have
+   * said it was.
    */
-  mistral: '2026-06-24',
+  mistral: '2026-08-28',
 });
 
 /**
@@ -484,6 +487,79 @@ export const MODELS: ModelPricing[] = [
     capability: 'large',
     tier: 'opus',
     notes: 'No prompt caching: reordering still helps readability but saves nothing here.',
+  },
+  {
+    /*
+     * Mistral Large 3, the replacement for the refused `mistral-large-2`.
+     *
+     * **Read by a human from `mistral.ai/pricing` on 2026-08-28, and that is the
+     * provenance.** The page renders its table in the browser, so a fetch sees
+     * only an FAQ example with no model id attached: this repository looked,
+     * found nothing servable, left the model unpriced and said so, and the table
+     * was then read off the page and handed over. A price is a reading of the
+     * provider's page; who did the reading is a fact about the reading, not a
+     * reason to accept a worse source.
+     *
+     * The identity is measured rather than inferred. `GET /v1/models` declares
+     * `mistral-large-latest` and `mistral-large-2512` as aliases of each other,
+     * both reporting the name `mistral-large-2512` and a 262,144 context, so the
+     * dated id is what a usage log carries and the moving pointer is the alias.
+     */
+    id: 'mistral-large-2512',
+    aliases: ['mistral-large-latest'],
+    provider: 'mistral',
+    displayName: 'Mistral Large 3',
+    inputPerMTok: 0.5,
+    outputPerMTok: 1.5,
+    contextWindow: 262_144,
+    cacheMinTokens: 0,
+    caching: 'none',
+    multipliers: { batch: 0.5 },
+    capability: 'large',
+    tier: 'opus',
+    notes: 'No prompt caching: reordering still helps readability but saves nothing here.',
+  },
+  {
+    /*
+     * Same page, same day, same reading.
+     *
+     * **This provider's ladder is not monotonic in price, and that is not a
+     * typo.** Medium 3.5 costs three times Large 3 on input and five times on
+     * output, because Mistral positions Large as the open-weight flagship and
+     * Medium as the model for long-horizon agentic work. `capability` follows
+     * the vendor's own description rather than the price, which is what the
+     * field means; the consequence is that a step down from `large` to `mid`
+     * here is dearer, and `levers.ts` simply does not offer a route whose saving
+     * is not above zero. Nothing to fix, and worth saying so before somebody
+     * "corrects" the ladder into producing a saving that does not exist.
+     */
+    id: 'mistral-medium-2604',
+    aliases: ['mistral-medium-latest', 'mistral-medium-3-5'],
+    provider: 'mistral',
+    displayName: 'Mistral Medium 3.5',
+    inputPerMTok: 1.5,
+    outputPerMTok: 7.5,
+    contextWindow: 262_144,
+    cacheMinTokens: 0,
+    caching: 'none',
+    multipliers: { batch: 0.5 },
+    capability: 'mid',
+    tier: 'sonnet',
+  },
+  {
+    /* Same page, same day. `mistral-small-2603` is what the API reports. */
+    id: 'mistral-small-2603',
+    aliases: ['mistral-small-latest'],
+    provider: 'mistral',
+    displayName: 'Mistral Small 4',
+    inputPerMTok: 0.15,
+    outputPerMTok: 0.6,
+    contextWindow: 262_144,
+    cacheMinTokens: 0,
+    caching: 'none',
+    multipliers: { batch: 0.5 },
+    capability: 'small',
+    tier: 'haiku',
   },
 ];
 

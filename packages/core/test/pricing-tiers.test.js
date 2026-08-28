@@ -178,6 +178,56 @@ describe('a conditional rate is decided, or is said not to be', () => {
   });
 });
 
+describe('an alias is a statement about billing, and cannot be about two models', () => {
+  /**
+   * Found by planting, and the plant was the point: claiming `mistral-large-2`
+   * as an alias of `mistral-large-2512` passed everything. That is not a
+   * cosmetic collision. An alias declares *this id bills at exactly this rate*,
+   * so an id that is both a model of its own and an alias of another has two
+   * prices in one table, and whichever one a lookup happens to find is the one
+   * somebody's bill gets computed at.
+   *
+   * The dangerous version of exactly that shape is already in this catalogue: a
+   * **retired** model claimed as an alias of its own replacement would price a
+   * refused id at the live rate and quietly delete the historical one, which is
+   * the row a usage log full of old calls needs.
+   *
+   * What this cannot check is whether the provider agrees an alias exists. That
+   * is a statement reviewed the way a price is reviewed — though for Mistral it
+   * was measured: `GET /v1/models` declares `mistral-large-latest` and
+   * `mistral-large-2512` as aliases of each other.
+   */
+  it('never uses another model\'s id as an alias', () => {
+    const ids = new Set(MODELS.map((model) => model.id));
+    const collisions = [];
+    for (const model of MODELS) {
+      for (const alias of model.aliases ?? []) {
+        if (ids.has(alias)) collisions.push(`${model.id} claims ${alias}, which is a model of its own`);
+      }
+    }
+    assert.deepEqual(collisions, [], 'an id is priced twice at two different rates');
+  });
+
+  it('never lets two models claim the same alias', () => {
+    // The other half. Two entries claiming one alias is the same defect from
+    // the other side: the id resolves to whichever the lookup reaches first.
+    const claimed = new Map();
+    const twice = [];
+    for (const model of MODELS) {
+      for (const alias of model.aliases ?? []) {
+        if (claimed.has(alias)) twice.push(`${alias} is claimed by ${claimed.get(alias)} and ${model.id}`);
+        claimed.set(alias, model.id);
+      }
+    }
+    assert.deepEqual(twice, [], 'one id is claimed by two models');
+  });
+
+  it('has aliases at all, so neither check above is empty', () => {
+    const withAliases = MODELS.filter((model) => (model.aliases ?? []).length > 0);
+    assert.ok(withAliases.length >= 2, `only ${withAliases.length} models declare an alias`);
+  });
+});
+
 describe('the catalogue declares tiers that can be reviewed', () => {
   it('gives every tier an id, and never two the same on one model', () => {
     // The id is printed, so a reader can see which rate they were charged. Two

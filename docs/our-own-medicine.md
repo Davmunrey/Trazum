@@ -209,21 +209,27 @@ The section this document would be dishonest without.
   1.50.4, "the arc delivered" is a cost with no counterpart: nothing here says
   whether the features are used or whether they help.
 - **Four of the models this catalogue prices are refused by the provider that
-  sells them**, and three of the four now have a priced replacement. On
+  sells them**, and every one of them now has a priced replacement. On
   2026-08-28 a real request to `gemini-2.5-pro`, `gemini-2.5-flash`,
   `deepseek-v3` and `mistral-large-2` came back 404, 404, 400 and 400. Each is
   marked retired with the provider's own sentence and kept priced, because those
   calls really happened and somebody's log is full of them.
-  `gemini-3.6-flash`, `deepseek-v4-flash` and `deepseek-v4-pro` were then read
-  off their providers' own pricing pages and added, and all three answer a real
-  request. **Two are still unpriced and both for stated reasons.**
+  `gemini-3.6-flash`, `deepseek-v4-flash`, `deepseek-v4-pro`,
+  `mistral-large-2512`, `mistral-medium-2604` and `mistral-small-2603` were then
+  read off their providers' own pricing pages and added, and all six answer a
+  real request. **One is still unpriced and says why.**
   `gemini-3.1-pro-preview` bills by prompt size, which the catalogue can now
   express and most callers cannot decide, so it waits for the report to carry an
   undecided tier rather than being added with a figure that would be a ceiling
-  everywhere. And Mistral's replacement is not priced at all: `mistral.ai`
-  renders its table in the browser, so the only figure its page serves is an
-  example inside an FAQ, without a dated model id. An example in an FAQ is not a
-  price list, and this product does not take a number from anywhere else.
+  everywhere.
+- **One of those prices was read by a human, and the record says so.**
+  `mistral.ai/pricing` renders its table in the browser, so a fetch sees only an
+  FAQ example with no model id attached. This project looked, found nothing
+  servable, left the model unpriced and left Mistral's review date where it was;
+  the table was then read off the page and handed over. Who did the reading is a
+  fact about the reading and is written next to the rates. What it is not is a
+  licence to accept a worse source: the only thing that changed is that somebody
+  could see the page.
 - **Two providers were not asked at all.** There is no probe for Moonshot or
   xAI, so nothing is known about `kimi-k2` or `grok-4` either way. That is in
   the record by name rather than left out of it, because a report covering
