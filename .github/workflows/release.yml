@@ -83,13 +83,16 @@ jobs:
       contents: write
       # What npm trusted publishing exchanges for a short-lived credential,
       # and what signs the provenance attestation either way. The design
-      # prefers no stored credential at all; npm has refused the OIDC exchange
-      # on six real publish attempts across three versions, so the publish
-      # steps below also accept an environment-scoped secrets.NPM_TOKEN as
-      # the authentication fallback — auth changes, the provenance signature
-      # does not, because it comes from this OIDC identity rather than from
-      # the upload credential. Remove the secret and the same steps revert to
-      # pure OIDC. See docs/releasing.md.
+      # prefers no stored credential at all, and this repository does not have
+      # that: npm refused the OIDC exchange on six real publish attempts across
+      # three versions, and it was still refusing all four packages on the
+      # 1.86.0 run that published successfully. So the publish steps below also
+      # accept an environment-scoped secrets.NPM_TOKEN, which is the credential
+      # actually authenticating uploads today rather than a fallback in waiting.
+      # Auth changes, the provenance signature does not, because it comes from
+      # this OIDC identity rather than from the upload credential. Remove the
+      # secret and the same steps revert to pure OIDC — and, on today's
+      # evidence, stop publishing. See docs/releasing.md.
       id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -180,14 +183,15 @@ jobs:
       - name: Publish @trazum/core
         if: github.event_name == 'push' && steps.versions.outputs.publish == 'true'
         env:
-          # Empty when the secret is not set, which leaves OIDC trusted
-          # publishing as the auth — the preferred path. When npm keeps
-          # refusing the OIDC exchange (it has, on six real attempts), a
-          # granular token stored as an environment secret on `release`
-          # takes precedence and the publish succeeds anyway. Provenance
-          # survives either way: the attestation is signed with the job's
-          # OIDC identity, which is independent of how the upload
-          # authenticates.
+          # Empty when the secret is not set, which would leave OIDC trusted
+          # publishing as the auth — the preferred path, and not the path this
+          # repository is on. The `auth` step above reported all four packages
+          # rejected on the 1.86.0 run and all four published seconds later, so
+          # this granular token, stored as an environment secret on `release`,
+          # is what authenticates every upload today. Deleting it stops
+          # releases. Provenance survives either way: the attestation is signed
+          # with the job's OIDC identity, which is independent of how the
+          # upload authenticates. Evidence in docs/releasing.md, step 3.
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         # Published from the package directory, not `-w @trazum/core` from the
         # root. With `-w`, npm builds the tarball with the README inside it (pack

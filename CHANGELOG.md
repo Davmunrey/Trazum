@@ -11,6 +11,29 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+- **The release document asked a question the release had already answered.**
+  Since 1.85.0 it said which credential authenticated the npm upload was
+  unsettled, because provenance is signed with the job's OIDC identity either
+  way and proves nothing about the auth. The 1.86.0 run answers it: the
+  `Can this workflow authenticate to npm?` step reported **all four packages
+  rejected**, and all four published seconds later in the same job. The only
+  other credential there is the granular token on the `release` environment, so
+  that token is what authenticates every upload — it is the thing holding
+  releases up, not a fallback in waiting, and deleting it stops them.
+
+  That also settles what 1.85.0 could only narrow. `@trazum/tokenizer-openai`
+  published although the token was made when three packages existed, and the two
+  explanations were OIDC or a wider scope. OIDC is now ruled out for that
+  package by name, so the scope is wider than three. The rule about regenerating
+  the token when a package is added stays, because a scope nobody has inspected
+  is not one anybody can rely on.
+
+  The workflow said the same thing in the older, weaker form — *"when npm keeps
+  refusing"*, as a conditional about a fallback. Two comments now state what is
+  actually true of every publish this repository makes.
+
 ## 1.86.0 — 2026-08-29
 
 ### Added

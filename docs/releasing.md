@@ -101,22 +101,37 @@ and the GitHub release with no human step. That is the first time this has
 happened, and it makes the standing instruction below — *assume tags will not
 publish and release by hand* — wrong. Releases go through the workflow now.
 
-**What that run does not settle: which credential authenticated the upload.**
-Provenance is signed with the job's OIDC identity either way, so a signed
-attestation proves nothing about the auth, and this document says so below. The
-`Can this workflow authenticate to npm?` step prints `configured` or `rejected`
-per package and is the only thing that answers it. Read that step on
-[the 1.85.0 run](https://github.com/Davmunrey/Trazum/actions/runs/33245198514)
-and record the answer here, because the two possibilities lead to opposite next
-actions: if it says `configured`, the token fallback can be deleted; if it says
-`rejected`, trusted publishing is still broken and the token is the only thing
-holding releases up.
+**Which credential authenticated the upload: the token, not OIDC.** That was
+left open at 1.85.0 and 1.86.0 answered it. Provenance is signed with the job's
+OIDC identity either way, so the signed attestation proves nothing about the
+auth — the `Can this workflow authenticate to npm?` step is the only thing that
+does, and on
+[the 1.86.0 run](https://github.com/Davmunrey/Trazum/actions/runs/33274351906)
+it reported:
 
-One thing the run does narrow. The fallback token is scoped to the three
-packages that existed when it was made, and **`@trazum/tokenizer-openai`
-published anyway** — so either that upload used OIDC, or the token's scope is
-wider than the instruction below says. Both are worth knowing; neither is
-established here.
+> npm refused the OIDC token for `@trazum/cli`, `@trazum/core`, `@trazum/mcp`,
+> `@trazum/tokenizer-openai`. Trusted publishing is not configured, or a claim
+> does not match.
+
+All four rejected, and all four published in the same job seconds later. The
+only other credential in that job is the granular token on the `release`
+environment, so **the token is what is holding releases up** and trusted
+publishing is still not working. Do not delete the fallback.
+
+That also settles the thing 1.85.0 only narrowed. The token was made when three
+packages existed and `@trazum/tokenizer-openai` published anyway; the two
+explanations were OIDC or a wider scope than the instruction below describes.
+OIDC is now ruled out for that package by name, so **the token's scope is wider
+than three packages**. Worth knowing before trusting the instruction that says
+to list packages by name — and it does not remove the rule below about
+regenerating the token when a package is added, because a scope nobody has
+inspected is not a scope anybody can rely on.
+
+**Read from the run page's annotation**, not from the step's job summary table.
+The summary is the better artefact and it is where the per-package verdicts are
+written, but the annotation is what a fetch of the run page actually returns —
+so that is where this quote comes from, and it is the same sentence the warning
+in `checkAuth` composes.
 
 The history that follows is kept because it is what the fix has to survive, not
 because it is still the current state.
