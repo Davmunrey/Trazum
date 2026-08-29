@@ -13,6 +13,52 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The example detector was blind to nine of fourteen labellings, and six
+  analyses went blind with it.** `findExamples` splits a prompt into its
+  few-shot examples, and its opener vocabulary was `example`, `input`, `user`,
+  `usuario`, `q`. A support prompt labelled `Customer:` / `Agent:` — the
+  commonest shape there is — split into nothing. So did `Human:`, which is
+  Anthropic's own historical convention, and `Question:`, while `Q:` worked,
+  which is the arbitrariness that gives the fault away. So did `Cliente:` and
+  `Pregunta:`, in a product that ships a Spanish locale.
+
+  Six analyses read that splitter. On a 338-token support prompt whose examples
+  are **38% of it**, `profile` reported the examples as costing nothing, the
+  redundant-example advisory never fired, and `trazum prune` — whose whole job
+  is cutting few-shot examples — printed *"This prompt has fewer than two
+  few-shot examples, so there is nothing to compare."* That is not a refusal
+  naming what is missing. It is a confident false statement about a prompt with
+  four examples in it.
+
+  **The failure was silent by construction**, which is why it survived: an
+  unrecognised label yields no blocks, no blocks yields no finding, and nothing
+  distinguishes that from a prompt containing no examples. The whole suite was
+  green with nine of fourteen labellings blind, and is green now — no test
+  covered it, because a test written from the same list as the code would have
+  agreed with it.
+
+  The vocabulary is two named lists now, openers and answerers, and both the
+  splitter and the field pattern are built from them — the pair had already
+  drifted once, which is exactly how the field detector came to know `question`
+  while the splitter did not. The guard is fourteen real labellings written as
+  prompts rather than as a list of labels, so it fails if the vocabulary
+  narrows again for any reason. Four plants fire: the old vocabulary restored,
+  an answerer label promoted to a splitter (which halves every example), the
+  field pattern unhooked from the lists, and a suffix loosened until the
+  splitter invents examples in ordinary prose.
+
+- **A measured negative result, recorded so nobody re-derives it.** The
+  redundancy threshold is 0.7 word overlap, and the obvious next thought is to
+  lower it and catch paraphrases. It was measured and it does not work: four
+  support answers that any reader calls one example — *"Let me look that up for
+  you. Could you share your order number?"* against *"Of course. What is your
+  order number?"* and two more — overlap at 0.29–0.43, and comparing only the
+  answers makes it **worse**, 0.21–0.39, because all they share is `your`,
+  `order`, `number`. No threshold separates those from genuinely different
+  examples. That judgement belongs to `trazum semantic`, which says what it
+  costs and asks first, and to `prune`, which answers it by running the cases.
+  The deterministic half reports what the examples cost, which is a fact.
+
 - **The release document asked a question the release had already answered.**
   Since 1.85.0 it said which credential authenticated the npm upload was
   unsettled, because provenance is signed with the job's OIDC identity either

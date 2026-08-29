@@ -201,6 +201,156 @@ describe('few-shot examples', () => {
   });
 });
 
+describe('the example detector reads the labels prompts actually use', () => {
+  /**
+   * **Nine of these fourteen found nothing, and the suite was green.**
+   *
+   * `findExamples` feeds six analyses — `prune`, `profile`, `review`, the
+   * redundant-example advisory, the CLI's example view, and the rule that
+   * protects example lines from deduplication. All six read the same splitter,
+   * and its opener vocabulary was `example`, `input`, `user`, `usuario`, `q`.
+   * A support prompt labelled `Customer:` / `Agent:` — the commonest shape
+   * there is — split into nothing, so `prune` had no examples to evaluate and
+   * `profile` reported that the examples cost zero tokens. On the prompt this
+   * was found with, they were **38% of it**.
+   *
+   * The failure was silent by construction: no label, no blocks, no finding.
+   * Nothing distinguishes that from a prompt with no examples in it, which is
+   * why it survived and why nothing here caught it.
+   *
+   * **Written as prompts rather than as a list of labels**, deliberately. A
+   * fixture that enumerated the same strings the module declares would be two
+   * copies of one list agreeing with each other; these are the shapes the
+   * detector has to work on, and they fail if the vocabulary narrows again for
+   * any reason — including a refactor that keeps the list and breaks the regex
+   * it is built into.
+   */
+  const LABELLINGS = [
+    ['User', 'Assistant'],
+    ['Customer', 'Agent'],
+    ['Human', 'Assistant'],
+    ['Q', 'A'],
+    ['Question', 'Answer'],
+    ['Input', 'Output'],
+    ['Client', 'Support'],
+    ['Prompt', 'Response'],
+    ['Query', 'Reply'],
+    ['Usuario', 'Asistente'],
+    ['Cliente', 'Agente'],
+    ['Pregunta', 'Respuesta'],
+    ['REQUEST', 'RESPONSE'],
+    ['Example', 'Result'],
+  ];
+
+  /** One three-example prompt, wearing whichever labels it is handed. */
+  const promptWith = (asker, answerer) =>
+    [
+      'Answer the customer from the account record.',
+      '',
+      ...[1, 2, 3].flatMap((n) => [
+        `${asker}: sample question number ${n} about the account`,
+        `${answerer}: sample answer number ${n} explaining the account`,
+        '',
+      ]),
+    ].join('\n');
+
+  it('finds the examples under every labelling a real prompt uses', () => {
+    const blind = LABELLINGS.filter(
+      ([asker, answerer]) => findExamples(promptWith(asker, answerer), estimateTokens).length < 2,
+    ).map(([asker, answerer]) => `${asker}:/${answerer}:`);
+
+    assert.deepEqual(
+      blind,
+      [],
+      `the detector is blind to ${blind.length} of ${LABELLINGS.length} labellings: ${blind.join(', ')}`,
+    );
+  });
+
+  it('and splits between examples, not between a question and its answer', () => {
+    /*
+      The reason answerer labels are not tiers. Splitting on `Answer:` as well
+      would cut each example in half and then compare the halves, which is both
+      wrong and worse than finding nothing: the halves are dissimilar, so the
+      redundancy advisory would go quiet on genuinely duplicated examples.
+    */
+    for (const [asker, answerer] of LABELLINGS) {
+      const blocks = findExamples(promptWith(asker, answerer), estimateTokens);
+      assert.equal(blocks.length, 3, `${asker}: split into ${blocks.length} blocks`);
+      for (const block of blocks) {
+        assert.match(
+          block.text,
+          new RegExp(`${answerer}:`, 'i'),
+          `${asker}: an example was cut away from its answer`,
+        );
+      }
+    }
+  });
+
+  it('reports what the examples cost, which was previously nothing', () => {
+    // The arithmetic is the finding. Not a verdict about whether any example
+    // should go — that is the human's, and `prune` measures it with cases.
+    const prompt = promptWith('Customer', 'Agent');
+    const blocks = findExamples(prompt, estimateTokens);
+    const inExamples = blocks.reduce((sum, block) => sum + block.tokens, 0);
+    assert.ok(inExamples > 0, 'the examples were found and still cost nothing');
+    assert.ok(
+      inExamples / estimateTokens(prompt) > 0.5,
+      'a prompt that is mostly examples reported otherwise',
+    );
+  });
+
+  it('does not split ordinary prose that happens to use those words', () => {
+    /*
+      The cost of widening, checked rather than assumed. `Prompt:`, `Request:`
+      and `A:` are ordinary English, and a splitter that fired on them would
+      invent examples in a prompt that has none — and every analysis downstream
+      would then be reasoning about blocks nobody wrote.
+    */
+    const prose = [
+      'Write a summary of the incident.',
+      '',
+      'A good summary states what broke, when, and who it affected.',
+      'A bad summary lists timestamps with no narrative.',
+      '',
+      'Query the database only when the answer is not in the ticket.',
+      'Request approval before contacting the customer directly.',
+    ].join('\n');
+
+    assert.deepEqual(
+      findExamples(prose, estimateTokens),
+      [],
+      'the detector invented examples in a prompt that has none',
+    );
+  });
+
+  it('leaves a labelled answer line alone when the rules deduplicate', () => {
+    /*
+      `duplicate-lines` skips lines matching the field pattern, because two
+      examples sharing an answer are demonstrating that two inputs map to the
+      same output — removing the second leaves an example with no answer. That
+      pattern is now built from the same two lists the splitter uses, so a
+      labelling the splitter learned is a labelling the rule protects, and the
+      pair cannot drift apart again the way `Q:` and `Question:` did.
+    */
+    const prompt = [
+      'Classify each message.',
+      '',
+      'Customer: my order has not arrived and the tracking page is empty',
+      'Agent: this is a shipping problem and I will escalate it now',
+      '',
+      'Customer: the parcel is late and the tracking link shows nothing at all',
+      'Agent: this is a shipping problem and I will escalate it now',
+    ].join('\n');
+
+    const result = optimize(prompt);
+    assert.equal(
+      (result.optimized.match(/Agent: this is a shipping problem/g) ?? []).length,
+      2,
+      'an example lost the answer it exists to demonstrate',
+    );
+  });
+});
+
 describe('output formats stated twice', () => {
   const SCHEMA = [
     '```json',

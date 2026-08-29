@@ -249,10 +249,83 @@ const LABEL_SUFFIX = String.raw`[ \t]{0,4}\d{0,6}[ \t]{0,4}[:.)]`;
  * indistinguishable from ordinary prose, and guessing would make the advisory
  * fire on prompts containing no examples at all.
  */
+/**
+ * The label on the side that **asks**, in the wordings prompts actually use.
+ *
+ * **This list was three entries long and it made six analyses blind.** A
+ * support prompt labelled `Customer:` / `Agent:` — the single most common
+ * shape there is — found zero examples, so `prune` had nothing to cut,
+ * `profile` reported the examples as costing nothing, and the redundant-example
+ * advisory never fired. Measured across fourteen labellings real prompts use,
+ * nine found nothing: `Customer`, `Human`, `Question`, `Client`, `Prompt`,
+ * `Query`, `Cliente`, `Pregunta`, `REQUEST`. `Human:` is Anthropic's own
+ * historical convention and `Q:` worked while `Question:` did not, which is
+ * the arbitrariness that gives the fault away.
+ *
+ * The failure was silent, which is what made it survive: an unrecognised label
+ * produces no examples, and no examples produces no finding — the same shape
+ * as a gate that passes because it is checking nothing.
+ *
+ * Only openers belong here. `Answer:` and `Assistant:` close a turn, and
+ * splitting on those would cut every example between its question and its
+ * answer and then compare the halves.
+ */
+const ASKER_LABELS = [
+  'user',
+  'usuario',
+  'human',
+  'humano',
+  'customer',
+  'cliente',
+  'client',
+  'q',
+  'question',
+  'pregunta',
+  'query',
+  'consulta',
+  'request',
+  'petición',
+  'peticion',
+  'prompt',
+] as const;
+
+/**
+ * The label on the side that **answers**.
+ *
+ * Never a tier: these appear inside an example rather than opening one. They
+ * are here so `EXAMPLE_FIELD_LINE` can be built from the same two lists the
+ * splitter uses, which is what stops the pair drifting apart again — the field
+ * detector already knew `question` and `answer` while the splitter did not,
+ * and that disagreement is precisely how `Q:` came to work and `Question:` not.
+ */
+const ANSWERER_LABELS = [
+  'assistant',
+  'asistente',
+  'a',
+  'answer',
+  'respuesta',
+  'output',
+  'salida',
+  'response',
+  'reply',
+  'agent',
+  'agente',
+  'support',
+  'soporte',
+  'bot',
+  'result',
+  'resultado',
+] as const;
+
+/** Labels that name an example as a whole, rather than one side of it. */
+const BLOCK_LABELS = ['example', 'ejemplo', 'input', 'entrada'] as const;
+
+const anyOf = (labels: readonly string[]) => labels.join('|');
+
 const EXAMPLE_HEADER_TIERS: readonly RegExp[] = [
   new RegExp(`${LABEL_PREFIX}(?:example|ejemplo)${LABEL_SUFFIX}`, 'i'),
   new RegExp(`${LABEL_PREFIX}(?:input|entrada)${LABEL_SUFFIX}`, 'i'),
-  new RegExp(`${LABEL_PREFIX}(?:user|usuario|q)${LABEL_SUFFIX}`, 'i'),
+  new RegExp(`${LABEL_PREFIX}(?:${anyOf(ASKER_LABELS)})${LABEL_SUFFIX}`, 'i'),
 ];
 
 /**
@@ -265,7 +338,7 @@ const EXAMPLE_HEADER_TIERS: readonly RegExp[] = [
  * repetition it removed.
  */
 export const EXAMPLE_FIELD_LINE = new RegExp(
-  `${LABEL_PREFIX}(?:input|output|entrada|salida|example|ejemplo|user|usuario|assistant|asistente|q|a|question|answer|pregunta|respuesta)${LABEL_SUFFIX}`,
+  `${LABEL_PREFIX}(?:${anyOf([...BLOCK_LABELS, ...ASKER_LABELS, ...ANSWERER_LABELS])})${LABEL_SUFFIX}`,
   'i',
 );
 
@@ -306,6 +379,30 @@ export interface ExampleAnalysis {
  * grow, and not semantic redundancy. Recognising that "arrived quickly" and
  * "arrived fast" teach the same thing needs a model, not a word-set overlap;
  * that belongs to the optional LLM pass, not here.
+ */
+/**
+ * How alike two examples must be before one is called redundant.
+ *
+ * **Do not lower this hoping to catch paraphrases: it was measured and it does
+ * not work.** Four support examples whose answers were *"Let me look that up
+ * for you. Could you share your order number?"*, *"I can check that for you.
+ * What's your order number?"*, *"Happy to help. May I have your order
+ * number?"* and *"Of course. What is your order number?"* are one example
+ * wearing four coats — any reader says so instantly. Their word overlap is
+ * 0.29–0.43, and comparing only the answers makes it **worse**, 0.21–0.39,
+ * because the shared content is three words (`your`, `order`, `number`) while
+ * the openers are all different. There is no threshold that separates those
+ * from genuinely different examples: at 0.4 this fires on every prompt whose
+ * examples share a domain vocabulary.
+ *
+ * That similarity is a semantic judgement, and this repository has a place for
+ * those — `trazum semantic`, which says what it costs and asks first. What
+ * word overlap can honestly find is a paragraph somebody pasted twice and
+ * edited lightly, which is what 0.7 is for.
+ *
+ * So the deterministic half reports **what the examples cost**, which is a
+ * fact, and leaves *whether one should go* to `prune`, which answers it by
+ * running the cases rather than by counting words.
  */
 const EXAMPLE_SIMILARITY = 0.7;
 
