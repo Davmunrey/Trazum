@@ -248,6 +248,31 @@ export const FILLER: readonly string[] = [
   "it's important to note that",
   'it is worth noting that',
   "it's worth noting that",
+  /*
+    The five below were missing while the same constructions sat in other
+    languages' sections of this very list, which is how they were found: not by
+    taste, but by reading across the sections and asking what English lacked.
+
+      it should be noted that      <- de: 'es sei darauf hingewiesen, dass'
+      it is worth mentioning that  <- es: 'vale la pena mencionar que'
+      it is important to mention   <- es: 'es importante mencionar que'
+
+    English carried two constructions from this family; Spanish carries five.
+    In a repository whose own language is English, the English section being the
+    thinnest is the kind of gap nobody goes looking for. Measured on fifteen
+    padded sentences an editor would trim without touching an instruction, the
+    rules recovered 34 of 76 tokens; these were among the misses.
+
+    Nothing is added here for the other five languages. A phrasing they lack is
+    for whoever reads the language to judge — `docs/language-maintainer.md`
+    exists for exactly that, and guessing at French filler from an English ear
+    is how a rule starts editing prompts it does not understand.
+  */
+  'it should be noted that',
+  'it is worth mentioning that',
+  "it's worth mentioning that",
+  'it is important to mention that',
+  "it's important to mention that",
   'needless to say',
   'in essence',
   'at the end of the day',

@@ -122,6 +122,66 @@ describe('every covered language actually gets trimmed', () => {
   });
 });
 
+describe('the English filler list was the thinnest, in an English repository', () => {
+  /**
+   * **Found by reading across the sections of one list, not by taste.** The
+   * note-and-mention family had two constructions in English and five in
+   * Spanish, and German carried `es sei darauf hingewiesen, dass` — literally
+   * *"it should be noted that"* — which English did not. A gap nobody goes
+   * looking for, in the language this repository is written in.
+   *
+   * Measured on fifteen padded sentences an editor trims without touching a
+   * single instruction, the rules recovered **34 of 76 tokens**. Adding the
+   * five phrasings another language's section already justified took it to 49.
+   */
+  const NOW_TRIMMED = [
+    ['it should be noted that', 'It should be noted that dates are in UTC.', 'Dates are in UTC.'],
+    ['it is worth mentioning that', 'It is worth mentioning that names are case sensitive.', 'Names are case sensitive.'],
+    ['it is important to mention that', 'It is important to mention that quotas reset nightly.', 'Quotas reset nightly.'],
+  ];
+
+  for (const [phrase, before, after] of NOW_TRIMMED) {
+    it(`trims "${phrase}", which Spanish and German already had`, () => {
+      assert.equal(optimize(before).optimized.trim(), after);
+    });
+  }
+
+  it('and leaves alone the padding that is not padding', () => {
+    /**
+     * **The half that matters more, and one of these caught the author of the
+     * measurement rather than the code.** The corpus above was graded against
+     * an editor's rewrite, and that editor turned *"feel free to ask a
+     * clarifying question"* into *"ask a clarifying question"* — which is not
+     * a trim. It converts permission into an instruction, and a tool that did
+     * it would be changing what the prompt asks for while reporting a saving.
+     *
+     * `you should try to` is the same shape from the other side: removing
+     * `try to` **strengthens** the instruction. And `make sure that you` is
+     * emphasis, which this repository already decided belongs at the
+     * aggressive level rather than the safe one.
+     *
+     * `as mentioned above` and `keep in mind that` are neither — they are
+     * ordinary filler with no twin anywhere in the list. They stay out because
+     * adding them would be taste, and the rule for these additions is that
+     * another language's section has to justify them.
+     */
+    const UNTOUCHED = [
+      'Feel free to ask a clarifying question.',
+      'You should try to keep the summary factual.',
+      'Make sure that you include the order id.',
+      'As mentioned above, always check the signature.',
+      'Keep in mind that the cache expires after an hour.',
+    ];
+
+    const changed = UNTOUCHED.filter((sentence) => optimize(sentence).optimized.trim() !== sentence);
+    assert.deepEqual(
+      changed,
+      [],
+      `the safe level rewrote an instruction rather than trimming padding:\n  ${changed.join('\n  ')}`,
+    );
+  });
+});
+
 describe('a quantifier is not an intensifier', () => {
   /**
    * The three entries the first draft got wrong, and why.

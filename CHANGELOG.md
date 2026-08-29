@@ -116,6 +116,34 @@ merged commit with no entry is a change only `git log` remembers.
   passed however the length cap behaved. One end of a pair has to be beyond
   doubt for the other end to be under test.
 
+- **The English filler list was the thinnest in the file, in a repository whose
+  own language is English.** The note-and-mention family had two constructions
+  in English and five in Spanish, and German carried `es sei darauf hingewiesen,
+  dass` — literally *"it should be noted that"* — which English did not. Found
+  by reading across the sections of one list rather than by taste.
+
+  Measured on fifteen padded sentences an editor trims without touching a single
+  instruction, the rules recovered **34 of 76 tokens**. The five phrasings
+  another language's section already justified take it to 49. Nothing was added
+  for the other five languages: a phrasing they lack is for whoever reads the
+  language to judge, which is what `docs/language-maintainer.md` exists for, and
+  guessing at French filler from an English ear is how a rule starts editing
+  prompts it does not understand.
+
+  **One of the fifteen caught the person doing the measuring, not the code.**
+  The corpus was graded against an editor's rewrite, and that editor turned
+  *"feel free to ask a clarifying question"* into *"ask a clarifying
+  question"* — which is not a trim. It converts permission into an instruction.
+  Three of the remaining misses are the same kind and stay missed on purpose:
+  removing `try to` **strengthens** an instruction, and `make sure that you` is
+  emphasis, which this repository already decided belongs at the aggressive
+  level. `as mentioned above` and `keep in mind that` stay out for a different
+  reason — no other language's section justifies them, and the rule for these
+  additions is that one has to.
+
+  The guard holds both halves. Five plants fire, three of them for phrasings
+  wrongly *added*.
+
 - **A measured negative result, recorded so nobody re-derives it.** The
   redundancy threshold is 0.7 word overlap, and the obvious next thought is to
   lower it and catch paraphrases. It was measured and it does not work: four
