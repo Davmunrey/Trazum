@@ -116,11 +116,22 @@ merged commit with no entry is a change only `git log` remembers.
   passed however the length cap behaved. One end of a pair has to be beyond
   doubt for the other end to be under test.
 
-- **The English filler list was the thinnest in the file, in a repository whose
-  own language is English.** The note-and-mention family had two constructions
-  in English and five in Spanish, and German carried `es sei darauf hingewiesen,
-  dass` — literally *"it should be noted that"* — which English did not. Found
-  by reading across the sections of one list rather than by taste.
+- **One filler family covered two constructions in English where Spanish
+  covered five.** English had four entries in the note-and-mention family and
+  two constructions — `it is important to note that` and `it is worth noting
+  that`, each written twice for the contraction — while Spanish had five
+  constructions in five entries. German carried `es sei darauf hingewiesen,
+  dass`, literally *"it should be noted that"*, which English did not. Found by
+  reading across the sections of one list rather than by taste.
+
+  **A correction to the commit that made this change.** It claimed the English
+  list was *the thinnest in the file*, and that is false: counted per language
+  it is the longest, 12 entries against Spanish's 12 and Italian's 9. The gap
+  was inside one family and the claim generalised it to the whole list without
+  checking — a number that could not be justified, in a release note about a
+  dictionary. Counting all six sections of all ten dictionaries took one script,
+  and it says English is first or second in every one of them. The source
+  comment and the guard now say what was actually measured.
 
   Measured on fifteen padded sentences an editor trims without touching a single
   instruction, the rules recovered **34 of 76 tokens**. The five phrasings

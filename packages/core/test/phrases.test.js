@@ -122,13 +122,21 @@ describe('every covered language actually gets trimmed', () => {
   });
 });
 
-describe('the English filler list was the thinnest, in an English repository', () => {
+describe('one filler family covered two constructions where another language covered five', () => {
   /**
-   * **Found by reading across the sections of one list, not by taste.** The
-   * note-and-mention family had two constructions in English and five in
-   * Spanish, and German carried `es sei darauf hingewiesen, dass` — literally
-   * *"it should be noted that"* — which English did not. A gap nobody goes
-   * looking for, in the language this repository is written in.
+   * **Found by reading across the sections of one list, not by taste.** English
+   * carried four entries in the note-and-mention family and **two**
+   * constructions — `it is important to note that` and `it is worth noting
+   * that`, each written twice for the contraction — while Spanish carried five
+   * constructions in five entries. German had `es sei darauf hingewiesen,
+   * dass`, literally *"it should be noted that"*, which English did not.
+   *
+   * **The first version of this said the English list was the thinnest in the
+   * file, and that was false.** Counted per language it is the longest: 12
+   * entries against Spanish's 12 and Italian's 9. The gap was inside one
+   * family, and generalising from it to the whole list asserted something
+   * nobody had measured — in a test file, about a dictionary, which is the one
+   * place that should not happen. Counting all six sections took one script.
    *
    * Measured on fifteen padded sentences an editor trims without touching a
    * single instruction, the rules recovered **34 of 76 tokens**. Adding the
@@ -141,7 +149,7 @@ describe('the English filler list was the thinnest, in an English repository', (
   ];
 
   for (const [phrase, before, after] of NOW_TRIMMED) {
-    it(`trims "${phrase}", which Spanish and German already had`, () => {
+    it(`trims "${phrase}", which another language's section already had`, () => {
       assert.equal(optimize(before).optimized.trim(), after);
     });
   }

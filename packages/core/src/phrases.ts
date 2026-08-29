@@ -257,11 +257,22 @@ export const FILLER: readonly string[] = [
       it is worth mentioning that  <- es: 'vale la pena mencionar que'
       it is important to mention   <- es: 'es importante mencionar que'
 
-    English carried two constructions from this family; Spanish carries five.
-    In a repository whose own language is English, the English section being the
-    thinnest is the kind of gap nobody goes looking for. Measured on fifteen
-    padded sentences an editor would trim without touching an instruction, the
-    rules recovered 34 of 76 tokens; these were among the misses.
+    English carried four entries in this family and **two** constructions:
+    `it is important to note that` and `it is worth noting that`, each written
+    twice for the contraction. Spanish carried five constructions in five
+    entries. So the English section was not short of entries — it was spending
+    them on contractions of the same two phrasings while another language
+    covered five different ones.
+
+    That distinction matters and was got wrong once. The first version of this
+    comment said the English section was *the thinnest in the file*, which is
+    false: counted per language it is the longest, 12 entries against Spanish's
+    12 and Italian's 9. The gap was inside one family, and generalising from it
+    to the whole list took a claim nobody had checked. The check is one script.
+
+    Measured on fifteen padded sentences an editor would trim without touching
+    an instruction, the rules recovered 34 of 76 tokens; these were among the
+    misses.
 
     Nothing is added here for the other five languages. A phrasing they lack is
     for whoever reads the language to judge — `docs/language-maintainer.md`
