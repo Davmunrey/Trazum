@@ -93,13 +93,14 @@ also where a required reviewer goes if you ever want publishing to need a second
 pair of eyes — the environment gate runs before the job starts, so an approval
 there blocks the publish rather than interrupting it halfway.
 
-### 3. Configure this repository as a trusted publisher — **it published at 1.85.0**
+### 3. Configure this repository as a trusted publisher — **the token is what publishes**
 
-**Read this first.** On 2026-08-29 the merge of the 1.85.0 release PR published
-**all four packages through the workflow**, with provenance, and created the tag
-and the GitHub release with no human step. That is the first time this has
-happened, and it makes the standing instruction below — *assume tags will not
-publish and release by hand* — wrong. Releases go through the workflow now.
+**Read this first.** On 2026-08-29 the merges of the 1.85.0 and 1.86.0 release
+PRs each published **all four packages through the workflow**, with provenance,
+and created the tag and the GitHub release with no human step. That makes the
+standing instruction below — *assume tags will not publish and release by hand*
+— wrong. Releases go through the workflow now. What still does not work is the
+trusted publisher itself, which is the next paragraph.
 
 **Which credential authenticated the upload: the token, not OIDC.** That was
 left open at 1.85.0 and 1.86.0 answered it. Provenance is signed with the job's

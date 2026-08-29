@@ -34,6 +34,26 @@ merged commit with no entry is a change only `git log` remembers.
   refusing"*, as a conditional about a fallback. Two comments now state what is
   actually true of every publish this repository makes.
 
+- **The README told people to pin an Action two releases old.** `security.test.js`
+  derives how many versions a recommended pin is behind from `git tag`, and
+  allows exactly one — the pin can only advance to a release commit once that
+  commit exists, which is after the merge rather than in it. 1.85.0 shipped and
+  left the pin at 1.83.0, which the rule tolerated; 1.86.0 made it two and the
+  guard fired.
+
+  **It fired on CI and not here, and the reason is the same class of fault this
+  release spent a commit on.** The container running the tests had fetched tags
+  before `v1.86.0` existed, so `git tag` listed one release since the pin and
+  the guard passed. A test whose verdict depends on how recently the machine
+  fetched is environment-dependent in the way `SPAWN_ENV` was written to stop —
+  though here the machine is *behind* the truth rather than differently
+  configured, and the fix is fetching, not neutralising. Reproduced locally by
+  fetching the tag, then fixed.
+
+  The pin is the 1.86.0 release commit now. Planted a wrong label against the
+  right commit to check the fix advanced the pin rather than blinding the guard:
+  it still fails with `comment says 1.85.0, 2c5e907 says 1.86.0`.
+
 ## 1.86.0 — 2026-08-29
 
 ### Added
