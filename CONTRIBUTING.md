@@ -205,6 +205,16 @@ where wrapped prose breaks across lines — collapse the whitespace before match
 a sentence — and the layout of `PATH`, which differs between a Homebrew machine
 and a CI runner.
 
+**A comment that names a guard must name one that exists.** These
+cross-references carry weight — *"`security.test.js` permits `fetch` only in the
+two modules that exist to make calls"* is how a reader learns a rule is held
+rather than intended — so a name that is not a file reports a check where there
+is none and stops the reader looking. `named-guards.test.js` scans every source
+file and document in the repository and fails on one. Four were wrong when it
+was written: two guards promised in a shipped release and never written, one
+rename that took the file and left the sentence, and one name that had never
+existed under any spelling.
+
 ## Security invariants
 
 These are enforced by tests in `packages/core/test/security.test.js`. If your

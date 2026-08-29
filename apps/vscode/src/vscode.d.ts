@@ -9,9 +9,21 @@
  * the repository could not compile without.
  *
  * So the contract is here, it is exactly as wide as what `extension.ts`
- * touches, and a guard asserts the two agree: `contract.test.js` fails if the
- * shim reaches for a member this file does not declare. Widening it is a
- * deliberate edit rather than an inherited surface, which is the point.
+ * touches, and widening it is a deliberate edit rather than an inherited
+ * surface — which is the point.
+ *
+ * `contract.test.js` holds the two things the toolchain does not. **The fake**
+ * in `test/helpers/vscode.mjs` is the only editor this repository ever runs
+ * against, and it is plain JavaScript reached through a loader, so nothing
+ * checks it against this file; a fake that lost a member, took fewer arguments
+ * than the editor passes, or grew one VS Code does not have would leave the
+ * whole shim suite green about an editor nobody ships. **And the width**: a
+ * declaration nothing uses is the install-only dependency this file exists to
+ * avoid, growing back one member at a time.
+ *
+ * The direction it does not hold is the shim reaching for something undeclared.
+ * `tsc` already fails on that, and a second copy of the compiler's job written
+ * in regular expressions would be worse than none.
  *
  * The types are deliberately loose where the real API is elaborate. This
  * extension does not need `ThemeColor` to be anything more than a name it

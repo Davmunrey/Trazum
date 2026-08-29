@@ -114,7 +114,25 @@ describe('the icon is generated, and is what the generator produces', () => {
 
   it('draws the product’s own proportion bar, in the product’s own palette', () => {
     assert.ok(FILLED > 0 && FILLED < CELLS, 'a bar that is empty or full is not a bar');
-    assert.deepEqual(PALETTE.filled, [0xb0, 0x52, 0x2f, 0xff], 'the accent is the one the rest of the product uses');
+
+    /*
+      Held against the file the generator says it took the colours from, not
+      against a copy of them written here. `draw-icon.mjs` claims the palette is
+      *"the product's own, taken from `docs/assets/demo.svg`"*, and until this
+      assertion existed that sentence was a comment beside a hardcoded triple in
+      the guard — two copies of the same number, agreeing with each other and
+      with nothing. A colour changed in the demo now changes the icon or fails
+      here; it can no longer do neither.
+    */
+    const demo = readFileSync(join(repoRoot, 'docs', 'assets', 'demo.svg'), 'utf8');
+    const hex = ([r, g, b]) =>
+      `#${[r, g, b].map((channel) => channel.toString(16).padStart(2, '0')).join('')}`;
+    for (const [role, channels] of Object.entries(PALETTE)) {
+      assert.ok(
+        demo.toLowerCase().includes(hex(channels)),
+        `the icon's ${role} colour ${hex(channels)} is in no other surface of this product`,
+      );
+    }
   });
 });
 

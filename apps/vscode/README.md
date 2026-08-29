@@ -46,9 +46,17 @@ npm run build -w trazum-vscode
 npm run test -w trazum-vscode
 ```
 
-The tests run under `node --test` and need no editor: every judgement lives in
-`src/reading.ts`, which takes a string and a config and returns what to show.
-`src/extension.ts` is the wire, and a guard holds it to being one.
+The tests run under `node --test` and need no editor. Every judgement lives in
+`src/reading.ts`, which takes a string and a config and returns what to show, so
+`reading.test.js` checks it with nothing but Node. `src/extension.ts` is the
+wire, and it is both held to being one and run as one: `shim.test.js` calls
+`activate()` against a fake editor, resolved through a loader, with the real
+core and a real config file underneath it.
+
+That fake is the only editor this repository ever runs against, so it is not
+left to good intentions — `contract.test.js` holds it to exactly the surface
+`src/vscode.d.ts` declares, and holds that declaration to being no wider than
+the wire touches.
 
 ## Licence
 

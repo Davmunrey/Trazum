@@ -11,7 +11,7 @@
  * terracotta accent and the dark ground the CLI and the web app already use.
  * Repeated here as named constants rather than parsed out of the SVG, because
  * an icon that failed to build when somebody edited a demo would be a strange
- * coupling — and `icon.test.js` holds the two together instead.
+ * coupling — and `packaging.test.js` holds the two together instead.
  *
  * **The mark is the proportion bar**, which is the one thing this product draws
  * in every surface: a run of filled cells against a run of empty ones, the
@@ -39,7 +39,7 @@ export const SIZE = 128;
 export const PALETTE = {
   ground: [0x17, 0x15, 0x12, 0xff],
   filled: [0xb0, 0x52, 0x2f, 0xff],
-  empty: [0x30, 0x2c, 0x26, 0xff],
+  empty: [0x36, 0x33, 0x29, 0xff],
 };
 
 /**

@@ -105,6 +105,65 @@ merged commit with no entry is a change only `git log` remembers.
   not in it, and the failure is the same `E404` as a missing trusted publisher.
   Written down beside the instruction that creates the token.
 
+- **The extension's wire shipped with no behavioural test at all.** The guard on
+  it asserted textually that it computes nothing and writes no status text of
+  its own — an assertion about what it does *not* do. Nothing checked that it
+  does the right thing, and a wire has plenty of room to be wrong: the
+  workspace-relative path it builds for budget matching, the four separate
+  branches that hide the item, the debounce that keeps `optimize` off the
+  keystroke path, and the listener that must ignore a document which is not on
+  screen.
+
+  `shim.test.js` runs `activate()` against a fake editor, resolved through a
+  loader the way `apps/web` resolves `next/server`. Everything under the fake is
+  real: the core, the reading module, and a config parsed off a real file on
+  disk. Eight violations were planted and every one fired on the test that
+  claims it. The workspace-relative path is proved through the budget rather
+  than by watching the call — the config scopes `prompts/*.txt`, which can match
+  the relative path and cannot match the absolute one, so a shim that passed the
+  wrong one shows a bare count and the budget silently stops applying in the
+  editor while `trazum check` still enforces it.
+
+  That guard's own first version was bound to its neighbour: it matched the
+  first binding called `path`, which is the config path inside `projectConfig`,
+  and reported the shim as broken. Rebound to the binding that is handed to
+  `read`.
+
+- **The fake editor was the only editor this repository will ever run against,
+  and nothing held it to the contract.** `src/vscode.d.ts` is hand-written, the
+  fake is plain JavaScript reached through a loader, and `tsc` never sees the
+  two together — so a fake that lost a member, took fewer arguments than the
+  editor passes, or grew one VS Code does not have would leave the whole shim
+  suite green about an editor nobody ships. `contract.test.js` holds it, and
+  holds the declaration to being no wider than what the shim touches, which is
+  the install-only dependency growing back one member at a time.
+
+  Its arity check was too loose at first and a plant proved it: a fake that
+  dropped the optional priority argument passed, and only failed by accident. It
+  requires the declared count exactly now, because a fake cannot observe an
+  argument it does not take.
+
+- **Four comments named a guard that does not exist.** Two source files pointed
+  at `shim.test.js` and one at `contract.test.js` — files promised in a shipped
+  release and never written. `memory.ts` pointed at a postgres suite under a
+  name it does not have, a rename that took the file and left the sentence. And
+  `draw-icon.mjs` pointed at an icon suite that has never existed under any
+  name.
+
+  A reference to a guard that is not there is worse than no reference: it
+  reports a check where there is none, and the reader stops looking.
+  `named-guards.test.js` scans every source file and document in the repository
+  and fails on a name that is not a file.
+
+- **The icon's palette said it came from the product and one third of it did
+  not.** `draw-icon.mjs` claims the colours are *"the product's own, taken from
+  `docs/assets/demo.svg`"*, and the guard that was supposed to hold that claim
+  held a hardcoded copy of one colour instead — two copies of the same number,
+  agreeing with each other and with nothing. Bound to the demo, the ground and
+  the accent were there and the unspent-cell colour was in no other surface of
+  this product. It is `#363329` now, the rule colour the demo already draws on
+  the same ground, and the icon is regenerated.
+
 ## 1.85.0 — 2026-08-29
 
 ### Added

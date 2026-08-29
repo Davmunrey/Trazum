@@ -13,7 +13,7 @@ import type { NewUser, SessionRecord, Store, UserRecord } from './types';
  * until the process restarts. `ephemeral` says so out loud so the UI can too.
  *
  * It is also the driver the store tests run against, which is deliberate: the
- * Postgres driver is held to the same suite (see `postgres.test.mjs`), so the
+ * Postgres driver is held to the same suite (see `store-postgres.test.mjs`), so the
  * two cannot quietly diverge on the questions that matter — expiry, rename,
  * and what a second sign-in does to the first one's session.
  */

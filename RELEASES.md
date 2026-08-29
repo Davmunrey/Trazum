@@ -139,6 +139,100 @@ whatever the last command left behind, and that is precisely how sixty waiver
 records reached `main` and sat there through two releases. `*.vsix` is ignored
 now, with a test on it, so the documented command cannot cost somebody that.
 
+### The wire had no test, and reading it was not the same as running it
+
+The guard on `extension.ts` asserted that it computes nothing and writes no
+status text of its own. Both are true and both are worth having, and both are
+assertions about what the file does **not** do. Nothing anywhere checked that it
+does the right thing, and a wire is not a thing without behaviour: it builds a
+workspace-relative path for budget matching, it has four separate reasons to
+hide the item, it debounces the expensive half, and it has to ignore a document
+that is not the one on screen. Every one of those shipped unexercised.
+
+`shim.test.js` runs `activate()` for real. The editor is faked to exactly the
+surface `src/vscode.d.ts` declares and resolved through a loader — the same
+`module.register` the web suite uses for `next/server`, chosen over
+`--experimental-test-module-mocks` for the same reason: a suite should not
+depend on a flag a Node minor release can rename. Nothing else is faked. The
+core is the core, the reading module is the reading module, and the config is
+parsed off a real file on disk.
+
+**Eight violations were planted and eight fired**, each on the test that claims
+it. The one worth describing is the path. The assertion does not watch the call;
+it writes a config that scopes `prompts/*.txt` and checks that a budget appears
+in the status bar. That glob can match `prompts/support.txt` and cannot match
+`/tmp/…/prompts/support.txt`, so a shim that handed over the absolute path shows
+a bare token count — and the budget stops applying in the editor while `trazum
+check` goes on enforcing it, which is the kind of divergence nobody notices
+until they trust the wrong one.
+
+**And that guard's first version was bound to its neighbour.** It looked for
+`const path = …` and found the first one, which is the config path inside
+`projectConfig`, and reported the shim as broken. Bounding an assertion by its
+subject rather than by whatever is nearest is this repository's most-broken rule,
+and it broke here, in the test written to hold a different rule.
+
+### The fake is the only editor this repository will ever run against
+
+That is the deliberate consequence of not downloading VS Code, and it has a
+cost: nothing in the toolchain checks the fake against the declaration. The
+declaration is hand-written TypeScript, the fake is plain JavaScript behind a
+loader, and `tsc` never sees them together. A fake that lost a member, or took
+fewer arguments than the editor passes, or grew one VS Code does not have, would
+leave the whole shim suite green about an editor nobody ships.
+
+`contract.test.js` holds it in both directions: every declared member is
+implemented with the declared arity, and nothing is implemented that is not
+declared. It also holds the declaration to being no wider than the shim needs,
+because a surface nothing uses is the install-only dependency this whole
+approach exists to avoid, growing back one member at a time.
+
+The arity rule was too loose in its first form — anything from the required
+count upward — and the plant proved it: a fake that quietly dropped the optional
+priority argument passed the check and failed only by accident, on an unrelated
+error. It requires the declared count exactly now. A fake cannot observe an
+argument it does not take, so a test can never ask where the item was put.
+
+### Four comments pointed at guards that were not there
+
+This repository cross-references its own tests constantly, and the reference is
+load-bearing prose. *"`security.test.js` permits `fetch` only in the two modules
+that exist to make calls"* is how a reader learns a rule is held rather than
+intended. A reference to a file that is not in the tree is worse than no
+reference at all: it reports a guard where there is none, and the reader stops
+looking.
+
+Four were wrong, and each was a different fault. Two source files and one
+declaration named the two guards described above — files promised in a shipped
+release and never written, so the extension's wire had no behavioural test and
+the comments beside it said otherwise. `memory.ts` named a postgres suite under
+a name it does not have: a rename that took the file and left the sentence. And
+`draw-icon.mjs` named an icon suite that has never existed under any name.
+
+`named-guards.test.js` scans every source file and document in the repository
+and fails on a name that is not a file. It names none of those dead references
+in the form it forbids, and neither does its plant — the first version failed on
+its own comment, and a guard that has to exempt itself is a guard with a hole
+shaped like itself.
+
+### The icon claimed a palette it two-thirds had
+
+The last of those four was not only a broken link. `draw-icon.mjs` says the
+colours are *"the product's own, taken from `docs/assets/demo.svg`"*, and the
+guard that was supposed to hold that sentence held a hardcoded copy of the
+accent instead: two copies of the same number, agreeing with each other and with
+nothing outside the test.
+
+Bound to the file the generator says it took them from, the ground and the
+accent were there. The unspent-cell colour was in no other surface of this
+product — invented, and presented as the product's own. It is `#363329` now, the
+rule colour the demo already draws on the same ground, which is the role an
+unspent cell plays. The icon is regenerated and still byte-identical to a fresh
+run of the generator.
+
+A colour changed in the demo now changes the icon or fails the guard. It can no
+longer do neither.
+
 ### What is not done here, and whose it is
 
 The marketplace listing. The code is in the repository and the tests run in CI;
