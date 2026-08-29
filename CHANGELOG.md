@@ -11,6 +11,42 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+## 1.86.0 — 2026-08-29
+
+### Added
+
+- **`@trazum/vscode`, the editor extension.** Live token cost while writing a
+  prompt: the count, the budget that covers the file and the pattern it came
+  from, and what the deterministic rules would recover, in the status bar and
+  its hover. The plan called this unblocked since 0.10.0 and unscheduled ever
+  since, because an extension is a distribution commitment rather than a
+  feature. This arc takes the commitment.
+
+  **It sends the buffer nowhere, in any form, ever.** `@trazum/core` runs in the
+  editor's own process against text already on the machine, and the promise is a
+  test rather than a paragraph: every source file in the package is scanned for
+  a way out, the permitted set is empty, and importing either core module that
+  exists to make calls fails the build.
+
+  **Every judgement lives in `reading.ts`, which has never heard of an editor.**
+  A VS Code extension is normally tested by downloading VS Code and driving it —
+  a network dependency, a version to track, and a suite that cannot run without
+  a display. Here the extension is a wire: it hands a string and a config to a
+  pure function and renders what comes back, and a guard asserts it performs no
+  arithmetic and formats no figure of its own.
+
+  **It depends on `@types/vscode` for nothing.** The editor supplies the
+  `vscode` module at runtime and never installs it, so the contract this
+  extension relies on is written out in `src/vscode.d.ts`, exactly as wide as
+  what it touches. 1.85.0 already paid for the alternative: an install-only
+  dependency that turned an optional package into one the repository could not
+  compile without.
+
+  **`null` is not zero, in the one place a reader would be misled.** The rules
+  run when the typing stops, not on the keystroke, so a fresh reading has not
+  measured them. It says so rather than showing `0`, which would tell somebody
+  their prompt is already tight when nobody has checked.
+
 ### Fixed
 
 - **The release document told the owner to configure three package pages out of

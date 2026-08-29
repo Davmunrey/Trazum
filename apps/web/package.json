@@ -1,6 +1,6 @@
 {
   "name": "@trazum/web",
-  "version": "1.85.0",
+  "version": "1.86.0",
   "license": "MIT",
   "private": true,
   "type": "module",
@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@fontsource-variable/fraunces": "^5.3.0",
-    "@trazum/core": "1.85.0",
+    "@trazum/core": "1.86.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^1.33.0",

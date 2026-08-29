@@ -36,6 +36,7 @@ const NAMES = {
   '@trazum/mcp': ['MCP', 'mcp'],
   '@trazum/web': ['web'],
   '@trazum/tokenizer-openai': ['tokenizer', 'tokeniser'],
+  '@trazum/vscode': ['extension', 'editor'],
 };
 
 /** Workspaces a script drives, plus the Action when it runs that suite. */
@@ -68,10 +69,24 @@ describe('CONTRIBUTING describes the commands it prints', () => {
       assert.ok(line, `CONTRIBUTING.md no longer prints "${command}" with a comment`);
       const comment = line.slice(line.indexOf('#'));
 
+      /*
+        "all five workspaces" was a true statement about every workspace and an
+        exemption written as a literal, which is the same fault it was guarding
+        against one level up: the sixth workspace arrived and the phrase went
+        on being accepted while having become false.
+
+        The count is derived now. A comment may still stand in for the list, but
+        only by stating the number the script actually drives.
+      */
+      const workspaces = [...coverageOf(script)].filter((w) => w !== 'action');
+      const SPELLED = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight'];
+      const spelled = SPELLED[workspaces.length];
+      assert.ok(spelled !== undefined, `${workspaces.length} workspaces — extend the spelling`);
+      const saysAll = new RegExp(`all ${spelled} workspaces`).test(comment);
+
       const missing = [...coverageOf(script)].filter((w) => {
         if (w === 'action') return !/Action/i.test(comment);
-        // "all five workspaces" is a true statement about every workspace.
-        if (/all five workspaces/.test(comment)) return false;
+        if (saysAll) return false;
         return !NAMES[w].some((n) => comment.includes(n));
       });
       assert.deepEqual(

@@ -173,7 +173,7 @@ source on every run.
 
 ---
 
-## Chapter 4 — 1.86.0, the editor extension
+## Chapter 4 — 1.86.0, the editor extension — **delivered**
 
 Live cost while writing a prompt. Unblocked since 0.10.0, which gave it a
 config file and a per-path budget to read, and unscheduled ever since because

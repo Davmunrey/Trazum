@@ -7,10 +7,18 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 1.85.0**: `@trazum/core`, `@trazum/cli`,
-`@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself, from the merge of the release
-PR, authenticated by the token fallback and carrying an OIDC-signed provenance
-attestation. That has been the route for every release since 1.28.0, which was
+**All four packages are on npm at 1.86.0**: `@trazum/core`, `@trazum/cli`,
+`@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
+from the merge of the release PR, carrying an OIDC-signed provenance
+attestation. `@trazum/vscode` is the fifth workspace and is not among them: an
+editor extension is distributed by a marketplace rather than by npm, and this
+file will say when that listing exists rather than implying it from the code.
+
+**Which credential authenticates those uploads is not stated here, because it
+is not established.** Provenance is signed with the job's OIDC identity however
+the upload authenticates, so the attestation answers a different question. The
+`Can this workflow authenticate to npm?` step answers this one, per package, and
+`docs/releasing.md` asks for its verdict to be recorded. That has been the route for every release since 1.28.0, which was
 the fallback's first live run. 1.25.0 before it went out by hand on 2026-08-19,
 after npm's trusted publishing rejected the workflow's OIDC token on four real
 publish attempts against `v1.11.0` with every GitHub-side claim verified
@@ -41,6 +49,85 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.86.0 — "The cheapest place somebody meets this product"
+
+The editor extension, which every roadmap since 0.10.0 has called unblocked and
+unscheduled. The reason it stayed unscheduled was never the code: an extension
+is a distribution commitment — a marketplace listing, an update cadence, and a
+second place where a bug is somebody's afternoon. This arc takes that on
+purpose, because the whole problem the ledger names is that almost nobody has
+met this product, and a status bar is the cheapest place they could.
+
+### What it shows
+
+The token count of the prompt in front of you, the budget that covers the file
+and the glob it came from, and what the deterministic rules would actually
+recover — measured by running them, never estimated from a ratio. The count
+carries its error band, because a token count shown without one reads as exact.
+
+### What it refuses
+
+**Sending the buffer anywhere, in any form, ever.** An extension that uploaded a
+prompt in order to price it would be the exact inversion of this product, so the
+refusal is a test: every source file in the package is scanned for a way out and
+the permitted set is empty. `security.test.js` permits `fetch` in the two core
+modules that exist to make calls and names them; here there is nothing to name.
+
+A textual scan would miss the interesting version of that failure, so there is a
+second check: importing `openrouterOverlay` or `checkedEndpoint` from the core
+puts a network path in the editor's process without the word `fetch` appearing
+anywhere in this package. Both are forbidden by name.
+
+### An editor extension you can test without an editor
+
+A VS Code extension is normally tested by downloading a copy of VS Code and
+driving it — a network dependency, a version to keep up with, and a suite that
+cannot run on a machine with no display. None of that is compatible with a
+product whose argument is that it works offline.
+
+So the split is the design. Every judgement lives in `reading.ts`, which takes a
+string and a config and returns what to show; it has never heard of an editor.
+`extension.ts` is a wire. That the wire stays a wire is a guard rather than an
+intention: it performs no arithmetic and formats no figure, and both halves of
+that are checked.
+
+**The arithmetic check cried wolf three times before it was right**, and each
+false alarm was an ordinary line. `from 'node:fs/promises'` read as the division
+`s/p`. `import * as vscode` read as the multiplication `t * a`. A guard that
+fails on three normal lines is one the next person deletes, which is worse than
+never having written it, so it strips comments, then string literals, then the
+imports themselves before it looks.
+
+### No types package, for the reason 1.85.0 paid to learn
+
+The editor supplies the `vscode` module at runtime and never installs it, so
+`@types/vscode` would be a dependency that exists only to compile. 1.85.0 spent
+three Action jobs on exactly that shape: the CLI typed an optional package with
+`typeof import(...)`, `tsc` resolved it while type-checking, and a package
+somebody chooses to install became one this repository could not build without.
+
+`src/vscode.d.ts` writes out the contract instead — as wide as what the shim
+touches and no wider. Widening it is a deliberate edit rather than an inherited
+surface.
+
+### `null` is not zero, where it would actually mislead
+
+`read` runs on every keystroke and `optimize` walks every rule over the whole
+document, so the expensive half waits for the typing to stop. That leaves a
+window where the recoverable figure is genuinely unknown, and a status bar
+showing `0` in that window would be telling somebody their prompt is already
+tight when nobody has checked. It says the rules have not run yet, which is a
+third state and a different sentence from the two that look like it.
+
+### What is not done here, and whose it is
+
+The marketplace listing. The code is in the repository and the tests run in CI;
+publishing an extension needs a publisher account and a token that belongs to
+the owner, exactly as the npm scope does. `RELEASES.md` will say when that has
+happened rather than implying it from the code being present.
 
 ---
 
