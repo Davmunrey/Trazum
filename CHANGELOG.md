@@ -61,6 +61,16 @@ merged commit with no entry is a change only `git log` remembers.
   slipped into the excepted package, the `openai` entry deleted again, and the
   figure edited to a flattering 12.4%.
 
+- **`x-powered-by: Next.js` on every response**, found by observing a deployed
+  preview while checking that HSTS had actually arrived — not by reading the
+  config, which is the gap the header tests already admit to: declared is one
+  step short of sent, and it runs in both directions, since something undeclared
+  can be sent too.
+
+  Not a vulnerability, and removing it is not a defence — fingerprinting a Next
+  app takes one look at the markup. It is free reconnaissance with no reason to
+  stay. `poweredByHeader: false`.
+
 - **No HSTS, so a returning visitor's first request could still be plain HTTP.**
   The redirect to HTTPS arrives too late: the request is already on the wire and
   a network in between can answer it. `Strict-Transport-Security` is now on

@@ -166,6 +166,22 @@ const nextConfig = {
    */
   ...(process.env.VERCEL ? {} : { output: 'standalone' }),
 
+  /**
+   * Next sends `x-powered-by: Next.js` on every response unless told not to.
+   *
+   * Found by **observing** a deployed response rather than by reading this
+   * file, which is the whole point the header tests make about themselves:
+   * declared is one step short of sent, and the gap runs in both directions --
+   * something can be missing that was never declared, too.
+   *
+   * It is not a vulnerability. It is free reconnaissance: it names the
+   * framework and therefore the shape of every advisory worth trying, on every
+   * response, to everybody. Removing it costs nothing and is not a defence
+   * either -- fingerprinting a Next app takes one look at the markup. It goes
+   * because there is no reason for it to stay.
+   */
+  poweredByHeader: false,
+
   async headers() {
     return [
       { source: '/:path*', headers: BASELINE },

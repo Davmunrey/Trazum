@@ -229,6 +229,21 @@ describe('the headers a page cannot set itself', () => {
     );
   });
 
+  it('does not announce the framework on every response', async () => {
+    /**
+     * `x-powered-by: Next.js` is on by default and was observed on a real
+     * deployment while checking that HSTS had actually arrived -- which is the
+     * gap this whole block admits to: reading the config tells you what was
+     * declared, not what is sent, and something undeclared can be sent too.
+     *
+     * Not a vulnerability, and removing it is not a defence: fingerprinting a
+     * Next app takes one look at the markup. It is free reconnaissance with no
+     * reason to stay.
+     */
+    const config = (await import(new URL('../next.config.mjs', import.meta.url).href)).default;
+    assert.equal(config.poweredByHeader, false, 'Next is announcing itself on every response');
+  });
+
   it('every page refuses to be framed', async () => {
     /**
      * The finding this fixes, and it was reachable rather than theoretical:
