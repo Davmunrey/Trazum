@@ -89,7 +89,22 @@ npm run build      # core, the CLI, the MCP server and the OpenAI tokenizer
 npm test           # core, the CLI, MCP, the tokenizer, the web app and the Action
 npm run typecheck  # all five workspaces
 npm run build:web  # the Next.js app
+npm run test:action  # the packaged Action on its own, without the rest
 ```
+
+Two that write files rather than check them:
+
+```bash
+npm run draw:architecture  # redraws docs/assets/boundary.svg from the code
+npm run measure:tokens     # re-measures the estimator against a real counter
+```
+
+**Run `draw:architecture` after adding or removing a published package.** The
+picture on the front page is generated from the workspace globs and from the
+allowlist of modules permitted to reach a network, and
+`architecture-image.test.js` fails the build while it disagrees with them —
+which is the point, but it is a confusing failure if you do not know the
+command exists.
 
 ## Adding a rule
 

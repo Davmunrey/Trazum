@@ -82,6 +82,32 @@ describe('CONTRIBUTING describes the commands it prints', () => {
     });
   }
 
+  it('every command a contributor can run is written down somewhere', () => {
+    /**
+     * The drift this file already guards against, one level up: the checks
+     * above hold a script's *comment* to the workspaces it drives, and none of
+     * them notice a script that is documented **nowhere at all**.
+     *
+     * `test:action` had been in `package.json` and in neither document, and
+     * `draw:architecture` arrived in the README without reaching the file a
+     * contributor actually opens. Both were found by asking this question
+     * rather than by anybody reading the manifest.
+     *
+     * It matters most for the scripts that write files. A contributor who adds
+     * a package and does not know `draw:architecture` exists gets a failing
+     * build from a test about a picture, which is a confusing place to start.
+     */
+    const readme = readFileSync(join(repoRoot, 'README.md'), 'utf8');
+    const undocumented = Object.keys(scripts).filter(
+      (name) => !readme.includes(name) && !contributing.includes(name),
+    );
+    assert.deepEqual(
+      undocumented,
+      [],
+      `these are runnable and documented nowhere: ${undocumented.join(', ')}`,
+    );
+  });
+
   it('the CI step names describe the same commands honestly', () => {
     /**
      * The same drift, in the place a contributor looks when a check fails.

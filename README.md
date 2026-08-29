@@ -1147,6 +1147,7 @@ packages/tokenizer-openai/   optional exact counter, and the only dependency her
 apps/web/          Next.js (App Router) — Optimise, Compare, Your bill, Library
 action/            the packaged GitHub Action that comments on pull requests
 scripts/           release notes, the token-band harness, rollback recovery
+  draw-architecture.mjs  redraws the picture above from the workspace globs
 ```
 
 ## Updating prices

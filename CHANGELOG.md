@@ -63,6 +63,17 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Added
 
+- **A guard for commands documented nowhere.** `contributing.test.js` held a
+  script's *comment* to the workspaces it drives, and nothing noticed a script
+  documented in neither `README.md` nor `CONTRIBUTING.md`. `test:action` had
+  been in that state for a while, and `draw:architecture` arrived in the README
+  without reaching the file a contributor actually opens.
+
+  It matters most for the scripts that write files: somebody who adds a package
+  without knowing `draw:architecture` exists gets a failing test about a
+  picture, which is a confusing place to start. Both are documented now, and a
+  third that is not fails the build.
+
 - **An architecture picture on the front page, generated from the code rather
   than drawn.** `npm run draw:architecture` writes `docs/assets/boundary.svg`
   from the workspace globs and the network allowlist, and
