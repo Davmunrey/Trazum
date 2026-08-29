@@ -1,0 +1,69 @@
+{
+  "name": "trazum-vscode",
+  "displayName": "Trazum",
+  "version": "1.86.0",
+  "description": "What the prompt in front of you costs, counted on this machine, while you write it.",
+  "license": "MIT",
+  "author": "David Mu\u00f1oz Rey",
+  "private": true,
+  "publisher": "Davmunrey",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Davmunrey/Trazum.git",
+    "directory": "apps/vscode"
+  },
+  "homepage": "https://trazum.vercel.app",
+  "bugs": {
+    "url": "https://github.com/Davmunrey/Trazum/issues"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "prompt",
+    "llm",
+    "tokens",
+    "cost",
+    "budget"
+  ],
+  "type": "module",
+  "main": "./dist/extension.js",
+  "engines": {
+    "node": ">=20",
+    "vscode": "^1.90.0"
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "contributes": {
+    "commands": [
+      {
+        "command": "trazum.showReading",
+        "title": "Trazum: What does this prompt cost?"
+      }
+    ],
+    "configuration": {
+      "title": "Trazum",
+      "properties": {
+        "trazum.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the reading in the status bar."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "npm run build && node --test test/*.test.js"
+  },
+  "dependencies": {
+    "@trazum/core": "1.86.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.2.0",
+    "typescript": "^7.0.2"
+  },
+  "icon": "icon.png"
+}

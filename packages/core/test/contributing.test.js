@@ -36,17 +36,28 @@ const NAMES = {
   '@trazum/mcp': ['MCP', 'mcp'],
   '@trazum/web': ['web'],
   '@trazum/tokenizer-openai': ['tokenizer', 'tokeniser'],
+  'trazum-vscode': ['extension', 'editor'],
 };
 
 /** Workspaces a script drives, plus the Action when it runs that suite. */
 const coverageOf = (name) => {
   const body = scripts[name];
   assert.ok(body, `package.json has no "${name}" script any more`);
-  // `[a-z-]`, not `[a-z]`. The pattern silently skipped
-  // `@trazum/tokenizer-openai` when it was added, so a script that ran it went
-  // on being described by a comment that did not mention it -- this file's own
-  // failure mode, arriving through its derivation rather than its prose.
-  const packages = [...body.matchAll(/-w (@trazum\/[a-z-]+)/g)].map((m) => m[1]);
+  /*
+    Any workspace name, not only a scoped one — and this pattern has now been
+    too narrow twice, in the same place, for the same reason.
+
+    First it was `[a-z]`, which silently skipped `@trazum/tokenizer-openai`
+    because of the hyphen. Then it required the `@trazum/` prefix, and skipped
+    `trazum-vscode` — which is unscoped precisely because a VS Code extension's
+    marketplace identifier is `publisher.name` and cannot hold a slash. Both
+    times a script went on being described by a comment that did not mention
+    what it ran, which is this file's own failure mode arriving through its
+    derivation rather than its prose.
+
+    What `-w` takes is a workspace name. That is what this reads now.
+  */
+  const packages = [...body.matchAll(/-w (\S+)/g)].map((m) => m[1]);
   const nested = [...body.matchAll(/npm run ([a-z:]+)\b(?! -w)/g)]
     .map((m) => m[1])
     .filter((s) => s !== name && scripts[s]);
@@ -68,10 +79,24 @@ describe('CONTRIBUTING describes the commands it prints', () => {
       assert.ok(line, `CONTRIBUTING.md no longer prints "${command}" with a comment`);
       const comment = line.slice(line.indexOf('#'));
 
+      /*
+        "all five workspaces" was a true statement about every workspace and an
+        exemption written as a literal, which is the same fault it was guarding
+        against one level up: the sixth workspace arrived and the phrase went
+        on being accepted while having become false.
+
+        The count is derived now. A comment may still stand in for the list, but
+        only by stating the number the script actually drives.
+      */
+      const workspaces = [...coverageOf(script)].filter((w) => w !== 'action');
+      const SPELLED = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight'];
+      const spelled = SPELLED[workspaces.length];
+      assert.ok(spelled !== undefined, `${workspaces.length} workspaces — extend the spelling`);
+      const saysAll = new RegExp(`all ${spelled} workspaces`).test(comment);
+
       const missing = [...coverageOf(script)].filter((w) => {
         if (w === 'action') return !/Action/i.test(comment);
-        // "all five workspaces" is a true statement about every workspace.
-        if (/all five workspaces/.test(comment)) return false;
+        if (saysAll) return false;
         return !NAMES[w].some((n) => comment.includes(n));
       });
       assert.deepEqual(

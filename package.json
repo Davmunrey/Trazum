@@ -1,6 +1,6 @@
 {
   "name": "trazum",
-  "version": "1.85.0",
+  "version": "1.86.0",
   "private": true,
   "description": "Where your LLM bill actually goes: thirteen priced findings per prompt \u2014 caching, model tier, batching \u2014 offline and deterministic.",
   "license": "MIT",
@@ -16,9 +16,9 @@
     "node": ">=20"
   },
   "scripts": {
-    "build": "npm run build -w @trazum/core && npm run build -w @trazum/cli && npm run build -w @trazum/mcp && npm run build -w @trazum/tokenizer-openai",
-    "test": "npm run test -w @trazum/core && npm run test -w @trazum/cli && npm run test -w @trazum/mcp && npm run test -w @trazum/tokenizer-openai && npm run test -w @trazum/web && npm run test:action",
-    "typecheck": "npm run typecheck -w @trazum/core && npm run typecheck -w @trazum/cli && npm run typecheck -w @trazum/mcp && npm run typecheck -w @trazum/tokenizer-openai && npm run typecheck -w @trazum/web",
+    "build": "npm run build -w @trazum/core && npm run build -w @trazum/cli && npm run build -w @trazum/mcp && npm run build -w @trazum/tokenizer-openai && npm run build -w trazum-vscode",
+    "test": "npm run test -w @trazum/core && npm run test -w @trazum/cli && npm run test -w @trazum/mcp && npm run test -w @trazum/tokenizer-openai && npm run test -w trazum-vscode && npm run test -w @trazum/web && npm run test:action",
+    "typecheck": "npm run typecheck -w @trazum/core && npm run typecheck -w @trazum/cli && npm run typecheck -w @trazum/mcp && npm run typecheck -w @trazum/tokenizer-openai && npm run typecheck -w trazum-vscode && npm run typecheck -w @trazum/web",
     "verify": "npm run build && npm run test && npm run typecheck && npm run build:web",
     "dev:web": "npm run dev -w @trazum/web",
     "build:web": "npm run build -w @trazum/web",
@@ -27,6 +27,8 @@
     "draw:architecture": "node scripts/draw-architecture.mjs",
     "measure:tokens": "node scripts/measure-token-band.mjs",
     "check:models": "node scripts/check-model-availability.mjs",
-    "measure:safety": "node scripts/measure-rule-safety.mjs"
+    "measure:safety": "node scripts/measure-rule-safety.mjs",
+    "draw:icon": "node scripts/draw-icon.mjs",
+    "package:vscode": "npm run build -w trazum-vscode && cd apps/vscode && npx --yes @vscode/vsce package --no-dependencies"
   }
 }

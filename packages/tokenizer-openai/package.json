@@ -1,9 +1,9 @@
 {
   "name": "@trazum/tokenizer-openai",
-  "version": "1.85.0",
+  "version": "1.86.0",
   "description": "OpenAI's own tokenizer as an optional counter for Trazum: exact counts for the models it knows, and a refusal for every model it does not.",
   "license": "MIT",
-  "author": "David Muñoz Rey",
+  "author": "David Mu\u00f1oz Rey",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Davmunrey/Trazum.git",

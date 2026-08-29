@@ -1,0 +1,13 @@
+# What stays out of the .vsix.
+#
+# The extension ships the built output and the two documents a reader needs.
+# Sources, tests and build configuration are in the repository for anyone who
+# wants them, and shipping them would put this package's test fixtures on
+# somebody's machine for no reason.
+src/**
+test/**
+tsconfig.json
+**/*.map
+**/*.ts
+!dist/**/*.js
+node_modules/**

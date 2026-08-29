@@ -7,10 +7,18 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 1.85.0**: `@trazum/core`, `@trazum/cli`,
-`@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself, from the merge of the release
-PR, authenticated by the token fallback and carrying an OIDC-signed provenance
-attestation. That has been the route for every release since 1.28.0, which was
+**All four packages are on npm at 1.86.0**: `@trazum/core`, `@trazum/cli`,
+`@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
+from the merge of the release PR, carrying an OIDC-signed provenance
+attestation. `trazum-vscode` is the fifth workspace and is not among them: an
+editor extension is distributed by a marketplace rather than by npm, and this
+file will say when that listing exists rather than implying it from the code.
+
+**Which credential authenticates those uploads is not stated here, because it
+is not established.** Provenance is signed with the job's OIDC identity however
+the upload authenticates, so the attestation answers a different question. The
+`Can this workflow authenticate to npm?` step answers this one, per package, and
+`docs/releasing.md` asks for its verdict to be recorded. That has been the route for every release since 1.28.0, which was
 the fallback's first live run. 1.25.0 before it went out by hand on 2026-08-19,
 after npm's trusted publishing rejected the workflow's OIDC token on four real
 publish attempts against `v1.11.0` with every GitHub-side claim verified
@@ -41,6 +49,196 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.86.0 — "The cheapest place somebody meets this product"
+
+The editor extension, which every roadmap since 0.10.0 has called unblocked and
+unscheduled. The reason it stayed unscheduled was never the code: an extension
+is a distribution commitment — a marketplace listing, an update cadence, and a
+second place where a bug is somebody's afternoon. This arc takes that on
+purpose, because the whole problem the ledger names is that almost nobody has
+met this product, and a status bar is the cheapest place they could.
+
+### What it shows
+
+The token count of the prompt in front of you, the budget that covers the file
+and the glob it came from, and what the deterministic rules would actually
+recover — measured by running them, never estimated from a ratio. The count
+carries its error band, because a token count shown without one reads as exact.
+
+### What it refuses
+
+**Sending the buffer anywhere, in any form, ever.** An extension that uploaded a
+prompt in order to price it would be the exact inversion of this product, so the
+refusal is a test: every source file in the package is scanned for a way out and
+the permitted set is empty. `security.test.js` permits `fetch` in the two core
+modules that exist to make calls and names them; here there is nothing to name.
+
+A textual scan would miss the interesting version of that failure, so there is a
+second check: importing `openrouterOverlay` or `checkedEndpoint` from the core
+puts a network path in the editor's process without the word `fetch` appearing
+anywhere in this package. Both are forbidden by name.
+
+### An editor extension you can test without an editor
+
+A VS Code extension is normally tested by downloading a copy of VS Code and
+driving it — a network dependency, a version to keep up with, and a suite that
+cannot run on a machine with no display. None of that is compatible with a
+product whose argument is that it works offline.
+
+So the split is the design. Every judgement lives in `reading.ts`, which takes a
+string and a config and returns what to show; it has never heard of an editor.
+`extension.ts` is a wire. That the wire stays a wire is a guard rather than an
+intention: it performs no arithmetic and formats no figure, and both halves of
+that are checked.
+
+**The arithmetic check cried wolf three times before it was right**, and each
+false alarm was an ordinary line. `from 'node:fs/promises'` read as the division
+`s/p`. `import * as vscode` read as the multiplication `t * a`. A guard that
+fails on three normal lines is one the next person deletes, which is worse than
+never having written it, so it strips comments, then string literals, then the
+imports themselves before it looks.
+
+### No types package, for the reason 1.85.0 paid to learn
+
+The editor supplies the `vscode` module at runtime and never installs it, so
+`@types/vscode` would be a dependency that exists only to compile. 1.85.0 spent
+three Action jobs on exactly that shape: the CLI typed an optional package with
+`typeof import(...)`, `tsc` resolved it while type-checking, and a package
+somebody chooses to install became one this repository could not build without.
+
+`src/vscode.d.ts` writes out the contract instead — as wide as what the shim
+touches and no wider. Widening it is a deliberate edit rather than an inherited
+surface.
+
+### `null` is not zero, where it would actually mislead
+
+`read` runs on every keystroke and `optimize` walks every rule over the whole
+document, so the expensive half waits for the typing to stop. That leaves a
+window where the recoverable figure is genuinely unknown, and a status bar
+showing `0` in that window would be telling somebody their prompt is already
+tight when nobody has checked. It says the rules have not run yet, which is a
+third state and a different sentence from the two that look like it.
+
+### The packaging was run, not described
+
+`npm run package:vscode` produces `trazum-vscode-1.86.0.vsix`: **8 files, 8.39
+kB** — the two built modules, the icon, the licence, the README, and the two
+manifests `vsce` writes. No sources, no tests, no source maps. That is
+`.vscodeignore` doing its job, and it is now observed rather than asserted,
+which is the difference this repository spent 1.85.0 learning about its own
+security headers.
+
+The run found one more thing, which is what running things does. It leaves an
+installable file beside the extension, and the guard against runtime state in
+this repository checks the **tracked** tree — correctly, since an untracked file
+is a local mess rather than everybody's. But `git add -A` before a commit takes
+whatever the last command left behind, and that is precisely how sixty waiver
+records reached `main` and sat there through two releases. `*.vsix` is ignored
+now, with a test on it, so the documented command cannot cost somebody that.
+
+### The wire had no test, and reading it was not the same as running it
+
+The guard on `extension.ts` asserted that it computes nothing and writes no
+status text of its own. Both are true and both are worth having, and both are
+assertions about what the file does **not** do. Nothing anywhere checked that it
+does the right thing, and a wire is not a thing without behaviour: it builds a
+workspace-relative path for budget matching, it has four separate reasons to
+hide the item, it debounces the expensive half, and it has to ignore a document
+that is not the one on screen. Every one of those shipped unexercised.
+
+`shim.test.js` runs `activate()` for real. The editor is faked to exactly the
+surface `src/vscode.d.ts` declares and resolved through a loader — the same
+`module.register` the web suite uses for `next/server`, chosen over
+`--experimental-test-module-mocks` for the same reason: a suite should not
+depend on a flag a Node minor release can rename. Nothing else is faked. The
+core is the core, the reading module is the reading module, and the config is
+parsed off a real file on disk.
+
+**Eight violations were planted and eight fired**, each on the test that claims
+it. The one worth describing is the path. The assertion does not watch the call;
+it writes a config that scopes `prompts/*.txt` and checks that a budget appears
+in the status bar. That glob can match `prompts/support.txt` and cannot match
+`/tmp/…/prompts/support.txt`, so a shim that handed over the absolute path shows
+a bare token count — and the budget stops applying in the editor while `trazum
+check` goes on enforcing it, which is the kind of divergence nobody notices
+until they trust the wrong one.
+
+**And that guard's first version was bound to its neighbour.** It looked for
+`const path = …` and found the first one, which is the config path inside
+`projectConfig`, and reported the shim as broken. Bounding an assertion by its
+subject rather than by whatever is nearest is this repository's most-broken rule,
+and it broke here, in the test written to hold a different rule.
+
+### The fake is the only editor this repository will ever run against
+
+That is the deliberate consequence of not downloading VS Code, and it has a
+cost: nothing in the toolchain checks the fake against the declaration. The
+declaration is hand-written TypeScript, the fake is plain JavaScript behind a
+loader, and `tsc` never sees them together. A fake that lost a member, or took
+fewer arguments than the editor passes, or grew one VS Code does not have, would
+leave the whole shim suite green about an editor nobody ships.
+
+`contract.test.js` holds it in both directions: every declared member is
+implemented with the declared arity, and nothing is implemented that is not
+declared. It also holds the declaration to being no wider than the shim needs,
+because a surface nothing uses is the install-only dependency this whole
+approach exists to avoid, growing back one member at a time.
+
+The arity rule was too loose in its first form — anything from the required
+count upward — and the plant proved it: a fake that quietly dropped the optional
+priority argument passed the check and failed only by accident, on an unrelated
+error. It requires the declared count exactly now. A fake cannot observe an
+argument it does not take, so a test can never ask where the item was put.
+
+### Four comments pointed at guards that were not there
+
+This repository cross-references its own tests constantly, and the reference is
+load-bearing prose. *"`security.test.js` permits `fetch` only in the two modules
+that exist to make calls"* is how a reader learns a rule is held rather than
+intended. A reference to a file that is not in the tree is worse than no
+reference at all: it reports a guard where there is none, and the reader stops
+looking.
+
+Four were wrong, and each was a different fault. Two source files and one
+declaration named the two guards described above — files promised in a shipped
+release and never written, so the extension's wire had no behavioural test and
+the comments beside it said otherwise. `memory.ts` named a postgres suite under
+a name it does not have: a rename that took the file and left the sentence. And
+`draw-icon.mjs` named an icon suite that has never existed under any name.
+
+`named-guards.test.js` scans every source file and document in the repository
+and fails on a name that is not a file. It names none of those dead references
+in the form it forbids, and neither does its plant — the first version failed on
+its own comment, and a guard that has to exempt itself is a guard with a hole
+shaped like itself.
+
+### The icon claimed a palette it two-thirds had
+
+The last of those four was not only a broken link. `draw-icon.mjs` says the
+colours are *"the product's own, taken from `docs/assets/demo.svg`"*, and the
+guard that was supposed to hold that sentence held a hardcoded copy of the
+accent instead: two copies of the same number, agreeing with each other and with
+nothing outside the test.
+
+Bound to the file the generator says it took them from, the ground and the
+accent were there. The unspent-cell colour was in no other surface of this
+product — invented, and presented as the product's own. It is `#363329` now, the
+rule colour the demo already draws on the same ground, which is the role an
+unspent cell plays. The icon is regenerated and still byte-identical to a fresh
+run of the generator.
+
+A colour changed in the demo now changes the icon or fails the guard. It can no
+longer do neither.
+
+### What is not done here, and whose it is
+
+The marketplace listing. The code is in the repository and the tests run in CI;
+publishing an extension needs a publisher account and a token that belongs to
+the owner, exactly as the npm scope does. `RELEASES.md` will say when that has
+happened rather than implying it from the code being present.
 
 ---
 

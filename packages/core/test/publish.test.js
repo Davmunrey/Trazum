@@ -808,6 +808,55 @@ describe('a count written in prose is a claim like any other', () => {
     }
   });
 
+  it('docs/releasing.md tells the owner to configure every package they publish', () => {
+    /**
+     * The 1.85.0 release found this one by nearly costing a version.
+     *
+     * The trusted-publisher instruction said *"For each of `@trazum/core`,
+     * `@trazum/cli` and `@trazum/mcp`"* — a list typed when there were three
+     * packages, still there after `@trazum/tokenizer-openai` made it four. An
+     * owner following it exactly would have configured three of four pages, and
+     * the release publishes the new package last, so the one that fails is the
+     * one the instruction never mentioned.
+     *
+     * The neighbouring guard covers the *access* claim and could not see this:
+     * a list of package names is not a count. Derived from the workspace globs
+     * like everything else here, so the next package has to be named rather
+     * than inherit somebody's memory of the last one.
+     */
+    const releasing = readFileSync(join(repoRoot, 'docs/releasing.md'), 'utf8');
+    const section = sectionOf(releasing, 'Configure this repository as a trusted publisher');
+    assert.ok(section.length > 0, 'the trusted-publisher section could not be found');
+
+    /**
+     * The instruction, not the section around it. The first version of this
+     * check read the whole section and a plant walked straight past it: the
+     * paragraph above the instruction names the newest package while explaining
+     * what the 1.85.0 run did, so deleting the name from the list somebody
+     * actually follows left the section still containing it.
+     *
+     * Bounded by what the paragraph *is* rather than by what sits next to it:
+     * the one that ends by handing over the settings table.
+     */
+    const instruction = section
+      .split(/\n\s*\n/)
+      .find((paragraph) => paragraph.includes('enter exactly:'));
+    assert.ok(
+      instruction !== undefined,
+      'no paragraph hands over the settings table — has the instruction moved?',
+    );
+
+    const missing = PACKAGES.map((pkg) => manifestOf(pkg).name).filter(
+      (name) => !instruction.includes(name),
+    );
+    assert.deepEqual(
+      missing,
+      [],
+      'these packages need a trusted publisher and the instruction does not name them: ' +
+        `${missing.join(', ')}`,
+    );
+  });
+
   it('docs/releasing.md counts the publishable packages correctly', () => {
     /**
      * The release document said "both".

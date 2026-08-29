@@ -1184,6 +1184,39 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.86.0 — "The cheapest place somebody meets this product" — released
+
+**The editor extension, which this file has called unblocked and unscheduled
+since 0.10.0.** The entry under *Under consideration* was right about the
+reason and wrong to leave it there forever: the blocker was never the code, it
+was that an extension is a distribution commitment — a marketplace listing, an
+update cadence, and a second place where a bug is somebody's afternoon. The
+1.83–2.0 arc takes that commitment on purpose, because the problem this whole
+ledger names is that almost nobody has met this product, and a status bar is
+the cheapest place they could.
+
+**It sends the buffer nowhere.** `@trazum/core` runs in the editor's own
+process against text already on the machine. That is the product's first rule
+applied to a new surface, so it is held the same way the rest of it is: every
+source file in the package is scanned for a way out, and the permitted set is
+empty. The two core modules that exist to make calls are forbidden by name,
+because importing one would put a network path in the editor without the word
+`fetch` appearing anywhere.
+
+**Testable without an editor, which is the design and not a convenience.** A VS
+Code extension is normally tested by downloading VS Code and driving it: a
+network dependency, a version to track, and a suite that cannot run without a
+display — none of it compatible with a product whose argument is that it works
+offline. Every judgement lives in a module that has never heard of an editor,
+and a guard holds the shim to being a wire.
+
+**And no types package.** The editor supplies `vscode` at runtime and never
+installs it, so `@types/vscode` would exist only to compile — the exact shape
+that cost 1.85.0 three Action jobs when an optional package became one the
+repository could not build without. The contract is written out instead.
+
+---
+
 ## 1.85.0 — "The tokenizer, and a measurement this repository already had" — released
 
 **1.84.0 did not ship, and the plan said so before the code was written.** It

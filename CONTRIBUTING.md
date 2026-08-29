@@ -85,9 +85,9 @@ nor `tsc` will tell you.
 The pieces individually, if you want a faster loop:
 
 ```bash
-npm run build      # core, the CLI, the MCP server and the OpenAI tokenizer
-npm test           # core, the CLI, MCP, the tokenizer, the web app and the Action
-npm run typecheck  # all five workspaces
+npm run build      # core, the CLI, the MCP server, the OpenAI tokenizer and the editor extension
+npm test           # core, the CLI, MCP, the tokenizer, the editor extension, the web app and the Action
+npm run typecheck  # all six workspaces
 npm run build:web  # the Next.js app
 npm run test:action  # the packaged Action on its own, without the rest
 ```
@@ -96,8 +96,21 @@ Two that write files rather than check them:
 
 ```bash
 npm run draw:architecture  # redraws docs/assets/boundary.svg from the code
+npm run draw:icon          # redraws the editor extension's icon.png
 npm run measure:tokens     # re-measures the estimator against a real counter
 ```
+
+And one that produces something to hand to a marketplace:
+
+```bash
+npm run package:vscode     # builds the editor extension and writes a .vsix
+```
+
+`vsce` is fetched by `npx` for that one run rather than installed. It exists to
+produce a zip on demand, and a repository does not need a tool in its tree to
+find out whether its own manifest is valid — `apps/vscode/test/packaging.test.js`
+checks the rules the packager enforces, so the manifest cannot drift between
+releases without a test saying so.
 
 **Run `draw:architecture` after adding or removing a published package.** The
 picture on the front page is generated from the workspace globs and from the
@@ -191,6 +204,16 @@ Two more things a test must not read: the length of `os.tmpdir()`, which decides
 where wrapped prose breaks across lines — collapse the whitespace before matching
 a sentence — and the layout of `PATH`, which differs between a Homebrew machine
 and a CI runner.
+
+**A comment that names a guard must name one that exists.** These
+cross-references carry weight — *"`security.test.js` permits `fetch` only in the
+two modules that exist to make calls"* is how a reader learns a rule is held
+rather than intended — so a name that is not a file reports a check where there
+is none and stops the reader looking. `named-guards.test.js` scans every source
+file and document in the repository and fails on one. Four were wrong when it
+was written: two guards promised in a shipped release and never written, one
+rename that took the file and left the sentence, and one name that had never
+existed under any spelling.
 
 ## Security invariants
 

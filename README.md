@@ -91,10 +91,10 @@ never runs unless you ask.
                       ┌──────────────┐
                       │ @trazum/core │   the library: rules, tokens, pricing
                       └──────┬───────┘   zero dependencies, browser-safe
-         ┌─────────────┬─────┴────────┬──────────────┐
-   @trazum/cli    @trazum/mcp    @trazum/web       action/
- 46 commands       MCP server      Next.js     comments on pull requests
-                 for your agents
+    ┌────────────┬─────────────┼─────────────┬─────────────┐
+ @trazum/cli  @trazum/mcp  trazum-vscode  @trazum/web    action/
+ 46 commands   MCP server    the editor      Next.js    comments on
+              for your agents  status bar               pull requests
 
               @trazum/tokenizer-openai   optional: exact counts for OpenAI
                     install it or do not, nothing else changes
