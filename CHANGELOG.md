@@ -11,6 +11,35 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+- **The release document told the owner to configure three package pages out of
+  four.** The trusted-publisher instruction listed `@trazum/core`, `@trazum/cli`
+  and `@trazum/mcp` — a list typed when there were three packages and left alone
+  when `@trazum/tokenizer-openai` made it four. Somebody following it exactly
+  would have configured three, and the release publishes the new package last,
+  so the page that fails is the one the instruction never named.
+
+  A derived guard holds it now: every package the workspace globs say this
+  repository publishes must be named in the paragraph that hands over the
+  settings table. The first version of that guard read the whole section and a
+  plant walked past it, because the paragraph above the instruction names the
+  newest package for a different reason.
+
+- **Two claims in that document that the 1.85.0 release disproved.** It carried
+  the heading *"still not working"* and the standing instruction *"assume tags
+  will not publish and release by hand"*. The 1.85.0 merge published all four
+  packages through the workflow, with provenance, and created the tag and the
+  release with no human step. What the run does **not** settle is which
+  credential authenticated the upload, because provenance is signed with the
+  job's OIDC identity either way — so the document now says that too, and names
+  the step that answers it rather than guessing.
+
+- **A token scope that goes stale the moment a package is added.** The fallback
+  token is granular and scoped to named packages, so a package added later is
+  not in it, and the failure is the same `E404` as a missing trusted publisher.
+  Written down beside the instruction that creates the token.
+
 ## 1.85.0 — 2026-08-29
 
 ### Added

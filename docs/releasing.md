@@ -93,10 +93,35 @@ also where a required reviewer goes if you ever want publishing to need a second
 pair of eyes — the environment gate runs before the job starts, so an approval
 there blocks the publish rather than interrupting it halfway.
 
-### 3. Configure this repository as a trusted publisher — **still not working**
+### 3. Configure this repository as a trusted publisher — **it published at 1.85.0**
 
-The step that decides whether a tag publishes or fails at the last stage. It has
-now failed that way on **six real publish attempts across three versions**:
+**Read this first.** On 2026-08-29 the merge of the 1.85.0 release PR published
+**all four packages through the workflow**, with provenance, and created the tag
+and the GitHub release with no human step. That is the first time this has
+happened, and it makes the standing instruction below — *assume tags will not
+publish and release by hand* — wrong. Releases go through the workflow now.
+
+**What that run does not settle: which credential authenticated the upload.**
+Provenance is signed with the job's OIDC identity either way, so a signed
+attestation proves nothing about the auth, and this document says so below. The
+`Can this workflow authenticate to npm?` step prints `configured` or `rejected`
+per package and is the only thing that answers it. Read that step on
+[the 1.85.0 run](https://github.com/Davmunrey/Trazum/actions/runs/33245198514)
+and record the answer here, because the two possibilities lead to opposite next
+actions: if it says `configured`, the token fallback can be deleted; if it says
+`rejected`, trusted publishing is still broken and the token is the only thing
+holding releases up.
+
+One thing the run does narrow. The fallback token is scoped to the three
+packages that existed when it was made, and **`@trazum/tokenizer-openai`
+published anyway** — so either that upload used OIDC, or the token's scope is
+wider than the instruction below says. Both are worth knowing; neither is
+established here.
+
+The history that follows is kept because it is what the fix has to survive, not
+because it is still the current state.
+
+It failed on **six real publish attempts across three versions**:
 1.8.0 because the packages did not exist yet, 1.9.0 because this had not been
 done, and `v1.11.0` four times on 2026-08-19 — after the settings had been
 reported filled in. Every one of those releases that shipped went out by hand,
@@ -117,8 +142,9 @@ confirms the four package pages *display* a saved trusted publisher — not that
 the form accepts one — assume tags will not publish and release by hand (see
 *Releasing by hand*, below).
 
-For **each** of `@trazum/core`, `@trazum/cli` and `@trazum/mcp`, on the package's npm settings
-page under *Publishing access → Trusted publisher*, enter exactly:
+For **each published package** — `@trazum/core`, `@trazum/cli`, `@trazum/mcp`
+and `@trazum/tokenizer-openai` — on the package's npm settings page under
+*Publishing access → Trusted publisher*, enter exactly:
 
 | Field | Value |
 |---|---|
@@ -396,9 +422,16 @@ up, once:
 
 1. On npm (as the account that owns `@trazum`): *Access Tokens → Generate New
    Token → Granular Access Token*. Permissions **Read and write**, scoped to
-   **only** the three `@trazum` packages, with an expiry — 90 days is a fine
-   default. Do not create a classic automation token; granular is the one
-   whose blast radius is three packages instead of the account.
+   **only** the `@trazum` packages this repository publishes, with an expiry —
+   90 days is a fine default. Do not create a classic automation token; granular
+   is the one whose blast radius is those packages instead of the account.
+
+   **A package added after the token was made is not in its scope.** A token
+   listing packages by name cannot publish a fifth one and cannot create it,
+   and the failure is the same `E404` as a missing trusted publisher, on the
+   package nobody was looking at. Whenever this repository starts publishing a
+   new package, regenerate the token with it included and update the secret, in
+   the same change that adds the package.
 2. On GitHub: *Settings → Environments → release → Environment secrets → Add
    secret*, name **`NPM_TOKEN`**, value the token. An *environment* secret on
    purpose: only jobs that enter the `release` environment can read it, which
