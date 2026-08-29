@@ -4,6 +4,8 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
+
+import { SPAWN_ENV } from '../../cli/test/env.mjs';
 import { estimateTokens } from '../dist/index.js';
 
 /**
@@ -116,7 +118,11 @@ describe('CI actually runs the gate', () => {
       `cd "$work" && node "${cli}" check . > out.txt 2>&1; echo "EXIT=$?"; cat out.txt`,
       'rm -rf "$work"',
     ].join('\n');
-    const output = execFileSync('sh', ['-c', script], { encoding: 'utf8' });
+    // `SPAWN_ENV` and not the ambient environment: the assertion below reads
+    // the gate's own sentence, and the gate answers in the machine's language.
+    // Without this the test passes on a CI runner, where `LANG` is unset, and
+    // fails on any contributor's laptop that has a locale set.
+    const output = execFileSync('sh', ['-c', script], { encoding: 'utf8', env: SPAWN_ENV });
     assert.match(output, /EXIT=1/, `the gate did not fail on real growth:\n${output}`);
     assert.match(output, /over the limit/);
   });

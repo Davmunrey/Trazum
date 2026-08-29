@@ -7,6 +7,8 @@ import { after, before, describe, it } from 'node:test';
 
 import { bandFor } from '@trazum/core';
 
+import { SPAWN_ENV } from '../../cli/test/env.mjs';
+
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = join(here, '..');
 const entry = join(packageRoot, 'dist/index.js');
@@ -26,7 +28,10 @@ class Client {
   #id = 0;
 
   constructor() {
-    this.#child = spawn(process.execPath, [entry], { stdio: ['pipe', 'pipe', 'pipe'] });
+    this.#child = spawn(process.execPath, [entry], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: SPAWN_ENV,
+    });
     this.#child.stdout.setEncoding('utf8');
     this.#child.stdout.on('data', (chunk) => this.#onData(chunk));
     this.stderr = '';

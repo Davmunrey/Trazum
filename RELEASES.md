@@ -189,6 +189,47 @@ honest shape for something that loads a two-hundred-thousand-entry table on
 demand; the counting function it hands back stays synchronous, which is what a
 caller counting a directory needs.
 
+### A test that read the machine, and the guard that had two holes
+
+The gate's own test spawned `trazum check` with no environment and asserted on
+`over the limit`. On a CI runner, where `LANG` is unset, that passes. On a
+contributor's Mac set to Spanish it reads `un crecimiento de 151 tokens supera
+el límite de 25` and fails — the tool answering correctly, in the reader's
+language, and the test insisting on English.
+
+This is the second time. `env.mjs` exists because seven tests in `i18n.test.js`
+did the same thing for months, and it came with a guard meant to stop the next
+one. The guard had two holes and the failure went through both. It read a single
+directory, so nothing outside `packages/cli/test` was ever examined, and it
+matched only an environment **built inline** — passing none at all, which is the
+machine itself rather than a copy of it, was invisible to it. Two directories
+away, `apps/web` had grown a sixth hand-rolled copy of the object the guard
+exists to make unnecessary, and a seventh was found while closing this.
+
+Both holes are shut. The check now reads every tracked suite in the repository,
+and holds every spawn of something this repository built — the CLI, the MCP
+server, the preflight — to passing an environment it controls. Only those: a
+`git ls-files` for a list of filenames is a spawn too, and demanding ceremony
+from it would make the guard noise instead of a rule. A path put into a shell
+script and the script then spawned is still a run of that entry point, which is
+exactly the shape that got past the old check, so the derivation follows the
+value through the bindings that carry it.
+
+`env.mjs` now reads the detector's variable list out of its source rather than
+importing the compiled module. The import was the stronger link and cost too
+much: suites in three other workspaces need this object, and an import would
+have made each of them fail to load until the CLI happened to be built. A guard
+asserts the parse equals what the detector exports, so a rename fails a test
+instead of quietly neutralising nothing.
+
+Four plants fire: the environment removed from the gate's spawn, an inline copy
+built again, the detector's list renamed out from under the parse, and a fifth
+variable added to the detector — which the derived list picks up on its own,
+which is the point.
+
+The whole suite now passes identically with `LANG` unset and with
+`LANG=es_ES.UTF-8`.
+
 ### Also
 
 A derivation in `contributing.test.js` matched `-w @trazum/[a-z]+`, which

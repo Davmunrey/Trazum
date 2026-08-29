@@ -9,6 +9,7 @@ import { describe, it } from 'node:test';
 
 import { RULES } from '../dist/index.js';
 
+import { SPAWN_ENV } from '../../cli/test/env.mjs';
 import { sectionOf } from '../../../test-utils/section.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -1541,7 +1542,7 @@ describe('the publish preflight', () => {
     const { spawn } = await import('node:child_process');
     const child = spawn(process.execPath, [script, mode], {
       env: {
-        ...process.env,
+        ...SPAWN_ENV,
         TRAZUM_NPM_REGISTRY: registry,
         // Cleared so a real runner's credentials can never reach this test, and
         // so `auth` takes its no-token path unless a case supplies one.
@@ -1928,7 +1929,7 @@ describe('the publish preflight', () => {
         timeout: 20000,
         // A registry that would answer, so a pass here would mean the value
         // genuinely reached the network rather than the request merely failing.
-        env: { ...process.env, TRAZUM_NPM_REGISTRY: 'https://registry.npmjs.org' },
+        env: { ...SPAWN_ENV, TRAZUM_NPM_REGISTRY: 'https://registry.npmjs.org' },
       });
 
       assert.notEqual(child.status, 0, `${label} was accepted`);

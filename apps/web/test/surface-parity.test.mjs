@@ -7,6 +7,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 
+import { SPAWN_ENV } from '../../../packages/cli/test/env.mjs';
+
 register('./helpers/loader.mjs', import.meta.url);
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -74,7 +76,10 @@ const callsIn = (text) => text.match(/([\d,]+) calls/)?.[1] ?? null;
 /** A JSON-RPC client over stdio, because that is how the server is reached. */
 function askMcp(tool, args) {
   return new Promise((resolve, reject) => {
-    const child = spawn(process.execPath, [MCP], { stdio: ['pipe', 'pipe', 'pipe'] });
+    const child = spawn(process.execPath, [MCP], {
+      stdio: ['pipe', 'pipe', 'pipe'],
+      env: SPAWN_ENV,
+    });
     const timer = setTimeout(() => {
       child.kill();
       reject(new Error('the MCP server did not answer'));
@@ -141,7 +146,7 @@ describe('the four surfaces answer with one number', () => {
 
     const cli = spawnSync(process.execPath, [CLI, 'profile', path, '--json'], {
       encoding: 'utf8',
-      env: { ...process.env, NO_COLOR: '1', LANG: '', LC_ALL: '', LC_MESSAGES: '', TRAZUM_LOCALE: '' },
+      env: SPAWN_ENV,
       timeout: 60000,
     });
     assert.equal(cli.status, 0, `the CLI failed:\n${cli.stdout}${cli.stderr}`);
@@ -188,7 +193,7 @@ describe('the four surfaces answer with one number', () => {
     writeFileSync(path, prompt);
     const cli = spawnSync(process.execPath, [CLI, 'optimize', path, '--json'], {
       encoding: 'utf8',
-      env: { ...process.env, NO_COLOR: '1', LANG: '', LC_ALL: '', LC_MESSAGES: '', TRAZUM_LOCALE: '' },
+      env: SPAWN_ENV,
       timeout: 60000,
     });
     assert.equal(cli.status, 0, `the CLI failed:\n${cli.stdout}${cli.stderr}`);

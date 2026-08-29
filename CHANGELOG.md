@@ -37,6 +37,26 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **A test that read the locale of the machine running it.** `own-gate.test.js`
+  spawned the gate with no environment and asserted on `over the limit`, so it
+  passed on a runner with `LANG` unset and failed on a Spanish laptop, where the
+  gate correctly answers `un crecimiento de 151 tokens supera el límite de 25`.
+
+  The guard that exists to prevent this — added when seven tests in
+  `i18n.test.js` had the same fault — read one directory and matched only an
+  environment built inline, so a spawn with no environment at all, two packages
+  away, was invisible to it. It now reads every tracked suite and holds every run
+  of something this repository built to passing an environment it controls,
+  following the entry point through the bindings that carry it, because this
+  failure put the path into a shell script first. Two more hand-rolled copies of
+  the shared environment were found by the widened check, in `apps/web` and in
+  `publish.test.js`, and both now use it.
+
+  `env.mjs` reads the detector's variable list out of `src/i18n/index.ts` instead
+  of importing the compiled module, so suites in other workspaces can use it
+  without the CLI having been built; a guard asserts the parse equals what the
+  detector exports. The suite now passes identically under `LANG=es_ES.UTF-8`.
+
 - **A measurement this repository had already paid for, reported as missing.**
   `token-ground-truth.openai.json` has held 47 samples measured against `gpt-5`
   through OpenAI's own API since 2026-08-28. `MEASURED_FOREIGN_ERROR_PCT` had no

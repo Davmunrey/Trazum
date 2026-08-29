@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
-import { readdirSync, readFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
@@ -8,7 +8,7 @@ import { describe, it } from 'node:test';
 import { CONFIG_KEYS, CONFIG_USAGE_KEYS, CONTRACT_NAMES, LOCALES } from '@trazum/core';
 
 import { LOCALE_ENV_VARS, detectLocale, en, es, getCliMessages } from '../dist/i18n/index.js';
-import { SPAWN_ENV } from './env.mjs';
+import { NEUTRALISED, SPAWN_ENV } from './env.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -393,26 +393,147 @@ describe('the suite does not depend on the machine it runs on', () => {
    * contributor laptop with a Spanish locale, because three spawns inherited the
    * ambient environment and asserted on English output. The fix is `env.mjs`;
    * this is what stops the next spawn from reintroducing it.
+   *
+   * **It did not stop it.** At 1.85.0 `packages/core/test/own-gate.test.js`
+   * spawned the gate with no `env` at all and asserted on `over the limit`, and a
+   * Spanish Mac read `un crecimiento de 151 tokens supera el límite de 25`. The
+   * guard below had two holes and the failure went through both: it read one
+   * directory, so nothing outside `packages/cli/test` was ever looked at, and it
+   * matched only an environment *built inline*, so passing none was invisible to
+   * it. `apps/web` had meanwhile grown a sixth hand-rolled copy of the object,
+   * two directories away from the guard that exists to prevent exactly that.
+   *
+   * Both holes are closed here: every tracked suite in the repository, and the
+   * absent `env` as well as the inline one.
    */
-  const files = readdirSync(here).filter((name) => name.endsWith('.test.js'));
+  const repoRoot = join(here, '..', '..', '..');
+  const suites = execFileSync('git', ['ls-files', '*.test.js', '*.test.mjs'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  })
+    .split('\n')
+    .filter(Boolean);
+
+  /**
+   * The end of the expression starting at `from`, by bracket depth.
+   *
+   * Quoted runs are skipped so that a bracket or a semicolon inside a string —
+   * `['-c', 'a; b']` is ordinary here — does not end the expression early.
+   */
+  const endOfExpression = (source, from) => {
+    let index = from;
+    let depth = 0;
+    let quote = null;
+    while (index < source.length) {
+      const char = source[index];
+      if (quote !== null) {
+        if (char === '\\') index += 1;
+        else if (char === quote) quote = null;
+      } else if (char === "'" || char === '"' || char === '`') {
+        quote = char;
+      } else if ('([{'.includes(char)) {
+        depth += 1;
+      } else if (')]}'.includes(char)) {
+        if (depth === 0) break;
+        depth -= 1;
+      } else if (char === ';' && depth === 0) {
+        break;
+      }
+      index += 1;
+    }
+    return index;
+  };
+
+  /**
+   * The names in one suite that stand for something this repository built.
+   *
+   * A binding whose initialiser names a `dist/index.js` is one, and so is a
+   * binding built out of such a name — `own-gate.test.js` puts the path into a
+   * shell script and spawns the script, and a check that only looked at the
+   * spawn's own arguments would have missed it exactly as the old guard did.
+   */
+  const entryPointNames = (source) => {
+    const bindings = [];
+    const declaration = /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=/g;
+    let found;
+    while ((found = declaration.exec(source)) !== null) {
+      bindings.push({
+        name: found[1],
+        text: source.slice(found.index, endOfExpression(source, declaration.lastIndex)),
+      });
+    }
+    const named = new Set();
+    for (let pass = 0; pass <= bindings.length; pass += 1) {
+      const before = named.size;
+      for (const binding of bindings) {
+        if (named.has(binding.name)) continue;
+        const built =
+          /dist\/index\.js|'dist',\s*'index\.js'/.test(binding.text) ||
+          [...named].some((name) => new RegExp(`\\b${name}\\b`).test(binding.text));
+        if (built) named.add(binding.name);
+      }
+      if (named.size === before) break;
+    }
+    return [...named];
+  };
 
   it('every spawn goes through the shared environment', () => {
-    assert.ok(files.length > 5, 'the test directory could not be read');
+    assert.ok(suites.length > 100, `only ${suites.length} suites found — has the layout moved?`);
 
     const offenders = [];
-    for (const name of files) {
-      const source = readFileSync(join(here, name), 'utf8');
+    for (const file of suites) {
+      const source = readFileSync(join(repoRoot, file), 'utf8');
       // A spawn env built inline from `process.env` is the shape that carried the
       // bug: it inherits whatever the machine says. `blame.test.js` also assigns
       // to `process.env.PATH` directly, which is not an env object for a spawn,
       // so the pattern is deliberately anchored on the spread.
-      if (/env:\s*\{[^}]*\.\.\.process\.env/.test(source)) offenders.push(name);
+      if (/env:\s*\{[^}]*\.\.\.process\.env/.test(source)) offenders.push(file);
     }
 
     assert.deepEqual(
       offenders,
       [],
       `these build a spawn environment inline instead of importing SPAWN_ENV: ${offenders.join(', ')}`,
+    );
+  });
+
+  it('and no run of something this repository built inherits the machine', () => {
+    /**
+     * The half that was missing. An inline environment is a copy of the shared
+     * one; **no** environment is the machine itself, which is what a spawn gets
+     * by default and what `own-gate.test.js` got for the whole of 1.85.0.
+     *
+     * Only spawns that run something built here are held to it. A `git ls-files`
+     * for a filename list is a spawn too, and demanding an environment for it
+     * would be ceremony rather than a guard.
+     */
+    const call = /(?<![.\w$])(execFileSync|execSync|spawnSync|execFile|spawn|fork)\s*\(/g;
+    const offenders = [];
+    let checked = 0;
+
+    for (const file of suites) {
+      const source = readFileSync(join(repoRoot, file), 'utf8');
+      if (!source.includes('node:child_process')) continue;
+      const names = entryPointNames(source);
+      if (names.length === 0) continue;
+
+      call.lastIndex = 0;
+      let found;
+      while ((found = call.exec(source)) !== null) {
+        const text = source.slice(found.index, endOfExpression(source, call.lastIndex) + 1);
+        if (!names.some((name) => new RegExp(`\\b${name}\\b`).test(text))) continue;
+        checked += 1;
+        if (/\benv\s*:/.test(text)) continue;
+        offenders.push(`${file}:${source.slice(0, found.index).split('\n').length}`);
+      }
+    }
+
+    assert.ok(checked > 100, `only ${checked} runs found — has the spawn convention moved?`);
+    assert.deepEqual(
+      offenders,
+      [],
+      'these run something this repository built and pass no environment, so they read ' +
+        `the locale of whoever is running them: ${offenders.join(', ')}`,
     );
   });
 
@@ -424,5 +545,16 @@ describe('the suite does not depend on the machine it runs on', () => {
       assert.equal(SPAWN_ENV[name], '', `${name} is not cleared for spawned runs`);
     }
     assert.ok(LOCALE_ENV_VARS.includes('LC_MESSAGES'), 'the variable that was missed is missing again');
+  });
+
+  it('and what the shared environment read out of the detector is what the detector exports', () => {
+    /**
+     * `env.mjs` parses the list out of `src/i18n/index.ts` rather than importing
+     * the compiled module, so that a suite in another workspace can use it
+     * without the CLI having been built first. This is the guard that keeps the
+     * parse honest: a rename, a reformat that breaks the pattern, or a variable
+     * added to the detector fails here instead of quietly neutralising nothing.
+     */
+    assert.deepEqual(NEUTRALISED, [...LOCALE_ENV_VARS]);
   });
 });
