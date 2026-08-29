@@ -120,6 +120,51 @@ The reason the exception exists at all is the CI case this whole product is
 built around: the rank tables are twenty-two megabytes, and **a gate that pulls
 twenty-two megabytes into every build is a gate teams turn off**.
 
+### An optional package that was required to compile
+
+CI refused the first version of this release, and it was right to. The CLI
+typed its loader as `typeof import('@trazum/tokenizer-openai')`, which is a
+**compile-time** dependency: `tsc` resolves the module while type-checking, so
+`@trazum/cli` could not be built at all unless the optional package had been
+built first. It passed here only because it had been. On a clean checkout it is
+`TS2307`, twice.
+
+A package somebody chooses to install had quietly become one this repository
+cannot compile without, which is the opposite of what the word optional
+promises. So the CLI writes out the small contract it actually relies on and
+assembles the specifier from fragments, and a test asserts the real package
+still satisfies that contract -- two descriptions of one interface is the shape
+that drifts silently, so the drift is what is checked.
+
+The first guard against it listed the forms to forbid: a static `import`, and
+`typeof import(...)`. A plant walked straight past it -- a plain
+`await import('@trazum/tokenizer-openai')` with a literal specifier passes both
+and still fails the build, because `tsc` resolves a literal dynamic import too.
+The rule is now the one with no forms to enumerate: **the specifier never
+appears as a literal in the CLI's code.** All three forms fail it.
+
+### The dependency was 90% likely obfuscated, and the shape was changed rather than the alert dismissed
+
+Socket flagged `js-tiktoken` on the pull request that added it. The reading was
+fair: the package's main entry inlines every byte-pair table into one 5.6 MB
+file whose longest line is **2.3 million characters**. That is a vocabulary
+rather than hidden code, but nothing about the file says so, and *trust me, it
+is only data* is not an argument this repository makes anywhere else.
+
+The import moved to `js-tiktoken/lite`, which loads the logic and the tables
+from different files. The executable code this repository now loads is
+`chunk-*.js`, whose longest line is 160 characters and which reads as ordinary
+source; the ranks arrive as data, one module per encoding. `security.test.js`
+asserts the property the scanner was reaching for -- the code this repository
+loads is not minified into a single line -- so the answer stops being a
+judgement about somebody's heuristic and becomes a check this repository owns.
+
+It is also less work: **one rank table is parsed instead of six**, and only the
+one the model actually uses. That made the counter asynchronous, which is the
+honest shape for something that loads a two-hundred-thousand-entry table on
+demand; the counting function it hands back stays synchronous, which is what a
+caller counting a directory needs.
+
 ### Also
 
 A derivation in `contributing.test.js` matched `-w @trazum/[a-z]+`, which

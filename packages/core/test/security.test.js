@@ -1009,6 +1009,65 @@ describe('no runtime dependencies', () => {
           `${name} now reaches the network, the filesystem or a subprocess in: ${offenders.join(', ')}`,
         );
       });
+
+      it(`${name}: the code ${pkg} loads is code somebody could read`, () => {
+        /**
+         * Socket flagged this dependency as **90% likely obfuscated** on the
+         * pull request that added it, and the reading was fair: the package's
+         * main entry inlines every byte-pair table into one 5.6 MB file whose
+         * longest line is 2.3 million characters. That is a vocabulary rather
+         * than hidden code, but nothing about the file says so, and "trust me,
+         * it is only data" is not an argument this repository makes anywhere
+         * else.
+         *
+         * So the shape was changed rather than the alert dismissed. The package
+         * is imported through `js-tiktoken/lite`, which loads the logic and the
+         * tables from different files, and this asserts the property Socket was
+         * reaching for: **the executable code is not minified into one line.**
+         * The rank modules are excluded by name, because they are data and the
+         * whole point of the lite entry is that they are now separable.
+         *
+         * A future version that folds the tables back into the code fails here,
+         * which is the right place to find out.
+         */
+        const root = join(repoRoot, 'node_modules', name);
+        assert.ok(existsSync(root), `${name} is not installed, so this check cannot run`);
+
+        /** Anything longer than this is minified or generated, not written. */
+        const READABLE_LINE = 400;
+
+        const wide = [];
+        const walk = (dir) => {
+          for (const entry of readdirSync(dir, { withFileTypes: true })) {
+            if (entry.name === 'ranks' || entry.name === 'node_modules') continue;
+            const path = join(dir, entry.name);
+            if (entry.isDirectory()) {
+              walk(path);
+              continue;
+            }
+            if (!/\.(js|cjs|mjs)$/.test(entry.name)) continue;
+            const longest = readFileSync(path, 'utf8')
+              .split('\n')
+              .reduce((most, line) => Math.max(most, line.length), 0);
+            if (longest > READABLE_LINE) wide.push(`${path.slice(root.length + 1)} (${longest})`);
+          }
+        };
+        walk(root);
+
+        assert.ok(wide.length > 0, 'nothing in this package is wide — has the layout changed?');
+
+        /*
+         * The entries that are wide are the ones that inline the tables, and
+         * this repository does not import them. What must hold is that the
+         * modules it *does* load are readable.
+         */
+        const loadedWide = wide.filter((entry) => /^dist\/(lite|chunk-)/.test(entry));
+        assert.deepEqual(
+          loadedWide,
+          [],
+          `${name} now ships the code this repository loads minified into one line: ${loadedWide.join(', ')}`,
+        );
+      });
     }
   }
 });

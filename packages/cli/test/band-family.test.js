@@ -231,7 +231,15 @@ describe('a machine that did not install the optional package', () => {
     );
     assert.ok(loader.length > 0, 'the optional-counter loader has moved — rewrite this check');
 
-    assert.match(loader, /try \{[\s\S]*await import\('@trazum\/tokenizer-openai'\)/, 'the import is not guarded');
+    /*
+     * The import is matched by shape rather than by its literal specifier. It
+     * used to expect `await import('@trazum/tokenizer-openai')`, and that
+     * became the one form the loader must never use: a literal specifier is
+     * resolved by `tsc` at build time, which made the optional package
+     * required to compile and turned CI red. The specifier is assembled from
+     * fragments now, and `optional-counter-contract.test.js` owns that rule.
+     */
+    assert.match(loader, /try \{[\s\S]*await import\(/, 'the import is not guarded');
     assert.match(loader, /\} catch \{[\s\S]*return null;/, 'a missing package does not fall through to null');
     assert.doesNotMatch(loader, /catch[\s\S]*throw/, 'a missing optional package is rethrown');
   });

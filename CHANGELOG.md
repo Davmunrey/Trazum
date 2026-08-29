@@ -61,6 +61,33 @@ merged commit with no entry is a change only `git log` remembers.
   slipped into the excepted package, the `openai` entry deleted again, and the
   figure edited to a flattering 12.4%.
 
+- **An optional package that was required to compile.** The CLI typed its
+  loader as `typeof import('@trazum/tokenizer-openai')`, which `tsc` resolves
+  while type-checking — so `@trazum/cli` could not be built unless the optional
+  package had been built first, and a clean checkout failed with `TS2307`. CI
+  caught it. The CLI now declares the small contract it relies on and assembles
+  the specifier from fragments, with a test asserting the real package still
+  satisfies that contract.
+
+  The first guard listed the forms to forbid and a plant walked past it: a plain
+  `await import('...')` with a literal specifier passes a check for static
+  imports and `typeof import(...)`, and still fails the build. The rule is now
+  the one with no forms to enumerate — the specifier never appears as a literal
+  in the CLI's code — and all three forms fail it.
+
+- **A dependency that reads as obfuscated, fixed by shape rather than by
+  dismissal.** Socket flagged `js-tiktoken` as 90% likely obfuscated. The
+  reading was fair: its main entry inlines every byte-pair table into one 5.6 MB
+  file with a single line 2.3 million characters long. That is a vocabulary and
+  not hidden code, but nothing about the file says so.
+
+  The import moved to `js-tiktoken/lite`, which separates the logic from the
+  tables — the code loaded now has a longest line of 160 characters — and
+  `security.test.js` asserts that property directly, so the answer is a check
+  this repository owns rather than a judgement about somebody's heuristic. It
+  also parses one rank table instead of six, which made the counter
+  asynchronous while the counting function it returns stays synchronous.
+
 - **A derivation that skipped any workspace with a hyphen in its name.**
   `contributing.test.js` matched `-w @trazum/[a-z]+`, so `@trazum/tokenizer-openai`
   was invisible to it: a script could have driven a workspace its own documented

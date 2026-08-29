@@ -19,17 +19,17 @@ import { KNOWN_ENCODINGS, canCount, openaiCounter } from '../dist/index.js';
  */
 
 describe('a model it has the encoding for', () => {
-  it('counts with the encoding the model actually uses', () => {
-    const gpt5 = openaiCounter('gpt-5');
+  it('counts with the encoding the model actually uses', async () => {
+    const gpt5 = await openaiCounter('gpt-5');
     assert.equal(gpt5.ok, true);
     assert.equal(gpt5.encoding, 'o200k_base');
 
-    const older = openaiCounter('gpt-3.5-turbo');
+    const older = await openaiCounter('gpt-3.5-turbo');
     assert.equal(older.ok, true);
     assert.equal(older.encoding, 'cl100k_base');
   });
 
-  it('gives two different encodings different counts for the same text', () => {
+  it('gives two different encodings different counts for the same text', async () => {
     /**
      * The reason the encoding is on the result rather than implied. If both
      * tables produced the same number for everything, choosing between them
@@ -43,8 +43,8 @@ describe('a model it has the encoding for', () => {
      * choice between them costs real money.
      */
     const text = '这是一个关于季度支出的技术说明，涉及缓存命中率与模型分层。';
-    const modern = openaiCounter('gpt-5');
-    const older = openaiCounter('gpt-3.5-turbo');
+    const modern = await openaiCounter('gpt-5');
+    const older = await openaiCounter('gpt-3.5-turbo');
     assert.notEqual(
       modern.count(text),
       older.count(text),
@@ -52,39 +52,39 @@ describe('a model it has the encoding for', () => {
     );
   });
 
-  it('counts an empty string as nothing rather than throwing', () => {
-    assert.equal(openaiCounter('gpt-5').count(''), 0);
+  it('counts an empty string as nothing rather than throwing', async () => {
+    assert.equal((await openaiCounter('gpt-5')).count(''), 0);
   });
 
-  it('is stable across calls, so a directory is not counted twice differently', () => {
-    const counter = openaiCounter('gpt-5');
+  it('is stable across calls, so a directory is not counted twice differently', async () => {
+    const counter = await openaiCounter('gpt-5');
     const text = 'A prompt somebody wrote, with punctuation: commas, colons; and a number 42.';
     assert.equal(counter.count(text), counter.count(text));
-    assert.equal(openaiCounter('gpt-5').count(text), counter.count(text));
+    assert.equal((await openaiCounter('gpt-5')).count(text), counter.count(text));
   });
 });
 
 describe('a model it does not have the encoding for', () => {
-  it('refuses rather than counting with the newest table', () => {
+  it('refuses rather than counting with the newest table', async () => {
     /**
      * `gpt-5-codex` is a real OpenAI model whose rank table this package's
      * dependency does not name. Defaulting to `o200k_base` would be right most
      * of the time and would be a guess every time, and the figure would go out
      * labelled exact.
      */
-    const result = openaiCounter('gpt-5-codex');
+    const result = await openaiCounter('gpt-5-codex');
     assert.equal(result.ok, false);
     assert.equal(result.refusal.reason, 'unknown-encoding');
     assert.equal(result.refusal.model, 'gpt-5-codex');
   });
 
-  it('refuses a model OpenAI has not shipped yet, in both directions', () => {
+  it('refuses a model OpenAI has not shipped yet, in both directions', async () => {
     for (const model of ['gpt-5.5', 'gpt-6', 'o9-titanic']) {
-      assert.equal(openaiCounter(model).ok, false, `${model} was counted`);
+      assert.equal((await openaiCounter(model)).ok, false, `${model} was counted`);
     }
   });
 
-  it('refuses another family rather than claiming to know whose it is', () => {
+  it('refuses another family rather than claiming to know whose it is', async () => {
     /**
      * A Claude model refuses as `unknown-encoding` and not as *wrong family*.
      * This package holds encodings, not a catalogue: deciding which provider
@@ -92,28 +92,28 @@ describe('a model it does not have the encoding for', () => {
      * table would put a second source of truth behind an answer already held in
      * one place.
      */
-    const result = openaiCounter('claude-sonnet-5');
+    const result = await openaiCounter('claude-sonnet-5');
     assert.equal(result.ok, false);
     assert.equal(result.refusal.reason, 'unknown-encoding');
   });
 
-  it('names what it does hold, so a refusal is actionable', () => {
-    const result = openaiCounter('gpt-6');
+  it('names what it does hold, so a refusal is actionable', async () => {
+    const result = await openaiCounter('gpt-6');
     assert.deepEqual([...result.refusal.known], [...KNOWN_ENCODINGS]);
     assert.ok(result.refusal.known.includes('o200k_base'));
   });
 
-  it('refuses an empty and a whitespace model id', () => {
+  it('refuses an empty and a whitespace model id', async () => {
     for (const model of ['', '   ']) {
-      assert.equal(openaiCounter(model).ok, false, `${JSON.stringify(model)} was counted`);
+      assert.equal((await openaiCounter(model)).ok, false, `${JSON.stringify(model)} was counted`);
     }
   });
 
-  it('answers `canCount` the same way it answers `openaiCounter`', () => {
+  it('answers `canCount` the same way it answers `openaiCounter`', async () => {
     // Two entry points that disagree would let a report say it counted a model
     // exactly and then hand out a heuristic figure.
     for (const model of ['gpt-5', 'gpt-4', 'gpt-5-codex', 'claude-sonnet-5', 'gpt-6', '']) {
-      assert.equal(canCount(model), openaiCounter(model).ok, `they disagree on ${model}`);
+      assert.equal(canCount(model), (await openaiCounter(model)).ok, `they disagree on ${model}`);
     }
   });
 });
@@ -136,13 +136,13 @@ describe('why this package is worth installing at all', () => {
   );
   const sampleText = (file) => readFileSync(join(coreTest, 'corpus', file), 'utf8');
 
-  it('has a fixture with samples in it at all', () => {
+  it('has a fixture with samples in it at all', async () => {
     // Without this, every check below passes by looping over nothing.
     assert.ok(truth.samples.length >= 40, `only ${truth.samples.length} samples`);
     assert.equal(truth.provider, 'openai');
   });
 
-  it('reproduces every count the API produced, exactly', () => {
+  it('reproduces every count the API produced, exactly', async () => {
     /**
      * The claim the release notes make, under test. A paid API call and an
      * offline rank table agreeing to the token on 47 samples is what makes the
@@ -153,7 +153,7 @@ describe('why this package is worth installing at all', () => {
      * token would mean the table and the service had drifted apart, which is a
      * thing to find out here rather than in somebody's invoice.
      */
-    const counter = openaiCounter(truth.model);
+    const counter = await openaiCounter(truth.model);
     assert.equal(counter.ok, true, `this package cannot count ${truth.model}`);
 
     const differing = truth.samples
@@ -169,7 +169,7 @@ describe('why this package is worth installing at all', () => {
     );
   });
 
-  it('disagrees with the heuristic by enough to be worth the twenty-two megabytes', () => {
+  it('disagrees with the heuristic by enough to be worth the twenty-two megabytes', async () => {
     /**
      * The estimator is published under a band measured against Anthropic and
      * explicitly not against anybody else. Against OpenAI it is 112.4% out at
@@ -192,7 +192,7 @@ describe('why this package is worth installing at all', () => {
     );
   });
 
-  it('and the heuristic was never a lie, only a Claude one', () => {
+  it('and the heuristic was never a lie, only a Claude one', async () => {
     /**
      * The other half of the honesty, and the half the first draft of this file
      * got wrong: it asserted the estimator was close on English prose against

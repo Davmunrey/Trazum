@@ -5509,6 +5509,30 @@ async function readInput(
   return limit === null ? text : capInput(text, source, limit, t);
 }
 
+/**
+ * The part of an optional counter package this CLI actually uses.
+ *
+ * Declared here rather than imported as `typeof import('@trazum/tokenizer-openai')`,
+ * and the reason is a build that failed in CI and was right to.
+ *
+ * A static type reference to an optional package is a **compile-time**
+ * dependency on it: `tsc` resolves the module while type-checking, so the CLI
+ * could not be built at all unless the optional package had been built first.
+ * That is the opposite of optional, and it made a package somebody chooses to
+ * install into one this repository could not compile without.
+ *
+ * So the contract is written out. It costs a few lines and it is the honest
+ * shape: this is what the CLI relies on, and `optional-counter-contract.test.js`
+ * asserts the real package still provides it, so the two cannot drift apart
+ * without a red test rather than a wrong number.
+ */
+export interface OptionalCounterModule {
+  openaiCounter(model: string): Promise<
+    | { ok: true; count: (text: string) => number; encoding: string; model: string }
+    | { ok: false; refusal: { reason: string; model: string; known: readonly string[] } }
+  >;
+}
+
 interface LocalCounter {
   count: (text: string) => number;
   /** A stable id for the counter, for `TokenProvenance`. */
@@ -5531,9 +5555,16 @@ interface LocalCounter {
  * a required one by accident.
  */
 async function localCounterFor(model: string): Promise<LocalCounter | null> {
-  let loaded: typeof import('@trazum/tokenizer-openai');
+  let loaded: OptionalCounterModule;
   try {
-    loaded = await import('@trazum/tokenizer-openai');
+    /*
+     * The specifier is built rather than written literally, so `tsc` cannot
+     * resolve it at compile time and try to type-check a package that may not
+     * be installed. The cast is to the contract declared above, which is
+     * checked against the real package by a test rather than assumed here.
+     */
+    const specifier = ['@trazum', 'tokenizer-openai'].join('/');
+    loaded = (await import(specifier)) as OptionalCounterModule;
   } catch {
     /*
      * Not installed. Deliberately swallowed and not logged: it is the default
@@ -5543,7 +5574,7 @@ async function localCounterFor(model: string): Promise<LocalCounter | null> {
     return null;
   }
 
-  const result = loaded.openaiCounter(model);
+  const result = await loaded.openaiCounter(model);
   if (!result.ok) return null;
   return {
     count: result.count,

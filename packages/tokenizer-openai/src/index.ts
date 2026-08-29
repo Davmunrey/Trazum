@@ -1,5 +1,5 @@
-import { getEncoding, getEncodingNameForModel } from 'js-tiktoken';
-import type { Tiktoken, TiktokenModel } from 'js-tiktoken';
+import { Tiktoken, getEncodingNameForModel } from 'js-tiktoken/lite';
+import type { TiktokenBPE, TiktokenModel } from 'js-tiktoken/lite';
 
 /**
  * OpenAI's own tokenizer, as a counter Trazum can be handed.
@@ -31,6 +31,25 @@ import type { Tiktoken, TiktokenModel } from 'js-tiktoken';
  * as *wrong family*, because deciding which provider owns an id is the pricing
  * catalogue's job and asserting it from a rank table would be a second source
  * of truth about something already held in one place.
+ *
+ * ## Why `js-tiktoken/lite`, and not the package's main entry
+ *
+ * The main entry inlines every rank table into one file, which is 5.6 MB with a
+ * single line 2.3 million characters long. Socket's scanner reads that as
+ * **90% likely obfuscated** and flagged it on the pull request that added this
+ * package, which is a fair reading of the shape even though the content is a
+ * byte-pair vocabulary rather than hidden code.
+ *
+ * `lite` separates the two. The executable code it loads is `chunk-*.js`, whose
+ * longest line is 160 characters and which reads as ordinary source, and the
+ * ranks arrive as data from a separate module chosen by encoding. So the answer
+ * to *is this obfuscated* stops being a judgement about a heuristic and becomes
+ * a property of the file: `security.test.js` asserts the line length of what is
+ * loaded, and the vocabulary is data that no longer sits in the same file as
+ * the code.
+ *
+ * It is also simply less work: one table is parsed instead of six, and only the
+ * one the model actually uses.
  *
  * ## What the number is, exactly
  *
@@ -93,6 +112,24 @@ const isKnown = (name: string): name is KnownEncoding =>
  */
 const loaded = new Map<KnownEncoding, Tiktoken>();
 
+/**
+ * The rank tables, each behind its own module.
+ *
+ * Written as a literal map rather than a template string, because a dynamic
+ * specifier built at runtime is a specifier no bundler and no reader can
+ * follow -- and because it keeps `KNOWN_ENCODINGS` and what can actually be
+ * loaded in one place instead of two that agree by convention.
+ */
+const RANKS: Readonly<Record<KnownEncoding, () => Promise<{ default: TiktokenBPE }>>> =
+  Object.freeze({
+    o200k_base: () => import('js-tiktoken/ranks/o200k_base'),
+    cl100k_base: () => import('js-tiktoken/ranks/cl100k_base'),
+    p50k_base: () => import('js-tiktoken/ranks/p50k_base'),
+    p50k_edit: () => import('js-tiktoken/ranks/p50k_edit'),
+    r50k_base: () => import('js-tiktoken/ranks/r50k_base'),
+    gpt2: () => import('js-tiktoken/ranks/gpt2'),
+  });
+
 /*
  * The dependency types this argument as a union of the model ids it knows,
  * which is narrower than what it does at runtime: it throws on anything else,
@@ -103,10 +140,10 @@ const loaded = new Map<KnownEncoding, Tiktoken>();
  */
 const nameFor = (model: string): string => getEncodingNameForModel(model as TiktokenModel);
 
-function encodingFor(name: KnownEncoding): Tiktoken {
+async function encodingFor(name: KnownEncoding): Promise<Tiktoken> {
   const held = loaded.get(name);
   if (held !== undefined) return held;
-  const built = getEncoding(name);
+  const built = new Tiktoken((await RANKS[name]()).default);
   loaded.set(name, built);
   return built;
 }
@@ -117,8 +154,16 @@ function encodingFor(name: KnownEncoding): Tiktoken {
  * Per model rather than one counter for everything, because the encoding is a
  * property of the model and a counter that took the model per call would let a
  * caller mix two families' counts into one total without noticing.
+ *
+ * Asynchronous because the rank table is loaded on demand: only the one the
+ * model actually uses is ever parsed, rather than six at import time. The
+ * counter it hands back is synchronous, which is what a caller counting a
+ * directory needs -- the cost is paid once, when the encoding is chosen.
+ *
+ * `canCount` stays synchronous for the same reason: answering *could this be
+ * counted* needs the name mapping and not the table.
  */
-export function openaiCounter(model: string): CounterResult {
+export async function openaiCounter(model: string): Promise<CounterResult> {
   let name: string;
   try {
     name = nameFor(model);
@@ -139,7 +184,7 @@ export function openaiCounter(model: string): CounterResult {
     return { ok: false, refusal: { reason: 'unknown-encoding', model, known: KNOWN_ENCODINGS } };
   }
 
-  const encoding = encodingFor(name);
+  const encoding = await encodingFor(name);
   return {
     ok: true,
     count: (text: string) => encoding.encode(text).length,
