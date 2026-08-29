@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+
+import { DEPENDENCY_EXCEPTIONS } from './dependency-exceptions.mjs';
 import { spawnSync } from 'node:child_process';
-import { readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
@@ -895,15 +897,63 @@ describe('no runtime dependencies', () => {
     assert.ok(packages.includes('packages/mcp'), 'the MCP server is not covered');
   });
 
+  /**
+   * The one exception, named rather than a relaxation of the rule.
+   *
+   * The rule above is a security property and it is not being softened: it is
+   * being spent, once, in a package built to carry the cost so that nothing
+   * else has to. `@trazum/tokenizer-openai` exists because a real tokenizer is
+   * twenty-two megabytes of byte-pair ranks, and the only way to have exact
+   * counts without putting that in front of every CI gate is a package
+   * somebody installs on purpose.
+   *
+   * What the exception is not allowed to become is a precedent. It is one
+   * package and one dependency, both written here, and every other workspace
+   * stays at zero -- including `packages/core`, which is asserted separately
+   * below so that adding it to this map is not a one-line edit.
+   *
+   * The dependency itself is held to the property the rule is really about:
+   * `js-tiktoken` is MIT, has one transitive dependency, and its shipped code
+   * reaches no network, no filesystem and no subprocess. That is checked from
+   * the installed source rather than asserted, because "we read it once" is not
+   * a guarantee that survives a version bump.
+   */
+
+  it('the core is never one of the exceptions', () => {
+    /**
+     * The whole product rests on `@trazum/core` running offline, deterministic
+     * and reviewed over prompt text. If the map above ever grew an entry for
+     * it, every other check in this file would go on passing while the one
+     * promise that matters quietly ended.
+     */
+    assert.equal(
+      Object.hasOwn(DEPENDENCY_EXCEPTIONS, 'packages/core'),
+      false,
+      'the core was given a dependency exception',
+    );
+    const core = JSON.parse(readFileSync(join(repoRoot, 'packages/core/package.json'), 'utf8'));
+    assert.deepEqual(Object.keys(core.dependencies ?? {}), [], 'the core took a dependency');
+  });
+
+  it('every exception names a package that exists', () => {
+    // A stale entry would be an allowance nobody can see the shape of, and
+    // would silently cover a package added later under the same path.
+    for (const pkg of Object.keys(DEPENDENCY_EXCEPTIONS)) {
+      assert.ok(packages.includes(pkg), `${pkg} is excepted and is not a publishable workspace`);
+    }
+  });
+
   for (const pkg of packages) {
     it(`${pkg} depends on nothing outside this repo`, () => {
       const manifest = JSON.parse(readFileSync(join(repoRoot, pkg, 'package.json'), 'utf8'));
       const deps = Object.keys(manifest.dependencies ?? {});
       const external = deps.filter((name) => !name.startsWith('@trazum/'));
+      const allowed = DEPENDENCY_EXCEPTIONS[pkg] ?? [];
       assert.deepEqual(
-        external,
-        [],
-        `${pkg} added runtime dependencies: ${external.join(', ')}. ` +
+        external.sort(),
+        [...allowed].sort(),
+        `${pkg} runtime dependencies changed: has ${external.join(', ') || 'none'}, ` +
+          `allowed ${allowed.join(', ') || 'none'}. ` +
           'If one is genuinely needed, say so in the pull request and update this test deliberately.',
       );
       assert.deepEqual(
@@ -912,6 +962,113 @@ describe('no runtime dependencies', () => {
         `${pkg} added optional dependencies`,
       );
     });
+  }
+
+  for (const [pkg, allowed] of Object.entries(DEPENDENCY_EXCEPTIONS)) {
+    for (const name of allowed) {
+      it(`${name}, which ${pkg} is allowed, still reaches nothing`, () => {
+        /**
+         * The reason the rule exists, applied to the one dependency that got
+         * past it: this code runs over the user's prompt text, and the promise
+         * the whole product makes is that the text does not leave the machine.
+         * A version bump that added a telemetry call would otherwise arrive
+         * with an `npm install` and no review at all.
+         *
+         * Read from the installed tree, and the rank tables are excluded: they
+         * are megabytes of base64 and hold no code.
+         */
+        const root = join(repoRoot, 'node_modules', name);
+        assert.ok(
+          existsSync(root),
+          `${name} is not installed, so this check cannot run — did the install fail?`,
+        );
+
+        const manifest = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
+        assert.equal(manifest.license, 'MIT', `${name} changed licence to ${manifest.license}`);
+
+        const reaching = /\bfetch\s*\(|require\(['"](?:node:)?(?:http|https|net|fs|child_process|dns|tls|worker_threads)['"]\)|from\s+['"](?:node:)?(?:http|https|net|fs|child_process|dns|tls|worker_threads)['"]|\beval\s*\(|new\s+Function\s*\(/;
+
+        const offenders = [];
+        const walk = (dir) => {
+          for (const entry of readdirSync(dir, { withFileTypes: true })) {
+            if (entry.name === 'ranks' || entry.name === 'node_modules') continue;
+            const path = join(dir, entry.name);
+            if (entry.isDirectory()) {
+              walk(path);
+              continue;
+            }
+            if (!/\.(js|cjs|mjs)$/.test(entry.name)) continue;
+            if (reaching.test(readFileSync(path, 'utf8'))) offenders.push(path.slice(root.length + 1));
+          }
+        };
+        walk(root);
+
+        assert.deepEqual(
+          offenders,
+          [],
+          `${name} now reaches the network, the filesystem or a subprocess in: ${offenders.join(', ')}`,
+        );
+      });
+
+      it(`${name}: the code ${pkg} loads is code somebody could read`, () => {
+        /**
+         * Socket flagged this dependency as **90% likely obfuscated** on the
+         * pull request that added it, and the reading was fair: the package's
+         * main entry inlines every byte-pair table into one 5.6 MB file whose
+         * longest line is 2.3 million characters. That is a vocabulary rather
+         * than hidden code, but nothing about the file says so, and "trust me,
+         * it is only data" is not an argument this repository makes anywhere
+         * else.
+         *
+         * So the shape was changed rather than the alert dismissed. The package
+         * is imported through `js-tiktoken/lite`, which loads the logic and the
+         * tables from different files, and this asserts the property Socket was
+         * reaching for: **the executable code is not minified into one line.**
+         * The rank modules are excluded by name, because they are data and the
+         * whole point of the lite entry is that they are now separable.
+         *
+         * A future version that folds the tables back into the code fails here,
+         * which is the right place to find out.
+         */
+        const root = join(repoRoot, 'node_modules', name);
+        assert.ok(existsSync(root), `${name} is not installed, so this check cannot run`);
+
+        /** Anything longer than this is minified or generated, not written. */
+        const READABLE_LINE = 400;
+
+        const wide = [];
+        const walk = (dir) => {
+          for (const entry of readdirSync(dir, { withFileTypes: true })) {
+            if (entry.name === 'ranks' || entry.name === 'node_modules') continue;
+            const path = join(dir, entry.name);
+            if (entry.isDirectory()) {
+              walk(path);
+              continue;
+            }
+            if (!/\.(js|cjs|mjs)$/.test(entry.name)) continue;
+            const longest = readFileSync(path, 'utf8')
+              .split('\n')
+              .reduce((most, line) => Math.max(most, line.length), 0);
+            if (longest > READABLE_LINE) wide.push(`${path.slice(root.length + 1)} (${longest})`);
+          }
+        };
+        walk(root);
+
+        assert.ok(wide.length > 0, 'nothing in this package is wide — has the layout changed?');
+
+        /*
+         * The entries that are wide are the ones that inline the tables, and
+         * this repository does not import them. What must hold is that the
+         * modules it *does* load are readable.
+         */
+        const loadedWide = wide.filter((entry) => /^dist\/(lite|chunk-)/.test(entry));
+        assert.deepEqual(
+          loadedWide,
+          [],
+          `${name} now ships the code this repository loads minified into one line: ${loadedWide.join(', ')}`,
+        );
+      });
+    }
   }
 });
 

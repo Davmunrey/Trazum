@@ -153,6 +153,7 @@ import {
   withExactTokenCounts,
 } from '@trazum/core';
 import { cacheDir, cacheStats, cachingProvider, clearCache } from './suggest-cache.js';
+import { OPTIONAL_COUNTERS } from './optional-counters.js';
 import { dayOf, formatGap, median, spanDays } from './time.js';
 import type {
   BucketedReport,
@@ -5508,6 +5509,80 @@ async function readInput(
   return limit === null ? text : capInput(text, source, limit, t);
 }
 
+/**
+ * The part of an optional counter package this CLI actually uses.
+ *
+ * Declared here rather than imported as `typeof import('@trazum/tokenizer-openai')`,
+ * and the reason is a build that failed in CI and was right to.
+ *
+ * A static type reference to an optional package is a **compile-time**
+ * dependency on it: `tsc` resolves the module while type-checking, so the CLI
+ * could not be built at all unless the optional package had been built first.
+ * That is the opposite of optional, and it made a package somebody chooses to
+ * install into one this repository could not compile without.
+ *
+ * So the contract is written out. It costs a few lines and it is the honest
+ * shape: this is what the CLI relies on, and `optional-counter-contract.test.js`
+ * asserts the real package still provides it, so the two cannot drift apart
+ * without a red test rather than a wrong number.
+ */
+export interface OptionalCounterModule {
+  openaiCounter(model: string): Promise<
+    | { ok: true; count: (text: string) => number; encoding: string; model: string }
+    | { ok: false; refusal: { reason: string; model: string; known: readonly string[] } }
+  >;
+}
+
+interface LocalCounter {
+  count: (text: string) => number;
+  /** A stable id for the counter, for `TokenProvenance`. */
+  counter: string;
+  /** What a person needs to know: which rank table produced the number. */
+  detail: string;
+}
+
+/**
+ * A counter for this model from an optional package, or `null`.
+ *
+ * `null` covers three different situations on purpose -- the package is not
+ * installed, it is installed and does not know this model, or the model belongs
+ * to a family no optional package exists for. The caller does not branch on
+ * which: it falls through to the remote path, which produces the right sentence
+ * for each. What matters here is that **a missing package is not an error**.
+ * `@trazum/core` depends on nothing and so does this CLI; a dynamic import that
+ * throws `ERR_MODULE_NOT_FOUND` is the normal, expected state of a machine that
+ * did not opt in, and turning it into a crash would make an optional dependency
+ * a required one by accident.
+ */
+async function localCounterFor(model: string): Promise<LocalCounter | null> {
+  let loaded: OptionalCounterModule;
+  try {
+    /*
+     * The specifier is built rather than written literally, so `tsc` cannot
+     * resolve it at compile time and try to type-check a package that may not
+     * be installed. The cast is to the contract declared above, which is
+     * checked against the real package by a test rather than assumed here.
+     */
+    const specifier = ['@trazum', 'tokenizer-openai'].join('/');
+    loaded = (await import(specifier)) as OptionalCounterModule;
+  } catch {
+    /*
+     * Not installed. Deliberately swallowed and not logged: it is the default
+     * state, and a CLI that warned about it on every run would be nagging
+     * people to install twenty-two megabytes they have already decided against.
+     */
+    return null;
+  }
+
+  const result = await loaded.openaiCounter(model);
+  if (!result.ok) return null;
+  return {
+    count: result.count,
+    counter: 'openai-tiktoken',
+    detail: result.encoding,
+  };
+}
+
 async function commandOptimize(
   args: Args,
   config: TrazumConfig,
@@ -5810,6 +5885,28 @@ async function commandOptimize(
 
   if (boolFlag(args, 'exact-tokens')) {
     /**
+     * The local counter is tried first, and the order is deliberate.
+     *
+     * It costs nothing, sends nothing and needs no credential, so a family it
+     * can count should never be sent looking for a key -- and never sent over
+     * the network at all. A prompt counted here is read in this process and
+     * goes nowhere, which is the distinction `TokenProvenance.where` carries.
+     */
+    const local = await localCounterFor(result.usage.model);
+    if (local !== null) {
+      result = await withExactTokenCounts(
+        result,
+        async (text) => local.count(text),
+        pricing,
+        {
+          counter: local.counter,
+          model: result.usage.model,
+          detail: local.detail,
+          where: 'local',
+        },
+      );
+    } else {
+    /**
      * The family check comes **before** the key check, and the order is the
      * point.
      *
@@ -5825,8 +5922,16 @@ async function commandOptimize(
      */
     const priced = pricing.byId.get(result.usage.model);
     if (!bandGoverns(priced?.provider)) {
+      /*
+       * A family with an optional counter gets a different sentence from one
+       * with none. "Go and find somebody else's tooling" is the wrong refusal
+       * when the answer ships under this scope and is one install away.
+       */
+      const offered = OPTIONAL_COUNTERS[priced?.provider ?? ''];
       throw new Error(
-        t.errors.exactTokensWrongFamily(result.usage.model, priced?.provider ?? null),
+        offered === undefined
+          ? t.errors.exactTokensWrongFamily(result.usage.model, priced?.provider ?? null)
+          : t.errors.exactTokensNeedsPackage(result.usage.model, offered),
       );
     }
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -5837,7 +5942,14 @@ async function commandOptimize(
       result,
       countTokensAnthropic({ apiKey, model: result.usage.model }),
       pricing,
+      {
+        counter: 'anthropic-count-tokens',
+        model: result.usage.model,
+        detail: 'api.anthropic.com/v1/messages/count_tokens',
+        where: 'remote',
+      },
     );
+    }
   }
 
   const outPath = stringFlag(args, 'out');

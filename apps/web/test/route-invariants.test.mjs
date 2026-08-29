@@ -171,6 +171,79 @@ describe('the headers a page cannot set itself', () => {
 
   const ruleFor = (all, key) => all.find((rule) => rule.headers.some((h) => h.key === key));
 
+  it('every page tells a browser never to speak plain HTTP to this host', async () => {
+    /**
+     * The last gap in a twenty-point hardening list, and the one that only
+     * matters on the visit *before* the attack: without HSTS a returning
+     * visitor's first request can be plain HTTP, and a network in between can
+     * answer it. The redirect to HTTPS arrives too late — the request is
+     * already on the wire.
+     *
+     * Asserted through the config Next reads, with the same caveat as the rest
+     * of this block: declared is one step short of observed.
+     */
+    const { SECURITY_HEADERS } = await import(new URL('../next.config.mjs', import.meta.url).href);
+    const { HSTS, HSTS_MAX_AGE_SECONDS } = SECURITY_HEADERS;
+
+    assert.equal(HSTS.key, 'strict-transport-security');
+    assert.ok(
+      HSTS.value.includes(`max-age=${HSTS_MAX_AGE_SECONDS}`),
+      'the header and the constant beside it disagree',
+    );
+    assert.ok(
+      HSTS_MAX_AGE_SECONDS >= 31_536_000,
+      `a max-age of ${HSTS_MAX_AGE_SECONDS}s leaves a window between visits that TLS can be stripped in`,
+    );
+    assert.ok(HSTS.value.includes('includeSubDomains'), 'a subdomain is a way back in');
+
+    /**
+     * `preload` is consent to be compiled into browsers, and removal takes
+     * months and reaches users only as they update. It belongs to whoever owns
+     * the domain, decided once and knowingly, and it also requires a submission
+     * nobody has made — so the flag would be a claim as well as a decision.
+     */
+    assert.equal(
+      HSTS.value.includes('preload'),
+      false,
+      'preload was added in a config file; that is the domain owner\'s decision and needs a submission',
+    );
+  });
+
+  it('does not pin a development hostname for a year', async () => {
+    /**
+     * `next dev` serves plain HTTP. A browser that accepts this header for a
+     * development hostname pins it, which breaks every other project served
+     * over HTTP on that name for a year on that machine. Chrome special-cases
+     * `localhost`; a LAN address or a `.local` name is not special-cased, and
+     * that is how this one gets found.
+     */
+    const all = await rules();
+    const base = all.find((rule) => rule.source === '/:path*');
+    assert.ok(base, 'nothing declares the baseline headers');
+
+    const sent = base.headers.some((h) => h.key === 'strict-transport-security');
+    assert.equal(
+      sent,
+      process.env.NODE_ENV === 'production',
+      `HSTS is ${sent ? 'sent' : 'withheld'} under NODE_ENV=${process.env.NODE_ENV}`,
+    );
+  });
+
+  it('does not announce the framework on every response', async () => {
+    /**
+     * `x-powered-by: Next.js` is on by default and was observed on a real
+     * deployment while checking that HSTS had actually arrived -- which is the
+     * gap this whole block admits to: reading the config tells you what was
+     * declared, not what is sent, and something undeclared can be sent too.
+     *
+     * Not a vulnerability, and removing it is not a defence: fingerprinting a
+     * Next app takes one look at the markup. It is free reconnaissance with no
+     * reason to stay.
+     */
+    const config = (await import(new URL('../next.config.mjs', import.meta.url).href)).default;
+    assert.equal(config.poweredByHeader, false, 'Next is announcing itself on every response');
+  });
+
   it('every page refuses to be framed', async () => {
     /**
      * The finding this fixes, and it was reachable rather than theoretical:

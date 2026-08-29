@@ -11,6 +11,249 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+## 1.85.0 — 2026-08-29
+
+### Added
+
+- **`@trazum/tokenizer-openai`**, the optional exact counter the 1.83–2.0 plan's
+  third chapter asked for. OpenAI's own byte-pair ranks, wrapped so that
+  `optimize`, `check` and the report can count a GPT prompt exactly instead of
+  estimating it. `@trazum/core` imports nothing from it; the counter arrives
+  through the `TokenCounter` seam that has been there since the beginning, so a
+  reader who does not install it sees no change of any kind.
+
+  It reproduces the committed 47-sample OpenAI fixture **47 out of 47, to the
+  token**, which is what turns the figure below into a measurement rather than
+  an assertion: a paid API call and an offline rank table agreeing exactly on
+  every sample.
+
+  It refuses a model it has no encoding for — `gpt-5-codex`, and anything
+  shipped since the rank tables were written — rather than reaching for the
+  newest table. A guessed count labelled *exact* is worse than no count, and
+  *exact* is the strongest word this tool uses about a number. It also refuses
+  to say whose a model is: a Claude id comes back `unknown-encoding` and not
+  *wrong family*, because the catalogue already owns that question and a rank
+  table would be a second source of truth about it.
+
+### Fixed
+
+- **A test that read the locale of the machine running it.** `own-gate.test.js`
+  spawned the gate with no environment and asserted on `over the limit`, so it
+  passed on a runner with `LANG` unset and failed on a Spanish laptop, where the
+  gate correctly answers `un crecimiento de 151 tokens supera el límite de 25`.
+
+  The guard that exists to prevent this — added when seven tests in
+  `i18n.test.js` had the same fault — read one directory and matched only an
+  environment built inline, so a spawn with no environment at all, two packages
+  away, was invisible to it. It now reads every tracked suite and holds every run
+  of something this repository built to passing an environment it controls,
+  following the entry point through the bindings that carry it, because this
+  failure put the path into a shell script first. Two more hand-rolled copies of
+  the shared environment were found by the widened check, in `apps/web` and in
+  `publish.test.js`, and both now use it.
+
+  `env.mjs` reads the detector's variable list out of `src/i18n/index.ts` instead
+  of importing the compiled module, so suites in other workspaces can use it
+  without the CLI having been built; a guard asserts the parse equals what the
+  detector exports. The suite now passes identically under `LANG=es_ES.UTF-8`.
+
+- **Three more tests that read the machine instead of the code.** Found by
+  running the suite on a contributor's Mac: 31 failures in `@trazum/cli`, none of
+  them a defect in the product.
+
+  **`FORCE_COLOR`, exported by that shell, was 29 of them.** `SPAWN_ENV` set
+  `NO_COLOR` and inherited `FORCE_COLOR`, which outranks it in `style.ts` and in
+  Node, so every spawn came back painted: assertions failed on ANSI codes between
+  the words they matched, and `JSON.parse` failed on Node's own warning that the
+  two variables disagreed. The colour variables are now read out of `style.ts`,
+  the way the locale variables are read out of the detector, and **removed**
+  rather than blanked — an empty `FORCE_COLOR` still turns colour on.
+
+  **A `PATH` narrowed to the directory holding `git`.** The pre-commit hook pipes
+  through `awk`, and where `git` comes from Homebrew that directory has neither
+  `awk` nor anything else. The test now subtracts the directories that hold a
+  `trazum` instead of naming the tools the hook needs, which is the version with
+  nothing to keep up to date.
+
+  **An assertion that straddled a line wrap.** `mkdtemp` gives
+  `/var/folders/k5/…/T/…` on a Mac and `/tmp/…` on a runner, and the paths sit in
+  the same paragraph as the sentence being matched, so the renderer wrapped it in
+  one place and not the other. Matched against collapsed whitespace now: the claim
+  is about which words sit together, never about the column they sit in.
+
+  Six plants fire. The whole suite passes identically with the environment clean
+  and with `FORCE_COLOR=1`, `LANG=es_ES.UTF-8` and a Mac-length `TMPDIR`.
+
+- **A measurement this repository had already paid for, reported as missing.**
+  `token-ground-truth.openai.json` has held 47 samples measured against `gpt-5`
+  through OpenAI's own API since 2026-08-28. `MEASURED_FOREIGN_ERROR_PCT` had no
+  entry for `openai`, `measuredForeignError('openai')` answered `null`, and a
+  test *pinned* that null — so every report touching a GPT model told its reader
+  nobody had measured the estimator against their tokenizer.
+
+  The answer was **112.4%**, the worst of the four measured families, on German
+  prose. `o200k_base` packs Latin text far more densely than the estimator's
+  Claude-calibrated divisors expect.
+
+  The guard that existed covers the other direction: a *claim with no fixture
+  behind it*. This was a **fixture with no claim in front of it**, which is the
+  same fault with the sign reversed — one overclaims, the other throws away a
+  measurement and leaves a true-sounding sentence where the number belongs. The
+  new guard fails the build for any family whose fixture exists and whose figure
+  is missing, excluding the one whose fixture governs the published band, since
+  a second copy of that number is the two-sources-of-truth problem the file
+  exists to prevent.
+
+  Four plants: the core given a dependency exception, a second dependency
+  slipped into the excepted package, the `openai` entry deleted again, and the
+  figure edited to a flattering 12.4%.
+
+### Added
+
+- **A guard for commands documented nowhere.** `contributing.test.js` held a
+  script's *comment* to the workspaces it drives, and nothing noticed a script
+  documented in neither `README.md` nor `CONTRIBUTING.md`. `test:action` had
+  been in that state for a while, and `draw:architecture` arrived in the README
+  without reaching the file a contributor actually opens.
+
+  It matters most for the scripts that write files: somebody who adds a package
+  without knowing `draw:architecture` exists gets a failing test about a
+  picture, which is a confusing place to start. Both are documented now, and a
+  third that is not fails the build.
+
+- **An architecture picture on the front page, generated from the code rather
+  than drawn.** `npm run draw:architecture` writes `docs/assets/boundary.svg`
+  from the workspace globs and the network allowlist, and
+  `architecture-image.test.js` fails the build if a published package exists the
+  picture does not show, if the core takes a dependency while the picture says
+  it has none, or if a third module is allowed to reach a network without the
+  picture saying so.
+
+  The reason it is generated is the reason every architecture diagram in every
+  repository eventually lies: the code moves, the picture does not, and because
+  **a picture cannot be grepped** nobody notices for a year — so the most
+  confident-looking artefact on the front page becomes the least true.
+
+  `mingrammer/diagrams` was tried first and ruled out on three counts, written
+  into the generator so the afternoon is not spent twice. Its nodes are
+  fixed-colour images with labels outside the shape, so they cannot carry this
+  product's palette and break under anything longer than a word — the first
+  render came out 1273×2650 with labels overflowing their clusters. It ships no
+  icon for OpenAI, Anthropic, OpenTelemetry, LiteLLM, Helicone or LangSmith,
+  which are the products this tool integrates with, so the one diagram that
+  would play to its strengths cannot be drawn with it either. And it is built to
+  show what connects to what, while the claim worth drawing here is **what does
+  not cross a line** — an absence, which a graph of edges is the wrong shape for.
+
+  Node rather than Python: Graphviz and a Python toolchain would be a new
+  prerequisite for contributing to a repository whose argument is that it has no
+  dependencies.
+
+  Four plants fire: a published package vanishing from the picture, a third
+  module added to the network allowlist, the picture citing a guard that does
+  not exist, and the zero-dependency claim removed while the core still has none.
+
+### Fixed
+
+- **`x-powered-by: Next.js` on every response**, found by observing a deployed
+  preview while checking that HSTS had actually arrived — not by reading the
+  config, which is the gap the header tests already admit to: declared is one
+  step short of sent, and it runs in both directions, since something undeclared
+  can be sent too.
+
+  Not a vulnerability, and removing it is not a defence — fingerprinting a Next
+  app takes one look at the markup. It is free reconnaissance with no reason to
+  stay. `poweredByHeader: false`.
+
+- **No HSTS, so a returning visitor's first request could still be plain HTTP.**
+  The redirect to HTTPS arrives too late: the request is already on the wire and
+  a network in between can answer it. `Strict-Transport-Security` is now on
+  every response with `max-age=31536000` and `includeSubDomains`, the second
+  because without it a subdomain is a way back in — an attacker who can answer
+  for `anything.<host>` over HTTP can set a cookie the parent will send.
+
+  **`preload` is deliberately absent.** It is not a flag with an effect, it is
+  consent to be compiled into browsers, and removal takes months and reaches
+  users only as they update. That belongs to whoever owns the domain, decided
+  once and knowingly, and it needs a submission nobody has made — so adding it
+  here would be a claim as well as a decision.
+
+  Sent in production only. `next dev` serves plain HTTP, and a browser that
+  accepts the header for a development hostname pins it, breaking every other
+  project served over HTTP on that name for a year on that machine. Chrome
+  special-cases `localhost`; a LAN address or a `.local` name is not.
+
+  What could not be checked from where this was written, and is therefore not
+  claimed either way: whether the host it currently deploys to is already
+  covered by somebody else's preload entry. The registry that answers it is
+  unreachable from this environment. The header is right regardless — it costs
+  nothing if the host is already pinned, and it is the whole defence on a custom
+  domain.
+
+  Four plants: `preload` slipped into the value, the max-age dropped to a day,
+  `includeSubDomains` removed, and the header sent in development.
+
+- **An optional package that was required to compile.** The CLI typed its
+  loader as `typeof import('@trazum/tokenizer-openai')`, which `tsc` resolves
+  while type-checking — so `@trazum/cli` could not be built unless the optional
+  package had been built first, and a clean checkout failed with `TS2307`. CI
+  caught it. The CLI now declares the small contract it relies on and assembles
+  the specifier from fragments, with a test asserting the real package still
+  satisfies that contract.
+
+  The first guard listed the forms to forbid and a plant walked past it: a plain
+  `await import('...')` with a literal specifier passes a check for static
+  imports and `typeof import(...)`, and still fails the build. The rule is now
+  the one with no forms to enumerate — the specifier never appears as a literal
+  in the CLI's code — and all three forms fail it.
+
+- **A dependency that reads as obfuscated, fixed by shape rather than by
+  dismissal.** Socket flagged `js-tiktoken` as 90% likely obfuscated. The
+  reading was fair: its main entry inlines every byte-pair table into one 5.6 MB
+  file with a single line 2.3 million characters long. That is a vocabulary and
+  not hidden code, but nothing about the file says so.
+
+  The import moved to `js-tiktoken/lite`, which separates the logic from the
+  tables — the code loaded now has a longest line of 160 characters — and
+  `security.test.js` asserts that property directly, so the answer is a check
+  this repository owns rather than a judgement about somebody's heuristic. It
+  also parses one rank table instead of six, which made the counter
+  asynchronous while the counting function it returns stays synchronous.
+
+- **A derivation that skipped any workspace with a hyphen in its name.**
+  `contributing.test.js` matched `-w @trazum/[a-z]+`, so `@trazum/tokenizer-openai`
+  was invisible to it: a script could have driven a workspace its own documented
+  comment never mentioned, which is precisely the drift that file exists to
+  catch, arriving through its derivation rather than its prose.
+
+### Changed
+
+- **The no-runtime-dependencies rule is spent once, and narrowed rather than
+  softened.** Every package here has had zero dependencies because a dependency
+  is code that runs over the user's prompt text with no review from this
+  project. `@trazum/tokenizer-openai` has one, and the allowance is a single
+  named package with a single named dependency, written in one file that both
+  `security.test.js` and `publish.test.js` read — a whitelist kept in two places
+  is a whitelist with a hole in it. `@trazum/core` is asserted separately never
+  to appear in it.
+
+  `js-tiktoken` is held to the property the rule is really about: MIT, no
+  network, no filesystem, no subprocess, no `eval`, checked from the installed
+  source on every run rather than reviewed once and trusted through the next
+  version bump.
+
+  The exception exists for the CI case the product is built around: the rank
+  tables are twenty-two megabytes, and a gate that pulls that into every build
+  is a gate teams turn off.
+
+- **1.84.0 did not ship.** Three of the four families still need a key for their
+  own counting endpoint, and the plan wrote down in advance that the arc would
+  continue at 1.85.0 rather than publish a number derived from the wrong
+  tokenizer. The gap stays numbered; renumbering it away would rewrite a
+  document whose whole value is having been written before the code. The
+  remaining three are Google, xAI and Moonshot — OpenAI leaves that list not
+  because a key arrived but because its measurement was already here.
+
 ### Fixed
 
 - **The README recommended a two-release-old Action.** Its three copy-pasteable

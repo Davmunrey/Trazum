@@ -394,6 +394,33 @@ export interface OptimizeOptions {
 export type TokenCounter = (text: string) => number;
 
 /** Full result of an optimisation. */
+/** Which counter produced a figure, named rather than left as *external*. */
+export interface TokenProvenance {
+  /**
+   * A stable identifier for the counter, not a sentence.
+   *
+   * `anthropic-count-tokens` for the official endpoint,
+   * `openai-tiktoken` for the local rank tables. A consumer branches on this;
+   * `detail` is what a person reads.
+   */
+  counter: string;
+  /** The model the count was made for, since an encoding is a property of one. */
+  model: string;
+  /**
+   * What a reader needs to know about this particular count -- the encoding, or
+   * the endpoint. Free text, and never the only place a fact lives.
+   */
+  detail: string;
+  /**
+   * Whether the count came from this machine or from a request.
+   *
+   * The one distinction a privacy-conscious reader actually cares about: a
+   * local counter read the prompt in this process, a remote one sent it
+   * somewhere. Both are `external` to the heuristic, and only one leaves.
+   */
+  where: 'local' | 'remote';
+}
+
 export interface OptimizationResult {
   original: string;
   optimized: string;
@@ -410,6 +437,20 @@ export interface OptimizationResult {
   locale: Locale;
   /** How tokens were counted, so the caller knows the margin of error. */
   tokenSource: 'heuristic' | 'external';
+  /**
+   * Which counter produced the figures, when it was not the heuristic.
+   *
+   * `tokenSource` says *not the estimator*, which is the question a margin of
+   * error depends on. It does not say **whose** counter, and once more than one
+   * external counter exists that difference matters: a count from Anthropic's
+   * endpoint and a count from OpenAI's rank tables are both `external` and are
+   * not interchangeable, and a reader repricing one workload against another
+   * model needs to know which they are holding.
+   *
+   * `null` when `tokenSource` is `heuristic`, so the two fields cannot drift
+   * into disagreeing about whether anything external was used at all.
+   */
+  countedBy: TokenProvenance | null;
   /**
    * Where the prices came from.
    *

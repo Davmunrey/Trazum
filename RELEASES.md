@@ -7,8 +7,8 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.83.0**: `@trazum/core`, `@trazum/cli` and
-`@trazum/mcp` — published by the workflow itself, from the merge of the release
+**All four packages are on npm at 1.85.0**: `@trazum/core`, `@trazum/cli`,
+`@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
 the fallback's first live run. 1.25.0 before it went out by hand on 2026-08-19,
@@ -41,6 +41,241 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.85.0 — "The tokenizer, and a measurement this repository already had"
+
+**1.84.0 did not ship, and the plan said in advance that it would not.** It
+needed a key for each of four families' own counting endpoints, three of them
+never arrived, and [the 1.83–2.0 plan](docs/plan-1.83-2.0.md) wrote down that
+the arc would continue at 1.85.0 rather than publish a figure derived from
+Claude's tokenizer and let a reader assume it was measured against theirs. That
+is what happened. The gap is not renumbered away.
+
+The fourth family turned out not to need a key at all, and that is the more
+uncomfortable half of this release.
+
+### The measurement that was already here
+
+`packages/core/test/fixtures/token-ground-truth.openai.json` holds 47 samples
+measured against `gpt-5` through OpenAI's own API with a real key, on
+2026-08-28. `band.ts` went on answering `null` for `openai`, and every report
+that touched a GPT model went on telling its reader **nobody had measured the
+estimator against their tokenizer**.
+
+The answer was **112.4%** — the worst of the four measured families, on German
+prose. `o200k_base` packs Latin text far more densely than the estimator's
+Claude-calibrated divisors expect, so the heuristic runs more than twice over.
+
+The existing guard could not have caught it. It fails a *claim with no fixture
+behind it*, which is the overclaiming direction. This one was the opposite: a
+**fixture with no claim in front of it**, a measurement somebody paid an API
+bill for, thrown away, with a true-sounding sentence left standing where the
+number should have been. That is the same fault wearing the opposite sign, and
+it is now a guard of its own — a family whose fixture exists and whose figure is
+missing fails the build, unless its fixture is the one that governs the
+published band.
+
+### `@trazum/tokenizer-openai`
+
+The optional package the plan's third chapter asked for. Install it and OpenAI
+prompts are counted **exactly**, by OpenAI's own byte-pair ranks. Do not install
+it and nothing changes at all: `@trazum/core` imports nothing from it and the
+counter arrives through the `TokenCounter` seam that has been there since the
+beginning.
+
+Against the 47-sample corpus this package reproduces the API's counts **47 out
+of 47, to the token**. Two independent instruments — a paid API call and an
+offline rank table — agreeing exactly on every sample is what makes the 112.4%
+above a measurement rather than a claim.
+
+**It refuses a model it has no encoding for.** Not a nearby one, not the newest
+one, not a default. `gpt-5-codex` and anything shipped since the rank tables
+were written are refused, because a count produced by guessing which table to
+use would go out labelled *exact*, and exact is the strongest word this tool
+uses about a number.
+
+**It does not claim to know whose a model is.** A Claude model refuses here as
+`unknown-encoding` rather than as *wrong family*: this package holds encodings,
+not a catalogue, and deciding which provider owns an id already has one source
+of truth.
+
+### The dependency rule, spent once and narrowed
+
+Every package in this repository has had zero runtime dependencies, and that is
+a security property rather than a packaging preference: a dependency is code
+that runs over the user's prompt text with no review from this project.
+
+This package has one, and the rule is not being softened. The exception is a
+single named package with a single named dependency, written in one file both
+guards read; `@trazum/core` is asserted separately never to appear in it, so
+adding it there is not a one-line edit. And `js-tiktoken` is held to the
+property the rule is actually about — MIT, no network, no filesystem, no
+subprocess, no `eval` — **read out of the installed source on every run**,
+because "somebody reviewed it once" is not a guarantee that survives a version
+bump.
+
+The reason the exception exists at all is the CI case this whole product is
+built around: the rank tables are twenty-two megabytes, and **a gate that pulls
+twenty-two megabytes into every build is a gate teams turn off**.
+
+### An architecture picture that cannot go stale quietly
+
+Every architecture diagram in every repository eventually lies. The code moves,
+the picture does not, and because **a picture cannot be grepped** nobody
+notices for a year — so the most confident-looking artefact on a front page
+becomes the least true one.
+
+So this one is generated from the code by `npm run draw:architecture`, and
+`architecture-image.test.js` reads the result: a published package the picture
+does not show fails the build, so does the core taking a dependency while the
+picture claims none, and so does a third module being added to the network
+allowlist without the picture saying so. That last one is the sharpest, because
+it is the claim a security reviewer reads first.
+
+It was asked for with `mingrammer/diagrams` and that library was tried properly
+before being ruled out — the reasons are in the generator so the afternoon is
+not spent twice. Its nodes are fixed-colour images with the label outside the
+shape, so they carry no palette and break under anything longer than a word: the
+first render came out 1273×2650 with labels overflowing their clusters. It ships
+no icon for OpenAI, Anthropic, OpenTelemetry, LiteLLM, Helicone or LangSmith,
+which are the products this tool integrates with. And it is built to show what
+connects to what, while the claim worth drawing here is **what does not cross a
+line** — an absence, which a graph of edges is the wrong shape for.
+
+### An optional package that was required to compile
+
+CI refused the first version of this release, and it was right to. The CLI
+typed its loader as `typeof import('@trazum/tokenizer-openai')`, which is a
+**compile-time** dependency: `tsc` resolves the module while type-checking, so
+`@trazum/cli` could not be built at all unless the optional package had been
+built first. It passed here only because it had been. On a clean checkout it is
+`TS2307`, twice.
+
+A package somebody chooses to install had quietly become one this repository
+cannot compile without, which is the opposite of what the word optional
+promises. So the CLI writes out the small contract it actually relies on and
+assembles the specifier from fragments, and a test asserts the real package
+still satisfies that contract -- two descriptions of one interface is the shape
+that drifts silently, so the drift is what is checked.
+
+The first guard against it listed the forms to forbid: a static `import`, and
+`typeof import(...)`. A plant walked straight past it -- a plain
+`await import('@trazum/tokenizer-openai')` with a literal specifier passes both
+and still fails the build, because `tsc` resolves a literal dynamic import too.
+The rule is now the one with no forms to enumerate: **the specifier never
+appears as a literal in the CLI's code.** All three forms fail it.
+
+### The dependency was 90% likely obfuscated, and the shape was changed rather than the alert dismissed
+
+Socket flagged `js-tiktoken` on the pull request that added it. The reading was
+fair: the package's main entry inlines every byte-pair table into one 5.6 MB
+file whose longest line is **2.3 million characters**. That is a vocabulary
+rather than hidden code, but nothing about the file says so, and *trust me, it
+is only data* is not an argument this repository makes anywhere else.
+
+The import moved to `js-tiktoken/lite`, which loads the logic and the tables
+from different files. The executable code this repository now loads is
+`chunk-*.js`, whose longest line is 160 characters and which reads as ordinary
+source; the ranks arrive as data, one module per encoding. `security.test.js`
+asserts the property the scanner was reaching for -- the code this repository
+loads is not minified into a single line -- so the answer stops being a
+judgement about somebody's heuristic and becomes a check this repository owns.
+
+It is also less work: **one rank table is parsed instead of six**, and only the
+one the model actually uses. That made the counter asynchronous, which is the
+honest shape for something that loads a two-hundred-thousand-entry table on
+demand; the counting function it hands back stays synchronous, which is what a
+caller counting a directory needs.
+
+### A test that read the machine, and the guard that had two holes
+
+The gate's own test spawned `trazum check` with no environment and asserted on
+`over the limit`. On a CI runner, where `LANG` is unset, that passes. On a
+contributor's Mac set to Spanish it reads `un crecimiento de 151 tokens supera
+el límite de 25` and fails — the tool answering correctly, in the reader's
+language, and the test insisting on English.
+
+This is the second time. `env.mjs` exists because seven tests in `i18n.test.js`
+did the same thing for months, and it came with a guard meant to stop the next
+one. The guard had two holes and the failure went through both. It read a single
+directory, so nothing outside `packages/cli/test` was ever examined, and it
+matched only an environment **built inline** — passing none at all, which is the
+machine itself rather than a copy of it, was invisible to it. Two directories
+away, `apps/web` had grown a sixth hand-rolled copy of the object the guard
+exists to make unnecessary, and a seventh was found while closing this.
+
+Both holes are shut. The check now reads every tracked suite in the repository,
+and holds every spawn of something this repository built — the CLI, the MCP
+server, the preflight — to passing an environment it controls. Only those: a
+`git ls-files` for a list of filenames is a spawn too, and demanding ceremony
+from it would make the guard noise instead of a rule. A path put into a shell
+script and the script then spawned is still a run of that entry point, which is
+exactly the shape that got past the old check, so the derivation follows the
+value through the bindings that carry it.
+
+`env.mjs` now reads the detector's variable list out of its source rather than
+importing the compiled module. The import was the stronger link and cost too
+much: suites in three other workspaces need this object, and an import would
+have made each of them fail to load until the CLI happened to be built. A guard
+asserts the parse equals what the detector exports, so a rename fails a test
+instead of quietly neutralising nothing.
+
+Four plants fire: the environment removed from the gate's spawn, an inline copy
+built again, the detector's list renamed out from under the parse, and a fifth
+variable added to the detector — which the derived list picks up on its own,
+which is the point.
+
+The whole suite now passes identically with `LANG` unset and with
+`LANG=es_ES.UTF-8`.
+
+### And then the same fault twice more, in variables nobody had thought about
+
+Running the fixed suite on the contributor's Mac produced **31 failures in
+`@trazum/cli`, and not one of them was a defect in the product.**
+
+**Twenty-nine were one exported variable.** That shell exports `FORCE_COLOR`.
+The shared environment set `NO_COLOR` and inherited `FORCE_COLOR`, which
+outranks it both in `style.ts` and in Node itself, so every spawned run came back
+painted: assertions failed on ANSI codes sitting between the words they matched,
+and `JSON.parse` failed on Node's own warning that the two variables disagreed,
+printed into the document being parsed. The fix is the same shape as the locale
+one and the opposite rule: the colour variables are read out of `style.ts`, and
+**removed** rather than blanked, because an empty `FORCE_COLOR` still turns
+colour on and still triggers the warning. Two variables, two rules, because two
+programs read them differently — and the list is derived from the module that
+reads it, so a third cannot be added on one side only.
+
+**One was a `PATH` narrowed to the directory holding `git`.** The pre-commit hook
+pipes through `awk`. Where `git` comes from Homebrew, that directory holds
+neither `awk` nor much else, so the hook died on line 94 rather than reaching the
+branch under test. Subtracting is the version with nothing to enumerate: the test
+now removes the directories that hold a `trazum` and keeps everything else, which
+stays true the next time the hook pipes through something new.
+
+**One was an assertion that straddled a line wrap.** `mkdtemp` gives
+`/var/folders/k5/…/T/…` on a Mac and `/tmp/…` on a runner. Those paths sit in the
+same paragraph as the sentence being asserted, so the renderer wrapped it in one
+place and not the other. The claim is about which words sit together, never about
+the column they sit in, so it is matched against collapsed whitespace now.
+
+Six plants fire, and one of them had to be built twice. The first version of the
+Homebrew plant did not reproduce the failure, and a plant that does not fire is
+investigated rather than accepted: the missing ingredient was a globally
+installed `trazum` sitting beside `git`, without which the hook exits before it
+ever reaches `awk`. That is what that machine has, and with it the plant fails
+exactly as the contributor's run did.
+
+The suite now passes identically clean and under `FORCE_COLOR=1`,
+`LANG=es_ES.UTF-8` and a Mac-length `TMPDIR`.
+
+### Also
+
+A derivation in `contributing.test.js` matched `-w @trazum/[a-z]+`, which
+silently skipped a workspace with a hyphen in its name. It would have let a
+script run a workspace its own documented comment did not mention — this file's
+failure mode, arriving through its derivation instead of its prose.
 
 ---
 

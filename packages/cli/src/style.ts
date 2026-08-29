@@ -13,6 +13,18 @@
  * bytes their script was written against.
  */
 
+/**
+ * The variables the decision below reads.
+ *
+ * Exported for the same reason `LOCALE_ENV_VARS` is: the test suite has to
+ * neutralise the machine before asserting on output, and a list of what to
+ * neutralise kept in the test file drifts from the list that is read here. It
+ * drifted once already, in the other direction: `env.mjs` set `NO_COLOR` and
+ * left `FORCE_COLOR` alone, so a contributor whose shell exports `FORCE_COLOR`
+ * ran the whole CLI suite against painted output and twenty-nine tests failed.
+ */
+export const COLOUR_ENV_VARS = ['FORCE_COLOR', 'NO_COLOR'] as const;
+
 const forced = process.env.FORCE_COLOR === '1';
 export const useColor = forced || (process.stdout.isTTY === true && process.env.NO_COLOR === undefined);
 

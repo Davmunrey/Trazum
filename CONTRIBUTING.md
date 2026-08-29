@@ -85,11 +85,26 @@ nor `tsc` will tell you.
 The pieces individually, if you want a faster loop:
 
 ```bash
-npm run build      # core, the CLI and the MCP server
-npm test           # core, the CLI, MCP, the web app and the Action
-npm run typecheck  # all four workspaces
+npm run build      # core, the CLI, the MCP server and the OpenAI tokenizer
+npm test           # core, the CLI, MCP, the tokenizer, the web app and the Action
+npm run typecheck  # all five workspaces
 npm run build:web  # the Next.js app
+npm run test:action  # the packaged Action on its own, without the rest
 ```
+
+Two that write files rather than check them:
+
+```bash
+npm run draw:architecture  # redraws docs/assets/boundary.svg from the code
+npm run measure:tokens     # re-measures the estimator against a real counter
+```
+
+**Run `draw:architecture` after adding or removing a published package.** The
+picture on the front page is generated from the workspace globs and from the
+allowlist of modules permitted to reach a network, and
+`architecture-image.test.js` fails the build while it disagrees with them —
+which is the point, but it is a confusing failure if you do not know the
+command exists.
 
 ## Adding a rule
 
@@ -152,6 +167,30 @@ that will get deleted.
 
 The one exception is asserting that a locale produces *different* text from
 another, which is testing the mechanism rather than the wording.
+
+**A spawn of anything this repository built takes `SPAWN_ENV`.** It lives in
+`packages/cli/test/env.mjs` and is imported, never copied — it blanks every
+variable the locale detector reads, so the run answers in the project's language
+rather than the language of whoever started it. Without it a test asserting on
+English output passes on a runner with `LANG` unset and fails on a laptop that
+has a locale set, which has now happened twice. `i18n.test.js` holds the rule
+across every tracked suite in the repository, and it will name your file.
+
+Blanked, not pinned: setting `TRAZUM_LOCALE: 'en'` outranks `trazum.config.json`,
+so a test that gets its language from the config would silently assert against
+the wrong catalogue. A test that wants a language asks for it, by flag or config.
+
+Colour works the other way round. `FORCE_COLOR` is **removed** from the
+environment rather than blanked, because an empty value still turns Node's own
+colour on and still makes it print a warning about `NO_COLOR` into the output
+these tests parse. Both lists are read out of the modules that consume them, so
+a variable added to `i18n/index.ts` or `style.ts` is neutralised in the same
+commit or in neither.
+
+Two more things a test must not read: the length of `os.tmpdir()`, which decides
+where wrapped prose breaks across lines — collapse the whitespace before matching
+a sentence — and the layout of `PATH`, which differs between a Homebrew machine
+and a CI runner.
 
 ## Security invariants
 

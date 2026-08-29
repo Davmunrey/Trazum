@@ -35,13 +35,18 @@ const NAMES = {
   '@trazum/cli': ['CLI', 'cli'],
   '@trazum/mcp': ['MCP', 'mcp'],
   '@trazum/web': ['web'],
+  '@trazum/tokenizer-openai': ['tokenizer', 'tokeniser'],
 };
 
 /** Workspaces a script drives, plus the Action when it runs that suite. */
 const coverageOf = (name) => {
   const body = scripts[name];
   assert.ok(body, `package.json has no "${name}" script any more`);
-  const packages = [...body.matchAll(/-w (@trazum\/[a-z]+)/g)].map((m) => m[1]);
+  // `[a-z-]`, not `[a-z]`. The pattern silently skipped
+  // `@trazum/tokenizer-openai` when it was added, so a script that ran it went
+  // on being described by a comment that did not mention it -- this file's own
+  // failure mode, arriving through its derivation rather than its prose.
+  const packages = [...body.matchAll(/-w (@trazum\/[a-z-]+)/g)].map((m) => m[1]);
   const nested = [...body.matchAll(/npm run ([a-z:]+)\b(?! -w)/g)]
     .map((m) => m[1])
     .filter((s) => s !== name && scripts[s]);
@@ -65,8 +70,8 @@ describe('CONTRIBUTING describes the commands it prints', () => {
 
       const missing = [...coverageOf(script)].filter((w) => {
         if (w === 'action') return !/Action/i.test(comment);
-        // "all four workspaces" is a true statement about every workspace.
-        if (/all four workspaces/.test(comment)) return false;
+        // "all five workspaces" is a true statement about every workspace.
+        if (/all five workspaces/.test(comment)) return false;
         return !NAMES[w].some((n) => comment.includes(n));
       });
       assert.deepEqual(
@@ -76,6 +81,32 @@ describe('CONTRIBUTING describes the commands it prints', () => {
       );
     });
   }
+
+  it('every command a contributor can run is written down somewhere', () => {
+    /**
+     * The drift this file already guards against, one level up: the checks
+     * above hold a script's *comment* to the workspaces it drives, and none of
+     * them notice a script that is documented **nowhere at all**.
+     *
+     * `test:action` had been in `package.json` and in neither document, and
+     * `draw:architecture` arrived in the README without reaching the file a
+     * contributor actually opens. Both were found by asking this question
+     * rather than by anybody reading the manifest.
+     *
+     * It matters most for the scripts that write files. A contributor who adds
+     * a package and does not know `draw:architecture` exists gets a failing
+     * build from a test about a picture, which is a confusing place to start.
+     */
+    const readme = readFileSync(join(repoRoot, 'README.md'), 'utf8');
+    const undocumented = Object.keys(scripts).filter(
+      (name) => !readme.includes(name) && !contributing.includes(name),
+    );
+    assert.deepEqual(
+      undocumented,
+      [],
+      `these are runnable and documented nowhere: ${undocumented.join(', ')}`,
+    );
+  });
 
   it('the CI step names describe the same commands honestly', () => {
     /**

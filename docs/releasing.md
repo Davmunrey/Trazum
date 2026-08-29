@@ -57,12 +57,12 @@ npm publish -w @trazum/mcp  --access public
   both true at once. Fetch `registry.npmjs.org/@trazum%2fcli/1.8.0` to check the
   publish actually landed; it answers first.
 
-`prepublishOnly` rebuilds and runs the tests before each of the three uploads,
+`prepublishOnly` rebuilds and runs the tests before each of the four uploads,
 so a failure aborts the publish rather than reaching the registry.
 
 **Nothing extra is needed to make the packages public, and there is nothing to
-get wrong here.** A scoped package is *restricted* by default, so all three manifests
-carry `publishConfig.access: "public"` and all three publish steps pass
+get wrong here.** A scoped package is *restricted* by default, so all four manifests
+carry `publishConfig.access: "public"` and all four publish steps pass
 `--access public`. Belt and braces on purpose: the failure they prevent is not
 a loud one. On a free account a missing `--access public` fails the publish,
 which is fine; on a paid account it **succeeds** and uploads a package nobody
@@ -84,7 +84,7 @@ Twenty seconds, and no configuration needed inside it.
 
 **This one is already in place**, and it has been exercised: a
 `workflow_dispatch` run went green through `verify` and `npm pack --dry-run`
-with all three publish steps correctly skipped. If the environment were missing
+with all four publish steps correctly skipped. If the environment were missing
 or gated, the job would have sat in `waiting` before running anything, so a run
 that starts at all is the proof.
 
@@ -113,7 +113,7 @@ repository `Davmunrey/Trazum`, user `Davmunrey`, workflow `release.yml`, an
 environment present. The mismatch, whatever it is, lives on npm's side of the
 form: a configuration that did not save, saved onto the wrong package, or an
 account-level restriction this document does not know about. Until someone
-confirms the three package pages *display* a saved trusted publisher — not that
+confirms the four package pages *display* a saved trusted publisher — not that
 the form accepts one — assume tags will not publish and release by hand (see
 *Releasing by hand*, below).
 
@@ -283,7 +283,7 @@ including what it costs a reader pinning with a tilde, is in
 8. `npm run verify`, and read the exit code rather than the output.
 9. **Merge. That is the release.** The push to main triggers the workflow's
    `decide` job, which sees a manifest version the registry does not have and
-   hands it to the release job: verify again, publish all three packages,
+   hands it to the release job: verify again, publish all four packages,
    create the `v<version>` tag on the merge commit, and publish the GitHub
    release from `RELEASES.md`. Then a third job waits for npm to serve the new
    `@trazum/mcp` and updates the MCP registry listing, which was the last

@@ -36,11 +36,72 @@
  * `script-src` worth having needs a nonce and a nonce cannot come from a static
  * header. `middleware.ts` sets the whole policy now, per request.
  */
+/**
+ * How long a browser is told to refuse plain HTTP for this host.
+ *
+ * One year, which is the value the header is worth having at. Shorter and the
+ * window between visits is a window an attacker can strip TLS in; the whole
+ * point is that a returning visitor never makes an HTTP request at all.
+ *
+ * **It is irreversible for that year on any browser that saw it**, which is why
+ * the number is here with a reason rather than inline. Serving this host over
+ * plain HTTP again means waiting the year out or reaching every visitor.
+ */
+const HSTS_MAX_AGE_SECONDS = 31_536_000;
+
+/**
+ * `includeSubDomains`, and no `preload`.
+ *
+ * **`includeSubDomains` is in**, because without it a subdomain is a way back
+ * in: an attacker who can answer for `anything.<host>` over HTTP can set a
+ * cookie the parent will send. The cost is real and is stated rather than
+ * discovered — it binds *every* subdomain, including ones that do not exist
+ * yet, so a future `status.<host>` or a vendor page that only speaks HTTP is
+ * unreachable until the max-age expires.
+ *
+ * **`preload` is deliberately absent.** It is not a header flag with an effect;
+ * it is consent to be added to a list compiled into browsers, and removal takes
+ * months and reaches users only as they update. That is a decision for whoever
+ * owns the domain, made once, knowingly — not something a config file should
+ * take on their behalf. Adding it here would also be a claim this repository
+ * has not earned: the list requires a submission nobody has made.
+ *
+ * **What this could not check from where it was written.** Whether the host
+ * this currently deploys to is already covered by somebody else's preload
+ * entry, in which case the header changes nothing today. The registry that
+ * answers that is unreachable from the environment this was written in, so it
+ * is not asserted either way. The header is correct regardless: it costs
+ * nothing if the host is already pinned, and it is the whole defence on a
+ * custom domain, which is the case it is really for.
+ */
+const HSTS = {
+  key: 'strict-transport-security',
+  value: `max-age=${HSTS_MAX_AGE_SECONDS}; includeSubDomains`,
+};
+
+/**
+ * HSTS is sent in production only.
+ *
+ * Not caution for its own sake: `next dev` serves plain HTTP, and a browser
+ * that accepts this header for a development hostname pins it — which breaks
+ * every other project served over HTTP on that name, for a year, on that
+ * developer's machine. Chrome special-cases `localhost`, but a LAN address or a
+ * `.local` name is not special-cased, and "it worked on my laptop" is how that
+ * one gets found.
+ *
+ * A browser ignores the header over plain HTTP anyway, so this is belt and
+ * braces on the wire and a real difference to anyone running the app on a name
+ * that resolves.
+ */
 const BASELINE = [
   { key: 'x-frame-options', value: 'DENY' },
   { key: 'x-content-type-options', value: 'nosniff' },
   { key: 'referrer-policy', value: 'no-referrer' },
+  ...(process.env.NODE_ENV === 'production' ? [HSTS] : []),
 ];
+
+/** Exported so the test can assert the value and the gating separately. */
+export const SECURITY_HEADERS = { HSTS, HSTS_MAX_AGE_SECONDS };
 
 /**
  * There is no CSP here any more, and its absence is the design.
@@ -104,6 +165,22 @@ const nextConfig = {
    * and nowhere it fights the platform.
    */
   ...(process.env.VERCEL ? {} : { output: 'standalone' }),
+
+  /**
+   * Next sends `x-powered-by: Next.js` on every response unless told not to.
+   *
+   * Found by **observing** a deployed response rather than by reading this
+   * file, which is the whole point the header tests make about themselves:
+   * declared is one step short of sent, and the gap runs in both directions --
+   * something can be missing that was never declared, too.
+   *
+   * It is not a vulnerability. It is free reconnaissance: it names the
+   * framework and therefore the shape of every advisory worth trying, on every
+   * response, to everybody. Removing it costs nothing and is not a defence
+   * either -- fingerprinting a Next app takes one look at the markup. It goes
+   * because there is no reason for it to stay.
+   */
+  poweredByHeader: false,
 
   async headers() {
     return [

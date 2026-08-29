@@ -45,7 +45,12 @@ describe('the release check knows what this repository publishes', () => {
   it('finds every publishable package, from the workspace globs', () => {
     const packages = publishablePackages();
     const names = packages.map((entry) => entry.name).sort();
-    assert.deepEqual(names, ['@trazum/cli', '@trazum/core', '@trazum/mcp']);
+    assert.deepEqual(names, [
+      '@trazum/cli',
+      '@trazum/core',
+      '@trazum/mcp',
+      '@trazum/tokenizer-openai',
+    ]);
   });
 
   it('carries the version each one is publishing, not the root version by proxy', () => {

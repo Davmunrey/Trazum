@@ -6,12 +6,12 @@
     "url": "https://github.com/Davmunrey/Trazum",
     "source": "github"
   },
-  "version": "1.83.0",
+  "version": "1.85.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@trazum/mcp",
-      "version": "1.83.0",
+      "version": "1.85.0",
       "transport": {
         "type": "stdio"
       }

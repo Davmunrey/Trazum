@@ -18,6 +18,9 @@ Everything in this repository is MIT, and the file is
   computed here.
 - **`@trazum/cli`**, the 46 commands.
 - **`@trazum/mcp`**, the MCP server.
+- **`@trazum/tokenizer-openai`**, the optional exact counter for OpenAI models.
+  The one package here with a runtime dependency, taken on purpose so the core
+  keeps having none.
 - **`action/`**, the GitHub Action.
 - **`apps/web`**, the web app, including everything the hosted page runs.
 - **`plugin/`**, the Claude Code plugin.

@@ -96,7 +96,7 @@ that claims to be protecting it.
 
 ---
 
-## Chapter 2 — 1.84.0, the 4 families nobody has measured
+## Chapter 2 — 1.84.0, the families nobody has measured
 
 1.82.0 measured the estimator against 2 providers' own counters and published
 both figures. It also named the 4 it could not reach — OpenAI, Google, xAI and
@@ -104,6 +104,15 @@ Moonshot — and gave each of them a skipped test in the suite carrying the exac
 command that would run it.
 
 This release runs them.
+
+*One of those four was already measured, and this plan was written without
+noticing.* The 47-sample fixture for `gpt-5` had been committed on 2026-08-28,
+measured through OpenAI's own API with a real key, while `band.ts` went on
+answering `null` and every report told a GPT user nobody had looked. 1.85.0
+found it and published the figure — **112.4%**, the worst of the four. So the
+chapter's own count was wrong from the day it was written: three families need a
+key, not four. Recorded here rather than corrected in place, like the two rows
+of chapter 1's table that did not survive the code.
 
 **It is blocked on keys, and that is stated here rather than discovered later.**
 Each family needs a key for its own token counter. If the keys do not arrive,
@@ -116,9 +125,15 @@ tokenizer and letting a reader assume it was measured against theirs.
 A blocked arc stays named. It is not faked, and it is not deleted to make the
 plan look delivered.
 
+**This is what happened.** The keys for Google, xAI and Moonshot did not arrive.
+1.84.0 did not ship, the arc continued at 1.85.0, and the version number stays
+spent rather than being reused for the release that followed it. The paragraph
+above was written before any of that and needed no editing afterwards, which is
+the only test a plan of this kind can pass.
+
 ---
 
-## Chapter 3 — 1.85.0, the tokenizer somebody can opt into
+## Chapter 3 — 1.85.0, the tokenizer somebody can opt into — **delivered**
 
 The `Under consideration` entry for this set its own threshold: *within 5%
 across families and the dependency is not worth taking; 40% out and it is.*
@@ -140,6 +155,21 @@ dependency promise is load-bearing for the CI use case — a gate that pulls a
 50MB model file into every build is a gate teams turn off — and an optional
 package is the only shape that improves the absolute figures without spending
 that.
+
+**What shipped, and the one number the plan guessed at.** `@trazum/tokenizer-openai`,
+one family rather than a set, because the first one is where the shape gets
+decided and OpenAI is where the estimator is worst. The rank tables are
+**twenty-two megabytes**, not fifty: the sentence above was written from memory
+and the measurement is smaller than the guess, which is worth writing down in a
+document that exists to be checked against the code.
+
+Two things the plan did not think to ask for. The refusal: a model whose
+encoding is not in the tables is refused rather than counted with the newest
+one, because a guessed count would go out under the word *exact*. And the
+narrowing of the dependency rule rather than its relaxation — one named package,
+one named dependency, in a file both guards read, with the excepted dependency
+held to no network, no filesystem and no subprocess, read from the installed
+source on every run.
 
 ---
 

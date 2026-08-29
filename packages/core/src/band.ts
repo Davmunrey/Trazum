@@ -198,6 +198,18 @@ export const MEASURED_FOREIGN_ERROR_PCT: Readonly<Record<string, number>> = {
   deepseek: 94.5,
   /** Worst on `german-technical`, where even Latin prose is more than twice out. */
   mistral: 103.1,
+  /**
+   * Worst on `german-prose`, and the worst of the four.
+   *
+   * The measurement sat in this repository unclaimed for a release: the
+   * fixture was written by a real key against `gpt-5`, and this file went on
+   * answering `null`, so every report told a GPT user nobody had looked. The
+   * figure is not a surprise -- `o200k_base` packs Latin prose far more densely
+   * than the estimator's Claude-calibrated divisors expect -- but a report
+   * saying *unmeasured* where the answer is *more than twice out* is the
+   * flattering direction, and this whole file exists to refuse that.
+   */
+  openai: 112.4,
 };
 
 /**

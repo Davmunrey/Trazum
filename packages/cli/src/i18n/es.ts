@@ -1135,6 +1135,12 @@ ${bold('EJEMPLOS')}
       }. Contarlo ahí sería rechazado arriba o devolvería un número de otro tokenizador, y esta herramienta no va a llamar exacto a eso. Quita --exact-tokens y quédate con la estimación (que es honesta sobre serlo) o cuenta con las herramientas de ${
         provider === null ? 'ese modelo' : provider
       }.`,
+    exactTokensNeedsPackage: (model, packageName) =>
+      `--exact-tokens puede contar ${model} de forma exacta, sin conexión y sin clave, pero ` +
+      `necesita ${packageName}, que no está instalado. Es un paquete aparte porque sus tablas ` +
+      'de rangos ocupan veintidós megabytes y @trazum/core no depende de nada.\n' +
+      `  npm install ${packageName}\n` +
+      'O quita --exact-tokens y quédate con la estimación, que dice cuánto se desvía.',
     checkNeedsMaxTokens: () => 'trazum check necesita --max-tokens <n>.',
     evalNeedsCases: () => 'trazum eval necesita --cases <fichero>.',
     unknownExportFormat: (received, allowed) =>

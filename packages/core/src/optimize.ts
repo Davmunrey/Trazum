@@ -16,6 +16,7 @@ import type {
   RuleResult,
   Segment,
   TokenCounter,
+  TokenProvenance,
   UsageProfile,
 } from './types.js';
 
@@ -210,6 +211,14 @@ export function optimize(prompt: string, options: OptimizeOptions = {}): Optimiz
     usage,
     locale,
     tokenSource: options.tokenCounter ? 'external' : 'heuristic',
+    /*
+     * Null even when a counter was supplied here, and that is not an oversight.
+     * `optimize` takes a bare function: it can see that something other than
+     * the heuristic ran and cannot see whose it was. Naming one would be an
+     * invention, and `withExactTokenCounts` is where a caller that does know
+     * says so.
+     */
+    countedBy: null,
     pricingSource: {
       lastReviewed: pricing.lastReviewed,
       overriddenModels: pricing.overriddenModels,
@@ -230,6 +239,7 @@ export async function withExactTokenCounts(
   result: OptimizationResult,
   counter: AsyncTokenCounter,
   pricing: PricingCatalogue = BUNDLED_CATALOGUE,
+  countedBy: TokenProvenance | null = null,
 ): Promise<OptimizationResult> {
   // A result priced against an overlay cannot be recomputed against the bundled
   // catalogue: the token counts would come from one source and the money from
@@ -267,6 +277,12 @@ export async function withExactTokenCounts(
     savings,
     advisories,
     tokenSource: 'external',
+    /*
+     * Optional and defaulting to null rather than to a guess. A caller that
+     * knows whose counter it passed says so; one that does not gets `external`
+     * with no claim attached, which is exactly as much as this function knows.
+     */
+    countedBy,
     pricingSource: {
       lastReviewed: pricing.lastReviewed,
       overriddenModels: pricing.overriddenModels,

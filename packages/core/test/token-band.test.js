@@ -630,9 +630,50 @@ describe('the estimator against tokenizers it was never tuned for', () => {
     assert.deepEqual(unbacked, [], 'band.ts states an error for a family nobody has measured');
   });
 
+  it('states a measured error for every family that has been measured', () => {
+    /**
+     * The direction the check above does not cover, and the one that actually
+     * happened. That check fails a claim with no fixture behind it. This one
+     * fails a **fixture with no claim in front of it** -- a measurement sitting
+     * in this repository while `measuredForeignError` answers `null` and every
+     * report tells that family's users nobody has run the estimator against
+     * their tokenizer.
+     *
+     * It is the same defect as an invented number wearing the opposite sign.
+     * One overclaims; this one throws away a measurement somebody paid an API
+     * bill for and leaves a true sentence saying the opposite. The fixture for
+     * `openai` sat unclaimed for a release with the estimator measured at
+     * 112.4% against it -- the worst of the four, and the one the product was
+     * quietest about.
+     *
+     * A family whose fixture *governs the published band* is excluded, because
+     * its figure is `ESTIMATE_ERROR_BAND_PCT` and a second copy in
+     * `MEASURED_FOREIGN_ERROR_PCT` would be the two-sources-of-truth problem
+     * this file exists to prevent.
+     */
+    const unclaimed = others
+      .map((name) => JSON.parse(readFileSync(join(fixturesDir, name), 'utf8')))
+      .filter((fixture) => !fixture.governsPublishedBand)
+      .filter((fixture) => MEASURED_FOREIGN_ERROR_PCT[fixture.provider] === undefined)
+      .map((fixture) => fixture.provider);
+
+    assert.deepEqual(
+      unclaimed,
+      [],
+      'these families have been measured and band.ts still answers null for them, so every '
+        + `report tells their users nobody has looked: ${unclaimed.join(', ')}`,
+    );
+  });
+
   it('answers null for an unmeasured family rather than the nearest number', () => {
     // The flattering reading of missing information, refused once more.
-    assert.equal(measuredForeignError('openai'), null);
+    // `google`, `xai` and `moonshot` are the families that remain unmeasured:
+    // each needs a key for its own counting endpoint, and until one arrives the
+    // honest answer is that nobody has looked. `openai` was here until its
+    // fixture was noticed; the guard above is what keeps that from recurring.
+    assert.equal(measuredForeignError('google'), null);
+    assert.equal(measuredForeignError('xai'), null);
+    assert.equal(measuredForeignError('moonshot'), null);
     assert.equal(measuredForeignError('anthropic'), null);
     assert.equal(measuredForeignError(null), null);
     assert.equal(measuredForeignError(foreignTokenizer('anthropic')), null);

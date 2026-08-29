@@ -201,9 +201,19 @@ describe('trazum history: the holes in the series', () => {
       env: SPAWN_ENV,
       timeout: 30000,
     });
-    assert.match(rendered.stdout, /covered by no report/);
+    /**
+     * Matched against the prose with its whitespace collapsed, because the
+     * renderer wraps and where it wraps depends on how long the paths in the
+     * same paragraph are. `mkdtemp` gives `/tmp/trazum-history-hole-XXXXXX` on a
+     * runner and `/var/folders/k5/csms26.../T/trazum-history-hole-XXXXXX` on a
+     * Mac, and the sentence below broke across a line there and nowhere else.
+     * The claim is about which words sit together, never about the column they
+     * sit in.
+     */
+    const prose = rendered.stdout.replace(/\s+/g, ' ');
+    assert.match(prose, /covered by no report/);
     // The caveat has to be on the run itself, not a section away.
-    assert.match(rendered.stdout, /of this run are covered by no report/);
+    assert.match(prose, /of this run are covered by no report/);
   });
 
   it('carries the hole on the run, so a climb is not read as consecutive time', async () => {
