@@ -18,3 +18,14 @@ out/
 
 # Lockfile for third-party agent skills; see .gitignore
 skills-lock.json
+
+# The .vsix `npm run package:vscode` writes.
+#
+# The packaging step produces an installable file beside the extension, and the
+# guard against runtime state in this repository checks the *tracked* tree — an
+# untracked artefact is somebody's local mess. That is the right rule and it is
+# also how a binary gets in: `git add -A` before a commit sweeps up whatever the
+# last command left behind, which is exactly how sixty waiver records reached
+# `main` and sat there for two releases. Ignored so the documented command
+# cannot cost somebody that.
+*.vsix

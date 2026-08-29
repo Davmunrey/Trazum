@@ -122,6 +122,23 @@ showing `0` in that window would be telling somebody their prompt is already
 tight when nobody has checked. It says the rules have not run yet, which is a
 third state and a different sentence from the two that look like it.
 
+### The packaging was run, not described
+
+`npm run package:vscode` produces `trazum-vscode-1.86.0.vsix`: **8 files, 8.39
+kB** — the two built modules, the icon, the licence, the README, and the two
+manifests `vsce` writes. No sources, no tests, no source maps. That is
+`.vscodeignore` doing its job, and it is now observed rather than asserted,
+which is the difference this repository spent 1.85.0 learning about its own
+security headers.
+
+The run found one more thing, which is what running things does. It leaves an
+installable file beside the extension, and the guard against runtime state in
+this repository checks the **tracked** tree — correctly, since an untracked file
+is a local mess rather than everybody's. But `git add -A` before a commit takes
+whatever the last command left behind, and that is precisely how sixty waiver
+records reached `main` and sat there through two releases. `*.vsix` is ignored
+now, with a test on it, so the documented command cannot cost somebody that.
+
 ### What is not done here, and whose it is
 
 The marketplace listing. The code is in the repository and the tests run in CI;

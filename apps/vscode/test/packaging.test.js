@@ -135,6 +135,25 @@ describe('the packaging command exists and says what it does', () => {
     }
   });
 
+  it('and what it writes cannot be swept into a commit', () => {
+    /*
+      `git add -A` before a commit takes whatever the last command left behind.
+      That is how sixty waiver records reached `main` and sat there for two
+      releases, which `publish.test.js` documents — and its guard checks the
+      tracked tree, deliberately, because an untracked file is a local mess
+      rather than everybody's problem. This is the other half: the artefact the
+      documented command produces is ignored, so running it cannot make the
+      mess in the first place.
+    */
+    const probe = join(root, `trazum-vscode-${manifest.version}.vsix`);
+    const ignored = execFileSync('git', ['check-ignore', '--no-index', probe], {
+      cwd: repoRoot,
+      encoding: 'utf8',
+      env: SPAWN_ENV,
+    });
+    assert.match(ignored.trim(), /\.vsix$/, 'the packaged extension is not ignored');
+  });
+
   it('and the extension still builds and passes on its own', () => {
     /*
       The workspace was renamed once already, from `@trazum/vscode` to something

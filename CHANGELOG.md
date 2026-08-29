@@ -61,6 +61,21 @@ merged commit with no entry is a change only `git log` remembers.
   of it uses, and the PNG is written by hand — a zlib stream and four chunks —
   rather than by taking an image dependency.
 
+  **`npm run package:vscode` was run rather than described.** It produces
+  `trazum-vscode-1.86.0.vsix`: 8 files, 8.39 kB — the two built modules, the
+  icon, the licence, the README and the two manifests `vsce` writes. No sources,
+  no tests, no source maps, which is `.vscodeignore` doing its job and is now
+  the thing that observation confirmed rather than the thing a config file
+  claims.
+
+  That run also found what it leaves behind. The guard against runtime state in
+  this repository checks the *tracked* tree, deliberately, because an untracked
+  file is a local mess rather than everybody's — but `git add -A` before a
+  commit sweeps up whatever the last command produced, which is exactly how
+  sixty waiver records reached `main` and sat there for two releases. `*.vsix`
+  is ignored, and a test asserts it, so running the documented command cannot
+  cost somebody that.
+
 ### Fixed
 
 - **The release document told the owner to configure three package pages out of
