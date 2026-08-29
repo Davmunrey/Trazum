@@ -1,33 +1,37 @@
 {
-  "name": "@trazum/mcp",
+  "name": "@trazum/tokenizer-openai",
   "version": "1.85.0",
-  "mcpName": "io.github.Davmunrey/trazum",
-  "description": "Trazum as an MCP server: let an agent price and budget its own prompts before it sends them.",
+  "description": "OpenAI's own tokenizer as an optional counter for Trazum: exact counts for the models it knows, and a refusal for every model it does not.",
   "license": "MIT",
-  "author": "David Mu\u00f1oz Rey",
+  "author": "David Muñoz Rey",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Davmunrey/Trazum.git",
-    "directory": "packages/mcp"
+    "directory": "packages/tokenizer-openai"
   },
   "homepage": "https://trazum.vercel.app",
   "bugs": {
     "url": "https://github.com/Davmunrey/Trazum/issues"
   },
   "keywords": [
-    "mcp",
-    "model-context-protocol",
-    "prompt",
-    "llm",
+    "tokenizer",
+    "tiktoken",
+    "openai",
     "tokens",
-    "cost"
+    "cost",
+    "trazum"
   ],
   "publishConfig": {
     "access": "public"
   },
   "type": "module",
-  "bin": {
-    "trazum-mcp": "dist/index.js"
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
   },
   "files": [
     "dist",
@@ -36,13 +40,13 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json && chmod +x dist/index.js",
+    "build": "tsc -p tsconfig.json",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "npm run build && node --test test/*.test.js",
     "prepublishOnly": "npm run build && npm test"
   },
   "dependencies": {
-    "@trazum/core": "1.85.0"
+    "js-tiktoken": "^1.0.21"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",

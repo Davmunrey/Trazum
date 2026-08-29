@@ -1184,6 +1184,68 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 1.85.0 — "The tokenizer, and a measurement this repository already had" — released
+
+**1.84.0 did not ship, and the plan said so before the code was written.** It
+needed a key for each of four families' own counting endpoints. Three never
+arrived, [the plan](docs/plan-1.83-2.0.md) wrote down that the arc would
+continue at 1.85.0 rather than publish a figure derived from Claude's tokenizer,
+and that is what happened. The gap keeps its number: renumbering it away would
+rewrite the one document whose value is having been written first.
+
+**The fourth family never needed a key.** A fixture of 47 samples measured
+against `gpt-5` through OpenAI's own API had been committed here since
+2026-08-28. `MEASURED_FOREIGN_ERROR_PCT` had no entry for it, so
+`measuredForeignError('openai')` answered `null`, a test *pinned* that null, and
+every report touching a GPT model told its reader nobody had measured the
+estimator against their tokenizer. The answer was **112.4%** -- the worst of the
+four measured, on German prose, because `o200k_base` packs Latin text far more
+densely than the estimator's Claude-calibrated divisors expect.
+
+The guard this repository already had covers the opposite direction: a claim
+with no fixture behind it. This was a **fixture with no claim in front of it**,
+and it is the same fault with the sign reversed. One overclaims; the other
+discards a measurement somebody paid an API bill for and leaves a
+true-sounding sentence standing where the number belongs. A family whose fixture
+exists and whose figure is missing now fails the build, excepting the one whose
+fixture *governs* the published band, since a second copy of that number would
+be the two-sources-of-truth problem the file exists to prevent.
+
+**`@trazum/tokenizer-openai`**, the plan's third chapter, delivered. OpenAI's own
+byte-pair ranks as an optional counter. Install it and a GPT prompt is counted
+exactly; do not, and nothing changes, because the core imports nothing from it
+and the counter arrives through the `TokenCounter` seam that has been there
+since the beginning. It reproduces the committed fixture **47 of 47, to the
+token** -- a paid API call and an offline rank table agreeing exactly on every
+sample, which is what makes the 112.4% a measurement rather than an assertion.
+
+It refuses a model it has no encoding for rather than reaching for the newest
+table, because a guessed count labelled *exact* is worse than no count. And it
+refuses to say whose a model is: a Claude id comes back `unknown-encoding` and
+not *wrong family*, because the catalogue owns that question already.
+
+**The no-dependency rule was spent once, and narrowed rather than softened.**
+The rule is a security property -- a dependency is code that runs over prompt
+text with no review from this project -- so the exception is one named package
+with one named dependency, in a single file both guards read, with
+`@trazum/core` asserted separately never to appear in it. `js-tiktoken` is held
+to what the rule is actually about: MIT, no network, no filesystem, no
+subprocess, no `eval`, **read out of the installed source on every run**,
+because reviewing something once is not a guarantee that survives a version
+bump. The exception exists for the case this product is built around: the rank
+tables are twenty-two megabytes, and a gate that pulls that into every build is
+a gate teams turn off.
+
+**Plants that fire.** The core given a dependency exception. A second dependency
+slipped into the excepted package. The `openai` entry deleted again. The figure
+edited to a flattering 12.4%.
+
+**And a derivation that could not see its own new workspace.**
+`contributing.test.js` matched `-w @trazum/[a-z]+`, which skips any name with a
+hyphen -- so a script could have driven a workspace its documented comment never
+mentioned, which is exactly the drift that file exists to catch, arriving
+through its derivation instead of its prose.
+
 ## 1.83.0 — "A receipt, and the surfaces that could not disagree" — released
 
 **The release where the product started producing evidence somebody else can
@@ -2605,10 +2667,13 @@ the plan points at the line of code for it — but it is **blocked**, which is w
    5% and a real tokenizer dependency is not worth taking; 40% out and it is"* —
    which makes the dependency question live rather than theoretical.
 
-   OpenAI, Google, xAI and Moonshot are still unmeasured, each needs a key for
-   its own counter, and each has its own named skip in the suite carrying the
-   command to run. Inventing a band for them instead is the
-   estimating-and-measuring merge 1.36–1.40 spent five releases removing.
+   OpenAI, Google, xAI and Moonshot were named unmeasured here. **1.85.0 found
+   that OpenAI had been measured all along** -- 112.4%, from a fixture in this
+   repository -- and that `band.ts` was reporting it as unmeasured anyway. Three
+   remain: Google, xAI and Moonshot, each needing a key for its own counter,
+   each with its own named skip in the suite carrying the command to run.
+   Inventing a band for them instead is the estimating-and-measuring merge
+   1.36–1.40 spent five releases removing.
 
 **1.56.0 asked a question and answered it.** Whether alerting can be given
 without becoming a hosted service holding other teams' metrics: yes for the
@@ -2749,9 +2814,16 @@ Not scheduled. Listed so the reasoning is on the record.
   shape as the editor extension above. What has changed is that it can no
   longer be deferred *for want of evidence*: the report now names the family
   and prints the measured error where one exists, and says nobody has measured
-  it where one does not. OpenAI, Google, xAI and Moonshot are the four still
+  it where one does not. Google, xAI and Moonshot are the three still
   unmeasured, each needs a key for its own counter, and each has its own named
-  skip in the suite carrying the command to run.
+  skip in the suite carrying the command to run. OpenAI left that list in
+  1.85.0, not because a key arrived but because its measurement was already
+  committed here while this file and `band.ts` both said otherwise.
+
+  **The dependency question is settled, and the answer was a separate package.**
+  `@trazum/tokenizer-openai` ships in 1.85.0: the core still declares nothing,
+  and somebody who wants exact OpenAI counts installs twenty-two megabytes on
+  purpose.
 - ~~**Prompt library.**~~ **Shipped in 1.7.0, and the reasoning here was
   wrong in an instructive way.** This entry said storing prompts "would mean
   sending them to a server. Trazum's privacy story is that it never does" — and

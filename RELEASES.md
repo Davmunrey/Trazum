@@ -7,8 +7,8 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All three packages are on npm at 1.83.0**: `@trazum/core`, `@trazum/cli` and
-`@trazum/mcp` — published by the workflow itself, from the merge of the release
+**All four packages are on npm at 1.85.0**: `@trazum/core`, `@trazum/cli`,
+`@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself, from the merge of the release
 PR, authenticated by the token fallback and carrying an OIDC-signed provenance
 attestation. That has been the route for every release since 1.28.0, which was
 the fallback's first live run. 1.25.0 before it went out by hand on 2026-08-19,
@@ -41,6 +41,91 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 1.85.0 — "The tokenizer, and a measurement this repository already had"
+
+**1.84.0 did not ship, and the plan said in advance that it would not.** It
+needed a key for each of four families' own counting endpoints, three of them
+never arrived, and [the 1.83–2.0 plan](docs/plan-1.83-2.0.md) wrote down that
+the arc would continue at 1.85.0 rather than publish a figure derived from
+Claude's tokenizer and let a reader assume it was measured against theirs. That
+is what happened. The gap is not renumbered away.
+
+The fourth family turned out not to need a key at all, and that is the more
+uncomfortable half of this release.
+
+### The measurement that was already here
+
+`packages/core/test/fixtures/token-ground-truth.openai.json` holds 47 samples
+measured against `gpt-5` through OpenAI's own API with a real key, on
+2026-08-28. `band.ts` went on answering `null` for `openai`, and every report
+that touched a GPT model went on telling its reader **nobody had measured the
+estimator against their tokenizer**.
+
+The answer was **112.4%** — the worst of the four measured families, on German
+prose. `o200k_base` packs Latin text far more densely than the estimator's
+Claude-calibrated divisors expect, so the heuristic runs more than twice over.
+
+The existing guard could not have caught it. It fails a *claim with no fixture
+behind it*, which is the overclaiming direction. This one was the opposite: a
+**fixture with no claim in front of it**, a measurement somebody paid an API
+bill for, thrown away, with a true-sounding sentence left standing where the
+number should have been. That is the same fault wearing the opposite sign, and
+it is now a guard of its own — a family whose fixture exists and whose figure is
+missing fails the build, unless its fixture is the one that governs the
+published band.
+
+### `@trazum/tokenizer-openai`
+
+The optional package the plan's third chapter asked for. Install it and OpenAI
+prompts are counted **exactly**, by OpenAI's own byte-pair ranks. Do not install
+it and nothing changes at all: `@trazum/core` imports nothing from it and the
+counter arrives through the `TokenCounter` seam that has been there since the
+beginning.
+
+Against the 47-sample corpus this package reproduces the API's counts **47 out
+of 47, to the token**. Two independent instruments — a paid API call and an
+offline rank table — agreeing exactly on every sample is what makes the 112.4%
+above a measurement rather than a claim.
+
+**It refuses a model it has no encoding for.** Not a nearby one, not the newest
+one, not a default. `gpt-5-codex` and anything shipped since the rank tables
+were written are refused, because a count produced by guessing which table to
+use would go out labelled *exact*, and exact is the strongest word this tool
+uses about a number.
+
+**It does not claim to know whose a model is.** A Claude model refuses here as
+`unknown-encoding` rather than as *wrong family*: this package holds encodings,
+not a catalogue, and deciding which provider owns an id already has one source
+of truth.
+
+### The dependency rule, spent once and narrowed
+
+Every package in this repository has had zero runtime dependencies, and that is
+a security property rather than a packaging preference: a dependency is code
+that runs over the user's prompt text with no review from this project.
+
+This package has one, and the rule is not being softened. The exception is a
+single named package with a single named dependency, written in one file both
+guards read; `@trazum/core` is asserted separately never to appear in it, so
+adding it there is not a one-line edit. And `js-tiktoken` is held to the
+property the rule is actually about — MIT, no network, no filesystem, no
+subprocess, no `eval` — **read out of the installed source on every run**,
+because "somebody reviewed it once" is not a guarantee that survives a version
+bump.
+
+The reason the exception exists at all is the CI case this whole product is
+built around: the rank tables are twenty-two megabytes, and **a gate that pulls
+twenty-two megabytes into every build is a gate teams turn off**.
+
+### Also
+
+A derivation in `contributing.test.js` matched `-w @trazum/[a-z]+`, which
+silently skipped a workspace with a hyphen in its name. It would have let a
+script run a workspace its own documented comment did not mention — this file's
+failure mode, arriving through its derivation instead of its prose.
 
 ---
 

@@ -11,6 +11,90 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+## 1.85.0 — 2026-08-29
+
+### Added
+
+- **`@trazum/tokenizer-openai`**, the optional exact counter the 1.83–2.0 plan's
+  third chapter asked for. OpenAI's own byte-pair ranks, wrapped so that
+  `optimize`, `check` and the report can count a GPT prompt exactly instead of
+  estimating it. `@trazum/core` imports nothing from it; the counter arrives
+  through the `TokenCounter` seam that has been there since the beginning, so a
+  reader who does not install it sees no change of any kind.
+
+  It reproduces the committed 47-sample OpenAI fixture **47 out of 47, to the
+  token**, which is what turns the figure below into a measurement rather than
+  an assertion: a paid API call and an offline rank table agreeing exactly on
+  every sample.
+
+  It refuses a model it has no encoding for — `gpt-5-codex`, and anything
+  shipped since the rank tables were written — rather than reaching for the
+  newest table. A guessed count labelled *exact* is worse than no count, and
+  *exact* is the strongest word this tool uses about a number. It also refuses
+  to say whose a model is: a Claude id comes back `unknown-encoding` and not
+  *wrong family*, because the catalogue already owns that question and a rank
+  table would be a second source of truth about it.
+
+### Fixed
+
+- **A measurement this repository had already paid for, reported as missing.**
+  `token-ground-truth.openai.json` has held 47 samples measured against `gpt-5`
+  through OpenAI's own API since 2026-08-28. `MEASURED_FOREIGN_ERROR_PCT` had no
+  entry for `openai`, `measuredForeignError('openai')` answered `null`, and a
+  test *pinned* that null — so every report touching a GPT model told its reader
+  nobody had measured the estimator against their tokenizer.
+
+  The answer was **112.4%**, the worst of the four measured families, on German
+  prose. `o200k_base` packs Latin text far more densely than the estimator's
+  Claude-calibrated divisors expect.
+
+  The guard that existed covers the other direction: a *claim with no fixture
+  behind it*. This was a **fixture with no claim in front of it**, which is the
+  same fault with the sign reversed — one overclaims, the other throws away a
+  measurement and leaves a true-sounding sentence where the number belongs. The
+  new guard fails the build for any family whose fixture exists and whose figure
+  is missing, excluding the one whose fixture governs the published band, since
+  a second copy of that number is the two-sources-of-truth problem the file
+  exists to prevent.
+
+  Four plants: the core given a dependency exception, a second dependency
+  slipped into the excepted package, the `openai` entry deleted again, and the
+  figure edited to a flattering 12.4%.
+
+- **A derivation that skipped any workspace with a hyphen in its name.**
+  `contributing.test.js` matched `-w @trazum/[a-z]+`, so `@trazum/tokenizer-openai`
+  was invisible to it: a script could have driven a workspace its own documented
+  comment never mentioned, which is precisely the drift that file exists to
+  catch, arriving through its derivation rather than its prose.
+
+### Changed
+
+- **The no-runtime-dependencies rule is spent once, and narrowed rather than
+  softened.** Every package here has had zero dependencies because a dependency
+  is code that runs over the user's prompt text with no review from this
+  project. `@trazum/tokenizer-openai` has one, and the allowance is a single
+  named package with a single named dependency, written in one file that both
+  `security.test.js` and `publish.test.js` read — a whitelist kept in two places
+  is a whitelist with a hole in it. `@trazum/core` is asserted separately never
+  to appear in it.
+
+  `js-tiktoken` is held to the property the rule is really about: MIT, no
+  network, no filesystem, no subprocess, no `eval`, checked from the installed
+  source on every run rather than reviewed once and trusted through the next
+  version bump.
+
+  The exception exists for the CI case the product is built around: the rank
+  tables are twenty-two megabytes, and a gate that pulls that into every build
+  is a gate teams turn off.
+
+- **1.84.0 did not ship.** Three of the four families still need a key for their
+  own counting endpoint, and the plan wrote down in advance that the arc would
+  continue at 1.85.0 rather than publish a number derived from the wrong
+  tokenizer. The gap stays numbered; renumbering it away would rewrite a
+  document whose whole value is having been written before the code. The
+  remaining three are Google, xAI and Moonshot — OpenAI leaves that list not
+  because a key arrived but because its measurement was already here.
+
 ### Fixed
 
 - **The README recommended a two-release-old Action.** Its three copy-pasteable

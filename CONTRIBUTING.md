@@ -85,9 +85,9 @@ nor `tsc` will tell you.
 The pieces individually, if you want a faster loop:
 
 ```bash
-npm run build      # core, the CLI and the MCP server
-npm test           # core, the CLI, MCP, the web app and the Action
-npm run typecheck  # all four workspaces
+npm run build      # core, the CLI, the MCP server and the OpenAI tokenizer
+npm test           # core, the CLI, MCP, the tokenizer, the web app and the Action
+npm run typecheck  # all five workspaces
 npm run build:web  # the Next.js app
 ```
 

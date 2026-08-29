@@ -66,8 +66,10 @@ export const ESTIMATE_ERROR_BAND_PCT = 33;
  * estimator **against Claude**. Forty-seven samples, one counting endpoint, one
  * family. Trazum prices seven, and the two that have since been run are far
  * outside anything published here: DeepSeek 94.5% at worst, Mistral 103.1%. On
- * a GPT or a Gemini prompt nobody has measured it at all, and
- * `measuredForeignError` answers null rather than the nearest number.
+ * a Gemini prompt nobody has measured it at all, and `measuredForeignError`
+ * answers null rather than the nearest number. On a GPT prompt somebody has:
+ * 112.4%, the worst of the four measured, and the figure this file reported as
+ * unmeasured for a release while its own fixture held the answer.
  *
  * Exported as a name rather than left implicit in a comment because the band
  * had already leaked out of its domain in three places: an advisory that told a

@@ -153,6 +153,7 @@ import {
   withExactTokenCounts,
 } from '@trazum/core';
 import { cacheDir, cacheStats, cachingProvider, clearCache } from './suggest-cache.js';
+import { OPTIONAL_COUNTERS } from './optional-counters.js';
 import { dayOf, formatGap, median, spanDays } from './time.js';
 import type {
   BucketedReport,
@@ -5508,6 +5509,49 @@ async function readInput(
   return limit === null ? text : capInput(text, source, limit, t);
 }
 
+interface LocalCounter {
+  count: (text: string) => number;
+  /** A stable id for the counter, for `TokenProvenance`. */
+  counter: string;
+  /** What a person needs to know: which rank table produced the number. */
+  detail: string;
+}
+
+/**
+ * A counter for this model from an optional package, or `null`.
+ *
+ * `null` covers three different situations on purpose -- the package is not
+ * installed, it is installed and does not know this model, or the model belongs
+ * to a family no optional package exists for. The caller does not branch on
+ * which: it falls through to the remote path, which produces the right sentence
+ * for each. What matters here is that **a missing package is not an error**.
+ * `@trazum/core` depends on nothing and so does this CLI; a dynamic import that
+ * throws `ERR_MODULE_NOT_FOUND` is the normal, expected state of a machine that
+ * did not opt in, and turning it into a crash would make an optional dependency
+ * a required one by accident.
+ */
+async function localCounterFor(model: string): Promise<LocalCounter | null> {
+  let loaded: typeof import('@trazum/tokenizer-openai');
+  try {
+    loaded = await import('@trazum/tokenizer-openai');
+  } catch {
+    /*
+     * Not installed. Deliberately swallowed and not logged: it is the default
+     * state, and a CLI that warned about it on every run would be nagging
+     * people to install twenty-two megabytes they have already decided against.
+     */
+    return null;
+  }
+
+  const result = loaded.openaiCounter(model);
+  if (!result.ok) return null;
+  return {
+    count: result.count,
+    counter: 'openai-tiktoken',
+    detail: result.encoding,
+  };
+}
+
 async function commandOptimize(
   args: Args,
   config: TrazumConfig,
@@ -5810,6 +5854,28 @@ async function commandOptimize(
 
   if (boolFlag(args, 'exact-tokens')) {
     /**
+     * The local counter is tried first, and the order is deliberate.
+     *
+     * It costs nothing, sends nothing and needs no credential, so a family it
+     * can count should never be sent looking for a key -- and never sent over
+     * the network at all. A prompt counted here is read in this process and
+     * goes nowhere, which is the distinction `TokenProvenance.where` carries.
+     */
+    const local = await localCounterFor(result.usage.model);
+    if (local !== null) {
+      result = await withExactTokenCounts(
+        result,
+        async (text) => local.count(text),
+        pricing,
+        {
+          counter: local.counter,
+          model: result.usage.model,
+          detail: local.detail,
+          where: 'local',
+        },
+      );
+    } else {
+    /**
      * The family check comes **before** the key check, and the order is the
      * point.
      *
@@ -5825,8 +5891,16 @@ async function commandOptimize(
      */
     const priced = pricing.byId.get(result.usage.model);
     if (!bandGoverns(priced?.provider)) {
+      /*
+       * A family with an optional counter gets a different sentence from one
+       * with none. "Go and find somebody else's tooling" is the wrong refusal
+       * when the answer ships under this scope and is one install away.
+       */
+      const offered = OPTIONAL_COUNTERS[priced?.provider ?? ''];
       throw new Error(
-        t.errors.exactTokensWrongFamily(result.usage.model, priced?.provider ?? null),
+        offered === undefined
+          ? t.errors.exactTokensWrongFamily(result.usage.model, priced?.provider ?? null)
+          : t.errors.exactTokensNeedsPackage(result.usage.model, offered),
       );
     }
     const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -5837,7 +5911,14 @@ async function commandOptimize(
       result,
       countTokensAnthropic({ apiKey, model: result.usage.model }),
       pricing,
+      {
+        counter: 'anthropic-count-tokens',
+        model: result.usage.model,
+        detail: 'api.anthropic.com/v1/messages/count_tokens',
+        where: 'remote',
+      },
     );
+    }
   }
 
   const outPath = stringFlag(args, 'out');

@@ -155,11 +155,12 @@ jobs:
           npm pack --dry-run -w @trazum/core
           npm pack --dry-run -w @trazum/cli
           npm pack --dry-run -w @trazum/mcp
+          npm pack --dry-run -w @trazum/tokenizer-openai
 
       # The packages publish in dependency order, so a half-finished release is
       # the expensive shape: core uploads, the CLI fails, and core's number is
       # spent — npm never reuses a version, so the whole set has to move to the
-      # next patch. Checking all three first turns that into a clean abort.
+      # next patch. Checking all four first turns that into a clean abort.
       #
       # This one does fail the job. It reads the public registry API rather than
       # internal plumbing, and a version that already exists is not a maybe.
@@ -223,6 +224,26 @@ jobs:
         # From the package directory, so the README reaches the metadata — see
         # the note on core's step.
         working-directory: packages/mcp
+        run: npm publish --provenance --access public
+
+      # Last, and the only one here that does not depend on @trazum/core at all:
+      # it wraps a third-party tokenizer and is imported by nothing in this
+      # repository. Publishing it last keeps the dependency-ordered set above
+      # unbroken, and means a failure here cannot strand the three that matter.
+      #
+      # It is also the one package whose trusted publisher had to be configured
+      # separately. A publish to a scope with no trusted publisher for *this*
+      # name answers `E404 Not Found - PUT` and spends the version number for
+      # nothing — the same failure 1.7.0 hit and the reason
+      # `npm-publish-preflight.mjs auth` runs before any of this.
+      - name: Publish @trazum/tokenizer-openai
+        if: github.event_name == 'push' && steps.versions.outputs.publish == 'true'
+        env:
+          # Same fallback as core's step, documented there.
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        # From the package directory, so the README reaches the metadata — see
+        # the note on core's step.
+        working-directory: packages/tokenizer-openai
         run: npm publish --provenance --access public
 
       # A release is not the moment `npm publish` returns. It is the moment a

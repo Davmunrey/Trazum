@@ -125,6 +125,17 @@ export interface CliMessages {
      * cannot count, and told as a different sentence.
      */
     exactTokensWrongFamily(model: string, provider: string | null): string;
+    /**
+     * A family Trazum *can* count exactly, through an optional package that is
+     * not installed.
+     *
+     * A third sentence rather than a branch inside `exactTokensWrongFamily`,
+     * because it is a different fact: not *nobody here can count this* but
+     * *one `npm install` away*, and telling somebody to go and find another
+     * tool when the answer ships under the same scope is a worse refusal than
+     * the one it replaced.
+     */
+    exactTokensNeedsPackage(model: string, packageName: string): string;
     checkNeedsMaxTokens(): string;
     evalNeedsCases(): string;
     evalNoCases(path: string): string;

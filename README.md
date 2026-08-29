@@ -84,6 +84,9 @@ never runs unless you ask.
    @trazum/cli    @trazum/mcp    @trazum/web       action/
  46 commands       MCP server      Next.js     comments on pull requests
                  for your agents
+
+              @trazum/tokenizer-openai   optional: exact counts for OpenAI
+                    install it or do not, nothing else changes
 ```
 
 ## Contents
@@ -287,6 +290,7 @@ Either way, keep it around:
 npm install -g @trazum/cli     # the terminal
 npm install @trazum/core       # the library
 npm install @trazum/mcp        # the MCP server, for an agent
+npm install @trazum/tokenizer-openai  # optional: exact counts for OpenAI models
 ```
 
 Or hand the whole thing to Claude Code as a plugin — the `trazum` skill plus
@@ -1127,6 +1131,8 @@ packages/cli/      dependency-free CLI
 packages/mcp/      dependency-free MCP server — five tools over stdio
   src/rpc.ts         JSON-RPC 2.0 by hand; the invariant beat the SDK
   src/tools.ts       the whole surface an agent can reach, in one file
+packages/tokenizer-openai/   optional exact counter, and the only dependency here
+  src/index.ts       OpenAI's own ranks; refuses a model it has no table for
 apps/web/          Next.js (App Router) — Optimise, Compare, Your bill, Library
 action/            the packaged GitHub Action that comments on pull requests
 scripts/           release notes, the token-band harness, rollback recovery

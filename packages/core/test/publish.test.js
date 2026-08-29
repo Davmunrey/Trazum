@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+
+import { DEPENDENCY_EXCEPTIONS_BY_NAME } from './dependency-exceptions.mjs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
@@ -103,10 +105,18 @@ describe('what npm would publish', () => {
       });
 
       it('has no runtime dependencies outside this repository', () => {
+        /*
+         * The allowance is read from `dependency-exceptions.mjs` rather than
+         * repeated here. `security.test.js` owns this invariant and also holds
+         * the excepted dependency to no network, no filesystem and no
+         * subprocess; this check is the same rule applied to what npm would
+         * actually upload, which is not always what the workspace says.
+         */
         const deps = Object.keys(manifest.dependencies ?? {});
+        const allowed = DEPENDENCY_EXCEPTIONS_BY_NAME[manifest.name] ?? [];
         assert.deepEqual(
-          deps.filter((name) => !name.startsWith('@trazum/')),
-          [],
+          deps.filter((name) => !name.startsWith('@trazum/')).sort(),
+          [...allowed].sort(),
           'a runtime dependency appeared — see the invariant in security.test.js',
         );
       });
@@ -397,7 +407,12 @@ describe('what npm would publish', () => {
     // dependencies, it is deployed rather than installed, and uploading it
     // would put a Next app on a registry as though it were a library.
     assert.ok(WORKSPACES.length >= 3, `only found ${WORKSPACES}`);
-    assert.deepEqual(PACKAGES, ['packages/cli', 'packages/core', 'packages/mcp']);
+    assert.deepEqual(PACKAGES, [
+      'packages/cli',
+      'packages/core',
+      'packages/mcp',
+      'packages/tokenizer-openai',
+    ]);
   });
 
   it('the release workflow publishes exactly those, publicly, and from each package directory', () => {
@@ -1269,15 +1284,29 @@ describe('a release cannot ship without notes', () => {
      * are the same number, or the file is lying.
      */
     const version = manifestOf('.').version;
-    const claim = releases.match(/\*\*All three packages are on npm at ([0-9]+\.[0-9]+\.[0-9]+)\*\*/);
+    /*
+     * The count is captured rather than written into the pattern. It read
+     * `All three packages` for a hundred and four releases, so a fourth package
+     * would have made the sentence false while this check went on passing on
+     * the number beside it -- the same drift the paragraph above describes,
+     * moved one word to the left.
+     */
+    const claim = releases.match(/\*\*All (\w+) packages are on npm at ([0-9]+\.[0-9]+\.[0-9]+)\*\*/);
     assert.ok(
       claim,
       'RELEASES.md no longer states which version is on npm — if that is deliberate, delete this test rather than loosening it',
     );
+
+    const COUNTS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight'];
     assert.equal(
       claim[1],
+      COUNTS[PACKAGES.length],
+      `RELEASES.md says ${claim[1]} packages are on npm; this repository publishes ${PACKAGES.length}`,
+    );
+    assert.equal(
+      claim[2],
       version,
-      `RELEASES.md says ${claim[1]} is on npm; the manifests publish ${version} on merge`,
+      `RELEASES.md says ${claim[2]} is on npm; the manifests publish ${version} on merge`,
     );
   });
 

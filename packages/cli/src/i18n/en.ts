@@ -1099,6 +1099,12 @@ ${bold('EXAMPLES')}
       }. Counting it there would either be refused upstream or return a number for a different tokenizer, and this tool will not label that exact. Drop --exact-tokens for the estimate, which is honest about being one, or count with ${
         provider === null ? "that model's" : provider + "'s"
       } own tooling.`,
+    exactTokensNeedsPackage: (model, packageName) =>
+      `--exact-tokens can count ${model} exactly, offline and without a key, but that ` +
+      `needs ${packageName}, which is not installed. It is a separate package because its ` +
+      'rank tables are twenty-two megabytes and @trazum/core depends on nothing.\n' +
+      `  npm install ${packageName}\n` +
+      'Or drop --exact-tokens for the estimate, which says how far out it is.',
     checkNeedsMaxTokens: () => 'trazum check needs --max-tokens <n>.',
     evalNeedsCases: () => 'trazum eval needs --cases <file>.',
     unknownExportFormat: (received, allowed) =>
