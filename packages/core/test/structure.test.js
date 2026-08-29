@@ -351,6 +351,103 @@ describe('the example detector reads the labels prompts actually use', () => {
   });
 });
 
+describe('examples delimited by a tag, which is what Anthropic documents', () => {
+  /**
+   * A prompt wrapping its demonstrations in `<example>` found **zero** of them,
+   * and this product's headline model is Claude. The convention is in the
+   * provider's own prompting documentation, so it is not an edge case: it is
+   * the shape a reader is told to use. On the code-review prompt this was found
+   * with, the examples are **68% of the prompt** and every analysis downstream
+   * was reasoning as though they cost nothing.
+   */
+  const TAGGED = [
+    'You are a code reviewer. Review the diff and report defects.',
+    '',
+    '<example>',
+    '<input>def add(a, b): return a - b</input>',
+    '<output>Bug: add subtracts. Should be a + b.</output>',
+    '</example>',
+    '',
+    '<example>',
+    '<input>def mul(a, b): return a + b</input>',
+    '<output>Bug: mul adds. Should be a * b.</output>',
+    '</example>',
+    '',
+    '<example>',
+    '<input>def div(a, b): return a * b</input>',
+    '<output>Bug: div multiplies. Should be a / b.</output>',
+    '</example>',
+    '',
+    'Report only real defects. Do not report style.',
+  ].join('\n');
+
+  it('finds each tagged example, and only what the tag contains', () => {
+    const blocks = findExamples(TAGGED, estimateTokens);
+    assert.equal(blocks.length, 3);
+    // The instruction above and the instruction below are not inside any tag,
+    // so no block may carry them. A splitter that ran to the next delimiter
+    // would swallow the closing sentence into the last example and inflate it.
+    for (const block of blocks) {
+      assert.doesNotMatch(block.text, /code reviewer/, 'an example absorbed the opening instruction');
+      assert.doesNotMatch(block.text, /Report only real defects/, 'an example absorbed the closing instruction');
+    }
+  });
+
+  it('and they are most of what that prompt costs, which was reported as nothing', () => {
+    const blocks = findExamples(TAGGED, estimateTokens);
+    const inExamples = blocks.reduce((sum, block) => sum + block.tokens, 0);
+    assert.ok(
+      inExamples / estimateTokens(TAGGED) > 0.5,
+      'a prompt that is mostly tagged examples reported otherwise',
+    );
+  });
+
+  it('prefers the tag over any label nested inside it', () => {
+    /*
+      `<input>`/`<output>` inside each example would also match the label tiers.
+      Whichever wins must be the outer one, or every example is cut in half and
+      the halves are compared against each other.
+    */
+    assert.equal(findExamples(TAGGED, estimateTokens).length, 3);
+  });
+
+  it('ignores a tag that is being documented rather than used', () => {
+    /*
+      A prompt that teaches somebody how to write examples contains the tag and
+      no examples. Fenced regions are removed before matching, so the sample in
+      the fence is prose about a tag rather than a use of one.
+    */
+    const teaching = [
+      'When you add a few-shot example, wrap it like this:',
+      '',
+      '```',
+      '<example>',
+      'input here',
+      '</example>',
+      '',
+      '<example>',
+      'another input',
+      '</example>',
+      '```',
+      '',
+      'Keep them short.',
+    ].join('\n');
+
+    assert.deepEqual(
+      findExamples(teaching, estimateTokens),
+      [],
+      'the detector read documentation about a tag as a use of it',
+    );
+  });
+
+  it('needs two before it calls anything a set of examples', () => {
+    // One example is not a set, and the redundancy question needs a pair. A
+    // single tag falls through to the label tiers rather than being reported.
+    const one = ['Do the task.', '', '<example>', 'input: a', 'output: b', '</example>'].join('\n');
+    assert.deepEqual(findExamples(one, estimateTokens), []);
+  });
+});
+
 describe('output formats stated twice', () => {
   const SCHEMA = [
     '```json',

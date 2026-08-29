@@ -453,9 +453,69 @@ function trimToExample(block: string): string {
   return kept.join('\n\n').trim();
 }
 
+/**
+ * Examples delimited by an `<example>` tag rather than by a label.
+ *
+ * **This is Anthropic's own documented convention for few-shot prompting**, and
+ * the product whose headline model is Claude could not see it: a code-review
+ * prompt wrapping three demonstrations in `<example>` found zero examples, and
+ * the same six analyses went quiet that `Customer:` had silenced. A shape a
+ * provider tells people to use is not an edge case.
+ *
+ * Tried before the label tiers because it is the least ambiguous thing in this
+ * file. A label is a word that might be prose; `<example>` is a delimiter, so
+ * there is no threshold and no judgement — either the tag is there or it is not.
+ *
+ * Only `example` and `examples`, which are what the documentation names.
+ * `<sample>` and `<demonstration>` appear in the wild and are not added: the
+ * list would then be a guess about what people might write, and this splitter
+ * has already been burnt once by a vocabulary somebody thought was wide enough.
+ * A tag arriving here should arrive with a prompt that uses it.
+ *
+ * A tag inside a fenced block is documentation about the tag rather than a use
+ * of it — a prompt explaining how to write examples is not a prompt containing
+ * them — so fenced regions are removed before matching.
+ */
+function xmlExamples(prompt: string): string[] {
+  const outsideFences = prompt.replace(/^([ \t]{0,3})(`{3,}|~{3,})[\s\S]*?^\1\2[ \t]*$/gm, '');
+  const tag = /<example(?:\s[^>]*)?>([\s\S]*?)<\/example>/gi;
+  return [...outsideFences.matchAll(tag)].map(([, body]) => (body ?? '').trim()).filter(Boolean);
+}
+
+/**
+ * **A shape this deliberately does not detect, and the reason is the point.**
+ *
+ * Inline mappings are everywhere — `1. "package never arrived" -> shipping`,
+ * `- "Acme raised a round" => Acme` — and on the probes that found the two
+ * faults above they are the remaining silent case. They are not added, because
+ * the only thing separating a demonstration from an instruction here is
+ * judgement: `if the ticket is about delivery -> use the shipping category` is
+ * the same line shape and is a rule, not an example.
+ *
+ * A detector that got that wrong would not merely report a wrong number.
+ * `prune` *removes* examples, so a rule misread as an example becomes a
+ * proposal to delete an instruction — and it would arrive with the same
+ * confidence as a correct one.
+ *
+ * The tempting narrowing is to require the left side to be quoted. It was
+ * considered and refused: both probes are quoted **because the author of the
+ * probes wrote them that way**, and a threshold fitted to one's own fixture is
+ * a threshold that has been measured against nothing. What would settle it is
+ * real prompts using the shape, not a rule invented here.
+ *
+ * Until then the honest behaviour is the one `prune` now has: say what was
+ * looked for, so a prompt this cannot read reports that it was not seen rather
+ * than that it does not exist. That sentence used to read "this prompt has
+ * fewer than two few-shot examples", which was a confident false statement
+ * about a prompt with four of them.
+ */
+
 /** Splits the prompt into labelled example blocks. */
 export function findExamples(prompt: string, count: TokenCounter): ExampleBlock[] {
   const lines = prompt.split('\n');
+
+  const tagged = xmlExamples(prompt);
+  if (tagged.length >= 2) return tagged.map((text) => ({ text, tokens: count(text) }));
 
   for (const header of EXAMPLE_HEADER_TIERS) {
     const blocks = splitOnHeader(lines, header);

@@ -47,6 +47,47 @@ merged commit with no entry is a change only `git log` remembers.
   field pattern unhooked from the lists, and a suffix loosened until the
   splitter invents examples in ordinary prose.
 
+- **The tag Anthropic's own documentation tells people to use found nothing.**
+  `<example>` is the convention in the provider's prompting guide, and this
+  product's headline model is Claude. A code-review prompt wrapping three
+  demonstrations in it split into zero examples, so the same six analyses went
+  quiet that `Customer:` had silenced — on that prompt the examples are **68%
+  of it**.
+
+  Tried before the label tiers, because a delimiter admits no judgement: either
+  the tag is there or it is not, where a label is a word that might be prose.
+  Only `example` and `examples`, which are what the documentation names —
+  `<sample>` and `<demonstration>` exist in the wild and are not added, because
+  that list would be a guess about what people might write, and this splitter
+  has been burnt once already by a vocabulary somebody thought was wide enough.
+  A tag inside a fenced block is documentation about the tag rather than a use
+  of it, so fences are removed before matching.
+
+  Four plants fire. One was silent at first and the plant was the fault, not the
+  guard: it added `dotAll` to a pattern containing no `.`, which changes
+  nothing. The real violation — a greedy body, so the first tag swallows through
+  to the last — fires on three tests.
+
+- **`trazum prune` stated something false with confidence.** On a prompt it
+  could not read it printed *"This prompt has fewer than two few-shot examples,
+  so there is nothing to compare"* — a claim about the prompt, made by a tool
+  that had only established something about itself. It now names what it looked
+  for (a tag, or labelled turns) and says that examples laid out another way
+  were not seen rather than not there. Both locales. That is the difference
+  between a refusal and a wrong answer, and the doctrine asks for the first.
+
+- **One shape is deliberately still unread, and it is written down.** Inline
+  mappings — `1. "package never arrived" -> shipping` — are the remaining
+  silent case on these probes and are not detected. The only thing separating a
+  demonstration from an instruction there is judgement: `if the ticket is about
+  delivery -> use the shipping category` has the identical shape and is a rule.
+  Getting that wrong is not a wrong number, because `prune` removes what it
+  finds, so a rule misread as an example becomes a proposal to delete an
+  instruction. The tempting narrowing — require the left side to be quoted —
+  was refused: both probes are quoted because the person writing the probes
+  wrote them that way, and a threshold fitted to one's own fixture has been
+  measured against nothing.
+
 - **A measured negative result, recorded so nobody re-derives it.** The
   redundancy threshold is 0.7 word overlap, and the obvious next thought is to
   lower it and catch paraphrases. It was measured and it does not work: four
