@@ -88,6 +88,34 @@ merged commit with no entry is a change only `git log` remembers.
   wrote them that way, and a threshold fitted to one's own fixture has been
   measured against nothing.
 
+- **The contradiction detector missed eight of eleven ordinary phrasings, and
+  no concept was missing.** Every one sat inside an axis it already claims to
+  cover — it was the same instruction in different grammar. *"Respond in the
+  same language the user writes in"* was invisible because the pattern accepted
+  `used`, `wrote` and `speaks` but not the present tense, so a prompt pinning
+  English and mirroring the user in the same breath reported no conflict at
+  all. So did *"keep answers short"* against *"keep it short"*, *"answer in at
+  most two sentences"*, *"provide a thorough explanation"* against *"be
+  thorough"*, *"walk through your reasoning"*, *"show your chain of thought"*
+  and *"without justification"*.
+
+  **The first fix traded false negatives for false positives, and measuring
+  caught it.** Widening the vocabularies made four of five clean prompts report
+  a contradiction: a detailed *error message* read as a detailed answer, a word
+  limit on a *form field* read as a limit on the reply, a *document* in the
+  user's language read as an instruction to mirror it. The cause was dropping a
+  constraint the module already had and documents — that the sentence must be
+  about the response, which is what `RESPOND` exists for. Rebuilt so every new
+  alternative carries its own anchor and no existing alternative is touched:
+  eleven of eleven phrasings seen, five of five clean prompts left alone.
+
+  The guard holds both directions, because a detector is only as good as its
+  quieter half. Five plants fire. One was silent and found a hole in the
+  fixture rather than in the code: the clean prompt it tested paired two
+  sentences that both fail to match, so they masked each other and the case
+  passed however the length cap behaved. One end of a pair has to be beyond
+  doubt for the other end to be under test.
+
 - **A measured negative result, recorded so nobody re-derives it.** The
   redundancy threshold is 0.7 word overlap, and the obvious next thought is to
   lower it and catch paraphrases. It was measured and it does not work: four

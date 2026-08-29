@@ -54,6 +54,31 @@ interface AxisDefinition {
  */
 const RESPOND = String.raw`(?:respond|reply|answer|write|speak|output|responde|contesta|responder|escribe|redacta)`;
 
+/**
+ * How a prompt refers to the reader having produced their message.
+ *
+ * `used|wrote|speaks` missed on a tense: *"respond in the same language the
+ * user writes in"* — present, which is how a standing instruction is normally
+ * written — was invisible, so a prompt pinning English and mirroring the user
+ * in the same breath reported no conflict at all.
+ */
+const SPOKE = String.raw`(?:used?|uses|wrote|writes|writing|speaks|spoke|sent|asked)`;
+
+/** Nouns that mean *the thing the model produces*, as opposed to any other text. */
+const THE_ANSWER = String.raw`(?:answers?|responses?|repl(?:y|ies)|explanations?|respuestas?)`;
+
+/**
+ * A numeric ceiling on length, without the unit.
+ *
+ * Kept separate because it is only ever safe next to an anchor: *"the title
+ * field takes at most five words"* is the same phrase about a form field, and
+ * reading it as an instruction about the answer is how a widening turns a
+ * detector into a nuisance.
+ */
+const REQUIRE_SHORT = String.raw`keep\s+(?:it|them|${THE_ANSWER})\s+(?:short|brief|concise)`;
+
+const AT_MOST = String.raw`(?:at\s+most|no\s+more\s+than|under|within|máximo\s+de?)\s+(?:one|two|three|four|five|\d+)\s+(?:sentences?|words?|frases?|palabras?)`;
+
 const AXES: readonly AxisDefinition[] = [
   {
     axis: 'response-language',
@@ -71,7 +96,7 @@ const AXES: readonly AxisDefinition[] = [
           // The qualifier slot ("own", "native", "preferred") is what makes
           // this survive real prompts: "the customer's own language" is at
           // least as common as the bare form.
-          String.raw`\bin\s+the\s+(?:same\s+)?language\s+(?:of|as|the\s+\w+\s+(?:used|wrote|speaks))|\bin\s+(?:the\s+(?:user|customer|client)'?s?|their)\s+(?:own\s+|native\s+|preferred\s+)?language\b|\bmatch\s+the\s+language\b|\ben\s+(?:el\s+)?(?:mismo\s+)?idioma\s+(?:del?\s+|en\s+que\s+)?(?:usuario|cliente|consulta|mensaje|escrib)`,
+          String.raw`\bin\s+the\s+(?:same\s+)?language\s+(?:of|as|the\s+\w+\s+(?:used|wrote|speaks))|\bin\s+(?:the\s+(?:user|customer|client)'?s?|their)\s+(?:own\s+|native\s+|preferred\s+)?language\b|\bmatch\s+the\s+language\b|\b${RESPOND}\b[^.!?\n]{0,40}?\bin\s+(?:the\s+(?:same\s+)?|whatever\s+|whichever\s+)language\s+(?:of|as|that\s+|the\s+\w+\s+)?\w*\s*${SPOKE}|\ben\s+(?:el\s+)?(?:mismo\s+)?idioma\s+(?:del?\s+|en\s+que\s+)?(?:usuario|cliente|consulta|mensaje|escrib)`,
           'i',
         ),
       ],
@@ -109,14 +134,14 @@ const AXES: readonly AxisDefinition[] = [
       [
         'length-brief',
         new RegExp(
-          String.raw`\b(?:be\s+(?:brief|concise|succinct|terse)|keep\s+it\s+(?:short|brief)|as\s+short\s+as\s+possible|in\s+(?:one|a\s+single)\s+sentence|s[ée]\s+(?:breve|conciso)|de\s+forma\s+(?:breve|concisa)|brevemente)\b`,
+          String.raw`\b(?:be\s+(?:brief|concise|succinct|terse)|keep\s+it\s+(?:short|brief)|as\s+short\s+as\s+possible|${REQUIRE_SHORT}|\b${RESPOND}\b[^.!?\n]{0,40}?${AT_MOST}|in\s+(?:one|a\s+single)\s+sentence|s[ée]\s+(?:breve|conciso)|de\s+forma\s+(?:breve|concisa)|brevemente)\b`,
           'i',
         ),
       ],
       [
         'length-detailed',
         new RegExp(
-          String.raw`\b(?:be\s+(?:detailed|comprehensive|thorough|exhaustive)|in\s+(?:great\s+)?depth|as\s+much\s+detail\s+as\s+possible|s[ée]\s+(?:exhaustivo|detallado)|de\s+forma\s+(?:detallada|exhaustiva)|con\s+todo\s+detalle|detalladamente)\b`,
+          String.raw`\b(?:be\s+(?:detailed|comprehensive|thorough|exhaustive)|in\s+(?:great\s+)?depth|(?:detailed|comprehensive|thorough|exhaustive|in-depth)[^.!?\n]{0,30}?\b${THE_ANSWER}\b|as\s+much\s+detail\s+as\s+possible|s[ée]\s+(?:exhaustivo|detallado)|de\s+forma\s+(?:detallada|exhaustiva)|con\s+todo\s+detalle|detalladamente)\b`,
           'i',
         ),
       ],
@@ -128,14 +153,14 @@ const AXES: readonly AxisDefinition[] = [
       [
         'reasoning-shown',
         new RegExp(
-          String.raw`\b(?:explain\s+your\s+(?:reasoning|answer|thinking)|show\s+your\s+(?:work|reasoning|thinking)|think\s+step[\s-]by[\s-]step|justify\s+your\s+answer|explica\s+tu\s+razonamiento|razona\s+paso\s+a\s+paso|justifica\s+tu\s+respuesta)\b`,
+          String.raw`\b(?:explain\s+your\s+(?:reasoning|answer|thinking)|show\s+your\s+(?:work|reasoning|thinking)|show\s+your\s+chain\s+of\s+thought|walk\s+(?:me\s+)?through\s+your\s+(?:reasoning|thinking|logic)|think\s+step[\s-]by[\s-]step|justify\s+your\s+answer|explica\s+tu\s+razonamiento|razona\s+paso\s+a\s+paso|justifica\s+tu\s+respuesta)\b`,
           'i',
         ),
       ],
       [
         'reasoning-hidden',
         new RegExp(
-          String.raw`\b(?:no\s+(?:explanation|commentary|preamble)|without\s+(?:explanation|commentary)|do\s+not\s+explain|don'?t\s+explain|no\s+expliques|sin\s+(?:explicaciones|comentarios)|sin\s+preámbulo)\b`,
+          String.raw`\b(?:no\s+(?:explanation|commentary|preamble)|without\s+(?:explanation|commentary|justification|reasoning)|no\s+justification|do\s+not\s+explain|don'?t\s+explain|no\s+expliques|sin\s+(?:explicaciones|comentarios)|sin\s+preámbulo)\b`,
           'i',
         ),
       ],

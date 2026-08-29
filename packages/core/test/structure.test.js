@@ -93,6 +93,108 @@ describe('contradictory instructions', () => {
   });
 });
 
+describe('the contradiction axes read the phrasings prompts actually use', () => {
+  /**
+   * **Eight of eleven ordinary phrasings were missed, and no concept was
+   * missing.** Every one sat inside an axis the detector already claims to
+   * cover; they were the same instruction in different grammar. *"Respond in
+   * the same language the user writes in"* was invisible because the pattern
+   * accepted `used`, `wrote` and `speaks` but not the present tense — so a
+   * prompt pinning English and mirroring the user in the same breath reported
+   * no conflict at all.
+   *
+   * **Written as pairs against a canonical opposite**, which is what makes a
+   * miss mean something: a phrasing is recognised if pairing it with a sentence
+   * known to sit at the other end of its axis produces a finding. The anchors
+   * are asserted first, because if one of them stopped matching every case
+   * below would fail for the wrong reason — and, worse, a broken anchor in the
+   * *negative* half would report a clean prompt as clean while proving nothing.
+   */
+  const ANCHOR = {
+    'fixed-language': 'Respond in English.',
+    'mirror-language': 'Respond in the same language as the user.',
+    'length-brief': 'Be concise.',
+    'length-detailed': 'Be thorough.',
+    'reasoning-shown': 'Think step by step.',
+    'reasoning-hidden': 'Do not explain.',
+  };
+  const OPPOSITE = {
+    'fixed-language': 'mirror-language',
+    'mirror-language': 'fixed-language',
+    'length-brief': 'length-detailed',
+    'length-detailed': 'length-brief',
+    'reasoning-shown': 'reasoning-hidden',
+    'reasoning-hidden': 'reasoning-shown',
+  };
+
+  const pairedWithOpposite = (value, sentence) =>
+    findContradictions(`${sentence}\n\n${ANCHOR[OPPOSITE[value]]}`);
+
+  it('recognises both ends of every axis in their plainest form', () => {
+    // The guard on the guard. Every assertion below is stated relative to these.
+    const broken = Object.entries(ANCHOR)
+      .filter(([value, sentence]) => pairedWithOpposite(value, sentence).length === 0)
+      .map(([value]) => value);
+    assert.deepEqual(broken, [], `anchors no longer match: ${broken.join(', ')}`);
+  });
+
+  it('and in the wordings people write instead', () => {
+    const PHRASINGS = [
+      ['mirror-language', 'Respond in the same language the user writes in.'],
+      ['mirror-language', 'Reply in whatever language the customer used.'],
+      ['length-brief', 'Answer in at most two sentences.'],
+      ['length-brief', 'Keep answers short.'],
+      ['length-detailed', 'Provide a thorough and detailed explanation.'],
+      ['reasoning-shown', 'Walk through your reasoning before answering.'],
+      ['reasoning-shown', 'Show your chain of thought.'],
+      ['reasoning-hidden', 'Give the answer only, without justification.'],
+    ];
+    const missed = PHRASINGS.filter(
+      ([value, sentence]) => pairedWithOpposite(value, sentence).length === 0,
+    ).map(([, sentence]) => sentence);
+
+    assert.deepEqual(missed, [], `${missed.length} phrasings unseen:\n  ${missed.join('\n  ')}`);
+  });
+
+  it('and does not accuse a prompt that contradicts nothing', () => {
+    /**
+     * **The cost of the widening, measured rather than assumed.** The first
+     * attempt at the fix above traded false negatives for false positives:
+     * four of these five were reported as contradictions, because widening the
+     * vocabulary had dropped the constraint the module already had — that the
+     * sentence must be about *the response*. `RESPOND` exists for exactly this,
+     * and its own comment says so.
+     *
+     * Every one of these is a sentence that uses the words and means something
+     * else: a detailed *error message*, a word limit on a *form field*, a
+     * *document* in the user's language.
+     */
+    const CLEAN = [
+      ['a detailed thing that is not the answer',
+        'Validate the payload.\n\nProvide a detailed error message when validation fails.\n\nKeep answers short.'],
+      ['a language instruction that reads like a reasoning one',
+        'Answer only in English.\n\nExplain your reasoning before the final line.'],
+      ['short applied to identifiers',
+        'Review the diff.\n\nSuggest short variable names.\n\nBe thorough in your review.'],
+      ['a language the document is in, not the answer',
+        'Summarise the attached document.\n\nThe document is in the same language the author writes in.\n\nRespond in English.'],
+      /*
+        Paired with the plainest `length-detailed` sentence there is, and that
+        is deliberate. This case ended "Provide a comprehensive body" at first,
+        which matches neither end — so the two halves masked each other and the
+        case passed however the length cap behaved. A plant found it: dropping
+        the response anchor from the cap left this test green. One end of a pair
+        has to be beyond doubt for the other end to be under test.
+      */
+      ['a length cap on a field',
+        'Fill the form.\n\nThe title field takes at most five words.\n\nBe thorough.'],
+    ];
+
+    const accused = CLEAN.filter(([, text]) => findContradictions(text).length > 0).map(([name]) => name);
+    assert.deepEqual(accused, [], `reported a contradiction in ${accused.join(', ')}`);
+  });
+});
+
 describe('few-shot examples', () => {
   const EXAMPLES = [
     'Classify the ticket.',
