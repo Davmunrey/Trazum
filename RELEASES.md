@@ -230,6 +230,46 @@ which is the point.
 The whole suite now passes identically with `LANG` unset and with
 `LANG=es_ES.UTF-8`.
 
+### And then the same fault twice more, in variables nobody had thought about
+
+Running the fixed suite on the contributor's Mac produced **31 failures in
+`@trazum/cli`, and not one of them was a defect in the product.**
+
+**Twenty-nine were one exported variable.** That shell exports `FORCE_COLOR`.
+The shared environment set `NO_COLOR` and inherited `FORCE_COLOR`, which
+outranks it both in `style.ts` and in Node itself, so every spawned run came back
+painted: assertions failed on ANSI codes sitting between the words they matched,
+and `JSON.parse` failed on Node's own warning that the two variables disagreed,
+printed into the document being parsed. The fix is the same shape as the locale
+one and the opposite rule: the colour variables are read out of `style.ts`, and
+**removed** rather than blanked, because an empty `FORCE_COLOR` still turns
+colour on and still triggers the warning. Two variables, two rules, because two
+programs read them differently — and the list is derived from the module that
+reads it, so a third cannot be added on one side only.
+
+**One was a `PATH` narrowed to the directory holding `git`.** The pre-commit hook
+pipes through `awk`. Where `git` comes from Homebrew, that directory holds
+neither `awk` nor much else, so the hook died on line 94 rather than reaching the
+branch under test. Subtracting is the version with nothing to enumerate: the test
+now removes the directories that hold a `trazum` and keeps everything else, which
+stays true the next time the hook pipes through something new.
+
+**One was an assertion that straddled a line wrap.** `mkdtemp` gives
+`/var/folders/k5/…/T/…` on a Mac and `/tmp/…` on a runner. Those paths sit in the
+same paragraph as the sentence being asserted, so the renderer wrapped it in one
+place and not the other. The claim is about which words sit together, never about
+the column they sit in, so it is matched against collapsed whitespace now.
+
+Six plants fire, and one of them had to be built twice. The first version of the
+Homebrew plant did not reproduce the failure, and a plant that does not fire is
+investigated rather than accepted: the missing ingredient was a globally
+installed `trazum` sitting beside `git`, without which the hook exits before it
+ever reaches `awk`. That is what that machine has, and with it the plant fails
+exactly as the contributor's run did.
+
+The suite now passes identically clean and under `FORCE_COLOR=1`,
+`LANG=es_ES.UTF-8` and a Mac-length `TMPDIR`.
+
 ### Also
 
 A derivation in `contributing.test.js` matched `-w @trazum/[a-z]+`, which

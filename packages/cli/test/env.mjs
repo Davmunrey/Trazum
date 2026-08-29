@@ -1,6 +1,16 @@
 import { readFileSync } from 'node:fs';
 
 const DETECTOR = new URL('../src/i18n/index.ts', import.meta.url);
+const PAINTER = new URL('../src/style.ts', import.meta.url);
+
+/** The names inside an `export const <NAME> = [...]` declaration, or a throw. */
+const declaredList = (source, name, where) => {
+  const declared = new RegExp(`export const ${name} = \\[([^\\]]*)\\]`).exec(source);
+  if (declared === null) throw new Error(`${name} is no longer declared in ${where}`);
+  const names = [...declared[1].matchAll(/'([A-Z_]+)'/g)].map(([, found]) => found);
+  if (names.length === 0) throw new Error(`${name} parsed to nothing from ${where}`);
+  return names;
+};
 
 /**
  * The variables `detectLocale` reads, taken from the detector itself.
@@ -14,18 +24,30 @@ const DETECTOR = new URL('../src/i18n/index.ts', import.meta.url);
  * detector exports — so a rename breaks a test rather than silently neutralising
  * nothing.
  */
-export const NEUTRALISED = (() => {
-  const source = readFileSync(DETECTOR, 'utf8');
-  const declared = /export const LOCALE_ENV_VARS = \[([^\]]*)\]/.exec(source);
-  if (declared === null) {
-    throw new Error(`LOCALE_ENV_VARS is no longer declared in ${DETECTOR.pathname}`);
-  }
-  const names = [...declared[1].matchAll(/'([A-Z_]+)'/g)].map(([, name]) => name);
-  if (names.length === 0) {
-    throw new Error(`LOCALE_ENV_VARS parsed to nothing from ${DETECTOR.pathname}`);
-  }
-  return names;
-})();
+export const NEUTRALISED = declaredList(
+  readFileSync(DETECTOR, 'utf8'),
+  'LOCALE_ENV_VARS',
+  DETECTOR.pathname,
+);
+
+/**
+ * The variables the colour decision reads, taken from the painter itself.
+ *
+ * **Removed, not blanked, and that is the opposite of the rule above.** The
+ * locale detector treats an empty string as no answer and moves down its
+ * precedence chain, so blanking is what "the machine said nothing" looks like.
+ * Node's own colour depth reads `FORCE_COLOR` for its *presence*: an empty
+ * value turns colour on, and any value at all makes Node print
+ * `The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.` into
+ * the output these tests parse. Two variables, two rules, because two programs
+ * read them differently.
+ */
+export const REMOVED = declaredList(readFileSync(PAINTER, 'utf8'), 'COLOUR_ENV_VARS', PAINTER.pathname);
+
+/** The machine's environment with every colour variable gone. */
+const withoutColour = Object.fromEntries(
+  Object.entries(process.env).filter(([name]) => !REMOVED.includes(name)),
+);
 
 /**
  * The environment every spawned Trazum process runs under in these tests.
@@ -37,6 +59,14 @@ export const NEUTRALISED = (() => {
  * the middle of a release. It happened again at 1.85.0, in `own-gate.test.js`:
  * one spawn, no `env`, and a Spanish Mac reading `un crecimiento de 151 tokens
  * supera el límite de 25` where the assertion wanted `over the limit`.
+ *
+ * **And once more the same day, through a different variable.** This object set
+ * `NO_COLOR` and inherited `FORCE_COLOR`, which outranks it in the CLI and in
+ * Node. On a machine whose shell exports `FORCE_COLOR` the whole suite ran
+ * against painted output: twenty-nine tests failed, some on ANSI codes between
+ * the words they matched, some on `JSON.parse` meeting Node's own warning that
+ * the two variables disagreed. Setting the variable a test wants is half the
+ * job; removing the one that overrides it is the other half.
  *
  * Five variants of this object had grown across the test files by then. Three
  * blanked `LANG`, `LC_ALL` and `TRAZUM_LOCALE`; **none** blanked `LC_MESSAGES`,
@@ -52,7 +82,7 @@ export const NEUTRALISED = (() => {
  * from it. A test that wants a language asks for it, by flag or by config.
  */
 export const SPAWN_ENV = {
-  ...process.env,
+  ...withoutColour,
   ...Object.fromEntries(NEUTRALISED.map((name) => [name, ''])),
   NO_COLOR: '1',
   // `where` warns when it is running inside a tool that bills by subscription,

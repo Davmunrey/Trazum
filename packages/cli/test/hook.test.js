@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import { chmod, mkdir, mkdtemp, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { delimiter, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 import { SPAWN_ENV } from './env.mjs';
@@ -201,19 +202,30 @@ describe('the hook gets out of the way', () => {
     git(['add', 'prompts/big.txt'], root);
 
     /**
-     * A PATH with git on it and nothing else.
+     * The machine's PATH with every directory holding a `trazum` taken out.
      *
-     * Two wrong versions of this test came first, and both were the test's fault
-     * rather than the hook's. Emptying PATH breaks `git` itself, so the assertion
-     * ran against a commit that never happened. Relying on the ambient PATH passed
-     * standalone and failed under `npm test`, because npm puts this workspace's own
-     * `trazum` bin on PATH — so the branch was reachable in one runner and not the
-     * other.
+     * Three wrong versions of this test came first, and all three were the test's
+     * fault rather than the hook's. Emptying PATH breaks `git` itself, so the
+     * assertion ran against a commit that never happened. Relying on the ambient
+     * PATH passed standalone and failed under `npm test`, because npm puts this
+     * workspace's own `trazum` bin on PATH. Then PATH was narrowed to the one
+     * directory holding `git` — which is right only where `git` and `awk` happen
+     * to live together: the hook pipes through `awk`, and on a machine whose git
+     * comes from Homebrew that directory has no `awk` in it, so the hook died on
+     * line 94 instead of reaching the branch under test.
+     *
+     * Subtracting is the version with nothing to enumerate. The test needs a PATH
+     * that has everything the hook needs and no `trazum`, and that is what this
+     * says, rather than a list of tools that goes stale the next time the hook
+     * pipes through something new.
      */
-    const gitDir = dirname(
-      spawnSync('sh', ['-c', 'command -v git'], { encoding: 'utf8' }).stdout.trim(),
-    );
-    const { code, out } = commit(root, 'no trazum', { PATH: gitDir, TRAZUM: '' });
+    const withoutTrazum = (process.env.PATH ?? '')
+      .split(delimiter)
+      .filter((entry) => entry !== '' && !existsSync(join(entry, 'trazum')))
+      .join(delimiter);
+    assert.notEqual(withoutTrazum, '', 'nothing left on PATH: the hook cannot run at all');
+
+    const { code, out } = commit(root, 'no trazum', { PATH: withoutTrazum, TRAZUM: '' });
     assert.equal(code, 0, out);
     assert.match(out, /not on PATH/);
   });

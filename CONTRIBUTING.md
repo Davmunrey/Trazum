@@ -180,6 +180,18 @@ Blanked, not pinned: setting `TRAZUM_LOCALE: 'en'` outranks `trazum.config.json`
 so a test that gets its language from the config would silently assert against
 the wrong catalogue. A test that wants a language asks for it, by flag or config.
 
+Colour works the other way round. `FORCE_COLOR` is **removed** from the
+environment rather than blanked, because an empty value still turns Node's own
+colour on and still makes it print a warning about `NO_COLOR` into the output
+these tests parse. Both lists are read out of the modules that consume them, so
+a variable added to `i18n/index.ts` or `style.ts` is neutralised in the same
+commit or in neither.
+
+Two more things a test must not read: the length of `os.tmpdir()`, which decides
+where wrapped prose breaks across lines — collapse the whitespace before matching
+a sentence — and the layout of `PATH`, which differs between a Homebrew machine
+and a CI runner.
+
 ## Security invariants
 
 These are enforced by tests in `packages/core/test/security.test.js`. If your

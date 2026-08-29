@@ -57,6 +57,33 @@ merged commit with no entry is a change only `git log` remembers.
   without the CLI having been built; a guard asserts the parse equals what the
   detector exports. The suite now passes identically under `LANG=es_ES.UTF-8`.
 
+- **Three more tests that read the machine instead of the code.** Found by
+  running the suite on a contributor's Mac: 31 failures in `@trazum/cli`, none of
+  them a defect in the product.
+
+  **`FORCE_COLOR`, exported by that shell, was 29 of them.** `SPAWN_ENV` set
+  `NO_COLOR` and inherited `FORCE_COLOR`, which outranks it in `style.ts` and in
+  Node, so every spawn came back painted: assertions failed on ANSI codes between
+  the words they matched, and `JSON.parse` failed on Node's own warning that the
+  two variables disagreed. The colour variables are now read out of `style.ts`,
+  the way the locale variables are read out of the detector, and **removed**
+  rather than blanked — an empty `FORCE_COLOR` still turns colour on.
+
+  **A `PATH` narrowed to the directory holding `git`.** The pre-commit hook pipes
+  through `awk`, and where `git` comes from Homebrew that directory has neither
+  `awk` nor anything else. The test now subtracts the directories that hold a
+  `trazum` instead of naming the tools the hook needs, which is the version with
+  nothing to keep up to date.
+
+  **An assertion that straddled a line wrap.** `mkdtemp` gives
+  `/var/folders/k5/…/T/…` on a Mac and `/tmp/…` on a runner, and the paths sit in
+  the same paragraph as the sentence being matched, so the renderer wrapped it in
+  one place and not the other. Matched against collapsed whitespace now: the claim
+  is about which words sit together, never about the column they sit in.
+
+  Six plants fire. The whole suite passes identically with the environment clean
+  and with `FORCE_COLOR=1`, `LANG=es_ES.UTF-8` and a Mac-length `TMPDIR`.
+
 - **A measurement this repository had already paid for, reported as missing.**
   `token-ground-truth.openai.json` has held 47 samples measured against `gpt-5`
   through OpenAI's own API since 2026-08-28. `MEASURED_FOREIGN_ERROR_PCT` had no
