@@ -61,6 +61,34 @@ merged commit with no entry is a change only `git log` remembers.
   slipped into the excepted package, the `openai` entry deleted again, and the
   figure edited to a flattering 12.4%.
 
+- **No HSTS, so a returning visitor's first request could still be plain HTTP.**
+  The redirect to HTTPS arrives too late: the request is already on the wire and
+  a network in between can answer it. `Strict-Transport-Security` is now on
+  every response with `max-age=31536000` and `includeSubDomains`, the second
+  because without it a subdomain is a way back in — an attacker who can answer
+  for `anything.<host>` over HTTP can set a cookie the parent will send.
+
+  **`preload` is deliberately absent.** It is not a flag with an effect, it is
+  consent to be compiled into browsers, and removal takes months and reaches
+  users only as they update. That belongs to whoever owns the domain, decided
+  once and knowingly, and it needs a submission nobody has made — so adding it
+  here would be a claim as well as a decision.
+
+  Sent in production only. `next dev` serves plain HTTP, and a browser that
+  accepts the header for a development hostname pins it, breaking every other
+  project served over HTTP on that name for a year on that machine. Chrome
+  special-cases `localhost`; a LAN address or a `.local` name is not.
+
+  What could not be checked from where this was written, and is therefore not
+  claimed either way: whether the host it currently deploys to is already
+  covered by somebody else's preload entry. The registry that answers it is
+  unreachable from this environment. The header is right regardless — it costs
+  nothing if the host is already pinned, and it is the whole defence on a custom
+  domain.
+
+  Four plants: `preload` slipped into the value, the max-age dropped to a day,
+  `includeSubDomains` removed, and the header sent in development.
+
 - **An optional package that was required to compile.** The CLI typed its
   loader as `typeof import('@trazum/tokenizer-openai')`, which `tsc` resolves
   while type-checking — so `@trazum/cli` could not be built unless the optional
