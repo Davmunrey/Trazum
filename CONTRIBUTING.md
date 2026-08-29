@@ -96,8 +96,21 @@ Two that write files rather than check them:
 
 ```bash
 npm run draw:architecture  # redraws docs/assets/boundary.svg from the code
+npm run draw:icon          # redraws the editor extension's icon.png
 npm run measure:tokens     # re-measures the estimator against a real counter
 ```
+
+And one that produces something to hand to a marketplace:
+
+```bash
+npm run package:vscode     # builds the editor extension and writes a .vsix
+```
+
+`vsce` is fetched by `npx` for that one run rather than installed. It exists to
+produce a zip on demand, and a repository does not need a tool in its tree to
+find out whether its own manifest is valid — `apps/vscode/test/packaging.test.js`
+checks the rules the packager enforces, so the manifest cannot drift between
+releases without a test saying so.
 
 **Run `draw:architecture` after adding or removing a published package.** The
 picture on the front page is generated from the workspace globs and from the

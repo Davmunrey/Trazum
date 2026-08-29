@@ -42,8 +42,8 @@ extension has no opinion about your source code.
 ## Building it from this repository
 
 ```bash
-npm run build -w @trazum/vscode
-npm run test -w @trazum/vscode
+npm run build -w trazum-vscode
+npm run test -w trazum-vscode
 ```
 
 The tests run under `node --test` and need no editor: every judgement lives in

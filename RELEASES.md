@@ -10,7 +10,7 @@ something embarrassing, it says what it was.
 **All four packages are on npm at 1.86.0**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
-attestation. `@trazum/vscode` is the fifth workspace and is not among them: an
+attestation. `trazum-vscode` is the fifth workspace and is not among them: an
 editor extension is distributed by a marketplace rather than by npm, and this
 file will say when that listing exists rather than implying it from the code.
 

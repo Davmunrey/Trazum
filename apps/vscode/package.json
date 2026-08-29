@@ -1,5 +1,5 @@
 {
-  "name": "@trazum/vscode",
+  "name": "trazum-vscode",
   "displayName": "Trazum",
   "version": "1.86.0",
   "description": "What the prompt in front of you costs, counted on this machine, while you write it.",
@@ -64,5 +64,6 @@
   "devDependencies": {
     "@types/node": "^26.2.0",
     "typescript": "^7.0.2"
-  }
+  },
+  "icon": "icon.png"
 }
