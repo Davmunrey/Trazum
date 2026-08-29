@@ -61,6 +61,42 @@ merged commit with no entry is a change only `git log` remembers.
   slipped into the excepted package, the `openai` entry deleted again, and the
   figure edited to a flattering 12.4%.
 
+### Added
+
+- **An architecture picture on the front page, generated from the code rather
+  than drawn.** `npm run draw:architecture` writes `docs/assets/boundary.svg`
+  from the workspace globs and the network allowlist, and
+  `architecture-image.test.js` fails the build if a published package exists the
+  picture does not show, if the core takes a dependency while the picture says
+  it has none, or if a third module is allowed to reach a network without the
+  picture saying so.
+
+  The reason it is generated is the reason every architecture diagram in every
+  repository eventually lies: the code moves, the picture does not, and because
+  **a picture cannot be grepped** nobody notices for a year — so the most
+  confident-looking artefact on the front page becomes the least true.
+
+  `mingrammer/diagrams` was tried first and ruled out on three counts, written
+  into the generator so the afternoon is not spent twice. Its nodes are
+  fixed-colour images with labels outside the shape, so they cannot carry this
+  product's palette and break under anything longer than a word — the first
+  render came out 1273×2650 with labels overflowing their clusters. It ships no
+  icon for OpenAI, Anthropic, OpenTelemetry, LiteLLM, Helicone or LangSmith,
+  which are the products this tool integrates with, so the one diagram that
+  would play to its strengths cannot be drawn with it either. And it is built to
+  show what connects to what, while the claim worth drawing here is **what does
+  not cross a line** — an absence, which a graph of edges is the wrong shape for.
+
+  Node rather than Python: Graphviz and a Python toolchain would be a new
+  prerequisite for contributing to a repository whose argument is that it has no
+  dependencies.
+
+  Four plants fire: a published package vanishing from the picture, a third
+  module added to the network allowlist, the picture citing a guard that does
+  not exist, and the zero-dependency claim removed while the core still has none.
+
+### Fixed
+
 - **`x-powered-by: Next.js` on every response**, found by observing a deployed
   preview while checking that HSTS had actually arrived — not by reading the
   config, which is the gap the header tests already admit to: declared is one

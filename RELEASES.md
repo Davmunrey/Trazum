@@ -120,6 +120,30 @@ The reason the exception exists at all is the CI case this whole product is
 built around: the rank tables are twenty-two megabytes, and **a gate that pulls
 twenty-two megabytes into every build is a gate teams turn off**.
 
+### An architecture picture that cannot go stale quietly
+
+Every architecture diagram in every repository eventually lies. The code moves,
+the picture does not, and because **a picture cannot be grepped** nobody
+notices for a year — so the most confident-looking artefact on a front page
+becomes the least true one.
+
+So this one is generated from the code by `npm run draw:architecture`, and
+`architecture-image.test.js` reads the result: a published package the picture
+does not show fails the build, so does the core taking a dependency while the
+picture claims none, and so does a third module being added to the network
+allowlist without the picture saying so. That last one is the sharpest, because
+it is the claim a security reviewer reads first.
+
+It was asked for with `mingrammer/diagrams` and that library was tried properly
+before being ruled out — the reasons are in the generator so the afternoon is
+not spent twice. Its nodes are fixed-colour images with the label outside the
+shape, so they carry no palette and break under anything longer than a word: the
+first render came out 1273×2650 with labels overflowing their clusters. It ships
+no icon for OpenAI, Anthropic, OpenTelemetry, LiteLLM, Helicone or LangSmith,
+which are the products this tool integrates with. And it is built to show what
+connects to what, while the claim worth drawing here is **what does not cross a
+line** — an absence, which a graph of edges is the wrong shape for.
+
 ### An optional package that was required to compile
 
 CI refused the first version of this release, and it was right to. The CLI
