@@ -1380,6 +1380,14 @@ silently, and for a budget the default is *no budget* — a green build for a
 prompt nobody measured. Same reasoning as `--max-growh` being rejected rather
 than ignored.
 
+**What the parser accepts is bound to the shape it fills.** Each key list is
+built from a `Record<keyof T, true>` over the interface it describes, so a
+setting added to the type and not to the list does not compile, and neither does
+a list entry the type does not have. The second direction is the quieter one: a
+key the parser accepts and nothing reads is a setting you can write, spell
+correctly, and have silently ignored — which for a budget is again a green build
+for a prompt nobody measured.
+
 `maxGrowth` in the config arms the `diff` gate exactly as the flag does: a
 repository that wrote the number down has opted in as deliberately as somebody
 typing it. Absent both, growth alone still exits 0.

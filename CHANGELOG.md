@@ -13,6 +13,29 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **Ten config key lists were second copies of interfaces, with nothing holding
+  them together.** `CONFIG_KEYS`, `CONFIG_SPEND_KEYS` and eight more are what
+  `rejectUnknownKeys` compares an incoming `trazum.config.json` against, and
+  each mirrors an interface declared a few lines above it. A plant added
+  `telemetry?: boolean` to `TrazumConfig`, left `CONFIG_KEYS` alone, and **all
+  2,115 core tests passed.**
+
+  Both directions of drift are user-visible and they fail differently. A setting
+  on the type and not on the list is one the parser refuses by name — a
+  documented setting that errors. A key on the list the type does not have is
+  one the parser accepts and nothing reads: a setting you can write, spell
+  correctly, and have silently ignored. For a budget that is a green build for a
+  prompt nobody measured, which is the failure `docs/commands.md` argues the
+  strict parser exists to prevent.
+
+  All ten are now built from a `Record<keyof T, true>` over their interface, so
+  both directions are compile errors. The published arrays and their order are
+  unchanged. `store` has no named interface and is reached through
+  `NonNullable<TrazumConfig['store']>` rather than by naming a type, which would
+  have put a third copy in the file. Three plants fire: the setting that slipped
+  through before (TS2741), a `maxWeekUsd` entry `SpendConfig` does not have
+  (TS2353), and a key dropped from a nested list (TS2741).
+
 - **The receipt whitelist said its guard caught a field added to the type, and
   the guard could not see the type at all.** `RECEIPT_LINE_FIELDS` is the
   published list of what leaves a machine — exported, and read by anyone
