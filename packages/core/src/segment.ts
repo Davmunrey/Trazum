@@ -25,6 +25,31 @@ const PATTERNS: PatternDef[] = [
   { kind: 'fenced-code', regex: /(?:```|~~~)[\s\S]*?(?:```|~~~|$)/g },
   // Indented blocks of 4+ spaces are left to the rules: they are ambiguous in markdown.
   { kind: 'url', regex: /\b(?:https?|ftp):\/\/[^\s<>"')\]]+/g, trimTrailing: /[.,;:!?]+$/ },
+  /*
+    Email addresses, for the reason at the top of this file.
+
+    **Five of ten realistic addresses came out corrupted before this existed.**
+    `please@example.com` became `@example.com`, and so did `thanks@`,
+    `basically@`, `essentially.ops@` and `very.important@`: the politeness,
+    filler and intensifier rules match the local part as ordinary prose and cut
+    it out. What is left is not a wrong address, it is not an address — and the
+    report says tokens were saved.
+
+    That is the failure this module's own first paragraph names. A code block, a
+    URL and a placeholder were on the list; the thing every support prompt in
+    the world carries was not. `support@` and `no-reply@` survived, and
+    `por.favor@ejemplo.es` survived only because the Spanish politeness entry is
+    written with a space — luck, not design, which is what made it invisible.
+
+    After the URL pattern so a `mailto:` link is claimed as a URL first, and
+    trailing punctuation is trimmed for the same reason it is there: the full
+    stop in "write to a@b.com." belongs to the sentence.
+  */
+  {
+    kind: 'email',
+    regex: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g,
+    trimTrailing: /[.,;:!?]+$/,
+  },
   // Template placeholders: {{var}}, {var}, ${var}, {% tag %}, <<VAR>>, %(var)s
   {
     kind: 'placeholder',

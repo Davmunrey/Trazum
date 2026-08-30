@@ -13,6 +13,36 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The optimiser broke email addresses, and reported a saving for it.** Five of
+  ten realistic addresses came out corrupted: `please@example.com` became
+  `@example.com`, and so did `thanks@`, `basically@`, `essentially.ops@` and
+  `very.important@`. The politeness, filler and intensifier rules read the local
+  part as ordinary prose and cut it out. What is left is not a wrong address —
+  it is not an address.
+
+  That is the failure `segment.ts` opens by naming: *"compressing a code block,
+  a URL or a template placeholder would break the prompt, and that is exactly
+  the failure that makes a prompt optimiser useless."* Code, URLs, placeholders,
+  inline spans and XML tags were on the protected list. The thing every support
+  prompt in the world carries was not. `support@` and `no-reply@` survived, and
+  `por.favor@ejemplo.es` survived only because the Spanish politeness entry is
+  written with a space rather than a dot — luck, spread across the half of the
+  cases that happened not to spell a stripped word, which is what hid it.
+
+  **A fuzzed corpus built for exactly this failed to catch it, for a reason
+  worth naming.** `hostile-input.test.js` asserts every protected span survives
+  byte for byte over a seeded corpus, and its span extractor was written from
+  the same list as the masker — so a protection the masker did not have was one
+  the guard could not miss. Its own comment states the principle it was missing:
+  bait must be *"text a rule would rewrite, deliberately inside protected
+  spans"*, or the property can never fail. There is now an email bait atom and
+  the extractor reads addresses.
+
+  Three plants fire, two of them through the corpus guard. A fourth could not be
+  built and is recorded rather than left as an untested corner: widening the
+  pattern to `\S*@\S*` changes no output, because it cannot cross whitespace and
+  a word a rule strips is its own token.
+
 - **The schema reader named four formats in its own filter and could read one.**
   `findRestatedFormat` reports a prompt that shows its output schema in a fence
   and then walks the same fields again in prose. Its fence filter admitted
