@@ -23,7 +23,59 @@ interface PatternDef {
 const PATTERNS: PatternDef[] = [
   // Fenced code blocks with ``` or ~~~ (unclosed blocks run to the end).
   { kind: 'fenced-code', regex: /(?:```|~~~)[\s\S]*?(?:```|~~~|$)/g },
-  // Indented blocks of 4+ spaces are left to the rules: they are ambiguous in markdown.
+  /*
+    Indented code blocks, which this file used to leave to the rules on the
+    grounds that they are *"ambiguous in markdown"*. The ambiguity is real. The
+    consequence of acting on it was not proportionate to it.
+
+    **What the rules did to four lines of indented code**, at the aggressive
+    level, every one measured rather than imagined:
+
+      const label = "please keep";   ->  Const label = " keep";
+      def run(x):                    ->  Def run(x):
+      SELECT … WHERE note = 'please refund';  ->  … = ' refund';
+      {"reason": "please cancel"}    ->  {"reason": " cancel"}
+
+    Three separate failures at once. The indentation goes, which by itself
+    makes the Python a syntax error. Keywords get sentence-capitalised, which
+    makes the rest of them syntax errors. And **string literals are edited** —
+    that SQL now matches a different value and that payload carries a different
+    reason. The report says tokens were saved.
+
+    The blank line before the block is what makes this checkable rather than a
+    guess: CommonMark says an indented code block cannot interrupt a paragraph,
+    so a run of indented lines after a blank line is code by the specification
+    rather than by anybody's judgement here.
+
+    **What it still gets wrong, stated rather than discovered later.** Content
+    indented four or more spaces inside a deeply nested list is continuation,
+    not code, and this protects it. That costs unsaved tokens in a rare shape.
+    Not protecting code costs a broken prompt in a common one, and those are not
+    the same kind of wrong.
+
+    Every quantifier is bounded or consumes a whole line exactly once, for the
+    reason the email mask below now carries in full.
+  */
+  {
+    kind: 'indented-code',
+    /*
+      **The lookbehind requires real content before the blank line, and the
+      fuzzer is why.** Its first version asked only for a blank line, which a
+      document *beginning* with one satisfies — and `optimize` ends with a
+      `.trim()` on the whole reassembled string, outside every mask, which then
+      removes the leading newlines and the first line's indentation. The block
+      stopped being a block, the second pass no longer protected it, and 54 of
+      1,500 corpus inputs failed the idempotence property.
+
+      The trim is fixed at its source now — `optimize` trims the *masked* string,
+      where a protected span is a placeholder nothing can edit — so the mask can
+      also claim a block at the very start of a document. It has to: at the
+      aggressive level a rule can delete the sentence before the blank line, and
+      a block that was protected on the first pass has to still be protected on
+      the second or the output never settles.
+    */
+    regex: /(?<=\S[ \t]*\n[ \t]*\n)(?:(?: {4,}|\t)[^\n]*(?:\n|$))+/g,
+  },
   { kind: 'url', regex: /\b(?:https?|ftp):\/\/[^\s<>"')\]]+/g, trimTrailing: /[.,;:!?]+$/ },
   /*
     Email addresses, for the reason at the top of this file.

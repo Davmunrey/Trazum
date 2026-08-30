@@ -13,6 +13,57 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The rules were rewriting indented code, and the module said so in a
+  comment.** `segment.ts` left blocks indented four spaces to the rules *"because
+  they are ambiguous in markdown"*. The ambiguity is real. What it cost was not
+  proportionate to it — three corruptions at once, all measured at the
+  aggressive level:
+
+  | before | after |
+  |---|---|
+  | `    const label = "please keep";` | `Const label = " keep";` |
+  | `    def run(x):` | `Def run(x):` |
+  | `    SELECT … WHERE note = 'please refund';` | `… = ' refund';` |
+  | `    {"reason": "please cancel"}` | `{"reason": " cancel"}` |
+
+  The indentation goes, which by itself makes the Python a syntax error.
+  Keywords are sentence-capitalised, which makes the rest of them syntax errors.
+  And **string literals are edited** — that SQL now matches a different value and
+  that payload carries a different reason. The report said tokens were saved.
+
+  The blank line is what makes this a rule rather than a guess: CommonMark says
+  an indented code block cannot interrupt a paragraph, so a run of indented
+  lines after a blank line is code by the specification. Prose that merely
+  wraps is still trimmed, and so is a three-space indent, which markdown reads
+  as a paragraph.
+
+- **A trim ran after unmasking, so it could edit what every mask had just
+  promised to protect.** `optimize` ended with `unmask(current, vault).trim()`,
+  on the reassembled string, where a protected span is ordinary text again. A
+  prompt opening with indented code lost that indentation there, outside every
+  guard, invisibly — the trim is the last thing that happens. It trims the
+  *masked* string now, where a protected span is a placeholder nothing can
+  reach.
+
+  Found through idempotence rather than through a report: the block stopped
+  looking like a block, so the next pass no longer protected it and the rules
+  ate the code. The fuzzer found 54 of 1,500 corpus inputs that way.
+
+  **Two limits are pinned rather than left to be discovered.** Content indented
+  four spaces inside a deeply nested list is continuation, not code, and this
+  protects it — unsaved tokens in a rare shape against a broken prompt in a
+  common one. And a document reduced to nothing but the block cannot be
+  re-protected on a second pass: claiming an indented first line was tried and
+  broke thirty-two protected spans elsewhere, because a line starting with a tab
+  is not necessarily code. Both have tests that say so.
+
+  Five plants fire. Two were silent first: one relabelled the mask instead of
+  removing it, and one loosened the indent to three spaces and broke nothing —
+  which was a real hole, since no fixture held the boundary between an indented
+  block and ordinary wrapped prose. There is one now.
+
+### Fixed
+
 - **The optimiser broke email addresses, and reported a saving for it.** Five of
   ten realistic addresses came out corrupted: `please@example.com` became
   `@example.com`, and so did `thanks@`, `basically@`, `essentially.ops@` and

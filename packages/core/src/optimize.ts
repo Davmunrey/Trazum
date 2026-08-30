@@ -189,7 +189,22 @@ export function optimize(prompt: string, options: OptimizeOptions = {}): Optimiz
 
   const ruleResults: RuleResult[] = [...byRule.values()];
 
-  const optimized = unmask(current, vault).trim();
+  /*
+    **Trimmed before the masks come off, not after.** `unmask(...).trim()` runs
+    on the reassembled string, where a protected span is ordinary text again —
+    so the trim could edit content every mask in this pipeline had just
+    promised to leave alone. A prompt whose first line is indented code lost
+    that indentation here, outside every guard, and the loss was invisible
+    because the trim is the last thing that happens.
+
+    It surfaced through idempotence rather than through a report: the block
+    stopped looking like a block, so the next pass no longer protected it and
+    the rules ate the code. The fuzzer found 54 of 1,500 corpus inputs that way.
+
+    Trimming the masked string cannot reach a protected span, because a
+    protected span is a placeholder at that point.
+  */
+  const optimized = unmask(current.trim(), vault);
   const tokensBefore = count(prompt);
   const tokensAfter = count(optimized);
 
