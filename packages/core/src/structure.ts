@@ -629,6 +629,90 @@ function fencedBlocks(prompt: string): Array<{ lang: string; body: string }> {
  * prompts worth checking. Only keys at nesting depth 1 count, so a nested
  * field name cannot be mistaken for a top-level one.
  */
+/**
+ * Fence languages this reads a schema out of.
+ *
+ * `ts` and `typescript` are new; the rest were already here and three of them
+ * did not work. See `unquotedKeys`.
+ */
+const SCHEMA_LANGS = /^(?:json|jsonc|json5|yaml|yml|ts|typescript)$/;
+
+/**
+ * Keys written without quotes, which is most of them.
+ *
+ * **The filter above already admitted `yaml`, `yml` and `json5`, and the
+ * extractor could not read any of them.** It only accepted a quoted string
+ * followed by a colon, which is JSON and nothing else — so a prompt showing its
+ * schema as YAML matched a language this module claims to support, produced
+ * zero keys, and reported no restatement however thoroughly the prose walked
+ * the fields. Not a missing feature: a promise made in one expression and
+ * broken by the next.
+ *
+ * `ts` is added at the same time because it is the same omission wearing a
+ * different label — `interface Ticket { category: string }` is how a
+ * TypeScript codebase writes the structured output it wants back, and it was
+ * not on the list at all.
+ *
+ * Two shapes, because YAML has no braces:
+ *
+ * - **Braced** (`json5`, `jsonc`, `ts`): an identifier at depth 1 followed by
+ *   `:` or `?:`. Depth is what keeps a nested object's fields out.
+ * - **Indented** (`yaml`, `yml`): an identifier at the block's own outermost
+ *   indent, followed by `:`. Anything indented past it belongs to a parent key
+ *   and is not top-level.
+ *
+ * Deliberately not applied to a fence with **no** language. An unlabelled block
+ * is as likely to be a shell session or a log line as a schema, and
+ * `Note: something` reads as a key to any rule this simple. The quoted form
+ * stays the only thing read there, exactly as before.
+ */
+function unquotedKeys(body: string, lang: string): string[] {
+  if (!SCHEMA_LANGS.test(lang)) return [];
+
+  if (/^(?:yaml|yml)$/.test(lang)) {
+    const lines = body
+      .split('\n')
+      .filter((line) => line.trim() !== '' && !/^\s*#/.test(line));
+    const outermost = Math.min(...lines.map((line) => line.length - line.trimStart().length));
+    if (!Number.isFinite(outermost)) return [];
+    return [
+      ...new Set(
+        lines
+          .filter((line) => line.length - line.trimStart().length === outermost)
+          .map((line) => /^\s*([A-Za-z_][\w-]*)\s*:/.exec(line))
+          .filter((found): found is RegExpExecArray => found !== null)
+          .map((found) => found[1]!),
+      ),
+    ];
+  }
+
+  /*
+    Character by character rather than line by line, and that was found by
+    running it: `interface Ticket { category: string; urgency: number }` is one
+    line, so a line-oriented walk sees depth 0 where it starts and reads nothing
+    at all. Single-line objects are the common case in a `ts` fence and in the
+    JSON5 people paste, not the exception.
+  */
+  const keys: string[] = [];
+  let depth = 0;
+  let candidate = '';
+  for (let i = 0; i < body.length; i++) {
+    const ch = body[i]!;
+    if (ch === '{' || ch === '[') { depth++; candidate = ''; continue; }
+    if (ch === '}' || ch === ']') { depth--; candidate = ''; continue; }
+    if (ch === ',' || ch === ';' || ch === '\n') { candidate = ''; continue; }
+    if (/[A-Za-z0-9_-]/.test(ch)) { candidate += ch; continue; }
+    if (ch === ':' || (ch === '?' && body[i + 1] === ':')) {
+      if (depth === 1 && /^[A-Za-z_][\w-]*$/.test(candidate)) keys.push(candidate);
+      candidate = '';
+      continue;
+    }
+    // Whitespace between a name and its colon is fine; anything else is not a key.
+    if (!/\s/.test(ch)) candidate = '';
+  }
+  return [...new Set(keys)];
+}
+
 function topLevelKeys(body: string): string[] {
   const keys: string[] = [];
   let depth = 0;
@@ -687,8 +771,8 @@ export function findRestatedFormat(prompt: string, count: TokenCounter): Restate
   const keys = [
     ...new Set(
       blocks
-        .filter((b) => b.lang === '' || /json|jsonc|json5|yaml|yml/.test(b.lang))
-        .flatMap((b) => topLevelKeys(b.body)),
+        .filter((b) => b.lang === '' || SCHEMA_LANGS.test(b.lang))
+        .flatMap((b) => [...topLevelKeys(b.body), ...unquotedKeys(b.body, b.lang)]),
     ),
   ].filter((k) => k.length >= 3);
 

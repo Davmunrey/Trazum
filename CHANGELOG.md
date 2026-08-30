@@ -13,6 +13,38 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The schema reader named four formats in its own filter and could read one.**
+  `findRestatedFormat` reports a prompt that shows its output schema in a fence
+  and then walks the same fields again in prose. Its fence filter admitted
+  `json`, `jsonc`, `json5`, `yaml` and `yml` — and the key extractor accepted
+  only a *quoted* string followed by a colon, which is JSON and nothing else. A
+  prompt writing its schema as YAML matched a language this module names, then
+  produced zero keys and reported nothing, however thoroughly the prose restated
+  it. Not a missing feature: a promise made in one expression and broken by the
+  next.
+
+  `ts` was not on the list at all, which is the same omission wearing a
+  different label — `interface Ticket { … }` is how a TypeScript codebase asks
+  for structured output. Five fence shapes read correctly now where one did.
+
+  **The first implementation walked line by line and found nothing in three of
+  them**, because `interface Ticket { category: string; urgency: number }` is
+  one line and a line-oriented walk sees depth 0 where it starts. Single-line
+  objects are the normal case in a `ts` fence and in pasted JSON5, not the
+  exception. It reads characters now.
+
+  Four clean prompts hold the other direction: a nested object's fields are not
+  top-level keys, a `ts` function's parameters live in parentheses rather than
+  braces, YAML children belong to their parent, and a fence with **no** language
+  stays quoted-only — an unlabelled block is as likely to be a log as a schema.
+
+  Five plants fire. One was silent and found a hole in the fixture rather than
+  the code: the unlabelled-fence case had no braces, so it never reached the
+  branch the exclusion protects, and removing the exclusion left it green. A
+  braced version was added and it fires.
+
+### Fixed
+
 - **The example detector was blind to nine of fourteen labellings, and six
   analyses went blind with it.** `findExamples` splits a prompt into its
   few-shot examples, and its opener vocabulary was `example`, `input`, `user`,

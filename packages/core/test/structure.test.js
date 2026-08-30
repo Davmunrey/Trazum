@@ -664,6 +664,90 @@ describe('output formats stated twice', () => {
   });
 });
 
+describe('the schema reader kept a promise it was not keeping', () => {
+  /**
+   * **The fence filter already admitted `yaml`, `yml` and `json5`, and the key
+   * extractor could not read any of them.** It accepted a *quoted* string
+   * followed by a colon, which is JSON and nothing else. So a prompt showing
+   * its schema as YAML matched a language this module names in its own filter,
+   * produced zero keys, and reported no restatement however thoroughly the
+   * prose walked the fields. Not a missing feature — a promise made in one
+   * expression and broken by the next.
+   *
+   * `ts` was not on the list at all, and is the same omission wearing a
+   * different label: `interface Ticket { … }` is how a TypeScript codebase
+   * asks for structured output.
+   */
+  const PROSE = '\n\nThe category field holds the ticket class. The urgency field is 1 to 5. '
+    + 'The owner field is the assignee email.';
+  const fenced = (lang, body) => `Return the ticket.\n\n\`\`\`${lang}\n${body}\n\`\`\`${PROSE}`;
+
+  const SHAPES = [
+    ['json', '{"category": "string", "urgency": 0, "owner": "string"}'],
+    ['yaml', 'category: string\nurgency: number\nowner: string'],
+    ['yml', 'category: string\nurgency: number\nowner: string'],
+    ['json5', '{category: "string", urgency: 0, owner: "string"}'],
+    ['ts', 'interface Ticket { category: string; urgency: number; owner: string }'],
+  ];
+
+  for (const [lang, body] of SHAPES) {
+    it(`reads the keys out of a \`${lang}\` fence`, () => {
+      const found = findRestatedFormat(fenced(lang, body), estimateTokens);
+      assert.ok(found !== null, `no schema seen in a ${lang} fence`);
+      assert.deepEqual([...found.keys].sort(), ['category', 'owner', 'urgency']);
+      assert.equal(found.restatedKeys.length, 3, 'the prose walks all three and was not noticed');
+    });
+  }
+
+  it('and reads a single-line body, which is the common one', () => {
+    /*
+      Found by running it. The first version walked line by line, so
+      `interface Ticket { category: string; urgency: number }` — one line — was
+      seen at depth 0 and produced nothing. Single-line objects are what a `ts`
+      fence and pasted JSON5 normally are.
+    */
+    const oneLine = fenced('json5', '{category: "string", urgency: 0, owner: "string"}');
+    assert.equal(findRestatedFormat(oneLine, estimateTokens)?.keys.length, 3);
+  });
+
+  it('does not invent keys from what is merely inside a fence', () => {
+    /**
+     * The cost of the widening, measured. Each of these names three words in
+     * prose that also appear before a colon somewhere — which is the whole
+     * signal — and none of them is a schema being restated.
+     */
+    const CLEAN = [
+      ['a nested object\u2019s fields are not top-level',
+        'Return the ticket.\n\n```json\n{"category": "s", "urgency": 0, "owner": {"name": "s", "email": "s", "team": "s"}}\n```'
+          + '\n\nThe name field, the email field and the team field are all required.'],
+      ['an unlabelled fence stays quoted-only',
+        'Summarise the incident.\n\n```\n12:01 note: disk full\n12:02 status: degraded\n12:03 owner: oncall\n```'
+          + '\n\nThe note field, the status field and the owner field explain what happened.'],
+      /*
+        The braced version of the case above, and it exists because a plant found
+        the case above proving nothing. An unlabelled fence with no braces never
+        reaches the braced reader at all, so removing the `lang === ''` exclusion
+        left that test green. This one has the braces, so it fails the moment an
+        unidentified block is read for unquoted keys -- which is the rule the
+        exclusion exists to keep.
+      */
+      ['an unlabelled braced fence is still unidentified content',
+        'Show the request we send.\n\n```\n{ retries: 3, timeout: 30, verbose: true }\n```'
+          + '\n\nThe retries field, the timeout field and the verbose field are set by the caller.'],
+      ['a function signature is not an interface',
+        'Explain this code.\n\n```ts\nfunction run(input: string, retries: number, label: string) { return input; }\n```'
+          + '\n\nThe input field, the retries field and the label field are described above.'],
+      ['yaml children belong to their parent',
+        'Configure it.\n\n```yaml\nserver:\n  host: string\n  port: number\n  tls: bool\n```'
+          + '\n\nThe host field, the port field and the tls field go under server.'],
+    ];
+
+    const reported = CLEAN.filter(([, text]) => findRestatedFormat(text, estimateTokens) !== null)
+      .map(([name]) => name);
+    assert.deepEqual(reported, [], `reported a restated schema in: ${reported.join(', ')}`);
+  });
+});
+
 describe('examples survive the rules', () => {
   it('does not deduplicate a shared example output line', () => {
     // Regression: two examples mapping different inputs to the same answer is
