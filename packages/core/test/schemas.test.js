@@ -71,13 +71,15 @@ describe('the schemas agree with conform, by construction', () => {
 
   it('requires exactly the fields conform requires, per contract', () => {
     for (const name of CONTRACT_NAMES) {
-      const fromConform =
-        name === 'usage-log'
-          ? requiredFieldsOf(name)
-          : ['schemaVersion', ...requiredFieldsOf(name)];
+      /*
+        Read whole, not patched. This prepended `schemaVersion` itself until
+        `requiredFieldsOf` started reporting the field `conform` actually
+        requires; a test that repairs its subject's answer is a second copy of
+        the fact, and it is the copy that stays right while the export drifts.
+      */
       assert.deepEqual(
         contractSchema(name).required.slice().sort(),
-        fromConform.sort(),
+        requiredFieldsOf(name).slice().sort(),
         `${name}: the schema and conform require different fields`,
       );
     }

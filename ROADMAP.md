@@ -1184,6 +1184,31 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 2.2.0 — Tested against inputs nobody wrote — released
+
+Four thousand tests found nearly every defect this repository has ever fixed,
+and every one of them shares a blind spot: a fixture only contains what somebody
+thought to put in it. This release adds thirty properties that draw from a
+seeded generator instead, and holds the product to the two rules at the top of
+this file rather than to the answers an example happens to produce.
+
+Rule 2 is the one that most needed it. *A locale changes the report, never the
+optimisation* is a claim about every prompt in every language, and until now it
+was illustrated on the prompts somebody wrote down. It is now asserted across
+every locale on thousands of drawn prompts — with a second assertion insisting
+the prose genuinely differs somewhere, so the property could not pass against a
+translation file emptied to English. Rule 1 is checked in the same pass: the
+generators are written here rather than installed, so nothing new is depended
+on to check that nothing is depended on.
+
+It found one defect immediately, and it is the defect this repository keeps
+meeting: `requiredFieldsOf` did not name `schemaVersion`, a field `conform`
+requires and refuses documents for, and both callers had quietly been adding it
+back themselves. One fact, three copies. That is the shape every guard here is
+built to make impossible, and finding it in the module written to prevent it is
+the most honest argument for testing this way.
+
+
 ## 2.1.0 — The receipt can be repriced — released
 
 **A promise the format had already made in writing, made true.** Since 1.83.0
@@ -2633,6 +2658,12 @@ promise the format had already made in writing since 1.83.0 becomes true. A
 frozen surface is a promise about commands, not a vow of silence — but the
 distinction is only worth anything if it is stated out loud each time, which is
 why it is stated here rather than left to be inferred from a version number.
+
+**2.2.0 is the same statement again, and mostly it is maintenance of the kind
+this section says continues.** It adds no command and no analysis: thirty
+property suites, and one correction to a published function that those suites
+found. Testing what is already shipped is exactly what a repository standing at
+its own edge should be spending its effort on.
 
 That is a real state rather than an omission, and this section says so plainly
 because the alternative is describing delivered work as forthcoming, which is

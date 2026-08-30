@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.1.0**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.2.0**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -51,6 +51,100 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 2.2.0 — Tested against inputs nobody wrote
+
+**Four thousand tests found nearly every defect this repository has ever fixed,
+and they all share a blind spot: a fixture only contains what somebody thought
+to put in it.** This release adds thirty properties that draw their inputs from
+a seeded generator instead — thousands of prompts, logs and documents per run —
+and holds the product to the promises its doctrine makes rather than to the
+answers a hand-written example happens to produce.
+
+### What is now checked, and against what
+
+**The optimiser.** That it never throws on any text at all; that two runs of the
+same prompt agree; that a prompt never grows; that a disabled rule stays
+disabled; that `aggressive` never saves less than `safe`; and that every
+protected segment — a URL, an inline span of code, a fenced block, a
+placeholder — comes back untouched. An optimiser that mangles an API endpoint to
+save four tokens has broken the prompt it was asked to improve, and the saving
+is the least interesting thing about that.
+
+**The rule this project repeats most often:** *a locale changes the report,
+never the optimisation.* Every locale must produce the same optimised text, the
+same token figures, the same rules fired and the same advisories raised. It is a
+claim about every prompt in every language, which is exactly the kind of claim an
+example can only illustrate. There is a second assertion beside it insisting the
+**prose does differ** somewhere, because a locale suite that would still pass
+against a translation file emptied to English is a suite that checks nothing
+about locales at all.
+
+**The money.** Slices add up to the total; the three groupings of a report agree
+with each other; the order the lines arrived in changes nothing; adding a record
+never makes a bill smaller; unpriced calls are never quietly given a price; and
+every rate in the catalogue is a finite non-negative number on every date it can
+be asked about. Repricing a receipt answers exactly what repricing the profile it
+came from answers — including which traffic it refuses, because a refusal that
+quietly stops happening reads as a saving.
+
+**That nothing travels.** Credentials, absolute paths, a branch name and an
+address are planted into every field a usage record can be made to carry —
+including fields nobody declared, which is how content actually arrives — and
+then searched for in the receipt, in all three shapes of the CSV export, and in
+the profile the converters are built from. The promise is not that these are
+redacted; it is that a usage record has nowhere to put them, so nothing
+downstream can carry them. A model id and a label are excluded, because those
+travel by design and the documentation says so out loud.
+
+**That a refusal is useful.** `trazum conform` is the door a third party's
+emitter knocks on, and the only thing it can hand back is a no. A no with
+nothing after it is indistinguishable from a bug in the checker, and whoever
+receives it starts guessing. Every refusal now has to arrive with the sentence
+that makes it actionable, on every input at all.
+
+### The defect that found
+
+`requiredFieldsOf` tells an emitter which fields its document must carry. It
+left out `schemaVersion` — a field `conform` requires and refuses documents
+for. The omission was deliberate and documented, and the reasoning was about
+where the check lives rather than about the question being asked.
+
+What makes it a real defect is that **both callers in this repository had
+already worked around it**, each adding the field back by hand. That is one
+fact written in three places, which is exactly what `conform.ts` exists to
+prevent one directory over. It is fixed, and the test that had been repairing
+its subject's answer now reads the export whole.
+
+That is a behaviour change to a published function, which is why this is a
+minor version rather than a patch: anybody who built the same workaround now
+gets `schemaVersion` twice.
+
+### Written rather than installed
+
+The generators are a seeded pseudo-random number generator and a dozen shapes —
+about two hundred readable lines. A property-testing library would have been a
+development dependency and would not have broken the zero-runtime-dependency
+promise on the front page, but in a repository that spends this much effort on
+what it depends on, writing them is the cheaper side of the trade.
+
+They are hostile on purpose: empty strings, a hundred kilobytes of one
+character, code fences that never close, right-to-left overrides, NUL bytes,
+lone surrogates, `__proto__`, `NaN`, `Infinity`, `-0`. A generator that only
+produced tidy English would exercise the paths the example suites already
+cover.
+
+Every run is seeded and every failure prints its own reproduction command, so a
+red CI log carries the exact incantation that reproduces it. The default seed
+is fixed: a suite that fails on Tuesdays and passes on Wednesdays gets disabled
+by whoever is on call, and then it guards nothing at all.
+
+**Three of these properties were wrong before the code was**, and each says so
+in its own file. The redaction suite took its "carried by design" set one record
+at a time while folding a whole batch into one report, so a model id planted as
+another record's `session` field was searched for in the very gap that must name
+it. A property that was wrong first is the most useful comment a property can
+carry.
 
 ## 2.1.0 — The receipt can be repriced
 

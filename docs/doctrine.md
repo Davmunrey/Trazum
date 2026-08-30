@@ -42,12 +42,13 @@ first draft.
 
 **And each rule now names what holds it.** The paragraph above said the rules
 below are enforced by tests. Nothing checked that sentence, and it was the
-weakest claim on a page about checking your own claims: when it was measured, 11
-of the 24 rules were quoted by name anywhere in the suite, and which test held
-which rule was written down nowhere at all — so a rule quoted in one file could
-be enforced in another, or in none. Every rule below now ends with a `Held by`
-line naming the file that fails when the product stops doing what the rule says
-— 21 of the 24 — or naming nothing and giving the reason, which 3 of them do.
+weakest claim on a page about checking your own claims: when it was first
+measured at 1.83.0, fewer than half the rules on the page were quoted by name
+anywhere in the suite, and which test held which rule was written down nowhere
+at all — so a rule quoted in one file could be enforced in another, or in none.
+Every rule below now ends with a `Held by` line naming the file that fails when
+the product stops doing what the rule says — 22 of the 25 — or naming nothing
+and giving the reason, which 3 of them do.
 The link runs both ways: each named file carries a `Doctrine:` line pointing
 back at its rule, and `packages/core/test/doctrine-ledger.test.js` fails when a
 rule loses its line, when a named file stops citing the rule it is said to hold,
@@ -307,6 +308,54 @@ fire on innocent suites until somebody deleted it. What holds it is running the
 finished check against the whole real document rather than against the fixture
 it was written beside — which is what caught the tenth instance above, before it
 merged.
+
+## An example only contains what somebody thought of
+
+The two rules above are about a guard being connected and about it being
+specific. This one is about the guard's *input*, and it is the failure mode the
+first two cannot see: a suite of four thousand hand-written cases proves the
+product handles four thousand situations somebody imagined. Every defect in the
+list of shapes nobody imagined is still there, and the suite is silent about it
+in exactly the tone it uses for the things it does check.
+
+So the claims that are statements about **everything** get checked against
+inputs nobody wrote. *A locale changes the report, never the optimisation* is
+not a fact about six prompts. *Prompt text, file paths and credentials never
+cross a converter* is not a fact about the four strings a fixture plants. Those
+are quantified over every input the product accepts, and the honest way to
+check a claim of that shape is to draw from the input space instead of
+enumerating a corner of it.
+
+Three constraints make it a guard rather than a lottery:
+
+- **Seeded, and printed.** A property that fails once and cannot be made to
+  fail again is a rumour. Every run draws from a fixed seed, and every failure
+  prints the exact command that reproduces it.
+- **Deterministic in CI.** The default seed does not move. A suite that fails
+  on Tuesdays and passes on Wednesdays gets disabled by whoever is on call, and
+  then it guards nothing at all — which is the rule two sections up, arriving
+  by a different road.
+- **Never vacuous.** A property that skipped every drawn case would pass in
+  silence. Each one counts what it actually inspected and fails if that count
+  is zero — and the locale property carries a second assertion that the prose
+  *does* differ somewhere, so it could not pass against a translation file
+  emptied to English.
+
+The corollary is uncomfortable and worth writing down: **a property that fails
+is not evidence of a defect until the property has been read.** Three of the
+first thirty here were wrong before the code was, and each says so in its own
+file, because a property that was wrong first is the most useful comment a
+property can carry.
+
+**Held by**
+[`packages/core/test/properties-optimize.test.js`](../packages/core/test/properties-optimize.test.js),
+[`packages/core/test/properties-usage.test.js`](../packages/core/test/properties-usage.test.js),
+[`packages/core/test/properties-redaction.test.js`](../packages/core/test/properties-redaction.test.js)
+and
+[`packages/core/test/properties-conform.test.js`](../packages/core/test/properties-conform.test.js)
+— thirty properties, drawing from `test/support/random.mjs`. The last of them
+found a defect in `conform.ts`, the module written to prevent exactly the kind
+of defect it found.
 
 ## Cheaper per call is not cheaper per outcome
 
