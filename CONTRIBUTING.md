@@ -129,7 +129,7 @@ The short version:
 1. Add its id to the `RuleId` union in `packages/core/src/i18n/types.ts`.
 2. Implement it in `packages/core/src/rules.ts`. A rule takes masked text and
    returns `{ text, hits }`. It never sees protected content, so it cannot
-   break code, URLs or placeholders.
+   break code, URLs, email addresses or placeholders.
 3. Add its copy to **every** catalogue in `packages/core/src/i18n/`. The build
    fails until you do — that is the point of the typed union.
 4. Add three tests: it fires; it leaves a lookalike alone; `hits` is right.

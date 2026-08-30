@@ -467,8 +467,9 @@ Turn individual rules off with `--disable id1,id2`.
 
 ## What it will not touch
 
-Code fences, inline code, URLs, template placeholders (`{{x}}`, `${x}`, `{x}`,
-`{% %}`) and XML/HTML tags are isolated before any rule runs. If a rule would
+Code fences, indented code blocks, inline code, URLs, email addresses, template
+placeholders (`{{x}}`, `${x}`, `{x}`, `{% %}`) and XML/HTML tags are isolated
+before any rule runs. If a rule would
 make one disappear, that rule is dropped and the rest continue. You can rely on
 this: the optimised prompt will not have broken someone's JSON schema.
 

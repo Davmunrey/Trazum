@@ -363,6 +363,7 @@ export interface Segment {
 
 export type ProtectionKind =
   | 'fenced-code'
+  | 'indented-code'
   | 'inline-code'
   | 'url'
   | 'email'

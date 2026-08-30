@@ -83,7 +83,7 @@ reproducible on a single file: caching you are not getting, work that could go
 through the Batch API, a schema costing tokens on every call to describe a shape
 the request could carry as a parameter. Underneath them, twelve deterministic
 rules that shorten the text itself: same input, same output, free, offline, and
-never touching code, URLs or placeholders. On top, an **optional LLM pass** for
+never touching code, URLs, email addresses or placeholders. On top, an **optional LLM pass** for
 the compression rules cannot do, through whichever provider you configure, which
 never runs unless you ask.
 
@@ -186,9 +186,9 @@ in capitals. Two levels — `safe` (no semantic risk) and `aggressive` (read the
 diff). This is the smallest number on the page more often than not, and it is
 reported that way rather than dressed up.
 
-**3. And never touches what would break the prompt.** Code fences, inline code,
-URLs, template placeholders (`{{x}}`, `${x}`, `{x}`, `{% %}`) and XML/HTML tags
-are isolated before any rule runs. If a rule ever did make one of those
+**3. And never touches what would break the prompt.** Code fences, indented code
+blocks, inline code, URLs, email addresses, template placeholders (`{{x}}`,
+`${x}`, `{x}`, `{% %}`) and XML/HTML tags are isolated before any rule runs. If a rule ever did make one of those
 disappear, that rule is discarded and the rest carry on.
 
 **Reviewing an aggressive run.** Every rule reports what it actually changed,
@@ -1110,7 +1110,7 @@ against the provider's free counting endpoint. The measurement story is in
 
 ```
 packages/core/     dependency-free library (rules, tokens, pricing, LLM)
-  src/segment.ts     isolation of code, URLs, templates and XML
+  src/segment.ts     isolation of code, URLs, emails, templates and XML
   src/rules.ts       deterministic rules engine
   src/phrases.ts     phrase dictionaries (data, multilingual)
   src/pricing.ts     model and pricing catalogue

@@ -2289,8 +2289,8 @@ const withLlm = await refineWithLlm(result, provider);
 console.log(withLlm.llm.applied, withLlm.llm.rejectedReason);
 ```
 
-An LLM candidate is **rejected** when it is empty, alters code/URLs/
-placeholders, is not shorter, or keeps under 25% of the tokens — that is a
+An LLM candidate is **rejected** when it is empty, alters code, URLs, email
+addresses or placeholders, is not shorter, or keeps under 25% of the tokens — that is a
 summary, not a compression.
 
 `--llm` also reviews your few-shot examples, in a second call, and only when

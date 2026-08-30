@@ -50,6 +50,9 @@ const ATOMS = [
   // came out corrupted -- `please@example.com` became `@example.com` -- because
   // the politeness, filler and intensifier rules read a local part as prose.
   'Write to please.note@example.com and basically@example.com for help.',
+  // The same bait for indented code. Four spaces after a blank line is a code
+  // block by the CommonMark rule, and every word in it is one a rule removes.
+  'Run this:\n\n    const label = "please keep";\n    // basically the identity\n',
 ];
 
 const prompts = (seed, iterations) => {
@@ -218,6 +221,112 @@ describe('money is never negative, whatever the input', () => {
   });
 });
 
+describe('indented code is code, and the rules were rewriting it', () => {
+  /**
+   * **This module used to say indented blocks were left to the rules because
+   * they are *"ambiguous in markdown"*.** The ambiguity is real. What it cost
+   * was not proportionate to it — three separate corruptions at once, all
+   * measured:
+   *
+   * - the indentation goes, which by itself makes Python a syntax error;
+   * - keywords are sentence-capitalised — `const` becomes `Const`, `def`
+   *   becomes `Def` — which makes the rest of them syntax errors;
+   * - and **string literals are edited**, so `WHERE note = 'please refund'`
+   *   became `= ' refund'` and a payload's `"reason"` changed value.
+   *
+   * The report said tokens were saved for all of it.
+   *
+   * The blank line is what makes this a rule rather than a guess: CommonMark
+   * says an indented code block cannot interrupt a paragraph, so a run of
+   * indented lines after a blank line is code by the specification.
+   */
+  const BLOCKS = [
+    ['a js string literal', 'Run this:\n\n    const label = "please keep";\n\nThen continue.'],
+    ['python, where indentation is syntax', 'Use:\n\n    def run(x):\n        return x  # basically the identity\n\nDone.'],
+    ['sql with a literal that must not change', "Query:\n\n    SELECT id FROM orders WHERE note = 'please refund';\n\nDone."],
+    ['a json payload', 'Send:\n\n    {"reason": "please cancel", "urgent": true}\n\nDone.'],
+    ['a tab-indented block', 'Run:\n\n\tconst x = "please keep";\n\nDone.'],
+  ];
+
+  for (const level of ['safe', 'aggressive']) {
+    it(`leaves an indented block byte for byte at the ${level} level`, () => {
+      const broken = BLOCKS.filter(([, text]) => {
+        const body = text.split('\n\n')[1];
+        return !optimize(text, { level }).optimized.includes(body);
+      }).map(([name]) => name);
+      assert.deepEqual(broken, [], `${broken.length} blocks rewritten: ${broken.join(', ')}`);
+    });
+  }
+
+  it('and still trims prose that merely happens to be indented', () => {
+    /*
+      The cost of the mask, checked rather than assumed. Without the blank-line
+      requirement this would swallow a wrapped paragraph line and turn the
+      optimiser off in the middle of ordinary prose.
+    */
+    const inParagraph = 'Please note the value.\n    It is important to note that this continues.\nBasically, done.';
+    const trimmed = optimize(inParagraph, { level: 'aggressive' }).optimized;
+    assert.ok(trimmed.length < inParagraph.length, 'an indented paragraph line stopped being trimmed');
+    assert.doesNotMatch(trimmed, /It is important to note/, 'filler inside a paragraph survived');
+
+    /*
+      Three spaces after a blank line, which markdown reads as a paragraph and
+      not as code. Added because a plant went silent: loosening the mask to
+      three spaces broke nothing here, so nothing was holding the boundary that
+      separates an indented block from ordinary wrapped prose.
+    */
+    const nearlyIndented = 'Text.\n\n   It is important to note that this is prose.\n';
+    assert.doesNotMatch(
+      optimize(nearlyIndented, { level: 'aggressive' }).optimized,
+      /It is important to note/,
+      'three spaces was read as a code block',
+    );
+  });
+
+  it('but cannot re-protect a document reduced to nothing but the block', () => {
+    /**
+     * **A limit, pinned so that changing the bait did not bury it.** The mask
+     * needs real content before the blank line. At the aggressive level a rule
+     * can delete that content — `IMPORTANT:` is one — and `optimize` then trims
+     * the leading blank lines, so the second pass sees a document that opens
+     * with indented text and nothing before it. That is genuinely ambiguous:
+     * a first line starting with a tab is not necessarily code, and claiming it
+     * was tried and made things worse, breaking thirty-two protected spans
+     * elsewhere in this corpus.
+     *
+     * So the first pass keeps the code and a second pass would not. It surfaced
+     * because the bait atom happened to start with a blank line; the atom is a
+     * realistic prompt now, which is a better bait, and this is here so the
+     * limit is a decision on the record rather than a thing the fixture stopped
+     * showing.
+     */
+    const reducible = 'IMPORTANT:\n\n    const label = "please keep";\n';
+    const once = optimize(reducible, { level: 'aggressive' }).optimized;
+    assert.match(once, /const label = "please keep";/, 'the first pass must still keep the code');
+
+    const twice = optimize(once, { level: 'aggressive' }).optimized;
+    assert.notEqual(
+      twice,
+      once,
+      'the limit above is gone — good, but delete this test deliberately rather than by accident',
+    );
+  });
+
+  it('and protects a deeply indented list continuation, which is the known cost', () => {
+    /**
+     * Stated as a test rather than left for somebody to find. Content indented
+     * four spaces inside a list is continuation, not code, and this protects
+     * it — unsaved tokens in a rare shape. The alternative is a broken prompt
+     * in a common one, and those are not the same kind of wrong.
+     */
+    const list = '- First item\n\n    please keep this continuation\n\n- Second item';
+    assert.ok(
+      optimize(list, { level: 'aggressive' }).optimized.includes('please keep this continuation'),
+      'the known cost has changed shape — re-read the trade-off before editing this',
+    );
+  });
+});
+
 describe('an address is not prose, however much it reads like it', () => {
   /**
    * **Five of ten realistic addresses came out corrupted**, and what was left
@@ -324,6 +433,22 @@ describe('what a mask promises, over the whole corpus', () => {
       corpus specifically built to catch exactly this.
     */
     for (const match of noFences.matchAll(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g)) {
+      spans.push(match[0]);
+    }
+    /*
+      Indented code, added with its mask rather than after the fact. The email
+      hole survived precisely because this extractor and the masker were written
+      from one list at different times; adding the protection without teaching
+      the corpus about it would repeat that in the same file that documents it.
+    */
+    /*
+      From `text`, not `noFences`, and the difference matters: removing a fence
+      changes what precedes a line, so a lookbehind can match here and not in
+      the masker. Anything inside a fence is protected as fenced code anyway, so
+      claiming it twice costs nothing and asserting on the real string costs a
+      false failure less.
+    */
+    for (const match of text.matchAll(/(?<=\S[ \t]*\n[ \t]*\n)(?:(?: {4,}|\t)[^\n]*(?:\n|$))+/g)) {
       spans.push(match[0]);
     }
     return spans;

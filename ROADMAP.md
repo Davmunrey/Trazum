@@ -42,9 +42,9 @@ courtesy, filler, verbose phrasing, paragraphs pasted in twice — and a rules
 engine removes it reproducibly, for free, with no API key and no round trip.
 
 - 12 rules across two levels (`safe`, `aggressive`).
-- Protection pass: code fences, inline code, URLs, template placeholders and
-  XML/HTML tags are isolated *before* any rule runs, so no rule can
-  structurally break a prompt.
+- Protection pass: code fences, indented code blocks, inline code, URLs, email
+  addresses, template placeholders and XML/HTML tags are isolated *before* any
+  rule runs, so no rule can structurally break a prompt.
 - Dependency-free heuristic token estimator. Published at ±15% here, which was a
   design target and not true; measured and made true in 1.9.0.
 - Pricing catalogue with promotional pricing and per-model cache minimums.
