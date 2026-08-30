@@ -13,6 +13,31 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The guard that makes every other guard checkable walked a hand-written list
+  of eleven directories, and missed 289 of 822 files.** `security.test.js`
+  refuses a raw NUL byte in a source file, because a NUL makes git call the file
+  binary and a binary file has no diff — a pull request renders "this file
+  cannot be displayed" and `grep` answers "binary file matches" instead of the
+  line. Its own comment records the defect coming back once already, *"one
+  directory outside its reach"*, and the fix that time was to widen the list.
+
+  Widening a hand-written list is what invites the third occurrence. Outside
+  those eleven entries sat **`@trazum/mcp` and `@trazum/tokenizer-openai` — two
+  published packages** — plus the editor extension and the Claude Code plugin,
+  every one a shipped artefact. None held a NUL byte; nothing would have said so
+  if they had.
+
+  The roots are gone: the walk starts at the repository and the exclusions are
+  the whole policy, each with a reason given. `fixtures` stays excluded because
+  a fixture may hold a NUL deliberately. A second check pins the walk to eight
+  named files across every package, because a skip added for one good reason can
+  drop a package as a side effect — which is how the list came to be missing
+  four of them.
+
+  Three plants fire: a NUL in `packages/mcp/src`, a NUL in the editor extension
+  — neither of which the old walk could see — and an exclusion that quietly
+  drops a package. The floor rose from 100 files to 400.
+
 - **Ten config key lists were second copies of interfaces, with nothing holding
   them together.** `CONFIG_KEYS`, `CONFIG_SPEND_KEYS` and eight more are what
   `rejectUnknownKeys` compares an incoming `trazum.config.json` against, and
