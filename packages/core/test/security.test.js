@@ -1264,17 +1264,26 @@ describe('the masker alone, on a much tighter budget', () => {
    * about six times slower. A cliff detector that only fires on slow hardware
    * is one a fast development box walks straight past.
    *
-   * This measures `segment` on its own, where the cliff is far sharper. Every
-   * mask over every adversarial input below completes in **9ms or less**; the
-   * budget is 300ms, which is thirty-three times the worst observed and still
-   * three times *under* the fault it exists to catch. So it fails on this
-   * machine, and on one three times faster.
+   * This measures `segment` on its own, where the cliff is far sharper — but
+   * only over inputs where the masker **should find almost nothing**, and that
+   * restriction is the guard rather than a detail of it.
+   *
+   * The list below is deliberately not the one under `ReDoS resistance`. That
+   * one includes `mixed adversarial`, fifteen thousand genuine placeholder,
+   * tag and code-span matches, and the masker takes **341ms** on it here doing
+   * exactly the work it is supposed to do. Folding that into one budget would
+   * force the ceiling past two seconds and blunt the thing to uselessness.
+   * Every input below is a long run that matches **nothing**, so any time spent
+   * is time wasted: the worst is **9ms**, the budget is 300, and the fault it
+   * was written for took 897ms — thirty-three times the worst observed, and
+   * three times under what it catches. It fails on this machine, and on one
+   * three times faster.
    *
    * The last two inputs are the shape the earlier fixtures were missing for a
    * mask that keys on a delimiter: a long run of the characters *before* the
-   * delimiter, so the pattern restarts and fails at every position. `a.a.a…`
-   * for a local part that accepts dots, and the same run finally reaching an
-   * `@` so the match is attempted rather than abandoned.
+   * delimiter, so the pattern restarts and fails at every position. A dotted
+   * run for a local part that accepts dots, and the same run finally reaching
+   * an `@` so the match is attempted rather than abandoned.
    */
   const MASK_BUDGET_MS = 300;
 
@@ -1284,6 +1293,8 @@ describe('the masker alone, on a much tighter budget', () => {
     ['unclosed placeholders', '{{'.repeat(30_000)],
     ['unclosed xml', '<'.repeat(30_000)],
     ['unclosed fence', '```\n' + 'x'.repeat(100_000)],
+    // Not `mixed adversarial`: see above. It is fifteen thousand real matches,
+    // and a budget that accommodates real work cannot detect a cliff.
     ['label prefix, whitespace run', `example${' '.repeat(200_000)}`],
     ['at-sign storm', '@'.repeat(40_000)],
     ['dotted run that never reaches a delimiter', 'a.'.repeat(20_000)],

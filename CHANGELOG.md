@@ -54,10 +54,18 @@ merged commit with no entry is a change only `git log` remembers.
 
   **A cliff detector that only fires on slow hardware is one a fast development
   box walks past**, so there is a second guard on `segment` alone, where the
-  cliff is sharper: every mask over every adversarial input completes in 9ms or
-  less, and the budget is 300ms — thirty-three times the worst observed, and
-  three times *under* the fault it exists to catch. Restoring the unbounded
-  quantifier fails it on this machine, which is the whole point.
+  cliff is sharper. Its fixtures are deliberately **only inputs the masker
+  should find nothing in**, so any time spent is time wasted: the worst is 9ms,
+  the budget is 300, and the fault it was written for took 897. Restoring the
+  unbounded quantifier fails it on this machine, which is the point.
+
+  That restriction was itself a correction. The first version of this claimed
+  *"every mask over every adversarial input"*, which is false: the ReDoS list in
+  the same file includes one input where the masker takes **341ms** doing
+  exactly the work it should — fifteen thousand genuine placeholder, tag and
+  span matches. Folding real work into a cliff budget forces the ceiling past
+  two seconds and blunts the detector to uselessness, so that input stays where
+  it was and this list says why.
 
   Two fixtures were added for the shape the old list was missing: a mask that
   keys on a delimiter needs a long run of the characters *before* it, so the
