@@ -54,6 +54,31 @@ interface AxisDefinition {
  */
 const RESPOND = String.raw`(?:respond|reply|answer|write|speak|output|responde|contesta|responder|escribe|redacta)`;
 
+/**
+ * How a prompt refers to the reader having produced their message.
+ *
+ * `used|wrote|speaks` missed on a tense: *"respond in the same language the
+ * user writes in"* — present, which is how a standing instruction is normally
+ * written — was invisible, so a prompt pinning English and mirroring the user
+ * in the same breath reported no conflict at all.
+ */
+const SPOKE = String.raw`(?:used?|uses|wrote|writes|writing|speaks|spoke|sent|asked)`;
+
+/** Nouns that mean *the thing the model produces*, as opposed to any other text. */
+const THE_ANSWER = String.raw`(?:answers?|responses?|repl(?:y|ies)|explanations?|respuestas?)`;
+
+/**
+ * A numeric ceiling on length, without the unit.
+ *
+ * Kept separate because it is only ever safe next to an anchor: *"the title
+ * field takes at most five words"* is the same phrase about a form field, and
+ * reading it as an instruction about the answer is how a widening turns a
+ * detector into a nuisance.
+ */
+const REQUIRE_SHORT = String.raw`keep\s+(?:it|them|${THE_ANSWER})\s+(?:short|brief|concise)`;
+
+const AT_MOST = String.raw`(?:at\s+most|no\s+more\s+than|under|within|máximo\s+de?)\s+(?:one|two|three|four|five|\d+)\s+(?:sentences?|words?|frases?|palabras?)`;
+
 const AXES: readonly AxisDefinition[] = [
   {
     axis: 'response-language',
@@ -71,7 +96,7 @@ const AXES: readonly AxisDefinition[] = [
           // The qualifier slot ("own", "native", "preferred") is what makes
           // this survive real prompts: "the customer's own language" is at
           // least as common as the bare form.
-          String.raw`\bin\s+the\s+(?:same\s+)?language\s+(?:of|as|the\s+\w+\s+(?:used|wrote|speaks))|\bin\s+(?:the\s+(?:user|customer|client)'?s?|their)\s+(?:own\s+|native\s+|preferred\s+)?language\b|\bmatch\s+the\s+language\b|\ben\s+(?:el\s+)?(?:mismo\s+)?idioma\s+(?:del?\s+|en\s+que\s+)?(?:usuario|cliente|consulta|mensaje|escrib)`,
+          String.raw`\bin\s+the\s+(?:same\s+)?language\s+(?:of|as|the\s+\w+\s+(?:used|wrote|speaks))|\bin\s+(?:the\s+(?:user|customer|client)'?s?|their)\s+(?:own\s+|native\s+|preferred\s+)?language\b|\bmatch\s+the\s+language\b|\b${RESPOND}\b[^.!?\n]{0,40}?\bin\s+(?:the\s+(?:same\s+)?|whatever\s+|whichever\s+)language\s+(?:of|as|that\s+|the\s+\w+\s+)?\w*\s*${SPOKE}|\ben\s+(?:el\s+)?(?:mismo\s+)?idioma\s+(?:del?\s+|en\s+que\s+)?(?:usuario|cliente|consulta|mensaje|escrib)`,
           'i',
         ),
       ],
@@ -109,14 +134,14 @@ const AXES: readonly AxisDefinition[] = [
       [
         'length-brief',
         new RegExp(
-          String.raw`\b(?:be\s+(?:brief|concise|succinct|terse)|keep\s+it\s+(?:short|brief)|as\s+short\s+as\s+possible|in\s+(?:one|a\s+single)\s+sentence|s[ée]\s+(?:breve|conciso)|de\s+forma\s+(?:breve|concisa)|brevemente)\b`,
+          String.raw`\b(?:be\s+(?:brief|concise|succinct|terse)|keep\s+it\s+(?:short|brief)|as\s+short\s+as\s+possible|${REQUIRE_SHORT}|\b${RESPOND}\b[^.!?\n]{0,40}?${AT_MOST}|in\s+(?:one|a\s+single)\s+sentence|s[ée]\s+(?:breve|conciso)|de\s+forma\s+(?:breve|concisa)|brevemente)\b`,
           'i',
         ),
       ],
       [
         'length-detailed',
         new RegExp(
-          String.raw`\b(?:be\s+(?:detailed|comprehensive|thorough|exhaustive)|in\s+(?:great\s+)?depth|as\s+much\s+detail\s+as\s+possible|s[ée]\s+(?:exhaustivo|detallado)|de\s+forma\s+(?:detallada|exhaustiva)|con\s+todo\s+detalle|detalladamente)\b`,
+          String.raw`\b(?:be\s+(?:detailed|comprehensive|thorough|exhaustive)|in\s+(?:great\s+)?depth|(?:detailed|comprehensive|thorough|exhaustive|in-depth)[^.!?\n]{0,30}?\b${THE_ANSWER}\b|as\s+much\s+detail\s+as\s+possible|s[ée]\s+(?:exhaustivo|detallado)|de\s+forma\s+(?:detallada|exhaustiva)|con\s+todo\s+detalle|detalladamente)\b`,
           'i',
         ),
       ],
@@ -128,14 +153,14 @@ const AXES: readonly AxisDefinition[] = [
       [
         'reasoning-shown',
         new RegExp(
-          String.raw`\b(?:explain\s+your\s+(?:reasoning|answer|thinking)|show\s+your\s+(?:work|reasoning|thinking)|think\s+step[\s-]by[\s-]step|justify\s+your\s+answer|explica\s+tu\s+razonamiento|razona\s+paso\s+a\s+paso|justifica\s+tu\s+respuesta)\b`,
+          String.raw`\b(?:explain\s+your\s+(?:reasoning|answer|thinking)|show\s+your\s+(?:work|reasoning|thinking)|show\s+your\s+chain\s+of\s+thought|walk\s+(?:me\s+)?through\s+your\s+(?:reasoning|thinking|logic)|think\s+step[\s-]by[\s-]step|justify\s+your\s+answer|explica\s+tu\s+razonamiento|razona\s+paso\s+a\s+paso|justifica\s+tu\s+respuesta)\b`,
           'i',
         ),
       ],
       [
         'reasoning-hidden',
         new RegExp(
-          String.raw`\b(?:no\s+(?:explanation|commentary|preamble)|without\s+(?:explanation|commentary)|do\s+not\s+explain|don'?t\s+explain|no\s+expliques|sin\s+(?:explicaciones|comentarios)|sin\s+preámbulo)\b`,
+          String.raw`\b(?:no\s+(?:explanation|commentary|preamble)|without\s+(?:explanation|commentary|justification|reasoning)|no\s+justification|do\s+not\s+explain|don'?t\s+explain|no\s+expliques|sin\s+(?:explicaciones|comentarios)|sin\s+preámbulo)\b`,
           'i',
         ),
       ],
@@ -249,10 +274,83 @@ const LABEL_SUFFIX = String.raw`[ \t]{0,4}\d{0,6}[ \t]{0,4}[:.)]`;
  * indistinguishable from ordinary prose, and guessing would make the advisory
  * fire on prompts containing no examples at all.
  */
+/**
+ * The label on the side that **asks**, in the wordings prompts actually use.
+ *
+ * **This list was three entries long and it made six analyses blind.** A
+ * support prompt labelled `Customer:` / `Agent:` — the single most common
+ * shape there is — found zero examples, so `prune` had nothing to cut,
+ * `profile` reported the examples as costing nothing, and the redundant-example
+ * advisory never fired. Measured across fourteen labellings real prompts use,
+ * nine found nothing: `Customer`, `Human`, `Question`, `Client`, `Prompt`,
+ * `Query`, `Cliente`, `Pregunta`, `REQUEST`. `Human:` is Anthropic's own
+ * historical convention and `Q:` worked while `Question:` did not, which is
+ * the arbitrariness that gives the fault away.
+ *
+ * The failure was silent, which is what made it survive: an unrecognised label
+ * produces no examples, and no examples produces no finding — the same shape
+ * as a gate that passes because it is checking nothing.
+ *
+ * Only openers belong here. `Answer:` and `Assistant:` close a turn, and
+ * splitting on those would cut every example between its question and its
+ * answer and then compare the halves.
+ */
+const ASKER_LABELS = [
+  'user',
+  'usuario',
+  'human',
+  'humano',
+  'customer',
+  'cliente',
+  'client',
+  'q',
+  'question',
+  'pregunta',
+  'query',
+  'consulta',
+  'request',
+  'petición',
+  'peticion',
+  'prompt',
+] as const;
+
+/**
+ * The label on the side that **answers**.
+ *
+ * Never a tier: these appear inside an example rather than opening one. They
+ * are here so `EXAMPLE_FIELD_LINE` can be built from the same two lists the
+ * splitter uses, which is what stops the pair drifting apart again — the field
+ * detector already knew `question` and `answer` while the splitter did not,
+ * and that disagreement is precisely how `Q:` came to work and `Question:` not.
+ */
+const ANSWERER_LABELS = [
+  'assistant',
+  'asistente',
+  'a',
+  'answer',
+  'respuesta',
+  'output',
+  'salida',
+  'response',
+  'reply',
+  'agent',
+  'agente',
+  'support',
+  'soporte',
+  'bot',
+  'result',
+  'resultado',
+] as const;
+
+/** Labels that name an example as a whole, rather than one side of it. */
+const BLOCK_LABELS = ['example', 'ejemplo', 'input', 'entrada'] as const;
+
+const anyOf = (labels: readonly string[]) => labels.join('|');
+
 const EXAMPLE_HEADER_TIERS: readonly RegExp[] = [
   new RegExp(`${LABEL_PREFIX}(?:example|ejemplo)${LABEL_SUFFIX}`, 'i'),
   new RegExp(`${LABEL_PREFIX}(?:input|entrada)${LABEL_SUFFIX}`, 'i'),
-  new RegExp(`${LABEL_PREFIX}(?:user|usuario|q)${LABEL_SUFFIX}`, 'i'),
+  new RegExp(`${LABEL_PREFIX}(?:${anyOf(ASKER_LABELS)})${LABEL_SUFFIX}`, 'i'),
 ];
 
 /**
@@ -265,7 +363,7 @@ const EXAMPLE_HEADER_TIERS: readonly RegExp[] = [
  * repetition it removed.
  */
 export const EXAMPLE_FIELD_LINE = new RegExp(
-  `${LABEL_PREFIX}(?:input|output|entrada|salida|example|ejemplo|user|usuario|assistant|asistente|q|a|question|answer|pregunta|respuesta)${LABEL_SUFFIX}`,
+  `${LABEL_PREFIX}(?:${anyOf([...BLOCK_LABELS, ...ASKER_LABELS, ...ANSWERER_LABELS])})${LABEL_SUFFIX}`,
   'i',
 );
 
@@ -306,6 +404,30 @@ export interface ExampleAnalysis {
  * grow, and not semantic redundancy. Recognising that "arrived quickly" and
  * "arrived fast" teach the same thing needs a model, not a word-set overlap;
  * that belongs to the optional LLM pass, not here.
+ */
+/**
+ * How alike two examples must be before one is called redundant.
+ *
+ * **Do not lower this hoping to catch paraphrases: it was measured and it does
+ * not work.** Four support examples whose answers were *"Let me look that up
+ * for you. Could you share your order number?"*, *"I can check that for you.
+ * What's your order number?"*, *"Happy to help. May I have your order
+ * number?"* and *"Of course. What is your order number?"* are one example
+ * wearing four coats — any reader says so instantly. Their word overlap is
+ * 0.29–0.43, and comparing only the answers makes it **worse**, 0.21–0.39,
+ * because the shared content is three words (`your`, `order`, `number`) while
+ * the openers are all different. There is no threshold that separates those
+ * from genuinely different examples: at 0.4 this fires on every prompt whose
+ * examples share a domain vocabulary.
+ *
+ * That similarity is a semantic judgement, and this repository has a place for
+ * those — `trazum semantic`, which says what it costs and asks first. What
+ * word overlap can honestly find is a paragraph somebody pasted twice and
+ * edited lightly, which is what 0.7 is for.
+ *
+ * So the deterministic half reports **what the examples cost**, which is a
+ * fact, and leaves *whether one should go* to `prune`, which answers it by
+ * running the cases rather than by counting words.
  */
 const EXAMPLE_SIMILARITY = 0.7;
 
@@ -356,9 +478,69 @@ function trimToExample(block: string): string {
   return kept.join('\n\n').trim();
 }
 
+/**
+ * Examples delimited by an `<example>` tag rather than by a label.
+ *
+ * **This is Anthropic's own documented convention for few-shot prompting**, and
+ * the product whose headline model is Claude could not see it: a code-review
+ * prompt wrapping three demonstrations in `<example>` found zero examples, and
+ * the same six analyses went quiet that `Customer:` had silenced. A shape a
+ * provider tells people to use is not an edge case.
+ *
+ * Tried before the label tiers because it is the least ambiguous thing in this
+ * file. A label is a word that might be prose; `<example>` is a delimiter, so
+ * there is no threshold and no judgement — either the tag is there or it is not.
+ *
+ * Only `example` and `examples`, which are what the documentation names.
+ * `<sample>` and `<demonstration>` appear in the wild and are not added: the
+ * list would then be a guess about what people might write, and this splitter
+ * has already been burnt once by a vocabulary somebody thought was wide enough.
+ * A tag arriving here should arrive with a prompt that uses it.
+ *
+ * A tag inside a fenced block is documentation about the tag rather than a use
+ * of it — a prompt explaining how to write examples is not a prompt containing
+ * them — so fenced regions are removed before matching.
+ */
+function xmlExamples(prompt: string): string[] {
+  const outsideFences = prompt.replace(/^([ \t]{0,3})(`{3,}|~{3,})[\s\S]*?^\1\2[ \t]*$/gm, '');
+  const tag = /<example(?:\s[^>]*)?>([\s\S]*?)<\/example>/gi;
+  return [...outsideFences.matchAll(tag)].map(([, body]) => (body ?? '').trim()).filter(Boolean);
+}
+
+/**
+ * **A shape this deliberately does not detect, and the reason is the point.**
+ *
+ * Inline mappings are everywhere — `1. "package never arrived" -> shipping`,
+ * `- "Acme raised a round" => Acme` — and on the probes that found the two
+ * faults above they are the remaining silent case. They are not added, because
+ * the only thing separating a demonstration from an instruction here is
+ * judgement: `if the ticket is about delivery -> use the shipping category` is
+ * the same line shape and is a rule, not an example.
+ *
+ * A detector that got that wrong would not merely report a wrong number.
+ * `prune` *removes* examples, so a rule misread as an example becomes a
+ * proposal to delete an instruction — and it would arrive with the same
+ * confidence as a correct one.
+ *
+ * The tempting narrowing is to require the left side to be quoted. It was
+ * considered and refused: both probes are quoted **because the author of the
+ * probes wrote them that way**, and a threshold fitted to one's own fixture is
+ * a threshold that has been measured against nothing. What would settle it is
+ * real prompts using the shape, not a rule invented here.
+ *
+ * Until then the honest behaviour is the one `prune` now has: say what was
+ * looked for, so a prompt this cannot read reports that it was not seen rather
+ * than that it does not exist. That sentence used to read "this prompt has
+ * fewer than two few-shot examples", which was a confident false statement
+ * about a prompt with four of them.
+ */
+
 /** Splits the prompt into labelled example blocks. */
 export function findExamples(prompt: string, count: TokenCounter): ExampleBlock[] {
   const lines = prompt.split('\n');
+
+  const tagged = xmlExamples(prompt);
+  if (tagged.length >= 2) return tagged.map((text) => ({ text, tokens: count(text) }));
 
   for (const header of EXAMPLE_HEADER_TIERS) {
     const blocks = splitOnHeader(lines, header);

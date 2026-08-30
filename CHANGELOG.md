@@ -11,6 +11,203 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+- **The example detector was blind to nine of fourteen labellings, and six
+  analyses went blind with it.** `findExamples` splits a prompt into its
+  few-shot examples, and its opener vocabulary was `example`, `input`, `user`,
+  `usuario`, `q`. A support prompt labelled `Customer:` / `Agent:` — the
+  commonest shape there is — split into nothing. So did `Human:`, which is
+  Anthropic's own historical convention, and `Question:`, while `Q:` worked,
+  which is the arbitrariness that gives the fault away. So did `Cliente:` and
+  `Pregunta:`, in a product that ships a Spanish locale.
+
+  Six analyses read that splitter. On a 338-token support prompt whose examples
+  are **38% of it**, `profile` reported the examples as costing nothing, the
+  redundant-example advisory never fired, and `trazum prune` — whose whole job
+  is cutting few-shot examples — printed *"This prompt has fewer than two
+  few-shot examples, so there is nothing to compare."* That is not a refusal
+  naming what is missing. It is a confident false statement about a prompt with
+  four examples in it.
+
+  **The failure was silent by construction**, which is why it survived: an
+  unrecognised label yields no blocks, no blocks yields no finding, and nothing
+  distinguishes that from a prompt containing no examples. The whole suite was
+  green with nine of fourteen labellings blind, and is green now — no test
+  covered it, because a test written from the same list as the code would have
+  agreed with it.
+
+  The vocabulary is two named lists now, openers and answerers, and both the
+  splitter and the field pattern are built from them — the pair had already
+  drifted once, which is exactly how the field detector came to know `question`
+  while the splitter did not. The guard is fourteen real labellings written as
+  prompts rather than as a list of labels, so it fails if the vocabulary
+  narrows again for any reason. Four plants fire: the old vocabulary restored,
+  an answerer label promoted to a splitter (which halves every example), the
+  field pattern unhooked from the lists, and a suffix loosened until the
+  splitter invents examples in ordinary prose.
+
+- **The tag Anthropic's own documentation tells people to use found nothing.**
+  `<example>` is the convention in the provider's prompting guide, and this
+  product's headline model is Claude. A code-review prompt wrapping three
+  demonstrations in it split into zero examples, so the same six analyses went
+  quiet that `Customer:` had silenced — on that prompt the examples are **68%
+  of it**.
+
+  Tried before the label tiers, because a delimiter admits no judgement: either
+  the tag is there or it is not, where a label is a word that might be prose.
+  Only `example` and `examples`, which are what the documentation names —
+  `<sample>` and `<demonstration>` exist in the wild and are not added, because
+  that list would be a guess about what people might write, and this splitter
+  has been burnt once already by a vocabulary somebody thought was wide enough.
+  A tag inside a fenced block is documentation about the tag rather than a use
+  of it, so fences are removed before matching.
+
+  Four plants fire. One was silent at first and the plant was the fault, not the
+  guard: it added `dotAll` to a pattern containing no `.`, which changes
+  nothing. The real violation — a greedy body, so the first tag swallows through
+  to the last — fires on three tests.
+
+- **`trazum prune` stated something false with confidence.** On a prompt it
+  could not read it printed *"This prompt has fewer than two few-shot examples,
+  so there is nothing to compare"* — a claim about the prompt, made by a tool
+  that had only established something about itself. It now names what it looked
+  for (a tag, or labelled turns) and says that examples laid out another way
+  were not seen rather than not there. Both locales. That is the difference
+  between a refusal and a wrong answer, and the doctrine asks for the first.
+
+- **One shape is deliberately still unread, and it is written down.** Inline
+  mappings — `1. "package never arrived" -> shipping` — are the remaining
+  silent case on these probes and are not detected. The only thing separating a
+  demonstration from an instruction there is judgement: `if the ticket is about
+  delivery -> use the shipping category` has the identical shape and is a rule.
+  Getting that wrong is not a wrong number, because `prune` removes what it
+  finds, so a rule misread as an example becomes a proposal to delete an
+  instruction. The tempting narrowing — require the left side to be quoted —
+  was refused: both probes are quoted because the person writing the probes
+  wrote them that way, and a threshold fitted to one's own fixture has been
+  measured against nothing.
+
+- **The contradiction detector missed eight of eleven ordinary phrasings, and
+  no concept was missing.** Every one sat inside an axis it already claims to
+  cover — it was the same instruction in different grammar. *"Respond in the
+  same language the user writes in"* was invisible because the pattern accepted
+  `used`, `wrote` and `speaks` but not the present tense, so a prompt pinning
+  English and mirroring the user in the same breath reported no conflict at
+  all. So did *"keep answers short"* against *"keep it short"*, *"answer in at
+  most two sentences"*, *"provide a thorough explanation"* against *"be
+  thorough"*, *"walk through your reasoning"*, *"show your chain of thought"*
+  and *"without justification"*.
+
+  **The first fix traded false negatives for false positives, and measuring
+  caught it.** Widening the vocabularies made four of five clean prompts report
+  a contradiction: a detailed *error message* read as a detailed answer, a word
+  limit on a *form field* read as a limit on the reply, a *document* in the
+  user's language read as an instruction to mirror it. The cause was dropping a
+  constraint the module already had and documents — that the sentence must be
+  about the response, which is what `RESPOND` exists for. Rebuilt so every new
+  alternative carries its own anchor and no existing alternative is touched:
+  eleven of eleven phrasings seen, five of five clean prompts left alone.
+
+  The guard holds both directions, because a detector is only as good as its
+  quieter half. Five plants fire. One was silent and found a hole in the
+  fixture rather than in the code: the clean prompt it tested paired two
+  sentences that both fail to match, so they masked each other and the case
+  passed however the length cap behaved. One end of a pair has to be beyond
+  doubt for the other end to be under test.
+
+- **One filler family covered two constructions in English where Spanish
+  covered five.** English had four entries in the note-and-mention family and
+  two constructions — `it is important to note that` and `it is worth noting
+  that`, each written twice for the contraction — while Spanish had five
+  constructions in five entries. German carried `es sei darauf hingewiesen,
+  dass`, literally *"it should be noted that"*, which English did not. Found by
+  reading across the sections of one list rather than by taste.
+
+  **A correction to the commit that made this change.** It claimed the English
+  list was *the thinnest in the file*, and that is false: counted per language
+  it is the longest, 12 entries against Spanish's 12 and Italian's 9. The gap
+  was inside one family and the claim generalised it to the whole list without
+  checking — a number that could not be justified, in a release note about a
+  dictionary. Counting all six sections of all ten dictionaries took one script,
+  and it says English is first or second in every one of them. The source
+  comment and the guard now say what was actually measured.
+
+  Measured on fifteen padded sentences an editor trims without touching a single
+  instruction, the rules recovered **34 of 76 tokens**. The five phrasings
+  another language's section already justified take it to 49. Nothing was added
+  for the other five languages: a phrasing they lack is for whoever reads the
+  language to judge, which is what `docs/language-maintainer.md` exists for, and
+  guessing at French filler from an English ear is how a rule starts editing
+  prompts it does not understand.
+
+  **One of the fifteen caught the person doing the measuring, not the code.**
+  The corpus was graded against an editor's rewrite, and that editor turned
+  *"feel free to ask a clarifying question"* into *"ask a clarifying
+  question"* — which is not a trim. It converts permission into an instruction.
+  Three of the remaining misses are the same kind and stay missed on purpose:
+  removing `try to` **strengthens** an instruction, and `make sure that you` is
+  emphasis, which this repository already decided belongs at the aggressive
+  level. `as mentioned above` and `keep in mind that` stay out for a different
+  reason — no other language's section justifies them, and the rule for these
+  additions is that one has to.
+
+  The guard holds both halves. Five plants fire, three of them for phrasings
+  wrongly *added*.
+
+- **A measured negative result, recorded so nobody re-derives it.** The
+  redundancy threshold is 0.7 word overlap, and the obvious next thought is to
+  lower it and catch paraphrases. It was measured and it does not work: four
+  support answers that any reader calls one example — *"Let me look that up for
+  you. Could you share your order number?"* against *"Of course. What is your
+  order number?"* and two more — overlap at 0.29–0.43, and comparing only the
+  answers makes it **worse**, 0.21–0.39, because all they share is `your`,
+  `order`, `number`. No threshold separates those from genuinely different
+  examples. That judgement belongs to `trazum semantic`, which says what it
+  costs and asks first, and to `prune`, which answers it by running the cases.
+  The deterministic half reports what the examples cost, which is a fact.
+
+- **The release document asked a question the release had already answered.**
+  Since 1.85.0 it said which credential authenticated the npm upload was
+  unsettled, because provenance is signed with the job's OIDC identity either
+  way and proves nothing about the auth. The 1.86.0 run answers it: the
+  `Can this workflow authenticate to npm?` step reported **all four packages
+  rejected**, and all four published seconds later in the same job. The only
+  other credential there is the granular token on the `release` environment, so
+  that token is what authenticates every upload — it is the thing holding
+  releases up, not a fallback in waiting, and deleting it stops them.
+
+  That also settles what 1.85.0 could only narrow. `@trazum/tokenizer-openai`
+  published although the token was made when three packages existed, and the two
+  explanations were OIDC or a wider scope. OIDC is now ruled out for that
+  package by name, so the scope is wider than three. The rule about regenerating
+  the token when a package is added stays, because a scope nobody has inspected
+  is not one anybody can rely on.
+
+  The workflow said the same thing in the older, weaker form — *"when npm keeps
+  refusing"*, as a conditional about a fallback. Two comments now state what is
+  actually true of every publish this repository makes.
+
+- **The README told people to pin an Action two releases old.** `security.test.js`
+  derives how many versions a recommended pin is behind from `git tag`, and
+  allows exactly one — the pin can only advance to a release commit once that
+  commit exists, which is after the merge rather than in it. 1.85.0 shipped and
+  left the pin at 1.83.0, which the rule tolerated; 1.86.0 made it two and the
+  guard fired.
+
+  **It fired on CI and not here, and the reason is the same class of fault this
+  release spent a commit on.** The container running the tests had fetched tags
+  before `v1.86.0` existed, so `git tag` listed one release since the pin and
+  the guard passed. A test whose verdict depends on how recently the machine
+  fetched is environment-dependent in the way `SPAWN_ENV` was written to stop —
+  though here the machine is *behind* the truth rather than differently
+  configured, and the fix is fetching, not neutralising. Reproduced locally by
+  fetching the tag, then fixed.
+
+  The pin is the 1.86.0 release commit now. Planted a wrong label against the
+  right commit to check the fix advanced the pin rather than blinding the guard:
+  it still fails with `comment says 1.85.0, 2c5e907 says 1.86.0`.
+
 ## 1.86.0 — 2026-08-29
 
 ### Added

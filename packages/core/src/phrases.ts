@@ -248,6 +248,42 @@ export const FILLER: readonly string[] = [
   "it's important to note that",
   'it is worth noting that',
   "it's worth noting that",
+  /*
+    The five below were missing while the same constructions sat in other
+    languages' sections of this very list, which is how they were found: not by
+    taste, but by reading across the sections and asking what English lacked.
+
+      it should be noted that      <- de: 'es sei darauf hingewiesen, dass'
+      it is worth mentioning that  <- es: 'vale la pena mencionar que'
+      it is important to mention   <- es: 'es importante mencionar que'
+
+    English carried four entries in this family and **two** constructions:
+    `it is important to note that` and `it is worth noting that`, each written
+    twice for the contraction. Spanish carried five constructions in five
+    entries. So the English section was not short of entries — it was spending
+    them on contractions of the same two phrasings while another language
+    covered five different ones.
+
+    That distinction matters and was got wrong once. The first version of this
+    comment said the English section was *the thinnest in the file*, which is
+    false: counted per language it is the longest, 12 entries against Spanish's
+    12 and Italian's 9. The gap was inside one family, and generalising from it
+    to the whole list took a claim nobody had checked. The check is one script.
+
+    Measured on fifteen padded sentences an editor would trim without touching
+    an instruction, the rules recovered 34 of 76 tokens; these were among the
+    misses.
+
+    Nothing is added here for the other five languages. A phrasing they lack is
+    for whoever reads the language to judge — `docs/language-maintainer.md`
+    exists for exactly that, and guessing at French filler from an English ear
+    is how a rule starts editing prompts it does not understand.
+  */
+  'it should be noted that',
+  'it is worth mentioning that',
+  "it's worth mentioning that",
+  'it is important to mention that',
+  "it's important to mention that",
   'needless to say',
   'in essence',
   'at the end of the day',

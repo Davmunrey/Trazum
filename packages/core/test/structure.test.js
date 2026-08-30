@@ -93,6 +93,108 @@ describe('contradictory instructions', () => {
   });
 });
 
+describe('the contradiction axes read the phrasings prompts actually use', () => {
+  /**
+   * **Eight of eleven ordinary phrasings were missed, and no concept was
+   * missing.** Every one sat inside an axis the detector already claims to
+   * cover; they were the same instruction in different grammar. *"Respond in
+   * the same language the user writes in"* was invisible because the pattern
+   * accepted `used`, `wrote` and `speaks` but not the present tense — so a
+   * prompt pinning English and mirroring the user in the same breath reported
+   * no conflict at all.
+   *
+   * **Written as pairs against a canonical opposite**, which is what makes a
+   * miss mean something: a phrasing is recognised if pairing it with a sentence
+   * known to sit at the other end of its axis produces a finding. The anchors
+   * are asserted first, because if one of them stopped matching every case
+   * below would fail for the wrong reason — and, worse, a broken anchor in the
+   * *negative* half would report a clean prompt as clean while proving nothing.
+   */
+  const ANCHOR = {
+    'fixed-language': 'Respond in English.',
+    'mirror-language': 'Respond in the same language as the user.',
+    'length-brief': 'Be concise.',
+    'length-detailed': 'Be thorough.',
+    'reasoning-shown': 'Think step by step.',
+    'reasoning-hidden': 'Do not explain.',
+  };
+  const OPPOSITE = {
+    'fixed-language': 'mirror-language',
+    'mirror-language': 'fixed-language',
+    'length-brief': 'length-detailed',
+    'length-detailed': 'length-brief',
+    'reasoning-shown': 'reasoning-hidden',
+    'reasoning-hidden': 'reasoning-shown',
+  };
+
+  const pairedWithOpposite = (value, sentence) =>
+    findContradictions(`${sentence}\n\n${ANCHOR[OPPOSITE[value]]}`);
+
+  it('recognises both ends of every axis in their plainest form', () => {
+    // The guard on the guard. Every assertion below is stated relative to these.
+    const broken = Object.entries(ANCHOR)
+      .filter(([value, sentence]) => pairedWithOpposite(value, sentence).length === 0)
+      .map(([value]) => value);
+    assert.deepEqual(broken, [], `anchors no longer match: ${broken.join(', ')}`);
+  });
+
+  it('and in the wordings people write instead', () => {
+    const PHRASINGS = [
+      ['mirror-language', 'Respond in the same language the user writes in.'],
+      ['mirror-language', 'Reply in whatever language the customer used.'],
+      ['length-brief', 'Answer in at most two sentences.'],
+      ['length-brief', 'Keep answers short.'],
+      ['length-detailed', 'Provide a thorough and detailed explanation.'],
+      ['reasoning-shown', 'Walk through your reasoning before answering.'],
+      ['reasoning-shown', 'Show your chain of thought.'],
+      ['reasoning-hidden', 'Give the answer only, without justification.'],
+    ];
+    const missed = PHRASINGS.filter(
+      ([value, sentence]) => pairedWithOpposite(value, sentence).length === 0,
+    ).map(([, sentence]) => sentence);
+
+    assert.deepEqual(missed, [], `${missed.length} phrasings unseen:\n  ${missed.join('\n  ')}`);
+  });
+
+  it('and does not accuse a prompt that contradicts nothing', () => {
+    /**
+     * **The cost of the widening, measured rather than assumed.** The first
+     * attempt at the fix above traded false negatives for false positives:
+     * four of these five were reported as contradictions, because widening the
+     * vocabulary had dropped the constraint the module already had — that the
+     * sentence must be about *the response*. `RESPOND` exists for exactly this,
+     * and its own comment says so.
+     *
+     * Every one of these is a sentence that uses the words and means something
+     * else: a detailed *error message*, a word limit on a *form field*, a
+     * *document* in the user's language.
+     */
+    const CLEAN = [
+      ['a detailed thing that is not the answer',
+        'Validate the payload.\n\nProvide a detailed error message when validation fails.\n\nKeep answers short.'],
+      ['a language instruction that reads like a reasoning one',
+        'Answer only in English.\n\nExplain your reasoning before the final line.'],
+      ['short applied to identifiers',
+        'Review the diff.\n\nSuggest short variable names.\n\nBe thorough in your review.'],
+      ['a language the document is in, not the answer',
+        'Summarise the attached document.\n\nThe document is in the same language the author writes in.\n\nRespond in English.'],
+      /*
+        Paired with the plainest `length-detailed` sentence there is, and that
+        is deliberate. This case ended "Provide a comprehensive body" at first,
+        which matches neither end — so the two halves masked each other and the
+        case passed however the length cap behaved. A plant found it: dropping
+        the response anchor from the cap left this test green. One end of a pair
+        has to be beyond doubt for the other end to be under test.
+      */
+      ['a length cap on a field',
+        'Fill the form.\n\nThe title field takes at most five words.\n\nBe thorough.'],
+    ];
+
+    const accused = CLEAN.filter(([, text]) => findContradictions(text).length > 0).map(([name]) => name);
+    assert.deepEqual(accused, [], `reported a contradiction in ${accused.join(', ')}`);
+  });
+});
+
 describe('few-shot examples', () => {
   const EXAMPLES = [
     'Classify the ticket.',
@@ -198,6 +300,253 @@ describe('few-shot examples', () => {
       'Output: positive',
     ].join('\n');
     assert.equal(analyzeExamples(prompt, estimateTokens).redundant.length, 0);
+  });
+});
+
+describe('the example detector reads the labels prompts actually use', () => {
+  /**
+   * **Nine of these fourteen found nothing, and the suite was green.**
+   *
+   * `findExamples` feeds six analyses — `prune`, `profile`, `review`, the
+   * redundant-example advisory, the CLI's example view, and the rule that
+   * protects example lines from deduplication. All six read the same splitter,
+   * and its opener vocabulary was `example`, `input`, `user`, `usuario`, `q`.
+   * A support prompt labelled `Customer:` / `Agent:` — the commonest shape
+   * there is — split into nothing, so `prune` had no examples to evaluate and
+   * `profile` reported that the examples cost zero tokens. On the prompt this
+   * was found with, they were **38% of it**.
+   *
+   * The failure was silent by construction: no label, no blocks, no finding.
+   * Nothing distinguishes that from a prompt with no examples in it, which is
+   * why it survived and why nothing here caught it.
+   *
+   * **Written as prompts rather than as a list of labels**, deliberately. A
+   * fixture that enumerated the same strings the module declares would be two
+   * copies of one list agreeing with each other; these are the shapes the
+   * detector has to work on, and they fail if the vocabulary narrows again for
+   * any reason — including a refactor that keeps the list and breaks the regex
+   * it is built into.
+   */
+  const LABELLINGS = [
+    ['User', 'Assistant'],
+    ['Customer', 'Agent'],
+    ['Human', 'Assistant'],
+    ['Q', 'A'],
+    ['Question', 'Answer'],
+    ['Input', 'Output'],
+    ['Client', 'Support'],
+    ['Prompt', 'Response'],
+    ['Query', 'Reply'],
+    ['Usuario', 'Asistente'],
+    ['Cliente', 'Agente'],
+    ['Pregunta', 'Respuesta'],
+    ['REQUEST', 'RESPONSE'],
+    ['Example', 'Result'],
+  ];
+
+  /** One three-example prompt, wearing whichever labels it is handed. */
+  const promptWith = (asker, answerer) =>
+    [
+      'Answer the customer from the account record.',
+      '',
+      ...[1, 2, 3].flatMap((n) => [
+        `${asker}: sample question number ${n} about the account`,
+        `${answerer}: sample answer number ${n} explaining the account`,
+        '',
+      ]),
+    ].join('\n');
+
+  it('finds the examples under every labelling a real prompt uses', () => {
+    const blind = LABELLINGS.filter(
+      ([asker, answerer]) => findExamples(promptWith(asker, answerer), estimateTokens).length < 2,
+    ).map(([asker, answerer]) => `${asker}:/${answerer}:`);
+
+    assert.deepEqual(
+      blind,
+      [],
+      `the detector is blind to ${blind.length} of ${LABELLINGS.length} labellings: ${blind.join(', ')}`,
+    );
+  });
+
+  it('and splits between examples, not between a question and its answer', () => {
+    /*
+      The reason answerer labels are not tiers. Splitting on `Answer:` as well
+      would cut each example in half and then compare the halves, which is both
+      wrong and worse than finding nothing: the halves are dissimilar, so the
+      redundancy advisory would go quiet on genuinely duplicated examples.
+    */
+    for (const [asker, answerer] of LABELLINGS) {
+      const blocks = findExamples(promptWith(asker, answerer), estimateTokens);
+      assert.equal(blocks.length, 3, `${asker}: split into ${blocks.length} blocks`);
+      for (const block of blocks) {
+        assert.match(
+          block.text,
+          new RegExp(`${answerer}:`, 'i'),
+          `${asker}: an example was cut away from its answer`,
+        );
+      }
+    }
+  });
+
+  it('reports what the examples cost, which was previously nothing', () => {
+    // The arithmetic is the finding. Not a verdict about whether any example
+    // should go — that is the human's, and `prune` measures it with cases.
+    const prompt = promptWith('Customer', 'Agent');
+    const blocks = findExamples(prompt, estimateTokens);
+    const inExamples = blocks.reduce((sum, block) => sum + block.tokens, 0);
+    assert.ok(inExamples > 0, 'the examples were found and still cost nothing');
+    assert.ok(
+      inExamples / estimateTokens(prompt) > 0.5,
+      'a prompt that is mostly examples reported otherwise',
+    );
+  });
+
+  it('does not split ordinary prose that happens to use those words', () => {
+    /*
+      The cost of widening, checked rather than assumed. `Prompt:`, `Request:`
+      and `A:` are ordinary English, and a splitter that fired on them would
+      invent examples in a prompt that has none — and every analysis downstream
+      would then be reasoning about blocks nobody wrote.
+    */
+    const prose = [
+      'Write a summary of the incident.',
+      '',
+      'A good summary states what broke, when, and who it affected.',
+      'A bad summary lists timestamps with no narrative.',
+      '',
+      'Query the database only when the answer is not in the ticket.',
+      'Request approval before contacting the customer directly.',
+    ].join('\n');
+
+    assert.deepEqual(
+      findExamples(prose, estimateTokens),
+      [],
+      'the detector invented examples in a prompt that has none',
+    );
+  });
+
+  it('leaves a labelled answer line alone when the rules deduplicate', () => {
+    /*
+      `duplicate-lines` skips lines matching the field pattern, because two
+      examples sharing an answer are demonstrating that two inputs map to the
+      same output — removing the second leaves an example with no answer. That
+      pattern is now built from the same two lists the splitter uses, so a
+      labelling the splitter learned is a labelling the rule protects, and the
+      pair cannot drift apart again the way `Q:` and `Question:` did.
+    */
+    const prompt = [
+      'Classify each message.',
+      '',
+      'Customer: my order has not arrived and the tracking page is empty',
+      'Agent: this is a shipping problem and I will escalate it now',
+      '',
+      'Customer: the parcel is late and the tracking link shows nothing at all',
+      'Agent: this is a shipping problem and I will escalate it now',
+    ].join('\n');
+
+    const result = optimize(prompt);
+    assert.equal(
+      (result.optimized.match(/Agent: this is a shipping problem/g) ?? []).length,
+      2,
+      'an example lost the answer it exists to demonstrate',
+    );
+  });
+});
+
+describe('examples delimited by a tag, which is what Anthropic documents', () => {
+  /**
+   * A prompt wrapping its demonstrations in `<example>` found **zero** of them,
+   * and this product's headline model is Claude. The convention is in the
+   * provider's own prompting documentation, so it is not an edge case: it is
+   * the shape a reader is told to use. On the code-review prompt this was found
+   * with, the examples are **68% of the prompt** and every analysis downstream
+   * was reasoning as though they cost nothing.
+   */
+  const TAGGED = [
+    'You are a code reviewer. Review the diff and report defects.',
+    '',
+    '<example>',
+    '<input>def add(a, b): return a - b</input>',
+    '<output>Bug: add subtracts. Should be a + b.</output>',
+    '</example>',
+    '',
+    '<example>',
+    '<input>def mul(a, b): return a + b</input>',
+    '<output>Bug: mul adds. Should be a * b.</output>',
+    '</example>',
+    '',
+    '<example>',
+    '<input>def div(a, b): return a * b</input>',
+    '<output>Bug: div multiplies. Should be a / b.</output>',
+    '</example>',
+    '',
+    'Report only real defects. Do not report style.',
+  ].join('\n');
+
+  it('finds each tagged example, and only what the tag contains', () => {
+    const blocks = findExamples(TAGGED, estimateTokens);
+    assert.equal(blocks.length, 3);
+    // The instruction above and the instruction below are not inside any tag,
+    // so no block may carry them. A splitter that ran to the next delimiter
+    // would swallow the closing sentence into the last example and inflate it.
+    for (const block of blocks) {
+      assert.doesNotMatch(block.text, /code reviewer/, 'an example absorbed the opening instruction');
+      assert.doesNotMatch(block.text, /Report only real defects/, 'an example absorbed the closing instruction');
+    }
+  });
+
+  it('and they are most of what that prompt costs, which was reported as nothing', () => {
+    const blocks = findExamples(TAGGED, estimateTokens);
+    const inExamples = blocks.reduce((sum, block) => sum + block.tokens, 0);
+    assert.ok(
+      inExamples / estimateTokens(TAGGED) > 0.5,
+      'a prompt that is mostly tagged examples reported otherwise',
+    );
+  });
+
+  it('prefers the tag over any label nested inside it', () => {
+    /*
+      `<input>`/`<output>` inside each example would also match the label tiers.
+      Whichever wins must be the outer one, or every example is cut in half and
+      the halves are compared against each other.
+    */
+    assert.equal(findExamples(TAGGED, estimateTokens).length, 3);
+  });
+
+  it('ignores a tag that is being documented rather than used', () => {
+    /*
+      A prompt that teaches somebody how to write examples contains the tag and
+      no examples. Fenced regions are removed before matching, so the sample in
+      the fence is prose about a tag rather than a use of one.
+    */
+    const teaching = [
+      'When you add a few-shot example, wrap it like this:',
+      '',
+      '```',
+      '<example>',
+      'input here',
+      '</example>',
+      '',
+      '<example>',
+      'another input',
+      '</example>',
+      '```',
+      '',
+      'Keep them short.',
+    ].join('\n');
+
+    assert.deepEqual(
+      findExamples(teaching, estimateTokens),
+      [],
+      'the detector read documentation about a tag as a use of it',
+    );
+  });
+
+  it('needs two before it calls anything a set of examples', () => {
+    // One example is not a set, and the redundancy question needs a pair. A
+    // single tag falls through to the label tiers rather than being reported.
+    const one = ['Do the task.', '', '<example>', 'input: a', 'output: b', '</example>'].join('\n');
+    assert.deepEqual(findExamples(one, estimateTokens), []);
   });
 });
 

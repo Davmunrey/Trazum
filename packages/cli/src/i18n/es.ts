@@ -2198,7 +2198,9 @@ ${bold('EJEMPLOS')}
 
   prune: {
     needsExamples: () =>
-      'Este prompt tiene menos de dos ejemplos few-shot, así que no hay nada que comparar.',
+      'Encontrados menos de dos ejemplos few-shot que comparar. Se reconocen por una '
+      + 'etiqueta <example> o por turnos etiquetados como "Ejemplo:", "Entrada:" o "Cliente:". '
+      + 'Si los tuyos van de otra forma, no se han visto, que no es lo mismo que no estar.',
     estimate: (examples, cases, calls) =>
       `${examples} ejemplos × ${cases} casos: ${calls} llamadas al proveedor `
       + `(2 de referencia por caso, y luego una por ejemplo retirado).`,

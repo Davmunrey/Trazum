@@ -2174,7 +2174,9 @@ ${bold('EXAMPLES')}
 
   prune: {
     needsExamples: () =>
-      'This prompt has fewer than two few-shot examples, so there is nothing to compare.',
+      'Found fewer than two few-shot examples to compare. They are recognised by an '
+      + '<example> tag or by labelled turns such as "Example:", "Input:" or "Customer:". '
+      + 'If yours are laid out another way, they were not seen rather than not there.',
     estimate: (examples, cases, calls) =>
       `${examples} examples × ${cases} cases: ${calls} provider calls `
       + `(2 baselines per case, then one per example removed).`,
