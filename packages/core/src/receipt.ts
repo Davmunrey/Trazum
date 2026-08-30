@@ -150,6 +150,34 @@ export interface ReceiptLine {
   money: ReceiptMoney;
   /** The catalogue's published rates, as provenance. */
   pricing: ReceiptPricing;
+  /**
+   * The largest single call in this slice, cache reads and writes included.
+   *
+   * **The one number that says whether these calls would fit somewhere else.**
+   * A cheaper model with a smaller context window does not make a 400k-token
+   * call cheaper, it makes it impossible, and counting an impossible call's
+   * price difference as a saving is the flattering direction this repository
+   * refuses. The maximum rather than an average, for the same reason: one call
+   * over the ceiling is a failed call, and a mean hides it.
+   *
+   * Added in 2.1.0, and the gap it closes is worth naming. The two cache-write
+   * TTL fields above have always been here *so a consumer could reprice this
+   * traffic against another model's rates* -- and `repriceProfile` refuses to
+   * price traffic that would not fit, which no reader of a receipt could
+   * honour, because the receipt did not carry this. The format was built for
+   * repricing and stopped one field short of it.
+   */
+  maxCallInputTokens: number;
+  /**
+   * Calls in this slice whose cache-write TTL the log did not state, so the
+   * cheaper 5-minute rate was assumed.
+   *
+   * The document already reports the organisation-wide figure as an
+   * `assumed-write-ttl` gap. This is the same fact per slice, which is the
+   * resolution a repricing needs: the assumption travels into the comparison,
+   * and a reader is entitled to know which slices carry it.
+   */
+  assumedWriteTtlCalls: number;
 }
 
 /** Everything a receipt refuses to answer, typed rather than left implicit. */
@@ -250,6 +278,8 @@ const RECEIPT_LINE_FIELD_MAP = {
   usd: true,
   money: true,
   pricing: true,
+  maxCallInputTokens: true,
+  assumedWriteTtlCalls: true,
 } satisfies Record<keyof ReceiptLine, true>;
 
 /**
@@ -304,6 +334,11 @@ const lineFrom = (
       outputPerMTok: priced.outputPerMTok,
       reviewedOn: PROVIDER_REVIEWED[priced.provider ?? ''] ?? null,
     },
+    /* Copied, never derived. Neither can be recovered from the aggregates
+       above: a maximum is not a mean, and how many calls were silent about
+       their TTL is not visible in a token total. */
+    maxCallInputTokens: breakdown.maxCallInputTokens,
+    assumedWriteTtlCalls: breakdown.assumedWriteTtlCalls,
   };
 };
 

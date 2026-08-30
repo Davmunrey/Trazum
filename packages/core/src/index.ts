@@ -348,10 +348,16 @@ export type { RepeatedTurns, RepeatsOptions, RepeatsTracker } from './repeats.js
 // See context-pressure.ts.
 export { contextPressure } from './context-pressure.js';
 export type { ContextPressure, ContextPressureOptions } from './context-pressure.js';
-export { priceTokensOn, repriceProfile } from './reprice.js';
+export { priceTokensOn, repriceProfile, repriceReceipt } from './reprice.js';
 export { ownRate, switchAnalysis } from './switch.js';
 export type { BreakEvenRefusal, SwitchAnalysis, SwitchOptions } from './switch.js';
-export type { OverContextSlice, RepriceReport, RepricedSlice } from './reprice.js';
+export type {
+  OverContextSlice,
+  RepriceReport,
+  RepriceableInput,
+  RepriceableSlice,
+  RepricedSlice,
+} from './reprice.js';
 export { createSessionLedgerTracker, singleTurnCacheWrites } from './session-ledger.js';
 // What one conversation costs — median and p95, exact. See session-cost.ts.
 export { createSessionCostTracker, sessionCostShapes } from './session-cost.js';

@@ -13,6 +13,49 @@ merged commit with no entry is a change only `git log` remembers.
 
 Nothing yet.
 
+## 2.1.0 — 2026-08-30
+
+### Added
+
+- **A receipt can be repriced, which is what it was shaped for and could not
+  do.** `ReceiptLine` gains `maxCallInputTokens` and `assumedWriteTtlCalls`, and
+  `repriceReceipt` asks a receipt the question `repriceProfile` asks a log.
+
+  The two cache-write TTL fields have said in their own comment since 1.83.0
+  that they exist *"so a consumer can reprice this traffic against another
+  model's rates"*. No consumer could. `repriceProfile` refuses to price traffic
+  the target could not have accepted — a cheaper model with a smaller context
+  window does not make a 400k-token call cheaper, it makes it impossible, and
+  counting an impossible call's price difference as a saving is the flattering
+  direction this repository refuses. **That refusal needs the largest single
+  call, and a receipt did not carry it.** The format was built for repricing and
+  stopped one field short of it.
+
+  So the field is added, and with it the per-line count of calls whose write TTL
+  the log did not state — the document already reported that organisation-wide
+  as a gap, and a comparison needs the resolution it travels at.
+
+  `repriceReceipt` is **not a second implementation**. The loop that refuses
+  over-context traffic, excludes calls already on the target, keeps the write
+  TTLs apart and states `sameTokensAssumed` is now reached through a narrow
+  `RepriceableSlice`, and both entry points map onto it. Two loops reading two
+  shapes would drift on which traffic is refused, and a refusal that quietly
+  stops happening reads as a saving. `reprice.test.js` holds them to
+  `deepEqual`: repricing a receipt answers **exactly** what repricing the
+  profile it came from answers, refusals included.
+
+  Why it matters where it lands: a receipt is what leaves a machine, and by the
+  time anybody asks *what would these calls have cost on the small model* the log
+  is usually gone — aged out by a retention policy, on a runner that no longer
+  exists, or on somebody else's laptop. A comparison only the holder of the log
+  can make is a comparison only the person who least needs it can make.
+
+  **This is new development after a release that said the tool was finished, and
+  that is a statement rather than an oversight.** 2.0.0's claim is that the
+  *surface* is frozen at 46 commands, and it still is: this adds no command. What
+  it adds is two numbers to a published format and one function, so that a
+  promise the format had already made in writing becomes true.
+
 ## 2.0.0 — 2026-08-30
 
 ### Fixed
