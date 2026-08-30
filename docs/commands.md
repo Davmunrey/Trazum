@@ -1975,6 +1975,13 @@ whole serialised document for each. Planted against the emitter, both halves
 fire: the content search catches the string, and the published field whitelist
 catches the field that carried it.
 
+The whitelist itself is bound to `ReceiptLine` with `Record<keyof ReceiptLine,
+true>`, so a field added to the type and not to the list does not compile. That
+is a compile-time check because a runtime one cannot reach it: the guard sees
+the fields a receipt *emits*, and a field populated in one branch — which is the
+shape a leak takes — is on the type without being on any line the guard reads.
+A plant that added exactly such a field passed all twelve checks before this.
+
 **The one thing it cannot check** is a label. A label is yours and is meant to
 be read on the other side, so a label named after a prompt's text travels. No
 guard can tell that from a label named `summarise`, and saying so is better than

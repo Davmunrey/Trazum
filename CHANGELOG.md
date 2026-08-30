@@ -13,6 +13,35 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The receipt whitelist said its guard caught a field added to the type, and
+  the guard could not see the type at all.** `RECEIPT_LINE_FIELDS` is the
+  published list of what leaves a machine — exported, and read by anyone
+  checking what a receipt can carry. Its comment said *"the redaction guard
+  reads this array rather than a copy of it, so a field added to `ReceiptLine`
+  and not added here fails the guard."*
+
+  It does not. `receipt-redaction.test.js` collects the keys the emitter
+  actually **emits** and checks each against the list, which catches an emitter
+  emitting an unlisted field and is a real property. It cannot reach a field
+  that is on the type and on no emitted line. A plant added `operator?: string`
+  to `ReceiptLine`, emitted it on nothing the fixture built, and **all twelve
+  checks passed** — and a field populated in one branch is exactly the shape a
+  leak takes.
+
+  The list is now derived from a map bound with `Record<keyof ReceiptLine,
+  true>`, so both directions are compile errors: a field on the type and not on
+  the list, and an entry on the list the type does not have. The exported array
+  and its order are unchanged, because it is published. Three plants fire — the
+  field that slipped through before (TS2741), a stale entry named `sessionId`
+  (TS2353), and an emitted stray, which confirms the runtime half still holds
+  what it always held.
+
+  `docs/commands.md` said the whitelist *"catches the field that carried it"*,
+  which was true of the emitted case and is what that paragraph is about; it now
+  also says why the other case needs the compiler.
+
+### Fixed
+
 - **Nine documents told readers the optimiser would break their email addresses
   and their indented code.** Both are protected. Every document that enumerates
   the protected list had been written when it held five kinds, and each stayed

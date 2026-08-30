@@ -220,26 +220,48 @@ export interface ReceiptDocument {
 }
 
 /**
- * The fields that leave this machine, listed once, in one place.
+ * The fields that leave this machine, keyed by the interface they describe.
  *
- * The redaction guard reads this array rather than a copy of it, so a field
- * added to `ReceiptLine` and not added here fails the guard. A whitelist
- * maintained in two places is a whitelist with a hole in it.
+ * `Record<keyof ReceiptLine, true>` is what holds the two together: a field
+ * added to `ReceiptLine` and not added here is a **compile error**, and so is
+ * an entry here that `ReceiptLine` does not have. A whitelist maintained in two
+ * places is a whitelist with a hole in it.
+ *
+ * **This used to say the redaction guard held that, and it did not.** The guard
+ * reads the emitted lines and checks every key it finds against this list,
+ * which catches an emitter that emits an unlisted field — a real property, kept
+ * below. It cannot catch a field added to the *type*: a plant added
+ * `operator?: string` to `ReceiptLine`, emitted it on no line the fixture
+ * built, and all twelve checks passed. A field populated in one branch is
+ * exactly the shape a leak takes, and the published whitelist customers read to
+ * see what leaves their machine would have been wrong while its own guard said
+ * otherwise.
  */
-export const RECEIPT_LINE_FIELDS = Object.freeze([
-  'label',
-  'model',
-  'calls',
-  'inputTokens',
-  'cacheReadTokens',
-  'cacheWriteTokens',
-  'cacheWrite5mTokens',
-  'cacheWrite1hTokens',
-  'outputTokens',
-  'usd',
-  'money',
-  'pricing',
-] as const);
+const RECEIPT_LINE_FIELD_MAP = {
+  label: true,
+  model: true,
+  calls: true,
+  inputTokens: true,
+  cacheReadTokens: true,
+  cacheWriteTokens: true,
+  cacheWrite5mTokens: true,
+  cacheWrite1hTokens: true,
+  outputTokens: true,
+  usd: true,
+  money: true,
+  pricing: true,
+} satisfies Record<keyof ReceiptLine, true>;
+
+/**
+ * The same list, published.
+ *
+ * Derived from the map rather than written again, because writing it twice is
+ * the fault this exists to prevent. Key order is insertion order, so the array
+ * a consumer reads is unchanged.
+ */
+export const RECEIPT_LINE_FIELDS: readonly string[] = Object.freeze(
+  Object.keys(RECEIPT_LINE_FIELD_MAP),
+);
 
 const lineFrom = (
   label: string,
