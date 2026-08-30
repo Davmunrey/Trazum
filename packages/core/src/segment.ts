@@ -47,7 +47,24 @@ const PATTERNS: PatternDef[] = [
   */
   {
     kind: 'email',
-    regex: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g,
+    /*
+      **Every quantifier here is bounded, and the first version of this was not.**
+      The local part accepts `.`, so on a long dotted run with no `@` in it —
+      a dotted run behind a scheme, which is a fixture in `security.test.js`
+      for exactly this reason — an unbounded `+` matches the whole run from every starting
+      position and then fails. Quadratic: **897ms on 40,008 characters**, and
+      `optimize` runs this alongside every other pattern, which took the total
+      past the 5-second cliff detector on a CI runner while passing on a faster
+      machine. That test's own note had already recorded the lesson from the
+      last time — *"quadratic until the label quantifiers were bounded"* — and
+      this pattern arrived a week later without them.
+
+      The bounds are RFC 5321's, not invented: 64 octets for a local part, 63
+      for a domain label. The TLD's 24 is generous against the longest real one
+      (`.travelersinsurance`, 19). Bounded, the same input takes **8ms**, and no
+      address in the corpus is lost.
+    */
+    regex: /\b[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63})*\.[A-Za-z]{2,24}/g,
     trimTrailing: /[.,;:!?]+$/,
   },
   // Template placeholders: {{var}}, {var}, ${var}, {% tag %}, <<VAR>>, %(var)s

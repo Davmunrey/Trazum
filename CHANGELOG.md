@@ -43,6 +43,34 @@ merged commit with no entry is a change only `git log` remembers.
   pattern to `\S*@\S*` changes no output, because it cannot cross whitespace and
   a word a rule strips is its own token.
 
+- **That email mask shipped with a quadratic quantifier, and CI caught what this
+  machine did not.** The local part accepts `.`, so on a long dotted run with no
+  `@` an unbounded `+` matched the whole run from every starting position and
+  then failed: **897ms on 40,008 characters**. `security.test.js` has a
+  5,000-second-cliff detector over the whole of `optimize`, and one pattern
+  eating 18% of that budget passed here and failed on a runner about six times
+  slower. Bounded to RFC 5321's limits — 64 octets for a local part, 63 for a
+  label — the same input takes **8ms** and no address is lost.
+
+  **A cliff detector that only fires on slow hardware is one a fast development
+  box walks past**, so there is a second guard on `segment` alone, where the
+  cliff is sharper: every mask over every adversarial input completes in 9ms or
+  less, and the budget is 300ms — thirty-three times the worst observed, and
+  three times *under* the fault it exists to catch. Restoring the unbounded
+  quantifier fails it on this machine, which is the whole point.
+
+  Two fixtures were added for the shape the old list was missing: a mask that
+  keys on a delimiter needs a long run of the characters *before* it, so the
+  pattern restarts and fails at every position. The previous fixtures were
+  repeated whole tokens, which exercise the happy path rather than making a
+  match fail as late as possible — the file's own note says so, about the last
+  time this happened.
+
+  A third guard caught the comment explaining all this: `trusted-hosts.test.js`
+  scans source for hostnames and requires each to have been decided about, and
+  it cannot tell an illustration in a comment from an endpoint. It was right to
+  ask; the illustration is described in words now.
+
 - **The schema reader named four formats in its own filter and could read one.**
   `findRestatedFormat` reports a prompt that shows its output schema in a fence
   and then walks the same fields again in prose. Its fence filter admitted
