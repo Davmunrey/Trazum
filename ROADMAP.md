@@ -1184,6 +1184,36 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 2.0.0 — "Done" — released
+
+**The arc's closing release, and it adds nothing.** No analysis, no command. It
+exists to make one promise a number people can point at: **the surface is frozen
+at 46 commands**, and the 46th was the receipt.
+
+The arc plan set four conditions for saying the product is finished. Three held
+when they were audited: the estimator names which counter produced each figure
+and which families nobody has measured (`band-domain`, `measured-profile`,
+`token-band`); every rule of the doctrine names the test that fails when the
+product stops obeying it, or why no test can (`doctrine-ledger`); and the CLI
+dispatches exactly 46 commands.
+
+**The fourth did not hold, and this file was the reason.** *Under
+consideration* was offering to build the editor extension and the
+per-model-family tokenizer, both of which this same file recorded as released
+two hundred lines above. `roadmap-truth.test.js` holds it now, derived from the
+workspaces rather than from a list of products.
+
+**What 2.0 promises, and what it does not.** It promises the surface: a command
+that exists will keep existing and keep meaning what it means. It does not
+promise the prices, which are facts about other people's businesses and are
+re-read on their own clocks — three providers are 67 days stale as this ships,
+and the product says so rather than hiding it.
+
+**After 2.0.** Maintenance, indefinitely. Prices re-reviewed per provider,
+models added and retired, corrections, security. The entries left under *Under
+consideration* are blocked on people rather than on code and stay exactly where
+they are, still named, still unfaked.
+
 ## 1.86.0 — "The cheapest place somebody meets this product" — released
 
 **The editor extension, which this file has called unblocked and unscheduled
@@ -2547,16 +2577,20 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**[The 1.83–2.0 plan](docs/plan-1.83-2.0.md) is written**, and it is the first
-one in this directory to answer a different question from all the others: not
-what this should do next, but when it is finished.
+**Nothing is planned.** [The 1.83–2.0 plan](docs/plan-1.83-2.0.md) asked a
+different question from every other plan in that directory — not what this
+should do next, but when it is finished — and 2.0.0 is the answer. The surface
+is frozen at 46 commands.
 
-The reason it was written now is in the section below this one. `Under
-consideration` holds 5 entries, and 4 of them are deferred for a reason that is
-not engineering — a key somebody has to hold, a maintainer who reads a
-language, a marketplace listing, a service somebody operates. That is a product
-standing at its own edge, and the arc walks the last stretch on purpose rather
-than adding surface until the question goes away.
+That is a real state rather than an omission, and this section says so plainly
+because the alternative is describing delivered work as forthcoming, which is
+what it did through an entire arc before a guard caught it.
+
+What continues is maintenance: prices re-read on each provider's own clock,
+models added and retired, corrections, security. The entries under `Under
+consideration` are deferred for reasons that are not engineering — a maintainer
+who reads a language, real prompts nobody has shown me, a service somebody
+operates — and a product standing at its own edge is what that looks like.
 
 It runs 1.83.0 through 2.0.0: the receipt and the redaction guard that holds it;
 the 4 estimator families that need a key each; the optional per-family
@@ -2787,6 +2821,15 @@ scheduled**: the tokenizer question lands in 1.54.0, cost alerting is what
 
 Not scheduled. Listed so the reasoning is on the record.
 
+**Nothing here is built.** That is the whole meaning of the heading, and it
+stopped being true without anybody noticing: the editor extension shipped as
+`trazum-vscode` in 1.86.0 and the per-model-family tokenizer as
+`@trazum/tokenizer-openai` in 1.85.0, while both stayed listed below as things
+this file was still thinking about. The release sections above recorded them as
+released the whole time, so one file said both at once. `roadmap-truth.test.js`
+holds it now, because the moment something is built is exactly the moment
+nobody remembers to move it.
+
 - **More contradiction axes** — tone, persona, refusal policy. Unscheduled
   rather than planned, because each new axis has to earn its place against
   false positives and I have not seen enough real prompts to know which ones
@@ -2818,15 +2861,6 @@ Not scheduled. Listed so the reasoning is on the record.
   So a Japanese prompt gets `--reorder`'s protections in full, no trimming, and
   a report that names the seven languages the dictionaries cover rather than
   implying the prompt was already efficient.
-- **Editor extension.** Live token cost while writing a prompt is the right
-  place for this to live. Unblocked as of 0.10.0 — it now has a config file and
-  a budget per path to read — and still unscheduled, because an extension is a
-  distribution commitment (a marketplace listing, an update cadence) rather than
-  a feature.
-- **Tokenizer per model family.** The heuristic compares two versions of the
-  same prompt well, which is what it is for. A real tokenizer would improve
-  absolute figures at the cost of the dependency-free promise — worth doing
-  only as an optional package.
 
   **Still unscheduled, and the number that was missing now exists for two
   families out of six.** Pricing seven providers made this the question it

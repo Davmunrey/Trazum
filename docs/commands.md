@@ -1380,6 +1380,14 @@ silently, and for a budget the default is *no budget* — a green build for a
 prompt nobody measured. Same reasoning as `--max-growh` being rejected rather
 than ignored.
 
+**What the parser accepts is bound to the shape it fills.** Each key list is
+built from a `Record<keyof T, true>` over the interface it describes, so a
+setting added to the type and not to the list does not compile, and neither does
+a list entry the type does not have. The second direction is the quieter one: a
+key the parser accepts and nothing reads is a setting you can write, spell
+correctly, and have silently ignored — which for a budget is again a green build
+for a prompt nobody measured.
+
 `maxGrowth` in the config arms the `diff` gate exactly as the flag does: a
 repository that wrote the number down has opted in as deliberately as somebody
 typing it. Absent both, growth alone still exits 0.
@@ -1974,6 +1982,13 @@ string into a log, in the session field among other places, and searches the
 whole serialised document for each. Planted against the emitter, both halves
 fire: the content search catches the string, and the published field whitelist
 catches the field that carried it.
+
+The whitelist itself is bound to `ReceiptLine` with `Record<keyof ReceiptLine,
+true>`, so a field added to the type and not to the list does not compile. That
+is a compile-time check because a runtime one cannot reach it: the guard sees
+the fields a receipt *emits*, and a field populated in one branch — which is the
+shape a leak takes — is on the type without being on any line the guard reads.
+A plant that added exactly such a field passed all twelve checks before this.
 
 **The one thing it cannot check** is a label. A label is yours and is meant to
 be read on the other side, so a label named after a prompt's text travels. No

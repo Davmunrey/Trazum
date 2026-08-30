@@ -2544,18 +2544,35 @@ describe('every source file is reviewable as a diff', () => {
    * the code is right; a test nobody can read in a diff is an assertion taken on
    * trust, which is what this repository spends its time refusing to do.
    */
-  const ROOTS = [
-    'packages/core/src',
-    'packages/core/test',
-    'packages/cli/src',
-    'packages/cli/test',
-    'apps/web/app',
-    'apps/web/components',
-    'apps/web/lib',
-    'apps/web/test',
-    'action',
-    'scripts',
-    '.github',
+  /**
+   * The walk starts at the repository, not at a list of directories.
+   *
+   * It was a list — eleven entries, widened once already when the defect came
+   * back in a test directory the list did not reach, which is recorded above.
+   * Widening a hand-written list is the fix that invites the third occurrence:
+   * **289 of this repository's 822 source files sat outside those eleven
+   * entries**, among them `@trazum/mcp` and `@trazum/tokenizer-openai` — two
+   * published packages — plus the editor extension and the Claude Code plugin,
+   * every one of them a shipped artefact. None held a NUL byte when this was
+   * written; nothing would have said so if they had.
+   *
+   * So the roots are gone and the exclusions are the whole policy, each with a
+   * reason. `fixtures` is the one that matters: a fixture may hold a NUL on
+   * purpose, because testing what the tools do with one is a thing this
+   * repository does.
+   */
+  const SKIPPED = [
+    // Not source, or not ours to review.
+    'node_modules',
+    'dist',
+    '.next',
+    '.git',
+    'coverage',
+    // Vendored: read here, authored elsewhere.
+    '.agents',
+    'synced',
+    // A fixture may carry a NUL deliberately — that is what fixtures are for.
+    'fixtures',
   ];
   const EXTENSIONS = [
     '.ts', '.tsx', '.js', '.mjs', '.cjs', '.json', '.yml', '.yaml', '.md', '.css',
@@ -2565,7 +2582,7 @@ describe('every source file is reviewable as a diff', () => {
     const found = [];
     const walk = (dir, prefix) => {
       for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        if (['node_modules', 'dist', '.next', 'fixtures'].includes(entry.name)) continue;
+        if (SKIPPED.includes(entry.name)) continue;
         const path = join(dir, entry.name);
         if (entry.isDirectory()) {
           walk(path, `${prefix}${entry.name}/`);
@@ -2575,15 +2592,37 @@ describe('every source file is reviewable as a diff', () => {
         found.push([`${prefix}${entry.name}`, path]);
       }
     };
-    for (const root of ROOTS) walk(join(repoRoot, root), `${root}/`);
+    walk(repoRoot, '');
     return found;
   };
+
+  it('reaches every package, not a list of directories somebody kept up to date', () => {
+    /*
+      The floor and the named packages together. A count alone passes on a walk
+      that found the right number of the wrong files, and a skip added to
+      `SKIPPED` for one good reason can drop a whole package as a side effect —
+      which is how the roots list came to be missing four of them.
+    */
+    const names = sourceFiles().map(([name]) => name);
+    for (const wanted of [
+      'packages/core/src/receipt.ts',
+      'packages/cli/src/index.ts',
+      'packages/mcp/src/index.ts',
+      'packages/tokenizer-openai/src/index.ts',
+      'apps/vscode/src/extension.ts',
+      'apps/web/app/page.tsx',
+      'action/post-comment.mjs',
+      'plugin/skills/trazum/SKILL.md',
+    ]) {
+      assert.ok(names.includes(wanted), `the walk no longer reaches ${wanted}`);
+    }
+  });
 
   it('holds no raw NUL byte, which is what turns a source file binary', () => {
     const files = sourceFiles();
     // The walk itself is the part that rots: a moved directory turns this into
     // a test of nothing, and it would still pass.
-    assert.ok(files.length > 100, `only ${files.length} files found — the walk is wrong`);
+    assert.ok(files.length > 400, `only ${files.length} files found — the walk is wrong`);
 
     const binary = files
       .filter(([, path]) => readFileSync(path).includes(0))

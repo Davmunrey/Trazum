@@ -315,47 +315,103 @@ export interface TrazumConfig {
 }
 
 /**
+ * A key list bound to the shape it describes.
+ *
+ * Every list below is what `rejectUnknownKeys` compares an incoming config
+ * against, and each one is a second copy of an interface declared elsewhere in
+ * this file. Nothing held them together. A plant added `telemetry?: boolean` to
+ * `TrazumConfig`, left `CONFIG_KEYS` alone, and **all 2,115 core tests passed**
+ * — leaving a documented setting the parser refuses by name, and the reverse
+ * plant leaving a key the parser accepts and nothing reads, which is the worse
+ * of the two because it is silent.
+ *
+ * `Record<keyof T, true>` closes both directions at compile time. The published
+ * arrays are derived from the maps rather than written again: key order is
+ * insertion order, so what a consumer reads is unchanged.
+ */
+const keyList = <T>(map: Record<keyof T, true>): readonly (keyof T & string)[] =>
+  Object.keys(map) as (keyof T & string)[];
+
+/**
  * Every key the config accepts. Exported so the CLI's help can be tested
  * against it rather than against a second hand-maintained list — a setting the
  * help never mentions is one only the changelog knows about.
  */
-export const CONFIG_KEYS = [
-  'level',
-  'locale',
-  'disable',
-  'usage',
-  'budgets',
-  'labels',
-  'spend',
-  'limits',
-  'sources',
-  'store',
-  'waive',
-  'maxGrowth',
-  'baseline',
-  'extensions',
-  'ignore',
-  'pricing',
-  'outcomes',
-  'ladders',
-  'owners',
-] as const;
+export const CONFIG_KEYS = keyList<TrazumConfig>({
+  level: true,
+  locale: true,
+  disable: true,
+  usage: true,
+  budgets: true,
+  labels: true,
+  spend: true,
+  limits: true,
+  sources: true,
+  store: true,
+  waive: true,
+  maxGrowth: true,
+  baseline: true,
+  extensions: true,
+  ignore: true,
+  pricing: true,
+  outcomes: true,
+  ladders: true,
+  owners: true,
+});
 
-export const CONFIG_BASELINE_KEYS = ['path', 'maxGrowthTokens', 'maxGrowthPct'] as const;
+export const CONFIG_BASELINE_KEYS = keyList<BaselineConfig>({
+  path: true,
+  maxGrowthTokens: true,
+  maxGrowthPct: true,
+});
 
-export const CONFIG_SPEND_KEYS = ['maxUsd', 'monthlyUsd', 'maxDayUsd', 'maxSessionUsd', 'maxCacheLossUsd', 'byLabel', 'bySource', 'substitute'] as const;
+export const CONFIG_SPEND_KEYS = keyList<SpendConfig>({
+  maxUsd: true,
+  monthlyUsd: true,
+  maxDayUsd: true,
+  maxSessionUsd: true,
+  maxCacheLossUsd: true,
+  byLabel: true,
+  bySource: true,
+  substitute: true,
+});
 
-export const CONFIG_LIMITS_KEYS = ['dayUsd', 'sessionUsd', 'byLabel'] as const;
+export const CONFIG_LIMITS_KEYS = keyList<LimitsConfig>({
+  dayUsd: true,
+  sessionUsd: true,
+  byLabel: true,
+});
 
-export const CONFIG_WAIVE_KEYS = ['gate', 'reason', 'until'] as const;
+export const CONFIG_WAIVE_KEYS = keyList<WaiveEntry>({
+  gate: true,
+  reason: true,
+  until: true,
+});
 
-export const CONFIG_STORE_KEYS = ['keepDays'] as const;
+/*
+  `store` has no named interface, so the shape is reached through the field
+  itself. Naming a type purely to bind a list would put a third copy in the
+  file, which is the fault this is fixing.
+*/
+export const CONFIG_STORE_KEYS = keyList<NonNullable<TrazumConfig['store']>>({
+  keepDays: true,
+});
 
-export const CONFIG_OUTCOME_KEYS = ['values', 'success'] as const;
+export const CONFIG_OUTCOME_KEYS = keyList<OutcomeVocabulary>({
+  values: true,
+  success: true,
+});
 
-export const CONFIG_LADDER_KEYS = ['tiers', 'escalateOn'] as const;
+export const CONFIG_LADDER_KEYS = keyList<LadderPolicy>({
+  tiers: true,
+  escalateOn: true,
+});
 
-export const CONFIG_OWNERS_KEYS = ['patterns', 'shared', 'budgets'] as const;
+export const CONFIG_OWNERS_KEYS = keyList<OwnersConfig>({
+  patterns: true,
+  shared: true,
+  budgets: true,
+});
 
 /**
  * The gates a waiver can silence. The list is closed on purpose: a waiver
@@ -370,13 +426,13 @@ export const WAIVABLE_GATES = [
   'maxGrowthUsd',
 ] as const;
 
-export const CONFIG_USAGE_KEYS = [
-  'model',
-  'callsPerMonth',
-  'avgOutputTokens',
-  'cacheHitRate',
-  'batchEligible',
-] as const;
+export const CONFIG_USAGE_KEYS = keyList<UsageProfile>({
+  model: true,
+  callsPerMonth: true,
+  avgOutputTokens: true,
+  cacheHitRate: true,
+  batchEligible: true,
+});
 
 const TOP_LEVEL_KEYS = CONFIG_KEYS;
 const USAGE_KEYS = CONFIG_USAGE_KEYS;

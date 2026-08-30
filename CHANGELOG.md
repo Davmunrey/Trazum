@@ -11,6 +11,137 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 2.0.0 — 2026-08-30
+
+### Fixed
+
+- **The roadmap offered to build two things it had already shipped.**
+  `ROADMAP.md` ends with **Under consideration**, whose one job is to say *"not
+  scheduled, and here is the reasoning"*. Two of its five entries were shipped
+  products: the editor extension went out as `trazum-vscode` in 1.86.0 and the
+  per-model-family tokenizer as `@trazum/tokenizer-openai` in 1.85.0. **The same
+  file recorded both as released two hundred lines above**, while the section
+  below went on describing them as ideas — one of them with the words *"still
+  unscheduled"*.
+
+  This was found while auditing the four conditions the arc plan sets for 2.0.0.
+  The first is *"every analysis this product can perform offline, it performs"*,
+  and a roadmap that lists two of its own published packages as maybes cannot
+  support that sentence.
+
+  Both entries are gone, and `roadmap-truth.test.js` holds the property: no
+  entry may be titled after a workspace that ships, and every entry left must
+  say what blocks it. It is derived from `package.json`'s workspaces rather than
+  from a list of products, so a package added later arrives without being
+  invited. The sibling repository has held this since its README existed —
+  *"the moment something is built it has to move out of the 'not built' table,
+  and that move is the one people forget"* — and this repository, the one
+  strangers read, did not.
+
+  Three plants fire: the editor extension put back as an idea, an entry naming
+  no blocker, and a new workspace the guard has no phrase for. The parser caught
+  its own first draft twice: it read the whole section including the paragraph
+  explaining the removal, and it used `$` under the `m` flag so every entry body
+  stopped at the first newline.
+
+- **The most load-bearing number in the product was stated three times and
+  checked once.** `demo-image.test.js` holds every dollar in the README's
+  drawing to the pricing catalogue, which is thorough and was the right thing to
+  build. The drawing is not where most people read those numbers: the README
+  restates them in its `alt` text and again in the caption underneath, and adds
+  one the drawing never states — **22 times more** — which is the two of them
+  divided.
+
+  The sentence immediately after it is *"that gap is the entire argument for
+  this tool"*, and `docs/pricing.md` in the paid repository leans on the same
+  ratio for its break-even case. So: three copies and a derived ratio, with a
+  guard on one copy. An Opus 5 re-price would have moved the drawing, left the
+  prose behind, and the README would have argued for the tool with two figures
+  that no longer divide into the multiple printed between them.
+
+  The README's figures are now read out of the drawing rather than written down
+  in the guard — a second copy of them in the test would be the same fault one
+  level up. Four plants fire: a figure changed in the drawing alone, the ratio
+  left behind by its own two figures, stale token counts in the `alt` text, and
+  a caption that drops one of the two figures entirely.
+
+- **The guard that makes every other guard checkable walked a hand-written list
+  of eleven directories, and missed 289 of 822 files.** `security.test.js`
+  refuses a raw NUL byte in a source file, because a NUL makes git call the file
+  binary and a binary file has no diff — a pull request renders "this file
+  cannot be displayed" and `grep` answers "binary file matches" instead of the
+  line. Its own comment records the defect coming back once already, *"one
+  directory outside its reach"*, and the fix that time was to widen the list.
+
+  Widening a hand-written list is what invites the third occurrence. Outside
+  those eleven entries sat **`@trazum/mcp` and `@trazum/tokenizer-openai` — two
+  published packages** — plus the editor extension and the Claude Code plugin,
+  every one a shipped artefact. None held a NUL byte; nothing would have said so
+  if they had.
+
+  The roots are gone: the walk starts at the repository and the exclusions are
+  the whole policy, each with a reason given. `fixtures` stays excluded because
+  a fixture may hold a NUL deliberately. A second check pins the walk to eight
+  named files across every package, because a skip added for one good reason can
+  drop a package as a side effect — which is how the list came to be missing
+  four of them.
+
+  Three plants fire: a NUL in `packages/mcp/src`, a NUL in the editor extension
+  — neither of which the old walk could see — and an exclusion that quietly
+  drops a package. The floor rose from 100 files to 400.
+
+- **Ten config key lists were second copies of interfaces, with nothing holding
+  them together.** `CONFIG_KEYS`, `CONFIG_SPEND_KEYS` and eight more are what
+  `rejectUnknownKeys` compares an incoming `trazum.config.json` against, and
+  each mirrors an interface declared a few lines above it. A plant added
+  `telemetry?: boolean` to `TrazumConfig`, left `CONFIG_KEYS` alone, and **all
+  2,115 core tests passed.**
+
+  Both directions of drift are user-visible and they fail differently. A setting
+  on the type and not on the list is one the parser refuses by name — a
+  documented setting that errors. A key on the list the type does not have is
+  one the parser accepts and nothing reads: a setting you can write, spell
+  correctly, and have silently ignored. For a budget that is a green build for a
+  prompt nobody measured, which is the failure `docs/commands.md` argues the
+  strict parser exists to prevent.
+
+  All ten are now built from a `Record<keyof T, true>` over their interface, so
+  both directions are compile errors. The published arrays and their order are
+  unchanged. `store` has no named interface and is reached through
+  `NonNullable<TrazumConfig['store']>` rather than by naming a type, which would
+  have put a third copy in the file. Three plants fire: the setting that slipped
+  through before (TS2741), a `maxWeekUsd` entry `SpendConfig` does not have
+  (TS2353), and a key dropped from a nested list (TS2741).
+
+- **The receipt whitelist said its guard caught a field added to the type, and
+  the guard could not see the type at all.** `RECEIPT_LINE_FIELDS` is the
+  published list of what leaves a machine — exported, and read by anyone
+  checking what a receipt can carry. Its comment said *"the redaction guard
+  reads this array rather than a copy of it, so a field added to `ReceiptLine`
+  and not added here fails the guard."*
+
+  It does not. `receipt-redaction.test.js` collects the keys the emitter
+  actually **emits** and checks each against the list, which catches an emitter
+  emitting an unlisted field and is a real property. It cannot reach a field
+  that is on the type and on no emitted line. A plant added `operator?: string`
+  to `ReceiptLine`, emitted it on nothing the fixture built, and **all twelve
+  checks passed** — and a field populated in one branch is exactly the shape a
+  leak takes.
+
+  The list is now derived from a map bound with `Record<keyof ReceiptLine,
+  true>`, so both directions are compile errors: a field on the type and not on
+  the list, and an entry on the list the type does not have. The exported array
+  and its order are unchanged, because it is published. Three plants fire — the
+  field that slipped through before (TS2741), a stale entry named `sessionId`
+  (TS2353), and an emitted stray, which confirms the runtime half still holds
+  what it always held.
+
+  `docs/commands.md` said the whitelist *"catches the field that carried it"*,
+  which was true of the emitted case and is what that paragraph is about; it now
+  also says why the other case needs the compiler.
+
 ### Fixed
 
 - **Nine documents told readers the optimiser would break their email addresses
