@@ -205,6 +205,35 @@ where wrapped prose breaks across lines — collapse the whitespace before match
 a sentence — and the layout of `PATH`, which differs between a Homebrew machine
 and a CI runner.
 
+### Properties, beside the examples
+
+Four suites in `packages/core/test/properties-*.test.js` draw their inputs from
+a seeded generator rather than from a fixture, and assert the claims that are
+statements about *every* input: a locale never changes the optimisation, a
+credential never crosses a converter, a bill never shrinks when a record is
+added, a refusal never arrives without saying what is missing.
+
+```bash
+npm test -w @trazum/core                                  # the default seed, 250 cases each
+TRAZUM_QA_CASES=5000 npm test -w @trazum/core             # a soak
+TRAZUM_QA_SEED=77 TRAZUM_QA_CASES=2000 npm test -w @trazum/core
+```
+
+Every failure prints the command that reproduces it, so a red CI log carries
+its own incantation. **The default seed does not move**: CI has to be
+deterministic, and raising `TRAZUM_QA_CASES` locally is how you go looking.
+
+Two rules if you add one. It must **count what it inspected** and fail when
+that count is zero — a property whose every drawn case hit a `continue` passes
+in silence and guards nothing. And when it fails, read the property before you
+touch the code: three of the first thirty were wrong before the code was, and
+each records why in its own file.
+
+The generators live in `test/support/random.mjs` and are written rather than
+installed, which is a deliberate trade explained at the top of that file. Write
+awkward characters as `\uXXXX` escapes rather than typing them in — two modules
+in a sibling repository once held raw NULs and git called them binary.
+
 **A comment that names a guard must name one that exists.** These
 cross-references carry weight — *"`security.test.js` permits `fetch` only in the
 two modules that exist to make calls"* is how a reader learns a rule is held

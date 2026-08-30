@@ -13,6 +13,102 @@ merged commit with no entry is a change only `git log` remembers.
 
 Nothing yet.
 
+## 2.2.0 — 2026-08-30
+
+### Fixed
+
+- **`requiredFieldsOf` did not name every field `conform` requires.** It
+  returned the contract's `DOCUMENT_RULES` paths and left out `schemaVersion`,
+  which `conform` checks separately and refuses a document for. An emitter
+  calling the function to find out what its document must carry was being
+  handed a list that would not get it through the door.
+
+  The omission was deliberate and documented, and the reasoning was about the
+  implementation rather than the question: `schemaVersion` is checked outside
+  the rules table, so it was left out of the list derived from that table. What
+  makes it a defect is that **both callers in this repository had already
+  worked around it**, each prepending the name itself. That is the same fact
+  written in three places, which is precisely the defect `conform.ts` exists to
+  prevent one directory over.
+
+  It is in the list now, for every document contract; the usage log has no
+  version field and its one requirement is still the model. `schemas.test.js`
+  reads the export whole instead of patching it — a test that repairs its
+  subject's answer is a second copy of the fact, and it is the copy that stays
+  right while the export drifts.
+
+  This is a behaviour change to a published function rather than a bug nobody
+  could see, which is why it is a minor version: a caller who had built the
+  same workaround now gets `schemaVersion` twice.
+
+### Changed
+
+- The README's three pinned-SHA examples for the Action now pin 2.1.0's merge
+  commit rather than 2.0.0's. A pin is advice about what to trust, and advice
+  one release behind is advice that quietly recommends the older thing.
+
+### Added
+
+- **Four property suites, drawn against rather than exampled at.** 4,096 tests
+  found nearly every defect this repository has ever fixed, and they share a
+  shape they cannot see past: *a fixture only contains what somebody thought to
+  put in it.* These draw thousands of inputs from a seeded generator and assert
+  the promises the doctrine makes, rather than the answers a fixture happens to
+  produce.
+
+  - `properties-optimize.test.js` — eight properties. Totality on any text at
+    all; determinism; **rule 4 of the doctrine** (identical optimised text,
+    token figures, rule ids and advisory ids in every locale, plus an assertion
+    that the prose *does* differ somewhere, so the property could not pass
+    against a translation file emptied to English); every protected segment
+    survives into the optimised text; a prompt never grows and the arithmetic
+    agrees with itself; a disabled rule never fires; `aggressive` never saves
+    less than `safe`; an unknown level throws.
+  - `properties-usage.test.js` — eleven properties over the money. Slices sum
+    to the total; the three groupings agree; the order lines arrived in changes
+    nothing; adding a record never lowers the bill; unpriced calls are never
+    given a price and never appear priced too; `maxCallInputTokens` is a
+    maximum and not a sum; every catalogue rate is finite and non-negative on
+    every date it can be asked about; and `repriceReceipt` `deepEqual`
+    `repriceProfile` over logs nobody wrote, with no call priced onto a target
+    whose window it exceeds and no fitting call refused.
+  - `properties-redaction.test.js` — **rule 6**, as a property rather than a
+    plant on one fixture. Credentials, absolute paths, branch names and an
+    address are planted into every field a record can carry — including fields
+    nobody declared — and searched for in the receipt, in all three shapes of
+    the CSV, and in the profile the converters are built from. `model` and
+    `label` are excluded because they travel by design, which
+    `docs/commands.md` says out loud.
+  - `properties-conform.test.js` — **rule 5**. Every refusal carries the
+    sentence that makes it actionable, for every input at all; a missing field
+    is named at its line rather than repaired; a field nobody has heard of is
+    never a problem; the unavailable findings change in exactly one place when
+    one optional field arrives; and the contract names and the published
+    schemas are held to each other in both directions. This is the suite that
+    found the `requiredFieldsOf` defect above.
+
+  **Written rather than installed.** The generators are a seeded mulberry32 and
+  a dozen shapes — about two hundred readable lines against a supply-chain
+  surface, in a repository whose front page promises zero runtime dependencies
+  and whose guards read the installed source of every exception. They are
+  hostile on purpose: empty strings, a hundred kilobytes of one character,
+  unterminated code fences, right-to-left overrides, NULs, lone surrogates,
+  `__proto__`, `NaN`, `Infinity`, `-0`.
+
+  Every run is seeded, every failure prints its own reproduction command
+  (`TRAZUM_QA_SEED=… TRAZUM_QA_CASES=… npm test -w @trazum/core`), and the
+  default seed is fixed so CI is deterministic. A suite that fails on Tuesdays
+  and passes on Wednesdays gets disabled by whoever is on call, and then it
+  guards nothing at all.
+
+  Three of these properties were wrong before the code was. The redaction
+  suite's first version took its "carried by design" set one record at a time
+  while folding a whole batch into one report, so a model id planted as another
+  record's `session` was searched for in the `unpriced` gap that must name it.
+  A batch is the unit that produces one report, so a batch is the unit the
+  carried set has to be taken over — recorded in the file, because a property
+  that was wrong first is the most useful comment a property can carry.
+
 ## 2.1.0 — 2026-08-30
 
 ### Added

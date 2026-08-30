@@ -659,13 +659,22 @@ function contractOf(doc: Record<string, unknown>): Exclude<ContractName, 'usage-
 
 /**
  * The required top-level fields of a named contract, as `conform` enforces
- * them — the single source the JSON Schemas are held to. `schemaVersion` is
- * checked separately by `conform` and is not in this list; the usage log's
- * one requirement is the model, same as the line parser's.
+ * them — the single source the JSON Schemas are held to.
+ *
+ * `schemaVersion` used to be left out of this list, on the reasoning that
+ * `conform` checks it separately from `DOCUMENT_RULES`. That is true about the
+ * implementation and false about the question the function is asked: an
+ * emitter calling this wants to know what its document must carry, and it was
+ * not being told about a field `conform` would then refuse it for. Both
+ * callers in this repository had already worked around it by prepending the
+ * name themselves — a fact held in two places, which is the defect this module
+ * exists to prevent one directory over. It is in the list now, for every
+ * document contract; the usage log has no version field and its one
+ * requirement is the model, same as the line parser's.
  */
 export function requiredFieldsOf(name: ContractName): string[] {
   if (name === 'usage-log') return ['model'];
-  return DOCUMENT_RULES[name].map((fieldRule) => fieldRule.path);
+  return ['schemaVersion', ...DOCUMENT_RULES[name].map((fieldRule) => fieldRule.path)];
 }
 
 export interface ConformOptions {
