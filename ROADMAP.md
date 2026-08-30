@@ -2787,6 +2787,15 @@ scheduled**: the tokenizer question lands in 1.54.0, cost alerting is what
 
 Not scheduled. Listed so the reasoning is on the record.
 
+**Nothing here is built.** That is the whole meaning of the heading, and it
+stopped being true without anybody noticing: the editor extension shipped as
+`trazum-vscode` in 1.86.0 and the per-model-family tokenizer as
+`@trazum/tokenizer-openai` in 1.85.0, while both stayed listed below as things
+this file was still thinking about. The release sections above recorded them as
+released the whole time, so one file said both at once. `roadmap-truth.test.js`
+holds it now, because the moment something is built is exactly the moment
+nobody remembers to move it.
+
 - **More contradiction axes** — tone, persona, refusal policy. Unscheduled
   rather than planned, because each new axis has to earn its place against
   false positives and I have not seen enough real prompts to know which ones
@@ -2818,15 +2827,6 @@ Not scheduled. Listed so the reasoning is on the record.
   So a Japanese prompt gets `--reorder`'s protections in full, no trimming, and
   a report that names the seven languages the dictionaries cover rather than
   implying the prompt was already efficient.
-- **Editor extension.** Live token cost while writing a prompt is the right
-  place for this to live. Unblocked as of 0.10.0 — it now has a config file and
-  a budget per path to read — and still unscheduled, because an extension is a
-  distribution commitment (a marketplace listing, an update cadence) rather than
-  a feature.
-- **Tokenizer per model family.** The heuristic compares two versions of the
-  same prompt well, which is what it is for. A real tokenizer would improve
-  absolute figures at the cost of the dependency-free promise — worth doing
-  only as an optional package.
 
   **Still unscheduled, and the number that was missing now exists for two
   families out of six.** Pricing seven providers made this the question it

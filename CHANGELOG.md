@@ -13,6 +13,35 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The roadmap offered to build two things it had already shipped.**
+  `ROADMAP.md` ends with **Under consideration**, whose one job is to say *"not
+  scheduled, and here is the reasoning"*. Two of its five entries were shipped
+  products: the editor extension went out as `trazum-vscode` in 1.86.0 and the
+  per-model-family tokenizer as `@trazum/tokenizer-openai` in 1.85.0. **The same
+  file recorded both as released two hundred lines above**, while the section
+  below went on describing them as ideas — one of them with the words *"still
+  unscheduled"*.
+
+  This was found while auditing the four conditions the arc plan sets for 2.0.0.
+  The first is *"every analysis this product can perform offline, it performs"*,
+  and a roadmap that lists two of its own published packages as maybes cannot
+  support that sentence.
+
+  Both entries are gone, and `roadmap-truth.test.js` holds the property: no
+  entry may be titled after a workspace that ships, and every entry left must
+  say what blocks it. It is derived from `package.json`'s workspaces rather than
+  from a list of products, so a package added later arrives without being
+  invited. The sibling repository has held this since its README existed —
+  *"the moment something is built it has to move out of the 'not built' table,
+  and that move is the one people forget"* — and this repository, the one
+  strangers read, did not.
+
+  Three plants fire: the editor extension put back as an idea, an entry naming
+  no blocker, and a new workspace the guard has no phrase for. The parser caught
+  its own first draft twice: it read the whole section including the paragraph
+  explaining the removal, and it used `$` under the `m` flag so every entry body
+  stopped at the first newline.
+
 - **The most load-bearing number in the product was stated three times and
   checked once.** `demo-image.test.js` holds every dollar in the README's
   drawing to the pricing catalogue, which is thorough and was the right thing to
