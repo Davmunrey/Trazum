@@ -20,7 +20,7 @@ bounded in seconds, so it is a test and not a job.
 | `optimize` **never throws** | ~1,500 fuzzed prompts built from hostile atoms: RTL and CJK text, lone surrogates, null bytes, zero-width characters, CRLF, unclosed fences, 3,000-character tokens |
 | `optimize` **never grows** the token count | the same corpus, at both levels |
 | `optimize` is **idempotent** | running it on its own output changes nothing, byte for byte — the pipeline runs to a fixed point |
-| **Protected spans survive byte-for-byte** | code blocks, inline code and URLs, asserted across the whole corpus — including bait the rules *want* to rewrite, placed deliberately inside protected spans |
+| **Protected spans survive byte-for-byte** | fenced and indented code blocks, inline code, URLs and email addresses, asserted across the whole corpus — including bait the rules *want* to rewrite, placed deliberately inside protected spans |
 | **Money is never negative** | no document this package can build carries a negative dollar figure, whatever the input — negative or non-finite token counts are refused at the layer that owns them, in the library, the CLI, the gateway and the MCP tools alike |
 | **Unreadable lines are named** | `profileUsage`, `conform` and `rollUp` never throw on any text; a line they cannot read is reported by number, not skipped in silence |
 

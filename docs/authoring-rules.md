@@ -5,8 +5,8 @@ earning them. This is everything you need to add one **without reading the
 engine** — which is the point: the engine's job is to make a rule a small,
 local, safe thing to write.
 
-If you only remember one paragraph: **a rule never sees code, URLs or
-placeholders**, so it cannot break them; and **`safe` is a promise**, so when you
+If you only remember one paragraph: **a rule never sees code, URLs, email
+addresses or placeholders**, so it cannot break them; and **`safe` is a promise**, so when you
 are unsure whether removing something could change what the prompt asks for, the
 answer is `aggressive`.
 
@@ -34,8 +34,9 @@ four times understates it in every figure a reader sees.
 ## What you never have to worry about
 
 **The text you receive is masked.** Before any rule runs, the engine replaces
-every code fence, inline code span, URL, template placeholder (`{{x}}`, `${x}`,
-`{x}`, `{% %}`) and XML/HTML tag with a single private-use Unicode marker. Your
+every code fence, indented code block, inline code span, URL, email address,
+template placeholder (`{{x}}`, `${x}`, `{x}`, `{% %}`) and XML/HTML tag with a
+single private-use Unicode marker. Your
 regex cannot match inside them because the characters are not there.
 
 So this is not a hazard you need to design around:

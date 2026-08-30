@@ -44,9 +44,9 @@ network call, nothing to pay.
 **Trims with deterministic rules** — courtesy, filler, verbose phrasing,
 duplicated paragraphs, decorative separators, shouting in capitals.
 
-**Never touches what would break the prompt.** Code fences, inline code, URLs,
-template placeholders (`{{x}}`, `${x}`, `{x}`, `{% %}`) and XML/HTML tags are
-isolated *before* any rule runs. If a rule ever did make one of those disappear,
+**Never touches what would break the prompt.** Code fences, indented code blocks,
+inline code, URLs, email addresses, template placeholders (`{{x}}`, `${x}`,
+`{x}`, `{% %}`) and XML/HTML tags are isolated *before* any rule runs. If a rule ever did make one of those disappear,
 that rule is discarded and the rest carry on.
 
 **Tells you where the money actually is.** Trimming is usually not it. Read

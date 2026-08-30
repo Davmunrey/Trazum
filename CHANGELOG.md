@@ -13,6 +13,45 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **Nine documents told readers the optimiser would break their email addresses
+  and their indented code.** Both are protected. Every document that enumerates
+  the protected list had been written when it held five kinds, and each stayed
+  correct right up until the night the sixth and seventh were added — which is
+  the only way a document goes wrong quietly. The README told a reader an
+  address was fair game while the code protected it; `docs/authoring-rules.md`
+  told a rule author the same, in the paragraph it asks them to remember if they
+  remember nothing else.
+
+  Corrected in `README.md` (three sites: the opening claim, the protection
+  paragraph and the `src/segment.ts` line in the layout), `ROADMAP.md`,
+  `CONTRIBUTING.md`, `docs/authoring-rules.md` (two sites), `docs/commands.md`,
+  `docs/hardening.md`, `packages/core/README.md` and both copies of the Trazum
+  skill.
+
+  **`docs/hardening.md` is corrected to a narrower claim than the rest, on
+  purpose.** Its row states what the fuzzed corpus asserts survives byte for
+  byte, and that is five of the seven kinds — fenced and indented code, inline
+  code, URLs and addresses. Widening it to the protected list would have made
+  the page claim coverage the suite does not have, which is the fault this
+  repository exists to argue against.
+
+  **The guard binds prose to the type, not to a second copy of the list.**
+  `protected-prose.test.js` parses the `ProtectionKind` union out of `types.ts`
+  and requires every member to be named, in prose, in each of the six documents
+  that enumerate the list. A protection added to the union with no phrase fails
+  before a document is read. This is deliberate: a checklist written from the
+  same list it checks agrees with itself by construction, which is how the
+  address hole survived a corpus built to catch exactly it, and how four other
+  faults survived the same week.
+
+  Three plants fire — a document losing `indented code blocks`, a document
+  losing `email addresses`, and an eighth kind added to the union with no prose
+  anywhere. `RELEASES.md`, the `docs/plan-*.md` arc plans and the versioned
+  entries below are left alone: they record what was true when they were
+  written, and a record edited to agree with the present is not one.
+
+### Fixed
+
 - **The rules were rewriting indented code, and the module said so in a
   comment.** `segment.ts` left blocks indented four spaces to the rules *"because
   they are ambiguous in markdown"*. The ambiguity is real. What it cost was not
