@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 1.86.0**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.0.0**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -51,6 +51,136 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 2.0.0 — "Done"
+
+No new analysis. No new command. This release exists to change what the README
+describes from something growing into something finished, and the arc plan set
+four conditions for saying that. Three held when they were audited. The fourth
+did not, and finding out why is most of what this release contains.
+
+**The surface is frozen at 46 commands.** That is the promise a major version
+exists to make: the 46th was the receipt, and there will not be a 47th. What
+follows 2.0 is maintenance — prices re-reviewed on their own per-provider
+clocks, models added and retired, corrections, security.
+
+### The condition that failed
+
+*"Every analysis this product can perform offline, it performs."*
+
+`ROADMAP.md` was offering to build two things it had already shipped. The
+editor extension went out as `trazum-vscode` in 1.86.0 and the per-model-family
+tokenizer as `@trazum/tokenizer-openai` in 1.85.0, and **the same file recorded
+both as released two hundred lines above** while the section headed *Under
+consideration* went on calling them ideas — one of them with the words *"still
+unscheduled"*.
+
+Both are gone from that section, and `roadmap-truth.test.js` holds it: no entry
+may be titled after a workspace that ships, and every entry left must say what
+blocks it. It derives from `package.json`'s workspaces, so a package added later
+arrives without being invited.
+
+The three entries that remain are genuinely unbuilt and each names what stops
+it: more contradiction axes (not enough real prompts to know which earn their
+place), more locales (nobody who reads the language), and cost alerting (it
+needs somewhere to run and something to remember).
+
+### Five analyses that read prompts too narrowly
+
+Each of these found less than it claimed to, and each failed silently — the
+worst kind, because a detector that reports nothing looks exactly like a prompt
+with nothing wrong in it.
+
+- **The schema reader named four formats in its own filter and could read one.**
+  It advertised JSON, YAML, TypeScript and more; only one path actually parsed.
+- **The example detector was blind to nine of fourteen labellings**, and six of
+  those are the ones people actually write.
+- **The tag Anthropic's own documentation tells people to use found nothing.**
+  `<example>` blocks were invisible to the few-shot analysis.
+- **`trazum prune` stated something false with confidence** on a prompt whose
+  examples it could not separate.
+- **The contradiction detector missed eight of eleven ordinary phrasings.** The
+  four axes were right; the fragments that recognise them were not.
+
+**One shape is still deliberately unread, and it is written down.** Inline
+examples inside a paragraph are not detected, and saying so beats implying
+otherwise.
+
+### Four masks that broke what they promised to protect
+
+- **The optimiser broke email addresses and reported a saving for it.** Five of
+  ten realistic addresses came out corrupted: `please@example.com` became
+  `@example.com`, and so did `thanks@`, `basically@`, `essentially.ops@` and
+  `very.important@`. The politeness, filler and intensifier rules read the local
+  part as prose. What is left is not a wrong address, it is not an address.
+- **That email mask then shipped with a quadratic quantifier**, and CI caught
+  what this machine could not: the container is about six times faster than the
+  runner, so a 897ms regression measured as comfortable here. RFC 5321's own
+  bounds fixed it — 8ms.
+- **The rules were rewriting indented code, and the module said so in a
+  comment.** Indentation stripped, keywords sentence-capitalised, and **string
+  literals edited**: a SQL clause that matched a different value, a payload
+  carrying a different reason. CommonMark's rule that an indented block cannot
+  interrupt a paragraph is what makes the fix a specification rather than a
+  guess.
+- **A trim ran after unmasking**, so the last thing to touch a prompt could edit
+  what every mask had just promised to leave alone. Found through idempotence
+  rather than through a report: 54 of 1,500 corpus inputs.
+
+### Four lists nothing held to what they described
+
+The recurring fault of this release, in four places. A list written from the
+same list it guards agrees with itself by construction.
+
+- **`RECEIPT_LINE_FIELDS`**, the published list of what leaves a machine, said
+  its guard caught a field added to `ReceiptLine`. It could not: the guard reads
+  the keys a receipt *emits*, and a field populated in one branch — which is the
+  shape a leak takes — is on the type and on no emitted line. A plant added one
+  and **all twelve checks passed**.
+- **Ten config key lists** were second copies of interfaces. A setting added to
+  the type and not the list is refused by name; a key on the list the type does
+  not have is accepted and never read, which for a budget is a green build for a
+  prompt nobody measured.
+- **The NUL-byte guard**, which is what makes every other guard reviewable,
+  walked eleven hand-written directories and missed **289 of 822 source files** —
+  including two published packages, the editor extension and the plugin.
+- **The roadmap**, above.
+
+All four are bound to what they describe now, five of them as compile errors
+rather than tests.
+
+### Three documents that stated what was no longer true
+
+- **Nine documents told readers the optimiser would break their email addresses
+  and their indented code.** Both are protected. Every one had been correct when
+  it was written.
+- **The number the README calls "the entire argument for this tool"** was stated
+  in three places and checked in one. The drawing was held to the pricing
+  catalogue; the `alt` text, the caption, and the ratio between the two figures
+  were not.
+- **The README told people to pin an Action two releases old**, and **the
+  release document asked a question the release had already answered.**
+
+### Two smaller things, recorded rather than dropped
+
+- **One filler family covered two constructions in English** where Spanish
+  covered five. Corrected, and the wider claim that first accompanied it —
+  *"the English list was the thinnest in the file"* — was measured, found false,
+  and narrowed.
+- **A measured negative result**, kept so nobody re-derives it: an approach that
+  looked promising, was tried, and did not work.
+
+### What this release did not do
+
+**The per-provider price review.** `docs/releasing.md` step 7 asks for the
+pricing page of every provider more than 45 days stale to be opened and compared
+before a release. Three are: **openai, moonshot and xai, at 67 days each.** The
+session that prepared this release could not reach those pages — its network
+policy permits npm, PyPI and Anthropic and nothing else — and a date moved
+without looking is the one thing this product refuses absolutely. So the dates
+stand where they are, the catalogue's headline date stays 2026-06-24, and every
+figure derived from those three providers is reported as stale by the product
+itself, which is what that machinery is for.
 
 ## 1.86.0 — "The cheapest place somebody meets this product"
 

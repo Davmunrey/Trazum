@@ -11,6 +11,10 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+Nothing yet.
+
+## 2.0.0 — 2026-08-30
+
 ### Fixed
 
 - **The roadmap offered to build two things it had already shipped.**

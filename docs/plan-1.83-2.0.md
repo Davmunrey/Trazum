@@ -36,7 +36,7 @@ produced them.
 
 ---
 
-## Chapter 1 — 1.83.0, the receipt
+## Chapter 1 — 1.83.0, the receipt — **delivered**
 
 **What it is.** A new command, `receipt`, that writes a bill's counts with the
 provenance of every figure attached, and nothing else:
@@ -96,7 +96,7 @@ that claims to be protecting it.
 
 ---
 
-## Chapter 2 — 1.84.0, the families nobody has measured
+## Chapter 2 — 1.84.0, the families nobody has measured — **absorbed into 1.85.0**
 
 1.82.0 measured the estimator against 2 providers' own counters and published
 both figures. It also named the 4 it could not reach — OpenAI, Google, xAI and
@@ -192,11 +192,15 @@ be the exact inversion of the product.
 
 ---
 
-## Chapter 5 — 2.0.0, done
+## Chapter 5 — 2.0.0, done — **delivered**
 
 No new analysis. No new command. The release exists to change one sentence in
 the README from a description of something growing into a description of
-something finished:
+something finished. Three of these four held when they were audited on the day
+the release was cut; the fourth did not, and `ROADMAP.md` was the reason —
+it was still offering to build the editor extension and the per-model-family
+tokenizer, both of which it recorded as released two hundred lines above.
+`roadmap-truth.test.js` holds it now.
 
 - Every analysis this product can perform offline, it performs.
 - The estimator says which counter produced each figure, and names the families

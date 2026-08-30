@@ -1,7 +1,7 @@
 {
   "name": "trazum-vscode",
   "displayName": "Trazum",
-  "version": "1.86.0",
+  "version": "2.0.0",
   "description": "What the prompt in front of you costs, counted on this machine, while you write it.",
   "license": "MIT",
   "author": "David Mu\u00f1oz Rey",
@@ -59,7 +59,7 @@
     "test": "npm run build && node --test test/*.test.js"
   },
   "dependencies": {
-    "@trazum/core": "1.86.0"
+    "@trazum/core": "2.0.0"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
