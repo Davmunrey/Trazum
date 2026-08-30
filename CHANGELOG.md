@@ -13,6 +13,104 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The optimiser broke email addresses, and reported a saving for it.** Five of
+  ten realistic addresses came out corrupted: `please@example.com` became
+  `@example.com`, and so did `thanks@`, `basically@`, `essentially.ops@` and
+  `very.important@`. The politeness, filler and intensifier rules read the local
+  part as ordinary prose and cut it out. What is left is not a wrong address —
+  it is not an address.
+
+  That is the failure `segment.ts` opens by naming: *"compressing a code block,
+  a URL or a template placeholder would break the prompt, and that is exactly
+  the failure that makes a prompt optimiser useless."* Code, URLs, placeholders,
+  inline spans and XML tags were on the protected list. The thing every support
+  prompt in the world carries was not. `support@` and `no-reply@` survived, and
+  `por.favor@ejemplo.es` survived only because the Spanish politeness entry is
+  written with a space rather than a dot — luck, spread across the half of the
+  cases that happened not to spell a stripped word, which is what hid it.
+
+  **A fuzzed corpus built for exactly this failed to catch it, for a reason
+  worth naming.** `hostile-input.test.js` asserts every protected span survives
+  byte for byte over a seeded corpus, and its span extractor was written from
+  the same list as the masker — so a protection the masker did not have was one
+  the guard could not miss. Its own comment states the principle it was missing:
+  bait must be *"text a rule would rewrite, deliberately inside protected
+  spans"*, or the property can never fail. There is now an email bait atom and
+  the extractor reads addresses.
+
+  Three plants fire, two of them through the corpus guard. A fourth could not be
+  built and is recorded rather than left as an untested corner: widening the
+  pattern to `\S*@\S*` changes no output, because it cannot cross whitespace and
+  a word a rule strips is its own token.
+
+- **That email mask shipped with a quadratic quantifier, and CI caught what this
+  machine did not.** The local part accepts `.`, so on a long dotted run with no
+  `@` an unbounded `+` matched the whole run from every starting position and
+  then failed: **897ms on 40,008 characters**. `security.test.js` has a
+  5,000-second-cliff detector over the whole of `optimize`, and one pattern
+  eating 18% of that budget passed here and failed on a runner about six times
+  slower. Bounded to RFC 5321's limits — 64 octets for a local part, 63 for a
+  label — the same input takes **8ms** and no address is lost.
+
+  **A cliff detector that only fires on slow hardware is one a fast development
+  box walks past**, so there is a second guard on `segment` alone, where the
+  cliff is sharper. Its fixtures are deliberately **only inputs the masker
+  should find nothing in**, so any time spent is time wasted: the worst is 9ms,
+  the budget is 300, and the fault it was written for took 897. Restoring the
+  unbounded quantifier fails it on this machine, which is the point.
+
+  That restriction was itself a correction. The first version of this claimed
+  *"every mask over every adversarial input"*, which is false: the ReDoS list in
+  the same file includes one input where the masker takes **341ms** doing
+  exactly the work it should — fifteen thousand genuine placeholder, tag and
+  span matches. Folding real work into a cliff budget forces the ceiling past
+  two seconds and blunts the detector to uselessness, so that input stays where
+  it was and this list says why.
+
+  Two fixtures were added for the shape the old list was missing: a mask that
+  keys on a delimiter needs a long run of the characters *before* it, so the
+  pattern restarts and fails at every position. The previous fixtures were
+  repeated whole tokens, which exercise the happy path rather than making a
+  match fail as late as possible — the file's own note says so, about the last
+  time this happened.
+
+  A third guard caught the comment explaining all this: `trusted-hosts.test.js`
+  scans source for hostnames and requires each to have been decided about, and
+  it cannot tell an illustration in a comment from an endpoint. It was right to
+  ask; the illustration is described in words now.
+
+- **The schema reader named four formats in its own filter and could read one.**
+  `findRestatedFormat` reports a prompt that shows its output schema in a fence
+  and then walks the same fields again in prose. Its fence filter admitted
+  `json`, `jsonc`, `json5`, `yaml` and `yml` — and the key extractor accepted
+  only a *quoted* string followed by a colon, which is JSON and nothing else. A
+  prompt writing its schema as YAML matched a language this module names, then
+  produced zero keys and reported nothing, however thoroughly the prose restated
+  it. Not a missing feature: a promise made in one expression and broken by the
+  next.
+
+  `ts` was not on the list at all, which is the same omission wearing a
+  different label — `interface Ticket { … }` is how a TypeScript codebase asks
+  for structured output. Five fence shapes read correctly now where one did.
+
+  **The first implementation walked line by line and found nothing in three of
+  them**, because `interface Ticket { category: string; urgency: number }` is
+  one line and a line-oriented walk sees depth 0 where it starts. Single-line
+  objects are the normal case in a `ts` fence and in pasted JSON5, not the
+  exception. It reads characters now.
+
+  Four clean prompts hold the other direction: a nested object's fields are not
+  top-level keys, a `ts` function's parameters live in parentheses rather than
+  braces, YAML children belong to their parent, and a fence with **no** language
+  stays quoted-only — an unlabelled block is as likely to be a log as a schema.
+
+  Five plants fire. One was silent and found a hole in the fixture rather than
+  the code: the unlabelled-fence case had no braces, so it never reached the
+  branch the exclusion protects, and removing the exclusion left it green. A
+  braced version was added and it fires.
+
+### Fixed
+
 - **The example detector was blind to nine of fourteen labellings, and six
   analyses went blind with it.** `findExamples` splits a prompt into its
   few-shot examples, and its opener vocabulary was `example`, `input`, `user`,

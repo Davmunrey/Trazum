@@ -25,6 +25,48 @@ const PATTERNS: PatternDef[] = [
   { kind: 'fenced-code', regex: /(?:```|~~~)[\s\S]*?(?:```|~~~|$)/g },
   // Indented blocks of 4+ spaces are left to the rules: they are ambiguous in markdown.
   { kind: 'url', regex: /\b(?:https?|ftp):\/\/[^\s<>"')\]]+/g, trimTrailing: /[.,;:!?]+$/ },
+  /*
+    Email addresses, for the reason at the top of this file.
+
+    **Five of ten realistic addresses came out corrupted before this existed.**
+    `please@example.com` became `@example.com`, and so did `thanks@`,
+    `basically@`, `essentially.ops@` and `very.important@`: the politeness,
+    filler and intensifier rules match the local part as ordinary prose and cut
+    it out. What is left is not a wrong address, it is not an address — and the
+    report says tokens were saved.
+
+    That is the failure this module's own first paragraph names. A code block, a
+    URL and a placeholder were on the list; the thing every support prompt in
+    the world carries was not. `support@` and `no-reply@` survived, and
+    `por.favor@ejemplo.es` survived only because the Spanish politeness entry is
+    written with a space — luck, not design, which is what made it invisible.
+
+    After the URL pattern so a `mailto:` link is claimed as a URL first, and
+    trailing punctuation is trimmed for the same reason it is there: the full
+    stop in "write to a@b.com." belongs to the sentence.
+  */
+  {
+    kind: 'email',
+    /*
+      **Every quantifier here is bounded, and the first version of this was not.**
+      The local part accepts `.`, so on a long dotted run with no `@` in it —
+      a dotted run behind a scheme, which is a fixture in `security.test.js`
+      for exactly this reason — an unbounded `+` matches the whole run from every starting
+      position and then fails. Quadratic: **897ms on 40,008 characters**, and
+      `optimize` runs this alongside every other pattern, which took the total
+      past the 5-second cliff detector on a CI runner while passing on a faster
+      machine. That test's own note had already recorded the lesson from the
+      last time — *"quadratic until the label quantifiers were bounded"* — and
+      this pattern arrived a week later without them.
+
+      The bounds are RFC 5321's, not invented: 64 octets for a local part, 63
+      for a domain label. The TLD's 24 is generous against the longest real one
+      (`.travelersinsurance`, 19). Bounded, the same input takes **8ms**, and no
+      address in the corpus is lost.
+    */
+    regex: /\b[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9-]{1,63}(?:\.[A-Za-z0-9-]{1,63})*\.[A-Za-z]{2,24}/g,
+    trimTrailing: /[.,;:!?]+$/,
+  },
   // Template placeholders: {{var}}, {var}, ${var}, {% tag %}, <<VAR>>, %(var)s
   {
     kind: 'placeholder',

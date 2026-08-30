@@ -365,6 +365,7 @@ export type ProtectionKind =
   | 'fenced-code'
   | 'inline-code'
   | 'url'
+  | 'email'
   | 'placeholder'
   | 'xml-tag';
 

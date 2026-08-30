@@ -45,6 +45,11 @@ const ATOMS = [
   // nothing. Removing the inline-code mask fails the property through these.
   '`in order to  keep  these  spaces`', '```\nPlease kindly note that   \nIMPORTANT: inside\n```',
   'https://example.com/in%20order%20to?keep=very%20very',
+  // The bait that was missing, and the omission was not the corpus's fault:
+  // there was no email mask for it to test. Five of ten realistic addresses
+  // came out corrupted -- `please@example.com` became `@example.com` -- because
+  // the politeness, filler and intensifier rules read a local part as prose.
+  'Write to please.note@example.com and basically@example.com for help.',
 ];
 
 const prompts = (seed, iterations) => {
@@ -213,6 +218,88 @@ describe('money is never negative, whatever the input', () => {
   });
 });
 
+describe('an address is not prose, however much it reads like it', () => {
+  /**
+   * **Five of ten realistic addresses came out corrupted**, and what was left
+   * was not a wrong address — it was not an address. `please@example.com`
+   * became `@example.com`; so did `thanks@`, `basically@`, `essentially.ops@`
+   * and `very.important@`. The politeness, filler and intensifier rules read
+   * the local part as ordinary prose and cut it out, and the report said
+   * tokens had been saved.
+   *
+   * That is the exact failure `segment.ts` opens by naming: *"compressing a
+   * code block, a URL or a template placeholder would break the prompt, and
+   * that is exactly the failure that makes a prompt optimiser useless."* Code,
+   * URLs and placeholders were on the list. The thing every support prompt in
+   * the world carries was not.
+   *
+   * **`support@` and `no-reply@` survived, which is what hid it.** So did
+   * `por.favor@ejemplo.es`, and only because the Spanish politeness entry is
+   * written with a space rather than a dot. Luck, spread across the half of
+   * the corpus that happened not to spell a stripped word.
+   */
+  const ADDRESSES = [
+    'support@example.com',
+    'no-reply@example.com',
+    'please@example.com',
+    'basically@example.com',
+    'essentially.ops@example.com',
+    'thanks@example.com',
+    'very.important@example.com',
+    'i.think@example.com',
+    'contacto@ejemplo.es',
+    'por.favor@ejemplo.es',
+  ];
+
+  for (const level of ['safe', 'aggressive']) {
+    it(`survives an address byte for byte at the ${level} level`, () => {
+      const broken = ADDRESSES.filter(
+        (address) =>
+          !optimize(`Escalate the ticket.\n\nSend it to ${address} and wait.`, { level })
+            .optimized.includes(address),
+      );
+      assert.deepEqual(broken, [], `${broken.length} addresses corrupted: ${broken.join(', ')}`);
+    });
+  }
+
+  it('and the sentence around it is still trimmed', () => {
+    /*
+      The other half. A mask that swallowed the punctuation or the prose beside
+      it would pass every assertion above while quietly turning the optimiser
+      off wherever an address appears — protecting too much is how a fix for
+      this becomes a regression nobody measures.
+    */
+    assert.equal(
+      optimize('Please write to ops@example.com.').optimized.trim(),
+      'Write to ops@example.com.',
+    );
+    assert.equal(
+      optimize('Send it to ops@example.com, please.').optimized.trim(),
+      'Send it to ops@example.com.',
+    );
+  });
+
+  it('and claims nothing that merely contains an @', () => {
+    /*
+      A handle, a decorator and an arithmetic expression are not addresses, and
+      each of these is checked by watching the prose beside it still get cut.
+
+      **A plant for over-claiming could not be built, and that is worth saying
+      rather than leaving as an untested corner.** Widening the pattern to
+      `\S*@\S*` changes no output here: it cannot cross whitespace, and a word
+      a rule strips is its own whitespace-delimited token, so anything the
+      broad form over-claims contains nothing to strip. The three plants that
+      do fire are the ones that matter — the mask removed, the mask swallowing
+      the sentence's punctuation, and the mask narrowed until a one-word local
+      part goes unprotected.
+    */
+    for (const text of ['Basically, ping @oncall.', 'Basically, @Component is required.', 'Basically, 5@2 units.']) {
+      const { optimized } = optimize(text);
+      assert.doesNotMatch(optimized, /^Basically/, `the prose around ${JSON.stringify(text)} was not trimmed`);
+    }
+  });
+});
+
 describe('what a mask promises, over the whole corpus', () => {
   /**
    * Code blocks, inline code and URLs must survive `optimize` byte-for-byte.
@@ -228,6 +315,17 @@ describe('what a mask promises, over the whole corpus', () => {
     const noFences = text.replace(/```[\s\S]*?```/g, '');
     for (const match of noFences.matchAll(/`[^`\n]+`/g)) spans.push(match[0]);
     for (const match of noFences.matchAll(/https?:\/\/[^\s)]+/g)) spans.push(match[0]);
+    /*
+      Emails, added with the mask itself and worth a sentence about why they
+      were not here before. This extractor was written from the same list as
+      the masker, so a protection the masker did not have was one this could
+      not miss. Two lists agreeing with each other is the shape of every fault
+      found tonight; here it kept a real corruption invisible across a fuzzed
+      corpus specifically built to catch exactly this.
+    */
+    for (const match of noFences.matchAll(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}/g)) {
+      spans.push(match[0]);
+    }
     return spans;
   };
 
