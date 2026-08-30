@@ -13,6 +13,27 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The most load-bearing number in the product was stated three times and
+  checked once.** `demo-image.test.js` holds every dollar in the README's
+  drawing to the pricing catalogue, which is thorough and was the right thing to
+  build. The drawing is not where most people read those numbers: the README
+  restates them in its `alt` text and again in the caption underneath, and adds
+  one the drawing never states — **22 times more** — which is the two of them
+  divided.
+
+  The sentence immediately after it is *"that gap is the entire argument for
+  this tool"*, and `docs/pricing.md` in the paid repository leans on the same
+  ratio for its break-even case. So: three copies and a derived ratio, with a
+  guard on one copy. An Opus 5 re-price would have moved the drawing, left the
+  prose behind, and the README would have argued for the tool with two figures
+  that no longer divide into the multiple printed between them.
+
+  The README's figures are now read out of the drawing rather than written down
+  in the guard — a second copy of them in the test would be the same fault one
+  level up. Four plants fire: a figure changed in the drawing alone, the ratio
+  left behind by its own two figures, stale token counts in the `alt` text, and
+  a caption that drops one of the two figures entirely.
+
 - **The guard that makes every other guard checkable walked a hand-written list
   of eleven directories, and missed 289 of 822 files.** `security.test.js`
   refuses a raw NUL byte in a source file, because a NUL makes git call the file

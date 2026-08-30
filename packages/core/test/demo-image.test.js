@@ -122,3 +122,70 @@ describe('the picture at the top of the README', () => {
     );
   });
 });
+
+/**
+ * And the README, which says the same figures again twice.
+ *
+ * Everything above holds the drawing to the catalogue. The drawing is not where
+ * most people read those numbers: the README restates them in its alt text and
+ * again in the caption underneath, and adds a figure the drawing never states —
+ * **22 times more** — which is the two of them divided. The sentence after it
+ * is *"that gap is the entire argument for this tool"*, so this is the most
+ * load-bearing number the product has, and it was the one with nothing behind
+ * it. `docs/pricing.md` in the paid repository leans on it too.
+ *
+ * Three copies and a derived ratio, with a guard on one copy. An Opus 5
+ * re-price would move the drawing, leave the prose behind, and the README would
+ * argue for the tool with two figures that no longer divide into the multiple
+ * printed between them.
+ *
+ * Read out of the drawing rather than written down here, so redrawing moves
+ * this with it — a second copy of the figures in the guard would be the same
+ * fault one level up.
+ */
+describe('the README states what the picture states', () => {
+  const readme = readFileSync(join(ROOT, 'README.md'), 'utf8');
+
+  /** A dollar figure the drawing prints after a phrase of its own. */
+  const figure = (phrase) => {
+    const found = text.match(new RegExp(`${phrase}\\$([\\d,]+\\.\\d\\d)`));
+    assert.ok(found !== null, `the demo image no longer shows a figure after "${phrase}"`);
+    return Number(found[1].replace(/,/g, ''));
+  };
+
+  const saving = () => figure('saving ');
+  const advisory = () => figure('Beyond shortening the prompt \\s*→ ');
+
+  it('quotes both headline figures, in the alt text and in the caption', () => {
+    for (const amount of [saving(), advisory()]) {
+      const written = `$${amount.toFixed(2)}`;
+      const times = readme.split(written).length - 1;
+      assert.ok(
+        times >= 2,
+        `the README states ${written} ${times} time(s); the alt text and the caption both say it`,
+      );
+    }
+  });
+
+  it('and the multiple between them is those two divided', () => {
+    const multiple = Math.round(advisory() / saving());
+    assert.ok(
+      readme.includes(`${multiple} times more`),
+      `the README does not say "${multiple} times more", which is what `
+        + `$${advisory().toFixed(2)} over $${saving().toFixed(2)} comes to`,
+    );
+  });
+
+  it('and the reduction it advertises is the drawing\u2019s own two counts', () => {
+    const { before, after } = scenario();
+    const pct = ((before - after) / before) * 100;
+    assert.ok(
+      readme.includes(`${before} tokens down to ${after}`),
+      `the alt text does not say ${before} tokens down to ${after}`,
+    );
+    assert.ok(
+      readme.includes(`(-${pct.toFixed(1)}%)`),
+      `the alt text does not say -${pct.toFixed(1)}%, which is ${before} → ${after}`,
+    );
+  });
+});
