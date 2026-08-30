@@ -1950,7 +1950,20 @@ finding nothing changed is not the same event as not looking.
 | the label the log carried | so the money can be attributed |
 | the period, from the log's own clock | so a figure can be bounded |
 | what could not be priced, with its size | so a total is never mistaken for the whole bill |
-| calls whose cache-write TTL the log did not state | so a floor is never read as a measurement |
+| calls whose cache-write TTL the log did not state, per line as well as for the document | so a floor is never read as a measurement, and so the assumption travels into a comparison |
+| the largest single call in each line | so a repricing can refuse traffic the target could not have accepted |
+
+**The largest call, and the refusal it exists for.** Added in 2.1.0. A cheaper
+model with a smaller context window does not make a 400k-token call cheaper, it
+makes it impossible, and counting an impossible call's price difference as a
+saving is the flattering direction this repository refuses. That refusal needs
+one number a token total cannot supply — the biggest single call in the slice —
+and until 2.1.0 a receipt did not carry it. The two cache-write TTL fields had
+said in their own comment since 1.83.0 that they exist *so a consumer can
+reprice this traffic against another model's rates*; the format was built for
+repricing and stopped one field short of it. `repriceReceipt` is the entry point
+it was added for, and `reprice.test.js` holds it to answering exactly what
+`repriceProfile` answers about the same calls.
 
 **Why the money is on the line and not just the rates.** The first version of
 this command published the catalogue's input and output rates next to a total,

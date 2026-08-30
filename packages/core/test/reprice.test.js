@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { BUNDLED_CATALOGUE, profileUsage, repriceProfile } from '../dist/index.js';
+import {
+  BUNDLED_CATALOGUE,
+  UNLABELLED,
+  profileUsage,
+  receiptFrom,
+  repriceProfile,
+  repriceReceipt,
+} from '../dist/index.js';
 
 /**
  * The same tokens at another model's rates.
@@ -214,5 +221,93 @@ describe('repricing a profile onto another model', () => {
       call({ usage: { input_tokens: 400, output_tokens: 0 } }),
     ]).slices;
     assert.equal(uncached.cacheBeyondTarget, null);
+  });
+});
+
+describe('the same question asked of a receipt', () => {
+  /**
+   * A receipt is what leaves a machine, and by the time anybody wants to ask
+   * *what would these calls have cost on the small model* the log is usually
+   * gone — deleted by a retention policy, on a runner that no longer exists, or
+   * on somebody else's laptop. A comparison only the person holding the log can
+   * make is a comparison only the person who least needs it can make.
+   *
+   * **The property, and the reason there is one implementation.** A receipt is
+   * an aggregate of the profile it came from, so repricing the receipt has to
+   * give the same answer as repricing the profile — every figure, every
+   * refusal, every slice. Two loops reading two shapes would drift on which
+   * traffic is refused, and a refusal that quietly stops happening reads as a
+   * saving.
+   */
+  const receiptOf = (records) =>
+    receiptFrom(profile(records), BUNDLED_CATALOGUE, { emittedAt: ON });
+
+  const both = (records, target = HAIKU) => ({
+    fromProfile: repriceProfile(profile(records), target, BUNDLED_CATALOGUE, ON),
+    fromReceipt: repriceReceipt(receiptOf(records), target, BUNDLED_CATALOGUE, ON),
+  });
+
+  it('answers exactly what the profile answers', () => {
+    const { fromProfile, fromReceipt } = both([
+      call(),
+      call({ label: 'search', usage: { input_tokens: 40_000, output_tokens: 8_000 } }),
+      call({ model: HAIKU, label: 'already', usage: { input_tokens: 1_000, output_tokens: 100 } }),
+    ]);
+    assert.deepEqual(fromReceipt, fromProfile);
+  });
+
+  it('refuses traffic the target could not have accepted, which is the whole point of the new field', () => {
+    /**
+     * The refusal the receipt could not honour before 2.1.0. A cheaper model
+     * with a smaller context window does not make a 400k-token call cheaper, it
+     * makes it impossible — and counting an impossible call's price difference
+     * as a saving is the flattering direction this repository refuses.
+     *
+     * Haiku 4.5's window is 200k. One call of 400k input cannot move, and it is
+     * `maxCallInputTokens` on the line that says so: the receipt carries no
+     * per-call detail and never will.
+     */
+    const records = [
+      call({ label: 'huge', usage: { input_tokens: 400_000, output_tokens: 10 } }),
+      call({ label: 'small', usage: { input_tokens: 1_000, output_tokens: 10 } }),
+    ];
+    const { fromProfile, fromReceipt } = both(records);
+
+    assert.equal(fromReceipt.overContext.length, 1, 'the oversized slice was priced anyway');
+    assert.equal(fromReceipt.overContext[0].label, 'huge');
+    assert.equal(fromReceipt.overContext[0].maxCallInputTokens, 400_000);
+    assert.equal(
+      fromReceipt.slices.some((slice) => slice.label === 'huge'),
+      false,
+      'the oversized slice is in the totals as well as in the refusal',
+    );
+    assert.deepEqual(fromReceipt, fromProfile);
+  });
+
+  it('carries what could not be priced at all, out of the document`s own gap', () => {
+    /*
+      An unpriced call has no rate, so it has no line to be in — the receipt
+      keeps it in `gaps` instead. Read from there rather than left at zero, so a
+      comparison covering half a bill cannot look complete.
+    */
+    const records = [
+      call(),
+      call({ model: 'some-model-nobody-prices', label: 'exotic' }),
+    ];
+    const { fromProfile, fromReceipt } = both(records);
+    assert.ok(fromReceipt.unpricedModels.length > 0, 'the unpriced model was dropped');
+    assert.deepEqual(fromReceipt.unpricedModels, fromProfile.unpricedModels);
+    assert.equal(fromReceipt.unpricedCalls, fromProfile.unpricedCalls);
+  });
+
+  it('answers null for a target the catalogue does not know', () => {
+    assert.equal(repriceReceipt(receiptOf([call()]), 'no-such-model', BUNDLED_CATALOGUE, ON), null);
+  });
+
+  it('sends the unlabelled bucket through under the name every other reader uses', () => {
+    const receipt = receiptOf([call({ label: undefined })]);
+    assert.equal(receipt.lines[0].label, null, 'the receipt stopped spelling it null');
+    const repriced = repriceReceipt(receipt, HAIKU, BUNDLED_CATALOGUE, ON);
+    assert.equal(repriced.slices[0].label, UNLABELLED);
   });
 });

@@ -1184,6 +1184,51 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 2.1.0 — The receipt can be repriced — released
+
+**A promise the format had already made in writing, made true.** Since 1.83.0
+the two cache-write TTL fields on a receipt line have carried a comment saying
+they exist *"so a consumer can reprice this traffic against another model's
+rates"*. No consumer could.
+
+`repriceProfile` refuses to price traffic the target could not have accepted —
+a cheaper model with a smaller context window does not make a 400k-token call
+cheaper, it makes it impossible, and counting an impossible call's price
+difference as a saving is the flattering direction this repository refuses.
+**That refusal needs the largest single call in a slice, and a receipt did not
+carry it.** The format was built for repricing and stopped one field short.
+
+So `ReceiptLine` gains `maxCallInputTokens` and, with it, the per-line count of
+calls whose write TTL the log did not state — the document already reported
+that organisation-wide as a gap, and a comparison needs the resolution it
+travels at. `repriceReceipt` asks a receipt the question `repriceProfile` asks a
+log.
+
+**It is not a second implementation, and that was the design constraint rather
+than a nicety.** The loop that refuses over-context traffic, excludes calls
+already on the target, keeps the write TTLs apart and states
+`sameTokensAssumed` is reached through a narrow `RepriceableSlice`, and both
+entry points map onto it. Two loops reading two shapes would drift on which
+traffic is refused, and a refusal that quietly stops happening reads as a
+saving. The guard holds them to `deepEqual`: repricing a receipt answers
+**exactly** what repricing its own profile answers, refusals included.
+
+**Why it lands here rather than in the paid product.** A comparison only the
+holder of the log can make is a comparison only the person who least needs it
+can make — by the time anybody asks *what would these calls have cost on the
+small model*, the log has usually been aged out, or is on a runner that no
+longer exists. And `docs/licensing.md` promises no analysis this repository can
+perform will ever leave it: the entry point for receipt-shaped input is part of
+that analysis, so it is here, free and offline, and the paid product consumes it
+like anybody else.
+
+**It is new development after a release that said the tool was finished, and
+that is a statement rather than an oversight.** What 2.0.0 froze is the
+*surface*: 46 commands, each keeping its meaning. This adds no command. It adds
+two numbers to a published format and one function.
+
+---
+
 ## 2.0.0 — "Done" — released
 
 **The arc's closing release, and it adds nothing.** No analysis, no command. It
@@ -2581,6 +2626,13 @@ carry tests now that derive the claim from the code rather than trusting prose.
 different question from every other plan in that directory — not what this
 should do next, but when it is finished — and 2.0.0 is the answer. The surface
 is frozen at 46 commands.
+
+**2.1.0 came after that and this section did not change its mind.** It adds no
+command; it adds two fields to a published format and one function, so that a
+promise the format had already made in writing since 1.83.0 becomes true. A
+frozen surface is a promise about commands, not a vow of silence — but the
+distinction is only worth anything if it is stated out loud each time, which is
+why it is stated here rather than left to be inferred from a version number.
 
 That is a real state rather than an omission, and this section says so plainly
 because the alternative is describing delivered work as forthcoming, which is

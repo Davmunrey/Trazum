@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.0.0**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.1.0**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -49,6 +49,79 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 2.1.0 — The receipt can be repriced
+
+**One question, now askable of a receipt: *what would these calls have cost on
+another model?***
+
+`trazum` has been able to answer that from a log since the repricing landed. A
+receipt could not be asked it at all — and a receipt is the thing that leaves
+your machine, so by the time anybody wants the answer the log has usually been
+aged out by a retention policy, or is on a runner that no longer exists, or is
+on somebody else's laptop. A comparison only the holder of the log can make is a
+comparison only the person who least needs it can make.
+
+### The field that was missing, and why it was the one that mattered
+
+Repricing refuses to price traffic the target could not have accepted. A cheaper
+model with a smaller context window does not make a 400,000-token call cheaper —
+it makes it impossible, and counting an impossible call's price difference as a
+saving is exactly the flattering direction this product exists to refuse.
+
+That refusal needs one number: the **largest single call** in a slice. A token
+total cannot supply it, an average hides it, and a receipt did not carry it.
+
+Meanwhile the two cache-write TTL fields on every receipt line have carried a
+comment since 1.83.0 saying they are there *"so a consumer can reprice this
+traffic against another model's rates"*. **The format was built for repricing
+and stopped one field short of it.** It does not any more.
+
+### What is new
+
+- `ReceiptLine.maxCallInputTokens` — the largest single call in the slice, cache
+  reads and writes included.
+- `ReceiptLine.assumedWriteTtlCalls` — calls whose cache-write TTL the log did
+  not state, per line. The document already reported this organisation-wide as a
+  gap; a comparison needs the resolution it travels at.
+- `repriceReceipt(document, target, catalogue, on?)` — the same question asked
+  of a receipt.
+- `RepriceableSlice` and `RepriceableInput`, exported, because they are the
+  shape both entry points feed.
+
+Both new fields are counts. Neither can hold text, a path or an identifier, so
+the redaction promise is unchanged and its guard is unchanged with it.
+
+### There is one implementation, and that was the constraint
+
+`repriceReceipt` is not a second copy of the repricing. The loop that refuses
+over-context traffic, excludes calls already billed on the target, keeps the two
+write TTLs apart and states that the token counts are assumed to survive the
+move — that loop is now reached through a narrow slice type, and both entry
+points map onto it.
+
+Two loops reading two shapes would drift on **which traffic is refused**, and a
+refusal that quietly stops happening reads as a saving. So the guard is an
+identity rather than a set of expected numbers: repricing a receipt answers
+**exactly** what repricing the profile it came from answers — every figure,
+every refused slice, every caveat. A planted receipt that lost its largest call
+fails it immediately.
+
+### What this release does not change
+
+**No new command.** The CLI still dispatches 46, and 2.0.0's promise was about
+that surface: a command that exists keeps existing and keeps meaning what it
+means. This adds two numbers to a published format and one function.
+
+**No prices were re-read.** openai, moonshot and xai are still dated 2026-06-24
+and still 67 days stale, and the product still says so on every figure derived
+from them. The session that cut this release could not reach those three pages,
+which is the same honest state 2.0.0 shipped in and is not improved by pretending
+otherwise.
+
+**Nothing about a receipt's contents leaves that was not leaving before.**
 
 ---
 

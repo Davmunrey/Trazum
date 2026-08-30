@@ -1,7 +1,9 @@
 import { effectivePricing, multipliersFor } from './pricing.js';
 import type { PricingCatalogue } from './pricing.js';
 import type { ModelPricing } from './types.js';
+import type { ReceiptDocument } from './receipt.js';
 import type { UsageBreakdown, UsageProfileReport } from './usage.js';
+import { UNLABELLED } from './usage.js';
 
 /**
  * The same tokens at another model's rates.
@@ -195,11 +197,50 @@ export function priceTokensOn(
  * against a price nobody has is worse than no comparison, and the caller is
  * better placed to say so in its own words than this is to invent a zero.
  */
-export function repriceProfile(
-  report: UsageProfileReport,
+/**
+ * The least a slice has to carry to be repriced.
+ *
+ * Narrower than `UsageBreakdown` on purpose, and that narrowing is what lets a
+ * **receipt** be repriced at all. A receipt is the aggregate that leaves a
+ * machine; it does not carry a breakdown's truncation counts or its cache
+ * economics, and it never will, because those are answers to questions a
+ * receipt does not exist to answer. What it does carry — since 2.1.0 — is
+ * exactly this.
+ *
+ * Two entry points feed it and one implementation consumes it. Two copies of
+ * this loop, one reading profiles and one reading receipts, is the defect this
+ * codebase has found more times than any other, and it would be worse here
+ * than usual: the copies would drift on which traffic is refused, and a
+ * refusal that quietly stops happening reads as a saving.
+ */
+export interface RepriceableSlice {
+  /** `UNLABELLED` for the unlabelled bucket, never `null`. */
+  label: string;
+  model: string;
+  calls: number;
+  inputTokens: number;
+  cacheReadTokens: number;
+  cacheWrite5mTokens: number;
+  cacheWrite1hTokens: number;
+  outputTokens: number;
+  /** What it actually cost, as apportioned rather than as recomputed. */
+  totalUsd: number;
+  maxCallInputTokens: number;
+  assumedWriteTtlCalls: number;
+}
+
+/** The slices, plus what could not be priced at all. */
+export interface RepriceableInput {
+  slices: readonly RepriceableSlice[];
+  unpricedModels: readonly string[];
+  unpricedCalls: number;
+}
+
+function repriceSlices(
+  input: RepriceableInput,
   targetId: string,
   catalogue: PricingCatalogue,
-  on: Date = new Date(),
+  on: Date,
 ): RepriceReport | null {
   const target = catalogue.byId.get(targetId);
   if (!target) return null;
@@ -209,17 +250,16 @@ export function repriceProfile(
   const alreadyOnTarget = { calls: 0, usd: 0 };
   let assumedWriteTtlCalls = 0;
 
-  for (const slice of report.byLabelAndModel) {
-    const { breakdown } = slice;
-    if (slice.model === target.id) {
+  for (const breakdown of input.slices) {
+    if (breakdown.model === target.id) {
       alreadyOnTarget.calls += breakdown.calls;
       alreadyOnTarget.usd += breakdown.totalUsd;
       continue;
     }
     if (breakdown.maxCallInputTokens > target.contextWindow) {
       overContext.push({
-        label: slice.label,
-        model: slice.model,
+        label: breakdown.label,
+        model: breakdown.model,
         calls: breakdown.calls,
         currentUsd: breakdown.totalUsd,
         maxCallInputTokens: breakdown.maxCallInputTokens,
@@ -261,8 +301,8 @@ export function repriceProfile(
           }
         : null;
     slices.push({
-      label: slice.label,
-      model: slice.model,
+      label: breakdown.label,
+      model: breakdown.model,
       calls: breakdown.calls,
       currentUsd: breakdown.totalUsd,
       targetUsd,
@@ -287,15 +327,14 @@ export function repriceProfile(
   let batchOnTarget: { targetUsd: number } | null = null;
   if (batchRate !== null && batchRate < 1 && slices.length > 0) {
     const { inputPerMTok, outputPerMTok } = effectivePricing(target, on);
-    const movable = report.byLabelAndModel.filter(
-      (slice) =>
-        slice.model !== target.id && slice.breakdown.maxCallInputTokens <= target.contextWindow,
+    const movable = input.slices.filter(
+      (slice) => slice.model !== target.id && slice.maxCallInputTokens <= target.contextWindow,
     );
     const inOutUsd = movable.reduce(
       (sum, slice) =>
         sum +
-        (slice.breakdown.inputTokens / 1_000_000) * inputPerMTok +
-        (slice.breakdown.outputTokens / 1_000_000) * outputPerMTok,
+        (slice.inputTokens / 1_000_000) * inputPerMTok +
+        (slice.outputTokens / 1_000_000) * outputPerMTok,
       0,
     );
     batchOnTarget = { targetUsd: targetUsd - inOutUsd * (1 - batchRate) };
@@ -310,9 +349,117 @@ export function repriceProfile(
     overContext,
     alreadyOnTarget,
     assumedWriteTtlCalls,
-    unpricedModels: report.unpricedModels,
-    unpricedCalls: report.unpriced.calls,
+    /* Copied rather than passed through. The input's array belongs to the
+       caller -- a profile's own field, or a receipt's gap -- and handing it out
+       inside a report is how a reader ends up able to edit the document they
+       were given. */
+    unpricedModels: [...input.unpricedModels],
+    unpricedCalls: input.unpricedCalls,
     batchOnTarget,
     sameTokensAssumed: true,
   };
+}
+
+
+/**
+ * Reprices a profile's label-and-model slices onto one target model.
+ *
+ * Returns `null` when the catalogue does not know the target: a comparison
+ * against a price nobody has is worse than no comparison, and the caller is
+ * better placed to say so in its own words than this is to invent a zero.
+ */
+export function repriceProfile(
+  report: UsageProfileReport,
+  targetId: string,
+  catalogue: PricingCatalogue,
+  on: Date = new Date(),
+): RepriceReport | null {
+  return repriceSlices(
+    {
+      slices: report.byLabelAndModel.map((slice) => ({
+        label: slice.label,
+        model: slice.model,
+        calls: slice.breakdown.calls,
+        inputTokens: slice.breakdown.inputTokens,
+        cacheReadTokens: slice.breakdown.cacheReadTokens,
+        cacheWrite5mTokens: slice.breakdown.cacheWrite5mTokens,
+        cacheWrite1hTokens: slice.breakdown.cacheWrite1hTokens,
+        outputTokens: slice.breakdown.outputTokens,
+        totalUsd: slice.breakdown.totalUsd,
+        maxCallInputTokens: slice.breakdown.maxCallInputTokens,
+        assumedWriteTtlCalls: slice.breakdown.assumedWriteTtlCalls,
+      })),
+      unpricedModels: report.unpricedModels,
+      unpricedCalls: report.unpriced.calls,
+    },
+    targetId,
+    catalogue,
+    on,
+  );
+}
+
+/**
+ * The same question, asked of a **receipt** rather than of the log behind it.
+ *
+ * ## Why this exists
+ *
+ * A receipt is what leaves a machine, and by the time anybody wants to ask
+ * *what would these calls have cost on the small model* the log is usually
+ * gone — deleted by a retention policy, on a runner that no longer exists, or
+ * simply on somebody else's laptop. A comparison that can only be made where
+ * the log still is can only be made by the person who least needs it.
+ *
+ * It also settles a question the receipt format had left open. The two
+ * cache-write TTL fields say in their own comment that they exist *so a
+ * consumer can reprice this traffic*, and until 2.1.0 no consumer could: the
+ * refusal that protects the whole comparison — never price traffic the target
+ * could not have accepted — needs the largest call, and the receipt did not
+ * carry it. This is the entry point that field was added for.
+ *
+ * ## What it refuses, which is the same four things
+ *
+ * Nothing here is a second implementation. It maps a receipt's lines onto the
+ * same slices `repriceProfile` maps a profile onto, and the one loop that
+ * refuses over-context traffic, excludes calls already on the target, keeps
+ * the write TTLs apart and states `sameTokensAssumed` is the loop both use.
+ *
+ * The unlabelled bucket travels as `UNLABELLED` rather than `null`, which is
+ * the spelling every other consumer of these types already reads.
+ */
+export function repriceReceipt(
+  document: ReceiptDocument,
+  targetId: string,
+  catalogue: PricingCatalogue,
+  on: Date = new Date(),
+): RepriceReport | null {
+  /*
+   * What the catalogue could not price is in the document's gaps rather than
+   * in a line, which is the receipt's own arrangement: an unpriced call has no
+   * rate, so it has no line to be in. Read from there rather than left at
+   * zero, so a comparison covering half a bill cannot look complete.
+   */
+  const unpriced = document.gaps.find((gap) => gap.kind === 'unpriced');
+
+  return repriceSlices(
+    {
+      slices: document.lines.map((line) => ({
+        label: line.label ?? UNLABELLED,
+        model: line.model,
+        calls: line.calls,
+        inputTokens: line.inputTokens,
+        cacheReadTokens: line.cacheReadTokens,
+        cacheWrite5mTokens: line.cacheWrite5mTokens,
+        cacheWrite1hTokens: line.cacheWrite1hTokens,
+        outputTokens: line.outputTokens,
+        totalUsd: line.usd,
+        maxCallInputTokens: line.maxCallInputTokens,
+        assumedWriteTtlCalls: line.assumedWriteTtlCalls,
+      })),
+      unpricedModels: unpriced === undefined ? [] : unpriced.models,
+      unpricedCalls: unpriced === undefined ? 0 : unpriced.calls,
+    },
+    targetId,
+    catalogue,
+    on,
+  );
 }
