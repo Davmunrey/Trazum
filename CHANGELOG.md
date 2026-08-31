@@ -54,6 +54,21 @@ merged commit with no entry is a change only `git log` remembers.
   given that. Proved by planting the exact 400 this was found from and watching
   three assertions fail by name.
 
+- **The README's Action pin was two releases stale, and CI said so before a
+  reader could.** It sat at 2.1.0 while 2.2.0 and 2.2.1 shipped;
+  `docs/releasing.md` allows exactly one release of lag, because the pin can
+  only advance to a release commit once that commit exists. It now points at
+  2.2.0.
+
+  Worth recording how it was caught, because the guard is younger than the
+  habit it protects: this failed **only in CI**, and passed locally, because a
+  fresh checkout has every tag and a working copy has whatever it last
+  fetched. The check derives the allowed lag from `git tag` rather than from
+  anybody remembering, so a stale tag list is a quieter guard rather than a
+  louder one — and reproducing it locally meant fetching tags first, which is
+  now the first thing to try when a `security.test.js` failure will not
+  reproduce.
+
 - `api.x.ai` and `api.moonshot.ai` are declared in `trusted-hosts.test.js`
   under a kind of their own — *availability check, not a customer path* —
   rather than as gateway upstreams. The gateway fronts calls a customer makes,
