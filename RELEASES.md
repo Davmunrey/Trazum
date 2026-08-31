@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.2.1**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.3.0**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -51,6 +51,84 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 2.3.0 — The warning that cried wolf
+
+**Every profile run was warning that its prices were 68 days old, on prices
+read that week.** The warning says, in these words, that the price table behind
+*every dollar here* was last reviewed on that date. On a report of Claude and
+OpenAI calls it named 2026-06-24 — a date belonging to two models that report
+never touched — while the prices actually used had been read four days and zero
+days earlier.
+
+The date it printed is the **oldest provider's**, which is the right answer to
+*how old is this catalogue* and the wrong answer to *how old are the prices in
+front of me*. Three surfaces used it: the CLI's `profile`, the MCP report and
+the browser's bill.
+
+**The second cost is worse than the wrong figure.** A warning that fires on
+every run is one people stop reading, so on the day the table really is stale,
+nothing has been said that was not said yesterday.
+
+`trazum models` had already worked this out and prints its dates per provider,
+because a reader pricing Claude calls should not be told two months when their
+half was checked that morning. The fix reached one surface and not the three
+that qualify a figure. It has now.
+
+`profile --json` gains `reportReviewed` and `reportAgeDays` beside
+`lastReviewed` and `ageDays`, which go on meaning exactly what they meant: the
+table's own oldest provider. Two questions, two pairs of keys, and nothing a
+consumer branches on changed underneath it.
+
+### The skill is written for any agent now, not for one
+
+Trazum's agent-facing skill opened by telling the reader to run `npm install`
+and then spelled every example as `node packages/cli/dist/index.js`, fifteen
+times. An agent with an MCP client and no shell was handed a document about a
+shell. An agent working in somebody else's repository was handed a path that
+does not exist there.
+
+Every command is spelled `trazum <command>` now, and one table at the top says
+how to spell that for whichever door you have: a shell in a checkout, a shell
+anywhere else, MCP tools and no shell, a library import, or a browser.
+
+**`## Through MCP` is new, and it is the point of the change.** For an agent
+with no shell the MCP server is the whole product, and the skill mentioned it
+nowhere. It now carries the seven tools, the client-agnostic stdio wiring, and
+the one rule that decides whether any of it works: the server never opens a
+file, every tool takes the text, and an agent that passes a path gets nothing
+back that means anything.
+
+**`## Before you spend` is new too**, and it is the moment the skill has always
+claimed to be for — a budget exists, a call is about to be made, nobody knows
+whether it fits. Both doors are named, and so are the three ways to get it
+wrong: `cannot-tell` is not a yes, the ceiling is never invented so a check can
+pass, and what has been spent is measured while what the next call costs is an
+estimate.
+
+**One claim in it was false.** `from-litellm`, `from-helicone` and
+`from-langsmith` were described as *named as next but not built* for the whole
+arc after they shipped, so an agent asked about a LiteLLM export offered to
+write a converter that had been there for releases. All five converters now sit
+in one table, with `from-otel` named as the one to offer when you do not know
+what somebody runs — it is the standards-based door and does not depend on
+which vendor they chose.
+
+Three guards now hold the skill to the code, all derived from it: every command
+it tells an agent to run is one the CLI dispatches, its MCP tool table equals
+the set the server registers in both directions, and every converter that
+exists is mentioned. The false claim above is exactly what the third one
+catches.
+
+### Prices
+
+Nothing moved. OpenAI was read on 2026-08-31 and Anthropic, Google, DeepSeek
+and Mistral within four days of it. `xai` and `moonshot` stay at 2026-06-24:
+`grok-4` is absent from the model list xAI's own docs serve and `kimi-k2` from
+the `llms.txt` Moonshot publishes, so there is no price to re-read, and moving
+the date would say a check happened that did not. Neither is marked retired —
+that needs the provider refusing a real request in its own words, and a page
+that stopped mentioning a model has refused nothing.
 
 ## 2.2.1 — One price table read, two that no longer describe our models
 

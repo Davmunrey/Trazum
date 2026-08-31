@@ -16,7 +16,10 @@ import {
   recommendTier,
   recommendTierDetailed,
   reviewAgeDays,
+  reviewedForModels,
+  BUNDLED_CATALOGUE,
   PRICING_LAST_REVIEWED,
+  PROVIDER_REVIEWED,
 } from '../dist/index.js';
 
 describe('pricing catalogue', () => {
@@ -451,5 +454,55 @@ describe('how old the prices are', () => {
     // The guard on the whole idea: an unparseable constant would make every report
     // silently drop the age and nothing else would notice.
     assert.notEqual(reviewAgeDays(PRICING_LAST_REVIEWED, new Date()), null);
+  });
+});
+
+describe('the review date behind one report', () => {
+  /**
+   * `PRICING_LAST_REVIEWED` is the oldest provider's, which is the right answer
+   * to *how old is this table* and the wrong answer to *how old are the prices
+   * in front of me* — and every staleness warning was using it. On a report of
+   * Claude and OpenAI calls it named a date belonging to two models that report
+   * never touched, under a sentence saying the table behind every dollar in it
+   * was reviewed then.
+   */
+  it('answers for the providers that actually priced the report', () => {
+    const fresh = reviewedForModels(['claude-opus-5'], BUNDLED_CATALOGUE);
+    assert.equal(fresh, PROVIDER_REVIEWED.anthropic);
+  });
+
+  it('takes the oldest when a report spans providers', () => {
+    const both = reviewedForModels(['claude-opus-5', 'gpt-5-mini'], BUNDLED_CATALOGUE);
+    const expected =
+      PROVIDER_REVIEWED.anthropic < PROVIDER_REVIEWED.openai
+        ? PROVIDER_REVIEWED.anthropic
+        : PROVIDER_REVIEWED.openai;
+    assert.equal(both, expected, 'a mixed report reported the fresher half');
+  });
+
+  it('falls back to the table rather than claiming provenance it lacks', () => {
+    /*
+      Three ways the question cannot be answered, and all three err towards the
+      table's own date. Reporting a fresher one for a report containing a price
+      of unknown origin would be claiming provenance this catalogue does not
+      have — which is the failure the whole function exists to remove, facing
+      the other way.
+    */
+    assert.equal(reviewedForModels(['not-a-model'], BUNDLED_CATALOGUE), BUNDLED_CATALOGUE.lastReviewed);
+    assert.equal(reviewedForModels([], BUNDLED_CATALOGUE), BUNDLED_CATALOGUE.lastReviewed);
+
+    /* An overlay's prices are not this table's, so this table's dates say
+       nothing about them — whatever models it happens to carry. */
+    const overlay = { ...BUNDLED_CATALOGUE, lastReviewed: '2099-01-01' };
+    assert.equal(reviewedForModels(['claude-opus-5'], overlay), '2099-01-01');
+  });
+
+  it('is never fresher than the catalogue-wide date', () => {
+    /* The property that makes the fallback safe to rely on: whatever this
+       returns, it is a date the table can stand behind. */
+    for (const model of BUNDLED_CATALOGUE.models) {
+      const date = reviewedForModels([model.id], BUNDLED_CATALOGUE);
+      assert.ok(date >= PRICING_LAST_REVIEWED, `${model.id} reported ${date}, older than the table`);
+    }
   });
 });

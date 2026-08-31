@@ -27,6 +27,7 @@ import {
   readDroppedVerdict,
   repriceProfile,
   reviewAgeDays,
+  reviewedForModels,
   STALE_PRICING_DAYS,
   sharesOf,
   verdictMatchesSlice,
@@ -2076,7 +2077,19 @@ function Gaps({
    * whatever the provider changed. The threshold is `STALE_PRICING_DAYS`,
    * shared with the CLI and the MCP report rather than retyped here.
    */
-  const staleDays = reviewAgeDays(BUNDLED_CATALOGUE.lastReviewed, new Date());
+  /*
+    The date is this report's, not the catalogue's oldest.
+    `BUNDLED_CATALOGUE.lastReviewed` is the oldest provider's, so a bill made
+    of Claude and OpenAI calls carried a date belonging to two models it never
+    used — under a sentence saying the table behind every dollar above was
+    reviewed then. `reviewedForModels` answers for the providers that priced
+    this bill and falls back to the catalogue's own date wherever it cannot.
+  */
+  const reviewed = reviewedForModels(
+    report.byModel.map((row) => row.model),
+    BUNDLED_CATALOGUE,
+  );
+  const staleDays = reviewAgeDays(reviewed, new Date());
   const stale = staleDays !== null && staleDays > STALE_PRICING_DAYS;
   if (
     unpricedModels.length === 0 &&
@@ -2099,7 +2112,7 @@ function Gaps({
     had caused.
   */
   const caveats = [
-    stale ? t.bill.pricesStale(BUNDLED_CATALOGUE.lastReviewed, staleDays) : null,
+    stale ? t.bill.pricesStale(reviewed, staleDays) : null,
     unpricedModels.length > 0 ? t.bill.unpriced(unpricedModels.join(', '), unpriced.calls) : null,
     skippedLines.length > 0 ? t.bill.skipped(skippedLines.length, shownLines) : null,
   ].filter((line): line is string => line !== null);

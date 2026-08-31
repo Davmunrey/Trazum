@@ -5,10 +5,17 @@
  * `.claude/skills/trazum/SKILL.md` teaches an agent working *in this
  * repository*, where the CLI is built from source. The plugin ships the same
  * doctrine to an agent working in *any* repository, where the CLI arrives
- * from npm. The only honest differences are the invocation and the build
- * step, so those are the only transforms — everything else is copied, and
+ * from npm. The only honest difference is that one row of the door table, so
+ * that row is the only transform — everything else is copied, and
  * `claude-plugin.test.js` fails the build if the two files drift apart in
  * any other way. Edit the project skill; run this to update the plugin's.
+ *
+ * **The transform shrank when the skill stopped repeating its own
+ * invocation.** Every example used to be spelled `node
+ * packages/cli/dist/index.js` and rewritten fifteen times on the way out;
+ * they are spelled `trazum` now, and the table at the top says how to spell
+ * that for whichever door the reader has. One line changes between the two
+ * files instead of fifteen, and the reader is told once instead of never.
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -20,23 +27,11 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 export const PROJECT_SKILL = '.claude/skills/trazum/SKILL.md';
 export const PLUGIN_SKILL = 'plugin/skills/trazum/SKILL.md';
 
-/** The in-repo build preamble, replaced because npx needs no build. */
-export const BUILD_SECTION = `## Before anything else
+/** The in-repo row of the door table, replaced because npx needs no checkout. */
+export const BUILD_SECTION = `| Run a shell, in a checkout of this repository | the CLI, built from source | \`node packages/cli/dist/index.js\` — after \`npm install && npm run build\` once per session |
+| Run a shell, anywhere else | the CLI, straight from npm | \`npx -y @trazum/cli\` — no install, fetched on first use |`;
 
-Build once per session:
-
-\`\`\`bash
-npm install && npm run build
-\`\`\`
-
-Then \`node packages/cli/dist/index.js\` is the entry point. If Trazum is
-installed globally the command is just \`trazum\`.`;
-
-export const PLUGIN_SECTION = `## Before anything else
-
-Nothing to build: every command below runs through \`npx -y @trazum/cli\`,
-which fetches the published CLI on first use. If Trazum is installed
-globally the command is just \`trazum\`.`;
+export const PLUGIN_SECTION = `| Run a shell | the CLI, straight from npm | \`npx -y @trazum/cli\` — no install, fetched on first use |`;
 
 /** The whole derivation. Exported so the guard runs the same code. */
 export function derivePluginSkill(projectSkill) {
@@ -45,6 +40,11 @@ export function derivePluginSkill(projectSkill) {
       'the project skill no longer contains the build section this derivation replaces — update scripts/build-plugin-skill.mjs',
     );
   }
+  /*
+    Belt and braces: the row is the only place a repo path should appear, and
+    the guard asserts none survives. If one is ever written elsewhere this
+    still removes it rather than shipping a path a stranger cannot follow.
+  */
   return projectSkill
     .replace(BUILD_SECTION, PLUGIN_SECTION)
     .replaceAll('node packages/cli/dist/index.js', 'npx -y @trazum/cli');

@@ -11,8 +11,26 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+## 2.3.0 — The warning that cried wolf, and a skill written for one agent
+
 ### Added
 
+- **`reviewedForModels(models, catalogue)` in `@trazum/core`.** The review date
+  behind one report rather than behind the whole table: the oldest provider
+  among the models actually priced, falling back to the catalogue's own date in
+  the three cases where that cannot be established — an overlay in effect, a
+  model the catalogue does not carry or carrying no provider, and a provider
+  with no recorded date. The fallback is inside the function rather than at
+  each call site, for the reason `isOffered` records: the fifth call site is
+  always the one written with only the first half of a two-part rule.
+- **`pricing.reportReviewed` and `pricing.reportAgeDays` in `profile --json`.**
+  The provenance of *these figures*, beside `lastReviewed` and `ageDays`, which
+  go on meaning the table's own oldest provider. New keys are additions the
+  contract allows; a key cannot change meaning under a minor, so neither did.
+- **`## Through MCP` and `## Before you spend, whichever door you have` in the
+  agent skill.** The seven tools, the client-agnostic stdio wiring, and the one
+  rule that decides whether any of it works — the server never opens a file,
+  every tool takes the text.
 - **The availability check can ask xAI and Moonshot.** `PROBES` in
   `scripts/check-model-availability.mjs` covered five of the catalogue's seven
   providers; `grok-4` and `kimi-k2` were the two ids nothing in this repository
@@ -21,6 +39,32 @@ merged commit with no entry is a change only `git log` remembers.
   one command.
 
 ### Fixed
+
+- **The stale-price warning named a date belonging to models the report never
+  used.** `PRICING_LAST_REVIEWED` is the oldest provider's, which answers *how
+  old is this table* and not *how old are the prices in front of me* — and the
+  CLI profile, the MCP report and the browser bill all decided staleness from
+  it. The sentence they print says, in these words, that the table behind
+  **every dollar here** was reviewed on that date.
+
+  On 2026-08-31 that was false on a report of Claude and OpenAI calls: it named
+  2026-06-24, the date belonging to `grok-4` and `kimi-k2`, whose providers no
+  longer list them so neither price can be re-read and neither date can
+  honestly move. The prices actually used had been read four days and zero days
+  earlier.
+
+  Two costs, and the second is worse. The figure was wrong, and a warning that
+  fires on every run is one people stop reading — so the day the table really
+  is stale, nothing has been said that was not said yesterday. `trazum models`
+  had already worked this out and prints its dates per provider; the fix
+  reached one surface and not the three that qualify a figure.
+
+- **Three converters were documented as unbuilt for a whole arc after they
+  shipped.** The agent skill described `from-litellm`, `from-helicone` and
+  `from-langsmith` as "named as next but not built", so an agent asked about a
+  LiteLLM export offered to write a converter that had been there for releases.
+  All five now sit in one table, with `from-otel` named as the one to offer
+  when you do not know what somebody runs.
 
 - **A refusal about the *credential* was being recorded as a refusal of the
   *model*, and it nearly retired a live one.**
@@ -75,6 +119,58 @@ merged commit with no entry is a change only `git log` remembers.
   and nothing routes customer traffic to either; naming the distinction is what
   keeps it true by inspection. That guard is what caught them, which is the
   second time this release it has been the thing that noticed.
+
+### Changed
+
+- **The agent skill is written for any agent, not for one.** Every command is
+  spelled `trazum <command>`, and one table says how to spell that for
+  whichever door the reader has: a shell in this checkout, a shell anywhere
+  else, MCP tools and no shell, a library import, or a browser. It used to open
+  on `npm install` and repeat `node packages/cli/dist/index.js` fifteen times,
+  which is a document about a shell handed to readers who do not have one.
+
+  The derivation to the plugin copy is one table row instead of fifteen paths
+  as a result, and `scripts/build-plugin-skill.mjs` says so.
+
+### Guards
+
+- **Three over the skill, all derived**, because its tables are hand-written
+  and that is the shape of every defect this repository has found in itself.
+  Every command the skill tells an agent to run is one `COMMAND_FLAGS`
+  dispatches; the tool table under `## Through MCP` equals the set the MCP
+  server registers, in both directions, because a tool the skill omits is one
+  an agent with no shell will never call; and every `from-` converter that
+  exists is mentioned somewhere, which is the false claim above pinned from the
+  other side. All three plants fire.
+
+  The tool check began by scanning the file for snake_case and needed an
+  exclusion list to stop flagging `ANTHROPIC_API_KEY` and
+  `pull_request_target` — two lines after a comment about how this repository
+  keeps paying for exclusion lists. It reads the table now, bounded with
+  `sectionOf()` rather than by naming the heading that follows, which
+  `publish.test.js` fails a test for doing and which this test did until it ran.
+
+- **`reviewedForModels` is held from four directions** in `pricing.test.js`,
+  including the property that makes its fallback safe to rely on: whatever it
+  returns is never older than the catalogue-wide date, for every model in the
+  catalogue.
+
+- **`stale-pricing.test.js` was asserting the defect.** It derived staleness
+  from `PRICING_LAST_REVIEWED` while its fixture priced one Anthropic model. It
+  derives it from the fixture's own model now, and gains the case that pins the
+  distinction — a clean log and one carrying `grok-4` — skipped rather than
+  faked on a day the two dates agree.
+
+### Prices
+
+- **Nothing moved, and two dates could not.** OpenAI was read on 2026-08-31 and
+  Anthropic, Google, DeepSeek and Mistral within four days of it, all inside
+  `STALE_PRICING_DAYS`. `xai` and `moonshot` stay at 2026-06-24: `grok-4` is
+  absent from the model list xAI's own docs serve, and `kimi-k2` from the
+  `llms.txt` Moonshot publishes, so there is no price to re-read and moving the
+  date would say a check happened that did not. Neither is marked `retired` —
+  that needs the provider refusing a real request in its own words, and an
+  absence from a page has refused nothing.
 
 
 ## 2.2.1 — 2026-08-31

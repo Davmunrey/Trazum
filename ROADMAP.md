@@ -1184,6 +1184,22 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 2.3.0 — The warning that cried wolf — released
+
+Three surfaces decided whether prices were stale from the catalogue's oldest
+provider, then printed a sentence saying the table behind *every dollar here*
+was reviewed on that date. On a report of Claude and OpenAI calls it was false
+by two months, and it fired on every run — which is the worse half, because a
+warning that always fires is one nobody reads on the day it is true.
+
+The skill was rewritten in the same release, for the same reason one level up:
+it described one door to a reader who might have any of four. An agent with an
+MCP client and no shell had been handed a document about a shell, and the MCP
+server — the whole product, for that reader — was mentioned nowhere in it. Its
+three new guards are derived from the code, and the first thing they caught was
+this file's own claim that three shipped converters were not built.
+
+
 ## 2.2.1 — One price table read, two that no longer describe our models — released
 
 OpenAI's figures were re-read after 68 days and none had moved; the date moves
@@ -2674,6 +2690,17 @@ this section says continues.** It adds no command and no analysis: thirty
 property suites, and one correction to a published function that those suites
 found. Testing what is already shipped is exactly what a repository standing at
 its own edge should be spending its effort on.
+
+**2.3.0 is a correction and a rewrite, and still no command.** The correction is
+that the stale-price warning on three surfaces named the catalogue's oldest
+provider rather than the providers a report actually used, so every run warned
+about prices read that week — which is both a wrong figure and a warning people
+learn to skip. The rewrite is the agent skill: it was written for a reader with
+a shell in this checkout, and Trazum reaches an agent through MCP and as a
+library too, so it now says which door you have before it says anything else.
+The function that lands with it, `reviewedForModels`, is the same shape as
+2.1.0's: one export, in service of a sentence the tool was already printing and
+could not justify.
 
 That is a real state rather than an omission, and this section says so plainly
 because the alternative is describing delivered work as forthcoming, which is

@@ -1,9 +1,9 @@
 ---
 name: trazum
-description: Price and budget a model call before making it, and cut what a prompt costs. Use before spending on a call when trazum.config.json sets a ceiling and you do not know whether the call fits; when asked to shorten, optimise or cut the cost of a prompt or system prompt; when asked what a prompt costs per month; when asked whether a prompt fits a token budget; when reviewing a change to a prompt file; or when asked where an LLM bill actually went. Also use when asked to find contradictory instructions or redundant few-shot examples in a prompt.
+description: Price and budget a model call before making it, and cut what a prompt costs. Works from a shell, from MCP tools, or as a library, so any agent can reach it. Use before spending on a call when trazum.config.json sets a ceiling and you do not know whether the call fits; when asked to shorten, optimise or cut the cost of a prompt or system prompt; when asked what a prompt costs per month; when asked whether a prompt fits a token budget; when reviewing a change to a prompt file; or when asked where an LLM bill actually went. Also use when asked to find contradictory instructions or redundant few-shot examples in a prompt, or to convert an OpenTelemetry, LiteLLM, Helicone, LangSmith or Claude Code usage export into a priced bill.
 ---
 
-# Trazum — prompt optimiser
+# Trazum — price a model call before you make it
 
 Shortens a prompt without changing what it asks for, prices the saving, and
 reports what would save more than shortening ever will.
@@ -11,16 +11,100 @@ reports what would save more than shortening ever will.
 The engine is deterministic: same input, same output, no API key, no network
 call, nothing to pay. Do not reach for a model to do what the rules already do.
 
-## Before anything else
+## Which door you have
 
-Build once per session:
+**Trazum is not one program, and this skill is not written for one agent.**
+The same `@trazum/core` answers a shell command, an MCP tool call and a library
+import, so pick the row that matches what you can actually do here. Every
+command below this section is spelled `trazum <command>`; that row says how to
+spell it for you.
 
-```bash
-npm install && npm run build
+| You can | Use | Spell `trazum` as |
+|---|---|---|
+| Run a shell, in a checkout of this repository | the CLI, built from source | `node packages/cli/dist/index.js` — after `npm install && npm run build` once per session |
+| Run a shell, anywhere else | the CLI, straight from npm | `npx -y @trazum/cli` — no install, fetched on first use |
+| Call MCP tools but not a shell | the MCP server | **[Through MCP](#through-mcp)** below — seven tools, no shell needed |
+| Import a module | the library | **[From code](#from-code)** below — `@trazum/core`, zero dependencies, browser-safe |
+| None of these | the web app | <https://trazum.vercel.app> — the pure subset runs in the page |
+
+If more than one row fits, prefer the shell: it is the whole surface, and the
+other doors are subsets of it. Prefer MCP over asking a human to run something
+for you.
+
+**No door needs a credential, a network call or a payment** for the
+deterministic work, which is nearly all of it. The handful that do call a model
+— `eval`, `route`, `prune`, `semantic` and `optimize --llm` — say so in their
+own sections, need `TRAZUM_LLM_*` configured, and print the number of calls
+they would make instead of making them until `--yes` is passed. Say what a
+command will spend before you run it.
+
+## Through MCP
+
+For an agent with no shell, this is the whole product that matters. Any MCP
+client can run the server over stdio; nothing here is specific to one vendor:
+
+```json
+{
+  "mcpServers": {
+    "trazum": { "command": "npx", "args": ["-y", "@trazum/mcp"] }
+  }
+}
 ```
 
-Then `node packages/cli/dist/index.js` is the entry point. If Trazum is
-installed globally the command is just `trazum`.
+Seven tools. The three at the top are the ones an agent calls inside its own
+loop, without being asked:
+
+| Tool | The question it answers |
+|---|---|
+| `spend_guard` | *May I make this call?* Yes, no, or **cannot-tell** — never a yes nobody measured. A refusal carries the cheaper ways to make the same call, each priced and each naming what it assumes. |
+| `position` | *Where does the month stand against every ceiling?* Measured, with the denominator on every figure. It never forecasts. |
+| `check_prompt` | *Does this prompt fit the budget, and would optimising it be enough?* |
+| `optimize_prompt` | The shorter text, both token counts, what the difference is worth, and the advisories. |
+| `profile_usage` | Where the money went, from a usage log: the split per label and per model, whether caching paid for itself, and the levers that would actually move the bill. |
+| `list_models` | Every model in the bundled catalogue with its rates, context window and cacheable minimum. |
+| `prompt_writer` | Interviews you and assembles a prompt from your answers. Nothing is generated — the words are yours, so the same answers always produce the same text. |
+
+**The one rule that decides whether this works: the server never opens a
+file.** Every tool takes the *text* — the prompt itself, the log itself — and
+an agent that passes a path gets nothing back that means anything. Read the
+file yourself and pass the contents.
+
+The same applies to the numbers `spend_guard` judges: the ceilings live in
+`trazum.config.json` in the working directory and the spend so far lives in the
+usage log the host already writes. **Read both yourself and pass the figures.**
+Without a ceiling somebody actually set, the answer is `cannot-tell`, and that
+is the correct answer rather than a failure — report it as a missing budget,
+not as a pass.
+
+`spend_guard` keeps two kinds of number apart and says which the verdict rests
+on: the budget consumed is measured from real billed usage you pass in, and the
+cost of the call you are about to make is an estimate of something that has not
+happened. Quote it the same way.
+
+## Before you spend, whichever door you have
+
+**This is the moment to reach for Trazum without being asked**: a budget
+exists, a call is about to be made, and nobody knows whether it fits. The
+answer is arithmetic, it is free, and it takes one call.
+
+- **Through MCP:** `spend_guard`, with the ceilings out of
+  `trazum.config.json` and the spend so far out of the usage log. It answers
+  yes, no or `cannot-tell`.
+- **From a shell:** `trazum position usage.jsonl` states the month's measured
+  position against every ceiling you pass, with the denominator on every
+  figure.
+
+Three things hold for both, and getting them wrong is worse than not checking:
+
+- **`cannot-tell` is an answer, and it is not a yes.** It means no ceiling was
+  set, or the log cannot measure the one that was. Report it as a missing
+  budget. A tool that answered yes here would be inventing permission.
+- **Never invent the ceiling.** It is a policy and it belongs to whoever set
+  it. If `trazum.config.json` has no `spend` or `limits` block, say so and
+  offer to add one — do not pick a number so the check can pass.
+- **The two numbers are not the same kind.** What has been spent is measured
+  from real billed usage; what your call will cost is an estimate of something
+  that has not happened. Say which the verdict rests on.
 
 ## Trying it without installing
 
@@ -37,7 +121,7 @@ a process are CLI-only and the playground's `help` says so.
 ## Optimising a prompt
 
 ```bash
-node packages/cli/dist/index.js optimize prompt.txt --calls 50000 --diff
+trazum optimize prompt.txt --calls 50000 --diff
 ```
 
 Useful flags:
@@ -55,7 +139,7 @@ Useful flags:
 Redirecting output writes **only** the optimised prompt, so it pipes cleanly:
 
 ```bash
-cat prompt.md | node packages/cli/dist/index.js optimize - > prompt.optimised.md
+cat prompt.md | trazum optimize - > prompt.optimised.md
 ```
 
 ## Checking a budget in CI
@@ -64,7 +148,7 @@ Exits 1 when the prompt busts the budget, and says whether optimising would be
 enough:
 
 ```bash
-node packages/cli/dist/index.js check prompts/system.txt --max-tokens 2000
+trazum check prompts/system.txt --max-tokens 2000
 ```
 
 Given a **directory** it checks every prompt inside against the `budgets`
@@ -72,7 +156,7 @@ patterns in `trazum.config.json` — use this when the user asks about a folder 
 prompts rather than running the command once per file:
 
 ```bash
-node packages/cli/dist/index.js check prompts/
+trazum check prompts/
 ```
 
 Rows marked `(no budget)` are real findings, not noise: that file is not covered
@@ -87,7 +171,7 @@ costs — this is the command, and it is the only one that reads real usage inst
 of a file:
 
 ```bash
-node packages/cli/dist/index.js profile usage.jsonl
+trazum profile usage.jsonl
 ```
 
 The log is one JSON object per line, each with a `model` and the `usage` object
@@ -157,22 +241,47 @@ Three things to get right when reporting on this:
   refuses to choose; report it the same way, and tell the user the fix is
   recording the `cache_creation` object the API already returns.
 
-## When the user has no usage log but uses Claude Code
+## When the user has no usage log
 
-They already have one — they just have not converted it. Claude Code writes a
-transcript per session under `~/.claude/projects/`, and each assistant line
-carries the API's own `usage` object, cache TTL split included:
+Usually they do and have not converted it. Five converters read a format
+somebody else already writes, and all five are built:
+
+| They have | Command |
+|---|---|
+| OpenTelemetry GenAI spans, from any exporter | `trazum from-otel spans.otlp.json -o usage.jsonl` |
+| LiteLLM logs | `trazum from-litellm <file\|dir> -o usage.jsonl` |
+| Helicone exports | `trazum from-helicone <file\|dir> -o usage.jsonl` |
+| LangSmith exports | `trazum from-langsmith <file\|dir> -o usage.jsonl` |
+| Claude Code transcripts | `trazum from-claude-code ~/.claude/projects -o usage.jsonl` |
+
+**Offer `from-otel` first when you do not know what they run.** It is the
+standards-based one: any exporter emitting the GenAI semantic conventions
+produces OTLP/JSON it reads without anybody reshaping anything, so it is the
+answer that does not depend on which vendor they chose. The other four are
+read out of each tool's own source rather than guessed at — the same refusal as
+inventing a price — which is why they exist at all and why a sixth waits until
+somebody can share a real export of that format.
+
+Every converter is a pipe into `profile`, which is where the answer is:
 
 ```bash
-node packages/cli/dist/index.js from-claude-code ~/.claude/projects -o usage.jsonl
-node packages/cli/dist/index.js profile usage.jsonl
+trazum from-otel spans.otlp.json -o usage.jsonl
+trazum profile usage.jsonl
 ```
 
-Three things to get right when offering this:
+**Only the numbers cross, in every one of them.** The conversion reads the
+model, the timestamp, a label and the token counts. Prompt content, message
+text, file paths, branch names and trace ids never enter the log. Say this when
+you offer it — it is the reason the user can accept.
 
-- **Only the numbers cross.** The conversion reads model, timestamp, session
-  id and usage; message text, file paths and branch names never enter the
-  log. Say this — it is the reason the user can accept the offer.
+### If they run Claude Code
+
+The transcript is already on disk, one file per session under
+`~/.claude/projects/`, and each assistant line carries the API's own `usage`
+object with the cache TTL split included — which is more than OTel can give
+you today. It reads model, timestamp, session id and usage, and nothing else.
+Two things to get right when offering it:
+
 - **The stderr summary is part of the answer.** Collapsed lines (one API call
   is written as one line per content block; counting lines overbills by a
   third), streamed calls, and everything passed over are stated there. If
@@ -187,18 +296,10 @@ tab accepts the `~/.claude/projects` folder dragged onto it — every
 transcript converted in the tab, labelled by project, priced beside any
 usage logs in the same drop, nothing uploaded.
 
-## When the user already has OpenTelemetry spans
+### If they emit OpenTelemetry
 
-If their LLM calls are instrumented with OpenTelemetry's GenAI semantic
-conventions, the spans already carry the counts — `trazum from-otel` reads the
-OTLP/JSON any exporter produces without them reshaping anything:
-
-```bash
-node packages/cli/dist/index.js from-otel spans.otlp.json -o usage.jsonl
-node packages/cli/dist/index.js profile usage.jsonl
-```
-
-Three things to get right when offering this:
+The vendor-neutral door, and the one to reach for first. Three things to get
+right when offering it:
 
 - **Only the numbers cross.** The conversion reads the model
   (`gen_ai.request.model`/`gen_ai.response.model`), the timestamp
@@ -218,9 +319,10 @@ The web app's **Your bill** tab reads a dropped OTLP export the same way —
 detected by shape, converted in the page, priced beside anything else in the
 drop, nothing uploaded.
 
-Other exporters' formats (LangSmith, Helicone, LiteLLM) are named as next but
-not built: offer `from-otel` for OTLP, and for a vendor format, offer to add a
-converter once the user can share a real export of it.
+A format none of the five reads is not a refusal to help: offer `from-otel` if
+they can emit OTLP, and offer to add a converter once they can share a real
+export of theirs. Trazum does not guess at a format it has not read — the same
+rule that stops it inventing a price.
 
 ## When the log has no labels
 
@@ -266,7 +368,7 @@ route: `eval` runs against whatever `TRAZUM_LLM_MODEL` says and `--model` only
 prices the report.
 
 ```bash
-node packages/cli/dist/index.js route usage.jsonl \
+trazum route usage.jsonl \
   --prompt-file prompts/support.txt --cases cases.txt --yes
 ```
 
@@ -296,7 +398,7 @@ repository — nobody adds a thousand tokens in one commit.
 commits:
 
 ```bash
-node packages/cli/dist/index.js baseline prompts/
+trazum baseline prompts/
 ```
 
 Then `check` gates on drift away from that record as well as on the ceiling, when
@@ -378,7 +480,7 @@ it.
 ## Checking the shorter prompt still works
 
 ```bash
-node packages/cli/dist/index.js eval prompt.txt --cases cases.txt --level aggressive
+trazum eval prompt.txt --cases cases.txt --level aggressive
 ```
 
 Runs both versions over a set of inputs. **Costs three provider calls per
@@ -401,7 +503,7 @@ When someone has changed a prompt and wants to know whether the change is fine
 conversation — this is the command, not `optimize`:
 
 ```bash
-node packages/cli/dist/index.js diff old.txt new.txt --calls 50000
+trazum diff old.txt new.txt --calls 50000
 ```
 
 **Every number it prints is `after - before`, so positive means worse.** That
@@ -423,6 +525,10 @@ and exceeded, so suggest that flag when the user wants CI to block a regression
 
 ## From code
 
+The door for an agent framework, a service, or anything embedding this rather
+than shelling out. `@trazum/core` has **zero dependencies and is browser-safe**,
+so the same import works in a Node runtime, a worker and a page:
+
 ```ts
 import { optimize } from '@trazum/core';
 
@@ -436,6 +542,19 @@ result.optimized;                    // the shortened prompt
 result.savings.monthlySavingsUsd;    // projected saving
 result.advisories;                   // everything below
 ```
+
+The other three worth knowing, because they are what the commands above are:
+
+```ts
+import { profileUsage, costOfCall, listModels } from '@trazum/core';
+
+profileUsage(logText, { catalogue });   // what `profile` prints, as data
+costOfCall(model, inputTokens, outputTokens);
+listModels();                            // the catalogue, with review dates
+```
+
+Every one is pure: no file is read, no network is reached, no key is used. Pass
+the text, get the answer.
 
 ## How to read the report
 
@@ -461,7 +580,7 @@ first — they are sorted warnings-first, then by monthly saving.
 
 ## Rules
 
-`node packages/cli/dist/index.js rules` lists all of them with their ids.
+`trazum rules` lists all of them with their ids.
 
 - **safe** — no semantic risk: courtesy, filler, verbose phrasing, duplicated
   paragraphs, whitespace.
