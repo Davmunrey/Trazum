@@ -11,7 +11,71 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
-Nothing yet.
+### Added
+
+- **The availability check can ask xAI and Moonshot.** `PROBES` in
+  `scripts/check-model-availability.mjs` covered five of the catalogue's seven
+  providers; `grok-4` and `kimi-k2` were the two ids nothing in this repository
+  could ask about, and the record said so in every run rather than leaving them
+  out. Both probes are written now, so the moment a key exists the question is
+  one command.
+
+### Fixed
+
+- **A refusal about the *credential* was being recorded as a refusal of the
+  *model*, and it nearly retired a live one.**
+
+  xAI answers `400 "Incorrect API key provided"` to a bad key — not 401 — and
+  the first version of the probe above duly classified `grok-4` as gone, with
+  the provider "quoting" a sentence about the key. It was caught by running it
+  with a credential that turned out to be a key **id** rather than a key: the
+  script printed `GONE grok-4 400`, which is a confident wrong answer of
+  exactly the shape this file exists to prevent.
+
+  What it would have cost is worth stating, because "a script mislabelled a
+  row" understates it: `pricing.ts` copies that sentence verbatim into
+  `retired.because`, `retired` is a stronger statement than `recommendable:
+  false` and is honoured everywhere that one is, and the reports quote it. A
+  typo in an environment variable would have retired a working model, in the
+  provider's own words, on the record, and every surface downstream would have
+  repeated it.
+
+  The status alone cannot decide it, so what decides it is **what the provider
+  said**: an answer naming the key is about the key, whatever number it arrives
+  with. Those are now recorded as unasked, which is where an unasked question
+  belongs — the same rule the rate-limit branch already followed. The match is
+  deliberately broad: a false "could not ask" costs a re-run once somebody
+  fixes the key, and a false "gone" costs a retired model that still works.
+
+  Held at the **record** rather than at the classifier, by
+  `model-availability.test.js`: no refused entry may quote a credential error,
+  and no `retired.because` may either. A probe for a provider nobody has
+  thought of yet inherits the guard; a unit test on one function would not have
+  given that. Proved by planting the exact 400 this was found from and watching
+  three assertions fail by name.
+
+- **The README's Action pin was two releases stale, and CI said so before a
+  reader could.** It sat at 2.1.0 while 2.2.0 and 2.2.1 shipped;
+  `docs/releasing.md` allows exactly one release of lag, because the pin can
+  only advance to a release commit once that commit exists. It now points at
+  2.2.0.
+
+  Worth recording how it was caught, because the guard is younger than the
+  habit it protects: this failed **only in CI**, and passed locally, because a
+  fresh checkout has every tag and a working copy has whatever it last
+  fetched. The check derives the allowed lag from `git tag` rather than from
+  anybody remembering, so a stale tag list is a quieter guard rather than a
+  louder one — and reproducing it locally meant fetching tags first, which is
+  now the first thing to try when a `security.test.js` failure will not
+  reproduce.
+
+- `api.x.ai` and `api.moonshot.ai` are declared in `trusted-hosts.test.js`
+  under a kind of their own — *availability check, not a customer path* —
+  rather than as gateway upstreams. The gateway fronts calls a customer makes,
+  and nothing routes customer traffic to either; naming the distinction is what
+  keeps it true by inspection. That guard is what caught them, which is the
+  second time this release it has been the thing that noticed.
+
 
 ## 2.2.1 — 2026-08-31
 

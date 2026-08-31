@@ -60,6 +60,12 @@ const KINDS = new Set([
    * and a build that fetched it would be wrong, not slow.
    */
   'identifier, never fetched',
+  /**
+   * Asked by the maintenance script that checks whether a priced model id is
+   * still accepted. A credential is required and the answer is thrown away
+   * except for its status and its sentence; no customer request ever goes here.
+   */
+  'availability check, not a customer path',
   /** Appears only as an example, a placeholder or a test fixture. */
   'example',
 ]);
@@ -69,6 +75,16 @@ const HOSTS = {
   'https://api.openai.com': 'gateway upstream',
   'https://api.deepseek.com': 'gateway upstream',
   'https://api.mistral.ai': 'gateway upstream',
+
+  /*
+    Reached only by `scripts/check-model-availability.mjs`, which asks each
+    provider whether the ids this repository prices still exist. Neither is a
+    gateway upstream: the gateway fronts calls a customer makes, and nothing
+    here routes customer traffic to either. They are named as their own kind so
+    that stays true by inspection rather than by everyone remembering it.
+  */
+  'https://api.x.ai': 'availability check, not a customer path',
+  'https://api.moonshot.ai': 'availability check, not a customer path',
   'https://generativelanguage.googleapis.com': 'gateway upstream',
 
   'https://aiplatform.googleapis.com': 'model call, cannot be fronted',
