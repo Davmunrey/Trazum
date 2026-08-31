@@ -710,6 +710,11 @@ export interface CliMessages {
     stateNeedsFile(): string;
     /** `--state` with nowhere to append: the records were going to stdout. */
     stateNeedsOut(): string;
+    /** The rules file could not be read as a list of prefix-and-label pairs. */
+    cwdRulesUnreadable(file: string): string;
+    cwdRuleBad(file: string, at: number): string;
+    cwdRulesEmpty(file: string): string;
+    labelledByCwd(rules: number): string;
     /** How much of the transcript was skipped, and where the next run starts. */
     resumed(skipped: number, offset: number): string;
   };

@@ -291,10 +291,14 @@ Two things to get right when offering it:
   path-shaped — `home-user-Trazum` rather than `support-rag`. Nothing renames
   it: the config's `labels` block maps a label to the **prompt file** it
   sends, not to a nicer name. To choose the label, choose it at the source:
-  `--label <name>` on the conversion, one transcript at a time. Two projects
-  in one session cannot be told apart afterwards, because the transcript has
-  no field that says which — so a bill that needs the split needs a session
-  per project.
+  `--label <name>` on the conversion, one transcript at a time.
+- **Two projects in one session split with `--label-by-cwd <rules.json>`**, a
+  list of `{"prefix": "/work/api", "label": "api"}`. The transcript has no
+  field saying which project a call was for, and it does carry the working
+  directory each call was made from, so the rules turn one into the other.
+  Longest prefix wins; a directory no rule covers is unattributed rather than
+  guessed. The path is read and never emitted, which is the same contract the
+  converter already keeps for message text and branch names.
 
 For a user who does not want a terminal at all: the web app's **Your bill**
 tab accepts the `~/.claude/projects` folder dragged onto it — every

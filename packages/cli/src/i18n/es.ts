@@ -1895,6 +1895,10 @@ ${bold('EJEMPLOS')}
     stateNeedsFile: () =>
       '--state lee un transcript, no una carpeta: el estado ata un desplazamiento del transcript a una longitud del fichero de salida, y varios transcripts escribiendo en una sola salida no tienen una longitud así. Apúntalo al fichero .jsonl.',
     stateNeedsOut: () => '--state necesita --out: sin fichero de salida no hay nada contra lo que reanudar.',
+    cwdRulesUnreadable: (file) => `${file}: --label-by-cwd espera un JSON con una lista, del estilo [{"prefix": "/trabajo/api", "label": "api"}].`,
+    cwdRuleBad: (file, at) => `${file}: la entrada ${at} necesita "prefix" y "label", ambos cadenas y no vacíos. Aquí no se adivina nada a partir de una ruta, así que una entrada que no es una regla se rechaza en vez de saltarse.`,
+    cwdRulesEmpty: (file) => `${file}: no tiene reglas, así que cada línea acabaría en --label o sin etiqueta. Escribe una regla o quita la opción.`,
+    labelledByCwd: (rules) => `Etiquetado por directorio de trabajo, ${rules} regla(s). El directorio decide cuál de tus etiquetas se aplica y nunca llega a la salida.`,
     resumed: (skipped, offset) =>
       skipped === 0
         ? `Transcript leído entero; punto de reanudación anotado en el byte ${offset}.`

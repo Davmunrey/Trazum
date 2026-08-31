@@ -228,7 +228,7 @@ export { heliconeRecords, looksLikeHelicone } from './helicone.js';
 export type { HeliconeConversion, HeliconeRecord } from './helicone.js';
 export { langsmithRecords, looksLikeLangsmith } from './langsmith.js';
 export type { LangsmithConversion, LangsmithRecord } from './langsmith.js';
-export type { ClaudeCodeConversion, ClaudeCodeRecord } from './claude-code.js';
+export type { ClaudeCodeConversion, ClaudeCodeRecord, CwdLabel } from './claude-code.js';
 export { positionReport } from './position-report.js';
 export type {
   PositionDistance,
