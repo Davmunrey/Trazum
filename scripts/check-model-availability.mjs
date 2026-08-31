@@ -144,6 +144,57 @@ const PROBES = {
       return [response.status, (await response.json())?.error?.message ?? ''];
     },
   },
+  /**
+   * Both of these are OpenAI-shaped, and both were missing.
+   *
+   * The catalogue prices `grok-4` and `kimi-k2`, and on 2026-08-31 neither is
+   * on its provider's published pricing page any more — xAI lists grok-4.3,
+   * 4.5, 4.6, 4.20 and grok-build; Moonshot lists kimi-k3, k2.7-code, k2.6,
+   * k2.5 and the V1 series. That is a strong hint and it is **not** the check.
+   * `retired` records a provider refusing a real request, quoting its own
+   * sentence, and a page that stopped mentioning a model has refused nothing.
+   * These two probes are what turns the hint into an answer.
+   *
+   * Written before either key existed, which is deliberate: the alternative is
+   * discovering the shape of the request on the day somebody is waiting, and
+   * this file's whole argument is that a question worth asking is worth having
+   * ready.
+   */
+  xai: {
+    envVar: 'XAI_API_KEY',
+    free: false,
+    async ask(id, key) {
+      const response = await fetch('https://api.x.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+        body: JSON.stringify({
+          model: id,
+          messages: [{ role: 'user', content: 'hi' }],
+          max_tokens: 1,
+        }),
+      });
+      const body = await response.json();
+      /* xAI answers `{ code, error }` rather than `{ error: { message } }`. */
+      return [response.status, body?.error?.message ?? body?.error ?? ''];
+    },
+  },
+  moonshot: {
+    envVar: 'MOONSHOT_API_KEY',
+    free: false,
+    async ask(id, key) {
+      const response = await fetch('https://api.moonshot.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', authorization: `Bearer ${key}` },
+        body: JSON.stringify({
+          model: id,
+          messages: [{ role: 'user', content: 'hi' }],
+          max_tokens: 1,
+        }),
+      });
+      const body = await response.json();
+      return [response.status, body?.error?.message ?? body?.message ?? ''];
+    },
+  },
   mistral: {
     envVar: 'MISTRAL_API_KEY',
     free: false,
@@ -195,6 +246,32 @@ if (billed.length > 0) {
   );
 }
 
+/**
+ * Did the provider refuse the **credential** rather than the model?
+ *
+ * This exists because it nearly shipped the exact defect the whole script is
+ * against. xAI answers `400 "Incorrect API key provided"` to a bad key — not
+ * 401 — and the first version of the `xai` probe duly recorded `grok-4` as
+ * GONE, with the provider "quoting" a sentence about the key. A typo in an
+ * environment variable would have retired a live model, in the provider's own
+ * words, on the record.
+ *
+ * So the status alone cannot decide it. What decides it is **what the provider
+ * said**: an answer naming the key is about the key, whatever number it
+ * arrives with. A run that cannot authenticate has not asked the question, and
+ * `notAsked` is where an unasked question belongs — the same rule the rate
+ * limit already followed, which is why this reads like it.
+ *
+ * Deliberately broad. A false "could not ask" costs a re-run once somebody
+ * fixes the key; a false "GONE" costs a retired model that still works, and
+ * this file exists to say those are not the same mistake.
+ */
+const ABOUT_THE_CREDENTIAL =
+  /\b(api[ _-]?key|unauthori[sz]ed|authenticat|credential|invalid[ _-]?token|permission denied|forbidden)\b/i;
+
+const refusedTheCredential = (status, message) =>
+  status === 401 || status === 403 || ABOUT_THE_CREDENTIAL.test(String(message));
+
 for (const model of MODELS) {
   const probe = PROBES[model.provider];
   if (probe === undefined) {
@@ -211,6 +288,13 @@ for (const model of MODELS) {
     if (status === 200) {
       reachable.push(model.id);
       console.log(`  ok       ${pad(model.id, 26)} ${model.provider}`);
+    } else if (refusedTheCredential(status, message)) {
+      skipped.push([
+        model.id,
+        `${status} — the provider refused the credential, not the model: `
+          + `${String(message).replace(/\s+/g, ' ').trim()}`,
+      ]);
+      console.log(`  no key   ${pad(model.id, 26)} ${status} — credential refused`);
     } else if (status === 429) {
       // Rate limiting says nothing about whether the model exists, and calling
       // it "gone" would be the flattering direction in reverse: a scary answer

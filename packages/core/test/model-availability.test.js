@@ -97,12 +97,59 @@ describe('the catalogue and the availability record agree', () => {
     assert.ok(MODELS.filter(isOffered).length > 5, 'nothing is offered, so the check above is empty');
   });
 
+  it('never justifies a retirement with an answer about the credential', () => {
+    /**
+     * The defect this guard was written from, caught in the making rather than
+     * in a release.
+     *
+     * xAI answers `400 "Incorrect API key provided"` to a bad key — not 401 —
+     * and the first version of that probe recorded `grok-4` as refused, with
+     * the provider "quoting" a sentence about the key. A typo in an
+     * environment variable would have retired a live model **in the
+     * provider's own words**, on the record, and every downstream refusal
+     * would have inherited it: `pricing.ts` copies `because` verbatim into
+     * `retired`, and the reports quote that.
+     *
+     * The script now classifies those as unasked. This holds the property at
+     * the record instead of at the function, because the record is what
+     * reaches the catalogue: a future probe for a provider nobody has thought
+     * of yet gets the same guard for free, which a unit test on one classifier
+     * would not give.
+     */
+    const credential =
+      /\b(api[ _-]?key|unauthori[sz]ed|authenticat|credential|invalid[ _-]?token|permission denied|forbidden)\b/i;
+    for (const entry of record().refused) {
+      assert.equal(
+        credential.test(entry.message),
+        false,
+        `${entry.id} is recorded as refused by its provider, and the provider was talking about `
+          + `the credential: ${JSON.stringify(entry.message)}`,
+      );
+    }
+    /* And the same sentence must never have reached a retirement. */
+    for (const model of MODELS) {
+      if (model.retired === undefined) continue;
+      assert.equal(
+        credential.test(model.retired.because),
+        false,
+        `${model.id} is retired for what reads as an authentication failure`,
+      );
+    }
+  });
+
   it('says what it could not ask, rather than counting silence as a pass', () => {
     /**
-     * The doctrine rule this record is built on. Two providers have no probe
-     * written, so nothing is known about `kimi-k2` or `grok-4` — and a report
-     * that listed only the answered and the refused would read as a clean bill
-     * of health across a catalogue it had covered two thirds of.
+     * The doctrine rule this record is built on. Nothing is known about
+     * `kimi-k2` or `grok-4` — and a report that listed only the answered and
+     * the refused would read as a clean bill of health across a catalogue it
+     * had covered two thirds of.
+     *
+     * **Why they are unasked has changed, and the fixture has not.** It was
+     * that no probe existed for `moonshot` or `xai`; both are written now, and
+     * what is missing is a key. The fixture still says the old reason because
+     * it is the record of a run that happened on the day it happened, and
+     * editing a past run's output to match today's code is how a record stops
+     * being one. The next real run replaces it, reason and all.
      */
     const found = record();
     const asked = new Set([
