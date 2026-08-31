@@ -1,0 +1,70 @@
+#!/bin/sh
+# Adds the Signed-off-by trailer this repository's CI requires.
+#
+# Install:
+#     ln -s ../../scripts/prepare-commit-msg .git/hooks/prepare-commit-msg
+#
+# Skip once:  git commit --no-verify
+# Skip always: TRAZUM_SIGNOFF_HOOK=0
+#
+# ---------------------------------------------------------------------------
+# Why this exists
+#
+# `.github/workflows/dco.yml` requires every non-merge commit in a pull request
+# to carry the trailer, and it is a required check — so a branch with one
+# unsigned commit cannot merge, and the only fix is rewriting history and
+# force-pushing. That is expensive out of all proportion to the mistake, which
+# is forgetting `-s` once. This is the cheap end of that.
+#
+# It adds nothing a person could not have typed and it decides nothing: the
+# name and address are the ones git is already about to record as the author,
+# which is the same identity `git commit -s` would use.
+#
+# ## What it deliberately does not do
+#
+# **It is not installed by anything.** No `postinstall`, no bootstrap script.
+# A repository that installs git hooks on `npm install` is a repository that
+# runs code somebody did not ask for, in the one place where "I only installed
+# the dependencies" is the assumption everybody makes.
+#
+# **It skips merges**, because the workflow does, and for the reason stated
+# there: GitHub writes those commits itself and failing somebody for a commit
+# they did not author teaches nothing except how to bypass the check. The hook
+# and the check agree about which commits need a trailer, and
+# `signoff-hook.test.js` reads the regex out of the workflow so they cannot
+# drift on what one looks like either.
+#
+# **It never adds a second trailer.** `git interpret-trailers` is git's own
+# tool and `--if-exists doNothing` is its own idempotence, rather than a grep
+# here that would have to guess at placement, at a trailer block that already
+# exists, and at a message whose body happens to mention the words.
+# ---------------------------------------------------------------------------
+
+set -eu
+
+[ "${TRAZUM_SIGNOFF_HOOK:-1}" = "0" ] && exit 0
+
+message="$1"
+source="${2:-}"
+
+# `merge` is the merge case the workflow exempts. `squash` is a message
+# assembled from other commits, and the commit it becomes gets its own run of
+# this hook with an empty source, which is where the trailer belongs.
+case "$source" in
+  merge|squash) exit 0 ;;
+esac
+
+name=$(git config user.name || true)
+email=$(git config user.email || true)
+
+# Nothing to sign with. Not an error and not a refusal: git is about to refuse
+# this commit itself with a better message than anything here could print, and
+# a hook that failed first would send somebody looking in the wrong place.
+[ -z "$name" ] && exit 0
+[ -z "$email" ] && exit 0
+
+git interpret-trailers \
+  --in-place \
+  --if-exists doNothing \
+  --trailer "Signed-off-by: $name <$email>" \
+  "$message"

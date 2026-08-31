@@ -1148,6 +1148,9 @@ apps/web/          Next.js (App Router) — Optimise, Compare, Your bill, Librar
 action/            the packaged GitHub Action that comments on pull requests
 scripts/           release notes, the token-band harness, rollback recovery
   draw-architecture.mjs  redraws the picture above from the workspace globs
+  build-wiki.mjs     rebuilds wiki/ from this file, verbatim, section by section
+wiki/              the GitHub wiki, generated — every page is a section of a
+                   document above, so there is nothing here to keep in sync
 ```
 
 ## Updating prices

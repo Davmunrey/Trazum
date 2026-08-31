@@ -108,6 +108,11 @@ const HOSTS = {
   'https://platform.openai.com': 'documentation link',
   'https://www.promptfoo.dev': 'documentation link',
   'https://github.com': 'documentation link',
+  // Where an image in a wiki page has to point. `scripts/build-wiki.mjs`
+  // rewrites relative `<img src>` to this host because a wiki is served from
+  // `/wiki/<Page>` and a repository-relative path is broken there. It is a
+  // destination this repository writes into text, never a request it makes.
+  'https://raw.githubusercontent.com': 'documentation link',
 
   'https://api.example': 'example',
   'https://api.github.test': 'example',

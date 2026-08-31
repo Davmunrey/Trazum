@@ -85,6 +85,32 @@ jobs:
       - run: npx --yes @trazum/cli profile logs/ --max-usd 400
 ```
 
+## The sign-off hook, for contributors to this repository
+
+`.github/workflows/dco.yml` requires every non-merge commit in a pull request
+to carry a `Signed-off-by` trailer, and it is a **required** check. Forgetting
+`git commit -s` once is expensive out of all proportion to the mistake: adding
+the trailer to a later commit does not help, and neither does reverting, because
+the workflow walks `base..head` and the unsigned commit is still in that range.
+The only fix is rewriting history and force-pushing.
+
+So install the hook and stop thinking about it:
+
+```bash
+ln -s ../../scripts/prepare-commit-msg .git/hooks/prepare-commit-msg
+```
+
+It adds the trailer from the identity git is already about to record as the
+author, which is the same one `git commit -s` would use. It never adds a second
+one, it skips merges because the workflow does, and `TRAZUM_SIGNOFF_HOOK=0`
+turns it off. Nothing installs it for you: a repository that adds git hooks
+during `npm install` is a repository that runs code somebody did not ask for.
+
+`signoff-hook.test.js` reads the pattern out of the workflow and asserts the
+hook's own output matches it, so the two cannot drift on what a trailer looks
+like — a hook writing a trailer the check rejects would be worse than no hook,
+because it would look like the problem was solved.
+
 ## A pre-commit hook
 
 The one place where speed matters more than completeness, so gate on the
