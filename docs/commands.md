@@ -2457,6 +2457,34 @@ passed over is said on stderr, never silently. `--label <name>` stamps one
 workload; `--label-from-project` uses each transcript's project directory
 name, which the config's `labels` block can map to something readable.
 
+**`--label-by-cwd <rules.json>` splits one session between two projects.** A
+person who moved between repositories without starting a new Claude Code
+session has one transcript, one project folder, and no field in it saying which
+work was which. It has a `cwd`, per line:
+
+```json
+[
+  { "prefix": "/work/trazum-pro", "label": "trazum-pro" },
+  { "prefix": "/work/trazum", "label": "trazum" }
+]
+```
+
+Longest prefix wins, so a nested project is not swallowed by the repository
+above it, and the order the rules are written in decides nothing. A directory
+no rule covers falls back to `--label` if one was given and is **unattributed**
+otherwise: a guessed label puts one project's money on another's bill, in the
+one direction nobody checks. A malformed entry is refused by number rather than
+skipped, for the same reason.
+
+A file rather than a repeated flag, because the values are absolute paths and
+every delimiter worth choosing is a character a directory is allowed to
+contain.
+
+**The directory is read and never written.** That is the contract this feature
+lives under: the converter has never emitted a `cwd`, choosing a label the
+operator wrote is a different act from emitting the path, and the test plants a
+secret in `cwd` and searches the whole output — stdout and stderr — for it.
+
 **`--state <file>` reads only what is new.** A transcript is append-only and
 can be enormous, so anything that converts it on a loop spends most of its time
 re-reading bytes that cannot have changed. The state file records where the last

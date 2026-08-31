@@ -1871,6 +1871,10 @@ ${bold('EXAMPLES')}
     stateNeedsFile: () =>
       '--state reads one transcript, not a folder: the state ties an offset in the transcript to a length of the output, and several transcripts appending to one output have no single such length. Point it at the .jsonl file.',
     stateNeedsOut: () => '--state needs --out: there is nothing to resume against when the records go to stdout.',
+    cwdRulesUnreadable: (file) => `${file}: --label-by-cwd wants a JSON file holding a list, like [{"prefix": "/work/api", "label": "api"}].`,
+    cwdRuleBad: (file, at) => `${file}: entry ${at} needs a non-empty "prefix" and "label", both strings. Nothing is guessed from a path here, so an entry that is not a rule is refused rather than skipped.`,
+    cwdRulesEmpty: (file) => `${file}: no rules in it, so every line would fall back to --label or to nothing. Write a rule or drop the flag.`,
+    labelledByCwd: (rules) => `Labelled by working directory, ${rules} rule(s). The directory decides which of your labels applies and never reaches the output.`,
     resumed: (skipped, offset) =>
       skipped === 0
         ? `Read the transcript in full and recorded a resume point at byte ${offset}.`

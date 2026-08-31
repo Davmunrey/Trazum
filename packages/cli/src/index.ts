@@ -113,6 +113,7 @@ import {
   parseUsageLine,
   plannedCalls,
   claudeCodeRecords,
+  type CwdLabel,
   ESTIMATE_ERROR_BAND_PCT,
   bandFor,
   foreignTokenizer,
@@ -297,6 +298,7 @@ interface Args {
 
 const VALUE_FLAGS = new Set([
   'answers',
+  'label-by-cwd',
   'calls',
   'files-from',
   'log',
@@ -692,7 +694,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   rollup: ['json', 'html-out'],
   position: ['json', 'html-out', 'pricing', 'pricing-live'],
   receipt: ['out', 'o', 'stamp', 'pricing', 'pricing-live'],
-  'from-claude-code': ['label', 'label-from-project', 'out', 'o', 'state'],
+  'from-claude-code': ['label', 'label-by-cwd', 'label-from-project', 'out', 'o', 'state'],
   'from-otel': ['label-from-service', 'out', 'o'],
   'from-litellm': ['out', 'o'],
   'from-helicone': ['out', 'o'],
@@ -2656,6 +2658,50 @@ function projectLabelFor(file: string): string | undefined {
 
 
 /**
+ * The directory rules, read from a JSON file, or nothing when none was asked
+ * for.
+ *
+ * **Every malformed entry is a refusal, never a skip.** A rules file with one
+ * bad line that quietly labelled nothing would put a project's money on
+ * another project's bill, silently, in the one direction nobody checks. The
+ * message names the entry so it can be found.
+ */
+async function cwdRulesFrom(
+  file: string | undefined,
+  t: CliMessages,
+): Promise<CwdLabel[] | undefined> {
+  if (file === undefined) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await readFile(file, 'utf8'));
+  } catch {
+    throw new Error(t.fromClaudeCode.cwdRulesUnreadable(file));
+  }
+  if (!Array.isArray(parsed)) throw new Error(t.fromClaudeCode.cwdRulesUnreadable(file));
+
+  const rules: CwdLabel[] = [];
+  for (const [at, entry] of parsed.entries()) {
+    const rule = entry as Record<string, unknown> | null;
+    if (
+      typeof rule !== 'object'
+      || rule === null
+      || typeof rule.prefix !== 'string'
+      || rule.prefix === ''
+      || typeof rule.label !== 'string'
+      || rule.label === ''
+    ) {
+      throw new Error(t.fromClaudeCode.cwdRuleBad(file, at));
+    }
+    rules.push({ prefix: rule.prefix, label: rule.label });
+  }
+  /* An empty list is refused rather than treated as "no rules": a caller who
+     passed the flag meant to narrow something, and silently doing nothing is
+     the shape `policy.ts` refuses one repository over. */
+  if (rules.length === 0) throw new Error(t.fromClaudeCode.cwdRulesEmpty(file));
+  return rules;
+}
+
+/**
  * `--state`: read the part of a transcript that is new since last time.
  *
  * A Claude Code transcript is append-only and can be enormous — the largest on
@@ -2810,6 +2856,25 @@ async function commandFromClaudeCode(args: Args, t: CliMessages): Promise<void> 
    */
   const labelFromProject = boolFlag(args, 'label-from-project', info.isDirectory());
   /**
+   * `--label-by-cwd`: the one question a folder name cannot answer.
+   *
+   * `--label-from-project` labels by the transcript's own folder, which is
+   * right when one folder is one project and useless when it is not. Two
+   * repositories worked on in a single session share a transcript, share a
+   * folder, and the transcript has no field saying which was which. It has a
+   * `cwd`, per line.
+   *
+   * **A JSON file rather than a repeated flag or a delimited string.** The
+   * values are absolute paths, and every delimiter worth choosing — comma,
+   * colon, semicolon, equals — is a character a directory is allowed to
+   * contain. A file has no such problem, and the rules are the kind of thing
+   * written once and kept beside the config.
+   *
+   * Read here and never emitted: `claude-code.ts` states that contract and a
+   * test plants a secret in `cwd` and greps the output for it.
+   */
+  const cwdRules = await cwdRulesFrom(stringFlag(args, 'label-by-cwd'), t);
+  /**
    * `--state` is for one transcript, deliberately.
    *
    * The state ties a transcript offset to a length of the output file, and
@@ -2858,6 +2923,9 @@ async function commandFromClaudeCode(args: Args, t: CliMessages): Promise<void> 
         : projectLabel !== undefined && projectLabel !== ''
           ? { label: projectLabel }
           : {}),
+      /* The directory rules sit on top: whatever the flat label would have
+         been becomes the fallback for work outside every rule. */
+      ...(cwdRules !== undefined ? { labelByCwd: cwdRules } : {}),
     });
     for (const record of conversion.records) lines.push(JSON.stringify(record));
     resumeLine = conversion.resume.line;
@@ -2932,7 +3000,10 @@ async function commandFromClaudeCode(args: Args, t: CliMessages): Promise<void> 
   if (disagreements > 0) console.error(t.fromClaudeCode.disagreements(disagreements));
   if (noRequestId > 0) console.error(t.fromClaudeCode.noRequestId(noRequestId));
   if (synthetic > 0) console.error(t.fromClaudeCode.synthetic(synthetic));
-  if (labelFromProject && label === undefined) console.error(t.fromClaudeCode.labelled());
+  if (labelFromProject && label === undefined && cwdRules === undefined) {
+    console.error(t.fromClaudeCode.labelled());
+  }
+  if (cwdRules !== undefined) console.error(t.fromClaudeCode.labelledByCwd(cwdRules.length));
   console.error(t.fromClaudeCode.skipped(otherLines, unparseable, withoutUsage));
 }
 

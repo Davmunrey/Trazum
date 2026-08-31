@@ -300,3 +300,104 @@ describe('an alias survives every catalogue, not just the bundled one', () => {
     assert.equal(catalogue.byId.get(DATED).displayName, 'Something else entirely');
   });
 });
+
+describe('two projects in one session, told apart at the source', () => {
+  /**
+   * The question one session could not answer: **which project was this call
+   * for**, when a person moved between two repositories without starting a new
+   * Claude Code session. The transcript has no field that says so. It has a
+   * `cwd`, and this module has never emitted one, on purpose.
+   *
+   * Reading it to *choose* a label the operator wrote is a different act from
+   * emitting it, and the difference is the whole of this feature. The last
+   * test here is the one that matters.
+   */
+
+  const inDirectory = (cwd, over = {}) => assistant({ cwd, requestId: `req-${cwd}`, ...over });
+
+  it('labels each line by the directory it was working in', () => {
+    const text = lines(
+      inDirectory('/work/trazum/packages/core'),
+      inDirectory('/work/trazum-pro/src'),
+    );
+    const out = claudeCodeRecords(text, {
+      labelByCwd: [
+        { prefix: '/work/trazum', label: 'trazum' },
+        { prefix: '/work/trazum-pro', label: 'trazum-pro' },
+      ],
+    });
+    assert.deepEqual(
+      out.records.map((record) => record.label),
+      ['trazum', 'trazum-pro'],
+    );
+  });
+
+  it('and the longest prefix wins, so a nested project is not swallowed', () => {
+    /*
+      `/work/trazum-pro` starts with `/work/trazum`. Order in the list must not
+      decide the answer, because nobody writing these rules is thinking about
+      the order they wrote them in.
+    */
+    const text = lines(inDirectory('/work/trazum-pro/worker'));
+    const out = claudeCodeRecords(text, {
+      labelByCwd: [
+        { prefix: '/work/trazum-pro', label: 'trazum-pro' },
+        { prefix: '/work/trazum', label: 'trazum' },
+      ],
+    });
+    assert.equal(out.records[0].label, 'trazum-pro');
+  });
+
+  it('falls back to the flat label for work outside every rule', () => {
+    /* What somebody splitting two projects out of one session means by giving
+       both: these two are named, everything else is whatever they called it. */
+    const text = lines(inDirectory('/somewhere/else'));
+    const out = claudeCodeRecords(text, {
+      label: 'other',
+      labelByCwd: [{ prefix: '/work/trazum', label: 'trazum' }],
+    });
+    assert.equal(out.records[0].label, 'other');
+  });
+
+  it('and leaves it unattributed when there is no fallback either', () => {
+    /* Unattributed rather than attributed to a neighbour. A guessed label is
+       worse than none: it puts somebody else's money on a project's bill. */
+    const text = lines(inDirectory('/somewhere/else'));
+    const out = claudeCodeRecords(text, {
+      labelByCwd: [{ prefix: '/work/trazum', label: 'trazum' }],
+    });
+    assert.equal('label' in out.records[0], false);
+  });
+
+  it('and a line with no cwd at all takes the fallback rather than throwing', () => {
+    const text = lines(assistant({ cwd: undefined }));
+    const out = claudeCodeRecords(text, {
+      label: 'other',
+      labelByCwd: [{ prefix: '/work/trazum', label: 'trazum' }],
+    });
+    assert.equal(out.records[0].label, 'other');
+  });
+
+  it('reads the path and never emits it, which is the whole contract', () => {
+    /**
+     * The test this feature exists under. `cwd` is a file path, and a file
+     * path says something about somebody's machine that a bill does not need.
+     * The rule reads it; the output carries the operator's own word for it
+     * and nothing else.
+     *
+     * Same shape as the redaction suite above, pointed at the one field this
+     * change made the converter read for the first time.
+     */
+    const text = lines(inDirectory(SECRET_PATH));
+    const out = claudeCodeRecords(text, {
+      labelByCwd: [{ prefix: SECRET_PATH, label: 'billing' }],
+    });
+    assert.equal(out.records[0].label, 'billing');
+
+    const whole = JSON.stringify(out);
+    assert.equal(whole.includes(SECRET_PATH), false, 'the working directory reached the output');
+    assert.equal(whole.includes('somebody'), false, 'part of the path reached the output');
+    assert.equal(whole.includes(SECRET_TEXT), false);
+    assert.equal(whole.includes(SECRET_BRANCH), false);
+  });
+});

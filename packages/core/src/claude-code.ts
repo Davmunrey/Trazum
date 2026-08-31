@@ -23,6 +23,35 @@
  * and the caller says that one out loud.
  */
 
+/**
+ * One directory prefix, and the label the work under it belongs to.
+ *
+ * The answer to a question one session cannot answer any other way: **which
+ * project was this call for**, when two of them share a transcript. Claude Code
+ * records a `cwd` on every line and this module has never emitted it, on
+ * purpose — a working directory is a file path, and a file path says something
+ * about somebody's machine that a bill does not need.
+ *
+ * Reading it to *choose* a label is not the same act as emitting it, and the
+ * difference is the whole contract here: the prefix and the label are written
+ * by the person running the conversion, the `cwd` decides which of *their own*
+ * labels applies, and **nothing derived from the path reaches the output**.
+ * `claude-code.test.js` plants a secret in `cwd` and greps the whole output for
+ * it, which is the same test that already holds for message text and branch
+ * names, and `label-by-cwd.test.js` does it again through the CLI where the
+ * stderr summary is searched too.
+ *
+ * A guessed label would be worse than none. Nothing here decodes, splits or
+ * shortens a path: the longest matching prefix wins and an unmatched line
+ * falls back to `label`, so a directory nobody wrote a rule for is
+ * unattributed rather than attributed to a neighbour.
+ */
+export interface CwdLabel {
+  /** An absolute directory prefix, compared literally. */
+  prefix: string;
+  label: string;
+}
+
 /** One converted record, shaped exactly as `parseUsageLine` reads it. */
 export interface ClaudeCodeRecord {
   model: string;
@@ -123,9 +152,27 @@ const asCount = (value: unknown): number | undefined =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
 
 /** Convert one transcript's text. Pure, like every measuring function here. */
+/**
+ * The label a line's own working directory selects, or nothing.
+ *
+ * **Longest prefix wins**, so `/src/app/api` beats `/src/app` and a nested
+ * project is not swallowed by the repository above it. Ties cannot happen:
+ * two rules with the same prefix are the same rule, and the first one written
+ * stands rather than this function deciding between them silently.
+ */
+const labelForCwd = (cwd: unknown, rules: readonly CwdLabel[]): string | undefined => {
+  if (typeof cwd !== 'string' || cwd === '') return undefined;
+  let best: CwdLabel | undefined;
+  for (const rule of rules) {
+    if (!cwd.startsWith(rule.prefix)) continue;
+    if (best === undefined || rule.prefix.length > best.prefix.length) best = rule;
+  }
+  return best?.label;
+};
+
 export function claudeCodeRecords(
   text: string,
-  options: { label?: string } = {},
+  options: { label?: string; labelByCwd?: readonly CwdLabel[] } = {},
 ): ClaudeCodeConversion {
   const out: ClaudeCodeConversion = {
     records: [],
@@ -190,7 +237,20 @@ export function claudeCodeRecords(
       ts: typeof entry.timestamp === 'string' ? entry.timestamp : '',
       session: typeof entry.sessionId === 'string' ? entry.sessionId : '',
       ...(typeof stopReason === 'string' && stopReason !== '' ? { stop_reason: stopReason } : {}),
-      ...(options.label !== undefined ? { label: options.label } : {}),
+      /*
+        The directory's own rule first, then the flat label. A `--label` given
+        alongside directory rules is the fallback for work outside all of
+        them, which is what somebody splitting two projects out of one session
+        means by giving both.
+      */
+      ...(((): { label?: string } => {
+        const chosen =
+          options.labelByCwd === undefined
+            ? undefined
+            : labelForCwd(entry.cwd, options.labelByCwd);
+        const label = chosen ?? options.label;
+        return label === undefined ? {} : { label };
+      })()),
       usage: {
         input_tokens: input,
         output_tokens: output,
