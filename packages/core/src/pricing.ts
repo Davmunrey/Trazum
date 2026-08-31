@@ -887,6 +887,70 @@ function describe(when: TierCondition): string {
   return `${windows.join(' and ')} UTC${when.weekdaysOnly ? ', Monday to Friday' : ''}`;
 }
 
+/**
+ * The date the prices behind one report were reviewed.
+ *
+ * ## The sentence this exists to make true
+ *
+ * `PRICING_LAST_REVIEWED` is the **oldest** provider's date, which is the right
+ * answer to *how old is this table* and the wrong answer to *how old are the
+ * prices in front of me*. Every surface that warns about staleness was using
+ * it, and the warning says, in these words, that the table behind **every
+ * dollar here** was last reviewed on that date.
+ *
+ * On 2026-08-31 that sentence was false on a report of Claude and OpenAI
+ * calls. It named 2026-06-24 — the date belonging to two models that appear in
+ * no such report and whose providers stopped listing them — while the prices
+ * actually used had been read four days and zero days earlier. A warning that
+ * fires on every run is one people stop reading, and a provenance that does
+ * not hold is the one thing this tool exists not to print.
+ *
+ * `trazum models` had already worked this out and prints the dates per
+ * provider, with the reason in a comment. The fix reached one surface and not
+ * the three that qualify a figure.
+ *
+ * ## What it returns, and the direction it errs in
+ *
+ * The oldest review date among the providers that actually priced these
+ * models. Where that cannot be established it returns the catalogue's own
+ * `lastReviewed`, which is the **conservative** direction: reporting a fresher
+ * date for a report containing a price of unknown provenance would be claiming
+ * provenance this table does not have.
+ *
+ * It cannot be established in three cases, all of which fall back:
+ *
+ * - **An overlay is in effect.** `--pricing` and `--pricing-live` replace
+ *   prices with numbers whose provenance is the overlay's own date, and
+ *   `PROVIDER_REVIEWED` describes the bundled table rather than theirs.
+ * - **A model the catalogue does not carry**, or one carrying no provider: a
+ *   price with no page behind it.
+ * - **A provider with no recorded review date.**
+ *
+ * The fallback is inside this function rather than at each call site on
+ * purpose. `isOffered` records why: the fifth call site is always the one
+ * written with only the first half of a two-part rule.
+ */
+export function reviewedForModels(
+  models: Iterable<string>,
+  catalogue: PricingCatalogue,
+): string {
+  /* An overlay's prices are not this table's, so this table's dates say
+     nothing about them. */
+  if (catalogue.lastReviewed !== PRICING_LAST_REVIEWED) return catalogue.lastReviewed;
+
+  let oldest: string | null = null;
+  for (const id of models) {
+    const model = catalogue.models.find((m) => m.id === id);
+    if (model?.provider === undefined) return catalogue.lastReviewed;
+    const date = PROVIDER_REVIEWED[model.provider];
+    if (date === undefined) return catalogue.lastReviewed;
+    if (oldest === null || date < oldest) oldest = date;
+  }
+  /* Nothing priced: there is no report-specific answer, so the table's own
+     date stands rather than an absence being read as freshness. */
+  return oldest ?? catalogue.lastReviewed;
+}
+
 /** Cheapest model of each capability tier, for recommendations. */
 export function cheapestOfTier(tier: ModelPricing['tier']): ModelPricing {
   const candidates = MODELS.filter((m) => m.tier === tier && isOffered(m));

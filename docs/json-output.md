@@ -82,7 +82,7 @@ this section without changing a promise, which must not fail.
 | `sessionSpend` | The whole log's conversations summarised for a per-conversation budget: how many, and what the single most expensive one cost. `null` when no record carried a session. |
 | `cache` | Whether caching paid for itself over the whole log, with the worst case when the TTL was not recorded. |
 | `cacheByLabel` | The same verdict per workload — where a total hides a loss. |
-| `pricing` | Which price table produced these dollars, and how many days old it is. |
+| `pricing` | Which price table produced these dollars, and how old it is, in **two parts**. `lastReviewed` and `ageDays` are the table's: its oldest provider, which is what *how old is this catalogue* means. `reportReviewed` and `reportAgeDays` are these figures': the oldest provider among the models actually priced here, and the pair the staleness warning is decided from. They differ exactly when a report uses none of the models holding the table back, which is why the warning used to fire on reports it did not describe. |
 | `levers` | What would actually move the bill: routing, the Batch API, and the ceiling on prompt shortening. |
 | `against` | Present only with `--against`: the previous total, the delta, and the drivers per label and per model. |
 | `contextPressure` | Slices whose largest call is past half its model's context window: the call, the window, and the share. The failure a bill cannot show until the day it happens. |

@@ -125,6 +125,7 @@ import {
   positionAt,
   positionReport,
   PRICING_LAST_REVIEWED,
+  reviewedForModels,
   PROVIDER_REVIEWED,
   STALE_PRICING_DAYS,
   profilePrompt,
@@ -9970,6 +9971,8 @@ async function commandProfile(
   }
   const windowed = sinceMs !== undefined || untilMs !== undefined;
 
+  const report = profileUsage(raw, { catalogue: pricing, label: onlyLabel, sinceMs, untilMs });
+
   /**
    * How old the price table behind every dollar below is. Stated only when it
    * is old enough to matter: `models` and `doctor` always print the date, but
@@ -9978,14 +9981,26 @@ async function commandProfile(
    * The threshold is in the sentence, and the number behind it is
    * `STALE_PRICING_DAYS` — shared with the MCP report and the browser's bill,
    * which used to keep their own copies of it.
+   *
+   * **The date is this report's, not the catalogue's**, and it is computed
+   * after the report for that reason rather than before it as it used to be.
+   * `PRICING_LAST_REVIEWED` is the oldest provider's, so a log of Claude and
+   * OpenAI calls was told its prices were 68 days old on a morning when both
+   * halves had been read that week — by a sentence that says, in these words,
+   * that the table behind *every dollar here* was reviewed then. It was not.
+   * `reviewedForModels` answers for the providers that actually priced this
+   * report and falls back to the catalogue's own date wherever it cannot.
    */
-  const pricingAgeDays = reviewAgeDays(pricing.lastReviewed, new Date());
+  const reportReviewed = reviewedForModels(
+    report.byModel.map((row) => row.model),
+    pricing,
+  );
+  const pricingAgeDays = reviewAgeDays(reportReviewed, new Date());
   const pricingStale =
     pricingAgeDays !== null && pricingAgeDays > STALE_PRICING_DAYS
-      ? { date: pricing.lastReviewed, days: pricingAgeDays }
+      ? { date: reportReviewed, days: pricingAgeDays }
       : null;
 
-  const report = profileUsage(raw, { catalogue: pricing, label: onlyLabel, sinceMs, untilMs });
   if (report.total.calls === 0 && report.unpriced.calls === 0) {
     if (onlyLabel !== undefined || windowed) {
       // Diagnose against the log without the failed filter, so the error can
@@ -10208,8 +10223,32 @@ async function commandProfile(
             label: r.label,
             cache: cacheEconomics(r.breakdown),
           })),
-          // The provenance of every dollar above: which price table, how old.
-          pricing: { lastReviewed: pricing.lastReviewed, ageDays: pricingAgeDays },
+          /*
+            The provenance of every dollar above, in two parts that are not the
+            same question.
+
+            `lastReviewed` and `ageDays` are the **table's**: its oldest
+            provider, which is what "how old is this catalogue" means and what
+            these two keys have always carried. Unchanged, because a key cannot
+            change meaning under a minor and a consumer branching on them keeps
+            working.
+
+            `reportReviewed` and `reportAgeDays` are **these figures'**: the
+            oldest provider among the models actually priced here, which is the
+            pair the staleness warning is decided from. They are new keys, and
+            new keys are additions the contract allows.
+
+            The two differ exactly when a report uses none of the models
+            holding the table back — which was the whole defect: a log of
+            Claude and OpenAI calls was told its prices were 68 days old on a
+            morning both halves had been read that week.
+          */
+          pricing: {
+            lastReviewed: pricing.lastReviewed,
+            ageDays: reviewAgeDays(pricing.lastReviewed, new Date()),
+            reportReviewed,
+            reportAgeDays: pricingAgeDays,
+          },
           levers: billLevers(report, { catalogue: pricing }),
           // Present only when --against was passed: null delta means the
           // previous log had nothing priced, which is a different answer from
@@ -12849,11 +12888,14 @@ function printDoctor(
   console.log(
     c.dim(t.doctor.subheading(model?.displayName ?? usage.model, n(usage.callsPerMonth))),
   );
-  console.log(
-    c.dim(
-      t.doctor.pricesReviewed(pricing.lastReviewed, reviewAgeDays(pricing.lastReviewed, new Date())),
-    ),
-  );
+  /*
+    This prompt's own model, not the catalogue's oldest provider. `doctor`
+    reports on one model and one bill, so the date that qualifies it is the
+    date that model's provider was read — the catalogue-wide answer named a
+    provider this prompt does not use.
+  */
+  const reviewed = reviewedForModels([usage.model], pricing);
+  console.log(c.dim(t.doctor.pricesReviewed(reviewed, reviewAgeDays(reviewed, new Date()))));
 
   // Budgets first. Everything below is money; this is whether anything is
   // watching at all, and an unwatched prompt is how the money got there.

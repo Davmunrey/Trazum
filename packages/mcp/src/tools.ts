@@ -20,6 +20,7 @@ import {
   nearestName,
   reviewAgeDays,
   STALE_PRICING_DAYS,
+  reviewedForModels,
   listModels,
   optimize,
   contextPressure,
@@ -511,9 +512,21 @@ const PROFILE: ToolDefinition = {
 
     // The one Trazum surface whose figures are NOT estimates, said out loud
     // because every sibling tool here carries the ±10% band.
+    /*
+      The date is this report's, not the catalogue's oldest. `catalogue
+      .lastReviewed` is the oldest provider's, so a log of Claude and OpenAI
+      calls was told a date belonging to two models it never used, and the
+      staleness sentence below says the table behind every figure here was
+      reviewed then. `reviewedForModels` answers for the providers that priced
+      this report and falls back to the catalogue's date wherever it cannot.
+    */
+    const reviewed = reviewedForModels(
+      report.byModel.map((row) => row.model),
+      catalogue,
+    );
     lines.push(
       `${count(total.calls, 'call')} · ${formatUsd(total.totalUsd)} — exact billed token`
-        + ` counts from the log, not estimates; prices reviewed ${catalogue.lastReviewed}.`,
+        + ` counts from the log, not estimates; prices reviewed ${reviewed}.`,
     );
     /**
      * The overlay is part of the answer, not plumbing: every dollar above was
@@ -533,7 +546,7 @@ const PROFILE: ToolDefinition = {
      * qualifies every dollar above, and unlike a skipped line it does not
      * name its own size — the error is exactly whatever the provider changed.
      */
-    const pricingAge = reviewAgeDays(catalogue.lastReviewed, new Date());
+    const pricingAge = reviewAgeDays(reviewed, new Date());
     if (pricingAge !== null && pricingAge > STALE_PRICING_DAYS) {
       lines.push(
         `That review was ${pricingAge} days ago, past the ${STALE_PRICING_DAYS} this tool`
