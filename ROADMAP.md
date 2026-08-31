@@ -1184,6 +1184,16 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 2.2.1 — One price table read, two that no longer describe our models — released
+
+OpenAI's figures were re-read after 68 days and none had moved; the date moves
+because the reading happened. `moonshot` and `xai` stay where they were, because
+`grok-4` and `kimi-k2` are no longer on their providers' pricing pages at all —
+so their prices cannot be checked, and neither can be marked retired without a
+refusal this project has not received. Naming a blocked arc rather than closing
+it is the behaviour, not the exception.
+
+
 ## 2.2.0 — Tested against inputs nobody wrote — released
 
 Four thousand tests found nearly every defect this repository has ever fixed,

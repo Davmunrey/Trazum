@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.2.0**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.2.1**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -51,6 +51,46 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 2.2.1 — One price table read, two that no longer describe our models
+
+**OpenAI's prices were 68 days old. They have been read, and nothing had moved:**
+`gpt-5` is still $1.25 in and $10 out per million tokens, `gpt-5-mini` $0.25 and
+$2, `gpt-5-nano` $0.05 and $0.4. The date on that provider moves to 2026-08-31
+because the table was read, which is the only thing that ever moves a date here.
+
+Two traps on the way, both now written down beside the constant. The address had
+changed — `platform.openai.com/docs/pricing` redirects to
+`developers.openai.com` — and every note in this repository cited the old one, so
+a reviewer who stops at the redirect reads nothing and moves the date anyway. And
+the page publishes **four tables for the same model**: standard, batch, flex and
+priority. Reading the wrong one halves or doubles every figure. The standard
+table is identified by the other three being its multiples, not by trusting the
+order they appear in — an order is a layout decision somebody can change on a
+Tuesday.
+
+### The two that did not move, and why that is the honest answer
+
+`moonshot` and `xai` stay at 2026-06-24. Their pages are readable now; that
+blockage is gone. What is in the way instead is that **the models this catalogue
+prices are not on either page any more.** xAI publishes grok-4.3, 4.5, 4.6, 4.20
+and grok-build; there is no `grok-4`. Moonshot publishes kimi-k3, k2.7-code,
+k2.6, k2.5 and the V1 series; there is no `kimi-k2`.
+
+So the $3/$15 carried for `grok-4` and the $0.6/$2.5 carried for `kimi-k2` cannot
+be checked against anything, and a date that moved on that would certify a
+reading that never happened.
+
+Neither is marked retired either, and the restraint matters more than it looks.
+This project only records a model as retired when **the provider refuses a real
+request for that id**, quoting the provider's own sentence. Absence from a
+webpage is not a refusal, and writing one down without having received it would
+be inventing the provider's words to close a ticket. That is the same failure as
+inventing a price with a different hat on.
+
+Both need an API key for the availability check to ask and be told no. Until
+then the catalogue's own oldest-provider date goes on reading 2026-06-24 and
+saying so on every report that quotes it — which is exactly what it is for.
 
 ## 2.2.0 — Tested against inputs nobody wrote
 
