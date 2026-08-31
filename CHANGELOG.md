@@ -13,6 +13,59 @@ merged commit with no entry is a change only `git log` remembers.
 
 Nothing yet.
 
+## 2.2.1 — 2026-08-31
+
+### Changed
+
+- **OpenAI's prices re-read, 68 days after the last check.** `PROVIDER_REVIEWED.openai`
+  moves from 2026-06-24 to 2026-08-31. **No figure moved**: `gpt-5` is still
+  $1.25 in and $10 out per million tokens, `gpt-5-mini` $0.25 and $2, `gpt-5-nano`
+  $0.05 and $0.4. The date moves because the table was read, which is the only
+  thing that ever moves a date here.
+
+  Two things worth writing down for whoever reads next.
+
+  **The address changed.** `platform.openai.com/docs/pricing` now 301s to
+  `developers.openai.com/api/docs/pricing`. Every note in this repository cited
+  the old one, and a reviewer who stops at the redirect reads nothing and moves
+  a date anyway. The comment beside the constant names the new address.
+
+  **The page publishes four tables for the same model** — standard, batch, flex
+  and priority. Reading the wrong one halves or doubles every figure in the
+  catalogue. The standard table is identified here by the other three being its
+  multiples (0.5x, 0.5x, 2x), rather than by trusting the order they appear in:
+  an order is a layout decision somebody can change on a Tuesday, and an
+  arithmetic relationship is not.
+
+### Not changed, and named rather than quietly skipped
+
+- **`moonshot` and `xai` stay at 2026-06-24, because the models this catalogue
+  prices are no longer on either provider's pricing pages.**
+
+  Both pages are readable now — that blockage is gone. What replaced it is
+  worse and more interesting: `grok-4` is absent from xAI's published model
+  table, which lists grok-4.3, grok-4.5, grok-4.6, grok-4.20 and grok-build.
+  `kimi-k2` is absent from Moonshot's, which lists kimi-k3, kimi-k2.7-code,
+  kimi-k2.6, kimi-k2.5 and the Moonshot V1 series.
+
+  So the $3/$15 this catalogue carries for `grok-4`, and the $0.6/$2.5 it
+  carries for `kimi-k2`, cannot be checked against anything. **A date that
+  moved on that would be a date certifying a reading that did not happen**,
+  which is the one thing this file must never say.
+
+  They are **not** marked `retired` either, and that restraint is the point.
+  `types.ts` says `retired` is set when *the provider refused a real request
+  for this id*, recorded by `scripts/check-model-availability.mjs`, with the
+  provider's own sentence quoted rather than paraphrased. Absence from a
+  webpage is not a refusal. Writing one down without having received it would
+  be inventing the provider's words to close a ticket — the same failure as
+  inventing a price, wearing a different hat.
+
+  Finishing this needs an API key for each provider, so the availability check
+  can ask and be told no. Until then both dates stay where they are and
+  `PRICING_LAST_REVIEWED` goes on reading 2026-06-24, which is the whole reason
+  it is derived from the oldest provider rather than written by hand.
+
 ## 2.2.0 — 2026-08-30
 
 ### Fixed

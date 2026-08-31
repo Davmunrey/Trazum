@@ -32,7 +32,19 @@ import type { ModelPricing, PricingTier, TierCondition } from './types.js';
 export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze({
   /* platform.claude.com/docs/en/about-claude/pricing, read 2026-08-27. */
   anthropic: '2026-08-27',
-  openai: '2026-06-24',
+  /*
+   * developers.openai.com/api/docs/pricing, read 2026-08-31.
+   *
+   * `platform.openai.com/docs/pricing` now 301s there, which is worth writing
+   * down: the old address is what every note about this catalogue cited, and a
+   * reviewer who stops at the redirect reads nothing.
+   *
+   * The page publishes four tables for the same model — standard, batch, flex
+   * and priority. The standard one is the catalogue's, identified by the other
+   * three being its multiples (0.5x, 0.5x, 2x) rather than by trusting the
+   * order they appear in.
+   */
+  openai: '2026-08-31',
   /* ai.google.dev/gemini-api/docs/pricing, read 2026-08-28. */
   google: '2026-08-28',
   moonshot: '2026-06-24',
