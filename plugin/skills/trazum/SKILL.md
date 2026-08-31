@@ -287,8 +287,13 @@ Two things to get right when offering it:
   the summary reports **disagreements**, surface that loudly — it is a
   finding about the transcript, not bookkeeping.
 - **`--label-from-project` labels by project directory name**, which is
-  path-shaped. Offer the config's `labels` block to map it to a workload
-  name before quoting per-label figures from it.
+  path-shaped — `home-user-Trazum` rather than `support-rag`. Nothing renames
+  it: the config's `labels` block maps a label to the **prompt file** it
+  sends, not to a nicer name. To choose the label, choose it at the source:
+  `--label <name>` on the conversion, one transcript at a time. Two projects
+  in one session cannot be told apart afterwards, because the transcript has
+  no field that says which — so a bill that needs the split needs a session
+  per project.
 
 For a user who does not want a terminal at all: the web app's **Your bill**
 tab accepts the `~/.claude/projects` folder dragged onto it — every
@@ -450,7 +455,7 @@ keys, and an unknown one is a hard error rather than a silent no-op:
 | `level` `locale` `disable` | Which rules run, in which language |
 | `usage` | The scenario every dollar figure is projected over |
 | `budgets` | Per-pattern token ceilings for `check` on a directory |
-| `labels` | How a raw label maps to a workload name |
+| `labels` | Which **prompt file** each usage-log label sends, so `profile` can say *why* caching loses money on a label rather than only that it does. It is not a renaming map: the schema validates each value as a file path |
 | `spend` | The dollar gates: `maxUsd`, `monthlyUsd`, `maxDayUsd`, `maxSessionUsd`, `maxCacheLossUsd`, `byLabel`, `bySource`, `substitute` |
 | `limits` | The enforcement policy every door reads before a call: `dayUsd`, `sessionUsd`, `byLabel` — positive USD ceilings, judged identically at the gateway, `serve` and `spend_guard` |
 | `sources` | Where `--by-source` finds each fleet member's log |
