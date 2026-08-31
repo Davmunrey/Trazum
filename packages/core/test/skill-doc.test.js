@@ -39,6 +39,9 @@ const skill = readFileSync(
   'utf8',
 );
 
+/** Any source file in the repository, for a guard that holds prose to code. */
+const source = (path) => readFileSync(new URL(`../../../${path}`, import.meta.url), 'utf8');
+
 /** Named as inline code, which is how the file writes every key. */
 const names = (key) => new RegExp('`' + key + '`').test(skill);
 
@@ -162,8 +165,57 @@ describe('the description an agent selects on', () => {
  * Both lists below are derived. A skill naming a command or a tool is naming
  * something the code has to have.
  */
+
+describe('what the skill says a config key means', () => {
+  /**
+   * Naming a key is not describing it, and the guard above only checked that
+   * every key is named.
+   *
+   * `labels` was described as *how a raw label maps to a workload name* — in
+   * the config table and twice in the prose, telling an agent to offer a
+   * renaming the schema does not do. It maps a usage-log label to the
+   * **prompt file** that label sends, which is how `profile` can say *why*
+   * caching loses money on a label rather than only that it does. An agent
+   * acting on the old sentence sent somebody to write a mapping that would
+   * have been rejected as "must be a file path".
+   *
+   * Only this one key is pinned, and deliberately: a test asserting prose for
+   * seventeen keys would be a second copy of the documentation. This is the
+   * key whose description was wrong, held to the one thing about it the
+   * schema can be asked — that a value is a path.
+   */
+  const schema = source('packages/core/src/config-schema.ts');
+
+  it('is a file path for `labels`, because that is what the schema validates', () => {
+    assert.match(
+      schema,
+      /labels\["\$\{label\}"\] must be a file path/,
+      'the schema no longer validates labels as a path — this guard is now describing something else',
+    );
+    const row = skill.split('\n').find((line) => line.startsWith('| `labels` |'));
+    assert.ok(row, 'the skill no longer has a config row for `labels`');
+    assert.match(
+      row,
+      /file/i,
+      'the skill describes `labels` without saying it is a file, which is the sentence that '
+        + 'sent an agent to write a renaming map the schema rejects',
+    );
+    /*
+      The affirmative claim only. The first version banned /renam/ outright and
+      failed the corrected row, which says *it is not a renaming map* — a guard
+      that punishes the sentence explaining the mistake is a guard pushing the
+      documentation back towards silence.
+    */
+    assert.doesNotMatch(
+      row,
+      /maps? (a raw label )?to a workload name/i,
+      'the skill says `labels` renames a label; it maps one to the prompt file it sends',
+    );
+  });
+});
+
+
 describe('everything the skill tells an agent to call', () => {
-  const source = (path) => readFileSync(new URL(`../../../${path}`, import.meta.url), 'utf8');
   const cli = source('packages/cli/src/index.ts');
   const mcpTools = source('packages/mcp/src/tools.ts');
 
