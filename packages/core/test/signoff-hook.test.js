@@ -6,6 +6,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
 
+import { SPAWN_ENV } from '../../cli/test/env.mjs';
+
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = join(here, '..', '..', '..');
 const hook = join(repoRoot, 'scripts', 'prepare-commit-msg');
@@ -41,14 +43,41 @@ function required() {
   return new RegExp(match[1].replaceAll('[[:space:]]', '\\s'), 'im');
 }
 
-/** Run the hook against a message file, as git would. */
-function runHook(text, source) {
+/**
+ * A repository with an identity of its own, so this test does not depend on
+ * whoever is running it.
+ *
+ * The first version ran the hook against `repoRoot` and passed on a laptop and
+ * failed in CI, which is the more useful of the two answers: `actions/checkout`
+ * configures no `user.name`, the hook correctly declines to invent one, and the
+ * test was reading the machine rather than the hook. A throwaway repository is
+ * the only way to ask "what does it write" without also asking "who is asking".
+ */
+function scratchRepo() {
   const dir = mkdtempSync(join(tmpdir(), 'trazum-signoff-'));
+  const git = (...args) => execFileSync('git', args, { cwd: dir, encoding: 'utf8' });
+  git('init', '--quiet');
+  git('config', 'user.name', 'A Contributor');
+  git('config', 'user.email', 'contributor@example.com');
+  return dir;
+}
+
+/** Run the hook against a message file, as git would. */
+function runHook(text, source, env = {}) {
+  const dir = scratchRepo();
   const file = join(dir, 'COMMIT_EDITMSG');
   writeFileSync(file, text);
   execFileSync(hook, source === undefined ? [file] : [file, source], {
-    cwd: repoRoot,
+    cwd: dir,
     encoding: 'utf8',
+    /*
+      `SPAWN_ENV` rather than `process.env` spread inline, which `i18n.test.js`
+      caught this file doing. Nothing here reads a locale, but the guard is not
+      about this file: five hand-rolled variants of that object had grown across
+      the suite before it existed, and the one that mattered was always the one
+      somebody wrote by hand because their case looked too simple to need it.
+    */
+    env: { ...SPAWN_ENV, ...env },
   });
   return readFileSync(file, 'utf8');
 }
@@ -108,10 +137,30 @@ describe('the sign-off hook and the check that requires it', () => {
     const source = readFileSync(hook, 'utf8');
     assert.match(source, /TRAZUM_SIGNOFF_HOOK/);
     const message = 'A commit message\n';
-    const dir = mkdtempSync(join(tmpdir(), 'trazum-signoff-off-'));
+    assert.equal(runHook(message, undefined, { TRAZUM_SIGNOFF_HOOK: '0' }), message);
+  });
+
+  it('declines quietly when there is no identity to sign with', () => {
+    /*
+      What CI found. `actions/checkout` configures no `user.name`, and a hook
+      that guessed one would put a stranger's name in somebody's commit. Git is
+      about to refuse this commit itself with a better message than anything
+      here could print, so the hook stays out of the way rather than failing
+      first and sending somebody to look in the wrong place.
+    */
+    const dir = mkdtempSync(join(tmpdir(), 'trazum-signoff-bare-'));
+    execFileSync('git', ['init', '--quiet'], { cwd: dir });
     const file = join(dir, 'COMMIT_EDITMSG');
+    const message = 'A commit message\n';
     writeFileSync(file, message);
-    execFileSync(hook, [file], { cwd: repoRoot, env: { ...process.env, TRAZUM_SIGNOFF_HOOK: '0' } });
+    /*
+      `HOME` and `XDG_CONFIG_HOME` point at the empty directory so a global
+      identity on the machine running this cannot answer for the repository.
+    */
+    execFileSync(hook, [file], {
+      cwd: dir,
+      env: { ...SPAWN_ENV, HOME: dir, XDG_CONFIG_HOME: dir, GIT_CONFIG_GLOBAL: '/dev/null' },
+    });
     assert.equal(readFileSync(file, 'utf8'), message);
   });
 
