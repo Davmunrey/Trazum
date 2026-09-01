@@ -89,6 +89,26 @@ somebody noticed is the kind of tidy history this file exists to refuse.
   that rule and either pull request would have failed it, which is the guard
   working rather than an obstacle to route around.
 
+### Added
+
+- **`scripts/assert-commit-identity.sh`, run by the web session hook.** The
+  platform re-asserts its own bot identity in *global* git config on every
+  session start, so the first commit after any re-clone was authored "Claude"
+  with no `Signed-off-by` — refused by the owner's own rule and then by the
+  required DCO check. Twice in one day, fixed by hand both times. The script
+  derives the identity instead of hardcoding one: the email is the account
+  that opened the session (so a contributor's fork session asserts the
+  contributor, never this repository's owner), and the name is whatever that
+  email already calls itself here — as an author, or in a `Signed-off-by`
+  trailer, which is often all a squash-merge main preserves. Written
+  repo-locally, the one scope the platform's re-assertion does not touch, and
+  it installs the sign-off hook while it is there. A session with no human
+  account changes nothing: the bot identity is then the true one.
+  `commit-identity.test.js` holds all of it — and its own first guard was
+  satisfied by the hook's *comment* mentioning the script after the call was
+  deleted, found by planting exactly that deletion; it matches the invocation
+  now.
+
 ### Changed
 
 - **`changelog-coverage.test.js`.** Fails when commits exist after the newest
