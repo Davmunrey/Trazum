@@ -10,13 +10,32 @@ import { TOOLS } from '../dist/tools.js';
 
 const tool = TOOLS.find((entry) => entry.name === 'position');
 
+/**
+ * Eight days inside **this** calendar month, rather than eight days in August.
+ *
+ * `positionReport` measures a position on the current month, so a fixture
+ * pinned to literal dates stops being measured the moment the calendar moves
+ * past them: the month scope reads $0.00 against an assertion expecting
+ * $40.00. That is not hypothetical either — this file held `2026-08-0${day}`
+ * and went red at midnight on the 1st of September, having been green all
+ * month, on a run that had touched nothing near it.
+ *
+ * The first eight days exist in every month, so this is safe in February and
+ * safe on a leap year. `packages/cli/test/serve.test.js` builds its own
+ * fixture the same way and for the same reason.
+ */
+const dayInThisMonth = (day) => {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), day, 10)).toISOString();
+};
+
 const LOG = [1, 2, 3, 4, 5, 6, 7, 8]
   .map((day) =>
     JSON.stringify({
       model: 'claude-opus-5',
       label: 'chat',
       session: 'session-key-Zq88-never-shown',
-      ts: `2026-08-0${day}T10:00:00Z`,
+      ts: dayInThisMonth(day),
       usage: { input_tokens: 1_000_000, output_tokens: 0 },
     }),
   )

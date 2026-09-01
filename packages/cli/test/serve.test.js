@@ -121,7 +121,18 @@ describe('serve', () => {
     const { where } = await serve(dir);
     const { body } = await post(where, { model: 'claude-opus-5', inputTokens: 1000 });
     assert.ok(body.budget.window !== null, 'a null window would let last month read as current');
-    assert.equal(new Date(body.budget.window.fromMs).toISOString(), '2026-08-01T00:00:00.000Z');
+    /*
+      Derived from the same helper that wrote the fixture, not written out.
+
+      This line held a literal `'2026-08-01T00:00:00.000Z'` and went red at
+      midnight on the 1st of September, having been green since August. The
+      helper directly above exists to prevent exactly that and says so in its
+      own docstring — "a test that passes for eleven months and then fails for
+      reasons nobody remembers" — so the fixture moved with the calendar and
+      the assertion did not, which is a worse failure than having no helper at
+      all: the file reads as though the problem had been dealt with.
+    */
+    assert.equal(new Date(body.budget.window.fromMs).toISOString(), firstOfThisMonth().from);
   });
 
   it('says a call would cross rather than saying it already has', async () => {
