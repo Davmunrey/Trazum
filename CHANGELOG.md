@@ -46,6 +46,21 @@ somebody noticed is the kind of tidy history this file exists to refuse.
   the workflow rather than restating it, and runs the hook against a throwaway
   repository so the test reads the hook and not the machine it runs on.
 
+### Security
+
+- **`next` 16.3.2 to 16.3.3**, which closes two *critical* unauthenticated
+  remote code execution advisories: one on Windows-hosted servers
+  (GHSA-p293-qw3h-jr36) and one in the Image Optimization API when AVIF files
+  are used (GHSA-2xp9-vwfh-vxw4). Only the second reaches `apps/web`, which is
+  deployed on Linux and serves `/opengraph-image` and `/icon.svg` through Next.
+  Dependabot grouped it under `routine` and its title says nothing about any of
+  this, which is the reason this entry exists: a security fix that arrives
+  looking like a version bump is one that waits behind the other version bumps.
+  Carried in with the rest of that group — `@types/node` 26.4.0, `lucide-react`
+  1.35.0, `posthog-js` 1.422.5, `@types/react-dom` 19.2.5 — because splitting
+  a resolved lockfile to isolate one entry is a worse risk than the four
+  routine bumps beside it.
+
 ### Fixed
 
 - **Two test suites were measuring the calendar.** Both went red at midnight on
