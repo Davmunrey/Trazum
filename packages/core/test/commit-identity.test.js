@@ -186,10 +186,21 @@ describe('the session hook actually runs this', () => {
   });
 
   it('this check can fail: both lookups are detected when planted', () => {
-    /* An empty name from both paths is also what broken lookups produce, so
-       each is proved against a string it must match. */
+    /*
+      An empty name from both paths is also what broken lookups produce, so
+      the shape is proved against a string it must extract from.
+
+      Extraction rather than stripping, deliberately: the first version
+      trimmed the address off with a replace on `<`, and CodeQL read that as
+      incomplete HTML sanitisation — wrongly about the intent, rightly about
+      the shape, since a strip-what-you-recognise is exactly how sanitisers go
+      wrong. Matching what the name *is* says what this code means and gives
+      the scanner nothing to misread.
+    */
     const trailer = 'Signed-off-by: Proper Name <person@example.test>';
     assert.ok(trailer.includes('<person@example.test>'));
-    assert.equal(trailer.replace(/ *<.*/, ''), 'Signed-off-by: Proper Name'.replace(/ *<.*/, ''));
+    const name = /^Signed-off-by: (.*?) *</.exec(trailer);
+    assert.ok(name !== null, 'the trailer shape stopped matching');
+    assert.equal(name[1], 'Proper Name');
   });
 });
