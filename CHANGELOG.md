@@ -11,6 +11,76 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+**Five merges landed on `main` with no entry here, and this section is where
+they should have been.** The rule three paragraphs above — *a change that
+alters nothing installable still lands there rather than nowhere* — was stated
+and unenforced, so four consecutive pull requests after 2.3.0 left `Unreleased`
+empty and nothing failed. `changelog-coverage.test.js` now fails when there are
+commits after the newest tag and nothing written under this heading. Backfilled
+below rather than started clean, because a record that begins at the moment
+somebody noticed is the kind of tidy history this file exists to refuse.
+
+### Added
+
+- **`--label-by-cwd <rules.json>` on `from-claude-code`, and `labelForCwd` in
+  `@trazum/core`.** `--label-from-project` labels by the transcript's own
+  folder, which says nothing when one folder held two projects — somebody who
+  moved between repositories without starting a new session has one transcript
+  and no field in it saying which work was which. This repository's own bill was
+  the example. The transcript carries a `cwd` per line, so the rules file maps a
+  path prefix to a label the operator wrote, longest prefix wins, and a
+  directory no rule covers is left unattributed rather than guessed. A
+  malformed rule is refused by number rather than skipped, since a rule that
+  quietly labelled nothing is the silent version of the guessed label.
+- **`scripts/build-wiki.mjs` and the `wiki/` pages it generates.** GitHub
+  indexes a wiki separately from code, so somebody searching for "cache TTL"
+  reaches a page rather than line 812 of a 1,200-line README. No page is
+  written by hand: each one is a section of `README.md` copied verbatim, with
+  relative links rewritten to absolute blob URLs and images to raw ones,
+  because a wiki is served from `/wiki/` and a repository-relative path is
+  broken there. `wiki.test.js` runs the script with `--check`. The script never
+  pushes — a wiki is a second git repository with its own credentials.
+- **`scripts/prepare-commit-msg`.** Adds the `Signed-off-by` trailer from the
+  identity git is already recording as the author, after a missing one stranded
+  a branch mid-review. `signoff-hook.test.js` reads the required regex out of
+  the workflow rather than restating it, and runs the hook against a throwaway
+  repository so the test reads the hook and not the machine it runs on.
+
+### Fixed
+
+- **Two test suites were measuring the calendar.** Both went red at midnight on
+  the 1st of a month, on a dependency bump that touched neither, after being
+  green all month; nothing was wrong with the product. `serve.test.js` compared
+  a window against a literal August instant while its fixture moved with the
+  calendar — in a file already carrying a helper written to prevent exactly
+  that, which is worse than carrying no helper, because the file then reads as a
+  problem already dealt with. `position-tool.test.js` pinned eight days in
+  August and asserted forty dollars on the month scope. Both fixtures are now
+  relative to the month the suite runs in.
+- **The agent skill described the `labels` config block as mapping a raw label
+  to a workload name.** It does not: it maps a usage-log label to the prompt
+  file that label sends, and the schema validates every value as a file path. An
+  agent following the old sentence sent somebody to write a mapping that fails
+  to load. The row now says what the block is for, and the prose says what to do
+  instead — choose the label at the source with `--label`, one transcript at a
+  time.
+- **The packaged Action pin in `README.md` advanced to 2.3.0's own release
+  commit**, from a 2.2.0 commit, in all three places it appears.
+
+### Changed
+
+- **`changelog-coverage.test.js`.** Fails when commits exist after the newest
+  tag and this section is empty. Derived from `git describe` and this file
+  rather than from a list of pull requests somebody keeps in step, for the
+  reason every other guard here is: a list nothing binds to what it describes
+  is the defect this repository keeps finding in itself.
+- **`calendar-fixtures.test.js`.** Fails any test file that both builds an
+  instant from the clock and asserts an absolute one, since those are two
+  claims about the same clock that cannot both stay true. It strips comments
+  first, or the bug report reads as the bug, and it exempts one file — its own,
+  by resolving its own path rather than by an entry in a list — because it has
+  to hold the planted violation that proves it fires.
+
 ## 2.3.0 — The warning that cried wolf, and a skill written for one agent
 
 ### Added
