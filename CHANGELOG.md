@@ -66,6 +66,13 @@ somebody noticed is the kind of tidy history this file exists to refuse.
   time.
 - **The packaged Action pin in `README.md` advanced to 2.3.0's own release
   commit**, from a 2.2.0 commit, in all three places it appears.
+- **Both CodeQL entry points advanced to v4.37.9 in one commit.** Dependabot
+  raised `init` and `analyze` as two pull requests, and the workflow's own
+  comment says neither may be merged alone: `analyze` refuses a configuration
+  file `init` did not write, so a mismatched pair turns the security job red
+  with an error naming a version nobody chose. `security.test.js` already held
+  that rule and either pull request would have failed it, which is the guard
+  working rather than an obstacle to route around.
 
 ### Changed
 
