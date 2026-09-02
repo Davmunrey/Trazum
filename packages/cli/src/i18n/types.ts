@@ -637,6 +637,24 @@ export interface CliMessages {
    * `from-helicone` — the proxy that keeps every request it saw, so a team
    * using it already has the export.
    */
+  fromAnthropic: {
+    noPath(): string;
+    notFound(path: string): string;
+    summary(buckets: number, rows: number): string;
+    /** The report was not grouped by model, so nothing on the row prices it. */
+    unnamedModel(count: number): string;
+    /** Batch and priority are not billed at a catalogue rate. */
+    nonStandardTier(count: number): string;
+    /** Said when the report never named a tier: the question was not asked. */
+    tierUnknown(): string;
+    /** Server tools are billed per request, and no token rate reaches them. */
+    webSearch(count: number): string;
+    /** One page of several: the bill from it is understated. */
+    truncated(): string;
+    unparseable(): string;
+    written(file: string): string;
+  };
+
   fromHelicone: {
     noPath(): string;
     notFound(path: string): string;

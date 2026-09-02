@@ -65,9 +65,21 @@ const read = (path) => readFileSync(join(root, path), 'utf8');
  * would silently carry a fifth of what it claims to.
  */
 function sectionOf(text, heading) {
-  const from = text.indexOf(`\n${heading}\n`);
-  if (from === -1) throw new Error(`no section "${heading}" — has the document changed?`);
-  const level = heading.match(/^#+/)[0].length;
+  /*
+    A heading may be given as a pattern, and one is: the commands page is
+    titled with how many commands there are, and a literal here would be a
+    second copy of a count the product decides. It went stale the first time a
+    command was added, which is exactly the defect this repository spends its
+    guards on, one script along.
+  */
+  const found =
+    heading instanceof RegExp
+      ? new RegExp(`^${heading.source}$`, 'm').exec(text)?.[0]
+      : heading;
+  if (found === undefined) throw new Error(`no section matching ${heading} — has the document changed?`);
+  const from = text.indexOf(`\n${found}\n`);
+  if (from === -1) throw new Error(`no section "${found}" — has the document changed?`);
+  const level = found.match(/^#+/)[0].length;
   const rest = text.slice(from + 1);
   const next = [...rest.matchAll(/^(#{1,6}) .+$/gm)].find(
     (match) => match.index > 0 && match[1].length <= level,
@@ -120,7 +132,7 @@ const PAGES = [
     name: 'Commands',
     title: 'The commands',
     source: 'README.md',
-    heading: '## The 46 commands',
+    heading: /## The \d+ commands/,
   },
   {
     name: 'Models-and-Prices',

@@ -206,6 +206,30 @@ function workspace() {
     ]),
   );
   write(
+    'anthropic-usage.json',
+    JSON.stringify({
+      data: [
+        {
+          starting_at: day(7, 1),
+          ending_at: day(7, 2),
+          results: [
+            {
+              model: 'claude-opus-5',
+              service_tier: 'standard',
+              uncached_input_tokens: 9000,
+              cache_read_input_tokens: 0,
+              cache_creation: { ephemeral_5m_input_tokens: 0, ephemeral_1h_input_tokens: 0 },
+              output_tokens: 400,
+              server_tool_use: { web_search_requests: 0 },
+            },
+          ],
+        },
+      ],
+      has_more: false,
+      next_page: null,
+    }),
+  );
+  write(
     'helicone.json',
     JSON.stringify([
       {
@@ -312,6 +336,7 @@ const INVOCATION = {
   'from-claude-code': ['transcript.jsonl', '-o', 'c1.jsonl'],
   'from-otel': ['spans.json', '-o', 'c2.jsonl'],
   'from-litellm': ['litellm.json', '-o', 'c3.jsonl'],
+  'from-anthropic': ['anthropic-usage.json', '--label', 'billing', '-o', 'c6.jsonl'],
   'from-helicone': ['helicone.json', '-o', 'c4.jsonl'],
   'from-langsmith': ['langsmith.json', '-o', 'c5.jsonl'],
   switch: ['usage.jsonl', '--to', 'claude-haiku-4-5'],

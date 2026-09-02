@@ -63,6 +63,7 @@ ${bold('USAGE')}
   trazum from-claude-code <file|dir> [--label <name>] [-o <file>]
   trazum from-otel <file|dir> [--label-from-service] [-o <file>]
   trazum from-litellm <file|dir> [-o <file>]
+  trazum from-anthropic <usage.json> [--label <name>] [-o <file>]
   trazum from-helicone <file|dir> [-o <file>]
   trazum from-langsmith <file|dir> [-o <file>]
   trazum switch <usage.jsonl> --to <model> [--migration-usd <n>] [--cases <n>]
@@ -170,6 +171,19 @@ ${bold('OPTIONS FOR ownrate')}
   efficiency. Prints the figure and the pricing-overlay snippet to paste
   into trazum.config.json, so the model you run yourself becomes a
   first-class row in every report, priced by you and marked as such.
+
+${bold('OPTIONS FOR from-anthropic')}
+  --label <name>              The project this usage belongs to. The provider
+                              does not know your project names.
+  -o, --out <file>            Write the usage log there instead of stdout.
+
+  Anthropic's own usage report, read as a usage log. You fetch it yourself with
+  your own admin credential; this reads the answer, so Trazum never holds a
+  provider key. Ask for group_by[]=model, because a row without one cannot be
+  priced, and group_by[]=service_tier, because batch is billed at a discount
+  and pricing it from a catalogue rate would overstate the bill. Rows at any
+  other tier are left out and counted, web search requests are counted and
+  never priced from a token rate, and has_more says the bill is one page short.
 
 ${bold('OPTIONS FOR from-helicone')}
   -o, --out <file>            Write the usage log there instead of stdout.
@@ -1793,6 +1807,26 @@ ${bold('EXAMPLES')}
     skipped: (otherSpans) => `${otherSpans} non-LLM span(s) skipped, the trace's other work, not a bill.`,
     noCache: (count) => `${count} span(s) carried no cache data. OpenTelemetry has not standardised the cache TTL split, so the cache verdicts read "cannot tell" on this log rather than a fabricated one.`,
     unparseable: (count) => `${count} line(s) did not parse as JSON.`,
+    written: (file) => `Wrote ${file}.`,
+  },
+
+  fromAnthropic: {
+    noPath: () =>
+      'from-anthropic needs the usage report your own curl produced: trazum from-anthropic usage.json --label billing',
+    notFound: (path) => `${path}: not found`,
+    summary: (buckets, rows) => `${buckets} time bucket(s), ${rows} usage row(s) read.`,
+    unnamedModel: (count) =>
+      `${count} row(s) named no model and are not in the output: the report was not grouped by model, so nothing on the row says what answered. Add group_by[]=model to the request.`,
+    nonStandardTier: (count) =>
+      `${count} row(s) were billed at a tier a catalogue rate is not the rate for (batch, priority, flex) and are not in the output. Pricing them from the standard rate would overstate the bill and look right doing it.`,
+    tierUnknown: () =>
+      'The report never named a service tier, so a batch row and a standard row are indistinguishable here. Everything was read as standard. Add group_by[]=service_tier if any of this usage is batched.',
+    webSearch: (count) =>
+      `${count} web search request(s) are in this report and in no line of the output: server tools are billed per request, not per token, so no token rate reaches them.`,
+    truncated: () =>
+      'The report says has_more: true. This is one page of several and a bill built from it is understated. Follow next_page until has_more is false, and convert each page.',
+    unparseable: () =>
+      'That is not the JSON GET /v1/organizations/usage_report/messages returns. Pass the response body whole, not a field of it.',
     written: (file) => `Wrote ${file}.`,
   },
 

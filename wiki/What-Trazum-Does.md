@@ -91,8 +91,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of 46 commands — [the table
-above](https://github.com/Davmunrey/Trazum/blob/main/README.md#the-46-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of 47 commands — [the table
+above](https://github.com/Davmunrey/Trazum/blob/main/README.md#the-47-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 

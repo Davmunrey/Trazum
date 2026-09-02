@@ -242,8 +242,8 @@ Three things to get right when reporting on this:
 
 ## When the user has no usage log
 
-Usually they do and have not converted it. Five converters read a format
-somebody else already writes, and all five are built:
+Usually they do and have not converted it. Six converters read a format
+somebody else already writes, and all six are built:
 
 | They have | Command |
 |---|---|
@@ -252,6 +252,14 @@ somebody else already writes, and all five are built:
 | Helicone exports | `trazum from-helicone <file\|dir> -o usage.jsonl` |
 | LangSmith exports | `trazum from-langsmith <file\|dir> -o usage.jsonl` |
 | Claude Code transcripts | `trazum from-claude-code ~/.claude/projects -o usage.jsonl` |
+| Nothing local at all, but an admin key | `trazum from-anthropic usage.json --label <project> -o usage.jsonl` |
+
+**Offer `from-anthropic` when no local log exists.** It is the only one that
+does not need a log at all: the operator fetches their organisation's usage
+report with their own admin credential and this reads the answer. Trazum never
+holds the key. Tell them to group by `model` and `service_tier`, because a row
+without a model cannot be priced and a batch row priced at a standard rate
+overstates the bill.
 
 **Offer `from-otel` first when you do not know what they run.** It is the
 standards-based one: any exporter emitting the GenAI semantic conventions
