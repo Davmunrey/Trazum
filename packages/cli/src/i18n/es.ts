@@ -50,6 +50,7 @@ ${bold('USO')}
   trazum from-claude-code <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-otel <fichero|dir> [--label-from-service] [-o <fichero>]
   trazum from-litellm <fichero|dir> [-o <fichero>]
+  trazum from-anthropic <usage.json> [--label <name>] [-o <file>]
   trazum from-helicone <fichero|dir> [-o <fichero>]
   trazum from-langsmith <fichero|dir> [-o <fichero>]
   trazum switch <uso.jsonl> --to <modelo> [--migration-usd <n>] [--cases <n>]
@@ -196,6 +197,19 @@ ${bold('OPCIONES DE ownrate')}
   supuesta. Imprime la cifra y el snippet de overlay de precios para pegar
   en trazum.config.json, de modo que el modelo que tú mismo sirves sea una
   fila de primera en cada informe, tasado por ti y marcado como tal.
+
+${bold('OPCIONES DE from-anthropic')}
+  --label <nombre>            El proyecto al que pertenece este uso. El
+                              proveedor no conoce tus nombres de proyecto.
+  -o, --out <archivo>         Escribe el log de uso ahi en vez de en stdout.
+
+  El informe de uso de Anthropic, leido como log. Lo descargas tu con tu propia
+  credencial de admin; esto lee la respuesta, asi que Trazum nunca sostiene una
+  clave de proveedor. Pide group_by[]=model, porque una fila sin modelo no se
+  puede cobrar, y group_by[]=service_tier, porque batch se factura con
+  descuento y cobrarlo a tarifa de catalogo inflaria la factura. Las filas de
+  cualquier otro tramo se quedan fuera y se cuentan, las busquedas web se
+  cuentan y nunca se cobran por token, y has_more avisa de que falta pagina.
 
 ${bold('OPCIONES DE from-helicone')}
   -o, --out <fichero>         Escribe el log de uso ahí en vez de en stdout.
@@ -1817,6 +1831,26 @@ ${bold('EJEMPLOS')}
     skipped: (otherSpans) => `${otherSpans} span(s) no-LLM omitidos: el resto del trabajo de la traza, no una factura.`,
     noCache: (count) => `${count} span(s) sin datos de caché. OpenTelemetry no ha estandarizado el reparto del TTL de caché, así que los veredictos de caché dicen «no se puede saber» en este log en vez de uno inventado.`,
     unparseable: (count) => `${count} línea(s) no se pudieron parsear como JSON.`,
+    written: (file) => `Escrito ${file}.`,
+  },
+
+  fromAnthropic: {
+    noPath: () =>
+      'from-anthropic necesita el informe de uso que produjo tu propio curl: trazum from-anthropic usage.json --label facturacion',
+    notFound: (path) => `${path}: no encontrado`,
+    summary: (buckets, rows) => `${buckets} intervalo(s), ${rows} fila(s) de uso leida(s).`,
+    unnamedModel: (count) =>
+      `${count} fila(s) no nombraron modelo y no estan en la salida: el informe no se agrupo por modelo, asi que nada en la fila dice que respondio. Anade group_by[]=model a la peticion.`,
+    nonStandardTier: (count) =>
+      `${count} fila(s) se facturaron en un tramo para el que una tarifa de catalogo no es la tarifa (batch, priority, flex) y no estan en la salida. Cobrarlas a la tarifa estandar inflaria la factura y pareceria correcto.`,
+    tierUnknown: () =>
+      'El informe no nombro ningun tramo de servicio, asi que una fila batch y una estandar son indistinguibles aqui. Todo se leyo como estandar. Anade group_by[]=service_tier si parte de este uso va por lotes.',
+    webSearch: (count) =>
+      `${count} peticion(es) de busqueda web estan en el informe y en ninguna linea de la salida: las herramientas de servidor se facturan por peticion, no por token, asi que ninguna tarifa por token llega a ellas.`,
+    truncated: () =>
+      'El informe dice has_more: true. Esto es una pagina de varias y una factura hecha con ella se queda corta. Sigue next_page hasta que has_more sea false, y convierte cada pagina.',
+    unparseable: () =>
+      'Eso no es el JSON que devuelve GET /v1/organizations/usage_report/messages. Pasa el cuerpo de la respuesta entero, no un campo suyo.',
     written: (file) => `Escrito ${file}.`,
   },
 

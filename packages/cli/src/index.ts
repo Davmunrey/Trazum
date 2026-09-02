@@ -118,6 +118,7 @@ import {
   bandFor,
   foreignTokenizer,
   measuredForeignError,
+  anthropicUsageRecords,
   heliconeRecords,
   langsmithRecords,
   litellmRecords,
@@ -697,6 +698,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   'from-claude-code': ['label', 'label-by-cwd', 'label-from-project', 'out', 'o', 'state'],
   'from-otel': ['label-from-service', 'out', 'o'],
   'from-litellm': ['out', 'o'],
+  'from-anthropic': ['label', 'out', 'o'],
   'from-helicone': ['out', 'o'],
   'from-langsmith': ['out', 'o'],
   switch: ['to', 'migration-usd', 'cases'],
@@ -3465,6 +3467,52 @@ async function commandFromLangsmith(args: Args, t: CliMessages): Promise<void> {
  * conversation-shaped findings stay unavailable. Both are printed, because a
  * gap that is not said reads as a gap that is not there.
  */
+/**
+ * The provider's own usage report, priced from the catalogue.
+ *
+ * One file in, usage-log records out, like every other converter here. What
+ * makes this one different is where the file comes from: the operator runs
+ * the `curl` themselves, with their own admin credential, and this command
+ * never sees it. `anthropic-usage.ts` opens by arguing why that is the only
+ * arrangement this project can offer.
+ */
+async function commandFromAnthropic(args: Args, t: CliMessages): Promise<void> {
+  const target = args.positional[0];
+  if (target === undefined) throw new Error(t.fromAnthropic.noPath());
+
+  let text: string;
+  try {
+    text = await readFile(target, 'utf8');
+  } catch {
+    throw new Error(t.fromAnthropic.notFound(target));
+  }
+
+  const label = stringFlag(args, 'label');
+  const conversion = anthropicUsageRecords(text, ...(label === undefined ? [] : [{ label }]));
+  if (conversion.unparseable > 0) throw new Error(t.fromAnthropic.unparseable());
+
+  const lines = conversion.records.map((record) => JSON.stringify(record));
+  const out = stringFlag(args, 'out') ?? stringFlag(args, 'o');
+  if (out !== undefined) {
+    await writeFile(out, lines.join('\n') + (lines.length > 0 ? '\n' : ''), 'utf8');
+    console.error(t.fromAnthropic.written(out));
+  } else if (lines.length > 0) {
+    console.log(lines.join('\n'));
+  }
+
+  /* Every refusal on stderr, so a pipeline reads records on stdout and a
+     person reads what could not be priced. The order is the order somebody
+     acts in: what was read, then what was left out, then what to ask for. */
+  console.error(t.fromAnthropic.summary(conversion.buckets, conversion.rows));
+  if (conversion.unnamedModel > 0) console.error(t.fromAnthropic.unnamedModel(conversion.unnamedModel));
+  if (conversion.nonStandardTier > 0) {
+    console.error(t.fromAnthropic.nonStandardTier(conversion.nonStandardTier));
+  }
+  if (!conversion.tierNamed && conversion.rows > 0) console.error(t.fromAnthropic.tierUnknown());
+  if (conversion.webSearchRequests > 0) console.error(t.fromAnthropic.webSearch(conversion.webSearchRequests));
+  if (conversion.truncated) console.error(t.fromAnthropic.truncated());
+}
+
 async function commandFromHelicone(args: Args, t: CliMessages): Promise<void> {
   const target = args.positional[0];
   if (target === undefined) throw new Error(t.fromHelicone.noPath());
@@ -12625,6 +12673,9 @@ async function main(): Promise<void> {
       break;
     case 'from-langsmith':
       await commandFromLangsmith(args, t);
+      break;
+    case 'from-anthropic':
+      await commandFromAnthropic(args, t);
       break;
     case 'from-helicone':
       await commandFromHelicone(args, t);

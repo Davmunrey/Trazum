@@ -16,7 +16,7 @@ Everything in this repository is MIT, and the file is
 
 - **`@trazum/core`**, the analysis. Every figure this product prints is
   computed here.
-- **`@trazum/cli`**, the 46 commands.
+- **`@trazum/cli`**, the 47 commands.
 - **`@trazum/mcp`**, the MCP server.
 - **`@trazum/tokenizer-openai`**, the optional exact counter for OpenAI models.
   The one package here with a runtime dependency, taken on purpose so the core

@@ -2686,6 +2686,60 @@ inside it: two price tables summed into one total is how a report becomes
 quietly wrong. `prompt_cost_details` in particular looks like a cache split and
 is not — it is dollars, not tokens — so the cache verdicts read *cannot tell*.
 
+### What the provider itself says: `trazum from-anthropic`
+
+The first converter that reads a **provider** rather than a tool sitting in
+front of one. Every other one answers *what did the calls my proxy saw cost*;
+this answers *what does Anthropic say my organisation used*, which is the
+question a finance team asks and the one no local log can answer — a log only
+knows the machines it was written on, and the console, the other team and the
+laptop nobody instrumented are not among them.
+
+```bash
+# Your own shell, your own admin credential. Trazum never sees it.
+curl "https://api.anthropic.com/v1/organizations/usage_report/messages?\
+starting_at=2026-09-01T00:00:00Z&ending_at=2026-10-01T00:00:00Z&\
+bucket_width=1d&group_by[]=model&group_by[]=service_tier" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "x-api-key: $ANTHROPIC_ADMIN_KEY" > usage.json
+
+trazum from-anthropic usage.json --label billing -o usage.jsonl
+trazum receipt usage.jsonl > receipt.json
+```
+
+**It takes the answer, never the key.** That endpoint needs an admin
+credential — `sk-ant-admin01-…`, an `org:admin` OAuth token, or an unscoped
+personal or service account key; workspace keys do not work — and the same
+credential manages the organisation's members and keys. Trazum holds no
+provider credential anywhere, which is the property the whole design exists
+for, so the request is yours to make and this command reads what came back.
+It stays a pure function of text, which is also why it is tested without a
+network.
+
+**Ask for both groupings.** `group_by[]=model` because a row without a model
+says nothing about what answered and nothing can price it. `group_by[]=service_tier`
+because batch is billed at a discount: a batch row priced from a catalogue
+rate overstates a bill by half and looks entirely right doing it. Rows at any
+tier but standard are **left out and counted**, the same way an unpriceable
+line becomes a named gap rather than a guess. Without the grouping the command
+says so and reads everything as standard, because the alternative is you
+assuming a question was answered that was never asked.
+
+**Two more things it counts rather than prices.** Web search requests are
+billed per request, not per token, so no token rate reaches them and the total
+says how many are missing. And `has_more: true` means you asked for one page of
+several: follow `next_page` until it is false, or the bill is understated by
+whatever you did not fetch.
+
+**The label is yours.** The provider knows workspaces, keys and accounts; it
+does not know what you call your projects. None of those identities is read —
+a fixture plants a marker in each and greps the output — and `--label` is where
+the project name comes from, exactly as it does for a local log.
+
+**The instant is the bucket's.** There are no calls in this report: a bucket is
+an interval and its usage is a sum over it, so a day's usage lands at that
+day's start. Ask for `bucket_width=1h` if you want it finer.
+
 ### When does the switch pay: `trazum switch`
 
 Every what-if reader is really asking one question: *should we move this

@@ -22,6 +22,39 @@ somebody noticed is the kind of tidy history this file exists to refuse.
 
 ### Added
 
+- **`trazum from-anthropic`, the 47th command, and the surface was frozen at
+  46.** `plan-1.83-2.0.md` says so and stays as written: the freeze was real
+  and this is the decision to leave it, recorded rather than slipped in. What
+  earned it is the one question no converter here could answer. Every other
+  one reads a log or a proxy, and a log only knows the machines it was written
+  on — the console, the other team, the laptop nobody instrumented are all
+  spend that never reaches one. `GET /v1/organizations/usage_report/messages`
+  knows about all of it.
+
+  **It takes the answer, never the key.** That endpoint needs an admin
+  credential, which also manages the organisation's members and keys, and
+  holding one is the thing this project's whole design exists not to do. The
+  operator runs the `curl` in their own shell and this reads what came back,
+  so the converter stays a pure function of text and is tested without a
+  network.
+
+  **It refuses three things rather than guessing them.** A row with no model,
+  because nothing on it says what answered. A row at any tier but standard,
+  because batch is billed at a discount and a catalogue rate would overstate
+  it by half while looking entirely right — this product's own definition of
+  the unforgivable failure. And web search requests, billed per request, which
+  no token rate reaches. Each is counted and named, and `has_more` says out
+  loud that a bill built from one page is short.
+
+  The identities on every row — the account, the service account, the API key,
+  the workspace — are read by nothing: a fixture plants a marker in each and
+  greps the output. A workspace id is not a project name, so `--label` is
+  still where the project comes from.
+
+- **`scripts/build-wiki.mjs` matches the commands heading by pattern.** It
+  held `## The 46 commands` as a literal, which is a second copy of a count
+  the product decides, and it went stale the first time a command was added.
+
 - **`--label-by-cwd <rules.json>` on `from-claude-code`, and `labelForCwd` in
   `@trazum/core`.** `--label-from-project` labels by the transcript's own
   folder, which says nothing when one folder held two projects — somebody who
