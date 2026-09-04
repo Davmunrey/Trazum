@@ -190,6 +190,92 @@ describe('what deliberately does not cross', () => {
   });
 });
 
+describe('the workspace mapping the operator writes', () => {
+  /**
+   * The provider knows workspaces; it does not know what you call your
+   * projects. This is the operator writing that mapping down, in the shape
+   * `--label-by-cwd` established for transcripts — and the interesting part is
+   * the `null`, which the schema uses for two different things.
+   */
+  const spread = (over = {}) =>
+    report([
+      bucket([
+        result({ workspace_id: 'wrkspc_pay', uncached_input_tokens: 1000 }),
+        result({ workspace_id: null, uncached_input_tokens: 2000 }),
+        result({ workspace_id: 'wrkspc_other', uncached_input_tokens: 3000 }),
+      ]),
+    ], over);
+
+  const RULES = [
+    { workspace: 'wrkspc_pay', label: 'payments' },
+    { workspace: null, label: 'default-workspace' },
+  ];
+
+  it('labels by workspace where a rule names one', () => {
+    const { records, labelledByWorkspace } = anthropicUsageRecords(spread(), {
+      label: 'fallback',
+      labelByWorkspace: RULES,
+    });
+    assert.deepEqual(
+      records.map((record) => record.label),
+      ['payments', 'default-workspace', 'fallback'],
+    );
+    assert.equal(labelledByWorkspace, 2);
+  });
+
+  it('leaves an unruled workspace on the fallback, and counts it', () => {
+    const withFallback = anthropicUsageRecords(spread(), { label: 'fallback', labelByWorkspace: RULES });
+    assert.equal(withFallback.unruledWorkspace, 1);
+
+    /* And unattributed when there is no fallback: a workspace nobody wrote a
+       rule for is better unattributed than attributed to a neighbour. */
+    const bare = anthropicUsageRecords(spread(), { labelByWorkspace: RULES });
+    assert.equal('label' in bare.records[2], false);
+  });
+
+  it('reads a null workspace as the default one only when the report was grouped', () => {
+    /*
+      The schema uses `null` for two things: "not grouping by workspace" and
+      "the default workspace". Nothing distinguishes them on the row, so it is
+      derived from the report — if any other row carries an id, grouping was
+      on. A mapping that guessed would put the default workspace's money on a
+      label nobody chose.
+    */
+    const grouped = anthropicUsageRecords(spread(), { labelByWorkspace: RULES });
+    assert.equal(grouped.records[1].label, 'default-workspace');
+    assert.equal(grouped.workspaceNotGrouped, false);
+
+    const ungrouped = anthropicUsageRecords(
+      report([bucket([result({ workspace_id: null })])]),
+      { label: 'fallback', labelByWorkspace: RULES },
+    );
+    assert.equal(ungrouped.records[0].label, 'fallback', 'a null was read as the default workspace');
+    assert.equal(ungrouped.workspaceNotGrouped, true);
+  });
+
+  it('says nothing about workspaces when no mapping was given', () => {
+    const plain = anthropicUsageRecords(spread(), { label: 'fallback' });
+    assert.equal(plain.labelledByWorkspace, 0);
+    assert.equal(plain.unruledWorkspace, 0);
+    assert.equal(plain.workspaceNotGrouped, false);
+    assert.deepEqual(
+      plain.records.map((record) => record.label),
+      ['fallback', 'fallback', 'fallback'],
+    );
+  });
+
+  it('matches a workspace exactly, because an opaque id has no hierarchy', () => {
+    /* `--label-by-cwd` takes the longest prefix because paths nest. Two
+       workspace ids sharing leading characters share nothing at all. */
+    const conversion = anthropicUsageRecords(
+      report([bucket([result({ workspace_id: 'wrkspc_payments_eu' })])]),
+      { labelByWorkspace: [{ workspace: 'wrkspc_pay', label: 'payments' }] },
+    );
+    assert.equal('label' in conversion.records[0], false, 'a prefix was treated as a match');
+    assert.equal(conversion.unruledWorkspace, 1);
+  });
+});
+
 describe('telling this report from every other JSON', () => {
   it('recognises one, and does not claim a saved Messages response', () => {
     assert.equal(looksLikeAnthropicUsage(report([bucket([result()])])), true);

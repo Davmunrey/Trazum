@@ -2732,9 +2732,32 @@ several: follow `next_page` until it is false, or the bill is understated by
 whatever you did not fetch.
 
 **The label is yours.** The provider knows workspaces, keys and accounts; it
-does not know what you call your projects. None of those identities is read —
-a fixture plants a marker in each and greps the output — and `--label` is where
-the project name comes from, exactly as it does for a local log.
+does not know what you call your projects. The account and the key are read by
+nothing — a fixture plants a marker in each and greps the output — and
+`--label` is where the project name comes from, exactly as it does for a local
+log.
+
+**One label per workspace, if you write the mapping.** `--label-by-workspace
+rules.json` takes a JSON array of `{"workspace": "wrkspc_…", "label": "name"}`
+and labels each row by the workspace it came from, falling back to `--label`
+for a workspace no rule names — better unattributed than attributed to a
+neighbour. Matched **exactly**, never by prefix: `--label-by-cwd` takes the
+longest prefix because paths nest, and two workspace ids sharing leading
+characters share nothing at all.
+
+```bash
+# rules.json
+[{"workspace": "wrkspc_01Jw…", "label": "payments"},
+ {"workspace": null,           "label": "default-workspace"}]
+```
+
+**`null` is the default workspace, and the report is asked which one it means.**
+The schema uses `null` for two different things: *not grouping by workspace*
+and *the default workspace*. Nothing on the row tells them apart, so it is
+derived from the report — if any other row carries a workspace id, grouping was
+on and a `null` is the default workspace. If none does, the rules for `null` do
+not apply and the run says the split you asked for was not made. Guessing
+either way would put money on a label nobody chose.
 
 **The instant is the bucket's.** There are no calls in this report: a bucket is
 an interval and its usage is a sum over it, so a day's usage lands at that

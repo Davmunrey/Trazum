@@ -652,6 +652,14 @@ export interface CliMessages {
     /** One page of several: the bill from it is understated. */
     truncated(): string;
     unparseable(): string;
+    labelledByWorkspace(count: number): string;
+    /** A workspace the mapping does not name keeps --label or none. */
+    unruledWorkspace(count: number): string;
+    /** The split was asked for and the report could not make it. */
+    workspaceNotGrouped(): string;
+    rulesUnreadable(file: string): string;
+    ruleBad(file: string, at: number): string;
+    rulesEmpty(file: string): string;
     written(file: string): string;
   };
 

@@ -1851,6 +1851,18 @@ ${bold('EJEMPLOS')}
       'El informe dice has_more: true. Esto es una pagina de varias y una factura hecha con ella se queda corta. Sigue next_page hasta que has_more sea false, y convierte cada pagina.',
     unparseable: () =>
       'Eso no es el JSON que devuelve GET /v1/organizations/usage_report/messages. Pasa el cuerpo de la respuesta entero, no un campo suyo.',
+    labelledByWorkspace: (count) =>
+      `${count} fila(s) tomaron su etiqueta del mapeo de workspaces.`,
+    unruledWorkspace: (count) =>
+      `${count} fila(s) traian un workspace que ninguna regla nombra. Conservan --label si lo diste y quedan sin atribuir si no: un workspace para el que nadie escribio una regla esta mejor sin atribuir que atribuido al vecino.`,
+    workspaceNotGrouped: () =>
+      'Diste un mapeo de workspaces y ninguna fila traia id de workspace, asi que el reparto que pediste no se hizo. O el informe no se agrupo por workspace o esta organizacion solo usa el de por defecto, y nada aqui puede distinguirlo. Anade group_by[]=workspace_id.',
+    rulesUnreadable: (file) =>
+      `${file}: no se puede leer como mapeo de workspaces. Es un array JSON de {"workspace": "wrkspc_…" | null, "label": "nombre"}.`,
+    ruleBad: (file, at) =>
+      `${file}: la entrada ${at} no es una regla. Cada una necesita "label" y "workspace", que puede ser null para el workspace por defecto pero no puede faltar: un campo que falta es una errata y null es una decision.`,
+    rulesEmpty: (file) =>
+      `${file}: no hay reglas dentro. Pasaste --label-by-workspace para repartir algo, y un archivo vacio repartiria nada en silencio.`,
     written: (file) => `Escrito ${file}.`,
   },
 
