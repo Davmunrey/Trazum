@@ -225,7 +225,11 @@ export type { OtelConversion, OtelRecord } from './otel.js';
 export { litellmRecords, looksLikeLiteLlm } from './litellm.js';
 export type { LiteLlmConversion, LiteLlmRecord } from './litellm.js';
 export { anthropicUsageRecords, looksLikeAnthropicUsage } from './anthropic-usage.js';
-export type { AnthropicUsageConversion, AnthropicUsageRecord } from './anthropic-usage.js';
+export type {
+  AnthropicUsageConversion,
+  AnthropicUsageRecord,
+  WorkspaceLabel,
+} from './anthropic-usage.js';
 export { heliconeRecords, looksLikeHelicone } from './helicone.js';
 export type { HeliconeConversion, HeliconeRecord } from './helicone.js';
 export { langsmithRecords, looksLikeLangsmith } from './langsmith.js';

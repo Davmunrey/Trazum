@@ -64,13 +64,30 @@
  *
  * ## What deliberately does not cross
  *
- * `account_id`, `service_account_id`, `api_key_id` and `workspace_id` are read
- * by nothing here. The first two name people. The last two are the
- * organisation's own infrastructure, and a workspace id is not a project name:
- * mapping one to the other is a decision the operator makes with `--label`,
- * not an inference this file is entitled to. Grouping by workspace still
- * works and still totals correctly; the split is simply not carried into a
- * label nobody chose.
+ * `account_id`, `service_account_id` and `api_key_id` are read by nothing
+ * here. The first two name people; the third names a credential. None of them
+ * is a project name and none of them reaches the output.
+ *
+ * `workspace_id` is read only when the operator hands over a mapping, because
+ * a workspace id is not a project name and turning one into the other is a
+ * decision rather than an inference. `labelByWorkspace` is that decision,
+ * written down: the same shape `--label-by-cwd` established for transcripts,
+ * exact rather than prefixed, because an opaque identifier has no hierarchy
+ * to take the longest match of.
+ *
+ * ## The `null` that means two things, and how it is told apart
+ *
+ * The report's own schema says `workspace_id` is `null` **both** when the
+ * caller did not group by workspace **and** for the default workspace. One
+ * value, two meanings, and a mapping that guessed between them would put the
+ * default workspace's money on a label nobody chose or leave it off one they
+ * did.
+ *
+ * It is derived instead: if any result in the report carries a workspace id,
+ * the report was grouped, and a `null` there is the default workspace — so a
+ * rule written for `null` applies to it. If no result carries one, nothing
+ * distinguishes the two readings, `null` rules do not apply, and the
+ * conversion says the split was asked for and could not be made.
  *
  * ## The instant, and why it is the bucket's
  *
@@ -80,6 +97,18 @@
  * Anything finer would be a precision the source does not have, and
  * `bucket_width=1h` is there for an operator who wants it.
  */
+
+/**
+ * One workspace, and the project name the operator gives it.
+ *
+ * Matched exactly, never by prefix: a workspace id is opaque and two of them
+ * sharing leading characters share nothing at all. `null` names the default
+ * workspace, which is the only workspace the report identifies by absence.
+ */
+export interface WorkspaceLabel {
+  workspace: string | null;
+  label: string;
+}
 
 /** One converted record, shaped exactly as `parseUsageLine` reads it. */
 export interface AnthropicUsageRecord {
@@ -121,6 +150,24 @@ export interface AnthropicUsageConversion {
   webSearchRequests: number;
   /** `has_more`: this is one page and the bill from it is understated. */
   truncated: boolean;
+  /** Records whose label came from a workspace rule rather than `--label`. */
+  labelledByWorkspace: number;
+  /**
+   * Results carrying a workspace no rule named.
+   *
+   * They keep `--label` if there is one and go unattributed if there is not,
+   * which is the same fallback `--label-by-cwd` makes: a workspace nobody
+   * wrote a rule for is unattributed rather than attributed to a neighbour.
+   */
+  unruledWorkspace: number;
+  /**
+   * Rules were given and no result carried a workspace id.
+   *
+   * Either the report was not grouped by workspace or this organisation uses
+   * only the default one, and nothing here can tell those apart. The split
+   * asked for was not made, and that is said rather than left to be noticed.
+   */
+  workspaceNotGrouped: boolean;
   /** The input was not the JSON this endpoint returns. */
   unparseable: number;
 }
@@ -137,7 +184,7 @@ const count = (value: unknown): number =>
  */
 export function anthropicUsageRecords(
   text: string,
-  options: { label?: string } = {},
+  options: { label?: string; labelByWorkspace?: readonly WorkspaceLabel[] } = {},
 ): AnthropicUsageConversion {
   const empty: AnthropicUsageConversion = {
     records: [],
@@ -148,6 +195,9 @@ export function anthropicUsageRecords(
     tierNamed: false,
     webSearchRequests: 0,
     truncated: false,
+    labelledByWorkspace: 0,
+    unruledWorkspace: 0,
+    workspaceNotGrouped: false,
     unparseable: 0,
   };
 
@@ -162,7 +212,32 @@ export function anthropicUsageRecords(
   const report = parsed as { data?: unknown; has_more?: unknown };
   if (!Array.isArray(report.data)) return { ...empty, unparseable: 1 };
 
+  const rules = options.labelByWorkspace;
+
+  /*
+    One pass to answer the question the schema leaves open, before the pass
+    that converts: `workspace_id` is null both when the report was not grouped
+    by workspace and for the default workspace, and the only thing that tells
+    them apart is whether any *other* result carried an id.
+  */
+  const grouped =
+    rules !== undefined
+    && report.data.some(
+      (entry) =>
+        typeof entry === 'object'
+        && entry !== null
+        && Array.isArray((entry as { results?: unknown }).results)
+        && (entry as { results: unknown[] }).results.some(
+          (found) =>
+            typeof found === 'object'
+            && found !== null
+            && typeof (found as { workspace_id?: unknown }).workspace_id === 'string',
+        ),
+    );
+
   const records: AnthropicUsageRecord[] = [];
+  let labelledByWorkspace = 0;
+  let unruledWorkspace = 0;
   let buckets = 0;
   let rows = 0;
   let unnamedModel = 0;
@@ -182,6 +257,7 @@ export function anthropicUsageRecords(
       const result = found as {
         model?: unknown;
         service_tier?: unknown;
+        workspace_id?: unknown;
         uncached_input_tokens?: unknown;
         cache_read_input_tokens?: unknown;
         cache_creation?: unknown;
@@ -207,6 +283,25 @@ export function anthropicUsageRecords(
         continue;
       }
 
+      /*
+        The operator's mapping wins where it matches, `--label` stands where
+        it does not, and a `null` workspace is the default one only when the
+        report proved it was grouped. Nothing is guessed in either direction.
+      */
+      let label = options.label;
+      if (rules !== undefined) {
+        const workspace = typeof result.workspace_id === 'string' ? result.workspace_id : null;
+        const named = workspace === null && !grouped
+          ? undefined
+          : rules.find((rule) => rule.workspace === workspace);
+        if (named !== undefined) {
+          label = named.label;
+          labelledByWorkspace += 1;
+        } else if (grouped) {
+          unruledWorkspace += 1;
+        }
+      }
+
       const creation = result.cache_creation as
         | { ephemeral_5m_input_tokens?: unknown; ephemeral_1h_input_tokens?: unknown }
         | undefined;
@@ -217,7 +312,7 @@ export function anthropicUsageRecords(
       records.push({
         model: result.model,
         ts: bucket.starting_at,
-        ...(options.label === undefined ? {} : { label: options.label }),
+        ...(label === undefined ? {} : { label }),
         usage: {
           input_tokens: count(result.uncached_input_tokens),
           output_tokens: count(result.output_tokens),
@@ -245,6 +340,9 @@ export function anthropicUsageRecords(
     tierNamed,
     webSearchRequests,
     truncated: report.has_more === true,
+    labelledByWorkspace,
+    unruledWorkspace,
+    workspaceNotGrouped: rules !== undefined && !grouped,
     unparseable: 0,
   };
 }

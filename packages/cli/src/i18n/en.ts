@@ -1827,6 +1827,18 @@ ${bold('EXAMPLES')}
       'The report says has_more: true. This is one page of several and a bill built from it is understated. Follow next_page until has_more is false, and convert each page.',
     unparseable: () =>
       'That is not the JSON GET /v1/organizations/usage_report/messages returns. Pass the response body whole, not a field of it.',
+    labelledByWorkspace: (count) =>
+      `${count} row(s) took their label from the workspace mapping.`,
+    unruledWorkspace: (count) =>
+      `${count} row(s) carried a workspace no rule names. They keep --label if you gave one and are unattributed if you did not: a workspace nobody wrote a rule for is better unattributed than attributed to a neighbour.`,
+    workspaceNotGrouped: () =>
+      'A workspace mapping was given and no row carried a workspace id, so the split you asked for was not made. Either the report was not grouped by workspace or this organisation uses only the default one, and nothing here can tell those apart. Add group_by[]=workspace_id.',
+    rulesUnreadable: (file) =>
+      `${file}: not readable as a workspace mapping. It is a JSON array of {"workspace": "wrkspc_…" | null, "label": "name"}.`,
+    ruleBad: (file, at) =>
+      `${file}: entry ${at} is not a rule. Each needs a "label" and a "workspace", which may be null for the default workspace but may not be missing: a missing field is a typo and null is a decision.`,
+    rulesEmpty: (file) =>
+      `${file}: no rules in it. You passed --label-by-workspace to narrow something, and an empty file would silently narrow nothing.`,
     written: (file) => `Wrote ${file}.`,
   },
 

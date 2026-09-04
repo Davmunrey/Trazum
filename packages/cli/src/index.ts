@@ -114,6 +114,7 @@ import {
   plannedCalls,
   claudeCodeRecords,
   type CwdLabel,
+  type WorkspaceLabel,
   ESTIMATE_ERROR_BAND_PCT,
   bandFor,
   foreignTokenizer,
@@ -300,6 +301,7 @@ interface Args {
 const VALUE_FLAGS = new Set([
   'answers',
   'label-by-cwd',
+  'label-by-workspace',
   'calls',
   'files-from',
   'log',
@@ -698,7 +700,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   'from-claude-code': ['label', 'label-by-cwd', 'label-from-project', 'out', 'o', 'state'],
   'from-otel': ['label-from-service', 'out', 'o'],
   'from-litellm': ['out', 'o'],
-  'from-anthropic': ['label', 'out', 'o'],
+  'from-anthropic': ['label', 'label-by-workspace', 'out', 'o'],
   'from-helicone': ['out', 'o'],
   'from-langsmith': ['out', 'o'],
   switch: ['to', 'migration-usd', 'cases'],
@@ -2668,6 +2670,47 @@ function projectLabelFor(file: string): string | undefined {
  * another project's bill, silently, in the one direction nobody checks. The
  * message names the entry so it can be found.
  */
+/**
+ * The workspace mapping, read the way the cwd rules are read.
+ *
+ * Every refusal here is the same refusal: a rules file that half-parsed would
+ * put one project's money on another's bill, silently, in the direction
+ * nobody checks. `workspace` may be `null` — that is the default workspace,
+ * which the report names by absence — but it may not be missing, because a
+ * missing field is a typo and `null` is a decision.
+ */
+async function workspaceRulesFrom(
+  file: string | undefined,
+  t: CliMessages,
+): Promise<WorkspaceLabel[] | undefined> {
+  if (file === undefined) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await readFile(file, 'utf8'));
+  } catch {
+    throw new Error(t.fromAnthropic.rulesUnreadable(file));
+  }
+  if (!Array.isArray(parsed)) throw new Error(t.fromAnthropic.rulesUnreadable(file));
+
+  const rules: WorkspaceLabel[] = [];
+  for (const [at, entry] of parsed.entries()) {
+    const rule = entry as Record<string, unknown> | null;
+    if (
+      typeof rule !== 'object'
+      || rule === null
+      || !('workspace' in rule)
+      || (rule.workspace !== null && (typeof rule.workspace !== 'string' || rule.workspace === ''))
+      || typeof rule.label !== 'string'
+      || rule.label === ''
+    ) {
+      throw new Error(t.fromAnthropic.ruleBad(file, at));
+    }
+    rules.push({ workspace: rule.workspace as string | null, label: rule.label });
+  }
+  if (rules.length === 0) throw new Error(t.fromAnthropic.rulesEmpty(file));
+  return rules;
+}
+
 async function cwdRulesFrom(
   file: string | undefined,
   t: CliMessages,
@@ -3488,7 +3531,11 @@ async function commandFromAnthropic(args: Args, t: CliMessages): Promise<void> {
   }
 
   const label = stringFlag(args, 'label');
-  const conversion = anthropicUsageRecords(text, ...(label === undefined ? [] : [{ label }]));
+  const byWorkspace = await workspaceRulesFrom(stringFlag(args, 'label-by-workspace'), t);
+  const conversion = anthropicUsageRecords(text, {
+    ...(label === undefined ? {} : { label }),
+    ...(byWorkspace === undefined ? {} : { labelByWorkspace: byWorkspace }),
+  });
   if (conversion.unparseable > 0) throw new Error(t.fromAnthropic.unparseable());
 
   const lines = conversion.records.map((record) => JSON.stringify(record));
@@ -3510,6 +3557,13 @@ async function commandFromAnthropic(args: Args, t: CliMessages): Promise<void> {
   }
   if (!conversion.tierNamed && conversion.rows > 0) console.error(t.fromAnthropic.tierUnknown());
   if (conversion.webSearchRequests > 0) console.error(t.fromAnthropic.webSearch(conversion.webSearchRequests));
+  if (conversion.labelledByWorkspace > 0) {
+    console.error(t.fromAnthropic.labelledByWorkspace(conversion.labelledByWorkspace));
+  }
+  if (conversion.unruledWorkspace > 0) {
+    console.error(t.fromAnthropic.unruledWorkspace(conversion.unruledWorkspace));
+  }
+  if (conversion.workspaceNotGrouped) console.error(t.fromAnthropic.workspaceNotGrouped());
   if (conversion.truncated) console.error(t.fromAnthropic.truncated());
 }
 

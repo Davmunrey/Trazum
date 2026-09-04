@@ -51,6 +51,21 @@ somebody noticed is the kind of tidy history this file exists to refuse.
   greps the output. A workspace id is not a project name, so `--label` is
   still where the project comes from.
 
+- **`--label-by-workspace <rules.json>` on `from-anthropic`.** The gap the
+  command shipped with, named in its own doc comment and closed here: the
+  provider knows workspaces and does not know what you call your projects, so
+  the mapping is one the operator writes. The same shape `--label-by-cwd`
+  established, matched **exactly** rather than by prefix — paths nest and
+  opaque identifiers do not.
+
+  **The `null` that means two things.** The report's schema uses `null` for
+  `workspace_id` both when the caller did not group by workspace and for the
+  default workspace. Nothing on the row separates them, so it is derived from
+  the report: if any other row carries an id, grouping was on and a `null` is
+  the default workspace; if none does, `null` rules do not apply and the run
+  says the split asked for was not made. Guessing either way would put the
+  default workspace's money on a label nobody chose.
+
 - **`scripts/build-wiki.mjs` matches the commands heading by pattern.** It
   held `## The 46 commands` as a literal, which is a second copy of a count
   the product decides, and it went stale the first time a command was added.
