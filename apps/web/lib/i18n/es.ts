@@ -1060,7 +1060,7 @@ export const es: WebMessages = {
       cli: {
         title: 'La CLI, completa',
         body:
-          '«trazum position usage.jsonl» cierra el bucle en una línea: el mes frente a su techo configurado, medido y con veredicto. Todo lo que acabas de ver es la CLI real; sus 47 comandos se instalan con «npm i -g @trazum/cli», y «help» lista aquí lo que el navegador puede ejecutar.',
+          '«trazum position usage.jsonl» cierra el bucle en una línea: el mes frente a su techo configurado, medido y con veredicto. Todo lo que acabas de ver es la CLI real; sus 48 comandos se instalan con «npm i -g @trazum/cli», y «help» lista aquí lo que el navegador puede ejecutar.',
       },
       finish: {
         title: 'Ese es el tour',

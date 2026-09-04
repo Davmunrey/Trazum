@@ -637,6 +637,29 @@ export interface CliMessages {
    * `from-helicone` — the proxy that keeps every request it saw, so a team
    * using it already has the export.
    */
+  reconcile: {
+    noReceipt(): string;
+    noReport(): string;
+    receiptUnreadable(file: string): string;
+    notAReceipt(file: string): string;
+    reportUnreadable(file: string): string;
+    notAReport(file: string): string;
+    summary(computed: number, billed: number, difference: number): string;
+    /** Billed for what no token rate covers. Named, never blamed. */
+    notTokens(usd: number): string;
+    batch(usd: number): string;
+    /** The only figure worth arguing about, never folded into the others. */
+    remainder(usd: number): string;
+    /** Without group_by[]=description nothing can be attributed. */
+    notAttributable(): string;
+    windowNotCovered(fromComputed: string, toComputed: string, fromBilled: string, toBilled: string): string;
+    noBilledWindow(): string;
+    otherCurrency(list: string): string;
+    truncated(): string;
+    unreadableAmount(count: number): string;
+    written(file: string): string;
+  };
+
   fromAnthropic: {
     noPath(): string;
     notFound(path: string): string;

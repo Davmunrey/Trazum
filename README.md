@@ -93,7 +93,7 @@ never runs unless you ask.
                       └──────┬───────┘   zero dependencies, browser-safe
     ┌────────────┬─────────────┼─────────────┬─────────────┐
  @trazum/cli  @trazum/mcp  trazum-vscode  @trazum/web    action/
- 47 commands   MCP server    the editor      Next.js    comments on
+ 48 commands   MCP server    the editor      Next.js    comments on
               for your agents  status bar               pull requests
 
               @trazum/tokenizer-openai   optional: exact counts for OpenAI
@@ -103,7 +103,7 @@ never runs unless you ask.
 ## Contents
 
 - [What it actually does](#what-it-actually-does) — the five things, and what it refuses to touch
-- [The 47 commands](#the-47-commands): the whole surface, one line each
+- [The 48 commands](#the-48-commands): the whole surface, one line each
 - [Getting started](#getting-started) — CLI, web, the GitHub Action, pre-commit
 - [The first five minutes](#the-first-five-minutes-trazum-init) — `init`, and the four things it refuses to write
 - [Building on the format](docs/commands.md#building-on-the-format-trazum-conform) — the contracts, the guarantees, and the doctrine
@@ -212,8 +212,8 @@ Always` — each checked against your prompt before you see it, so eight survivi
 out of ten is a useful morning rather than a rewrite to read end to end.
 
 **5. Answers the questions that come before "shorten this".** Trimming one file
-is the smallest thing here. `optimize` is one of 47 commands — [the table
-above](#the-47-commands) names what each answers — because knowing a prompt
+is the smallest thing here. `optimize` is one of 48 commands — [the table
+above](#the-48-commands) names what each answers — because knowing a prompt
 is wasteful is not the same as knowing *which* prompt, *whose* change made it so,
 or whether the shorter version still works.
 
@@ -227,7 +227,7 @@ from the exit codes it is supposed to relay.
 
 ---
 
-## The 47 commands
+## The 48 commands
 
 | Command | What it answers |
 |---|---|
@@ -269,6 +269,7 @@ from the exit codes it is supposed to relay.
 | [`trazum from-claude-code`](docs/commands.md#the-agents-own-bill-trazum-from-claude-code) | What did my Claude Code sessions cost? *Reads the transcripts already on disk — the numbers only, never the words.* |
 | [`trazum from-otel`](docs/commands.md#the-universal-cost-lens-trazum-from-otel) | What did the LLM calls in my OpenTelemetry export cost? *Reads the GenAI spans any exporter already emits — the counts only, never the prompts.* |
 | [`trazum from-litellm`](docs/commands.md#the-gateway-everybody-already-runs-trazum-from-litellm) | What did the calls my LiteLLM proxy logged cost? *Reads the spend log the gateway already writes — the counts only, never the prompts, keys or addresses on the same row.* |
+| [`trazum reconcile`](docs/commands.md#what-you-were-actually-billed-trazum-reconcile) | Does what Trazum computed match what the provider charged? *Sets the two figures beside each other, never merges them, and leaves the unexplained remainder standing on its own.* |
 | [`trazum from-anthropic`](docs/commands.md#what-the-provider-itself-says-trazum-from-anthropic) | What does the provider itself say my organisation used? *Reads the usage report your own admin key fetched; Trazum never holds the credential, refuses to price a batch row at a standard rate, and labels by workspace only from a mapping you write.* |
 | [`trazum from-helicone`](docs/commands.md#the-proxy-that-kept-every-request-trazum-from-helicone) | What did the requests my Helicone proxy kept cost? *Prices the model that answered, not the one that was asked for, and counts the substitutions.* |
 | [`trazum from-langsmith`](docs/commands.md#the-tree-that-is-not-a-list-trazum-from-langsmith) | What did the model calls in my LangSmith traces cost? *Only the llm runs, because a trace is a tree and summing it bills the same tokens twice — and it refuses to price a call by the client class that made it.* |
@@ -616,7 +617,7 @@ in **[the command reference](docs/commands.md)**: the
 measured multiplication (`--from-log`), the cache reorder, the CI baseline,
 the fleet, the plan and its verification, the provider pull, the gateway,
 the evaluations that spend money and say so first, and everything else the
-[table above](#the-47-commands) links to.
+[table above](#the-48-commands) links to.
 
 `trazum --version` prints the version on its own, and works when your config is
 broken — which is exactly when somebody is asking.

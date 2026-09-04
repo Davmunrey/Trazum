@@ -63,7 +63,8 @@ ${bold('USAGE')}
   trazum from-claude-code <file|dir> [--label <name>] [-o <file>]
   trazum from-otel <file|dir> [--label-from-service] [-o <file>]
   trazum from-litellm <file|dir> [-o <file>]
-  trazum from-anthropic <usage.json> [--label <name>] [-o <file>]
+  trazum from-anthropic <usage.json> [--label <name>] [--label-by-workspace <file>] [-o <file>]
+  trazum reconcile <receipt.json> --against <cost.json> [-o <file>]
   trazum from-helicone <file|dir> [-o <file>]
   trazum from-langsmith <file|dir> [-o <file>]
   trazum switch <usage.jsonl> --to <model> [--migration-usd <n>] [--cases <n>]
@@ -171,6 +172,19 @@ ${bold('OPTIONS FOR ownrate')}
   efficiency. Prints the figure and the pricing-overlay snippet to paste
   into trazum.config.json, so the model you run yourself becomes a
   first-class row in every report, priced by you and marked as such.
+
+${bold('OPTIONS FOR reconcile')}
+  --against <file>            The provider's cost report, from
+                              GET /v1/organizations/cost_report.
+  -o, --out <file>            Write the comparison there instead of stdout.
+
+  What Trazum computed beside what the provider billed, and never merged into
+  it: two price tables summed into one number is how a report becomes quietly
+  wrong. Fetch the report with group_by[]=description and the difference is
+  attributed - what no token rate covers, what was batch-tier - leaving a
+  remainder that is the only figure worth arguing about. The windows must line
+  up or nothing is compared, and a currency with no rate is refused rather
+  than converted.
 
 ${bold('OPTIONS FOR from-anthropic')}
   --label <name>              The project this usage belongs to. The provider
@@ -1807,6 +1821,38 @@ ${bold('EXAMPLES')}
     skipped: (otherSpans) => `${otherSpans} non-LLM span(s) skipped, the trace's other work, not a bill.`,
     noCache: (count) => `${count} span(s) carried no cache data. OpenTelemetry has not standardised the cache TTL split, so the cache verdicts read "cannot tell" on this log rather than a fabricated one.`,
     unparseable: (count) => `${count} line(s) did not parse as JSON.`,
+    written: (file) => `Wrote ${file}.`,
+  },
+
+  reconcile: {
+    noReceipt: () =>
+      'reconcile needs a receipt and a cost report: trazum reconcile receipt.json --against cost.json',
+    noReport: () => 'reconcile needs --against <cost report>, the JSON from GET /v1/organizations/cost_report.',
+    receiptUnreadable: (file) => `${file}: not readable as JSON.`,
+    notAReceipt: (file) =>
+      `${file}: not a receipt. It needs total.usd and span.fromMs/toMs, which "trazum receipt" writes.`,
+    reportUnreadable: (file) => `${file}: not found.`,
+    notAReport: (file) =>
+      `${file}: not the JSON GET /v1/organizations/cost_report returns. Pass the response body whole.`,
+    summary: (computed, billed, difference) =>
+      `Trazum computed $${computed.toFixed(2)}; the provider billed $${billed.toFixed(2)}. Difference: $${difference.toFixed(2)}.`,
+    notTokens: (usd) =>
+      `$${usd.toFixed(2)} of that is billed for something no token rate covers: web search, code execution, session usage. Trazum prices tokens and never claimed to cover these.`,
+    batch: (usd) =>
+      `$${usd.toFixed(2)} of it is batch-tier, which from-anthropic leaves out rather than price at a catalogue rate.`,
+    remainder: (usd) =>
+      `$${usd.toFixed(2)} is left over, and it is the only figure here worth arguing about: the same standard-tier tokens priced two ways, or usage your log never saw. A negative one means Trazum priced more than you were charged, which is a stale rate in the direction that costs you money.`,
+    notAttributable: () =>
+      'The difference cannot be attributed: this report was not grouped by description, so no row says whether it was tokens, a web search or a batch. Add group_by[]=description.',
+    windowNotCovered: (fromComputed, toComputed, fromBilled, toBilled) =>
+      `These are not the same window. The receipt covers ${fromComputed} to ${toComputed}; the report covers ${fromBilled} to ${toBilled}. A receipt set against a bill for other days is a wrong number under a right title, so nothing was compared.`,
+    noBilledWindow: () => 'The cost report has no time buckets, so there is no window to compare against.',
+    otherCurrency: (list) =>
+      `The report carries ${list} beside USD. Summing two currencies into one total needs a rate, and inventing one is the thing this product exists not to do. Nothing was compared.`,
+    truncated: () =>
+      'The report says has_more: true, so the billed figure is one page short and the difference is understated by whatever you did not fetch.',
+    unreadableAmount: (count) =>
+      `${count} row(s) carried an amount that is not a number. They are counted, never read as zero: a zero would quietly shrink the bill.`,
     written: (file) => `Wrote ${file}.`,
   },
 

@@ -2686,6 +2686,54 @@ inside it: two price tables summed into one total is how a report becomes
 quietly wrong. `prompt_cost_details` in particular looks like a cache split and
 is not — it is dollars, not tokens — so the cache verdicts read *cannot tell*.
 
+### What you were actually billed: `trazum reconcile`
+
+Every other door here answers *what did this usage cost at these rates*. The
+provider answers *what did we charge you*, and those are different questions
+with different numbers. The gap between them is the figure no tool gives you.
+
+```bash
+curl "https://api.anthropic.com/v1/organizations/cost_report?\
+starting_at=2026-09-01T00:00:00Z&ending_at=2026-10-01T00:00:00Z&\
+group_by[]=description" \
+  -H "anthropic-version: 2023-06-01" \
+  -H "x-api-key: $ANTHROPIC_ADMIN_KEY" > cost.json
+
+trazum reconcile receipt.json --against cost.json
+```
+
+**The two are never added.** A provider-billed figure is printed beside
+Trazum's and never merged into it — the same rule this page already states for
+LiteLLM's `total_cost` — because two price tables summed into one number is how
+a report becomes quietly wrong. Nothing here corrects one figure with the
+other, and nothing decides which is right: they are two measurements of one
+window, and you are the one entitled to say which you trust.
+
+**The difference is attributed, when the report can attribute it.** With
+`group_by[]=description` each row says whether it was tokens, a web search, a
+code execution or a session, and whether it was batch-tier. So the difference
+comes apart into what no token rate covers, what was billed at a discount
+Trazum deliberately does not price, and a **remainder**. That last one is the
+only figure worth arguing about: the same standard-tier tokens priced two ways,
+or usage your log never saw. It is never folded into the other two, and a
+negative one is reported as it is — Trazum priced more than you were charged,
+which is a stale rate in the direction that costs you money.
+
+Without that grouping every `cost_type` and `service_tier` is `null`, and the
+run says the difference cannot be attributed rather than reporting a remainder
+that is really the whole difference wearing a smaller name.
+
+**The unit is the trap, and it is handled once.** `amount` is a decimal string
+in the currency's *lowest unit*: `"123.45"` in USD is $1.2345. Read as dollars
+it overstates a bill a hundredfold and looks entirely plausible doing it.
+
+**Three refusals.** Windows that do not line up — a receipt for one day set
+against a bill for other days is a wrong number under a right title, so nothing
+is compared. A currency that is not USD, because summing two needs a rate and
+inventing one is what this product exists not to do. And an `amount` that is
+not a number is counted rather than read as zero, since a zero quietly shrinks
+a bill.
+
 ### What the provider itself says: `trazum from-anthropic`
 
 The first converter that reads a **provider** rather than a tool sitting in

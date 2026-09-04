@@ -206,6 +206,43 @@ function workspace() {
     ]),
   );
   write(
+    'anthropic-cost.json',
+    JSON.stringify({
+      data: [
+        {
+          starting_at: day(7, 1),
+          ending_at: day(7, 2),
+          results: [
+            {
+              amount: '400.00',
+              currency: 'USD',
+              cost_type: 'tokens',
+              service_tier: 'standard',
+              model: 'claude-opus-5',
+              token_type: 'uncached_input_tokens',
+              description: 'Claude Opus 5 Usage - Input Tokens',
+              workspace_id: null,
+            },
+          ],
+        },
+      ],
+      has_more: false,
+      next_page: null,
+    }),
+  );
+  write(
+    'a-receipt.json',
+    JSON.stringify({
+      schemaVersion: 1,
+      emittedAt: null,
+      span: { fromMs: Date.parse(day(7, 1)) + 3_600_000, toMs: Date.parse(day(7, 1)) + 7_200_000, calls: 1 },
+      counting: 'counted',
+      lines: [],
+      total: { calls: 1, usd: 3.5 },
+      gaps: [],
+    }),
+  );
+  write(
     'anthropic-usage.json',
     JSON.stringify({
       data: [
@@ -337,6 +374,7 @@ const INVOCATION = {
   'from-otel': ['spans.json', '-o', 'c2.jsonl'],
   'from-litellm': ['litellm.json', '-o', 'c3.jsonl'],
   'from-anthropic': ['anthropic-usage.json', '--label', 'billing', '-o', 'c6.jsonl'],
+  reconcile: ['a-receipt.json', '--against', 'anthropic-cost.json', '-o', 'r1.json'],
   'from-helicone': ['helicone.json', '-o', 'c4.jsonl'],
   'from-langsmith': ['langsmith.json', '-o', 'c5.jsonl'],
   switch: ['usage.jsonl', '--to', 'claude-haiku-4-5'],

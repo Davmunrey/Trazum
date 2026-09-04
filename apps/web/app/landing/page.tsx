@@ -108,7 +108,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'One core does the measuring; four surfaces carry it. They cannot disagree, because they are the same functions.',
     doorCliTitle: 'CLI + CI',
     doorCliBody:
-      '47 commands. Token budgets and drift baselines that exit 1, a pre-commit hook that is one pipe, and a GitHub Action that comments the report on your PR.',
+      '48 commands. Token budgets and drift baselines that exit 1, a pre-commit hook that is one pipe, and a GitHub Action that comments the report on your PR.',
     doorGatewayTitle: 'Gateway',
     doorGatewayBody:
       'Stands in front of the provider and refuses a call that breaks your spend policy (per day, per session, per label), with waivers that carry an author and an expiry.',
@@ -155,7 +155,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'Un solo núcleo mide; cuatro superficies lo llevan. No pueden estar en desacuerdo, porque son las mismas funciones.',
     doorCliTitle: 'CLI + CI',
     doorCliBody:
-      '47 comandos. Presupuestos de tokens y baselines de deriva que salen con 1, un hook de pre-commit que es una tubería, y una GitHub Action que comenta el informe en tu PR.',
+      '48 comandos. Presupuestos de tokens y baselines de deriva que salen con 1, un hook de pre-commit que es una tubería, y una GitHub Action que comenta el informe en tu PR.',
     doorGatewayTitle: 'Gateway',
     doorGatewayBody:
       'Se pone delante del proveedor y rechaza la llamada que rompe tu política de gasto (por día, por sesión, por etiqueta), con waivers que llevan autor y caducidad.',
@@ -296,7 +296,7 @@ const COPY: Record<MarketingLocale, Copy> = {
       'Um só núcleo mede; quatro superfícies levam-no. Não podem discordar, porque são as mesmas funções.',
     doorCliTitle: 'CLI + CI',
     doorCliBody:
-      '47 comandos. Orçamentos de tokens e baselines de deriva que saem com 1, um hook de pré-commit que é um só pipe, e uma GitHub Action que comenta o relatório no seu PR.',
+      '48 comandos. Orçamentos de tokens e baselines de deriva que saem com 1, um hook de pré-commit que é um só pipe, e uma GitHub Action que comenta o relatório no seu PR.',
     doorGatewayTitle: 'Gateway',
     doorGatewayBody:
       'Coloca-se à frente do fornecedor e recusa uma chamada que quebra a sua política de gasto (por dia, por sessão, por rótulo), com dispensas que trazem autor e validade.',

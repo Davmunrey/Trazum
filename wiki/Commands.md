@@ -2,7 +2,7 @@
 > Edit that file, not this page: an edit here is overwritten by the next build,
 > and a wiki that has drifted from the repository is worse than no wiki.
 
-## The 47 commands
+## The 48 commands
 
 | Command | What it answers |
 |---|---|
@@ -44,6 +44,7 @@
 | [`trazum from-claude-code`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#the-agents-own-bill-trazum-from-claude-code) | What did my Claude Code sessions cost? *Reads the transcripts already on disk — the numbers only, never the words.* |
 | [`trazum from-otel`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#the-universal-cost-lens-trazum-from-otel) | What did the LLM calls in my OpenTelemetry export cost? *Reads the GenAI spans any exporter already emits — the counts only, never the prompts.* |
 | [`trazum from-litellm`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#the-gateway-everybody-already-runs-trazum-from-litellm) | What did the calls my LiteLLM proxy logged cost? *Reads the spend log the gateway already writes — the counts only, never the prompts, keys or addresses on the same row.* |
+| [`trazum reconcile`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#what-you-were-actually-billed-trazum-reconcile) | Does what Trazum computed match what the provider charged? *Sets the two figures beside each other, never merges them, and leaves the unexplained remainder standing on its own.* |
 | [`trazum from-anthropic`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#what-the-provider-itself-says-trazum-from-anthropic) | What does the provider itself say my organisation used? *Reads the usage report your own admin key fetched; Trazum never holds the credential, refuses to price a batch row at a standard rate, and labels by workspace only from a mapping you write.* |
 | [`trazum from-helicone`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#the-proxy-that-kept-every-request-trazum-from-helicone) | What did the requests my Helicone proxy kept cost? *Prices the model that answered, not the one that was asked for, and counts the substitutions.* |
 | [`trazum from-langsmith`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#the-tree-that-is-not-a-list-trazum-from-langsmith) | What did the model calls in my LangSmith traces cost? *Only the llm runs, because a trace is a tree and summing it bills the same tokens twice — and it refuses to price a call by the client class that made it.* |
