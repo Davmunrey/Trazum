@@ -224,6 +224,8 @@ export { otelRecords, looksLikeOtel } from './otel.js';
 export type { OtelConversion, OtelRecord } from './otel.js';
 export { litellmRecords, looksLikeLiteLlm } from './litellm.js';
 export type { LiteLlmConversion, LiteLlmRecord } from './litellm.js';
+export { anthropicCostReport, looksLikeAnthropicCost, reconcile } from './anthropic-cost.js';
+export type { AnthropicCostReading, Reconciliation } from './anthropic-cost.js';
 export { anthropicUsageRecords, looksLikeAnthropicUsage } from './anthropic-usage.js';
 export type {
   AnthropicUsageConversion,

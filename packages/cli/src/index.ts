@@ -119,7 +119,9 @@ import {
   bandFor,
   foreignTokenizer,
   measuredForeignError,
+  anthropicCostReport,
   anthropicUsageRecords,
+  reconcile,
   heliconeRecords,
   langsmithRecords,
   litellmRecords,
@@ -302,6 +304,7 @@ const VALUE_FLAGS = new Set([
   'answers',
   'label-by-cwd',
   'label-by-workspace',
+  'against',
   'calls',
   'files-from',
   'log',
@@ -700,6 +703,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   'from-claude-code': ['label', 'label-by-cwd', 'label-from-project', 'out', 'o', 'state'],
   'from-otel': ['label-from-service', 'out', 'o'],
   'from-litellm': ['out', 'o'],
+  reconcile: ['against', 'out', 'o'],
   'from-anthropic': ['label', 'label-by-workspace', 'out', 'o'],
   'from-helicone': ['out', 'o'],
   'from-langsmith': ['out', 'o'],
@@ -3086,6 +3090,85 @@ async function commandFromClaudeCode(args: Args, t: CliMessages): Promise<void> 
  * planting the 4 things that must never appear. This function only chooses the
  * log and the destination.
  */
+/**
+ * What Trazum computed, beside what the provider billed.
+ *
+ * Two documents in, one comparison out. The receipt is a figure this product
+ * derived from token counts and a rate table; the cost report is what the
+ * provider charged. Neither corrects the other and neither is merged into the
+ * other -- `anthropic-cost.ts` opens by arguing why -- and the remainder is
+ * printed as its own number rather than folded into an explanation.
+ */
+async function commandReconcile(args: Args, t: CliMessages): Promise<void> {
+  const file = args.positional[0];
+  if (file === undefined) throw new Error(t.reconcile.noReceipt());
+  const against = stringFlag(args, 'against');
+  if (against === undefined) throw new Error(t.reconcile.noReport());
+
+  let receipt: { total?: { usd?: unknown }; span?: { fromMs?: unknown; toMs?: unknown } };
+  try {
+    receipt = JSON.parse(await readFile(file, 'utf8'));
+  } catch {
+    throw new Error(t.reconcile.receiptUnreadable(file));
+  }
+  const usd = receipt?.total?.usd;
+  const fromMs = receipt?.span?.fromMs;
+  const toMs = receipt?.span?.toMs;
+  if (typeof usd !== 'number' || typeof fromMs !== 'number' || typeof toMs !== 'number') {
+    throw new Error(t.reconcile.notAReceipt(file));
+  }
+
+  let billedText: string;
+  try {
+    billedText = await readFile(against, 'utf8');
+  } catch {
+    throw new Error(t.reconcile.reportUnreadable(against));
+  }
+  const billed = anthropicCostReport(billedText);
+  if (billed.unparseable) throw new Error(t.reconcile.notAReport(against));
+
+  const answer = reconcile({ usd, fromMs, toMs }, billed);
+  const json = JSON.stringify(answer, null, 2);
+
+  const out = stringFlag(args, 'out') ?? stringFlag(args, 'o');
+  if (out !== undefined) {
+    await writeFile(out, json + '\n', 'utf8');
+    console.error(t.reconcile.written(out));
+  } else {
+    console.log(json);
+  }
+
+  /* Everything below on stderr, so the document redirects cleanly. */
+  if (answer.refusal !== null) {
+    if (answer.refusal.reason === 'other-currency') {
+      console.error(t.reconcile.otherCurrency(answer.refusal.currencies.join(', ')));
+    } else if (answer.refusal.reason === 'no-billed-window') {
+      console.error(t.reconcile.noBilledWindow());
+    } else {
+      console.error(
+        t.reconcile.windowNotCovered(
+          new Date(answer.refusal.computed.fromMs).toISOString(),
+          new Date(answer.refusal.computed.toMs).toISOString(),
+          new Date(answer.refusal.billed.fromMs).toISOString(),
+          new Date(answer.refusal.billed.toMs).toISOString(),
+        ),
+      );
+    }
+    return;
+  }
+
+  console.error(t.reconcile.summary(answer.computedUsd, answer.billedUsd, answer.differenceUsd));
+  if (answer.attributable) {
+    if (answer.notTokensUsd !== 0) console.error(t.reconcile.notTokens(answer.notTokensUsd));
+    if (answer.batchUsd !== 0) console.error(t.reconcile.batch(answer.batchUsd));
+    console.error(t.reconcile.remainder(answer.remainderUsd));
+  } else {
+    console.error(t.reconcile.notAttributable());
+  }
+  if (billed.truncated) console.error(t.reconcile.truncated());
+  if (billed.unreadableAmount > 0) console.error(t.reconcile.unreadableAmount(billed.unreadableAmount));
+}
+
 async function commandReceipt(
   args: Args,
   pricing: PricingCatalogue,
@@ -12718,6 +12801,9 @@ async function main(): Promise<void> {
       break;
     case 'receipt':
       await commandReceipt(args, pricing, t);
+      break;
+    case 'reconcile':
+      await commandReconcile(args, t);
       break;
     case 'from-otel':
       await commandFromOtel(args, t);

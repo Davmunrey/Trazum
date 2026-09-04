@@ -51,6 +51,42 @@ somebody noticed is the kind of tidy history this file exists to refuse.
   greps the output. A workspace id is not a project name, so `--label` is
   still where the project comes from.
 
+- **`trazum reconcile`, the 48th command: what you computed beside what you
+  were billed.** The payoff of `from-anthropic`, and the one figure no other
+  tool gives. Every door here answers *what did this usage cost at these
+  rates*; the provider answers *what did we charge you*. The gap is the
+  interesting part and there was nowhere to look at it.
+
+  **The two are never added.** `docs/commands.md` already stated the rule for
+  LiteLLM's `total_cost` — a provider-billed figure sits beside Trazum's and
+  is never merged into it, because two price tables summed into one number is
+  how a report becomes quietly wrong. This is that rule with arithmetic
+  attached: nothing corrects one figure with the other, and nothing decides
+  which is right.
+
+  **The difference comes apart, when the report can take it apart.** With
+  `group_by[]=description` the cost report says whether a row was tokens, a
+  web search, a code execution or a session, and whether it was batch-tier.
+  So the difference splits into what no token rate covers, what was billed at
+  a discount `from-anthropic` refuses to misprice, and a **remainder** — the
+  same standard-tier tokens priced two ways, or usage the log never saw. The
+  remainder is never folded into the other two, and a negative one is reported
+  as it is: Trazum priced more than the provider charged, which is a stale
+  rate in the direction that costs somebody money. Without that grouping the
+  run says the difference cannot be attributed rather than naming a remainder
+  that is really the whole difference.
+
+  **The unit is the trap.** `amount` is a decimal string in the currency's
+  lowest unit: `"123.45"` in USD is $1.2345. Read as dollars it overstates a
+  bill a hundredfold and looks plausible doing it. Divided once, at the end,
+  with a test asserting the factor against the schema's own example.
+
+  **Three refusals rather than three plausible numbers.** Windows that do not
+  line up (a receipt for one day against a bill for others is a wrong number
+  under a right title), a currency with no rate to convert it by, and an
+  `amount` that is not a number — counted, never read as zero, because a zero
+  quietly shrinks a bill.
+
 - **`--label-by-workspace <rules.json>` on `from-anthropic`.** The gap the
   command shipped with, named in its own doc comment and closed here: the
   provider knows workspaces and does not know what you call your projects, so

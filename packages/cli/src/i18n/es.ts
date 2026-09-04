@@ -50,7 +50,8 @@ ${bold('USO')}
   trazum from-claude-code <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-otel <fichero|dir> [--label-from-service] [-o <fichero>]
   trazum from-litellm <fichero|dir> [-o <fichero>]
-  trazum from-anthropic <usage.json> [--label <name>] [-o <file>]
+  trazum from-anthropic <usage.json> [--label <name>] [--label-by-workspace <file>] [-o <file>]
+  trazum reconcile <receipt.json> --against <cost.json> [-o <file>]
   trazum from-helicone <fichero|dir> [-o <fichero>]
   trazum from-langsmith <fichero|dir> [-o <fichero>]
   trazum switch <uso.jsonl> --to <modelo> [--migration-usd <n>] [--cases <n>]
@@ -197,6 +198,19 @@ ${bold('OPCIONES DE ownrate')}
   supuesta. Imprime la cifra y el snippet de overlay de precios para pegar
   en trazum.config.json, de modo que el modelo que tú mismo sirves sea una
   fila de primera en cada informe, tasado por ti y marcado como tal.
+
+${bold('OPCIONES DE reconcile')}
+  --against <archivo>         El informe de costes del proveedor, de
+                              GET /v1/organizations/cost_report.
+  -o, --out <archivo>         Escribe la comparacion ahi en vez de en stdout.
+
+  Lo que Trazum calculo junto a lo que el proveedor facturo, nunca sumado:
+  dos tablas de precios en una sola cifra es como un informe se vuelve
+  silenciosamente falso. Descarga el informe con group_by[]=description y la
+  diferencia queda atribuida - lo que ninguna tarifa por token cubre, lo que
+  fue batch - dejando un resto que es la unica cifra que merece discusion. Las
+  ventanas deben coincidir o no se compara nada, y una moneda sin tipo de
+  cambio se rechaza en vez de convertirse.
 
 ${bold('OPCIONES DE from-anthropic')}
   --label <nombre>            El proyecto al que pertenece este uso. El
@@ -1831,6 +1845,38 @@ ${bold('EJEMPLOS')}
     skipped: (otherSpans) => `${otherSpans} span(s) no-LLM omitidos: el resto del trabajo de la traza, no una factura.`,
     noCache: (count) => `${count} span(s) sin datos de caché. OpenTelemetry no ha estandarizado el reparto del TTL de caché, así que los veredictos de caché dicen «no se puede saber» en este log en vez de uno inventado.`,
     unparseable: (count) => `${count} línea(s) no se pudieron parsear como JSON.`,
+    written: (file) => `Escrito ${file}.`,
+  },
+
+  reconcile: {
+    noReceipt: () =>
+      'reconcile necesita un recibo y un informe de costes: trazum reconcile receipt.json --against cost.json',
+    noReport: () => 'reconcile necesita --against <informe de costes>, el JSON de GET /v1/organizations/cost_report.',
+    receiptUnreadable: (file) => `${file}: no se puede leer como JSON.`,
+    notAReceipt: (file) =>
+      `${file}: no es un recibo. Necesita total.usd y span.fromMs/toMs, que es lo que escribe «trazum receipt».`,
+    reportUnreadable: (file) => `${file}: no encontrado.`,
+    notAReport: (file) =>
+      `${file}: no es el JSON que devuelve GET /v1/organizations/cost_report. Pasa el cuerpo de la respuesta entero.`,
+    summary: (computed, billed, difference) =>
+      `Trazum calculo $${computed.toFixed(2)}; el proveedor facturo $${billed.toFixed(2)}. Diferencia: $${difference.toFixed(2)}.`,
+    notTokens: (usd) =>
+      `$${usd.toFixed(2)} de eso se factura por algo que ninguna tarifa por token cubre: busqueda web, ejecucion de codigo, uso de sesion. Trazum cobra tokens y nunca dijo cubrir esto.`,
+    batch: (usd) =>
+      `$${usd.toFixed(2)} es del tramo batch, que from-anthropic deja fuera en vez de cobrarlo a tarifa de catalogo.`,
+    remainder: (usd) =>
+      `Quedan $${usd.toFixed(2)}, y es la unica cifra aqui que merece discusion: los mismos tokens estandar cobrados de dos maneras, o uso que tu log nunca vio. Si es negativa, Trazum cobro mas de lo que te facturaron, que es una tarifa desactualizada en la direccion que te cuesta dinero.`,
+    notAttributable: () =>
+      'La diferencia no se puede atribuir: este informe no se agrupo por descripcion, asi que ninguna fila dice si fue tokens, una busqueda web o un batch. Anade group_by[]=description.',
+    windowNotCovered: (fromComputed, toComputed, fromBilled, toBilled) =>
+      `No son la misma ventana. El recibo cubre de ${fromComputed} a ${toComputed}; el informe cubre de ${fromBilled} a ${toBilled}. Un recibo comparado con una factura de otros dias es una cifra equivocada bajo un titulo correcto, asi que no se comparo nada.`,
+    noBilledWindow: () => 'El informe de costes no tiene intervalos, asi que no hay ventana contra la que comparar.',
+    otherCurrency: (list) =>
+      `El informe trae ${list} ademas de USD. Sumar dos monedas en un total necesita un tipo de cambio, e inventarlo es justo lo que este producto existe para no hacer. No se comparo nada.`,
+    truncated: () =>
+      'El informe dice has_more: true, asi que la cifra facturada se queda una pagina corta y la diferencia sale menor de lo que es.',
+    unreadableAmount: (count) =>
+      `${count} fila(s) traian un importe que no es un numero. Se cuentan, nunca se leen como cero: un cero encogeria la factura en silencio.`,
     written: (file) => `Escrito ${file}.`,
   },
 
