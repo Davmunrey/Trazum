@@ -82,22 +82,27 @@ rather than written from memory.
 
 ## 3. Where the people are
 
-Each of these is a state that can be checked, not a hope.
+Each of these is a state that was checked, not hoped. What was found:
 
-- **MCP registry.** `packages/mcp/server.json` exists at 2.3.0. To verify:
-  that the entry is published and resolves. To do: publish on every release
-  from the release workflow, not by hand.
-- **Claude Code plugin marketplace.** `.claude-plugin/marketplace.json`
-  exists. To verify: installable by name from a clean machine.
-- **Cursor.** A `.cursor/mcp.json` snippet in the README and a rules file in
-  the repo so a Cursor user gets the spend guard with one paste. This is the
-  cheapest surface on the list and the one the download number says is
+- **MCP registry: already right.** The official registry serves
+  `io.github.Davmunrey/trazum` at 2.3.0 as latest, with every version since
+  1.80.1 listed, and `release.yml` has published the listing on every release
+  since 1.80.2 through GitHub OIDC. Nothing to do here except keep it so.
+- **Claude Code plugin marketplace: exists.** `.claude-plugin/marketplace.json`
+  and the two-line install in the README. Not re-verified from a clean
+  machine in this plan.
+- **Every other MCP client: was missing, now written.** The README told
+  Claude Code users two lines and everyone else "over stdio does the same".
+  It now carries the `mcpServers` JSON that Cursor, Windsurf and Claude
+  Desktop all read, and the `npx @trazum/cli bill` line under it. This is
+  the cheapest surface on the list and the one the download number said was
   missing.
-- **GitHub Marketplace.** `action.yml` exists with branding. To verify: the
-  action is listed, and the listing's one line names both gates (the
-  self-test already enforces the line).
+- **GitHub Marketplace.** `action.yml` exists with branding, and the
+  self-test holds its one-line description to naming both gates. Whether the
+  listing is published is a state of the Marketplace, not of this
+  repository, and was not checked from here.
 - **Hugging Face Space.** The web app from the `Dockerfile`. Blocked on the
-  owner's token; the manifest can be prepared.
+  owner's token; the manifest can be prepared when the token exists.
 
 ## 4. A reason to come back
 
