@@ -55,8 +55,14 @@
  * difference wearing a smaller name.
  */
 
-/** What the provider charged, read from its own report. */
-export interface AnthropicCostReading {
+/**
+ * What a provider charged, in the terms `reconcile` needs and no more.
+ *
+ * Two providers' reports read into it, and the difference between them is
+ * confined to the files that read them: what the money was for, whether
+ * batch can be told apart, which window, which currency.
+ */
+export interface BilledReading {
   /** Everything billed in the window, in dollars. */
   usd: number;
   /** Billed for something no token rate covers: web search, code execution. */
@@ -64,19 +70,30 @@ export interface AnthropicCostReading {
   /** Billed at the batch tier, which a catalogue rate is not the rate for. */
   batchUsd: number;
   /**
-   * Whether the report was fetched with `group_by[]=description`.
+   * Whether this report can name a batch charge at all.
    *
-   * Without it every `cost_type` and `service_tier` is `null`, so neither
+   * Anthropic's can, once grouped by description. OpenAI's never does, so a
+   * batch discount there sits inside the remainder and the reader is told.
+   */
+  batchSeparable: boolean;
+  /**
+   * Whether the report was fetched with the grouping that names each row.
+   *
+   * Without it nothing on a row says what the money was for, so neither
    * figure above can be separated from the total and a reconciliation can
    * only report a difference it cannot attribute.
    */
   described: boolean;
   /** The window the buckets actually cover, or `null` when there are none. */
   window: { fromMs: number; toMs: number } | null;
-  buckets: number;
-  rows: number;
   /** Currencies seen that were not USD. Summing across them is refused. */
   otherCurrencies: string[];
+}
+
+/** What Anthropic charged, read from its own report. */
+export interface AnthropicCostReading extends BilledReading {
+  buckets: number;
+  rows: number;
   /** Rows whose `amount` was not a number. Counted, never read as zero. */
   unreadableAmount: number;
   /** `has_more`: one page of several, so the billed figure is understated. */
@@ -100,8 +117,10 @@ export interface Reconciliation {
    * about, and never folded into the two above.
    */
   remainderUsd: number;
-  /** `null` when the report was not grouped by description. */
+  /** `false` when the report was not grouped in a way that names its rows. */
   attributable: boolean;
+  /** `false` when this provider's report cannot name a batch charge at all. */
+  batchSeparable: boolean;
   /** Why the two are not comparable, when they are not. */
   refusal:
     | { reason: 'no-billed-window' }
@@ -125,6 +144,7 @@ export function anthropicCostReport(text: string): AnthropicCostReading {
     usd: 0,
     notTokensUsd: 0,
     batchUsd: 0,
+    batchSeparable: false,
     described: false,
     window: null,
     buckets: 0,
@@ -201,6 +221,7 @@ export function anthropicCostReport(text: string): AnthropicCostReading {
     usd: cents / 100,
     notTokensUsd: notTokensCents / 100,
     batchUsd: batchCents / 100,
+    batchSeparable: described,
     described,
     window: fromMs === null || toMs === null ? null : { fromMs, toMs },
     buckets,
@@ -227,7 +248,7 @@ export function anthropicCostReport(text: string): AnthropicCostReading {
  */
 export function reconcile(
   computed: { usd: number; fromMs: number; toMs: number },
-  billed: AnthropicCostReading,
+  billed: BilledReading,
 ): Reconciliation {
   const bare = {
     computedUsd: computed.usd,
@@ -237,6 +258,7 @@ export function reconcile(
     batchUsd: billed.batchUsd,
     remainderUsd: 0,
     attributable: billed.described,
+    batchSeparable: billed.batchSeparable,
   };
 
   if (billed.otherCurrencies.length > 0) {

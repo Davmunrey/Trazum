@@ -243,8 +243,8 @@ Three things to get right when reporting on this:
 
 ## When the user has no usage log
 
-Usually they do and have not converted it. Six converters read a format
-somebody else already writes, and all six are built:
+Usually they do and have not converted it. Seven converters read a format
+somebody else already writes, and all seven are built:
 
 | They have | Command |
 |---|---|
@@ -253,21 +253,26 @@ somebody else already writes, and all six are built:
 | Helicone exports | `trazum from-helicone <file\|dir> -o usage.jsonl` |
 | LangSmith exports | `trazum from-langsmith <file\|dir> -o usage.jsonl` |
 | Claude Code transcripts | `trazum from-claude-code ~/.claude/projects -o usage.jsonl` |
-| Nothing local at all, but an admin key | `trazum from-anthropic usage.json --label <project> -o usage.jsonl` |
+| Nothing local at all, but an Anthropic admin key | `trazum from-anthropic usage.json --label <project> -o usage.jsonl` |
+| Nothing local at all, but an OpenAI admin key | `trazum from-openai usage.json --label <project> -o usage.jsonl` |
 
 **Once they have both, offer `trazum reconcile`.** `receipt.json` against the
-provider's `cost_report` prints what Trazum computed beside what was actually
-billed, and attributes the difference: what no token rate covers, what was
-batch, and the remainder. That last figure is the only one worth arguing
-about, and no other tool gives it. Tell them to fetch the cost report with
-`group_by[]=description`, or nothing can be attributed.
+provider's cost report, Anthropic's or OpenAI's, prints what Trazum computed
+beside what was actually billed, and attributes the difference: what no token
+rate covers, what was batch, and the remainder. That last figure is the only
+one worth arguing about, and no other tool gives it. Tell them to fetch
+Anthropic's report with `group_by[]=description` and OpenAI's with
+`group_by[]=line_item`, or nothing can be attributed; and that OpenAI's never
+names batch, so there the discount stays inside the remainder.
 
-**Offer `from-anthropic` when no local log exists.** It is the only one that
-does not need a log at all: the operator fetches their organisation's usage
-report with their own admin credential and this reads the answer. Trazum never
-holds the key. Tell them to group by `model` and `service_tier`, because a row
-without a model cannot be priced and a batch row priced at a standard rate
-overstates the bill.
+**Offer `from-anthropic` or `from-openai` when no local log exists.** They
+are the two that do not need a log at all: the operator fetches their
+organisation's usage report with their own admin credential and this reads the
+answer. Trazum never holds the key. Tell them to group by `model` and by the
+tier (`service_tier` for Anthropic; `batch` and `service_tier` for OpenAI),
+because a row without a model cannot be priced and a batch row priced at a
+standard rate overstates the bill. For OpenAI, audio and image tokens are
+reduced out and named, never priced at a text rate.
 
 **Offer `from-otel` first when you do not know what they run.** It is the
 standards-based one: any exporter emitting the GenAI semantic conventions

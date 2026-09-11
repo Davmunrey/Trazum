@@ -652,6 +652,12 @@ export interface CliMessages {
     remainder(usd: number): string;
     /** Without group_by[]=description nothing can be attributed. */
     notAttributable(): string;
+    /** The OpenAI report's equivalent: without group_by[]=line_item. */
+    notAttributableByLineItem(): string;
+    /** This provider's report never names batch, so it sits in the remainder. */
+    batchNotSeparable(): string;
+    /** Money on a line item whose unit is null: neither tokens nor not. */
+    unknownUnit(usd: number): string;
     windowNotCovered(fromComputed: string, toComputed: string, fromBilled: string, toBilled: string): string;
     noBilledWindow(): string;
     otherCurrency(list: string): string;
@@ -680,6 +686,33 @@ export interface CliMessages {
     unruledWorkspace(count: number): string;
     /** The split was asked for and the report could not make it. */
     workspaceNotGrouped(): string;
+    rulesUnreadable(file: string): string;
+    ruleBad(file: string, at: number): string;
+    rulesEmpty(file: string): string;
+    written(file: string): string;
+  };
+
+  fromOpenai: {
+    noPath(): string;
+    notFound(path: string): string;
+    summary(buckets: number, rows: number, requests: number): string;
+    unnamedModel(count: number): string;
+    /** batch: true rows are billed at a discount no catalogue rate is. */
+    batch(count: number): string;
+    /** The report never said whether anything was batch. */
+    batchUnknown(): string;
+    /** Any tier but default, named rather than counted. */
+    nonDefaultTier(count: number, tiers: string): string;
+    tierUnknown(): string;
+    /** Rows reduced to their text part; audio and image tokens set aside. */
+    mixed(rows: number, tokens: number, cacheWrites: number): string;
+    /** Mixed rows the report gave no text split for, refused whole. */
+    unsplit(count: number): string;
+    truncated(): string;
+    unparseable(): string;
+    labelledByProject(count: number): string;
+    unruledProject(count: number): string;
+    projectNotGrouped(): string;
     rulesUnreadable(file: string): string;
     ruleBad(file: string, at: number): string;
     rulesEmpty(file: string): string;

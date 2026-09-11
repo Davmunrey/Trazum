@@ -64,6 +64,7 @@ ${bold('USAGE')}
   trazum from-otel <file|dir> [--label-from-service] [-o <file>]
   trazum from-litellm <file|dir> [-o <file>]
   trazum from-anthropic <usage.json> [--label <name>] [--label-by-workspace <file>] [-o <file>]
+  trazum from-openai <usage.json> [--label <name>] [--label-by-project <file>] [-o <file>]
   trazum reconcile <receipt.json> --against <cost.json> [-o <file>]
   trazum from-helicone <file|dir> [-o <file>]
   trazum from-langsmith <file|dir> [-o <file>]
@@ -174,17 +175,20 @@ ${bold('OPTIONS FOR ownrate')}
   first-class row in every report, priced by you and marked as such.
 
 ${bold('OPTIONS FOR reconcile')}
-  --against <file>            The provider's cost report, from
-                              GET /v1/organizations/cost_report.
+  --against <file>            The provider's cost report: Anthropic's
+                              GET /v1/organizations/cost_report or OpenAI's
+                              GET /v1/organization/costs, told apart by shape.
   -o, --out <file>            Write the comparison there instead of stdout.
 
   What Trazum computed beside what the provider billed, and never merged into
   it: two price tables summed into one number is how a report becomes quietly
-  wrong. Fetch the report with group_by[]=description and the difference is
-  attributed - what no token rate covers, what was batch-tier - leaving a
-  remainder that is the only figure worth arguing about. The windows must line
-  up or nothing is compared, and a currency with no rate is refused rather
-  than converted.
+  wrong. Fetch Anthropic's report with group_by[]=description, OpenAI's with
+  group_by[]=line_item, and the difference is attributed - what no token rate
+  covers, and for Anthropic what was batch-tier - leaving a remainder that is
+  the only figure worth arguing about. OpenAI's report never names batch, so
+  there it stays inside the remainder and the run says so. The windows must
+  line up or nothing is compared, and a currency with no rate is refused
+  rather than converted.
 
 ${bold('OPTIONS FOR from-anthropic')}
   --label <name>              The project this usage belongs to. The provider
@@ -198,6 +202,23 @@ ${bold('OPTIONS FOR from-anthropic')}
   and pricing it from a catalogue rate would overstate the bill. Rows at any
   other tier are left out and counted, web search requests are counted and
   never priced from a token rate, and has_more says the bill is one page short.
+
+${bold('OPTIONS FOR from-openai')}
+  --label <name>              The project this usage belongs to. The provider
+                              does not know your project names.
+  --label-by-project <file>   One label per project id, as a JSON array of
+                              {"project": "proj_…", "label": "name"}. Exact
+                              match; --label is the fallback.
+  -o, --out <file>            Write the usage log there instead of stdout.
+
+  OpenAI's own usage report, read as a usage log, under the same arrangement
+  as from-anthropic: your curl, your admin key, and this reads the answer.
+  Ask for group_by[]=model, because a row without one cannot be priced, and
+  group_by[]=batch, because a batch job is billed at a discount and pricing it
+  from a catalogue rate would overstate the bill. Any service tier but default
+  is left out and named. Audio and image tokens are never priced at a text
+  rate: a row carrying them is reduced to its text part and the rest is
+  counted where you can see it.
 
 ${bold('OPTIONS FOR from-helicone')}
   -o, --out <file>            Write the usage log there instead of stdout.
@@ -1827,13 +1848,14 @@ ${bold('EXAMPLES')}
   reconcile: {
     noReceipt: () =>
       'reconcile needs a receipt and a cost report: trazum reconcile receipt.json --against cost.json',
-    noReport: () => 'reconcile needs --against <cost report>, the JSON from GET /v1/organizations/cost_report.',
+    noReport: () =>
+      'reconcile needs --against <cost report>: the JSON from Anthropic\'s GET /v1/organizations/cost_report or OpenAI\'s GET /v1/organization/costs.',
     receiptUnreadable: (file) => `${file}: not readable as JSON.`,
     notAReceipt: (file) =>
       `${file}: not a receipt. It needs total.usd and span.fromMs/toMs, which "trazum receipt" writes.`,
     reportUnreadable: (file) => `${file}: not found.`,
     notAReport: (file) =>
-      `${file}: not the JSON GET /v1/organizations/cost_report returns. Pass the response body whole.`,
+      `${file}: not the JSON a cost report endpoint returns, Anthropic's or OpenAI's. Pass the response body whole.`,
     summary: (computed, billed, difference) =>
       `Trazum computed $${computed.toFixed(2)}; the provider billed $${billed.toFixed(2)}. Difference: $${difference.toFixed(2)}.`,
     notTokens: (usd) =>
@@ -1844,6 +1866,12 @@ ${bold('EXAMPLES')}
       `$${usd.toFixed(2)} is left over, and it is the only figure here worth arguing about: the same standard-tier tokens priced two ways, or usage your log never saw. A negative one means Trazum priced more than you were charged, which is a stale rate in the direction that costs you money.`,
     notAttributable: () =>
       'The difference cannot be attributed: this report was not grouped by description, so no row says whether it was tokens, a web search or a batch. Add group_by[]=description.',
+    notAttributableByLineItem: () =>
+      'The difference cannot be attributed: this report was not grouped by line item, so no row says what the money was for. Add group_by[]=line_item.',
+    batchNotSeparable: () =>
+      'This report never says whether a line was a batch job, so a batch discount, if any, is inside that remainder rather than taken out of it.',
+    unknownUnit: (usd) =>
+      `$${usd.toFixed(2)} of the remainder is on line items whose unit is null: the report says no single unit applies, so it is neither counted as tokens nor as not. It is named here so the remainder does not stand on a unit nobody stated.`,
     windowNotCovered: (fromComputed, toComputed, fromBilled, toBilled) =>
       `These are not the same window. The receipt covers ${fromComputed} to ${toComputed}; the report covers ${fromBilled} to ${toBilled}. A receipt set against a bill for other days is a wrong number under a right title, so nothing was compared.`,
     noBilledWindow: () => 'The cost report has no time buckets, so there is no window to compare against.',
@@ -1885,6 +1913,44 @@ ${bold('EXAMPLES')}
       `${file}: entry ${at} is not a rule. Each needs a "label" and a "workspace", which may be null for the default workspace but may not be missing: a missing field is a typo and null is a decision.`,
     rulesEmpty: (file) =>
       `${file}: no rules in it. You passed --label-by-workspace to narrow something, and an empty file would silently narrow nothing.`,
+    written: (file) => `Wrote ${file}.`,
+  },
+
+  fromOpenai: {
+    noPath: () =>
+      'from-openai needs the usage report your own curl produced: trazum from-openai usage.json --label billing',
+    notFound: (path) => `${path}: not found`,
+    summary: (buckets, rows, requests) =>
+      `${buckets} time bucket(s), ${rows} usage row(s) read, covering ${requests} request(s).`,
+    unnamedModel: (count) =>
+      `${count} row(s) named no model and are not in the output: the report was not grouped by model, so nothing on the row says what answered. Add group_by[]=model to the request.`,
+    batch: (count) =>
+      `${count} row(s) were batch jobs and are not in the output: batch is billed at a discount, and pricing it from a catalogue rate would overstate the bill and look right doing it.`,
+    batchUnknown: () =>
+      'The report never said whether anything was batch, so a batch row and a standard row are indistinguishable here. Everything was read as standard. Add group_by[]=batch if any of this usage is batched.',
+    nonDefaultTier: (count, tiers) =>
+      `${count} row(s) were at a service tier a catalogue rate is not the rate for (${tiers}) and are not in the output. The schema does not list the tiers, so they are named rather than guessed at.`,
+    tierUnknown: () =>
+      'The report never named a service tier. Everything was read as the default tier. Add group_by[]=service_tier if any of this usage runs on another.',
+    mixed: (rows, tokens, cacheWrites) =>
+      `${rows} row(s) carried audio or image tokens, which a text rate is not the rate for. Each was reduced to its text part; ${tokens} audio and image token(s) are in no line of the output${cacheWrites > 0 ? `, and ${cacheWrites} cache-write token(s) on those rows were left out too, because the report gives them no modality` : ''}.`,
+    unsplit: (count) =>
+      `${count} row(s) carried audio or image tokens and no text split to reduce them by, and are not in the output. Pricing them at a text rate would be a guess.`,
+    truncated: () =>
+      'The report says has_more: true. This is one page of several and a bill built from it is understated. Follow next_page until has_more is false, and convert each page.',
+    unparseable: () =>
+      'That is not the JSON GET /v1/organization/usage/completions returns. Pass the response body whole, not a field of it.',
+    labelledByProject: (count) => `${count} row(s) took their label from the project mapping.`,
+    unruledProject: (count) =>
+      `${count} row(s) carried a project no rule names. They keep --label if you gave one and are unattributed if you did not: a project nobody wrote a rule for is better unattributed than attributed to a neighbour.`,
+    projectNotGrouped: () =>
+      'A project mapping was given and no row carried a project id, so the split you asked for was not made. Add group_by[]=project_id.',
+    rulesUnreadable: (file) =>
+      `${file}: not readable as a project mapping. It is a JSON array of {"project": "proj_…", "label": "name"}.`,
+    ruleBad: (file, at) =>
+      `${file}: entry ${at} is not a rule. Each needs a "project" id and a "label", both non-empty strings.`,
+    rulesEmpty: (file) =>
+      `${file}: no rules in it. You passed --label-by-project to narrow something, and an empty file would silently narrow nothing.`,
     written: (file) => `Wrote ${file}.`,
   },
 
