@@ -242,8 +242,13 @@ Three things to get right when reporting on this:
 
 ## When the user has no usage log
 
-Usually they do and have not converted it. Seven converters read a format
-somebody else already writes, and all seven are built:
+Usually they do and have not converted it. **Offer `trazum bill <file|dir>`
+first**: it tells each file's shape from its own text, converts it with the
+right converter, prices it and ends on the receipt, naming any file it could
+not read rather than guessing. The dedicated converters below are for when
+the user wants the log itself, a label mapping, or the reasons behind a row
+that was left out. Eight of them read a format somebody else already writes,
+and all eight are built:
 
 | They have | Command |
 |---|---|
@@ -254,6 +259,7 @@ somebody else already writes, and all seven are built:
 | Claude Code transcripts | `trazum from-claude-code ~/.claude/projects -o usage.jsonl` |
 | Nothing local at all, but an Anthropic admin key | `trazum from-anthropic usage.json --label <project> -o usage.jsonl` |
 | Nothing local at all, but an OpenAI admin key | `trazum from-openai usage.json --label <project> -o usage.jsonl` |
+| Nothing local at all, but an OpenRouter management key | `trazum from-openrouter activity.json --label <project> -o usage.jsonl`, then price with `--pricing-live` |
 
 **Once they have both, offer `trazum reconcile`.** `receipt.json` against the
 provider's cost report, Anthropic's or OpenAI's, prints what Trazum computed

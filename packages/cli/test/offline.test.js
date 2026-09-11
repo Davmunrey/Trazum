@@ -284,6 +284,26 @@ function workspace() {
     }),
   );
   write(
+    'openrouter-activity.json',
+    JSON.stringify({
+      data: [
+        {
+          byok_usage_inference: 0,
+          completion_tokens: 400,
+          date: day(7, 1).slice(0, 10),
+          endpoint_id: '550e8400-e29b-41d4-a716-446655440000',
+          model: 'openai/gpt-4.1',
+          model_permaslug: 'openai/gpt-4.1-2025-04-14',
+          prompt_tokens: 9000,
+          provider_name: 'OpenAI',
+          reasoning_tokens: 0,
+          requests: 3,
+          usage: 0.0212,
+        },
+      ],
+    }),
+  );
+  write(
     'anthropic-usage.json',
     JSON.stringify({
       data: [
@@ -416,6 +436,8 @@ const INVOCATION = {
   'from-litellm': ['litellm.json', '-o', 'c3.jsonl'],
   'from-anthropic': ['anthropic-usage.json', '--label', 'billing', '-o', 'c6.jsonl'],
   'from-openai': ['openai-usage.json', '--label', 'billing', '-o', 'c7.jsonl'],
+  'from-openrouter': ['openrouter-activity.json', '--label', 'billing', '-o', 'c8.jsonl'],
+  bill: ['openrouter-activity.json', '-o', 'b1.json'],
   reconcile: ['a-receipt.json', '--against', 'anthropic-cost.json', '-o', 'r1.json'],
   'from-helicone': ['helicone.json', '-o', 'c4.jsonl'],
   'from-langsmith': ['langsmith.json', '-o', 'c5.jsonl'],

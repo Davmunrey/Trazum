@@ -22,6 +22,42 @@ somebody noticed is the kind of tidy history this file exists to refuse.
 
 ### Added
 
+- **`docs/plan-2.4.md`: one door, and where the spend is.** The first plan
+  here that starts from a number rather than a feature: about two hundred
+  downloads a month behind forty-nine commands. Three causes and a fix for
+  each — one command that reads anything, converters for where AI money is
+  actually spent, and presence on the surfaces that find tools — with the
+  ones that could not be built from a schema read in this environment
+  (Cursor, Hugging Face) named as blocked rather than written from memory.
+
+- **`trazum bill`, the 51st command: one door.** The plan's first move.
+  Reads a file or a directory, tells each file's shape from its own text with
+  the sniffers the converters already shipped, converts it with the same
+  converter the dedicated command uses, prices it, and ends on the receipt
+  `receipt` writes. Every refusal a converter makes is made here; what
+  differs is the telling — one line per file with its shape, its records and
+  how many rows were left out, and the dedicated command named as the place
+  that says why. Three refusals of its own: a file no shape claims is named
+  and not guessed; a file two shapes claim is named as ambiguous and left
+  alone; a provider's cost report is named as a bill rather than usage and
+  pointed at `reconcile`. `packages/cli/test/bill.test.js` runs it over a
+  directory holding one of each. `npx @trazum/cli bill ~/.claude/projects`
+  is now the first thing that works with nothing configured.
+
+- **`trazum from-openrouter`, the 50th command, the plan's second move.** OpenRouter's activity report (`GET /api/v1/activity`, management
+  key, the last thirty days) read as a usage log, from the published schema
+  with the endpoint's own example as the fixture. It meets the half Trazum
+  already had: `--pricing-live` prices hundreds of models from OpenRouter's
+  catalogue, keyed by slug, and this report carries the same slugs. What
+  OpenRouter charged (`usage`, and `byok_usage_inference` for upstream
+  charges on the operator's own keys) is summed over every row, refused or
+  not, and printed **beside** Trazum's figure, never merged — the LiteLLM
+  `spend` rule. Reasoning tokens are counted and deliberately not added,
+  because the schema does not say whether `completion_tokens` already holds
+  them and adding them if it does would charge reasoning twice.
+  `--label-by-workspace` mirrors the other mappings, exact match, no `null`
+  case. `packages/core/test/openrouter-activity.test.js` (14 tests).
+
 - **`trazum from-openai`, the 49th command: the other provider's usage report,
   read as a log.** The same door as `from-anthropic` and the same arrangement:
   the operator's `curl`, the operator's admin key, and a command that reads

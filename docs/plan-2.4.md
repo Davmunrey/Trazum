@@ -1,0 +1,116 @@
+# Plan 2.4: one door, and where the spend is
+
+The other plan documents in this directory describe what to build. This one
+starts from a number instead: `@trazum/cli` is at about two hundred downloads
+a month, with forty-nine commands behind it. That ratio is the finding. The
+product is deep and nobody arrives, and adding a fiftieth command to the
+same door does not change who walks through it.
+
+Three causes, each with a fix below, in the order they pay.
+
+1. **Arriving requires knowing which of forty-nine commands to run.** Every
+   converter has its own name, and a person with a log has to know what
+   their log is called before Trazum will read it. The first move is one
+   door that reads anything.
+2. **It reaches only people whose usage is already in one of seven shapes.**
+   Two providers and five tools. The places where AI money is actually spent
+   in 2026 — routers, editors, hosted inference — are not among them.
+3. **It lives where nobody looks.** npm is where it is installed, not where
+   it is found. The surfaces that find tools now are registries, marketplaces
+   and the editors' own configuration files, and each of those is a checklist
+   item with a verifiable state.
+
+Nothing below relaxes the doctrine. A converter is written from a published
+schema or it is not written; a figure is derived or it is refused by name; a
+provider credential never enters this repository. A plan that grew the
+audience by loosening the one property the audience would come for is not a
+growth plan.
+
+## 1. One door: `trazum bill <anything>`
+
+```bash
+npx @trazum/cli bill ~/.claude/projects
+npx @trazum/cli bill usage.json
+npx @trazum/cli bill exports/
+```
+
+Reads a file or a directory, tells each file's format from its own text with
+the sniffers the converters already ship (`looksLikeClaudeCodeTranscript`,
+`looksLikeOtel`, `looksLikeLiteLlm`, `looksLikeHelicone`, `looksLikeLangsmith`,
+`looksLikeAnthropicUsage`, `looksLikeOpenaiUsage`, `looksLikeOpenrouterActivity`,
+plus a plain usage log), converts in memory, prices, and prints the receipt
+with every gap named. No flags needed for the common case; `--label` and
+`-o` as everywhere else.
+
+What it must refuse: a file no sniffer claims is listed by name and not
+guessed; a file two sniffers claim is listed as ambiguous and not converted.
+Every per-converter refusal (batch rows, unnamed models, one page of several)
+is printed exactly as the dedicated command prints it, because `bill` is the
+dedicated commands composed and not a looser version of them.
+
+This is also the landing-page demo and the first line of the README, because
+it is the first thing that works with nothing configured.
+
+## 2. Where the spend is
+
+Each converter here is written from a schema that was read, and the ones
+whose schema could not be read from this environment are named as blocked
+rather than written from memory.
+
+- **`from-openrouter`** — `GET /api/v1/activity`, management key, thirty
+  days of rows per model per endpoint per day. Schema read from the published
+  reference. The model slug is the same slug the OpenRouter pricing overlay is
+  keyed by, so the two halves Trazum already had meet: hundreds of models
+  priced from a live catalogue, and now a report to price them from. The
+  dollars OpenRouter charged are carried beside the records and never merged;
+  reasoning tokens are counted and not added, because the schema does not say
+  whether the completion count holds them.
+- **`from-cursor`** — Cursor's Admin API (`/teams/daily-usage-data`,
+  `/teams/filtered-usage-events`) and the dashboard's usage export. The docs
+  host is unreachable from the environment this plan was written in, and a
+  converter written from a search-engine summary would mis-read somebody's
+  bill. **Blocked** until either the reference is read or one real export is
+  supplied to build the fixture from. Named, not faked.
+- **Hugging Face Inference Providers** — an OpenAI-compatible gateway, so a
+  log written by spreading its responses should already parse as a usage log
+  with the model in `model` and the counts in `usage`. That claim needs one
+  real response to be asserted against, and the docs host is likewise
+  unreachable from here. **Blocked** on the same terms. Separately, the web
+  playground can run as a Space from the existing `Dockerfile`, which is a
+  distribution move rather than a converter and needs an account token that
+  only the owner holds.
+
+## 3. Where the people are
+
+Each of these is a state that can be checked, not a hope.
+
+- **MCP registry.** `packages/mcp/server.json` exists at 2.3.0. To verify:
+  that the entry is published and resolves. To do: publish on every release
+  from the release workflow, not by hand.
+- **Claude Code plugin marketplace.** `.claude-plugin/marketplace.json`
+  exists. To verify: installable by name from a clean machine.
+- **Cursor.** A `.cursor/mcp.json` snippet in the README and a rules file in
+  the repo so a Cursor user gets the spend guard with one paste. This is the
+  cheapest surface on the list and the one the download number says is
+  missing.
+- **GitHub Marketplace.** `action.yml` exists with branding. To verify: the
+  action is listed, and the listing's one line names both gates (the
+  self-test already enforces the line).
+- **Hugging Face Space.** The web app from the `Dockerfile`. Blocked on the
+  owner's token; the manifest can be prepared.
+
+## 4. A reason to come back
+
+A tool that prices a log once is a tool that is run once. The spend gate in
+the GitHub Action already exists; what it lacks is a **schedule**: a cron
+recipe that posts this week's bill and its gaps as an issue comment, and a
+badge that shows the month's standing. That is the loop the Pro product
+closes for organisations, and the open one should close it for a single
+repository so the upgrade is a step and not a leap.
+
+## 5. Measured, not hoped
+
+The number that opened this document is the number that judges it. Weekly
+downloads of `@trazum/cli`, GitHub stars, and registry installs, read at each
+release and written into `RELEASES.md` beside the version, so the next plan
+starts from a figure too.

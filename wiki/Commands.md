@@ -2,7 +2,7 @@
 > Edit that file, not this page: an edit here is overwritten by the next build,
 > and a wiki that has drifted from the repository is worse than no wiki.
 
-## The 49 commands
+## The 51 commands
 
 | Command | What it answers |
 |---|---|
@@ -45,6 +45,8 @@
 | [`trazum from-otel`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#the-universal-cost-lens-trazum-from-otel) | What did the LLM calls in my OpenTelemetry export cost? *Reads the GenAI spans any exporter already emits — the counts only, never the prompts.* |
 | [`trazum from-litellm`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#the-gateway-everybody-already-runs-trazum-from-litellm) | What did the calls my LiteLLM proxy logged cost? *Reads the spend log the gateway already writes — the counts only, never the prompts, keys or addresses on the same row.* |
 | [`trazum reconcile`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#what-you-were-actually-billed-trazum-reconcile) | Does what Trazum computed match what the provider charged? *Sets the two figures beside each other, never merges them, and leaves the unexplained remainder standing on its own.* |
+| [`trazum bill`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#one-door-trazum-bill) | What did all of this cost? *One door: reads a file or a directory of anything the converters read, tells each file's shape from its own text, converts, prices, and ends on the receipt. A file no shape claims is named, never guessed.* |
+| [`trazum from-openrouter`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#what-the-router-says-trazum-from-openrouter) | What does OpenRouter say I used? *Reads the activity report your own management key fetched, keyed by the same slugs the live pricing overlay uses; what OpenRouter charged is printed beside Trazum's figure and never merged, and reasoning tokens are counted, not added.* |
 | [`trazum from-openai`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#what-openai-says-trazum-from-openai) | What does OpenAI say my organisation used? *Reads the completions usage report your own admin key fetched; the record keeps OpenAI's own cached-inside-prompt shape, batch rows and non-default tiers are left out and named, and audio or image tokens are never priced at a text rate.* |
 | [`trazum from-anthropic`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#what-the-provider-itself-says-trazum-from-anthropic) | What does the provider itself say my organisation used? *Reads the usage report your own admin key fetched; Trazum never holds the credential, refuses to price a batch row at a standard rate, and labels by workspace only from a mapping you write.* |
 | [`trazum from-helicone`](https://github.com/Davmunrey/Trazum/blob/main/docs/commands.md#the-proxy-that-kept-every-request-trazum-from-helicone) | What did the requests my Helicone proxy kept cost? *Prices the model that answered, not the one that was asked for, and counts the substitutions.* |
