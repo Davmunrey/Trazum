@@ -88,6 +88,7 @@ import {
   formatSignedUsd,
   formatUsd,
   receiptFrom,
+  type ReceiptDocument,
   getMessages,
   getModel,
   hasMarker,
@@ -116,6 +117,7 @@ import {
   type CwdLabel,
   type WorkspaceLabel,
   type ProjectLabel,
+  type OpenrouterWorkspaceLabel,
   ESTIMATE_ERROR_BAND_PCT,
   bandFor,
   foreignTokenizer,
@@ -123,8 +125,18 @@ import {
   anthropicCostReport,
   anthropicUsageRecords,
   looksLikeOpenaiCost,
+  looksLikeAnthropicCost,
+  looksLikeAnthropicUsage,
+  looksLikeClaudeCodeTranscript,
+  looksLikeHelicone,
+  looksLikeLangsmith,
+  looksLikeLiteLlm,
+  looksLikeOpenaiUsage,
+  looksLikeOpenrouterActivity,
+  looksLikeOtel,
   openaiCostReport,
   openaiUsageRecords,
+  openrouterActivityRecords,
   reconcile,
   heliconeRecords,
   langsmithRecords,
@@ -711,6 +723,8 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   reconcile: ['against', 'out', 'o'],
   'from-anthropic': ['label', 'label-by-workspace', 'out', 'o'],
   'from-openai': ['label', 'label-by-project', 'out', 'o'],
+  'from-openrouter': ['label', 'label-by-workspace', 'out', 'o'],
+  bill: ['label', 'out', 'o', 'stamp', 'pricing', 'pricing-live'],
   'from-helicone': ['out', 'o'],
   'from-langsmith': ['out', 'o'],
   switch: ['to', 'migration-usd', 'cases'],
@@ -2759,6 +2773,44 @@ async function projectRulesFrom(
   return rules;
 }
 
+/**
+ * The workspace mapping `from-openrouter` labels by. Same refusals as the
+ * other two; `workspace` may not be `null`, because OpenRouter's report
+ * names no workspace by absence — a `null` there only means the request did
+ * not group by workspace.
+ */
+async function openrouterWorkspaceRulesFrom(
+  file: string | undefined,
+  t: CliMessages,
+): Promise<OpenrouterWorkspaceLabel[] | undefined> {
+  if (file === undefined) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await readFile(file, 'utf8'));
+  } catch {
+    throw new Error(t.fromOpenrouter.rulesUnreadable(file));
+  }
+  if (!Array.isArray(parsed)) throw new Error(t.fromOpenrouter.rulesUnreadable(file));
+
+  const rules: OpenrouterWorkspaceLabel[] = [];
+  for (const [at, entry] of parsed.entries()) {
+    const rule = entry as Record<string, unknown> | null;
+    if (
+      typeof rule !== 'object'
+      || rule === null
+      || typeof rule.workspace !== 'string'
+      || rule.workspace === ''
+      || typeof rule.label !== 'string'
+      || rule.label === ''
+    ) {
+      throw new Error(t.fromOpenrouter.ruleBad(file, at));
+    }
+    rules.push({ workspace: rule.workspace, label: rule.label });
+  }
+  if (rules.length === 0) throw new Error(t.fromOpenrouter.rulesEmpty(file));
+  return rules;
+}
+
 async function cwdRulesFrom(
   file: string | undefined,
   t: CliMessages,
@@ -3245,12 +3297,17 @@ async function commandReceipt(
     console.log(json);
   }
 
-  /*
-   * Everything below goes to stderr, so `trazum receipt log.jsonl > receipt.json`
-   * writes a document and not a document with a summary stapled to the front.
-   * The gaps are read off the document rather than recomputed, so what the
-   * reader is told and what the file carries cannot drift apart.
-   */
+  printReceiptSummary(document, t);
+}
+
+/*
+ * Everything here goes to stderr, so `trazum receipt log.jsonl > receipt.json`
+ * writes a document and not a document with a summary stapled to the front.
+ * The gaps are read off the document rather than recomputed, so what the
+ * reader is told and what the file carries cannot drift apart. Shared with
+ * `bill`, which ends on the same receipt.
+ */
+function printReceiptSummary(document: ReceiptDocument, t: CliMessages): void {
   if (document.lines.length === 0) {
     console.error(t.receipt.nothingToBill());
   } else {
@@ -3262,6 +3319,189 @@ async function commandReceipt(
     if (gap.kind === 'unread-lines') console.error(t.receipt.unread(gap.count));
     if (gap.kind === 'no-clock') console.error(t.receipt.noClock());
   }
+}
+
+/** The shapes `bill` can tell apart from a file's own text. */
+type UsageSource =
+  | 'claude-code'
+  | 'otel'
+  | 'litellm'
+  | 'helicone'
+  | 'langsmith'
+  | 'anthropic-usage'
+  | 'openai-usage'
+  | 'openrouter'
+  | 'usage-log';
+
+/**
+ * Which shapes claim a text. Every sniffer is asked, not the first that says
+ * yes: a file two shapes claim is a file this must not convert, because
+ * whichever it picked would be a guess wearing a result's clothes.
+ */
+function usageSourcesOf(text: string): UsageSource[] {
+  const claims: UsageSource[] = [];
+  if (looksLikeClaudeCodeTranscript(text)) claims.push('claude-code');
+  if (looksLikeOtel(text)) claims.push('otel');
+  if (looksLikeAnthropicUsage(text)) claims.push('anthropic-usage');
+  if (looksLikeOpenaiUsage(text)) claims.push('openai-usage');
+  if (looksLikeOpenrouterActivity(text)) claims.push('openrouter');
+  if (looksLikeHelicone(text)) claims.push('helicone');
+  if (looksLikeLangsmith(text)) claims.push('langsmith');
+  if (looksLikeLiteLlm(text)) claims.push('litellm');
+  if (claims.length > 0) return claims;
+  /* A plain usage log has no signature but its own lines: if the first
+     non-blank one parses as a usage line, that is what it is. */
+  const first = text.split('\n').find((line) => line.trim() !== '');
+  if (first !== undefined && parseUsageLine(first) !== null) claims.push('usage-log');
+  return claims;
+}
+
+/**
+ * `trazum bill <file|dir>`: one door, from `docs/plan-2.4.md`.
+ *
+ * Forty-nine commands behind two hundred downloads a month said the product
+ * was deep and nobody arrived, and one reason was that a person with a log
+ * had to know what their log was called before Trazum would read it. This
+ * reads anything the converters read, tells each file's shape from its own
+ * text, converts in memory, prices, and ends on the same receipt `receipt`
+ * writes.
+ *
+ * It is the dedicated commands composed, not a looser version of them: each
+ * file's rows go through the same converter `from-<shape>` uses, so every
+ * refusal those make is made here. What differs is how the refusals are
+ * told. This names each file, its shape, the records it became and how many
+ * rows were left out, and points at the dedicated command for the reasons,
+ * rather than repeating eight commands' worth of explanation on one screen.
+ * A file no shape claims is named and not guessed; a file two shapes claim is
+ * named as ambiguous and not converted; a provider's cost report is named as
+ * a bill rather than usage, and pointed at `reconcile`.
+ */
+async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
+  const target = args.positional[0];
+  if (target === undefined) throw new Error(t.bill.noPath());
+
+  let info;
+  try {
+    info = await stat(target);
+  } catch {
+    throw new Error(t.bill.notFound(target));
+  }
+  const files: string[] = [];
+  if (info.isDirectory()) {
+    const entries = await readdir(target, { recursive: true, withFileTypes: true });
+    for (const entry of entries) {
+      if (entry.isFile() && /\.(json|jsonl|ndjson)(\.gz)?$/i.test(entry.name)) {
+        files.push(join(entry.parentPath, entry.name));
+      }
+    }
+    files.sort();
+    if (files.length === 0) throw new Error(t.bill.noFiles(target));
+  } else {
+    files.push(target);
+  }
+
+  const label = stringFlag(args, 'label');
+  const withLabel = label === undefined ? {} : { label };
+  const lines: string[] = [];
+  let sources = 0;
+
+  for (const file of files) {
+    const text = await readUsageLog(file, t);
+    const claims = usageSourcesOf(text);
+
+    if (claims.length === 0) {
+      if (looksLikeAnthropicCost(text) || looksLikeOpenaiCost(text)) {
+        console.error(t.bill.costReport(file));
+      } else {
+        console.error(t.bill.unknown(file));
+      }
+      continue;
+    }
+    if (claims.length > 1) {
+      console.error(t.bill.ambiguous(file, claims.join(', ')));
+      continue;
+    }
+
+    const [shape] = claims;
+    if (shape === undefined) continue;
+    let records: unknown[] = [];
+    let leftOut = 0;
+    switch (shape) {
+      case 'claude-code': {
+        const c = claudeCodeRecords(text, withLabel);
+        records = c.records;
+        leftOut = c.assistantWithoutUsage + c.unparseable;
+        break;
+      }
+      case 'otel': {
+        const c = otelRecords(text);
+        records = c.records;
+        leftOut = c.otherSpans + c.unparseable;
+        break;
+      }
+      case 'litellm': {
+        const c = litellmRecords(text);
+        records = c.records;
+        leftOut = c.unnamedModel + c.unparseable;
+        break;
+      }
+      case 'helicone': {
+        const c = heliconeRecords(text);
+        records = c.records;
+        leftOut = c.unnamedModel + c.unparseable;
+        break;
+      }
+      case 'langsmith': {
+        const c = langsmithRecords(text);
+        records = c.records;
+        leftOut = c.notModelCalls + c.unnamedModel + c.unparseable;
+        break;
+      }
+      case 'anthropic-usage': {
+        const c = anthropicUsageRecords(text, withLabel);
+        records = c.records;
+        leftOut = c.unnamedModel + c.nonStandardTier;
+        break;
+      }
+      case 'openai-usage': {
+        const c = openaiUsageRecords(text, withLabel);
+        records = c.records;
+        leftOut = c.unnamedModel + c.batch + c.nonDefaultTier + c.unsplitRows;
+        break;
+      }
+      case 'openrouter': {
+        const c = openrouterActivityRecords(text, withLabel);
+        records = c.records;
+        leftOut = c.unnamedModel + c.undatedRows;
+        break;
+      }
+      case 'usage-log': {
+        /* Already the shape every door reads: passed through line by line,
+           and what does not parse is the receipt's own unread-lines gap. */
+        for (const line of text.split('\n')) if (line.trim() !== '') lines.push(line);
+        break;
+      }
+    }
+    for (const record of records) lines.push(JSON.stringify(record));
+    sources += 1;
+    console.error(t.bill.file(file, shape, shape === 'usage-log' ? null : records.length, leftOut));
+  }
+
+  if (sources === 0) throw new Error(t.bill.nothingRead());
+
+  const report = profileUsage(lines.join('\n'), { catalogue: pricing });
+  const document = receiptFrom(report, pricing, boolFlag(args, 'stamp') ? { emittedAt: new Date() } : {});
+  const json = JSON.stringify(document, null, 2);
+
+  const out = stringFlag(args, 'out') ?? stringFlag(args, 'o');
+  if (out !== undefined) {
+    await writeFile(out, json + '\n', 'utf8');
+    console.error(t.bill.written(out));
+  } else {
+    console.log(json);
+  }
+  console.error(t.bill.sources(sources, files.length));
+  printReceiptSummary(document, t);
 }
 
 /**
@@ -3755,6 +3995,54 @@ async function commandFromOpenai(args: Args, t: CliMessages): Promise<void> {
   if (conversion.unruledProject > 0) console.error(t.fromOpenai.unruledProject(conversion.unruledProject));
   if (conversion.projectNotGrouped) console.error(t.fromOpenai.projectNotGrouped());
   if (conversion.truncated) console.error(t.fromOpenai.truncated());
+}
+
+/**
+ * `from-openrouter`: the router's activity report, read as a log. The one
+ * provider Trazum already prices from a live catalogue (`pricing --from
+ * openrouter`), keyed by the same slugs this report carries. What OpenRouter
+ * charged is printed beside the records and never merged into them.
+ */
+async function commandFromOpenrouter(args: Args, t: CliMessages): Promise<void> {
+  const target = args.positional[0];
+  if (target === undefined) throw new Error(t.fromOpenrouter.noPath());
+
+  let text: string;
+  try {
+    text = await readFile(target, 'utf8');
+  } catch {
+    throw new Error(t.fromOpenrouter.notFound(target));
+  }
+
+  const label = stringFlag(args, 'label');
+  const byWorkspace = await openrouterWorkspaceRulesFrom(stringFlag(args, 'label-by-workspace'), t);
+  const conversion = openrouterActivityRecords(text, {
+    ...(label === undefined ? {} : { label }),
+    ...(byWorkspace === undefined ? {} : { labelByWorkspace: byWorkspace }),
+  });
+  if (conversion.unparseable > 0) throw new Error(t.fromOpenrouter.unparseable());
+
+  const lines = conversion.records.map((record) => JSON.stringify(record));
+  const out = stringFlag(args, 'out') ?? stringFlag(args, 'o');
+  if (out !== undefined) {
+    await writeFile(out, lines.join('\n') + (lines.length > 0 ? '\n' : ''), 'utf8');
+    console.error(t.fromOpenrouter.written(out));
+  } else if (lines.length > 0) {
+    console.log(lines.join('\n'));
+  }
+
+  console.error(t.fromOpenrouter.summary(conversion.rows, conversion.days, conversion.requests));
+  if (conversion.reportedUsageUsd > 0 || conversion.byokUsd > 0) {
+    console.error(t.fromOpenrouter.reportedUsage(conversion.reportedUsageUsd, conversion.byokUsd));
+  }
+  if (conversion.reasoningTokens > 0) console.error(t.fromOpenrouter.reasoning(conversion.reasoningTokens));
+  if (conversion.unnamedModel > 0) console.error(t.fromOpenrouter.unnamedModel(conversion.unnamedModel));
+  if (conversion.undatedRows > 0) console.error(t.fromOpenrouter.undated(conversion.undatedRows));
+  if (conversion.labelledByWorkspace > 0) {
+    console.error(t.fromOpenrouter.labelledByWorkspace(conversion.labelledByWorkspace));
+  }
+  if (conversion.unruledWorkspace > 0) console.error(t.fromOpenrouter.unruledWorkspace(conversion.unruledWorkspace));
+  if (conversion.workspaceNotGrouped) console.error(t.fromOpenrouter.workspaceNotGrouped());
 }
 
 async function commandFromHelicone(args: Args, t: CliMessages): Promise<void> {
@@ -12926,6 +13214,12 @@ async function main(): Promise<void> {
       break;
     case 'from-openai':
       await commandFromOpenai(args, t);
+      break;
+    case 'from-openrouter':
+      await commandFromOpenrouter(args, t);
+      break;
+    case 'bill':
+      await commandBill(args, pricing, t);
       break;
     case 'from-helicone':
       await commandFromHelicone(args, t);

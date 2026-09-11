@@ -47,11 +47,13 @@ ${bold('USO')}
   trazum rollup <documento...|dir> [--json] [--html-out <fichero>]
   trazum position <uso.jsonl>
   trazum receipt <uso.jsonl|dir> [--stamp] [-o <fichero>]
+  trazum bill <fichero|dir> [--label <nombre>] [--stamp] [-o <fichero>]
   trazum from-claude-code <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-otel <fichero|dir> [--label-from-service] [-o <fichero>]
   trazum from-litellm <fichero|dir> [-o <fichero>]
   trazum from-anthropic <usage.json> [--label <name>] [--label-by-workspace <file>] [-o <file>]
   trazum from-openai <usage.json> [--label <name>] [--label-by-project <file>] [-o <file>]
+  trazum from-openrouter <activity.json> [--label <name>] [--label-by-workspace <file>] [-o <file>]
   trazum reconcile <receipt.json> --against <cost.json> [-o <file>]
   trazum from-helicone <fichero|dir> [-o <fichero>]
   trazum from-langsmith <fichero|dir> [-o <fichero>]
@@ -246,6 +248,38 @@ ${bold('OPCIONES DE from-openai')}
   servicio que no sea default se queda fuera y se nombra. Los tokens de audio
   e imagen nunca se cobran a tarifa de texto: una fila que los trae se reduce
   a su parte de texto y el resto se cuenta donde puedas verlo.
+
+${bold('OPCIONES DE bill')}
+  --label <nombre>            El proyecto al que pertenece este uso, para las
+                              formas que lo admiten.
+  --stamp                     Sella el recibo con la hora en que se escribio.
+  -o, --out <archivo>         Escribe el recibo ahi en vez de en stdout.
+
+  Una sola puerta. Lee un archivo o un directorio, reconoce la forma de cada
+  archivo por su propio texto - una transcripcion de Claude Code, spans OTel,
+  un export de LiteLLM, Helicone o LangSmith, un informe de Anthropic, OpenAI
+  u OpenRouter, o un log de uso plano - lo convierte con el mismo conversor
+  que usa el comando dedicado, lo cobra y termina en el recibo. Un archivo
+  que ninguna forma reclama se nombra, no se adivina; uno que reclaman dos se
+  nombra como ambiguo y se deja en paz; un informe de costes de proveedor se
+  remite a reconcile. La linea de cada archivo dice cuantas filas quedaron
+  fuera, y el comando from-<forma> dedicado dice por que.
+
+${bold('OPCIONES DE from-openrouter')}
+  --label <nombre>            El proyecto al que pertenece este uso.
+  --label-by-workspace <archivo> Una etiqueta por id de workspace, como array
+                              JSON de {"workspace": "…", "label": "nombre"}.
+                              Coincidencia exacta; --label es el respaldo.
+                              Requiere el informe pedido con group_by=workspace.
+  -o, --out <archivo>         Escribe el log de uso ahi en vez de en stdout.
+
+  El informe de actividad de OpenRouter (GET /api/v1/activity, clave de
+  gestion, los ultimos treinta dias), leido como log de uso con los mismos
+  slugs de modelo que usa el overlay de precios de OpenRouter, asi que cientos
+  de modelos se pueden cobrar de golpe. Lo que OpenRouter cobro se imprime
+  junto a la cifra de Trazum y nunca se suma a ella. Los tokens de razonamiento
+  se cuentan y no se anaden, porque el esquema no dice si el recuento de
+  completado ya los incluye.
 
 ${bold('OPCIONES DE from-helicone')}
   -o, --out <fichero>         Escribe el log de uso ahí en vez de en stdout.
@@ -1976,6 +2010,53 @@ ${bold('EJEMPLOS')}
       `${file}: la entrada ${at} no es una regla. Cada una necesita un id en "project" y una "label", ambos cadenas no vacias.`,
     rulesEmpty: (file) =>
       `${file}: no hay reglas dentro. Pasaste --label-by-project para repartir algo, y un archivo vacio repartiria nada en silencio.`,
+    written: (file) => `Escrito ${file}.`,
+  },
+
+  bill: {
+    noPath: () => 'bill necesita un archivo o un directorio que leer: trazum bill ~/.claude/projects',
+    notFound: (path) => `${path}: no encontrado`,
+    noFiles: (path) => `${path}: no hay archivos .json, .jsonl ni .ndjson dentro.`,
+    file: (path, shape, records, leftOut) =>
+      `${path}: ${shape}${records === null ? ', leido tal cual' : `, ${records} registro(s)`}${leftOut > 0 ? `, ${leftOut} fila(s) fuera. Ejecuta trazum from-${shape} sobre el para ver por que.` : '.'}`,
+    unknown: (path) =>
+      `${path}: ninguna forma que esta herramienta lee lo reclama, asi que no se adivino y no esta en la factura.`,
+    ambiguous: (path, shapes) =>
+      `${path}: lo reclama mas de una forma (${shapes}), asi que no se convirtio. Ejecuta el comando from-<forma> dedicado y di cual.`,
+    costReport: (path) =>
+      `${path}: un informe de costes de proveedor, que es una factura y no uso. Ponlo junto a un recibo con trazum reconcile.`,
+    nothingRead: () => 'Nada de esto era una fuente de uso que esta herramienta lea, asi que no hay nada que facturar.',
+    sources: (read, seen) => `${read} de ${seen} archivo(s) leido(s) como uso.`,
+    written: (file) => `Escrito ${file}.`,
+  },
+
+  fromOpenrouter: {
+    noPath: () =>
+      'from-openrouter necesita el informe de actividad que produjo tu propio curl: trazum from-openrouter activity.json --label facturacion',
+    notFound: (path) => `${path}: no encontrado`,
+    summary: (rows, days, requests) =>
+      `${rows} fila(s) de actividad leida(s) en ${days} dia(s), que cubren ${requests} peticion(es).`,
+    reportedUsage: (usd, byokUsd) =>
+      `OpenRouter dice que cobro $${usd.toFixed(4)}${byokUsd > 0 ? ` mas $${byokUsd.toFixed(4)} facturados aguas arriba con tus propias claves` : ''}. Esa cifra es de OpenRouter, impresa junto a la de Trazum y nunca sumada a ella: dos tablas de precios en una sola cifra es como un informe se vuelve silenciosamente falso.`,
+    reasoning: (tokens) =>
+      `${tokens} token(s) de razonamiento estan en este informe y no se anadieron a ningun registro: el esquema no dice si completion_tokens ya los incluye, y anadirlos si es asi cobraria el razonamiento dos veces.`,
+    unnamedModel: (count) =>
+      `${count} fila(s) no nombraron modelo y no estan en la salida: nada en la fila dice que respondio.`,
+    undated: (count) =>
+      `${count} fila(s) traian una fecha que no es un dia YYYY-MM-DD y no estan en la salida.`,
+    unparseable: () =>
+      'Eso no es el JSON que devuelve GET /api/v1/activity. Pasa el cuerpo de la respuesta entero, no un campo suyo.',
+    labelledByWorkspace: (count) => `${count} fila(s) tomaron su etiqueta del mapeo de workspaces.`,
+    unruledWorkspace: (count) =>
+      `${count} fila(s) traian un workspace que ninguna regla nombra. Conservan --label si lo diste y quedan sin atribuir si no.`,
+    workspaceNotGrouped: () =>
+      'Diste un mapeo de workspaces y ninguna fila traia id de workspace, asi que el reparto que pediste no se hizo. Pide el informe con group_by=workspace.',
+    rulesUnreadable: (file) =>
+      `${file}: no se puede leer como mapeo de workspaces. Es un array JSON de {"workspace": "…", "label": "nombre"}.`,
+    ruleBad: (file, at) =>
+      `${file}: la entrada ${at} no es una regla. Cada una necesita un id en "workspace" y una "label", ambos cadenas no vacias.`,
+    rulesEmpty: (file) =>
+      `${file}: no hay reglas dentro. Pasaste --label-by-workspace para repartir algo, y un archivo vacio repartiria nada en silencio.`,
     written: (file) => `Escrito ${file}.`,
   },
 

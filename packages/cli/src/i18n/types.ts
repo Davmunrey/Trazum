@@ -719,6 +719,43 @@ export interface CliMessages {
     written(file: string): string;
   };
 
+  bill: {
+    noPath(): string;
+    notFound(path: string): string;
+    noFiles(path: string): string;
+    /** One line per file: its shape, what it became, what was left out. */
+    file(path: string, shape: string, records: number | null, leftOut: number): string;
+    /** No shape claimed it: named, never guessed. */
+    unknown(path: string): string;
+    /** Two shapes claimed it: named, never picked between. */
+    ambiguous(path: string, shapes: string): string;
+    /** A provider's bill is not usage; reconcile is the door for it. */
+    costReport(path: string): string;
+    nothingRead(): string;
+    sources(read: number, seen: number): string;
+    written(file: string): string;
+  };
+
+  fromOpenrouter: {
+    noPath(): string;
+    notFound(path: string): string;
+    summary(rows: number, days: number, requests: number): string;
+    /** What OpenRouter charged, printed beside and never merged. */
+    reportedUsage(usd: number, byokUsd: number): string;
+    /** Counted, not added: the schema does not say whether completion holds them. */
+    reasoning(tokens: number): string;
+    unnamedModel(count: number): string;
+    undated(count: number): string;
+    unparseable(): string;
+    labelledByWorkspace(count: number): string;
+    unruledWorkspace(count: number): string;
+    workspaceNotGrouped(): string;
+    rulesUnreadable(file: string): string;
+    ruleBad(file: string, at: number): string;
+    rulesEmpty(file: string): string;
+    written(file: string): string;
+  };
+
   fromHelicone: {
     noPath(): string;
     notFound(path: string): string;

@@ -112,6 +112,7 @@ is the half a reader cannot reconstruct.
 | [1.77](plan-1.77.md) | The agent's bill, told honestly: the four things a real profile should not have had to say | 1.77.0 — all five chapters, and a dated id prices as the model it is |
 | [1.79](plan-1.79.md) | The dash the sweep left behind: an instruction obeyed by hand on one surface, finished on the other and turned into a rule | 1.79.0 — both chapters, 338 em-dashes out of the Spanish catalogues and a guard that holds them out |
 | [1.83–2.0](plan-1.83-2.0.md) | The finish line, named: when this tool is done, and the last stretch walked on purpose rather than grown into | Written, nothing delivered yet. The one row in this table whose third column is a forecast, and it says so |
+| [2.4](plan-2.4.md) | One door, and where the spend is: the plan that starts from a download count rather than a feature | In progress. `from-openai`, `from-openrouter` and `bill` delivered; Cursor and Hugging Face named as blocked until their schemas can be read |
 
 What each of them **refused** to ship — which is the more useful half, since a
 plan and its implementation shared a hand — is in

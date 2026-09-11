@@ -2893,6 +2893,93 @@ is converted once; a converter that read it as milliseconds would date every
 row in 1970. A bucket is an interval, so a day's usage lands at that day's
 start; ask for `bucket_width=1h` for finer.
 
+### One door: `trazum bill`
+
+Every converter on this page has a name, and a person with a log had to know
+what their log was called before Trazum would read it. This is the door that
+does not ask.
+
+```bash
+npx @trazum/cli bill ~/.claude/projects
+npx @trazum/cli bill usage.json
+npx @trazum/cli bill exports/ --pricing-live -o receipt.json
+```
+
+It reads a file or a directory (`.json`, `.jsonl`, `.ndjson`, gzipped or
+not), tells each file's shape **from its own text** — a Claude Code
+transcript, OTel spans, a LiteLLM, Helicone or LangSmith export, an Anthropic,
+OpenAI or OpenRouter report, or a plain usage log — converts it with the same
+converter the dedicated command uses, prices it, and ends on the same receipt
+`trazum receipt` writes.
+
+**It is the dedicated commands composed, not a looser version of them.** Each
+file's rows go through `from-<shape>`'s converter, so every refusal that
+converter makes is made here: a batch row is still left out, an unnamed model
+is still unpriced. What differs is how the refusals are told. Each file gets
+one line — its shape, the records it became, how many rows were left out —
+and the dedicated command is named as the place that says why, rather than
+every converter's explanation repeated on one screen.
+
+**Three things it will not do.** Guess: a file no shape claims is named and
+kept out of the bill. Pick: a file two shapes claim is named as ambiguous and
+left alone, because whichever it chose would be a guess wearing a result's
+clothes. Merge a bill into usage: a provider's cost report is named as a bill
+rather than usage and pointed at `trazum reconcile`.
+
+A slug the bundled catalogue does not price is the receipt's usual unpriced
+gap, kept out of the total rather than costed at zero; `--pricing-live` is
+where OpenRouter's hundreds of slugs get their rates.
+
+### What the router says: `trazum from-openrouter`
+
+OpenRouter is the one provider Trazum already prices from a live catalogue:
+`--pricing-live` turns its public `/models` list into an overlay keyed by
+model slug, for hundreds of models across dozens of providers. This is the
+other half — a report to price them from, keyed by the same slugs.
+
+```bash
+# A management key, in your shell. Trazum never sees it.
+curl "https://openrouter.ai/api/v1/activity" \
+  -H "Authorization: Bearer $OPENROUTER_MANAGEMENT_KEY" > activity.json
+
+trazum from-openrouter activity.json --label billing -o usage.jsonl
+trazum receipt usage.jsonl --pricing-live > receipt.json
+```
+
+**Derived from the published schema.** `GET /api/v1/activity` answers the last
+thirty completed UTC days, one row per model per endpoint per day: `date`,
+`model`, `model_permaslug`, `endpoint_id`, `provider_name`, `usage` (cost in
+USD), `byok_usage_inference` (BYOK cost in USD), `requests`, `prompt_tokens`,
+`completion_tokens`, `reasoning_tokens`, and `workspace_id` when fetched with
+`group_by=workspace`. The endpoint's own example is the fixture.
+
+**Two figures, never added.** `usage` is what OpenRouter charged. It is summed
+and printed **beside** Trazum's catalogue-priced total — the rule this page
+states for LiteLLM's `spend` — and never merged into it. `byok_usage_inference`
+is what an upstream provider charged on your own key through OpenRouter, and is
+carried separately for the same reason. Both are summed over refused rows too,
+because a refused row was still charged for and a total that left it out would
+be understated in the direction nobody questions.
+
+**Reasoning tokens are counted, not added.** The schema does not say whether
+`completion_tokens` already includes `reasoning_tokens`, and adding them if it
+does would charge reasoning twice on exactly the models where it is the largest
+line. The count is printed so you can settle the question against your own
+invoice.
+
+**The slug, not the permaslug.** Records carry `model` (`openai/gpt-4.1`) rather
+than `model_permaslug` (`openai/gpt-4.1-2025-04-14`), because the slug is what
+the pricing overlay is keyed by and a versioned one would price nothing until
+somebody mapped it.
+
+**What does not cross.** `endpoint_id` and `provider_name` reach no record: a
+row is priced by model, and which provider served it is what `usage` already
+reflects. `workspace_id` is read only through `--label-by-workspace rules.json`,
+a JSON array of `{"workspace": "…", "label": "name"}` matched exactly, with
+`--label` as the fallback. A `null` workspace here means one thing only — the
+request did not group by workspace — so there is no default named by absence
+and nothing to derive.
+
 ### When does the switch pay: `trazum switch`
 
 Every what-if reader is really asking one question: *should we move this

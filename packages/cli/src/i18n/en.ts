@@ -60,11 +60,13 @@ ${bold('USAGE')}
   trazum rollup <document...|dir> [--json] [--html-out <file>]
   trazum position <usage.jsonl>
   trazum receipt <usage.jsonl|dir> [--stamp] [-o <file>]
+  trazum bill <file|dir> [--label <name>] [--stamp] [-o <file>]
   trazum from-claude-code <file|dir> [--label <name>] [-o <file>]
   trazum from-otel <file|dir> [--label-from-service] [-o <file>]
   trazum from-litellm <file|dir> [-o <file>]
   trazum from-anthropic <usage.json> [--label <name>] [--label-by-workspace <file>] [-o <file>]
   trazum from-openai <usage.json> [--label <name>] [--label-by-project <file>] [-o <file>]
+  trazum from-openrouter <activity.json> [--label <name>] [--label-by-workspace <file>] [-o <file>]
   trazum reconcile <receipt.json> --against <cost.json> [-o <file>]
   trazum from-helicone <file|dir> [-o <file>]
   trazum from-langsmith <file|dir> [-o <file>]
@@ -219,6 +221,36 @@ ${bold('OPTIONS FOR from-openai')}
   is left out and named. Audio and image tokens are never priced at a text
   rate: a row carrying them is reduced to its text part and the rest is
   counted where you can see it.
+
+${bold('OPTIONS FOR bill')}
+  --label <name>              The project this usage belongs to, for the
+                              shapes that take one.
+  --stamp                     Stamp the receipt with the time it was written.
+  -o, --out <file>            Write the receipt there instead of stdout.
+
+  One door. Reads a file or a directory, tells each file's shape from its own
+  text - a Claude Code transcript, OTel spans, a LiteLLM, Helicone or LangSmith
+  export, an Anthropic, OpenAI or OpenRouter report, or a plain usage log -
+  converts it with the same converter the dedicated command uses, prices it,
+  and ends on the receipt. A file no shape claims is named, not guessed; a
+  file two shapes claim is named as ambiguous and left alone; a provider's
+  cost report is pointed at reconcile. Each file's line says how many rows
+  were left out, and the dedicated from-<shape> command says why.
+
+${bold('OPTIONS FOR from-openrouter')}
+  --label <name>              The project this usage belongs to.
+  --label-by-workspace <file> One label per workspace id, as a JSON array of
+                              {"workspace": "…", "label": "name"}. Exact
+                              match; --label is the fallback. Needs the report
+                              fetched with group_by=workspace.
+  -o, --out <file>            Write the usage log there instead of stdout.
+
+  OpenRouter's activity report (GET /api/v1/activity, management key, the last
+  thirty days), read as a usage log keyed by the same model slugs the
+  OpenRouter pricing overlay uses, so hundreds of models are priceable at
+  once. What OpenRouter charged is printed beside Trazum's figure and never
+  merged into it. Reasoning tokens are counted and not added, because the
+  schema does not say whether the completion count already holds them.
 
 ${bold('OPTIONS FOR from-helicone')}
   -o, --out <file>            Write the usage log there instead of stdout.
@@ -1951,6 +1983,53 @@ ${bold('EXAMPLES')}
       `${file}: entry ${at} is not a rule. Each needs a "project" id and a "label", both non-empty strings.`,
     rulesEmpty: (file) =>
       `${file}: no rules in it. You passed --label-by-project to narrow something, and an empty file would silently narrow nothing.`,
+    written: (file) => `Wrote ${file}.`,
+  },
+
+  bill: {
+    noPath: () => 'bill needs a file or a directory to read: trazum bill ~/.claude/projects',
+    notFound: (path) => `${path}: not found`,
+    noFiles: (path) => `${path}: no .json, .jsonl or .ndjson files under it.`,
+    file: (path, shape, records, leftOut) =>
+      `${path}: ${shape}${records === null ? ', read as it is' : `, ${records} record(s)`}${leftOut > 0 ? `, ${leftOut} row(s) left out. Run trazum from-${shape} on it for the reasons.` : '.'}`,
+    unknown: (path) =>
+      `${path}: no shape this tool reads claims it, so it was not guessed at and is not in the bill.`,
+    ambiguous: (path, shapes) =>
+      `${path}: claimed by more than one shape (${shapes}), so it was not converted. Run the dedicated from-<shape> command on it and say which.`,
+    costReport: (path) =>
+      `${path}: a provider's cost report, which is a bill rather than usage. Set it beside a receipt with trazum reconcile.`,
+    nothingRead: () => 'Nothing here was a usage source this tool reads, so there is nothing to bill.',
+    sources: (read, seen) => `${read} of ${seen} file(s) read as usage.`,
+    written: (file) => `Wrote ${file}.`,
+  },
+
+  fromOpenrouter: {
+    noPath: () =>
+      'from-openrouter needs the activity report your own curl produced: trazum from-openrouter activity.json --label billing',
+    notFound: (path) => `${path}: not found`,
+    summary: (rows, days, requests) =>
+      `${rows} activity row(s) read over ${days} day(s), covering ${requests} request(s).`,
+    reportedUsage: (usd, byokUsd) =>
+      `OpenRouter says it charged $${usd.toFixed(4)}${byokUsd > 0 ? ` plus $${byokUsd.toFixed(4)} billed upstream on your own keys` : ''}. That figure is OpenRouter's, printed beside Trazum's and never merged into it: two price tables summed into one number is how a report becomes quietly wrong.`,
+    reasoning: (tokens) =>
+      `${tokens} reasoning token(s) are in this report and were not added to any record: the schema does not say whether completion_tokens already includes them, and adding them if it does would charge reasoning twice.`,
+    unnamedModel: (count) =>
+      `${count} row(s) named no model and are not in the output: nothing on the row says what answered.`,
+    undated: (count) =>
+      `${count} row(s) carried a date that is not a YYYY-MM-DD day and are not in the output.`,
+    unparseable: () =>
+      'That is not the JSON GET /api/v1/activity returns. Pass the response body whole, not a field of it.',
+    labelledByWorkspace: (count) => `${count} row(s) took their label from the workspace mapping.`,
+    unruledWorkspace: (count) =>
+      `${count} row(s) carried a workspace no rule names. They keep --label if you gave one and are unattributed if you did not.`,
+    workspaceNotGrouped: () =>
+      'A workspace mapping was given and no row carried a workspace id, so the split you asked for was not made. Fetch the report with group_by=workspace.',
+    rulesUnreadable: (file) =>
+      `${file}: not readable as a workspace mapping. It is a JSON array of {"workspace": "…", "label": "name"}.`,
+    ruleBad: (file, at) =>
+      `${file}: entry ${at} is not a rule. Each needs a "workspace" id and a "label", both non-empty strings.`,
+    rulesEmpty: (file) =>
+      `${file}: no rules in it. You passed --label-by-workspace to narrow something, and an empty file would silently narrow nothing.`,
     written: (file) => `Wrote ${file}.`,
   },
 
