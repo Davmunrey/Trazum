@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 
+import { SPAWN_ENV } from './env.mjs';
+
 /**
  * One door, and what it refuses to open.
  *
@@ -17,8 +19,11 @@ import { describe, it } from 'node:test';
 
 const CLI = new URL('../dist/index.js', import.meta.url).pathname;
 
+/* Under the pinned environment every spawn here uses, so the English these
+   assertions read is the English the process writes, whatever the machine's
+   own locale says. */
 const run = (args) =>
-  spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8', timeout: 60000 });
+  spawnSync(process.execPath, [CLI, ...args], { encoding: 'utf8', env: SPAWN_ENV, timeout: 60000 });
 
 function mixed() {
   const dir = mkdtempSync(join(tmpdir(), 'trazum-bill-'));
