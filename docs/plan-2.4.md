@@ -106,12 +106,18 @@ Each of these is a state that was checked, not hoped. What was found:
 
 ## 4. A reason to come back
 
-A tool that prices a log once is a tool that is run once. The spend gate in
-the GitHub Action already exists; what it lacks is a **schedule**: a cron
-recipe that posts this week's bill and its gaps as an issue comment, and a
-badge that shows the month's standing. That is the loop the Pro product
-closes for organisations, and the open one should close it for a single
-repository so the upgrade is a step and not a leap.
+A tool that prices a log once is a tool that is run once. Most of the loop
+already existed before this plan and was not the problem: `connect` pulls,
+`watch --once` judges, `pulse` notices when the scheduler itself stopped, and
+`docs/running.md` carries the cron, systemd, Actions and Task Scheduler
+recipes for all of it. What was missing was the recipe a repository with
+logs in it needs and nothing else: **the week's bill, every Monday**, as the
+packaged spend gate on a schedule with the window computed by the job. It is
+in `docs/running.md` now. What it deliberately does not do is post a comment:
+the Action's comment needs a pull request and a cron has none, so the report
+goes to the run summary and a crossing is the exit code, which is the
+alerting nobody has to build. A badge for the month's standing stays unbuilt
+here; that is the loop the Pro product closes for organisations.
 
 ## 5. Measured, not hoped
 

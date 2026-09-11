@@ -22,6 +22,15 @@ somebody noticed is the kind of tidy history this file exists to refuse.
 
 ### Added
 
+- **The week's bill, every Monday: a recipe in `docs/running.md`.** Plan 2.4's
+  fourth move, cut down to what was actually missing once the existing loop
+  (`connect`, `watch --once`, `pulse`, and the four scheduler recipes) was
+  read rather than assumed absent: the packaged spend gate on a cron, with
+  `since` computed by the job so a budget with no period assumed is a weekly
+  one, and the report in the run summary because the Action's comment needs a
+  pull request and a cron has none. The plan's section 4 is rewritten to say
+  so.
+
 - **The README tells every MCP client how to install, not only Claude Code.**
   It said two lines for Claude Code and "over stdio does the same" for
   everyone else. It now carries the `mcpServers` JSON that Cursor, Windsurf
