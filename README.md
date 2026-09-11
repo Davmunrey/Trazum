@@ -41,8 +41,23 @@ claude plugin marketplace add Davmunrey/Trazum
 claude plugin install trazum@trazum
 ```
 
-That one line brings the skill and the MCP server. For any other MCP client,
-`npx -y @trazum/mcp` over stdio does the same.
+That one line brings the skill and the MCP server. Every other MCP client
+reads the same `mcpServers` JSON, so Cursor (`.cursor/mcp.json`), Windsurf,
+Claude Desktop and the rest are one paste:
+
+```json
+{ "mcpServers": { "trazum": { "command": "npx", "args": ["-y", "@trazum/mcp"] } } }
+```
+
+The server is listed on the [official MCP registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.Davmunrey/trazum)
+as `io.github.Davmunrey/trazum`, and every release updates the listing.
+
+And with nothing installed at all, one command reads whatever usage you have
+and prices it:
+
+```bash
+npx @trazum/cli bill ~/.claude/projects
+```
 
 **[Or run it right now, without installing anything: the Playground](https://trazum.vercel.app/?tab=playground)**
 

@@ -22,6 +22,17 @@ somebody noticed is the kind of tidy history this file exists to refuse.
 
 ### Added
 
+- **The README tells every MCP client how to install, not only Claude Code.**
+  It said two lines for Claude Code and "over stdio does the same" for
+  everyone else. It now carries the `mcpServers` JSON that Cursor, Windsurf
+  and Claude Desktop all read, the registry listing it is published under,
+  and the `npx @trazum/cli bill` line that works with nothing installed.
+  `docs/plan-2.4.md` section 3 is rewritten from what was checked: the MCP
+  registry already serves 2.3.0 as latest and `release.yml` has updated the
+  listing on every release since 1.80.2, so that row needed nothing; the
+  Marketplace listing and the Hugging Face Space are named as unchecked and
+  blocked respectively rather than assumed.
+
 - **`docs/plan-2.4.md`: one door, and where the spend is.** The first plan
   here that starts from a number rather than a feature: about two hundred
   downloads a month behind forty-nine commands. Three causes and a fix for
