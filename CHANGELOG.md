@@ -22,6 +22,35 @@ somebody noticed is the kind of tidy history this file exists to refuse.
 
 ### Added
 
+- **`trazum from-openai`, the 49th command: the other provider's usage report,
+  read as a log.** The same door as `from-anthropic` and the same arrangement:
+  the operator's `curl`, the operator's admin key, and a command that reads
+  only what came back, so Trazum still holds no provider credential. Every
+  field is from the published OpenAPI schema of
+  `GET /v1/organization/usage/completions`, and the schema's own example is
+  the fixture, because its numbers are an identity the converter leans on
+  (`input_tokens` = uncached + cached + cache-write, each the sum of its text,
+  audio and image parts). Three things it does that the Anthropic one does
+  not need to. The record is written in the **Chat Completions shape** —
+  `prompt_tokens` with the cached half inside it — because that is how this
+  report counts, and a record in the Anthropic shape would charge the cached
+  half twice; a test parses a converted record back to prove the split.
+  **Audio and image tokens are never priced at a text rate**: a row carrying
+  any is reduced to its text part through the schema's own split and the rest
+  is a named gap, with cache-write tokens on such a row left out too because
+  the schema gives them no modality. And since the schema does not enumerate
+  service tiers, any tier but `default` is left out and **named** rather than
+  counted. `batch: true` rows are refused like Anthropic's batch tier;
+  `--label-by-project` mirrors `--label-by-workspace`, exact match, with no
+  `null` case because every OpenAI request belongs to a project with an id.
+  `reconcile` now reads **OpenAI's cost report** too, told apart by shape:
+  its `amount.value` is dollars where Anthropic's is cents, so nothing is
+  divided, and its `quantity_unit` separates what no token rate covers while
+  the report's silence on batch is said out loud rather than papered over.
+  `packages/core/test/openai-usage.test.js` (18 tests) and
+  `openai-cost.test.js` (14 tests); the core's `reconcile` now takes a
+  provider-neutral `BilledReading`.
+
 - **`trazum from-anthropic`, the 47th command, and the surface was frozen at
   46.** `plan-1.83-2.0.md` says so and stays as written: the freeze was real
   and this is the decision to leave it, recorded rather than slipped in. What

@@ -243,6 +243,47 @@ function workspace() {
     }),
   );
   write(
+    'openai-usage.json',
+    JSON.stringify({
+      object: 'page',
+      data: [
+        {
+          object: 'bucket',
+          start_time: Math.floor(Date.parse(day(7, 1)) / 1000),
+          end_time: Math.floor(Date.parse(day(7, 2)) / 1000),
+          results: [
+            {
+              object: 'organization.usage.completions.result',
+              input_tokens: 9000,
+              input_cached_tokens: 0,
+              input_cache_write_tokens: 0,
+              input_uncached_tokens: 9000,
+              output_tokens: 400,
+              input_text_tokens: 9000,
+              output_text_tokens: 400,
+              input_cached_text_tokens: 0,
+              input_audio_tokens: 0,
+              input_cached_audio_tokens: 0,
+              output_audio_tokens: 0,
+              input_image_tokens: 0,
+              input_cached_image_tokens: 0,
+              output_image_tokens: 0,
+              num_model_requests: 3,
+              project_id: null,
+              user_id: null,
+              api_key_id: null,
+              model: 'gpt-4o-mini-2024-07-18',
+              batch: false,
+              service_tier: 'default',
+            },
+          ],
+        },
+      ],
+      has_more: false,
+      next_page: null,
+    }),
+  );
+  write(
     'anthropic-usage.json',
     JSON.stringify({
       data: [
@@ -374,6 +415,7 @@ const INVOCATION = {
   'from-otel': ['spans.json', '-o', 'c2.jsonl'],
   'from-litellm': ['litellm.json', '-o', 'c3.jsonl'],
   'from-anthropic': ['anthropic-usage.json', '--label', 'billing', '-o', 'c6.jsonl'],
+  'from-openai': ['openai-usage.json', '--label', 'billing', '-o', 'c7.jsonl'],
   reconcile: ['a-receipt.json', '--against', 'anthropic-cost.json', '-o', 'r1.json'],
   'from-helicone': ['helicone.json', '-o', 'c4.jsonl'],
   'from-langsmith': ['langsmith.json', '-o', 'c5.jsonl'],

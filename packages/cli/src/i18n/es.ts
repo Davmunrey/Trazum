@@ -51,6 +51,7 @@ ${bold('USO')}
   trazum from-otel <fichero|dir> [--label-from-service] [-o <fichero>]
   trazum from-litellm <fichero|dir> [-o <fichero>]
   trazum from-anthropic <usage.json> [--label <name>] [--label-by-workspace <file>] [-o <file>]
+  trazum from-openai <usage.json> [--label <name>] [--label-by-project <file>] [-o <file>]
   trazum reconcile <receipt.json> --against <cost.json> [-o <file>]
   trazum from-helicone <fichero|dir> [-o <fichero>]
   trazum from-langsmith <fichero|dir> [-o <fichero>]
@@ -200,17 +201,21 @@ ${bold('OPCIONES DE ownrate')}
   fila de primera en cada informe, tasado por ti y marcado como tal.
 
 ${bold('OPCIONES DE reconcile')}
-  --against <archivo>         El informe de costes del proveedor, de
-                              GET /v1/organizations/cost_report.
+  --against <archivo>         El informe de costes del proveedor: el
+                              GET /v1/organizations/cost_report de Anthropic o
+                              el GET /v1/organization/costs de OpenAI, que se
+                              distinguen por su forma.
   -o, --out <archivo>         Escribe la comparacion ahi en vez de en stdout.
 
   Lo que Trazum calculo junto a lo que el proveedor facturo, nunca sumado:
   dos tablas de precios en una sola cifra es como un informe se vuelve
-  silenciosamente falso. Descarga el informe con group_by[]=description y la
-  diferencia queda atribuida - lo que ninguna tarifa por token cubre, lo que
-  fue batch - dejando un resto que es la unica cifra que merece discusion. Las
-  ventanas deben coincidir o no se compara nada, y una moneda sin tipo de
-  cambio se rechaza en vez de convertirse.
+  silenciosamente falso. Descarga el de Anthropic con group_by[]=description
+  y el de OpenAI con group_by[]=line_item, y la diferencia queda atribuida -
+  lo que ninguna tarifa por token cubre, y en Anthropic lo que fue batch -
+  dejando un resto que es la unica cifra que merece discusion. El informe de
+  OpenAI nunca nombra batch, asi que ahi se queda dentro del resto y la
+  ejecucion lo dice. Las ventanas deben coincidir o no se compara nada, y una
+  moneda sin tipo de cambio se rechaza en vez de convertirse.
 
 ${bold('OPCIONES DE from-anthropic')}
   --label <nombre>            El proyecto al que pertenece este uso. El
@@ -224,6 +229,23 @@ ${bold('OPCIONES DE from-anthropic')}
   descuento y cobrarlo a tarifa de catalogo inflaria la factura. Las filas de
   cualquier otro tramo se quedan fuera y se cuentan, las busquedas web se
   cuentan y nunca se cobran por token, y has_more avisa de que falta pagina.
+
+${bold('OPCIONES DE from-openai')}
+  --label <nombre>            El proyecto al que pertenece este uso. El
+                              proveedor no conoce tus nombres de proyecto.
+  --label-by-project <archivo> Una etiqueta por id de proyecto, como array JSON
+                              de {"project": "proj_…", "label": "nombre"}.
+                              Coincidencia exacta; --label es el respaldo.
+  -o, --out <archivo>         Escribe el log de uso ahi en vez de en stdout.
+
+  El informe de uso de OpenAI, leido como log, con el mismo arreglo que
+  from-anthropic: tu curl, tu clave de admin, y esto lee la respuesta. Pide
+  group_by[]=model, porque una fila sin modelo no se puede cobrar, y
+  group_by[]=batch, porque un trabajo por lotes se factura con descuento y
+  cobrarlo a tarifa de catalogo inflaria la factura. Cualquier tramo de
+  servicio que no sea default se queda fuera y se nombra. Los tokens de audio
+  e imagen nunca se cobran a tarifa de texto: una fila que los trae se reduce
+  a su parte de texto y el resto se cuenta donde puedas verlo.
 
 ${bold('OPCIONES DE from-helicone')}
   -o, --out <fichero>         Escribe el log de uso ahí en vez de en stdout.
@@ -1851,13 +1873,14 @@ ${bold('EJEMPLOS')}
   reconcile: {
     noReceipt: () =>
       'reconcile necesita un recibo y un informe de costes: trazum reconcile receipt.json --against cost.json',
-    noReport: () => 'reconcile necesita --against <informe de costes>, el JSON de GET /v1/organizations/cost_report.',
+    noReport: () =>
+      'reconcile necesita --against <informe de costes>: el JSON del GET /v1/organizations/cost_report de Anthropic o del GET /v1/organization/costs de OpenAI.',
     receiptUnreadable: (file) => `${file}: no se puede leer como JSON.`,
     notAReceipt: (file) =>
       `${file}: no es un recibo. Necesita total.usd y span.fromMs/toMs, que es lo que escribe «trazum receipt».`,
     reportUnreadable: (file) => `${file}: no encontrado.`,
     notAReport: (file) =>
-      `${file}: no es el JSON que devuelve GET /v1/organizations/cost_report. Pasa el cuerpo de la respuesta entero.`,
+      `${file}: no es el JSON que devuelve un endpoint de costes, ni el de Anthropic ni el de OpenAI. Pasa el cuerpo de la respuesta entero.`,
     summary: (computed, billed, difference) =>
       `Trazum calculo $${computed.toFixed(2)}; el proveedor facturo $${billed.toFixed(2)}. Diferencia: $${difference.toFixed(2)}.`,
     notTokens: (usd) =>
@@ -1868,6 +1891,12 @@ ${bold('EJEMPLOS')}
       `Quedan $${usd.toFixed(2)}, y es la unica cifra aqui que merece discusion: los mismos tokens estandar cobrados de dos maneras, o uso que tu log nunca vio. Si es negativa, Trazum cobro mas de lo que te facturaron, que es una tarifa desactualizada en la direccion que te cuesta dinero.`,
     notAttributable: () =>
       'La diferencia no se puede atribuir: este informe no se agrupo por descripcion, asi que ninguna fila dice si fue tokens, una busqueda web o un batch. Anade group_by[]=description.',
+    notAttributableByLineItem: () =>
+      'La diferencia no se puede atribuir: este informe no se agrupo por line item, asi que ninguna fila dice a que fue el dinero. Anade group_by[]=line_item.',
+    batchNotSeparable: () =>
+      'Este informe nunca dice si una linea fue un trabajo por lotes, asi que el descuento de batch, si lo hay, esta dentro de ese resto y no fuera de el.',
+    unknownUnit: (usd) =>
+      `$${usd.toFixed(2)} del resto esta en line items cuya unidad es null: el informe dice que ninguna unidad aplica, asi que ni se cuenta como tokens ni como lo contrario. Se nombra aqui para que el resto no descanse sobre una unidad que nadie declaro.`,
     windowNotCovered: (fromComputed, toComputed, fromBilled, toBilled) =>
       `No son la misma ventana. El recibo cubre de ${fromComputed} a ${toComputed}; el informe cubre de ${fromBilled} a ${toBilled}. Un recibo comparado con una factura de otros dias es una cifra equivocada bajo un titulo correcto, asi que no se comparo nada.`,
     noBilledWindow: () => 'El informe de costes no tiene intervalos, asi que no hay ventana contra la que comparar.',
@@ -1909,6 +1938,44 @@ ${bold('EJEMPLOS')}
       `${file}: la entrada ${at} no es una regla. Cada una necesita "label" y "workspace", que puede ser null para el workspace por defecto pero no puede faltar: un campo que falta es una errata y null es una decision.`,
     rulesEmpty: (file) =>
       `${file}: no hay reglas dentro. Pasaste --label-by-workspace para repartir algo, y un archivo vacio repartiria nada en silencio.`,
+    written: (file) => `Escrito ${file}.`,
+  },
+
+  fromOpenai: {
+    noPath: () =>
+      'from-openai necesita el informe de uso que produjo tu propio curl: trazum from-openai usage.json --label facturacion',
+    notFound: (path) => `${path}: no encontrado`,
+    summary: (buckets, rows, requests) =>
+      `${buckets} intervalo(s), ${rows} fila(s) de uso leida(s), que cubren ${requests} peticion(es).`,
+    unnamedModel: (count) =>
+      `${count} fila(s) no nombraron modelo y no estan en la salida: el informe no se agrupo por modelo, asi que nada en la fila dice que respondio. Anade group_by[]=model a la peticion.`,
+    batch: (count) =>
+      `${count} fila(s) eran trabajos por lotes y no estan en la salida: batch se factura con descuento, y cobrarlo a tarifa de catalogo inflaria la factura y pareceria correcto.`,
+    batchUnknown: () =>
+      'El informe nunca dijo si algo fue batch, asi que una fila por lotes y una estandar son indistinguibles aqui. Todo se leyo como estandar. Anade group_by[]=batch si parte de este uso va por lotes.',
+    nonDefaultTier: (count, tiers) =>
+      `${count} fila(s) estaban en un tramo de servicio para el que una tarifa de catalogo no es la tarifa (${tiers}) y no estan en la salida. El esquema no lista los tramos, asi que se nombran en vez de adivinarse.`,
+    tierUnknown: () =>
+      'El informe no nombro ningun tramo de servicio. Todo se leyo como el tramo por defecto. Anade group_by[]=service_tier si parte de este uso corre en otro.',
+    mixed: (rows, tokens, cacheWrites) =>
+      `${rows} fila(s) traian tokens de audio o imagen, para los que una tarifa de texto no es la tarifa. Cada una se redujo a su parte de texto; ${tokens} token(s) de audio e imagen no estan en ninguna linea de la salida${cacheWrites > 0 ? `, y ${cacheWrites} token(s) de escritura de cache de esas filas se quedaron fuera tambien, porque el informe no les da modalidad` : ''}.`,
+    unsplit: (count) =>
+      `${count} fila(s) traian tokens de audio o imagen y ningun desglose de texto por el que reducirlas, y no estan en la salida. Cobrarlas a tarifa de texto seria adivinar.`,
+    truncated: () =>
+      'El informe dice has_more: true. Esto es una pagina de varias y una factura hecha con ella se queda corta. Sigue next_page hasta que has_more sea false, y convierte cada pagina.',
+    unparseable: () =>
+      'Eso no es el JSON que devuelve GET /v1/organization/usage/completions. Pasa el cuerpo de la respuesta entero, no un campo suyo.',
+    labelledByProject: (count) => `${count} fila(s) tomaron su etiqueta del mapeo de proyectos.`,
+    unruledProject: (count) =>
+      `${count} fila(s) traian un proyecto que ninguna regla nombra. Conservan --label si lo diste y quedan sin atribuir si no: un proyecto para el que nadie escribio una regla esta mejor sin atribuir que atribuido al vecino.`,
+    projectNotGrouped: () =>
+      'Diste un mapeo de proyectos y ninguna fila traia id de proyecto, asi que el reparto que pediste no se hizo. Anade group_by[]=project_id.',
+    rulesUnreadable: (file) =>
+      `${file}: no se puede leer como mapeo de proyectos. Es un array JSON de {"project": "proj_…", "label": "nombre"}.`,
+    ruleBad: (file, at) =>
+      `${file}: la entrada ${at} no es una regla. Cada una necesita un id en "project" y una "label", ambos cadenas no vacias.`,
+    rulesEmpty: (file) =>
+      `${file}: no hay reglas dentro. Pasaste --label-by-project para repartir algo, y un archivo vacio repartiria nada en silencio.`,
     written: (file) => `Escrito ${file}.`,
   },
 

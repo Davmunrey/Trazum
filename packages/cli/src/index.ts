@@ -115,12 +115,16 @@ import {
   claudeCodeRecords,
   type CwdLabel,
   type WorkspaceLabel,
+  type ProjectLabel,
   ESTIMATE_ERROR_BAND_PCT,
   bandFor,
   foreignTokenizer,
   measuredForeignError,
   anthropicCostReport,
   anthropicUsageRecords,
+  looksLikeOpenaiCost,
+  openaiCostReport,
+  openaiUsageRecords,
   reconcile,
   heliconeRecords,
   langsmithRecords,
@@ -304,6 +308,7 @@ const VALUE_FLAGS = new Set([
   'answers',
   'label-by-cwd',
   'label-by-workspace',
+  'label-by-project',
   'against',
   'calls',
   'files-from',
@@ -705,6 +710,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   'from-litellm': ['out', 'o'],
   reconcile: ['against', 'out', 'o'],
   'from-anthropic': ['label', 'label-by-workspace', 'out', 'o'],
+  'from-openai': ['label', 'label-by-project', 'out', 'o'],
   'from-helicone': ['out', 'o'],
   'from-langsmith': ['out', 'o'],
   switch: ['to', 'migration-usd', 'cases'],
@@ -2715,6 +2721,44 @@ async function workspaceRulesFrom(
   return rules;
 }
 
+/**
+ * The project mapping `from-openai` labels by, under the same refusals as
+ * the workspace one. `project` may not be `null` here: every OpenAI request
+ * belongs to a project with an id, so there is no default named by absence
+ * and a `null` would be a rule for nothing.
+ */
+async function projectRulesFrom(
+  file: string | undefined,
+  t: CliMessages,
+): Promise<ProjectLabel[] | undefined> {
+  if (file === undefined) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(await readFile(file, 'utf8'));
+  } catch {
+    throw new Error(t.fromOpenai.rulesUnreadable(file));
+  }
+  if (!Array.isArray(parsed)) throw new Error(t.fromOpenai.rulesUnreadable(file));
+
+  const rules: ProjectLabel[] = [];
+  for (const [at, entry] of parsed.entries()) {
+    const rule = entry as Record<string, unknown> | null;
+    if (
+      typeof rule !== 'object'
+      || rule === null
+      || typeof rule.project !== 'string'
+      || rule.project === ''
+      || typeof rule.label !== 'string'
+      || rule.label === ''
+    ) {
+      throw new Error(t.fromOpenai.ruleBad(file, at));
+    }
+    rules.push({ project: rule.project, label: rule.label });
+  }
+  if (rules.length === 0) throw new Error(t.fromOpenai.rulesEmpty(file));
+  return rules;
+}
+
 async function cwdRulesFrom(
   file: string | undefined,
   t: CliMessages,
@@ -3124,7 +3168,10 @@ async function commandReconcile(args: Args, t: CliMessages): Promise<void> {
   } catch {
     throw new Error(t.reconcile.reportUnreadable(against));
   }
-  const billed = anthropicCostReport(billedText);
+  /* Which provider's report this is, told from the text itself: OpenAI's
+     buckets carry a numeric `start_time`, Anthropic's a `starting_at`. */
+  const openai = looksLikeOpenaiCost(billedText) ? openaiCostReport(billedText) : null;
+  const billed = openai ?? anthropicCostReport(billedText);
   if (billed.unparseable) throw new Error(t.reconcile.notAReport(against));
 
   const answer = reconcile({ usd, fromMs, toMs }, billed);
@@ -3162,8 +3209,12 @@ async function commandReconcile(args: Args, t: CliMessages): Promise<void> {
     if (answer.notTokensUsd !== 0) console.error(t.reconcile.notTokens(answer.notTokensUsd));
     if (answer.batchUsd !== 0) console.error(t.reconcile.batch(answer.batchUsd));
     console.error(t.reconcile.remainder(answer.remainderUsd));
+    if (!answer.batchSeparable) console.error(t.reconcile.batchNotSeparable());
+    if (openai !== null && openai.unknownUnitUsd !== 0) {
+      console.error(t.reconcile.unknownUnit(openai.unknownUnitUsd));
+    }
   } else {
-    console.error(t.reconcile.notAttributable());
+    console.error(openai === null ? t.reconcile.notAttributable() : t.reconcile.notAttributableByLineItem());
   }
   if (billed.truncated) console.error(t.reconcile.truncated());
   if (billed.unreadableAmount > 0) console.error(t.reconcile.unreadableAmount(billed.unreadableAmount));
@@ -3648,6 +3699,62 @@ async function commandFromAnthropic(args: Args, t: CliMessages): Promise<void> {
   }
   if (conversion.workspaceNotGrouped) console.error(t.fromAnthropic.workspaceNotGrouped());
   if (conversion.truncated) console.error(t.fromAnthropic.truncated());
+}
+
+/**
+ * `from-openai`: the other provider's usage report, under the same
+ * arrangement as `from-anthropic` — the operator's curl, the operator's
+ * admin key, and this command reading only what came back. What differs is
+ * in `openai-usage.ts`: the record is written in the Chat Completions shape
+ * because that is how this report counts, and audio and image tokens are
+ * set aside rather than priced at a text rate.
+ */
+async function commandFromOpenai(args: Args, t: CliMessages): Promise<void> {
+  const target = args.positional[0];
+  if (target === undefined) throw new Error(t.fromOpenai.noPath());
+
+  let text: string;
+  try {
+    text = await readFile(target, 'utf8');
+  } catch {
+    throw new Error(t.fromOpenai.notFound(target));
+  }
+
+  const label = stringFlag(args, 'label');
+  const byProject = await projectRulesFrom(stringFlag(args, 'label-by-project'), t);
+  const conversion = openaiUsageRecords(text, {
+    ...(label === undefined ? {} : { label }),
+    ...(byProject === undefined ? {} : { labelByProject: byProject }),
+  });
+  if (conversion.unparseable > 0) throw new Error(t.fromOpenai.unparseable());
+
+  const lines = conversion.records.map((record) => JSON.stringify(record));
+  const out = stringFlag(args, 'out') ?? stringFlag(args, 'o');
+  if (out !== undefined) {
+    await writeFile(out, lines.join('\n') + (lines.length > 0 ? '\n' : ''), 'utf8');
+    console.error(t.fromOpenai.written(out));
+  } else if (lines.length > 0) {
+    console.log(lines.join('\n'));
+  }
+
+  /* Refusals on stderr, in the order somebody acts in: what was read, what
+     was left out and why, what to ask the endpoint for next time. */
+  console.error(t.fromOpenai.summary(conversion.buckets, conversion.rows, conversion.requests));
+  if (conversion.unnamedModel > 0) console.error(t.fromOpenai.unnamedModel(conversion.unnamedModel));
+  if (conversion.batch > 0) console.error(t.fromOpenai.batch(conversion.batch));
+  if (!conversion.batchNamed && conversion.rows > 0) console.error(t.fromOpenai.batchUnknown());
+  if (conversion.nonDefaultTier > 0) {
+    console.error(t.fromOpenai.nonDefaultTier(conversion.nonDefaultTier, conversion.tiersRefused.join(', ')));
+  }
+  if (!conversion.tierNamed && conversion.rows > 0) console.error(t.fromOpenai.tierUnknown());
+  if (conversion.mixedRows > 0) {
+    console.error(t.fromOpenai.mixed(conversion.mixedRows, conversion.nonTextTokens, conversion.cacheWriteUnplaced));
+  }
+  if (conversion.unsplitRows > 0) console.error(t.fromOpenai.unsplit(conversion.unsplitRows));
+  if (conversion.labelledByProject > 0) console.error(t.fromOpenai.labelledByProject(conversion.labelledByProject));
+  if (conversion.unruledProject > 0) console.error(t.fromOpenai.unruledProject(conversion.unruledProject));
+  if (conversion.projectNotGrouped) console.error(t.fromOpenai.projectNotGrouped());
+  if (conversion.truncated) console.error(t.fromOpenai.truncated());
 }
 
 async function commandFromHelicone(args: Args, t: CliMessages): Promise<void> {
@@ -12816,6 +12923,9 @@ async function main(): Promise<void> {
       break;
     case 'from-anthropic':
       await commandFromAnthropic(args, t);
+      break;
+    case 'from-openai':
+      await commandFromOpenai(args, t);
       break;
     case 'from-helicone':
       await commandFromHelicone(args, t);

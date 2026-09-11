@@ -2734,6 +2734,28 @@ inventing one is what this product exists not to do. And an `amount` that is
 not a number is counted rather than read as zero, since a zero quietly shrinks
 a bill.
 
+**OpenAI's cost report works too, told apart by shape.** Its buckets carry a
+numeric `start_time` where Anthropic's carry `starting_at`, and the command
+reads whichever it was handed:
+
+```bash
+curl "https://api.openai.com/v1/organization/costs?\
+start_time=1756684800&end_time=1759276800&limit=31&group_by[]=line_item" \
+  -H "Authorization: Bearer $OPENAI_ADMIN_KEY" > costs.json
+
+trazum reconcile receipt.json --against costs.json
+```
+
+Two things differ and both are said. The unit is the *other* trap: OpenAI's
+`amount` is `{"value": 0.06, "currency": "usd"}` and `value` is dollars, so
+nothing is divided — the schema's own example is the test. And the
+decomposition is thinner, because the schema names no batch: with
+`group_by[]=line_item` each row carries a `quantity_unit`, so money measured in
+`duration_seconds`, `images`, `characters` or `gibibyte_hours` is set aside as
+what no token rate covers, but a batch discount, if any, stays inside the
+remainder and the run says so. A line item whose unit is `null` is counted
+under its own name rather than guessed either way.
+
 ### What the provider itself says: `trazum from-anthropic`
 
 The first converter that reads a **provider** rather than a tool sitting in
@@ -2810,6 +2832,66 @@ either way would put money on a label nobody chose.
 **The instant is the bucket's.** There are no calls in this report: a bucket is
 an interval and its usage is a sum over it, so a day's usage lands at that
 day's start. Ask for `bucket_width=1h` if you want it finer.
+
+### What OpenAI says: `trazum from-openai`
+
+The same door as `from-anthropic`, for the other provider, under the same
+arrangement: your `curl`, your admin key, and this reads what came back.
+Trazum holds no provider credential and this command is a pure function of
+text, tested without a network against the endpoint's own published example.
+
+```bash
+# Unix seconds, per the schema. This is September 2026, one day per bucket.
+curl "https://api.openai.com/v1/organization/usage/completions?\
+start_time=1756684800&end_time=1759276800&bucket_width=1d&limit=31&\
+group_by[]=model&group_by[]=batch&group_by[]=service_tier" \
+  -H "Authorization: Bearer $OPENAI_ADMIN_KEY" > usage.json
+
+trazum from-openai usage.json --label billing -o usage.jsonl
+trazum receipt usage.jsonl > receipt.json
+```
+
+**The record is the OpenAI shape, because that is how this report counts.**
+The schema says `input_tokens` *includes cached and cache-write tokens*. That
+is the Chat Completions convention — `prompt_tokens` with the cached half
+inside it and `prompt_tokens_details.cached_tokens` saying how much — and the
+parser already subtracts through exactly that pair. So the record is written
+with those names. Written as Anthropic's `input_tokens` it would charge the
+cached half twice, on the largest line, and a test parses a converted record
+back to prove it does not.
+
+**Ask for three groupings.** `group_by[]=model`, or a row says nothing about
+what answered and cannot be priced. `group_by[]=batch`, because a batch job is
+billed at a discount and priced from a catalogue rate it overstates the bill
+while looking right. `group_by[]=service_tier`, because the schema does not
+enumerate the tiers and this does not either: any tier but `default` is left
+out and **named** in the summary, so you see `flex` or `priority` rather than
+a count of something unnamed. Without a grouping the run says the question was
+never asked, rather than letting you assume it was answered.
+
+**Audio and image tokens are never priced at a text rate.** `input_tokens`
+folds text, audio and image together, and the report's own split —
+`input_text_tokens`, `input_cached_text_tokens`, `output_text_tokens` — is
+how a row carrying any of them is reduced to its text part. The audio and
+image tokens become a named gap in no line of the output. Cache-write tokens
+carry no modality in the schema, so on such a row they are left out too and
+counted, rather than guessed text; a mixed row in a report without the split
+is refused whole. A text-only row is priced whole, cache writes included at
+the input rate the report itself files them under.
+
+**The label is yours, and one per project if you write it.** `user_id` and
+`api_key_id` are read by nothing — a fixture plants a marker in each and greps
+the output. `--label-by-project rules.json` takes a JSON array of
+`{"project": "proj_…", "label": "name"}`, matched exactly, falling back to
+`--label` for a project no rule names. Unlike a workspace, a `null` project
+means one thing only — the report was not grouped by project — because every
+OpenAI request belongs to a project with an id, so there is no default named
+by absence and nothing to derive.
+
+**The clock is Unix seconds, and the instant is the bucket's.** `start_time`
+is converted once; a converter that read it as milliseconds would date every
+row in 1970. A bucket is an interval, so a day's usage lands at that day's
+start; ask for `bucket_width=1h` for finer.
 
 ### When does the switch pay: `trazum switch`
 

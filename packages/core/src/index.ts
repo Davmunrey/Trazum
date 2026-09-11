@@ -225,7 +225,11 @@ export type { OtelConversion, OtelRecord } from './otel.js';
 export { litellmRecords, looksLikeLiteLlm } from './litellm.js';
 export type { LiteLlmConversion, LiteLlmRecord } from './litellm.js';
 export { anthropicCostReport, looksLikeAnthropicCost, reconcile } from './anthropic-cost.js';
-export type { AnthropicCostReading, Reconciliation } from './anthropic-cost.js';
+export type { AnthropicCostReading, BilledReading, Reconciliation } from './anthropic-cost.js';
+export { openaiCostReport, looksLikeOpenaiCost } from './openai-cost.js';
+export type { OpenaiCostReading } from './openai-cost.js';
+export { openaiUsageRecords, looksLikeOpenaiUsage } from './openai-usage.js';
+export type { OpenaiUsageConversion, OpenaiUsageRecord, ProjectLabel } from './openai-usage.js';
 export { anthropicUsageRecords, looksLikeAnthropicUsage } from './anthropic-usage.js';
 export type {
   AnthropicUsageConversion,
