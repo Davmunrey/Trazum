@@ -121,7 +121,15 @@ here; that is the loop the Pro product closes for organisations.
 
 ## 5. Measured, not hoped
 
-The number that opened this document is the number that judges it. Weekly
-downloads of `@trazum/cli`, GitHub stars, and registry installs, read at each
-release and written into `RELEASES.md` beside the version, so the next plan
-starts from a figure too.
+The number that opened this document is the number that judges it.
+`scripts/adoption.mjs` reads three public counters — downloads of
+`@trazum/cli` over the last thirty days, GitHub stars, and the MCP registry's
+latest version — and prints the one line `docs/releasing.md` now asks for
+under every new heading in `RELEASES.md`. A counter the network would not
+give is printed as unavailable and never as zero, because a zero is a claim
+about the product and an unavailable is a fact about the run. No credential
+is read or sent; all three endpoints are public.
+
+The figure this plan opened from was read by hand on 2026-09-11 and is not
+written into `RELEASES.md` retroactively: the first line goes under the first
+release cut after this plan, and every one after it.

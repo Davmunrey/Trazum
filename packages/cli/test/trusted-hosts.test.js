@@ -97,6 +97,11 @@ const HOSTS = {
 
   'https://api.github.com': 'tooling, not a model call',
   'https://registry.npmjs.org': 'tooling, not a model call',
+  // Asked once, by `scripts/adoption.mjs`, for the line docs/releasing.md
+  // writes under a version: download counts and the registry's latest
+  // version. Public counters, no credential, never a prompt.
+  'https://api.npmjs.org': 'public data, no credential',
+  'https://registry.modelcontextprotocol.io': 'public data, no credential',
 
   // The JSON Schema dialect identifier inside every schema `trazum schema`
   // prints. An identifier by the spec, never fetched: nothing in this

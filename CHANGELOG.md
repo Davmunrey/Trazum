@@ -22,6 +22,16 @@ somebody noticed is the kind of tidy history this file exists to refuse.
 
 ### Added
 
+- **`scripts/adoption.mjs`: the adoption figures, read at release time.**
+  Plan 2.4's fifth move. Three public counters — npm downloads of
+  `@trazum/cli` over the last thirty days, GitHub stars, the MCP registry's
+  latest version — asked once and printed as the one line `docs/releasing.md`
+  now asks for under every new heading in `RELEASES.md`, so the next plan
+  starts from a figure the way this one did. A counter that could not be read
+  is printed as unavailable and never as zero: a zero says the product has no
+  users, which is a claim, and an unavailable is a fact about the run.
+  `packages/core/test/adoption.test.js` holds that property without a network.
+
 - **The week's bill, every Monday: a recipe in `docs/running.md`.** Plan 2.4's
   fourth move, cut down to what was actually missing once the existing loop
   (`connect`, `watch --once`, `pulse`, and the four scheduler recipes) was
