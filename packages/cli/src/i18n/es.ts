@@ -2027,6 +2027,8 @@ ${bold('EJEMPLOS')}
       `${path}: un informe de costes de proveedor, que es una factura y no uso. Ponlo junto a un recibo con trazum reconcile.`,
     nothingRead: () => 'Nada de esto era una fuente de uso que esta herramienta lea, asi que no hay nada que facturar.',
     sources: (read, seen) => `${read} de ${seen} archivo(s) leido(s) como uso.`,
+    pricingLiveHint: (count) =>
+      `${count} id(s) de modelo sin precio son slugs de OpenRouter, que el catalogo incluido no trae. Vuelve a ejecutar con --pricing-live para cobrarlos desde la propia lista de OpenRouter.`,
     written: (file) => `Escrito ${file}.`,
   },
 

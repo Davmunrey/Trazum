@@ -13,6 +13,13 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+- **`bill` says which flag prices an OpenRouter slug.** When the receipt's
+  unpriced gap holds a model id with a slash in it, which is how OpenRouter
+  names models and which the bundled catalogue does not carry, the run ends
+  by naming `--pricing-live`. Derived from what was refused rather than from
+  which shape the file was, and silent when the flag is already on or nothing
+  unpriced is a slug.
+
 - **The README and the landing page open with the one line that works with
   nothing installed.** `npx @trazum/cli bill ~/.claude/projects` is the first
   section after the badges and sits under the landing hero in all five
