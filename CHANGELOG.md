@@ -13,6 +13,13 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Fixed
 
+- **The packaged Action pin in `README.md` and `docs/running.md` advanced to
+  2.4.0's release commit**, the one `v2.4.0` points at, which is the retry's
+  merge rather than the release pull request's. It moves in the pull request
+  after the release, as `docs/releasing.md` says it must: `security.test.js`
+  asks git which commit the tag names and refuses any other commit that
+  merely declares the version.
+
 - **The release job checks out the whole history, as CI does.** 2.4.0's first
   release run failed in `verify` and published nothing: `changelog-coverage.test.js`
   measures "not yet released" against the newest reachable tag and refuses to
