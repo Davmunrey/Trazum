@@ -98,6 +98,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
+          # The whole history, as CI checks out, because `verify` below is
+          # the same suite CI runs and two of its guards read the tags:
+          # `changelog-coverage.test.js` measures "not yet released" against
+          # the newest tag and refuses to guess when a clone has none. 2.4.0's
+          # first run failed exactly there, on a shallow checkout, having
+          # published nothing — the right red, and the wrong depth.
+          fetch-depth: 0
 
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
         with:
