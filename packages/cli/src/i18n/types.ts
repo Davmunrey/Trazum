@@ -733,6 +733,8 @@ export interface CliMessages {
     costReport(path: string): string;
     nothingRead(): string;
     sources(read: number, seen: number): string;
+    /** An unpriced slug with a slash is OpenRouter's, and --pricing-live prices it. */
+    pricingLiveHint(count: number): string;
     written(file: string): string;
   };
 

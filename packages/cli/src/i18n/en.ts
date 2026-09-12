@@ -2000,6 +2000,8 @@ ${bold('EXAMPLES')}
       `${path}: a provider's cost report, which is a bill rather than usage. Set it beside a receipt with trazum reconcile.`,
     nothingRead: () => 'Nothing here was a usage source this tool reads, so there is nothing to bill.',
     sources: (read, seen) => `${read} of ${seen} file(s) read as usage.`,
+    pricingLiveHint: (count) =>
+      `${count} unpriced model id(s) are OpenRouter slugs, which the bundled catalogue does not carry. Run again with --pricing-live to price them from OpenRouter's own list.`,
     written: (file) => `Wrote ${file}.`,
   },
 

@@ -84,6 +84,15 @@ describe('trazum bill reads a directory of whatever it finds', () => {
        zero: this is where --pricing-live earns its keep. */
     const unpriced = receipt.gaps.find((gap) => gap.kind === 'unpriced');
     assert.deepEqual(unpriced?.models, ['openai/gpt-4.1']);
+    /* And the door says which flag prices a slug, derived from that gap. */
+    assert.match(result.stderr, /--pricing-live/);
+  });
+
+  it('does not hint at --pricing-live when nothing unpriced is a slug', () => {
+    const dir = mixed();
+    const result = run(['bill', join(dir, 'usage.jsonl')]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.doesNotMatch(result.stderr, /--pricing-live/);
   });
 
   it('writes the receipt to stdout when no file is asked for', () => {

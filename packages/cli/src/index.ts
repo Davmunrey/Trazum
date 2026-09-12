@@ -3502,6 +3502,19 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   }
   console.error(t.bill.sources(sources, files.length));
   printReceiptSummary(document, t);
+
+  /*
+    A slug with a slash in it is how OpenRouter names a model, and the bundled
+    catalogue does not carry those: the live overlay does. Said only when the
+    receipt's own unpriced gap holds one, so the hint is derived from what was
+    refused rather than from which shape the file happened to be.
+  */
+  const slugged = document.gaps.flatMap((gap) =>
+    gap.kind === 'unpriced' ? gap.models.filter((model) => model.includes('/')) : [],
+  );
+  if (slugged.length > 0 && !boolFlag(args, 'pricing-live')) {
+    console.error(t.bill.pricingLiveHint(slugged.length));
+  }
 }
 
 /**
