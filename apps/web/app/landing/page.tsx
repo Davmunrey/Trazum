@@ -41,6 +41,8 @@ interface Copy {
   localeName: string;
   heroTitle: string;
   heroLede: string;
+  /** The label over the one command that works with nothing installed. */
+  heroCommandLabel: string;
   ctaDemo: string;
   ctaGitHub: string;
   /** Labels the story column beside the beats; never sits above a heading. */
@@ -85,10 +87,14 @@ const UNREVIEWED_NOTE: Record<MarketingLocale, string> = {
   pt: 'Tradução automática, sem revisão de falante nativo. Encontrou um erro? Abra uma issue no GitHub.',
 };
 
+/** The first line of the README, verbatim: one door, nothing installed. */
+const HERO_COMMAND = 'npx @trazum/cli bill ~/.claude/projects';
+
 const COPY: Record<MarketingLocale, Copy> = {
   en: {
     localeName: 'English',
     heroTitle: 'You know what you spend on LLMs. Trazum tells you where.',
+    heroCommandLabel: 'One line, nothing installed. Point it at whatever usage you have:',
     heroLede:
       'Deterministic prompt optimisation, token budgets in CI, a usage-log profiler that names what would actually move the bill, and spend ceilings enforced before a call is made. Measured, never estimated: every figure ships with its denominator.',
     ctaDemo: 'Open the live demo',
@@ -136,6 +142,7 @@ const COPY: Record<MarketingLocale, Copy> = {
   es: {
     localeName: 'Español',
     heroTitle: 'Sabes lo que gastas en LLMs. Trazum te dice dónde.',
+    heroCommandLabel: 'Una línea, sin instalar nada. Apúntala a cualquier uso que tengas:',
     heroLede:
       'Optimización determinista de prompts, presupuestos de tokens en CI, un perfilador de logs de uso que nombra lo que de verdad movería la factura, y techos de gasto aplicados antes de hacer la llamada. Medido, nunca estimado: cada cifra viaja con su denominador.',
     ctaDemo: 'Abrir la demo',
@@ -183,6 +190,7 @@ const COPY: Record<MarketingLocale, Copy> = {
   fr: {
     localeName: 'Français',
     heroTitle: 'Vous savez ce que vous dépensez en LLM. Trazum vous dit où.',
+    heroCommandLabel: 'Une ligne, rien à installer. Pointez-la vers n\'importe quel usage :',
     heroLede:
       'Optimisation déterministe des prompts, budgets de tokens en CI, un profileur de journaux d’usage qui nomme ce qui ferait vraiment bouger la facture, et des plafonds de dépense appliqués avant même l’appel. Mesuré, jamais estimé : chaque chiffre arrive avec son dénominateur.',
     ctaDemo: 'Ouvrir la démo',
@@ -230,6 +238,7 @@ const COPY: Record<MarketingLocale, Copy> = {
   de: {
     localeName: 'Deutsch',
     heroTitle: 'Sie wissen, was Sie für LLMs ausgeben. Trazum sagt Ihnen, wofür.',
+    heroCommandLabel: 'Eine Zeile, nichts zu installieren. Auf beliebige Nutzungsdaten richten:',
     heroLede:
       'Deterministische Prompt-Optimierung, Token-Budgets in der CI, ein Nutzungsprotokoll-Profiler, der benennt, was die Rechnung wirklich bewegt, und Ausgabengrenzen, die vor dem Aufruf greifen. Gemessen, nie geschätzt: Jede Zahl kommt mit ihrem Nenner.',
     ctaDemo: 'Live-Demo öffnen',
@@ -277,6 +286,7 @@ const COPY: Record<MarketingLocale, Copy> = {
   pt: {
     localeName: 'Português',
     heroTitle: 'Você sabe quanto gasta em LLMs. O Trazum diz onde.',
+    heroCommandLabel: 'Uma linha, nada instalado. Aponte para qualquer uso que você tenha:',
     heroLede:
       'Otimização determinística de prompts, orçamentos de tokens no CI, um analisador de registos de uso que nomeia o que realmente moveria a fatura, e tetos de gasto aplicados antes de fazer a chamada. Medido, nunca estimado: cada número viaja com o seu denominador.',
     ctaDemo: 'Abrir a demo',
@@ -482,6 +492,18 @@ export default function Landing() {
               <p className="mt-6 max-w-[58ch] text-[17px] leading-[1.65] text-muted-foreground">
                 {t.heroLede}
               </p>
+              {/*
+                The one thing that works with nothing configured, shown before
+                either button: plan 2.4's first move. A visitor who copies this
+                line has the product's answer in the time the buttons take to
+                read, and it is the product's own command rather than a claim.
+              */}
+              <p className="mt-7 text-[13px] font-semibold uppercase tracking-[0.06em] text-faint">
+                {t.heroCommandLabel}
+              </p>
+              <pre className="mt-2 max-w-[58ch] overflow-x-auto rounded-lg border bg-layer px-4 py-3 font-mono text-[14px] leading-[1.6]">
+                <code>{HERO_COMMAND}</code>
+              </pre>
               <div className="mt-9 flex flex-wrap items-center gap-3">
                 <Link
                   href="/"

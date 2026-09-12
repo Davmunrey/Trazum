@@ -18,6 +18,19 @@ rarely the biggest.
 
 </div>
 
+## Start here: one line, nothing installed
+
+```bash
+npx @trazum/cli bill ~/.claude/projects
+```
+
+Point it at a file or a folder of whatever usage you have — Claude Code
+transcripts, OpenTelemetry spans, a LiteLLM, Helicone or LangSmith export, an
+Anthropic, OpenAI or OpenRouter usage report, or a plain usage log — and it
+tells each file's shape from its own text, prices it, and prints the receipt.
+A file it cannot read is named, never guessed at; a model it cannot price is a
+named gap, never a zero. Nothing you point it at leaves your machine.
+
 ## Your agents spend money in a loop. This prices the call before it happens.
 
 One agent costs what it costs. A fleet of them spends in a loop nobody is
@@ -51,13 +64,6 @@ Claude Desktop and the rest are one paste:
 
 The server is listed on the [official MCP registry](https://registry.modelcontextprotocol.io/v0/servers?search=io.github.Davmunrey/trazum)
 as `io.github.Davmunrey/trazum`, and every release updates the listing.
-
-And with nothing installed at all, one command reads whatever usage you have
-and prices it:
-
-```bash
-npx @trazum/cli bill ~/.claude/projects
-```
 
 **[Or run it right now, without installing anything: the Playground](https://trazum.vercel.app/?tab=playground)**
 

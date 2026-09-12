@@ -11,6 +11,14 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Changed
+
+- **The README and the landing page open with the one line that works with
+  nothing installed.** `npx @trazum/cli bill ~/.claude/projects` is the first
+  section after the badges and sits under the landing hero in all five
+  locales, before either button. Plan 2.4's first move said this line was the
+  landing-page demo, and until now it was the fourth thing on the page.
+
 ### Fixed
 
 - **The packaged Action pin in `README.md` and `docs/running.md` advanced to
