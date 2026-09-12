@@ -11,6 +11,17 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+- **The release job checks out the whole history, as CI does.** 2.4.0's first
+  release run failed in `verify` and published nothing: `changelog-coverage.test.js`
+  measures "not yet released" against the newest reachable tag and refuses to
+  guess when a clone has none, and the release job's checkout was shallow
+  where CI's is `fetch-depth: 0`. The guard was added after 2.3.0 and this was
+  its first release, so the mismatch had never been exercised. The publish is
+  retried by this merge: the manifests still name a version the registry
+  lacks, which is what the `decide` job looks for.
+
 ## 2.4.0 — One door, and where the spend is
 
 The first release since 2.0.0 that adds commands, and the plan that asked
