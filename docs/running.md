@@ -117,6 +117,38 @@ sixty days, at the time of writing, and check their documentation rather than
 this page for the current number — and it does not tell you it happened. That is
 exactly the failure `pulse` exists for.
 
+**The week's bill, every Monday** — for a repository whose logs are already
+in it (rotated JSONL under `logs/`, or whatever a converter wrote), the
+packaged spend gate on a schedule. `since` is computed by the job, because a
+budget "no period assumed" is only a weekly budget when the window is the
+week; and the report lands in the run summary, which is where a scheduled
+run's report can go — the Action's pull-request comment needs a pull request,
+and a cron has none.
+
+```yaml
+on:
+  schedule:
+    - cron: '0 7 * * 1'
+  workflow_dispatch:
+jobs:
+  bill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - id: week
+        run: echo "since=$(date -u -d '7 days ago' +%F)" >> "$GITHUB_OUTPUT"
+      - uses: Davmunrey/Trazum@2cc44e4ea24f186dd8c9804f153eb271d21c9a6e  # 2.3.0
+        with:
+          usage-log: logs/           # a directory is read in name order as one bill
+          since: ${{ steps.week.outputs.since }}
+          max-usd: '200'             # the week's ceiling; exit 1 over it
+```
+
+A directory of mixed exports — transcripts beside a provider report — is
+`trazum bill logs/` instead, which tells each file's shape and refuses what it
+cannot read by name; the Action's `usage-log` input is the plain-log door and
+takes what `bill` or a `from-*` command wrote.
+
 **Windows Task Scheduler** — same command, same exit code.
 
 ```powershell
