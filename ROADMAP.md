@@ -1184,6 +1184,21 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 2.4.0 — One door, and where the spend is — released
+
+The first release since 2.0.0 that adds commands, and the freeze at 46 is
+lifted on purpose rather than slipped past: [the plan](docs/plan-2.4.md)
+starts from about two hundred downloads a month behind forty-nine commands,
+names three causes and a move for each, and this release carries every move
+that did not need something this repository does not hold. `bill` is one door
+that reads anything the converters read and never guesses a shape.
+`from-openai` and `from-openrouter` read two more providers from their
+published schemas, and `reconcile` sets a receipt beside OpenAI's bill as well
+as Anthropic's. The README tells every MCP client how to install, the weekly
+bill has its cron recipe, and `adoption.mjs` writes the figures beside each
+version so the next plan starts from a number too. Cursor and Hugging Face
+stay named as blocked rather than written from memory.
+
 ## 2.3.0 — The warning that cried wolf — released
 
 Three surfaces decided whether prices were stale from the catalogue's oldest
@@ -2673,10 +2688,18 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 ## Next
 
-**Nothing is planned.** [The 1.83–2.0 plan](docs/plan-1.83-2.0.md) asked a
-different question from every other plan in that directory — not what this
-should do next, but when it is finished — and 2.0.0 is the answer. The surface
-is frozen at 46 commands.
+**Nothing is planned that this repository can deliver alone.** [The 2.4
+plan](docs/plan-2.4.md) was the last thing planned, and 2.4.0 delivered every
+move of it that did not need something held outside this repository. [The
+1.83–2.0 plan](docs/plan-1.83-2.0.md) had asked a different question from
+every other plan in that directory — not what this should do next, but when
+it is finished — and 2.0.0 answered it by freezing the surface at 46
+commands. 2.4.0 lifted that freeze deliberately, from a download count rather
+than a feature wish, and the CLI stands at 51 commands. What remains of the
+2.4 plan waits on things outside this repository: a real Cursor export to
+build a converter against, a Hugging Face token for the Space, and the
+provider keys that would let two orphaned price rows be marked retired from
+the provider's own refusal.
 
 **2.1.0 came after that and this section did not change its mind.** It adds no
 command; it adds two fields to a published format and one function, so that a

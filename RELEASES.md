@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.3.0**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.4.0**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -49,6 +49,94 @@ not the eighth release.
 `RELEASES.md` is checked against the manifests by `publish.test.js`, so a version
 cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
+
+---
+
+## 2.4.0 — One door, and where the spend is
+
+**Adoption, read 2026-09-12:** downloads of @trazum/cli in the last 30 days: unavailable (HTTP 403 from the release environment's proxy), GitHub stars: unavailable (HTTP 403 from the release environment's proxy), MCP registry latest 2.3.0. The first line of its kind; the figure this release was planned from, about 200 downloads a month, was read by hand on 2026-09-11.
+
+**This release starts from a number.** About two hundred downloads a month,
+behind forty-nine commands. That ratio is the finding: the product was deep
+and nobody arrived, and a fiftieth command behind the same door would not have
+changed who walked through it. [The plan](docs/plan-2.4.md) names three causes
+and one move for each, and every move is here.
+
+### One door: `trazum bill <anything>`
+
+```bash
+npx @trazum/cli bill ~/.claude/projects
+```
+
+Reads a file or a directory, tells each file's shape **from its own text** with
+the sniffers the converters already shipped, converts it with the same
+converter the dedicated command uses, prices it, and ends on the receipt
+`receipt` writes. Every refusal a converter makes is made here; what differs is
+the telling: one line per file with its shape, its records and how many rows
+were left out, and the dedicated `from-<shape>` command named as the place that
+says why. A file no shape claims is named and not guessed. A file two shapes
+claim is named as ambiguous and left alone. A provider's cost report is named
+as a bill rather than usage and pointed at `reconcile`. It is the first thing
+that works with nothing configured, and it is the first line of the README now.
+
+### Where the spend is: two more providers, read from their published schemas
+
+**`trazum from-openai`** reads `GET /v1/organization/usage/completions`, and
+`reconcile` reads `GET /v1/organization/costs` beside a receipt. Every field
+is from the published OpenAPI schema, and the schema's own example is the
+fixture. Three things this converter does that the Anthropic one did not need
+to: the record is written in the Chat Completions shape, because
+`input_tokens` includes the cached half in this report and a record in the
+Anthropic shape would charge it twice; audio and image tokens are never priced
+at a text rate, and a row carrying any is reduced to its text part through the
+schema's own split with the rest a named gap; and since the schema does not
+enumerate service tiers, any tier but `default` is left out and *named*. The
+cost report's `amount.value` is dollars where Anthropic's is cents, so nothing
+is divided, and the report's silence on batch is said rather than papered over.
+
+**`trazum from-openrouter`** reads `GET /api/v1/activity`, keyed by the same
+slugs `--pricing-live` already prices hundreds of models from, so the two
+halves Trazum had meet. What OpenRouter charged is summed over every row,
+refused or not, and printed beside Trazum's figure, never merged. Reasoning
+tokens are counted and deliberately not added, because the schema does not say
+whether the completion count already holds them.
+
+**Cursor and Hugging Face are named as blocked, not written from memory.**
+Their documentation hosts were unreachable from the environment this plan was
+built in, and a converter written from a search-engine summary mis-reads
+somebody's bill. Cursor waits for the reference or one real export to build
+the fixture from; Hugging Face's gateway is OpenAI-compatible and should
+already parse, which needs one real response to be asserted.
+
+### Where the people are, and a reason to come back
+
+The README told Claude Code users two lines and everyone else that stdio does
+the same. It now carries the `mcpServers` JSON that Cursor, Windsurf and Claude
+Desktop all read. The MCP registry was checked and needed nothing: it serves
+the latest version and the release workflow has updated it since 1.80.2.
+`docs/running.md` gains the one scheduled recipe a repository with logs in it
+was missing, **the week's bill, every Monday**, as the packaged spend gate on a
+cron with the window computed by the job. And `scripts/adoption.mjs` reads
+three public counters at release time and prints the line at the top of this
+section, with an unreadable counter printed as unavailable and never as zero.
+
+### Two price rows found orphaned
+
+The xAI and Moonshot pages were read on 2026-09-12 and neither lists the id
+this table carries for it. `grok-4` and `kimi-k2` keep their price, because
+calls in somebody's log really happened at it, and are not marked retired,
+because that is recorded from a refusal that needs a key this repository does
+not hold. The newer models are not added: xAI prices at two rates split at
+200k prompt tokens, which this table cannot express, and Kimi's page states no
+context window. `trazum models` says so in each row's notes.
+
+### Also in this release
+
+Everything merged since 2.3.0 and recorded in the changelog: `from-anthropic`
+with `--label-by-workspace`, `reconcile` against Anthropic's cost report,
+`--label-by-cwd` on `from-claude-code`, the generated wiki, the sign-off hook,
+the `next` security bump, and the guard that now fails when a merge leaves
+the changelog empty. The CLI goes from 46 commands at 2.0.0 to 51.
 
 ---
 

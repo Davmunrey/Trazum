@@ -107,6 +107,19 @@ describe('every merge is in the changelog', () => {
     const since = git('log', '--oneline', `${tag}..HEAD`).split('\n').filter(Boolean);
     if (since.length === 0) return;
 
+    /*
+      A release in preparation is the one state where an empty `Unreleased`
+      is right: the manifests name a version the tags do not have yet, and
+      the record of every commit above the tag sits under that version's own
+      heading, where `publish.test.js` requires it to be. The first release
+      cut after this guard was written (2.4.0) found that out. Told apart by
+      the two facts together, because either alone is the collision this
+      guard exists for.
+    */
+    const manifest = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).version;
+    const preparing = tag !== `v${manifest}` && changelog.includes(`\n## ${manifest} `);
+    if (preparing) return;
+
     const unreleased = sectionBody(changelog, '## Unreleased').trim();
     assert.notEqual(
       unreleased,
