@@ -323,6 +323,13 @@ including what it costs a reader pinning with a tilde, is in
    provider's page under the step above or not at all.
 
 8. `npm run verify`, and read the exit code rather than the output.
+   Then `node scripts/adoption.mjs` and paste the line it prints under the
+   new heading in `RELEASES.md`. Three public counters — npm downloads of
+   `@trazum/cli` over the last thirty days, GitHub stars, the MCP registry's
+   latest version — read once and written beside the version, so the next
+   plan starts from a figure the way `docs/plan-2.4.md` did. A counter the
+   network would not give is printed as unavailable, never as zero; leave it
+   that way rather than filling it in from memory.
 9. **Merge. That is the release.** The push to main triggers the workflow's
    `decide` job, which sees a manifest version the registry does not have and
    hands it to the release job: verify again, publish all four packages,
