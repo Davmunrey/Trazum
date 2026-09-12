@@ -11,6 +11,37 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+## 2.4.0 — One door, and where the spend is
+
+The first release since 2.0.0 that adds commands, and the plan that asked
+for them starts from a number rather than a feature: about two hundred
+downloads a month behind forty-nine commands. `docs/plan-2.4.md` names three
+causes and a move for each, and every move is in this release or named below
+as blocked on something this repository does not hold.
+
+### Changed
+
+- **`changelog-coverage.test.js` tells a release in preparation apart from an
+  empty section.** The guard was written after 2.3.0 and had never met a
+  release: the pull request that cuts one folds `Unreleased` into the new
+  version's heading, so the section is empty while commits sit above the tag,
+  which is exactly the state it fails on. It now skips when the manifests
+  name a version the tags do not have *and* the changelog carries that
+  version's heading, the two facts together, because either alone is the
+  collision it exists for.
+
+- **The xAI and Moonshot price rows were reviewed and found orphaned.**
+  `docs.x.ai/docs/models` and `platform.kimi.ai/docs/pricing/chat` were read
+  on 2026-09-12 and neither lists the one id this table carries for it,
+  `grok-4` and `kimi-k2`. Both rows keep their price, because calls in
+  somebody's log really happened at it, and neither is marked retired,
+  because that is recorded from the provider's own refusal to a request and
+  needs a key this repository does not hold. Neither provider's newer models
+  are added: xAI prices every model at two rates split at 200k prompt
+  tokens, which this table has no way to express, and Kimi's page states no
+  context window, which this table would have to invent. Each row says so in
+  its `notes`, and `trazum models` prints them.
+
 **Five merges landed on `main` with no entry here, and this section is where
 they should have been.** The rule three paragraphs above — *a change that
 alters nothing installable still lands there rather than nowhere* — was stated

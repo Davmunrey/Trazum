@@ -47,10 +47,30 @@ export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze
   openai: '2026-08-31',
   /* ai.google.dev/gemini-api/docs/pricing, read 2026-08-28. */
   google: '2026-08-28',
-  moonshot: '2026-06-24',
+  /*
+   * platform.kimi.ai/docs/pricing/chat (platform.moonshot.ai 301s there),
+   * read 2026-09-12. The page prices kimi-k3, kimi-k2.6, kimi-k2.7-code and
+   * its highspeed variant; `kimi-k2`, the one id this table carries, is no
+   * longer on it. Its price is kept because calls in somebody's log really
+   * happened at it, and it is not marked retired because that is recorded
+   * from the provider's own refusal to a request, which needs a key this
+   * repository does not hold. The newer models are not added: the page states
+   * no context window for any of them, and a context window this table did
+   * not read is a number it would be inventing.
+   */
+  moonshot: '2026-09-12',
   /* api-docs.deepseek.com/quick_start/pricing, read 2026-08-28. */
   deepseek: '2026-08-28',
-  xai: '2026-06-24',
+  /*
+   * docs.x.ai/docs/models, read 2026-09-12. The page prices grok-4.6, 4.5,
+   * 4.3 and the 4.20 family, each at two rates split at 200k prompt tokens;
+   * `grok-4`, the one id this table carries, is no longer on it. Kept and not
+   * marked retired, for the reasons given for kimi-k2 above. The newer models
+   * are not added: this table has no way to express a price that changes at
+   * 200k prompt tokens, and pricing a 300k-token call at the under-200k rate
+   * would understate it by half while looking exact.
+   */
+  xai: '2026-09-12',
   /*
    * `mistral.ai/pricing`, read 2026-08-28 — by a human, because the page
    * renders its table in the browser and serves a fetch only an FAQ example
@@ -379,7 +399,9 @@ export const MODELS: ModelPricing[] = [
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
     capability: 'mid',
     tier: 'sonnet',
-    notes: 'No batch API: the batch advisory stays quiet rather than offering a discount you cannot buy.',
+    notes:
+      'No batch API: the batch advisory stays quiet rather than offering a discount you cannot buy.'
+      + ' Not on the provider\'s pricing page as of 2026-09-12, which lists kimi-k3 and kimi-k2.6 instead; the price is the last one published for it.',
   },
 
   // ------------------------------------------------------------------------
@@ -475,6 +497,8 @@ export const MODELS: ModelPricing[] = [
     multipliers: { cacheRead: 0.25, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
     capability: 'large',
     tier: 'opus',
+    notes:
+      'Not on the provider\'s model page as of 2026-09-12, which lists grok-4.6 and later instead; the price is the last one published for it.',
   },
 
   // ------------------------------------------------------------------------
