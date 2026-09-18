@@ -13,6 +13,14 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+- **The web app's routine dependencies moved (#532).** Dependabot's weekly
+  group in `apps/web`: `next` 16.3.3 to 16.3.5, `react`, `react-dom` and
+  `@types/react` to 19.3.0, `lucide-react` 1.35.0 to 1.46.0, `posthog-js`
+  1.422.5 to 1.433.4, `@types/node` 26.4.0 to 26.5.1. Minor and patch only,
+  every check green on the rebased head, and the same `sharp` move #533 had
+  already made. Recorded here because a merge with no entry is a change only
+  `git log` remembers, not because any of it changes what Trazum does.
+
 - **Both CodeQL entry points advanced to v4.38.0 in one commit, and
   Dependabot now raises the pair as one pull request.** As at 4.37.9,
   Dependabot raised `init` and `analyze` separately (#527, #529) and each was
