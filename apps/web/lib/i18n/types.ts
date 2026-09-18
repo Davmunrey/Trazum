@@ -472,6 +472,10 @@ export interface WebMessages {
     litellmUnnamed(count: number): string;
     /** Rows flagged as a cache hit, with no token split behind the flag. */
     litellmCacheFlagged(count: number): string;
+    /** One line per other shape the drop read, as `trazum bill` prints it. */
+    shapeSummary(shape: string, files: number, records: number, leftOut: number): string;
+    /** A provider's cost report is a bill, not usage, and is named. */
+    costReportsDropped(count: number): string;
     routeVerify: string;
     /**
      * The verdict bridge: a `trazum route --json` document dropped into this

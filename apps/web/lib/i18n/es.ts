@@ -544,6 +544,10 @@ export const es: WebMessages = {
       `${files} spend log${files === 1 ? '' : 's'} de LiteLLM, ${rows.toLocaleString('es-ES')} llamada${rows === 1 ? '' : 's'} registrada${rows === 1 ? '' : 's'} leída${rows === 1 ? '' : 's'} en esta pestaña. Los mensajes, la respuesta, la clave con hash y la dirección del solicitante se quedaron en la fila.`,
     litellmUnnamed: (count) =>
       `${count.toLocaleString('es-ES')} fila${count === 1 ? '' : 's'} no nombran modelo y no ${count === 1 ? 'está' : 'están'} con precio arriba: "model_group" es el nombre de una ruta del proxy y detrás pueden ir varios modelos.`,
+    shapeSummary: (shape, files, records, leftOut) =>
+      `${files} archivo(s) ${shape} leídos como ${records} registro(s) tasados, aquí en tu navegador${leftOut > 0 ? `; ${leftOut} fila(s) fuera. Ejecuta trazum from-${shape} sobre el archivo para ver por qué.` : '.'}`,
+    costReportsDropped: (count) =>
+      `${count} archivo(s) eran un informe de costes del proveedor: una factura, no uso, así que no se tasan aquí. Ponlo junto a un recibo con trazum reconcile.`,
     litellmCacheFlagged: (count) =>
       `${count.toLocaleString('es-ES')} fila${count === 1 ? '' : 's'} marcada${count === 1 ? '' : 's'} como acierto de caché. LiteLLM lo registra como una bandera, nunca como un reparto de tokens, así que las cifras de caché dicen "no se puede saber" en vez de una inventada.`,
     routeVerify:
