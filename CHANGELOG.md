@@ -11,6 +11,21 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+- **The packaged Action pin in `README.md` and `docs/running.md` advanced to
+  2.4.1's release commit**, the one `v2.4.1` points at, in the pull request
+  after the release as `docs/releasing.md` says it must: `security.test.js`
+  asks git which version that commit declares and refuses any other.
+
+- **`sharp` moved from 0.35.3 to 0.35.4 in the lockfile**, with its `libvips`
+  binaries from 1.3.2 to 1.3.3, closing GHSA-rgj7-g3m4-5g8c (two libheif
+  advisories, rated high). It is Next's optional image dependency in
+  `apps/web`, reached at build time only, and no manifest changes: `next`'s
+  own range already allowed the fix and only the pinned transitive version
+  had not moved, which is the exact case SECURITY.md warns about. `npm audit`
+  over the whole tree reports 0 vulnerabilities after it.
+
 ## 2.4.1 — The same door from the browser
 
 A patch, on the plan's own terms: 2.4.0 built one door, `trazum bill`, and
