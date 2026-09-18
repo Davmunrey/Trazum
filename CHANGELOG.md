@@ -11,6 +11,17 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Changed
+
+- **Both CodeQL entry points advanced to v4.38.0 in one commit, and
+  Dependabot now raises the pair as one pull request.** As at 4.37.9,
+  Dependabot raised `init` and `analyze` separately (#527, #529) and each was
+  red on its own, because `analyze` refuses a configuration file `init` wrote
+  at another version and `security.test.js` holds that the two pins agree.
+  The pins move together here, and `.github/dependabot.yml` gains a
+  `codeql` group over `github/codeql-action*` so the next bump arrives as
+  the one pull request the guard can pass.
+
 ### Fixed
 
 - **The packaged Action pin in `README.md` and `docs/running.md` advanced to
