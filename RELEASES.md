@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.4.0**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.4.1**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -51,6 +51,54 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 2.4.1 — The same door from the browser
+
+**Adoption, read 2026-09-18:** downloads of @trazum/cli in the last 30 days: unavailable (HTTP 403 from the release environment's proxy), GitHub stars: unavailable (HTTP 403 from the release environment's proxy), MCP registry latest 2.4.0.
+
+A patch on 2.4.0's own terms. That release built one door, `trazum bill`,
+and put it first in the README. This one makes the other two places a
+stranger arrives at open onto the same door, and adds no command.
+
+### The first line, everywhere a stranger lands
+
+```bash
+npx @trazum/cli bill ~/.claude/projects
+```
+
+Now the first section of the README after the badges, and the line under the
+landing page's hero in all five locales, before either button. Plan 2.4's
+first move said this line was the demo; until now it was the fourth thing on
+the page.
+
+### The drop zone reads what `bill` reads
+
+The web app's drop zone knew three shapes (Claude Code transcripts,
+OpenTelemetry spans, LiteLLM logs) and took everything else as a plain usage
+log, so an OpenRouter activity report or an OpenAI usage export dropped on it
+was told every line was unreadable. It now detects and converts the five
+other shapes with the same core detectors and converters the CLI uses:
+Anthropic usage, OpenAI usage, OpenRouter activity, Helicone, LangSmith. One
+banner line per shape says how many files it saw, how many records they
+became and how many rows were left out, and the dedicated `from-<shape>`
+command is where the reasons are. A provider's cost report is named as a
+bill and pointed at `reconcile` rather than read as usage. Still nothing
+leaves the tab.
+
+### `bill` names the flag that prices a slug
+
+When the receipt's unpriced gap holds a model id with a slash in it, which is
+how OpenRouter names models and which the bundled catalogue does not carry,
+the run ends by naming `--pricing-live`. Derived from what was refused, and
+silent when the flag is already on or nothing unpriced is a slug.
+
+### Fixed
+
+- The packaged Action pin in `README.md` and `docs/running.md` advanced to
+  2.4.0's release commit, the one `v2.4.0` points at.
+- The release job checks out the whole history, as CI does. 2.4.0's first
+  release run failed in `verify` on a shallow checkout and published nothing;
+  the retry published it.
 
 ## 2.4.0 — One door, and where the spend is
 

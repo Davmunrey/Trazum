@@ -11,6 +11,15 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+## 2.4.1 — The same door from the browser
+
+A patch, on the plan's own terms: 2.4.0 built one door, `trazum bill`, and
+this release makes the two other places a stranger arrives at open onto it.
+The README and the landing page now begin with the one line that works with
+nothing installed, and the web app's drop zone reads every shape the door
+reads instead of three of them. `bill` also names the flag that prices an
+OpenRouter slug. Nothing here adds a command; the count stays at 51.
+
 ### Changed
 
 - **The browser's drop zone is the same door as `trazum bill`.** It read
