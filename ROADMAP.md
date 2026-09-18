@@ -1184,6 +1184,16 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 2.4.1 — The same door from the browser — released
+
+A patch on 2.4.0's own terms, and no command. The README and the landing page
+open with `npx @trazum/cli bill ~/.claude/projects`, the web app's drop zone
+reads every shape `bill` reads with the same detectors and converters, and
+`bill` names `--pricing-live` when an unpriced id is an OpenRouter slug. Two
+fixes from the release itself: the Action pin moved to the commit `v2.4.0`
+names, and the release job checks out the whole history so `verify` sees the
+tags.
+
 ## 2.4.0 — One door, and where the spend is — released
 
 The first release since 2.0.0 that adds commands, and the freeze at 46 is
@@ -2689,8 +2699,9 @@ carry tests now that derive the claim from the code rather than trusting prose.
 ## Next
 
 **Nothing is planned that this repository can deliver alone.** [The 2.4
-plan](docs/plan-2.4.md) was the last thing planned, and 2.4.0 delivered every
-move of it that did not need something held outside this repository. [The
+plan](docs/plan-2.4.md) was the last thing planned, 2.4.0 delivered every
+move of it that did not need something held outside this repository, and
+2.4.1 carried the door to the README's first line and the browser. [The
 1.83–2.0 plan](docs/plan-1.83-2.0.md) had asked a different question from
 every other plan in that directory — not what this should do next, but when
 it is finished — and 2.0.0 answered it by freezing the surface at 46
