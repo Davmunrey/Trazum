@@ -22,4 +22,12 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    groups:
+      # `init` and `analyze` are two entry points of one action and must move
+      # together: analyze refuses a configuration file init wrote at another
+      # version. Raised one at a time they are each red on their own, which
+      # security.test.js holds on purpose; raised together they are one green
+      # pull request.
+      codeql:
+        patterns: ['github/codeql-action*']
     labels: ['dependencies', 'ci']
