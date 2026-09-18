@@ -88,6 +88,26 @@ describe('the Bill tab ingests a folder in the browser', () => {
     assert.equal(/web-otel-prompt-do-not-leak/.test(parts.join('\n')), false, 'the prompt crossed into the priced log');
   });
 
+  it('the one door: every shape trazum bill reads is detected and converted in the page too', () => {
+    /*
+      The CLI's `bill` reads eight shapes; the page read three. A visitor who
+      drops an OpenRouter activity report or an OpenAI usage report got it
+      read as a plain log and told every line was unreadable. Each arm is
+      the core detector and the core converter, as the earlier arms are.
+    */
+    for (const name of ['AnthropicUsage', 'OpenaiUsage', 'OpenrouterActivity', 'Helicone', 'Langsmith']) {
+      assert.match(bill, new RegExp(`looksLike${name}\\(`), `no detector arm for ${name}`);
+    }
+    for (const fn of ['anthropicUsageRecords', 'openaiUsageRecords', 'openrouterActivityRecords', 'heliconeRecords', 'langsmithRecords']) {
+      assert.match(bill, new RegExp(`${fn}\\(`), `${fn} is not called`);
+    }
+    /* A bill is not usage: named, never read as an unreadable log. */
+    assert.match(bill, /looksLikeAnthropicCost\(/);
+    assert.match(bill, /looksLikeOpenaiCost\(/);
+    assert.match(bill, /t\.bill\.costReportsDropped\(/);
+    assert.match(bill, /t\.bill\.shapeSummary\(/);
+  });
+
   it('the ingest summary holds counts, never a session key', () => {
     // The banner is built from the conversion's counts. The `ingest` state
     // object is declared with an explicit field list; a session key added to

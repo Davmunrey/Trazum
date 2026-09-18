@@ -539,6 +539,10 @@ export const en: WebMessages = {
       `${files} LiteLLM spend log${files === 1 ? '' : 's'}, ${rows.toLocaleString('en-US')} logged call${rows === 1 ? '' : 's'} read in this tab. The messages, the response, the hashed key and the requester address stayed in the row.`,
     litellmUnnamed: (count) =>
       `${count.toLocaleString('en-US')} row${count === 1 ? '' : 's'} named no model and ${count === 1 ? 'is' : 'are'} not priced above: "model_group" is the name of a proxy route and several models can sit behind one.`,
+    shapeSummary: (shape, files, records, leftOut) =>
+      `Read ${files} ${shape} file(s) as ${records} priced record(s), here in your browser${leftOut > 0 ? `; ${leftOut} row(s) left out. Run trazum from-${shape} on the file for the reasons.` : '.'}`,
+    costReportsDropped: (count) =>
+      `${count} file(s) were a provider's cost report: a bill rather than usage, so not priced here. Set it beside a receipt with trazum reconcile.`,
     litellmCacheFlagged: (count) =>
       `${count.toLocaleString('en-US')} row${count === 1 ? '' : 's'} marked as a cache hit. LiteLLM records that as a flag, never as a token split, so the cache figures read "cannot tell" rather than a guessed one.`,
     routeVerify:

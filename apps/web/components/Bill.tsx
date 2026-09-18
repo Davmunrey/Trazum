@@ -20,6 +20,18 @@ import {
   formatUsd,
   looksLikeClaudeCodeTranscript,
   litellmRecords,
+  anthropicUsageRecords,
+  heliconeRecords,
+  langsmithRecords,
+  looksLikeAnthropicCost,
+  looksLikeAnthropicUsage,
+  looksLikeHelicone,
+  looksLikeLangsmith,
+  looksLikeOpenaiCost,
+  looksLikeOpenaiUsage,
+  looksLikeOpenrouterActivity,
+  openaiUsageRecords,
+  openrouterActivityRecords,
   looksLikeLiteLlm,
   looksLikeOtel,
   otelRecords,
@@ -341,6 +353,14 @@ export function Bill({ t }: { t: WebMessages }) {
     litellmUnnamed: number;
     /** Rows flagged as a cache hit, with no token split behind the flag. */
     litellmCacheFlagged: number;
+    /**
+     * The other shapes `trazum bill` reads, one row each: files seen, records
+     * they became, rows the converter left out. Counts only, like every field
+     * above; the reasons for a row left out are the dedicated command's.
+     */
+    shapes: Array<{ shape: string; files: number; records: number; leftOut: number }>;
+    /** Provider cost reports dropped here: a bill is not usage, and is named. */
+    costReports: number;
   } | null>(null);
 
   async function readFile(file: File | undefined) {
@@ -373,6 +393,18 @@ export function Bill({ t }: { t: WebMessages }) {
     let litellmRows = 0;
     let litellmUnnamed = 0;
     let litellmCacheFlagged = 0;
+    const shapes = new Map<string, { files: number; records: number; leftOut: number }>();
+    let costReports = 0;
+    /* One door, as the CLI's `bill`: the same converter the dedicated command
+       uses, the same refusals, and one line per shape saying how many rows it
+       left out. The reasons are one `trazum from-<shape>` away. */
+    const tally = (shape: string, records: number, leftOut: number) => {
+      const row = shapes.get(shape) ?? { files: 0, records: 0, leftOut: 0 };
+      row.files += 1;
+      row.records += records;
+      row.leftOut += leftOut;
+      shapes.set(shape, row);
+    };
     for (const file of files) {
       const text = await file.text();
       // The 1.71 arm: an OpenTelemetry GenAI export, detected by its shape and
@@ -397,6 +429,30 @@ export function Bill({ t }: { t: WebMessages }) {
         otelSpans += conversion.llmSpans;
         otelSkipped += conversion.otherSpans;
         otelNoCache += conversion.noCacheData;
+      } else if (looksLikeAnthropicUsage(text)) {
+        const c = anthropicUsageRecords(text);
+        for (const record of c.records) parts.push(JSON.stringify(record));
+        tally('anthropic-usage', c.records.length, c.unnamedModel + c.nonStandardTier);
+      } else if (looksLikeOpenaiUsage(text)) {
+        const c = openaiUsageRecords(text);
+        for (const record of c.records) parts.push(JSON.stringify(record));
+        tally('openai-usage', c.records.length, c.unnamedModel + c.batch + c.nonDefaultTier + c.unsplitRows);
+      } else if (looksLikeOpenrouterActivity(text)) {
+        const c = openrouterActivityRecords(text);
+        for (const record of c.records) parts.push(JSON.stringify(record));
+        tally('openrouter', c.records.length, c.unnamedModel + c.undatedRows);
+      } else if (looksLikeHelicone(text)) {
+        const c = heliconeRecords(text);
+        for (const record of c.records) parts.push(JSON.stringify(record));
+        tally('helicone', c.records.length, c.unnamedModel + c.unparseable);
+      } else if (looksLikeLangsmith(text)) {
+        const c = langsmithRecords(text);
+        for (const record of c.records) parts.push(JSON.stringify(record));
+        tally('langsmith', c.records.length, c.notModelCalls + c.unnamedModel + c.unparseable);
+      } else if (looksLikeAnthropicCost(text) || looksLikeOpenaiCost(text)) {
+        /* A provider's bill is not usage: named rather than read as a log
+           that would then report every line as unreadable. */
+        costReports += 1;
       } else if (looksLikeClaudeCodeTranscript(text)) {
         transcripts += 1;
         // The project directory name is the label — a per-project bill by
@@ -449,7 +505,7 @@ export function Bill({ t }: { t: WebMessages }) {
       }
     }
     setIngest(
-      transcripts > 0 || otelExports > 0 || litellmExports > 0
+      transcripts > 0 || otelExports > 0 || litellmExports > 0 || shapes.size > 0 || costReports > 0
         ? {
             transcripts,
             convertedCalls,
@@ -464,6 +520,8 @@ export function Bill({ t }: { t: WebMessages }) {
             litellmRows,
             litellmUnnamed,
             litellmCacheFlagged,
+            shapes: [...shapes].map(([shape, row]) => ({ shape, ...row })),
+            costReports,
           }
         : null,
     );
@@ -700,6 +758,12 @@ export function Bill({ t }: { t: WebMessages }) {
               {ingest.litellmCacheFlagged > 0 && (
                 <div>{t.bill.litellmCacheFlagged(ingest.litellmCacheFlagged)}</div>
               )}
+              {ingest.shapes.map((row) => (
+                <div key={row.shape} className="font-semibold">
+                  {t.bill.shapeSummary(row.shape, row.files, row.records, row.leftOut)}
+                </div>
+              ))}
+              {ingest.costReports > 0 && <div>{t.bill.costReportsDropped(ingest.costReports)}</div>}
               {ingest.logs > 0 && <div>{t.bill.transcriptAlsoLogs(ingest.logs)}</div>}
               {ingest.collapsed > 0 && <div>{t.bill.transcriptCollapsed(ingest.collapsed)}</div>}
               {ingest.streamed > 0 && <div>{t.bill.transcriptStreamed(ingest.streamed)}</div>}

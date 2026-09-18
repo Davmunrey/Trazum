@@ -13,6 +13,17 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+- **The browser's drop zone is the same door as `trazum bill`.** It read
+  three shapes (Claude Code transcripts, OTel spans, LiteLLM logs) and took
+  everything else as a plain usage log, so an OpenRouter activity report or
+  an OpenAI usage report dropped on it was told every line was unreadable.
+  It now detects and converts the five other shapes with the same core
+  detectors and converters the CLI uses, reports one line per shape with the
+  rows left out and the dedicated command that says why, and names a
+  provider's cost report as a bill rather than usage, pointing at
+  `reconcile`. Still nothing leaves the tab; `folder-ingest.test.mjs` holds
+  every arm to the core detector and converter.
+
 - **`bill` says which flag prices an OpenRouter slug.** When the receipt's
   unpriced gap holds a model id with a slash in it, which is how OpenRouter
   names models and which the bundled catalogue does not carry, the run ends
