@@ -11,6 +11,29 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Security
+
+- **`next` 16.3.5 to 16.3.8 (#540), closing a critical remote code
+  execution in `next/og`'s `ImageResponse` (GHSA-vcvr-r3jv-pc5j).** `apps/web`
+  renders `app/opengraph-image.tsx` through `next/og`, so the advisory was
+  reachable on the deployed site, not only in a build. The same release
+  closes the cache poisoning, Image Optimization SSRF and information
+  disclosure advisories `npm audit` reported for 16.0.0 to 16.3.7.
+
+- **The rest of the web app's tree moved to a clean `npm audit`.** `sharp`
+  0.35.4 to 0.35.5 with its `libvips` binaries 1.3.3 to 1.3.4
+  (GHSA-wq5f-xc86-pv6w, librsvg, high), `source-map-js` 1.2.1 to 1.2.2
+  (GHSA-68fv-2mgg-jv7q, event-loop denial of service, high, reached through
+  `postcss` and Tailwind at build time) and `dompurify` 3.4.13 to 3.4.16
+  (two low `IN_PLACE` advisories, reached through `posthog-js`). None of
+  these had a Dependabot pull request for `sharp` or `source-map-js`: both
+  are transitive and their parents' ranges already allowed the fix, the case
+  SECURITY.md describes, so they moved in the lockfile here. This also
+  carries Dependabot's #537 (both CodeQL entry points to v4.38.1, raised as
+  one pull request by the `codeql` group), #538 (`@types/node` 26.6,
+  `lucide-react` 1.48, `posthog-js` 1.434) and #539 (`dompurify`), which
+  close once this merges.
+
 ### Changed
 
 - **The web app's routine dependencies moved (#532).** Dependabot's weekly
