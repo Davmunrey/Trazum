@@ -13,6 +13,20 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+- **OpenAI, re-read on 2026-10-11: the ids OpenAI's usage records carry now
+  price.** GPT-5, mini and nano matched the pricing page to the cent. Their
+  dated snapshots (`gpt-5-2025-08-07` and the mini and nano ones), which is
+  what an OpenAI usage export names, were unpriced gaps; they are declared
+  as aliases now, read off the deprecations page that retires them on
+  2026-12-11. The section comment said a cached read costs "about half the
+  input price"; it costs a tenth, as the rows already said. The 1,024 cache
+  minimum is what OpenAI publishes for GPT-5.6 and later, and its guide says
+  the floor "varies by request settings" for these older models, which the
+  notes now say. **The current generation is not added**: gpt-6-astra,
+  gpt-6.1-sol, gpt-6-sol, gpt-6-luna and gpt-5.6 sol, terra and luna all
+  double their rates for prompts over 272K tokens, a per-request condition
+  no log Trazum prices passes yet.
+
 - **Mistral caches, and this table said it did not.** Re-read on 2026-10-11
   from mistral.ai/cloud/inference and the Large 3, Small 4 and Medium 3.5
   model cards, which carry their prices in the page markup and bind the

@@ -365,3 +365,23 @@ describe('a price that changed is priced as it was billed then', () => {
     }
   });
 });
+
+describe('the id a provider log carries is the id that prices', () => {
+  it('prices OpenAI\'s dated GPT-5 snapshots, which is what a usage export names', () => {
+    /*
+      `gpt-5-2025-08-07` and its mini and nano siblings are the ids OpenAI's
+      own usage records carry, and until 2026-10-11 they were unpriced gaps.
+      Read off the deprecations page, which retires them on 2026-12-11.
+    */
+    for (const [snapshot, input] of [
+      ['gpt-5-2025-08-07', 1.25],
+      ['gpt-5-mini-2025-08-07', 0.25],
+      ['gpt-5-nano-2025-08-07', 0.05],
+    ]) {
+      const line = JSON.stringify({ model: snapshot, usage: { input_tokens: 1_000_000, output_tokens: 0 } });
+      const report = profileUsage(line, { catalogue: BUNDLED_CATALOGUE });
+      assert.deepEqual(report.unpricedModels, [], `${snapshot} is unpriced`);
+      assert.equal(report.total.totalUsd, input, snapshot);
+    }
+  });
+});
