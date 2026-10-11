@@ -46,9 +46,9 @@ ${bold('USO')}
   trazum schema <contrato>
   trazum rollup <documento...|dir> [--json] [--html-out <fichero>]
   trazum position <uso.jsonl>
-  trazum receipt <uso.jsonl|dir> [--stamp] [-o <fichero>]
+  trazum receipt <uso.jsonl|dir> [--stamp] [--since <cuándo>] [--until <cuándo>] [-o <fichero>]
   trazum bill [<fichero|dir>...] [--label <nombre>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <fichero>]
-              [--pdf-out|--html-out|--markdown-out|--csv-out <fichero>]
+              [--since <cuándo>] [--until <cuándo>] [--pdf-out|--html-out|--markdown-out|--csv-out <fichero>]
   trazum from-claude-code <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-otel <fichero|dir> [--label-from-service] [-o <fichero>]
   trazum from-litellm <fichero|dir> [-o <fichero>]
@@ -140,6 +140,10 @@ ${bold('OPCIONES DE receipt')}
                               estándar, así que una redirección escribe un
                               documento y no un documento con un resumen
                               pegado delante.
+  --since <cuándo>            El periodo que cubre el recibo, como lo toma
+  --until <cuándo>            bill: un día UTC, una marca de tiempo, 30d o
+                              "now". Las llamadas sin marca de tiempo quedan
+                              fuera y se nombran como hueco undated-excluded.
   --pricing <fichero>         Lo precia con tu propia tarjeta de precios en
                               vez de con el catálogo incluido.
   --pricing-live              Lo precia con tarifas en vivo vía OpenRouter.
@@ -253,6 +257,13 @@ ${bold('OPCIONES DE from-openai')}
 ${bold('OPCIONES DE bill')}
   --label <nombre>            El proyecto al que pertenece este uso, para las
                               formas que lo admiten.
+  --since <cuándo>            Factura solo las llamadas de este periodo: un día
+  --until <cuándo>            UTC (2026-10-01), una marca ISO 8601 completa,
+                              una ventana relativa (30d, 24h) o "now". Un día
+                              solo significa el día entero. Las llamadas sin
+                              marca de tiempo no se pueden situar y quedan
+                              fuera, contadas en el recibo como hueco, nunca
+                              tiradas en silencio.
   --stamp                     Sella el recibo con la hora en que se escribió.
   -o, --out <archivo>         Escribe el recibo ahí en vez de en stdout.
 
@@ -1905,6 +1916,8 @@ ${bold('EJEMPLOS')}
     unread: (count) => `${count} línea(s) del log no se pudieron leer, y el recibo lo dice.`,
     noClock: () =>
       'El log no lleva reloj, así que el recibo no está acotado en el tiempo y lo declara en vez de inventarse un periodo.',
+    undatedExcluded: (calls) =>
+      `${count(calls)} ${calls === 1 ? 'llamada no trae' : 'llamadas no traen'} marca de tiempo y no se ${calls === 1 ? 'puede' : 'pueden'} situar en este periodo, así que no ${calls === 1 ? 'está' : 'están'} en esta factura: el total es un suelo del periodo.`,
     nothingToBill: () => 'Nada de este log se pudo precificar, así que el recibo no tiene líneas.',
   },
 
@@ -2047,6 +2060,11 @@ ${bold('EJEMPLOS')}
     colCalls: () => 'llamadas',
     colShare: () => 'parte',
     moreRows: (count) => `… y ${count} más`,
+    colMonth: () => 'mes',
+    earlierMonths: (count) => `… y ${count} mes(es) anterior(es)`,
+    monthsUndated: (calls, usd) =>
+      `${usd} de ${calls} llamada(s) sin marca de tiempo está en el total y en ningún mes.`,
+    monthHint: (since, until) => `Un mes por separado: --since ${since} --until ${until}.`,
     statementUnpriced: (models, calls) =>
       `Fuera del total: ${calls} llamada(s) a ${models}, que el catálogo no tiene con precio. Se nombran, nunca se cuentan como $0.`,
     statementUnread: (lines) => `${lines} línea(s) no se pudieron leer como uso y no están en el total.`,
@@ -2066,6 +2084,8 @@ ${bold('EJEMPLOS')}
     sources: (read, seen) => `${read} de ${seen} archivo(s) leído(s) como uso.`,
     pricingLiveHint: (count) =>
       `${count} id(s) de modelo sin precio son slugs de OpenRouter, que el catálogo incluido no trae. Vuelve a ejecutar con --pricing-live para cobrarlos desde la propia lista de OpenRouter.`,
+    windowMatchesNothing: (from, to) =>
+      `Ninguna llamada cae dentro de este periodo. Lo leído cubre ${from} → ${to}. Un periodo sin nada dentro no es una factura de $0: revisa las fechas, o quita --since/--until para facturarlo todo.`,
     written: (file) => `Escrito ${file}.`,
   },
 
@@ -3088,7 +3108,7 @@ ${bold('EJEMPLOS')}
     sinceAfterUntil: () =>
       '--since es igual o posterior a --until, así que la ventana no contiene tiempo alguno. Revisa las dos fechas.',
     badWhen: (flag, value) =>
-      `--${flag} no pudo leer "${value}". Acepta un día UTC (2026-08-14) o una marca ISO 8601 completa (2026-08-14T09:30:00Z).`,
+      `--${flag} no pudo leer "${value}". Acepta un día UTC (2026-08-14), una marca ISO 8601 completa (2026-08-14T09:30:00Z), una ventana relativa (7d, 24h) o "now".`,
     singleTurnCeiling: (label, model, single, sessions, usd) =>
       `${label} en ${model}: ${single} de ${sessions} conversaciones terminaron tras su primer turno, y sus escrituras de caché (${usd}) pagaron una reutilización que su propia conversación nunca hizo. Otra conversación con el mismo prefijo dentro del TTL pudo haberlas leído; el registro no puede ver de quién era la escritura que una lectura encontró, así que esa cifra es un techo del desperdicio, no una factura.`,
     singleTurnConfirmed: (label, model, single, sessions, usd) =>

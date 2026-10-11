@@ -1926,8 +1926,9 @@ the doors, because a session is not a calendar scope.
 ### A figure that still answers elsewhere: `trazum receipt`
 
 ```bash
-trazum receipt usage.jsonl                  # the document, to standard output
-trazum receipt usage.jsonl -o receipt.json  # and the summary to standard error
+trazum receipt usage.jsonl                     # the document, to standard output
+trazum receipt usage.jsonl -o receipt.json     # and the summary to standard error
+trazum receipt usage.jsonl --since 2026-10-01  # one period, as bill takes it
 ```
 
 A profile answers a question on the terminal that ran it. The same figures filed
@@ -2901,6 +2902,7 @@ does not ask.
 
 ```bash
 npx @trazum/cli bill
+npx @trazum/cli bill --since 2026-10-01
 npx @trazum/cli bill ~/.claude/projects
 npx @trazum/cli bill usage.json
 npx @trazum/cli bill exports/ --pricing-live -o receipt.json
@@ -2953,6 +2955,39 @@ rather than usage and pointed at `trazum reconcile`.
 A slug the bundled catalogue does not price is the receipt's usual unpriced
 gap, kept out of the total rather than costed at zero; `--pricing-live` is
 where OpenRouter's hundreds of slugs get their rates.
+
+**A bill for a period: `--since` and `--until`.** A Claude Code folder holds
+every session since the tool was installed, so a bill with no window answers
+"what has this ever cost", which is rarely the question.
+
+```bash
+npx @trazum/cli bill --since 2026-10-01                      # this month so far
+npx @trazum/cli bill --since 2026-09-01 --until 2026-09-30   # September
+npx @trazum/cli bill --since 7d                              # the last seven days
+```
+
+The window is `profile`'s, read the same way: a UTC day, a full ISO 8601
+timestamp, a relative window (`30d`, `24h`) or `now`. A bare day is the whole of
+that UTC day at either end, and the window is half-open underneath, so
+September and October share no call and add up to the two months billed
+together. The statement, the PDF, HTML and Markdown say which period they
+bill, as typed.
+
+Two things it will not do. **Bill a period at $0 because nothing fell in it**:
+a window the log does not reach is refused, naming the dates the log covers,
+because "$0 in November" reads as a free month when it means the dates missed.
+**Drop a call it cannot place**: a call with no timestamp might belong to the
+period or not, so it is left out and counted, on the statement and on the
+receipt as an `undated-excluded` gap, and the total is said to be a floor on
+the period. Claude Code transcripts carry a timestamp on every call; this is
+for the logs that do not. `trazum receipt` takes the same two flags through the
+same code, so a receipt and a bill of one period cannot disagree.
+
+A bill whose calls span two calendar months or more adds a
+table by month to the statement, newest twelve shown and the rest counted, and
+names the `--since`/`--until` that bills the newest month on its own. A call
+with no timestamp is in the total and in no month, and the statement says how
+much that is rather than letting the rows fall short of the total unexplained.
 
 **The bill for somebody else.** The receipt on stdout is for a machine. The
 person who signs the bill off reads an attachment, so `bill` writes the same

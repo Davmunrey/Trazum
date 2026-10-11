@@ -11,6 +11,40 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+- **`bill --since/--until`: a bill for a period.** A Claude Code folder holds
+  every session since the tool was installed, so `bill` with no window
+  answered "what has this ever cost". `--since 2026-10-01` is this month so
+  far. The window is `profile`'s, read the same way (a UTC day, a timestamp,
+  `30d`, `now`; a bare day is the whole of it; half-open underneath, so
+  adjacent months share no call), and the statement and the PDF, HTML and
+  Markdown documents say which period they bill. A period the log does not
+  reach is refused with the dates the log covers, never printed as a $0 bill.
+  A call with no timestamp cannot be placed, so it is left out and counted: on
+  the statement, and on the receipt as a new gap, `undated-excluded`, with the
+  total called a floor on the period. `trazum receipt` takes the same two
+  flags, through the same code, so a receipt and a bill of one period agree.
+
+- **A bill that spans months says which month cost what.** Once the calls
+  span two calendar months, the statement adds a table by month (the newest
+  twelve, the rest counted), says how much from undated calls sits in no
+  month, and names the `--since`/`--until` that bills the newest month on its
+  own. Summed from the report's own days, so the rows and the total cannot
+  disagree. `packages/cli/test/bill-window.test.js` (14 tests) and two in
+  `receipt-arithmetic.test.js`.
+
+### Fixed
+
+- **The packaged Action pin in `README.md` and `docs/running.md` advanced to
+  2.5.0's release commit**, the one `v2.5.0` points at, in the pull request
+  after the release as `docs/releasing.md` says it must.
+
+- **A date `--since`/`--until` could not read was refused with half the
+  forms it takes.** The message named a UTC day and an ISO timestamp; the
+  parser also takes a relative window (`7d`, `24h`) and `now`, and now says
+  so, in English and Spanish.
+
 ## 2.5.0 — Each request at its own size
 
 A minor, because two published formats grew a field: a usage row may say how

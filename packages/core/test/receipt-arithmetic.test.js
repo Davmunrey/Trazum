@@ -239,3 +239,34 @@ describe('a receipt says when its total is a floor', () => {
     );
   });
 });
+
+describe('a receipt for a period', () => {
+  /*
+    A window can only hold the calls it can place. One with no timestamp is
+    neither billed in it nor dropped in silence: the receipt carries how many
+    there were, and only when a window was asked for, since without one the
+    undated call is simply billed.
+  */
+  const log = [
+    { ts: '2026-10-02T12:00:00Z', model: 'claude-sonnet-5-5', usage: { input_tokens: 1000, output_tokens: 0 } },
+    { model: 'claude-sonnet-5-5', usage: { input_tokens: 1000, output_tokens: 0 } },
+  ]
+    .map((line) => JSON.stringify(line))
+    .join('\n');
+
+  it('names the undated calls a window left out', () => {
+    const report = profileUsage(log, { catalogue: BUNDLED_CATALOGUE, sinceMs: Date.UTC(2026, 9, 1) });
+    const receipt = receiptFrom(report, BUNDLED_CATALOGUE);
+    assert.equal(receipt.total.calls, 1);
+    assert.deepEqual(
+      receipt.gaps.filter((gap) => gap.kind === 'undated-excluded'),
+      [{ kind: 'undated-excluded', calls: 1 }],
+    );
+  });
+
+  it('and says nothing of the kind without a window', () => {
+    const receipt = receiptFrom(profileUsage(log, { catalogue: BUNDLED_CATALOGUE }), BUNDLED_CATALOGUE);
+    assert.equal(receipt.total.calls, 2);
+    assert.ok(!receipt.gaps.some((gap) => gap.kind === 'undated-excluded'));
+  });
+});

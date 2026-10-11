@@ -620,6 +620,8 @@ export interface CliMessages {
     unpriced(models: number, calls: number): string;
     unread(count: number): string;
     noClock(): string;
+    /** Calls a --since/--until window left out because they carry no timestamp. */
+    undatedExcluded(calls: number): string;
     nothingToBill(): string;
   };
 
@@ -747,6 +749,13 @@ export interface CliMessages {
     colCalls(): string;
     colShare(): string;
     moreRows(count: number): string;
+    /** The by-month table, shown when a bill spans two calendar months or more. */
+    colMonth(): string;
+    earlierMonths(count: number): string;
+    /** Priced calls with no timestamp: in the total, in no month. */
+    monthsUndated(calls: number, usd: string): string;
+    /** How to bill the newest month on its own. */
+    monthHint(since: string, until: string): string;
     statementUnpriced(models: string, calls: number): string;
     statementUnread(lines: number): string;
     statementNext(): string;
@@ -764,6 +773,8 @@ export interface CliMessages {
     sources(read: number, seen: number): string;
     /** An unpriced slug with a slash is OpenRouter's, and --pricing-live prices it. */
     pricingLiveHint(count: number): string;
+    /** A --since/--until window no record falls in: refused, never a $0 bill. */
+    windowMatchesNothing(from: string, to: string): string;
     written(file: string): string;
   };
 
