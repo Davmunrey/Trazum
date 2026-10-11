@@ -50,8 +50,19 @@ export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze
    * order they appear in.
    */
   openai: '2026-08-31',
-  /* ai.google.dev/gemini-api/docs/pricing, read 2026-08-28. */
-  google: '2026-08-28',
+  /*
+   * ai.google.dev/gemini-api/docs/pricing, docs/caching and the model pages,
+   * read 2026-10-10. Every price matched; what changed is how caching starts
+   * and what it costs on the old models. Implicit caching is on by default
+   * for every Gemini 2.5 and newer model, so `caching` is 'automatic' across
+   * the board; the minimums moved to 4,096 on 3.6 and 3.8 Flash and 2,048 on
+   * 2.5 Flash; and the 2.5 models read the cache at 10% of input today, not
+   * the 25% this table carried. Gemini 3.8 Flash was added. Gemini 3.1 Pro
+   * Preview and 2.5 Pro's prompts over 200k are priced by prompt length per
+   * request, which nothing that prices a log passes yet, so the first is left
+   * out and the second's tier is named in its note rather than guessed.
+   */
+  google: '2026-10-10',
   /*
    * platform.kimi.ai/docs/pricing/chat (platform.moonshot.ai 301s there),
    * read 2026-09-12. The page prices kimi-k3, kimi-k2.6, kimi-k2.7-code and
@@ -437,8 +448,9 @@ export const MODELS: ModelPricing[] = [
     outputPerMTok: 10,
     contextWindow: 1_048_576,
     cacheMinTokens: 2048,
-    caching: 'explicit',
-    multipliers: { cacheRead: 0.25, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    caching: 'automatic',
+    /* $0.125 cached against $1.25 input for prompts up to 200k, read 2026-10-10. */
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
     /* Refused on 2026-08-28: still in `GET /v1beta/models`, and a 404 to a request. */
     retired: {
       on: '2026-08-28',
@@ -447,7 +459,10 @@ export const MODELS: ModelPricing[] = [
     },
     capability: 'large',
     tier: 'opus',
-    notes: 'Context caching is billed for storage per hour as well as per read.',
+    notes:
+      'Prompts over 200k tokens are billed $2.50 in and $15.00 out; this row prices every prompt at the up-to-200k rate,'
+      + ' because no log Trazum prices says how long each prompt was. Implicit caching is automatic; explicit caching is'
+      + ' also billed for storage per hour.',
   },
   {
     id: 'gemini-2.5-flash',
@@ -456,9 +471,10 @@ export const MODELS: ModelPricing[] = [
     inputPerMTok: 0.3,
     outputPerMTok: 2.5,
     contextWindow: 1_048_576,
-    cacheMinTokens: 1024,
-    caching: 'explicit',
-    multipliers: { cacheRead: 0.25, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    cacheMinTokens: 2048,
+    caching: 'automatic',
+    /* $0.03 cached against $0.30 input (text), read 2026-10-10. */
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
     /* Refused on 2026-08-28: still in `GET /v1beta/models`, and a 404 to a request. */
     retired: {
       on: '2026-08-28',
@@ -471,9 +487,10 @@ export const MODELS: ModelPricing[] = [
 
   {
     /*
-     * Google's own error message names this as the replacement for the two
-     * retired 2.5 models, and ai.google.dev/gemini-api/docs/pricing carries the
-     * rates, read 2026-08-28.
+     * Google's own error message names this as the replacement for the retired
+     * 2.5 Flash (the 2.5 Pro refusal names 3.1 Pro Preview), and
+     * ai.google.dev/gemini-api/docs/pricing carries the rates, read 2026-08-28
+     * and again on 2026-10-10.
      *
      * The introductory price has a published end date and a published successor,
      * which is exactly what `promo` is for and is the shape the catalogue nearly
@@ -487,8 +504,8 @@ export const MODELS: ModelPricing[] = [
     outputPerMTok: 7.5,
     promo: { inputPerMTok: 0.75, outputPerMTok: 3.75, until: '2026-12-31' },
     contextWindow: 1_048_576,
-    cacheMinTokens: 1024,
-    caching: 'explicit',
+    cacheMinTokens: 4096,
+    caching: 'automatic',
     /*
      * $0.075 against $0.75 inside the introductory window, and $0.15 against
      * $1.50 after it: Google scales the cache price with the headline one, so
@@ -499,7 +516,32 @@ export const MODELS: ModelPricing[] = [
     capability: 'mid',
     tier: 'sonnet',
     notes:
-      'Context caching is billed for storage per hour as well as per read:'
+      'Implicit caching is automatic above 4,096 tokens. Explicit caching is also billed for storage:'
+      + ' $0.50 per 1M tokens per hour through 2026-12-31, $1.00 after.',
+  },
+  {
+    /*
+     * Gemini 3.8 Flash, from ai.google.dev/gemini-api/docs/pricing, its model
+     * page and docs/caching, read 2026-10-10. The same rates and the same
+     * introductory window as 3.6 Flash, published as one table each: $0.75
+     * and $3.75 through 2026-12-31, $1.50 and $7.50 from 2027-01-01, and the
+     * cache price scales with them ($0.075, then $0.15).
+     */
+    id: 'gemini-3.8-flash',
+    provider: 'google',
+    displayName: 'Gemini 3.8 Flash',
+    inputPerMTok: 1.5,
+    outputPerMTok: 7.5,
+    promo: { inputPerMTok: 0.75, outputPerMTok: 3.75, until: '2026-12-31' },
+    contextWindow: 1_048_576,
+    cacheMinTokens: 4096,
+    caching: 'automatic',
+    /* $0.075 / $0.75 = 0.1 (and $0.15 / $1.50); batch $0.375 / $0.75 = 0.5 (and $1.875 / $3.75). */
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    capability: 'mid',
+    tier: 'sonnet',
+    notes:
+      'Implicit caching is automatic above 4,096 tokens. Explicit caching is also billed for storage:'
       + ' $0.50 per 1M tokens per hour through 2026-12-31, $1.00 after.',
   },
 

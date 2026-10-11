@@ -1,7 +1,7 @@
 {
   "name": "@trazum/cli",
   "version": "2.4.2",
-  "description": "Trazum CLI: find where your LLM bill goes, price every finding per month, and enforce token budgets in CI.",
+  "description": "What your AI agents cost, per project, offline: prices Claude Code sessions and Anthropic, OpenAI, OpenRouter, OTel and LiteLLM usage, writes the bill as PDF, HTML or CSV, and enforces budgets in CI.",
   "license": "MIT",
   "author": "David Mu\u00f1oz Rey",
   "repository": {
@@ -14,10 +14,19 @@
     "url": "https://github.com/Davmunrey/Trazum/issues"
   },
   "keywords": [
-    "prompt",
+    "claude-code",
+    "claude",
+    "anthropic",
+    "openai",
     "llm",
-    "tokens",
+    "ai-agents",
     "cost",
+    "usage",
+    "billing",
+    "finops",
+    "tokens",
+    "prompt",
+    "pdf",
     "cli",
     "ci"
   ],

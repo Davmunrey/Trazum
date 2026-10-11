@@ -962,10 +962,10 @@ on text. What differs is the money, and **that is not one set of numbers**:
 
 | | |
 |---|---|
-| Cache read | 10% of input on OpenAI, Moonshot and Anthropic up to Opus 5 and Sonnet 5; **25%** on xAI. Three providers changed it **between generations**: Anthropic's Opus 5.5 and Sonnet 5.5 read at **5%** and Fable 5.1 and Mythos 5.1 at **2.5%**, DeepSeek V4 reads at about **3%** where V3 read at 10%, and Google's 3.6 Flash reads at 10% where the retired 2.5 models read at 25% |
+| Cache read | 10% of input on OpenAI, Moonshot, Google and Anthropic up to Opus 5 and Sonnet 5; **25%** on xAI. Two providers changed it **between generations**: Anthropic's Opus 5.5 and Sonnet 5.5 read at **5%** and Fable 5.1 and Mythos 5.1 at **2.5%**, and DeepSeek V4 reads at about **3%** where V3 read at 10% |
 | Cache write | 125% of input on Anthropic; 100% elsewhere |
-| Cache minimum | **Per model, not per provider.** Anthropic alone spans 512 to 4,096; 1,024 on OpenAI, Moonshot, DeepSeek, xAI and Gemini Flash; 2,048 on the retired Gemini Pro |
-| How caching starts | You mark the prefix on Anthropic and Google; it is **automatic** on OpenAI, Moonshot, DeepSeek and xAI |
+| Cache minimum | **Per model, not per provider.** Anthropic alone spans 512 to 4,096; 1,024 on OpenAI, Moonshot, DeepSeek and xAI; 4,096 on Gemini 3.6 and 3.8 Flash and 2,048 on the retired Gemini 2.5 models |
+| How caching starts | You mark the prefix on Anthropic; it is **automatic** on OpenAI, Google, Moonshot, DeepSeek and xAI |
 | Batch API | 50% on Anthropic, OpenAI, Google and Mistral; **none at all** on Moonshot, DeepSeek and xAI |
 | Prompt caching | **None at all** on Mistral |
 

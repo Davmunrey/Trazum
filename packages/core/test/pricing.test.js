@@ -242,7 +242,8 @@ describe('advisories', () => {
     const flat = MODELS.filter((m) => multipliersFor(m).cacheWrite5m <= 1);
     assert.ok(flat.length > 0, 'no flat-write model in the catalogue, so this guard checks nothing');
 
-    const prompt = 'Analyse this contract with legal judgement. '.repeat(200);
+    // Long enough to clear every flat-write model's minimum: Gemini's is 4,096.
+    const prompt = 'Analyse this contract with legal judgement. '.repeat(600);
     let checked = 0;
     for (const model of flat) {
       const result = optimize(prompt, {
