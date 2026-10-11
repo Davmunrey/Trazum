@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { gzipSync } from 'node:zlib';
 import { join } from 'node:path';
@@ -112,8 +112,14 @@ describe('trazum bill reads a directory of whatever it finds', () => {
     assert.match(result.stderr, /nothing to bill/);
   });
 
-  it('needs a path, and says what to give it', () => {
-    const result = run(['bill']);
+  it('needs a path when Claude Code has no folder here, and says what to give it', () => {
+    // An empty home: with a real one, no path now reads ~/.claude/projects.
+    const empty = mkdtempSync(join(tmpdir(), 'trazum-bill-nopath-'));
+    const result = spawnSync(process.execPath, [CLI, 'bill'], {
+      encoding: 'utf8',
+      env: { ...SPAWN_ENV, HOME: empty, CLAUDE_CONFIG_DIR: '' },
+      timeout: 60000,
+    });
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /trazum bill/);
   });
@@ -174,5 +180,104 @@ describe('trazum bill reads every path it is given', () => {
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /receipt reads one path and was given 2/);
     assert.match(result.stderr, /b\.jsonl/);
+  });
+});
+
+/**
+ * The front door as a first run meets it: no path, a terminal, and a folder
+ * of Claude Code projects. Each was a place the one line on the README
+ * stopped short: no path was a refusal, the sessions came out with no
+ * project, and a terminal got sixty lines of JSON before the first figure.
+ */
+describe('trazum bill as a first run meets it', () => {
+  const transcript = (id, model, input, output) =>
+    JSON.stringify({
+      type: 'assistant',
+      timestamp: '2026-10-02T10:00:00.000Z',
+      sessionId: `s-${id}`,
+      requestId: `r-${id}`,
+      message: { model, content: [{ type: 'text', text: 'never read' }], usage: { input_tokens: input, output_tokens: output } },
+    });
+
+  /** A home with a Claude Code projects folder, two projects in it. */
+  function home() {
+    const dir = mkdtempSync(join(tmpdir(), 'trazum-bill-home-'));
+    const projects = join(dir, '.claude', 'projects');
+    mkdirSync(join(projects, '-home-me-webapp'), { recursive: true });
+    mkdirSync(join(projects, '-home-me-etl'), { recursive: true });
+    writeFileSync(join(projects, '-home-me-webapp', 'a.jsonl'), `${transcript('a1', 'claude-opus-5', 100_000, 2_000)}\n`);
+    writeFileSync(
+      join(projects, '-home-me-etl', 'b.jsonl'),
+      `${transcript('b1', 'claude-opus-5', 10_000, 500)}\n${transcript('b2', 'claude-opus-5', 10_000, 500)}\n`,
+    );
+    return { dir, projects };
+  }
+  const as = (homeDir, args) =>
+    spawnSync(process.execPath, [CLI, ...args], {
+      encoding: 'utf8',
+      env: { ...SPAWN_ENV, HOME: homeDir, CLAUDE_CONFIG_DIR: '' },
+      timeout: 60000,
+    });
+
+  it('with no path, reads Claude Code\'s own folder and names it', () => {
+    const { dir, projects } = home();
+    const result = as(dir, ['bill']);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stderr, /No path given, so reading Claude Code's own folder/);
+    assert.ok(result.stderr.includes(projects));
+    assert.equal(JSON.parse(result.stdout).total.calls, 3);
+  });
+
+  it('with no path and no folder, refuses and names every place it looked', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'trazum-bill-nohome-'));
+    const result = as(dir, ['bill']);
+    assert.equal(result.status, 1);
+    assert.ok(result.stderr.includes(join(dir, '.claude', 'projects')));
+    assert.ok(result.stderr.includes(join(dir, '.config', 'claude', 'projects')));
+    assert.match(result.stderr, /trazum bill ~\/\.claude\/projects/);
+  });
+
+  it('labels each session by its project folder, as from-claude-code does', () => {
+    const { dir, projects } = home();
+    const result = as(dir, ['bill', projects]);
+    assert.equal(result.status, 0, result.stderr);
+    const labels = JSON.parse(result.stdout).lines.map((line) => line.label).sort();
+    assert.deepEqual(labels, ['home-me-etl', 'home-me-webapp']);
+    assert.match(result.stderr, /2 Claude Code transcript\(s\) labelled by their project folder/);
+  });
+
+  it('leaves them unlabelled when asked, and lets --label win', () => {
+    const { dir, projects } = home();
+    const declined = JSON.parse(as(dir, ['bill', projects, '--no-label-from-project']).stdout);
+    assert.deepEqual([...new Set(declined.lines.map((line) => line.label))], [null]);
+    const named = JSON.parse(as(dir, ['bill', projects, '--label', 'agents']).stdout);
+    assert.deepEqual([...new Set(named.lines.map((line) => line.label))], ['agents']);
+  });
+
+  it('prints a statement a person reads with --table, and the receipt with --receipt', () => {
+    const { dir, projects } = home();
+    const statement = as(dir, ['bill', projects, '--table']);
+    assert.equal(statement.status, 0, statement.stderr);
+    assert.match(statement.stdout, /Your bill/);
+    assert.match(statement.stdout, /across 3 priced call\(s\)/);
+    assert.match(statement.stdout, /project\s+calls\s+USD\s+share/);
+    assert.match(statement.stdout, /home-me-webapp/);
+    assert.match(statement.stdout, /--pdf-out bill\.pdf/);
+    assert.throws(() => JSON.parse(statement.stdout));
+    const forced = as(dir, ['bill', projects, '--table', '--receipt']);
+    assert.equal(JSON.parse(forced.stdout).total.calls, 3);
+  });
+
+  it('collapses a large folder into one line per shape and counts what it could not read', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'trazum-bill-many-'));
+    for (let i = 0; i < 6; i += 1) {
+      writeFileSync(join(dir, `u${i}.jsonl`), '{"model":"claude-opus-5","usage":{"input_tokens":1000,"output_tokens":10}}\n');
+    }
+    for (let i = 0; i < 5; i += 1) writeFileSync(join(dir, `x${i}.json`), '{"hello":"world"}\n');
+    const result = run(['bill', dir]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stderr, /6 file\(s\): usage-log, read as they are/);
+    assert.equal((result.stderr.match(/no shape this tool reads claims it/g) ?? []).length, 3);
+    assert.match(result.stderr, /2 more file\(s\) no shape claims/);
   });
 });

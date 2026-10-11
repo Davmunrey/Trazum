@@ -724,7 +724,28 @@ export interface CliMessages {
   };
 
   bill: {
-    noPath(): string;
+    /** No path given and no Claude Code folder where Claude Code keeps one. */
+    noPath(tried: string): string;
+    /** No path given: the folders found and read instead, named. */
+    defaultPath(dirs: string): string;
+    /** Claude Code sessions took their label from their project folder. */
+    labelledByProject(files: number): string;
+    /** The unclaimed files past the first few, counted rather than listed. */
+    unknownMore(count: number): string;
+    /** Many files of one shape: one line for the shape, not one per file. */
+    shapeSummary(shape: string, files: number, records: number | null, leftOut: number): string;
+    /** The human statement a terminal gets instead of the JSON receipt. */
+    statementHeading(): string;
+    statementTotal(usd: string, calls: number): string;
+    colProject(): string;
+    colWorkload(): string;
+    colModel(): string;
+    colCalls(): string;
+    colShare(): string;
+    moreRows(count: number): string;
+    statementUnpriced(models: string, calls: number): string;
+    statementUnread(lines: number): string;
+    statementNext(): string;
     notFound(path: string): string;
     noFiles(path: string): string;
     /** One line per file: its shape, what it became, what was left out. */

@@ -13,6 +13,23 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+- **`trazum bill` meets a first run where it is.** Three places the README's
+  one line stopped short, each measured on a real `~/.claude/projects`:
+  - **No path was a refusal.** It now reads Claude Code's own folder,
+    `$CLAUDE_CONFIG_DIR/projects`, `~/.claude/projects` and
+    `~/.config/claude/projects`, every one that exists, naming each; with
+    none there it names every place it looked.
+  - **Sessions had no project.** `from-claude-code` has labelled a directory
+    by its project folders since 1.77, and `bill` read the same transcripts
+    with no label, so the bill could not say which project spent the money.
+    Same default now, with `--no-label-from-project` to decline and `--label`
+    to set one.
+  - **A terminal got the JSON receipt.** On a TTY `bill` now prints a
+    statement: the total, a table by project, a table by model, and what is
+    not in the total. A pipe still gets the receipt, so scripts see no
+    change; `--receipt` and `--table` force either. A folder of hundreds of
+    transcripts is one line per shape on stderr rather than one per file.
+
 - **The web app opens on the bill.** Since 2.4.0 the README, the landing
   page and the CLI all open on one thing, `trazum bill`, and the web app
   opened on the prompt optimiser: a visitor sent by the line they had just
@@ -29,6 +46,10 @@ merged commit with no entry is a change only `git log` remembers.
   `npx skills add Davmunrey/Trazum`, which lists it today.
 
 ### Fixed
+
+- **The packaged Action pin in `README.md` and `docs/running.md` advanced to
+  2.4.2's release commit**, the one `v2.4.2` points at, in the pull request
+  after the release as `docs/releasing.md` says it must.
 
 - **The guided tour's welcome said nothing pasted is uploaded.** The bill is
   read in the page; Optimise, Write and Compare post the prompt to the
