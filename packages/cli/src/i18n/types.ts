@@ -115,6 +115,8 @@ export interface CliMessages {
     unknownCommand(command: string): string;
     unknownFlag(name: string, allowed: string): string;
     unknownFlagDidYouMean(name: string, suggestion: string): string;
+    /** More positional arguments than the command reads; `first` is the first one it would have ignored. */
+    extraPositional(command: string, limit: number, given: number, first: string): string;
     missingInputFile(): string;
     llmNotConfigured(): string;
     applyNeedsSuggest(): string;

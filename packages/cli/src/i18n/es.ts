@@ -47,7 +47,7 @@ ${bold('USO')}
   trazum rollup <documento...|dir> [--json] [--html-out <fichero>]
   trazum position <uso.jsonl>
   trazum receipt <uso.jsonl|dir> [--stamp] [-o <fichero>]
-  trazum bill <fichero|dir> [--label <nombre>] [--stamp] [-o <fichero>]
+  trazum bill <fichero|dir>... [--label <nombre>] [--stamp] [-o <fichero>]
   trazum from-claude-code <fichero|dir> [--label <nombre>] [-o <fichero>]
   trazum from-otel <fichero|dir> [--label-from-service] [-o <fichero>]
   trazum from-litellm <fichero|dir> [-o <fichero>]
@@ -1234,6 +1234,10 @@ ${bold('EJEMPLOS')}
       `Opción desconocida --${name}. Este comando acepta: ${allowed}.`,
     unknownFlagDidYouMean: (name, suggestion) =>
       `Opción desconocida --${name}. ¿Querías decir --${suggestion}?`,
+    extraPositional: (command, limit, given, first) =>
+      `${command} lee ${limit === 1 ? 'una ruta' : `${limit} rutas`} y ha recibido ${given}, así que ${first} y`
+      + ' todo lo que va detrás se ignoraría. Un comodín del shell se expande en muchas rutas: pasa la'
+      + ` carpeta (trazum ${command} logs/) o ejecútalo una vez por fichero.`,
     diffNeedsTwoFiles: () =>
       'trazum diff necesita dos ficheros: trazum diff <antes> <después>.',
     cannotNegate: (name) => `--no-${name} no tiene sentido: --${name} lleva un valor.`,
@@ -2016,7 +2020,7 @@ ${bold('EJEMPLOS')}
   bill: {
     noPath: () => 'bill necesita un archivo o un directorio que leer: trazum bill ~/.claude/projects',
     notFound: (path) => `${path}: no encontrado`,
-    noFiles: (path) => `${path}: no hay archivos .json, .jsonl ni .ndjson dentro.`,
+    noFiles: (path) => `${path}: no hay archivos .json, .jsonl, .ndjson ni .log dentro, ni sin comprimir ni en .gz.`,
     file: (path, shape, records, leftOut) =>
       `${path}: ${shape}${records === null ? ', leido tal cual' : `, ${records} registro(s)`}${leftOut > 0 ? `, ${leftOut} fila(s) fuera. Ejecuta trazum from-${shape} sobre el para ver por que.` : '.'}`,
     unknown: (path) =>

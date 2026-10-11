@@ -74,7 +74,10 @@ relaxing it here would have been backwards.
 The protocol implementation covers what a tools-only server needs — `initialize`,
 `notifications/initialized`, `tools/list`, `tools/call`, `ping` — and answers
 anything else with `-32601 Method not found`. No resources, no prompts, no
-sampling. It is driven by a raw newline-delimited client in the tests; it has not
+sampling. An argument a tool's schema does not declare is refused as an
+`isError` result naming it and the declared name it most likely meant
+(`output_tokens` → `outputTokens`), never ignored: a dropped key read as its
+default is how `spend_guard` once said yes to a call over budget. It is driven by a raw newline-delimited client in the tests; it has not
 been driven by every MCP client in existence.
 
 Token counts are estimates (±4% on CJK, ±6% on Latin prose, ±26% on code,
