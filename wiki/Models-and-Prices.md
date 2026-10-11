@@ -30,16 +30,17 @@ on text. What differs is the money, and **that is not one set of numbers**:
 |---|---|
 | Cache read | 10% of input on OpenAI, Moonshot, Google, Mistral and Anthropic up to Opus 5 and Sonnet 5; **25%** on xAI. Two providers changed it **between generations**: Anthropic's Opus 5.5 and Sonnet 5.5 read at **5%** and Fable 5.1 and Mythos 5.1 at **2.5%**, and DeepSeek V4.1 Flash reads at **2%** and V4 Pro at about **3%** where V3 read at 10% |
 | Cache write | 125% of input on Anthropic; 100% on OpenAI, Google, Moonshot, DeepSeek and xAI; Mistral publishes no write price and reports no write tokens |
-| Cache minimum | **Per model, not per provider.** Anthropic alone spans 512 to 4,096; 1,024 on OpenAI, Moonshot, DeepSeek and xAI; 4,096 on Gemini 3.6 and 3.8 Flash and 2,048 on the retired Gemini 2.5 models; Mistral publishes none |
+| Cache minimum | **Per model, not per provider.** Anthropic alone spans 512 to 4,096; 1,024 on OpenAI, Moonshot, DeepSeek and xAI; 4,096 on Gemini 3.6 Flash, 3.8 Flash and 3.1 Pro and 2,048 on the retired Gemini 2.5 models; Mistral publishes none |
 | How caching starts | You mark the prefix on Anthropic; it is **automatic** on OpenAI, Google, Moonshot, DeepSeek and xAI; Mistral does not say, so Trazum gives no caching advice for it |
 | Batch API | 50% on Anthropic, OpenAI, Google and Mistral; **none at all** on Moonshot, DeepSeek and xAI |
+| Not one price | Claude Haiku 5.5 and Gemini 3.1 Pro Preview charge **each request by its prompt length**, dearer over 100,000 and 200,000 tokens; DeepSeek V4 charges **by the clock**, half price off-peak. A call is billed in its own band; a usage report's summed row is billed at the dearer rate with the cheaper figure printed beside it |
 
 **The cache minimum is the row to read twice, and it used to be wrong here.** This
 table said *"512 on Anthropic"* flatly. Anthropic's floor is a property of the
-model: 512 on Fable 5.1, Fable 5, Mythos 5.1, Mythos 5, Opus 5.5, Opus 5 and
-Sonnet 5.5; 1,024 on Opus 4.8, Sonnet 5 and Sonnet 4.6; 2,048 on Opus 4.7;
+model: 512 on Fable 5.1, Fable 5, Mythos 5.1, Mythos 5, Opus 5.5, Opus 5,
+Sonnet 5.5 and Haiku 5.5; 1,024 on Opus 4.8, Sonnet 5 and Sonnet 4.6; 2,048 on Opus 4.7;
 **4,096 on Opus 4.6, Opus 4.5 and Haiku 4.5**. A reader on
-Haiku who trusted "512" would have built a prefix eight times too short and been
+Haiku 4.5 who trusted "512" would have built a prefix eight times too short and been
 told caching would save money that could never arrive — the one direction this
 tool must never be wrong in. `trazum models` prints the real figure per model,
 and every cache advisory has always used it; only this table was wrong.

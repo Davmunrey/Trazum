@@ -1,4 +1,5 @@
 import { effectivePricing, multipliersFor } from './pricing.js';
+import { billedAt, promptSizeOf } from './billing.js';
 import { UNLABELLED } from './usage.js';
 import type { PricingCatalogue } from './pricing.js';
 import type { UsageRecord } from './usage.js';
@@ -90,8 +91,9 @@ export function createTruncationRetryTracker(options: TruncationRetryOptions): T
   const priceOf = (record: UsageRecord): number | null => {
     const model = catalogue.byId.get(record.model);
     if (!model) return null;
-    const { inputPerMTok, outputPerMTok } = effectivePricing(model, on);
-    const rates = multipliersFor(model);
+    const at = billedAt(record, on);
+    const { inputPerMTok, outputPerMTok } = effectivePricing(model, at, promptSizeOf(record));
+    const rates = multipliersFor(model, at);
     const per = (count: number, rate: number): number => (count / 1_000_000) * rate;
     return (
       per(record.inputTokens, inputPerMTok) +

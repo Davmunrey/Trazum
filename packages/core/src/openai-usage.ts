@@ -95,6 +95,12 @@ export interface OpenaiUsageRecord {
   model: string;
   ts: string;
   label?: string;
+  /**
+   * `num_model_requests` when the bucket sums more than one, `null` when the
+   * row does not carry a usable count, and absent when it is exactly one
+   * request, which is then a call like any other. See `UsageRecord.requests`.
+   */
+  requests?: number | null;
   usage: {
     prompt_tokens: number;
     completion_tokens: number;
@@ -306,6 +312,7 @@ export function openaiUsageRecords(
         model: result.model,
         ts,
         ...(label === undefined ? {} : { label }),
+        ...requestsField(result.num_model_requests),
         usage: {
           prompt_tokens: prompt,
           completion_tokens: completion,
@@ -350,4 +357,10 @@ export function looksLikeOpenaiUsage(text: string, prefixBytes = 8192): boolean 
   const head = text.slice(0, prefixBytes);
   if (head.includes('"organization.usage.completions.result"')) return true;
   return head.includes('"num_model_requests"') && head.includes('"start_time"');
+}
+
+/** A bucket's request count as `UsageRecord.requests` reads it: one is a call. */
+function requestsField(value: unknown): { requests?: number | null } {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) return { requests: null };
+  return value === 1 ? {} : { requests: value };
 }

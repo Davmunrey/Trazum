@@ -444,6 +444,18 @@ export interface BucketedSlice {
   /** Writes priced at the 1-hour rate, when the source did not state the TTL. */
   cacheWriteUsdIfAssumed1h: number;
   writeTtlKnown: boolean;
+  /**
+   * Buckets billed at the dearer of two rates, and what they cost each way.
+   *
+   * A model priced by prompt length bills each request on its own prompt; a
+   * bucket sums requests and says none of their lengths. Unless the bucket's
+   * whole prompt total is at or under the line, it is billed at the dearer
+   * rate, so `totalUsd` is a ceiling on it: `tierCeilingUsd` is its share of
+   * that total and `tierFloorUsd` the same tokens at the cheaper rate.
+   */
+  tierCeilingBuckets: number;
+  tierCeilingUsd: number;
+  tierFloorUsd: number;
 }
 
 export interface BucketedReport {
@@ -480,9 +492,15 @@ export interface BucketedReport {
  */
 export function bucketedProfile(
   pull: ConnectorPull,
+  /**
+   * `on` is accepted and no longer read. Each bucket is billed at its own
+   * start, as `profile` bills each call at its own moment: priced at the
+   * report's date, a pull spanning a published price change came out entirely
+   * at whichever price applied the day it ran.
+   */
   options: { catalogue: PricingCatalogue; on?: Date },
 ): BucketedReport {
-  const { catalogue, on = new Date() } = options;
+  const { catalogue } = options;
 
   const slices = new Map<string, BucketedSlice>();
   const days = new Map<string, { usd: number; calls: number | null }>();
@@ -498,9 +516,28 @@ export function bucketedProfile(
       continue;
     }
 
-    const { inputPerMTok, outputPerMTok } = effectivePricing(model, on);
-    const rates = multipliersFor(model);
+    const at = new Date(bucket.fromMs);
+    /*
+     * A bucket of exactly one request says that request's prompt; any other
+     * bucket only bounds it. See `PromptSize`.
+     */
+    const prompt =
+      bucket.inputTokens + bucket.cacheReadTokens + bucket.cacheWrite5mTokens + bucket.cacheWrite1hTokens;
+    const priced = effectivePricing(
+      model,
+      at,
+      bucket.calls === 1 ? { inputTokens: prompt } : { inputTokensAtMost: prompt },
+    );
+    const { inputPerMTok, outputPerMTok } = priced;
+    const rates = multipliersFor(model, at);
     const per = (count: number, rate: number): number => (count / 1_000_000) * rate;
+    const costAt = (input: number, output: number): number =>
+      per(bucket.inputTokens, input) +
+      per(bucket.cacheReadTokens, input * rates.cacheRead) +
+      per(bucket.cacheWrite5mTokens, input * rates.cacheWrite5m) +
+      per(bucket.cacheWrite1hTokens, input * rates.cacheWrite1h) +
+      per(bucket.outputTokens, output);
+    const floor = priced.tier?.decided === false ? priced.tier.floor : undefined;
 
     const inputUsd = per(bucket.inputTokens, inputPerMTok);
     const cacheReadUsd = per(bucket.cacheReadTokens, inputPerMTok * rates.cacheRead);
@@ -529,6 +566,9 @@ export function bucketedProfile(
       cachedTokensAtInputRateUsd: 0,
       cacheWriteUsdIfAssumed1h: 0,
       writeTtlKnown: true,
+      tierCeilingBuckets: 0,
+      tierCeilingUsd: 0,
+      tierFloorUsd: 0,
     };
     slice.calls = slice.calls === null || bucket.calls === null ? null : slice.calls + bucket.calls;
     slice.inputTokens += bucket.inputTokens;
@@ -543,6 +583,11 @@ export function bucketedProfile(
     slice.cachedTokensAtInputRateUsd += atInputRate;
     slice.cacheWriteUsdIfAssumed1h += ifAssumed1h;
     slice.writeTtlKnown = slice.writeTtlKnown && bucket.writeTtlKnown;
+    if (floor !== undefined) {
+      slice.tierCeilingBuckets += 1;
+      slice.tierCeilingUsd += costAt(inputPerMTok, outputPerMTok);
+      slice.tierFloorUsd += costAt(floor.inputPerMTok, floor.outputPerMTok);
+    }
     slices.set(bucket.model, slice);
 
     const day = new Date(bucket.fromMs).toISOString().slice(0, 10);

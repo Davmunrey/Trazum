@@ -63,6 +63,12 @@ export interface OpenrouterActivityRecord {
   model: string;
   ts: string;
   label?: string;
+  /**
+   * The day's `requests` when it is more than one, `null` when the row does
+   * not carry a usable count, absent when it is exactly one request. See
+   * `UsageRecord.requests`.
+   */
+  requests?: number | null;
   usage: { prompt_tokens: number; completion_tokens: number };
 }
 
@@ -186,6 +192,7 @@ export function openrouterActivityRecords(
       model: row.model,
       ts: `${row.date}T00:00:00.000Z`,
       ...(label === undefined ? {} : { label }),
+      ...requestsField(row.requests),
       usage: {
         prompt_tokens: count(row.prompt_tokens),
         completion_tokens: count(row.completion_tokens),
@@ -218,4 +225,10 @@ export function openrouterActivityRecords(
 export function looksLikeOpenrouterActivity(text: string, prefixBytes = 8192): boolean {
   const head = text.slice(0, prefixBytes);
   return head.includes('"model_permaslug"') || head.includes('"byok_usage_inference"');
+}
+
+/** A day's request count as `UsageRecord.requests` reads it: one is a call. */
+function requestsField(value: unknown): { requests?: number | null } {
+  if (typeof value !== 'number' || !Number.isInteger(value) || value < 1) return { requests: null };
+  return value === 1 ? {} : { requests: value };
 }

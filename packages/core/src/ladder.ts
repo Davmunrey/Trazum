@@ -151,7 +151,8 @@ export function ladderArithmetic(
     if (id === undefined) return null;
     const model = catalogue.byId.get(id);
     if (model === undefined) return null;
-    const rates = effectivePricing(model, on);
+    // The shape's own prompt decides a model priced by prompt length.
+    const rates = effectivePricing(model, on, { inputTokens: shape.inputTokens });
     return (
       (shape.inputTokens / 1_000_000) * rates.inputPerMTok +
       (shape.outputTokens / 1_000_000) * rates.outputPerMTok

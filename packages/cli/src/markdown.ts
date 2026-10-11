@@ -1161,6 +1161,10 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
       );
       lines.push('');
       // The decision's other half, on the target's rates, never summed.
+      if (whatIf.tierCeiling !== null) {
+        lines.push(`> ⚠️ ${mdText(t.profile.whatIfTierCeiling(whatIf.tierCeiling.slices, whatIf.target.displayName, formatUsd(whatIf.tierCeiling.targetFloorUsd)))}`);
+        lines.push('');
+      }
       if (whatIf.batchOnTarget !== null) {
         lines.push(`_${mdText(t.profile.whatIfBatchOnTarget(formatUsd(whatIf.batchOnTarget.targetUsd), formatUsd(whatIf.targetUsd)))}_`);
         lines.push('');
@@ -1330,6 +1334,10 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
     lines.push(`> ⚠️ ${mdText(t.profile.unpriced(report.unpricedModels.join(', '), report.unpriced.calls))}`);
     lines.push('');
   }
+  if (report.total.tierCeilingCalls > 0) {
+    lines.push(`> ⚠️ ${mdText(tierCeilingCaveat(report, t))}`);
+    lines.push('');
+  }
   if (report.skippedLines.length > 0) {
     const shown = report.skippedLines.slice(0, 5).join(', ');
     lines.push(`_${mdText(t.profile.skipped(report.skippedLines.length, report.skippedLines.length > 5 ? `${shown}…` : shown))}_`);
@@ -1337,4 +1345,20 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
   }
 
   return `${lines.join('\n').trimEnd()}\n`;
+}
+
+/**
+ * The ceiling caveat in words: rows billed at the dearer of two rates because
+ * they sum requests on a model priced by prompt length. One sentence for every
+ * surface that prints a report, so the terminal, the receipt summary and the
+ * exported documents cannot word the range differently.
+ */
+export function tierCeilingCaveat(report: UsageProfileReport, t: CliMessages): string {
+  const models = report.byModel.filter((row) => row.breakdown.tierCeilingCalls > 0).map((row) => row.model);
+  return t.profile.tierCeiling(
+    report.total.tierCeilingCalls,
+    models.join(', '),
+    formatUsd(report.total.tierCeilingUsd),
+    formatUsd(report.total.tierFloorUsd),
+  );
 }

@@ -2775,6 +2775,8 @@ ${bold('EXAMPLES')}
       'Nothing here clears 1% of the bill: these calls are already on the cheapest model of their family, or their provider has no batch API. That is a real answer, not an empty section.',
     assumedWriteTtl: (calls) =>
       `${count(calls)} ${calls === 1 ? 'call did' : 'calls did'} not say which cache-write TTL was used, so the cheaper 5-minute rate was assumed. A 1-hour entry costs 2x input rather than 1.25x, so this total is a floor for those calls. Record the "cache_creation" object the API returns to remove the assumption.`,
+    tierCeiling: (rows, models, ceiling, floor) =>
+      `${count(rows)} ${rows === 1 ? 'row' : 'rows'} on ${models} ${rows === 1 ? 'sums' : 'sum'} requests without giving any one prompt's length, and that model is priced by prompt length, so ${rows === 1 ? 'it is' : 'they are'} billed at the dearer rate: ${ceiling} of this total. At the cheaper rate the same tokens come to ${floor}; the true figure is between the two. A log with one line per call settles it.`,
     spanLine: (from, to, days) =>
       `This log covers ${from} → ${to} (${days} days): stated, never extrapolated. Scale it to a month yourself, now that you know what it covers.`,
     spanPartial: (withTs, total) =>
@@ -2859,6 +2861,8 @@ ${bold('EXAMPLES')}
     whatIfCheaper: () =>
       'Verify before you move anything: trazum route measures one prompt against both models on your own examples.',
     whatIfDearer: () => 'That direction costs more. The arithmetic is here so the number is not a guess.',
+    whatIfTierCeiling: (slices, target, floor) =>
+      `${target} is priced by prompt length, and ${count(slices)} ${slices === 1 ? 'slice holds' : 'slices hold'} a call over its line, so ${slices === 1 ? 'it is' : 'they are'} priced at the dearer band: the figure above is a ceiling. With every call under the line it would be ${floor}.`,
     whatIfBatchOnTarget: (batched, moved) =>
       `If those calls can also wait, the target's Batch API takes the moved bill from ${moved} to ${batched}, the discount applies to the target's rates, not the ones you left. Whether they can wait is not in the log; that half of the decision is yours.`,
     whatIfCacheBeyond: (largest, min, noCache) =>

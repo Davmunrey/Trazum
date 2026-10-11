@@ -9,7 +9,7 @@ import {
   modelFrom,
   multipliersFor,
 } from './pricing.js';
-import type { PricingCatalogue } from './pricing.js';
+import type { PricingCatalogue, PromptSize } from './pricing.js';
 import { formatUsd } from './savings.js';
 import { analyzeExamples, findContradictions, findMovableSchema,
   findRestatedFormat } from './structure.js';
@@ -125,6 +125,7 @@ function cheapestInTier(
   on: Date,
   pricing: PricingCatalogue,
   provider: string | undefined,
+  size: PromptSize = {},
 ): ModelPricing | undefined {
   const candidates = pricing.models.filter(
     (m) =>
@@ -136,8 +137,9 @@ function cheapestInTier(
       isOffered(m),
   );
   if (candidates.length === 0) return undefined;
+  /* Ranked at this prompt's size: a model priced by length costs what this prompt would. */
   return candidates.reduce((best, m) =>
-    effectivePricing(m, on).inputPerMTok < effectivePricing(best, on).inputPerMTok ? m : best,
+    effectivePricing(m, on, size).inputPerMTok < effectivePricing(best, on, size).inputPerMTok ? m : best,
   );
 }
 
@@ -163,7 +165,12 @@ export function buildAdvisories(
 
   const advisories: Advisory[] = [];
   const model = modelFrom(pricing, usage.model);
-  const { inputPerMTok, outputPerMTok, promoApplied } = effectivePricing(model, on);
+  /*
+   * The prompt is in hand, so a model priced by prompt length is priced at
+   * this prompt's length rather than at its dearer band.
+   */
+  const size: PromptSize = { inputTokens: tokensAfter };
+  const { inputPerMTok, outputPerMTok, promoApplied } = effectivePricing(model, on, size);
   // Per model, not global. A cache read is ~10% of input on Anthropic and about
   // half on OpenAI; one constant for both overstates an OpenAI caching saving
   // fivefold, which is an invented saving rather than an imprecise one.
@@ -502,9 +509,9 @@ export function buildAdvisories(
    * unrecorded capability is told it is overpowered.
    */
   if (!recommendation.conflicted && model.tier !== 'unknown' && TIER_ORDER[suggestedTier] < TIER_ORDER[model.tier]) {
-    const candidate = cheapestInTier(suggestedTier, on, pricing, model.provider);
+    const candidate = cheapestInTier(suggestedTier, on, pricing, model.provider, size);
     if (candidate) {
-      const candidatePricing = effectivePricing(candidate, on);
+      const candidatePricing = effectivePricing(candidate, on, size);
       /**
        * The candidate's own batch multiplier, not a constant.
        *

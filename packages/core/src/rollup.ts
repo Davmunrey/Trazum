@@ -316,6 +316,9 @@ const BREAKDOWN_SUM = [
   'truncatedCalls',
   'truncatedOutputUsd',
   'stopReasonCalls',
+  'tierCeilingCalls',
+  'tierCeilingUsd',
+  'tierFloorUsd',
 ] as const;
 
 /** Fields whose combination is a maximum, because a sum would invent a call. */

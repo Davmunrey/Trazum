@@ -1,4 +1,5 @@
 import { effectivePricing } from './pricing.js';
+import { billedAt, promptSizeOf } from './billing.js';
 import { UNLABELLED } from './usage.js';
 import type { PricingCatalogue } from './pricing.js';
 import type { UsageRecord } from './usage.js';
@@ -172,7 +173,7 @@ export function createOutputShapeTracker(options: OutputShapeOptions): OutputSha
       slices.set(key, slice);
     }
 
-    const { outputPerMTok } = effectivePricing(model, on);
+    const { outputPerMTok } = effectivePricing(model, billedAt(record, on), promptSizeOf(record));
     slice.calls += 1;
     slice.outputTokens += record.outputTokens;
     slice.outputUsd += (record.outputTokens / 1_000_000) * outputPerMTok;

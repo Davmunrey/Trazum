@@ -3606,9 +3606,9 @@ context windows).
 
 ### When a price is not one number
 
-2 of the 7 providers do not charge a flat rate, and the catalogue says so
-in data rather than in a footnote, because a footnote is arithmetic a reader has
-to do by hand and this product exists to stop that.
+3 of the 7 providers do not charge every model a flat rate, and the catalogue
+says so in data rather than in a footnote, because a footnote is arithmetic a
+reader has to do by hand and this product exists to stop that.
 
 **DeepSeek V4 bills by the clock.** Peak is 01:00-04:00 and 06:00-10:00 UTC,
 Monday to Friday, and off-peak is exactly half. Peak is 35 hours of 168, so the
@@ -3618,17 +3618,41 @@ already correct for the moment it prices, because every caller passes the date i
 is pricing for and the condition is decided from it. A report of a usage log
 prices each call at the rate that applied when the call happened.
 
-**Gemini 3.1 Pro bills by prompt size**, $2/$12 up to 200k input tokens and
-$4/$18 above. That one is decidable only where the token count is known, which is
-every place that prices a specific call and no place that merely ranks models —
-and it is **not in the catalogue yet** for that reason: it is the example this
-field was shaped around, not a model Trazum prices today. Adding it before the
-report can carry an undecided tier would put a ceiling in front of every reader
-ranking models, which is a different kind of wrong from the one being fixed.
-Where it cannot be decided, Trazum returns the **dearer** rate and marks the
-figure undecided, naming what would settle it: a cost figure that is a ceiling
-can prove "under budget" and can never surprise a bill, and a floor picked for
-looking better is the direction this product does not take.
+**Claude Haiku 5.5 and Gemini 3.1 Pro Preview bill by prompt length, per
+request.** Haiku 5.5 is $0.10/$0.50 for a prompt up to 100,000 tokens and
+$0.50/$2.50 over it; Gemini 3.1 Pro is $2/$12 up to 200,000 and $4/$18 over.
+"Prompt" is every input token the request carried, cache reads and writes
+included, and each request is priced on its own: a request over the line pays
+the higher rate on all of it, and the next one pays its own.
+
+That is decidable exactly where one request's prompt is known, and Trazum passes
+it wherever it is:
+
+- **A call in a usage log** carries its own prompt, so each one is billed in its
+  own band. A Claude Code transcript, an OpenTelemetry span, a LiteLLM, Helicone
+  or LangSmith row and a plain usage line are all one call each.
+- **A row that sums requests** does not: an Anthropic or OpenAI usage report's
+  bucket, an OpenRouter day. Such a row carries `requests`, the number it sums or
+  `null` when the report does not say, and the `from-*` converters and `connect`
+  write it for you. Its whole prompt total is a bound on any one request in it, so
+  a row at or under the line is under it throughout and billed at the lower rate.
+  A row over the line is billed at the **dearer** rate, and the report prints
+  what the same tokens cost at the cheaper one beside it: `bill`, `profile`,
+  `receipt` (as a `tier-ceiling` gap), `connect`, the exported documents, the MCP
+  report and the web app all say "$X of this total, $Y at the cheaper rate".
+- **A prompt you hand Trazum** (`optimize`, `spend_guard`, the gateway, the
+  cost answer) is one request, and is priced at its own length; `optimize` prices
+  the prompt before and after on their own bands, so an edit that brings a prompt
+  under the line is credited with the rate it saves as well as the tokens.
+- **A what-if onto one of these models** reprices slices of a log, and a slice's
+  largest call bounds every prompt in it: under the line is decided, over it is a
+  ceiling with the cheaper figure printed beside it.
+
+Where nothing says how large a prompt is, Trazum returns the **dearer** rate and
+marks the figure undecided, naming what would settle it: a cost figure that is a
+ceiling can prove "under budget" and can never surprise a bill, and a floor picked
+for looking better is the direction this product does not take. The same row that
+records the ceiling records the floor, so the uncertainty has a size.
 
 A tier is declared as a condition, an id and a pair of rates:
 

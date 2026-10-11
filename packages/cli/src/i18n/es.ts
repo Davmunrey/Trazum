@@ -2800,6 +2800,8 @@ ${bold('EJEMPLOS')}
       'Aquí no hay nada que llegue al 1% de la factura: estas llamadas ya van al modelo más barato de su familia, o su proveedor no tiene Batch API. Eso es una respuesta de verdad, no una sección vacía.',
     assumedWriteTtl: (calls) =>
       `${count(calls)} ${calls === 1 ? 'llamada no dijo' : 'llamadas no dijeron'} qué TTL de escritura de caché se usó, así que se asumió la tarifa más barata, la de 5 minutos. Una entrada de 1 hora cuesta 2x la entrada en vez de 1.25x, así que este total es un suelo para esas llamadas. Registra el objeto "cache_creation" que devuelve la API para quitar la suposición.`,
+    tierCeiling: (rows, models, ceiling, floor) =>
+      `${count(rows)} ${rows === 1 ? 'fila' : 'filas'} de ${models} ${rows === 1 ? 'suma' : 'suman'} peticiones sin dar la longitud de ningún prompt, y ese modelo se cobra por longitud de prompt, así que ${rows === 1 ? 'se factura' : 'se facturan'} a la tarifa más cara: ${ceiling} de este total. A la tarifa más barata los mismos tokens suman ${floor}; la cifra real está entre las dos. Un registro con una línea por llamada lo resuelve.`,
     spanLine: (from, to, days) =>
       `Este registro abarca ${from} → ${to} (${days} días): declarado, nunca extrapolado. Escálalo tú a un mes, ahora que sabes qué cubre.`,
     spanPartial: (withTs, total) =>
@@ -2885,6 +2887,8 @@ ${bold('EJEMPLOS')}
     whatIfCheaper: () =>
       'Compruébalo antes de mover nada: trazum route mide un prompt contra ambos modelos con tus propios ejemplos.',
     whatIfDearer: () => 'Esa dirección cuesta más. La aritmética está aquí para que el número no sea una suposición.',
+    whatIfTierCeiling: (slices, target, floor) =>
+      `${target} se cobra por longitud de prompt, y ${count(slices)} ${slices === 1 ? 'tramo tiene' : 'tramos tienen'} una llamada por encima de su umbral, así que ${slices === 1 ? 'se cobra' : 'se cobran'} a la banda más cara: la cifra de arriba es un techo. Con todas las llamadas por debajo del umbral sería ${floor}.`,
     whatIfBatchOnTarget: (batched, moved) =>
       `Si esas llamadas además pueden esperar, la Batch API del destino deja la factura trasladada de ${moved} en ${batched}: el descuento aplica a las tarifas del destino, no a las que dejas. Si pueden esperar no está en el registro; esa mitad de la decisión es tuya.`,
     whatIfCacheBeyond: (largest, min, noCache) =>

@@ -150,8 +150,11 @@ function repriceAt(
   model: ModelPricing,
   on: Date,
 ): { inputUsd: number; outputUsd: number; cacheUsd: number; totalUsd: number } {
-  const { inputPerMTok, outputPerMTok } = effectivePricing(model, on);
-  const rates = multipliersFor(model);
+  // The breakdown's largest call bounds every prompt in it: see `PromptSize`.
+  const { inputPerMTok, outputPerMTok } = effectivePricing(model, on, {
+    inputTokensAtMost: breakdown.maxCallInputTokens,
+  });
+  const rates = multipliersFor(model, on);
   const per = (tokens: number, rate: number): number => (tokens / 1_000_000) * rate;
 
   const inputUsd = per(breakdown.inputTokens, inputPerMTok);

@@ -27,12 +27,10 @@ describe('the bill picture in the README', () => {
     assert.equal(current, draw(lines), 'docs/assets/bill.svg is stale. Run: node scripts/draw-bill.mjs');
   });
 
-  it('shows a priced total and a model kept out of it, named', () => {
+  it('shows a priced total, the bill by project and the bill by model', () => {
     assert.match(lines[1], /^\s+\$[\d,.]+ across \d+ priced call\(s\)$/);
-    assert.ok(
-      lines.some((line) => line.includes('Not in the total')),
-      'the examples no longer exercise an unpriced model, which is half of what the picture argues',
-    );
+    assert.ok(lines.some((line) => /^\s+project\s+calls\s+USD\s+share$/.test(line)), 'no table by project');
+    assert.ok(lines.some((line) => /^\s+model\s+calls\s+USD\s+share$/.test(line)), 'no table by model');
   });
 
   it('is described in the README with the figures it shows', () => {
@@ -41,8 +39,13 @@ describe('the bill picture in the README', () => {
     assert.ok(img !== null, 'README.md no longer shows docs/assets/bill.svg');
     const [, usd, calls] = lines[1].match(/(\$[\d,.]+) across (\d+)/);
     assert.ok(img[1].includes(`${usd} across ${calls} priced calls`), `the alt text does not say ${usd} across ${calls}`);
-    const gap = lines.join(' ').match(/(\d+) call\(s\) to ([\w.-]+)/);
-    assert.ok(gap !== null && img[1].includes(`${gap[1]} calls to ${gap[2]}`), 'the alt text does not name the unpriced calls');
+    // A model the picture names as not in the total, the alt text names too.
+    const gap = lines.join(' ').match(/(\d+) call\(s\) to ([\w.-]+), which the catalogue/);
+    if (gap !== null) {
+      assert.ok(img[1].includes(`${gap[1]} calls to ${gap[2]}`), 'the alt text does not name the unpriced calls');
+    } else {
+      assert.ok(!/not in the total/i.test(img[1]), 'the alt text names a gap the picture no longer shows');
+    }
   });
 });
 

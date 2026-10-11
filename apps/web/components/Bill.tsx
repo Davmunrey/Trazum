@@ -1654,6 +1654,15 @@ function Report({
                         rates, never summed with the move, and hedged: whether
                         the calls can wait is not in the log.
                       */}
+                      {whatIf.tierCeiling !== null && (
+                        <span className="text-[13px] text-terracotta">
+                          {t.bill.whatIfTierCeiling(
+                            whatIf.tierCeiling.slices,
+                            whatIf.target.displayName,
+                            formatUsd(whatIf.tierCeiling.targetFloorUsd),
+                          )}
+                        </span>
+                      )}
                       {whatIf.batchOnTarget !== null && (
                         <span className="text-[13px] text-muted-foreground">
                           {t.bill.whatIfBatchOnTarget(
@@ -2155,10 +2164,12 @@ function Gaps({
   );
   const staleDays = reviewAgeDays(reviewed, new Date());
   const stale = staleDays !== null && staleDays > STALE_PRICING_DAYS;
+  const ceilinged = report.byModel.filter((row) => row.breakdown.tierCeilingCalls > 0);
   if (
     unpricedModels.length === 0 &&
     skippedLines.length === 0 &&
     !stale &&
+    ceilinged.length === 0 &&
     missingFields.length === 0
   ) {
     return null;
@@ -2178,6 +2189,15 @@ function Gaps({
   const caveats = [
     stale ? t.bill.pricesStale(reviewed, staleDays) : null,
     unpricedModels.length > 0 ? t.bill.unpriced(unpricedModels.join(', '), unpriced.calls) : null,
+    // A ceiling with its floor: the same sentence the CLI prints, the range rather than the doubt.
+    ceilinged.length > 0
+      ? t.bill.tierCeiling(
+          report.total.tierCeilingCalls,
+          ceilinged.map((row) => row.model).join(', '),
+          formatUsd(report.total.tierCeilingUsd),
+          formatUsd(report.total.tierFloorUsd),
+        )
+      : null,
     skippedLines.length > 0 ? t.bill.skipped(skippedLines.length, shownLines) : null,
   ].filter((line): line is string => line !== null);
   return (

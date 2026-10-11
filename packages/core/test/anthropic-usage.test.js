@@ -52,6 +52,8 @@ describe('the usage report becomes records every door already prices', () => {
     assert.deepEqual(records[0], {
       model: 'claude-opus-5',
       ts: '2026-09-01T00:00:00Z',
+      // A bucket, and the report never says of how many requests.
+      requests: null,
       usage: {
         input_tokens: 1500,
         output_tokens: 500,

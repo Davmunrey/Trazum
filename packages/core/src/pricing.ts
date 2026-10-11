@@ -408,18 +408,45 @@ export const MODELS: ModelPricing[] = [
     capability: 'mid',
     tier: 'sonnet',
   },
-  /*
-   * Claude Haiku 5.5 is not here, on purpose, and its calls are an unpriced
-   * gap that names it. The pricing page (read 2026-10-10) prices it by prompt
-   * length: $0.10/$0.50 up to 100,000 tokens and $0.50/$2.50 above, where the
-   * length counts cache reads and writes and each request is priced on its
-   * own. A tier can say that, but nothing that prices a usage log passes one
-   * request's prompt length to `effectivePricing`: records are summed per
-   * workload, model and day before they are priced. Added today, every Haiku
-   * 5.5 call would fall to the undecided ceiling, five times the price most of
-   * them paid. It goes in with the change that prices tiered models per
-   * request, not before.
-   */
+  {
+    /*
+     * The pricing page, the models overview and the prompt-caching page, read
+     * 2026-10-10. Priced by prompt length, per request: $0.10/$0.50 for a
+     * prompt up to 100,000 tokens and $0.50/$2.50 over it, where the length
+     * counts every input token the request carried, cache reads and writes
+     * included, and "each request is priced on its own". Caching is the same
+     * ratio in both bands (hits $0.01 and $0.05, writes $0.125/$0.20 and
+     * $0.625/$1), and so is batch ($0.05/$0.25, $0.25/$1.25). 1M context,
+     * 128K output, a 512-token cache minimum.
+     *
+     * It waited for the change that prices a log per request. A record that
+     * is one call carries its own prompt; a row out of a usage report sums
+     * requests, and is billed at the over-100,000 rate unless its whole
+     * prompt total is under the line, with the cheaper figure printed beside
+     * it. See `PromptSize`.
+     */
+    id: 'claude-haiku-5-5',
+    provider: 'anthropic',
+    displayName: 'Claude Haiku 5.5',
+    inputPerMTok: 0.1,
+    outputPerMTok: 0.5,
+    contextWindow: 1_000_000,
+    cacheMinTokens: 512,
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1.25, cacheWrite1h: 2, batch: 0.5 },
+    tiers: [
+      {
+        id: 'over-100k',
+        when: { kind: 'input-tokens-above', tokens: 100_000 },
+        inputPerMTok: 0.5,
+        outputPerMTok: 2.5,
+      },
+    ],
+    capability: 'small',
+    tier: 'haiku',
+    notes:
+      'Priced per request by prompt length: $0.10/$0.50 up to 100,000 input tokens, cache reads'
+      + ' and writes included, and $0.50/$2.50 over it.',
+  },
   {
     id: 'claude-haiku-4-5',
     // The dated form is the canonical API id and is what a real usage log
@@ -600,6 +627,44 @@ export const MODELS: ModelPricing[] = [
     notes:
       'Implicit caching is automatic above 4,096 tokens. Explicit caching is also billed for storage:'
       + ' $0.50 per 1M tokens per hour through 2026-12-31, $1.00 after.',
+  },
+  {
+    /*
+     * The pricing page, the model page and the caching page, read 2026-10-10
+     * and 2026-10-11. The model Google's own refusal of 2.5 Pro names as its
+     * replacement, and the second model here priced by prompt length: $2/$12
+     * for a prompt up to 200,000 tokens and $4/$18 over it, the cache at
+     * $0.20 and $0.40 (10% in both bands), batch $1/$6 and $2/$9 (half in
+     * both). 1,048,576 tokens in, 65,536 out, implicit caching from 4,096.
+     * The `-customtools` endpoint is "same as Gemini 3.1 Pro Preview pricing".
+     *
+     * A preview, and priced because a log carries it: Google's 2.5 Pro
+     * refusal sends every caller here.
+     */
+    id: 'gemini-3.1-pro-preview',
+    aliases: ['gemini-3.1-pro-preview-customtools'],
+    provider: 'google',
+    displayName: 'Gemini 3.1 Pro Preview',
+    inputPerMTok: 2,
+    outputPerMTok: 12,
+    contextWindow: 1_048_576,
+    cacheMinTokens: 4096,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
+    tiers: [
+      {
+        id: 'over-200k',
+        when: { kind: 'input-tokens-above', tokens: 200_000 },
+        inputPerMTok: 4,
+        outputPerMTok: 18,
+      },
+    ],
+    capability: 'large',
+    tier: 'opus',
+    notes:
+      'Priced per request by prompt length: $2/$12 up to 200,000 input tokens and $4/$18 over it.'
+      + ' Implicit caching is automatic above 4,096 tokens; explicit caching is also billed for storage,'
+      + ' $4.50 per 1M tokens per hour.',
   },
 
   // ------------------------------------------------------------------------
@@ -1035,7 +1100,38 @@ interface Rates {
   inputPerMTok: number;
   outputPerMTok: number;
   promoApplied: boolean;
-  tier: { applied: string | null; decided: boolean; because: string } | null;
+  tier: {
+    applied: string | null;
+    decided: boolean;
+    because: string;
+    /**
+     * The cheapest rate the undecided condition allows, present only when it
+     * was not decided. The figure above is the ceiling and stays the one
+     * billed; this is the other end, so a report can say how wide the
+     * uncertainty is instead of only that there is some.
+     */
+    floor?: { inputPerMTok: number; outputPerMTok: number };
+  } | null;
+}
+
+/**
+ * What is known about the size of the prompt being priced.
+ *
+ * `inputTokens` is one request's prompt, every input token it carried, cache
+ * reads and writes included, and decides a size tier outright.
+ *
+ * `inputTokensAtMost` is a bound, for a row that sums requests: a usage
+ * report's hourly or daily bucket, an export's per-day line. No single
+ * request in it can be larger than the whole row, so a row whose total is at
+ * or under a threshold proves every request in it was under, and that decides
+ * the tier. A row over the threshold proves nothing about any one request,
+ * and the tier stays undecided. The bound is never treated as a size: a day of
+ * 2,000 short prompts sums past 100,000 tokens without a single request
+ * getting near it.
+ */
+export interface PromptSize {
+  inputTokens?: number;
+  inputTokensAtMost?: number;
 }
 
 const pricingMemo = new WeakMap<
@@ -1111,18 +1207,16 @@ function cache(model: ModelPricing): {
  * because "this does not apply" and "nobody said" lead to different reports and
  * collapsing them is the oldest mistake in this repository.
  */
-function holds(
-  when: TierCondition,
-  on: Date,
-  inputTokens: number | undefined,
-): boolean | null {
+function holds(when: TierCondition, on: Date, size: PromptSize): boolean | null {
   if (when.kind === 'utc-hours') {
     const day = on.getUTCDay();
     if (when.weekdaysOnly && (day === 0 || day === 6)) return false;
     return when.hours.includes(on.getUTCHours());
   }
-  if (inputTokens === undefined) return null;
-  return inputTokens > when.tokens;
+  if (size.inputTokens !== undefined) return size.inputTokens > when.tokens;
+  // A whole row at or under the line puts every request in it under the line.
+  if (size.inputTokensAtMost !== undefined && size.inputTokensAtMost <= when.tokens) return false;
+  return null;
 }
 
 /**
@@ -1144,7 +1238,7 @@ function holds(
 export function effectivePricing(
   model: ModelPricing,
   on: Date = new Date(),
-  context: { inputTokens?: number } = {},
+  context: PromptSize = {},
 ): Rates {
   /* A call before a published price change is priced as it was billed then. */
   if (model.history !== undefined) {
@@ -1164,7 +1258,7 @@ export function effectivePricing(
   if (model.tiers !== undefined && model.tiers.length > 0) {
     const undecided: PricingTier[] = [];
     for (const tier of model.tiers) {
-      const verdict = holds(tier.when, on, context.inputTokens);
+      const verdict = holds(tier.when, on, context);
       if (verdict === true) {
         return {
           inputPerMTok: tier.inputPerMTok,
@@ -1187,6 +1281,11 @@ export function effectivePricing(
     const dearest = undecided.reduce((worst, tier) =>
       tier.inputPerMTok > worst.inputPerMTok ? tier : worst,
     );
+    /*
+     * And the cheapest, which is the base: every undecided condition might not
+     * hold, and a tier is never below the base (`pricing-tiers.test.js`).
+     */
+    const floor = { inputPerMTok: model.inputPerMTok, outputPerMTok: model.outputPerMTok };
     const ceiling =
       dearest.inputPerMTok > model.inputPerMTok
         ? {
@@ -1206,7 +1305,11 @@ export function effectivePricing(
       tier: {
         applied: ceiling.applied,
         decided: false,
-        because: `${describe(dearest.when)}, and the token count was not given`,
+        because:
+          context.inputTokensAtMost !== undefined
+            ? `${describe(dearest.when)}, and this row sums requests without giving any one prompt's length`
+            : `${describe(dearest.when)}, and the token count was not given`,
+        floor,
       },
     };
   }

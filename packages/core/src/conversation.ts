@@ -1,4 +1,5 @@
 import { effectivePricing, multipliersFor } from './pricing.js';
+import { billedAt, promptSizeOf } from './billing.js';
 import { UNLABELLED } from './usage.js';
 import type { PricingCatalogue } from './pricing.js';
 import type { UsageRecord } from './usage.js';
@@ -95,8 +96,9 @@ export interface ConversationOptions {
 function inputCostOf(record: UsageRecord, catalogue: PricingCatalogue, on: Date): number | null {
   const model = catalogue.byId.get(record.model);
   if (!model) return null;
-  const { inputPerMTok } = effectivePricing(model, on);
-  const rates = multipliersFor(model);
+  const at = billedAt(record, on);
+  const { inputPerMTok } = effectivePricing(model, at, promptSizeOf(record));
+  const rates = multipliersFor(model, at);
   const per = (tokens: number, rate: number): number => (tokens / 1_000_000) * rate;
   return (
     per(record.inputTokens, inputPerMTok) +

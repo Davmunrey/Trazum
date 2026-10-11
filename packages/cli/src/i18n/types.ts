@@ -1499,6 +1499,12 @@ export interface CliMessages {
     inputFullRate(): string;
     assumedWriteTtl(calls: number): string;
     /**
+     * Rows billed at the dearer of two rates: a model priced by prompt length,
+     * and rows that sum requests without giving one prompt's length. The total
+     * is a ceiling on them, and the cheaper figure is printed beside it.
+     */
+    tierCeiling(rows: number, models: string, ceiling: string, floor: string): string;
+    /**
      * The period the log covers, when its records carry a clock. Stated and
      * never extrapolated: naming the span makes the reader's own monthly
      * arithmetic valid, while a per-month figure from a partial month would be
@@ -1747,6 +1753,8 @@ export interface CliMessages {
      * summed with the move.
      */
     whatIfBatchOnTarget(batched: string, moved: string): string;
+    /** The target is priced by prompt length and some slices could not be placed in a band. */
+    whatIfTierCeiling(slices: number, target: string, floor: string): string;
     whatIfCacheBeyond(largest: string, min: string, noCache: string): string;
     whatIfSlice(label: string, model: string, current: string, target: string): string;
     /** A call the target's context window could not have accepted. */

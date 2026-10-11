@@ -115,6 +115,12 @@ export interface AnthropicUsageRecord {
   model: string;
   ts: string;
   label?: string;
+  /**
+   * Always `null`: a bucket sums requests and this report does not say how
+   * many. It is what tells a model priced by prompt length that no single
+   * request's prompt is known here. See `UsageRecord.requests`.
+   */
+  requests: null;
   usage: {
     input_tokens: number;
     output_tokens: number;
@@ -313,6 +319,7 @@ export function anthropicUsageRecords(
         model: result.model,
         ts: bucket.starting_at,
         ...(label === undefined ? {} : { label }),
+        requests: null,
         usage: {
           input_tokens: count(result.uncached_input_tokens),
           output_tokens: count(result.output_tokens),

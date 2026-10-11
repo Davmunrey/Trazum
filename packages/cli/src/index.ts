@@ -285,6 +285,7 @@ import {
   renderDiffMarkdown,
   renderRankMarkdown,
   renderProfileMarkdown,
+  tierCeilingCaveat,
 } from './markdown.js';
 import type { ProfileMarkdownInput } from './markdown.js';
 import { renderPositionHtml, renderProfileHtml, renderRollupHtml } from './html.js';
@@ -3362,6 +3363,11 @@ function printReceiptSummary(document: ReceiptDocument, t: CliMessages): void {
     if (gap.kind === 'unpriced') console.error(t.receipt.unpriced(gap.models.length, gap.calls));
     if (gap.kind === 'unread-lines') console.error(t.receipt.unread(gap.count));
     if (gap.kind === 'no-clock') console.error(t.receipt.noClock());
+    if (gap.kind === 'tier-ceiling') {
+      console.error(
+        t.profile.tierCeiling(gap.calls, gap.models.join(', '), formatUsd(gap.ceilingUsd), formatUsd(gap.floorUsd)),
+      );
+    }
   }
 }
 
@@ -3726,6 +3732,8 @@ function printBillStatement(report: UsageProfileReport, byProject: boolean, t: C
   if (report.unpricedModels.length > 0) {
     console.log(`  ${wrap(t.bill.statementUnpriced(report.unpricedModels.join(', '), report.unpriced.calls), 74, '  ')}`);
   }
+  const ceiling = tierCeilingLine(report, t);
+  if (ceiling !== null) console.log(`  ${wrap(ceiling, 74, '  ')}`);
   if (report.skippedLines.length > 0) console.log(`  ${t.bill.statementUnread(report.skippedLines.length)}`);
   console.log(c.dim(`  ${wrap(t.bill.statementNext(), 74, '  ')}`));
   console.log();
@@ -8081,6 +8089,19 @@ async function commandConnect(
       out.push(md ? `- ${line}` : `! ${line}`);
     }
 
+    /* A bucket sums requests, so a model priced by prompt length is a range. */
+    const ceilinged = report.byModel.filter((slice) => slice.tierCeilingBuckets > 0);
+    if (ceilinged.length > 0) {
+      out.push('');
+      const line = t.profile.tierCeiling(
+        ceilinged.reduce((sum, slice) => sum + slice.tierCeilingBuckets, 0),
+        ceilinged.map((slice) => slice.model).join(', '),
+        formatUsd(ceilinged.reduce((sum, slice) => sum + slice.tierCeilingUsd, 0)),
+        formatUsd(ceilinged.reduce((sum, slice) => sum + slice.tierFloorUsd, 0)),
+      );
+      out.push(md ? `- ${line}` : `! ${line}`);
+    }
+
     if (report.gaps.length > 0) out.push('');
     for (const gap of report.gaps) {
       const line = t.connect.gap(gap.detail);
@@ -10150,6 +10171,11 @@ function reportWhatIf(
        * adding two savings, and hedged the only honest way — whether these
        * calls can wait is not in the log.
        */
+      if (whatIf.tierCeiling !== null) {
+        console.log(
+          `  ${c.yellow('!')} ${wrap(t.profile.whatIfTierCeiling(whatIf.tierCeiling.slices, whatIf.target.displayName, formatUsd(whatIf.tierCeiling.targetFloorUsd)), 74, '    ')}`,
+        );
+      }
       if (whatIf.batchOnTarget !== null) {
         console.log(
           `  ${c.dim(wrap(t.profile.whatIfBatchOnTarget(formatUsd(whatIf.batchOnTarget.targetUsd), formatUsd(whatIf.targetUsd)), 74, '  '))}`,
@@ -10527,6 +10553,11 @@ async function reportLabelsBudgetsAndCache(
       `  ${c.dim(wrap(t.profile.assumedWriteTtl(report.total.assumedWriteTtlCalls), 74, '  '))}`,
     );
   }
+}
+
+/** The ceiling caveat for a report, or `null` when nothing was billed at one. */
+function tierCeilingLine(report: UsageProfileReport, t: CliMessages): string | null {
+  return report.total.tierCeilingCalls === 0 ? null : tierCeilingCaveat(report, t);
 }
 
 /**
@@ -11484,6 +11515,15 @@ function reportProfileGaps(
     console.log(
       `  ${c.yellow('!')} ${c.dim(wrap(t.profile.unpriced(report.unpricedModels.join(', '), report.unpriced.calls), 74, '    '))}`,
     );
+  }
+  /*
+   * A total that billed summed rows at the dearer rate is a ceiling, said with
+   * the other end beside it: the range is the finding, not the doubt.
+   */
+  const ceiling = tierCeilingLine(report, t);
+  if (ceiling !== null) {
+    console.log();
+    console.log(`  ${c.yellow('!')} ${wrap(ceiling, 74, '    ')}`);
   }
   if (report.skippedLines.length > 0) {
     const shown = report.skippedLines.slice(0, 5).join(', ');

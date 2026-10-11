@@ -217,11 +217,13 @@ The section this document would be dishonest without.
   `gemini-3.6-flash`, `deepseek-v4-flash`, `deepseek-v4-pro`,
   `mistral-large-2512`, `mistral-medium-2604` and `mistral-small-2603` were then
   read off their providers' own pricing pages and added, and all six answer a
-  real request. **One is still unpriced and says why.**
-  `gemini-3.1-pro-preview` bills by prompt size, which the catalogue can now
-  express and most callers cannot decide, so it waits for the report to carry an
-  undecided tier rather than being added with a figure that would be a ceiling
-  everywhere.
+  real request. **One waited, and said why.**
+  `gemini-3.1-pro-preview` bills by prompt size, which the catalogue could
+  express and most callers could not decide, so it waited for the report to
+  carry an undecided tier rather than being added with a figure that would be a
+  ceiling everywhere. It is priced now: every call is billed on its own prompt,
+  and a usage report's summed row, which says no single prompt's length, is
+  billed at the dearer rate with the cheaper figure printed beside it.
 - **One of those prices was read by a human, and the record says so.**
   `mistral.ai/pricing` renders its table in the browser, so a fetch sees only an
   FAQ example with no model id attached. This project looked, found nothing

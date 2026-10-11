@@ -1,4 +1,5 @@
 import { effectivePricing, multipliersFor } from './pricing.js';
+import { billedAt, promptSizeOf } from './billing.js';
 import { UNLABELLED } from './usage.js';
 import type { PricingCatalogue } from './pricing.js';
 import type { UsageRecord } from './usage.js';
@@ -77,6 +78,12 @@ interface SessionTally {
   write5mTokens: number;
   write1hTokens: number;
   assumedTokens: number;
+  /**
+   * What this conversation's writes cost, each call at its own moment and on
+   * its own prompt, so a one-turn conversation is priced exactly as the bill
+   * priced its one call.
+   */
+  writeUsd: number;
 }
 
 const median = (sorted: number[]): number => {
@@ -107,10 +114,18 @@ export function createSessionLedgerTracker(options: SessionLedgerOptions): Sessi
     }
     let tally = sessions.get(record.session);
     if (!tally) {
-      tally = { turns: 0, write5mTokens: 0, write1hTokens: 0, assumedTokens: 0 };
+      tally = { turns: 0, write5mTokens: 0, write1hTokens: 0, assumedTokens: 0, writeUsd: 0 };
       sessions.set(record.session, tally);
     }
     tally.turns += 1;
+    const model = catalogue.byId.get(record.model)!;
+    const at = billedAt(record, on);
+    const { inputPerMTok } = effectivePricing(model, at, promptSizeOf(record));
+    const rates = multipliersFor(model, at);
+    // The bill's own convention: unstated TTLs sit in the 5m bucket at the cheaper rate.
+    tally.writeUsd +=
+      ((record.cacheWrite5mTokens * rates.cacheWrite5m + record.cacheWrite1hTokens * rates.cacheWrite1h) / 1_000_000)
+      * inputPerMTok;
     if (record.writeTtlKnown) {
       tally.write5mTokens += record.cacheWrite5mTokens;
       tally.write1hTokens += record.cacheWrite1hTokens;
@@ -129,6 +144,7 @@ export function createSessionLedgerTracker(options: SessionLedgerOptions): Sessi
       let write5m = 0;
       let write1h = 0;
       let assumed = 0;
+      let singleTurnWriteUsd = 0;
       const turnCounts: number[] = [];
       for (const tally of sessions.values()) {
         turnCounts.push(tally.turns);
@@ -137,6 +153,7 @@ export function createSessionLedgerTracker(options: SessionLedgerOptions): Sessi
         write5m += tally.write5mTokens;
         write1h += tally.write1hTokens;
         assumed += tally.assumedTokens;
+        singleTurnWriteUsd += tally.writeUsd;
       }
       const singleTurnWriteTokens = write5m + write1h + assumed;
       // One-turn conversations that wrote nothing wasted nothing; a row about
@@ -146,14 +163,6 @@ export function createSessionLedgerTracker(options: SessionLedgerOptions): Sessi
       const split = key.indexOf('\n');
       const modelId = key.slice(split + 1);
       const model = catalogue.byId.get(modelId)!;
-      const { inputPerMTok } = effectivePricing(model, on);
-      const rates = multipliersFor(model);
-      const per = (tokens: number, rate: number): number =>
-        (tokens / 1_000_000) * inputPerMTok * rate;
-      // The bill's own convention: unstated TTLs at the cheaper rate, so this
-      // is the same floor the totals already stand on — never a new guess.
-      const singleTurnWriteUsd =
-        per(write5m + assumed, rates.cacheWrite5m) + per(write1h, rates.cacheWrite1h);
 
       turnCounts.sort((a, b) => a - b);
       out.push({

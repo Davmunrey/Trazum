@@ -1,4 +1,5 @@
 import { effectivePricing, multipliersFor } from './pricing.js';
+import { billedAt, promptSizeOf } from './billing.js';
 import { UNLABELLED } from './usage.js';
 import type { PricingCatalogue } from './pricing.js';
 import type { UsageRecord } from './usage.js';
@@ -104,6 +105,12 @@ interface Slice {
   write5mTokens: number;
   write1hTokens: number;
   assumedTtlTokens: number;
+  /**
+   * What the 1-hour writes would have saved at the 5-minute rate, each call at
+   * its own moment and on its own prompt: one rate for the whole slice priced
+   * a call on another band, or in another price period, at the wrong figure.
+   */
+  overlongUsd: number;
   /** Timestamps per session, sorted only at the end. */
   sessions: Map<string, number[]>;
 }
@@ -138,13 +145,21 @@ export function createTtlFitTracker(options: TtlFitOptions): TtlFitTracker {
     const key = `${record.label ?? UNLABELLED}\n${record.model}`;
     let slice = slices.get(key);
     if (!slice) {
-      slice = { write5mTokens: 0, write1hTokens: 0, assumedTtlTokens: 0, sessions: new Map() };
+      slice = { write5mTokens: 0, write1hTokens: 0, assumedTtlTokens: 0, overlongUsd: 0, sessions: new Map() };
       slices.set(key, slice);
     }
 
     if (record.writeTtlKnown) {
       slice.write5mTokens += record.cacheWrite5mTokens;
       slice.write1hTokens += record.cacheWrite1hTokens;
+      if (record.cacheWrite1hTokens > 0) {
+        const model = catalogue.byId.get(record.model)!;
+        const at = billedAt(record, on);
+        const { inputPerMTok } = effectivePricing(model, at, promptSizeOf(record));
+        const rates = multipliersFor(model, at);
+        slice.overlongUsd +=
+          (record.cacheWrite1hTokens / 1_000_000) * inputPerMTok * (rates.cacheWrite1h - rates.cacheWrite5m);
+      }
     } else {
       // The flat count sits in the 5m bucket by pricing convention; here it is
       // kept apart, because the whole question is which TTL it really was.
@@ -200,14 +215,7 @@ export function createTtlFitTracker(options: TtlFitOptions): TtlFitTracker {
       else if (slice.assumedTtlTokens > 0 && gap > TTL_5M_MS) verdict = 'unsettled';
       else verdict = 'fits';
 
-      const { inputPerMTok } = effectivePricing(model, on);
-      const rates = multipliersFor(model);
-      const overpayUsd =
-        verdict === 'overlong-ttl'
-          ? (slice.write1hTokens / 1_000_000) *
-            inputPerMTok *
-            (rates.cacheWrite1h - rates.cacheWrite5m)
-          : 0;
+      const overpayUsd = verdict === 'overlong-ttl' ? slice.overlongUsd : 0;
 
       out.push({
         label: key.slice(0, split),

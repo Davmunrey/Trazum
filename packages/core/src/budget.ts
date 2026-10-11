@@ -28,7 +28,7 @@
 
 import type { SpendConfig } from './config-schema.js';
 import type { StoreRecord } from './store.js';
-import { effectivePricing } from './pricing.js';
+import { effectivePricing, multipliersFor } from './pricing.js';
 import type { PricingCatalogue } from './pricing.js';
 
 const DAY_MS = 86_400_000;
@@ -143,18 +143,28 @@ export function monthOf(at: Date): BudgetPeriod {
   };
 }
 
-/** What a store record's tokens cost, at the catalogue's rates for its window. */
+/**
+ * What a store record's tokens cost, at the catalogue's rates for its window.
+ *
+ * The cache ratios are the model's own. This read 0.1 for a cache read and
+ * 1.25 and 2 for writes, Anthropic's ratios of 2025, for every model: an Opus
+ * 5.5 read at 0.05, a Fable 5.1 read at 0.025 and an OpenAI write at 1.0 were
+ * all priced at the wrong multiple, so a budget's month disagreed with the
+ * `connect` report the same records came from.
+ */
 function priceOf(record: StoreRecord, catalogue: PricingCatalogue): number | null {
   const model = catalogue.byId.get(record.model);
   if (model === undefined) return null;
-  const rates = effectivePricing(model, new Date(record.fromMs));
-  const write5m = record.write5m * rates.inputPerMTok * 1.25;
-  const write1h = record.write1h * rates.inputPerMTok * 2;
+  const at = new Date(record.fromMs);
+  /* A record of one request says its prompt; any other only bounds it. */
+  const prompt = record.input + record.cacheRead + record.write5m + record.write1h;
+  const rates = effectivePricing(model, at, record.calls === 1 ? { inputTokens: prompt } : { inputTokensAtMost: prompt });
+  const ratios = multipliersFor(model, at);
   return (
     (record.input * rates.inputPerMTok +
-      record.cacheRead * rates.inputPerMTok * 0.1 +
-      write5m +
-      write1h +
+      record.cacheRead * rates.inputPerMTok * ratios.cacheRead +
+      record.write5m * rates.inputPerMTok * ratios.cacheWrite5m +
+      record.write1h * rates.inputPerMTok * ratios.cacheWrite1h +
       record.output * rates.outputPerMTok) /
     1_000_000
   );
