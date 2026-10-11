@@ -962,12 +962,11 @@ on text. What differs is the money, and **that is not one set of numbers**:
 
 | | |
 |---|---|
-| Cache read | 10% of input on OpenAI, Moonshot, Google and Anthropic up to Opus 5 and Sonnet 5; **25%** on xAI. Two providers changed it **between generations**: Anthropic's Opus 5.5 and Sonnet 5.5 read at **5%** and Fable 5.1 and Mythos 5.1 at **2.5%**, and DeepSeek V4.1 Flash reads at **2%** and V4 Pro at about **3%** where V3 read at 10% |
-| Cache write | 125% of input on Anthropic; 100% elsewhere |
-| Cache minimum | **Per model, not per provider.** Anthropic alone spans 512 to 4,096; 1,024 on OpenAI, Moonshot, DeepSeek and xAI; 4,096 on Gemini 3.6 and 3.8 Flash and 2,048 on the retired Gemini 2.5 models |
-| How caching starts | You mark the prefix on Anthropic; it is **automatic** on OpenAI, Google, Moonshot, DeepSeek and xAI |
+| Cache read | 10% of input on OpenAI, Moonshot, Google, Mistral and Anthropic up to Opus 5 and Sonnet 5; **25%** on xAI. Two providers changed it **between generations**: Anthropic's Opus 5.5 and Sonnet 5.5 read at **5%** and Fable 5.1 and Mythos 5.1 at **2.5%**, and DeepSeek V4.1 Flash reads at **2%** and V4 Pro at about **3%** where V3 read at 10% |
+| Cache write | 125% of input on Anthropic; 100% on OpenAI, Google, Moonshot, DeepSeek and xAI; Mistral publishes no write price and reports no write tokens |
+| Cache minimum | **Per model, not per provider.** Anthropic alone spans 512 to 4,096; 1,024 on OpenAI, Moonshot, DeepSeek and xAI; 4,096 on Gemini 3.6 and 3.8 Flash and 2,048 on the retired Gemini 2.5 models; Mistral publishes none |
+| How caching starts | You mark the prefix on Anthropic; it is **automatic** on OpenAI, Google, Moonshot, DeepSeek and xAI; Mistral does not say, so Trazum gives no caching advice for it |
 | Batch API | 50% on Anthropic, OpenAI, Google and Mistral; **none at all** on Moonshot, DeepSeek and xAI |
-| Prompt caching | **None at all** on Mistral |
 
 **The cache minimum is the row to read twice, and it used to be wrong here.** This
 table said *"512 on Anthropic"* flatly. Anthropic's floor is a property of the

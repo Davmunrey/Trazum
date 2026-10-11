@@ -186,6 +186,9 @@ describe('the catalogue is internally consistent', () => {
     for (const model of listModels()) {
       if (model.caching === 'none') {
         assert.equal(model.cacheMinTokens, 0, `${model.id} quotes a minimum for a cache it lacks`);
+      } else if (model.caching === 'unknown') {
+        // A provider that discounts cached input and publishes no minimum.
+        assert.equal(model.cacheMinTokens, null, `${model.id} quotes a minimum nobody published`);
       } else {
         assert.ok(model.cacheMinTokens > 0, `${model.id} caches but declares no minimum`);
       }
