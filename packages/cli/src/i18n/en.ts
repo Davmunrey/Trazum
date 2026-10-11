@@ -2776,7 +2776,7 @@ ${bold('EXAMPLES')}
     assumedWriteTtl: (calls) =>
       `${count(calls)} ${calls === 1 ? 'call did' : 'calls did'} not say which cache-write TTL was used, so the cheaper 5-minute rate was assumed. A 1-hour entry costs 2x input rather than 1.25x, so this total is a floor for those calls. Record the "cache_creation" object the API returns to remove the assumption.`,
     spanLine: (from, to, days) =>
-      `This log covers ${from} → ${to} (${days} days). The span is stated, never extrapolated: the monthly arithmetic is yours to do, and now it is valid.`,
+      `This log covers ${from} → ${to} (${days} days): stated, never extrapolated. Scale it to a month yourself, now that you know what it covers.`,
     spanPartial: (withTs, total) =>
       `Only ${withTs} of ${total} calls carry a timestamp; the span describes those.`,
     ttlFitExpires: (label, model, gap) =>

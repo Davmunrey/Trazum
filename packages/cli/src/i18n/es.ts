@@ -2801,7 +2801,7 @@ ${bold('EJEMPLOS')}
     assumedWriteTtl: (calls) =>
       `${count(calls)} ${calls === 1 ? 'llamada no dijo' : 'llamadas no dijeron'} qué TTL de escritura de caché se usó, así que se asumió la tarifa más barata, la de 5 minutos. Una entrada de 1 hora cuesta 2x la entrada en vez de 1.25x, así que este total es un suelo para esas llamadas. Registra el objeto "cache_creation" que devuelve la API para quitar la suposición.`,
     spanLine: (from, to, days) =>
-      `Este registro abarca ${from} → ${to} (${days} días). El periodo se declara, nunca se extrapola: la aritmética mensual es tuya, y ahora es válida.`,
+      `Este registro abarca ${from} → ${to} (${days} días): declarado, nunca extrapolado. Escálalo tú a un mes, ahora que sabes qué cubre.`,
     spanPartial: (withTs, total) =>
       `Solo ${withTs} de ${total} llamadas llevan marca de tiempo; el periodo describe esas.`,
     ttlFitExpires: (label, model, gap) =>
