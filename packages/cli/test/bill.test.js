@@ -89,6 +89,26 @@ describe('trazum bill reads a directory of whatever it finds', () => {
     assert.match(result.stderr, /--pricing-live/);
   });
 
+  it('calls a prefixed id what it is, and names the ones priced under their own name', () => {
+    /* `gemini/` and `xai/` are LiteLLM's prefixes, not OpenRouter's, so the
+       hint no longer says every slash id is an OpenRouter slug. And the prefix
+       is never stripped by rule: the line names the ids whose model after the
+       slash is priced here, and says why it was left alone. */
+    const dir = mkdtempSync(join(tmpdir(), 'trazum-bill-prefix-'));
+    const line = (model) =>
+      JSON.stringify({ ts: '2026-10-05T12:00:00Z', model, usage: { input_tokens: 1000, output_tokens: 0 } });
+    writeFileSync(join(dir, 'u.jsonl'), [line('xai/grok-4.3'), line('gemini/gemini-3.1-pro-preview'), line('mistralai/nobody-prices-this')].join('\n'));
+    const result = run(['bill', join(dir, 'u.jsonl'), '--receipt']);
+    assert.equal(result.status, 0, result.stderr);
+    const said = result.stderr.replace(/\s+/g, ' ');
+    assert.doesNotMatch(said, /are OpenRouter slugs/, 'a LiteLLM prefix was called an OpenRouter slug');
+    assert.match(said, /3 unpriced model id\(s\) carry a provider prefix/);
+    assert.match(said, /gemini\/gemini-3\.1-pro-preview, xai\/grok-4\.3: the model after the slash is priced here/);
+    assert.doesNotMatch(said, /mistralai\/nobody-prices-this[^.]*: the model after the slash/);
+    const receipt = JSON.parse(result.stdout);
+    assert.equal(receipt.total.calls, 0, 'a prefixed id was priced by stripping the prefix');
+  });
+
   it('does not hint at --pricing-live when nothing unpriced is a slug', () => {
     const dir = mixed();
     const result = run(['bill', join(dir, 'usage.jsonl')]);

@@ -773,6 +773,8 @@ export interface CliMessages {
     sources(read: number, seen: number): string;
     /** An unpriced slug with a slash is OpenRouter's, and --pricing-live prices it. */
     pricingLiveHint(count: number): string;
+    /** Prefixed ids whose part after the slash the catalogue prices under its own name. */
+    prefixedKnown(ids: string): string;
     /** A --since/--until window no record falls in: refused, never a $0 bill. */
     windowMatchesNothing(from: string, to: string): string;
     written(file: string): string;
