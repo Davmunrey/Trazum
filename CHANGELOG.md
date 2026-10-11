@@ -11,6 +11,18 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+## 2.5.1 — A bill for a period
+
+A patch on 2.5's terms, and no command. **`bill --since/--until`** bills a
+period, as `profile` has long windowed one: a period the log does not reach
+is refused rather than printed at $0, and a call with no timestamp is left
+out and named, on the statement and on the receipt as a new gap,
+`undated-excluded`. `trazum receipt` takes the same flags. **A bill spanning
+months adds a table by month.** **A Claude Code bill says what its figure
+is**: Anthropic's API rates, which somebody on a Pro or Max plan did not pay.
+`bill` stops calling every prefixed model id an OpenRouter slug, and names
+the ones it prices under their own name. The Action pin moves to 2.5.0.
+
 ### Added
 
 - **`bill --since/--until`: a bill for a period.** A Claude Code folder holds

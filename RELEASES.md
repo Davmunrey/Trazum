@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.5.0**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.5.1**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -51,6 +51,54 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 2.5.1 — A bill for a period
+
+**Adoption, read 2026-10-11:** downloads of @trazum/cli in the last 30 days: unavailable (fetch failed), GitHub stars: unavailable (HTTP 403), MCP registry latest 2.5.0.
+
+A patch with no new command. It answers the question a Claude Code folder of
+a year's sessions answered worst: what did this month cost.
+
+### A bill for a period
+
+```bash
+npx @trazum/cli bill --since 2026-10-01                      # this month so far
+npx @trazum/cli bill --since 2026-09-01 --until 2026-09-30   # September
+```
+
+The window is `profile`'s: a UTC day, a timestamp, `30d` or `now`, and a bare
+day means the whole of it. Two adjacent months share no call and add up to
+both billed together. The statement and the PDF, HTML and Markdown documents
+say which period they bill.
+
+- **A period the log does not reach is refused**, naming the dates it does
+  cover, instead of printing "$0" for a month that only looks free.
+- **A call with no timestamp is left out and counted**, on the statement and
+  on the receipt as a new gap, `undated-excluded`, with the total called a
+  floor on the period. Claude Code transcripts always carry a timestamp; this
+  is for the logs that do not.
+- **`trazum receipt` takes the same two flags**, through the same code.
+
+Without a window, a bill whose calls span two months or more adds a table by
+month (the newest twelve) and names the flags that bill the newest month on
+its own.
+
+### What the figure is
+
+`bill` over Claude Code transcripts prices them at Anthropic's API rates. On a
+Pro or Max plan you paid the plan, not that figure. The statement, the
+documents and the web app's Bill tab now say so whenever transcripts were
+read, and never over a metered API log, where the figure is money billed.
+
+### Fixed
+
+- **`bill` called every model id with a slash an OpenRouter slug.** `xai/`,
+  `gemini/` and `moonshot/` are LiteLLM's. It now says the ids carry a
+  provider prefix, and names the ones whose model after the slash is priced
+  here under its own name, without stripping the prefix for you: the same
+  model through a router can bill differently.
+- **A date `--since` could not read was refused naming two of the four forms
+  it takes.**
 
 ## 2.5.0 — Each request at its own size
 
