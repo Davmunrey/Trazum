@@ -7,7 +7,7 @@ is what you read when somebody says "what's new" and you have forty seconds.
 Same facts, different job. Nothing here is softened: if a release fixed
 something embarrassing, it says what it was.
 
-**All four packages are on npm at 2.4.1**: `@trazum/core`, `@trazum/cli`,
+**All four packages are on npm at 2.4.2**: `@trazum/core`, `@trazum/cli`,
 `@trazum/mcp` and `@trazum/tokenizer-openai` — published by the workflow itself,
 from the merge of the release PR, carrying an OIDC-signed provenance
 attestation. `trazum-vscode` is the fifth workspace and is not among them: an
@@ -51,6 +51,69 @@ cannot be tagged without its notes being written first. That is the point of the
 file being here rather than pasted into a GitHub form at release time.
 
 ---
+
+## 2.4.2 — The bill as an attachment
+
+**Adoption, read 2026-10-11:** downloads of @trazum/cli in the last 30 days: unavailable (fetch failed), 1 GitHub stars, MCP registry latest 2.4.1.
+
+A patch on 2.4's terms, with one new envelope and no new command.
+
+### The models Claude Code runs today are priced
+
+```bash
+npx @trazum/cli bill ~/.claude/projects
+```
+
+On a log written by Claude Code on **Claude Opus 5.5** or **Fable 5.1**, that
+line priced nothing until this release: neither id was in the catalogue, so
+every call landed in the unpriced gap. The Anthropic catalogue was re-read
+against the provider's pages on 2026-10-10 and adds Fable 5.1 ($10/$50),
+Opus 5.5 ($4/$20), Sonnet 5.5 ($2/$10), Mythos 5.1 (priced, never
+recommended) and Opus 4.5 ($5/$25, legacy). The new generation reads the
+cache at 0.05x (Opus 5.5, Sonnet 5.5) or 0.025x (Fable 5.1, Mythos 5.1)
+rather than 0.1x, and each row says so. **Claude Haiku 5.5 is left out on
+purpose**: it is priced by prompt length per request, which nothing that
+prices a log can see yet, so its calls stay a named gap instead of a figure
+five times too high.
+
+### The bill as a PDF
+
+```bash
+npx @trazum/cli bill ~/.claude/projects --pdf-out bill.pdf
+```
+
+`--pdf-out` on `bill` and `profile` writes the HTML report's figures and
+sentences as a PDF: the caveats ahead of every table, an unpriced model as a
+dash and never `$0`, and a footer on every page saying where the figures came
+from. No dependency and no embedded font: `PdfDocument`, new in
+`@trazum/core`, writes the standard PDF fonts directly, a few kilobytes, the
+same bytes for the same bill. `bill` also writes `--html-out`,
+`--markdown-out` and `--csv-out` now, from the same report as its receipt.
+
+### Three silent wrong answers
+
+- `trazum bill logs/*.jsonl` billed the first file the shell expanded: two
+  files worth $7.51 came out as $0.01. `bill` reads every path now, and every
+  other single-path command refuses the paths it would have ignored.
+- `bill` and `profile` read one directory to different totals, because
+  `bill` skipped `.log` files. One list of log names now.
+- The MCP server's `spend_guard` said yes to a call over budget when an agent
+  wrote `output_tokens` instead of `outputTokens`. Every tool now refuses an
+  argument its schema does not declare and names the one it meant.
+
+### The web app
+
+- **Sign-in is closed until the operator lists who may use it**
+  (`TRAZUM_ALLOWED_USERS`, `TRAZUM_ADMINS`, or `TRAZUM_OPEN_SIGNUP=1`). It was
+  open to any GitHub account. An operator who relied on that sets
+  `TRAZUM_OPEN_SIGNUP=1`.
+- **Analytics, when switched on, sends only the events the app names**, with
+  share tokens scrubbed from every URL. It was autocapturing clicks and full
+  URLs, share links included.
+- The pricing API refuses impossible usage (negative calls, a cache hit rate
+  above 1, misspelt fields) instead of pricing it.
+- `next` 16.3.8 closes a critical advisory in `next/og`, and the web tree is
+  at a clean `npm audit`.
 
 ## 2.4.1 — The same door from the browser
 

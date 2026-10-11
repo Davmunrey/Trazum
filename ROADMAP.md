@@ -1184,6 +1184,17 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 2.4.2 — The bill as an attachment — released
+
+A patch, and no command. The Anthropic catalogue carries the models Claude
+Code runs today, so `bill ~/.claude/projects` prices an Opus 5.5 or Fable 5.1
+log at all; Haiku 5.5 waits, named, for per-request tier pricing. `bill` and
+`profile` write a PDF through a new zero-dependency `PdfDocument` in core,
+and `bill` writes every report `profile` does. Three silent wrong answers
+fixed: a glob billed one file, `bill` and `profile` disagreed on a directory,
+and `spend_guard` said yes to a misspelt argument. The web app closes sign-in
+by default, sends only named analytics events, and refuses impossible usage.
+
 ## 2.4.1 — The same door from the browser — released
 
 A patch on 2.4.0's own terms, and no command. The README and the landing page
@@ -2700,8 +2711,9 @@ carry tests now that derive the claim from the code rather than trusting prose.
 
 **Nothing is planned that this repository can deliver alone.** [The 2.4
 plan](docs/plan-2.4.md) was the last thing planned, 2.4.0 delivered every
-move of it that did not need something held outside this repository, and
-2.4.1 carried the door to the README's first line and the browser. [The
+move of it that did not need something held outside this repository,
+2.4.1 carried the door to the README's first line and the browser, and 2.4.2
+priced the models Claude Code runs today and gave the bill a PDF. [The
 1.83–2.0 plan](docs/plan-1.83-2.0.md) had asked a different question from
 every other plan in that directory — not what this should do next, but when
 it is finished — and 2.0.0 answered it by freezing the surface at 46

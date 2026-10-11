@@ -11,6 +11,20 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+## 2.4.2 — The bill as an attachment
+
+A patch on 2.4's terms with one new envelope. **The models Claude Code runs
+today are priced**: until this release a log written on Claude Opus 5.5 or
+Fable 5.1 came out of `npx @trazum/cli bill ~/.claude/projects` with nothing
+priced, because neither id was in the catalogue. **The bill leaves as a PDF**:
+`--pdf-out` on `bill` and `profile`, written by a new zero-dependency
+`PdfDocument` in `@trazum/core`, and `bill` now writes every report `profile`
+writes. Three silent wrong answers are fixed (a shell glob billed only its
+first file, `bill` and `profile` disagreed on one directory, and the MCP
+`spend_guard` said yes to a misspelt argument), and the web app closes sign-in
+until its operator lists who may use it, sends only the analytics events it
+names, and refuses impossible usage at its API. No command added.
+
 ### Added
 
 - **The bill as a PDF: `--pdf-out` on `bill` and `profile`.** The person who
@@ -37,6 +51,46 @@ merged commit with no entry is a change only `git log` remembers.
   forwarded report only through `from-claude-code` and then `profile`. A
   bad `--csv-shape` is refused before any file is read, rather than after
   the receipt has printed.
+
+### Changed
+
+- **The Anthropic catalogue was reviewed on 2026-10-10 and carries the models
+  Claude Code runs today.** Until now a Claude Code log written on Claude Opus
+  5.5 or Fable 5.1 came out of `trazum bill` as nothing priced, because neither
+  id was in the table. Added from the pricing page, the models overview and
+  each model's own page: **Claude Fable 5.1** ($10/$50), **Claude Opus 5.5**
+  ($4/$20), **Claude Sonnet 5.5** ($2/$10), **Claude Mythos 5.1** ($10/$50,
+  priced and never recommended, as only verified organisations can call it)
+  and **Claude Opus 4.5** ($5/$25, legacy but still served, with its dated id
+  declared as an alias). The new generation reads the cache cheaper than the
+  0.1x every earlier Claude model pays: 0.05x on Opus 5.5 and Sonnet 5.5,
+  0.025x on Fable 5.1 and Mythos 5.1, and each row says so in its
+  multipliers rather than inheriting the default. Every existing row matched
+  the page; Fable 5's note now says it is superseded, and Mythos 5's no
+  longer names a programme the page has dropped. **Claude Haiku 5.5 is left
+  out on purpose:** it is priced by prompt length per request, above 100,000
+  tokens counting cache reads and writes, and nothing that prices a usage log
+  yet passes one request's length to the catalogue, so adding it today would
+  price every call at the ceiling, five times what most paid. Its calls stay
+  an unpriced gap that names it until that lands. The README's cache rows say
+  the new ratios and minimums.
+
+- **The web app's routine dependencies moved (#532).** Dependabot's weekly
+  group in `apps/web`: `next` 16.3.3 to 16.3.5, `react`, `react-dom` and
+  `@types/react` to 19.3.0, `lucide-react` 1.35.0 to 1.46.0, `posthog-js`
+  1.422.5 to 1.433.4, `@types/node` 26.4.0 to 26.5.1. Minor and patch only,
+  every check green on the rebased head, and the same `sharp` move #533 had
+  already made. Recorded here because a merge with no entry is a change only
+  `git log` remembers, not because any of it changes what Trazum does.
+
+- **Both CodeQL entry points advanced to v4.38.0 in one commit, and
+  Dependabot now raises the pair as one pull request.** As at 4.37.9,
+  Dependabot raised `init` and `analyze` separately (#527, #529) and each was
+  red on its own, because `analyze` refuses a configuration file `init` wrote
+  at another version and `security.test.js` holds that the two pins agree.
+  The pins move together here, and `.github/dependabot.yml` gains a
+  `codeql` group over `github/codeql-action*` so the next bump arrives as
+  the one pull request the guard can pass.
 
 ### Fixed
 
@@ -88,28 +142,18 @@ merged commit with no entry is a change only `git log` remembers.
   back as an `isError` result naming the key, the declared name it most
   likely meant (case and separators only), and the full list it takes.
 
-### Changed
+- **The packaged Action pin in `README.md` and `docs/running.md` advanced to
+  2.4.1's release commit**, the one `v2.4.1` points at, in the pull request
+  after the release as `docs/releasing.md` says it must: `security.test.js`
+  asks git which version that commit declares and refuses any other.
 
-- **The Anthropic catalogue was reviewed on 2026-10-10 and carries the models
-  Claude Code runs today.** Until now a Claude Code log written on Claude Opus
-  5.5 or Fable 5.1 came out of `trazum bill` as nothing priced, because neither
-  id was in the table. Added from the pricing page, the models overview and
-  each model's own page: **Claude Fable 5.1** ($10/$50), **Claude Opus 5.5**
-  ($4/$20), **Claude Sonnet 5.5** ($2/$10), **Claude Mythos 5.1** ($10/$50,
-  priced and never recommended, as only verified organisations can call it)
-  and **Claude Opus 4.5** ($5/$25, legacy but still served, with its dated id
-  declared as an alias). The new generation reads the cache cheaper than the
-  0.1x every earlier Claude model pays: 0.05x on Opus 5.5 and Sonnet 5.5,
-  0.025x on Fable 5.1 and Mythos 5.1, and each row says so in its
-  multipliers rather than inheriting the default. Every existing row matched
-  the page; Fable 5's note now says it is superseded, and Mythos 5's no
-  longer names a programme the page has dropped. **Claude Haiku 5.5 is left
-  out on purpose:** it is priced by prompt length per request, above 100,000
-  tokens counting cache reads and writes, and nothing that prices a usage log
-  yet passes one request's length to the catalogue, so adding it today would
-  price every call at the ceiling, five times what most paid. Its calls stay
-  an unpriced gap that names it until that lands. The README's cache rows say
-  the new ratios and minimums.
+- **`sharp` moved from 0.35.3 to 0.35.4 in the lockfile**, with its `libvips`
+  binaries from 1.3.2 to 1.3.3, closing GHSA-rgj7-g3m4-5g8c (two libheif
+  advisories, rated high). It is Next's optional image dependency in
+  `apps/web`, reached at build time only, and no manifest changes: `next`'s
+  own range already allowed the fix and only the pinned transitive version
+  had not moved, which is the exact case SECURITY.md warns about. `npm audit`
+  over the whole tree reports 0 vulnerabilities after it.
 
 ### Security
 
@@ -166,40 +210,6 @@ merged commit with no entry is a change only `git log` remembers.
   one pull request by the `codeql` group), #538 (`@types/node` 26.6,
   `lucide-react` 1.48, `posthog-js` 1.434) and #539 (`dompurify`), which
   close once this merges.
-
-### Changed
-
-- **The web app's routine dependencies moved (#532).** Dependabot's weekly
-  group in `apps/web`: `next` 16.3.3 to 16.3.5, `react`, `react-dom` and
-  `@types/react` to 19.3.0, `lucide-react` 1.35.0 to 1.46.0, `posthog-js`
-  1.422.5 to 1.433.4, `@types/node` 26.4.0 to 26.5.1. Minor and patch only,
-  every check green on the rebased head, and the same `sharp` move #533 had
-  already made. Recorded here because a merge with no entry is a change only
-  `git log` remembers, not because any of it changes what Trazum does.
-
-- **Both CodeQL entry points advanced to v4.38.0 in one commit, and
-  Dependabot now raises the pair as one pull request.** As at 4.37.9,
-  Dependabot raised `init` and `analyze` separately (#527, #529) and each was
-  red on its own, because `analyze` refuses a configuration file `init` wrote
-  at another version and `security.test.js` holds that the two pins agree.
-  The pins move together here, and `.github/dependabot.yml` gains a
-  `codeql` group over `github/codeql-action*` so the next bump arrives as
-  the one pull request the guard can pass.
-
-### Fixed
-
-- **The packaged Action pin in `README.md` and `docs/running.md` advanced to
-  2.4.1's release commit**, the one `v2.4.1` points at, in the pull request
-  after the release as `docs/releasing.md` says it must: `security.test.js`
-  asks git which version that commit declares and refuses any other.
-
-- **`sharp` moved from 0.35.3 to 0.35.4 in the lockfile**, with its `libvips`
-  binaries from 1.3.2 to 1.3.3, closing GHSA-rgj7-g3m4-5g8c (two libheif
-  advisories, rated high). It is Next's optional image dependency in
-  `apps/web`, reached at build time only, and no manifest changes: `next`'s
-  own range already allowed the fix and only the pinned transitive version
-  had not moved, which is the exact case SECURITY.md warns about. `npm audit`
-  over the whole tree reports 0 vulnerabilities after it.
 
 ## 2.4.1 — The same door from the browser
 
