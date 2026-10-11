@@ -472,7 +472,7 @@ describe('what would actually move this bill', () => {
   it('leads with the lever, priced, above the breakdowns', async () => {
     /**
      * 400 calls of 9,000 input and 300 output on Opus 5 is $21.00. The same tokens
-     * on Sonnet 5 are $8.40, and batching that is $4.20 — so the slice is worth
+     * on Sonnet 5.5 are $8.40, and batching that is $4.20 — so the slice is worth
      * $16.80, which is 52.2% of a bill whose prompt text could never be worth more
      * than 70.9% even deleted entirely.
      */
@@ -486,7 +486,7 @@ describe('what would actually move this bill', () => {
 
     assert.match(out, /What would actually move this bill/);
     assert.match(out, /support-rag on Claude Opus 5, up to \$16\.80/, 'the combined figure is wrong or missing');
-    assert.match(out, /route it to Claude Sonnet 5, \$12\.60/);
+    assert.match(out, /route it to Claude Sonnet 5\.5, \$12\.60/);
     assert.match(out, /send it through the Batch API, \$10\.50/);
 
     // Above the breakdowns, because a lever nobody scrolls to is a lever nobody pulls.
@@ -910,7 +910,7 @@ describe('--markdown-out', () => {
 
     assert.match(md, /### Where the money went/);
     assert.match(md, /What would actually move this bill/);
-    assert.match(md, /route it to Claude Sonnet 5/);
+    assert.match(md, /route it to Claude Sonnet 5\.5/);
     assert.match(md, /shortening the prompt text can touch/, 'the prompt ceiling is missing');
     // mdText escapes underscores for markdown, so the literal is max\_tokens.
     assert.match(md, /hit the max\\_tokens ceiling/, 'the truncation waste is missing');

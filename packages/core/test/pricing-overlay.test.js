@@ -149,19 +149,18 @@ describe('applying an overlay', () => {
     // Scoped to one provider, as the advisory does: switching vendor is a
     // migration rather than a cheaper model, and unscoped this now finds a
     // GPT model that costs a fifth of any Claude one.
-    // Sonnet 5's introductory 2/10 beats Sonnet 4.6's 3/15 while it is live.
+    // Sonnet 5.5 and Sonnet 5 both list at 2/10 and beat Sonnet 4.6's 3/15;
+    // on a tie the first listed wins, the newer model.
     assert.equal(
       cheapestOfTierIn(BUNDLED_CATALOGUE, 'sonnet', on, 'anthropic').id,
-      'claude-sonnet-5',
+      'claude-sonnet-5-5',
     );
-    // Withdraw it and the two tie on list price, so the first listed wins —
+    // Overlay a dearer Sonnet 5.5 and Sonnet 5 is the cheapest again —
     // deterministic either way, which is the property that matters.
-    const withdrawn = catalogueFromOverlay(overlay({ 'claude-sonnet-5': { promo: null } }));
-    assert.ok(
-      ['claude-sonnet-5', 'claude-sonnet-4-6'].includes(
-        cheapestOfTierIn(withdrawn, 'sonnet', on, 'anthropic').id,
-      ),
+    const dearer = catalogueFromOverlay(
+      overlay({ 'claude-sonnet-5-5': { inputPerMTok: 9, outputPerMTok: 45 } }),
     );
+    assert.equal(cheapestOfTierIn(dearer, 'sonnet', on, 'anthropic').id, 'claude-sonnet-5');
   });
 
   it('searches the whole catalogue when no provider is named', () => {
