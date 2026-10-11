@@ -760,7 +760,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   schema: [],
   rollup: ['json', 'html-out'],
   position: ['json', 'html-out', 'pricing', 'pricing-live'],
-  receipt: ['out', 'o', 'stamp', 'pricing', 'pricing-live'],
+  receipt: ['out', 'o', 'stamp', 'pricing', 'pricing-live', 'since', 'until'],
   'from-claude-code': ['label', 'label-by-cwd', 'label-from-project', 'out', 'o', 'state'],
   'from-otel': ['label-from-service', 'out', 'o'],
   'from-litellm': ['out', 'o'],
@@ -768,7 +768,7 @@ const COMMAND_FLAGS: Record<string, string[]> = {
   'from-anthropic': ['label', 'label-by-workspace', 'out', 'o'],
   'from-openai': ['label', 'label-by-project', 'out', 'o'],
   'from-openrouter': ['label', 'label-by-workspace', 'out', 'o'],
-  bill: ['label', 'label-from-project', 'out', 'o', 'stamp', 'receipt', 'table', 'pricing', 'pricing-live', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape'],
+  bill: ['label', 'label-from-project', 'out', 'o', 'stamp', 'receipt', 'table', 'pricing', 'pricing-live', 'html-out', 'pdf-out', 'markdown-out', 'csv-out', 'csv-shape', 'since', 'until'],
   'from-helicone': ['out', 'o'],
   'from-langsmith': ['out', 'o'],
   switch: ['to', 'migration-usd', 'cases'],
@@ -3316,6 +3316,57 @@ async function commandReconcile(args: Args, t: CliMessages): Promise<void> {
   if (billed.unreadableAmount > 0) console.error(t.reconcile.unreadableAmount(billed.unreadableAmount));
 }
 
+/**
+ * The period a bill or a receipt covers, from `--since`/`--until`.
+ *
+ * `profile`'s window, read the same way: a UTC day, a timestamp, a relative
+ * window or `now`; a bare day is the whole of it, and the window is half-open
+ * underneath, so two adjacent periods share no call and add up to the whole.
+ * Refused before any file is read: a bad date found after the receipt printed
+ * would end a run that looked finished with an error. `words` is the window as
+ * typed, for the documents to print, because rendering the internal exclusive
+ * bound would name the day after the one asked for.
+ */
+function billingPeriod(
+  args: Args,
+  t: CliMessages,
+): { sinceMs?: number; untilMs?: number; relative: boolean; words?: { since: string; until: string } } {
+  const now = Date.now();
+  const since = parseWhen(args, 'since', false, t, now);
+  const until = parseWhen(args, 'until', true, t, now);
+  if (since.ms !== undefined && until.ms !== undefined && since.ms >= until.ms) {
+    throw new Error(t.profile.sinceAfterUntil());
+  }
+  if (since.ms === undefined && until.ms === undefined) return { relative: false };
+  return {
+    ...(since.ms !== undefined ? { sinceMs: since.ms } : {}),
+    ...(until.ms !== undefined ? { untilMs: until.ms } : {}),
+    relative: since.relative || until.relative,
+    words: { since: stringFlag(args, 'since') ?? '—', until: stringFlag(args, 'until') ?? '—' },
+  };
+}
+
+/**
+ * A period with nothing in it is refused, never billed at $0: that reads as
+ * "this month was free" when it means the dates missed the log. Said against
+ * what was read, so the fix is in the message.
+ */
+function refuseEmptyPeriod(
+  text: string,
+  report: UsageProfileReport,
+  period: ReturnType<typeof billingPeriod>,
+  pricing: PricingCatalogue,
+  t: CliMessages,
+): void {
+  if (period.words === undefined || report.total.calls > 0 || report.unpriced.calls > 0) return;
+  const whole = profileUsage(text, { catalogue: pricing });
+  if (whole.total.calls === 0 && whole.unpriced.calls === 0) return;
+  if (whole.span === null) throw new Error(t.profile.windowNeedsClock());
+  throw new Error(
+    `${t.bill.windowMatchesNothing(dayOf(whole.span.fromMs), dayOf(whole.span.toMs))}${period.relative ? ` ${t.profile.windowRelativeEmpty()}` : ''}`,
+  );
+}
+
 async function commandReceipt(
   args: Args,
   pricing: PricingCatalogue,
@@ -3323,9 +3374,15 @@ async function commandReceipt(
 ): Promise<void> {
   const file = args.positional[0];
   if (file === undefined) throw new Error(t.receipt.noLog());
+  const period = billingPeriod(args, t);
 
   const text = await readUsageLog(file, t);
-  const report = profileUsage(text, { catalogue: pricing });
+  const report = profileUsage(text, {
+    catalogue: pricing,
+    ...(period.sinceMs !== undefined ? { sinceMs: period.sinceMs } : {}),
+    ...(period.untilMs !== undefined ? { untilMs: period.untilMs } : {}),
+  });
+  refuseEmptyPeriod(text, report, period, pricing, t);
   const document = receiptFrom(
     report,
     pricing,
@@ -3362,6 +3419,7 @@ function printReceiptSummary(document: ReceiptDocument, t: CliMessages): void {
     if (gap.kind === 'unpriced') console.error(t.receipt.unpriced(gap.models.length, gap.calls));
     if (gap.kind === 'unread-lines') console.error(t.receipt.unread(gap.count));
     if (gap.kind === 'no-clock') console.error(t.receipt.noClock());
+    if (gap.kind === 'undated-excluded') console.error(t.receipt.undatedExcluded(gap.calls));
     if (gap.kind === 'tier-ceiling') {
       console.error(
         t.profile.tierCeiling(gap.calls, gap.models.join(', '), formatUsd(gap.ceilingUsd), formatUsd(gap.floorUsd)),
@@ -3429,6 +3487,9 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   /* Refused before any file is read: a bad shape found after the receipt
      printed would end a run that looked finished with an error. */
   const csvShape = csvShapeOf(args, t);
+  /* "What did this month cost" is the question a Claude Code folder of a
+     year's sessions answers worst without a period. */
+  const period = billingPeriod(args, t);
 
   /*
     No path is the most common first run, and it used to be a refusal: the
@@ -3604,7 +3665,13 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
 
   if (sources === 0) throw new Error(t.bill.nothingRead());
 
-  const report = profileUsage(lines.join('\n'), { catalogue: pricing });
+  const text = lines.join('\n');
+  const report = profileUsage(text, {
+    catalogue: pricing,
+    ...(period.sinceMs !== undefined ? { sinceMs: period.sinceMs } : {}),
+    ...(period.untilMs !== undefined ? { untilMs: period.untilMs } : {}),
+  });
+  refuseEmptyPeriod(text, report, period, pricing, t);
   const document = receiptFrom(report, pricing, boolFlag(args, 'stamp') ? { emittedAt: new Date() } : {});
   const json = JSON.stringify(document, null, 2);
 
@@ -3627,8 +3694,8 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   }
   console.error(t.bill.sources(sources, files.length));
   printReceiptSummary(document, t);
-  if (statement) printBillStatement(report, labelledByProject > 0, t);
-  await writeBillSideFiles(args, report, pricing, csvShape, t);
+  if (statement) printBillStatement(report, labelledByProject > 0, t, period.words);
+  await writeBillSideFiles(args, report, pricing, csvShape, t, period.words);
 
   /*
     A slug with a slash in it is how OpenRouter names a model, and the bundled
@@ -3679,7 +3746,12 @@ async function claudeProjectFolders(env: NodeJS.ProcessEnv): Promise<{ found: st
  * is not in the total, on stdout. The receipt's figures, rendered: nothing
  * here is computed that the receipt does not carry.
  */
-function printBillStatement(report: UsageProfileReport, byProject: boolean, t: CliMessages): void {
+function printBillStatement(
+  report: UsageProfileReport,
+  byProject: boolean,
+  t: CliMessages,
+  window?: { since: string; until: string },
+): void {
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const pct = (share: number): string => `${(share * 100).toFixed(1)}%`;
   const total = report.total.totalUsd;
@@ -3706,6 +3778,8 @@ function printBillStatement(report: UsageProfileReport, byProject: boolean, t: C
     const span = t.profile.spanLine(dayOf(report.span.fromMs), dayOf(report.span.toMs), spanDays(report.span.fromMs, report.span.toMs));
     console.log(c.dim(`  ${wrap(span, 74, '  ')}`));
   }
+  // The period asked for, as typed: the span above is when the calls in it fell.
+  if (window !== undefined) console.log(c.dim(`  ${wrap(t.profile.windowLine(window.since, window.until), 74, '  ')}`));
 
   const labelled = report.byLabel.filter((row) => row.label !== UNLABELLED);
   if (labelled.length > 0) {
@@ -3727,6 +3801,44 @@ function printBillStatement(report: UsageProfileReport, byProject: boolean, t: C
     for (const line of table(columns(t.bill.colModel()), rowsOf(entries))) console.log(line);
   }
 
+  /*
+    A year of Claude Code sessions billed in one total says what it all cost
+    and not which month cost what, which is the next question. Summed from the
+    report's own days, oldest first, newest kept when there are many; shown
+    only once the bill spans two calendar months, since one month is the total.
+  */
+  const months = new Map<string, { calls: number; usd: number }>();
+  for (const day of report.spendByDay) {
+    const month = months.get(day.day.slice(0, 7)) ?? { calls: 0, usd: 0 };
+    month.calls += day.calls;
+    month.usd += day.usd;
+    months.set(day.day.slice(0, 7), month);
+  }
+  if (months.size >= 2) {
+    const ordered = [...months.entries()].sort(([a], [b]) => a.localeCompare(b));
+    const shown = ordered.slice(-LIMIT).map(([name, { calls, usd }]) => {
+      const share = total > 0 ? usd / total : 0;
+      return [name, n(calls), formatUsd(usd), `${bar(share)} ${pct(share)}`];
+    });
+    if (ordered.length > LIMIT) shown.unshift([c.dim(t.bill.earlierMonths(ordered.length - LIMIT)), '', '', '']);
+    console.log();
+    for (const line of table(columns(t.bill.colMonth()), shown)) console.log(line);
+    const dated = ordered.reduce((sum, [, month]) => ({ calls: sum.calls + month.calls, usd: sum.usd + month.usd }), {
+      calls: 0,
+      usd: 0,
+    });
+    const undatedCalls = report.total.calls - dated.calls;
+    if (undatedCalls > 0) {
+      console.log(c.dim(`  ${wrap(t.bill.monthsUndated(undatedCalls, formatUsd(total - dated.usd)), 74, '  ')}`));
+    }
+    const newest = ordered[ordered.length - 1]?.[0];
+    if (newest !== undefined) {
+      const [year, month] = newest.split('-').map(Number);
+      const lastDay = new Date(Date.UTC(year ?? 1970, month ?? 1, 0)).toISOString().slice(0, 10);
+      console.log(c.dim(`  ${t.bill.monthHint(`${newest}-01`, lastDay)}`));
+    }
+  }
+
   console.log();
   if (report.unpricedModels.length > 0) {
     console.log(`  ${wrap(t.bill.statementUnpriced(report.unpricedModels.join(', '), report.unpriced.calls), 74, '  ')}`);
@@ -3734,6 +3846,9 @@ function printBillStatement(report: UsageProfileReport, byProject: boolean, t: C
   const ceiling = tierCeilingLine(report, t);
   if (ceiling !== null) console.log(`  ${wrap(ceiling, 74, '  ')}`);
   if (report.skippedLines.length > 0) console.log(`  ${t.bill.statementUnread(report.skippedLines.length)}`);
+  if (report.timeWindow !== null && report.timeWindow.undatedExcluded > 0) {
+    console.log(`  ${c.yellow(wrap(t.receipt.undatedExcluded(report.timeWindow.undatedExcluded), 74, '  '))}`);
+  }
   console.log(c.dim(`  ${wrap(t.bill.statementNext(), 74, '  ')}`));
   console.log();
 }
@@ -3755,6 +3870,7 @@ async function writeBillSideFiles(
   pricing: PricingCatalogue,
   csvShape: ProfileCsvShape,
   t: CliMessages,
+  window?: { since: string; until: string },
 ): Promise<void> {
   const markdownOut = stringFlag(args, 'markdown-out');
   const htmlOut = stringFlag(args, 'html-out');
@@ -3769,6 +3885,7 @@ async function writeBillSideFiles(
     levers: billLevers(report, { catalogue: pricing }),
     cache: cacheEconomics(report.total),
     t,
+    ...(window !== undefined ? { window } : {}),
     ...(ageDays !== null && ageDays > STALE_PRICING_DAYS ? { stalePricing: { date: reviewed, days: ageDays } } : {}),
   };
   if (markdownOut !== undefined) {

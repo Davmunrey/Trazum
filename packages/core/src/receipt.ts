@@ -221,7 +221,17 @@ export type ReceiptGap =
    * rows. `ceilingUsd` is their share of it, `floorUsd` the same tokens at the
    * cheaper rate; the true figure for them is between the two.
    */
-  | { kind: 'tier-ceiling'; calls: number; models: string[]; ceilingUsd: number; floorUsd: number };
+  | { kind: 'tier-ceiling'; calls: number; models: string[]; ceilingUsd: number; floorUsd: number }
+  /**
+   * Calls a time window had to leave out because they carry no timestamp.
+   *
+   * A bill for a period holds the calls it can place in that period. A call
+   * with no clock might belong to it or might not, so it is neither counted
+   * in nor dropped in silence: a total for "October" that quietly lost calls
+   * of unknown date is the flattering non-answer, and this says how many.
+   * Present only on a receipt built from a windowed report.
+   */
+  | { kind: 'undated-excluded'; calls: number };
 
 export interface ReceiptDocument {
   /** The one thing a consumer must branch on. Set here, by the builder. */
@@ -389,6 +399,9 @@ export function receiptFrom(
     gaps.push({ kind: 'unread-lines', count: report.skippedLines.length });
   }
   if (report.span === null) gaps.push({ kind: 'no-clock' });
+  if (report.timeWindow !== null && report.timeWindow.undatedExcluded > 0) {
+    gaps.push({ kind: 'undated-excluded', calls: report.timeWindow.undatedExcluded });
+  }
 
   /*
    * Summed across the lines rather than read off a total, because the profile

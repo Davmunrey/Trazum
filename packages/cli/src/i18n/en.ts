@@ -59,9 +59,9 @@ ${bold('USAGE')}
   trazum schema <contract>
   trazum rollup <document...|dir> [--json] [--html-out <file>]
   trazum position <usage.jsonl>
-  trazum receipt <usage.jsonl|dir> [--stamp] [-o <file>]
+  trazum receipt <usage.jsonl|dir> [--stamp] [--since <when>] [--until <when>] [-o <file>]
   trazum bill [<file|dir>...] [--label <name>] [--no-label-from-project] [--receipt|--table] [--stamp] [-o <file>]
-              [--pdf-out|--html-out|--markdown-out|--csv-out <file>]
+              [--since <when>] [--until <when>] [--pdf-out|--html-out|--markdown-out|--csv-out <file>]
   trazum from-claude-code <file|dir> [--label <name>] [-o <file>]
   trazum from-otel <file|dir> [--label-from-service] [-o <file>]
   trazum from-litellm <file|dir> [-o <file>]
@@ -226,6 +226,12 @@ ${bold('OPTIONS FOR from-openai')}
 ${bold('OPTIONS FOR bill')}
   --label <name>              The project this usage belongs to, for the
                               shapes that take one.
+  --since <when>              Bill only the calls in this period: a UTC day
+  --until <when>              (2026-10-01), a full ISO 8601 timestamp, a
+                              relative window (30d, 24h) or "now". A bare day
+                              means the whole of it. Calls with no timestamp
+                              cannot be placed and are left out, counted on
+                              the receipt as a gap, never dropped silently.
   --stamp                     Stamp the receipt with the time it was written.
   -o, --out <file>            Write the receipt there instead of stdout.
 
@@ -335,6 +341,10 @@ ${bold('OPTIONS FOR receipt')}
                               output. The summary always goes to standard
                               error, so a redirect writes a document and not a
                               document with a summary stapled to the front.
+  --since <when>              The period the receipt covers, as bill takes it:
+  --until <when>              a UTC day, a timestamp, 30d or "now". Calls with
+                              no timestamp are left out and named as an
+                              undated-excluded gap.
   --pricing <file>            Price it with your own card instead of the
                               bundled catalogue.
   --pricing-live              Price it against live rates via OpenRouter.
@@ -1877,6 +1887,8 @@ ${bold('EXAMPLES')}
     unread: (count) => `${count} line(s) of the log could not be read, and the receipt says so.`,
     noClock: () =>
       'The log carries no clock, so the receipt is unbounded in time and states that rather than inventing a period.',
+    undatedExcluded: (calls) =>
+      `${count(calls)} ${calls === 1 ? 'call carries' : 'calls carry'} no timestamp and cannot be placed in this period, so ${calls === 1 ? 'it is' : 'they are'} not in this bill: the total is a floor on the period.`,
     nothingToBill: () => 'Nothing in this log could be priced, so the receipt has no lines.',
   },
 
@@ -2019,6 +2031,11 @@ ${bold('EXAMPLES')}
     colCalls: () => 'calls',
     colShare: () => 'share',
     moreRows: (count) => `… and ${count} more`,
+    colMonth: () => 'month',
+    earlierMonths: (count) => `… and ${count} earlier month(s)`,
+    monthsUndated: (calls, usd) =>
+      `${usd} from ${calls} call(s) with no timestamp is in the total and in no month.`,
+    monthHint: (since, until) => `One month on its own: --since ${since} --until ${until}.`,
     statementUnpriced: (models, calls) =>
       `Not in the total: ${calls} call(s) to ${models}, which the catalogue does not price. Named, never counted as $0.`,
     statementUnread: (lines) => `${lines} line(s) could not be read as usage and are not in the total.`,
@@ -2038,6 +2055,8 @@ ${bold('EXAMPLES')}
     sources: (read, seen) => `${read} of ${seen} file(s) read as usage.`,
     pricingLiveHint: (count) =>
       `${count} unpriced model id(s) are OpenRouter slugs, which the bundled catalogue does not carry. Run again with --pricing-live to price them from OpenRouter's own list.`,
+    windowMatchesNothing: (from, to) =>
+      `No call falls inside this period. What was read covers ${from} → ${to}. A period with nothing in it is not a $0 bill: check the dates, or leave --since/--until off to bill everything.`,
     written: (file) => `Wrote ${file}.`,
   },
 
@@ -3062,7 +3081,7 @@ ${bold('EXAMPLES')}
     sinceAfterUntil: () =>
       '--since is at or after --until, so the window contains no time at all. Check the two dates.',
     badWhen: (flag, value) =>
-      `--${flag} could not read "${value}". It takes a UTC day (2026-08-14) or a full ISO 8601 timestamp (2026-08-14T09:30:00Z).`,
+      `--${flag} could not read "${value}". It takes a UTC day (2026-08-14), a full ISO 8601 timestamp (2026-08-14T09:30:00Z), a relative window (7d, 24h) or "now".`,
     singleTurnCeiling: (label, model, single, sessions, usd) =>
       `${label} on ${model}: ${single} of ${sessions} conversations ended after their first turn, and their cache writes, ${usd}, paid for reuse their own conversation never made. Another conversation sharing the same prefix within the TTL could have read them; the log cannot see whose write a read hit, so that figure is a ceiling on the waste, not a bill.`,
     singleTurnConfirmed: (label, model, single, sessions, usd) =>
