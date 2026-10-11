@@ -1,4 +1,4 @@
-import { PdfDocument, UNLABELLED, formatUsd, pdfFit, pdfWrap, sharesOf } from '@trazum/core';
+import { PdfDocument, UNLABELLED, formatUsd, pdfFit, pdfWrap, sharesOf, spendByMonth } from '@trazum/core';
 import type { PdfColor, PdfFont, UsageBreakdown } from '@trazum/core';
 import { tierCeilingCaveat } from './markdown.js';
 import type { ProfileMarkdownInput } from './markdown.js';
@@ -258,6 +258,41 @@ export function renderProfilePdf(input: ProfileMarkdownInput, options: ProfilePd
     })),
     t.html.colModel(),
   );
+
+  // By month, every month, as in the HTML door: a page has the room.
+  const { months, undated } = spendByMonth(report);
+  if (months.length >= 2) {
+    heading(t.html.byMonthHeading());
+    const size = 7.5;
+    const rowHeight = 13;
+    const figureWidth = 70;
+    const columns = [t.html.colCalls(), 'USD', '%'];
+    const nameWidth = width - figureWidth * columns.length;
+    const right = (column: number): number => MARGIN + nameWidth + figureWidth * (column + 1) - 4;
+    const header = (): void => {
+      doc.text(MARGIN + 4, y + 9, pdfFit(t.bill.colMonth(), 'bold', size, nameWidth - 8), { font: 'bold', size, color: INK });
+      columns.forEach((column, i) => {
+        doc.textRight(right(i), y + 9, pdfFit(column, 'bold', size, figureWidth - 6), { font: 'bold', size, color: INK });
+      });
+      y += rowHeight;
+      doc.line(MARGIN, y, MARGIN + width, y, { color: RULE, width: 1.25 });
+      y += 2;
+    };
+    need(rowHeight * 3);
+    header();
+    months.forEach(({ month, calls, usd }, index) => {
+      if (need(rowHeight)) header();
+      if (index % 2 === 1) doc.rect(MARGIN, y, width, rowHeight, { fill: ZEBRA });
+      const share = report.total.totalUsd > 0 ? pct(usd / report.total.totalUsd) : '—';
+      doc.text(MARGIN + 4, y + 9, month, { size, color: INK });
+      [n(calls), formatUsd(usd), share].forEach((cell, i) => {
+        doc.textRight(right(i), y + 9, pdfFit(cell, 'regular', size, figureWidth - 6), { size, color: INK });
+      });
+      y += rowHeight;
+    });
+    y += 6;
+    if (undated.calls > 0) paragraph(t.bill.monthsUndated(undated.calls, formatUsd(undated.usd)), 'regular', 9, MUTED);
+  }
 
   // The findings, as the sentences the terminal says.
   const findings: string[] = [];

@@ -598,6 +598,17 @@ export interface WebMessages {
     /** Accessible summary of the per-day bar chart. */
     dayChartLabel(days: number): string;
     /**
+     * The bill by calendar month, once it spans two — the CLI's month table,
+     * from the same core function. A month is a button that bills that month
+     * alone, through the window above; the part with no clock is said under
+     * the rows so they do not add up short of the total in silence.
+     */
+    monthHeading: string;
+    monthHint: string;
+    monthSelect(month: string): string;
+    monthsShowAll(count: number): string;
+    monthsUndated(calls: number, usd: string): string;
+    /**
      * Whether the cache TTL fits the median gap between turns. Four verdicts
      * plus "could not be measured" — the same three-state discipline as
      * truncation, because "no data" and "fits" are different answers.
@@ -627,6 +638,8 @@ export interface WebMessages {
     windowSinceAria: string;
     windowUntilAria: string;
     windowClear: string;
+    /** The report's own way out of a window, named apart from the log card's Clear. */
+    windowWhole: string;
     windowHint: string;
     windowLine: string;
     windowUndated(calls: number): string;

@@ -731,6 +731,13 @@ export const en: WebMessages = {
     dayChartLabel: (days) =>
       `Spend per day across ${days.toLocaleString('en-US')} days; the tallest bar is the most `
       + 'expensive day.',
+    monthHeading: 'By month',
+    monthHint: 'Click a month to bill it alone.',
+    monthSelect: (month) => `Bill ${month} alone`,
+    monthsShowAll: (count) => `Show all ${count} months`,
+    monthsUndated: (calls, usd) =>
+      `${usd} from ${calls === 1 ? '1 call' : `${calls.toLocaleString('en-US')} calls`} with no timestamp `
+      + 'is in the total and in no month.',
     ttlExpires: (label, model, gap) =>
       `${label} on ${model}: turns arrive a median of ${gap} apart and the 5-minute entry is `
       + 'gone by then; writes expire before the next turn reads them, which from the bill is '
@@ -773,6 +780,7 @@ export const en: WebMessages = {
     windowSinceAria: 'Profile only calls on or after this UTC day',
     windowUntilAria: 'Profile only calls up to and including this UTC day',
     windowClear: 'Clear the window',
+    windowWhole: 'Back to the whole log',
     windowHint: 'UTC days, both ends included. Applies to the previous log too.',
     windowLine:
       'Everything below describes this window, not the whole log.',

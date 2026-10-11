@@ -1,4 +1,4 @@
-import { UNLABELLED, formatUsd, sharesOf } from '@trazum/core';
+import { UNLABELLED, formatUsd, sharesOf, spendByMonth } from '@trazum/core';
 import type { PositionDocument, RollupDocument, UsageBreakdown } from '@trazum/core';
 import type { CliMessages } from './i18n/index.js';
 import { tierCeilingCaveat } from './markdown.js';
@@ -186,6 +186,30 @@ export function renderProfileHtml(input: ProfileMarkdownInput): string {
       t.html.colModel(),
     ),
   );
+
+  /*
+   * By month, once the report spans two: a document handed to whoever pays
+   * for a year of use answers which month cost what. Every month, oldest
+   * first, since a page has room the terminal's twelve rows do not; and the
+   * part with no clock said under it, so the rows do not add up short of the
+   * total in silence.
+   */
+  const { months, undated } = spendByMonth(report);
+  if (months.length >= 2) {
+    parts.push(`<h2>${esc(t.html.byMonthHeading())}</h2>`);
+    const body = months
+      .map(({ month, calls, usd }) => {
+        const share = report.total.totalUsd > 0 ? pct(usd / report.total.totalUsd) : '—';
+        return `<tr><td>${esc(month)}</td><td class="n">${n(calls)}</td><td class="n">${esc(formatUsd(usd))}</td><td class="n">${share}</td></tr>`;
+      })
+      .join('\n');
+    parts.push(
+      `<table><thead><tr><th>${esc(t.bill.colMonth())}</th><th class="n">${esc(t.html.colCalls())}</th><th class="n">USD</th><th class="n">%</th></tr></thead><tbody>\n${body}\n</tbody></table>`,
+    );
+    if (undated.calls > 0) {
+      parts.push(`<p class="muted">${esc(t.bill.monthsUndated(undated.calls, formatUsd(undated.usd)))}</p>`);
+    }
+  }
 
   // The findings, as the sentences the terminal already says — the copy is
   // the product's, not this file's, so the two surfaces cannot drift apart.

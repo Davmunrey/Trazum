@@ -11,6 +11,36 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Added
+
+- **The bill by month, in the documents and the browser.** 2.5.1 gave the
+  statement a table by month; the PDF, HTML and Markdown documents written by
+  `bill` and `profile` now carry it too, every month rather than the newest
+  twelve, with the part that has no timestamp said under the rows. The web
+  app's Bill tab draws it above the daily chart: each month is a button that
+  bills that month alone through the window, the newest twelve by default and
+  every month on request.
+- **`spendByMonth` in `@trazum/core`.** One function sums a report's days into
+  UTC months and returns the undated remainder, so the months and `undated`
+  reconcile to the total. The statement now uses it too, and every surface
+  that shows months goes through it, so no two can put a call in different
+  months.
+
+### Fixed
+
+- **A year of days drew the Bill tab's daily chart out of its card.** Each bar
+  kept a 2px floor and a 1px gap, so past about 160 days the bars ran across
+  the column beside it. Long spans now draw without the floor and the gap,
+  inside the card.
+- **A window in the Bill tab had no visible way out once the log card folded.**
+  The report now names the window it shows and carries its own "Back to the
+  whole log" button beside that line, named apart from the log card's Clear.
+
+### Changed
+
+- **The Action pin moves to 2.5.1** in the README and `docs/running.md`, the
+  commit the `v2.5.1` tag points at.
+
 ## 2.5.1 — A bill for a period
 
 A patch on 2.5's terms, and no command. **`bill --since/--until`** bills a

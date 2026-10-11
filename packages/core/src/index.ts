@@ -14,10 +14,13 @@ export {
   parseUsageLine,
   profileUsage,
   sharesOf,
+  spendByMonth,
 } from './usage.js';
 export type {
   CacheEconomics,
   CacheVerdict,
+  MonthSpend,
+  SpendByMonth,
   UsageProfileOptions,
   UsageBreakdown,
   FieldCoverage,

@@ -742,6 +742,13 @@ export const es: WebMessages = {
     dayChartLabel: (days) =>
       `Gasto por día a lo largo de ${days.toLocaleString('es-ES')} días; la barra más alta es `
       + 'el día más caro.',
+    monthHeading: 'Por mes',
+    monthHint: 'Haz clic en un mes para ver solo su factura.',
+    monthSelect: (month) => `Ver solo la factura de ${month}`,
+    monthsShowAll: (count) => `Ver los ${count} meses`,
+    monthsUndated: (calls, usd) =>
+      `${usd} de ${calls === 1 ? '1 llamada' : `${calls.toLocaleString('es-ES')} llamadas`} sin marca de `
+      + 'tiempo está en el total y en ningún mes.',
     ttlExpires: (label, model, gap) =>
       `${label} en ${model}: los turnos llegan con una mediana de ${gap} entre sí y la entrada `
       + 'de 5 minutos ya no existe para entonces. Las escrituras caducan antes de que el '
@@ -790,6 +797,7 @@ export const es: WebMessages = {
     windowSinceAria: 'Perfilar solo llamadas desde este día UTC incluido',
     windowUntilAria: 'Perfilar solo llamadas hasta este día UTC incluido',
     windowClear: 'Quitar la ventana',
+    windowWhole: 'Volver al registro completo',
     windowHint: 'Días UTC, ambos extremos incluidos. Aplica también al registro anterior.',
     windowLine: 'Todo lo de abajo describe esta ventana, no el registro completo.',
     windowUndated: (calls) =>

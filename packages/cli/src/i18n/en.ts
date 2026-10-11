@@ -2249,6 +2249,7 @@ ${bold('EXAMPLES')}
     noSessions: () => 'No record carried a session, so conversation growth and per-conversation costs are not in this report.',
     byLabelHeading: () => 'By workload',
     byModelHeading: () => 'By model',
+    byMonthHeading: () => 'By month',
     findingsHeading: () => 'What would move this bill',
     colLabel: () => 'workload',
     colModel: () => 'model',

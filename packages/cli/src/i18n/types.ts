@@ -926,6 +926,8 @@ export interface CliMessages {
     noSessions(): string;
     byLabelHeading(): string;
     byModelHeading(): string;
+    /** Shown once a report spans two calendar months; the column is `bill.colMonth`. */
+    byMonthHeading(): string;
     findingsHeading(): string;
     colLabel(): string;
     colModel(): string;
