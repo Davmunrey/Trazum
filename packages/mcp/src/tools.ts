@@ -271,9 +271,11 @@ const MODELS: ToolDefinition = {
   run: () => {
     const rows = listModels().map((model) => {
       const cache =
-        model.caching === 'none' || model.cacheMinTokens === null
+        model.caching === 'none'
           ? 'no caching'
-          : `cache min ${model.cacheMinTokens}`;
+          : model.cacheMinTokens === null
+            ? 'caches, minimum unpublished'
+            : `cache min ${model.cacheMinTokens}`;
       return `${model.id}  in $${model.inputPerMTok}/Mtok  out $${model.outputPerMTok}/Mtok`
         + `  context ${model.contextWindow.toLocaleString('en-US')}  ${cache}`;
     });

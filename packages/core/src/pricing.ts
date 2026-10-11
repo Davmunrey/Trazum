@@ -104,7 +104,18 @@ export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze
    * servable is not the same as checking, and moving the date then would have
    * said it was.
    */
-  mistral: '2026-08-28',
+  /*
+   * Re-read 2026-10-11 from mistral.ai/cloud/inference/ and the model cards
+   * at mistral.ai/news/mistral-3/, /mistral-small-4/ and
+   * /vibe-remote-agents-mistral-medium-3-5/, which carry the prices in their
+   * markup (`data-prices`) and bind the `-latest` ids. Every price matched.
+   * What changed is caching: the inference page offers "Cached input tokens
+   * -90% on input token", and every one of the three cards marks its input
+   * price as carrying the cache discount. This table said Mistral had no
+   * prompt caching at all. docs.mistral.ai, where a minimum or a mechanism
+   * would be, is not reachable from here, so neither is claimed.
+   */
+  mistral: '2026-10-11',
 });
 
 /**
@@ -173,6 +184,17 @@ export function multipliersFor(model: ModelPricing, on?: Date): {
   multipliersMemo.set(model, result);
   return result;
 }
+
+/**
+ * Mistral discounts cached input by 90% and publishes nothing else about it
+ * that can be read from here: not how caching starts, not a minimum, not a
+ * write price. Its usage reports no write tokens, so the write ratio of 1 is
+ * never multiplied by anything; it is there so the default (Anthropic's 1.25)
+ * cannot be.
+ */
+const MISTRAL_CACHE_NOTE =
+  'Cached input costs 10% of the input price (mistral.ai/cloud/inference, read 2026-10-11). How caching starts and'
+  + ' its minimum are not published anywhere Trazum can read, so no caching advice is given for it.';
 
 export const MODELS: ModelPricing[] = [
   {
@@ -784,12 +806,12 @@ export const MODELS: ModelPricing[] = [
     inputPerMTok: 0.5,
     outputPerMTok: 1.5,
     contextWindow: 262_144,
-    cacheMinTokens: 0,
-    caching: 'none',
-    multipliers: { batch: 0.5 },
+    cacheMinTokens: null,
+    caching: 'unknown',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
     capability: 'large',
     tier: 'opus',
-    notes: 'No prompt caching: reordering still helps readability but saves nothing here.',
+    notes: MISTRAL_CACHE_NOTE,
   },
   {
     /*
@@ -812,11 +834,12 @@ export const MODELS: ModelPricing[] = [
     inputPerMTok: 1.5,
     outputPerMTok: 7.5,
     contextWindow: 262_144,
-    cacheMinTokens: 0,
-    caching: 'none',
-    multipliers: { batch: 0.5 },
+    cacheMinTokens: null,
+    caching: 'unknown',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
     capability: 'mid',
     tier: 'sonnet',
+    notes: MISTRAL_CACHE_NOTE,
   },
   {
     /* Same page, same day. `mistral-small-2603` is what the API reports. */
@@ -827,11 +850,12 @@ export const MODELS: ModelPricing[] = [
     inputPerMTok: 0.15,
     outputPerMTok: 0.6,
     contextWindow: 262_144,
-    cacheMinTokens: 0,
-    caching: 'none',
-    multipliers: { batch: 0.5 },
+    cacheMinTokens: null,
+    caching: 'unknown',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.5 },
     capability: 'small',
     tier: 'haiku',
+    notes: MISTRAL_CACHE_NOTE,
   },
 ];
 

@@ -123,7 +123,7 @@ describe('the provider-facts table describes the catalogue', () => {
 
     for (const provider of new Set(MODELS.map((m) => m.provider))) {
       const floors = new Set(
-        MODELS.filter((m) => m.provider === provider && m.caching !== 'none').map(
+        MODELS.filter((m) => m.provider === provider && m.caching !== 'none' && m.cacheMinTokens !== null).map(
           (m) => m.cacheMinTokens,
         ),
       );
@@ -143,7 +143,9 @@ describe('the provider-facts table describes the catalogue', () => {
     const text = table();
     const minimum = row(text, 'Cache minimum');
     const floors = [
-      ...new Set(MODELS.filter((m) => m.caching !== 'none').map((m) => m.cacheMinTokens)),
+      ...new Set(
+        MODELS.filter((m) => m.caching !== 'none' && m.cacheMinTokens !== null).map((m) => m.cacheMinTokens),
+      ),
     ].sort((a, b) => a - b);
 
     const missing = floors.filter((n) => !minimum.includes(n.toLocaleString('en-US')));

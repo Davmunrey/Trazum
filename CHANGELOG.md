@@ -13,6 +13,20 @@ merged commit with no entry is a change only `git log` remembers.
 
 ### Changed
 
+- **Mistral caches, and this table said it did not.** Re-read on 2026-10-11
+  from mistral.ai/cloud/inference and the Large 3, Small 4 and Medium 3.5
+  model cards, which carry their prices in the page markup and bind the
+  `-latest` ids. Every price matched. The inference page offers "Cached
+  input tokens -90% on input token" and every card marks its input price as
+  carrying that discount, so a Mistral log's cache reads are now priced at
+  10% of input rather than at the full rate, and the notes no longer say
+  reordering saves nothing. How caching starts and its minimum are on
+  docs.mistral.ai, which is not reachable from here, so the three rows carry
+  `caching: 'unknown'` and no minimum, and Trazum gives no caching advice
+  for them rather than inventing either. The MCP model list says "caches,
+  minimum unpublished" for them instead of "no caching". Mistral Large 4
+  ($1.36/$4.18) is on the page and not yet added: its card states no id.
+
 - **DeepSeek, re-read on 2026-10-10: V4 Flash was retired and its price
   cut, so one id billed two ways in one month.** DeepSeek released V4.1
   Flash on 2026-09-10 and announced "New pricing takes effect at 04:00 UTC
