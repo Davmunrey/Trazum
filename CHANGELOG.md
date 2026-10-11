@@ -11,6 +11,31 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+### Fixed
+
+- **`trazum bill logs/*.jsonl` priced the first file and called it the
+  bill.** The shell expands a glob into every file, and `bill`, like every
+  command but `rollup` and `diff`, read the first argument and ignored the
+  rest, with no gap and exit 0: two files worth $7.51 came out as $0.01.
+  `bill` now reads every file and directory it is given, once each, and
+  every other command refuses arguments it would ignore, naming the first
+  one and the directory form that reads them all.
+
+- **`bill` and `profile` read the same directory to different totals.**
+  `bill` skipped `.log` files, which `profile` reads and the docs name as a
+  usage log, and did not count the file it skipped: a directory came to
+  $7.51 by one verb and $15.01 by the other. The walk now uses the one list
+  of log names `profile` uses, plain or gzipped, through a predicate rather
+  than a copied pattern.
+
+- **The MCP server's `spend_guard` answered "yes" to a typo.** Called with
+  `output_tokens` instead of `outputTokens`, it read zero output tokens and
+  allowed a call that broke the budget, where the right spelling refused
+  it. Every tool schema says `additionalProperties: false` and nothing
+  enforced it. The server now does, for every tool: an undeclared key comes
+  back as an `isError` result naming the key, the declared name it most
+  likely meant (case and separators only), and the full list it takes.
+
 ### Changed
 
 - **The Anthropic catalogue was reviewed on 2026-10-10 and carries the models

@@ -145,6 +145,46 @@ describe('a tool failure is a result, not a protocol error', () => {
   });
 });
 
+describe('the schema that refuses extra keys is the one the server enforces', () => {
+  const guard = (extra) =>
+    call(
+      request('tools/call', {
+        name: 'spend_guard',
+        arguments: { model: 'claude-opus-5', inputTokens: 100, consumedUsd: 99, limitUsd: 100, ...extra },
+      }),
+    );
+
+  it('a snake_case typo on spend_guard is refused, not read as zero and answered "yes"', () => {
+    /*
+      The reproduction: `output_tokens: 100_000` was dropped, the call priced at
+      100 input tokens, and the guard said yes to $2.50 of output against $1 of
+      headroom. The correct spelling says no, so the typo flipped the verdict.
+    */
+    const right = guard({ outputTokens: 100_000 });
+    assert.equal(right.result.isError, undefined);
+    assert.doesNotMatch(right.result.content[0].text, /^yes/i);
+
+    const typo = guard({ output_tokens: 100_000 });
+    assert.equal(typo.error, undefined, 'an undeclared key became a protocol error');
+    assert.equal(typo.result.isError, true);
+    assert.match(typo.result.content[0].text, /does not take "output_tokens" \(did you mean "outputTokens"\?\)/);
+    assert.match(typo.result.content[0].text, /It takes: model, inputTokens, outputTokens/);
+  });
+
+  it('every tool refuses a key its schema does not declare, and names it', () => {
+    for (const tool of TOOLS) {
+      const answer = call(request('tools/call', { name: tool.name, arguments: { noSuchArgument: 1 } }));
+      assert.equal(answer.result.isError, true, tool.name);
+      assert.match(answer.result.content[0].text, /does not take "noSuchArgument"/, tool.name);
+    }
+  });
+
+  it('offers a guess only when the names differ by case and separators', () => {
+    const answer = guard({ outputTokens: 1, colour: 'red' });
+    assert.match(answer.result.content[0].text, /"colour"(?! \(did you mean)/);
+  });
+});
+
 describe('tools/list', () => {
   it('describes every tool with a schema a client can validate against', () => {
     const { tools } = call(request('tools/list', {})).result;

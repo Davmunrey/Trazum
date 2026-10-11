@@ -516,6 +516,45 @@ function levelFlag(args: Args, config: TrazumConfig, t: CliMessages): RuleLevel 
 const LOG_EXTENSIONS = ['.jsonl', '.ndjson', '.log', '.json'];
 
 /**
+ * Whether a directory walk reads this file: one of `LOG_EXTENSIONS`, plain or
+ * gzipped, in any case.
+ *
+ * The list above said one list, and six walks still kept four of their own:
+ * `bill` skipped `.log`, which `profile` read, so the same directory billed
+ * $7.51 by one verb and $15.01 by the other, and `bill` did not even count
+ * the file it skipped. A predicate every walk calls is the only form of "one
+ * list" that cannot drift.
+ */
+function isUsageLogName(name: string): boolean {
+  const lower = name.toLowerCase();
+  return LOG_EXTENSIONS.some((extension) => lower.endsWith(extension) || lower.endsWith(`${extension}.gz`));
+}
+
+/**
+ * How many positional arguments a command reads. One unless listed.
+ *
+ * Every command used to read `positional[0]` and ignore the rest, so
+ * `trazum bill logs/*.jsonl`, which the shell expands to every file, priced
+ * the first file alone and reported no gap: a bill understated with the
+ * confidence of a complete one, and a spend gate judging one day of seven.
+ * A command now either reads every path it is given or refuses the extras.
+ */
+const POSITIONAL_LIMIT: Readonly<Record<string, number>> = {
+  bill: Number.POSITIVE_INFINITY,
+  rollup: Number.POSITIVE_INFINITY,
+  diff: 2,
+};
+
+function rejectExtraPositionals(args: Args, t: CliMessages): void {
+  if (!COMMAND_FLAGS[args.command]) return;
+  const limit = POSITIONAL_LIMIT[args.command] ?? 1;
+  if (args.positional.length <= limit) return;
+  throw new Error(
+    t.errors.extraPositional(args.command, limit, args.positional.length, args.positional[limit] ?? ''),
+  );
+}
+
+/**
  * One usage log, gzip included, shared by every command that reads one.
  *
  * A `.gz` that will not decompress is an error naming the file — skipping it
@@ -3377,27 +3416,40 @@ function usageSourcesOf(text: string): UsageSource[] {
  * a bill rather than usage, and pointed at `reconcile`.
  */
 async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages): Promise<void> {
-  const target = args.positional[0];
-  if (target === undefined) throw new Error(t.bill.noPath());
+  if (args.positional.length === 0) throw new Error(t.bill.noPath());
 
-  let info;
-  try {
-    info = await stat(target);
-  } catch {
-    throw new Error(t.bill.notFound(target));
-  }
+  /*
+    Every path given, files and directories alike, because a shell glob hands
+    over many and reading the first was a bill missing the rest. A file named
+    twice (a directory and a file inside it) is read once: counting it twice
+    would be the opposite mistake.
+  */
   const files: string[] = [];
-  if (info.isDirectory()) {
-    const entries = await readdir(target, { recursive: true, withFileTypes: true });
-    for (const entry of entries) {
-      if (entry.isFile() && /\.(json|jsonl|ndjson)(\.gz)?$/i.test(entry.name)) {
-        files.push(join(entry.parentPath, entry.name));
-      }
+  const seen = new Set<string>();
+  const add = (file: string): void => {
+    const key = resolvePath(file);
+    if (seen.has(key)) return;
+    seen.add(key);
+    files.push(file);
+  };
+  for (const target of args.positional) {
+    let info;
+    try {
+      info = await stat(target);
+    } catch {
+      throw new Error(t.bill.notFound(target));
     }
-    files.sort();
-    if (files.length === 0) throw new Error(t.bill.noFiles(target));
-  } else {
-    files.push(target);
+    if (info.isDirectory()) {
+      const entries = await readdir(target, { recursive: true, withFileTypes: true });
+      const found = entries
+        .filter((entry) => entry.isFile() && isUsageLogName(entry.name))
+        .map((entry) => join(entry.parentPath, entry.name))
+        .sort();
+      if (found.length === 0) throw new Error(t.bill.noFiles(target));
+      for (const file of found) add(file);
+    } else {
+      add(target);
+    }
   }
 
   const label = stringFlag(args, 'label');
@@ -13059,6 +13111,7 @@ async function main(): Promise<void> {
   }
 
   rejectUnknownFlags(args, t);
+  rejectExtraPositionals(args, t);
 
   // Loaded before dispatch so every command sees the same settings, and after
   // flag validation so a typo is reported before any file is touched. An

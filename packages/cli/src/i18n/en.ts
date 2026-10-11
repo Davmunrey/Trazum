@@ -60,7 +60,7 @@ ${bold('USAGE')}
   trazum rollup <document...|dir> [--json] [--html-out <file>]
   trazum position <usage.jsonl>
   trazum receipt <usage.jsonl|dir> [--stamp] [-o <file>]
-  trazum bill <file|dir> [--label <name>] [--stamp] [-o <file>]
+  trazum bill <file|dir>... [--label <name>] [--stamp] [-o <file>]
   trazum from-claude-code <file|dir> [--label <name>] [-o <file>]
   trazum from-otel <file|dir> [--label-from-service] [-o <file>]
   trazum from-litellm <file|dir> [-o <file>]
@@ -1195,6 +1195,10 @@ ${bold('EXAMPLES')}
       `Unknown option --${name}. This command accepts: ${allowed}.`,
     unknownFlagDidYouMean: (name, suggestion) =>
       `Unknown option --${name}. Did you mean --${suggestion}?`,
+    extraPositional: (command, limit, given, first) =>
+      `${command} reads ${limit === 1 ? 'one path' : `${limit} paths`} and was given ${given}, so ${first} and`
+      + ' anything after it would be ignored. A shell glob expands to many paths: pass the directory'
+      + ` instead (trazum ${command} logs/), or run once per file.`,
     diffNeedsTwoFiles: () => 'trazum diff needs two files: trazum diff <before> <after>.',
     cannotNegate: (name) => `--no-${name} makes no sense: --${name} takes a value.`,
     noPromptsFound: (directory, extensions) =>
@@ -1989,7 +1993,7 @@ ${bold('EXAMPLES')}
   bill: {
     noPath: () => 'bill needs a file or a directory to read: trazum bill ~/.claude/projects',
     notFound: (path) => `${path}: not found`,
-    noFiles: (path) => `${path}: no .json, .jsonl or .ndjson files under it.`,
+    noFiles: (path) => `${path}: no .json, .jsonl, .ndjson or .log files under it, plain or gzipped.`,
     file: (path, shape, records, leftOut) =>
       `${path}: ${shape}${records === null ? ', read as it is' : `, ${records} record(s)`}${leftOut > 0 ? `, ${leftOut} row(s) left out. Run trazum from-${shape} on it for the reasons.` : '.'}`,
     unknown: (path) =>

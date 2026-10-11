@@ -60,6 +60,35 @@ export interface ToolDefinition {
 /** Thrown by a tool when its arguments are wrong. Distinguished from a crash. */
 export class InvalidArguments extends Error {}
 
+/**
+ * Arguments a tool's schema closes the door on, and the declared name each one
+ * most likely meant.
+ *
+ * Every schema says `additionalProperties: false`, and `rpc.test.js` held that
+ * it says so, while nothing held that the server did so: `spend_guard` called
+ * with `output_tokens` instead of `outputTokens` read zero output tokens and
+ * answered "yes" to a call that broke the budget, where the correct spelling
+ * answered "no". Agents write snake_case readily. A budget guard that turns a
+ * typo into permission is the failure it exists to prevent, so the schema is
+ * enforced here, once, for every tool.
+ */
+function undeclaredArguments(
+  schema: Record<string, unknown>,
+  args: Record<string, unknown>,
+): { key: string; meant: string | null }[] {
+  if (schema['additionalProperties'] !== false) return [];
+  const properties = schema['properties'];
+  const declared =
+    typeof properties === 'object' && properties !== null ? Object.keys(properties) : [];
+  /* Case and separators only: `output_tokens`, `OutputTokens` and
+     `output-tokens` are one name, and anything further is not a guess worth
+     offering. */
+  const squash = (name: string): string => name.toLowerCase().replace(/[^a-z0-9]/g, '');
+  return Object.keys(args)
+    .filter((key) => !declared.includes(key))
+    .map((key) => ({ key, meant: declared.find((name) => squash(name) === squash(key)) ?? null }));
+}
+
 export interface ServerInfo {
   name: string;
   version: string;
@@ -164,6 +193,20 @@ export function handle(
         typeof params.arguments === 'object' && params.arguments !== null
           ? (params.arguments as Record<string, unknown>)
           : {};
+
+      const undeclared = undeclaredArguments(tool.inputSchema, args);
+      if (undeclared.length > 0) {
+        const declared = Object.keys(
+          (tool.inputSchema['properties'] as Record<string, unknown> | undefined) ?? {},
+        );
+        const named = undeclared
+          .map(({ key, meant }) => (meant ? `"${key}" (did you mean "${meant}"?)` : `"${key}"`))
+          .join(', ');
+        const text =
+          `${tool.name} does not take ${named}, and guessing what it meant would change the answer.`
+          + ` It takes: ${declared.join(', ') || 'no arguments'}.`;
+        return { jsonrpc: '2.0', id, result: { content: [{ type: 'text', text }], isError: true } };
+      }
 
       try {
         return {

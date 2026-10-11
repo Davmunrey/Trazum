@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { gzipSync } from 'node:zlib';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 
@@ -115,5 +116,63 @@ describe('trazum bill reads a directory of whatever it finds', () => {
     const result = run(['bill']);
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /trazum bill/);
+  });
+});
+
+/**
+ * The glob and the extension, which once made one directory two bills.
+ *
+ * `trazum bill logs/*.jsonl` is what a person types, and the shell turns it into
+ * every file. Reading the first and dropping the rest priced $0.01 of a $7.51
+ * bill with no gap; skipping `.log` priced $7.51 of what `profile` called
+ * $15.01. Both understated, both quietly, so both are pinned on totals.
+ */
+describe('trazum bill reads every path it is given', () => {
+  const small = '{"model":"claude-opus-5","ts":"2026-09-01T10:00:00Z","usage":{"input_tokens":1000,"output_tokens":200}}\n';
+  const big = '{"model":"claude-opus-5","ts":"2026-09-02T10:00:00Z","usage":{"input_tokens":1000000,"output_tokens":100000}}\n';
+  const totalOf = (result) => JSON.parse(result.stdout).total;
+
+  it('prices every file a shell glob expands to, not the first', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'trazum-bill-glob-'));
+    writeFileSync(join(dir, 'a.jsonl'), small);
+    writeFileSync(join(dir, 'b.jsonl'), big);
+    const result = run(['bill', join(dir, 'a.jsonl'), join(dir, 'b.jsonl')]);
+    assert.equal(result.status, 0, result.stderr);
+    const total = totalOf(result);
+    assert.equal(total.calls, 2);
+    assert.ok(Math.abs(total.usd - 7.51) < 1e-9, `usd ${total.usd}`);
+  });
+
+  it('reads a file once when it is named twice', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'trazum-bill-twice-'));
+    writeFileSync(join(dir, 'a.jsonl'), small);
+    writeFileSync(join(dir, 'b.jsonl'), big);
+    const result = run(['bill', dir, join(dir, 'b.jsonl')]);
+    assert.equal(result.status, 0, result.stderr);
+    assert.equal(totalOf(result).calls, 2);
+  });
+
+  it('reads the same files profile reads, .log and .gz included', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'trazum-bill-ext-'));
+    writeFileSync(join(dir, 'a.jsonl'), small);
+    writeFileSync(join(dir, 'b.ndjson'), big);
+    writeFileSync(join(dir, 'c.log'), big);
+    writeFileSync(join(dir, 'd.jsonl.gz'), gzipSync(small));
+    const bill = run(['bill', dir]);
+    assert.equal(bill.status, 0, bill.stderr);
+    const profile = run(['profile', dir, '--json']);
+    assert.equal(profile.status, 0, profile.stderr);
+    assert.equal(totalOf(bill).calls, 4);
+    assert.equal(totalOf(bill).calls, JSON.parse(profile.stdout).total.calls);
+  });
+
+  it('a one-path command refuses the paths it would ignore, naming the first', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'trazum-one-path-'));
+    writeFileSync(join(dir, 'a.jsonl'), small);
+    writeFileSync(join(dir, 'b.jsonl'), big);
+    const result = run(['receipt', join(dir, 'a.jsonl'), join(dir, 'b.jsonl')]);
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /receipt reads one path and was given 2/);
+    assert.match(result.stderr, /b\.jsonl/);
   });
 });

@@ -2903,10 +2903,13 @@ does not ask.
 npx @trazum/cli bill ~/.claude/projects
 npx @trazum/cli bill usage.json
 npx @trazum/cli bill exports/ --pricing-live -o receipt.json
+npx @trazum/cli bill logs/*.jsonl
 ```
 
-It reads a file or a directory (`.json`, `.jsonl`, `.ndjson`, gzipped or
-not), tells each file's shape **from its own text** — a Claude Code
+It reads every file and directory it is given (`.json`, `.jsonl`, `.ndjson`
+and `.log`, gzipped or not, the same names `trazum profile` reads), so a
+shell glob prices every file it expands to and a file named twice is read
+once. It tells each file's shape **from its own text** — a Claude Code
 transcript, OTel spans, a LiteLLM, Helicone or LangSmith export, an Anthropic,
 OpenAI or OpenRouter report, or a plain usage log — converts it with the same
 converter the dedicated command uses, prices it, and ends on the same receipt
