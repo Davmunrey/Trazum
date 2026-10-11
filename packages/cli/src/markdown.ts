@@ -8,7 +8,7 @@ import type {
   PromptProfile,
   RuleLevel,
 } from '@trazum/core';
-import { TTL_1H_MS, UNLABELLED, formatSignedUsd, formatUsd, getMessages, getModel, sharesOf } from '@trazum/core';
+import { UNLABELLED, formatSignedUsd, formatUsd, getMessages, getModel, sharesOf } from '@trazum/core';
 import { dayOf, formatGap, median, spanDays } from './time.js';
 import type { AgainstDriver, BillLevers, CacheEconomics, ContextPressure, RepriceReport, UsageProfileReport } from '@trazum/core';
 
@@ -1216,9 +1216,11 @@ export function renderProfileMarkdown(input: ProfileMarkdownInput): string {
     const gap = formatGap(fit.medianGapMs);
     const sentence =
       fit.verdict === 'expires-before-reuse'
-        ? fit.medianGapMs > TTL_1H_MS
-          ? t.profile.ttlFitExpiresBoth(who, fit.modelName, gap)
-          : t.profile.ttlFitExpires(who, fit.modelName, gap)
+        ? fit.longerTtlMs === null
+          ? t.profile.ttlFitExpiresOnly(who, fit.modelName, gap, formatGap(fit.entryTtlMs))
+          : fit.medianGapMs > fit.longerTtlMs
+            ? t.profile.ttlFitExpiresBoth(who, fit.modelName, gap)
+            : t.profile.ttlFitExpires(who, fit.modelName, gap)
         : fit.verdict === 'overlong-ttl'
           ? t.profile.ttlFitOverlong(who, fit.modelName, gap, formatUsd(fit.overpayUsd))
           : fit.verdict === 'unsettled'

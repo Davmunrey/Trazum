@@ -1192,6 +1192,9 @@ ${bold('EXAMPLES')}
       'rank tables are twenty-two megabytes and @trazum/core depends on nothing.\n' +
       `  npm install ${packageName}\n` +
       'Or drop --exact-tokens for the estimate, which says how far out it is.',
+    exactTokensNoEncoding: (model, packageName, known) =>
+      `--exact-tokens cannot count ${model} exactly: ${packageName} is installed and holds no rank table for it (it holds ${known}). ` +
+      'Counting it with the nearest table would put the word exact on a guess. Drop --exact-tokens for the estimate, which says how far out it is.',
     checkNeedsMaxTokens: () => 'trazum check needs --max-tokens <n>.',
     evalNeedsCases: () => 'trazum eval needs --cases <file>.',
     unknownExportFormat: (received, allowed) =>
@@ -1977,6 +1980,8 @@ ${bold('EXAMPLES')}
       'The report never named a service tier. Everything was read as the default tier. Add group_by[]=service_tier if any of this usage runs on another.',
     mixed: (rows, tokens, cacheWrites) =>
       `${rows} row(s) carried audio or image tokens, which a text rate is not the rate for. Each was reduced to its text part; ${tokens} audio and image token(s) are in no line of the output${cacheWrites > 0 ? `, and ${cacheWrites} cache-write token(s) on those rows were left out too, because the report gives them no modality` : ''}.`,
+    cacheWrite12h: (tokens) =>
+      `${tokens} token(s) were written to the 12-hour cache. No price for that write is published where Trazum can read it, so they stay in the prompt total at the plain input rate: those tokens' figure is a floor.`,
     unsplit: (count) =>
       `${count} row(s) carried audio or image tokens and no text split to reduce them by, and are not in the output. Pricing them at a text rate would be a guess.`,
     truncated: () =>
@@ -2785,6 +2790,8 @@ ${bold('EXAMPLES')}
       `${label} on ${model}: turns arrive a median of ${gap} apart and the 5-minute entry is gone by then, writes expire before the next turn reads them, which from the bill is a cache that only writes. The 1-hour TTL costs 2x input to write and would survive these gaps; the other honest option is caching switched off here.`,
     ttlFitExpiresBoth: (label, model, gap) =>
       `${label} on ${model}: turns arrive a median of ${gap} apart, and no cache entry lives that long, even the 1-hour TTL is gone by the next turn. Caching cannot work at this pace; turn it off here and stop paying the write premium.`,
+    ttlFitExpiresOnly: (label, model, gap, ttl) =>
+      `${label} on ${model}: turns arrive a median of ${gap} apart, and this model's cache entry lives ${ttl}, with no longer one to buy. Writes expire before the next turn reads them, so caching cannot work at this pace; turn it off here and stop paying the write premium.`,
     ttlFitOverlong: (label, model, gap, usd) =>
       `${label} on ${model}: turns arrive a median of ${gap} apart, comfortably inside the 5-minute window, and these writes pay the 1-hour rate, 2x input against 1.25x, for endurance the gaps never use. The same writes at the 5-minute TTL are ${usd} cheaper on this log, and that figure is exact: the same tokens at the other published rate.`,
     ttlFitUnsettledGap: (label, model, gap) =>

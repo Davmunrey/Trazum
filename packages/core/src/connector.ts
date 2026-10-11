@@ -379,20 +379,23 @@ export function normalizeOpenAIUsage(payload: unknown): ConnectorPull {
       }
       const cached = num(r.input_cached_tokens) ?? 0;
       const input = num(r.input_tokens) ?? 0;
+      // The 30-minute write GPT-5.6 and later bill at 1.25x. The 12-hour write
+      // has no published price and stays in the input total, a floor.
+      const written = num(r.input_cache_write_tokens) ?? 0;
       buckets.push({
         fromMs,
         toMs,
         model,
         calls: num(r.num_model_requests),
-        // OpenAI reports cached tokens *inside* the input total, so the
-        // uncached half is the subtraction. Reporting both at face value
-        // would bill the cached tokens twice, at the dearer rate.
-        inputTokens: Math.max(0, input - cached),
+        // OpenAI reports cached tokens and writes *inside* the input total, so
+        // the uncached part is the subtraction. Reporting them at face value
+        // would bill them twice.
+        inputTokens: Math.max(0, input - cached - written),
         cacheReadTokens: cached,
-        cacheWrite5mTokens: 0,
+        cacheWrite5mTokens: written,
         cacheWrite1hTokens: 0,
-        // Nothing was assumed: this API reports no cache writes at all, and an
-        // absent field is not an assumed TTL.
+        // Nothing was assumed: an OpenAI write has one TTL, which the model
+        // states (`cacheTtl`), and an absent field is not an assumed TTL.
         writeTtlKnown: true,
         outputTokens: num(r.output_tokens) ?? 0,
         group: groupOf(r, ['project_id', 'api_key_id', 'batch']),

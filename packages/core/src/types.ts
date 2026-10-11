@@ -239,6 +239,18 @@ export interface ModelPricing {
   /** Provider-specific cache and batch pricing. Defaults to Anthropic's. */
   multipliers?: CostMultipliers;
   /**
+   * How long a cache entry lives, for a provider that bills writes.
+   *
+   * `writeMs` is the life of the entry a `cacheWrite5m` write buys, and
+   * `longerMs` the longer entry the provider also sells, or `null` when it
+   * sells none. Absent means Anthropic's: five minutes, and an hour at 2x.
+   * OpenAI's GPT-5.6 and later write one kind of entry, which lives at least
+   * 30 minutes after its last write or read, and the TTL verdict judged it
+   * against five minutes until this field existed: a conversation pausing for
+   * ten minutes was told its cache expired before it was read.
+   */
+  cacheTtl?: { writeMs: number; longerMs: number | null };
+  /**
    * Whether to offer this model as a cheaper alternative.
    *
    * Defaults to true. A model behind a private programme or a waitlist is real

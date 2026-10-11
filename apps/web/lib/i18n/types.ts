@@ -602,6 +602,7 @@ export interface WebMessages {
      */
     ttlExpires(label: string, model: string, gap: string): string;
     ttlExpiresBoth(label: string, model: string, gap: string): string;
+    ttlExpiresOnly(label: string, model: string, gap: string, ttl: string): string;
     ttlOverlong(label: string, model: string, gap: string, usd: string): string;
     ttlUnsettled(label: string, model: string, gap: string): string;
     ttlFits(label: string, model: string, gap: string): string;

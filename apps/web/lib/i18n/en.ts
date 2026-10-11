@@ -734,6 +734,10 @@ export const en: WebMessages = {
       + 'gone by then; writes expire before the next turn reads them, which from the bill is '
       + 'a cache that only writes. The 1-hour TTL costs 2x input to write and would survive '
       + 'these gaps; the other honest option is caching switched off here.',
+    ttlExpiresOnly: (label, model, gap, ttl) =>
+      `${label} on ${model}: turns arrive a median of ${gap} apart, and this model's cache entry `
+      + `lives ${ttl}, with no longer one to buy. Writes expire before the next turn reads them, so `
+      + 'caching cannot work at this pace; turn it off here and stop paying the write premium.',
     ttlExpiresBoth: (label, model, gap) =>
       `${label} on ${model}: turns arrive a median of ${gap} apart, and no cache entry lives `
       + 'that long; even the 1-hour TTL is gone by the next turn. Caching cannot work at this '

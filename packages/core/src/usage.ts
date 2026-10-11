@@ -748,12 +748,24 @@ export function parseUsageLine(line: string): UsageRecord | null {
    * in `prompt_tokens`**, while Anthropic reports them separately and does not.
    * Subtracting in one case and not the other is the difference between a correct
    * bill and one that charges the cached half twice.
+   *
+   * **And the Responses API spells it `input_tokens_details`**, under an
+   * `input_tokens` that likewise includes the cached tokens. Only the Chat
+   * Completions spelling was read, so a Responses log, OpenAI's default API,
+   * billed every cached token at the full input rate: a call that read 90,000
+   * of its 100,000 tokens from the cache came out four times its price, and the
+   * cache verdict said caching was never used.
+   *
+   * GPT-5.6 and later also report `cache_write_tokens` in the same object,
+   * inside the same total, and bill them at 1.25x input. They are subtracted
+   * with the cached tokens and land in the write bucket, whose TTL the model
+   * states (`cacheTtl`): one kind of entry, so nothing about it is assumed.
    */
+  const detailsRaw = usage.prompt_tokens_details ?? usage.input_tokens_details;
   const details =
-    typeof usage.prompt_tokens_details === 'object' && usage.prompt_tokens_details !== null
-      ? (usage.prompt_tokens_details as Record<string, unknown>)
-      : null;
+    typeof detailsRaw === 'object' && detailsRaw !== null ? (detailsRaw as Record<string, unknown>) : null;
   const openAiCached = details ? readCount(details.cached_tokens) : ({ kind: 'absent' } as Count);
+  const openAiWrite = details ? readCount(details.cache_write_tokens) : ({ kind: 'absent' } as Count);
 
   /**
    * Anthropic splits cache writes by time-to-live, and the two cost different
@@ -804,6 +816,7 @@ export function parseUsageLine(line: string): UsageRecord | null {
     cacheRead: readCount(usage.cache_read_input_tokens, usage.cacheReadTokens),
     cacheWrite: readCount(usage.cache_creation_input_tokens, usage.cacheWriteTokens),
     openAiCached,
+    openAiWrite,
     geminiCached,
     write5m,
     write1h,
@@ -826,6 +839,8 @@ export function parseUsageLine(line: string): UsageRecord | null {
   // Both providers that fold cached tokens into the prompt count, one
   // subtraction. They cannot coexist on a record: the shapes share no field.
   const cached = valueOf(counts.openAiCached!) + valueOf(counts.geminiCached!);
+  // Inside the OpenAI total like the cached tokens, and taken out of it the same way.
+  const openAiWritten = valueOf(counts.openAiWrite!);
   const flatWrite = valueOf(counts.cacheWrite!);
   const split5m = valueOf(counts.write5m!);
   const split1h = valueOf(counts.write1h!);
@@ -833,14 +848,14 @@ export function parseUsageLine(line: string): UsageRecord | null {
 
   return {
     model,
-    inputTokens: Math.max(0, valueOf(counts.input!) - cached),
+    inputTokens: Math.max(0, valueOf(counts.input!) - cached - openAiWritten),
     cacheReadTokens: counts.cacheRead!.kind === 'ok' ? counts.cacheRead!.value : cached,
     /**
      * The split when the log carries it, the flat number otherwise — and
      * `writeTtlKnown` says which, so the report can admit that a rate was assumed
      * rather than quietly choosing the cheaper one.
      */
-    cacheWrite5mTokens: hasSplit ? split5m : flatWrite,
+    cacheWrite5mTokens: (hasSplit ? split5m : flatWrite) + openAiWritten,
     cacheWrite1hTokens: hasSplit ? split1h : 0,
     writeTtlKnown: hasSplit || flatWrite === 0,
     outputTokens: valueOf(counts.output!),
