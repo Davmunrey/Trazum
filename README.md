@@ -468,6 +468,7 @@ trazum watch --once                  # did anything cross, this afternoon
 trazum serve                         # answer before the call is sent
 trazum rollup a.json b.json          # several people's bills, one roll-up
 trazum profile usage.jsonl --html-out report.html   # the report somebody forwards
+trazum bill ~/.claude/projects --pdf-out bill.pdf   # the bill as a PDF attachment
 trazum pulse --max-stale-hours 36    # did anything stop running?
 trazum bench                         # how fast is Trazum on this machine
 trazum rank prompts/                 # which one to fix first
@@ -618,10 +619,12 @@ The profile report lands in the run summary either way, and a failing gate
 still writes it — a red build with no report is a mystery, and mysteries get
 deleted from pipelines.
 
-**The report leaves the terminal in three shapes.** `--markdown-out` for a CI
+**The report leaves the terminal in five shapes.** `--markdown-out` for a CI
 summary or a PR comment, `--csv-out` for whoever signs off the bill (one row
 per workload and model, no total row, empty cells where dollars are unknown),
-and `--json` for anything built on top — documented field by field in
+`--html-out` and `--pdf-out` for the person who reads attachments rather than
+terminals (the PDF has no dependency and no embedded font, and `bill` writes
+all four too), and `--json` for anything built on top — documented field by field in
 [docs/json-output.md](docs/json-output.md), with a `schemaVersion` and a test
 that fails if the two ever disagree. Point `profile` at a **directory** and a
 month of rotated logs is read in name order as one bill.

@@ -45,6 +45,10 @@ export {
   profileToCsv,
 } from './csv.js';
 export type { ProfileCsvOptions, ProfileCsvShape } from './csv.js';
+// A PDF writer over the standard fonts, with no dependency and no embedded
+// font, so a bill can be handed to the person who signs it off. See pdf.ts.
+export { PDF_PAGE, PdfDocument, pdfEncode, pdfFit, pdfTextWidth, pdfWrap } from './pdf.js';
+export type { PdfColor, PdfFont, PdfMetadata, PdfShapeOptions, PdfTextOptions } from './pdf.js';
 export { driversBetween } from './against.js';
 export type { AgainstDriver } from './against.js';
 export { coverageDrift, COVERAGE_FIELDS, COVERAGE_DRIFT_MIN } from './coverage-drift.js';

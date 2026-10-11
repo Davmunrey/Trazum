@@ -72,14 +72,22 @@ const STYLE = `
 interface Row {
   name: string;
   breakdown: UsageBreakdown;
+  /**
+   * The catalogue could not price this row. Its money cell is a dash, never
+   * `$0`: zero is a claim that the calls were free, the same claim the CSV
+   * door refuses with an empty cell, and the caveat block above already says
+   * which models these are and why.
+   */
+  unpriced?: boolean;
 }
 
 function breakdownTable(rows: Row[], totalUsd: number, t: ProfileMarkdownInput['t'], nameHeading: string): string {
   const n = (value: number): string => value.toLocaleString(t.numberLocale);
   const body = rows
-    .map(({ name, breakdown: b }) => {
-      const share = totalUsd > 0 ? `${((b.totalUsd / totalUsd) * 100).toFixed(1)}%` : '—';
-      return `<tr><td>${esc(name)}</td><td class="n">${n(b.calls)}</td><td class="n">${n(b.inputTokens)}</td><td class="n">${n(b.cacheReadTokens)}</td><td class="n">${n(b.cacheWriteTokens)}</td><td class="n">${n(b.outputTokens)}</td><td class="n">${esc(formatUsd(b.totalUsd))}</td><td class="n">${share}</td></tr>`;
+    .map(({ name, breakdown: b, unpriced }) => {
+      const share = totalUsd > 0 && !unpriced ? `${((b.totalUsd / totalUsd) * 100).toFixed(1)}%` : '—';
+      const usd = unpriced ? '—' : formatUsd(b.totalUsd);
+      return `<tr><td>${esc(name)}</td><td class="n">${n(b.calls)}</td><td class="n">${n(b.inputTokens)}</td><td class="n">${n(b.cacheReadTokens)}</td><td class="n">${n(b.cacheWriteTokens)}</td><td class="n">${n(b.outputTokens)}</td><td class="n">${esc(usd)}</td><td class="n">${share}</td></tr>`;
     })
     .join('\n');
   return `<table><thead><tr><th>${esc(nameHeading)}</th><th class="n">${esc(t.html.colCalls())}</th><th class="n">${esc(t.html.colInput())}</th><th class="n">${esc(t.html.colCacheRead())}</th><th class="n">${esc(t.html.colCacheWrite())}</th><th class="n">${esc(t.html.colOutput())}</th><th class="n">USD</th><th class="n">%</th></tr></thead><tbody>\n${body}\n</tbody></table>`;
@@ -163,7 +171,11 @@ export function renderProfileHtml(input: ProfileMarkdownInput): string {
   parts.push(`<h2>${esc(t.html.byModelHeading())}</h2>`);
   parts.push(
     breakdownTable(
-      report.byModel.map((row) => ({ name: row.model, breakdown: row.breakdown })),
+      report.byModel.map((row) => ({
+        name: row.model,
+        breakdown: row.breakdown,
+        unpriced: report.unpricedModels.includes(row.model),
+      })),
       report.total.totalUsd,
       t,
       t.html.colModel(),
