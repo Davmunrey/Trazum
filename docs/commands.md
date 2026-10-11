@@ -3606,7 +3606,7 @@ context windows).
 
 ### When a price is not one number
 
-4 of the 7 providers do not charge every model a flat rate, and the catalogue
+5 of the 7 providers do not charge every model a flat rate, and the catalogue
 says so in data rather than in a footnote, because a footnote is arithmetic a
 reader has to do by hand and this product exists to stop that.
 
@@ -3618,14 +3618,22 @@ already correct for the moment it prices, because every caller passes the date i
 is pricing for and the condition is decided from it. A report of a usage log
 prices each call at the rate that applied when the call happened.
 
-**Claude Haiku 5.5, Gemini 3.1 Pro Preview and OpenAI's GPT-5.6 and later bill
-by prompt length, per request.** Haiku 5.5 is $0.10/$0.50 for a prompt up to
-100,000 tokens and $0.50/$2.50 over it; Gemini 3.1 Pro is $2/$12 up to 200,000
-and $4/$18 over; every OpenAI model from GPT-5.6 on doubles its input and cache
-rates and raises its output rate by half for a prompt over 272,000 tokens.
-"Prompt" is every input token the request carried, cache reads and writes
-included, and each request is priced on its own: a request over the line pays
-the higher rate on all of it, and the next one pays its own.
+**Claude Haiku 5.5, Gemini 3.1 Pro Preview, OpenAI's GPT-5.6 and later and
+every current Grok bill by prompt length, per request.** Haiku 5.5 is
+$0.10/$0.50 for a prompt up to 100,000 tokens and $0.50/$2.50 over it; Gemini
+3.1 Pro is $2/$12 up to 200,000 and $4/$18 over; every OpenAI model from
+GPT-5.6 on doubles its input and cache rates and raises its output rate by half
+for a prompt over 272,000 tokens; every Grok from 4.20 on doubles all three
+once the prompt **reaches** 200,000. "Prompt" is every input token the request
+carried, cache reads and writes included, and each request is priced on its
+own: a request over the line pays the higher rate on all of it, and the next
+one pays its own.
+
+xAI's line is the one inclusive one: "requests whose prompt reaches 200k
+tokens are billed at the higher rate", so a prompt of exactly 200,000 is on the
+dear side. The catalogue writes it as its own condition, `input-tokens-at-least`,
+rather than as "over 199,999", so the sentence a report prints is xAI's own, and
+a usage report's row of exactly 200,000 is undecided rather than called cheap.
 
 That is decidable exactly where one request's prompt is known, and Trazum passes
 it wherever it is:
@@ -3706,6 +3714,15 @@ carries its own tiers and cache ratio, because a provider that reprices usually
 reprices both. Only a published price with a published instant goes in; a period
 nobody can source is not guessed at, and the row's note says what the first
 period stands in for. `pricing-tiers.test.js` holds every history to that shape.
+
+A retirement can be a period too. xAI retired `grok-4` "effective May 15, 2026
+at 12:00 PM PT" and redirected it, saying requests to it "will be billed at
+grok-4.3 pricing ... rather than the rates of the original model". So the row
+bills at Grok 4.3's rates, long-context line included, and carries $3/$15 as a
+period ending at 19:00 UTC that day: a log that spans the retirement is billed
+both ways, and `grok-4-0709`, the dated id the notice names, with it. A model
+that is gone and still in someone's log stays priced and is marked
+`recommendable: false`, so it is never offered as somewhere to move.
 
 ### Which few-shot examples earn their tokens: `trazum prune`
 

@@ -42,7 +42,15 @@ describe('pricing catalogue', () => {
         // Caches, says so, and publishes no minimum: null, never a guess.
         assert.equal(model.cacheMinTokens, null, `${model.id}: a minimum nobody published`);
       } else if (model.caching !== 'none') {
-        assert.ok(model.cacheMinTokens > 0, `${model.id} has no cache minimum`);
+        // A known cache whose provider states no minimum (Moonshot, xAI) is
+        // null too, and only when the row tells the reader so: a null with no
+        // sentence is a minimum somebody forgot to read.
+        if (model.cacheMinTokens === null) {
+          assert.match(model.notes ?? '', /no minimum prefix length is published/,
+            `${model.id} has no cache minimum and does not say none is published`);
+        } else {
+          assert.ok(model.cacheMinTokens > 0, `${model.id} has no cache minimum`);
+        }
       } else {
         assert.equal(
           model.cacheMinTokens,
@@ -242,8 +250,11 @@ describe('advisories', () => {
      * absence of one, and the fixed sentence advised all eight to consider
      * leaving caching off.
      */
-    // Where caching's mechanics are published: an 'unknown' mode gets no caching advice at all.
-    const flat = MODELS.filter((m) => multipliersFor(m).cacheWrite5m <= 1 && m.caching !== 'unknown');
+    // Where caching's mechanics are published: an 'unknown' mode, or a cache
+    // with no published minimum, gets no caching advice at all.
+    const flat = MODELS.filter(
+      (m) => multipliersFor(m).cacheWrite5m <= 1 && m.caching !== 'unknown' && m.cacheMinTokens !== null,
+    );
     assert.ok(flat.length > 0, 'no flat-write model in the catalogue, so this guard checks nothing');
 
     // Long enough to clear every flat-write model's minimum: Gemini's is 4,096.

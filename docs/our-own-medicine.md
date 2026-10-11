@@ -233,10 +233,14 @@ The section this document would be dishonest without.
   licence to accept a worse source: the only thing that changed is that somebody
   could see the page.
 - **Two providers were not asked at all.** There is no probe for Moonshot or
-  xAI, so nothing is known about `kimi-k2` or `grok-4` either way. That is in
-  the record by name rather than left out of it, because a report covering
+  xAI, so no request has been sent to any of their models either way. That is
+  in the record by name rather than left out of it, because a report covering
   part of a catalogue and reading like a clean bill is the exact failure this
-  page exists to admit.
+  page exists to admit. What is known about the two old ids comes from the
+  providers' own notices, read on 2026-10-11: Moonshot discontinued `kimi-k2`
+  on 2026-05-25, and xAI retired `grok-4` on 2026-05-15 and bills it at Grok
+  4.3's prices since. Both stay priced, neither is recommended, and neither is
+  marked `retired`, which records a refusal nobody here has seen.
 - **The record is *almost* self-reported**, and the exception is counted below
   rather than waved at. A miss nobody noticed is still, by construction, not on
   this page, and there is no way to estimate how many of those there are without

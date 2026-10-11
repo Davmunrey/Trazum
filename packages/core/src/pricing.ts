@@ -32,9 +32,9 @@ import type { ModelPricing, PricingTier, TierCondition } from './types.js';
 export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze({
   /*
    * platform.claude.com/docs/en/about-claude/pricing, the models overview and
-   * each model's own page, read 2026-10-10. Every existing row matched; five
-   * models were added and one (Claude Haiku 5.5) deliberately was not, see the
-   * comment above its would-be place in MODELS.
+   * each model's own page, read 2026-10-10. Every existing row matched and
+   * five models were added. Claude Haiku 5.5 waited for per-request pricing,
+   * because it bills by prompt length, and was added with it on 2026-10-11.
    */
   anthropic: '2026-10-10',
   /*
@@ -54,9 +54,9 @@ export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze
    * dated snapshots (`gpt-5-2025-08-07` and the mini and nano ones), which is
    * the id a usage log usually carries, shut down on 2026-12-11 and are now
    * declared as aliases. The current generation (gpt-6-astra, gpt-6.1-sol,
-   * gpt-6-sol, gpt-6-luna and gpt-5.6 sol, terra and luna) is on the same
-   * page and not added: every one of them doubles its rates for prompts over
-   * 272K tokens, a per-request condition no log Trazum prices passes yet.
+   * gpt-6-sol, gpt-6-luna and gpt-5.6 sol, terra and luna) waited for
+   * per-request pricing, since each doubles its rates for prompts over 272K
+   * tokens, and was added with it the same day, from each model's own page.
    */
   openai: '2026-10-11',
   /*
@@ -66,24 +66,20 @@ export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze
    * for every Gemini 2.5 and newer model, so `caching` is 'automatic' across
    * the board; the minimums moved to 4,096 on 3.6 and 3.8 Flash and 2,048 on
    * 2.5 Flash; and the 2.5 models read the cache at 10% of input today, not
-   * the 25% this table carried. Gemini 3.8 Flash was added. Gemini 3.1 Pro
-   * Preview and 2.5 Pro's prompts over 200k are priced by prompt length per
-   * request, which nothing that prices a log passes yet, so the first is left
-   * out and the second's tier is named in its note rather than guessed.
+   * the 25% this table carried. Gemini 3.8 Flash was added, and Gemini 3.1
+   * Pro Preview on 2026-10-11 with per-request pricing, which its prompts
+   * over 200k need. 2.5 Pro's own long-context rate is named in its note.
    */
   google: '2026-10-10',
   /*
-   * platform.kimi.ai/docs/pricing/chat (platform.moonshot.ai 301s there),
-   * read 2026-09-12. The page prices kimi-k3, kimi-k2.6, kimi-k2.7-code and
-   * its highspeed variant; `kimi-k2`, the one id this table carries, is no
-   * longer on it. Its price is kept because calls in somebody's log really
-   * happened at it, and it is not marked retired because that is recorded
-   * from the provider's own refusal to a request, which needs a key this
-   * repository does not hold. The newer models are not added: the page states
-   * no context window for any of them, and a context window this table did
-   * not read is a number it would be inventing.
+   * platform.kimi.ai/docs/pricing/chat, models and pricing/batch, read
+   * 2026-10-11 in their Markdown form; the HTML renders its tables in the
+   * browser, which is why the review of 2026-09-12 found no context window
+   * and added nothing. Kimi K3, K2.7 Code (and its high-speed variant) and
+   * K2.6 are priced now. `kimi-k2` was discontinued on 2026-05-25 by the
+   * provider's own notice, so it stays priced and is no longer recommended.
    */
-  moonshot: '2026-09-12',
+  moonshot: '2026-10-11',
   /*
    * api-docs.deepseek.com/quick_start/pricing read 2026-10-10, and the
    * 2026-09-10 announcement (api-docs.deepseek.com/news/news260910) read
@@ -94,15 +90,14 @@ export const PROVIDER_REVIEWED: Readonly<Record<string, string>> = Object.freeze
    */
   deepseek: '2026-10-10',
   /*
-   * docs.x.ai/docs/models, read 2026-09-12. The page prices grok-4.6, 4.5,
-   * 4.3 and the 4.20 family, each at two rates split at 200k prompt tokens;
-   * `grok-4`, the one id this table carries, is no longer on it. Kept and not
-   * marked retired, for the reasons given for kimi-k2 above. The newer models
-   * are not added: this table has no way to express a price that changes at
-   * 200k prompt tokens, and pricing a 300k-token call at the under-200k rate
-   * would understate it by half while looking exact.
+   * docs.x.ai/developers/models, each model's page and the 2026-05-15
+   * retirement notice, read 2026-10-11 in their Markdown form. Grok 4.7, 4.6,
+   * 4.5, 4.3, the 4.20 family and Build 0.1 are priced, each with the rate a
+   * request pays once its prompt reaches 200k tokens, which per-request
+   * pricing can now express. `grok-4` was retired on 2026-05-15 and its calls
+   * have billed at Grok 4.3's prices since, so it carries both periods.
    */
-  xai: '2026-09-12',
+  xai: '2026-10-11',
   /*
    * `mistral.ai/pricing`, read 2026-08-28 — by a human, because the page
    * renders its table in the browser and serves a fetch only an FAQ example
@@ -210,6 +205,25 @@ export function cacheTtlOf(model: ModelPricing): { writeMs: number; longerMs: nu
  * cannot be.
  */
 /** What the GPT-5 family's three rows share, from OpenAI's guide and deprecations page, read 2026-10-11. */
+/** xAI's long-context band: a request whose prompt reaches 200,000 tokens, at the published higher rates. */
+const GROK_LONG = (inputPerMTok: number, outputPerMTok: number): PricingTier => ({
+  id: 'from-200k',
+  when: { kind: 'input-tokens-at-least', tokens: 200_000 },
+  inputPerMTok,
+  outputPerMTok,
+});
+
+/**
+ * Said on every row that caches but whose provider publishes no minimum
+ * prefix. The bill still prices its cache reads and writes, which are
+ * published; what goes quiet is the advice that needs the minimum to promise
+ * a saving, and the reader is told why rather than handed a number from
+ * nowhere. The catalogue tests hold a null minimum on a caching model to
+ * carrying this sentence, so a forgotten minimum cannot pass as a deliberate one.
+ */
+const NO_PUBLISHED_CACHE_MINIMUM =
+  'Caches automatically, but no minimum prefix length is published, so no caching advice is given for it.';
+
 /** OpenAI's GPT-5.6 and later: one cache entry, living at least 30 minutes. */
 const OPENAI_CACHE_TTL = Object.freeze({ writeMs: 30 * 60_000, longerMs: null });
 
@@ -868,6 +882,77 @@ export const MODELS: ModelPricing[] = [
   // ------------------------------------------------------------------------
   // Moonshot
   // ------------------------------------------------------------------------
+  /*
+   * platform.kimi.ai/docs/pricing/chat, models and pricing/batch, read in
+   * their Markdown form on 2026-10-11 (the HTML renders its tables in the
+   * browser, which is why the September review saw no context windows). K3
+   * bills cache writes as their own line, by TTL, like Anthropic: $3.00 for a
+   * 5-minute entry and $6.00 for an hour against a $3.00 input, and reads at
+   * $0.30. The K2 series bills no write, and reads at its own hit price. Batch
+   * is 60% of standard on K2.7 Code and K2.6 and not offered on K3 or the
+   * high-speed K2.7. No cache minimum is published for any of them.
+   */
+  {
+    id: 'kimi-k3',
+    provider: 'moonshot',
+    displayName: 'Kimi K3',
+    inputPerMTok: 3,
+    outputPerMTok: 15,
+    contextWindow: 1_048_576,
+    cacheMinTokens: null,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 2, batch: null },
+    capability: 'frontier',
+    tier: 'frontier',
+    notes:
+      'Cache writes are billed as their own line: 1x input for a 5-minute entry, 2x for an hour.'
+      + ` No batch API for this model. ${NO_PUBLISHED_CACHE_MINIMUM}`,
+  },
+  {
+    id: 'kimi-k2.7-code',
+    provider: 'moonshot',
+    displayName: 'Kimi K2.7 Code',
+    inputPerMTok: 0.95,
+    outputPerMTok: 4,
+    contextWindow: 262_144,
+    cacheMinTokens: null,
+    caching: 'automatic',
+    /* $0.19 on a hit against $0.95; batch $0.57 / $2.40, 60%. */
+    multipliers: { cacheRead: 0.2, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.6 },
+    capability: 'mid',
+    tier: 'sonnet',
+    notes: NO_PUBLISHED_CACHE_MINIMUM,
+  },
+  {
+    id: 'kimi-k2.7-code-highspeed',
+    provider: 'moonshot',
+    displayName: 'Kimi K2.7 Code (high speed)',
+    inputPerMTok: 1.9,
+    outputPerMTok: 8,
+    contextWindow: 262_144,
+    cacheMinTokens: null,
+    caching: 'automatic',
+    /* $0.38 on a hit against $1.90; no batch API for this variant. */
+    multipliers: { cacheRead: 0.2, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    capability: 'mid',
+    tier: 'sonnet',
+    notes: NO_PUBLISHED_CACHE_MINIMUM,
+  },
+  {
+    id: 'kimi-k2.6',
+    provider: 'moonshot',
+    displayName: 'Kimi K2.6',
+    inputPerMTok: 0.95,
+    outputPerMTok: 4,
+    contextWindow: 262_144,
+    cacheMinTokens: null,
+    caching: 'automatic',
+    /* $0.16 on a hit against $0.95, written as the ratio so the product is the page's figure. */
+    multipliers: { cacheRead: 0.16 / 0.95, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.6 },
+    capability: 'mid',
+    tier: 'sonnet',
+    notes: NO_PUBLISHED_CACHE_MINIMUM,
+  },
   {
     id: 'kimi-k2',
     provider: 'moonshot',
@@ -875,14 +960,23 @@ export const MODELS: ModelPricing[] = [
     inputPerMTok: 0.6,
     outputPerMTok: 2.5,
     contextWindow: 256_000,
-    cacheMinTokens: 1024,
+    cacheMinTokens: null,
     caching: 'automatic',
     multipliers: { cacheRead: 0.1, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    /*
+     * Discontinued: "The kimi-k2 series models were officially discontinued
+     * on May 25, 2026" (the provider's model list, read 2026-10-11). Kept at
+     * its last published price, because calls in somebody's log really
+     * happened at it, and never offered as somewhere to move. Not `retired`,
+     * which records the provider refusing a request, and no key was here to
+     * send one.
+     */
+    recommendable: false,
     capability: 'mid',
     tier: 'sonnet',
     notes:
-      'No batch API: the batch advisory stays quiet rather than offering a discount you cannot buy.'
-      + ' Not on the provider\'s pricing page as of 2026-09-12, which lists kimi-k3 and kimi-k2.6 instead; the price is the last one published for it.',
+      'Discontinued by Moonshot on 2026-05-25; priced at the last rate it published. No batch API.'
+      + ` ${NO_PUBLISHED_CACHE_MINIMUM}`,
   },
 
   // ------------------------------------------------------------------------
@@ -1029,20 +1123,175 @@ export const MODELS: ModelPricing[] = [
   // ------------------------------------------------------------------------
   // xAI
   // ------------------------------------------------------------------------
+  /*
+   * docs.x.ai/developers/models and each model's page, read in their
+   * Markdown form on 2026-10-11. Every text model has two rates: "requests
+   * whose prompt reaches 200k tokens are billed at the higher rate for all
+   * tokens in the request", which is a size tier at 200,000 inclusive and is
+   * priced per request. Cached input scales with the band; writes are not
+   * billed; batch is a 20% discount where the model's page offers it at all.
+   * No cache minimum is published. Aliases are the stable family names the
+   * pages list, never the `-latest` names, which move.
+   */
   {
-    id: 'grok-4',
+    id: 'grok-4.7',
     provider: 'xai',
-    displayName: 'Grok 4',
-    inputPerMTok: 3,
-    outputPerMTok: 15,
-    contextWindow: 256_000,
-    cacheMinTokens: 1024,
+    displayName: 'Grok 4.7',
+    inputPerMTok: 2,
+    outputPerMTok: 6,
+    contextWindow: 500_000,
+    cacheMinTokens: null,
     caching: 'automatic',
     multipliers: { cacheRead: 0.25, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    tiers: [GROK_LONG(4, 12)],
+    capability: 'frontier',
+    tier: 'frontier',
+    notes: NO_PUBLISHED_CACHE_MINIMUM,
+  },
+  {
+    id: 'grok-4.6',
+    provider: 'xai',
+    displayName: 'Grok 4.6',
+    inputPerMTok: 2,
+    outputPerMTok: 6,
+    contextWindow: 500_000,
+    cacheMinTokens: null,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.25, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    tiers: [GROK_LONG(4, 12)],
+    capability: 'large',
+    tier: 'opus',
+    notes: NO_PUBLISHED_CACHE_MINIMUM,
+  },
+  {
+    id: 'grok-4.5',
+    provider: 'xai',
+    displayName: 'Grok 4.5',
+    inputPerMTok: 2,
+    outputPerMTok: 6,
+    contextWindow: 500_000,
+    cacheMinTokens: null,
+    caching: 'automatic',
+    /* $0.30 cached against $2.00. */
+    multipliers: { cacheRead: 0.15, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    tiers: [GROK_LONG(4, 12)],
+    capability: 'large',
+    tier: 'opus',
+    notes: NO_PUBLISHED_CACHE_MINIMUM,
+  },
+  {
+    id: 'grok-4.3',
+    provider: 'xai',
+    displayName: 'Grok 4.3',
+    inputPerMTok: 1.25,
+    outputPerMTok: 2.5,
+    contextWindow: 1_000_000,
+    cacheMinTokens: null,
+    caching: 'automatic',
+    /* $0.20 cached against $1.25; batch 20% off. */
+    multipliers: { cacheRead: 0.16, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.8 },
+    tiers: [GROK_LONG(2.5, 5)],
+    capability: 'mid',
+    tier: 'sonnet',
+    notes: NO_PUBLISHED_CACHE_MINIMUM,
+  },
+  {
+    id: 'grok-4.20-0309-reasoning',
+    aliases: ['grok-4.20', 'grok-4.20-reasoning', 'grok-4.20-0309'],
+    provider: 'xai',
+    displayName: 'Grok 4.20 (reasoning)',
+    inputPerMTok: 1.25,
+    outputPerMTok: 2.5,
+    contextWindow: 1_000_000,
+    cacheMinTokens: null,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.16, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.8 },
+    tiers: [GROK_LONG(2.5, 5)],
+    capability: 'mid',
+    tier: 'sonnet',
+    notes: NO_PUBLISHED_CACHE_MINIMUM,
+  },
+  {
+    id: 'grok-4.20-0309-non-reasoning',
+    aliases: ['grok-4.20-non-reasoning'],
+    provider: 'xai',
+    displayName: 'Grok 4.20 (non-reasoning)',
+    inputPerMTok: 1.25,
+    outputPerMTok: 2.5,
+    contextWindow: 1_000_000,
+    cacheMinTokens: null,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.16, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.8 },
+    tiers: [GROK_LONG(2.5, 5)],
+    capability: 'mid',
+    tier: 'sonnet',
+    notes: NO_PUBLISHED_CACHE_MINIMUM,
+  },
+  {
+    id: 'grok-4.20-multi-agent-0309',
+    aliases: ['grok-4.20-multi-agent'],
+    provider: 'xai',
+    displayName: 'Grok 4.20 Multi-Agent',
+    inputPerMTok: 1.25,
+    outputPerMTok: 2.5,
+    contextWindow: 1_000_000,
+    cacheMinTokens: null,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.16, cacheWrite5m: 1, cacheWrite1h: 1, batch: 0.8 },
+    tiers: [GROK_LONG(2.5, 5)],
+    capability: 'mid',
+    tier: 'sonnet',
+    notes: NO_PUBLISHED_CACHE_MINIMUM,
+  },
+  {
+    id: 'grok-build-0.1',
+    provider: 'xai',
+    displayName: 'Grok Build 0.1',
+    inputPerMTok: 1,
+    outputPerMTok: 2,
+    contextWindow: 256_000,
+    cacheMinTokens: null,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.2, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    tiers: [GROK_LONG(2, 4)],
+    capability: 'mid',
+    tier: 'sonnet',
+    notes: NO_PUBLISHED_CACHE_MINIMUM,
+  },
+  {
+    /*
+     * Retired on 2026-05-15 at 12:00 PT (19:00 UTC), and billed since at
+     * Grok 4.3's prices: "requests to the retired model slugs above will
+     * automatically redirect to grok-4.3 ... you will be billed at grok-4.3
+     * pricing" (xAI's retirement notice, read 2026-10-11). So the id has two
+     * periods, and a log that spans the date is billed both ways, at the
+     * instant xAI gave. `grok-4-0709` is the dated id the notice names.
+     */
+    id: 'grok-4',
+    aliases: ['grok-4-0709'],
+    provider: 'xai',
+    displayName: 'Grok 4',
+    inputPerMTok: 1.25,
+    outputPerMTok: 2.5,
+    contextWindow: 256_000,
+    cacheMinTokens: null,
+    caching: 'automatic',
+    multipliers: { cacheRead: 0.16, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+    tiers: [GROK_LONG(2.5, 5)],
+    history: [
+      {
+        until: '2026-05-15T19:00:00Z',
+        inputPerMTok: 3,
+        outputPerMTok: 15,
+        multipliers: { cacheRead: 0.25, cacheWrite5m: 1, cacheWrite1h: 1, batch: null },
+      },
+    ],
+    recommendable: false,
     capability: 'large',
     tier: 'opus',
     notes:
-      'Not on the provider\'s model page as of 2026-09-12, which lists grok-4.6 and later instead; the price is the last one published for it.',
+      'Retired by xAI on 2026-05-15 and redirected to Grok 4.3, whose price it bills at from then;'
+      + ` $3/$15 before. ${NO_PUBLISHED_CACHE_MINIMUM}`,
   },
 
   // ------------------------------------------------------------------------
@@ -1411,9 +1660,11 @@ function holds(when: TierCondition, on: Date, size: PromptSize): boolean | null 
     if (when.weekdaysOnly && (day === 0 || day === 6)) return false;
     return when.hours.includes(on.getUTCHours());
   }
-  if (size.inputTokens !== undefined) return size.inputTokens > when.tokens;
-  // A whole row at or under the line puts every request in it under the line.
-  if (size.inputTokensAtMost !== undefined && size.inputTokensAtMost <= when.tokens) return false;
+  const over = (tokens: number): boolean =>
+    when.kind === 'input-tokens-at-least' ? tokens >= when.tokens : tokens > when.tokens;
+  if (size.inputTokens !== undefined) return over(size.inputTokens);
+  // A whole row under the line puts every request in it under the line.
+  if (size.inputTokensAtMost !== undefined && !over(size.inputTokensAtMost)) return false;
   return null;
 }
 
@@ -1520,6 +1771,9 @@ export function effectivePricing(
 function describe(when: TierCondition): string {
   if (when.kind === 'input-tokens-above') {
     return `prompts over ${when.tokens.toLocaleString('en-US')} input tokens`;
+  }
+  if (when.kind === 'input-tokens-at-least') {
+    return `prompts of ${when.tokens.toLocaleString('en-US')} input tokens or more`;
   }
   const windows = [];
   let start = null;

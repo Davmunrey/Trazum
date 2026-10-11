@@ -123,6 +123,54 @@
     {
       "id": "gpt-5.6-luna",
       "because": "added to the catalogue on 2026-10-11 from the provider page, after this record was written; no key was available to ask"
+    },
+    {
+      "id": "kimi-k3",
+      "because": "no probe is written for moonshot; added to the catalogue on 2026-10-11 from the provider page"
+    },
+    {
+      "id": "kimi-k2.7-code",
+      "because": "no probe is written for moonshot; added to the catalogue on 2026-10-11 from the provider page"
+    },
+    {
+      "id": "kimi-k2.7-code-highspeed",
+      "because": "no probe is written for moonshot; added to the catalogue on 2026-10-11 from the provider page"
+    },
+    {
+      "id": "kimi-k2.6",
+      "because": "no probe is written for moonshot; added to the catalogue on 2026-10-11 from the provider page"
+    },
+    {
+      "id": "grok-4.7",
+      "because": "no probe is written for xai; added to the catalogue on 2026-10-11 from the provider page"
+    },
+    {
+      "id": "grok-4.6",
+      "because": "no probe is written for xai; added to the catalogue on 2026-10-11 from the provider page"
+    },
+    {
+      "id": "grok-4.5",
+      "because": "no probe is written for xai; added to the catalogue on 2026-10-11 from the provider page"
+    },
+    {
+      "id": "grok-4.3",
+      "because": "no probe is written for xai; added to the catalogue on 2026-10-11 from the provider page"
+    },
+    {
+      "id": "grok-4.20-0309-reasoning",
+      "because": "no probe is written for xai; added to the catalogue on 2026-10-11 from the provider page"
+    },
+    {
+      "id": "grok-4.20-0309-non-reasoning",
+      "because": "no probe is written for xai; added to the catalogue on 2026-10-11 from the provider page"
+    },
+    {
+      "id": "grok-4.20-multi-agent-0309",
+      "because": "no probe is written for xai; added to the catalogue on 2026-10-11 from the provider page"
+    },
+    {
+      "id": "grok-build-0.1",
+      "because": "no probe is written for xai; added to the catalogue on 2026-10-11 from the provider page"
     }
   ]
 }

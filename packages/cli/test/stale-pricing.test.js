@@ -92,21 +92,25 @@ describe('the price table behind every dollar', () => {
     /**
      * The defect this suite used to assert.
      *
-     * `grok-4` and `kimi-k2` are the two entries keeping the catalogue's date
-     * at its oldest: neither provider lists them any more, so neither price
-     * can be re-read and neither date can honestly move. Every report was
-     * being qualified by them — including reports that never touch either.
+     * Every report was qualified by the catalogue's oldest date, including
+     * reports that never touch the model holding it. That was `grok-4` and
+     * `kimi-k2` until 2026-10-11, when Moonshot and xAI were re-read; the model
+     * is now whichever one's provider was read longest ago, found rather than
+     * named, so this goes on testing whatever holds the date back next.
      *
-     * Skipped rather than faked on the day the two dates agree: with one date
-     * across the table there is no distinction to test, and asserting one
-     * anyway would be asserting the calendar.
+     * Skipped rather than faked while every date agrees with Opus 5's: with
+     * one date across the table there is no distinction to test, and asserting
+     * one anyway would be asserting the calendar.
      */
     const fresh = reviewedFor('claude-opus-5');
-    const held = reviewedFor('claude-opus-5', 'grok-4');
+    const oldest = BUNDLED_CATALOGUE.models
+      .map((m) => ({ id: m.id, date: reviewedFor('claude-opus-5', m.id) }))
+      .sort((a, b) => a.date.localeCompare(b.date))[0];
+    const held = oldest.date;
     if (fresh === held) return;
 
     const clean = await write([call]);
-    const mixed = await write([call, { model: 'grok-4', usage: { input_tokens: 1000, output_tokens: 10 } }]);
+    const mixed = await write([call, { model: oldest.id, usage: { input_tokens: 1000, output_tokens: 10 } }]);
 
     const cleanText = `${run([clean.path]).stdout}`.replace(/\s+/g, ' ');
     const mixedText = `${run([mixed.path]).stdout}`.replace(/\s+/g, ' ');
