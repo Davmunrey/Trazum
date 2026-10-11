@@ -2954,7 +2954,12 @@ rather than usage and pointed at `trazum reconcile`.
 
 A slug the bundled catalogue does not price is the receipt's usual unpriced
 gap, kept out of the total rather than costed at zero; `--pricing-live` is
-where OpenRouter's hundreds of slugs get their rates.
+where OpenRouter's hundreds of slugs get their rates. A provider prefix is
+never stripped by rule: `xai/grok-4.3` is LiteLLM's way of naming Grok 4.3
+called on xAI, and `anthropic/claude-sonnet-5-5` could be that or an OpenRouter
+route that bills differently. When the model after the slash is one the
+catalogue prices under its own name, `bill` says so, so the fix is one rename
+in the log rather than a guess made on the reader's behalf.
 
 **A bill for a period: `--since` and `--until`.** A Claude Code folder holds
 every session since the tool was installed, so a bill with no window answers

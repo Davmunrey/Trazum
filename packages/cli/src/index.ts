@@ -3709,6 +3709,16 @@ async function commandBill(args: Args, pricing: PricingCatalogue, t: CliMessages
   if (slugged.length > 0 && !boolFlag(args, 'pricing-live')) {
     console.error(t.bill.pricingLiveHint(slugged.length));
   }
+  /*
+    `xai/grok-4.3` is LiteLLM's way of saying "grok-4.3, called on xAI", and
+    `anthropic/claude-sonnet-5-5` could be that or an OpenRouter route. The
+    catalogue never strips a prefix by rule, because a router can bill the same
+    model differently and an alias is a statement, never a derivation. What it
+    can do is say which of these it prices under its own name, so the fix is
+    one rename away rather than a guess made on the reader's behalf.
+  */
+  const priceableAfterSlash = slugged.filter((model) => pricing.byId.has(model.slice(model.lastIndexOf('/') + 1)));
+  if (priceableAfterSlash.length > 0) console.error(t.bill.prefixedKnown(priceableAfterSlash.join(', ')));
 }
 
 /**

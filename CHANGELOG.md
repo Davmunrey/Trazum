@@ -40,6 +40,16 @@ merged commit with no entry is a change only `git log` remembers.
   2.5.0's release commit**, the one `v2.5.0` points at, in the pull request
   after the release as `docs/releasing.md` says it must.
 
+- **`bill` called every model id with a slash an OpenRouter slug.**
+  `gemini/`, `xai/` and `moonshot/` are LiteLLM's prefixes (OpenRouter writes
+  `google/`, `x-ai/`, `moonshotai/`), so the hint stated a fact it did not
+  know. It now says the ids carry a provider prefix and that `--pricing-live`
+  prices OpenRouter's. And where the model after the slash is one the
+  catalogue prices under its own name, it names those ids and says why the
+  prefix is not stripped for you: the same model through a router can bill
+  differently, so pricing it by rule would be the guess this product does not
+  make.
+
 - **A date `--since`/`--until` could not read was refused with half the
   forms it takes.** The message named a UTC day and an ISO timestamp; the
   parser also takes a relative window (`7d`, `24h`) and `now`, and now says

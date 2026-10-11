@@ -2054,7 +2054,9 @@ ${bold('EXAMPLES')}
     nothingRead: () => 'Nothing here was a usage source this tool reads, so there is nothing to bill.',
     sources: (read, seen) => `${read} of ${seen} file(s) read as usage.`,
     pricingLiveHint: (count) =>
-      `${count} unpriced model id(s) are OpenRouter slugs, which the bundled catalogue does not carry. Run again with --pricing-live to price them from OpenRouter's own list.`,
+      `${count} unpriced model id(s) carry a provider prefix, the way OpenRouter and LiteLLM name models, and the bundled catalogue does not carry those. Run again with --pricing-live to price OpenRouter's slugs from its own list.`,
+    prefixedKnown: (ids) =>
+      `${ids}: the model after the slash is priced here under its own name. The prefix is not stripped for you, because the same model through a router can bill differently. If those calls went straight to the provider, log the model without the prefix.`,
     windowMatchesNothing: (from, to) =>
       `No call falls inside this period. What was read covers ${from} → ${to}. A period with nothing in it is not a $0 bill: check the dates, or leave --since/--until off to bill everything.`,
     written: (file) => `Wrote ${file}.`,

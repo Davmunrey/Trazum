@@ -2083,7 +2083,9 @@ ${bold('EJEMPLOS')}
     nothingRead: () => 'Nada de esto era una fuente de uso que esta herramienta lea, así que no hay nada que facturar.',
     sources: (read, seen) => `${read} de ${seen} archivo(s) leído(s) como uso.`,
     pricingLiveHint: (count) =>
-      `${count} id(s) de modelo sin precio son slugs de OpenRouter, que el catálogo incluido no trae. Vuelve a ejecutar con --pricing-live para cobrarlos desde la propia lista de OpenRouter.`,
+      `${count} id(s) de modelo sin precio llevan prefijo de proveedor, como nombran los modelos OpenRouter y LiteLLM, y el catálogo incluido no los trae. Vuelve a ejecutar con --pricing-live para cobrar los slugs de OpenRouter desde su propia lista.`,
+    prefixedKnown: (ids) =>
+      `${ids}: el modelo tras la barra tiene precio aquí con su propio nombre. El prefijo no se quita por ti, porque el mismo modelo a través de un router puede facturarse distinto. Si esas llamadas fueron directas al proveedor, registra el modelo sin el prefijo.`,
     windowMatchesNothing: (from, to) =>
       `Ninguna llamada cae dentro de este periodo. Lo leído cubre ${from} → ${to}. Un periodo sin nada dentro no es una factura de $0: revisa las fechas, o quita --since/--until para facturarlo todo.`,
     written: (file) => `Escrito ${file}.`,
