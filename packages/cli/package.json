@@ -1,6 +1,6 @@
 {
   "name": "@trazum/cli",
-  "version": "2.4.3",
+  "version": "2.5.0",
   "description": "What your AI agents cost, per project, offline: prices Claude Code sessions and Anthropic, OpenAI, OpenRouter, OTel and LiteLLM usage, writes the bill as PDF, HTML or CSV, and enforces budgets in CI.",
   "license": "MIT",
   "author": "David Mu\u00f1oz Rey",
@@ -50,7 +50,7 @@
     "prepublishOnly": "npm run build && npm test"
   },
   "dependencies": {
-    "@trazum/core": "2.4.3"
+    "@trazum/core": "2.5.0"
   },
   "devDependencies": {
     "@types/node": "^26.6.3",

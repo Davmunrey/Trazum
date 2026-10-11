@@ -11,6 +11,21 @@ merged commit with no entry is a change only `git log` remembers.
 
 ## Unreleased
 
+## 2.5.0 — Each request at its own size
+
+A minor, because two published formats grew a field: a usage row may say how
+many requests it sums (`requests`), and a receipt names a new gap,
+`tier-ceiling`. No new command. **Four providers' models are billed by prompt
+length, one request at a time**: Claude Haiku 5.5, Gemini 3.1 Pro Preview,
+OpenAI's GPT-5.6 and later and every current Grok, each call in its own band,
+and a usage report's summed row at the dearer rate with the cheaper figure
+printed beside it. **OpenAI, Moonshot and xAI's current models are priced**, and
+a model says how long its cache entry lives, so an OpenAI entry is judged
+against its 30 minutes. **A Responses API log is billed at its real cache
+rates**: every cached token had been billed as plain input. **`grok-4` bills at
+Grok 4.3's prices since xAI retired it**, and neither it nor `kimi-k2` is
+recommended any more.
+
 ### Added
 
 - **Moonshot and xAI's current models are priced: Kimi K3, Kimi K2.7 Code

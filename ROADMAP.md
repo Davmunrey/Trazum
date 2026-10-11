@@ -1184,6 +1184,17 @@ second was case-sensitive and did not catch it; and an existing guard caught
 this work's own test bounding a section by its neighbour.
 
 
+## 2.5.0 — Each request at its own size — released
+
+A minor for two fields in published formats, and no command. A model priced by
+prompt length is billed one request at a time: a call in its own band, a
+usage report's summed row at the dearer rate with the cheaper figure beside it,
+on every surface. That let in Claude Haiku 5.5, Gemini 3.1 Pro Preview,
+OpenAI's GPT-5.6 and later, Moonshot's Kimi K3 and K2.7 and xAI's current
+Grok family. A model states how long its cache entry lives. A Responses API log
+had billed every cached token as plain input, and `grok-4` had kept its old
+price after xAI retired it onto Grok 4.3's.
+
 ## 2.4.3 — Each call at its own price — released
 
 A patch, and no command. `bill` with no path reads Claude Code's own folder,
@@ -2723,8 +2734,10 @@ carry tests now that derive the claim from the code rather than trusting prose.
 plan](docs/plan-2.4.md) was the last thing planned, 2.4.0 delivered every
 move of it that did not need something held outside this repository,
 2.4.1 carried the door to the README's first line and the browser, 2.4.2
-priced the models Claude Code runs today and gave the bill a PDF, and 2.4.3
-made the one line work with no path and priced each call at its own moment. [The
+priced the models Claude Code runs today and gave the bill a PDF, 2.4.3
+made the one line work with no path and priced each call at its own moment, and
+2.5.0 priced each request at its own size, which let the current models of
+OpenAI, Moonshot and xAI, Claude Haiku 5.5 and Gemini 3.1 Pro in. [The
 1.83–2.0 plan](docs/plan-1.83-2.0.md) had asked a different question from
 every other plan in that directory — not what this should do next, but when
 it is finished — and 2.0.0 answered it by freezing the surface at 46
@@ -2732,8 +2745,9 @@ commands. 2.4.0 lifted that freeze deliberately, from a download count rather
 than a feature wish, and the CLI stands at 51 commands. What remains of the
 2.4 plan waits on things outside this repository: a real Cursor export to
 build a converter against, a Hugging Face token for the Space, and the
-provider keys that would let two orphaned price rows be marked retired from
-the provider's own refusal.
+provider keys that would let `kimi-k2` and `grok-4`, discontinued by their
+providers' own notices and no longer recommended, be marked retired from the
+provider's own refusal.
 
 **2.1.0 came after that and this section did not change its mind.** It adds no
 command; it adds two fields to a published format and one function, so that a
