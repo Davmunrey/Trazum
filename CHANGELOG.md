@@ -97,6 +97,14 @@ merged commit with no entry is a change only `git log` remembers.
   `connect` report the same records came from. Each model's own ratios now,
   at the record's own date.
 
+- **A block of Spanish messages had no accents.** The help for the `from-*`
+  converters and `bill`, the converters' own messages and `reconcile`'s were
+  written as "aqui", "pagina", "sesion", "Anade", "esta dentro de ese resto y
+  no fuera de el", "Trazum cobro mas": 204 words across 79 lines of
+  `es.ts`, now "aquí", "página", "sesión", "Añade", "está ... de él", "cobró
+  más". Words that read two ways ("esta", "tu", "el", "que", "como", "en
+  cuanto") were settled one sentence at a time rather than by rule.
+
 ## 2.4.3 — Each call at its own price
 
 A patch with no new command. **The one line works on a first run**:
